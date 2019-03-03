@@ -14,6 +14,7 @@ kubectl get pod --all-namespaces -o json | \
 		nodename: .status.hostIP,
 		labels: .metadata.labels | @base64,
 		statuses: .status.containerStatuses[] |
+			select(.containerID != null) |
 			{
 				containerId: .containerID | sub("^docker://"; ""),
 				containerName: .name
