@@ -27,7 +27,7 @@ spec:
           mountPath: /sys/fs/bpf
       - name: k8s-sync
         image: docker.io/albanc/k8s-labels-to-bpf:latest
-        command: [ "/bin/sh", "-c", "/bin/create-map.sh && sleep 1000" ]
+        command: [ "/bin/sh", "-c", "/bin/create-map.sh ; sleep 1000" ]
         securityContext:
           privileged: true
         volumeMounts:
@@ -38,7 +38,7 @@ spec:
       volumes:
       - name: hostproc
         hostPath:
-          path: /
+          path: /proc
       - name: bpffs
         hostPath:
           path: /sys/fs/bpf
