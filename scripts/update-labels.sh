@@ -6,6 +6,7 @@ bpfdir=/sys/fs/bpf/containerids
 mkdir -p $bpfdir
 
 kubectl get pod --all-namespaces -o json | \
+  tee /tmp/allpods-1.log | \
   jq -r '.items[] |
 	{
 		namespace: .metadata.namespace,
@@ -20,6 +21,7 @@ kubectl get pod --all-namespaces -o json | \
 	} |
 	[.namespace, .podName, .nodename, .labels, .statuses.containerId, .statuses.containerName] |
 	@tsv' | \
+  tee /tmp/allpods-2.log | \
   while IFS=$'\t' read -r namespace podname nodename labels containerid containername; do
     set -e
     echo "Processing container: $namespace $podname $nodename $containerid $containername"
@@ -35,6 +37,7 @@ kubectl get pod --all-namespaces -o json | \
 		} |
 		[.key, .value] |
 		@tsv' | \
+        tee /tmp/container-$containerid.log | \
 	while IFS=$'\t' read -r key value; do
                 set -e
 		echo "Processing label $key=$value in $containerid"
@@ -45,3 +48,7 @@ kubectl get pod --all-namespaces -o json | \
 	containerid_hex=$(echo -n "$containerid" | od -t x1 -w64 -v | head -1 | cut -d" " -f2-)
 	bpftool map update pinned /sys/fs/bpf/containermap key hex $containerid_hex value pinned $bpfdir/$containerid
   done
+
+set -x
+grep -H . /tmp/allpods-*.log
+grep -H . /tmp/container-*.log || true
