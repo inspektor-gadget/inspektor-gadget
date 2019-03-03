@@ -37,8 +37,8 @@ RUN chmod +x /kubectl
 FROM amd64/alpine:3.8 as base
 RUN apk add jq
 ENV HOST_PROC /hostproc
-ADD scripts /bin
 COPY --from=bpftool-build /tmp/linux/tools/bpf/bpftool/bpftool /bin
 COPY --from=golang-build /go/src/github.com/kinvolk/k8s-labels-to-bpf/k8s-labels-to-bpf /bin
 COPY --from=tools-build /kubectl /bin
+ADD scripts /bin
 CMD ["/bin/sh"]
