@@ -22,6 +22,16 @@ const (
 	pidmapPath = "/sys/fs/bpf/pidmap"
 )
 
+var (
+	hostProc = "/proc"
+)
+
+func init() {
+	if os.Getenv("HOSTPROC") != "" {
+		hostProc = os.Getenv("HOSTPROC")
+	}
+}
+
 func (pm *PidMap) createMap() {
 	_ = os.Remove(pidmapPath)
 
@@ -70,14 +80,14 @@ func (pm *PidMap) Stop() {
 }
 
 func (pm *PidMap) Update() {
-	f, err := os.Open("/proc")
+	f, err := os.Open(hostProc)
 	if err != nil {
-		fmt.Printf("cannot open /proc\n")
+		fmt.Printf("cannot open %q\n", hostProc)
 	}
 
 	procs, err := f.Readdirnames(0)
 	if err != nil {
-		fmt.Printf("cannot list /proc\n")
+		fmt.Printf("cannot list %q\n", hostProc)
 	}
 
 	nextPidmap := make(map[uint32]string)
@@ -91,7 +101,7 @@ func (pm *PidMap) Update() {
 			continue
 		}
 
-		content, err := ioutil.ReadFile(filepath.Join("/proc", proc, "cgroup"))
+		content, err := ioutil.ReadFile(filepath.Join(hostProc, proc, "cgroup"))
 		if err != nil {
 			// ignore the error: the process just terminated
 			continue

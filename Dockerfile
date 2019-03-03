@@ -32,5 +32,6 @@ RUN go build cmd/k8s-labels-to-bpf/k8s-labels-to-bpf.go
 FROM amd64/alpine:3.8 as base
 COPY --from=bpftool-build /tmp/linux/tools/bpf/bpftool/bpftool /bin
 COPY --from=golang-build /go/src/github.com/kinvolk/k8s-labels-to-bpf/k8s-labels-to-bpf /bin
+ENV HOST_PROC /hostproc
 ADD scripts /bin
 CMD ["/bin/sh"]
