@@ -119,8 +119,17 @@ func (pm *PidMap) Update() {
 			path := fields[2]
 			parts := strings.Split(path, "/")
 			for i := range parts {
+				// Example:
+				// 1:name=systemd:/docker/bf4e1697bc0f3fcd6aca1f359853ea2f0ae527ef2b14867f1a2ce3a44bf842e4
 				if (parts[i] == "docker" || parts[i] == "docker.service") && len(parts) > i+1 {
 					id = parts[i+1]
+					break
+				}
+
+				// Example:
+				// 1:name=systemd:/kubepods/besteffort/podb44d9344-3dd9-11e9-8cee-0265528b4d7c/3c923625e1cbe7d10a4c971636469d5458e029f7f5e63da95ccdcfb7212c3194
+				if (parts[i] == "kubepods") && len(parts) > i+3 {
+					id = parts[i+3]
 					break
 				}
 			}
