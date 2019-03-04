@@ -50,6 +50,3 @@ kubectl get pod --all-namespaces -o json | \
 	bpftool map update pinned /sys/fs/bpf/containermap key hex $containerid_hex value pinned $bpfdir/$containerid
   done
 
-set -x
-grep -H . /tmp/allpods-*.log
-grep -H . /tmp/container-*.log || true
