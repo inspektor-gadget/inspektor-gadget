@@ -105,7 +105,11 @@ struct data_t {
 
 typedef char containerid[64];
 
+typedef char text64[64];
+
 BPF_HASH(pidmap, u32, containerid);
+BPF_HASH(containermap, containerid, u32);
+BPF_HASH(labelmap, text64, text64);
 BPF_HASH(infotmp, u64, struct val_t);
 BPF_PERF_OUTPUT(events);
 
@@ -183,6 +187,23 @@ if args.containerid:
               {
                 return 0;
               }
+           u32 *innermap = containermap.lookup(cid);
+           bpf_trace_printk("open: innermap: %%p\\n", innermap);
+           if (innermap == NULL) {
+             return 0;
+           }
+           // name: privileged1-pod
+           text64 textkey = {'n', 'a', 'm', 'e',
+                            ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+                            };
+           text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &textkey[0]);
+           if (textvalue == NULL) {
+             return 0;
+           }
+           int v = textvalue[0][0];
+           bpf_trace_printk("open: innermap: text_value0: %%d\\n", v);
+           v = textvalue[0][1];
+           bpf_trace_printk("open: innermap: text_value1: %%d\\n", v);
         ''' % (args.containerid[0],
                args.containerid[1],
                args.containerid[2],
@@ -215,7 +236,8 @@ if debug or args.ebpf:
 
 # initialize BPF
 b = BPF(text=bpf_text)
-os.dup2(99, 5) # Magic
+os.dup2(90, 8) # pidmap
+os.dup2(91, 6) # containermap
 b.attach_kprobe(event="do_sys_open", fn_name="trace_entry")
 b.attach_kretprobe(event="do_sys_open", fn_name="trace_return")
 
