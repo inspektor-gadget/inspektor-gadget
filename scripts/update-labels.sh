@@ -44,9 +44,15 @@ kubectl get pod --all-namespaces -o json | \
 		echo "Processing label $key=$value in $containerid"
 		key_hex=$(printf "%-64s" "$key" | od -t x1 -w64 -v | head -1 | cut -d" " -f2-)
 		value_hex=$(printf "%-64s" "$value" | od -t x1 -w64 -v | head -1 | cut -d" " -f2-)
+                echo "  $key_hex"
+                echo "  $value_hex"
 		bpftool map update pinned $bpfdir/$containerid key hex $key_hex value hex $value_hex
+		echo "bpftool map updated returned: $?"
 	done
+	echo "Processing container $containerid"
 	containerid_hex=$(echo -n "$containerid" | od -t x1 -w64 -v | head -1 | cut -d" " -f2-)
+	echo "  $containerid_hex"
 	bpftool map update pinned /sys/fs/bpf/containermap key hex $containerid_hex value pinned $bpfdir/$containerid
+	echo "bpftool map updated returned: $?"
   done
 
