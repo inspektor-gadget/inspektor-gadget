@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: privileged1-pod
+  labels:
+    k8s-app: privileged1-pod
+spec:
+  selector:
+    matchLabels:
+      name: privileged1-pod
+  template:
+    metadata:
+      labels:
+        name: privileged1-pod
+    spec:
+      hostNetwork: true
+      containers:
+      - name: privileged1-pod
+        image: docker.io/albanc/toolbox
+        command: [ "sleep", "10000000" ]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: host
+          mountPath: /host
+      volumes:
+      - name: host
+        hostPath:
+          path: /
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: privileged2-pod
+  labels:
+    k8s-app: privileged2-pod
+spec:
+  selector:
+    matchLabels:
+      name: privileged2-pod
+  template:
+    metadata:
+      labels:
+        name: privileged2-pod
+    spec:
+      hostNetwork: true
+      containers:
+      - name: privileged2-pod
+        image: docker.io/albanc/toolbox
+        command: [ "sleep", "10000000" ]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: host
+          mountPath: /host
+      volumes:
+      - name: host
+        hostPath:
+          path: /
