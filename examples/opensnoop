@@ -122,7 +122,7 @@ int trace_entry(struct pt_regs *ctx, int dfd, const char __user *filename, int f
     u32 uid = bpf_get_current_uid_gid();
     containerid *cid = pidmap.lookup(&pid);
 
-    bpf_trace_printk("open: cid=%p pid=%d filename=%s\\n", cid, pid, filename);
+    //bpf_trace_printk("open: cid=%p pid=%d filename=%s\\n", cid, pid, filename);
 
     CONTAINERID_FILTER
     PID_TID_FILTER
@@ -176,19 +176,20 @@ else:
 
 if args.containerid:
     bpf_text = bpf_text.replace('CONTAINERID_FILTER',
-        '''if (cid == 0 ||
-               (*cid)[0] != '%s' ||
-               (*cid)[1] != '%s' ||
-               (*cid)[2] != '%s' ||
-               (*cid)[3] != '%s' ||
-               (*cid)[4] != '%s' ||
-               (*cid)[5] != '%s'
+        '''if (cid == 0
+               //||
+               //(*cid)[0] != '%s' ||
+               //(*cid)[1] != '%s' ||
+               //(*cid)[2] != '%s' ||
+               //(*cid)[3] != '%s' ||
+               //(*cid)[4] != '%s' ||
+               //(*cid)[5] != '%s'
               )
               {
                 return 0;
               }
            u32 *innermap = containermap.lookup(cid);
-           bpf_trace_printk("open: innermap: %%p\\n", innermap);
+           //bpf_trace_printk("open: innermap: %%p\\n", innermap);
            if (innermap == NULL) {
              return 0;
            }
@@ -200,10 +201,10 @@ if args.containerid:
            if (textvalue == NULL) {
              return 0;
            }
-           int v = textvalue[0][0];
-           bpf_trace_printk("open: innermap: text_value0: %%d\\n", v);
-           v = textvalue[0][1];
-           bpf_trace_printk("open: innermap: text_value1: %%d\\n", v);
+           textvalue[0][63] = '\\0';
+           bpf_trace_printk("open: pid=%%d filename=%%s\\n", pid, filename);
+           bpf_trace_printk("open: pid=%%d Kubernetes label: name=%%s\\n", pid, &textvalue[0][0]);
+           //bpf_trace_printk("open: innermap: Kubernetes label: name=%%s\\n", &textvalue[0][0]);
         ''' % (args.containerid[0],
                args.containerid[1],
                args.containerid[2],
