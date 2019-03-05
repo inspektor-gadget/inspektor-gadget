@@ -36,6 +36,9 @@ spec:
       containers:
       - name: proc-sync
         image: docker.io/albanc/k8s-labels-to-bpf:latest
+        env:
+        - name: HOSTPROC
+          value: "/hostproc"
         command: [ "/bin/k8s-labels-to-bpf" ]
         securityContext:
           privileged: true
