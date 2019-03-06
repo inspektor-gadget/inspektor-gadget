@@ -180,16 +180,11 @@ if args.containerid:
     if len(args.containerid) != 64:
         exit("Bad size for containerid: %s" % args.containerid)
     bpf_text = bpf_text.replace('CONTAINERID_FILTER',
-        '''if (cid == 0 ||
-               (*cid)[0] != '%s' || (*cid)[1] != '%s' || (*cid)[2] != '%s' || (*cid)[3] != '%s' ||
-               (*cid)[4] != '%s' || (*cid)[5] != '%s' || (*cid)[6] != '%s' || (*cid)[7] != '%s' ||
-               (*cid)[8] != '%s' || (*cid)[9] != '%s' || (*cid)[10] != '%s' || (*cid)[11] != '%s' ||
-               (*cid)[12] != '%s' || (*cid)[13] != '%s' || (*cid)[14] != '%s' || (*cid)[15] != '%s')
+        '''if (cid == 0 || %s)
               { return 0; }
-        ''' % (args.containerid[0], args.containerid[1], args.containerid[2], args.containerid[3],
-               args.containerid[4], args.containerid[5], args.containerid[6], args.containerid[7],
-               args.containerid[8], args.containerid[9], args.containerid[10], args.containerid[11],
-               args.containerid[12], args.containerid[13], args.containerid[14], args.containerid[15]))
+        ''' % (
+           " || ".join([ "(*cid)[%s] != '%s'" % (str(i), args.containerid[i]) for i in range(64)])
+        ))
 else:
     bpf_text = bpf_text.replace('CONTAINERID_FILTER', '')
 
@@ -197,45 +192,24 @@ if args.label:
     label_kv = args.label.split("=", 2)
     if len(label_kv) != 2 or len(label_kv[0]) > 64 or len(label_kv[1]) > 64:
         exit("Bad key-value label selector: %s" % args.label)
-    label_kv[0] = label_kv[0] + " " * (64 - len(label_kv[0]))
-    label_kv[1] = label_kv[1] + " " * (64 - len(label_kv[1]))
-    key = "'" + "', '".join(list(label_kv[0])) + "'"
-    expectedvalue = "'" + "', '".join(list(label_kv[1])) + "'"
+    key_with_spaces = label_kv[0] + " " * (64 - len(label_kv[0]))
+    value_len = len(label_kv[1])
+    value_with_spaces = label_kv[1] + " " * (64 - len(label_kv[1]))
     bpf_text = bpf_text.replace('LABEL_FILTER',
         '''if (cid == 0) {
                 return 0;
               }
            u32 *innermap = containermap.lookup(cid);
-           if (innermap == NULL) {
-             return 0;
-           }
-           text64 textkey = {%s};
-           text64 textexpectedvalue = {%s};
-           text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &textkey[0]);
-           if (textvalue == NULL) {
-             return 0;
-           }
+           if (innermap == NULL) { return 0; }
 
-           if (textexpectedvalue[0] != textvalue[0][0] ||
-               textexpectedvalue[1] != textvalue[0][1] ||
-               textexpectedvalue[2] != textvalue[0][2] ||
-               textexpectedvalue[3] != textvalue[0][3] ||
-               textexpectedvalue[4] != textvalue[0][4] ||
-               textexpectedvalue[5] != textvalue[0][5] ||
-               textexpectedvalue[6] != textvalue[0][6] ||
-               textexpectedvalue[7] != textvalue[0][7] ||
-               textexpectedvalue[8] != textvalue[0][8] ||
-               textexpectedvalue[9] != textvalue[0][9] ||
-               textexpectedvalue[10] != textvalue[0][10] ||
-               textexpectedvalue[11] != textvalue[0][11] ||
-               textexpectedvalue[12] != textvalue[0][12] ||
-               textexpectedvalue[13] != textvalue[0][13] ||
-               textexpectedvalue[14] != textvalue[0][14] ||
-               textexpectedvalue[15] != textvalue[0][15]
-           ) {
-             return 0;
-           }
-        ''' % (key, expectedvalue))
+           text64 textkey = {%s};
+           text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &textkey[0]);
+           if (textvalue == NULL) { return 0; }
+           if (%s) { return 0; }
+        ''' % (
+           "'" + "', '".join(list(key_with_spaces)) + "'",
+           " || ".join([ "textvalue[0][%s] != '%s'" % (str(i), value_with_spaces[i]) for i in range(min(64, value_len+1))])
+        ))
 else:
     bpf_text = bpf_text.replace('LABEL_FILTER', '')
 

@@ -9,11 +9,13 @@ spec:
     matchLabels:
       name: privileged1-pod
       myapp: app-one
+      role: demo
   template:
     metadata:
       labels:
         name: privileged1-pod
         myapp: app-one
+        role: demo
     spec:
       hostNetwork: true
       containers:
@@ -41,11 +43,13 @@ spec:
     matchLabels:
       name: privileged2-pod
       myapp: app-two
+      role: demo
   template:
     metadata:
       labels:
         name: privileged2-pod
         myapp: app-two
+        role: demo
     spec:
       hostNetwork: true
       containers:
