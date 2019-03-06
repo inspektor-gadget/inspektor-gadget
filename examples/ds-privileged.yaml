@@ -8,10 +8,12 @@ spec:
   selector:
     matchLabels:
       name: privileged1-pod
+      myapp: app-one
   template:
     metadata:
       labels:
         name: privileged1-pod
+        myapp: app-one
     spec:
       hostNetwork: true
       containers:
@@ -38,10 +40,12 @@ spec:
   selector:
     matchLabels:
       name: privileged2-pod
+      myapp: app-two
   template:
     metadata:
       labels:
         name: privileged2-pod
+        myapp: app-two
     spec:
       hostNetwork: true
       containers:
