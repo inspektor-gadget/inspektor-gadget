@@ -1,11 +1,13 @@
 # k8s-labels-to-bpf
 
-Run the server:
+Deploy the daemon set:
 ```
-sudo -E go run cmd/k8s-labels-to-bpf/k8s-labels-to-bpf.go
+kubectl apply -f deploy/ds.yaml
 ```
 
-Watch the map being updated while creating containers:
+Run a tracing tool:
 ```
-watch bpftool map dump pinned /sys/fs/bpf/pidmap
+kubectl apply -f examples/ds-bcck8s.yaml
+POD=$(kubectl get pods -l name=bcck8s-shell -o=jsonpath='{.items[0].metadata.name}')
+kubectl exec -ti $POD -- opensnoop.sh --label role=demo
 ```
