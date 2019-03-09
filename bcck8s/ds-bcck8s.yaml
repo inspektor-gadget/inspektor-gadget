@@ -35,7 +35,7 @@ spec:
       hostNetwork: true
       containers:
       - name: bcck8s-shell
-        image: docker.io/albanc/bcck8s
+        image: docker.io/albanc/bcck8s:latest
         command: [ "/bin/sh", "-c", "sleep 1000000" ]
         securityContext:
           privileged: true
