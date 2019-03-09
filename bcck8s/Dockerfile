@@ -25,10 +25,9 @@ COPY --from=bpftool-build /tmp/linux/tools/bpf/bpftool/bpftool /bin
 RUN \
 apt-get update && apt-get install -y --no-install-recommends \
     git ca-certificates curl && \
-git clone --depth 1 -b alban/bcck8s https://github.com/kinvolk/bcc.git
+git clone --depth 1 -b alban/bcck8s https://github.com/kinvolk/bcc.git && \
+git describe
 
-#COPY opensnoop /bin/opensnoop
-#COPY opensnoop.sh /bin/opensnoop.sh
-#COPY bpftool /bin/bpftool
+COPY opensnoop /opt/opensnoop
 
 CMD ["/bin/bash"]

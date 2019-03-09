@@ -19,9 +19,10 @@ from __future__ import print_function
 from bcc import ArgString, BPF
 from bcc.utils import printb
 import argparse
-import ctypes as ct
 from datetime import datetime, timedelta
 import os
+import sys
+import fcntl
 
 # arguments
 examples = """examples:
@@ -110,9 +111,8 @@ typedef char containerid[64];
 
 typedef char text64[64];
 
-BPF_HASH(pidmap, u32, containerid);
-BPF_HASH(containermap, containerid, u32);
-BPF_HASH(labelmap, text64, text64);
+BPF_HASH(pidmap, u32, containerid);         // DEFINE_PIDMAP
+BPF_HASH(containermap, containerid, u32);   // DEFINE_CONTAINERMAP
 BPF_HASH(infotmp, u64, struct val_t);
 BPF_PERF_OUTPUT(events);
 
@@ -123,7 +123,7 @@ int trace_entry(struct pt_regs *ctx, int dfd, const char __user *filename, int f
     u32 pid = id >> 32; // PID is higher part
     u32 tid = id;       // Cast and get the lower part
     u32 uid = bpf_get_current_uid_gid();
-    containerid *cid = pidmap.lookup(&pid);
+    containerid *cid = pidmap.lookup(&pid); // DEFINE_PIDMAP
 
     CONTAINERID_FILTER
     LABEL_FILTER
@@ -218,7 +218,6 @@ if args.uid:
         'if (uid != %s) { return 0; }' % args.uid)
 else:
     bpf_text = bpf_text.replace('UID_FILTER', '')
-
 if args.flag_filter:
     bpf_text = bpf_text.replace('FLAGS_FILTER',
         'if (!(flags & %d)) { return 0; }' % flag_filter_mask)
@@ -229,6 +228,13 @@ if not (args.extended_fields or args.flag_filter):
     bpf_text = '\n'.join(x for x in bpf_text.split('\n')
         if 'EXTENDED_STRUCT_MEMBER' not in x)
 
+if not (args.containerid or args.label):
+    bpf_text = '\n'.join(x for x in bpf_text.split('\n')
+        if 'DEFINE_PIDMAP' not in x)
+if not args.label:
+    bpf_text = '\n'.join(x for x in bpf_text.split('\n')
+        if 'DEFINE_CONTAINERMAP' not in x)
+
 if debug or args.ebpf:
     print(bpf_text)
     if args.ebpf:
@@ -236,24 +242,40 @@ if debug or args.ebpf:
 
 # initialize BPF
 b = BPF(text=bpf_text)
-os.dup2(90, 8) # pidmap
-os.dup2(91, 6) # containermap
+
+def set_cloexec(fd, cloexec=True):
+    flags = fcntl.fcntl(fd, fcntl.F_GETFD)
+    if cloexec:
+        flags |= fcntl.FD_CLOEXEC
+    else:
+        flags &= ~fcntl.FD_CLOEXEC
+    fcntl.fcntl(fd, fcntl.F_SETFD, flags)
+
+
+if args.containerid or args.label: # pidmap
+  if not os.path.islink("/proc/self/fd/90"):
+    os.execvp("bpftool", ["bpftool", "map", "exec", "pinned", "/sys/fs/bpf/pidmap", "fd", "90", "cmd", "--"] + sys.argv)
+  for i in range(3, 30):
+    set_cloexec(i, cloexec=False)
+    ret = os.system("bpftool map show fd " + str(i) + " | grep -q 'name pidmap' 2>/dev/null")
+    set_cloexec(i, cloexec=True)
+    if ret == 0:
+      os.dup2(90, i)
+      break
+
+if args.label: # containermap
+  if not os.path.islink("/proc/self/fd/91"):
+    os.execvp("bpftool", ["bpftool", "map", "exec", "pinned", "/sys/fs/bpf/containermap", "fd", "91", "cmd", "--"] + sys.argv)
+  for i in range(3, 30):
+    set_cloexec(i, cloexec=False)
+    ret = os.system("bpftool map show fd " + str(i) + " | grep -q 'name containermap' 2>/dev/null")
+    set_cloexec(i, cloexec=True)
+    if ret == 0:
+      os.dup2(91, i)
+      break
+
 b.attach_kprobe(event="do_sys_open", fn_name="trace_entry")
 b.attach_kretprobe(event="do_sys_open", fn_name="trace_return")
-
-TASK_COMM_LEN = 16    # linux/sched.h
-NAME_MAX = 255        # linux/limits.h
-
-class Data(ct.Structure):
-    _fields_ = [
-        ("id", ct.c_ulonglong),
-        ("ts", ct.c_ulonglong),
-        ("uid", ct.c_uint32),
-        ("ret", ct.c_int),
-        ("comm", ct.c_char * TASK_COMM_LEN),
-        ("fname", ct.c_char * NAME_MAX),
-        ("flags", ct.c_int),
-    ]
 
 initial_ts = 0
 
@@ -270,7 +292,7 @@ print("PATH")
 
 # process event
 def print_event(cpu, data, size):
-    event = ct.cast(data, ct.POINTER(Data)).contents
+    event = b["events"].event(data)
     global initial_ts
 
     # split return value into FD and errno columns
