@@ -28,5 +28,6 @@ apt-get update && apt-get install -y --no-install-recommends \
 git clone --depth 1 -b alban/bcck8s https://github.com/kinvolk/bcc.git
 
 COPY opensnoop /opt/opensnoop
+COPY execsnoop /opt/execsnoop
 
 CMD ["/bin/bash"]

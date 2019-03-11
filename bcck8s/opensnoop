@@ -111,8 +111,8 @@ typedef char containerid[64];
 
 typedef char text64[64];
 
-BPF_HASH(pidmap, u32, containerid);         // DEFINE_PIDMAP
-BPF_HASH(containermap, containerid, u32);   // DEFINE_CONTAINERMAP
+BPF_HASH(pidmap, u32, containerid);         // DEFINE_PIDMAP        // EXTERNAL_MAP:pidmap,/sys/fs/bpf/pidmap,90
+BPF_HASH(containermap, containerid, u32);   // DEFINE_CONTAINERMAP  // EXTERNAL_MAP:containermap,/sys/fs/bpf/containermap,91
 BPF_HASH(infotmp, u64, struct val_t);
 BPF_PERF_OUTPUT(events);
 
@@ -240,38 +240,39 @@ if debug or args.ebpf:
     if args.ebpf:
         exit()
 
+for x in bpf_text.split('\n'):
+  if 'EXTERNAL_MAP' not in x:
+    continue
+  external_params = x.split('EXTERNAL_MAP:')[1].split(',')
+  map_name = external_params[0]
+  pin_path = external_params[1]
+  external_fd = int(external_params[2])
+  if not os.path.islink("/proc/self/fd/" + str(external_fd)):
+    os.execvp("bpftool", ["bpftool", "map", "exec", "pinned", pin_path, "fd", str(external_fd), "cmd", "--"] + sys.argv)
+
 # initialize BPF
 b = BPF(text=bpf_text)
 
-def set_cloexec(fd, cloexec=True):
+for x in bpf_text.split('\n'):
+  if 'EXTERNAL_MAP' not in x:
+    continue
+  external_params = x.split('EXTERNAL_MAP:')[1].split(',')
+  map_name = external_params[0]
+  pin_path = external_params[1]
+  external_fd = int(external_params[2])
+  def set_cloexec(fd, cloexec=True):
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
     if cloexec:
-        flags |= fcntl.FD_CLOEXEC
+      flags |= fcntl.FD_CLOEXEC
     else:
-        flags &= ~fcntl.FD_CLOEXEC
+      flags &= ~fcntl.FD_CLOEXEC
     fcntl.fcntl(fd, fcntl.F_SETFD, flags)
-
-
-if args.containerid or args.label: # pidmap
-  if not os.path.islink("/proc/self/fd/90"):
-    os.execvp("bpftool", ["bpftool", "map", "exec", "pinned", "/sys/fs/bpf/pidmap", "fd", "90", "cmd", "--"] + sys.argv)
   for i in range(3, 30):
     set_cloexec(i, cloexec=False)
-    ret = os.system("bpftool map show fd " + str(i) + " | grep -q 'name pidmap' 2>/dev/null")
+    ret = os.system("bpftool map show fd " + str(i) + " | grep -q 'name " + map_name + "' 2>/dev/null")
     set_cloexec(i, cloexec=True)
     if ret == 0:
-      os.dup2(90, i)
-      break
-
-if args.label: # containermap
-  if not os.path.islink("/proc/self/fd/91"):
-    os.execvp("bpftool", ["bpftool", "map", "exec", "pinned", "/sys/fs/bpf/containermap", "fd", "91", "cmd", "--"] + sys.argv)
-  for i in range(3, 30):
-    set_cloexec(i, cloexec=False)
-    ret = os.system("bpftool map show fd " + str(i) + " | grep -q 'name containermap' 2>/dev/null")
-    set_cloexec(i, cloexec=True)
-    if ret == 0:
-      os.dup2(91, i)
+      os.dup2(external_fd, i)
       break
 
 b.attach_kprobe(event="do_sys_open", fn_name="trace_entry")
