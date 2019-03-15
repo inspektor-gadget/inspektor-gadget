@@ -12,7 +12,7 @@ KUBECTL=/opt/bin/kubectl
 BPFDIR=/sys/fs/bpf
 CGROUP_PATH=/sys/fs/cgroup/unified$(cat /proc/$PID/cgroup|grep ^0::|cut -b4-)
 CGROUP_ID=$($CGROUPID $CGROUP_PATH)
-CGROUP_ID_HEX=$(printf '%016x' $CGROUP_ID | sed -re 's:([0-9A-Fa-f]{2}):\1 :g')
+CGROUP_ID_HEX=$(printf '%016x' $CGROUP_ID | sed -re 's:([0-9A-Fa-f]{2}):\1\n:g' | tac | tr '\n' ' ')
 
 exec >> /tmp/runc-hook-prestart-${CGROUP_ID}.log
 exec 2>&1
