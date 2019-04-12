@@ -67,11 +67,20 @@ sudo mkdir -p /opt/bin
 sudo cp /tmp/cgroupid /opt/bin/
 ```
 
+## Install kubectl
+
+```
+sudo mkdir -p /opt/bin
+cd /opt/bin/
+curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+chmod +x kubectl
+```
+
 ## Install the OCI PreStart Hook
 
 ```
-scp ./runc-hook-prestart-static albandemo-w1:/tmp/
-scp ./runc-hook-prestart-static albandemo-w2:/tmp/
+scp $GOPATH/src/github.com/opencontainers/runc/runc-hook-prestart-static realedge-w1:/tmp/
+scp $GOPATH/src/github.com/opencontainers/runc/runc-hook-prestart-static realedge-w2:/tmp/
 ```
 
 On each node:
@@ -85,6 +94,30 @@ sudo cp runc-hook-prestart-static runc
 
 Prepare:
 ```
-scp ./runc-hook-prestart.sh albandemo-w1:/tmp/runc-hook-prestart.sh
-scp ./runc-hook-prestart.sh albandemo-w2:/tmp/runc-hook-prestart.sh
+scp ./runc-hook-prestart.sh realedge-w1:/tmp/runc-hook-prestart.sh
+scp ./runc-hook-prestart.sh realedge-w2:/tmp/runc-hook-prestart.sh
 ```
+
+## Demo
+
+```
+export KUBECONFIG=.../kubeconfig
+```
+
+```
+$ kubectl cp execsnoop-edge bcck8s-shell-nqx5p:/execsnoop-edge
+$ kubectl exec -ti bcck8s-shell-nqx5p -- /execsnoop-edge --label myapp=app-one
+PCOMM            PID    PPID   RET ARGS
+pause            1273   1236     0 /pause
+sh               1833   1803     0 /usr/bin/sh -c while /bin/true ; do date ; cat /proc/version ; sleep 1 ; done
+true             1974   1833     0 /bin/true
+date             1975   1833     0 /usr/bin/date
+cat              1976   1833     0 /usr/bin/cat /proc/version
+sleep            1977   1833     0 /usr/bin/sleep 1
+true             1988   1833     0 /bin/true
+date             1989   1833     0 /usr/bin/date
+cat              1990   1833     0 /usr/bin/cat /proc/version
+sleep            1991   1833     0 /usr/bin/sleep 1
+
+```
+

@@ -1,5 +1,3 @@
-POD ?= bcc-shell-g87lr
-
 image:
 	docker build -t albanc/bcck8s .
 
@@ -10,7 +8,9 @@ test:
 	kubectl exec -ti bcc-shell-g87lr /bin/opensnoop.sh
 
 install:
-	kubectl cp ./opensnoop $(POD):/bin/opensnoop
-	kubectl cp ./opensnoop.sh $(POD):/bin/opensnoop.sh
-	kubectl cp ./bpftool $(POD):/bin/bpftool
+	for POD in $$(kubectl get pod -l name=bcck8s-shell -o jsonpath='{range .items[*]}{.metadata.name}{" "}{end}') ; do \
+		kubectl cp ./opensnoop-edge $$POD:/opensnoop-edge ; \
+		kubectl cp ./execsnoop-edge $$POD:/execsnoop-edge ; \
+		kubectl cp ./tcptop-edge $$POD:/tcptop-edge ; \
+	done
 

@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: myapp1-pod
+  labels:
+    k8s-app: myapp1-pod
+spec:
+  selector:
+    matchLabels:
+      name: myapp1-pod
+      myapp: app-one
+      role: demo
+  template:
+    metadata:
+      labels:
+        name: myapp1-pod
+        myapp: app-one
+        role: demo
+    spec:
+      containers:
+      - name: myapp1-pod
+        image: docker.io/albanc/toolbox
+        command: [ "sh", "-c", "while /bin/true ; do date ; cat /proc/version ; sleep 1 ; done" ]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: myapp2-pod
+  labels:
+    k8s-app: myapp2-pod
+spec:
+  selector:
+    matchLabels:
+      name: myapp2-pod
+      myapp: app-two
+      role: demo
+  template:
+    metadata:
+      labels:
+        name: myapp2-pod
+        myapp: app-two
+        role: demo
+    spec:
+      containers:
+      - name: myapp2-pod
+        image: docker.io/albanc/toolbox
+        command: [ "sh", "-c", "while /bin/true ; do date ; /bin/echo sleep-10 ; /bin/sleep 10 ; done" ]
