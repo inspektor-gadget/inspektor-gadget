@@ -79,17 +79,17 @@ chmod +x kubectl
 ## Install the OCI PreStart Hook
 
 ```
-scp $GOPATH/src/github.com/opencontainers/runc/runc-hook-prestart-static realedge-w1:/tmp/
-scp $GOPATH/src/github.com/opencontainers/runc/runc-hook-prestart-static realedge-w2:/tmp/
+scp $GOPATH/src/github.com/opencontainers/runc/runc-static-hooks realedge-w1:/tmp/
+scp $GOPATH/src/github.com/opencontainers/runc/runc-static-hooks realedge-w2:/tmp/
 ```
 
 On each node:
 ```
 sudo mount -o remount,rw /run/torcx/unpack/
 cd /run/torcx/unpack/docker/bin/
-sudo cp /tmp/runc-hook-prestart-static ./
+sudo cp /tmp/runc-static-hooks ./
 sudo cp runc runc.bak
-sudo cp runc-hook-prestart-static runc
+sudo cp runc-static-hooks runc
 ```
 
 Prepare:
@@ -121,3 +121,13 @@ sleep            1991   1833     0 /usr/bin/sleep 1
 
 ```
 
+## Demo straceback
+
+```
+kubectl exec -ti privileged1-pod-9gh6v -- /bin/bash
+
+export CGR=/host/sys/fs/cgroup/unified/kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-podb1e9194e_604c_11e9_a813_023ffc4116cc.slice/docker-e7ec222b19c51d349976eebca4556e052342648c5955c12cb010016f1ba79cb7.scope
+
+curl --unix-socket /host/run/straceback.socket 'http://localhost/add?cgrouppath='$CGR
+curl --unix-socket /host/run/straceback.socket 'http://localhost/dump?id=0'
+```
