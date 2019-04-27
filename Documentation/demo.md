@@ -143,10 +143,21 @@ sleep            1991   1833     0 /usr/bin/sleep 1
 ## Demo straceback
 
 ```
-kubectl exec -ti privileged1-pod-9gh6v -- /bin/bash
+$ ./gadget-straceback.sh list
+10.0.13.143_default_myapp2-pod-9r97j
+10.0.13.143_default_myapp1-pod-tvmrs
+10.0.18.186_default_myapp2-pod-ltw4b
+10.0.18.186_default_myapp1-pod-2pjjs
 
-export CGR=/host/sys/fs/cgroup/unified/kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-podb1e9194e_604c_11e9_a813_023ffc4116cc.slice/docker-e7ec222b19c51d349976eebca4556e052342648c5955c12cb010016f1ba79cb7.scope
+$ ./gadget-straceback.sh show 10.0.13.143_default_myapp2-pod-9r97j | tail
+01:30.269827565 cpu#1 pid 15675 [sh] rt_sigreturn()...
+01:30.269833171 cpu#1 pid 15675 [sh] ...unknown(4294967295)() = 0
+01:30.269856545 cpu#1 pid 15675 [sh] rt_sigprocmask(how=0, nset=140732931450368, oset=140732931450496, sigsetsize=8) = 0
+01:30.269865213 cpu#1 pid 15675 [sh] clone(clone_flags=18874385, newsp=0, parent_tidptr=0, child_tidptr=139996374092240, tls=139996374091520) = 42
+01:30.270034770 cpu#1 pid 15675 [sh] rt_sigprocmask(how=2, nset=140732931450496, oset=0, sigsetsize=8) = 0
+01:30.270060724 cpu#1 pid 15675 [sh] rt_sigprocmask(how=0, nset=140732931450272, oset=140732931450400, sigsetsize=8) = 0
+01:30.270073816 cpu#1 pid 15675 [sh] rt_sigprocmask(how=2, nset=140732931450400, oset=0, sigsetsize=8) = 0
+01:30.270082026 cpu#1 pid 15675 [sh] rt_sigprocmask(how=0, nset=140732931450528, oset=140732931450656, sigsetsize=8) = 0
+01:30.270089813 cpu#1 pid 15675 [sh] rt_sigaction(sig=2, act=140732931449840, oact=140732931450000, sigsetsize=8)...
 
-curl --unix-socket /host/run/straceback.socket 'http://localhost/add?cgrouppath='$CGR
-curl --unix-socket /host/run/straceback.socket 'http://localhost/dump?id=0'
 ```

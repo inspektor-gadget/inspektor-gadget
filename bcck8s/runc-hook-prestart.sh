@@ -20,6 +20,16 @@ exec 2>&1
 echo CGROUP_PATH=$CGROUP_PATH
 echo CGROUP_ID=$CGROUP_ID
 
+PPPID=$(cat /proc/$PID/status | grep PPid|cut -f2)
+BUNDLE_DIR=/run/docker/libcontainerd/containerd/io.containerd.runtime.v1.linux/moby/
+BUNDLE_DIR="$(cat /proc/$PPPID/cmdline | tr '\0' '\n' | grep -A1 -- --bundle | tail -1)"
+echo BUNDLE_DIR="$BUNDLE_DIR"
+if cat $BUNDLE_DIR/config.json | jq -r .process.args[0] | grep -q /pause ; then
+  PAUSE_CONTAINER=yes
+else
+  PAUSE_CONTAINER=no
+fi
+
 if [ ! -f $BPFDIR/cgroupmap ] ; then
   $BPFTOOL map create $BPFDIR/cgroupmap type hash key 8 value 64 entries 8000 name cgroupmap flags 1
 fi
@@ -59,6 +69,14 @@ $KUBECTL --kubeconfig=/etc/kubernetes/kubeconfig get pod --all-namespaces -o jso
     echo "Processing container: $namespace $podname $nodename $containername"
     rm -f $BPFDIR/labels$CGROUP_ID
     $BPFTOOL map create $BPFDIR/labels$CGROUP_ID type hash key 64 value 64 entries 64 name labels$CGROUP_ID flags 1
+
+    if [ "$PAUSE_CONTAINER" = "no" ] ; then
+      echo "Registering to straceback"
+      curl --unix-socket /run/straceback.socket "http://localhost/add?name=${nodename}_${namespace}_${podname}&cgrouppath=${CGROUP_PATH}" || true
+    else
+      echo "Found pause container. Don't register to straceback"
+    fi
+
     echo "Labels"
     echo $labels | base64 -d | jq '.'
     echo $labels | base64 -d | \
