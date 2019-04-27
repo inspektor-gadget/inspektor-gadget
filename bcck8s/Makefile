@@ -14,3 +14,9 @@ install:
 		kubectl cp ./tcptop-edge $$POD:/tcptop-edge ; \
 	done
 
+install-hooks:
+	scp ./runc-hook-prestart.sh realedge-w1:/tmp/runc-hook-prestart.sh
+	scp ./runc-hook-prestart.sh realedge-w2:/tmp/runc-hook-prestart.sh
+	ssh realedge-w1 sudo mv /tmp/runc-hook-prestart.sh /opt/bin/runc-hook-prestart.sh
+	ssh realedge-w2 sudo mv /tmp/runc-hook-prestart.sh /opt/bin/runc-hook-prestart.sh
+

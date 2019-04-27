@@ -54,7 +54,7 @@ sudo systemctl restart containerd
 ## Install bpftool
 
 ```
-docker run --privileged -v /tmp:/out albanc/bcck8s cp /bin/bpftool /out/
+docker run --rm --privileged -v /tmp:/out albanc/bcck8s cp /bin/bpftool /out/
 sudo mkdir -p /opt/bin
 sudo cp /tmp/bpftool /opt/bin/
 ```
@@ -62,7 +62,7 @@ sudo cp /tmp/bpftool /opt/bin/
 ## Install cgroupid
 
 ```
-docker run --privileged -v /tmp:/out albanc/cgroupid cp /bin/cgroupid /out/
+docker run --rm --privileged -v /tmp:/out albanc/cgroupid cp /bin/cgroupid /out/
 sudo mkdir -p /opt/bin
 sudo cp /tmp/cgroupid /opt/bin/
 ```
@@ -72,13 +72,17 @@ sudo cp /tmp/cgroupid /opt/bin/
 ```
 sudo mkdir -p /opt/bin
 cd /opt/bin/
-curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
-chmod +x kubectl
+sudo curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+sudo chmod +x kubectl
 ```
 
 ## Install the OCI PreStart Hook
 
+runc is recompiled with
 ```
+make COMMIT_NO= BUILDTAGS="seccomp selinux apparmor"
+cp runc runc-static-hooks
+
 scp $GOPATH/src/github.com/opencontainers/runc/runc-static-hooks realedge-w1:/tmp/
 scp $GOPATH/src/github.com/opencontainers/runc/runc-static-hooks realedge-w2:/tmp/
 ```
@@ -98,6 +102,11 @@ scp ./runc-hook-prestart.sh realedge-w1:/tmp/runc-hook-prestart.sh
 scp ./runc-hook-prestart.sh realedge-w2:/tmp/runc-hook-prestart.sh
 ```
 
+On each node:
+```
+sudo mv -i  /tmp/runc-hook-prestart.sh /opt/bin/runc-hook-prestart.sh
+```
+
 ## Demo
 
 ```
@@ -105,7 +114,17 @@ export KUBECONFIG=.../kubeconfig
 ```
 
 ```
-$ kubectl cp execsnoop-edge bcck8s-shell-nqx5p:/execsnoop-edge
+kubectl apply -f break.yaml
+kubectl apply -f ds-privileged.yaml
+kubectl apply -f ds-myapp.yaml
+kubectl apply -f ds-bcck8s.yaml
+kubectl apply -f ds-straceback.yaml
+```
+
+```
+$ make install
+$ make install-hooks
+
 $ kubectl exec -ti bcck8s-shell-nqx5p -- /execsnoop-edge --label myapp=app-one
 PCOMM            PID    PPID   RET ARGS
 pause            1273   1236     0 /pause
