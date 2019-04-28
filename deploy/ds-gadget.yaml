@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gadget
+  namespace: kube-system
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: gadget
+subjects:
+- kind: ServiceAccount
+  name: gadget
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gadget
+  namespace: kube-system
+  labels:
+    k8s-app: gadget
+spec:
+  selector:
+    matchLabels:
+      k8s-app: gadget
+  template:
+    metadata:
+      labels:
+        k8s-app: gadget
+    spec:
+      serviceAccount: gadget
+      hostNetwork: true
+      containers:
+      - name: gadget
+        image: docker.io/kinvolk/straceback:latest
+        command: [ "/bin/sh", "-c", "rm -f /run/straceback.socket && /bin/straceback serve" ]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: run
+          mountPath: /run
+        - name: debugfs
+          mountPath: /sys/kernel/debug
+        - name: cgroup
+          mountPath: /sys/fs/cgroup
+        - name: bpffs
+          mountPath: /sys/fs/bpf
+        - name: localtime
+          mountPath: /etc/localtime
+      volumes:
+      - name: run
+        hostPath:
+          path: /run
+      - name: cgroup
+        hostPath:
+          path: /sys/fs/cgroup
+      - name: bpffs
+        hostPath:
+          path: /sys/fs/bpf
+      - name: debugfs
+        hostPath:
+          path: /sys/kernel/debug
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
