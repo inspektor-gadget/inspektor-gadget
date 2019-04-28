@@ -22,7 +22,23 @@ List of gadgets:
 
 Inspektor Gadget is a kubectl plugin. It can also be invoked with `kubectl gadget`.
 
-## Requirements
+- [Demo: the "execsnoop" gadget](Documentation/demo-execsnoop.md)
+- [Demo: the "straceback" gadget](Documentation/demo-straceback.md)
+
+## How does it work?
+
+[architecture](Documentation/architecture.md)
+
+## Installation (client side)
+
+From the sources:
+```
+go get -u github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget
+```
+
+From the [releases](https://github.com/kinvolk/inspektor-gadget/releases).
+
+## Requirements (server side)
 
 - Lokomotive Edge on Flatcar Edge (preinstalled)
 
