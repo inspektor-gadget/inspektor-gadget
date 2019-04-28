@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"text/tabwriter"
 
 	log "github.com/sirupsen/logrus"
@@ -63,7 +62,7 @@ func runHealth(cmd *cobra.Command, args []string) {
 	fmt.Fprintln(w, "NODE\tSTATUS\t")
 
 	for _, node := range nodes.Items {
-		line := fmt.Sprintf("%s\t%s\t", node.Name, execPodQuick(client, node.Name, "echo OK"))
+		line := fmt.Sprintf("%s\t%s\t", node.Name, execPodQuick(client, node.Name, "echo -n OK"))
 		fmt.Fprintln(w, line)
 	}
 	w.Flush()
@@ -98,7 +97,7 @@ func execPodQuick(client *kubernetes.Clientset, node string, podCmd string) stri
 		return fmt.Sprintf("%s", err)
 	}
 
-	return fmt.Sprintf("%s", strings.TrimSpace(string(stdoutStderr)))
+	return fmt.Sprintf("%s", string(stdoutStderr))
 }
 
 func execPod(client *kubernetes.Clientset, node string) string {
