@@ -68,38 +68,6 @@ func runHealth(cmd *cobra.Command, args []string) {
 	w.Flush()
 }
 
-func execPodQuick(client *kubernetes.Clientset, node string, podCmd string) string {
-	var listOptions = metaV1.ListOptions{
-		LabelSelector: "k8s-app=gadget",
-		FieldSelector: "spec.nodeName=" + node + ",status.phase=Running",
-	}
-	pods, err := client.CoreV1().Pods("kube-system").List(listOptions)
-	if err != nil {
-		return fmt.Sprintf("%s", err)
-	}
-	if len(pods.Items) == 0 {
-		return "not-found"
-	}
-	if len(pods.Items) != 1 {
-		return "too-many"
-	}
-	podName := pods.Items[0].Name
-
-	kubectlCmd := fmt.Sprintf("kubectl ")
-	if viper.GetString("kubeconfig") != "" {
-		kubectlCmd += "--kubeconfig=" + viper.GetString("kubeconfig")
-	}
-	kubectlCmd += fmt.Sprintf(" exec -n kube-system %s -- %s", podName, podCmd)
-
-	cmd := exec.Command("/bin/sh", "-c", kubectlCmd)
-	stdoutStderr, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Sprintf("%s", err)
-	}
-
-	return fmt.Sprintf("%s", string(stdoutStderr))
-}
-
 func execPod(client *kubernetes.Clientset, node string) string {
 	var listOptions = metaV1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
@@ -159,4 +127,70 @@ func execPod(client *kubernetes.Clientset, node string) string {
 	e.Exec(fmt.Sprintf("k8s-app=gadget"), "kube-system")
 
 	return fmt.Sprintf("%s", pods.Items[0].Status.Phase)
+}
+
+func execPodQuick(client *kubernetes.Clientset, node string, podCmd string) string {
+	var listOptions = metaV1.ListOptions{
+		LabelSelector: "k8s-app=gadget",
+		FieldSelector: "spec.nodeName=" + node + ",status.phase=Running",
+	}
+	pods, err := client.CoreV1().Pods("kube-system").List(listOptions)
+	if err != nil {
+		return fmt.Sprintf("%s", err)
+	}
+	if len(pods.Items) == 0 {
+		return "not-found"
+	}
+	if len(pods.Items) != 1 {
+		return "too-many"
+	}
+	podName := pods.Items[0].Name
+
+	kubectlCmd := fmt.Sprintf("kubectl ")
+	if viper.GetString("kubeconfig") != "" {
+		kubectlCmd += "--kubeconfig=" + viper.GetString("kubeconfig")
+	}
+	kubectlCmd += fmt.Sprintf(" exec -n kube-system %s -- %s", podName, podCmd)
+
+	cmd := exec.Command("/bin/sh", "-c", kubectlCmd)
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Sprintf("%s", err)
+	}
+
+	return fmt.Sprintf("%s", string(stdoutStderr))
+}
+
+func execPodQuickStart(client *kubernetes.Clientset, node string, podCmd string) string {
+	var listOptions = metaV1.ListOptions{
+		LabelSelector: "k8s-app=gadget",
+		FieldSelector: "spec.nodeName=" + node + ",status.phase=Running",
+	}
+	pods, err := client.CoreV1().Pods("kube-system").List(listOptions)
+	if err != nil {
+		return fmt.Sprintf("%s", err)
+	}
+	if len(pods.Items) == 0 {
+		return "not-found"
+	}
+	if len(pods.Items) != 1 {
+		return "too-many"
+	}
+	podName := pods.Items[0].Name
+
+	kubectlCmd := fmt.Sprintf("kubectl ")
+	if viper.GetString("kubeconfig") != "" {
+		kubectlCmd += "--kubeconfig=" + viper.GetString("kubeconfig")
+	}
+	kubectlCmd += fmt.Sprintf(" exec -n kube-system %s -- %s", podName, podCmd)
+
+	cmd := exec.Command("/bin/sh", "-c", kubectlCmd)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Start()
+	if err != nil {
+		return fmt.Sprintf("%s", err)
+	}
+
+	return ""
 }

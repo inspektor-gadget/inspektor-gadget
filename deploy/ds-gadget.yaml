@@ -44,6 +44,8 @@ spec:
         volumeMounts:
         - name: run
           mountPath: /run
+        - name: modules
+          mountPath: /lib/modules
         - name: debugfs
           mountPath: /sys/kernel/debug
         - name: cgroup
@@ -59,6 +61,9 @@ spec:
       - name: cgroup
         hostPath:
           path: /sys/fs/cgroup
+      - name: modules
+        hostPath:
+          path: /lib/modules
       - name: bpffs
         hostPath:
           path: /sys/fs/bpf
