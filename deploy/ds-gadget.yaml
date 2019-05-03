@@ -37,7 +37,7 @@ spec:
       hostNetwork: true
       containers:
       - name: gadget
-        image: docker.io/kinvolk/straceback:latest
+        image: docker.io/kinvolk/gadget:latest
         command: [ "/bin/sh", "-c", "rm -f /run/straceback.socket && /bin/straceback serve" ]
         securityContext:
           privileged: true
