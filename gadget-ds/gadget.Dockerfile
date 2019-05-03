@@ -72,4 +72,5 @@ COPY --from=cgroupid /bin/cgroupid /bin/cgroupid
 COPY --from=runc-build /bin/runc-static-hooks /bin/runc-static-hooks
 COPY --from=kubectl-get /bin/kubectl /bin/kubectl
 COPY files/runc-hook-prestart.sh /bin/runc-hook-prestart.sh
+COPY files/bcck8s /opt/bcck8s
 
