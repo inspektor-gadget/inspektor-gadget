@@ -62,7 +62,7 @@ func runHealth(cmd *cobra.Command, args []string) {
 	fmt.Fprintln(w, "NODE\tSTATUS\t")
 
 	for _, node := range nodes.Items {
-		line := fmt.Sprintf("%s\t%s\t", node.Name, execPodQuick(client, node.Name, "echo -n OK"))
+		line := fmt.Sprintf("%s\t%s\t", node.Name, execPodQuick(client, node.Name, "/bin/gadget-node-health-check.sh"))
 		fmt.Fprintln(w, line)
 	}
 	w.Flush()
@@ -155,7 +155,11 @@ func execPodQuick(client *kubernetes.Clientset, node string, podCmd string) stri
 	cmd := exec.Command("/bin/sh", "-c", kubectlCmd)
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Sprintf("%s", err)
+		if len(stdoutStderr) != 0 {
+			return fmt.Sprintf("%s\n%s", err, stdoutStderr)
+		} else {
+			return fmt.Sprintf("%s", err)
+		}
 	}
 
 	return fmt.Sprintf("%s", string(stdoutStderr))

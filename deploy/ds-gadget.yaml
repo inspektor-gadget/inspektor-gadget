@@ -42,8 +42,11 @@ spec:
         securityContext:
           privileged: true
         volumeMounts:
+        - name: host
+          mountPath: /host
         - name: run
           mountPath: /run
+          mountPropagation: Bidirectional
         - name: modules
           mountPath: /lib/modules
         - name: debugfs
@@ -55,6 +58,9 @@ spec:
         - name: localtime
           mountPath: /etc/localtime
       volumes:
+      - name: host
+        hostPath:
+          path: /
       - name: run
         hostPath:
           path: /run

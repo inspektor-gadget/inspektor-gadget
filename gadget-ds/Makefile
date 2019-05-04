@@ -2,6 +2,8 @@
 
 build: docker-bcc/build docker-gadget/build
 
+push: docker-gadget/push
+
 docker-bcc/build:
 	docker build -t docker.io/kinvolk/bcc:latest -f bcc.Dockerfile .
 
