@@ -29,25 +29,7 @@ Inspektor Gadget is a kubectl plugin. It can also be invoked with `kubectl gadge
 
 [architecture](Documentation/architecture.md)
 
-## Installation (client side)
+## Installation
 
-From the sources:
-```
-go get -u github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget
-```
-
-From the [releases](https://github.com/kinvolk/inspektor-gadget/releases).
-
-## Requirements (server side)
-
-- Lokomotive Edge on Flatcar Edge (preinstalled)
-
-or
-
-- Kubernetes
-- Linux >= 4.18 (for [`bpf_get_current_cgroup_id`](https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md))
-- cgroup-v2 enabled in systemd, kubelet, docker, containerd and runc
-- runc recompiled with [additional static OCI hooks](https://github.com/kinvolk/runc/tree/alban/static-hooks)
-- tools installed on the worker nodes: [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), [cgroupid](https://github.com/kinvolk/cgroupid), [bpftool](https://github.com/kinvolk/linux/tree/alban/bpftool-all/tools/bpf/bpftool)
-- The gadget daemon set
+[install](Documentation/install.md)
 
