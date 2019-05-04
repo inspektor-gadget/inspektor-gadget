@@ -57,6 +57,11 @@ spec:
           mountPath: /sys/fs/bpf
         - name: localtime
           mountPath: /etc/localtime
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
       volumes:
       - name: host
         hostPath:
