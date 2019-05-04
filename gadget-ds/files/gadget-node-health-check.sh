@@ -22,7 +22,7 @@ for i in bpftool cgroupid kubectl runc-hook-prestart.sh ; do
   fi
 done
 
-if grep -q /opt/bin/runc-hook-prestart.sh /run/torcx/unpack/docker/bin/runc ; then
+if ! grep -q /opt/bin/runc-hook-prestart.sh /run/torcx/unpack/docker/bin/runc ; then
   echo "runc is not installed correctly: Inspektor Gadget requires https://github.com/kinvolk/runc/tree/alban/static-hooks" >&2
   exit 1
 fi

@@ -15,18 +15,20 @@ if [ $CGROUP_V1_PATH != $CGROUP_V2_PATH ] ; then
   exit 1
 fi
 
+mkdir -p /host/opt/bin/
 for i in bpftool cgroupid kubectl runc-hook-prestart.sh ; do 
   cp /bin/$i /host/opt/bin/
 done
 
-mount -o remount,rw /run/torcx/unpack
-
-if [ ! -e /run/torcx/unpack/docker/bin/runc.vanilla ] ; then
-  cp /run/torcx/unpack/docker/bin/runc /run/torcx/unpack/docker/bin/runc.vanilla
+## runc is already patched on Flatcar Edge:
+## https://github.com/flatcar-linux/coreos-overlay/pull/23/files
+if ! grep -q /opt/bin/runc-hook-prestart.sh /run/torcx/unpack/docker/bin/runc ; then
+  mount -o remount,rw /run/torcx/unpack
+  if [ ! -e /run/torcx/unpack/docker/bin/runc.vanilla ] ; then
+    cp /run/torcx/unpack/docker/bin/runc /run/torcx/unpack/docker/bin/runc.vanilla
+  fi
+  cp /bin/runc-static-hooks /run/torcx/unpack/docker/bin/runc
+  mount -o remount,ro /run/torcx/unpack || true
 fi
-
-cp /bin/runc-static-hooks /run/torcx/unpack/docker/bin/runc
-
-mount -o remount,ro /run/torcx/unpack || true
 
 echo -n OK
