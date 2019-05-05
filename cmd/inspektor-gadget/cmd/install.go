@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -22,6 +23,12 @@ var installCmd = &cobra.Command{
 }
 
 func init() {
+	installCmd.PersistentFlags().String(
+		"update-from-path",
+		"",
+		"if set, update files from the local path to a inspektor-gadget git repository")
+	viper.BindPFlag("update-from-path", installCmd.PersistentFlags().Lookup("update-from-path"))
+
 	rootCmd.AddCommand(installCmd)
 }
 
@@ -46,8 +53,33 @@ func runInstall(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error in listing nodes: %q", err)
 	}
 
+	updateFromPath := viper.GetString("update-from-path")
 	for _, node := range nodes.Items {
+		fmt.Printf("node %s:\n", node.Name)
+		if updateFromPath != "" {
+			output := cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/bcck8s"), "/opt/")
+			if output != "" {
+				fmt.Printf("%s\n", output)
+				return
+			}
+			output = cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/runc-hook-prestart.sh"), "/bin/")
+			if output != "" {
+				fmt.Printf("%s\n", output)
+				return
+			}
+			output = cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/gadget-node-install.sh"), "/bin/")
+			if output != "" {
+				fmt.Printf("%s\n", output)
+				return
+			}
+			output = cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/gadget-node-health-check.sh"), "/bin/")
+			if output != "" {
+				fmt.Printf("%s\n", output)
+				return
+			}
+		}
+
 		output := execPodQuick(client, node.Name, `/bin/gadget-node-install.sh`)
-		fmt.Printf("node %s: %s\n", node.Name, output)
+		fmt.Printf("installation:\n%s\n", output)
 	}
 }
