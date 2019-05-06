@@ -24,6 +24,9 @@ from bcc.utils import printb
 import argparse
 from socket import inet_ntop, ntohs, AF_INET, AF_INET6
 from struct import pack
+import os
+import sys
+import fcntl
 
 # arguments
 examples = """examples:
@@ -75,7 +78,7 @@ struct ipv4_data_t {
     u64 ip;
     u16 dport;
     char task[TASK_COMM_LEN];
-    text64 podname;
+    char podname[64];
 };
 BPF_PERF_OUTPUT(ipv4_events);
 
@@ -88,7 +91,7 @@ struct ipv6_data_t {
     u64 ip;
     u16 dport;
     char task[TASK_COMM_LEN];
-    text64 podname;
+    char podname[64];
 };
 BPF_PERF_OUTPUT(ipv6_events);
 
@@ -160,8 +163,9 @@ static int trace_connect_return(struct pt_regs *ctx, short ipver)
 
     if (ipver == 4) {
         struct ipv4_data_t data4 = {.pid = pid, .ip = ipver};
-        for (i = 0; i < sizeof(text64); i))
-          data4.podname[i] = (*textvalue)[i];
+        //#pragma unroll
+        //for (i = 0; i < sizeof(text64); i)
+        //  data4.podname[i] = (*textvalue)[i];
         data4.uid = bpf_get_current_uid_gid();
         data4.ts_us = bpf_ktime_get_ns() / 1000;
         data4.saddr = skp->__sk_common.skc_rcv_saddr;
@@ -172,8 +176,9 @@ static int trace_connect_return(struct pt_regs *ctx, short ipver)
 
     } else /* 6 */ {
         struct ipv6_data_t data6 = {.pid = pid, .ip = ipver};
-        for (i = 0; i < sizeof(text64); i))
-          data6.podname[i] = (*textvalue)[i];
+        //#pragma unroll
+        //for (i = 0; i < sizeof(text64); i)
+        //  data6.podname[i] = (*textvalue)[i];
         data6.uid = bpf_get_current_uid_gid();
         data6.ts_us = bpf_ktime_get_ns() / 1000;
         bpf_probe_read(&data6.saddr, sizeof(data6.saddr),
@@ -233,8 +238,8 @@ def print_ipv4_event(cpu, data, size):
         print("%-9.3f" % ((float(event.ts_us) - start_ts) / 1000000), end="")
     if args.print_uid:
         print("%-6d" % event.uid, end="")
-    printb(b"%-6d %-12.12s %-2d %-16s %-16s %-4d" % (event.pid,
-        event.task, event.ip,
+    printb(b"%-6d %-12.12s %-12.12s %-2d %-16s %-16s %-4d" % (event.pid,
+        event.podname, event.task, event.ip,
         inet_ntop(AF_INET, pack("I", event.saddr)).encode(),
         inet_ntop(AF_INET, pack("I", event.daddr)).encode(), event.dport))
 
@@ -247,13 +252,46 @@ def print_ipv6_event(cpu, data, size):
         print("%-9.3f" % ((float(event.ts_us) - start_ts) / 1000000), end="")
     if args.print_uid:
         print("%-6d" % event.uid, end="")
-    printb(b"%-6d %-12.12s %-2d %-16s %-16s %-4d" % (event.pid,
-        event.task, event.ip,
+    printb(b"%-6d %-12.12s %-12.12s %-2d %-16s %-16s %-4d" % (event.pid,
+        event.podname, event.task, event.ip,
         inet_ntop(AF_INET6, event.saddr).encode(), inet_ntop(AF_INET6, event.daddr).encode(),
         event.dport))
 
+for x in bpf_text.split('\n'):
+  if 'EXTERNAL_MAP' not in x:
+    continue
+  external_params = x.split('EXTERNAL_MAP:')[1].split(',')
+  map_name = external_params[0]
+  pin_path = external_params[1]
+  external_fd = int(external_params[2])
+  if not os.path.islink("/proc/self/fd/" + str(external_fd)):
+    os.execvp("bpftool", ["bpftool", "map", "exec", "pinned", pin_path, "fd", str(external_fd), "cmd", "--"] + sys.argv)
+
 # initialize BPF
 b = BPF(text=bpf_text)
+
+for x in bpf_text.split('\n'):
+  if 'EXTERNAL_MAP' not in x:
+    continue
+  external_params = x.split('EXTERNAL_MAP:')[1].split(',')
+  map_name = external_params[0]
+  pin_path = external_params[1]
+  external_fd = int(external_params[2])
+  def set_cloexec(fd, cloexec=True):
+    flags = fcntl.fcntl(fd, fcntl.F_GETFD)
+    if cloexec:
+      flags |= fcntl.FD_CLOEXEC
+    else:
+      flags &= ~fcntl.FD_CLOEXEC
+    fcntl.fcntl(fd, fcntl.F_SETFD, flags)
+  for i in range(3, 30):
+    set_cloexec(i, cloexec=False)
+    ret = os.system("bpftool map show fd " + str(i) + " | grep -q 'name " + map_name + "' 2>/dev/null")
+    set_cloexec(i, cloexec=True)
+    if ret == 0:
+      os.dup2(external_fd, i)
+      break
+
 b.attach_kprobe(event="tcp_v4_connect", fn_name="trace_connect_entry")
 b.attach_kprobe(event="tcp_v6_connect", fn_name="trace_connect_entry")
 b.attach_kretprobe(event="tcp_v4_connect", fn_name="trace_connect_v4_return")
