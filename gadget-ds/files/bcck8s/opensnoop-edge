@@ -33,6 +33,8 @@ examples = """examples:
     ./opensnoop -p 181       # only trace PID 181
     ./opensnoop -t 123       # only trace TID 123
     ./opensnoop -l app=web   # only trace pods with this label
+    ./opensnoop -s namespace # only trace pods in this namespace
+    ./opensnoop -m podname   # only trace pods with this name
     ./opensnoop -u 1000      # only trace UID 1000
     ./opensnoop -d 10        # trace for 10 seconds only
     ./opensnoop -n main      # only print process names containing "main"
@@ -55,6 +57,10 @@ parser.add_argument("-t", "--tid",
     help="trace this TID only")
 parser.add_argument("-l", "--label",
     help="trace pods with this label only")
+parser.add_argument("-s", "--namespace",
+    help="trace pods with in this namespace only")
+parser.add_argument("-m", "--podname",
+    help="trace pods with this name only")
 parser.add_argument("-u", "--uid",
     help="trace this UID only")
 parser.add_argument("-d", "--duration",
@@ -107,6 +113,7 @@ struct data_t {
 typedef char text64[64];
 
 BPF_HASH(cgrouplabelsmap, u64, u32);        // DEFINE_CGROUPLABELSMAP  // EXTERNAL_MAP:cgrouplabelsmap,/sys/fs/bpf/cgrouplabelsmap,92
+BPF_HASH(cgroupmetadatamap, u64, u32);      // DEFINE_CGROUPMETADATAMAP  // EXTERNAL_MAP:cgroupmetadatamap,/sys/fs/bpf/cgroupmetadatamap,93
 BPF_HASH(infotmp, u64, struct val_t);
 BPF_PERF_OUTPUT(events);
 
@@ -119,6 +126,8 @@ int trace_entry(struct pt_regs *ctx, int dfd, const char __user *filename, int f
     u32 uid = bpf_get_current_uid_gid();
 
     LABEL_FILTER
+    NAMESPACE_FILTER
+    PODNAME_FILTER
     PID_TID_FILTER
     UID_FILTER
     FLAGS_FILTER
@@ -177,6 +186,7 @@ if args.label:
     value_with_spaces = label_kv[1] + " " * (64 - len(label_kv[1]))
     bpf_text = bpf_text.replace('LABEL_FILTER',
         '''
+        {
            u64 cgroupid = bpf_get_current_cgroup_id();
            bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
            u32 *innermap = cgrouplabelsmap.lookup(&cgroupid);
@@ -195,12 +205,77 @@ if args.label:
              bpf_trace_printk("label with different value\\n");
              return 0;
            }
+        }
         ''' % (
            "'" + "', '".join(list(key_with_spaces)) + "'",
            " || ".join([ "textvalue[0][%s] != '%s'" % (str(i), value_with_spaces[i]) for i in range(min(64, value_len+1))])
         ))
 else:
     bpf_text = bpf_text.replace('LABEL_FILTER', '')
+
+if args.namespace:
+    if len(args.namespace) > 64:
+        exit("Bad namespace selector")
+    namespace_with_spaces = args.namespace + " " * (64 - len(args.namespace))
+    bpf_text = bpf_text.replace('NAMESPACE_FILTER',
+        '''
+        {
+           u64 cgroupid = bpf_get_current_cgroup_id();
+           bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
+           u32 *innermap = cgroupmetadatamap.lookup(&cgroupid);
+           if (innermap == NULL) {
+             bpf_trace_printk("no innermap\\n");
+             return 0;
+           }
+
+           u8 key = 0; /* namespace */
+           text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &key);
+           if (textvalue == NULL) {
+             bpf_trace_printk("no namespace defined\\n");
+             return 0;
+           }
+           if (%s) {
+             bpf_trace_printk("namespace has different value\\n");
+             return 0;
+           }
+        }
+        ''' % (
+           " || ".join([ "textvalue[0][%s] != '%s'" % (str(i), namespace_with_spaces[i]) for i in range(min(64, len(args.namespace)+1))])
+        ))
+else:
+    bpf_text = bpf_text.replace('NAMESPACE_FILTER', '')
+
+if args.podname:
+    if len(args.podname) > 64:
+        exit("Bad pod name selector")
+    podname_with_spaces = args.podname + " " * (64 - len(args.podname))
+    bpf_text = bpf_text.replace('PODNAME_FILTER',
+        '''
+        {
+           u64 cgroupid = bpf_get_current_cgroup_id();
+           bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
+           u32 *innermap = cgroupmetadatamap.lookup(&cgroupid);
+           if (innermap == NULL) {
+             bpf_trace_printk("no innermap\\n");
+             return 0;
+           }
+
+           u8 key = 1; /* podname */
+           text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &key);
+           if (textvalue == NULL) {
+             bpf_trace_printk("no podname defined\\n");
+             return 0;
+           }
+           if (%s) {
+             bpf_trace_printk("pod has different name\\n");
+             return 0;
+           }
+        }
+        ''' % (
+           " || ".join([ "textvalue[0][%s] != '%s'" % (str(i), podname_with_spaces[i]) for i in range(min(64, len(args.podname)+1))])
+        ))
+else:
+    bpf_text = bpf_text.replace('PODNAME_FILTER', '')
 
 if args.uid:
     bpf_text = bpf_text.replace('UID_FILTER',
@@ -220,6 +295,10 @@ if not (args.extended_fields or args.flag_filter):
 if not args.label:
     bpf_text = '\n'.join(x for x in bpf_text.split('\n')
         if 'DEFINE_CGROUPLABELSMAP' not in x)
+
+if not args.namespace and not args.podname:
+    bpf_text = '\n'.join(x for x in bpf_text.split('\n')
+        if 'DEFINE_CGROUPMETADATAMAP' not in x)
 
 if debug or args.ebpf:
     print(bpf_text)
