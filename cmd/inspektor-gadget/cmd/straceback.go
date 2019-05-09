@@ -115,10 +115,35 @@ func runStracebackShow(cmd *cobra.Command, args []string) {
 
 func runStracebackClose(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
-		"command": "inspektor-gadget straceback show",
+		"command": "inspektor-gadget straceback close",
 		"args":    args,
 	})
 
-	contextLogger.Fatalf("Not yet implemented")
+	if len(args) != 1 {
+		contextLogger.Fatalf("Missing parameter: trace name")
+	}
+
+	client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
+	if err != nil {
+		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
+	}
+
+	var listOptions = metaV1.ListOptions{
+		LabelSelector: labels.Everything().String(),
+		FieldSelector: fields.Everything().String(),
+	}
+
+	nodes, err := client.CoreV1().Nodes().List(listOptions)
+	if err != nil {
+		contextLogger.Fatalf("Error in listing nodes: %q", err)
+	}
+
+	for _, node := range nodes.Items {
+		if !strings.HasPrefix(args[0], node.Status.Addresses[0].Address+"_") {
+			continue
+		}
+		fmt.Printf("%s", execPodQuick(client, node.Name,
+			fmt.Sprintf(`curl --silent --unix-socket /run/straceback.socket 'http://localhost/close-by-name?name=%s' ; echo`, args[0])))
+	}
 
 }
