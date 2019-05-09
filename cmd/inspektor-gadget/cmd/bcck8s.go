@@ -2,6 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -79,15 +83,34 @@ func bccCmd(subprog string) func(*cobra.Command, []string) {
 			contextLogger.Fatalf("Error in listing nodes: %q", err)
 		}
 
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		tmpId := time.Now().Format("20060102150405")
+
 		for _, node := range nodes.Items {
 			if viper.GetString("node") != "" && node.Name != viper.GetString("node") {
 				continue
 			}
-			err := execPodQuickStart(client, node.Name, fmt.Sprintf("timeout --preserve-status 10 /opt/bcck8s/%s-edge --label %q || true", subprog, viper.GetString("label")))
+			err := execPodQuickStart(client, node.Name,
+			                         fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && exec /opt/bcck8s/%s-edge --label '%q'\" || true",
+			                                     tmpId, subprog, viper.GetString("label")))
 			if err != "" {
 				fmt.Printf("Error in running command: %q\n", err)
 			}
 		}
-		select {}
+
+		<-sigs
+		fmt.Printf("Interrupted!\n")
+		for _, node := range nodes.Items {
+			if viper.GetString("node") != "" && node.Name != viper.GetString("node") {
+				continue
+			}
+			err := execPodQuickStart(client, node.Name,
+			                         fmt.Sprintf("sh -c \"touch /run/%s.pid; kill -9 \\$(cat /run/%s.pid); rm /run/%s.pid\"",
+			                         tmpId, tmpId, tmpId))
+			if err != "" {
+				fmt.Printf("Error in running command: %q\n", err)
+			}
+		}
 	}
 }
