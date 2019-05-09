@@ -32,33 +32,18 @@ var opensnoopCmd = &cobra.Command{
 }
 
 func init() {
-	execsnoopCmd.PersistentFlags().String(
-		"label",
-		"",
-		"Kubernetes label selector")
-	viper.BindPFlag("label", execsnoopCmd.PersistentFlags().Lookup("label"))
-
-	execsnoopCmd.PersistentFlags().String(
-		"node",
-		"",
-		"Kubernetes node selector")
-	viper.BindPFlag("node", execsnoopCmd.PersistentFlags().Lookup("node"))
-
-	rootCmd.AddCommand(execsnoopCmd)
-
-	opensnoopCmd.PersistentFlags().String(
-		"label",
-		"",
-		"Kubernetes label selector")
-	viper.BindPFlag("label", opensnoopCmd.PersistentFlags().Lookup("label"))
-
-	opensnoopCmd.PersistentFlags().String(
-		"node",
-		"",
-		"Kubernetes node selector")
-	viper.BindPFlag("node", opensnoopCmd.PersistentFlags().Lookup("node"))
-
-	rootCmd.AddCommand(opensnoopCmd)
+	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd}
+	args := []string{"label", "node", "namespace", "podname"}
+	for _, command := range commands {
+		for _, arg := range args {
+			command.PersistentFlags().String(
+				arg,
+				"",
+				fmt.Sprintf("Kubernetes %s selector", arg))
+			viper.BindPFlag(arg, command.PersistentFlags().Lookup(arg))
+		}
+		rootCmd.AddCommand(command)
+	}
 }
 
 func bccCmd(subprog string) func(*cobra.Command, []string) {
@@ -92,8 +77,8 @@ func bccCmd(subprog string) func(*cobra.Command, []string) {
 				continue
 			}
 			err := execPodQuickStart(client, node.Name,
-			                         fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && exec /opt/bcck8s/%s-edge --label '%q'\" || true",
-			                                     tmpId, subprog, viper.GetString("label")))
+			                         fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && exec /opt/bcck8s/%s-edge --label '%q' --namespace '%q' --podname '%q' \" || true",
+			                                     tmpId, subprog, viper.GetString("label"), viper.GetString("namespace"), viper.GetString("podname") ))
 			if err != "" {
 				fmt.Printf("Error in running command: %q\n", err)
 			}
