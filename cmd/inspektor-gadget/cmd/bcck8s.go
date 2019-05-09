@@ -41,6 +41,19 @@ func init() {
 	viper.BindPFlag("node", execsnoopCmd.PersistentFlags().Lookup("node"))
 
 	rootCmd.AddCommand(execsnoopCmd)
+
+	opensnoopCmd.PersistentFlags().String(
+		"label",
+		"",
+		"Kubernetes label selector")
+	viper.BindPFlag("label", opensnoopCmd.PersistentFlags().Lookup("label"))
+
+	opensnoopCmd.PersistentFlags().String(
+		"node",
+		"",
+		"Kubernetes node selector")
+	viper.BindPFlag("node", opensnoopCmd.PersistentFlags().Lookup("node"))
+
 	rootCmd.AddCommand(opensnoopCmd)
 }
 
