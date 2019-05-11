@@ -57,9 +57,9 @@ func init() {
 	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd, tcptopCmd, hintsNetworkCmd}
 	args := []string{"label", "node", "namespace", "podname"}
 	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam}
-	for i, _ := range args {
-		for _, command := range commands {
-			rootCmd.AddCommand(command)
+	for _, command := range commands {
+		rootCmd.AddCommand(command)
+		for i, _ := range args {
 			command.PersistentFlags().StringVar(
 				vars[i],
 				args[i],
