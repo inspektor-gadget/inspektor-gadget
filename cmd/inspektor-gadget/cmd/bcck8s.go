@@ -39,18 +39,26 @@ var hintsNetworkCmd = &cobra.Command{
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
+var (
+	labelParam     string
+	nodeParam      string
+	namespaceParam string
+	podnameParam   string
+)
+
 func init() {
 	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd, hintsNetworkCmd}
 	args := []string{"label", "node", "namespace", "podname"}
-	for _, command := range commands {
-		for _, arg := range args {
-			command.PersistentFlags().String(
-				arg,
+	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam}
+	for i, _ := range args {
+		for _, command := range commands {
+			rootCmd.AddCommand(command)
+			command.PersistentFlags().StringVar(
+				vars[i],
+				args[i],
 				"",
-				fmt.Sprintf("Kubernetes %s selector", arg))
-			viper.BindPFlag(arg, command.PersistentFlags().Lookup(arg))
+				fmt.Sprintf("Kubernetes %s selector", args[i]))
 		}
-		rootCmd.AddCommand(command)
 	}
 }
 
@@ -81,20 +89,20 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		tmpId := time.Now().Format("20060102150405")
 
 		for _, node := range nodes.Items {
-			if viper.GetString("node") != "" && node.Name != viper.GetString("node") {
+			if nodeParam != "" && node.Name != nodeParam {
 				continue
 			}
 			labelFilter := ""
-			if viper.GetString("label") != "" {
-				labelFilter = fmt.Sprintf("--label %q", viper.GetString("label"))
+			if labelParam != "" {
+				labelFilter = fmt.Sprintf("--label %q", labelParam)
 			}
 			namespaceFilter := ""
-			if viper.GetString("namespace") != "" {
-				namespaceFilter = fmt.Sprintf("--namespace %q", viper.GetString("namespace"))
+			if namespaceParam != "" {
+				namespaceFilter = fmt.Sprintf("--namespace %q", namespaceParam)
 			}
 			podnameFilter := ""
-			if viper.GetString("podname") != "" {
-				podnameFilter = fmt.Sprintf("--podname %q", viper.GetString("podname"))
+			if podnameParam != "" {
+				podnameFilter = fmt.Sprintf("--podname %q", podnameParam)
 			}
 			err := execPodQuickStart(client, node.Name,
 				fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && exec /opt/bcck8s/%s %s %s %s \" || true",
@@ -107,7 +115,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		<-sigs
 		fmt.Printf("Interrupted!\n")
 		for _, node := range nodes.Items {
-			if viper.GetString("node") != "" && node.Name != viper.GetString("node") {
+			if nodeParam != "" && node.Name != nodeParam {
 				continue
 			}
 			err := execPodQuickStart(client, node.Name,
