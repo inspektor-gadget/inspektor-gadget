@@ -88,9 +88,17 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			if viper.GetString("label") != "" {
 				labelFilter = fmt.Sprintf("--label %q", viper.GetString("label"))
 			}
+			namespaceFilter := ""
+			if viper.GetString("namespace") != "" {
+				namespaceFilter = fmt.Sprintf("--namespace %q", viper.GetString("namespace"))
+			}
+			podnameFilter := ""
+			if viper.GetString("podname") != "" {
+				podnameFilter = fmt.Sprintf("--podname %q", viper.GetString("podname"))
+			}
 			err := execPodQuickStart(client, node.Name,
-				fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && exec /opt/bcck8s/%s %s --namespace '%q' --podname '%q' \" || true",
-					tmpId, bccScript, labelFilter, viper.GetString("namespace"), viper.GetString("podname")))
+				fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && exec /opt/bcck8s/%s %s %s %s \" || true",
+					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter))
 			if err != "" {
 				fmt.Printf("Error in running command: %q\n", err)
 			}
