@@ -152,11 +152,16 @@ func cpPodQuick(client *kubernetes.Clientset, node string, srcPath, destPath str
 		kubectlCmd += "--kubeconfig=" + viper.GetString("kubeconfig")
 	}
 	kubectlCmd += fmt.Sprintf(" cp %s kube-system/%s:%s", srcPath, podName, destPath)
+	fmt.Println(kubectlCmd)
 
 	cmd := exec.Command("/bin/sh", "-c", kubectlCmd)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Start()
+	if err != nil {
+		return fmt.Sprintf("%s", err)
+	}
+	err = cmd.Wait()
 	if err != nil {
 		return fmt.Sprintf("%s", err)
 	}
