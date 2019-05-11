@@ -32,6 +32,13 @@ var opensnoopCmd = &cobra.Command{
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
+var tcptopCmd = &cobra.Command{
+	Use:               "tcptop",
+	Short:             "Show the TCP traffic in a pod",
+	Run:               bccCmd("tcptop", "tcptop-edge"),
+	PersistentPreRunE: doesKubeconfigExist,
+}
+
 var hintsNetworkCmd = &cobra.Command{
 	Use:               "hints-network",
 	Short:             "Suggest Kubernetes Network Policies",
@@ -47,7 +54,7 @@ var (
 )
 
 func init() {
-	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd, hintsNetworkCmd}
+	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd, tcptopCmd, hintsNetworkCmd}
 	args := []string{"label", "node", "namespace", "podname"}
 	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam}
 	for _, command := range commands {
@@ -84,6 +91,13 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			contextLogger.Fatalf("Error in listing nodes: %q", err)
 		}
 
+		// tcptop only works on one pod at a time
+		if subCommand == "tcptop" {
+			if nodeParam == "" || namespaceParam == "" || podnameParam == "" {
+				contextLogger.Fatalf("tcptop only works with --node, --namespace and --podname")
+			}
+		}
+
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		tmpId := time.Now().Format("20060102150405")
@@ -105,7 +119,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				podnameFilter = fmt.Sprintf("--podname %q", podnameParam)
 			}
 			err := execPodQuickStart(client, node.Name,
-				fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && exec /opt/bcck8s/%s %s %s %s \" || true",
+				fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && export TERM=xterm-256color && exec /opt/bcck8s/%s %s %s %s \" || true",
 					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter))
 			if err != "" {
 				fmt.Printf("Error in running command: %q\n", err)
