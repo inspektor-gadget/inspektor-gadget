@@ -144,27 +144,6 @@ static int trace_connect_return(struct pt_regs *ctx, short ipver)
         return 0;
     }
 
-    u64 cgroupid = bpf_get_current_cgroup_id();
-    u32 *innermap = cgrouplabelsmap.lookup(&cgroupid);
-    if (innermap == NULL) {
-      return 0;
-    }
-
-    text64 textkey = {
-        'n', 'a', 'm', 'e',
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
-    };
-    text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &textkey[0]);
-    if (textvalue == NULL) {
-      // no name
-      return 0;
-    }
-
     // pull in details
     struct sock *skp = *skpp;
     u16 dport = skp->__sk_common.skc_dport;
