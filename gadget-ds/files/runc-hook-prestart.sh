@@ -34,6 +34,7 @@ fi
 # Even Kubernetes pods with only one containers have a second container (the
 # pause container) started at the same time. So two instances of this script
 # are called in parallel.
+HOOK_LOCK=/run/runc-hook-prestart.lock
 : >> $HOOK_LOCK
 {
   set -e

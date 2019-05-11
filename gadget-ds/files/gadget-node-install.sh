@@ -15,7 +15,7 @@ if [ $CGROUP_V1_PATH != $CGROUP_V2_PATH ] ; then
   exit 1
 fi
 
-HOOK_LOCK=/tmp/runc-hook-prestart.lock
+HOOK_LOCK=/run/runc-hook-prestart.lock
 
 : >> $HOOK_LOCK
 {
