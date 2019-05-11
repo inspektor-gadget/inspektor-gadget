@@ -9,8 +9,6 @@ BPFTOOL=/opt/bin/bpftool
 CGROUPID=/opt/bin/cgroupid
 KUBECTL=/opt/bin/kubectl
 
-HOOK_LOCK=/tmp/runc-hook-prestart.lock
-
 BPFDIR=/sys/fs/bpf
 CGROUP_PATH=/sys/fs/cgroup/unified$(cat /proc/$PID/cgroup|grep ^0::|cut -b4-)
 CGROUP_ID=$($CGROUPID $CGROUP_PATH)
@@ -38,28 +36,9 @@ fi
 # are called in parallel.
 : >> $HOOK_LOCK
 {
-flock $HOOK_LOCK_FD
-if [ ! -f $BPFDIR/cgroupmap ] ; then
-  $BPFTOOL map create $BPFDIR/cgroupmap type hash key 8 value 64 entries 8000 name cgroupmap flags 1
-fi
-if [ ! -f $BPFDIR/containermap -o ! -f $BPFDIR/cgrouplabelsmap -o ! -f $BPFDIR/cgroupmetadatas ] ; then
-  INNERMAP=$BPFDIR/containermapinner
-  INNERMAPMETA=$BPFDIR/containermapinnermeta
-  rm -f $INNERMAP
-  rm -f $INNERMAPMETA
-  rm -f $BPFDIR/containermap
-  rm -f $BPFDIR/cgrouplabelsmap
-  rm -f $BPFDIR/cgroupmetadatas
-  # templates for inner maps
-  $BPFTOOL map create $INNERMAP type hash key 64 value 64 entries 64 name containermapinner flags 1
-  $BPFTOOL map create $INNERMAPMETA type array key 4 value 64 entries 2 name containermapinnermeta
-  # containermap is only needed in Flatcar alpha/beta/stable, not Edge where an OCI hook exists. It is written by pidmap and read by *snoop (not *snoop-edge)
-  $BPFTOOL map create $BPFDIR/containermap type hash_of_maps innermap pinned $INNERMAP key 64 value 4 entries 8000 name containermap flags 1
-  # create map from cgroup ID to label map, filled with maps for all pods here later, read by *snoop-edge (note: this name has max length for bpftool map show)
-  $BPFTOOL map create $BPFDIR/cgrouplabelsmap type hash_of_maps innermap pinned $INNERMAP key 8 value 4 entries 8000 name cgrouplabelsmap flags 1
-  # create map from cgroup ID to metadata map, filled with maps for all pods here later, read by *snoop-edge
-  $BPFTOOL map create $BPFDIR/cgroupmetadatas type hash_of_maps innermap pinned $INNERMAPMETA key 8 value 4 entries 8000 name cgroupmetadatas flags 1
-fi
+  set -e
+  flock $HOOK_LOCK_FD
+  /opt/bin/runc-hook-prestart-create-maps.sh
 } {HOOK_LOCK_FD}<$HOOK_LOCK
 
 $BPFTOOL map update pinned $BPFDIR/cgroupmap key hex $CGROUP_ID_HEX value hex $CONTAINERID_HEX
