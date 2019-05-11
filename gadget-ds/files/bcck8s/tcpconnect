@@ -264,6 +264,8 @@ for x in bpf_text.split('\n'):
   map_name = external_params[0]
   pin_path = external_params[1]
   external_fd = int(external_params[2])
+  if not os.path.isfile(pin_path):
+    exit(pin_path + ": No such file or directory")
   if not os.path.islink("/proc/self/fd/" + str(external_fd)):
     os.execvp("bpftool", ["bpftool", "map", "exec", "pinned", pin_path, "fd", str(external_fd), "cmd", "--"] + sys.argv)
 
@@ -285,8 +287,10 @@ for x in bpf_text.split('\n'):
       flags &= ~fcntl.FD_CLOEXEC
     fcntl.fcntl(fd, fcntl.F_SETFD, flags)
   for i in range(3, 30):
+    if not os.path.islink("/proc/self/fd/" + str(i)):
+      continue
     set_cloexec(i, cloexec=False)
-    ret = os.system("bpftool map show fd " + str(i) + " | grep -q 'name " + map_name + "' 2>/dev/null")
+    ret = os.system("bpftool map show fd " + str(i) + " 2>/dev/null | grep -q 'name " + map_name + "'")
     set_cloexec(i, cloexec=True)
     if ret == 0:
       os.dup2(external_fd, i)
