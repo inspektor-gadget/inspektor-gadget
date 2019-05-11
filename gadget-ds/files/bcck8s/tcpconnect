@@ -37,6 +37,8 @@ examples = """examples:
     ./tcpconnect -P 80,81  # only trace port 80 and 81
     ./tcpconnect -U        # include UID
     ./tcpconnect -u 1000   # only trace UID 1000
+    ./tcpconnect -s namespace # only trace pods in this namespace
+    ./tcpconnect -m podname   # only trace pods with this name
 """
 parser = argparse.ArgumentParser(
     description="Trace TCP connects",
@@ -54,6 +56,10 @@ parser.add_argument("-u", "--uid",
     help="trace this UID only")
 parser.add_argument("--ebpf", action="store_true",
     help=argparse.SUPPRESS)
+parser.add_argument("-s", "--namespace",
+    help="trace pods with in this namespace only")
+parser.add_argument("-m", "--podname",
+    help="trace pods with this name only")
 args = parser.parse_args()
 debug = 0
 
@@ -64,6 +70,7 @@ bpf_text = """
 #include <bcc/proto.h>
 
 BPF_HASH(cgrouplabelsmap, u64, u32);        // DEFINE_CGROUPLABELSMAP  // EXTERNAL_MAP:cgrouplabelsmap,/sys/fs/bpf/cgrouplabelsmap,92
+BPF_HASH(cgroupmetadatas, u64, u32);        // DEFINE_CGROUPMETADATAS  // EXTERNAL_MAP:cgroupmetadatas,/sys/fs/bpf/cgroupmetadatas,93
 BPF_HASH(currsock, u32, struct sock *);
 
 typedef char text64[64];
@@ -102,6 +109,9 @@ int trace_connect_entry(struct pt_regs *ctx, struct sock *sk)
 
     u32 uid = bpf_get_current_uid_gid();
     FILTER_UID
+
+    NAMESPACE_FILTER
+    PODNAME_FILTER
 
     u64 cgroupid = bpf_get_current_cgroup_id();
     u32 *innermap = cgrouplabelsmap.lookup(&cgroupid);
@@ -218,6 +228,74 @@ if args.port:
 if args.uid:
     bpf_text = bpf_text.replace('FILTER_UID',
         'if (uid != %s) { return 0; }' % args.uid)
+
+if args.namespace:
+    if len(args.namespace) > 64:
+        exit("Bad namespace selector")
+    namespace_with_spaces = args.namespace + " " * (64 - len(args.namespace))
+    bpf_text = bpf_text.replace('NAMESPACE_FILTER',
+        '''
+        {
+           u64 cgroupid = bpf_get_current_cgroup_id();
+           bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
+           u32 *innermap = cgroupmetadatas.lookup(&cgroupid);
+           if (innermap == NULL) {
+             bpf_trace_printk("no innermap\\n");
+             return 0;
+           }
+
+           u8 key = 0; /* namespace */
+           text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &key);
+           if (textvalue == NULL) {
+             bpf_trace_printk("no namespace defined\\n");
+             return 0;
+           }
+           if (%s) {
+             bpf_trace_printk("namespace has different value\\n");
+             return 0;
+           }
+        }
+        ''' % (
+           " || ".join([ "textvalue[0][%s] != '%s'" % (str(i), namespace_with_spaces[i]) for i in range(min(64, len(args.namespace)+1))])
+        ))
+else:
+    bpf_text = bpf_text.replace('NAMESPACE_FILTER', '')
+
+if args.podname:
+    if len(args.podname) > 64:
+        exit("Bad pod name selector")
+    podname_with_spaces = args.podname + " " * (64 - len(args.podname))
+    bpf_text = bpf_text.replace('PODNAME_FILTER',
+        '''
+        {
+           u64 cgroupid = bpf_get_current_cgroup_id();
+           bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
+           u32 *innermap = cgroupmetadatas.lookup(&cgroupid);
+           if (innermap == NULL) {
+             bpf_trace_printk("no innermap\\n");
+             return 0;
+           }
+
+           u8 key = 1; /* podname */
+           text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &key);
+           if (textvalue == NULL) {
+             bpf_trace_printk("no podname defined\\n");
+             return 0;
+           }
+           if (%s) {
+             bpf_trace_printk("pod has different name\\n");
+             return 0;
+           }
+        }
+        ''' % (
+           " || ".join([ "textvalue[0][%s] != '%s'" % (str(i), podname_with_spaces[i]) for i in range(min(64, len(args.podname)+1))])
+        ))
+else:
+    bpf_text = bpf_text.replace('PODNAME_FILTER', '')
+
+if not args.namespace and not args.podname:
+    bpf_text = '\n'.join(x for x in bpf_text.split('\n')
+        if 'DEFINE_CGROUPMETADATAS' not in x)
 
 bpf_text = bpf_text.replace('FILTER_PID', '')
 bpf_text = bpf_text.replace('FILTER_PORT', '')
