@@ -67,6 +67,11 @@ func runInstall(cmd *cobra.Command, args []string) {
 				fmt.Printf("%s\n", output)
 				return
 			}
+			output = cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/runc-hook-prestart-create-maps.sh"), "/bin/")
+			if output != "" {
+				fmt.Printf("%s\n", output)
+				return
+			}
 			output = cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/gadget-node-install.sh"), "/bin/")
 			if output != "" {
 				fmt.Printf("%s\n", output)
