@@ -320,6 +320,7 @@ def print_ipv4_event(cpu, data, size):
         event.podname, event.task, event.ip,
         inet_ntop(AF_INET, pack("I", event.saddr)).encode(),
         inet_ntop(AF_INET, pack("I", event.daddr)).encode(), event.dport))
+    sys.stdout.flush()
 
 def print_ipv6_event(cpu, data, size):
     event = b["ipv6_events"].event(data)
@@ -334,6 +335,7 @@ def print_ipv6_event(cpu, data, size):
         event.podname, event.task, event.ip,
         inet_ntop(AF_INET6, event.saddr).encode(), inet_ntop(AF_INET6, event.daddr).encode(),
         event.dport))
+    sys.stdout.flush()
 
 for x in bpf_text.split('\n'):
   if 'EXTERNAL_MAP' not in x:
@@ -386,6 +388,7 @@ if args.print_uid:
     print("%-6s" % ("UID"), end="")
 print("%-6s %-12s %-2s %-16s %-16s %-4s" % ("PID", "COMM", "IP", "SADDR",
     "DADDR", "DPORT"))
+sys.stdout.flush()
 
 start_ts = 0
 

@@ -211,6 +211,7 @@ ipv6_send_bytes = b["ipv6_send_bytes"]
 ipv6_recv_bytes = b["ipv6_recv_bytes"]
 
 print('Tracing... Output every %s secs. Hit Ctrl-C to end' % args.interval)
+sys.stdout.flush()
 
 # output
 i = 0
@@ -284,3 +285,4 @@ while i != args.count and not exiting:
             int(recv_bytes / 1024), int(send_bytes / 1024)))
 
     i += 1
+    sys.stdout.flush()
