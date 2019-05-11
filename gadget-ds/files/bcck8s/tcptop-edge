@@ -49,6 +49,8 @@ examples = """examples:
     ./tcptop -C           # don't clear the screen
     ./tcptop -p 181       # only trace PID 181
     ./tcptop -l app=web   # only trace pods with this label
+    ./tcptop -s namespace # only trace pods in this namespace
+    ./tcptop -m podname   # only trace pods with this name
 """
 parser = argparse.ArgumentParser(
     description="Summarize TCP send/recv throughput by host",
@@ -62,6 +64,10 @@ parser.add_argument("-p", "--pid",
     help="trace this PID only")
 parser.add_argument("-l", "--label",
     help="trace pods with this label only")
+parser.add_argument("-s", "--namespace",
+    help="trace pods with in this namespace only")
+parser.add_argument("-m", "--podname",
+    help="trace pods with this name only")
 parser.add_argument("interval", nargs="?", default=1, type=range_check,
     help="output interval, in seconds (default 1)")
 parser.add_argument("count", nargs="?", default=-1, type=range_check,
@@ -90,6 +96,7 @@ struct ipv4_key_t {
 typedef char text64[64];
 
 BPF_HASH(cgrouplabelsmap, u64, u32);        // DEFINE_CGROUPLABELSMAP  // EXTERNAL_MAP:cgrouplabelsmap,/sys/fs/bpf/cgrouplabelsmap,92
+BPF_HASH(cgroupmetadatas, u64, u32);        // DEFINE_CGROUPMETADATAS  // EXTERNAL_MAP:cgroupmetadatas,/sys/fs/bpf/cgroupmetadatas,93
 BPF_HASH(ipv4_send_bytes, struct ipv4_key_t);
 BPF_HASH(ipv4_recv_bytes, struct ipv4_key_t);
 
@@ -109,6 +116,8 @@ int trace_tcp_sendmsg(struct pt_regs *ctx, struct sock *sk,
     u32 pid = bpf_get_current_pid_tgid();
     LABEL_FILTER
     PID_FILTER
+    NAMESPACE_FILTER
+    PODNAME_FILTER
     u16 dport = 0, family = sk->__sk_common.skc_family;
 
     if (family == AF_INET) {
@@ -147,6 +156,8 @@ int trace_tcp_cleanup_rbuf(struct pt_regs *ctx, struct sock *sk, int copied)
     u32 pid = bpf_get_current_pid_tgid();
     LABEL_FILTER
     PID_FILTER
+    NAMESPACE_FILTER
+    PODNAME_FILTER
     u16 dport = 0, family = sk->__sk_common.skc_family;
     u64 *val, zero = 0;
 
@@ -220,9 +231,77 @@ if args.label:
 else:
     bpf_text = bpf_text.replace('LABEL_FILTER', '')
 
+if args.namespace:
+    if len(args.namespace) > 64:
+        exit("Bad namespace selector")
+    namespace_with_spaces = args.namespace + " " * (64 - len(args.namespace))
+    bpf_text = bpf_text.replace('NAMESPACE_FILTER',
+        '''
+        {
+           u64 cgroupid = bpf_get_current_cgroup_id();
+           bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
+           u32 *innermap = cgroupmetadatas.lookup(&cgroupid);
+           if (innermap == NULL) {
+             bpf_trace_printk("no innermap\\n");
+             return 0;
+           }
+
+           u32 key = 0; /* namespace */
+           text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &key);
+           if (textvalue == NULL) {
+             bpf_trace_printk("no namespace defined\\n");
+             return 0;
+           }
+           if (%s) {
+             bpf_trace_printk("namespace has different value\\n");
+             return 0;
+           }
+        }
+        ''' % (
+           " || ".join([ "textvalue[0][%s] != '%s'" % (str(i), namespace_with_spaces[i]) for i in range(min(64, len(args.namespace)+1))])
+        ))
+else:
+    bpf_text = bpf_text.replace('NAMESPACE_FILTER', '')
+
+if args.podname:
+    if len(args.podname) > 64:
+        exit("Bad pod name selector")
+    podname_with_spaces = args.podname + " " * (64 - len(args.podname))
+    bpf_text = bpf_text.replace('PODNAME_FILTER',
+        '''
+        {
+           u64 cgroupid = bpf_get_current_cgroup_id();
+           bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
+           u32 *innermap = cgroupmetadatas.lookup(&cgroupid);
+           if (innermap == NULL) {
+             bpf_trace_printk("no innermap\\n");
+             return 0;
+           }
+
+           u32 key = 1; /* podname */
+           text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &key);
+           if (textvalue == NULL) {
+             bpf_trace_printk("no podname defined\\n");
+             return 0;
+           }
+           if (%s) {
+             bpf_trace_printk("pod has different name\\n");
+             return 0;
+           }
+        }
+        ''' % (
+           " || ".join([ "textvalue[0][%s] != '%s'" % (str(i), podname_with_spaces[i]) for i in range(min(64, len(args.podname)+1))])
+        ))
+else:
+    bpf_text = bpf_text.replace('PODNAME_FILTER', '')
+
 if not args.label:
     bpf_text = '\n'.join(x for x in bpf_text.split('\n')
         if 'DEFINE_CGROUPLABELSMAP' not in x)
+
+if not args.namespace and not args.podname:
+    bpf_text = '\n'.join(x for x in bpf_text.split('\n')
+        if 'DEFINE_CGROUPMETADATAS' not in x)
 
 if debug or args.ebpf:
     print(bpf_text)
