@@ -20,8 +20,13 @@ subjects:
 - kind: ServiceAccount
   name: default
   namespace: default
+- kind: ServiceAccount
+  name: default
+  namespace: demo
+- kind: ServiceAccount
+  name: default
+  namespace: sock-shop
 roleRef:
    apiGroup: rbac.authorization.k8s.io
    kind: ClusterRole
    name: break-psp
-
