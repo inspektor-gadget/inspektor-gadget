@@ -344,6 +344,7 @@ b.attach_kretprobe(event=execve_fnname, fn_name="do_ret_sys_execve")
 if args.timestamp:
     print("%-8s" % ("TIME(s)"), end="")
 print("%-16s %-6s %-6s %3s %s" % ("PCOMM", "PID", "PPID", "RET", "ARGS"))
+sys.stdout.flush()
 
 class EventType(object):
     EVENT_ARG = 0
@@ -399,6 +400,7 @@ def print_event(cpu, data, size):
             del(argv[event.pid])
         except Exception:
             pass
+    sys.stdout.flush()
 
 
 # loop with callback to print_event

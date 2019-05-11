@@ -359,6 +359,7 @@ print("%-6s %-16s %4s %3s " %
 if args.extended_fields:
     print("%-9s" % ("FLAGS"), end="")
 print("PATH")
+sys.stdout.flush()
 
 # process event
 def print_event(cpu, data, size):
@@ -397,6 +398,7 @@ def print_event(cpu, data, size):
         print("%08o " % event.flags, end="")
 
     printb(b'%s' % event.fname)
+    sys.stdout.flush()
 
 # loop with callback to print_event
 b["events"].open_perf_buffer(print_event, page_cnt=64)
