@@ -37,6 +37,7 @@ examples = """examples:
     ./tcpconnect -P 80,81  # only trace port 80 and 81
     ./tcpconnect -U        # include UID
     ./tcpconnect -u 1000   # only trace UID 1000
+    ./tcpconnect -b app=web   # only trace pods with this label
     ./tcpconnect -s namespace # only trace pods in this namespace
     ./tcpconnect -m podname   # only trace pods with this name
 """
@@ -56,6 +57,8 @@ parser.add_argument("-u", "--uid",
     help="trace this UID only")
 parser.add_argument("--ebpf", action="store_true",
     help=argparse.SUPPRESS)
+parser.add_argument("-b", "--label",
+    help="trace pods with this label only")
 parser.add_argument("-s", "--namespace",
     help="trace pods with in this namespace only")
 parser.add_argument("-m", "--podname",
@@ -110,14 +113,9 @@ int trace_connect_entry(struct pt_regs *ctx, struct sock *sk)
     u32 uid = bpf_get_current_uid_gid();
     FILTER_UID
 
+    LABEL_FILTER
     NAMESPACE_FILTER
     PODNAME_FILTER
-
-    u64 cgroupid = bpf_get_current_cgroup_id();
-    u32 *innermap = cgrouplabelsmap.lookup(&cgroupid);
-    if (innermap == NULL) {
-      return 0;
-    }
 
     // stash the sock ptr for lookup on return
     currsock.update(&pid, &sk);
@@ -208,6 +206,42 @@ if args.uid:
     bpf_text = bpf_text.replace('FILTER_UID',
         'if (uid != %s) { return 0; }' % args.uid)
 
+if args.label:
+    label_kv = args.label.split("=", 2)
+    if len(label_kv) != 2 or len(label_kv[0]) > 64 or len(label_kv[1]) > 64:
+        exit("Bad key-value label selector: %s" % args.label)
+    key_with_spaces = label_kv[0] + " " * (64 - len(label_kv[0]))
+    value_len = len(label_kv[1])
+    value_with_spaces = label_kv[1] + " " * (64 - len(label_kv[1]))
+    bpf_text = bpf_text.replace('LABEL_FILTER',
+        '''
+        {
+           u64 cgroupid = bpf_get_current_cgroup_id();
+           bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
+           u32 *innermap = cgrouplabelsmap.lookup(&cgroupid);
+           if (innermap == NULL) {
+             bpf_trace_printk("no innermap\\n");
+             return 0;
+           }
+
+           text64 textkey = {%s};
+           text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &textkey[0]);
+           if (textvalue == NULL) {
+             bpf_trace_printk("no such label\\n");
+             return 0;
+           }
+           if (%s) {
+             bpf_trace_printk("label with different value\\n");
+             return 0;
+           }
+        }
+        ''' % (
+           "'" + "', '".join(list(key_with_spaces)) + "'",
+           " || ".join([ "textvalue[0][%s] != '%s'" % (str(i), value_with_spaces[i]) for i in range(min(64, value_len+1))])
+        ))
+else:
+    bpf_text = bpf_text.replace('LABEL_FILTER', '')
+
 if args.namespace:
     if len(args.namespace) > 64:
         exit("Bad namespace selector")
@@ -223,7 +257,7 @@ if args.namespace:
              return 0;
            }
 
-           u8 key = 0; /* namespace */
+           u32 key = 0; /* namespace */
            text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &key);
            if (textvalue == NULL) {
              bpf_trace_printk("no namespace defined\\n");
@@ -255,7 +289,7 @@ if args.podname:
              return 0;
            }
 
-           u8 key = 1; /* podname */
+           u32 key = 1; /* podname */
            text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &key);
            if (textvalue == NULL) {
              bpf_trace_printk("no podname defined\\n");
@@ -271,6 +305,10 @@ if args.podname:
         ))
 else:
     bpf_text = bpf_text.replace('PODNAME_FILTER', '')
+
+if not args.label:
+    bpf_text = '\n'.join(x for x in bpf_text.split('\n')
+        if 'DEFINE_CGROUPLABELSMAP' not in x)
 
 if not args.namespace and not args.podname:
     bpf_text = '\n'.join(x for x in bpf_text.split('\n')
