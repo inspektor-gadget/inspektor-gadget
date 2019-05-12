@@ -20,7 +20,7 @@ HOOK_LOCK=/run/runc-hook-prestart.lock
 : >> $HOOK_LOCK
 {
 set -e
-flock $HOOK_LOCK_FD
+flock -w 1 $HOOK_LOCK_FD || {echo "Cannot acquire lock" ; exit 1 ; }
 
 export BPFTOOL=/bin/bpftool
 /bin/runc-hook-prestart-create-maps.sh
