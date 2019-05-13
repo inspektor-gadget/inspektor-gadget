@@ -32,6 +32,7 @@ from struct import pack
 from time import sleep, strftime
 from subprocess import call
 from collections import namedtuple, defaultdict
+import sys
 
 # arguments
 def range_check(string):
