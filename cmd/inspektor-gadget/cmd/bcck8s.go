@@ -46,15 +46,24 @@ var hintsNetworkCmd = &cobra.Command{
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
+var capabilitiesCmd = &cobra.Command{
+	Use:               "capabilities",
+	Short:             "Suggest Security Capabilities for securityContext",
+	Run:               bccCmd("capabilities", "capable-edge"),
+	PersistentPreRunE: doesKubeconfigExist,
+}
+
 var (
 	labelParam     string
 	nodeParam      string
 	namespaceParam string
 	podnameParam   string
+
+	stackFlag      bool
 )
 
 func init() {
-	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd, tcptopCmd, hintsNetworkCmd}
+	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd, tcptopCmd, hintsNetworkCmd, capabilitiesCmd}
 	args := []string{"label", "node", "namespace", "podname"}
 	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam}
 	for _, command := range commands {
@@ -67,6 +76,7 @@ func init() {
 				fmt.Sprintf("Kubernetes %s selector", args[i]))
 		}
 	}
+	capabilitiesCmd.PersistentFlags().BoolVarP(&stackFlag, "print-stack", "", false, "Print kernel and userspace call stack of cap_capable()")
 }
 
 func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
@@ -118,9 +128,13 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			if podnameParam != "" {
 				podnameFilter = fmt.Sprintf("--podname %q", podnameParam)
 			}
+			stackArg := ""
+			if stackFlag && subCommand == "capabilities" {
+				stackArg = "-K"
+			}
 			err := execPodQuickStart(client, node.Name,
-				fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && export TERM=xterm-256color && exec /opt/bcck8s/%s %s %s %s \" || true",
-					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter))
+				fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && export TERM=xterm-256color && exec /opt/bcck8s/%s %s %s %s %s \" || true",
+					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg))
 			if err != "" {
 				fmt.Printf("Error in running command: %q\n", err)
 			}

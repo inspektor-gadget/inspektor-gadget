@@ -12,6 +12,7 @@ install:
 		kubectl cp ./opensnoop-edge $$POD:/opensnoop-edge ; \
 		kubectl cp ./execsnoop-edge $$POD:/execsnoop-edge ; \
 		kubectl cp ./tcptop-edge $$POD:/tcptop-edge ; \
+		kubectl cp ./capable-edge $$POD:/capable-edge ; \
 	done
 
 install-hooks:
