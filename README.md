@@ -17,7 +17,6 @@ List of gadgets:
   tcptop                Monitor the network traffic in pods
   straceback            Get strace-like logs of a pod from the past
   hints-network         Get network policy hints suited for your app
-  hints-rbac            Get rbac hints suited for your app
 ```
 
 Inspektor Gadget is a kubectl plugin. It can also be invoked with `kubectl gadget`.

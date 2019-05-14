@@ -43,17 +43,30 @@ variable "aws_creds" {
 	type = "string"
 }
 
+variable "cluster_name" {
+	type = "string"
+}
+
+variable "dns_zone" {
+	type = "string"
+}
+
+variable "dns_zone_id" {
+	type = "string"
+}
+
 variable "ssh_pubkey" {
 	type = "string"
 }
 
+
 cluster "aws" {
 	asset_dir = "${pathexpand(var.asset_dir)}"
 	creds_path = "${pathexpand(var.aws_creds)}"
-	cluster_name = "mycluster"
+	cluster_name = "${var.cluster_name}"
 	os_image = "flatcar-edge"
-	dns_zone = "mydomain.fun"
-	dns_zone_id = "Z..."
+	dns_zone = "${var.dns_zone}"
+	dns_zone_id = "${var.dns_zone_id}"
 	ssh_pubkey = "${pathexpand(var.ssh_pubkey)}"
 
 	worker_clc_snippets = ["${file("./custom.yaml")}"]
@@ -66,8 +79,11 @@ component "ingress-nginx" {
 
 - lokocfg.vars:
 ```
-asset_dir = "/home/user/lokoctl-assets/mycluster"
+cluster_name = "CHANGEME"
+asset_dir = "~/lokoctl-assets/CHANGEME"
 aws_creds = "~/.aws/credentials"
+dns_zone = "CHANGEME"
+dns_zone_id = "CHANGEME"
 ssh_pubkey = "~/.ssh/id_rsa.pub"
 ```
 
@@ -83,7 +99,7 @@ $ kubectl apply -f deploy/ds-gadget.yaml
 
 Finalise the installation:
 ```
-$ ./inspektor-gadget install
+$ ./inspektor-gadget install  # when developing you can update with --update-from-path=$PWD
 $ ./inspektor-gadget health
 ```
 
