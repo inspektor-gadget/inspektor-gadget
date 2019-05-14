@@ -23,6 +23,8 @@ Inspektor Gadget is a kubectl plugin. It can also be invoked with `kubectl gadge
 
 - [Demo: the "execsnoop" gadget](Documentation/demo-execsnoop.md)
 - [Demo: the "straceback" gadget](Documentation/demo-straceback.md)
+- [Demo: the "tcptop" gadget](Documentation/demo-tcptop.md) – watch it [as GIF](Documentation/demo-tcptop-gifterminal.md)
+- [Demo: the "hints-network" gadget](Documentation/demo-hints-network.md) — watch it [as GIF](Documentation/demo-hints-network-gifterminal.md)
 
 ## How does it work?
 
