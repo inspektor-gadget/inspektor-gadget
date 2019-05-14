@@ -6,38 +6,49 @@ Let's run a pod to compute an important multiplication:
 
 ```
 $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'RANDOM=output ; echo "3*7*2" | bc > /tmp/file-$RANDOM ; cat /tmp/file-$RANDOM'
-cat: can't open '/tmp/file-7071': No such file or directory
+cat: can't open '/tmp/file-3240': No such file or directory
 pod default/mypod terminated (Error)
+$ kubectl delete pod mypod
+pod "mypod" deleted
 ```
 
 Oh no! We made a mistake in the shell script: we opened the wrong file. Is the
 result lost forever? Let's check with the straceback gadget:
 
 ```
-$ ./gadget-straceback.sh list | grep mypod
-10.0.18.186_default_mypod
+$ ./inspektor-gadget straceback list
+NODE              TRACES
+ip-10-0-30-247    10.0.30.247_default_mypod
+ip-10-0-44-74
+ip-10-0-5-181
 ```
 
 Let's inspect the straceback log:
 
 ```
-$ ./gadget-straceback.sh show 10.0.18.186_default_mypod|grep -E 'write|/tmp/file'
-00:00.002167734 cpu#0 pid 30908 [runc:[2:INIT]] write(fd=4, buf=824634358208 "{\"type\":\"procReady\"}", count=20)...
-00:00.002184497 cpu#0 pid 30908 [runc:[2:INIT]] ...write() = 20
-00:00.002299731 cpu#0 pid 30908 [runc:[2:INIT]] write(fd=3, buf=824634232096 "system_u:system_r:svirt_lxc_net_t:s0:c85,c812", count=45) = 45
-00:00.066281152 cpu#0 pid 30908 [runc:[2:INIT]] write(fd=3, buf=824634954112 "0", count=1) = 1
-00:00.068550385 cpu#0 pid 31021 [sh] write(fd=1, buf=34788528 "3*7*2\n", count=6)...
-00:00.068580369 cpu#0 pid 31021 [sh] ...write() = 6
-00:00.068748841 cpu#1 pid 31022 [sh] open(filename=34788736 "/tmp/file-32298", flags=577, mode=438) = 3
-00:00.069271334 cpu#0 pid 31022 [bc] write(fd=1, buf=7415808 "42\n", count=3) = 3
-00:00.070597676 cpu#1 pid 30908 [cat] open(filename=140729712668244 "/tmp/file-12508", flags=0, mode=0) = 18446744073709551614
-00:00.070634288 cpu#1 pid 30908 [cat] write(fd=2, buf=140729712660992 "cat: can't open '/tmp/file-12508': No such file or directory\n", count=61) = 61
+$ ./inspektor-gadget straceback show 10.0.30.247_default_mypod | grep -E 'write|/tmp/file'
+00:00.001792832 cpu#0 pid 14276 [runc:[2:INIT]] write(fd=4, buf=842351188896 "{\"type\":\"procReady\"}", count=20)...
+00:00.001808990 cpu#0 pid 14276 [runc:[2:INIT]] ...write() = 20
+00:00.068726377 cpu#0 pid 14276 [runc:[2:INIT]] write(fd=3, buf=842351686112 "0", count=1)...
+00:00.068741259 cpu#0 pid 14276 [runc:[2:INIT]] ...write() = 1
+00:00.070542730 cpu#0 pid 14464 [sh] write(fd=1, buf=37966992 "3*7*2\n", count=6)...
+00:00.070552565 cpu#0 pid 14464 [sh] ...write() = 6
+00:00.070713699 cpu#0 pid 14465 [sh] open(filename=37967352 "/tmp/file-1889", flags=577, mode=438) = 3
+00:00.071188694 cpu#1 pid 14465 [bc] write(fd=1, buf=7415808 "42\n", count=3) = 3
+00:00.071546191 cpu#1 pid 14276 [cat] open(filename=140723923041877 "/tmp/file-3240", flags=0, mode=0) = 18446744073709551614
+00:00.071566973 cpu#1 pid 14276 [cat] write(fd=2, buf=140723923036928 "cat: can't open '/tmp/file-3240': No such file or directory\n", count=60) = 60
 ```
 
 Thanks to the `straceback` gadget, we can recover the result of the
 multiplication: 42. And we can understand the mistake in the shell script: the
-result was saved in `/tmp/file-32298` but we attempted to open
-`/tmp/file-12508`.
+result was saved in `/tmp/file-1889` but we attempted to open
+`/tmp/file-3240`.
+
+We can close this trace now.
+```
+$ ./inspektor-gadget straceback show 10.0.30.247_default_mypod
+closed
+```
 
 ## Listing files demo
 
@@ -54,18 +65,25 @@ pod "mypod" deleted
 Because of the `grep wget`, we only see one entry. But straceback can recover other entries:
 
 ```
-$ ./gadget-straceback.sh list | grep mypod
-10.0.13.143_default_mypod
-$ ./gadget-straceback.sh show 10.0.18.186_default_mypod | grep /bin/w
-00:00.063359811 cpu#1 pid 23855 [ls] newfstatat(dfd=18446744073709551516, filename=15904080 "/bin/wc", statbuf=140733574659888, flag=256) = 0
-00:00.064064654 cpu#1 pid 23855 [ls] newfstatat(dfd=18446744073709551516, filename=15909120 "/bin/who", statbuf=140733574659888, flag=256) = 0
-00:00.064507308 cpu#1 pid 23855 [ls] newfstatat(dfd=18446744073709551516, filename=15911856 "/bin/which", statbuf=140733574659888, flag=256) = 0
-00:00.068681797 cpu#0 pid 23855 [ls] newfstatat(dfd=18446744073709551516, filename=15933456 "/bin/w", statbuf=140733574659888, flag=256) = 0
-00:00.069013385 cpu#0 pid 23855 [ls] newfstatat(dfd=18446744073709551516, filename=15935616 "/bin/wall", statbuf=140733574659888, flag=256) = 0
-00:00.069698145 cpu#0 pid 23855 [ls] newfstatat(dfd=18446744073709551516, filename=15941664 "/bin/wget", statbuf=140733574659888, flag=256) = 0
-00:00.070749979 cpu#0 pid 23855 [ls] newfstatat(dfd=18446744073709551516, filename=15950448 "/bin/whoami", statbuf=140733574659888, flag=256) = 0
-00:00.071240372 cpu#0 pid 23855 [ls] newfstatat(dfd=18446744073709551516, filename=15954192 "/bin/watch", statbuf=140733574659888, flag=256) = 0
-00:00.071303433 cpu#0 pid 23855 [ls] newfstatat(dfd=18446744073709551516, filename=15954768 "/bin/whois", statbuf=140733574659888, flag=256) = 0
-00:00.071700065 cpu#0 pid 23855 [ls] newfstatat(dfd=18446744073709551516, filename=15958080 "/bin/watchdog", statbuf=140733574659888, flag=256) = 0
+$ ./inspektor-gadget straceback list
+NODE              TRACES
+ip-10-0-30-247    10.0.30.247_default_mypod
+ip-10-0-44-74
+ip-10-0-5-181
+
+$ ./inspektor-gadget straceback show 10.0.30.247_default_mypod | grep /bin/w
+00:00.074622185 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20772880 "/bin/wall", statbuf=140723555968544, flag=256) = 0
+00:00.075257559 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20776192 "/bin/whois", statbuf=140723555968544, flag=256) = 0
+00:00.076278991 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20781952 "/bin/which", statbuf=140723555968544, flag=256) = 0
+00:00.077687964 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20791600 "/bin/whoami", statbuf=140723555968544, flag=256) = 0
+00:00.078381695 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20797072 "/bin/w", statbuf=140723555968544, flag=256) = 0
+00:00.080034442 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20806720 "/bin/wc", statbuf=140723555968544, flag=256) = 0
+00:00.080110492 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20807152 "/bin/wget", statbuf=140723555968544, flag=256) = 0
+00:00.080376067 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20809168 "/bin/who", statbuf=140723555968544, flag=256) = 0
+00:00.081162362 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20815360 "/bin/watchdog", statbuf=140723555968544, flag=256) = 0
+00:00.081412726 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20817088 "/bin/watch", statbuf=140723555968544, flag=256) = 0
+
+$ ./inspektor-gadget straceback close 10.0.30.247_default_mypod
+closed
 ```
 
