@@ -86,6 +86,8 @@ bpf_text = """
 #include <net/sock.h>
 #include <bcc/proto.h>
 
+#define DEBUG_PRINT 0
+
 struct ipv4_key_t {
     u32 pid;
     u32 saddr;
@@ -207,21 +209,21 @@ if args.label:
     bpf_text = bpf_text.replace('LABEL_FILTER',
         '''
            u64 cgroupid = bpf_get_current_cgroup_id();
-           bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
+           DEBUG_PRINT && bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
            u32 *innermap = cgrouplabelsmap.lookup(&cgroupid);
            if (innermap == NULL) {
-             bpf_trace_printk("no innermap\\n");
+             DEBUG_PRINT && bpf_trace_printk("no innermap\\n");
              return 0;
            }
 
            text64 textkey = {%s};
            text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &textkey[0]);
            if (textvalue == NULL) {
-             bpf_trace_printk("no such label\\n");
+             DEBUG_PRINT && bpf_trace_printk("no such label\\n");
              return 0;
            }
            if (%s) {
-             bpf_trace_printk("label with different value\\n");
+             DEBUG_PRINT && bpf_trace_printk("label with different value\\n");
              return 0;
            }
         ''' % (
@@ -239,21 +241,21 @@ if args.namespace:
         '''
         {
            u64 cgroupid = bpf_get_current_cgroup_id();
-           bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
+           DEBUG_PRINT && bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
            u32 *innermap = cgroupmetadatas.lookup(&cgroupid);
            if (innermap == NULL) {
-             bpf_trace_printk("no innermap\\n");
+             DEBUG_PRINT && bpf_trace_printk("no innermap\\n");
              return 0;
            }
 
            u32 key = 0; /* namespace */
            text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &key);
            if (textvalue == NULL) {
-             bpf_trace_printk("no namespace defined\\n");
+             DEBUG_PRINT && bpf_trace_printk("no namespace defined\\n");
              return 0;
            }
            if (%s) {
-             bpf_trace_printk("namespace has different value\\n");
+             DEBUG_PRINT && bpf_trace_printk("namespace has different value\\n");
              return 0;
            }
         }
@@ -271,21 +273,21 @@ if args.podname:
         '''
         {
            u64 cgroupid = bpf_get_current_cgroup_id();
-           bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
+           DEBUG_PRINT && bpf_trace_printk("checking cgroupid: %%llu\\n", cgroupid);
            u32 *innermap = cgroupmetadatas.lookup(&cgroupid);
            if (innermap == NULL) {
-             bpf_trace_printk("no innermap\\n");
+             DEBUG_PRINT && bpf_trace_printk("no innermap\\n");
              return 0;
            }
 
            u32 key = 1; /* podname */
            text64 *textvalue = bpf_map_lookup_elem_((uintptr_t)innermap, &key);
            if (textvalue == NULL) {
-             bpf_trace_printk("no podname defined\\n");
+             DEBUG_PRINT && bpf_trace_printk("no podname defined\\n");
              return 0;
            }
            if (%s) {
-             bpf_trace_printk("pod has different name\\n");
+             DEBUG_PRINT && bpf_trace_printk("pod has different name\\n");
              return 0;
            }
         }
