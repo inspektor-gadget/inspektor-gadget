@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: restrictive-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      run: mypod
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 1.1.1.1/32
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 1.1.1.1/32
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
