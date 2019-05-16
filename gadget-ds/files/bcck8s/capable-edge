@@ -24,7 +24,6 @@ import fcntl
 # arguments
 examples = """examples:
     ./capable              # trace capability checks
-    ./capable -v           # verbose: include non-audit checks
     ./capable -p 181       # only trace PID 181
     ./capable -l app=web   # only trace pods with this label
     ./capable -s namespace # only trace pods in this namespace
@@ -36,8 +35,6 @@ parser = argparse.ArgumentParser(
     description="Trace security capability checks",
     formatter_class=argparse.RawDescriptionHelpFormatter,
     epilog=examples)
-parser.add_argument("-v", "--verbose", action="store_true",
-    help="include non-audit checks")
 parser.add_argument("-p", "--pid",
     help="trace this PID only")
 parser.add_argument("-l", "--label",
@@ -118,7 +115,6 @@ struct data_t {
    u32 pid;
    u32 uid;
    int cap;
-   int audit;
    char comm[TASK_COMM_LEN];
 #ifdef KERNEL_STACKS
    int kernel_stack_id;
@@ -138,8 +134,8 @@ BPF_PERF_OUTPUT(events);
 BPF_STACK_TRACE(stacks, 2048);
 #endif
 
-int trace_cap_capable(struct pt_regs *ctx, const struct cred *cred,
-    struct user_namespace *targ_ns, int cap, int audit)
+int trace_cap_capable(struct pt_regs *ctx,
+    struct user_namespace *targ_ns, int cap)
 {
     u64 __pid_tgid = bpf_get_current_pid_tgid();
     u32 tgid = __pid_tgid >> 32;
@@ -153,7 +149,7 @@ int trace_cap_capable(struct pt_regs *ctx, const struct cred *cred,
     FILTER3
 
     u32 uid = bpf_get_current_uid_gid();
-    struct data_t data = {.tgid = tgid, .pid = pid, .uid = uid, .cap = cap, .audit = audit};
+    struct data_t data = {.tgid = tgid, .pid = pid, .uid = uid, .cap = cap};
 #ifdef KERNEL_STACKS
     data.kernel_stack_id = stacks.get_stackid(ctx, 0);
 #endif
@@ -169,8 +165,6 @@ int trace_cap_capable(struct pt_regs *ctx, const struct cred *cred,
 if args.pid:
     bpf_text = bpf_text.replace('FILTER1',
         'if (pid != %s) { return 0; }' % args.pid)
-if not args.verbose:
-    bpf_text = bpf_text.replace('FILTER2', 'if (audit == 0) { return 0; }')
 if args.kernel_stack:
     bpf_text = "#define KERNEL_STACKS\n" + bpf_text
 if args.user_stack:
@@ -330,11 +324,11 @@ for x in bpf_text.split('\n'):
       os.dup2(external_fd, i)
       break
 
-b.attach_kprobe(event="cap_capable", fn_name="trace_cap_capable")
+b.attach_kprobe(event="ns_capable", fn_name="trace_cap_capable")
 
 # header
-print("%-9s %-6s %-6s %-6s %-16s %-4s %-20s %s" % (
-    "TIME", "UID", "PID", "TID", "COMM", "CAP", "NAME", "AUDIT"))
+print("%-9s %-6s %-6s %-6s %-16s %-4s %-20s" % (
+    "TIME", "UID", "PID", "TID", "COMM", "CAP", "NAME"))
 sys.stdout.flush()
 
 def stack_id_err(stack_id):
@@ -359,9 +353,9 @@ def print_event(bpf, cpu, data, size):
         name = capabilities[event.cap]
     else:
         name = "?"
-    print("%-9s %-6d %-6d %-6d %-16s %-4d %-20s %d" % (strftime("%H:%M:%S"),
+    print("%-9s %-6d %-6d %-6d %-16s %-4d %-20s" % (strftime("%H:%M:%S"),
         event.uid, event.pid, event.tgid, event.comm.decode('utf-8', 'replace'),
-        event.cap, name, event.audit))
+        event.cap, name))
     if args.kernel_stack:
         print_stack(bpf, event.kernel_stack_id, StackType.Kernel, -1)
     if args.user_stack:

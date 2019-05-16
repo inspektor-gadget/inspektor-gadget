@@ -59,7 +59,7 @@ var (
 	namespaceParam string
 	podnameParam   string
 
-	stackFlag      bool
+	stackFlag bool
 )
 
 func init() {
