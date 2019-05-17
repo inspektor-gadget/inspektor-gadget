@@ -40,9 +40,9 @@ var tcptopCmd = &cobra.Command{
 }
 
 var hintsNetworkCmd = &cobra.Command{
-	Use:               "hints-network",
+	Use:               "tcpconnect",
 	Short:             "Suggest Kubernetes Network Policies",
-	Run:               bccCmd("hints-network", "tcpconnect"),
+	Run:               bccCmd("tcpconnect", "tcpconnect"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 

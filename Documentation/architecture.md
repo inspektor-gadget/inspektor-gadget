@@ -39,10 +39,9 @@ They are set up and updated by an OCI Prestart Hook.
 
 ![Checking labels from BPF](checkinglabels.svg)
 
-The execsnoop, opensnoop, tcptop and hints-network subcommands use programs
-from [bcc](https://github.com/iovisor/bcc) with additional filtering modifications
-(hints-network is taken from tcpconnect.py). They are directly started on the
-nodes and their output is forwarded to Inspektor Gadget.
+The execsnoop, opensnoop, tcptop and tcpconnect subcommands use programs
+from [bcc](https://github.com/iovisor/bcc) with additional filtering modifications.
+They are directly started on the nodes and their output is forwarded to Inspektor Gadget.
 
 Sometimes it is useful to run a BPF program always in the background. It can trace
 everything and save it into different ringbuffers per pod.
