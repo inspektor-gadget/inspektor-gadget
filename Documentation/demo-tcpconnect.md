@@ -1,6 +1,6 @@
-# Inspektor Gadget demo: the "hints-network" gadget
+# Inspektor Gadget demo: the "tcpconnect" gadget
 
-The hints-network gadget traces TCP connect calls.
+The tcpconnect gadget traces TCP connect calls.
 This will help us to define a restrictive policy for outgoing connections.
 
 
@@ -9,7 +9,7 @@ the outgoing connections of our future pod (don't terminate it with Ctrl-C for n
 
 
 ```
-$ ./inspektor-gadget hints-network --podname mypod
+$ ./inspektor-gadget tcpconnect --podname mypod
 ```
 
 When we run the pod in a new terminal, we see the output `ok` since the public HTTP server was reached.
@@ -22,7 +22,7 @@ ok
 In our Inspektor Gadget terminal we can now see the logged connection:
 
 ```
-$ ./inspektor-gadget hints-network --podname mypod  # (still running in old terminal)
+$ ./inspektor-gadget tcpconnect --podname mypod  # (still running in old terminal)
 PID    COMM         IP SADDR            DADDR            DPORT
 9386                wget         4  10.2.232.47      1.1.1.1          80
 9386                wget         4  10.2.232.47      1.1.1.1          443
@@ -31,7 +31,7 @@ PID    COMM         IP SADDR            DADDR            DPORT
 (If the pod was started as part of a deployment, the name of the pod is not know
 in advance since random characters will be added as suffix.
 In that case, it is still possible to trace the connections. We would just
-use `./inspektor-gadget hints-network --label key=value` to filter the pods by
+use `./inspektor-gadget tcpconnect --label key=value` to filter the pods by
 labels instead of names.)
 
 There was a HTTP redirect to HTTPS, so we need to allow both ports for our pod.
@@ -85,7 +85,7 @@ Switching to the Inspektor Gadget terminal, we see the same connections again
 (but now with a new PID since it's a new pod):
 
 ```
-$ ./inspektor-gadget hints-network --podname mypod  # (still running in old terminal)
+$ ./inspektor-gadget tcpconnect --podname mypod  # (still running in old terminal)
 PID    COMM         IP SADDR            DADDR            DPORT
 9386                wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
 9386                wget         4  10.2.232.47      1.1.1.1          443 # (previous output)
@@ -108,7 +108,7 @@ connection the pod wanted to make in the last line. Since connecting to port 80 
 there is no redirect visible to port 443:
 
 ```
-$ ./inspektor-gadget hints-network --podname mypod  # (still running in old terminal)
+$ ./inspektor-gadget tcpconnect --podname mypod  # (still running in old terminal)
 PID    COMM         IP SADDR            DADDR            DPORT
 9386                wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
 9386                wget         4  10.2.232.47      1.1.1.1          443 # (previous output)

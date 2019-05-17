@@ -2,13 +2,13 @@
 [alban@neptune]$ @@@@@ TERMINAL=2 POSITION[2]=820,10  SKIP=1 SLEEP_PROMPT=0
 [alban@neptune]$ @@@@@ TERMINAL=3 POSITION[3]=10,500  SKIP=1 SLEEP_PROMPT=0
 [alban@neptune]$ @@@@@ TERMINAL=4 POSITION[4]=820,500 SKIP=1 SLEEP_PROMPT=0
-# Inspektor Gadget "hints-network" demo @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4
-[alban@neptune]$ # The hints-network gadget traces TCP connect calls.
+# Inspektor Gadget "tcpconnect" demo @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4
+[alban@neptune]$ # The tcpconnect gadget traces TCP connect calls.
 [alban@neptune]$ # This will help us to define a restrictive policy for outgoing connections.
 [alban@neptune]$
 [alban@neptune]$ # Before we start a demo pod that connects to a public HTTP      server, we already begin to trace the outgoing connections of our future pod.
 [alban@neptune]$
-[alban@neptune]$ ./inspektor-gadget hints-network --podname mypod @@@@@ SLEEP_NL=30
+[alban@neptune]$ ./inspektor-gadget tcpconnect --podname mypod @@@@@ SLEEP_NL=30
 PID    COMM         IP SADDR            DADDR            DPORT
 # Let's start the demo pod: @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
 [alban@neptune]$ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.1.1.1 && echo ok || echo failed' @@@@@ SLEEP_CHAR=8 SLEEP_NL=60

@@ -1,6 +1,6 @@
-# Builder: straceback
+# Builder: traceloop
 
-FROM docker.io/kinvolk/straceback:latest as straceback
+FROM docker.io/kinvolk/traceloop:latest as traceloop
 
 # Builder: bpftool
 
@@ -67,7 +67,7 @@ RUN apt-get update && apt-get install -y \
   curl
 
 COPY --from=bpftool-build /bin/bpftool /bin/bpftool
-COPY --from=straceback /bin/straceback /bin/straceback
+COPY --from=traceloop /bin/traceloop /bin/traceloop
 COPY --from=cgroupid /bin/cgroupid /bin/cgroupid
 COPY --from=runc-build /bin/runc-static-hooks /bin/runc-static-hooks
 COPY --from=kubectl-get /bin/kubectl /bin/kubectl

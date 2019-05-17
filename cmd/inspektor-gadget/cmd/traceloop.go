@@ -17,40 +17,40 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 )
 
-var stracebackCmd = &cobra.Command{
-	Use:               "straceback",
+var traceloopCmd = &cobra.Command{
+	Use:               "traceloop",
 	Short:             "Get strace-like logs of a pod from the past",
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
-var stracebackListCmd = &cobra.Command{
+var traceloopListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "list possible traces",
-	Run:   runStracebackList,
+	Run:   runTraceloopList,
 }
 
-var stracebackShowCmd = &cobra.Command{
+var traceloopShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "show one trace",
-	Run:   runStracebackShow,
+	Run:   runTraceloopShow,
 }
 
-var stracebackCloseCmd = &cobra.Command{
+var traceloopCloseCmd = &cobra.Command{
 	Use:   "close",
 	Short: "close one trace",
-	Run:   runStracebackClose,
+	Run:   runTraceloopClose,
 }
 
 func init() {
-	rootCmd.AddCommand(stracebackCmd)
-	stracebackCmd.AddCommand(stracebackListCmd)
-	stracebackCmd.AddCommand(stracebackShowCmd)
-	stracebackCmd.AddCommand(stracebackCloseCmd)
+	rootCmd.AddCommand(traceloopCmd)
+	traceloopCmd.AddCommand(traceloopListCmd)
+	traceloopCmd.AddCommand(traceloopShowCmd)
+	traceloopCmd.AddCommand(traceloopCloseCmd)
 }
 
-func runStracebackList(cmd *cobra.Command, args []string) {
+func runTraceloopList(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
-		"command": "inspektor-gadget straceback list",
+		"command": "inspektor-gadget traceloop list",
 		"args":    args,
 	})
 
@@ -73,15 +73,15 @@ func runStracebackList(cmd *cobra.Command, args []string) {
 	fmt.Fprintln(w, "NODE\tTRACES\t")
 
 	for _, node := range nodes.Items {
-		line := fmt.Sprintf("%s\t%s\t", node.Name, execPodQuick(client, node.Name, `curl --silent --unix-socket /run/straceback.socket 'http://localhost/list' | strings | sed 's/[0-9]*: \[\(.*\)\] .*$/\1/' | tr '\n' ' ' `))
+		line := fmt.Sprintf("%s\t%s\t", node.Name, execPodQuick(client, node.Name, `curl --silent --unix-socket /run/traceloop.socket 'http://localhost/list' | strings | sed 's/[0-9]*: \[\(.*\)\] .*$/\1/' | tr '\n' ' ' `))
 		fmt.Fprintln(w, line)
 	}
 	w.Flush()
 }
 
-func runStracebackShow(cmd *cobra.Command, args []string) {
+func runTraceloopShow(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
-		"command": "inspektor-gadget straceback show",
+		"command": "inspektor-gadget traceloop show",
 		"args":    args,
 	})
 
@@ -109,13 +109,13 @@ func runStracebackShow(cmd *cobra.Command, args []string) {
 			continue
 		}
 		fmt.Printf("%s", execPodQuick(client, node.Name,
-			fmt.Sprintf(`curl --silent --unix-socket /run/straceback.socket 'http://localhost/dump-by-name?name=%s' ; echo`, args[0])))
+			fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/dump-by-name?name=%s' ; echo`, args[0])))
 	}
 }
 
-func runStracebackClose(cmd *cobra.Command, args []string) {
+func runTraceloopClose(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
-		"command": "inspektor-gadget straceback close",
+		"command": "inspektor-gadget traceloop close",
 		"args":    args,
 	})
 
@@ -143,7 +143,7 @@ func runStracebackClose(cmd *cobra.Command, args []string) {
 			continue
 		}
 		fmt.Printf("%s", execPodQuick(client, node.Name,
-			fmt.Sprintf(`curl --silent --unix-socket /run/straceback.socket 'http://localhost/close-by-name?name=%s' ; echo`, args[0])))
+			fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/close-by-name?name=%s' ; echo`, args[0])))
 	}
 
 }
