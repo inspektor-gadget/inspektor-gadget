@@ -47,13 +47,13 @@ nodes and their output is forwarded to Inspektor Gadget.
 Sometimes it is useful to run a BPF program always in the background. It can trace
 everything and save it into different ringbuffers per pod.
 The userspace utility can then accesses a ring buffer retrospectively only if needed
-for introspection or errors. This is currently done for [straceback](https://github.com/kinvolk/straceback) (not present in bcc),
+for introspection or errors. This is currently done for [traceloop](https://github.com/kinvolk/traceloop) (not present in bcc),
 which uses an [overwriteable ring buffer](https://lwn.net/Articles/694140/) to only log a small amount of recent events.
 It uses a service per each node which provides a Unix Domain Socket accepting HTTP
 requests to list the available traces and to dump them (this stops tracing even if the
 pod did not already crash).
 
-![Debugging with straceback on Kubernetes](straceback.svg)
+![Debugging with traceloop on Kubernetes](traceloop.svg)
 
 ## Previous talks
 

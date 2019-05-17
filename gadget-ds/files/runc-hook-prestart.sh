@@ -74,10 +74,10 @@ $KUBECTL --kubeconfig=/etc/kubernetes/kubeconfig get pod --all-namespaces -o jso
     $BPFTOOL map create $BPFDIR/metadata$CGROUP_ID type array key 4 value 64 entries 2 name metadata$CGROUP_ID
 
     if [ "$PAUSE_CONTAINER" = "no" ] ; then
-      echo "Registering to straceback"
-      curl --unix-socket /run/straceback.socket "http://localhost/add?name=${nodename}_${namespace}_${podname}&cgrouppath=${CGROUP_PATH}" || true
+      echo "Registering to traceloop"
+      curl --unix-socket /run/traceloop.socket "http://localhost/add?name=${nodename}_${namespace}_${podname}&cgrouppath=${CGROUP_PATH}" || true
     else
-      echo "Found pause container. Don't register to straceback"
+      echo "Found pause container. Don't register to traceloop"
     fi
 
     echo "Metadata"

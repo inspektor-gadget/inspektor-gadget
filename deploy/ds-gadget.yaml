@@ -38,7 +38,7 @@ spec:
       containers:
       - name: gadget
         image: docker.io/kinvolk/gadget:latest
-        command: [ "/bin/sh", "-c", "rm -f /run/straceback.socket && /bin/straceback serve" ]
+        command: [ "/bin/sh", "-c", "rm -f /run/traceloop.socket && /bin/traceloop serve" ]
         securityContext:
           privileged: true
         volumeMounts:
