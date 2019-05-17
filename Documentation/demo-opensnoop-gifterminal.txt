@@ -13,7 +13,7 @@
 PID    COMM               FD ERR PATH @@@@@ SLEEP_NL=100
 18455  whoami              3   0 /etc/passwd @@@@@ SLEEP_NL=300
 18521  whoami              3   0 /etc/passwd @@@@@ SLEEP_NL=150
-# Seems the whoami command opens "/etc/passwd" to map the user ID to a user name. @@@@@ TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
+# Seems the whoami command opens "/etc/passwd" to map the    user ID to a user name. @@@@@ TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
 [alban@neptune]$ @@@@@ SKIP=1 TERMINAL=2
 18525  whoami              3   0 /etc/passwd @@@@@ SLEEP_NL=150
 # We can leave opensnoop by hitting Ctrl-C. @@@@@ TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
