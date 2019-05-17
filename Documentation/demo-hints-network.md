@@ -123,7 +123,7 @@ Finally, we should delete the demo pod and network policy again:
 ```
 $ kubectl delete pod mypod
 pod "mypod" deleted
-$ kubectl delete -f network-policy.yaml
+$ kubectl delete -f Documentation/network-policy.yaml
 networkpolicy.networking.k8s.io "restrictive-network-policy" deleted
 ```
 
