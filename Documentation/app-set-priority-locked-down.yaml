@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: set-priority
+  labels:
+    k8s-app: set-priority
+spec:
+  selector:
+    matchLabels:
+      name: set-priority
+  template:
+    metadata:
+      labels:
+        name: set-priority
+    spec:
+      containers:
+      - name: set-priority
+        image: busybox
+        command: [ "sh", "-c", "while /bin/true ; do nice -n -20 echo ; sleep 5; done" ]
+        securityContext:
+          capabilities:
+            add: ["SYS_NICE"]
+            drop: [all]
