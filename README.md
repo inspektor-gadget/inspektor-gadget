@@ -29,11 +29,26 @@ Inspektor Gadget is a kubectl plugin. It can also be invoked with `kubectl gadge
 - [Demo: the "tcptop" gadget](Documentation/demo-tcptop.md) – watch it [as GIF](Documentation/demo-tcptop-gifterminal.md)
 - [Demo: the "hints-network" gadget](Documentation/demo-hints-network.md) — watch it [as GIF](Documentation/demo-hints-network-gifterminal.md)
 
+As preview for the above demos, here is the `opensnoop` demo:
+
+![](Documentation/demo-opensnoop-gifterminal.gif)
+
+(Click on the image above and then click *Download* to enlarge.)
+
 ## How does it work?
 
-[architecture](Documentation/architecture.md)
+Inspektor Gadget is deployed to each node as a privileged DeamonSet.
+It uses in-kernel BPF helper programs to monitor events mainly related to
+syscalls from userspace programs in a pod. The BPF programs are run by
+the kernel and gather the log data. Inspector Gadget's userspace
+utilities fetch the log data from ring buffers and display it. What BPF
+programs are and how Inspektor Gadget uses them is briefly explained here:
+
+[Read more about the architecture](Documentation/architecture.md)
 
 ## Installation
 
-[install](Documentation/install.md)
+Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/).
+
+[Read the detailed install instructions](Documentation/install.md)
 
