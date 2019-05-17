@@ -107,8 +107,17 @@ $ ./inspektor-gadget health
 
 - Kubernetes
 - Linux >= 4.18 (for [`bpf_get_current_cgroup_id`](https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md))
-- cgroup-v2 enabled in systemd, kubelet, docker, containerd and runc
+- cgroup-v2 enabled in:
+  - systemd
+    - boot option `systemd.unified_cgroup_hierarchy=false systemd.legacy_systemd_cgroup_controller=false`
+  - kubelet
+    - `--cgroup-driver=systemd`
+  - docker
+    - `DOCKER_OPTS="--exec-opt native.cgroupdriver=systemd"`
+  - containerd
+    - `systemd_cgroup = true` in `$XDG_DATA_DIR/share/containerd/config.toml`
+  - runc
 - runc recompiled with [additional static OCI hooks](https://github.com/kinvolk/runc/tree/alban/static-hooks)
-- tools installed on the worker nodes: [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), [cgroupid](https://github.com/kinvolk/cgroupid), [bpftool](https://github.com/kinvolk/linux/tree/alban/bpftool-all/tools/bpf/bpftool)
+- tools installed in `/opt/bin` on the nodes: [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), [cgroupid](https://github.com/kinvolk/cgroupid), [bpftool](https://github.com/kinvolk/linux/tree/alban/bpftool-all/tools/bpf/bpftool)
 - The gadget daemon set
 
