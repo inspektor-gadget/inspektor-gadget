@@ -20,3 +20,9 @@ build-slim:
 		-ldflags $(LDFLAGS) \
 		-o inspektor-gadget \
 		github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget
+	cp inspektor-gadget kubectl-gadget
+
+.PHONY: install-user
+install-user: build-slim
+	mkdir -p ~/.local/bin/
+	cp inspektor-gadget kubectl-gadget ~/.local/bin/

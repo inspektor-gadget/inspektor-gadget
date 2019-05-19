@@ -8,7 +8,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "inspektor-gadget",
+	Use:   "kubectl-gadget",
 	Short: "Collection of gadgets for Kubernetes developers",
 }
 
