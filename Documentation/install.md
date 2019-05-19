@@ -13,84 +13,9 @@ From the [releases](https://github.com/kinvolk/inspektor-gadget/releases).
 
 ### On Lokomotive on Flatcar Edge
 
-**Note:** You need `lokoctl` from [this branch](https://github.com/kinvolk/lokoctl/tree/alban/edge-new1)
-(see discussion in [LKPR#49](https://github.com/kinvolk/lokomotive-kubernetes/pull/49)
-and [PR#24](https://github.com/kinvolk/lokomotive-kubernetes/pull/24) for details).
+Install your cluster following the [Lokomotive docs for AWS](https://github.com/kinvolk/lokomotive-kubernetes/blob/master/docs/flatcar-linux/aws.md).
 
-Prepare the `lokoctl` files:
-
-- custom.yaml:
-```
-# custom-units
-systemd:
-  units:
-    - name: kubelet.service
-      enable: true
-      dropins:
-        - name: 50-edge-cluster.conf
-          contents: |
-            [Service]
-            Environment="KUBELET_EXTRA_ARGS=--cgroup-driver=systemd"
-```
-
-- mycluster.lokocfg:
-```
-variable "asset_dir" {
-	type = "string"
-}
-
-variable "aws_creds" {
-	type = "string"
-}
-
-variable "cluster_name" {
-	type = "string"
-}
-
-variable "dns_zone" {
-	type = "string"
-}
-
-variable "dns_zone_id" {
-	type = "string"
-}
-
-variable "ssh_pubkey" {
-	type = "string"
-}
-
-
-cluster "aws" {
-	asset_dir = "${pathexpand(var.asset_dir)}"
-	creds_path = "${pathexpand(var.aws_creds)}"
-	cluster_name = "${var.cluster_name}"
-	os_image = "flatcar-edge"
-	dns_zone = "${var.dns_zone}"
-	dns_zone_id = "${var.dns_zone_id}"
-	ssh_pubkey = "${pathexpand(var.ssh_pubkey)}"
-
-	worker_clc_snippets = ["${file("./custom.yaml")}"]
-	controller_clc_snippets = ["${file("./custom.yaml")}"]
-}
-
-component "ingress-nginx" {
-}
-```
-
-- lokocfg.vars:
-```
-cluster_name = "CHANGEME"
-asset_dir = "~/lokoctl-assets/CHANGEME"
-aws_creds = "~/.aws/credentials"
-dns_zone = "CHANGEME"
-dns_zone_id = "CHANGEME"
-ssh_pubkey = "~/.ssh/id_rsa.pub"
-```
-
-Install your cluster:
-```
-$ lokoctl cluster install
-```
+Note, you should enable Flatcar Linux edge following the [Lokomotive docs](https://github.com/kinvolk/lokomotive-kubernetes/#try-flatcar-edge).
 
 Deploy the gadget daemon set:
 ```
