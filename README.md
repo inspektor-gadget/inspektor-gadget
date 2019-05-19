@@ -8,16 +8,29 @@ Kubernetes distributions.
 ## How to use
 
 ```
-$ inspektor-gadget
-inspektor-gadget is a collection of gadgets for Kubernetes developers.
+$ kubectl gadget
+Collection of gadgets for Kubernetes developers
 
-List of gadgets:
-  execsnoop             Watch programs being executed in pods
-  opensnoop             Watch files being opened in pods
-  tcptop                Monitor the network traffic in pods
-  traceloop             Get strace-like logs of a pod from the past
-  capabilities          Suggest security capabilities for securityContext
-  tcpconnect            Get network policy hints suited for your app
+Usage:
+  kubectl gadget [command]
+
+Available Commands:
+  capabilities Suggest Security Capabilities for securityContext
+  execsnoop    Trace new processes
+  health       Check the gadget installation on a Kubernetes cluster
+  help         Help about any command
+  install      Install or reinstall Inspektor Gadget on the worker nodes
+  opensnoop    Trace files
+  tcpconnect   Suggest Kubernetes Network Policies
+  tcptop       Show the TCP traffic in a pod
+  traceloop    Get strace-like logs of a pod from the past
+  version      Show version
+
+Flags:
+  -h, --help                help for kubectl-gadget
+      --kubeconfig string   Path to kubeconfig file (default "/home/alban/.kube/config")
+
+Use "kubectl gadget [command] --help" for more information about a command.
 ```
 
 Inspektor Gadget is a kubectl plugin. It can also be invoked with `kubectl gadget`.
