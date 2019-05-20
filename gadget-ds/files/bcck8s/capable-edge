@@ -25,7 +25,6 @@ import fcntl
 examples = """examples:
     ./capable              # trace capability checks
     ./capable -v           # verbose: include non-audit checks
-    ./capable -n           # suppress checks with INSETID bit
     ./capable -p 181       # only trace PID 181
     ./capable -l app=web   # only trace pods with this label
     ./capable -s namespace # only trace pods in this namespace
@@ -39,8 +38,6 @@ parser = argparse.ArgumentParser(
     epilog=examples)
 parser.add_argument("-v", "--verbose", action="store_true",
     help="include non-audit checks")
-parser.add_argument("-n", "--no-insetid", action="store_true",
-    help="suppress checks with INSETID bit")
 parser.add_argument("-p", "--pid",
     help="trace this PID only")
 parser.add_argument("-l", "--label",
@@ -113,6 +110,7 @@ StackType = Enum(("Kernel", "User",))
 bpf_text = """
 #include <uapi/linux/ptrace.h>
 #include <linux/sched.h>
+#include <linux/security.h>
 
 #define DEBUG_PRINT 0
 
@@ -121,7 +119,8 @@ struct data_t {
    u32 pid;
    u32 uid;
    int cap;
-   int cap_opt;
+   int audit;
+   int insetid;
    char comm[TASK_COMM_LEN];
 #ifdef KERNEL_STACKS
    int kernel_stack_id;
@@ -147,17 +146,26 @@ int trace_cap_capable(struct pt_regs *ctx, const struct cred *cred,
     u64 __pid_tgid = bpf_get_current_pid_tgid();
     u32 tgid = __pid_tgid >> 32;
     u32 pid = __pid_tgid;
+    int audit;
+    int insetid;
+
+  #ifdef CAP_OPT_NONE
+    audit = (cap_opt & 0b10) == 0;
+    insetid = (cap_opt & 0b100) != 0;
+  #else
+    audit = cap_opt;
+    insetid = -1;
+  #endif
 
     LABEL_FILTER
     NAMESPACE_FILTER
     PODNAME_FILTER
     FILTER1
-    FILTER_INSETID
     FILTER2
     FILTER3
 
     u32 uid = bpf_get_current_uid_gid();
-    struct data_t data = {.tgid = tgid, .pid = pid, .uid = uid, .cap = cap, .cap_opt = cap_opt};
+    struct data_t data = {.tgid = tgid, .pid = pid, .uid = uid, .cap = cap, .audit = audit, .insetid = insetid};
 #ifdef KERNEL_STACKS
     data.kernel_stack_id = stacks.get_stackid(ctx, 0);
 #endif
@@ -174,15 +182,12 @@ if args.pid:
     bpf_text = bpf_text.replace('FILTER1',
         'if (pid != %s) { return 0; }' % args.pid)
 if not args.verbose:
-    bpf_text = bpf_text.replace('FILTER2', 'if ((cap_opt & 0b1) == 0) { return 0; }')
-if args.no_insetid:
-    bpf_text = bpf_text.replace('FILTER_INSETID', 'if ((cap_opt & 0b10) != 0) { return 0; }')
+    bpf_text = bpf_text.replace('FILTER2', 'if (audit == 0) { return 0; }')
 if args.kernel_stack:
     bpf_text = "#define KERNEL_STACKS\n" + bpf_text
 if args.user_stack:
     bpf_text = "#define USER_STACKS\n" + bpf_text
 bpf_text = bpf_text.replace('FILTER1', '')
-bpf_text = bpf_text.replace('FILTER_INSETID', '')
 bpf_text = bpf_text.replace('FILTER2', '')
 bpf_text = bpf_text.replace('FILTER3',
     'if (pid == %s) { return 0; }' % os.getpid())
@@ -366,9 +371,9 @@ def print_event(bpf, cpu, data, size):
         name = capabilities[event.cap]
     else:
         name = "?"
-    print("%-9s %-6d %-6d %-6d %-16s %-4d %-20s %-6d %d" % (strftime("%H:%M:%S"),
+    print("%-9s %-6d %-6d %-6d %-16s %-4d %-20s %-6d %s" % (strftime("%H:%M:%S"),
         event.uid, event.pid, event.tgid, event.comm.decode('utf-8', 'replace'),
-        event.cap, name, event.cap_opt & 0b1, (event.cap_opt & 0b10) != 0))
+        event.cap, name, event.audit, str(event.insetid) if event.insetid != -1 else "N/A"))
     if args.kernel_stack:
         print_stack(bpf, event.kernel_stack_id, StackType.Kernel, -1)
     if args.user_stack:
