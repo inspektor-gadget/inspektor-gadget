@@ -1,17 +1,17 @@
-[alban@neptune]$ @@@@@ TERMINAL=1 POSITION[1]=10,200  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
-[alban@neptune]$ @@@@@ TERMINAL=2 POSITION[2]=820,200 SKIP=1 SLEEP_PROMPT=0
+$ @@@@@ TERMINAL=1 POSITION[1]=6,25  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
+$ @@@@@ TERMINAL=2 POSITION[2]=6,480 SKIP=1 SLEEP_PROMPT=0
 # Inspektor Gadget "tcptop" demo @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4
-[alban@neptune]$ # The tcptop gadget allows us to see active TCP connections.
-[alban@neptune]$ @@@@@ SKIP=1
+$ # The tcptop gadget allows us to see active TCP connections.
+$ @@@@@ SKIP=1
 # Let's start a pod that fetches a website every 3 seconds. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-[alban@neptune]$ kubectl run --restart=Never --image=busybox mypod -- sh -c 'while /bin/true ; do wget -O - https://kinvolk.io ; sleep 3 ; done' @@@@@ SLEEP_CHAR=8 SLEEP_NL=100
-[alban@neptune]$
-[alban@neptune]$ kubectl get pod -o wide @@@@@ SLEEP_PROMPT_EOL=50
+$ kubectl run --restart=Never --image=busybox mypod -- sh -c 'while /bin/true ; do wget -O - https://kinvolk.io ; sleep 3 ; done' @@@@@ SLEEP_CHAR=8 SLEEP_NL=100
+$
+$ kubectl get pod -o wide @@@@@ SLEEP_PROMPT_EOL=50
 NAME    READY   STATUS    RESTARTS   AGE     IP            NODE             NOMINATED NODE   READINESS GATES
 mypod   1/1     Running   0          2m45s   10.2.232.15   ip-10-0-30-247   <none>           <none>
-[alban@neptune]$
-[alban@neptune]$ # Now we use Inspektor Gadget to show us the TCP connections.
-[alban@neptune]$ @@@@@ SKIP=1
+$
+$ # Now we use Inspektor Gadget to show us the TCP connections.
+$ @@@@@ SKIP=1
 ./inspektor-gadget tcptop --node ip-10-0-30-247 --namespace default --podname mypod @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=50
 
 12:36:41 loadavg: 1.41 1.58 1.11 5/381 690

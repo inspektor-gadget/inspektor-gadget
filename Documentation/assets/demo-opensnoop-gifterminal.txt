@@ -1,23 +1,23 @@
-[alban@neptune]$ @@@@@ TERMINAL=1 POSITION[1]=10,200  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
-[alban@neptune]$ @@@@@ TERMINAL=2 POSITION[2]=820,200 SKIP=1 SLEEP_PROMPT=0
+$ @@@@@ TERMINAL=1 POSITION[1]=6,25  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
+$ @@@@@ TERMINAL=2 POSITION[2]=6,480 SKIP=1 SLEEP_PROMPT=0
 # Inspektor Gadget "opensnoop" demo @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4
-[alban@neptune]$ # The opensnoop gadget watches files that programs in pods     open.
-[alban@neptune]$ # Pods can be selected by Kubernetes labels, pod names,        namespaces, and nodes.
-[alban@neptune]$ @@@@@ SKIP=1
+$ # The opensnoop gadget watches files that programs in pods open.
+$ # Pods can be selected by Kubernetes labels, pod names, namespaces, and nodes.
+$ @@@@@ SKIP=1
 # Here we deploy a small demo pod "mypod": @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-[alban@neptune]$ kubectl run --restart=Never --image=busybox mypod -- sh -c 'while /bin/true ; do whoami ; sleep 3 ; done' @@@@@ SLEEP_CHAR=8
-[alban@neptune]$ @@@@@ SKIP=1
-# Using the opensnoop gadget, we can see which processes open   what files. @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
-[alban@neptune]$ # We can simply filter for the pod "mypod" and omit            specifying the node, thus snooping on all nodes for pod "mypod":
-[alban@neptune]$ ./inspektor-gadget opensnoop --podname mypod @@@@@ SLEEP_NL=60
+$ kubectl run --restart=Never --image=busybox mypod -- sh -c 'while /bin/true ; do whoami ; sleep 3 ; done' @@@@@ SLEEP_CHAR=8
+$ @@@@@ SKIP=1
+# Using the opensnoop gadget, we can see which processes open what files. @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
+$ # We can simply filter for the pod "mypod" and omit specifying the node, thus snooping on all nodes for pod "mypod":
+$ ./inspektor-gadget opensnoop --podname mypod @@@@@ SLEEP_NL=60
 PID    COMM               FD ERR PATH @@@@@ SLEEP_NL=100
 18455  whoami              3   0 /etc/passwd @@@@@ SLEEP_NL=300
 18521  whoami              3   0 /etc/passwd @@@@@ SLEEP_NL=150
-# Seems the whoami command opens "/etc/passwd" to map the    user ID to a user name. @@@@@ TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-[alban@neptune]$ @@@@@ SKIP=1 TERMINAL=2
+# Seems the whoami command opens "/etc/passwd" to map the user ID to a user name. @@@@@ TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
+$ @@@@@ SKIP=1 TERMINAL=2
 18525  whoami              3   0 /etc/passwd @@@@@ SLEEP_NL=150
 # We can leave opensnoop by hitting Ctrl-C. @@@@@ TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-[alban@neptune]$ @@@@@ SKIP=1 TERMINAL=2
+$ @@@@@ SKIP=1 TERMINAL=2
 18530  whoami              3   0 /etc/passwd @@@@@ SLEEP_NL=100
 ^CInterrupted!
-[alban@neptune]$ @@@@@ SLEEP_PROMPT_EOL=400
+$ @@@@@ SLEEP_PROMPT_EOL=400

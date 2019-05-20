@@ -1,11 +1,11 @@
-[alban@neptune]$ @@@@@ TERMINAL=1 POSITION[1]=10,200  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
-[alban@neptune]$ @@@@@ TERMINAL=2 POSITION[2]=820,200 SKIP=1 SLEEP_PROMPT=0
+$ @@@@@ TERMINAL=1 POSITION[1]=6,25  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
+$ @@@@@ TERMINAL=2 POSITION[2]=6,480 SKIP=1 SLEEP_PROMPT=0
 # Inspektor Gadget "capabilities" demo @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4
-[alban@neptune]$ # The capabilities gadget allows us to see what capability     security checks are triggered by applications running in Kubernetes Pods.
-[alban@neptune]$ # We can debug missing capabilities and lock the security      policy down to only the used capabilities.
-[alban@neptune]$ @@@@@ SKIP=1
-# Here we have a small demo app which logs failures due to     lacking capabilities. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-[alban@neptune]$ @@@@@ SKIP=1
+$ # The capabilities gadget allows us to see what capability security checks are triggered by applications running in Kubernetes Pods.
+$ # We can debug missing capabilities and lock the security policy down to only the used capabilities.
+$ @@@@@ SKIP=1
+# Here we have a small demo app which logs failures due to lacking capabilities. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
+$ @@@@@ SKIP=1
 cat Documentation/examples/app-set-priority.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 apiVersion: apps/v1
 kind: Deployment
@@ -26,16 +26,16 @@ spec:
       - name: set-priority
         image: busybox
         command: [ "sh", "-c", "while /bin/true ; do nice -n -20 echo ; sleep 5; done" ]
-[alban@neptune]$ @@@@@ SKIP=1
+$ @@@@@ SKIP=1
 kubectl apply -f Documentation/examples/app-set-priority.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
 deployment.apps/set-priority created
-[alban@neptune]$ kubectl logs -lname=set-priority
+$ kubectl logs -lname=set-priority
 nice: setpriority(-20): Permission denied
 nice: setpriority(-20): Permission denied
-[alban@neptune]$ # We could see the error messages in the pod's log.
-[alban@neptune]$ # Since none of the default capabilities is dropped, we have to find out what non-default capability we have to add.
-[alban@neptune]$ # Let's use Inspektor Gadget to watch the capability checks:
-[alban@neptune]$$ ./inspektor-gadget capabilities --label name=set-priority
+$ # We could see the error messages in the pod's log.
+$ # Since none of the default capabilities is dropped, we have to find out what non-default capability we have to add.
+$ # Let's use Inspektor Gadget to watch the capability checks:
+$$ ./inspektor-gadget capabilities --label name=set-priority
 TIME      UID    PID    TID    COMM             CAP  NAME                 AUDIT  INSETID @@@@@ SLEEP_NL=80
 13:01:54  1      4779   4779   true             6    CAP_SETGID           0      0
 13:01:54  1      4779   4779   true             7    CAP_SETUID           0      0
@@ -45,12 +45,12 @@ TIME      UID    PID    TID    COMM             CAP  NAME                 AUDIT 
 13:01:54  1      4781   4781   sleep            6    CAP_SETGID           0      0
 13:01:54  1      4781   4781   sleep            7    CAP_SETUID           0      0 @@@@@ SLEEP_NL=60
 ^CInterrupted!
-[alban@neptune]$ # We left with Ctrl-C.
-[alban@neptune]$ # In the output we see that the `SYS_NICE` capability got      checked when `nice` was run.
-[alban@neptune]$ @@@@@ SKIP=1
+$ # We left with Ctrl-C.
+$ # In the output we see that the `SYS_NICE` capability got checked when `nice` was run.
+$ @@@@@ SKIP=1
 # We should probably add it to our pod template for `nice` to  work. @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
-[alban@neptune]$ # We can also drop all other capabilites since `nice` does not use them (SETGID/SETUID are not relevant for our demo app).
-[alban@neptune]$ cat Documentation/examples/app-set-priority-locked-down.yaml
+$ # We can also drop all other capabilites since `nice` does not use them (SETGID/SETUID are not relevant for our demo app).
+$ cat Documentation/examples/app-set-priority-locked-down.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -74,12 +74,12 @@ spec:
           capabilities:
             add: ["SYS_NICE"]
             drop: [all]
-[alban@neptune]$ @@@@@ SKIP=1
+$ @@@@@ SKIP=1
 # Let's verify that our locked-down version works. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-[alban@neptune]$ kubectl delete -f Documentation/examples/app-set-priority.yaml 
+$ kubectl delete -f Documentation/examples/app-set-priority.yaml 
 deployment.apps "set-priority" deleted
-[alban@neptune]$ kubectl apply -f Documentation/examles/app-set-priority-locked-down.yaml
+$ kubectl apply -f Documentation/examles/app-set-priority-locked-down.yaml
 deployment.apps/set-priority created
-[alban@neptune]$ kubectl logs -lname=set-priority
+$ kubectl logs -lname=set-priority
 
-[alban@neptune]$ # The logs are clean, so everything works! @@@@@ SLEEP_PROMPT_EOL=450
+$ # The logs are clean, so everything works! @@@@@ SLEEP_PROMPT_EOL=450
