@@ -4,7 +4,7 @@ Pods can be selected by Kubernetes labels, here we deploy a *myapp* which create
 pods with the `role=demo` label:
 
 ```
-$ kubectl apply -f Documentation/ds-myapp.yaml
+$ kubectl apply -f Documentation/examples/ds-myapp.yaml
 daemonset.apps/myapp1-pod created
 daemonset.apps/myapp2-pod created
 
@@ -51,3 +51,8 @@ Processes of both pods are spawned: myapp1 spawns `cat /proc/version` and `sleep
 myapp2 spawns `echo sleep-10` and `sleep 10`, both spawn `true` and `date`.
 We can stop to trace again by hitting Ctrl-C.
 
+Finally, we clean up our demo app.
+
+```
+$ kubectl delete -f Documentation/examples/ds-myapp.yaml
+```

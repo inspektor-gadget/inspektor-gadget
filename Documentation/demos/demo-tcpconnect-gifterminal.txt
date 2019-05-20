@@ -1,0 +1,67 @@
+$ @@@@@ TERMINAL=1 POSITION[1]=6,25 SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
+$ @@@@@ TERMINAL=2 POSITION[2]=6,480  SKIP=1 SLEEP_PROMPT=0
+# Inspektor Gadget "tcpconnect" demo @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4
+$ # The tcpconnect gadget traces TCP connect calls.
+$ # This will help us to define a restrictive policy for outgoing connections.
+$
+$ # Before we start a demo pod that connects to a public HTTP server, we already begin to trace the outgoing connections of our future pod.
+$
+$ ./inspektor-gadget tcpconnect --podname mypod @@@@@ SLEEP_NL=30
+PID    COMM         IP SADDR            DADDR            DPORT
+# Let's start the demo pod: @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
+$ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.1.1.1 && echo ok || echo failed' @@@@@ SLEEP_CHAR=8 SLEEP_NL=60
+ok @@@@@ SLEEP_NL=20
+9386                wget         4  10.2.232.47      1.1.1.1          80 @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 SLEEP_NL=20
+9386                wget         4  10.2.232.47      1.1.1.1          443 @@@@@ SLEEP_NL=20
+$ # We see the output `ok` since the public HTTP server was reached. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2
+$ # In our Inspektor Gadget terminal we can now see the logged connection.
+$
+$ # There was a HTTP redirect to HTTPS, so we need to allow both ports for  our pod.
+$ # Since we now know which network accesses our pod does, we can define and apply a very restrictive network policy:
+$ cat Documentation/examples/network-policy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: restrictive-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      run: mypod
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 1.1.1.1/32
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 1.1.1.1/32
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443  @@@@@ SLEEP_NL=30
+$ kubectl apply -f Documentation/examples/network-policy.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2
+networkpolicy.networking.k8s.io/restrictive-network-policy created
+$
+$ # Let's test if the pod still works as expected:
+$ kubectl delete pod mypod
+$ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.1.1.1 && echo ok || echo failed' @@@@@ SLEEP_NL=60
+ok @@@@@ SLEEP_NL=20
+16547               wget         4  10.2.232.51      1.1.1.1          80 @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 SLEEP_NL=20
+16547               wget         4  10.2.232.51      1.1.1.1          443 @@@@@ SLEEP_NL=20
+$ # In the Inspektor Gadget terminal, we see the same connections again. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2
+$
+$ # But what if the pod would connect to other IP addresses which we disallowed?
+$ # Let's modify our pod to connect to a different address to verify that the   connection fails.
+$ kubectl delete pod mypod
+$ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.0.0.1 && echo ok || echo failed' @@@@@ SLEEP_NL=60
+wget: download timed out
+failed @@@@@ SLEEP_NL=20
+12418               wget         4  10.2.232.50      1.0.0.1          80@@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 SLEEP_NL=20
+$ # Indeed the network policy was applied and we can also see in Inspektor      Gadget which connection the pod wanted to make in the last line. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2
+$ # Since connecting to port 80 failed there is no redirect visible to port 443.
+$ # We created a tailored network policy for our (original) demo pod by         observing its connection behavior :) @@@@@ SLEEP_PROMPT_EOL=300
