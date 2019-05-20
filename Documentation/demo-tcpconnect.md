@@ -41,7 +41,7 @@ Since we now know which network accesses our pod does, we can define and apply a
 restrictive network policy:
 
 ```
-$ cat Documentation/network-policy.yaml
+$ cat Documentation/examples/network-policy.yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -68,7 +68,7 @@ spec:
     - protocol: TCP
       port: 443
 
-$ kubectl apply -f Documentation/network-policy.yaml
+$ kubectl apply -f Documentation/examples/network-policy.yaml
 networkpolicy.networking.k8s.io/restrictive-network-policy created
 ```
 
@@ -123,7 +123,7 @@ Finally, we should delete the demo pod and network policy again:
 ```
 $ kubectl delete pod mypod
 pod "mypod" deleted
-$ kubectl delete -f Documentation/network-policy.yaml
+$ kubectl delete -f Documentation/examples/network-policy.yaml
 networkpolicy.networking.k8s.io "restrictive-network-policy" deleted
 ```
 

@@ -20,7 +20,7 @@ ok @@@@@ SLEEP_NL=20
 [alban@neptune]$
 [alban@neptune]$ # There was a HTTP redirect to HTTPS, so we need to allow both ports for our pod.
 [alban@neptune]$ # Since we now know which network accesses our pod does, we can define and apply a very restrictive network policy:
-cat Documentation/network-policy.yaml @@@@@ TERMINAL=3 DEFAULT_TERMINAL=3 PROMPT=1 PROMPT_CHAR=''
+cat Documentation/examples/network-policy.yaml @@@@@ TERMINAL=3 DEFAULT_TERMINAL=3 PROMPT=1 PROMPT_CHAR=''
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -46,7 +46,7 @@ spec:
       port: 80
     - protocol: TCP
       port: 443 
-[alban@neptune]$ kubectl apply -f Documentation/network-policy.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2
+[alban@neptune]$ kubectl apply -f Documentation/examples/network-policy.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2
 networkpolicy.networking.k8s.io/restrictive-network-policy created
 [alban@neptune]$
 [alban@neptune]$ # Let's test if the pod still works as expected:

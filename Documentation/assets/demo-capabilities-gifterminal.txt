@@ -5,7 +5,8 @@
 [alban@neptune]$ # We can debug missing capabilities and lock the security      policy down to only the used capabilities.
 [alban@neptune]$ @@@@@ SKIP=1
 # Here we have a small demo app which logs failures due to     lacking capabilities. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-[alban@neptune]$ cat Documentation/app-set-priority.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
+[alban@neptune]$ @@@@@ SKIP=1
+cat Documentation/examples/app-set-priority.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,7 +27,7 @@ spec:
         image: busybox
         command: [ "sh", "-c", "while /bin/true ; do nice -n -20 echo ; sleep 5; done" ]
 [alban@neptune]$ @@@@@ SKIP=1
-kubectl apply -f Documentation/app-set-priority.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
+kubectl apply -f Documentation/examples/app-set-priority.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
 deployment.apps/set-priority created
 [alban@neptune]$ kubectl logs -lname=set-priority
 nice: setpriority(-20): Permission denied
@@ -49,7 +50,7 @@ TIME      UID    PID    TID    COMM             CAP  NAME                 AUDIT 
 [alban@neptune]$ @@@@@ SKIP=1
 # We should probably add it to our pod template for `nice` to  work. @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 [alban@neptune]$ # We can also drop all other capabilites since `nice` does not use them (SETGID/SETUID are not relevant for our demo app).
-[alban@neptune]$ cat Documentation/app-set-priority-locked-down.yaml
+[alban@neptune]$ cat Documentation/examples/app-set-priority-locked-down.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -75,9 +76,9 @@ spec:
             drop: [all]
 [alban@neptune]$ @@@@@ SKIP=1
 # Let's verify that our locked-down version works. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-[alban@neptune]$ kubectl delete -f Documentation/app-set-priority.yaml 
+[alban@neptune]$ kubectl delete -f Documentation/examples/app-set-priority.yaml 
 deployment.apps "set-priority" deleted
-[alban@neptune]$ kubectl apply -f Documentation/app-set-priority-locked-down.yaml
+[alban@neptune]$ kubectl apply -f Documentation/examles/app-set-priority-locked-down.yaml
 deployment.apps/set-priority created
 [alban@neptune]$ kubectl logs -lname=set-priority
 
