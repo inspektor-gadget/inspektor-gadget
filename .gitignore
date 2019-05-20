@@ -5,6 +5,7 @@
 *.so
 *.dylib
 /inspektor-gadget
+/kubectl-gadget
 
 # Test binary, build with `go test -c`
 *.test
