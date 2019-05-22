@@ -60,7 +60,7 @@ var (
 	podnameParam   string
 
 	stackFlag   bool
-	insetidFlag bool
+	verboseFlag bool
 )
 
 func init() {
@@ -78,7 +78,7 @@ func init() {
 		}
 	}
 	capabilitiesCmd.PersistentFlags().BoolVarP(&stackFlag, "print-stack", "", false, "Print kernel and userspace call stack of cap_capable()")
-	capabilitiesCmd.PersistentFlags().BoolVarP(&insetidFlag, "include-insetid", "", false, "Include capability checks with the INSETID bit set")
+	capabilitiesCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "", false, "Include non-audit")
 }
 
 func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
@@ -134,17 +134,13 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			if stackFlag && subCommand == "capabilities" {
 				stackArg = "-K"
 			}
-			insetidArg := ""
-			if !insetidFlag && subCommand == "capabilities" {
-				insetidArg = "--no-insetid"
-			}
 			verboseArg := ""
-			if subCommand == "capabilities" {
+			if verboseFlag && subCommand == "capabilities" {
 				verboseArg = "-v"
 			}
 			err := execPodQuickStart(client, node.Name,
-				fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && export TERM=xterm-256color && exec /opt/bcck8s/%s %s %s %s %s %s %s \" || true",
-					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg, insetidArg))
+				fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && export TERM=xterm-256color && exec /opt/bcck8s/%s %s %s %s %s %s \" || true",
+					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg))
 			if err != "" {
 				fmt.Printf("Error in running command: %q\n", err)
 			}
