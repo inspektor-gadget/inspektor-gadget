@@ -250,8 +250,8 @@
      id="namedview128"
      showgrid="false"
      inkscape:zoom="1.7481481"
-     inkscape:cx="487.0125"
-     inkscape:cy="329.91134"
+     inkscape:cx="640.87686"
+     inkscape:cy="214.62164"
      inkscape:window-x="0"
      inkscape:window-y="54"
      inkscape:window-maximized="1"
@@ -426,18 +426,14 @@
      d="m 149.29182,185.32421 h 245.4803 v 47.96851 h -245.4803 z" />
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:13.33333333px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;"
+     style="font-style:normal;font-weight:normal;font-size:13.33333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
      x="160.25162"
-     y="204.49258"
+     y="212.49258"
      id="text196-5"><tspan
        sodipodi:role="line"
-       id="tspan194-3"
        x="160.25162"
-       y="204.49258">$ kubectl apply -f ds-gadget.yaml</tspan><tspan
-       sodipodi:role="line"
-       x="160.25162"
-       y="221.15926"
-       id="tspan249">$ inspektor-gadget install</tspan></text>
+       y="212.49258"
+       id="tspan249">$ kubectl apply -f ds-gadget.yaml</tspan></text>
   <text
      xml:space="preserve"
      style="font-style:normal;font-weight:normal;font-size:14.66666698px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
@@ -458,11 +454,6 @@
      id="path3979"
      inkscape:connector-curvature="0" />
   <path
-     style="fill:#595959;fill-opacity:1;stroke:#595959;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2Mend-9)"
-     d="M 394.73212,214.39592 H 510.55379"
-     id="path3979-2"
-     inkscape:connector-curvature="0" />
-  <path
      style="fill:#595959;fill-opacity:1;stroke:#595959;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2Mend-7)"
      d="M 394.52685,197.02548 546.11547,49.49737"
      id="path3979-9"
@@ -479,17 +470,17 @@
        id="tspan3977-6">Deploy gadget pod</tspan></text>
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:13.33333333px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;"
-     x="476.9743"
-     y="186.12607"
+     style="font-style:normal;font-weight:normal;font-size:13.33333302px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none"
+     x="640.9743"
+     y="198.12607"
      id="text196-5-5-6-1"><tspan
        sodipodi:role="line"
-       x="476.9743"
-       y="186.12607"
+       x="640.9743"
+       y="198.12607"
        id="tspan3977-6-8">Install</tspan><tspan
        sodipodi:role="line"
-       x="476.9743"
-       y="202.79274"
+       x="640.9743"
+       y="214.79274"
        id="tspan8590">hook</tspan></text>
   <path
      style="fill:#1a9c38;fill-rule:evenodd;stroke-width:0.64933491"
@@ -743,4 +734,9 @@
        x="41.736626"
        y="68.305946"
        id="tspan3977-6-2-3-44-0-4">K8s integration</tspan></text>
+  <path
+     style="fill:#595959;fill-opacity:1;stroke:#595959;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2Mend-9)"
+     d="m 674.20977,222.39592 h -66.9475"
+     id="path3979-2"
+     inkscape:connector-curvature="0" />
 </svg>
