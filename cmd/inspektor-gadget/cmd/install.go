@@ -84,7 +84,7 @@ func runInstall(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		output := execPodQuick(client, node.Name, `/bin/gadget-node-install.sh`)
+		output := execPodSimple(client, node.Name, `/bin/gadget-node-install.sh`)
 		fmt.Printf("installation:\n%s\n", output)
 	}
 }

@@ -138,24 +138,25 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			if verboseFlag && subCommand == "capabilities" {
 				verboseArg = "-v"
 			}
-			err := execPodQuickStart(client, node.Name,
-				fmt.Sprintf("sh -c \"echo \\$\\$ > /run/%s.pid && export TERM=xterm-256color && exec /opt/bcck8s/%s %s %s %s %s %s \" || true",
-					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg))
-			if err != "" {
-				fmt.Printf("Error in running command: %q\n", err)
-			}
+			go func(nodeName string) {
+				err := execPod(client, nodeName,
+					fmt.Sprintf("echo $$ > /run/%s.pid && export TERM=xterm-256color && exec /opt/bcck8s/%s %s %s %s %s %s ",
+						tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg), os.Stdout, os.Stderr)
+				if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
+					fmt.Printf("Error in running command: %q\n", err)
+				}
+			}(node.Name) // node.Name is invalidated by the above for loop, causes races
 		}
 
 		<-sigs
-		fmt.Printf("Interrupted!\n")
 		for _, node := range nodes.Items {
 			if nodeParam != "" && node.Name != nodeParam {
 				continue
 			}
-			err := execPodQuickStart(client, node.Name,
-				fmt.Sprintf("sh -c \"touch /run/%s.pid; kill -9 \\$(cat /run/%s.pid); rm /run/%s.pid\"",
+			_, _, err := execPodCapture(client, node.Name,
+				fmt.Sprintf("touch /run/%s.pid; kill -9 $(cat /run/%s.pid); rm /run/%s.pid",
 					tmpId, tmpId, tmpId))
-			if err != "" {
+			if err != nil {
 				fmt.Printf("Error in running command: %q\n", err)
 			}
 		}
