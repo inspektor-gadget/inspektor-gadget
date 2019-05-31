@@ -2,8 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
+	"strings"
+	"strconv"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -81,6 +85,38 @@ func init() {
 	capabilitiesCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "", false, "Include non-audit")
 }
 
+type postProcess struct {
+	nodeName string
+	nodeShort string
+	orig io.Writer
+	firstLine bool
+	firstLinePrinted *uint64
+	failure chan string
+}
+
+func (post postProcess) Write(p []byte) (n int, err error) {
+	prefix := "[" + post.nodeShort + "] "
+	asStr := string(p)
+	lineBreakPos := strings.Index(asStr, "\n")
+	if post.firstLine && lineBreakPos > -1 {
+		// failures could be detected and propagates here with strings.Contains(asStr, "error") and then post.failure <- asStr
+		if atomic.AddUint64(post.firstLinePrinted, 1) > 1 {
+			asStr = asStr[lineBreakPos:]
+		} else {
+			prefix = "NODE "
+		}
+		post.firstLine = false
+	}
+	if asStr != "" && asStr != "\n" {
+		asStr = "\n" + strings.Trim(asStr, "\n")
+		asStr = strings.ReplaceAll(asStr, "\n", "\n" + prefix)
+		if !post.firstLine {
+			fmt.Fprintf(post.orig, "%s", asStr)
+		}
+	}
+	return len(p), nil
+}
+
 func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		contextLogger := log.WithFields(log.Fields{
@@ -112,9 +148,12 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		failure := make(chan string)
+		var firstLinePrinted uint64
 		tmpId := time.Now().Format("20060102150405")
 
-		for _, node := range nodes.Items {
+		fmt.Printf("Node numbers:")
+		for i, node := range nodes.Items {
 			if nodeParam != "" && node.Name != nodeParam {
 				continue
 			}
@@ -138,17 +177,30 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			if verboseFlag && subCommand == "capabilities" {
 				verboseArg = "-v"
 			}
-			go func(nodeName string) {
-				err := execPod(client, nodeName,
-					fmt.Sprintf("echo $$ > /run/%s.pid && export TERM=xterm-256color && exec /opt/bcck8s/%s %s %s %s %s %s ",
-						tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg), os.Stdout, os.Stderr)
-				if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
-					fmt.Printf("Error in running command: %q\n", err)
+			id := strconv.Itoa(i)
+			fmt.Printf(" %s = %s", id, node.Name)
+			go func(nodeName string, id string) {
+				postOut := postProcess{nodeName, " " + id, os.Stdout, true, &firstLinePrinted, failure}
+				postErr := postProcess{nodeName, "E" + id, os.Stderr, false, &firstLinePrinted, failure}
+				cmd := fmt.Sprintf("echo $$ > /run/%s.pid && export TERM=xterm-256color && exec /opt/bcck8s/%s %s %s %s %s %s ",
+					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg)
+				var err error
+				if subCommand != "tcptop" {
+					err = execPod(client, nodeName, cmd, postOut, postErr)
+				} else {
+					err = execPod(client, nodeName, cmd, os.Stdout, os.Stderr)
 				}
-			}(node.Name) // node.Name is invalidated by the above for loop, causes races
+				if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
+					failure <- fmt.Sprintf("Error in running command: %q\n", err)
+				}
+			}(node.Name, id) // node.Name is invalidated by the above for loop, causes races
 		}
 
-		<-sigs
+		select {
+			case <-sigs:
+			case e := <-failure:
+				fmt.Printf("\nError detected: %q", e)
+		}
 		for _, node := range nodes.Items {
 			if nodeParam != "" && node.Name != nodeParam {
 				continue
@@ -160,5 +212,6 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				fmt.Printf("Error in running command: %q\n", err)
 			}
 		}
+		fmt.Printf("\n")
 	}
 }
