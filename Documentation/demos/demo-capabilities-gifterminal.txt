@@ -1,11 +1,12 @@
-$ @@@@@ TERMINAL=1 POSITION[1]=6,25  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
-$ @@@@@ TERMINAL=2 POSITION[2]=6,480 SKIP=1 SLEEP_PROMPT=0
-# Inspektor Gadget "capabilities" demo @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4
-$ # The capabilities gadget allows us to see what capability security checks are triggered by applications running in Kubernetes Pods.
-$ # We can debug missing capabilities and lock the security policy down to only the used capabilities.
-$ @@@@@ SKIP=1
-# Here we have a small demo app which logs failures due to lacking capabilities. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-$ @@@@@ SKIP=1
+$ @@@@@ TERMINAL=1 POSITION[1]=6,160  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
+@@@@@ TERMINAL=3 RESET_TERMINAL=3 POSITION[3]=20,20 TERMINAL_HEIGHT[3]=5 TERMINAL_SIZE_PIXEL[3]=650x120 TERMINAL_COLOR_BACKGROUND[3]=FFFFFF TERMINAL_COLOR_FONT[3]=000000 TERMINAL_HIDE_CURSOR[3]=1 SKIP=1 SLEEP_PROMPT=0
+Inspektor Gadget “capabilities” demo @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4 FONT='DejaVu-Sans-Condensed-Bold'
+The capabilities gadget allows us to see what capability security checks @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+are triggered by applications running in Kubernetes Pods. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+We can debug missing capabilities and lock the security policy down to @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+only the used capabilities. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+Here we have a small demo app which logs failures due to @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+lacking capabilities. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 cat Documentation/examples/app-set-priority.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 apiVersion: apps/v1
 kind: Deployment
@@ -26,31 +27,36 @@ spec:
       - name: set-priority
         image: busybox
         command: [ "sh", "-c", "while /bin/true ; do nice -n -20 echo ; sleep 5; done" ]
-$ @@@@@ SKIP=1
-kubectl apply -f Documentation/examples/app-set-priority.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
+$
+$ kubectl apply -f Documentation/examples/app-set-priority.yaml
 deployment.apps/set-priority created
 $ kubectl logs -lname=set-priority
 nice: setpriority(-20): Permission denied
 nice: setpriority(-20): Permission denied
-$ # We could see the error messages in the pod's log.
-$ # Since none of the default capabilities is dropped, we have to find out what non-default capability we have to add.
-$ # Let's use Inspektor Gadget to watch the capability checks:
-$$ ./inspektor-gadget capabilities --label name=set-priority
-TIME      UID    PID    TID    COMM             CAP  NAME                 AUDIT  INSETID @@@@@ SLEEP_NL=80
-13:01:54  1      4779   4779   true             6    CAP_SETGID           0      0
-13:01:54  1      4779   4779   true             7    CAP_SETUID           0      0
-13:01:54  1      4780   4780   nice             6    CAP_SETGID           0      0
-13:01:54  1      4780   4780   nice             7    CAP_SETUID           0      0
-13:01:54  1      4780   4780   nice             23   CAP_SYS_NICE         0      0
-13:01:54  1      4781   4781   sleep            6    CAP_SETGID           0      0
-13:01:54  1      4781   4781   sleep            7    CAP_SETUID           0      0 @@@@@ SLEEP_NL=60
-^CInterrupted!
-$ # We left with Ctrl-C.
-$ # In the output we see that the `SYS_NICE` capability got checked when `nice` was run.
+$
 $ @@@@@ SKIP=1
-# We should probably add it to our pod template for `nice` to  work. @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
-$ # We can also drop all other capabilites since `nice` does not use them (SETGID/SETUID are not relevant for our demo app).
-$ cat Documentation/examples/app-set-priority-locked-down.yaml
+We could see the error messages in the pod's log. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+Since none of the default capabilities is dropped, we have to find out @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+what non-default capability we have to add. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+Let's use Inspektor Gadget to watch the capability checks. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+./inspektor-gadget capabilities --label name=set-priority @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
+TIME      UID    PID    TID    COMM   CAP  NAME                 AUDIT  INSETID @@@@@ SLEEP_NL=80
+13:01:54  1      4779   4779   true   6    CAP_SETGID           0      0
+13:01:54  1      4779   4779   true   7    CAP_SETUID           0      0
+13:01:54  1      4780   4780   nice   6    CAP_SETGID           0      0
+13:01:54  1      4780   4780   nice   7    CAP_SETUID           0      0
+13:01:54  1      4780   4780   nice   23   CAP_SYS_NICE         0      0
+13:01:54  1      4781   4781   sleep  6    CAP_SETGID           0      0
+13:01:54  1      4781   4781   sleep  7    CAP_SETUID           0      0 @@@@@ SLEEP_NL=60
+^CInterrupted!
+$ @@@@@	SKIP=1
+We left with Ctrl-C. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+In the output we see that the SYS_NICE capability got checked when @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+"nice" was run. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+We should probably add it to our pod template for "nice" to work. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+We can also drop all other capabilites since "nice" does not use them @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+(SETGID/SETUID are not relevant for our demo app). @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+cat Documentation/examples/app-set-priority-locked-down.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -74,12 +80,13 @@ spec:
           capabilities:
             add: ["SYS_NICE"]
             drop: [all]
+$
 $ @@@@@ SKIP=1
-# Let's verify that our locked-down version works. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-$ kubectl delete -f Documentation/examples/app-set-priority.yaml 
+Let's verify that our locked-down version works. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+kubectl delete -f Documentation/examples/app-set-priority.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 deployment.apps "set-priority" deleted
 $ kubectl apply -f Documentation/examles/app-set-priority-locked-down.yaml
 deployment.apps/set-priority created
 $ kubectl logs -lname=set-priority
-
-$ # The logs are clean, so everything works! @@@@@ SLEEP_PROMPT_EOL=450
+$ @@@@@ SKIP=1
+The logs are clean, so everything works! @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_PROMPT_EOL=450

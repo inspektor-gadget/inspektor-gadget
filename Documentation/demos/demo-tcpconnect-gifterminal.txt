@@ -1,24 +1,26 @@
-$ @@@@@ TERMINAL=1 POSITION[1]=6,25 SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
-$ @@@@@ TERMINAL=2 POSITION[2]=6,480  SKIP=1 SLEEP_PROMPT=0
-# Inspektor Gadget "tcpconnect" demo @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4
-$ # The tcpconnect gadget traces TCP connect calls.
-$ # This will help us to define a restrictive policy for outgoing connections.
-$
-$ # Before we start a demo pod that connects to a public HTTP server, we already begin to trace the outgoing connections of our future pod.
-$
-$ ./inspektor-gadget tcpconnect --podname mypod @@@@@ SLEEP_NL=30
+$ @@@@@ TERMINAL=1 POSITION[1]=6,160 TERMINAL_SIZE_PIXEL[1]=800x216 TERMINAL_HEIGHT[1]=11 SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
+$ @@@@@ TERMINAL=2 POSITION[2]=6,400 SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
+@@@@@ TERMINAL=3 RESET_TERMINAL=3 POSITION[3]=20,20 TERMINAL_HEIGHT[3]=5 TERMINAL_SIZE_PIXEL[3]=650x120 TERMINAL_COLOR_BACKGROUND[3]=FFFFFF TERMINAL_COLOR_FONT[3]=000000 TERMINAL_HIDE_CURSOR[3]=1 SKIP=1 SLEEP_PROMPT=0
+Inspektor Gadget “tcpconnect” demo @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4 FONT='DejaVu-Sans-Condensed-Bold'
+The tcpconnect gadget traces TCP connect calls. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+This will help us to define a restrictive policy for outgoing connections. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+Before we start a demo pod that connects to a public HTTP server, @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'  SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+we already begin to trace the outgoing connections of our future pod. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+./inspektor-gadget tcpconnect --podname mypod @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=30
 PID    COMM         IP SADDR            DADDR            DPORT
-# Let's start the demo pod: @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-$ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.1.1.1 && echo ok || echo failed' @@@@@ SLEEP_CHAR=8 SLEEP_NL=60
+Let's start the demo pod. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.1.1.1 && echo ok || echo failed' @@@@@ SLEEP_CHAR=8 SLEEP_NL=60 TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
 ok @@@@@ SLEEP_NL=20
+$ @@@@@ SKIP=1
 9386                wget         4  10.2.232.47      1.1.1.1          80 @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 SLEEP_NL=20
 9386                wget         4  10.2.232.47      1.1.1.1          443 @@@@@ SLEEP_NL=20
-$ # We see the output `ok` since the public HTTP server was reached. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2
-$ # In our Inspektor Gadget terminal we can now see the logged connection.
-$
-$ # There was a HTTP redirect to HTTPS, so we need to allow both ports for  our pod.
-$ # Since we now know which network accesses our pod does, we can define and apply a very restrictive network policy:
-$ cat Documentation/examples/network-policy.yaml
+We see the output `ok` since the public HTTP server was reached. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+In our Inspektor Gadget terminal we can now see the logged connection. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+There was a HTTP redirect to HTTPS, so we need to allow both @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'  SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+ports for our pod. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+Since we now know which network accesses our pod does, we can define @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'  SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+and apply a very restrictive network policy. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+cat Documentation/examples/network-policy.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -44,24 +46,29 @@ spec:
       port: 80
     - protocol: TCP
       port: 443  @@@@@ SLEEP_NL=30
-$ kubectl apply -f Documentation/examples/network-policy.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2
+$ kubectl apply -f Documentation/examples/network-policy.yaml
 networkpolicy.networking.k8s.io/restrictive-network-policy created
-$
-$ # Let's test if the pod still works as expected:
-$ kubectl delete pod mypod
+$ @@@@@ SKIP=1
+Let's test if the pod still works as expected. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+kubectl delete pod mypod @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
 $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.1.1.1 && echo ok || echo failed' @@@@@ SLEEP_NL=60
 ok @@@@@ SLEEP_NL=20
+$ @@@@@ SKIP=1
 16547               wget         4  10.2.232.51      1.1.1.1          80 @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 SLEEP_NL=20
 16547               wget         4  10.2.232.51      1.1.1.1          443 @@@@@ SLEEP_NL=20
-$ # In the Inspektor Gadget terminal, we see the same connections again. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2
-$
-$ # But what if the pod would connect to other IP addresses which we disallowed?
-$ # Let's modify our pod to connect to a different address to verify that the   connection fails.
-$ kubectl delete pod mypod
+In the Inspektor Gadget terminal, we see the same connections again. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+But what if the pod would connect to other IP addresses which we @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'  SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+disallowed? @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+Let's modify our pod to connect to a different address to verify that the @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'  SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+connection fails. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+kubectl delete pod mypod @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
 $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.0.0.1 && echo ok || echo failed' @@@@@ SLEEP_NL=60
 wget: download timed out
 failed @@@@@ SLEEP_NL=20
+$ @@@@@ SKIP=1
 12418               wget         4  10.2.232.50      1.0.0.1          80@@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 SLEEP_NL=20
-$ # Indeed the network policy was applied and we can also see in Inspektor      Gadget which connection the pod wanted to make in the last line. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2
-$ # Since connecting to port 80 failed there is no redirect visible to port 443.
-$ # We created a tailored network policy for our (original) demo pod by         observing its connection behavior :) @@@@@ SLEEP_PROMPT_EOL=300
+Indeed the network policy was applied and we can also see in Inspektor @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+Gadget which connection the pod wanted to make in the last line. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+Since connecting to port 80 failed there is no redirect visible to port 443. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+We created a tailored network policy for our (original) demo pod by @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'  SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+observing its connection behavior :) @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_PROMPT_EOL=300

@@ -1,42 +1,48 @@
-$ @@@@@ TERMINAL=1 POSITION[1]=6,25  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
-$ @@@@@ TERMINAL=2 POSITION[2]=6,480 SKIP=1 SLEEP_PROMPT=0
-# Inspektor Gadget "execsnoop" demo @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4
-$ # The execsnoop gadget watches programs executed in pods
-$ # Pods can be selected by Kubernetes labels, here we deploy a "myapp" which creates pods with the "role=demo" label
-$ @@@@@ SKIP=1
-kubectl apply -f Documentation/examples/ds-myapp.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
+$ @@@@@ TERMINAL=1 POSITION[1]=6,160  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
+@@@@@ TERMINAL=3 RESET_TERMINAL=3 POSITION[3]=20,20 TERMINAL_HEIGHT[3]=5 TERMINAL_SIZE_PIXEL[3]=650x120 TERMINAL_COLOR_BACKGROUND[3]=FFFFFF TERMINAL_COLOR_FONT[3]=000000 TERMINAL_HIDE_CURSOR[3]=1 SKIP=1 SLEEP_PROMPT=0
+Inspektor Gadget “execsnoop” demo @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4 FONT='DejaVu-Sans-Condensed-Bold'
+The execsnoop gadget watches programs executed in pods. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+Pods can be selected by Kubernetes labels. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+Here we deploy a "myapp" which creates pods with the "role=demo" label. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+kubectl apply -f Documentation/examples/ds-myapp.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 daemonset.apps/myapp1-pod created
 daemonset.apps/myapp2-pod created
 $ kubectl get pod --show-labels -o wide
-NAME               READY   STATUS    RESTARTS   AGE     IP           NODE             LABELS
-myapp1-pod-4kz56   1/1     Running   0          2m24s   10.2.232.6   ip-10-0-30-247   myapp=app-one,name=myapp1-pod,role=demo
-myapp1-pod-qnj4d   1/1     Running   0          2m24s   10.2.249.6   ip-10-0-44-74    myapp=app-one,name=myapp1-pod,role=demo
-myapp2-pod-s5kvv   1/1     Running   0          2m24s   10.2.249.7   ip-10-0-44-74    myapp=app-two,name=myapp2-pod,role=demo
-myapp2-pod-tnthg   1/1     Running   0          2m24s   10.2.232.5   ip-10-0-30-247   myapp=app-two,name=myapp2-pod,role=demo
+NAME               STATUS    NODE             LABELS
+myapp1-pod-4kz56   Running   ip-10-0-30-247   myapp=app-one,role=demo
+myapp1-pod-qnj4d   Running   ip-10-0-44-74    myapp=app-one,role=demo
+myapp2-pod-s5kvv   Running   ip-10-0-44-74    myapp=app-two,role=demo
+myapp2-pod-tnthg   Running   ip-10-0-30-247   myapp=app-two,role=demo
+$
 $ @@@@@ SKIP=1
-# Using the execsnoop gadget, we can see which new processes are spawned on node ip-10-0-30-247 where myapp1-pod-4kz56 and myapp2-pod-tnthg are running: @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
-$ ./inspektor-gadget execsnoop --label role=demo --node ip-10-0-30-247
+Using the execsnoop gadget, we can see which new processes are spawned @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+on node ip-10-0-30-247 where myapp1-pod-4kz56 and @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+myapp2-pod-tnthg are running. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+./inspektor-gadget execsnoop --label role=demo --node ip-10-0-30-247 @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 PCOMM            PID    PPID   RET ARGS
 true             16510  11179    0 /bin/true
 date             16511  11179    0 /usr/bin/date
 cat              16512  11179    0 /usr/bin/cat /proc/version
-sleep            16513  11179    0 /usr/bin/sleep 1 @@@@@ SLEEP_NL=200
+sleep            16513  11179    0 /usr/bin/sleep 1 @@@@@ SLEEP_NL=170
 true             16514  11179    0 /bin/true
 date             16515  11179    0 /usr/bin/date
 cat              16516  11179    0 /usr/bin/cat /proc/version
-sleep            16517  11179    0 /usr/bin/sleep 1  @@@@@ SLEEP_NL=200
+sleep            16517  11179    0 /usr/bin/sleep 1  @@@@@ SLEEP_NL=170
 true             16520  11179    0 /bin/true
 date             16521  11179    0 /usr/bin/date
 cat              16522  11179    0 /usr/bin/cat /proc/version
-sleep            16523  11179    0 /usr/bin/sleep 1 @@@@@ SLEEP_NL=200
+sleep            16523  11179    0 /usr/bin/sleep 1 @@@@@ SLEEP_NL=170
 true             16524  10972    0 /bin/true
 date             16525  10972    0 /usr/bin/date
-echo             16526  10972    0 /bin/echo sleep-10
-sleep            16527  10972    0 /bin/sleep 10 @@@@@ SLEEP_NL=1000
+echo             16526  10972    0 /bin/echo sleep-5
+sleep            16527  10972    0 /bin/sleep 5 @@@@@ SLEEP_NL=500
 true             16528  11179    0 /bin/true
 date             16529  11179    0 /usr/bin/date
 cat              16530  11179    0 /usr/bin/cat /proc/version
 sleep            16531  11179    0 /usr/bin/sleep 1 @@@@@ SLEEP_NL=40
 ^CInterrupted!
-$ # We stopped tracing by hitting Ctrl-C.
-$ # Processes of both pods are spawned: myapp1 spawns "cat /proc/version" and "sleep 1", myapp2 spawns "echo sleep-10" and "sleep 10", both spawn "true" and "date". @@@@@ SLEEP_PROMPT_EOL=400
+$ @@@@@ SKIP=1
+We stopped tracing by hitting Ctrl-C. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+Processes of both pods are spawned: myapp1 spawns "cat /proc/version" @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+and "sleep 1", myapp2 spawns "echo sleep-5" and "sleep 5", @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
+both spawn "true" and "date". @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' SLEEP_PROMPT_EOL=400 FONT='DejaVu-Sans-Condensed-Bold'

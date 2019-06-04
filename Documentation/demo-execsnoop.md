@@ -1,6 +1,6 @@
 # Inspektor Gadget demo: the "execsnoop" gadget
 
-Pods can be selected by Kubernetes labels, here we deploy a *myapp* which creates
+Pods can be selected by Kubernetes labels. Here we deploy a *myapp* which creates
 pods with the `role=demo` label:
 
 ```

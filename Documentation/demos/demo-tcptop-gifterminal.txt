@@ -1,22 +1,21 @@
-$ @@@@@ TERMINAL=1 POSITION[1]=6,25  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
-$ @@@@@ TERMINAL=2 POSITION[2]=6,480 SKIP=1 SLEEP_PROMPT=0
-# Inspektor Gadget "tcptop" demo @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' DEFAULT_SLEEP_CHAR=4
-$ # The tcptop gadget allows us to see active TCP connections.
-$ @@@@@ SKIP=1
-# Let's start a pod that fetches a website every 3 seconds. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
-$ kubectl run --restart=Never --image=busybox mypod -- sh -c 'while /bin/true ; do wget -O - https://kinvolk.io ; sleep 3 ; done' @@@@@ SLEEP_CHAR=8 SLEEP_NL=100
+$ @@@@@ TERMINAL=1 POSITION[1]=6,160  SKIP=1 SLEEP_PROMPT=0 DEFAULT_PROMPT_REGEXP='\$\ '
+@@@@@ TERMINAL=3 RESET_TERMINAL=3 POSITION[3]=20,20 TERMINAL_SIZE_PIXEL[3]=650x120 TERMINAL_COLOR_BACKGROUND[3]=FFFFFF TERMINAL_COLOR_FONT[3]=000000 TERMINAL_HIDE_CURSOR[3]=1 SKIP=1 SLEEP_EOL=50
+ Inspektor Gadget “tcptop” demo @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=60 DEFAULT_SLEEP_CHAR=4
+ The tcptop gadget allows us to see active TCP connections. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+ Let's start a pod that fetches a website every 3 seconds. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+kubectl run --restart=Never --image=busybox mypod -- sh -c 'while /bin/true ; do wget -O - https://kinvolk.io ; sleep 3 ; done' @@@@@ DEFAULT_TERMINAL=1 TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_CHAR=8 SLEEP_NL=100
 $
 $ kubectl get pod -o wide @@@@@ SLEEP_PROMPT_EOL=50
 NAME    READY   STATUS    RESTARTS   AGE     IP            NODE             NOMINATED NODE   READINESS GATES
 mypod   1/1     Running   0          2m45s   10.2.232.15   ip-10-0-30-247   <none>           <none>
 $
-$ # Now we use Inspektor Gadget to show us the TCP connections.
 $ @@@@@ SKIP=1
-./inspektor-gadget tcptop --node ip-10-0-30-247 --namespace default --podname mypod @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=50
+ Now we use Inspektor Gadget to show us the TCP connections. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
+./inspektor-gadget tcptop --node ip-10-0-30-247 --namespace default --podname mypod @@@@@ DEFAULT_TERMINAL=1 TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=50
 
 12:36:41 loadavg: 1.41 1.58 1.11 5/381 690
 
 PID    COMM         LADDR                 RADDR                  RX_KB  TX_KB
  @@@@@ SLEEP_NL=150
 5762   5762         10.2.232.15:54326     104.27.186.120:443        16      0
-# Every 3 seconds we can see the website download done by wget. @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR='' SLEEP_PROMPT_EOL=400
+ Every 3 seconds we can see the website download done by wget. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' SLEEP_PROMPT_EOL=400 FONT='DejaVu-Sans-Condensed-Bold'
