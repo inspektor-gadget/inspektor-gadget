@@ -7,6 +7,11 @@ if [ ! -r /host/etc/os-release ] ; then
   exit 1
 fi
 
+if ! grep Flatcar /host/etc/os-release > /dev/null ; then
+  echo "Only works on Flatcar Linux Edge or similar" >&2
+  exit 1
+fi
+
 CGROUP_V1_PATH=$(cat /proc/1/cgroup |grep ^1:|cut -d: -f3)
 CGROUP_V2_PATH=$(cat /proc/1/cgroup |grep ^0:|cut -d: -f3)
 
@@ -30,16 +35,6 @@ for i in bpftool cgroupid kubectl runc-hook-prestart.sh runc-hook-prestart-creat
   cp /bin/$i /host/opt/bin/
 done
 
-## runc is already patched on Flatcar Edge:
-## https://github.com/flatcar-linux/coreos-overlay/pull/23/files
-if ! grep -q /opt/bin/runc-hook-prestart.sh /run/torcx/unpack/docker/bin/runc ; then
-  mount -o remount,rw /run/torcx/unpack
-  if [ ! -e /run/torcx/unpack/docker/bin/runc.vanilla ] ; then
-    cp /run/torcx/unpack/docker/bin/runc /run/torcx/unpack/docker/bin/runc.vanilla
-  fi
-  cp /bin/runc-static-hooks /run/torcx/unpack/docker/bin/runc
-  mount -o remount,ro /run/torcx/unpack || true
-fi
 } {HOOK_LOCK_FD}<$HOOK_LOCK
 
 echo -n OK

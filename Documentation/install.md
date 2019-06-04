@@ -22,11 +22,12 @@ Deploy the gadget daemon set:
 $ kubectl apply -f deploy/ds-gadget.yaml
 ```
 
-Finalise the installation:
+Check the installation (run this multiple times to see if the pods are ready):
 ```
-$ ./inspektor-gadget install  # when developing you can update with --update-from-path=$PWD
 $ ./inspektor-gadget health
 ```
+
+(Development note: Use `$ ./inspektor-gadget install --update-from-path=$PWD` to deploy changed binaries.)
 
 ### On another Kubernetes distribution
 
