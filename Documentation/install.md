@@ -13,7 +13,8 @@ From the [releases](https://github.com/kinvolk/inspektor-gadget/releases).
 
 ### On Lokomotive on Flatcar Edge
 
-Install your cluster following the [Lokomotive docs for AWS](https://github.com/kinvolk/lokomotive-kubernetes/blob/master/docs/flatcar-linux/aws.md).
+Install your cluster following the [Lokomotive docs for AWS](https://github.com/kinvolk/lokomotive-kubernetes/blob/master/docs/flatcar-linux/aws.md)
+or [for KVM with libvirt](https://github.com/kinvolk/lokomotive-kubernetes/blob/master/docs/flatcar-linux/kvm-libvirt.md).
 
 Note, you should enable Flatcar Linux edge following the [Lokomotive docs](https://github.com/kinvolk/lokomotive-kubernetes/#try-flatcar-edge).
 
