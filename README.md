@@ -48,7 +48,7 @@ As preview for the above demos, here is the `opensnoop` demo:
 
 ## How does it work?
 
-Inspektor Gadget is deployed to each node as a privileged DeamonSet.
+Inspektor Gadget is deployed to each node as a privileged DaemonSet.
 It uses in-kernel BPF helper programs to monitor events mainly related to
 syscalls from userspace programs in a pod. The BPF programs are run by
 the kernel and gather the log data. Inspector Gadget's userspace
