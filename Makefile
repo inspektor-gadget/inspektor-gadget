@@ -16,7 +16,7 @@ build: build-slim
 
 .PHONY: build-slim
 build-slim:
-	CGO_ENABLED=0 GOOS=linux go build \
+	GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
 		-ldflags $(LDFLAGS) \
 		-o inspektor-gadget \
 		github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget
