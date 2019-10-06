@@ -34,11 +34,12 @@ spec:
         k8s-app: gadget
     spec:
       serviceAccount: gadget
+      hostPID: true
       hostNetwork: true
       containers:
       - name: gadget
-        image: docker.io/kinvolk/gadget:latest
-        command: [ "/bin/sh", "-c", "/bin/gadget-node-install.sh && rm -f /run/traceloop.socket && /bin/traceloop serve" ]
+        image: docker.io/kinvolk/gadget:alban-ci-guess-827c613
+        command: [ "/bin/sh", "-c", "rm -f /run/traceloop.socket && /bin/traceloop k8s" ]
         securityContext:
           privileged: true
         volumeMounts:
