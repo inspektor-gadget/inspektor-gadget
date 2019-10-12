@@ -21,6 +21,9 @@ jobs:
      - run: make
      - run: make -C gadget-ds/ build
 
+     - store_artifacts:
+         path: inspektor-gadget
+
      - save_cache:
          key: go-mod-v1-{{ checksum "go.sum" }}
          paths:
