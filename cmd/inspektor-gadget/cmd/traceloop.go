@@ -73,7 +73,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 	fmt.Fprintln(w, "NODE\tTRACES\t")
 
 	for _, node := range nodes.Items {
-		line := fmt.Sprintf("%s\t%s\t", node.Name, execPodQuick(client, node.Name, `curl --silent --unix-socket /run/traceloop.socket 'http://localhost/list' | strings | sed 's/[0-9]*: \[\(.*\)\] .*$/\1/' | tr '\n' ' ' `))
+		line := fmt.Sprintf("%s\t%s\t", node.Name, execPodSimple(client, node.Name, `curl --silent --unix-socket /run/traceloop.socket 'http://localhost/list' | strings | sed 's/[0-9]*: \[\(.*\)\] .*$/\1/' | tr '\n' ' ' `))
 		fmt.Fprintln(w, line)
 	}
 	w.Flush()
@@ -108,7 +108,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) {
 		if !strings.HasPrefix(args[0], node.Status.Addresses[0].Address+"_") {
 			continue
 		}
-		fmt.Printf("%s", execPodQuick(client, node.Name,
+		fmt.Printf("%s", execPodSimple(client, node.Name,
 			fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/dump-by-name?name=%s' ; echo`, args[0])))
 	}
 }
@@ -142,7 +142,7 @@ func runTraceloopClose(cmd *cobra.Command, args []string) {
 		if !strings.HasPrefix(args[0], node.Status.Addresses[0].Address+"_") {
 			continue
 		}
-		fmt.Printf("%s", execPodQuick(client, node.Name,
+		fmt.Printf("%s", execPodSimple(client, node.Name,
 			fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/close-by-name?name=%s' ; echo`, args[0])))
 	}
 

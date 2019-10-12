@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -19,7 +20,7 @@ var installCmd = &cobra.Command{
 	Use:               "install",
 	Short:             "Install or reinstall Inspektor Gadget on the worker nodes",
 	PersistentPreRunE: doesKubeconfigExist,
-	Run:               runInstall,
+	RunE:              runInstall,
 }
 
 func init() {
@@ -32,7 +33,7 @@ func init() {
 	rootCmd.AddCommand(installCmd)
 }
 
-func runInstall(cmd *cobra.Command, args []string) {
+func runInstall(cmd *cobra.Command, args []string) error {
 	contextLogger := log.WithFields(log.Fields{
 		"command": "inspektor-gadget install",
 		"args":    args,
@@ -51,6 +52,7 @@ func runInstall(cmd *cobra.Command, args []string) {
 	nodes, err := client.CoreV1().Nodes().List(listOptions)
 	if err != nil {
 		contextLogger.Fatalf("Error in listing nodes: %q", err)
+		return err
 	}
 
 	updateFromPath := viper.GetString("update-from-path")
@@ -60,31 +62,36 @@ func runInstall(cmd *cobra.Command, args []string) {
 			output := cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/bcck8s"), "/opt/")
 			if output != "" {
 				fmt.Printf("%s\n", output)
-				return
+				return errors.New("copy error")
 			}
 			output = cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/runc-hook-prestart.sh"), "/bin/")
 			if output != "" {
 				fmt.Printf("%s\n", output)
-				return
+				return errors.New("copy error")
 			}
 			output = cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/runc-hook-prestart-create-maps.sh"), "/bin/")
 			if output != "" {
 				fmt.Printf("%s\n", output)
-				return
+				return errors.New("copy error")
 			}
 			output = cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/gadget-node-install.sh"), "/bin/")
 			if output != "" {
 				fmt.Printf("%s\n", output)
-				return
+				return errors.New("copy error")
 			}
 			output = cpPodQuick(client, node.Name, filepath.Join(updateFromPath, "gadget-ds/files/gadget-node-health-check.sh"), "/bin/")
 			if output != "" {
 				fmt.Printf("%s\n", output)
-				return
+				return errors.New("copy error")
 			}
 		}
 
-		output := execPodQuick(client, node.Name, `/bin/gadget-node-install.sh`)
-		fmt.Printf("installation:\n%s\n", output)
+		stdout, stderr, err := execPodCapture(client, node.Name, `/bin/gadget-node-install.sh`)
+		if err != nil {
+			fmt.Printf("Installation error (Is the Inspektor Gadget daemon set deployed?): %q, %q\n", stdout, stderr)
+			return err
+		}
+		fmt.Printf("installation:\n%s\n", stdout)
 	}
+	return err
 }
