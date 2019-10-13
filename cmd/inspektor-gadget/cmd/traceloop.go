@@ -3,9 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
-	"text/tabwriter"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -83,14 +81,10 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error in listing nodes: %q", err)
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-	fmt.Fprintln(w, "NODE\tTRACES\t")
-
 	for _, node := range nodes.Items {
-		line := fmt.Sprintf("%s\t%s\t", node.Name, execPodSimple(client, node.Name, `curl --silent --unix-socket /run/traceloop.socket 'http://localhost/list' | strings | sed 's/[0-9]*: \[\(.*\)\] .*$/\1/' | tr '\n' ' ' `))
-		fmt.Fprintln(w, line)
+		fmt.Printf("%s\n", node.Name)
+		fmt.Printf("%s", execPodSimple(client, node.Name, `curl --silent --unix-socket /run/traceloop.socket 'http://localhost/list' | strings`))
 	}
-	w.Flush()
 }
 
 func runTraceloopShow(cmd *cobra.Command, args []string) {
