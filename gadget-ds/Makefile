@@ -15,5 +15,10 @@ docker-bcc/push:
 docker-gadget/build:
 	docker build -t docker.io/kinvolk/gadget:$(IMAGE_TAG) -f gadget.Dockerfile .
 
+docker-gadget/minikube-build:
+	cp ../../traceloop/traceloop ./
+	eval $(shell minikube docker-env | grep =) ; docker build -t docker.io/kinvolk/gadget:minikube -f gadget-from-local-bin.Dockerfile .
+	rm -f traceloop
+
 docker-gadget/push:
 	docker push docker.io/kinvolk/gadget:$(IMAGE_TAG)
