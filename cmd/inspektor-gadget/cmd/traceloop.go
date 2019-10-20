@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
+	"text/tabwriter"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -14,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
+	"github.com/kinvolk/inspektor-gadget/pkg/tracemeta"
 )
 
 var traceloopCmd = &cobra.Command{
@@ -72,19 +76,34 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 	}
 
 	var listOptions = metaV1.ListOptions{
-		LabelSelector: labels.Everything().String(),
+		LabelSelector: "k8s-app=gadget",
 		FieldSelector: fields.Everything().String(),
 	}
-
-	nodes, err := client.CoreV1().Nodes().List(listOptions)
+	pods, err := client.CoreV1().Pods("kube-system").List(listOptions)
 	if err != nil {
-		contextLogger.Fatalf("Error in listing nodes: %q", err)
+		contextLogger.Fatalf("Cannot find gadget pods: %q", err)
 	}
 
-	for _, node := range nodes.Items {
-		fmt.Printf("%s\n", node.Name)
-		fmt.Printf("%s", execPodSimple(client, node.Name, `curl --silent --unix-socket /run/traceloop.socket 'http://localhost/list' | strings`))
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+	fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\t")
+
+	for _, pod := range pods.Items {
+		if pod.ObjectMeta.Annotations == nil {
+			continue
+		}
+
+		var tm []tracemeta.TraceMeta
+		err := json.Unmarshal([]byte(pod.ObjectMeta.Annotations["traceloop.kinvolk.io/state"]), &tm)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			continue
+		}
+		for _, trace := range tm {
+			fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\n", pod.Spec.NodeName, trace.Namespace, trace.Podname, trace.UID, trace.Containeridx, trace.TraceID, trace.ContainerID)
+		}
 	}
+	w.Flush()
+
 }
 
 func runTraceloopShow(cmd *cobra.Command, args []string) {
