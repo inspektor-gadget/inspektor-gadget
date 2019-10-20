@@ -40,6 +40,19 @@ spec:
       - name: gadget
         image: docker.io/kinvolk/gadget:alban-ci-guess-827c613
         command: [ "/bin/sh", "-c", "rm -f /run/traceloop.socket && /bin/traceloop k8s" ]
+        env:
+          - name: TRACELOOP_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: TRACELOOP_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: TRACELOOP_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
         securityContext:
           privileged: true
         volumeMounts:
