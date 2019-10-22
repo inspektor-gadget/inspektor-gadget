@@ -15,6 +15,7 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/kinvolk/inspektor-gadget/pkg/tracemeta"
@@ -64,28 +65,17 @@ func init() {
 	traceloopCmd.AddCommand(traceloopCloseCmd)
 }
 
-func runTraceloopList(cmd *cobra.Command, args []string) {
-	contextLogger := log.WithFields(log.Fields{
-		"command": "inspektor-gadget traceloop list",
-		"args":    args,
-	})
-
-	client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
-	if err != nil {
-		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
-	}
-
+func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracemeta.TraceMeta, err error) {
 	var listOptions = metaV1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
 		FieldSelector: fields.Everything().String(),
 	}
 	pods, err := client.CoreV1().Pods("kube-system").List(listOptions)
 	if err != nil {
-		contextLogger.Fatalf("Cannot find gadget pods: %q", err)
+		return nil, fmt.Errorf("Cannot find gadget pods: %q", err)
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-	fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\t")
+	out = map[string][]tracemeta.TraceMeta{}
 
 	for _, pod := range pods.Items {
 		if pod.ObjectMeta.Annotations == nil {
@@ -98,8 +88,33 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 			fmt.Printf("%v\n", err)
 			continue
 		}
+		out[pod.Spec.NodeName] = tm
+	}
+	return
+}
+
+func runTraceloopList(cmd *cobra.Command, args []string) {
+	contextLogger := log.WithFields(log.Fields{
+		"command": "inspektor-gadget traceloop list",
+		"args":    args,
+	})
+
+	client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
+	if err != nil {
+		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
+	}
+
+	tracesPerNode, err := getTracesListPerNode(client)
+	if err != nil {
+		contextLogger.Fatalf("Error in getting traces: %q", err)
+	}
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+	fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\t")
+
+	for node, tm := range tracesPerNode {
 		for _, trace := range tm {
-			fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\n", pod.Spec.NodeName, trace.Namespace, trace.Podname, trace.UID, trace.Containeridx, trace.TraceID, trace.ContainerID)
+			fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.UID, trace.Containeridx, trace.TraceID, trace.ContainerID)
 		}
 	}
 	w.Flush()
@@ -121,22 +136,19 @@ func runTraceloopShow(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
 
-	var listOptions = metaV1.ListOptions{
-		LabelSelector: labels.Everything().String(),
-		FieldSelector: fields.Everything().String(),
-	}
-
-	nodes, err := client.CoreV1().Nodes().List(listOptions)
+	tracesPerNode, err := getTracesListPerNode(client)
 	if err != nil {
-		contextLogger.Fatalf("Error in listing nodes: %q", err)
+		contextLogger.Fatalf("Error in getting traces: %q", err)
 	}
 
-	for _, node := range nodes.Items {
-		if !strings.HasPrefix(args[0], node.Status.Addresses[0].Address+"_") {
-			continue
+	for node, tm := range tracesPerNode {
+		for _, trace := range tm {
+			if trace.TraceID == args[0] {
+				fmt.Printf("%s", execPodSimple(client, node,
+					fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/dump-by-traceid?traceid=%s' ; echo`, args[0])))
+			}
 		}
-		fmt.Printf("%s", execPodSimple(client, node.Name,
-			fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/dump-by-name?name=%s' ; echo`, args[0])))
+
 	}
 }
 
