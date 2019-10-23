@@ -38,7 +38,7 @@ spec:
       hostNetwork: true
       containers:
       - name: gadget
-        image: docker.io/kinvolk/gadget:alban-ci-guess-827c613
+        image: docker.io/kinvolk/gadget:alban-ci-guess-3bd2247
         command: [ "/bin/sh", "-c", "rm -f /run/traceloop.socket && /bin/traceloop k8s" ]
         env:
           - name: TRACELOOP_NODE_NAME
