@@ -7,10 +7,13 @@ import (
 	"os"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/docker/go-units"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -63,6 +66,12 @@ func init() {
 	traceloopCmd.AddCommand(traceloopShowCmd)
 	traceloopCmd.AddCommand(traceloopPodCmd)
 	traceloopCmd.AddCommand(traceloopCloseCmd)
+
+	traceloopListCmd.PersistentFlags().Bool(
+		"full",
+		false,
+		"show full fields without truncating")
+	viper.BindPFlag("full", traceloopListCmd.PersistentFlags().Lookup("full"))
 }
 
 func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracemeta.TraceMeta, err error) {
@@ -109,12 +118,48 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error in getting traces: %q", err)
 	}
 
+	full := viper.GetBool("full")
+
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-	fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\t")
+	fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
 
 	for node, tm := range tracesPerNode {
 		for _, trace := range tm {
-			fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.UID, trace.Containeridx, trace.TraceID, trace.ContainerID)
+			status := ""
+			switch trace.Status {
+			case "created":
+				fallthrough
+			case "ready":
+				t, err := time.Parse(time.RFC3339, trace.TimeCreation)
+				if err == nil {
+					status = fmt.Sprintf("created %s ago", units.HumanDuration(time.Now().Sub(t)))
+				} else {
+					status = fmt.Sprintf("created a while ago (%v)", err)
+				}
+			case "deleted":
+				t, err := time.Parse(time.RFC3339, trace.TimeDeletion)
+				if err == nil {
+					status = fmt.Sprintf("%s %s ago", trace.Status, units.HumanDuration(time.Now().Sub(t)))
+				} else {
+					status = fmt.Sprintf("%s a while ago (%v)", trace.Status, err)
+				}
+			default:
+				status = fmt.Sprintf("unknown (%v)", trace.Status)
+			}
+			if full {
+				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.UID, trace.Containeridx, trace.TraceID, trace.ContainerID, status)
+			} else {
+				uid := trace.UID
+				if len(uid) > 8 {
+					uid = uid[:8]
+				}
+				containerID := trace.ContainerID
+				containerID = strings.TrimPrefix(containerID, "docker://")
+				if len(containerID) > 8 {
+					containerID = containerID[:8]
+				}
+				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)
+			}
 		}
 	}
 	w.Flush()

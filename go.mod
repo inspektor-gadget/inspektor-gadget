@@ -2,6 +2,7 @@ module github.com/kinvolk/inspektor-gadget
 
 require (
 	github.com/docker/docker v1.13.1 // indirect
+	github.com/docker/go-units v0.4.0
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.4.1
