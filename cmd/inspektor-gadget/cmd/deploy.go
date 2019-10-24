@@ -1,3 +1,31 @@
+package cmd
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+var deployCmd = &cobra.Command{
+	Use:               "deploy",
+	Short:             "Deploy Inspektor Gadget on the worker nodes",
+	PersistentPreRunE: doesKubeconfigExist,
+	RunE:              runDeploy,
+}
+
+func init() {
+	deployCmd.PersistentFlags().String(
+		"image",
+		"docker.io/kinvolk/gadget:latest",
+		"container image")
+	viper.BindPFlag("image", deployCmd.PersistentFlags().Lookup("image"))
+
+	rootCmd.AddCommand(deployCmd)
+}
+
+const deployYaml string = `
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -38,7 +66,8 @@ spec:
       hostNetwork: true
       containers:
       - name: gadget
-        image: docker.io/kinvolk/gadget:alban-ci-guess-3bd2247
+        image: @IMAGE@
+        imagePullPolicy: Always
         command: [ "/bin/sh", "-c", "rm -f /run/traceloop.socket && /bin/traceloop k8s" ]
         env:
           - name: TRACELOOP_NODE_NAME
@@ -98,3 +127,11 @@ spec:
       - name: localtime
         hostPath:
           path: /etc/localtime
+`
+
+func runDeploy(cmd *cobra.Command, args []string) error {
+	image := viper.GetString("image")
+	fmt.Printf("%s", strings.Replace(deployYaml, "@IMAGE@", image, -1))
+
+	return nil
+}
