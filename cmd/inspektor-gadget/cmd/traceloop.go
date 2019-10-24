@@ -125,6 +125,11 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 
 	for node, tm := range tracesPerNode {
 		for _, trace := range tm {
+			if trace.Containeridx == -1 {
+				// The pause container
+				continue
+			}
+
 			status := ""
 			switch trace.Status {
 			case "created":
