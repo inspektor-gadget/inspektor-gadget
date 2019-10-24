@@ -15,10 +15,13 @@ var deployCmd = &cobra.Command{
 	RunE:              runDeploy,
 }
 
+// This is set during build.
+var gadgetimage = "undefined"
+
 func init() {
 	deployCmd.PersistentFlags().String(
 		"image",
-		"docker.io/kinvolk/gadget:latest",
+		gadgetimage,
 		"container image")
 	viper.BindPFlag("image", deployCmd.PersistentFlags().Lookup("image"))
 

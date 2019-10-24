@@ -1,6 +1,7 @@
 .PHONY: build docker-bcc/build docker-bcc/push docker-gadget/build docker-gadget/push
 
 IMAGE_TAG=$(shell ../tools/image-tag)
+IMAGE_BRANCH_TAG=$(shell ../tools/image-tag branch)
 
 build: docker-bcc/build docker-gadget/build
 
@@ -14,6 +15,7 @@ docker-bcc/push:
 
 docker-gadget/build:
 	docker build -t docker.io/kinvolk/gadget:$(IMAGE_TAG) -f gadget.Dockerfile .
+	docker tag docker.io/kinvolk/gadget:$(IMAGE_TAG) docker.io/kinvolk/gadget:$(IMAGE_BRANCH_TAG)
 
 minikube: docker-gadget/minikube-build docker-gadget/minikube-install
 
@@ -29,3 +31,4 @@ docker-gadget/minikube-install:
 
 docker-gadget/push:
 	docker push docker.io/kinvolk/gadget:$(IMAGE_TAG)
+	docker push docker.io/kinvolk/gadget:$(IMAGE_BRANCH_TAG)
