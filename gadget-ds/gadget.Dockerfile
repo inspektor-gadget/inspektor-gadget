@@ -1,6 +1,6 @@
 # Builder: traceloop
 
-FROM docker.io/kinvolk/traceloop:alban-pidns-81f0c56 as traceloop
+FROM docker.io/kinvolk/traceloop:alban-pidns as traceloop
 
 # Builder: bpftool
 
