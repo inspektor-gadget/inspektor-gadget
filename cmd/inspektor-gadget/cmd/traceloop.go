@@ -122,7 +122,11 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 	full := viper.GetBool("full")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-	fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
+	if full {
+		fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\tCAPABILITIES\t")
+	} else {
+		fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
+	}
 
 	for node, tm := range tracesPerNode {
 		for _, trace := range tm {
@@ -153,7 +157,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 				status = fmt.Sprintf("unknown (%v)", trace.Status)
 			}
 			if full {
-				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.UID, trace.Containeridx, trace.TraceID, trace.ContainerID, status)
+				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.UID, trace.Containeridx, trace.TraceID, trace.ContainerID, status, trace.Capabilities)
 			} else {
 				uid := trace.UID
 				if len(uid) > 8 {
