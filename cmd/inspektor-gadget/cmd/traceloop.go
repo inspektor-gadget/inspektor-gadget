@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/docker/go-units"
+	"github.com/syndtr/gocapability/capability"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -103,6 +104,16 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 	return
 }
 
+func capDecode(caps uint64) (out string) {
+	for _, c := range capability.List() {
+		if (caps & (1 << uint(c))) != 0 {
+			out += c.String() + ","
+		}
+	}
+	out = strings.TrimSuffix(out, ",")
+	return
+}
+
 func runTraceloopList(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
 		"command": "inspektor-gadget traceloop list",
@@ -157,7 +168,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 				status = fmt.Sprintf("unknown (%v)", trace.Status)
 			}
 			if full {
-				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.UID, trace.Containeridx, trace.TraceID, trace.ContainerID, status, trace.Capabilities)
+				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.UID, trace.Containeridx, trace.TraceID, trace.ContainerID, status, capDecode(trace.Capabilities))
 			} else {
 				uid := trace.UID
 				if len(uid) > 8 {
