@@ -46,14 +46,15 @@ jobs:
         LDFLAGS2="-X github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget/cmd.gadgetimage=docker.io/kinvolk/gadget:${{steps.publish-registry.outputs.snapshot-tag}}"
         LDFLAGS3="-extldflags '-static'"
 
+        mkdir -p out/inspektor-gadget
         GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
             -ldflags "$LDFLAGS1 $LDFLAGS2 $LDFLAGS3" \
-            -o inspektor-gadget \
+            -o out/inspektor-gadget/inspektor-gadget \
             github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget
 
     - name: Upload inspektor-gadget artifact
       uses: actions/upload-artifact@v1
       with:
         name: inspektor-gadget
-        path: inspektor-gadget
+        path: out/inspektor-gadget
 
