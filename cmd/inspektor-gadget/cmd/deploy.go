@@ -71,7 +71,7 @@ spec:
       - name: gadget
         image: @IMAGE@
         imagePullPolicy: Always
-        command: [ "/bin/sh", "-c", "rm -f /run/traceloop.socket && /bin/traceloop k8s" ]
+        command: [ "/entrypoint.sh" ]
         env:
           - name: TRACELOOP_NODE_NAME
             valueFrom:
@@ -85,6 +85,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          - name: TRACELOOP_IMAGE
+            value: @IMAGE@
+          - name: INSPEKTOR_GADGET_VERSION
+            value: @VERSION@
         securityContext:
           privileged: true
         volumeMounts:
@@ -134,7 +138,10 @@ spec:
 
 func runDeploy(cmd *cobra.Command, args []string) error {
 	image := viper.GetString("image")
-	fmt.Printf("%s", strings.Replace(deployYaml, "@IMAGE@", image, -1))
+	output := deployYaml
+	output = strings.Replace(output, "@IMAGE@", image, -1)
+	output = strings.Replace(output, "@VERSION@", version, -1)
+	fmt.Printf("%s", output)
 
 	return nil
 }
