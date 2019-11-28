@@ -19,11 +19,10 @@ echo $TRACELOOP_IMAGE
 echo -n "Inspektor Gadget version: "
 echo $INSPEKTOR_GADGET_VERSION
 
-ARGS=serve
+ARGS=k8s
 FLATCAR_EDGE=0
 if grep -q '^ID=flatcar$' /host/etc/os-release > /dev/null ; then
   if grep -q '^GROUP=edge$' /host/etc/flatcar/update.conf > /dev/null ; then
-    ARGS=k8s
     FLATCAR_EDGE=1
   fi
 fi
