@@ -94,9 +94,13 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 		}
 
 		var tm []tracemeta.TraceMeta
-		err := json.Unmarshal([]byte(pod.ObjectMeta.Annotations["traceloop.kinvolk.io/state"]), &tm)
+		state := pod.ObjectMeta.Annotations["traceloop.kinvolk.io/state"]
+		if state == "" {
+			continue
+		}
+		err := json.Unmarshal([]byte(state), &tm)
 		if err != nil {
-			fmt.Printf("%v\n", err)
+			fmt.Printf("%v:\n%s\n", err, state)
 			continue
 		}
 		out[pod.Spec.NodeName] = tm
