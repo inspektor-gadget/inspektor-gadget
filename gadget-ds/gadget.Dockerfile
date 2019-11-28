@@ -22,8 +22,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY files/runc-hook-prestart.sh /bin/runc-hook-prestart.sh
 COPY files/runc-hook-prestart-create-maps.sh /bin/runc-hook-prestart-create-maps.sh
 COPY files/entrypoint.sh /entrypoint.sh
-COPY files/gadget-node-install.sh /bin/gadget-node-install.sh
-COPY files/gadget-node-health-check.sh /bin/gadget-node-health-check.sh
 COPY files/bcck8s /opt/bcck8s
 
 COPY --from=bpftool-build /bin/bpftool /bin/bpftool
