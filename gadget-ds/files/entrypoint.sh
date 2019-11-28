@@ -40,7 +40,7 @@ if [ "$FLATCAR_EDGE" = 1 ] ; then
 
   HOOK_LOCK=/run/runc-hook-prestart.lock
   : >> $HOOK_LOCK
-  {
+  (
   set -e
   flock -w 1 $HOOK_LOCK_FD || { echo "Cannot acquire lock" ; exit 1 ; }
 
@@ -54,7 +54,7 @@ if [ "$FLATCAR_EDGE" = 1 ] ; then
     cp /bin/$i /host/opt/bin/
   done
   echo "Installation done "
-  } {HOOK_LOCK_FD}<$HOOK_LOCK
+  ) {HOOK_LOCK_FD}<$HOOK_LOCK
 
 fi
 

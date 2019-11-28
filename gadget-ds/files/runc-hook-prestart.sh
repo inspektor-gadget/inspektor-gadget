@@ -36,11 +36,11 @@ fi
 # are called in parallel.
 HOOK_LOCK=/run/runc-hook-prestart.lock
 : >> $HOOK_LOCK
-{
+(
   set -e
   flock -w 1 $HOOK_LOCK_FD || { echo "Cannot acquire lock" ; exit 1 ; }
   /opt/bin/runc-hook-prestart-create-maps.sh
-} {HOOK_LOCK_FD}<$HOOK_LOCK
+) {HOOK_LOCK_FD}<$HOOK_LOCK
 
 $BPFTOOL map update pinned $BPFDIR/cgroupmap key hex $CGROUP_ID_HEX value hex $CONTAINERID_HEX
 
