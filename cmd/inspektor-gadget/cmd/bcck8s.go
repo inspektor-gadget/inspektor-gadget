@@ -5,8 +5,8 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strings"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -86,12 +86,12 @@ func init() {
 }
 
 type postProcess struct {
-	nodeName string
-	nodeShort string
-	orig io.Writer
-	firstLine bool
+	nodeName         string
+	nodeShort        string
+	orig             io.Writer
+	firstLine        bool
 	firstLinePrinted *uint64
-	failure chan string
+	failure          chan string
 }
 
 func (post postProcess) Write(p []byte) (n int, err error) {
@@ -109,7 +109,7 @@ func (post postProcess) Write(p []byte) (n int, err error) {
 	}
 	if asStr != "" && asStr != "\n" {
 		asStr = "\n" + strings.Trim(asStr, "\n")
-		asStr = strings.ReplaceAll(asStr, "\n", "\n" + prefix)
+		asStr = strings.ReplaceAll(asStr, "\n", "\n"+prefix)
 		if !post.firstLine {
 			fmt.Fprintf(post.orig, "%s", asStr)
 		}
@@ -182,7 +182,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			go func(nodeName string, id string) {
 				postOut := postProcess{nodeName, " " + id, os.Stdout, true, &firstLinePrinted, failure}
 				postErr := postProcess{nodeName, "E" + id, os.Stderr, false, &firstLinePrinted, failure}
-				cmd := fmt.Sprintf("echo $$ > /run/%s.pid && export TERM=xterm-256color && exec /opt/bcck8s/%s %s %s %s %s %s ",
+				cmd := fmt.Sprintf("echo $$ > /run/%s.pid && export TERM=xterm-256color && /opt/bcck8s/ensure-flatcar-edge && exec /opt/bcck8s/%s %s %s %s %s %s ",
 					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg)
 				var err error
 				if subCommand != "tcptop" {
@@ -197,9 +197,9 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		}
 
 		select {
-			case <-sigs:
-			case e := <-failure:
-				fmt.Printf("\nError detected: %q", e)
+		case <-sigs:
+		case e := <-failure:
+			fmt.Printf("\nError detected: %q", e)
 		}
 		for _, node := range nodes.Items {
 			if nodeParam != "" && node.Name != nodeParam {
