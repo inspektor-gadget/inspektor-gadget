@@ -16,10 +16,9 @@ Usage:
 
 Available Commands:
   capabilities Suggest Security Capabilities for securityContext
+  deploy       Deploy Inspektor Gadget on the worker nodes
   execsnoop    Trace new processes
-  health       Check the gadget installation on a Kubernetes cluster
   help         Help about any command
-  install      Install or reinstall Inspektor Gadget on the worker nodes
   opensnoop    Trace files
   tcpconnect   Suggest Kubernetes Network Policies
   tcptop       Show the TCP traffic in a pod
@@ -57,9 +56,43 @@ programs are and how Inspektor Gadget uses them is briefly explained here:
 
 [Read more about the architecture](Documentation/architecture.md)
 
+## Gadgets
+
+Not all gadgets currently work everywhere.
+
+| Gadget       | Flatcar Edge | Flatcar Stable | Minikube | GKE |
+|--------------|:------------:|:--------------:|:--------:|:---:|
+| traceloop    |       ✔️      |        ✔️       |     ✔️    |  ✔️  |
+| capabilities |       ✔️      |                |          |     |
+| execsnoop    |       ✔️      |                |          |     |
+| opensnoop    |       ✔️      |                |          |     |
+| tcpconnect   |       ✔️      |                |          |     |
+| tcptop       |       ✔️      |                |          |     |
+
+Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/). [More details in the detailed install instructions](Documentation/install.md)
+
 ## Installation
 
-Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/).
+Install inspektor-gadget (client-side):
+
+```
+$ curl -s -L --output inspektor-gadget.zip https://github.com/kinvolk/inspektor-gadget/suites/333471026/artifacts/477863
+$ unzip inspektor-gadget.zip
+$ chmod +x inspektor-gadget/inspektor-gadget
+$ sudo cp inspektor-gadget/inspektor-gadget /usr/local/bin/kubectl-gadget
+```
+
+Install Inspektor Gadget on Kubernetes:
+
+```
+$ inspektor-gadget deploy | kubectl apply -f -
+```
 
 [Read the detailed install instructions](Documentation/install.md)
 
+## Thanks
+
+* [BPF Compiler Collection (BCC)](https://github.com/iovisor/bcc): the execsnoop, opensnoop, tcptop and tcpconnect gadgets use programs from BCC.
+* [traceloop](https://github.com/kinvolk/traceloop): the traceloop gadget uses the traceloop tool, which can be used independenly of Kubernetes.
+* [gobpf](https://github.com/kinvolk/gobpf): the traceloop gadget heavily uses gobpf.
+* [kubectl-trace](https://github.com/iovisor/kubectl-trace): the inspektor-gadget command and architecture was inspired from kubectl-trace.

@@ -9,14 +9,14 @@ else
 	VERSION := $(TAG)-dirty
 endif
 
-LDFLAGS := "-X github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget/cmd.version=$(VERSION) -extldflags '-static'"
+LDFLAGS := "-X github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget/cmd.version=$(VERSION) -X github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget/cmd.gadgetimage=docker.io/kinvolk/gadget:$(shell ./tools/image-tag branch) -extldflags '-static'"
 
 .PHONY: build
 build: build-slim
 
 .PHONY: build-slim
 build-slim:
-	CGO_ENABLED=0 GOOS=linux go build \
+	GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
 		-ldflags $(LDFLAGS) \
 		-o inspektor-gadget \
 		github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget

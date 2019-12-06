@@ -36,12 +36,11 @@ fi
 # are called in parallel.
 HOOK_LOCK=/run/runc-hook-prestart.lock
 : >> $HOOK_LOCK
-{
+(
   set -e
-  flock $HOOK_LOCK_FD
   flock -w 1 $HOOK_LOCK_FD || { echo "Cannot acquire lock" ; exit 1 ; }
   /opt/bin/runc-hook-prestart-create-maps.sh
-} {HOOK_LOCK_FD}<$HOOK_LOCK
+) {HOOK_LOCK_FD}<$HOOK_LOCK
 
 $BPFTOOL map update pinned $BPFDIR/cgroupmap key hex $CGROUP_ID_HEX value hex $CONTAINERID_HEX
 
@@ -73,12 +72,12 @@ $KUBECTL --kubeconfig=/etc/kubernetes/kubeconfig get pod --all-namespaces -o jso
     rm -f $BPFDIR/metadata$CGROUP_ID
     $BPFTOOL map create $BPFDIR/metadata$CGROUP_ID type array key 4 value 64 entries 2 name metadata$CGROUP_ID
 
-    if [ "$PAUSE_CONTAINER" = "no" ] ; then
-      echo "Registering to traceloop"
-      curl --unix-socket /run/traceloop.socket "http://localhost/add?name=${nodename}_${namespace}_${podname}&cgrouppath=${CGROUP_PATH}" || true
-    else
-      echo "Found pause container. Don't register to traceloop"
-    fi
+    #if [ "$PAUSE_CONTAINER" = "no" ] ; then
+    #  echo "Registering to traceloop"
+    #  curl --unix-socket /run/traceloop.socket "http://localhost/add?name=${nodename}_${namespace}_${podname}&cgrouppath=${CGROUP_PATH}" || true
+    #else
+    #  echo "Found pause container. Don't register to traceloop"
+    #fi
 
     echo "Metadata"
     # 0: namespace, 1: podname

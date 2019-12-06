@@ -1,3 +1,34 @@
+package cmd
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+var deployCmd = &cobra.Command{
+	Use:               "deploy",
+	Short:             "Deploy Inspektor Gadget on the worker nodes",
+	PersistentPreRunE: doesKubeconfigExist,
+	RunE:              runDeploy,
+}
+
+// This is set during build.
+var gadgetimage = "undefined"
+
+func init() {
+	deployCmd.PersistentFlags().String(
+		"image",
+		gadgetimage,
+		"container image")
+	viper.BindPFlag("image", deployCmd.PersistentFlags().Lookup("image"))
+
+	rootCmd.AddCommand(deployCmd)
+}
+
+const deployYaml string = `
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -34,11 +65,30 @@ spec:
         k8s-app: gadget
     spec:
       serviceAccount: gadget
+      hostPID: true
       hostNetwork: true
       containers:
       - name: gadget
-        image: docker.io/kinvolk/gadget:latest
-        command: [ "/bin/sh", "-c", "/bin/gadget-node-install.sh && rm -f /run/traceloop.socket && /bin/traceloop serve" ]
+        image: @IMAGE@
+        imagePullPolicy: Always
+        command: [ "/entrypoint.sh" ]
+        env:
+          - name: TRACELOOP_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: TRACELOOP_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: TRACELOOP_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: TRACELOOP_IMAGE
+            value: @IMAGE@
+          - name: INSPEKTOR_GADGET_VERSION
+            value: @VERSION@
         securityContext:
           privileged: true
         volumeMounts:
@@ -84,3 +134,14 @@ spec:
       - name: localtime
         hostPath:
           path: /etc/localtime
+`
+
+func runDeploy(cmd *cobra.Command, args []string) error {
+	image := viper.GetString("image")
+	output := deployYaml
+	output = strings.Replace(output, "@IMAGE@", image, -1)
+	output = strings.Replace(output, "@VERSION@", version, -1)
+	fmt.Printf("%s", output)
+
+	return nil
+}

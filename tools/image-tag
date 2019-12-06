@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+# Generate container tag names
+# From https://github.com/weaveworks/scope/blob/master/tools/image-tag
+
+set -o errexit
+set -o pipefail
+
+WORKING_SUFFIX=$(if git status --porcelain | grep -qE '^(?:[^?][^ ]|[^ ][^?])\s'; then echo "-WIP"; else echo ""; fi)
+BRANCH_PREFIX=$(git rev-parse --abbrev-ref HEAD)
+if [ "$1" = "branch" ] ; then
+  echo "${BRANCH_PREFIX//\//-}$WORKING_SUFFIX"
+else
+  echo "${BRANCH_PREFIX//\//-}-$(git rev-parse --short HEAD)$WORKING_SUFFIX"
+fi
