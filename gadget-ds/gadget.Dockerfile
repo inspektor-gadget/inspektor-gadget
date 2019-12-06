@@ -1,6 +1,6 @@
 # Builder: traceloop
 
-FROM docker.io/kinvolk/traceloop:alban-unified-install as traceloop
+FROM docker.io/kinvolk/traceloop:latest as traceloop
 
 # Builder: bpftool
 
