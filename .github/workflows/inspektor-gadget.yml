@@ -52,9 +52,33 @@ jobs:
             -o out/inspektor-gadget/inspektor-gadget \
             github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget
 
+        tar --sort=name --owner=root:0 --group=root:0 -czf inspektor-gadget.tar.gz -C out .
+
     - name: Upload inspektor-gadget artifact
       uses: actions/upload-artifact@v1
       with:
         name: inspektor-gadget
-        path: out/inspektor-gadget
+        path: inspektor-gadget.tar.gz
 
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1.0.0
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: true
+        prerelease: false
+    - name: Upload Release Asset
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1.0.1
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: inspektor-gadget.tar.gz
+        asset_name: inspektor-gadget.tar.gz
+        asset_content_type: application/gzip
