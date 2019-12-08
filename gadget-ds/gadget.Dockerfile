@@ -24,6 +24,8 @@ COPY files/runc-hook-prestart-create-maps.sh /bin/runc-hook-prestart-create-maps
 COPY files/entrypoint.sh /entrypoint.sh
 COPY files/bcck8s /opt/bcck8s
 
+COPY bin/gadgettracermanager /bin/gadgettracermanager
+
 COPY --from=bpftool-build /bin/bpftool /bin/bpftool
 COPY --from=traceloop /bin/traceloop /bin/traceloop
 COPY --from=cgroupid /bin/cgroupid /bin/cgroupid

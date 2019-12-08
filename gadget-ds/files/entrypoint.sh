@@ -49,13 +49,16 @@ if [ "$FLATCAR_EDGE" = 1 ] ; then
   /bin/runc-hook-prestart-create-maps.sh
 
   mkdir -p /host/opt/bin/
-  for i in bpftool cgroupid kubectl runc-hook-prestart.sh runc-hook-prestart-create-maps.sh ; do
+  for i in gadgettracermanager bpftool cgroupid kubectl runc-hook-prestart.sh runc-hook-prestart-create-maps.sh ; do
     echo "Installing $i..."
     cp /bin/$i /host/opt/bin/
   done
   echo "Installation done "
   ) {HOOK_LOCK_FD}<$HOOK_LOCK
 
+  echo "Starting the Gadget Tracer Manager in the background..."
+  rm -f /run/gadgettracermanager.socket
+  /bin/gadgettracermanager -serve &
 fi
 
 echo

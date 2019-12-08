@@ -8,6 +8,7 @@ CONTAINERID_HEX=$(printf "%-64s" "$ID" | od -t x1 -w64 -v | head -1 | cut -d" " 
 BPFTOOL=/opt/bin/bpftool
 CGROUPID=/opt/bin/cgroupid
 KUBECTL=/opt/bin/kubectl
+GADGETTRACERMANAGER=/opt/bin/gadgettracermanager
 
 BPFDIR=/sys/fs/bpf
 CGROUP_PATH=/sys/fs/cgroup/unified$(cat /proc/$PID/cgroup|grep ^0::|cut -b4-)
@@ -116,6 +117,8 @@ $KUBECTL --kubeconfig=/etc/kubernetes/kubeconfig get pod --all-namespaces -o jso
 	echo "Processing container $CGROUP_ID"
 	$BPFTOOL map update pinned $BPFDIR/cgrouplabelsmap key hex $CGROUP_ID_HEX value pinned $BPFDIR/labels$CGROUP_ID
 	echo "bpftool map updated returned: $?"
+
+    $GADGETTRACERMANAGER -call add-container -label keytodo:valuetodo --cgroupid "$CGROUP_ID" --namespace "$namespace" --podname "$podname" --containerindex 0
   done
 
 echo done.
