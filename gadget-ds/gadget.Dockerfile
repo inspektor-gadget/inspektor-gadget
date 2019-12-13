@@ -12,7 +12,7 @@ FROM kinvolk/cgroupid as cgroupid
 
 # Main gadget image
 
-FROM docker.io/kinvolk/bcc:latest
+FROM docker.io/kinvolk/bcc:ig-latest
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	ca-certificates curl && \
 	curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && \

@@ -8,10 +8,10 @@ build: docker-bcc/build docker-gadget/build
 push: docker-gadget/push
 
 docker-bcc/build:
-	docker build -t docker.io/kinvolk/bcc:latest -f bcc.Dockerfile .
+	docker build -t docker.io/kinvolk/bcc:ig-latest -f bcc.Dockerfile .
 
 docker-bcc/push:
-	docker push docker.io/kinvolk/bcc:latest
+	docker push docker.io/kinvolk/bcc:ig-latest
 
 bpftool/build:
 	docker build -t docker.io/kinvolk/bpftool:ig-latest -f bpftool.Dockerfile .
