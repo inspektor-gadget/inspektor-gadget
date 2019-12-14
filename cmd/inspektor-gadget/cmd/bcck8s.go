@@ -25,14 +25,14 @@ import (
 var execsnoopCmd = &cobra.Command{
 	Use:               "execsnoop",
 	Short:             "Trace new processes",
-	Run:               bccCmd("execsnoop", "execsnoop-edge"),
+	Run:               bccCmd("execsnoop", "execsnoop-ig"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
 var opensnoopCmd = &cobra.Command{
 	Use:               "opensnoop",
 	Short:             "Trace files",
-	Run:               bccCmd("opensnoop", "opensnoop-edge"),
+	Run:               bccCmd("opensnoop", "opensnoop-ig"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
