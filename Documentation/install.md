@@ -109,7 +109,6 @@ If you wish to install all the gadgets on another Kubernetes distribution, you w
     - `systemd_cgroup = true` in `$XDG_DATA_DIR/share/containerd/config.toml`
   - runc
 - runc recompiled with [additional static OCI hooks](https://github.com/kinvolk/runc/tree/alban/static-hooks)
-- tools installed in `/opt/bin` on the nodes: [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/), [cgroupid](https://github.com/kinvolk/cgroupid), [bpftool](https://github.com/kinvolk/linux/tree/alban/bpftool-all/tools/bpf/bpftool)
 - The gadget daemon set
 
 ## Development environment on minikube for the traceloop gadget

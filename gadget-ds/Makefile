@@ -13,12 +13,6 @@ docker-bcc/build:
 docker-bcc/push:
 	docker push docker.io/kinvolk/bcc:ig-latest
 
-bpftool/build:
-	docker build -t docker.io/kinvolk/bpftool:ig-latest -f bpftool.Dockerfile .
-
-bpftool/push:
-	docker push docker.io/kinvolk/bpftool:ig-latest
-
 docker-gadget/build:
 	docker build -t docker.io/kinvolk/gadget:$(IMAGE_TAG) -f gadget.Dockerfile .
 	docker tag docker.io/kinvolk/gadget:$(IMAGE_TAG) docker.io/kinvolk/gadget:$(IMAGE_BRANCH_TAG)

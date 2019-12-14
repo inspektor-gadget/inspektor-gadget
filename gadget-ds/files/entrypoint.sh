@@ -51,23 +51,12 @@ if [ "$FLATCAR_EDGE" = 1 ] ; then
     exit 1
   fi
 
-  HOOK_LOCK=/run/runc-hook-prestart.lock
-  : >> $HOOK_LOCK
-  (
-  set -e
-  flock -w 1 $HOOK_LOCK_FD || { echo "Cannot acquire lock" ; exit 1 ; }
-
-  echo "Creating BPF maps..."
-  export BPFTOOL=/bin/bpftool
-  /bin/runc-hook-prestart-create-maps.sh
-
   mkdir -p /host/opt/bin/
-  for i in gadgettracermanager bpftool cgroupid kubectl runc-hook-prestart.sh runc-hook-prestart-create-maps.sh ; do
+  for i in ocihookgadget runc-hook-prestart.sh runc-hook-poststop.sh ; do
     echo "Installing $i..."
     cp /bin/$i /host/opt/bin/
   done
   echo "Installation done "
-  ) {HOOK_LOCK_FD}<$HOOK_LOCK
 
   echo "Starting the Gadget Tracer Manager in the background..."
   rm -f /run/gadgettracermanager.socket

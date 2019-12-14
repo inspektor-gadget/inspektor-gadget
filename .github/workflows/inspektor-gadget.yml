@@ -20,9 +20,9 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v1
 
-    - name: Build gadgettracermanager
+    - name: Build binaries for the gadget container image
       run: |
-        make gadgettracermanager
+        make gadget-container-deps
 
     - name: Build gadget container and publish to Registry
       id: publish-registry

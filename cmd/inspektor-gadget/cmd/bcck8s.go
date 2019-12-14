@@ -182,7 +182,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			go func(nodeName string, id string) {
 				postOut := postProcess{nodeName, " " + id, os.Stdout, true, &firstLinePrinted, failure}
 				postErr := postProcess{nodeName, "E" + id, os.Stderr, false, &firstLinePrinted, failure}
-				cmd := fmt.Sprintf("echo $$ > /run/%s.pid && export TERM=xterm-256color && /opt/bcck8s/ensure-flatcar-edge && exec /opt/bcck8s/%s %s %s %s %s %s ",
+				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s -- %s %s",
 					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg)
 				var err error
 				if subCommand != "tcptop" {
@@ -206,8 +206,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				continue
 			}
 			_, _, err := execPodCapture(client, node.Name,
-				fmt.Sprintf("touch /run/%s.pid; kill -9 $(cat /run/%s.pid); rm /run/%s.pid",
-					tmpId, tmpId, tmpId))
+				fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --stop", tmpId))
 			if err != nil {
 				fmt.Printf("Error in running command: %q\n", err)
 			}

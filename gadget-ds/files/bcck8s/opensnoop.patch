@@ -1,0 +1,74 @@
+--- opensnoop-vanilla	2019-12-14 19:12:31.084361861 +0100
++++ opensnoop-ig	2019-12-14 19:48:31.539534217 +0100
+@@ -24,16 +24,17 @@
+ 
+ # arguments
+ examples = """examples:
+-    ./opensnoop           # trace all open() syscalls
+-    ./opensnoop -T        # include timestamps
+-    ./opensnoop -U        # include UID
+-    ./opensnoop -x        # only show failed opens
+-    ./opensnoop -p 181    # only trace PID 181
+-    ./opensnoop -t 123    # only trace TID 123
+-    ./opensnoop -u 1000   # only trace UID 1000
+-    ./opensnoop -d 10     # trace for 10 seconds only
+-    ./opensnoop -n main   # only print process names containing "main"
+-    ./opensnoop -e        # show extended fields
++    ./opensnoop               # trace all open() syscalls
++    ./opensnoop -T            # include timestamps
++    ./opensnoop -U            # include UID
++    ./opensnoop -x            # only show failed opens
++    ./opensnoop -p 181        # only trace PID 181
++    ./opensnoop -t 123        # only trace TID 123
++    ./opensnoop -u 1000       # only trace UID 1000
++    ./opensnoop -c ./mappath  # only trace cgroups in this BPF map
++    ./opensnoop -d 10         # trace for 10 seconds only
++    ./opensnoop -n main       # only print process names containing "main"
++    ./opensnoop -e            # show extended fields
+     ./opensnoop -f O_WRONLY -f O_RDWR  # only print calls for writing
+ """
+ parser = argparse.ArgumentParser(
+@@ -50,6 +51,8 @@
+     help="trace this PID only")
+ parser.add_argument("-t", "--tid",
+     help="trace this TID only")
++parser.add_argument("-c", "--cgroupmap",
++    help="trace cgroups in this BPF map only")
+ parser.add_argument("-u", "--uid",
+     help="trace this UID only")
+ parser.add_argument("-d", "--duration",
+@@ -99,6 +102,9 @@
+     int flags; // EXTENDED_STRUCT_MEMBER
+ };
+ 
++#if CGROUPSET
++BPF_TABLE_PINNED("hash", u64, u64, cgroupset, 1024, "CGROUPPATH");
++#endif
+ BPF_HASH(infotmp, u64, struct val_t);
+ BPF_PERF_OUTPUT(events);
+ 
+@@ -113,6 +119,12 @@
+     PID_TID_FILTER
+     UID_FILTER
+     FLAGS_FILTER
++#if CGROUPSET
++    u64 cgroupid = bpf_get_current_cgroup_id();
++    if (cgroupset.lookup(&cgroupid) == NULL) {
++      return 0;
++    }
++#endif
+     if (bpf_get_current_comm(&val.comm, sizeof(val.comm)) == 0) {
+         val.id = id;
+         val.fname = filename;
+@@ -163,6 +175,11 @@
+         'if (uid != %s) { return 0; }' % args.uid)
+ else:
+     bpf_text = bpf_text.replace('UID_FILTER', '')
++if args.cgroupmap:
++    bpf_text = bpf_text.replace('CGROUPSET', '1')
++    bpf_text = bpf_text.replace('CGROUPPATH', args.cgroupmap)
++else:
++    bpf_text = bpf_text.replace('CGROUPSET', '0')
+ if args.flag_filter:
+     bpf_text = bpf_text.replace('FLAGS_FILTER',
+         'if (!(flags & %d)) { return 0; }' % flag_filter_mask)
