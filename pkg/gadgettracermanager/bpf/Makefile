@@ -3,16 +3,19 @@
 DEBUG=1
 UID=$(shell id -u)
 PWD=$(shell pwd)
-BUILDER_DOCKER_FILE?=ig-builder.Dockerfile
-BUILDER_DOCKER_IMAGE?=kinvolk/ig-builder
+BUILDER_DOCKER_FILE?=bpf-builder.Dockerfile
+BUILDER_DOCKER_IMAGE?=kinvolk/bpf-builder:ig-latest
 
 # If you can use docker without being root, you can do "make SUDO="
 SUDO=$(shell docker info >/dev/null 2>&1 || echo "sudo -E")
 
-all: build-docker-image build-bpf-object
+all: pull-bpf-builder-image build-bpf-object
 
 build-docker-image:
 	$(SUDO) docker build -t $(BUILDER_DOCKER_IMAGE) -f $(BUILDER_DOCKER_FILE) .
+
+pull-bpf-builder-image:
+	$(SUDO) docker pull $(BUILDER_DOCKER_IMAGE)
 
 build-bpf-object:
 	$(SUDO) docker run -e DEBUG=$(DEBUG) \
