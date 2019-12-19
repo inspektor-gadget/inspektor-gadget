@@ -85,7 +85,7 @@ $ sudo cp inspektor-gadget/inspektor-gadget /usr/local/bin/kubectl-gadget
 Install Inspektor Gadget on Kubernetes:
 
 ```
-$ inspektor-gadget deploy | kubectl apply -f -
+$ kubectl gadget deploy | kubectl apply -f -
 ```
 
 [Read the detailed install instructions](Documentation/install.md)
