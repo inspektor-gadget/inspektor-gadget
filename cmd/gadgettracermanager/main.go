@@ -92,11 +92,14 @@ func main() {
 		// break
 
 	case "add-tracer":
-		out, err := client.AddTracer(ctx, &pb.ContainerSelector{
-			Namespace:      namespace,
-			Podname:        podname,
-			Labels:         labels,
-			ContainerIndex: int32(containerIndex),
+		out, err := client.AddTracer(ctx, &pb.AddTracerRequest{
+			Id: tracerid,
+			Selector: &pb.ContainerSelector{
+				Namespace:      namespace,
+				Podname:        podname,
+				Labels:         labels,
+				ContainerIndex: int32(containerIndex),
+			},
 		})
 		if err != nil {
 			log.Fatalf("%v", err)

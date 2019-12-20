@@ -19,13 +19,13 @@ package gadgettracermanager;
 service GadgetTracerManager {
   // Methods called by bcc scripts
 
-  rpc AddTracer(ContainerSelector) returns (TracerID) {}
-  rpc RemoveTracer(TracerID) returns (RemoveTracerResult) {}
+  rpc AddTracer(AddTracerRequest) returns (TracerID) {}
+  rpc RemoveTracer(TracerID) returns (RemoveTracerResponse) {}
 
   // Methods called by OCI Hooks
 
-  rpc AddContainer(ContainerDefinition) returns (AddContainerResult) {}
-  rpc RemoveContainer(ContainerDefinition) returns (RemoveContainerResult) {}
+  rpc AddContainer(ContainerDefinition) returns (AddContainerResponse) {}
+  rpc RemoveContainer(ContainerDefinition) returns (RemoveContainerResponse) {}
 
   // Methods called for debugging
 
@@ -37,15 +37,20 @@ message Label {
   string value = 2;
 }
 
-message RemoveTracerResult {
+message AddTracerRequest {
+  string id = 1;
+  ContainerSelector selector = 2;
+}
+
+message RemoveTracerResponse {
   string debug = 1;
 }
 
-message AddContainerResult {
+message AddContainerResponse {
   string debug = 1;
 }
 
-message RemoveContainerResult {
+message RemoveContainerResponse {
   string debug = 1;
 }
 

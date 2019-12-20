@@ -64,13 +64,21 @@ func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition
 	return true
 }
 
-func (g *GadgetTracerManager) AddTracer(ctx context.Context, containerSelector *pb.ContainerSelector) (*pb.TracerID, error) {
-	b := make([]byte, 6)
-	_, err := rand.Read(b)
-	if err != nil {
-		return nil, fmt.Errorf("cannot generate random number: %v", err)
+func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRequest) (*pb.TracerID, error) {
+	tracerId := ""
+	if req.Id == "" {
+		b := make([]byte, 6)
+		_, err := rand.Read(b)
+		if err != nil {
+			return nil, fmt.Errorf("cannot generate random number: %v", err)
+		}
+		tracerId = fmt.Sprintf("%x", b)
+	} else {
+		tracerId = req.Id
 	}
-	tracerId := fmt.Sprintf("%x", b)
+	if _, ok := g.tracers[tracerId]; ok {
+		return nil, fmt.Errorf("tracer id %q already exists", tracerId)
+	}
 
 	buf, err := Asset("tracer-map.o")
 	if err != nil {
@@ -98,7 +106,7 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, containerSelector *
 	matchesCache := []uint64{}
 
 	for _, c := range g.containers {
-		if containerSelectorMatches(containerSelector, &c) {
+		if containerSelectorMatches(req.Selector, &c) {
 			matchesCache = append(matchesCache, c.CgroupId)
 			cgroupIdC := uint64(c.CgroupId)
 			zero := uint32(0)
@@ -108,7 +116,7 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, containerSelector *
 
 	g.tracers[tracerId] = tracer{
 		tracerId:           tracerId,
-		containerSelector:  *containerSelector,
+		containerSelector:  *req.Selector,
 		mapHolder:          m,
 		cgroupIdSetMap:     cgroupIdSetMap,
 		cgroupIdSetMapPath: cgroupIdSetMapPath,
@@ -117,7 +125,7 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, containerSelector *
 	return &pb.TracerID{Id: tracerId}, nil
 }
 
-func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.TracerID) (*pb.RemoveTracerResult, error) {
+func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.TracerID) (*pb.RemoveTracerResponse, error) {
 	if tracerID.Id == "" {
 		return nil, fmt.Errorf("cannot remove tracer: Id not set")
 	}
@@ -131,10 +139,10 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 	os.Remove("/sys/fs/bpf/" + t.cgroupIdSetMapPath)
 
 	delete(g.tracers, tracerID.Id)
-	return &pb.RemoveTracerResult{}, nil
+	return &pb.RemoveTracerResponse{}, nil
 }
 
-func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResult, error) {
+func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResponse, error) {
 	if containerDefinition.ContainerId == "" || containerDefinition.CgroupId == 0 {
 		return nil, fmt.Errorf("cannot add container: container id or cgroup id not set")
 	}
@@ -152,10 +160,10 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 	}
 
 	g.containers[containerDefinition.ContainerId] = *containerDefinition
-	return &pb.AddContainerResult{}, nil
+	return &pb.AddContainerResponse{}, nil
 }
 
-func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.RemoveContainerResult, error) {
+func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.RemoveContainerResponse, error) {
 	if containerDefinition.ContainerId == "" {
 		return nil, fmt.Errorf("cannot remove container: ContainerId not set")
 	}
@@ -174,7 +182,7 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 	}
 
 	delete(g.containers, containerDefinition.ContainerId)
-	return &pb.RemoveContainerResult{}, nil
+	return &pb.RemoveContainerResponse{}, nil
 }
 
 func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRequest) (*pb.Dump, error) {

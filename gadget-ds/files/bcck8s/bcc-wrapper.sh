@@ -80,7 +80,7 @@ fi
 
 echo $$ > $PIDFILE
 
-TRACERID=$($GADGETTRACERMANAGER -call add-tracer -label "$LABEL" -namespace "$NAMESPACE" -podname "$PODNAME" -containerindex "$CONTAINERINDEX")
+$GADGETTRACERMANAGER -call add-tracer -tracerid "$TRACERID" -label "$LABEL" -namespace "$NAMESPACE" -podname "$PODNAME" -containerindex "$CONTAINERINDEX" > /dev/null
 CGROUPMAP=$BPFDIR/gadget/cgroupidset-$TRACERID
 
 export TERM=xterm-256color

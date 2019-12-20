@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strconv"
@@ -154,7 +155,12 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		failure := make(chan string)
 		var firstLinePrinted uint64
-		tmpId := time.Now().Format("20060102150405")
+		tracerId := time.Now().Format("20060102150405")
+		b := make([]byte, 6)
+		_, err = rand.Read(b)
+		if err == nil {
+			tracerId = fmt.Sprintf("%s-%x", tracerId, b)
+		}
 
 		fmt.Printf("Node numbers:")
 		for i, node := range nodes.Items {
@@ -187,7 +193,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				postOut := postProcess{nodeName, " " + id, os.Stdout, false /* see FIXME in Writer() */, &firstLinePrinted, failure}
 				postErr := postProcess{nodeName, "E" + id, os.Stderr, false, &firstLinePrinted, failure}
 				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s -- %s %s",
-					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg)
+					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg)
 				var err error
 				if subCommand != "tcptop" {
 					err = execPod(client, nodeName, cmd, postOut, postErr)
@@ -210,7 +216,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				continue
 			}
 			_, _, err := execPodCapture(client, node.Name,
-				fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --stop", tmpId))
+				fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --stop", tracerId))
 			if err != nil {
 				fmt.Printf("Error in running command: %q\n", err)
 			}
