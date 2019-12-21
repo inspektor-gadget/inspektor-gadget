@@ -11,8 +11,9 @@ COPY files/runc-hook-poststop.sh /bin/runc-hook-poststop.sh
 COPY files/entrypoint.sh /entrypoint.sh
 COPY files/bcck8s /opt/bcck8s
 
-COPY bin/gadgettracermanager /bin/gadgettracermanager
-COPY bin/ocihookgadget /bin/ocihookgadget
+COPY out/gadgettracermanager /bin/gadgettracermanager
+COPY out/ocihookgadget /bin/ocihookgadget
+COPY out/*.py /opt/bcck8s/
 
 COPY --from=traceloop /bin/traceloop /bin/traceloop
 

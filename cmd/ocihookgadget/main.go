@@ -269,6 +269,7 @@ func main() {
 		ContainerId:    ociState.ID,
 		CgroupPath:     cgroupPath,
 		CgroupId:       cgroupId,
+		Pid:            uint64(ociState.Pid),
 		Namespace:      namespace,
 		Podname:        podname,
 		ContainerIndex: int32(containerIndex),

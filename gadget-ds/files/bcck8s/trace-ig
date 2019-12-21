@@ -21,6 +21,10 @@ import ctypes as ct
 import os
 import traceback
 import sys
+import grpc
+import threading
+import gadgettracermanager_pb2
+import gadgettracermanager_pb2_grpc
 
 class Probe(object):
         probe_count = 0
@@ -624,13 +628,19 @@ BPF_PERF_OUTPUT(%s);
                                           fn_name=self.probe_name)
                 # Note that tracepoints don't need an explicit attach
 
-        def _attach_u(self, bpf):
-                libpath = BPF.find_library(self.library)
+        def _attach_u(self, bpf, container_pid=0):
+                if container_pid == 0:
+                    return
+                    library = self.library
+                else:
+                    library = "/proc/%d/root/%s" % (container_pid, self.library)
+
+                libpath = BPF.find_library(library)
                 if libpath is None:
                         # This might be an executable (e.g. 'bash')
-                        libpath = BPF.find_exe(self.library)
+                        libpath = BPF.find_exe(library)
                 if libpath is None or len(libpath) == 0:
-                        self._bail("unable to find library %s" % self.library)
+                        self._bail("unable to find library %s" % library)
 
                 if self.probe_type == "u":
                         pass    # Was already enabled by the BPF constructor
@@ -770,6 +780,21 @@ trace -I 'linux/fs_struct.h' 'mntns_install "users = %d", $task->fs->users'
                 else:
                         self.cgroup_map_name = None
 
+        def _start_gadget_client(self):
+            channel = grpc.insecure_channel('unix://' + os.getenv('GADGETTRACERMANAGER_SOCKET_FILE'))
+            stub = gadgettracermanager_pb2_grpc.GadgetTracerManagerStub(channel)
+            req = gadgettracermanager_pb2.ListContainersRequest(tracer_id=os.getenv('GADGET_TRACER_ID'))
+            self.container_stream = stub.ListContainers(req)
+            for c in self.container_stream:
+                if c.removed:
+                    continue
+                if c.container.container_index == -1:
+                    continue # don't inspect the pause container
+                for probe in self.probes:
+                        if self.args.verbose:
+                                print(probe)
+                        probe._attach_u(self.bpf, c.container.pid)
+
         def _create_probes(self):
                 Probe.configure(self.args)
                 self.probes = []
@@ -826,6 +851,9 @@ trace -I 'linux/fs_struct.h' 'mntns_install "users = %d", $task->fs->users'
                 if self.cgroup_map_name is not None:
                         cgroup_array = self.bpf.get_table(self.cgroup_map_name)
                         cgroup_array[0] = self.args.cgroup_path
+
+                thread = threading.Thread(target=self._start_gadget_client, args=())
+                thread.start()
 
                 for probe in self.probes:
                         if self.args.verbose:

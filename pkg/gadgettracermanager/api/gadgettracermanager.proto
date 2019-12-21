@@ -21,6 +21,7 @@ service GadgetTracerManager {
 
   rpc AddTracer(AddTracerRequest) returns (TracerID) {}
   rpc RemoveTracer(TracerID) returns (RemoveTracerResponse) {}
+  rpc ListContainers(ListContainersRequest) returns (stream ListContainersResponse) {}
 
   // Methods called by OCI Hooks
 
@@ -46,6 +47,15 @@ message RemoveTracerResponse {
   string debug = 1;
 }
 
+message ListContainersRequest {
+  string tracer_id = 1;
+}
+
+message ListContainersResponse {
+  bool removed = 1;
+  ContainerDefinition container = 2;
+}
+
 message AddContainerResponse {
   string debug = 1;
 }
@@ -69,11 +79,12 @@ message ContainerDefinition {
   string container_id = 1;
   string cgroup_path = 2;
   uint64 cgroup_id = 3;
+  uint64 pid = 4;
 
-  string namespace = 4;
-  string podname = 5;
-  int32 container_index = 6;
-  repeated Label labels = 7;
+  string namespace = 5;
+  string podname = 6;
+  int32 container_index = 7;
+  repeated Label labels = 8;
 }
 
 message DumpStateRequest {

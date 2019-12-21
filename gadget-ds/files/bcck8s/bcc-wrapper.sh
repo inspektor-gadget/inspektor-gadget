@@ -85,4 +85,6 @@ CGROUPMAP=$BPFDIR/gadget/cgroupidset-$TRACERID
 
 export TERM=xterm-256color
 export PYTHONUNBUFFERED=TRUE
+export GADGETTRACERMANAGER_SOCKET_FILE="/run/gadgettracermanager.socket"
+export GADGET_TRACER_ID="$TRACERID"
 exec /opt/bcck8s/$GADGET --cgroupmap $CGROUPMAP "$@"

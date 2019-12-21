@@ -28,16 +28,17 @@ build-ig:
 .PHONY: gadgettracermanager
 gadgettracermanager:
 	make -C pkg/gadgettracermanager/ generated-files
-	mkdir -p gadget-ds/bin
+	mkdir -p gadget-ds/out
 	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
-		-o gadget-ds/bin/gadgettracermanager \
+		-o gadget-ds/out/gadgettracermanager \
 		cmd/gadgettracermanager/main.go
+	cp pkg/gadgettracermanager/api/*.py gadget-ds/out/
 
 .PHONY: ocihookgadget
 ocihookgadget:
-	mkdir -p gadget-ds/bin
+	mkdir -p gadget-ds/out
 	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
-		-o gadget-ds/bin/ocihookgadget \
+		-o gadget-ds/out/ocihookgadget \
 		cmd/ocihookgadget/main.go
 
 .PHONY: install-user

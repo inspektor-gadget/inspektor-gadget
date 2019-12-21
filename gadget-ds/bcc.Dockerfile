@@ -18,8 +18,11 @@ COPY --from=packages /root/bcc/*.deb /root/
 
 RUN set -ex; \
   apt-get update -y; \
-  DEBIAN_FRONTEND=noninteractive \
+  export DEBIAN_FRONTEND=noninteractive; \
   apt-get install -y \
     python python3 binutils libelf1; \
   dpkg -i /root/*.deb; \
-  rm -f /root/*.deb
+  rm -f /root/*.deb; \
+  apt-get install -y python-pip; \
+  pip install grpcio; \
+  pip install protobuf

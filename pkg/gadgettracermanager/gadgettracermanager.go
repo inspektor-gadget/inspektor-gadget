@@ -17,7 +17,11 @@ import (
 )
 
 type GadgetTracerManager struct {
-	mu sync.Mutex
+	// mux protects the two maps: containers and tracers
+	mux sync.Mutex
+
+	// cond is broadcasted each time one of the two maps are modified
+	cond *sync.Cond
 
 	// containers by ContainerId
 	containers map[string]pb.ContainerDefinition
@@ -105,6 +109,9 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 
 	matchesCache := []uint64{}
 
+	g.mux.Lock()
+	defer g.mux.Unlock()
+
 	for _, c := range g.containers {
 		if containerSelectorMatches(req.Selector, &c) {
 			matchesCache = append(matchesCache, c.CgroupId)
@@ -122,6 +129,9 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 		cgroupIdSetMapPath: cgroupIdSetMapPath,
 		matchesCache:       matchesCache,
 	}
+
+	g.cond.Broadcast()
+
 	return &pb.TracerID{Id: tracerId}, nil
 }
 
@@ -129,6 +139,9 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 	if tracerID.Id == "" {
 		return nil, fmt.Errorf("cannot remove tracer: Id not set")
 	}
+
+	g.mux.Lock()
+	defer g.mux.Unlock()
 
 	t, ok := g.tracers[tracerID.Id]
 	if !ok {
@@ -139,13 +152,91 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 	os.Remove("/sys/fs/bpf/" + t.cgroupIdSetMapPath)
 
 	delete(g.tracers, tracerID.Id)
+
+	g.cond.Broadcast()
+
 	return &pb.RemoveTracerResponse{}, nil
+}
+
+func (g *GadgetTracerManager) ListContainers(tracerID *pb.ListContainersRequest, stream pb.GadgetTracerManager_ListContainersServer) error {
+	if tracerID.TracerId == "" {
+		return fmt.Errorf("cannot list containers for tracer: Id not set")
+	}
+
+	g.mux.Lock()
+	defer g.mux.Unlock()
+
+	t, ok := g.tracers[tracerID.TracerId]
+	if !ok {
+		return fmt.Errorf("cannot find tracer: unknown tracer %q", tracerID.TracerId)
+	}
+
+	// Send initial set of container ids
+	currentContainerSet := map[string]pb.ContainerDefinition{}
+	for _, c := range g.containers {
+		if containerSelectorMatches(&t.containerSelector, &c) {
+			currentContainerSet[c.ContainerId] = c
+			if err := stream.Send(&pb.ListContainersResponse{
+				Removed:   false,
+				Container: &c,
+			}); err != nil {
+				return err
+			}
+
+		}
+	}
+
+	for {
+		// Wait for modifications
+		g.cond.Wait()
+
+		// The tracer might have been removed while we were sleeping
+		t, ok = g.tracers[tracerID.TracerId]
+		if !ok {
+			return nil
+		}
+
+		// Add new containers that matches
+		for _, c := range g.containers {
+			matches := containerSelectorMatches(&t.containerSelector, &c)
+			_, seen := currentContainerSet[c.ContainerId]
+			if matches && !seen {
+				currentContainerSet[c.ContainerId] = c
+				if err := stream.Send(&pb.ListContainersResponse{
+					Removed:   false,
+					Container: &c,
+				}); err != nil {
+					return err
+				}
+			}
+		}
+
+		// Remove deleted containers
+		for _, c := range currentContainerSet {
+			_, stillExists := g.containers[c.ContainerId]
+			if !stillExists {
+				if err := stream.Send(&pb.ListContainersResponse{
+					Removed:   true,
+					Container: &c,
+				}); err != nil {
+					return err
+				}
+				delete(currentContainerSet, c.ContainerId)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResponse, error) {
 	if containerDefinition.ContainerId == "" || containerDefinition.CgroupId == 0 {
 		return nil, fmt.Errorf("cannot add container: container id or cgroup id not set")
 	}
+
+	g.mux.Lock()
+	defer g.mux.Unlock()
+
 	if _, ok := g.containers[containerDefinition.ContainerId]; ok {
 		return nil, fmt.Errorf("container with cgroup id %v already exists", containerDefinition.CgroupId)
 	}
@@ -160,6 +251,9 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 	}
 
 	g.containers[containerDefinition.ContainerId] = *containerDefinition
+
+	g.cond.Broadcast()
+
 	return &pb.AddContainerResponse{}, nil
 }
 
@@ -167,6 +261,9 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 	if containerDefinition.ContainerId == "" {
 		return nil, fmt.Errorf("cannot remove container: ContainerId not set")
 	}
+
+	g.mux.Lock()
+	defer g.mux.Unlock()
 
 	c, ok := g.containers[containerDefinition.ContainerId]
 	if !ok {
@@ -182,10 +279,16 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 	}
 
 	delete(g.containers, containerDefinition.ContainerId)
+
+	g.cond.Broadcast()
+
 	return &pb.RemoveContainerResponse{}, nil
 }
 
 func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRequest) (*pb.Dump, error) {
+	g.mux.Lock()
+	defer g.mux.Unlock()
+
 	out := "List of containers:\n"
 	for i, c := range g.containers {
 		out += fmt.Sprintf("%v -> %+v\n", i, c)
@@ -207,5 +310,7 @@ func NewServer() *GadgetTracerManager {
 		containers: make(map[string]pb.ContainerDefinition),
 		tracers:    make(map[string]tracer),
 	}
+	g.cond = sync.NewCond(&g.mux)
+
 	return g
 }
