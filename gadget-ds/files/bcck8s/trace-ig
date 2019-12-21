@@ -712,6 +712,8 @@ trace -I 'linux/fs_struct.h' 'mntns_install "users = %d", $task->fs->users'
                 # their kernel names -- tgid and pid -- inside the script
                 parser.add_argument("-p", "--pid", type=int, metavar="PID",
                   dest="tgid", help="id of the process to trace (optional)")
+                parser.add_argument("--cgroupmap",
+                  help="trace cgroups in this BPF map only")
                 parser.add_argument("-L", "--tid", type=int, metavar="TID",
                   dest="pid", help="id of the thread to trace (optional)")
                 parser.add_argument("-v", "--verbose", action="store_true",
