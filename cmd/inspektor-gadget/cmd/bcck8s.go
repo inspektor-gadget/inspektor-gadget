@@ -37,6 +37,13 @@ var opensnoopCmd = &cobra.Command{
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
+var uprobeCmd = &cobra.Command{
+	Use:               "uprobe",
+	Short:             "uprobe",
+	Run:               bccCmd("uprobe", "trace-ig"),
+	PersistentPreRunE: doesKubeconfigExist,
+}
+
 var tcptopCmd = &cobra.Command{
 	Use:               "tcptop",
 	Short:             "Show the TCP traffic in a pod",
@@ -66,10 +73,12 @@ var (
 
 	stackFlag   bool
 	verboseFlag bool
+
+	probeSpecFlag string
 )
 
 func init() {
-	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd, tcptopCmd, hintsNetworkCmd, capabilitiesCmd}
+	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd, uprobeCmd, tcptopCmd, hintsNetworkCmd, capabilitiesCmd}
 	args := []string{"label", "node", "namespace", "podname"}
 	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam}
 	for _, command := range commands {
@@ -84,6 +93,7 @@ func init() {
 	}
 	capabilitiesCmd.PersistentFlags().BoolVarP(&stackFlag, "print-stack", "", false, "Print kernel and userspace call stack of cap_capable()")
 	capabilitiesCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "", false, "Include non-audit")
+	uprobeCmd.PersistentFlags().StringVarP(&probeSpecFlag, "probe-spec", "", "", "Probe Spec")
 }
 
 type postProcess struct {
@@ -187,13 +197,18 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			if verboseFlag && subCommand == "capabilities" {
 				verboseArg = "-v"
 			}
+			probeSpecArg := ""
+			if probeSpecFlag != "" && subCommand == "uprobe" {
+				probeSpecArg = probeSpecFlag
+			}
+
 			id := strconv.Itoa(i)
 			fmt.Printf(" %s = %s", id, node.Name)
 			go func(nodeName string, id string) {
 				postOut := postProcess{nodeName, " " + id, os.Stdout, false /* see FIXME in Writer() */, &firstLinePrinted, failure}
 				postErr := postProcess{nodeName, "E" + id, os.Stderr, false, &firstLinePrinted, failure}
-				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s -- %s %s",
-					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg)
+				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s -- %s %s %q",
+					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg, probeSpecArg)
 				var err error
 				if subCommand != "tcptop" {
 					err = execPod(client, nodeName, cmd, postOut, postErr)
