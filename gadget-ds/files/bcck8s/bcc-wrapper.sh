@@ -84,5 +84,5 @@ $GADGETTRACERMANAGER -call add-tracer -tracerid "$TRACERID" -label "$LABEL" -nam
 CGROUPMAP=$BPFDIR/gadget/cgroupidset-$TRACERID
 
 export TERM=xterm-256color
-
+export PYTHONUNBUFFERED=TRUE
 exec /opt/bcck8s/$GADGET --cgroupmap $CGROUPMAP "$@"
