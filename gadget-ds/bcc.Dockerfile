@@ -1,12 +1,16 @@
-# First, build bcc from the upstream Dockerfile.ubuntu:
+# First, from the bcc sources:
 #
-#   docker build -t kinvolk/bcc:snapshot-20191214-git-6e9b4509fc7a -f ./Dockerfile.ubuntu .
+#   git clone https://github.com/iovisor/bcc.git
+#   cd bcc
+#   docker build -t kinvolk/bcc:snapshot-20191221-git-8174c0ae5541 -f ./Dockerfile.ubuntu .
 #
 # Then, use this Dockerfile with:
 #
+#   cd gadget-ds/
 #   make docker-bcc/build
+#   make docker-bcc/push
 
-FROM kinvolk/bcc:snapshot-20191214-git-6e9b4509fc7a as packages
+FROM kinvolk/bcc:snapshot-20191221-git-8174c0ae5541 as packages
 
 FROM ubuntu:bionic
 
