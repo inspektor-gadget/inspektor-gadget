@@ -24,10 +24,10 @@ class GadgetTracerManagerStub(object):
         request_serializer=gadgettracermanager__pb2.TracerID.SerializeToString,
         response_deserializer=gadgettracermanager__pb2.RemoveTracerResponse.FromString,
         )
-    self.ListContainers = channel.unary_stream(
-        '/gadgettracermanager.GadgetTracerManager/ListContainers',
-        request_serializer=gadgettracermanager__pb2.ListContainersRequest.SerializeToString,
-        response_deserializer=gadgettracermanager__pb2.ListContainersResponse.FromString,
+    self.TracerSubscribeContainers = channel.unary_stream(
+        '/gadgettracermanager.GadgetTracerManager/TracerSubscribeContainers',
+        request_serializer=gadgettracermanager__pb2.TracerSubscribeContainersRequest.SerializeToString,
+        response_deserializer=gadgettracermanager__pb2.TracerSubscribeContainersResponse.FromString,
         )
     self.AddContainer = channel.unary_unary(
         '/gadgettracermanager.GadgetTracerManager/AddContainer',
@@ -64,7 +64,7 @@ class GadgetTracerManagerServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
-  def ListContainers(self, request, context):
+  def TracerSubscribeContainers(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -107,10 +107,10 @@ def add_GadgetTracerManagerServicer_to_server(servicer, server):
           request_deserializer=gadgettracermanager__pb2.TracerID.FromString,
           response_serializer=gadgettracermanager__pb2.RemoveTracerResponse.SerializeToString,
       ),
-      'ListContainers': grpc.unary_stream_rpc_method_handler(
-          servicer.ListContainers,
-          request_deserializer=gadgettracermanager__pb2.ListContainersRequest.FromString,
-          response_serializer=gadgettracermanager__pb2.ListContainersResponse.SerializeToString,
+      'TracerSubscribeContainers': grpc.unary_stream_rpc_method_handler(
+          servicer.TracerSubscribeContainers,
+          request_deserializer=gadgettracermanager__pb2.TracerSubscribeContainersRequest.FromString,
+          response_serializer=gadgettracermanager__pb2.TracerSubscribeContainersResponse.SerializeToString,
       ),
       'AddContainer': grpc.unary_unary_rpc_method_handler(
           servicer.AddContainer,
@@ -130,4 +130,46 @@ def add_GadgetTracerManagerServicer_to_server(servicer, server):
   }
   generic_handler = grpc.method_handlers_generic_handler(
       'gadgettracermanager.GadgetTracerManager', rpc_method_handlers)
+  server.add_generic_rpc_handlers((generic_handler,))
+
+
+class TracerStub(object):
+  # missing associated documentation comment in .proto file
+  pass
+
+  def __init__(self, channel):
+    """Constructor.
+
+    Args:
+      channel: A grpc.Channel.
+    """
+    self.UpdateContainers = channel.unary_unary(
+        '/gadgettracermanager.Tracer/UpdateContainers',
+        request_serializer=gadgettracermanager__pb2.UpdateContainersRequest.SerializeToString,
+        response_deserializer=gadgettracermanager__pb2.UpdateContainersResponse.FromString,
+        )
+
+
+class TracerServicer(object):
+  # missing associated documentation comment in .proto file
+  pass
+
+  def UpdateContainers(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+
+def add_TracerServicer_to_server(servicer, server):
+  rpc_method_handlers = {
+      'UpdateContainers': grpc.unary_unary_rpc_method_handler(
+          servicer.UpdateContainers,
+          request_deserializer=gadgettracermanager__pb2.UpdateContainersRequest.FromString,
+          response_serializer=gadgettracermanager__pb2.UpdateContainersResponse.SerializeToString,
+      ),
+  }
+  generic_handler = grpc.method_handlers_generic_handler(
+      'gadgettracermanager.Tracer', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))

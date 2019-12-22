@@ -21,7 +21,7 @@ service GadgetTracerManager {
 
   rpc AddTracer(AddTracerRequest) returns (TracerID) {}
   rpc RemoveTracer(TracerID) returns (RemoveTracerResponse) {}
-  rpc ListContainers(ListContainersRequest) returns (stream ListContainersResponse) {}
+  rpc TracerSubscribeContainers(TracerSubscribeContainersRequest) returns (stream TracerSubscribeContainersResponse) {}
 
   // Methods called by OCI Hooks
 
@@ -31,6 +31,10 @@ service GadgetTracerManager {
   // Methods called for debugging
 
   rpc DumpState(DumpStateRequest) returns (Dump) {}
+}
+
+service Tracer {
+  rpc UpdateContainers(UpdateContainersRequest) returns (UpdateContainersResponse) {}
 }
 
 message Label {
@@ -47,13 +51,13 @@ message RemoveTracerResponse {
   string debug = 1;
 }
 
-message ListContainersRequest {
+message TracerSubscribeContainersRequest {
   string tracer_id = 1;
+  string socket_file = 2;
 }
 
-message ListContainersResponse {
-  bool removed = 1;
-  ContainerDefinition container = 2;
+message TracerSubscribeContainersResponse {
+  string debug = 1;
 }
 
 message AddContainerResponse {
@@ -92,4 +96,12 @@ message DumpStateRequest {
 
 message Dump {
   string state = 1;
+}
+
+message UpdateContainersRequest {
+  repeated ContainerDefinition added = 1;
+  repeated ContainerDefinition removed = 2;
+}
+
+message UpdateContainersResponse {
 }

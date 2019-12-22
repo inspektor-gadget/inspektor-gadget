@@ -655,6 +655,24 @@ BPF_PERF_OUTPUT(%s);
                                           fn_name=self.probe_name,
                                           pid=Probe.tgid)
 
+class TracerServicer(gadgettracermanager_pb2_grpc.TracerServicer):
+    """Provides methods that implement functionality of a tracer."""
+
+    def __init__(self, tool):
+        self.tool = tool
+
+    def UpdateContainers(self, request, context):
+        for c in request.added:
+            if c.container_index == -1:
+                continue # don't inspect the pause container
+            for probe in self.tool.probes:
+                    if self.tool.args.verbose:
+                            print(probe)
+                    probe._attach_u(self.tool.bpf, c.pid)
+            return None
+
+
+
 class Tool(object):
         DEFAULT_PERF_BUFFER_PAGES = 64
         examples = """
@@ -780,20 +798,23 @@ trace -I 'linux/fs_struct.h' 'mntns_install "users = %d", $task->fs->users'
                 else:
                         self.cgroup_map_name = None
 
-        def _start_gadget_client(self):
+        def _connect_to_gadget_manager(self):
+            server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
+            tracer_pb2_grpc.add_Tracer_to_server(
+                TracerServicer(tool=self), server)
+            tracer_socket_file = '/run/gadget-%s.socket' % os.getenv('GADGET_TRACER_ID')
+            server.add_insecure_port('unix://' + tracer_socket_file)
+            server.start()
+
             channel = grpc.insecure_channel('unix://' + os.getenv('GADGETTRACERMANAGER_SOCKET_FILE'))
             stub = gadgettracermanager_pb2_grpc.GadgetTracerManagerStub(channel)
-            req = gadgettracermanager_pb2.ListContainersRequest(tracer_id=os.getenv('GADGET_TRACER_ID'))
-            self.container_stream = stub.ListContainers(req)
-            for c in self.container_stream:
-                if c.removed:
-                    continue
-                if c.container.container_index == -1:
-                    continue # don't inspect the pause container
-                for probe in self.probes:
-                        if self.args.verbose:
-                                print(probe)
-                        probe._attach_u(self.bpf, c.container.pid)
+            req = gadgettracermanager_pb2.TracerSubscribeContainersRequest(
+                tracer_id=os.getenv('GADGET_TRACER_ID'),
+                socket_file=tracer_socket_file
+            )
+            self.resp = stub.TracerSubscribeContainers(req)
+            for r in self.resp:
+                pass
 
         def _create_probes(self):
                 Probe.configure(self.args)
@@ -852,7 +873,7 @@ trace -I 'linux/fs_struct.h' 'mntns_install "users = %d", $task->fs->users'
                         cgroup_array = self.bpf.get_table(self.cgroup_map_name)
                         cgroup_array[0] = self.args.cgroup_path
 
-                thread = threading.Thread(target=self._start_gadget_client, args=())
+                thread = threading.Thread(target=self._connect_to_gadget_manager, args=())
                 thread.start()
 
                 for probe in self.probes:
