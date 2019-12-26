@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='gadgettracermanager',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x19gadgettracermanager.proto\x12\x13gadgettracermanager\"#\n\x05Label\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"X\n\x10\x41\x64\x64TracerRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x38\n\x08selector\x18\x02 \x01(\x0b\x32&.gadgettracermanager.ContainerSelector\"%\n\x14RemoveTracerResponse\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\t\"J\n TracerSubscribeContainersRequest\x12\x11\n\ttracer_id\x18\x01 \x01(\t\x12\x13\n\x0bsocket_file\x18\x02 \x01(\t\"2\n!TracerSubscribeContainersResponse\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\t\"%\n\x14\x41\x64\x64\x43ontainerResponse\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\t\"(\n\x17RemoveContainerResponse\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\t\"|\n\x11\x43ontainerSelector\x12\x11\n\tnamespace\x18\x01 \x01(\t\x12\x0f\n\x07podname\x18\x02 \x01(\t\x12*\n\x06labels\x18\x03 \x03(\x0b\x32\x1a.gadgettracermanager.Label\x12\x17\n\x0f\x63ontainer_index\x18\x04 \x01(\x05\"\x16\n\x08TracerID\x12\n\n\x02id\x18\x01 \x01(\t\"\xc9\x01\n\x13\x43ontainerDefinition\x12\x14\n\x0c\x63ontainer_id\x18\x01 \x01(\t\x12\x13\n\x0b\x63group_path\x18\x02 \x01(\t\x12\x11\n\tcgroup_id\x18\x03 \x01(\x04\x12\x0b\n\x03pid\x18\x04 \x01(\x04\x12\x11\n\tnamespace\x18\x05 \x01(\t\x12\x0f\n\x07podname\x18\x06 \x01(\t\x12\x17\n\x0f\x63ontainer_index\x18\x07 \x01(\x05\x12*\n\x06labels\x18\x08 \x03(\x0b\x32\x1a.gadgettracermanager.Label\"\x12\n\x10\x44umpStateRequest\"\x15\n\x04\x44ump\x12\r\n\x05state\x18\x01 \x01(\t\"\x8d\x01\n\x17UpdateContainersRequest\x12\x37\n\x05\x61\x64\x64\x65\x64\x18\x01 \x03(\x0b\x32(.gadgettracermanager.ContainerDefinition\x12\x39\n\x07removed\x18\x02 \x03(\x0b\x32(.gadgettracermanager.ContainerDefinition\"\x1a\n\x18UpdateContainersResponse2\xfc\x04\n\x13GadgetTracerManager\x12S\n\tAddTracer\x12%.gadgettracermanager.AddTracerRequest\x1a\x1d.gadgettracermanager.TracerID\"\x00\x12Z\n\x0cRemoveTracer\x12\x1d.gadgettracermanager.TracerID\x1a).gadgettracermanager.RemoveTracerResponse\"\x00\x12\x8e\x01\n\x19TracerSubscribeContainers\x12\x35.gadgettracermanager.TracerSubscribeContainersRequest\x1a\x36.gadgettracermanager.TracerSubscribeContainersResponse\"\x00\x30\x01\x12\x65\n\x0c\x41\x64\x64\x43ontainer\x12(.gadgettracermanager.ContainerDefinition\x1a).gadgettracermanager.AddContainerResponse\"\x00\x12k\n\x0fRemoveContainer\x12(.gadgettracermanager.ContainerDefinition\x1a,.gadgettracermanager.RemoveContainerResponse\"\x00\x12O\n\tDumpState\x12%.gadgettracermanager.DumpStateRequest\x1a\x19.gadgettracermanager.Dump\"\x00\x32{\n\x06Tracer\x12q\n\x10UpdateContainers\x12,.gadgettracermanager.UpdateContainersRequest\x1a-.gadgettracermanager.UpdateContainersResponse\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x19gadgettracermanager.proto\x12\x13gadgettracermanager\"#\n\x05Label\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"X\n\x10\x41\x64\x64TracerRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x38\n\x08selector\x18\x02 \x01(\x0b\x32&.gadgettracermanager.ContainerSelector\"%\n\x14RemoveTracerResponse\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\t\"J\n TracerSubscribeContainersRequest\x12\x11\n\ttracer_id\x18\x01 \x01(\t\x12\x13\n\x0bsocket_file\x18\x02 \x01(\t\"2\n!TracerSubscribeContainersResponse\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\t\"%\n\x14\x41\x64\x64\x43ontainerResponse\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\t\"(\n\x17RemoveContainerResponse\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\t\"|\n\x11\x43ontainerSelector\x12\x11\n\tnamespace\x18\x01 \x01(\t\x12\x0f\n\x07podname\x18\x02 \x01(\t\x12*\n\x06labels\x18\x03 \x03(\x0b\x32\x1a.gadgettracermanager.Label\x12\x17\n\x0f\x63ontainer_index\x18\x04 \x01(\x05\"\x16\n\x08TracerID\x12\n\n\x02id\x18\x01 \x01(\t\"\xc9\x01\n\x13\x43ontainerDefinition\x12\x14\n\x0c\x63ontainer_id\x18\x01 \x01(\t\x12\x13\n\x0b\x63group_path\x18\x02 \x01(\t\x12\x11\n\tcgroup_id\x18\x03 \x01(\x04\x12\x0b\n\x03pid\x18\x04 \x01(\x04\x12\x11\n\tnamespace\x18\x05 \x01(\t\x12\x0f\n\x07podname\x18\x06 \x01(\t\x12\x17\n\x0f\x63ontainer_index\x18\x07 \x01(\x05\x12*\n\x06labels\x18\x08 \x03(\x0b\x32\x1a.gadgettracermanager.Label\"\x12\n\x10\x44umpStateRequest\"\x15\n\x04\x44ump\x12\r\n\x05state\x18\x01 \x01(\t\"\x8d\x01\n\x17UpdateContainersRequest\x12\x37\n\x05\x61\x64\x64\x65\x64\x18\x01 \x03(\x0b\x32(.gadgettracermanager.ContainerDefinition\x12\x39\n\x07removed\x18\x02 \x03(\x0b\x32(.gadgettracermanager.ContainerDefinition\")\n\x18UpdateContainersResponse\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\t2\xfc\x04\n\x13GadgetTracerManager\x12S\n\tAddTracer\x12%.gadgettracermanager.AddTracerRequest\x1a\x1d.gadgettracermanager.TracerID\"\x00\x12Z\n\x0cRemoveTracer\x12\x1d.gadgettracermanager.TracerID\x1a).gadgettracermanager.RemoveTracerResponse\"\x00\x12\x8e\x01\n\x19TracerSubscribeContainers\x12\x35.gadgettracermanager.TracerSubscribeContainersRequest\x1a\x36.gadgettracermanager.TracerSubscribeContainersResponse\"\x00\x30\x01\x12\x65\n\x0c\x41\x64\x64\x43ontainer\x12(.gadgettracermanager.ContainerDefinition\x1a).gadgettracermanager.AddContainerResponse\"\x00\x12k\n\x0fRemoveContainer\x12(.gadgettracermanager.ContainerDefinition\x1a,.gadgettracermanager.RemoveContainerResponse\"\x00\x12O\n\tDumpState\x12%.gadgettracermanager.DumpStateRequest\x1a\x19.gadgettracermanager.Dump\"\x00\x32{\n\x06Tracer\x12q\n\x10UpdateContainers\x12,.gadgettracermanager.UpdateContainersRequest\x1a-.gadgettracermanager.UpdateContainersResponse\"\x00\x62\x06proto3')
 )
 
 
@@ -527,6 +527,13 @@ _UPDATECONTAINERSRESPONSE = _descriptor.Descriptor(
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
+    _descriptor.FieldDescriptor(
+      name='debug', full_name='gadgettracermanager.UpdateContainersResponse.debug', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -540,7 +547,7 @@ _UPDATECONTAINERSRESPONSE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=966,
-  serialized_end=992,
+  serialized_end=1007,
 )
 
 _ADDTRACERREQUEST.fields_by_name['selector'].message_type = _CONTAINERSELECTOR
@@ -670,8 +677,8 @@ _GADGETTRACERMANAGER = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=995,
-  serialized_end=1631,
+  serialized_start=1010,
+  serialized_end=1646,
   methods=[
   _descriptor.MethodDescriptor(
     name='AddTracer',
@@ -739,8 +746,8 @@ _TRACER = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=1,
   serialized_options=None,
-  serialized_start=1633,
-  serialized_end=1756,
+  serialized_start=1648,
+  serialized_end=1771,
   methods=[
   _descriptor.MethodDescriptor(
     name='UpdateContainers',

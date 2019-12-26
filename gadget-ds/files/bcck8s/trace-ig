@@ -11,6 +11,7 @@
 # Copyright (C) 2016 Sasha Goldshtein.
 
 from __future__ import print_function
+from concurrent import futures
 from bcc import BPF, USDT
 from functools import partial
 from time import sleep, strftime
@@ -800,7 +801,7 @@ trace -I 'linux/fs_struct.h' 'mntns_install "users = %d", $task->fs->users'
 
         def _connect_to_gadget_manager(self):
             server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
-            tracer_pb2_grpc.add_Tracer_to_server(
+            gadgettracermanager_pb2_grpc.add_TracerServicer_to_server(
                 TracerServicer(tool=self), server)
             tracer_socket_file = '/run/gadget-%s.socket' % os.getenv('GADGET_TRACER_ID')
             server.add_insecure_port('unix://' + tracer_socket_file)

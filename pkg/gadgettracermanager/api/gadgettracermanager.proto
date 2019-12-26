@@ -104,4 +104,5 @@ message UpdateContainersRequest {
 }
 
 message UpdateContainersResponse {
+  string debug = 1;
 }
