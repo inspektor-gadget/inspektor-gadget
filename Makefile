@@ -15,7 +15,7 @@ LDFLAGS := "-X github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget/cmd.vers
 build: gadget-container-deps build-ig
 
 .PHONY: gadget-container-deps
-gadget-container-deps: ocihookgadget gadgettracermanager
+gadget-container-deps: ocihookgadget gadgettracermanager runchookslib otel
 
 .PHONY: build-ig
 build-ig:
@@ -40,6 +40,19 @@ ocihookgadget:
 	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
 		-o gadget-ds/out/ocihookgadget \
 		cmd/ocihookgadget/main.go
+
+.PHONY: runchookslib
+runchookslib:
+	make -C runchooks
+	mkdir -p gadget-ds/out
+	cp runchooks/runchooks.so gadget-ds/out/
+
+.PHONY: otel
+otel:
+	make -C otel
+	mkdir -p gadget-ds/out
+	cp otel/container-ldpreload/container-ldpreload.so gadget-ds/out/
+	cp otel/otel.tar.gz gadget-ds/out/
 
 .PHONY: install-user
 install-user: build-ig

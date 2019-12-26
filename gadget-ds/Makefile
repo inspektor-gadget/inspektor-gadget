@@ -21,7 +21,7 @@ minikube: docker-gadget/minikube-build docker-gadget/minikube-install
 
 docker-gadget/minikube-build:
 	cp ../../traceloop/traceloop ./
-	eval $(shell minikube docker-env | grep =) ; docker build -t docker.io/kinvolk/gadget:minikube -f gadget-from-local-bin.Dockerfile .
+	eval $(shell minikube docker-env | grep =) ; docker build --no-cache -t docker.io/kinvolk/gadget:minikube -f gadget-from-local-bin.Dockerfile .
 	rm -f traceloop
 
 docker-gadget/minikube-install:

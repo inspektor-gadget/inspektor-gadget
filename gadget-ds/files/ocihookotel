@@ -1,0 +1,21 @@
+#!/bin/bash
+read JSON
+
+# Ignore containers if they're not managed by Kubernetes (e.g. docker-build on minikube)
+CGROUPS_PATH=$(cat config.json|jq -r '.linux.cgroupsPath')
+if [[ "$CGROUPS_PATH" != *"kubepods"* ]]; then
+  exit 0
+fi
+
+ROOTFS=$(cat config.json|jq -r '.root.path')
+if [ -z "$ROOTFS" ] ; then
+  echo "rootfs not found"
+  exit 1
+fi
+
+mkdir -p $ROOTFS/opt/ $ROOTFS/etc/
+cp /opt/container-ldpreload.so $ROOTFS/opt/
+echo /opt/container-ldpreload.so >> $ROOTFS/etc/ld.so.preload
+gunzip -dc /opt/otel.tar.gz | tar xf - -C $ROOTFS/opt/
+
+exit 0

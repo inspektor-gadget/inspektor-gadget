@@ -63,5 +63,17 @@ if [ "$FLATCAR_EDGE" = 1 ] ; then
   /bin/gadgettracermanager -serve &
 fi
 
+echo "Installing OCI hooks for distributed tracing"
+mkdir -p /host/opt/bin/
+cp /bin/ocihookotel /host/opt/bin/
+cp /opt/runchooks.so /host/opt/
+cp /opt/otel.tar.gz /host/opt/
+if grep -q ^/opt/runchooks.so$ /host/etc/ld.so.preload > /dev/null ; then
+  echo "runchooks.so already setup in /etc/ld.so.preload"
+else
+  echo "/opt/runchooks.so" >> /host/etc/ld.so.preload
+fi
+cp /opt/container-ldpreload.so /host/opt/
+
 rm -f /run/traceloop.socket
 exec /bin/traceloop $ARGS
