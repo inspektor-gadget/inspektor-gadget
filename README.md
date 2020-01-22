@@ -92,7 +92,7 @@ $ kubectl gadget deploy | kubectl apply -f -
 
 ## Discussions
 
-Join the discussions on #inspektor-gadget in the [Kubernetes Slack](http://kubernetes.slack.com/).
+Join the discussions on the `#inspektor-gadget` channel in the [Kubernetes Slack](http://kubernetes.slack.com/).
 
 ## Thanks
 
