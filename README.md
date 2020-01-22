@@ -90,6 +90,10 @@ $ kubectl gadget deploy | kubectl apply -f -
 
 [Read the detailed install instructions](Documentation/install.md)
 
+## Discussions
+
+Join the discussions on the `#inspektor-gadget` channel in the [Kubernetes Slack](http://kubernetes.slack.com/).
+
 ## Thanks
 
 * [BPF Compiler Collection (BCC)](https://github.com/iovisor/bcc): the execsnoop, opensnoop, tcptop and tcpconnect gadgets use programs from BCC.
