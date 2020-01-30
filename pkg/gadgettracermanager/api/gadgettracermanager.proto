@@ -1,0 +1,84 @@
+// Copyright 2019 Inspektor Gadget authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package gadgettracermanager;
+
+service GadgetTracerManager {
+  // Methods called by bcc scripts
+
+  rpc AddTracer(AddTracerRequest) returns (TracerID) {}
+  rpc RemoveTracer(TracerID) returns (RemoveTracerResponse) {}
+
+  // Methods called by OCI Hooks
+
+  rpc AddContainer(ContainerDefinition) returns (AddContainerResponse) {}
+  rpc RemoveContainer(ContainerDefinition) returns (RemoveContainerResponse) {}
+
+  // Methods called for debugging
+
+  rpc DumpState(DumpStateRequest) returns (Dump) {}
+}
+
+message Label {
+  string key = 1;
+  string value = 2;
+}
+
+message AddTracerRequest {
+  string id = 1;
+  ContainerSelector selector = 2;
+}
+
+message RemoveTracerResponse {
+  string debug = 1;
+}
+
+message AddContainerResponse {
+  string debug = 1;
+}
+
+message RemoveContainerResponse {
+  string debug = 1;
+}
+
+message ContainerSelector {
+  string namespace = 1;
+  string podname = 2;
+  repeated Label labels = 3;
+  int32 container_index = 4;
+}
+
+message TracerID {
+  string id = 1;
+}
+
+message ContainerDefinition {
+  string container_id = 1;
+  string cgroup_path = 2;
+  uint64 cgroup_id = 3;
+
+  string namespace = 4;
+  string podname = 5;
+  int32 container_index = 6;
+  repeated Label labels = 7;
+}
+
+message DumpStateRequest {
+}
+
+message Dump {
+  string state = 1;
+}

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strconv"
@@ -25,14 +26,14 @@ import (
 var execsnoopCmd = &cobra.Command{
 	Use:               "execsnoop",
 	Short:             "Trace new processes",
-	Run:               bccCmd("execsnoop", "execsnoop-edge"),
+	Run:               bccCmd("execsnoop", "execsnoop-ig"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
 var opensnoopCmd = &cobra.Command{
 	Use:               "opensnoop",
 	Short:             "Trace files",
-	Run:               bccCmd("opensnoop", "opensnoop-edge"),
+	Run:               bccCmd("opensnoop", "opensnoop-ig"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
@@ -105,6 +106,10 @@ func (post postProcess) Write(p []byte) (n int, err error) {
 		} else {
 			prefix = "NODE "
 		}
+
+		// FIXME: Write() is a method with a value received. The
+		// following statement does not modify the real postProcess
+		// struct!!
 		post.firstLine = false
 	}
 	if asStr != "" && asStr != "\n" {
@@ -150,7 +155,12 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		failure := make(chan string)
 		var firstLinePrinted uint64
-		tmpId := time.Now().Format("20060102150405")
+		tracerId := time.Now().Format("20060102150405")
+		b := make([]byte, 6)
+		_, err = rand.Read(b)
+		if err == nil {
+			tracerId = fmt.Sprintf("%s-%x", tracerId, b)
+		}
 
 		fmt.Printf("Node numbers:")
 		for i, node := range nodes.Items {
@@ -180,10 +190,10 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			id := strconv.Itoa(i)
 			fmt.Printf(" %s = %s", id, node.Name)
 			go func(nodeName string, id string) {
-				postOut := postProcess{nodeName, " " + id, os.Stdout, true, &firstLinePrinted, failure}
+				postOut := postProcess{nodeName, " " + id, os.Stdout, false /* see FIXME in Writer() */, &firstLinePrinted, failure}
 				postErr := postProcess{nodeName, "E" + id, os.Stderr, false, &firstLinePrinted, failure}
-				cmd := fmt.Sprintf("echo $$ > /run/%s.pid && export TERM=xterm-256color && /opt/bcck8s/ensure-flatcar-edge && exec /opt/bcck8s/%s %s %s %s %s %s ",
-					tmpId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg)
+				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s -- %s %s",
+					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg)
 				var err error
 				if subCommand != "tcptop" {
 					err = execPod(client, nodeName, cmd, postOut, postErr)
@@ -206,8 +216,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				continue
 			}
 			_, _, err := execPodCapture(client, node.Name,
-				fmt.Sprintf("touch /run/%s.pid; kill -9 $(cat /run/%s.pid); rm /run/%s.pid",
-					tmpId, tmpId, tmpId))
+				fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --stop", tracerId))
 			if err != nil {
 				fmt.Printf("Error in running command: %q\n", err)
 			}

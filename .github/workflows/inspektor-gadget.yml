@@ -20,6 +20,10 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v1
 
+    - name: Build binaries for the gadget container image
+      run: |
+        make gadget-container-deps
+
     - name: Build gadget container and publish to Registry
       id: publish-registry
       uses: elgohr/Publish-Docker-Github-Action@2.8
