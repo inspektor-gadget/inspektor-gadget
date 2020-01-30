@@ -5,6 +5,11 @@ FROM docker.io/kinvolk/traceloop:latest as traceloop
 # Main gadget image
 
 FROM docker.io/kinvolk/bcc:ig-latest
+RUN set -ex; \
+	export DEBIAN_FRONTEND=noninteractive; \
+	apt-get update && \
+	apt-get install -y --no-install-recommends \
+		ca-certificates curl
 
 COPY files/runc-hook-prestart.sh /bin/runc-hook-prestart.sh
 COPY files/runc-hook-poststop.sh /bin/runc-hook-poststop.sh
