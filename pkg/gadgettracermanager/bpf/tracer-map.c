@@ -12,7 +12,7 @@
 #define PIN_CUSTOM_NS 3
 
 /* This is a key/value store with the keys being the cgroupid
- * and the values being the index of tail_call_enter|exit.
+ * and the values are ignored.
  */
 struct bpf_map_def SEC("maps/cgroupid_set") cgroupid_set = {
 	.type = BPF_MAP_TYPE_HASH,
