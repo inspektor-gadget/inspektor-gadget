@@ -1,7 +1,6 @@
 module github.com/kinvolk/inspektor-gadget
 
 require (
-	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/golang/protobuf v1.3.2
 	github.com/imdario/mergo v0.3.7 // indirect
@@ -12,12 +11,9 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/viper v1.3.2
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
-	golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3 // indirect
 	golang.org/x/net v0.0.0-20190311183353-d8887717615a
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
-	golang.org/x/tools v0.0.0-20190524140312-2c0ae7006135 // indirect
 	google.golang.org/grpc v1.25.1
-	honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc // indirect
 	k8s.io/api v0.0.0-20190503110853-61630f889b3c
 	k8s.io/apimachinery v0.0.0-20190503221204-7a17edec881a
 	k8s.io/client-go v0.0.0-20190501104856-ef81ee0960bf
@@ -25,3 +21,5 @@ require (
 )
 
 replace github.com/iovisor/gobpf => github.com/kinvolk/gobpf v0.0.0-20191127154002-f0f89e7c6fd1
+
+go 1.13
