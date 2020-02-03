@@ -24,7 +24,12 @@ func init() {
 		"image",
 		gadgetimage,
 		"container image")
+	deployCmd.PersistentFlags().String(
+		"opts",
+		"",
+		"experimental options")
 	viper.BindPFlag("image", deployCmd.PersistentFlags().Lookup("image"))
+	viper.BindPFlag("opts", deployCmd.PersistentFlags().Lookup("opts"))
 
 	rootCmd.AddCommand(deployCmd)
 }
@@ -90,6 +95,8 @@ spec:
             value: {{.Image}}
           - name: INSPEKTOR_GADGET_VERSION
             value: {{.Version}}
+          - name: INSPEKTOR_GADGET_OPTIONS
+            value: "{{.Options}}"
         securityContext:
           privileged: true
         volumeMounts:
@@ -138,12 +145,14 @@ spec:
 `
 
 type parameters struct {
-	Image 	string
+	Image   string
 	Version string
+	Options string
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
 	image := viper.GetString("image")
+	opts := viper.GetString("opts")
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
 	if err != nil {
@@ -151,7 +160,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	p := parameters{
-		image, version,
+		image, version, opts,
 	}
 
 	err = t.Execute(os.Stdout, p)

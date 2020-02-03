@@ -63,5 +63,23 @@ if [ "$FLATCAR_EDGE" = 1 ] ; then
   /bin/gadgettracermanager -serve &
 fi
 
-rm -f /run/traceloop.socket
-exec /bin/traceloop $ARGS
+if [[ "$INSPEKTOR_GADGET_OPTIONS" =~ (^|,)runc_hooks_ldpreload(,|$) ]] ; then
+  echo "Installing ld.so.preload with runchooks.so for OCI hooks"
+  mkdir -p /host/opt/runchooks/
+  cp /opt/runchooks/runchooks.so /host/opt/runchooks/
+  cp /opt/runchooks/add-hooks.jq /host/opt/runchooks/
+  touch /host/etc/ld.so.preload
+  if grep -q ^/opt/runchooks/runchooks.so$ /host/etc/ld.so.preload > /dev/null ; then
+    echo "runchooks.so already setup in /etc/ld.so.preload"
+  else
+    echo "/opt/runchooks/runchooks.so" >> /host/etc/ld.so.preload
+  fi
+fi
+
+if [[ ! "$INSPEKTOR_GADGET_OPTIONS" =~ (^|,)notraceloop(,|$) ]] ; then
+  rm -f /run/traceloop.socket
+  exec /bin/traceloop $ARGS
+fi
+
+echo "Ready."
+sleep infinity
