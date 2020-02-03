@@ -76,6 +76,11 @@ func init() {
 	viper.BindPFlag("full", traceloopListCmd.PersistentFlags().Lookup("full"))
 }
 
+const (
+	igOptionTraceloopAnnotation = "inspektor-gadget.kinvolk.io/option-traceloop"
+	traceloopStateAnnotation    = "traceloop.kinvolk.io/state"
+)
+
 func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracemeta.TraceMeta, err error) {
 	var listOptions = metaV1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
@@ -85,19 +90,30 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 	if err != nil {
 		return nil, fmt.Errorf("Cannot find gadget pods: %q", err)
 	}
+	if len(pods.Items) == 0 {
+		return nil, fmt.Errorf("No gadget pods found")
+	}
 
 	out = map[string][]tracemeta.TraceMeta{}
 
+	validGadgetCount := 0
 	for _, pod := range pods.Items {
 		if pod.ObjectMeta.Annotations == nil {
 			continue
 		}
 
+		if pod.ObjectMeta.Annotations[igOptionTraceloopAnnotation] != "true" {
+			continue
+		}
+
+		validGadgetCount++
+
 		var tm []tracemeta.TraceMeta
-		state := pod.ObjectMeta.Annotations["traceloop.kinvolk.io/state"]
+		state := pod.ObjectMeta.Annotations[traceloopStateAnnotation]
 		if state == "" {
 			continue
 		}
+
 		err := json.Unmarshal([]byte(state), &tm)
 		if err != nil {
 			fmt.Printf("%v:\n%s\n", err, state)
@@ -105,6 +121,11 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 		}
 		out[pod.Spec.NodeName] = tm
 	}
+
+	if validGadgetCount == 0 {
+		err = fmt.Errorf("None of the gadget pods have traceloop enabled.")
+	}
+
 	return
 }
 
