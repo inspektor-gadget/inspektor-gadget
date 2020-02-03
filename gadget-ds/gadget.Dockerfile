@@ -20,5 +20,8 @@ COPY bin/gadgettracermanager /bin/gadgettracermanager
 COPY bin/ocihookgadget /bin/ocihookgadget
 COPY bin/networkpolicyadvisor /bin/networkpolicyadvisor
 
+COPY bin/runchooks.so /opt/runchooks/runchooks.so
+COPY bin/add-hooks.jq /opt/runchooks/add-hooks.jq
+
 COPY --from=traceloop /bin/traceloop /bin/traceloop
 

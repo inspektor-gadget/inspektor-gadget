@@ -15,7 +15,7 @@ LDFLAGS := "-X github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget/cmd.vers
 build: gadget-container-deps build-ig
 
 .PHONY: gadget-container-deps
-gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor
+gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib
 
 .PHONY: build-ig
 build-ig:
@@ -50,6 +50,13 @@ networkpolicyadvisor:
 .PHONY: networkpolicyadvisor/push
 networkpolicyadvisor/push: networkpolicyadvisor
 	for POD in `kubectl get pod -n kube-system -l k8s-app=gadget -o=jsonpath='{.items[*].metadata.name}'` ; do kubectl cp ./gadget-ds/bin/networkpolicyadvisor -n kube-system $$POD:/bin/ ; done
+
+.PHONY: runchookslib
+runchookslib:
+	make -C runchooks
+	mkdir -p gadget-ds/out
+	cp runchooks/runchooks.so gadget-ds/bin/
+	cp runchooks/add-hooks.jq gadget-ds/bin/
 
 .PHONY: install-user
 install-user: build-ig

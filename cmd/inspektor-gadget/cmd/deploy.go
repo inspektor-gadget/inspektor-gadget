@@ -23,7 +23,12 @@ func init() {
 		"image",
 		gadgetimage,
 		"container image")
+	deployCmd.PersistentFlags().String(
+		"opts",
+		"",
+		"experimental options")
 	viper.BindPFlag("image", deployCmd.PersistentFlags().Lookup("image"))
+	viper.BindPFlag("opts", deployCmd.PersistentFlags().Lookup("opts"))
 
 	rootCmd.AddCommand(deployCmd)
 }
@@ -89,6 +94,8 @@ spec:
             value: @IMAGE@
           - name: INSPEKTOR_GADGET_VERSION
             value: @VERSION@
+          - name: INSPEKTOR_GADGET_OPTIONS
+            value: "@OPTIONS@"
         securityContext:
           privileged: true
         volumeMounts:
@@ -138,9 +145,12 @@ spec:
 
 func runDeploy(cmd *cobra.Command, args []string) error {
 	image := viper.GetString("image")
+	opts := viper.GetString("opts")
+
 	output := deployYaml
 	output = strings.Replace(output, "@IMAGE@", image, -1)
 	output = strings.Replace(output, "@VERSION@", version, -1)
+	output = strings.Replace(output, "@OPTIONS@", opts, -1)
 	fmt.Printf("%s", output)
 
 	return nil
