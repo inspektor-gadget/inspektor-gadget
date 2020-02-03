@@ -6,7 +6,6 @@ import (
 	"text/template"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var deployCmd = &cobra.Command{
@@ -19,12 +18,28 @@ var deployCmd = &cobra.Command{
 // This is set during build.
 var gadgetimage = "undefined"
 
+var (
+	image     string
+	traceloop bool
+	runcHooks string
+)
+
 func init() {
-	deployCmd.PersistentFlags().String(
-		"image",
+	deployCmd.PersistentFlags().StringVarP(
+		&image,
+		"image", "",
 		gadgetimage,
 		"container image")
-	viper.BindPFlag("image", deployCmd.PersistentFlags().Lookup("image"))
+	deployCmd.PersistentFlags().BoolVarP(
+		&traceloop,
+		"traceloop", "",
+		true,
+		"enable the traceloop gadget")
+	deployCmd.PersistentFlags().StringVarP(
+		&runcHooks,
+		"runc-hooks", "",
+		"auto",
+		"how to attach runc hooks (auto, ldpreload)")
 
 	rootCmd.AddCommand(deployCmd)
 }
@@ -64,6 +79,9 @@ spec:
     metadata:
       labels:
         k8s-app: gadget
+      annotations:
+        inspektor-gadget.kinvolk.io/option-traceloop: "{{.Traceloop}}"
+        inspektor-gadget.kinvolk.io/option-runc-hooks: "{{.RuncHooks}}"
     spec:
       serviceAccount: gadget
       hostPID: true
@@ -90,6 +108,10 @@ spec:
             value: {{.Image}}
           - name: INSPEKTOR_GADGET_VERSION
             value: {{.Version}}
+          - name: INSPEKTOR_GADGET_OPTION_TRACELOOP
+            value: "{{.Traceloop}}"
+          - name: INSPEKTOR_GADGET_OPTION_RUNC_HOOKS
+            value: "{{.RuncHooks}}"
         securityContext:
           privileged: true
         volumeMounts:
@@ -138,12 +160,16 @@ spec:
 `
 
 type parameters struct {
-	Image 	string
-	Version string
+	Image     string
+	Version   string
+	Traceloop bool
+	RuncHooks string
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
-	image := viper.GetString("image")
+	if runcHooks != "auto" && runcHooks != "ldpreload" {
+		return fmt.Errorf("invalid argument %q for --runc-hooks=[auto,ldpreload]", runcHooks)
+	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
 	if err != nil {
@@ -151,7 +177,10 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	p := parameters{
-		image, version,
+		image,
+		version,
+		traceloop,
+		runcHooks,
 	}
 
 	err = t.Execute(os.Stdout, p)
