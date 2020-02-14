@@ -2,7 +2,8 @@
 #
 #   git clone https://github.com/iovisor/bcc.git
 #   cd bcc
-#   docker build -t kinvolk/bcc:snapshot-20191221-git-8174c0ae5541 -f ./Dockerfile.ubuntu .
+#   TAG="snapshot-$(date +%Y%m%d)-$(git describe --tags --always)"
+#   docker build -t kinvolk/bcc:${TAG} -f ./Dockerfile.ubuntu .
 #
 # Then, use this Dockerfile with:
 #
@@ -10,7 +11,7 @@
 #   make docker-bcc/build
 #   make docker-bcc/push
 
-FROM kinvolk/bcc:snapshot-20191221-git-8174c0ae5541 as packages
+FROM kinvolk/bcc:snapshot-20200220-v0.13.0-2-g12eafe87 as packages
 
 FROM ubuntu:bionic
 
