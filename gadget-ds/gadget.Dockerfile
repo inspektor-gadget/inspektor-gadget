@@ -22,6 +22,7 @@ COPY files/runc-hook-prestart.sh /bin/runc-hook-prestart.sh
 COPY files/runc-hook-poststop.sh /bin/runc-hook-poststop.sh
 COPY files/entrypoint.sh /entrypoint.sh
 COPY files/bcck8s /opt/bcck8s
+COPY files/tracepkt /opt/tracepkt
 
 COPY bin/gadgettracermanager /bin/gadgettracermanager
 COPY bin/ocihookgadget /bin/ocihookgadget
