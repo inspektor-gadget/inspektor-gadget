@@ -11,6 +11,10 @@ from struct import pack
 IFNAMSIZ = 16 # uapi/linux/if.h
 XT_TABLE_MAXNAMELEN = 32 # uapi/linux/netfilter/x_tables.h
 
+TABLENAMESIZ = 12
+CHAINNAMESIZ = 16
+COMMENTSIZ = 8
+
 # uapi/linux/netfilter.h
 NF_VERDICT_NAME = [
     'DROP',
@@ -33,6 +37,7 @@ HOOKNAMES = [
 
 ROUTE_EVT_IF = 1
 ROUTE_EVT_IPTABLE = 2
+ROUTE_EVT_IPTABLE_STEP = 4
 
 class TestEvt(ct.Structure):
     _fields_ = [
@@ -55,6 +60,14 @@ class TestEvt(ct.Structure):
         ("hook",        ct.c_ulonglong),
         ("verdict",     ct.c_ulonglong),
         ("tablename",   ct.c_char * XT_TABLE_MAXNAMELEN),
+
+        # Iptables step trace
+        ("ifname_in",                 ct.c_char * IFNAMSIZ),
+        ("ifname_out",                ct.c_char * IFNAMSIZ),
+        ("iptables_step_tablename",   ct.c_char * TABLENAMESIZ),
+        ("iptables_step_chainname",   ct.c_char * CHAINNAMESIZ),
+        ("iptables_step_comment",     ct.c_char * COMMENTSIZ),
+        ("iptables_step_rulenum",     ct.c_ulonglong),
     ]
 
 PING_PID="-1"
@@ -106,6 +119,11 @@ def event_printer(cpu, data, size):
         verdict = _get(NF_VERDICT_NAME, event.verdict, "~UNK~")
         hook = _get(HOOKNAMES, event.hook, "~UNK~")
         iptables = " %7s.%-12s:%s" % (event.tablename, hook, verdict)
+
+    # Optionally decode iptables step events
+    iptables_step = ""
+    if event.flags & ROUTE_EVT_IPTABLE_STEP == ROUTE_EVT_IPTABLE_STEP:
+        iptables += " step IN=%s OUT=%s %s:%s:%s:%d" % (event.ifname_in, event.ifname_out, event.iptables_step_tablename, event.iptables_step_chainname, event.iptables_step_comment, event.iptables_step_rulenum)
 
     # Print event
     print "[%12s] %16s %7s %-34s%s" % (event.netns, event.ifname, direction, flow, iptables)

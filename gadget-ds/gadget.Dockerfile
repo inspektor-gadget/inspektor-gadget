@@ -16,7 +16,7 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
-		ca-certificates curl
+		ca-certificates curl iputils-ping
 
 COPY files/runc-hook-prestart.sh /bin/runc-hook-prestart.sh
 COPY files/runc-hook-poststop.sh /bin/runc-hook-poststop.sh

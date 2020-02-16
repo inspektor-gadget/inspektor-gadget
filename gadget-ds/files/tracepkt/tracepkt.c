@@ -8,6 +8,7 @@
 
 #define ROUTE_EVT_IF 1
 #define ROUTE_EVT_IPTABLE 2
+#define ROUTE_EVT_IPTABLE_STEP 4
 
 // Event structure
 struct route_evt_t {
@@ -30,6 +31,17 @@ struct route_evt_t {
     u64 hook;
     u64 verdict;
     char tablename[XT_TABLE_MAXNAMELEN];
+
+    /* Iptables step */
+    char ifname_in[IFNAMSIZ];
+    char ifname_out[IFNAMSIZ];
+#define TABLENAMESIZ 12
+    char iptables_step_tablename[TABLENAMESIZ];
+#define CHAINNAMESIZ 16
+    char iptables_step_chainname[CHAINNAMESIZ];
+#define COMMENTSIZ 8
+    char iptables_step_comment[COMMENTSIZ];
+    u64 iptables_step_rulenum;
 };
 BPF_PERF_OUTPUT(route_evt);
 
@@ -290,4 +302,69 @@ int kprobe__ip6t_do_table(struct pt_regs *ctx, struct sk_buff *skb, const struct
 int kretprobe__ip6t_do_table(struct pt_regs *ctx)
 {
     return __ipt_do_table_out(ctx);
+}
+
+int kprobe__nf_log_trace(struct pt_regs *ctx,
+		// arg1
+		struct net *net,
+		// arg2
+		u_int8_t pf,
+		// arg3
+		unsigned int hooknum,
+		// arg4
+		struct sk_buff *skb,
+		// arg5
+		struct net_device *in,
+		// arg6
+		struct net_device *out)
+		// arg7: *(esp+8) 
+		//struct nf_loginfo *loginfo,
+		// arg8: *(esp+16) 
+		//const char *fmt,
+		// arg8: *(esp+24) 
+		//char *tablename,
+		// arg8: *(esp+32) 
+		//char *chainname, // "PREROUTING", "INPUT", "FORWARD", "OUTPUT", "POSTROUTING"
+		// arg8: *(esp+40) 
+		//char *comment, // "rule", "return", "policy"
+		// arg9: *(esp+48) 
+		//unsigned int rulenum)
+{
+    // Prepare event for userland
+    struct route_evt_t evt = {
+        .flags = ROUTE_EVT_IPTABLE_STEP,
+    };
+
+    // Load packet information
+    do_trace_skb(&evt, ctx, skb);
+
+    // Load interface name
+    bpf_probe_read(&evt.ifname_in, IFNAMSIZ, in->name);
+    bpf_probe_read(&evt.ifname_out, IFNAMSIZ, out->name);
+
+    // Store the strings: table name, chainname, comment
+    char **tablename_ptr = (char **)((char *)(ctx->sp) + 24);
+    char *tablename;
+    bpf_probe_read(&tablename, sizeof(void*), tablename_ptr);
+    bpf_probe_read(&evt.iptables_step_tablename, TABLENAMESIZ, tablename);
+
+    char **chainname_ptr = (char **)((char *)(ctx->sp) + 32);
+    char *chainname;
+    bpf_probe_read(&chainname, sizeof(void*), chainname_ptr);
+    bpf_probe_read(&evt.iptables_step_chainname, CHAINNAMESIZ, chainname);
+
+    char **comment_ptr = (char **)((char *)(ctx->sp) + 40);
+    char *comment;
+    bpf_probe_read(&comment, sizeof(void*), comment_ptr);
+    bpf_probe_read(&evt.iptables_step_comment, COMMENTSIZ, comment);
+
+    unsigned int *rulenum_ptr = (unsigned int*)((char *)(ctx->sp) + 48);
+    unsigned int rulenum;
+    bpf_probe_read(&rulenum, sizeof(unsigned int), rulenum_ptr);
+    evt.iptables_step_rulenum = rulenum;
+
+    // Send event
+    route_evt.perf_submit(ctx, &evt, sizeof(evt));
+
+    return 0;
 }
