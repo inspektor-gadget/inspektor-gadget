@@ -54,7 +54,14 @@ var tcptopCmd = &cobra.Command{
 var tcpconnectCmd = &cobra.Command{
 	Use:               "tcpconnect",
 	Short:             "Suggest Kubernetes Network Policies",
-	Run:               bccCmd("tcpconnect", "/opt/bcck8s/tcpconnect"),
+	Run:               bccCmd("tcpconnect", "/usr/share/bcc/tools/tcpconnect"),
+	PersistentPreRunE: doesKubeconfigExist,
+}
+
+var tcptracerCmd = &cobra.Command{
+	Use:               "tcptracer",
+	Short:             "trace tcp connect, accept and close",
+	Run:               bccCmd("tcptracer", "/usr/share/bcc/tools/tcptracer"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
@@ -82,6 +89,7 @@ func init() {
 		bindsnoopCmd,
 		tcptopCmd,
 		tcpconnectCmd,
+		tcptracerCmd,
 		capabilitiesCmd,
 	}
 	args := []string{"label", "node", "namespace", "podname"}
