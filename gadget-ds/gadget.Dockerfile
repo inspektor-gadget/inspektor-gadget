@@ -18,6 +18,7 @@ COPY files/bcck8s /opt/bcck8s
 
 COPY bin/gadgettracermanager /bin/gadgettracermanager
 COPY bin/ocihookgadget /bin/ocihookgadget
+COPY bin/networkpolicyadvisor /bin/networkpolicyadvisor
 
 COPY --from=traceloop /bin/traceloop /bin/traceloop
 

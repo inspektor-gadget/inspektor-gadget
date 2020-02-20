@@ -11,6 +11,7 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/viper v1.3.2
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
+	github.com/weaveworks/tcptracer-bpf v0.0.0-20190731111909-cd53e7c84bac
 	golang.org/x/net v0.0.0-20190311183353-d8887717615a
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	google.golang.org/grpc v1.25.1
@@ -18,6 +19,7 @@ require (
 	k8s.io/apimachinery v0.0.0-20190503221204-7a17edec881a
 	k8s.io/client-go v0.0.0-20190501104856-ef81ee0960bf
 	k8s.io/utils v0.0.0-20190506122338-8fab8cb257d5 // indirect
+	sigs.k8s.io/yaml v1.1.0
 )
 
 replace github.com/iovisor/gobpf => github.com/kinvolk/gobpf v0.0.0-20191127154002-f0f89e7c6fd1
