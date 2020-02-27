@@ -94,7 +94,7 @@ $ kubectl gadget deploy | kubectl apply -f -
 
 Contributions are welcome!
 
-If you're looking where to start, you can look at the issues with the 'good first issue' label on [Inspektor Gadget](https://github.com/kinvolk/inspektor-gadget/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [traceloop](https://github.com/kinvolk/traceloop/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22). Don't hesitate to [talk with us](https://github.com/kinvolk/inspektor-gadget#discussions) if you need further help.
+If you're looking where to start, you can check the issues with the 'good first issue' label on [Inspektor Gadget](https://github.com/kinvolk/inspektor-gadget/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [traceloop](https://github.com/kinvolk/traceloop/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22). Don't hesitate to [talk with us](https://github.com/kinvolk/inspektor-gadget#discussions) if you need further help.
 
 ## Discussions
 
