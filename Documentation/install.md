@@ -67,7 +67,7 @@ This will deploy the gadget DaemonSet along with its RBAC rules.
 If you wish to install an alternative gadget image, you could use the following commands:
 
 ```
-$ inspektor-gadget deploy --image=docker.io/myfork/gadget:tag | apply -f -
+$ inspektor-gadget deploy --image=docker.io/myfork/gadget:tag | kubectl apply -f -
 ```
 
 ## Getting all gadgets
