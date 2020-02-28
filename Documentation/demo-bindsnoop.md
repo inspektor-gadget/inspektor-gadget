@@ -1,10 +1,7 @@
 # Inspektor Gadget demo: the "bindsnoop" gadget
 
-The bindsnoop gadget traces the kernel function performing socket binding and
-print socket options set before the system call invocation that might impact
-bind behavior and bound interface.
-
-It comes from the [bcc bindsnoop
+bindsnoop reports socket options set before the bind call that would impact
+this system call behavior. It comes from the [bcc bindsnoop
 tool](https://github.com/iovisor/bcc/blob/master/tools/bindsnoop_example.txt)
 and displays the same output.
 

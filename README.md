@@ -68,6 +68,7 @@ Not all gadgets currently work everywhere.
 | capabilities |       ✔️      |                |          |     |
 | execsnoop    |       ✔️      |                |          |     |
 | opensnoop    |       ✔️      |                |          |     |
+| bindsnoop    |       ✔️      |                |          |     |
 | tcpconnect   |       ✔️      |                |          |     |
 | tcptop       |       ✔️      |                |          |     |
 
