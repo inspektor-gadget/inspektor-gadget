@@ -15,6 +15,7 @@ Usage:
   kubectl gadget [command]
 
 Available Commands:
+  bindsnoop    Trace bind
   capabilities Suggest Security Capabilities for securityContext
   deploy       Deploy Inspektor Gadget on the worker nodes
   execsnoop    Trace new processes
@@ -34,6 +35,7 @@ Use "kubectl gadget [command] --help" for more information about a command.
 
 Inspektor Gadget is a kubectl plugin. It can also be invoked with `kubectl gadget`.
 
+- [Demo: the "bindsnoop" gadget](Documentation/demo-bindsnoop.md)
 - [Demo: the "execsnoop" gadget](Documentation/demo-execsnoop.md) – watch it [as GIF](Documentation/demos/demo-execsnoop-gifterminal.gif)
 - [Demo: the "opensnoop" gadget](Documentation/demo-opensnoop.md) – watch it [as GIF](Documentation/demos/demo-opensnoop-gifterminal.gif)
 - [Demo: the "traceloop" gadget](Documentation/demo-traceloop.md) – watch it [as GIF](Documentation/demos/demo-traceloop-gifterminal.gif)
