@@ -101,7 +101,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	}
 	nodes, err := client.CoreV1().Nodes().List(listOptions)
 	if err != nil {
-		contextLogger.Fatalf("Error in listing nodes: %q", err)
+		contextLogger.Fatalf("Error listing nodes: %q", err)
 	}
 
 	namespaceFilter := fmt.Sprintf("--namespace %q", namespaces)
