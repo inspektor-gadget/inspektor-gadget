@@ -26,35 +26,42 @@ import (
 var execsnoopCmd = &cobra.Command{
 	Use:               "execsnoop",
 	Short:             "Trace new processes",
-	Run:               bccCmd("execsnoop", "execsnoop-ig"),
+	Run:               bccCmd("execsnoop", "/opt/bcck8s/execsnoop-ig"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
 var opensnoopCmd = &cobra.Command{
 	Use:               "opensnoop",
 	Short:             "Trace files",
-	Run:               bccCmd("opensnoop", "opensnoop-ig"),
+	Run:               bccCmd("opensnoop", "/opt/bcck8s/opensnoop-ig"),
+	PersistentPreRunE: doesKubeconfigExist,
+}
+
+var bindsnoopCmd = &cobra.Command{
+	Use:               "bindsnoop",
+	Short:             "Trace IPv4 and IPv6 bind() system calls",
+	Run:               bccCmd("opensnoop", "/usr/share/bcc/tools/bindsnoop"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
 var tcptopCmd = &cobra.Command{
 	Use:               "tcptop",
 	Short:             "Show the TCP traffic in a pod",
-	Run:               bccCmd("tcptop", "tcptop-edge"),
+	Run:               bccCmd("tcptop", "/opt/bcck8s/tcptop-edge"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
-var hintsNetworkCmd = &cobra.Command{
+var tcpconnectCmd = &cobra.Command{
 	Use:               "tcpconnect",
 	Short:             "Suggest Kubernetes Network Policies",
-	Run:               bccCmd("tcpconnect", "tcpconnect"),
+	Run:               bccCmd("tcpconnect", "/opt/bcck8s/tcpconnect"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
 var capabilitiesCmd = &cobra.Command{
 	Use:               "capabilities",
 	Short:             "Suggest Security Capabilities for securityContext",
-	Run:               bccCmd("capabilities", "capable-edge"),
+	Run:               bccCmd("capabilities", "/opt/bcck8s/capable-edge"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
@@ -69,7 +76,14 @@ var (
 )
 
 func init() {
-	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd, tcptopCmd, hintsNetworkCmd, capabilitiesCmd}
+	commands := []*cobra.Command{
+		execsnoopCmd,
+		opensnoopCmd,
+		bindsnoopCmd,
+		tcptopCmd,
+		tcpconnectCmd,
+		capabilitiesCmd,
+	}
 	args := []string{"label", "node", "namespace", "podname"}
 	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam}
 	for _, command := range commands {
