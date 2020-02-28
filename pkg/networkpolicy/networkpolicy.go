@@ -117,13 +117,11 @@ func (a *NetworkPolicyAdvisor) labelFilter(labels map[string]string) map[string]
 func (a *NetworkPolicyAdvisor) labelKeyString(labels map[string]string) (ret string) {
 	keys := a.labelFilteredKeyList(labels)
 
-	first := true
-	for _, k := range keys {
+	for index, k := range keys {
 		sep := ","
-		if first {
+		if index == 0 {
 			sep = ""
 		}
-		first = false
 		ret += fmt.Sprintf("%s%s=%s", sep, k, labels[k])
 	}
 	return
