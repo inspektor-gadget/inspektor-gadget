@@ -39,7 +39,7 @@ var opensnoopCmd = &cobra.Command{
 
 var bindsnoopCmd = &cobra.Command{
 	Use:               "bindsnoop",
-	Short:             "Trace bind",
+	Short:             "Trace IPv4 and IPv6 bind() system calls",
 	Run:               bccCmd("opensnoop", "/usr/share/bcc/tools/bindsnoop"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
