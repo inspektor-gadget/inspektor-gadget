@@ -92,7 +92,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 
 	client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
 	if err != nil {
-		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
+		contextLogger.Fatalf("Error setting up Kubernetes client: %q", err)
 	}
 
 	var listOptions = metaV1.ListOptions{
