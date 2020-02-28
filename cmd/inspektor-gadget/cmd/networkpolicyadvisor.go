@@ -117,7 +117,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 				namespaceFilter)
 			err := execPod(client, nodeName, cmd, collector, os.Stderr)
 			if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
-				failure <- fmt.Sprintf("Error in running command: %q\n", err)
+				failure <- fmt.Sprintf("Error running command: %q\n", err)
 			}
 		}(node.Name)
 	}
