@@ -84,7 +84,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	} else {
 		outputFile, err := os.Create(outputFileName)
 		if err != nil {
-			contextLogger.Fatalf("Error in creating file %q: %q", outputFileName, err)
+			contextLogger.Fatalf("Error creating file %q: %q", outputFileName, err)
 		}
 		defer outputFile.Close()
 		w = bufio.NewWriter(outputFile)
