@@ -18,16 +18,16 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/networkpolicy/types"
 )
 
-var defaultLabelsToIgnore = []string{
-	"controller-revision-hash",
-	"pod-template-generation",
-	"pod-template-hash",
+var defaultLabelsToIgnore = map[string]struct{}{
+	"controller-revision-hash": struct{}{},
+	"pod-template-generation": struct{}{},
+	"pod-template-hash": struct{}{},
 }
 
 type NetworkPolicyAdvisor struct {
 	Events []types.KubernetesConnectionEvent
 
-	LabelsToIgnore []string
+	LabelsToIgnore map[string]struct{}
 
 	Policies []networkingv1.NetworkPolicy
 }
@@ -85,14 +85,7 @@ func (a *NetworkPolicyAdvisor) LoadFile(filename string) error {
 func (a *NetworkPolicyAdvisor) labelFilteredKeyList(labels map[string]string) []string {
 	keys := make([]string, 0, len(labels))
 	for k := range labels {
-		found := false
-		for _, l := range a.LabelsToIgnore {
-			if l == k {
-				found = true
-				break
-			}
-		}
-		if found {
+		if _, ok := a.LabelsToIgnore[k]; ok {
 			continue
 		}
 		keys = append(keys, k)
@@ -103,9 +96,11 @@ func (a *NetworkPolicyAdvisor) labelFilteredKeyList(labels map[string]string) []
 }
 
 func (a *NetworkPolicyAdvisor) labelFilter(labels map[string]string) map[string]string {
-	keys := a.labelFilteredKeyList(labels)
 	ret := map[string]string{}
-	for _, k := range keys {
+	for k := range labels {
+		if _, ok := a.LabelsToIgnore[k]; ok {
+			continue
+		}
 		ret[k] = labels[k]
 	}
 	return ret
@@ -193,27 +188,28 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 	}
 
 	for _, events := range eventsBySource {
-		egressNetworkPeer := map[string][]types.KubernetesConnectionEvent{}
-		ingressNetworkPeer := map[string][]types.KubernetesConnectionEvent{}
+		egressNetworkPeer := map[string]types.KubernetesConnectionEvent{}
+		ingressNetworkPeer := map[string]types.KubernetesConnectionEvent{}
 		for _, e := range events {
 			key := a.networkPeerKey(e)
 			if e.Type == "connect" {
 				if _, ok := egressNetworkPeer[key]; ok {
-					egressNetworkPeer[key] = append(egressNetworkPeer[key], e)
-				} else {
-					egressNetworkPeer[key] = []types.KubernetesConnectionEvent{e}
+					continue
 				}
+
+				egressNetworkPeer[key] = types.KubernetesConnectionEvent{e}
+
 			} else if e.Type == "accept" {
 				if _, ok := ingressNetworkPeer[key]; ok {
-					ingressNetworkPeer[key] = append(ingressNetworkPeer[key], e)
-				} else {
-					ingressNetworkPeer[key] = []types.KubernetesConnectionEvent{e}
+					continue
 				}
+
+				ingressNetworkPeer[key] = types.KubernetesConnectionEvent{e}
 			}
 		}
 		egressPolicies := []networkingv1.NetworkPolicyEgressRule{}
 		for _, p := range egressNetworkPeer {
-			ports, peers := a.eventToRule(p[0])
+			ports, peers := a.eventToRule(p)
 			rule := networkingv1.NetworkPolicyEgressRule{
 				Ports: ports,
 				To:    peers,
@@ -222,7 +218,7 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 		}
 		ingressPolicies := []networkingv1.NetworkPolicyIngressRule{}
 		for _, p := range ingressNetworkPeer {
-			ports, peers := a.eventToRule(p[0])
+			ports, peers := a.eventToRule(p)
 			rule := networkingv1.NetworkPolicyIngressRule{
 				Ports: ports,
 				From:  peers,
