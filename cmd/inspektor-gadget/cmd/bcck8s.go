@@ -51,7 +51,7 @@ var tcptopCmd = &cobra.Command{
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
-var hintsNetworkCmd = &cobra.Command{
+var tcpconnectCmd = &cobra.Command{
 	Use:               "tcpconnect",
 	Short:             "Suggest Kubernetes Network Policies",
 	Run:               bccCmd("tcpconnect", "/opt/bcck8s/tcpconnect"),
@@ -76,7 +76,14 @@ var (
 )
 
 func init() {
-	commands := []*cobra.Command{execsnoopCmd, opensnoopCmd, bindsnoopCmd, tcptopCmd, hintsNetworkCmd, capabilitiesCmd}
+	commands := []*cobra.Command{
+		execsnoopCmd,
+		opensnoopCmd,
+		bindsnoopCmd,
+		tcptopCmd,
+		tcpconnectCmd,
+		capabilitiesCmd,
+	}
 	args := []string{"label", "node", "namespace", "podname"}
 	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam}
 	for _, command := range commands {
