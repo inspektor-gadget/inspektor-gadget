@@ -132,7 +132,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 		_, _, err := execPodCapture(client, node.Name,
 			fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid networkpolicyadvisor --stop"))
 		if err != nil {
-			fmt.Printf("Error in running command: %q\n", err)
+			fmt.Printf("Error running command: %q\n", err)
 		}
 	}
 }
