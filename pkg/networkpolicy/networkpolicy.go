@@ -20,8 +20,8 @@ import (
 
 var defaultLabelsToIgnore = map[string]struct{}{
 	"controller-revision-hash": struct{}{},
-	"pod-template-generation": struct{}{},
-	"pod-template-hash": struct{}{},
+	"pod-template-generation":  struct{}{},
+	"pod-template-hash":        struct{}{},
 }
 
 type NetworkPolicyAdvisor struct {
@@ -197,14 +197,13 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 					continue
 				}
 
-				egressNetworkPeer[key] = types.KubernetesConnectionEvent{e}
-
+				egressNetworkPeer[key] = e
 			} else if e.Type == "accept" {
 				if _, ok := ingressNetworkPeer[key]; ok {
 					continue
 				}
 
-				ingressNetworkPeer[key] = types.KubernetesConnectionEvent{e}
+				ingressNetworkPeer[key] = e
 			}
 		}
 		egressPolicies := []networkingv1.NetworkPolicyEgressRule{}
