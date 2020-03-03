@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
+	"sync"
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
@@ -17,6 +20,7 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/kinvolk/inspektor-gadget/pkg/networkpolicy"
+	"github.com/kinvolk/inspektor-gadget/pkg/networkpolicy/types"
 )
 
 var networkPolicyCmd = &cobra.Command{
@@ -60,10 +64,24 @@ func init() {
 }
 
 type traceCollector struct {
+	m      *sync.Mutex
 	writer *bufio.Writer
+	node   string
 }
 
 func (t traceCollector) Write(p []byte) (n int, err error) {
+	t.m.Lock()
+	defer t.m.Unlock()
+
+	event := types.KubernetesConnectionEvent{}
+	text := strings.TrimSpace(string(p))
+	if len(text) != 0 {
+		err := json.Unmarshal([]byte(text), &event)
+		if err == nil && event.Type == "ready" {
+			fmt.Printf("Node %s ready.\n", t.node)
+		}
+	}
+
 	n, err = t.writer.Write(p)
 	if err != nil {
 		return
@@ -110,9 +128,10 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	failure := make(chan string)
 
+	var m sync.Mutex
 	for _, node := range nodes.Items {
 		go func(nodeName string) {
-			collector := traceCollector{w}
+			collector := traceCollector{&m, w, nodeName}
 			cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid networkpolicyadvisor --nomanager --probecleanup --gadget /bin/networkpolicyadvisor -- %s",
 				namespaceFilter)
 			err := execPod(client, nodeName, cmd, collector, os.Stderr)
@@ -124,6 +143,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 
 	select {
 	case <-sigs:
+		fmt.Printf("\nStopping...\n")
 	case e := <-failure:
 		fmt.Printf("Error detected: %q\n", e)
 	}

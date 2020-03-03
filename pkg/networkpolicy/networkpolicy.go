@@ -179,6 +179,9 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.KubernetesConnectionEvent) (p
 func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 	eventsBySource := map[string][]types.KubernetesConnectionEvent{}
 	for _, e := range a.Events {
+		if e.Type != "connect" && e.Type != "accept" {
+			continue
+		}
 		key := a.localPodKey(e)
 		if _, ok := eventsBySource[key]; ok {
 			eventsBySource[key] = append(eventsBySource[key], e)

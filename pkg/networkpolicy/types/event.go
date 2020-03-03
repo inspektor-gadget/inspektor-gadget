@@ -1,7 +1,7 @@
 package types
 
 type KubernetesConnectionEvent struct {
-	/* connect or accept */
+	/* "ready", or "connect" or "accept" */
 	Type string `json:"type"`
 
 	/* pod, svc or other */

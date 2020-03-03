@@ -165,6 +165,7 @@ func main() {
 	}
 
 	t.Start()
+	fmt.Printf(`{"type":"ready"}` + "\n")
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, os.Kill)
