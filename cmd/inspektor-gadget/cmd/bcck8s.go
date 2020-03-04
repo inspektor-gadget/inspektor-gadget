@@ -54,7 +54,14 @@ var tcptopCmd = &cobra.Command{
 var tcpconnectCmd = &cobra.Command{
 	Use:               "tcpconnect",
 	Short:             "Suggest Kubernetes Network Policies",
-	Run:               bccCmd("tcpconnect", "/opt/bcck8s/tcpconnect"),
+	Run:               bccCmd("tcpconnect", "/usr/share/bcc/tools/tcpconnect"),
+	PersistentPreRunE: doesKubeconfigExist,
+}
+
+var tcptracerCmd = &cobra.Command{
+	Use:               "tcptracer",
+	Short:             "trace tcp connect, accept and close",
+	Run:               bccCmd("tcptracer", "/usr/share/bcc/tools/tcptracer"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
@@ -82,6 +89,7 @@ func init() {
 		bindsnoopCmd,
 		tcptopCmd,
 		tcpconnectCmd,
+		tcptracerCmd,
 		capabilitiesCmd,
 	}
 	args := []string{"label", "node", "namespace", "podname"}
@@ -206,7 +214,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			go func(nodeName string, id string) {
 				postOut := postProcess{nodeName, " " + id, os.Stdout, false /* see FIXME in Writer() */, &firstLinePrinted, failure}
 				postErr := postProcess{nodeName, "E" + id, os.Stderr, false, &firstLinePrinted, failure}
-				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s -- %s %s",
+				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --flatcaredgeonly --tracerid %s --gadget %s %s %s %s -- %s %s",
 					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg)
 				var err error
 				if subCommand != "tcptop" {

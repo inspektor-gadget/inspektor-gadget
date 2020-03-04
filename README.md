@@ -15,16 +15,18 @@ Usage:
   kubectl gadget [command]
 
 Available Commands:
-  bindsnoop    Trace bind
-  capabilities Suggest Security Capabilities for securityContext
-  deploy       Deploy Inspektor Gadget on the worker nodes
-  execsnoop    Trace new processes
-  help         Help about any command
-  opensnoop    Trace files
-  tcpconnect   Suggest Kubernetes Network Policies
-  tcptop       Show the TCP traffic in a pod
-  traceloop    Get strace-like logs of a pod from the past
-  version      Show version
+  bindsnoop      Trace IPv4 and IPv6 bind() system calls
+  capabilities   Suggest Security Capabilities for securityContext
+  deploy         Deploy Inspektor Gadget on the worker nodes
+  execsnoop      Trace new processes
+  help           Help about any command
+  network-policy Generate network policies based on recorded network activity
+  opensnoop      Trace files
+  tcpconnect     Suggest Kubernetes Network Policies
+  tcptop         Show the TCP traffic in a pod
+  tcptracer      trace tcp connect, accept and close
+  traceloop      Get strace-like logs of a pod from the past
+  version        Show version
 
 Flags:
   -h, --help                help for kubectl-gadget
@@ -42,6 +44,7 @@ Inspektor Gadget is a kubectl plugin. It can also be invoked with `kubectl gadge
 - [Demo: the "capabilities" gadget](Documentation/demo-capabilities.md) – watch is [as GIF](Documentation/demos/demo-capabilities-gifterminal.gif)
 - [Demo: the "tcptop" gadget](Documentation/demo-tcptop.md) – watch it [as GIF](Documentation/demos/demo-tcptop-gifterminal.gif)
 - [Demo: the "tcpconnect" gadget](Documentation/demo-tcpconnect.md) — watch it [as GIF](Documentation/demos/demo-tcpconnect-gifterminal.gif)
+- [Demo: the "network-policy" gadget](Documentation/demo-network-policy.md)
 
 As preview for the above demos, here is the `opensnoop` demo:
 
@@ -62,15 +65,17 @@ programs are and how Inspektor Gadget uses them is briefly explained here:
 
 Not all gadgets currently work everywhere.
 
-| Gadget       | Flatcar Edge | Flatcar Stable | Minikube | GKE |
-|--------------|:------------:|:--------------:|:--------:|:---:|
-| traceloop    |       ✔️      |        ✔️       |     ✔️    |  ✔️  |
-| capabilities |       ✔️      |                |          |     |
-| execsnoop    |       ✔️      |                |          |     |
-| opensnoop    |       ✔️      |                |          |     |
-| bindsnoop    |       ✔️      |                |          |     |
-| tcpconnect   |       ✔️      |                |          |     |
-| tcptop       |       ✔️      |                |          |     |
+| Gadget            | Flatcar Edge | Flatcar Stable | Minikube | GKE |
+|-------------------|:------------:|:--------------:|:--------:|:---:|
+| traceloop         |       ✔️      |        ✔️       |     ✔️    |  ✔️  |
+| network-policy    |       ✔️      |        ✔️       |     ✔️    |  ✔️  |
+| tcptracer         |       ✔️      |                |          |     |
+| tcpconnect        |       ✔️      |                |          |     |
+| tcptop            |       ✔️      |                |          |     |
+| execsnoop         |       ✔️      |                |          |     |
+| opensnoop         |       ✔️      |                |          |     |
+| bindsnoop         |       ✔️      |                |          |     |
+| capabilities      |       ✔️      |                |          |     |
 
 Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/). [More details in the detailed install instructions](Documentation/install.md)
 
