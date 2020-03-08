@@ -26,14 +26,14 @@ import (
 var execsnoopCmd = &cobra.Command{
 	Use:               "execsnoop",
 	Short:             "Trace new processes",
-	Run:               bccCmd("execsnoop", "/opt/bcck8s/execsnoop-ig"),
+	Run:               bccCmd("execsnoop", "/usr/share/bcc/tools/execsnoop"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
 var opensnoopCmd = &cobra.Command{
 	Use:               "opensnoop",
 	Short:             "Trace files",
-	Run:               bccCmd("opensnoop", "/opt/bcck8s/opensnoop-ig"),
+	Run:               bccCmd("opensnoop", "/usr/share/bcc/tools/opensnoop"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
@@ -47,7 +47,7 @@ var bindsnoopCmd = &cobra.Command{
 var tcptopCmd = &cobra.Command{
 	Use:               "tcptop",
 	Short:             "Show the TCP traffic in a pod",
-	Run:               bccCmd("tcptop", "/opt/bcck8s/tcptop-edge"),
+	Run:               bccCmd("tcptop", "/usr/share/bcc/tools/tcptop"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
@@ -68,7 +68,7 @@ var tcptracerCmd = &cobra.Command{
 var capabilitiesCmd = &cobra.Command{
 	Use:               "capabilities",
 	Short:             "Suggest Security Capabilities for securityContext",
-	Run:               bccCmd("capabilities", "/opt/bcck8s/capable-edge"),
+	Run:               bccCmd("capabilities", "/usr/share/bcc/tools/capable"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
