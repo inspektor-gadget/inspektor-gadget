@@ -43,10 +43,13 @@ func (a *NetworkPolicyAdvisor) LoadFile(filename string) error {
 	if err != nil {
 		return err
 	}
+	return a.LoadBuffer(buf)
+}
 
+func (a *NetworkPolicyAdvisor) LoadBuffer(buf []byte) error {
 	/* Try to read the file as an array */
 	events := []types.KubernetesConnectionEvent{}
-	err = json.Unmarshal(buf, &events)
+	err := json.Unmarshal(buf, &events)
 	if err == nil {
 		a.Events = events
 		return nil
@@ -149,18 +152,33 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.KubernetesConnectionEvent) (p
 			Protocol: &protocol,
 		},
 	}
-	// TODO: check if LocalPodNamespace != Remote*Namespace
 	if e.RemoteKind == "pod" {
 		peers = []networkingv1.NetworkPolicyPeer{
 			networkingv1.NetworkPolicyPeer{
 				PodSelector: &metav1.LabelSelector{MatchLabels: a.labelFilter(e.RemotePodLabels)},
 			},
 		}
+		if e.LocalPodNamespace != e.RemotePodNamespace {
+			peers[0].NamespaceSelector = &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					// TODO: the namespace might not have this "name" label
+					"name": e.RemotePodNamespace,
+				},
+			}
+		}
 	} else if e.RemoteKind == "svc" {
 		peers = []networkingv1.NetworkPolicyPeer{
 			networkingv1.NetworkPolicyPeer{
 				PodSelector: &metav1.LabelSelector{MatchLabels: e.RemoteSvcLabelSelector},
 			},
+		}
+		if e.LocalPodNamespace != e.RemoteSvcNamespace {
+			peers[0].NamespaceSelector = &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					// TODO: the namespace might not have this "name" label
+					"name": e.RemoteSvcNamespace,
+				},
+			}
 		}
 	} else if e.RemoteKind == "other" {
 		peers = []networkingv1.NetworkPolicyPeer{
@@ -255,7 +273,7 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 
 }
 
-func (a *NetworkPolicyAdvisor) PrintPolicies() {
+func (a *NetworkPolicyAdvisor) FormatPolicies() (out string) {
 	for i, p := range a.Policies {
 		yamlOutput, err := k8syaml.Marshal(p)
 		if err != nil {
@@ -265,6 +283,7 @@ func (a *NetworkPolicyAdvisor) PrintPolicies() {
 		if i == len(a.Policies)-1 {
 			sep = ""
 		}
-		fmt.Printf("%s%s", string(yamlOutput), sep)
+		out += fmt.Sprintf("%s%s", string(yamlOutput), sep)
 	}
+	return
 }

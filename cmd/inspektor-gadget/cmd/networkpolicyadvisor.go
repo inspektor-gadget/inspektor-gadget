@@ -169,7 +169,7 @@ func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
 	}
 
 	advisor.GeneratePolicies()
-	advisor.PrintPolicies()
+	fmt.Printf(advisor.FormatPolicies())
 
 	return err
 }
