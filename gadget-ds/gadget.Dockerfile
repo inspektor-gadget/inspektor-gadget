@@ -4,7 +4,14 @@ FROM docker.io/kinvolk/traceloop:latest as traceloop
 
 # Main gadget image
 
-FROM docker.io/kinvolk/bcc:ig-latest
+# BCC built from:
+# https://github.com/kinvolk/bcc/commit/57e7af7c8ac8e32b2ad62d973ae63edcddc8a32c
+# See:
+# - https://github.com/kinvolk/bcc/actions
+# - https://hub.docker.com/repository/docker/kinvolk/bcc/tags
+
+FROM docker.io/kinvolk/bcc:2020031010415157e7af
+
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \

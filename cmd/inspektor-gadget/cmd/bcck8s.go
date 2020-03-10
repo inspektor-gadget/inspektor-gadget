@@ -26,14 +26,14 @@ import (
 var execsnoopCmd = &cobra.Command{
 	Use:               "execsnoop",
 	Short:             "Trace new processes",
-	Run:               bccCmd("execsnoop", "/opt/bcck8s/execsnoop-ig"),
+	Run:               bccCmd("execsnoop", "/usr/share/bcc/tools/execsnoop"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
 var opensnoopCmd = &cobra.Command{
 	Use:               "opensnoop",
 	Short:             "Trace files",
-	Run:               bccCmd("opensnoop", "/opt/bcck8s/opensnoop-ig"),
+	Run:               bccCmd("opensnoop", "/usr/share/bcc/tools/opensnoop"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
@@ -47,7 +47,7 @@ var bindsnoopCmd = &cobra.Command{
 var tcptopCmd = &cobra.Command{
 	Use:               "tcptop",
 	Short:             "Show the TCP traffic in a pod",
-	Run:               bccCmd("tcptop", "/opt/bcck8s/tcptop-edge"),
+	Run:               bccCmd("tcptop", "/usr/share/bcc/tools/tcptop"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
@@ -68,7 +68,7 @@ var tcptracerCmd = &cobra.Command{
 var capabilitiesCmd = &cobra.Command{
 	Use:               "capabilities",
 	Short:             "Suggest Security Capabilities for securityContext",
-	Run:               bccCmd("capabilities", "/opt/bcck8s/capable-edge"),
+	Run:               bccCmd("capabilities", "/usr/share/bcc/tools/capable"),
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
@@ -79,6 +79,7 @@ var (
 	podnameParam   string
 
 	stackFlag   bool
+	uniqueFlag  bool
 	verboseFlag bool
 )
 
@@ -105,6 +106,7 @@ func init() {
 		}
 	}
 	capabilitiesCmd.PersistentFlags().BoolVarP(&stackFlag, "print-stack", "", false, "Print kernel and userspace call stack of cap_capable()")
+	capabilitiesCmd.PersistentFlags().BoolVarP(&uniqueFlag, "unique", "", false, "Don't print duplicate capability checks")
 	capabilitiesCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "", false, "Include non-audit")
 }
 
@@ -201,21 +203,23 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			if podnameParam != "" {
 				podnameFilter = fmt.Sprintf("--podname %q", podnameParam)
 			}
-			stackArg := ""
+			gadgetParams := ""
 			if stackFlag && subCommand == "capabilities" {
-				stackArg = "-K"
+				gadgetParams += " -K"
 			}
-			verboseArg := ""
+			if uniqueFlag && subCommand == "capabilities" {
+				gadgetParams += " --unique"
+			}
 			if verboseFlag && subCommand == "capabilities" {
-				verboseArg = "-v"
+				gadgetParams += " -v"
 			}
 			id := strconv.Itoa(i)
 			fmt.Printf(" %s = %s", id, node.Name)
 			go func(nodeName string, id string) {
 				postOut := postProcess{nodeName, " " + id, os.Stdout, false /* see FIXME in Writer() */, &firstLinePrinted, failure}
 				postErr := postProcess{nodeName, "E" + id, os.Stderr, false, &firstLinePrinted, failure}
-				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --flatcaredgeonly --tracerid %s --gadget %s %s %s %s -- %s %s",
-					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, stackArg, verboseArg)
+				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --flatcaredgeonly --tracerid %s --gadget %s %s %s %s -- %s",
+					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, gadgetParams)
 				var err error
 				if subCommand != "tcptop" {
 					err = execPod(client, nodeName, cmd, postOut, postErr)
