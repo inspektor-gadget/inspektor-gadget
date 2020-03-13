@@ -153,7 +153,9 @@ static inline int do_trace_skb(struct route_evt_t *evt, void *ctx, struct sk_buf
     char* icmp_header_address = ip_header_address + icmp_offset_from_ip_header;
     union {
       struct icmphdr icmphdr;
-      char buf[sizeof(struct icmphdr) + 40];
+      // ping includes a timestamp, struct timeval
+      #define SIZEOF_STRUCT_TIMEVAL 0x10
+      char buf[sizeof(struct icmphdr) + SIZEOF_STRUCT_TIMEVAL + sizeof(u64)];
     } icmphdr;
     bpf_probe_read(&icmphdr, sizeof(icmphdr), icmp_header_address);
 
@@ -166,7 +168,7 @@ static inline int do_trace_skb(struct route_evt_t *evt, void *ctx, struct sk_buf
     evt->icmptype = icmphdr.icmphdr.type;
     evt->icmpid   = icmphdr.icmphdr.un.echo.id;
     evt->icmpseq  = icmphdr.icmphdr.un.echo.sequence;
-    evt->icmppad  = *(u64*)(((char*)&icmphdr.icmphdr.un.echo.sequence)+18);
+    evt->icmppad  = *(u64*)(((char*)&icmphdr.icmphdr.un.echo.sequence) + sizeof(icmphdr.icmphdr.un.echo.sequence) + SIZEOF_STRUCT_TIMEVAL);
 
     // Filter for OUR pings
     if (evt->icmppad != 0xddccbbaa44332211) {
