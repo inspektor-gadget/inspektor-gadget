@@ -8,7 +8,9 @@ Inspiration:
 - https://backreference.org/2010/06/11/iptables-debugging/
 
 ```
-modprobe xt_TRACE
+chroot /host modprobe ip6_tables
+chroot /host modprobe xt_TRACE
+
 # for IPv4
 iptables -t raw -A OUTPUT -p icmp -j TRACE
 iptables -t raw -A PREROUTING -p icmp -j TRACE
