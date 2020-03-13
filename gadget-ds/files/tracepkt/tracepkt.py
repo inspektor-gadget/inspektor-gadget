@@ -137,11 +137,16 @@ def event_printer(cpu, data, size):
 if __name__ == "__main__":
     # Get arguments
     if len(sys.argv) == 1:
-        TARGET = '127.0.0.1'
+        TARGET = None
+        NSENTER = None
     elif len(sys.argv) == 2:
         TARGET = sys.argv[1]
+        NSENTER = ''
+    elif len(sys.argv) == 3:
+        TARGET = sys.argv[1]
+        NSENTER = 'nsenter -n -t $(chroot /host docker inspect %s --format "{{.State.Pid}}")' %(sys.argv[2])
     else:
-        print "Usage: %s [TARGET_IP]" % (sys.argv[0])
+        print "Usage: %s [TARGET_IP] [SOURCE]" % (sys.argv[0])
         sys.exit(1)
 
     # Build probe and open event buffer
@@ -149,24 +154,31 @@ if __name__ == "__main__":
     b["route_evt"].open_perf_buffer(event_printer)
 
     # Launch a background ping process
-    with open('/dev/null', 'r') as devnull:
-        ping = subprocess.Popen([
-                '/bin/ping',
-                '-c1',
-                '-p'+PING_PAD_STR,
-                TARGET,
-            ],
-            stdout=devnull,
-            stderr=devnull,
-            close_fds=True,
-        )
-    PING_PID = ping.pid
+    if TARGET is not None:
+        with open('/dev/null', 'r') as devnull:
+            ping = subprocess.Popen([
+                    '/bin/sh', '-c',
+                    NSENTER + ' ping -c1 -p' + PING_PAD_STR + ' ' + TARGET,
+                ],
+                stdout=devnull,
+                stderr=devnull,
+                close_fds=True,
+            )
+        PING_PID = ping.pid
 
     print "%14s %16s %7s %-34s %s" % ('NETWORK NS', 'INTERFACE', 'TYPE', 'ADDRESSES', 'IPTABLES')
 
-    # Listen for event until the ping process has exited
-    while ping.poll() is None:
-        b.kprobe_poll(10)
+    if TARGET is not None:
+        # Listen for event until the ping process has exited
+        while ping.poll() is None:
+            b.perf_buffer_poll(50)
+        # Forward ping's exit code
+        sys.exit(ping.poll())
+    else:
+        while 1:
+            try:
+                b.perf_buffer_poll()
+            except KeyboardInterrupt:
+                exit();
 
-    # Forward ping's exit code
-    sys.exit(ping.poll())
+        sys.exit(0)
