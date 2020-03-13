@@ -23,7 +23,9 @@ struct route_evt_t {
     u64 ip_version; // familiy (IPv4 or IPv6)
     u64 icmptype;
     u64 icmpid;     // In practice, this is the PID of the ping process (see "ident" field in https://github.com/iputils/iputils/blob/master/ping_common.c)
+		    // No longer true: https://github.com/iputils/iputils/commit/5026c2221a15bf13e601eade015c971bf07a27e9
     u64 icmpseq;    // Sequence number
+    u64 icmppad;    // Padding (see man ping, -p)
     u64 saddr[2];   // Source address. IPv4: store in saddr[0]
     u64 daddr[2];   // Dest   address. IPv4: store in daddr[0]
 
@@ -149,18 +151,27 @@ static inline int do_trace_skb(struct route_evt_t *evt, void *ctx, struct sk_buf
 
     // Compute ICMP header address and load ICMP header
     char* icmp_header_address = ip_header_address + icmp_offset_from_ip_header;
-    struct icmphdr icmphdr;
+    union {
+      struct icmphdr icmphdr;
+      char buf[sizeof(struct icmphdr) + 40];
+    } icmphdr;
     bpf_probe_read(&icmphdr, sizeof(icmphdr), icmp_header_address);
 
     // Filter ICMP echo request and echo reply
-    if (icmphdr.type != proto_icmp_echo_request && icmphdr.type != proto_icmp_echo_reply) {
+    if (icmphdr.icmphdr.type != proto_icmp_echo_request && icmphdr.icmphdr.type != proto_icmp_echo_reply) {
         return 0;
     }
 
     // Get ICMP info
-    evt->icmptype = icmphdr.type;
-    evt->icmpid   = icmphdr.un.echo.id;
-    evt->icmpseq  = icmphdr.un.echo.sequence;
+    evt->icmptype = icmphdr.icmphdr.type;
+    evt->icmpid   = icmphdr.icmphdr.un.echo.id;
+    evt->icmpseq  = icmphdr.icmphdr.un.echo.sequence;
+    evt->icmppad  = *(u64*)(((char*)&icmphdr.icmphdr.un.echo.sequence)+18);
+
+    // Filter for OUR pings
+    if (evt->icmppad != 0xddccbbaa44332211) {
+        return 0;
+    }
 
     // Fix endian
     evt->icmpid  = be16_to_cpu(evt->icmpid);
@@ -279,7 +290,7 @@ static inline int __ipt_do_table_out(struct pt_regs * ctx)
     member_read(&evt.tablename, table, name);
 
     // Store the verdict
-    int ret = PT_REGS_RC(ctx);
+    ret = PT_REGS_RC(ctx);
     evt.verdict = ret;
 
     // Send event

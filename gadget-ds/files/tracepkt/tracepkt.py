@@ -53,6 +53,7 @@ class TestEvt(ct.Structure):
         ("icmptype",    ct.c_ulonglong),
         ("icmpid",      ct.c_ulonglong),
         ("icmpseq",     ct.c_ulonglong),
+        ("icmppad",     ct.c_ulonglong),
         ("saddr",       ct.c_ulonglong * 2),
         ("daddr",       ct.c_ulonglong * 2),
 
@@ -71,6 +72,10 @@ class TestEvt(ct.Structure):
     ]
 
 PING_PID="-1"
+# Network endianness, as "ping -p" expects it
+PING_PAD_STR="11223344aabbccdd"
+# CPU endianness
+PING_PAD=0xddccbbaa44332211
 
 def _get(l, index, default):
     '''
@@ -89,7 +94,8 @@ def event_printer(cpu, data, size):
         return
 
     # Make sure it is OUR ping process
-    if event.icmpid != PING_PID:
+    # Warning: icmpid is no longer the pid: https://github.com/iputils/iputils/commit/5026c2221a15bf13e601eade015c971bf07a27e9
+    if event.icmppad != PING_PAD:
         return
 
     # Decode address
@@ -147,6 +153,7 @@ if __name__ == "__main__":
         ping = subprocess.Popen([
                 '/bin/ping',
                 '-c1',
+                '-p'+PING_PAD_STR,
                 TARGET,
             ],
             stdout=devnull,
