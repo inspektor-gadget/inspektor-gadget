@@ -73,6 +73,8 @@ BPF_HASH(cur_ipt_do_table_args, u32, struct ipt_do_table_args);
 /**
   * Common tracepoint handler. Detect IPv4/IPv6 ICMP echo request and replies and
   * emit event with address, interface and namespace.
+  *
+  * Returns true if this is a ICMP echo request or ICMP echo reply
   */
 static inline int do_trace_skb(struct route_evt_t *evt, void *ctx, struct sk_buff *skb)
 {
@@ -181,7 +183,7 @@ static inline int do_trace_skb(struct route_evt_t *evt, void *ctx, struct sk_buf
     member_read(&evt->netns, ns, inum);
 #endif
 
-    return 0;
+    return 1;
 }
 
 static inline int do_trace(void *ctx, struct sk_buff *skb)
@@ -191,12 +193,15 @@ static inline int do_trace(void *ctx, struct sk_buff *skb)
 
     // Process packet
     int ret = do_trace_skb(&evt, ctx, skb);
+    if (!ret) {
+        return 0;
+    }
 
     // Send event
     route_evt.perf_submit(ctx, &evt, sizeof(evt));
 
     // Return
-    return ret;
+    return 0;
 }
 
 /**
@@ -260,7 +265,10 @@ static inline int __ipt_do_table_out(struct pt_regs * ctx)
 
     // Load packet information
     struct sk_buff *skb = args->skb;
-    do_trace_skb(&evt, ctx, skb);
+    int ret = do_trace_skb(&evt, ctx, skb);
+    if (!ret) {
+        return 0;
+    }
 
     // Store the hook
     const struct nf_hook_state *state = args->state;
@@ -336,7 +344,10 @@ int kprobe__nf_log_trace(struct pt_regs *ctx,
     };
 
     // Load packet information
-    do_trace_skb(&evt, ctx, skb);
+    int ret = do_trace_skb(&evt, ctx, skb);
+    if (!ret) {
+        return 0;
+    }
 
     // Load interface name
     bpf_probe_read(&evt.ifname_in, IFNAMSIZ, in->name);
