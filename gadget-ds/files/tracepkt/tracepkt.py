@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
 import sys
+import json
 from socket import inet_ntop, AF_INET, AF_INET6
 from bcc import BPF
 import ctypes as ct
@@ -88,6 +90,7 @@ def _get(l, index, default):
 def event_printer(cpu, data, size):
     # Decode event
     event = ct.cast(data, ct.POINTER(TestEvt)).contents
+    event_dict = dict((field, getattr(event, field)) for field, _ in TestEvt._fields_ if not field.endswith('addr') )
 
     # Make sure this is an interface event
     if event.flags & ROUTE_EVT_IF != ROUTE_EVT_IF:
@@ -107,6 +110,8 @@ def event_printer(cpu, data, size):
         daddr = inet_ntop(AF_INET6, event.daddr)
     else:
         return
+    event_dict["saddr"] = saddr
+    event_dict["daddr"] = daddr
 
     # Decode direction
     if event.icmptype in [8, 128]:
@@ -115,24 +120,32 @@ def event_printer(cpu, data, size):
         direction = "reply"
     else:
         return
+    event_dict["direction"] = direction
 
     # Decode flow
     flow = "%s -> %s" % (saddr, daddr)
 
+    event_dict["kind"] = "unknown"
+    if event.flags & ROUTE_EVT_IF == ROUTE_EVT_IF:
+        event_dict["kind"] += "packet"
+    if event.flags & ROUTE_EVT_IPTABLE == ROUTE_EVT_IPTABLE:
+        event_dict["kind"] += "iptable"
+    if event.flags & ROUTE_EVT_IPTABLE_STEP == ROUTE_EVT_IPTABLE_STEP:
+        event_dict["kind"] += "iptable-step"
+
     # Optionally decode iptables events
-    iptables = ""
     if event.flags & ROUTE_EVT_IPTABLE == ROUTE_EVT_IPTABLE:
         verdict = _get(NF_VERDICT_NAME, event.verdict, "~UNK~")
         hook = _get(HOOKNAMES, event.hook, "~UNK~")
-        iptables = " %7s.%-12s:%s" % (event.tablename, hook, verdict)
 
-    # Optionally decode iptables step events
-    iptables_step = ""
-    if event.flags & ROUTE_EVT_IPTABLE_STEP == ROUTE_EVT_IPTABLE_STEP:
-        iptables += " step IN=%s OUT=%s %s:%s:%s:%d" % (event.ifname_in, event.ifname_out, event.iptables_step_tablename, event.iptables_step_chainname, event.iptables_step_comment, event.iptables_step_rulenum)
+        event_dict["verdict"] = verdict
+        event_dict["hook"] = hook
+    else:
+        event_dict["verdict"] = ""
+        event_dict["hook"] = ""
 
     # Print event
-    print "[%12s] %16s %7s %-34s%s" % (event.netns, event.ifname, direction, flow, iptables)
+    print json.dumps(event_dict)
 
 if __name__ == "__main__":
     # Get arguments
@@ -148,6 +161,18 @@ if __name__ == "__main__":
     else:
         print "Usage: %s [TARGET_IP] [SOURCE]" % (sys.argv[0])
         sys.exit(1)
+
+    # Load kernel modules if needed
+    os.system("""
+        chroot /host modprobe ip6_tables ;
+        chroot /host modprobe xt_TRACE ;
+        chroot /host iptables -t raw -A OUTPUT -p icmp -j TRACE ;
+        chroot /host iptables -t raw -A PREROUTING -p icmp -j TRACE ;
+        chroot /host ip6tables -t raw -A OUTPUT -p icmpv6 --icmpv6-type echo-request -j TRACE ;
+        chroot /host ip6tables -t raw -A OUTPUT -p icmpv6 --icmpv6-type echo-reply -j TRACE ;
+        chroot /host ip6tables -t raw -A PREROUTING -p icmpv6 --icmpv6-type echo-request -j TRACE ;
+        chroot /host ip6tables -t raw -A PREROUTING -p icmpv6 --icmpv6-type echo-reply -j TRACE
+    """)
 
     # Build probe and open event buffer
     b = BPF(src_file='tracepkt.c')
@@ -166,14 +191,12 @@ if __name__ == "__main__":
             )
         PING_PID = ping.pid
 
-    print "%14s %16s %7s %-34s %s" % ('NETWORK NS', 'INTERFACE', 'TYPE', 'ADDRESSES', 'IPTABLES')
-
     if TARGET is not None:
         # Listen for event until the ping process has exited
         while ping.poll() is None:
             b.perf_buffer_poll(50)
-        # Forward ping's exit code
-        sys.exit(ping.poll())
+        ## Forward ping's exit code
+        #sys.exit(ping.poll())
     else:
         while 1:
             try:
@@ -181,4 +204,15 @@ if __name__ == "__main__":
             except KeyboardInterrupt:
                 exit();
 
-        sys.exit(0)
+        #sys.exit(0)
+
+    os.system("""
+        chroot /host iptables -t raw -D OUTPUT -p icmp -j TRACE ;
+        chroot /host iptables -t raw -D PREROUTING -p icmp -j TRACE ;
+        chroot /host ip6tables -t raw -D OUTPUT -p icmpv6 --icmpv6-type echo-request -j TRACE ;
+        chroot /host ip6tables -t raw -D OUTPUT -p icmpv6 --icmpv6-type echo-reply -j TRACE ;
+        chroot /host ip6tables -t raw -D PREROUTING -p icmpv6 --icmpv6-type echo-request -j TRACE ;
+        chroot /host ip6tables -t raw -D PREROUTING -p icmpv6 --icmpv6-type echo-reply -j TRACE
+    """)
+
+    sys.exit(0)
