@@ -38,6 +38,8 @@ type pingCollector struct {
 }
 
 type pingEvent struct {
+	NodeName string `json:"nodename"`
+
 	// Content flags
 	Kind  string `json:"kind"`
 	Flags int    `json:"flags"`
@@ -83,6 +85,7 @@ func (t pingCollector) Write(p []byte) (n int, err error) {
 		}
 	}
 
+	t.writer.Write([]byte("node " + t.node + ": "))
 	n, err = t.writer.Write(p)
 	if err != nil {
 		return
@@ -129,10 +132,14 @@ func runTracepkt(cmd *cobra.Command, args []string) {
 	for _, node := range nodes.Items {
 		go func(nodeName string) {
 			collector := pingCollector{&m, w, nodeName}
-			cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid networkpolicyadvisor --nomanager --probecleanup --gadget /opt/tracepkt.py -- %s %s",
-				podSource, ipDest)
+			params := ipDest
+			if nodeName == "ip-10-0-6-37" && podSource != "" { // FIXME
+				params += " " + "c962dee46a08" // FIXME: use podSource
+			}
+			cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid ping --nomanager --probecleanup --gadget /opt/tracepkt/tracepkt.py -- %s",
+				params)
 			err := execPod(client, nodeName, cmd, collector, os.Stderr)
-			if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
+			if err != nil && fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
 				failure <- fmt.Sprintf("Error running command: %q\n", err)
 			}
 		}(node.Name)
@@ -147,9 +154,9 @@ func runTracepkt(cmd *cobra.Command, args []string) {
 
 	for _, node := range nodes.Items {
 		_, _, err := execPodCapture(client, node.Name,
-			fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid networkpolicyadvisor --stop"))
+			fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid ping --stop"))
 		if err != nil {
-			fmt.Printf("Error running command: %q\n", err)
+			fmt.Printf("Error stopping command: %q\n", err)
 		}
 	}
 }

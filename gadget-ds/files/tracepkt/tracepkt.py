@@ -127,11 +127,11 @@ def event_printer(cpu, data, size):
 
     event_dict["kind"] = "unknown"
     if event.flags & ROUTE_EVT_IF == ROUTE_EVT_IF:
-        event_dict["kind"] += "packet"
+        event_dict["kind"] = "packet"
     if event.flags & ROUTE_EVT_IPTABLE == ROUTE_EVT_IPTABLE:
-        event_dict["kind"] += "iptable"
+        event_dict["kind"] = "iptable"
     if event.flags & ROUTE_EVT_IPTABLE_STEP == ROUTE_EVT_IPTABLE_STEP:
-        event_dict["kind"] += "iptable-step"
+        event_dict["kind"] = "iptable-step"
 
     # Optionally decode iptables events
     if event.flags & ROUTE_EVT_IPTABLE == ROUTE_EVT_IPTABLE:
