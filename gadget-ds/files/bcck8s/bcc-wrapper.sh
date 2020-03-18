@@ -90,6 +90,8 @@ if [ "$STOP" = "true" ] ; then
     $GADGETTRACERMANAGER -call remove-tracer -tracerid "$TRACERID" || true
   fi
   if [ -e "$PIDFILE" ] ; then
+    kill -SIGINT "$(cat $PIDFILE)" || true
+    timeout 5s tail --pid="$(cat $PIDFILE)" -f /dev/null
     kill -9 "$(cat $PIDFILE)" || true
     rm -f "$PIDFILE"
   fi

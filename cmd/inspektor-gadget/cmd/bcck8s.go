@@ -44,6 +44,13 @@ var bindsnoopCmd = &cobra.Command{
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
+var profileCmd = &cobra.Command{
+	Use:               "profile",
+	Short:             "Profile CPU usage by sampling stack traces",
+	Run:               bccCmd("profile", "/usr/share/bcc/tools/profile"),
+	PersistentPreRunE: doesKubeconfigExist,
+}
+
 var tcptopCmd = &cobra.Command{
 	Use:               "tcptop",
 	Short:             "Show the TCP traffic in a pod",
@@ -81,6 +88,9 @@ var (
 	stackFlag   bool
 	uniqueFlag  bool
 	verboseFlag bool
+
+	profileKernel bool
+	profileUser   bool
 )
 
 func init() {
@@ -88,6 +98,7 @@ func init() {
 		execsnoopCmd,
 		opensnoopCmd,
 		bindsnoopCmd,
+		profileCmd,
 		tcptopCmd,
 		tcpconnectCmd,
 		tcptracerCmd,
@@ -108,6 +119,9 @@ func init() {
 	capabilitiesCmd.PersistentFlags().BoolVarP(&stackFlag, "print-stack", "", false, "Print kernel and userspace call stack of cap_capable()")
 	capabilitiesCmd.PersistentFlags().BoolVarP(&uniqueFlag, "unique", "", false, "Don't print duplicate capability checks")
 	capabilitiesCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "", false, "Include non-audit")
+
+	profileCmd.PersistentFlags().BoolVarP(&profileUser, "user", "U", false, "Show stacks from user space only (no kernel space stacks)")
+	profileCmd.PersistentFlags().BoolVarP(&profileKernel, "kernel", "K", false, "Show stacks from kernel space only (no user space stacks)")
 }
 
 type postProcess struct {
@@ -180,7 +194,8 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		}
 
 		gadgetParams := ""
-		if subCommand == "capabilities" {
+		switch subCommand {
+		case"capabilities":
 			if stackFlag {
 				gadgetParams += " -K"
 			}
@@ -189,6 +204,13 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			}
 			if verboseFlag {
 				gadgetParams += " -v"
+			}
+		case "profile":
+			gadgetParams += " -f -d "
+			if profileUser {
+				gadgetParams += " -U "
+			} else if profileKernel {
+				gadgetParams += " -K "
 			}
 		}
 
@@ -218,7 +240,6 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			if nodeParam != "" && node.Name != nodeParam {
 				continue
 			}
-
 			id := strconv.Itoa(i)
 			fmt.Printf(" %s = %s", id, node.Name)
 			go func(nodeName string, id string) {
