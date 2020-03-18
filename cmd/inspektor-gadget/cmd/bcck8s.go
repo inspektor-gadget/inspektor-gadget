@@ -44,6 +44,13 @@ var bindsnoopCmd = &cobra.Command{
 	PersistentPreRunE: doesKubeconfigExist,
 }
 
+var profileCmd = &cobra.Command{
+	Use:               "profile",
+	Short:             "Profile CPU usage by sampling stack traces",
+	Run:               bccCmd("profile", "/usr/share/bcc/tools/profile"),
+	PersistentPreRunE: doesKubeconfigExist,
+}
+
 var tcptopCmd = &cobra.Command{
 	Use:               "tcptop",
 	Short:             "Show the TCP traffic in a pod",
@@ -88,6 +95,7 @@ func init() {
 		execsnoopCmd,
 		opensnoopCmd,
 		bindsnoopCmd,
+		profileCmd,
 		tcptopCmd,
 		tcpconnectCmd,
 		tcptracerCmd,
@@ -212,6 +220,9 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			}
 			if verboseFlag && subCommand == "capabilities" {
 				gadgetParams += " -v"
+			}
+			if subCommand == "profile" {
+				gadgetParams += " -f -d "
 			}
 			id := strconv.Itoa(i)
 			fmt.Printf(" %s = %s", id, node.Name)
