@@ -34,6 +34,8 @@ type tracer struct {
 	mapHolder          *bpflib.Module
 	cgroupIdSetMap     *bpflib.Map
 	cgroupIdSetMapPath string
+	mntnsSetMap        *bpflib.Map
+	mntnsSetMapPath    string
 
 	matchesCache []uint64
 }
@@ -92,9 +94,13 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 	}
 
 	cgroupIdSetMapPath := fmt.Sprintf("gadget/cgroupidset-%s", tracerId)
+	mntnsSetMapPath := fmt.Sprintf("gadget/mntnsset-%s", tracerId)
 	var sectionParams = map[string]bpflib.SectionParams{
 		"maps/cgroupid_set": bpflib.SectionParams{
 			PinPath: cgroupIdSetMapPath,
+		},
+		"maps/mntns_set": bpflib.SectionParams{
+			PinPath: mntnsSetMapPath,
 		},
 	}
 	err = m.Load(sectionParams)
@@ -102,15 +108,18 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 		return nil, err
 	}
 	cgroupIdSetMap := m.Map("cgroupid_set")
+	mntnsSetMap := m.Map("mntns_set")
 
 	matchesCache := []uint64{}
 
 	for _, c := range g.containers {
 		if containerSelectorMatches(req.Selector, &c) {
 			matchesCache = append(matchesCache, c.CgroupId)
-			cgroupIdC := uint64(c.CgroupId)
 			zero := uint32(0)
+			cgroupIdC := uint64(c.CgroupId)
 			m.UpdateElement(cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&zero), 0)
+			mntnsC := uint64(c.Mntns)
+			m.UpdateElement(mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&zero), 0)
 		}
 	}
 
@@ -120,6 +129,8 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 		mapHolder:          m,
 		cgroupIdSetMap:     cgroupIdSetMap,
 		cgroupIdSetMapPath: cgroupIdSetMapPath,
+		mntnsSetMap:        mntnsSetMap,
+		mntnsSetMapPath:    mntnsSetMapPath,
 		matchesCache:       matchesCache,
 	}
 	return &pb.TracerID{Id: tracerId}, nil
@@ -137,6 +148,7 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 
 	t.mapHolder.Close()
 	os.Remove("/sys/fs/bpf/" + t.cgroupIdSetMapPath)
+	os.Remove("/sys/fs/bpf/" + t.mntnsSetMapPath)
 
 	delete(g.tracers, tracerID.Id)
 	return &pb.RemoveTracerResponse{}, nil
@@ -154,8 +166,10 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 		if containerSelectorMatches(&t.containerSelector, containerDefinition) {
 			t.matchesCache = append(t.matchesCache, containerDefinition.CgroupId)
 			cgroupIdC := uint64(containerDefinition.CgroupId)
+			mntnsC := uint64(containerDefinition.Mntns)
 			zero := uint32(0)
 			t.mapHolder.UpdateElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&zero), 0)
+			t.mapHolder.UpdateElement(t.mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&zero), 0)
 		}
 	}
 
@@ -177,7 +191,9 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 		if containerSelectorMatches(&t.containerSelector, &c) {
 			//TODO: t.matchesCache = remove_from(t.matchesCache, c.CgroupId)
 			cgroupIdC := uint64(c.CgroupId)
+			mntnsC := uint64(c.Mntns)
 			t.mapHolder.DeleteElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC))
+			t.mapHolder.DeleteElement(t.mntnsSetMap, unsafe.Pointer(&mntnsC))
 		}
 	}
 

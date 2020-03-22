@@ -69,11 +69,12 @@ message ContainerDefinition {
   string container_id = 1;
   string cgroup_path = 2;
   uint64 cgroup_id = 3;
+  uint64 mntns = 4;
 
-  string namespace = 4;
-  string podname = 5;
-  int32 container_index = 6;
-  repeated Label labels = 7;
+  string namespace = 5;
+  string podname = 6;
+  int32 container_index = 7;
+  repeated Label labels = 8;
 }
 
 message DumpStateRequest {

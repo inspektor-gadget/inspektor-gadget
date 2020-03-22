@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -78,6 +79,18 @@ func GetCgroupID(path string) (uint64, error) {
 		return 0, fmt.Errorf("GetCgroupID on %q failed", path)
 	}
 	return ret, nil
+}
+
+func GetMntNs(pid int) (uint64, error) {
+	fileinfo, err := os.Stat(filepath.Join("/proc", fmt.Sprintf("%d", pid), "ns/mnt"))
+	if err != nil {
+		return 0, err
+	}
+	stat, ok := fileinfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, fmt.Errorf("Not a syscall.Stat_t")
+	}
+	return stat.Ino, nil
 }
 
 var (
@@ -178,6 +191,12 @@ func main() {
 		panic(err)
 	}
 
+	// Get mount namespace ino
+	mntns, err := GetMntNs(ociState.Pid)
+	if err != nil {
+		panic(err)
+	}
+
 	// Get bundle directory and OCI spec (config.json)
 	ppid := 0
 	if statusFile, err := os.Open(filepath.Join("/proc", fmt.Sprintf("%d", ociState.Pid), "status")); err == nil {
@@ -269,6 +288,7 @@ func main() {
 		ContainerId:    ociState.ID,
 		CgroupPath:     cgroupPath,
 		CgroupId:       cgroupId,
+		Mntns:          mntns,
 		Namespace:      namespace,
 		Podname:        podname,
 		ContainerIndex: int32(containerIndex),
