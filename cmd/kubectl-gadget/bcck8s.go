@@ -285,7 +285,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			}
 			fmt.Printf(" %d = %s", i, node.Name)
 			go func(nodeName string, index int) {
-				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --flatcaredgeonly --tracerid %s --gadget %s %s %s %s -- %s",
+				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s -- %s",
 					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, gadgetParams)
 				var err error
 				if subCommand != "tcptop" {

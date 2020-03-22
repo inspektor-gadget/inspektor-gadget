@@ -127,13 +127,13 @@ echo $$ > $PIDFILE
 
 if [ "$MANAGER" = "true" ] ; then
   $GADGETTRACERMANAGER -call add-tracer -tracerid "$TRACERID" -label "$LABEL" -namespace "$NAMESPACE" -podname "$PODNAME" -containerindex "$CONTAINERINDEX" > /dev/null
-  CGROUPMAP=$BPFDIR/gadget/cgroupidset-$TRACERID
+  CONTAINERSET=$BPFDIR/gadget/mntnsset-$TRACERID
 fi
 
 export TERM=xterm-256color
 export PYTHONUNBUFFERED=TRUE
 if [ "$MANAGER" = "true" ] ; then
-  exec $GADGET --cgroupmap $CGROUPMAP "$@"
+  exec $GADGET --mntnsmap $CONTAINERSET "$@"
 else
   exec $GADGET "$@"
 fi

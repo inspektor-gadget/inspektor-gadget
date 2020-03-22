@@ -52,21 +52,24 @@ func InitialContainers() (arr []pb.ContainerDefinition, err error) {
 				log.Printf("Skip pod %s/%s: cannot find pid: %v", pod.GetNamespace(), pod.GetName(), err)
 				continue
 			}
-			cgroupPath, err := containerutils.GetCgroup2Path(pid)
+			_, cgroupPathV2, err := containerutils.GetCgroupPaths(pid)
 			if err != nil {
 				log.Printf("Skip pod %s/%s: cannot find cgroup path: %v", pod.GetNamespace(), pod.GetName(), err)
 				continue
 			}
-			cgroupId, err := containerutils.GetCgroupID(cgroupPath)
+			cgroupPathV2WithMountpoint, _ := containerutils.CgroupPathV2AddMountpoint(cgroupPathV2)
+			cgroupId, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
+			mntns, err := containerutils.GetMntNs(pid)
 			if err != nil {
-				log.Printf("Skip pod %s/%s: cannot find cgroup id: %v", pod.GetNamespace(), pod.GetName(), err)
+				log.Printf("Skip pod %s/%s: cannot find mnt namespace: %v", pod.GetNamespace(), pod.GetName(), err)
 				continue
 			}
 
 			containerDef := pb.ContainerDefinition{
 				ContainerId:    s.ContainerID,
-				CgroupPath:     cgroupPath,
+				CgroupPath:     cgroupPathV2WithMountpoint,
 				CgroupId:       cgroupId,
+				Mntns:          mntns,
 				Namespace:      pod.GetNamespace(),
 				Podname:        pod.GetName(),
 				ContainerIndex: int32(i),

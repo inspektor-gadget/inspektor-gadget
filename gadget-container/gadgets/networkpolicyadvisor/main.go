@@ -20,14 +20,12 @@ import (
 )
 
 var (
-	cgroupmap     string
 	namespaceList string
 	namespaceSet  map[string]struct{}
 	kubeconfig    string
 )
 
 func init() {
-	flag.StringVar(&cgroupmap, "cgroupmap", "", "path to a BPF map containing a cgroup set")
 	flag.StringVar(&namespaceList, "namespace", "", "comma-separated list of namespaces")
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "path to a kubeconfig")
 }
