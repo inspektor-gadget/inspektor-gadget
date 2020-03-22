@@ -39,31 +39,16 @@ ARGS=k8s
 FLATCAR_EDGE=0
 if grep -q '^ID=flatcar$' /host/etc/os-release > /dev/null ; then
   if grep -q '^GROUP=edge$' /host/etc/flatcar/update.conf > /dev/null ; then
+    echo "Flatcar Edge detected."
     FLATCAR_EDGE=1
+
+    CGROUP_V1_PATH=$(cat /proc/1/cgroup |grep ^1:|cut -d: -f3)
+    CGROUP_V2_PATH=$(cat /proc/1/cgroup |grep ^0:|cut -d: -f3)
+    if [ $CGROUP_V1_PATH != $CGROUP_V2_PATH ] ; then
+      echo "cgroup-v2 is not correctly enabled on Kubernetes pods" >&2
+      exit 1
+    fi
   fi
-fi
-
-if [ "$FLATCAR_EDGE" = 1 ] ; then
-  echo "Flatcar Edge detected."
-  echo "Installing scripts on host..."
-
-  CGROUP_V1_PATH=$(cat /proc/1/cgroup |grep ^1:|cut -d: -f3)
-  CGROUP_V2_PATH=$(cat /proc/1/cgroup |grep ^0:|cut -d: -f3)
-  if [ $CGROUP_V1_PATH != $CGROUP_V2_PATH ] ; then
-    echo "cgroup-v2 is not correctly enabled on Kubernetes pods" >&2
-    exit 1
-  fi
-
-  mkdir -p /host/opt/bin/
-  for i in ocihookgadget runc-hook-prestart.sh runc-hook-poststop.sh ; do
-    echo "Installing $i..."
-    cp /bin/$i /host/opt/bin/
-  done
-  echo "Installation done "
-
-  echo "Starting the Gadget Tracer Manager in the background..."
-  rm -f /run/gadgettracermanager.socket
-  /bin/gadgettracermanager -serve &
 fi
 
 if [ "$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS" = "ldpreload" ] ; then
@@ -78,6 +63,22 @@ if [ "$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS" = "ldpreload" ] ; then
     echo "/opt/runchooks/runchooks.so" >> /host/etc/ld.so.preload
   fi
 fi
+
+if [ "$FLATCAR_EDGE" = 1 ] || [ "$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS" = "ldpreload" ] ; then
+  echo "Installing scripts on host..."
+
+  mkdir -p /host/opt/bin/
+  for i in ocihookgadget runc-hook-prestart.sh runc-hook-poststop.sh ; do
+    echo "Installing $i..."
+    cp /bin/$i /host/opt/bin/
+  done
+  echo "Installation done "
+
+  echo "Starting the Gadget Tracer Manager in the background..."
+  rm -f /run/gadgettracermanager.socket
+  /bin/gadgettracermanager -serve &
+fi
+
 
 if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
   rm -f /run/traceloop.socket
