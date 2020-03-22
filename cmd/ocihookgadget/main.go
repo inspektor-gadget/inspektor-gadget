@@ -182,14 +182,11 @@ func main() {
 	}
 	cgroupPath = filepath.Join("/sys/fs/cgroup/unified", cgroupPath)
 	if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
-		panic(fmt.Errorf("cannot access cgroup %q: %v", cgroupPath, err))
+		cgroupPath = ""
 	}
 
 	// Get cgroup-v2 id
-	cgroupId, err := GetCgroupID(cgroupPath)
-	if err != nil {
-		panic(err)
-	}
+	cgroupId, _ := GetCgroupID(cgroupPath)
 
 	// Get mount namespace ino
 	mntns, err := GetMntNs(ociState.Pid)

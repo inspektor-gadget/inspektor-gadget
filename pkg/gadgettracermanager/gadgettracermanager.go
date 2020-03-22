@@ -117,9 +117,13 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 			matchesCache = append(matchesCache, c.CgroupId)
 			zero := uint32(0)
 			cgroupIdC := uint64(c.CgroupId)
-			m.UpdateElement(cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&zero), 0)
+			if cgroupIdC != 0 {
+				m.UpdateElement(cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&zero), 0)
+			}
 			mntnsC := uint64(c.Mntns)
-			m.UpdateElement(mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&zero), 0)
+			if mntnsC != 0 {
+				m.UpdateElement(mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&zero), 0)
+			}
 		}
 	}
 
@@ -155,8 +159,8 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 }
 
 func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResponse, error) {
-	if containerDefinition.ContainerId == "" || containerDefinition.CgroupId == 0 {
-		return nil, fmt.Errorf("cannot add container: container id or cgroup id not set")
+	if containerDefinition.ContainerId == "" {
+		return nil, fmt.Errorf("cannot add container: container id not set")
 	}
 	if _, ok := g.containers[containerDefinition.ContainerId]; ok {
 		return nil, fmt.Errorf("container with cgroup id %v already exists", containerDefinition.CgroupId)
@@ -168,8 +172,12 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 			cgroupIdC := uint64(containerDefinition.CgroupId)
 			mntnsC := uint64(containerDefinition.Mntns)
 			zero := uint32(0)
-			t.mapHolder.UpdateElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&zero), 0)
-			t.mapHolder.UpdateElement(t.mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&zero), 0)
+			if cgroupIdC != 0 {
+				t.mapHolder.UpdateElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&zero), 0)
+			}
+			if mntnsC != 0 {
+				t.mapHolder.UpdateElement(t.mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&zero), 0)
+			}
 		}
 	}
 
