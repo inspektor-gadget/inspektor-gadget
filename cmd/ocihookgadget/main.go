@@ -160,12 +160,18 @@ func main() {
 
 	// Get cgroup-v2 path
 	cgroupPath := ""
+	cgroupPathV1 := ""
 	if cgroupFile, err := os.Open(filepath.Join("/proc", fmt.Sprintf("%d", ociState.Pid), "cgroup")); err == nil {
 		defer cgroupFile.Close()
 		reader := bufio.NewReader(cgroupFile)
 		for {
 			line, err := reader.ReadString('\n')
 			if err != nil {
+				break
+			}
+			if strings.HasPrefix(line, "1:name=systemd:") {
+				cgroupPathV1 = strings.TrimPrefix(line, "1:name=systemd:")
+				cgroupPathV1 = strings.TrimSuffix(cgroupPathV1, "\n")
 				break
 			}
 			if strings.HasPrefix(line, "0::") {
@@ -177,11 +183,12 @@ func main() {
 	} else {
 		panic(fmt.Errorf("cannot parse cgroup: %v", err))
 	}
-	if cgroupPath == "" {
-		panic(fmt.Errorf("cannot find cgroup path in /proc/PID/cgroup"))
-	}
-	cgroupPath = filepath.Join("/sys/fs/cgroup/unified", cgroupPath)
-	if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
+	if cgroupPath != "" && cgroupPath != "/" {
+		cgroupPath = filepath.Join("/sys/fs/cgroup/unified", cgroupPath)
+		if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
+			cgroupPath = ""
+		}
+	} else {
 		cgroupPath = ""
 	}
 
@@ -260,8 +267,14 @@ func main() {
 	for _, p := range pods.Items {
 		uid := string(p.ObjectMeta.UID)
 		uidWithUndescores := strings.ReplaceAll(uid, "-", "_")
-		if !strings.Contains(cgroupPath, uidWithUndescores) {
-			continue
+		if cgroupPath != "" {
+			if !strings.Contains(cgroupPath, uidWithUndescores) && !strings.Contains(cgroupPath, uid) {
+				continue
+			}
+		} else {
+			if !strings.Contains(cgroupPathV1, uidWithUndescores) && !strings.Contains(cgroupPathV1, uid) {
+				continue
+			}
 		}
 		namespace = p.ObjectMeta.Namespace
 		podname = p.ObjectMeta.Name
