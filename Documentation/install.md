@@ -83,14 +83,14 @@ Not all gadgets currently work everywhere.
 | tcpconnect   |       ✔️      |                |          |     |
 | tcptop       |       ✔️      |                |          |     |
 
-Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/).
+Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Container Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/).
 
 ### Using Lokomotive on Flatcar Edge
 
 Install your cluster following the [Lokomotive docs for AWS](https://github.com/kinvolk/lokomotive-kubernetes/blob/master/docs/flatcar-linux/aws.md)
 or [for KVM with libvirt](https://github.com/kinvolk/lokomotive-kubernetes/blob/master/docs/flatcar-linux/kvm-libvirt.md).
 
-Note, you should enable Flatcar Linux edge following the [Lokomotive docs](https://github.com/kinvolk/lokomotive-kubernetes/#try-flatcar-edge).
+Note, you should enable Flatcar Container Linux edge following the [Lokomotive docs](https://github.com/kinvolk/lokomotive-kubernetes/#try-flatcar-edge).
 
 ### On another Kubernetes distribution
 

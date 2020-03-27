@@ -55,7 +55,7 @@ As preview for the above demos, here is the `opensnoop` demo:
 Inspektor Gadget is deployed to each node as a privileged DaemonSet.
 It uses in-kernel BPF helper programs to monitor events mainly related to
 syscalls from userspace programs in a pod. The BPF programs are run by
-the kernel and gather the log data. Inspector Gadget's userspace
+the kernel and gather the log data. Inspektor Gadget's userspace
 utilities fetch the log data from ring buffers and display it. What BPF
 programs are and how Inspektor Gadget uses them is briefly explained here:
 
@@ -77,7 +77,7 @@ Not all gadgets currently work everywhere.
 | bindsnoop         |       ✔️      |                |          |     |
 | capabilities      |       ✔️      |                |          |     |
 
-Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/). [More details in the detailed install instructions](Documentation/install.md)
+Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Container Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/). [More details in the detailed install instructions](Documentation/install.md)
 
 ## Installation
 
