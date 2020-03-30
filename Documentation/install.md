@@ -74,14 +74,18 @@ $ inspektor-gadget deploy --image=docker.io/myfork/gadget:tag | kubectl apply -f
 
 Not all gadgets currently work everywhere.
 
-| Gadget       | Flatcar Edge | Flatcar Stable | Minikube | GKE |
-|--------------|:------------:|:--------------:|:--------:|:---:|
-| traceloop    |       ✔️      |        ✔️       |     ✔️    |  ✔️  |
-| capabilities |       ✔️      |                |          |     |
-| execsnoop    |       ✔️      |                |          |     |
-| opensnoop    |       ✔️      |                |          |     |
-| tcpconnect   |       ✔️      |                |          |     |
-| tcptop       |       ✔️      |                |          |     |
+| Gadget            | Flatcar Edge | Flatcar Stable | Minikube | GKE |
+|-------------------|:------------:|:--------------:|:--------:|:---:|
+| traceloop         |       ✔️      |        ✔️       |     ✔️    |  ✔️  |
+| network-policy    |       ✔️      |        ✔️       |     ✔️    |  ✔️  |
+| tcptracer         |       ✔️      |                |          |     |
+| tcpconnect        |       ✔️      |                |          |     |
+| tcptop            |       ✔️      |                |          |     |
+| execsnoop         |       ✔️      |                |          |     |
+| opensnoop         |       ✔️      |                |          |     |
+| bindsnoop         |       ✔️      |                |          |     |
+| capabilities      |       ✔️      |                |          |     |
+| profile           |       ✔️      |                |          |     |
 
 Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Container Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/).
 
