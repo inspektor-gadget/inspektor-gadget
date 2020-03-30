@@ -1,0 +1,36 @@
+[
+  {
+    "type": "connect",
+    "remote_kind": "svc",
+    "port": 50051,
+    "local_pod_namespace": "demo",
+    "local_pod_name": "checkoutservice-66d68cbdd-AAAAA",
+    "local_pod_owner": "checkoutservice",
+    "local_pod_labels": {
+      "app": "checkoutservice",
+      "pod-template-hash": "00000"
+    },
+    "remote_svc_namespace": "demo",
+    "remote_svc_name": "paymentservice-AAAAA",
+    "remote_svc_label_selector": {
+      "app": "paymentservice"
+    }
+  },
+  {
+    "type": "connect",
+    "remote_kind": "svc",
+    "port": 50051,
+    "local_pod_namespace": "demo",
+    "local_pod_name": "checkoutservice-66d68cbdd-BBBBB",
+    "local_pod_owner": "checkoutservice",
+    "local_pod_labels": {
+      "app": "checkoutservice",
+      "pod-template-hash": "11111"
+    },
+    "remote_svc_namespace": "demo",
+    "remote_svc_name": "paymentservice-BBBBB",
+    "remote_svc_label_selector": {
+      "app": "paymentservice"
+    }
+  }
+]

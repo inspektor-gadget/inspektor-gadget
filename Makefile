@@ -55,3 +55,7 @@ networkpolicyadvisor/push: networkpolicyadvisor
 install-user: build-ig
 	mkdir -p ~/.local/bin/
 	cp inspektor-gadget kubectl-gadget ~/.local/bin/
+
+.PHONY: test
+test:
+	go test ./...

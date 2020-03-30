@@ -1,0 +1,37 @@
+[
+  {
+    "type": "connect",
+    "remote_kind": "pod",
+    "port": 50051,
+    "local_pod_namespace": "demo",
+    "local_pod_name": "checkoutservice-66d68cbdd-AAAAA",
+    "local_pod_owner": "checkoutservice",
+    "local_pod_labels": {
+      "app": "checkoutservice",
+      "pod-template-hash": "00000"
+    },
+    "remote_pod_namespace": "demo",
+    "remote_pod_name": "shippingservice-778db496dd-v94bv",
+    "remote_pod_labels": {
+      "app": "shippingservice"
+    }
+  },
+  {
+    "type": "accept",
+    "remote_kind": "pod",
+    "port": 50051,
+    "local_pod_namespace": "demo",
+    "local_pod_name": "shippingservice-778db496dd-v94bv",
+    "local_pod_owner": "shippingservice",
+    "local_pod_labels": {
+      "app": "shippingservice",
+      "pod-template-hash": "778db496dd"
+    },
+    "remote_pod_namespace": "demo",
+    "remote_pod_name": "checkoutservice-66d68cbdd-AAAAA",
+    "remote_pod_labels": {
+      "app": "checkoutservice",
+      "pod-template-hash": "66d68cbdd"
+    }
+  }
+]

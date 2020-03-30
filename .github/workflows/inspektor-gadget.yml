@@ -58,6 +58,10 @@ jobs:
 
         tar --sort=name --owner=root:0 --group=root:0 -czf inspektor-gadget.tar.gz -C out .
 
+    - name: Unit tests
+      run: |
+        make test
+
     - name: Upload inspektor-gadget artifact
       uses: actions/upload-artifact@v1
       with:

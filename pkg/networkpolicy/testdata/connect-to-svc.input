@@ -1,0 +1,19 @@
+[
+  {
+    "type": "connect",
+    "remote_kind": "svc",
+    "port": 50051,
+    "local_pod_namespace": "demo",
+    "local_pod_name": "checkoutservice-66d68cbdd-9kkkl",
+    "local_pod_owner": "checkoutservice",
+    "local_pod_labels": {
+      "app": "checkoutservice",
+      "pod-template-hash": "66d68cbdd"
+    },
+    "remote_svc_namespace": "demo",
+    "remote_svc_name": "paymentservice",
+    "remote_svc_label_selector": {
+      "app": "paymentservice"
+    }
+  }
+]
