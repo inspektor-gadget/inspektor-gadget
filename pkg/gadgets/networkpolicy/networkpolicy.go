@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	k8syaml "sigs.k8s.io/yaml"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/networkpolicy/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/types"
 )
 
 var defaultLabelsToIgnore = map[string]struct{}{

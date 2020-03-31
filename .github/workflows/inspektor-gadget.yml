@@ -22,7 +22,7 @@ jobs:
 
     - name: Build binaries for the gadget container image
       run: |
-        make gadget-container-deps
+        make -C gadget-container gadget-container-deps
 
     - name: Build gadget container and publish to Registry
       id: publish-registry
@@ -31,30 +31,17 @@ jobs:
         name: docker.io/kinvolk/gadget
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-        workdir: gadget-ds
+        workdir: gadget-container
         dockerfile: gadget.Dockerfile
         snapshot: true
         cache: ${{ github.event_name != 'schedule' }}
 
     - name: Build inspektor-gadget
       run: |
-        TAG=$(git describe --tags --always)
-        CHANGES=$(git status --porcelain)
-        if [ "$CHANGES" = "" ] ; then
-          VERSION="$TAG"
-        else
-          VERSION="$TAG"-dirty
-        fi
-
-        LDFLAGS1="-X github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget/cmd.version=${VERSION}"
-        LDFLAGS2="-X github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget/cmd.gadgetimage=docker.io/kinvolk/gadget:${{steps.publish-registry.outputs.snapshot-tag}}"
-        LDFLAGS3="-extldflags '-static'"
+        IMAGE_TAG=${{steps.publish-registry.outputs.snapshot-tag}} make build-ig
 
         mkdir -p out/inspektor-gadget
-        GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
-            -ldflags "$LDFLAGS1 $LDFLAGS2 $LDFLAGS3" \
-            -o out/inspektor-gadget/inspektor-gadget \
-            github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget
+        cp inspektor-gadget out/inspektor-gadget/inspektor-gadget
 
         tar --sort=name --owner=root:0 --group=root:0 -czf inspektor-gadget.tar.gz -C out .
 

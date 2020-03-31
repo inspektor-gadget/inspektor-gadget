@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"bufio"
@@ -19,8 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
-	"github.com/kinvolk/inspektor-gadget/pkg/networkpolicy"
-	"github.com/kinvolk/inspektor-gadget/pkg/networkpolicy/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/types"
 )
 
 var networkPolicyCmd = &cobra.Command{

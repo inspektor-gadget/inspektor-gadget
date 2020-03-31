@@ -47,7 +47,7 @@ image to use according to the branch that you are compiling.
 - you can push the docker images to another registry and use the `--image`
 argument to choose them as described below.
 - if you wish to make changes to traceloop program, update
-`gadget-ds/gadget.Dockerfile` to pick your own image of traceloop.
+`gadget-container/gadget.Dockerfile` to pick your own image of traceloop.
 - if you wish to make other changes in the gadget container image, update
 `Makefile` to choose the default `gadgetimage`.
 
@@ -130,7 +130,7 @@ $ inspektor-gadget deploy | kubectl apply -f -
 * Make changes in the traceloop repository and compile with `make`
 * Generate the new gadget image and deploy it to minikube:
 ```
-$ make -C gadget-ds/ minikube
+$ make -C gadget-container/ minikube
 ```
 
 Note that the minikube image only works with the traceloop gadget.
