@@ -88,6 +88,9 @@ var (
 	stackFlag   bool
 	uniqueFlag  bool
 	verboseFlag bool
+
+	profileKernel bool
+	profileUser   bool
 )
 
 func init() {
@@ -116,6 +119,9 @@ func init() {
 	capabilitiesCmd.PersistentFlags().BoolVarP(&stackFlag, "print-stack", "", false, "Print kernel and userspace call stack of cap_capable()")
 	capabilitiesCmd.PersistentFlags().BoolVarP(&uniqueFlag, "unique", "", false, "Don't print duplicate capability checks")
 	capabilitiesCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "", false, "Include non-audit")
+
+	profileCmd.PersistentFlags().BoolVarP(&profileUser, "user", "U", false, "Show stacks from user space only (no kernel space stacks)")
+	profileCmd.PersistentFlags().BoolVarP(&profileKernel, "kernel", "K", false, "Show stacks from kernel space only (no user space stacks)")
 }
 
 type postProcess struct {
@@ -223,6 +229,11 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			}
 			if subCommand == "profile" {
 				gadgetParams += " -f -d "
+				if profileUser {
+					gadgetParams += " -U "
+				} else if profileKernel {
+					gadgetParams += " -K "
+				}
 			}
 			id := strconv.Itoa(i)
 			fmt.Printf(" %s = %s", id, node.Name)
