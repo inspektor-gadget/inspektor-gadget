@@ -4,52 +4,55 @@
 
 Choose one way to install inspektor-gadget.
 
-### Quick installation
+### Stable version
 
 ```
-$ curl -s -L --output inspektor-gadget.zip https://github.com/kinvolk/inspektor-gadget/suites/333471026/artifacts/477863
-$ unzip inspektor-gadget.zip
-$ chmod +x inspektor-gadget/inspektor-gadget
+$ wget https://github.com/kinvolk/inspektor-gadget/releases/download/v0.1.0-alpha.3/inspektor-gadget.tar.gz
+$ tar xvf inspektor-gadget.tar.gz
 $ sudo cp inspektor-gadget/inspektor-gadget /usr/local/bin/kubectl-gadget
+$ kubectl gadget version
 ```
 
-Check installation:
+You can find other releases on [releases](https://github.com/kinvolk/inspektor-gadget/releases).
 
-```
-$ inspektor-gadget version
-v0.1.0-alpha.2-12-gb9fd574
-```
+### Latest version
 
-### From a release
-
-Follow instructions from the [releases](https://github.com/kinvolk/inspektor-gadget/releases).
-
-### From a specific branch and commit
+#### From a specific branch and commit
 
 * Go to the [GitHub Actions page](https://github.com/kinvolk/inspektor-gadget/actions)
 * Select one successful build from the desired branch and commit
 * Download inspektor-gadget.zip:
   ![Download artifacts](github-actions-download-artifacts.png)
 * Finish the installation:
+
 ```
-$ unzip inspektor-gadget.zip
-$ chmod +x inspektor-gadget/inspektor-gadget
+$ unzip -p inspektor-gadget.zip | tar xvzf -
 $ sudo cp inspektor-gadget/inspektor-gadget /usr/local/bin/kubectl-gadget
+$ kubectl gadget version
 ```
 
-### From the sources:
+#### From the sources
 
 ```
 $ git clone https://github.com/kinvolk/inspektor-gadget.git
 $ cd inspektor-gadget
-$ make
+$ make build-ig
+$ sudo cp inspektor-gadget /usr/local/bin/kubectl-gadget
+$ kubectl gadget version
 ```
 
 Note:
-- if you wish to make changes to traceloop program, update `gadget-ds/gadget.Dockerfile` to pick your own image of traceloop.
-- if you wish to make other changes in the gadget container image, update `Makefile` to choose the default `gadgetimage`.
+- the compilation uses `tools/image-tag` to choose the tag of the container
+image to use according to the branch that you are compiling.
+- you can push the docker images to another registry and use the `--image`
+argument to choose them as described below.
+- if you wish to make changes to traceloop program, update
+`gadget-ds/gadget.Dockerfile` to pick your own image of traceloop.
+- if you wish to make other changes in the gadget container image, update
+`Makefile` to choose the default `gadgetimage`.
 
-See the [minikube](#Development-environment-on-minikube-for-the-traceloop-gadget) section for a faster development cycle.
+See the [minikube](#Development-environment-on-minikube-for-the-traceloop-gadget)
+section for a faster development cycle.
 
 
 ## Installation (server side)
