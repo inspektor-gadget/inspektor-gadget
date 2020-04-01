@@ -148,6 +148,8 @@ func (post postProcess) Write(p []byte) (n int, err error) {
 
 func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
+		var firstLinePrinted uint64
+
 		contextLogger := log.WithFields(log.Fields{
 			"command": fmt.Sprintf("inspektor-gadget %s", subCommand),
 			"args":    args,
@@ -156,6 +158,48 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
 		if err != nil {
 			contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
+		}
+
+		// tcptop only works on one pod at a time
+		if subCommand == "tcptop" {
+			if nodeParam == "" || namespaceParam == "" || podnameParam == "" {
+				contextLogger.Fatalf("tcptop only works with --node, --namespace and --podname")
+			}
+		}
+
+		labelFilter := ""
+		if labelParam != "" {
+			labelFilter = fmt.Sprintf("--label %q", labelParam)
+		}
+
+		namespaceFilter := ""
+		if namespaceParam != "" {
+			namespaceFilter = fmt.Sprintf("--namespace %q", namespaceParam)
+		}
+
+		podnameFilter := ""
+		if podnameParam != "" {
+			podnameFilter = fmt.Sprintf("--podname %q", podnameParam)
+		}
+
+		gadgetParams := ""
+		if subCommand == "capabilities" {
+			if stackFlag {
+				gadgetParams += " -K"
+			}
+			if uniqueFlag  {
+				gadgetParams += " --unique"
+			}
+			if verboseFlag {
+				gadgetParams += " -v"
+			}
+		}
+
+		tracerId := time.Now().Format("20060102150405")
+		b := make([]byte, 6)
+		_, err = rand.Read(b)
+		if err == nil {
+			tracerId = fmt.Sprintf("%s-%x", tracerId, b)
 		}
 
 		var listOptions = metaV1.ListOptions{
@@ -168,51 +212,16 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			contextLogger.Fatalf("Error in listing nodes: %q", err)
 		}
 
-		// tcptop only works on one pod at a time
-		if subCommand == "tcptop" {
-			if nodeParam == "" || namespaceParam == "" || podnameParam == "" {
-				contextLogger.Fatalf("tcptop only works with --node, --namespace and --podname")
-			}
-		}
-
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		failure := make(chan string)
-		var firstLinePrinted uint64
-		tracerId := time.Now().Format("20060102150405")
-		b := make([]byte, 6)
-		_, err = rand.Read(b)
-		if err == nil {
-			tracerId = fmt.Sprintf("%s-%x", tracerId, b)
-		}
 
 		fmt.Printf("Node numbers:")
 		for i, node := range nodes.Items {
 			if nodeParam != "" && node.Name != nodeParam {
 				continue
 			}
-			labelFilter := ""
-			if labelParam != "" {
-				labelFilter = fmt.Sprintf("--label %q", labelParam)
-			}
-			namespaceFilter := ""
-			if namespaceParam != "" {
-				namespaceFilter = fmt.Sprintf("--namespace %q", namespaceParam)
-			}
-			podnameFilter := ""
-			if podnameParam != "" {
-				podnameFilter = fmt.Sprintf("--podname %q", podnameParam)
-			}
-			gadgetParams := ""
-			if stackFlag && subCommand == "capabilities" {
-				gadgetParams += " -K"
-			}
-			if uniqueFlag && subCommand == "capabilities" {
-				gadgetParams += " --unique"
-			}
-			if verboseFlag && subCommand == "capabilities" {
-				gadgetParams += " -v"
-			}
+
 			id := strconv.Itoa(i)
 			fmt.Printf(" %s = %s", id, node.Name)
 			go func(nodeName string, id string) {
@@ -227,25 +236,26 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 					err = execPod(client, nodeName, cmd, os.Stdout, os.Stderr)
 				}
 				if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
-					failure <- fmt.Sprintf("Error in running command: %q\n", err)
+					failure <- fmt.Sprintf("Error running command: %v\n", err)
 				}
 			}(node.Name, id) // node.Name is invalidated by the above for loop, causes races
 		}
 
 		select {
 		case <-sigs:
+			fmt.Println("\nTerminating...")
 		case e := <-failure:
-			fmt.Printf("\nError detected: %q", e)
+			fmt.Printf("\n%s\n", e)
 		}
+
+		// remove tracers from the nodes
 		for _, node := range nodes.Items {
 			if nodeParam != "" && node.Name != nodeParam {
 				continue
 			}
-			_, _, err := execPodCapture(client, node.Name,
+			// ignore errors, there is nothing the user can do about it
+			execPodCapture(client, node.Name,
 				fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --stop", tracerId))
-			if err != nil {
-				fmt.Printf("Error in running command: %q\n", err)
-			}
 		}
 		fmt.Printf("\n")
 	}

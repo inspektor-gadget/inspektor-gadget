@@ -19,7 +19,6 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/factory"
-
 )
 
 // doesKubeconfigExist checks if the kubeconfig provided by user exists
@@ -57,10 +56,10 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		return err
 	}
 	if len(pods.Items) == 0 {
-		return errors.New("not-found")
+		return errors.New("Gadget Daemon not found")
 	}
 	if len(pods.Items) != 1 {
-		return errors.New("too-many")
+		return errors.New("Multiple Gadget Daemons found")
 	}
 	podName := pods.Items[0].Name
 
@@ -96,7 +95,7 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 			TTY:       false,
 		}, scheme.ParameterCodec)
 
-        exec, err := remotecommand.NewSPDYExecutor(restConfig, "POST", req.URL())
+	exec, err := remotecommand.NewSPDYExecutor(restConfig, "POST", req.URL())
 	if err != nil {
 		return err
 	}
