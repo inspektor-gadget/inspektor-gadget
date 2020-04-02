@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,7 +19,6 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/factory"
-
 )
 
 // doesKubeconfigExist checks if the kubeconfig provided by user exists
@@ -58,10 +56,10 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		return err
 	}
 	if len(pods.Items) == 0 {
-		return errors.New("not-found")
+		return errors.New("Gadget Daemon not found")
 	}
 	if len(pods.Items) != 1 {
-		return errors.New("too-many")
+		return errors.New("Multiple Gadget Daemons found")
 	}
 	podName := pods.Items[0].Name
 
@@ -97,7 +95,7 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 			TTY:       false,
 		}, scheme.ParameterCodec)
 
-        exec, err := remotecommand.NewSPDYExecutor(restConfig, "POST", req.URL())
+	exec, err := remotecommand.NewSPDYExecutor(restConfig, "POST", req.URL())
 	if err != nil {
 		return err
 	}
@@ -110,43 +108,3 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 	})
 	return err
 }
-
-func cpPodQuick(client *kubernetes.Clientset, node string, srcPath, destPath string) string {
-	var listOptions = metaV1.ListOptions{
-		LabelSelector: "k8s-app=gadget",
-		FieldSelector: "spec.nodeName=" + node + ",status.phase=Running",
-	}
-	pods, err := client.CoreV1().Pods("kube-system").List(listOptions)
-	if err != nil {
-		return fmt.Sprintf("%s", err)
-	}
-	if len(pods.Items) == 0 {
-		return "not-found"
-	}
-	if len(pods.Items) != 1 {
-		return "too-many"
-	}
-	podName := pods.Items[0].Name
-
-	kubectlCmd := fmt.Sprintf("kubectl ")
-	if viper.GetString("kubeconfig") != "" {
-		kubectlCmd += "--kubeconfig=" + viper.GetString("kubeconfig")
-	}
-	kubectlCmd += fmt.Sprintf(" cp %s kube-system/%s:%s", srcPath, podName, destPath)
-	fmt.Println(kubectlCmd)
-
-	cmd := exec.Command("/bin/sh", "-c", kubectlCmd)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Sprintf("%s", err)
-	}
-	err = cmd.Wait()
-	if err != nil {
-		return fmt.Sprintf("%s", err)
-	}
-
-	return ""
-}
-
