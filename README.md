@@ -22,6 +22,7 @@ Available Commands:
   help           Help about any command
   network-policy Generate network policies based on recorded network activity
   opensnoop      Trace files
+  profile        Profile CPU usage by sampling stack traces
   tcpconnect     Suggest Kubernetes Network Policies
   tcptop         Show the TCP traffic in a pod
   tcptracer      trace tcp connect, accept and close
@@ -45,6 +46,7 @@ Inspektor Gadget is a kubectl plugin. It can also be invoked with `kubectl gadge
 - [Demo: the "tcptop" gadget](Documentation/demo-tcptop.md) – watch it [as GIF](Documentation/demos/demo-tcptop-gifterminal.gif)
 - [Demo: the "tcpconnect" gadget](Documentation/demo-tcpconnect.md) — watch it [as GIF](Documentation/demos/demo-tcpconnect-gifterminal.gif)
 - [Demo: the "network-policy" gadget](Documentation/demo-network-policy.md)
+- [Demo: the "profile" gadget](Documentation/demo-profile.md)
 
 As preview for the above demos, here is the `opensnoop` demo:
 
@@ -76,6 +78,7 @@ Not all gadgets currently work everywhere.
 | opensnoop         |       ✔️      |                |          |     |
 | bindsnoop         |       ✔️      |                |          |     |
 | capabilities      |       ✔️      |                |          |     |
+| profile           |       ✔️      |                |          |     |
 
 Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Container Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/). [More details in the detailed install instructions](Documentation/install.md)
 
