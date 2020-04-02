@@ -94,10 +94,7 @@ Inspektor Gadget needs some recent Linux features and modifications in Kubernete
 
 ### Using Lokomotive on Flatcar Edge
 
-Install your cluster following the [Lokomotive docs for AWS](https://github.com/kinvolk/lokomotive-kubernetes/blob/master/docs/flatcar-linux/aws.md)
-or [for KVM with libvirt](https://github.com/kinvolk/lokomotive-kubernetes/blob/master/docs/flatcar-linux/kvm-libvirt.md).
-
-Note, you should enable Flatcar Container Linux edge following the [Lokomotive docs](https://github.com/kinvolk/lokomotive-kubernetes/#try-flatcar-edge).
+Install your cluster following the [Lokomotive docs](https://github.com/kinvolk/lokomotive#getting-started). To use Flatcar Container Linx edge you should use `os_channel = "edge"` on the configuration file. See [configuration reference](https://github.com/kinvolk/lokomotive/tree/master/docs/configuration-reference/platforms) for more information.
 
 ### On another Kubernetes distribution
 
