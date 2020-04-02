@@ -6,6 +6,12 @@
 set -o errexit
 set -o pipefail
 
+# If there is an explicit image tag set, just return it
+if [ -n "$IMAGE_TAG" ]; then
+  echo $IMAGE_TAG
+  exit 0
+fi
+
 WORKING_SUFFIX=$(if git status --porcelain | grep -qE '^(?:[^?][^ ]|[^ ][^?])\s'; then echo "-WIP"; else echo ""; fi)
 BRANCH_PREFIX=$(git rev-parse --abbrev-ref HEAD)
 if [ "$1" = "branch" ] ; then

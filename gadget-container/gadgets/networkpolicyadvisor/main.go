@@ -14,7 +14,7 @@ import (
 
 	"github.com/weaveworks/tcptracer-bpf/pkg/tracer"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/networkpolicy/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/types"
 )
 
 var (
