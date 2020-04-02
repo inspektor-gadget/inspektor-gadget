@@ -271,6 +271,9 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 		a.Policies = append(a.Policies, policy)
 	}
 
+	sort.Slice(a.Policies, func(i, j int) bool {
+		return a.Policies[i].Name < a.Policies[j].Name
+	})
 }
 
 func (a *NetworkPolicyAdvisor) FormatPolicies() (out string) {
