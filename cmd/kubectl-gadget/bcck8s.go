@@ -125,16 +125,27 @@ func init() {
 }
 
 type postProcess struct {
-	nodeName         string
 	nodeShort        string
 	orig             io.Writer
 	firstLine        bool
 	firstLinePrinted *uint64
-	failure          chan string
+	printPrefix      bool
+}
+
+func newPostProcess(nodeShort string, orig io.Writer,firstLine bool,
+					firstLinePrinted *uint64) *postProcess {
+	return &postProcess{
+		nodeShort,
+		orig,
+		firstLine,
+		firstLinePrinted,
+		true,
+	}
 }
 
 func (post *postProcess) Write(p []byte) (n int, err error) {
 	prefix := "[" + post.nodeShort + "] "
+	printPrefixNext := false
 	asStr := string(p)
 	lineBreakPos := strings.Index(asStr, "\n")
 	if post.firstLine && lineBreakPos > -1 {
@@ -147,13 +158,28 @@ func (post *postProcess) Write(p []byte) (n int, err error) {
 
 		post.firstLine = false
 	}
-	if asStr != "" && asStr != "\n" {
-		asStr = "\n" + strings.Trim(asStr, "\n")
-		asStr = strings.ReplaceAll(asStr, "\n", "\n"+prefix)
-		if !post.firstLine {
-			fmt.Fprintf(post.orig, "%s", asStr)
-		}
+    // if the line has a line break at the end, remove it temporarly to avoid
+    // printing an entra prefix and set prefix print for the next call
+	if strings.HasSuffix(asStr, "\n") {
+		asStr = strings.Trim(asStr, "\n")
+		printPrefixNext = true
 	}
+
+	asStr = strings.ReplaceAll(asStr, "\n", "\n"+prefix)
+
+	// re-add the line break removed before
+	if printPrefixNext {
+		asStr = asStr + "\n"
+	}
+
+	if post.printPrefix {
+		asStr = prefix + asStr
+	}
+
+	fmt.Fprintf(post.orig, "%s", asStr)
+
+	post.printPrefix = printPrefixNext
+
 	return len(p), nil
 }
 
@@ -243,13 +269,13 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			id := strconv.Itoa(i)
 			fmt.Printf(" %s = %s", id, node.Name)
 			go func(nodeName string, id string) {
-				postOut := postProcess{nodeName, " " + id, os.Stdout, true, &firstLinePrinted, failure}
-				postErr := postProcess{nodeName, "E" + id, os.Stderr, false, &firstLinePrinted, failure}
+				postOut := newPostProcess(" " + id, os.Stdout, true, &firstLinePrinted)
+				postErr := newPostProcess("E" + id, os.Stderr, false, &firstLinePrinted)
 				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --flatcaredgeonly --tracerid %s --gadget %s %s %s %s -- %s",
 					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, gadgetParams)
 				var err error
 				if subCommand != "tcptop" {
-					err = execPod(client, nodeName, cmd, &postOut, &postErr)
+					err = execPod(client, nodeName, cmd, postOut, postErr)
 				} else {
 					err = execPod(client, nodeName, cmd, os.Stdout, os.Stderr)
 				}
