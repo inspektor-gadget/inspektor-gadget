@@ -125,42 +125,76 @@ func init() {
 }
 
 type postProcess struct {
-	nodeName         string
+	firstLinePrinted uint64
+	outStreams []*postProcessSingle
+	errStreams []*postProcessSingle
+}
+
+type postProcessSingle struct {
 	nodeShort        string
 	orig             io.Writer
 	firstLine        bool
 	firstLinePrinted *uint64
-	failure          chan string
+	buffer           string  // buffer to save incomplete strings
 }
 
-func (post *postProcess) Write(p []byte) (n int, err error) {
-	prefix := "[" + post.nodeShort + "] "
-	asStr := string(p)
-	lineBreakPos := strings.Index(asStr, "\n")
-	if post.firstLine && lineBreakPos > -1 {
-		// failures could be detected and propagates here with strings.Contains(asStr, "error") and then post.failure <- asStr
-		if atomic.AddUint64(post.firstLinePrinted, 1) > 1 {
-			asStr = asStr[lineBreakPos:]
-		} else {
-			prefix = "NODE "
+func newPostProcess(n int, outStream io.Writer, errStream io.Writer) *postProcess {
+	p := &postProcess{
+		firstLinePrinted: 0,
+		outStreams: make([]*postProcessSingle, n),
+		errStreams: make([]*postProcessSingle, n),
+	}
+
+	for i := 0; i < n; i++ {
+		p.outStreams[i] = &postProcessSingle{
+			nodeShort:        " " + strconv.Itoa(i),
+			orig:             outStream,
+			firstLine:         true,
+			firstLinePrinted: &p.firstLinePrinted,
+			buffer:           "",
 		}
 
-		post.firstLine = false
-	}
-	if asStr != "" && asStr != "\n" {
-		asStr = "\n" + strings.Trim(asStr, "\n")
-		asStr = strings.ReplaceAll(asStr, "\n", "\n"+prefix)
-		if !post.firstLine {
-			fmt.Fprintf(post.orig, "%s", asStr)
+		p.errStreams[i] = &postProcessSingle{
+			nodeShort:        "E" + strconv.Itoa(i),
+			orig:             errStream,
+			firstLine:         false,
+			firstLinePrinted: &p.firstLinePrinted,
+			buffer:           "",
 		}
 	}
+
+	return p
+}
+
+func (post *postProcessSingle) Write(p []byte) (n int, err error) {
+	prefix := "[" + post.nodeShort + "] "
+	asStr := post.buffer + string(p)
+
+	lines := strings.Split(asStr, "\n")
+	if len(lines) == 0 {
+		return len(p), nil
+	}
+
+	// Print lines with prefix but the last one
+	for _, line := range lines[0:len(lines)-1] {
+		if post.firstLine {
+			post.firstLine = false
+			if atomic.AddUint64(post.firstLinePrinted, 1) == 1 {
+				prefix = "NODE "
+			} else {
+				continue // ignore this line, somebody else already printed it
+			}
+		}
+		fmt.Fprintf(post.orig, "%s\n", prefix + line)
+	}
+
+	post.buffer = lines[len(lines)-1] // Buffer last line to print in next iteration
+
 	return len(p), nil
 }
 
 func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
-		var firstLinePrinted uint64
-
 		contextLogger := log.WithFields(log.Fields{
 			"command": fmt.Sprintf("kubectl-gadget %s", subCommand),
 			"args":    args,
@@ -235,28 +269,28 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		failure := make(chan string)
 
+		postProcess := newPostProcess(len(nodes.Items), os.Stdout, os.Stderr)
+
 		fmt.Printf("Node numbers:")
 		for i, node := range nodes.Items {
 			if nodeParam != "" && node.Name != nodeParam {
 				continue
 			}
-			id := strconv.Itoa(i)
-			fmt.Printf(" %s = %s", id, node.Name)
-			go func(nodeName string, id string) {
-				postOut := postProcess{nodeName, " " + id, os.Stdout, true, &firstLinePrinted, failure}
-				postErr := postProcess{nodeName, "E" + id, os.Stderr, false, &firstLinePrinted, failure}
+			fmt.Printf(" %d = %s", i, node.Name)
+			go func(nodeName string, index int) {
 				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --flatcaredgeonly --tracerid %s --gadget %s %s %s %s -- %s",
 					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, gadgetParams)
 				var err error
 				if subCommand != "tcptop" {
-					err = execPod(client, nodeName, cmd, &postOut, &postErr)
+					err = execPod(client, nodeName, cmd,
+						postProcess.outStreams[index], postProcess.errStreams[index])
 				} else {
 					err = execPod(client, nodeName, cmd, os.Stdout, os.Stderr)
 				}
 				if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
 					failure <- fmt.Sprintf("Error running command: %v\n", err)
 				}
-			}(node.Name, id) // node.Name is invalidated by the above for loop, causes races
+			}(node.Name, i) // node.Name is invalidated by the above for loop, causes races
 		}
 
 		select {
