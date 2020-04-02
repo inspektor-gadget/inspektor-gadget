@@ -2,7 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
+	"os"
+	"text/template"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,7 +29,7 @@ func init() {
 	rootCmd.AddCommand(deployCmd)
 }
 
-const deployYaml string = `
+const deployYamlTmpl string = `
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -69,7 +70,7 @@ spec:
       hostNetwork: true
       containers:
       - name: gadget
-        image: @IMAGE@
+        image: {{.Image}}
         imagePullPolicy: Always
         command: [ "/entrypoint.sh" ]
         env:
@@ -86,9 +87,9 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: TRACELOOP_IMAGE
-            value: @IMAGE@
+            value: {{.Image}}
           - name: INSPEKTOR_GADGET_VERSION
-            value: @VERSION@
+            value: {{.Version}}
         securityContext:
           privileged: true
         volumeMounts:
@@ -136,12 +137,27 @@ spec:
           path: /etc/localtime
 `
 
+type parameters struct {
+	Image 	string
+	Version string
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	image := viper.GetString("image")
-	output := deployYaml
-	output = strings.Replace(output, "@IMAGE@", image, -1)
-	output = strings.Replace(output, "@VERSION@", version, -1)
-	fmt.Printf("%s", output)
+
+	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
+	if err != nil {
+		return fmt.Errorf("failed to parse template %w", err)
+	}
+
+	p := parameters{
+		image, version,
+	}
+
+	err = t.Execute(os.Stdout, p)
+	if err != nil {
+		return fmt.Errorf("failed to generate deploy template %w", err)
+	}
 
 	return nil
 }
