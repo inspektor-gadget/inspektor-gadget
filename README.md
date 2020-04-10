@@ -87,10 +87,10 @@ Inspektor Gadget needs some recent Linux features and modifications in Kubernete
 Install inspektor-gadget (client-side):
 
 ```
-$ curl -s -L --output inspektor-gadget.zip https://github.com/kinvolk/inspektor-gadget/suites/333471026/artifacts/477863
-$ unzip inspektor-gadget.zip
-$ chmod +x inspektor-gadget/inspektor-gadget
+$ wget https://github.com/kinvolk/inspektor-gadget/releases/download/v0.1.0-alpha.5/inspektor-gadget.tar.gz
+$ tar xvf inspektor-gadget.tar.gz
 $ sudo cp inspektor-gadget/inspektor-gadget /usr/local/bin/kubectl-gadget
+$ kubectl gadget version
 ```
 
 Install Inspektor Gadget on Kubernetes:

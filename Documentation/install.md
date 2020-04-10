@@ -7,7 +7,7 @@ Choose one way to install inspektor-gadget.
 ### Stable version
 
 ```
-$ wget https://github.com/kinvolk/inspektor-gadget/releases/download/v0.1.0-alpha.3/inspektor-gadget.tar.gz
+$ wget https://github.com/kinvolk/inspektor-gadget/releases/download/v0.1.0-alpha.5/inspektor-gadget.tar.gz
 $ tar xvf inspektor-gadget.tar.gz
 $ sudo cp inspektor-gadget/inspektor-gadget /usr/local/bin/kubectl-gadget
 $ kubectl gadget version
