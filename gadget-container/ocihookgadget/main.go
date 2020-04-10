@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unsafe"
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 
@@ -25,60 +24,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils"
 )
-
-/*
-#define _GNU_SOURCE
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdint.h>
-
-struct cgid_file_handle
-{
-  //struct file_handle handle;
-  unsigned int handle_bytes;
-  int handle_type;
-  uint64_t cgid;
-};
-
-uint64_t get_cgroupid(char *path) {
-  struct cgid_file_handle *h;
-  int mount_id;
-  int err;
-  uint64_t ret;
-
-  h = malloc(sizeof(struct cgid_file_handle));
-  if (!h)
-    return 0;
-
-  h->handle_bytes = 8;
-  err = name_to_handle_at(AT_FDCWD, path, (struct file_handle *)h, &mount_id, 0);
-  if (err != 0)
-    return 0;
-
-  if (h->handle_bytes != 8)
-    return 0;
-
-  ret = h->cgid;
-  free(h);
-
-  return ret;
-}
-*/
-import "C"
-
-func GetCgroupID(path string) (uint64, error) {
-	cpath := C.CString(path)
-	ret := uint64(C.get_cgroupid(cpath))
-	C.free(unsafe.Pointer(cpath))
-	if ret == 0 {
-		return 0, fmt.Errorf("GetCgroupID on %q failed", path)
-	}
-	return ret, nil
-}
 
 var (
 	socketfile string
@@ -146,34 +93,13 @@ func main() {
 	}
 
 	// Get cgroup-v2 path
-	cgroupPath := ""
-	if cgroupFile, err := os.Open(filepath.Join("/proc", fmt.Sprintf("%d", ociState.Pid), "cgroup")); err == nil {
-		defer cgroupFile.Close()
-		reader := bufio.NewReader(cgroupFile)
-		for {
-			line, err := reader.ReadString('\n')
-			if err != nil {
-				break
-			}
-			if strings.HasPrefix(line, "0::") {
-				cgroupPath = strings.TrimPrefix(line, "0::")
-				cgroupPath = strings.TrimSuffix(cgroupPath, "\n")
-				break
-			}
-		}
-	} else {
-		panic(fmt.Errorf("cannot parse cgroup: %v", err))
-	}
-	if cgroupPath == "" {
-		panic(fmt.Errorf("cannot find cgroup path in /proc/PID/cgroup"))
-	}
-	cgroupPath = filepath.Join("/sys/fs/cgroup/unified", cgroupPath)
-	if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
-		panic(fmt.Errorf("cannot access cgroup %q: %v", cgroupPath, err))
+	cgroupPath, err := containerutils.GetCgroup2Path(ociState.Pid)
+	if err != nil {
+		panic(err)
 	}
 
 	// Get cgroup-v2 id
-	cgroupId, err := GetCgroupID(cgroupPath)
+	cgroupId, err := containerutils.GetCgroupID(cgroupPath)
 	if err != nil {
 		panic(err)
 	}

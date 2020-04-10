@@ -14,6 +14,7 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/initialcontainers"
 )
 
 var (
@@ -163,7 +164,13 @@ func main() {
 
 		var opts []grpc.ServerOption
 		grpcServer := grpc.NewServer(opts...)
-		pb.RegisterGadgetTracerManagerServer(grpcServer, gadgettracermanager.NewServer())
+		containers, err := initialcontainers.InitialContainers()
+		if err != nil {
+			log.Printf("gadgettracermanager failed to get initial containers: %v", err)
+		} else {
+			log.Printf("gadgettracermanager found %d initial containers: %+v", len(containers), containers)
+		}
+		pb.RegisterGadgetTracerManagerServer(grpcServer, gadgettracermanager.NewServer(containers))
 		grpcServer.Serve(lis)
 	}
 }

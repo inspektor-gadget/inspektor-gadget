@@ -202,10 +202,13 @@ func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRe
 	return &pb.Dump{State: out}, nil
 }
 
-func NewServer() *GadgetTracerManager {
+func NewServer(initialContainers []pb.ContainerDefinition) *GadgetTracerManager {
 	g := &GadgetTracerManager{
 		containers: make(map[string]pb.ContainerDefinition),
 		tracers:    make(map[string]tracer),
+	}
+	for _, containerDefinition := range initialContainers {
+		g.containers[containerDefinition.ContainerId] = containerDefinition
 	}
 	return g
 }
