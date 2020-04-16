@@ -1,6 +1,15 @@
 # Builder: traceloop
 
-FROM docker.io/kinvolk/traceloop:latest as traceloop
+# traceloop built from:
+# https://github.com/kinvolk/traceloop/commit/...
+# https://github.com/kinvolk/traceloop/tree/alban/fix-cri-o
+# https://github.com/kinvolk/traceloop/pull/34
+#
+# See:
+# - https://github.com/kinvolk/traceloop/actions
+# - https://hub.docker.com/repository/docker/kinvolk/traceloop/tags
+
+FROM docker.io/kinvolk/traceloop:alban-fix-cri-o as traceloop
 
 # Main gadget image
 
