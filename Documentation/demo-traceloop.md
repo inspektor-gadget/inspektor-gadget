@@ -16,7 +16,7 @@ Oh no! We made a mistake in the shell script: we opened the wrong file. Is the
 result lost forever? Let's check with the traceloop gadget:
 
 ```
-$ ./inspektor-gadget traceloop list
+$ kubectl gadget traceloop list
 NODE              TRACES
 ip-10-0-30-247    10.0.30.247_default_mypod
 ip-10-0-44-74
@@ -26,7 +26,7 @@ ip-10-0-5-181
 Let's inspect the traceloop log:
 
 ```
-$ ./inspektor-gadget traceloop show 10.0.30.247_default_mypod | grep -E 'write|/tmp/file'
+$ kubectl gadget traceloop show 10.0.30.247_default_mypod | grep -E 'write|/tmp/file'
 00:00.001792832 cpu#0 pid 14276 [runc:[2:INIT]] write(fd=4, buf=842351188896 "{\"type\":\"procReady\"}", count=20)...
 00:00.001808990 cpu#0 pid 14276 [runc:[2:INIT]] ...write() = 20
 00:00.068726377 cpu#0 pid 14276 [runc:[2:INIT]] write(fd=3, buf=842351686112 "0", count=1)...
@@ -46,7 +46,7 @@ result was saved in `/tmp/file-1889` but we attempted to open
 
 We can close this trace now.
 ```
-$ ./inspektor-gadget traceloop show 10.0.30.247_default_mypod
+$ kubectl gadget traceloop show 10.0.30.247_default_mypod
 closed
 ```
 
@@ -65,13 +65,13 @@ pod "mypod" deleted
 Because of the `grep wget`, we only see one entry. But traceloop can recover other entries:
 
 ```
-$ ./inspektor-gadget traceloop list
+$ kubectl gadget traceloop list
 NODE              TRACES
 ip-10-0-30-247    10.0.30.247_default_mypod
 ip-10-0-44-74
 ip-10-0-5-181
 
-$ ./inspektor-gadget traceloop show 10.0.30.247_default_mypod | grep /bin/w
+$ kubectl gadget traceloop show 10.0.30.247_default_mypod | grep /bin/w
 00:00.074622185 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20772880 "/bin/wall", statbuf=140723555968544, flag=256) = 0
 00:00.075257559 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20776192 "/bin/whois", statbuf=140723555968544, flag=256) = 0
 00:00.076278991 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20781952 "/bin/which", statbuf=140723555968544, flag=256) = 0
@@ -83,7 +83,7 @@ $ ./inspektor-gadget traceloop show 10.0.30.247_default_mypod | grep /bin/w
 00:00.081162362 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20815360 "/bin/watchdog", statbuf=140723555968544, flag=256) = 0
 00:00.081412726 cpu#0 pid 20994 [ls] newfstatat(dfd=18446744073709551516, filename=20817088 "/bin/watch", statbuf=140723555968544, flag=256) = 0
 
-$ ./inspektor-gadget traceloop close 10.0.30.247_default_mypod
+$ kubectl gadget traceloop close 10.0.30.247_default_mypod
 closed
 ```
 

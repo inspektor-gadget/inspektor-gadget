@@ -14,7 +14,7 @@ and interrupt it after ~30 seconds. The `-K` option is passed to show only the
 kernel stack traces.
 
 ```
-$ ./inspektor-gadget profile --namespace default --podname random -K
+$ kubectl gadget profile --namespace default --podname random -K
 Node numbers: 0 = ip-10-0-23-61 1 = ip-10-0-3-62^C
 [...] # Output manually trimmed
 [ 0] cat;entry_SYSCALL_64_after_hwframe;do_syscall_64;ksys_read;vfs_read;urandom_read;_copy_to_user;copy_user_enhanced_fast_string;copy_user_enhanced_fast_string 4
