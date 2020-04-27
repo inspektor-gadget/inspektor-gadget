@@ -13,7 +13,7 @@ We can simply filter for the pod "mypod" and omit specifiying the node,
 thus snooping on all nodes for pod "mypod":
 
 ```
-$ ./inspektor-gadget opensnoop --podname mypod
+$ kubectl gadget opensnoop --podname mypod
 PID    COMM               FD ERR PATH
 18455  whoami              3   0 /etc/passwd
 18521  whoami              3   0 /etc/passwd

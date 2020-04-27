@@ -22,7 +22,7 @@ ip-10-0-30-247 where myapp1-pod-4kz56 and myapp2-pod-tnthg are running:
 
 ```
 
-$ ./inspektor-gadget execsnoop --label role=demo --node ip-10-0-30-247
+$ kubectl gadget execsnoop --label role=demo --node ip-10-0-30-247
 PCOMM            PID    PPID   RET ARGS
 true             16510  11179    0 /bin/true
 date             16511  11179    0 /usr/bin/date

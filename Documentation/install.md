@@ -60,7 +60,7 @@ section for a faster development cycle.
 ### Quick installation
 
 ```
-$ inspektor-gadget deploy | kubectl apply -f -
+$ kubectl gadget deploy | kubectl apply -f -
 ```
 
 This will deploy the gadget DaemonSet along with its RBAC rules.
@@ -70,7 +70,7 @@ This will deploy the gadget DaemonSet along with its RBAC rules.
 If you wish to install an alternative gadget image, you could use the following commands:
 
 ```
-$ inspektor-gadget deploy --image=docker.io/myfork/gadget:tag | kubectl apply -f -
+$ kubectl gadget deploy --image=docker.io/myfork/gadget:tag | kubectl apply -f -
 ```
 
 ## Getting all gadgets
@@ -122,7 +122,7 @@ It's possible to make changes to traceloop and test them on minikube locally wit
 * Make sure the git repositories `traceloop` and `inspektor-gadget` are clone in sibling directories
 * Install Inspektor Gadget on minikube as usual:
 ```
-$ inspektor-gadget deploy | kubectl apply -f -
+$ kubectl gadget deploy | kubectl apply -f -
 ```
 * Make changes in the traceloop repository and compile with `make`
 * Generate the new gadget image and deploy it to minikube:

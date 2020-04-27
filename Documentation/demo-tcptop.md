@@ -14,7 +14,7 @@ Now we use Inspektor Gadget to show us the TCP connections. Every 3 seconds we
 can see the website download done by `wget`.
 
 ```
-$ ./inspektor-gadget tcptop --node ip-10-0-30-247 --namespace default --podname mypod
+$ kubectl gadget tcptop --node ip-10-0-30-247 --namespace default --podname mypod
 
 12:36:41 loadavg: 1.41 1.58 1.11 5/381 690
 
