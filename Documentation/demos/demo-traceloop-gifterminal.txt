@@ -12,14 +12,14 @@ Oh no! We made a mistake in the shell script: we opened the wrong file. @@@@@ TE
 Is the result lost forever? @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 Let's check with the traceloop gadget. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
  @@@@@ DEFAULT_TERMINAL=1 TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
-$ ./inspektor-gadget traceloop list
+$ kubectl gadget traceloop list
  NODE              TRACES
  ip-10-0-30-247    10.0.30.247_default_mypod
  ip-10-0-44-74
  ip-10-0-5-181
 $ @@@@@ SKIP=1
 Let's inspect the traceloop log. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-./inspektor-gadget traceloop show 10.0.30.247_default_mypod | grep -E 'write|/tmp/file' @@@@@ DEFAULT_TERMINAL=1 TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=30
+kubectl gadget traceloop show 10.0.30.247_default_mypod | grep -E 'write|/tmp/file' @@@@@ DEFAULT_TERMINAL=1 TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=30
 00:00.001792832 cpu#0 pid 14276 [runc:[2:INIT]] write(fd=4, buf=842351188896 "{\"type\":\"procReady\"}", count=20)...
 00:00.001808990 cpu#0 pid 14276 [runc:[2:INIT]] ...write() = 20
 00:00.068726377 cpu#0 pid 14276 [runc:[2:INIT]] write(fd=3, buf=842351686112 "0", count=1)...

@@ -11,7 +11,7 @@ mypod   1/1     Running   0          2m45s   10.2.232.15   ip-10-0-30-247   <non
 $
 $ @@@@@ SKIP=1
  Now we use Inspektor Gadget to show us the TCP connections. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-./inspektor-gadget tcptop --node ip-10-0-30-247 --namespace default --podname mypod @@@@@ DEFAULT_TERMINAL=1 TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=50
+kubectl gadget tcptop --node ip-10-0-30-247 --namespace default --podname mypod @@@@@ DEFAULT_TERMINAL=1 TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=50
 
 12:36:41 loadavg: 1.41 1.58 1.11 5/381 690
 

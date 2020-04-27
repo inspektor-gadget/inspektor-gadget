@@ -10,7 +10,7 @@ $ @@@@@ SKIP=1
 Using the opensnoop gadget, we can see which processes open what files. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 We can simply filter for the pod "mypod" and omit specifying the node, @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
 thus snooping on all nodes for pod "mypod". @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-./inspektor-gadget opensnoop --podname mypod @@@@@ DEFAULT_TERMINAL=1 TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=60
+kubectl gadget opensnoop --podname mypod @@@@@ DEFAULT_TERMINAL=1 TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=60
 PID    COMM               FD ERR PATH @@@@@ SLEEP_NL=100
 18455  whoami              3   0 /etc/passwd @@@@@ SLEEP_NL=300
 18521  whoami              3   0 /etc/passwd @@@@@ SLEEP_NL=150

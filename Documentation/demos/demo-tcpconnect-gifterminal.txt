@@ -6,7 +6,7 @@ The tcpconnect gadget traces TCP connect calls. @@@@@ TERMINAL=3 PROMPT=1 PROMPT
 This will help us to define a restrictive policy for outgoing connections. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 Before we start a demo pod that connects to a public HTTP server, @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'  SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
 we already begin to trace the outgoing connections of our future pod. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-./inspektor-gadget tcpconnect --podname mypod @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=30
+kubectl gadget tcpconnect --podname mypod @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR='' SLEEP_NL=30
 PID    COMM         IP SADDR            DADDR            DPORT
 Let's start the demo pod. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.1.1.1 && echo ok || echo failed' @@@@@ SLEEP_CHAR=8 SLEEP_NL=60 TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''

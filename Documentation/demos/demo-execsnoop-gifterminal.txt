@@ -18,7 +18,7 @@ $ @@@@@ SKIP=1
 Using the execsnoop gadget, we can see which new processes are spawned @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
 on node ip-10-0-30-247 where myapp1-pod-4kz56 and @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
 myapp2-pod-tnthg are running. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-./inspektor-gadget execsnoop --label role=demo --node ip-10-0-30-247 @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
+kubectl gadget execsnoop --label role=demo --node ip-10-0-30-247 @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 PCOMM            PID    PPID   RET ARGS
 true             16510  11179    0 /bin/true
 date             16511  11179    0 /usr/bin/date
