@@ -2,7 +2,7 @@
 
 ## Installation (client side)
 
-Choose one way to install inspektor-gadget.
+Choose one way to install Inspektor Gadget.
 
 ### Stable version
 
@@ -27,7 +27,7 @@ You can find other releases on [releases](https://github.com/kinvolk/inspektor-g
 
 ```
 $ unzip -p inspektor-gadget.zip | tar xvzf -
-$ sudo cp inspektor-gadget/inspektor-gadget /usr/local/bin/kubectl-gadget
+$ sudo cp inspektor-gadget/kubectl-gadget /usr/local/bin/kubectl-gadget
 $ kubectl gadget version
 ```
 
@@ -37,7 +37,7 @@ $ kubectl gadget version
 $ git clone https://github.com/kinvolk/inspektor-gadget.git
 $ cd inspektor-gadget
 $ make build-ig
-$ sudo cp inspektor-gadget /usr/local/bin/kubectl-gadget
+$ sudo cp kubectl-gadget /usr/local/bin/kubectl-gadget
 $ kubectl gadget version
 ```
 
@@ -119,7 +119,7 @@ If you wish to install all the gadgets on another Kubernetes distribution, you w
 
 It's possible to make changes to traceloop and test them on minikube locally without pushing container images to any registry.
 
-* Make sure the git repositories `traceloop` and `inspektor-gadget` are clone in sibling directories
+* Make sure the git repositories `traceloop` and `inspektor-gadget` are cloned in sibling directories
 * Install Inspektor Gadget on minikube as usual:
 ```
 $ kubectl gadget deploy | kubectl apply -f -

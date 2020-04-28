@@ -4,7 +4,6 @@
 *.dll
 *.so
 *.dylib
-/inspektor-gadget
 /kubectl-gadget
 /gadget-container/bin
 

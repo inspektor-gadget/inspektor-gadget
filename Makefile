@@ -20,9 +20,8 @@ build: build-ig build-gadget-container
 build-ig:
 	GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
 		-ldflags $(LDFLAGS) \
-		-o inspektor-gadget \
-		github.com/kinvolk/inspektor-gadget/cmd/inspektor-gadget
-	cp inspektor-gadget kubectl-gadget
+		-o kubectl-gadget \
+		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
 
 .PHONY: build-gadget-container
 build-gadget-container:
@@ -31,7 +30,7 @@ build-gadget-container:
 .PHONY: install-user
 install-user: build-ig
 	mkdir -p ~/.local/bin/
-	cp inspektor-gadget kubectl-gadget ~/.local/bin/
+	cp kubectl-gadget ~/.local/bin/
 
 .PHONY: test
 test:

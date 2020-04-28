@@ -120,7 +120,7 @@ func capDecode(caps uint64) (out string) {
 
 func runTraceloopList(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
-		"command": "inspektor-gadget traceloop list",
+		"command": "kubectl-gadget traceloop list",
 		"args":    args,
 	})
 
@@ -193,7 +193,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 
 func runTraceloopShow(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
-		"command": "inspektor-gadget traceloop show",
+		"command": "kubectl-gadget traceloop show",
 		"args":    args,
 	})
 
@@ -224,7 +224,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) {
 
 func runTraceloopPod(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
-		"command": "inspektor-gadget traceloop pod namespace podname idx",
+		"command": "kubectl-gadget traceloop pod namespace podname idx",
 		"args":    args,
 	})
 
@@ -258,7 +258,7 @@ func runTraceloopPod(cmd *cobra.Command, args []string) {
 
 func runTraceloopClose(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
-		"command": "inspektor-gadget traceloop close",
+		"command": "kubectl-gadget traceloop close",
 		"args":    args,
 	})
 

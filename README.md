@@ -84,7 +84,7 @@ Inspektor Gadget needs some recent Linux features and modifications in Kubernete
 
 ## Installation
 
-Install inspektor-gadget (client-side):
+Install Inspektor Gadget (client-side):
 
 ```
 $ wget https://github.com/kinvolk/inspektor-gadget/releases/download/v0.1.0-alpha.5/inspektor-gadget.tar.gz
@@ -116,4 +116,4 @@ Join the discussions on the `#inspektor-gadget` channel in the [Kubernetes Slack
 * [BPF Compiler Collection (BCC)](https://github.com/iovisor/bcc): the execsnoop, opensnoop, tcptop and tcpconnect gadgets use programs from BCC.
 * [traceloop](https://github.com/kinvolk/traceloop): the traceloop gadget uses the traceloop tool, which can be used independenly of Kubernetes.
 * [gobpf](https://github.com/kinvolk/gobpf): the traceloop gadget heavily uses gobpf.
-* [kubectl-trace](https://github.com/iovisor/kubectl-trace): the inspektor-gadget command and architecture was inspired from kubectl-trace.
+* [kubectl-trace](https://github.com/iovisor/kubectl-trace): the Inspektor Gadget architecture was inspired from kubectl-trace.
