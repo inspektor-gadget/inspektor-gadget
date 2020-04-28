@@ -162,7 +162,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		var firstLinePrinted uint64
 
 		contextLogger := log.WithFields(log.Fields{
-			"command": fmt.Sprintf("inspektor-gadget %s", subCommand),
+			"command": fmt.Sprintf("kubectl-gadget %s", subCommand),
 			"args":    args,
 		})
 
@@ -195,11 +195,11 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		gadgetParams := ""
 		switch subCommand {
-		case"capabilities":
+		case "capabilities":
 			if stackFlag {
 				gadgetParams += " -K"
 			}
-			if uniqueFlag  {
+			if uniqueFlag {
 				gadgetParams += " --unique"
 			}
 			if verboseFlag {

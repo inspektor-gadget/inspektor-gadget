@@ -18,9 +18,9 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 )
 
 var networkPolicyCmd = &cobra.Command{
@@ -92,7 +92,7 @@ func (t traceCollector) Write(p []byte) (n int, err error) {
 
 func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
-		"command": "inspektor-gadget network-policy monitor",
+		"command": "kubectl-gadget network-policy monitor",
 		"args":    args,
 	})
 

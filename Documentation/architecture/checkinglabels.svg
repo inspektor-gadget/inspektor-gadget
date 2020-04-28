@@ -397,6 +397,6 @@
      id="text156"><tspan
        sodipodi:role="line"
        id="tspan154"
-       x="181.43744"
-       y="521.34766">$ inspektor-gadget opensnoop --label name=front-end</tspan></text>
+       x="218.43744"
+       y="521.34766">$ kubectl gadget opensnoop --label name=front-end</tspan></text>
 </svg>

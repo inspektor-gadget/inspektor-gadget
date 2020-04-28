@@ -1,4 +1,4 @@
-name: Compile inspektor-gadget
+name: Compile Inspektor Gadget
 on:
   push:
   schedule:
@@ -36,12 +36,12 @@ jobs:
         snapshot: true
         cache: ${{ github.event_name != 'schedule' }}
 
-    - name: Build inspektor-gadget
+    - name: Build Inspektor Gadget
       run: |
         IMAGE_TAG=${{steps.publish-registry.outputs.snapshot-tag}} make build-ig
 
         mkdir -p out/inspektor-gadget
-        cp inspektor-gadget out/inspektor-gadget/inspektor-gadget
+        cp kubectl-gadget out/inspektor-gadget/kubectl-gadget
 
         tar --sort=name --owner=root:0 --group=root:0 -czf inspektor-gadget.tar.gz -C out .
 
@@ -49,7 +49,7 @@ jobs:
       run: |
         make test
 
-    - name: Upload inspektor-gadget artifact
+    - name: Upload Inspektor Gadget artifact
       uses: actions/upload-artifact@v1
       with:
         name: inspektor-gadget
