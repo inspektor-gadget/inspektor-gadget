@@ -201,6 +201,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 				}
 				containerID := trace.ContainerID
 				containerID = strings.TrimPrefix(containerID, "docker://")
+				containerID = strings.TrimPrefix(containerID, "cri-o://")
 				if len(containerID) > 8 {
 					containerID = containerID[:8]
 				}
