@@ -6,7 +6,6 @@ import (
 	"text/template"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var deployCmd = &cobra.Command{
@@ -19,12 +18,22 @@ var deployCmd = &cobra.Command{
 // This is set during build.
 var gadgetimage = "undefined"
 
+var (
+	image     string
+	traceloop bool
+)
+
 func init() {
-	deployCmd.PersistentFlags().String(
-		"image",
+	deployCmd.PersistentFlags().StringVarP(
+		&image,
+		"image", "",
 		gadgetimage,
 		"container image")
-	viper.BindPFlag("image", deployCmd.PersistentFlags().Lookup("image"))
+	deployCmd.PersistentFlags().BoolVarP(
+		&traceloop,
+		"traceloop", "",
+		true,
+		"enable the traceloop gadget")
 
 	rootCmd.AddCommand(deployCmd)
 }
@@ -64,6 +73,8 @@ spec:
     metadata:
       labels:
         k8s-app: gadget
+      annotations:
+        inspektor-gadget.kinvolk.io/option-traceloop: "{{.Traceloop}}"
     spec:
       serviceAccount: gadget
       hostPID: true
@@ -90,6 +101,8 @@ spec:
             value: {{.Image}}
           - name: INSPEKTOR_GADGET_VERSION
             value: {{.Version}}
+          - name: INSPEKTOR_GADGET_OPTION_TRACELOOP
+            value: "{{.Traceloop}}"
         securityContext:
           privileged: true
         volumeMounts:
@@ -138,20 +151,21 @@ spec:
 `
 
 type parameters struct {
-	Image 	string
-	Version string
+	Image     string
+	Version   string
+	Traceloop bool
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
-	image := viper.GetString("image")
-
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
 	if err != nil {
 		return fmt.Errorf("failed to parse template %w", err)
 	}
 
 	p := parameters{
-		image, version,
+		image,
+		version,
+		traceloop,
 	}
 
 	err = t.Execute(os.Stdout, p)

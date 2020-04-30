@@ -19,6 +19,9 @@ dpkg-query --show libbcc|awk '{print $2}'
 echo -n "Gadget image: "
 echo $TRACELOOP_IMAGE
 
+echo "Deployment options:"
+env | grep '^INSPEKTOR_GADGET_OPTION_.*='
+
 echo -n "Inspektor Gadget version: "
 echo $INSPEKTOR_GADGET_VERSION
 
@@ -63,5 +66,10 @@ if [ "$FLATCAR_EDGE" = 1 ] ; then
   /bin/gadgettracermanager -serve &
 fi
 
-rm -f /run/traceloop.socket
-exec /bin/traceloop $ARGS
+if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
+  rm -f /run/traceloop.socket
+  exec /bin/traceloop $ARGS
+fi
+
+echo "Ready."
+sleep infinity
