@@ -84,6 +84,11 @@ spec:
         image: {{.Image}}
         imagePullPolicy: Always
         command: [ "/entrypoint.sh" ]
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - "/cleanup.sh"
         env:
           - name: NODE_NAME
             valueFrom:
