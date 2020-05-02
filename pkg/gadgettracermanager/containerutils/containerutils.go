@@ -95,22 +95,42 @@ func GetCgroup2Path(pid int) (string, error) {
 }
 
 func PidFromContainerId(containerID string) (int, error) {
-	out, err := exec.Command("chroot", "/host", "docker", "inspect", strings.TrimPrefix(containerID, "docker://")).Output()
-	if err != nil {
-		return -1, err
-	}
-	type DockerInspect struct {
-		State struct {
+	if strings.HasPrefix(containerID, "docker://") {
+		out, err := exec.Command("chroot", "/host", "docker", "inspect", strings.TrimPrefix(containerID, "docker://")).Output()
+		if err != nil {
+			return -1, err
+		}
+		type DockerInspect struct {
+			State struct {
+				Pid int
+			}
+		}
+		var dockerInspect []DockerInspect
+		err = json.Unmarshal(out, &dockerInspect)
+		if err != nil {
+			return -1, err
+		}
+		if len(dockerInspect) != 1 {
+			return -1, fmt.Errorf("invalid output")
+		}
+		return dockerInspect[0].State.Pid, nil
+	} else if strings.HasPrefix(containerID, "cri-o://") {
+		out, err := exec.Command("chroot", "/host", "crictl", "inspect", strings.TrimPrefix(containerID, "cri-o://")).Output()
+		if err != nil {
+			return -1, err
+		}
+		type CRIOInspect struct {
 			Pid int
 		}
+		var crioInspect CRIOInspect
+		err = json.Unmarshal(out, &crioInspect)
+		if err != nil {
+			return -1, err
+		}
+		if crioInspect.Pid == 0 {
+			return -1, fmt.Errorf("invalid pid")
+		}
+		return crioInspect.Pid, nil
 	}
-	var dockerInspect []DockerInspect
-	err = json.Unmarshal(out, &dockerInspect)
-	if err != nil {
-		return -1, err
-	}
-	if len(dockerInspect) != 1 {
-		return -1, fmt.Errorf("invalid output")
-	}
-	return dockerInspect[0].State.Pid, nil
+	return -1, fmt.Errorf("unknown container runtime: %s", containerID)
 }
