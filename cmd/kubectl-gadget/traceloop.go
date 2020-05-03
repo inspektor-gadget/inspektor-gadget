@@ -62,6 +62,13 @@ var traceloopCloseCmd = &cobra.Command{
 	Run:   runTraceloopClose,
 }
 
+var (
+	optionListFull          bool
+	optionListAllNamespaces bool
+	optionListNoHeaders     bool
+	optionListNamespace     string
+)
+
 func init() {
 	rootCmd.AddCommand(traceloopCmd)
 	traceloopCmd.AddCommand(traceloopListCmd)
@@ -69,11 +76,29 @@ func init() {
 	traceloopCmd.AddCommand(traceloopPodCmd)
 	traceloopCmd.AddCommand(traceloopCloseCmd)
 
-	traceloopListCmd.PersistentFlags().Bool(
-		"full",
+	traceloopListCmd.PersistentFlags().BoolVarP(
+		&optionListFull,
+		"full", "f",
 		false,
-		"show full fields without truncating")
-	viper.BindPFlag("full", traceloopListCmd.PersistentFlags().Lookup("full"))
+		"show all fields without truncating")
+
+	traceloopListCmd.PersistentFlags().BoolVarP(
+		&optionListAllNamespaces,
+		"all-namespaces", "A",
+		false,
+		"if present, list the traces across all namespaces.")
+
+	traceloopListCmd.PersistentFlags().BoolVarP(
+		&optionListNoHeaders,
+		"no-headers", "",
+		false,
+		"don't print headers.")
+
+	traceloopListCmd.PersistentFlags().StringVarP(
+		&optionListNamespace,
+		"namespace", "n",
+		"",
+		"only show traces in the specified namespace.")
 }
 
 const (
@@ -155,19 +180,31 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error in getting traces: %q", err)
 	}
 
-	full := viper.GetBool("full")
+	hideNamespace := optionListNamespace != "" && !optionListAllNamespaces
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-	if full {
-		fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\tCAPABILITIES\t")
-	} else {
-		fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
+	if !optionListNoHeaders {
+		if optionListFull {
+			fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\tCAPABILITIES\t")
+		} else {
+			if hideNamespace {
+				fmt.Fprintln(w, "PODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
+			} else {
+				fmt.Fprintln(w, "NAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
+			}
+		}
 	}
 
 	for node, tm := range tracesPerNode {
 		for _, trace := range tm {
 			if trace.Containeridx == -1 {
 				// The pause container
+				continue
+			}
+
+			if optionListNamespace != "" &&
+				trace.Namespace != optionListNamespace &&
+				!optionListAllNamespaces {
 				continue
 			}
 
@@ -192,8 +229,8 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 			default:
 				status = fmt.Sprintf("unknown (%v)", trace.Status)
 			}
-			if full {
-				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.PodUID, trace.Containeridx, trace.TraceID, trace.ContainerID, status, capDecode(trace.Capabilities))
+			if optionListFull {
+				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", trace.Node, trace.Namespace, trace.Podname, trace.PodUID, trace.Containeridx, trace.TraceID, trace.ContainerID, status, capDecode(trace.Capabilities))
 			} else {
 				uid := trace.PodUID
 				if len(uid) > 8 {
@@ -205,7 +242,11 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 				if len(containerID) > 8 {
 					containerID = containerID[:8]
 				}
-				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)
+				if hideNamespace {
+					fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n", trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)
+				} else {
+					fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\n", trace.Namespace, trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)
+				}
 			}
 		}
 	}
