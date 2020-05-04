@@ -41,7 +41,7 @@ jobs:
         IMAGE_TAG=${{steps.publish-registry.outputs.snapshot-tag}} make build-ig
 
         mkdir -p out/inspektor-gadget
-        cp kubectl-gadget out/inspektor-gadget/kubectl-gadget
+        cp kubectl-gadget-* out/inspektor-gadget/
 
         tar --sort=name --owner=root:0 --group=root:0 -czf inspektor-gadget.tar.gz -C out .
 

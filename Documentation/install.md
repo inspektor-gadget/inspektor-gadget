@@ -27,7 +27,7 @@ You can find other releases on [releases](https://github.com/kinvolk/inspektor-g
 
 ```
 $ unzip -p inspektor-gadget.zip | tar xvzf -
-$ sudo cp inspektor-gadget/kubectl-gadget /usr/local/bin/kubectl-gadget
+$ sudo cp inspektor-gadget/kubectl-gadget-linux-amd64 /usr/local/bin/kubectl-gadget
 $ kubectl gadget version
 ```
 
@@ -36,8 +36,8 @@ $ kubectl gadget version
 ```
 $ git clone https://github.com/kinvolk/inspektor-gadget.git
 $ cd inspektor-gadget
-$ make build-ig
-$ sudo cp kubectl-gadget /usr/local/bin/kubectl-gadget
+$ make kubectl-gadget-linux-amd64
+$ sudo cp kubectl-gadget-linux-amd64 /usr/local/bin/kubectl-gadget
 $ kubectl gadget version
 ```
 

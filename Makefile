@@ -17,10 +17,18 @@ LDFLAGS := "-X main.version=$(VERSION) \
 build: build-ig build-gadget-container
 
 .PHONY: build-ig
-build-ig:
-	GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
+build-ig: kubectl-gadget-linux-amd64 kubectl-gadget-darwin-amd64
+
+kubectl-gadget-linux-amd64:
+	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 		-ldflags $(LDFLAGS) \
-		-o kubectl-gadget \
+		-o kubectl-gadget-linux-amd64 \
+		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
+
+kubectl-gadget-darwin-amd64:
+	GO111MODULE=on CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build \
+		-ldflags $(LDFLAGS) \
+		-o kubectl-gadget-darwin-amd64 \
 		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
 
 .PHONY: build-gadget-container
