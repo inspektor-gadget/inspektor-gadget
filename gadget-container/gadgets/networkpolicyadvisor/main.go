@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -32,6 +34,7 @@ func init() {
 
 type tcpEventTracer struct {
 	clientset *kubernetes.Clientset
+	queue     chan tracer.TcpV4
 }
 
 func (t *tcpEventTracer) TCPEventV4(e tracer.TcpV4) {
@@ -41,7 +44,10 @@ func (t *tcpEventTracer) TCPEventV4(e tracer.TcpV4) {
 	if e.Type == tracer.EventClose {
 		return
 	}
+	t.queue <- e
+}
 
+func (t *tcpEventTracer) handleEvent(e tracer.TcpV4, pods *corev1.PodList, svcs *corev1.ServiceList) {
 	var event types.KubernetesConnectionEvent
 	event.Type = e.Type.String()
 	if e.Type == tracer.EventAccept {
@@ -53,11 +59,6 @@ func (t *tcpEventTracer) TCPEventV4(e tracer.TcpV4) {
 	event.Debug = fmt.Sprintf("%v cpu#%d %s %v %s %v:%v %v:%v %v\n",
 		e.Timestamp, e.CPU, e.Type, e.Pid, e.Comm, e.SAddr, e.SPort, e.DAddr, e.DPort, e.NetNS)
 
-	pods, err := t.clientset.CoreV1().Pods("").List(metav1.ListOptions{})
-	if err != nil {
-		fmt.Printf("Error: %s\n", err)
-		return
-	}
 	localPodIndex := -1
 	for i, pod := range pods.Items {
 		if pod.Status.PodIP == e.SAddr.String() {
@@ -90,11 +91,6 @@ func (t *tcpEventTracer) TCPEventV4(e tracer.TcpV4) {
 	}
 
 	if event.RemoteKind == "" {
-		svcs, err := t.clientset.CoreV1().Services("").List(metav1.ListOptions{})
-		if err != nil {
-			fmt.Printf("Error: %s\n", err)
-			return
-		}
 		for _, svc := range svcs.Items {
 			if svc.Spec.ClusterIP == e.DAddr.String() {
 				event.RemoteKind = "svc"
@@ -158,11 +154,51 @@ func main() {
 	}
 
 	// Start the BPF tracer
-	t, err := tracer.NewTracer(&tcpEventTracer{clientset})
+	mytracer := &tcpEventTracer{
+		clientset: clientset,
+		queue:     make(chan tracer.TcpV4, 500),
+	}
+	t, err := tracer.NewTracer(mytracer)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
+
+	ticker := time.NewTicker(time.Second)
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				eventCount := len(mytracer.queue)
+				if eventCount == 0 {
+					continue
+				}
+				// Consume that amount of events from the queue and use the same cache of
+				// pods and services with them. We might not consume all the events,
+				// that's ok, we'll get them at the next tick.
+				batch := make([]tracer.TcpV4, 0)
+				for i := 0; i < eventCount; i++ {
+					batch = append(batch, <-mytracer.queue)
+				}
+				pods, err := clientset.CoreV1().Pods("").List(metav1.ListOptions{})
+				if err != nil {
+					fmt.Printf("Error: %s\n", err)
+					return
+				}
+				svcs, err := clientset.CoreV1().Services("").List(metav1.ListOptions{})
+				if err != nil {
+					fmt.Printf("Error: %s\n", err)
+					return
+				}
+				for _, e := range batch {
+					mytracer.handleEvent(e, pods, svcs)
+				}
+			}
+		}
+	}()
 
 	t.Start()
 	fmt.Printf(`{"type":"ready"}` + "\n")
@@ -171,5 +207,8 @@ func main() {
 	signal.Notify(sig, os.Interrupt, os.Kill)
 
 	<-sig
+
 	t.Stop()
+	ticker.Stop()
+	done <- true
 }
