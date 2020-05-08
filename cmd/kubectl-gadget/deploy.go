@@ -39,7 +39,7 @@ func init() {
 		&runcHooksMode,
 		"runc-hooks-mode", "",
 		"auto",
-		"how to attach runc hooks (auto, flatcar_edge, ldpreload)")
+		"how to attach runc hooks (auto, crio, flatcar_edge, ldpreload)")
 
 	rootCmd.AddCommand(deployCmd)
 }
@@ -177,9 +177,10 @@ type parameters struct {
 
 func runDeploy(cmd *cobra.Command, args []string) error {
 	if runcHooksMode != "auto" &&
+		runcHooksMode != "crio" &&
 		runcHooksMode != "flatcar_edge" &&
 		runcHooksMode != "ldpreload" {
-		return fmt.Errorf("invalid argument %q for --runc-hooks=[auto,flatcar_edge,ldpreload]", runcHooksMode)
+		return fmt.Errorf("invalid argument %q for --runc-hooks=[auto,crio,flatcar_edge,ldpreload]", runcHooksMode)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
