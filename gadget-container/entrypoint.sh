@@ -36,6 +36,13 @@ echo "-:pfree_uts_ns" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || 
 echo "-:pcap_capable" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
 
 ARGS=k8s
+
+CRIO=0
+if grep -q '^1:name=systemd:.*/crio-[0-9a-f]*\.scope$' /proc/self/cgroup > /dev/null ; then
+    echo "CRI-O detected."
+    CRIO=1
+fi
+
 FLATCAR_EDGE=0
 if grep -q '^ID=flatcar$' /host/etc/os-release > /dev/null ; then
   if grep -q '^GROUP=edge$' /host/etc/flatcar/update.conf > /dev/null ; then
@@ -55,7 +62,10 @@ fi
 RUNC_HOOK_MODE="$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS_MODE"
 
 if [ "$RUNC_HOOK_MODE" = "auto" ] ; then
-  if [ "$FLATCAR_EDGE" = 1 ] ; then
+  if [ "$CRIO" = 1 ] ; then
+    echo "runc hook mode cri-o detected."
+    RUNC_HOOK_MODE="crio"
+  elif [ "$FLATCAR_EDGE" = 1 ] ; then
     echo "runc hook mode flatcar_edge detected."
     RUNC_HOOK_MODE="flatcar_edge"
   else
@@ -78,6 +88,7 @@ if [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
 fi
 
 if [ "$RUNC_HOOK_MODE" = "flatcar_edge" ] ||
+   [ "$RUNC_HOOK_MODE" = "crio" ] ||
    [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
   echo "Installing hooks scripts on host..."
 
@@ -86,6 +97,14 @@ if [ "$RUNC_HOOK_MODE" = "flatcar_edge" ] ||
     echo "Installing $i..."
     cp /bin/$i /host/opt/bin/
   done
+
+  if [ "$RUNC_HOOK_MODE" = "crio" ] ; then
+    echo "Installing OCI hooks configuration in /etc/containers/oci/hooks.d/"
+    mkdir -p /host/etc/containers/oci/hooks.d/
+    cp /opt/crio-hooks/gadget-prestart.json /host/etc/containers/oci/hooks.d/gadget-prestart.json
+    cp /opt/crio-hooks/gadget-poststop.json /host/etc/containers/oci/hooks.d/gadget-poststop.json
+  fi
+
   echo "Installation done"
 fi
 
