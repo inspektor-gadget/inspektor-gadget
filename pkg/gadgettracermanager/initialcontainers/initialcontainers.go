@@ -43,6 +43,9 @@ func InitialContainers() (arr []pb.ContainerDefinition, err error) {
 			if s.ContainerID == "" {
 				continue
 			}
+			if s.State.Running == nil {
+				continue
+			}
 
 			pid, err := containerutils.PidFromContainerId(s.ContainerID)
 			if err != nil {
