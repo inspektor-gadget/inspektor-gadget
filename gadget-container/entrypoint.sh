@@ -58,6 +58,23 @@ if grep -q '^ID=flatcar$' /host/etc/os-release > /dev/null ; then
   fi
 fi
 
+if grep -q '^ID="rhcos"$' /host/etc/os-release > /dev/null ; then
+  if [ ! -d "/host/usr/src/kernels/$(uname -r)" ] ; then
+    echo "Fetching kernel-devel from CentOS 8."
+    REPO=http://mirror.centos.org/centos/8/BaseOS/x86_64/os/Packages/
+    RPM=kernel-devel-$(uname -r).rpm
+    RPMDIR=/opt/gadget-kernel/
+    RPMHOSTDIR=/host${RPMDIR}
+    mkdir -p $RPMHOSTDIR/usr/src/kernels/
+    test -r $RPMHOSTDIR/$RPM || \
+        curl -fsSLo $RPMHOSTDIR/$RPM $REPO/$RPM
+    test -r $RPMHOSTDIR/usr/src/kernels/`uname -r`/.config || \
+        chroot /host sh -c "cd $RPMDIR && rpm2cpio $RPM | cpio -i"
+    mkdir -p /usr/src/kernels/`uname -r`/
+    mount --bind $RPMHOSTDIR/usr/src/kernels/`uname -r` /usr/src/kernels/`uname -r`
+  fi
+fi
+
 # Choose what runc hook mode to use based on the configuration detected
 RUNC_HOOK_MODE="$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS_MODE"
 
