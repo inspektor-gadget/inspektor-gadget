@@ -36,8 +36,6 @@ type tracer struct {
 	cgroupIdSetMapPath string
 	mntnsSetMap        *bpflib.Map
 	mntnsSetMapPath    string
-
-	matchesCache []uint64
 }
 
 func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition) bool {
@@ -110,11 +108,8 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 	cgroupIdSetMap := m.Map("cgroupid_set")
 	mntnsSetMap := m.Map("mntns_set")
 
-	matchesCache := []uint64{}
-
 	for _, c := range g.containers {
 		if containerSelectorMatches(req.Selector, &c) {
-			matchesCache = append(matchesCache, c.CgroupId)
 			zero := uint32(0)
 			cgroupIdC := uint64(c.CgroupId)
 			if cgroupIdC != 0 {
@@ -135,7 +130,6 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 		cgroupIdSetMapPath: cgroupIdSetMapPath,
 		mntnsSetMap:        mntnsSetMap,
 		mntnsSetMapPath:    mntnsSetMapPath,
-		matchesCache:       matchesCache,
 	}
 	return &pb.TracerID{Id: tracerId}, nil
 }
@@ -168,7 +162,6 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 
 	for _, t := range g.tracers {
 		if containerSelectorMatches(&t.containerSelector, containerDefinition) {
-			t.matchesCache = append(t.matchesCache, containerDefinition.CgroupId)
 			cgroupIdC := uint64(containerDefinition.CgroupId)
 			mntnsC := uint64(containerDefinition.Mntns)
 			zero := uint32(0)
@@ -197,7 +190,6 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 
 	for _, t := range g.tracers {
 		if containerSelectorMatches(&t.containerSelector, &c) {
-			//TODO: t.matchesCache = remove_from(t.matchesCache, c.CgroupId)
 			cgroupIdC := uint64(c.CgroupId)
 			mntnsC := uint64(c.Mntns)
 			t.mapHolder.DeleteElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC))
@@ -216,12 +208,20 @@ func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRe
 	}
 	out += "List of tracers:\n"
 	for i, t := range g.tracers {
-		out += fmt.Sprintf("%v -> Labels: \n", i)
+		out += fmt.Sprintf("%v -> %q/%q (#%d) Labels: \n",
+			i,
+			t.containerSelector.Namespace,
+			t.containerSelector.Podname,
+			t.containerSelector.ContainerIndex)
 		for _, l := range t.containerSelector.Labels {
 			out += fmt.Sprintf("                  %v: %v\n", l.Key, l.Value)
 		}
-		out += fmt.Sprintf("                Container index: %v\n", t.containerSelector.ContainerIndex)
-		out += fmt.Sprintf("                Matches: %v\n", t.matchesCache)
+		out += fmt.Sprintf("        Matches:\n")
+		for _, c := range g.containers {
+			if containerSelectorMatches(&t.containerSelector, &c) {
+				out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupId=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupId)
+			}
+		}
 	}
 	return &pb.Dump{State: out}, nil
 }
