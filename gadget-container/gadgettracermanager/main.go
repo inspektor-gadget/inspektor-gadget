@@ -65,7 +65,7 @@ func main() {
 		for _, pair := range pairs {
 			kv := strings.Split(pair, "=")
 			if len(kv) != 2 {
-				fmt.Printf("invalid key=value[:key=value...] %q\n", label)
+				fmt.Printf("invalid key=value[,key=value,...] %q\n", label)
 				flag.PrintDefaults()
 				os.Exit(1)
 			}
