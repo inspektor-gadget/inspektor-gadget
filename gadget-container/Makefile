@@ -1,6 +1,8 @@
 IMAGE_TAG=$(shell ../tools/image-tag)
 IMAGE_BRANCH_TAG=$(shell ../tools/image-tag branch)
 
+MINIKUBE ?= minikube
+
 .PHONY: gadget-container-deps
 gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor
 
@@ -46,7 +48,7 @@ minikube: docker-gadget/minikube-build docker-gadget/minikube-install
 
 docker-gadget/minikube-build:
 	cp ../../traceloop/traceloop ./
-	eval $(shell minikube docker-env | grep =) ; docker build -t docker.io/kinvolk/gadget:minikube -f gadget-from-local-bin.Dockerfile .
+	eval $(shell $(MINIKUBE) docker-env | grep =) ; docker build -t docker.io/kinvolk/gadget:minikube -f gadget-from-local-bin.Dockerfile .
 	rm -f traceloop
 
 docker-gadget/minikube-install:

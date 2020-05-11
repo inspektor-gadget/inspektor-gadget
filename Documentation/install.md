@@ -120,6 +120,10 @@ If you wish to install all the gadgets on another Kubernetes distribution, you w
 It's possible to make changes to traceloop and test them on minikube locally without pushing container images to any registry.
 
 * Make sure the git repositories `traceloop` and `inspektor-gadget` are cloned in sibling directories
+* Minikube with the docker driver does not work for traceloop. You can use another driver, for example:
+```
+$ minikube start --driver=kvm2
+```
 * Install Inspektor Gadget on minikube as usual:
 ```
 $ kubectl gadget deploy | kubectl apply -f -

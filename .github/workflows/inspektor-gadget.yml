@@ -49,6 +49,12 @@ jobs:
       run: |
         make test
 
+    - name: Smoke test build of the dev image for minikube
+      run: |
+        mkdir ../traceloop
+        touch ../traceloop/traceloop
+        MINIKUBE=true make -C gadget-container/ docker-gadget/minikube-build
+
     - name: Upload Inspektor Gadget artifact
       uses: actions/upload-artifact@v1
       with:
