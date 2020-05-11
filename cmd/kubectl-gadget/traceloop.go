@@ -204,14 +204,16 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		return false
 	})
 
-	hideNamespace := optionListNamespace != "" && !optionListAllNamespaces
+	if optionListNamespace == "" {
+		optionListNamespace = getDefaultNamespace()
+	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 	if !optionListNoHeaders {
 		if optionListFull {
 			fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\tCAPABILITIES\t")
 		} else {
-			if hideNamespace {
+			if !optionListAllNamespaces {
 				fmt.Fprintln(w, "PODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
 			} else {
 				fmt.Fprintln(w, "NAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
@@ -265,7 +267,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 			if len(containerID) > 8 {
 				containerID = containerID[:8]
 			}
-			if hideNamespace {
+			if !optionListAllNamespaces {
 				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n", trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)
 			} else {
 				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\n", trace.Namespace, trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)

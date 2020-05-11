@@ -31,6 +31,39 @@ func doesKubeconfigExist(*cobra.Command, []string) error {
 	return err
 }
 
+// getDefaultNamespace returns the configured default namespace for kubectl
+// returns "default" if it is not possible to determine the default namespace
+func getDefaultNamespace() string {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	loadingRules.DefaultClientConfig = &clientcmd.DefaultClientConfig
+	if viper.GetString("kubeconfig") != "" {
+		loadingRules.ExplicitPath = viper.GetString("kubeconfig")
+	}
+
+	pathOptions := clientcmd.NewDefaultPathOptions()
+	pathOptions.LoadingRules = loadingRules
+
+	config, err := pathOptions.GetStartingConfig()
+	if err != nil {
+		return "default"
+	}
+
+	if config.CurrentContext == "" {
+		return "default"
+	}
+
+	if config.Contexts == nil {
+		return "default"
+	}
+
+	namespace := config.Contexts[config.CurrentContext].Namespace
+	if namespace == "" {
+		return "default"
+	}
+
+	return namespace
+}
+
 func execPodSimple(client *kubernetes.Clientset, node string, podCmd string) string {
 	stdout, stderr, err := execPodCapture(client, node, podCmd)
 	if err != nil {
