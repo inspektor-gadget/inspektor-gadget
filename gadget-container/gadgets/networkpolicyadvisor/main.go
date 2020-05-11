@@ -179,9 +179,9 @@ func main() {
 				// Consume that amount of events from the queue and use the same cache of
 				// pods and services with them. We might not consume all the events,
 				// that's ok, we'll get them at the next tick.
-				batch := make([]tracer.TcpV4, 0)
+				batch := make([]tracer.TcpV4, eventCount)
 				for i := 0; i < eventCount; i++ {
-					batch = append(batch, <-mytracer.queue)
+					batch[i] = <-mytracer.queue
 				}
 				pods, err := clientset.CoreV1().Pods("").List(metav1.ListOptions{})
 				if err != nil {
