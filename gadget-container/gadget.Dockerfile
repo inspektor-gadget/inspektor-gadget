@@ -25,6 +25,7 @@ RUN set -ex; \
 		ca-certificates curl
 
 COPY entrypoint.sh /entrypoint.sh
+COPY cleanup.sh /cleanup.sh
 
 COPY ocihookgadget/runc-hook-prestart.sh /bin/runc-hook-prestart.sh
 COPY ocihookgadget/runc-hook-poststop.sh /bin/runc-hook-poststop.sh

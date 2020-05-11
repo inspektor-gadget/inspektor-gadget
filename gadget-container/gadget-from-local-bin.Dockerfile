@@ -10,6 +10,7 @@ RUN set -ex; \
 COPY files/runc-hook-prestart.sh /bin/runc-hook-prestart.sh
 COPY files/runc-hook-poststop.sh /bin/runc-hook-poststop.sh
 COPY files/entrypoint.sh /entrypoint.sh
+COPY cleanup.sh /cleanup.sh
 COPY files/bcck8s /opt/bcck8s
 
 COPY bin/gadgettracermanager /bin/gadgettracermanager
