@@ -23,7 +23,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
-	"github.com/kinvolk/inspektor-gadget/pkg/tracemeta"
+	"github.com/kinvolk/traceloop/pkg/tracemeta"
 )
 
 var traceloopCmd = &cobra.Command{
@@ -193,9 +193,9 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 				status = fmt.Sprintf("unknown (%v)", trace.Status)
 			}
 			if full {
-				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.UID, trace.Containeridx, trace.TraceID, trace.ContainerID, status, capDecode(trace.Capabilities))
+				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.PodUID, trace.Containeridx, trace.TraceID, trace.ContainerID, status, capDecode(trace.Capabilities))
 			} else {
-				uid := trace.UID
+				uid := trace.PodUID
 				if len(uid) > 8 {
 					uid = uid[:8]
 				}

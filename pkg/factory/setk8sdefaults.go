@@ -21,7 +21,7 @@ func SetKubernetesDefaults(config *rest.Config) error {
 		// This codec factory ensures the resources are not converted. Therefore, resources
 		// will not be round-tripped through internal versions. Defaulting does not happen
 		// on the client.
-		config.NegotiatedSerializer = &serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
+		config.NegotiatedSerializer = &serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs}
 	}
 	return rest.SetKubernetesDefaults(config)
 }
