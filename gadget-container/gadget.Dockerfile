@@ -1,10 +1,7 @@
 # Builder: traceloop
 
 # traceloop built from:
-# https://github.com/kinvolk/traceloop/commit/...
-# https://github.com/kinvolk/traceloop/tree/alban/openshift
-# https://github.com/kinvolk/traceloop/pull/37
-#
+# https://github.com/kinvolk/traceloop/commit/b02325929a835060df5cf82e37389edf87421a39
 # See:
 # - https://github.com/kinvolk/traceloop/actions
 # - https://hub.docker.com/repository/docker/kinvolk/traceloop/tags
