@@ -9,7 +9,7 @@
 # - https://github.com/kinvolk/traceloop/actions
 # - https://hub.docker.com/repository/docker/kinvolk/traceloop/tags
 
-FROM docker.io/kinvolk/traceloop:alban-openshift as traceloop
+FROM docker.io/kinvolk/traceloop:20200511163751b02325 as traceloop
 
 # Main gadget image
 
