@@ -105,6 +105,14 @@ func GetCgroupPaths(pid int) (string, string, error) {
 		return "", "", fmt.Errorf("cannot parse cgroup: %v", err)
 	}
 
+	if cgroupPathV1 == "/" {
+		cgroupPathV1 = ""
+	}
+
+	if cgroupPathV2 == "/" {
+		cgroupPathV2 = ""
+	}
+
 	if cgroupPathV2 == "" && cgroupPathV1 == "" {
 		return "", "", fmt.Errorf("cannot find cgroup path in /proc/PID/cgroup")
 	}
