@@ -238,18 +238,16 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		case "created":
 			fallthrough
 		case "ready":
-			t, err := time.Parse(time.RFC3339, trace.TimeCreation)
-			if err == nil {
-				status = fmt.Sprintf("created %s ago", units.HumanDuration(time.Now().Sub(t)))
-			} else {
-				status = fmt.Sprintf("created a while ago (%v)", err)
+			status = "started"
+			if t, err := time.Parse(time.RFC3339, trace.TimeCreation); err == nil {
+				status += fmt.Sprintf(" %s ago",
+					strings.ToLower(units.HumanDuration(time.Now().Sub(t))))
 			}
 		case "deleted":
-			t, err := time.Parse(time.RFC3339, trace.TimeDeletion)
-			if err == nil {
-				status = fmt.Sprintf("%s %s ago", trace.Status, units.HumanDuration(time.Now().Sub(t)))
-			} else {
-				status = fmt.Sprintf("%s a while ago (%v)", trace.Status, err)
+			status = "terminated"
+			if t, err := time.Parse(time.RFC3339, trace.TimeDeletion); err == nil {
+				status += fmt.Sprintf(" %s ago",
+					strings.ToLower(units.HumanDuration(time.Now().Sub(t))))
 			}
 		default:
 			status = fmt.Sprintf("unknown (%v)", trace.Status)
