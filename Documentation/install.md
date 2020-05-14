@@ -73,6 +73,15 @@ If you wish to install an alternative gadget image, you could use the following 
 $ kubectl gadget deploy --image=docker.io/myfork/gadget:tag | kubectl apply -f -
 ```
 
+### runc hooks mode
+
+Inspektor Gadget needs to detect when containers are started and stopped.
+The different supported modes can be set by using the `runc-hooks-mode` option:
+
+- `auto`(default): Inspektor Gadget will try to find the best option based on the system it is running on.
+- `flatcar_edge`: Use a custom `runc` version shipped with Flatcar Container Linux Edge.
+- `ldpreload`: Adds an entry in `/etc/ld.so.preload` to call a custom shared library that looks for `runc` calls and dynamically adds the needed OCI hooks to the cointainer `config.json` specification. Since this feature is highly experimental, it'll not be considered when `auto` is used.
+
 ## Getting all gadgets
 
 Not all gadgets currently work everywhere.

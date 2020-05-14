@@ -51,7 +51,20 @@ if grep -q '^ID=flatcar$' /host/etc/os-release > /dev/null ; then
   fi
 fi
 
-if [ "$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS" = "ldpreload" ] ; then
+# Choose what runc hook mode to use based on the configuration detected
+RUNC_HOOK_MODE="$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS_MODE"
+
+if [ "$RUNC_HOOK_MODE" = "auto" ] ; then
+  if [ "$FLATCAR_EDGE" = 1 ] ; then
+    echo "runc hook mode flatcar_edge detected."
+    RUNC_HOOK_MODE="flatcar_edge"
+  else
+    RUNC_HOOK_MODE="error"
+    echo "Error detecting runc hook mode."
+  fi
+fi
+
+if [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
   echo "Installing ld.so.preload with runchooks.so for OCI hooks"
   mkdir -p /host/opt/runchooks/
   cp /opt/runchooks/runchooks.so /host/opt/runchooks/
@@ -64,21 +77,21 @@ if [ "$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS" = "ldpreload" ] ; then
   fi
 fi
 
-if [ "$FLATCAR_EDGE" = 1 ] || [ "$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS" = "ldpreload" ] ; then
-  echo "Installing scripts on host..."
+if [ "$RUNC_HOOK_MODE" = "flatcar_edge" ] ||
+   [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
+  echo "Installing hooks scripts on host..."
 
   mkdir -p /host/opt/bin/
   for i in ocihookgadget runc-hook-prestart.sh runc-hook-poststop.sh ; do
     echo "Installing $i..."
     cp /bin/$i /host/opt/bin/
   done
-  echo "Installation done "
-
-  echo "Starting the Gadget Tracer Manager in the background..."
-  rm -f /run/gadgettracermanager.socket
-  /bin/gadgettracermanager -serve &
+  echo "Installation done"
 fi
 
+echo "Starting the Gadget Tracer Manager in the background..."
+rm -f /run/gadgettracermanager.socket
+/bin/gadgettracermanager -serve &
 
 if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
   rm -f /run/traceloop.socket
