@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -62,6 +63,13 @@ var traceloopCloseCmd = &cobra.Command{
 	Run:   runTraceloopClose,
 }
 
+var (
+	optionListFull          bool
+	optionListAllNamespaces bool
+	optionListNoHeaders     bool
+	optionListNamespace     string
+)
+
 func init() {
 	rootCmd.AddCommand(traceloopCmd)
 	traceloopCmd.AddCommand(traceloopListCmd)
@@ -69,11 +77,29 @@ func init() {
 	traceloopCmd.AddCommand(traceloopPodCmd)
 	traceloopCmd.AddCommand(traceloopCloseCmd)
 
-	traceloopListCmd.PersistentFlags().Bool(
-		"full",
+	traceloopListCmd.PersistentFlags().BoolVarP(
+		&optionListFull,
+		"full", "f",
 		false,
-		"show full fields without truncating")
-	viper.BindPFlag("full", traceloopListCmd.PersistentFlags().Lookup("full"))
+		"show all fields without truncating")
+
+	traceloopListCmd.PersistentFlags().BoolVarP(
+		&optionListAllNamespaces,
+		"all-namespaces", "A",
+		false,
+		"if present, list the traces across all namespaces.")
+
+	traceloopListCmd.PersistentFlags().BoolVarP(
+		&optionListNoHeaders,
+		"no-headers", "",
+		false,
+		"don't print headers.")
+
+	traceloopListCmd.PersistentFlags().StringVarP(
+		&optionListNamespace,
+		"namespace", "n",
+		"",
+		"only show traces in the specified namespace.")
 }
 
 const (
@@ -155,57 +181,96 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error in getting traces: %q", err)
 	}
 
-	full := viper.GetBool("full")
+	var traces []tracemeta.TraceMeta
+	for _, tm := range tracesPerNode {
+		traces = append(traces, tm...)
+	}
+	sort.SliceStable(traces, func(i, j int) bool {
+		if traces[i].Namespace != traces[j].Namespace {
+			return traces[i].Namespace < traces[j].Namespace
+		}
+		if traces[i].Podname != traces[j].Podname {
+			return traces[i].Podname < traces[j].Podname
+		}
+		if traces[i].Containeridx != traces[j].Containeridx {
+			return traces[i].Containeridx < traces[j].Containeridx
+		}
+		if traces[i].TimeCreation != traces[j].TimeCreation {
+			return traces[i].TimeCreation < traces[j].TimeCreation
+		}
+		if traces[i].TimeDeletion != traces[j].TimeDeletion {
+			return traces[i].TimeDeletion < traces[j].TimeDeletion
+		}
+		return false
+	})
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-	if full {
-		fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\tCAPABILITIES\t")
-	} else {
-		fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
+	if optionListNamespace == "" {
+		optionListNamespace = getDefaultNamespace()
 	}
 
-	for node, tm := range tracesPerNode {
-		for _, trace := range tm {
-			if trace.Containeridx == -1 {
-				// The pause container
-				continue
-			}
-
-			status := ""
-			switch trace.Status {
-			case "created":
-				fallthrough
-			case "ready":
-				t, err := time.Parse(time.RFC3339, trace.TimeCreation)
-				if err == nil {
-					status = fmt.Sprintf("created %s ago", units.HumanDuration(time.Now().Sub(t)))
-				} else {
-					status = fmt.Sprintf("created a while ago (%v)", err)
-				}
-			case "deleted":
-				t, err := time.Parse(time.RFC3339, trace.TimeDeletion)
-				if err == nil {
-					status = fmt.Sprintf("%s %s ago", trace.Status, units.HumanDuration(time.Now().Sub(t)))
-				} else {
-					status = fmt.Sprintf("%s a while ago (%v)", trace.Status, err)
-				}
-			default:
-				status = fmt.Sprintf("unknown (%v)", trace.Status)
-			}
-			if full {
-				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, trace.PodUID, trace.Containeridx, trace.TraceID, trace.ContainerID, status, capDecode(trace.Capabilities))
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+	if !optionListNoHeaders {
+		if optionListFull {
+			fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\tCAPABILITIES\t")
+		} else {
+			if !optionListAllNamespaces {
+				fmt.Fprintln(w, "PODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
 			} else {
-				uid := trace.PodUID
-				if len(uid) > 8 {
-					uid = uid[:8]
-				}
-				containerID := trace.ContainerID
-				containerID = strings.TrimPrefix(containerID, "docker://")
-				containerID = strings.TrimPrefix(containerID, "cri-o://")
-				if len(containerID) > 8 {
-					containerID = containerID[:8]
-				}
-				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", node, trace.Namespace, trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)
+				fmt.Fprintln(w, "NAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
+			}
+		}
+	}
+
+	for _, trace := range traces {
+		if trace.Containeridx == -1 {
+			// The pause container
+			continue
+		}
+
+		if optionListNamespace != "" &&
+			trace.Namespace != optionListNamespace &&
+			!optionListAllNamespaces {
+			continue
+		}
+
+		status := ""
+		switch trace.Status {
+		case "created":
+			fallthrough
+		case "ready":
+			t, err := time.Parse(time.RFC3339, trace.TimeCreation)
+			if err == nil {
+				status = fmt.Sprintf("created %s ago", units.HumanDuration(time.Now().Sub(t)))
+			} else {
+				status = fmt.Sprintf("created a while ago (%v)", err)
+			}
+		case "deleted":
+			t, err := time.Parse(time.RFC3339, trace.TimeDeletion)
+			if err == nil {
+				status = fmt.Sprintf("%s %s ago", trace.Status, units.HumanDuration(time.Now().Sub(t)))
+			} else {
+				status = fmt.Sprintf("%s a while ago (%v)", trace.Status, err)
+			}
+		default:
+			status = fmt.Sprintf("unknown (%v)", trace.Status)
+		}
+		if optionListFull {
+			fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", trace.Node, trace.Namespace, trace.Podname, trace.PodUID, trace.Containeridx, trace.TraceID, trace.ContainerID, status, capDecode(trace.Capabilities))
+		} else {
+			uid := trace.PodUID
+			if len(uid) > 8 {
+				uid = uid[:8]
+			}
+			containerID := trace.ContainerID
+			containerID = strings.TrimPrefix(containerID, "docker://")
+			containerID = strings.TrimPrefix(containerID, "cri-o://")
+			if len(containerID) > 8 {
+				containerID = containerID[:8]
+			}
+			if !optionListAllNamespaces {
+				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n", trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)
+			} else {
+				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\n", trace.Namespace, trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)
 			}
 		}
 	}
