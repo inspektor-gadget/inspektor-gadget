@@ -125,15 +125,20 @@ fi
 
 echo $$ > $PIDFILE
 
-if [ "$MANAGER" = "true" ] ; then
-  $GADGETTRACERMANAGER -call add-tracer -tracerid "$TRACERID" -label "$LABEL" -namespace "$NAMESPACE" -podname "$PODNAME" -containerindex "$CONTAINERINDEX" > /dev/null
-  CONTAINERSET=$BPFDIR/gadget/mntnsset-$TRACERID
-fi
-
 export TERM=xterm-256color
 export PYTHONUNBUFFERED=TRUE
+
 if [ "$MANAGER" = "true" ] ; then
-  exec $GADGET --mntnsmap $CONTAINERSET "$@"
+  $GADGETTRACERMANAGER -call add-tracer -tracerid "$TRACERID" -label "$LABEL" -namespace "$NAMESPACE" -podname "$PODNAME" -containerindex "$CONTAINERINDEX" > /dev/null
+  # use the --cgroupmap option if the system is using cgroup-v2
+  MODE="--mntnsmap"
+  MAPPATH=$BPFDIR/gadget/mntnsset-$TRACERID
+  CGROUP_V2_PATH=$(cat /proc/self/cgroup |grep ^0:|cut -d: -f3)
+  if [ ! -z "$CGROUP_V2_PATH" ] && [ "$CGROUP_V2_PATH" != "/" ]; then
+    MODE="--cgroupmap"
+    MAPPATH=$BPFDIR/gadget/cgroupidset-$TRACERID
+  fi
+  exec $GADGET $MODE $MAPPATH "$@"
 else
   exec $GADGET "$@"
 fi
