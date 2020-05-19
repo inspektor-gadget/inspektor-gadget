@@ -38,7 +38,7 @@ jobs:
 
     - name: Build Inspektor Gadget
       run: |
-        IMAGE_TAG=${{steps.publish-registry.outputs.snapshot-tag}} make build-ig
+        IMAGE_TAG=${{steps.publish-registry.outputs.snapshot-tag}} make kubectl-gadget
 
         mkdir -p out/inspektor-gadget
         cp kubectl-gadget-* out/inspektor-gadget/
