@@ -82,48 +82,6 @@ The different supported modes can be set by using the `runc-hooks-mode` option:
 - `flatcar_edge`: Use a custom `runc` version shipped with Flatcar Container Linux Edge.
 - `ldpreload`: Adds an entry in `/etc/ld.so.preload` to call a custom shared library that looks for `runc` calls and dynamically adds the needed OCI hooks to the cointainer `config.json` specification. Since this feature is highly experimental, it'll not be considered when `auto` is used.
 
-## Getting all gadgets
-
-Not all gadgets currently work everywhere.
-
-| Gadget            | Flatcar Edge | Flatcar Stable | Minikube | GKE |
-|-------------------|:------------:|:--------------:|:--------:|:---:|
-| traceloop         |       ✔️      |        ✔️       |     ✔️    |  ✔️  |
-| network-policy    |       ✔️      |        ✔️       |     ✔️    |  ✔️  |
-| tcptracer         |       ✔️      |                |          |     |
-| tcpconnect        |       ✔️      |                |          |     |
-| tcptop            |       ✔️      |                |          |     |
-| execsnoop         |       ✔️      |                |          |     |
-| opensnoop         |       ✔️      |                |          |     |
-| bindsnoop         |       ✔️      |                |          |     |
-| capabilities      |       ✔️      |                |          |     |
-| profile           |       ✔️      |                |          |     |
-
-Inspektor Gadget needs some recent Linux features and modifications in Kubernetes present in [Flatcar Container Linux Edge](https://kinvolk.io/blog/2019/05/introducing-the-flatcar-linux-edge-channel/) and [Lokomotive](https://kinvolk.io/blog/2019/05/driving-kubernetes-forward-with-lokomotive/).
-
-### Using Lokomotive on Flatcar Edge
-
-Install your cluster following the [Lokomotive docs](https://github.com/kinvolk/lokomotive#getting-started). To use Flatcar Container Linx edge you should use `os_channel = "edge"` on the configuration file. See [configuration reference](https://github.com/kinvolk/lokomotive/tree/master/docs/configuration-reference/platforms) for more information.
-
-### On another Kubernetes distribution
-
-If you wish to install all the gadgets on another Kubernetes distribution, you will need the following:
-
-- Kubernetes
-- Linux >= 4.18 (for [`bpf_get_current_cgroup_id`](https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md))
-- cgroup-v2 enabled in:
-  - systemd
-    - boot option `systemd.unified_cgroup_hierarchy=false systemd.legacy_systemd_cgroup_controller=false`
-  - kubelet
-    - `--cgroup-driver=systemd`
-  - docker
-    - `DOCKER_OPTS="--exec-opt native.cgroupdriver=systemd"`
-  - containerd
-    - `systemd_cgroup = true` in `$XDG_DATA_DIR/share/containerd/config.toml`
-  - runc
-- runc recompiled with [additional static OCI hooks](https://github.com/kinvolk/runc/tree/alban/static-hooks)
-- The gadget daemon set
-
 ## Development environment on minikube for the traceloop gadget
 
 It's possible to make changes to traceloop and test them on minikube locally without pushing container images to any registry.
