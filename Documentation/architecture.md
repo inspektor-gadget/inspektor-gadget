@@ -23,24 +23,26 @@ To trace pods, Inspektor Gadget attaches BPF programs to kernel functions and
 the kernel will run them always when the functions are executed. Therefore, the BPF
 programs need to detect if the syscall that triggered the function comes from a pod
 that Inspektor Gadget should trace. To do that the program looks up the current
-cgroup which may correspond to a pod and otherwise exits early.
-If only a specific pod should be traced, the program can lookup the labels,
-podname, or namespace for this pod and compare it to filter arguments.
+cgroup id in a BPF map containing the list of pods to trace, if it's not found
+the program exits early.
 Finally, the BPF program gathers the information to trace, e.g., syscall parameters,
-and writes them to a ring buffer. Inspektor Gadget's userspace utility listens on
-this ring buffer and fetches new events. If the tracing ends, the BPF program
-is removed again.
+and writes them to a ring buffer or BPF map. Inspektor Gadget's userspace utility
+listens or reads on this ring buffer or BPF map and fetches new events.
+If the tracing ends, the BPF program is removed again.
 
-The information of which cgroup belongs to which pod, and the corresponding
-namespace, labels, and pod name are available through BPF maps (hash tables).
-They are set up and updated by an OCI Prestart Hook.
+The `Gadget Tracer Manager` keeps a list of running gadgets and containers.
+Each running gadget has an associated BPF map that is filled with the cgroup
+ids of the containers to be traced according to the namespace, labels, pod name,
+etc. parameters passed to the gadget.
+The `Gadget Tracer Manager` also exposes a gRPC interface that is called each
+time a container is created or destroyed by the OCI PreStart and PostStop hooks.
+It updates the corresponding BPF maps of each gadget if the container satisfies
+the matching criteria.
 
-![Preparing BPF maps with k8s labels](architecture/k8smaps.svg)
-
-![Checking labels from BPF](architecture/checkinglabels.svg)
+![Gadget Tracer Manager](architecture/gadget-tracer-manager.svg)
 
 The execsnoop, opensnoop, tcptop and tcpconnect subcommands use programs
-from [bcc](https://github.com/iovisor/bcc) with additional filtering modifications.
+from [bcc](https://github.com/iovisor/bcc) with additional [filtering modifications](https://github.com/iovisor/bcc/blob/master/docs/filtering_by_cgroups.md).
 They are directly started on the nodes and their output is forwarded to Inspektor Gadget.
 
 Sometimes it is useful to run a BPF program always in the background. It can trace
