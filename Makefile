@@ -14,31 +14,33 @@ LDFLAGS := "-X main.version=$(VERSION) \
 -extldflags '-static'"
 
 .PHONY: build
-build: build-ig build-gadget-container
+build: kubectl-gadget build-gadget-container
 
-.PHONY: build-ig
-build-ig: kubectl-gadget-linux-amd64 kubectl-gadget-darwin-amd64
+.PHONY: kubectl-gadget
+kubectl-gadget: kubectl-gadget-linux-amd64 kubectl-gadget-darwin-amd64
 
+.PHONY: kubectl-gadget-linux-amd64
 kubectl-gadget-linux-amd64:
 	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 		-ldflags $(LDFLAGS) \
 		-o kubectl-gadget-linux-amd64 \
 		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
 
+.PHONY: kubectl-gadget-darwin-amd64
 kubectl-gadget-darwin-amd64:
 	GO111MODULE=on CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build \
 		-ldflags $(LDFLAGS) \
 		-o kubectl-gadget-darwin-amd64 \
 		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
 
+.PHONY: install-user-linux
+install-user-linux: kubectl-gadget-linux-amd64
+	mkdir -p ~/.local/bin/
+	cp kubectl-gadget-linux-amd64 ~/.local/bin/kubectl-gadget
+
 .PHONY: build-gadget-container
 build-gadget-container:
 	make -C gadget-container build
-
-.PHONY: install-user
-install-user: build-ig
-	mkdir -p ~/.local/bin/
-	cp kubectl-gadget ~/.local/bin/
 
 .PHONY: test
 test:

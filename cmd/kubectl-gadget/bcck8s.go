@@ -214,6 +214,13 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		labelFilter := ""
 		if labelParam != "" {
+			pairs := strings.Split(labelParam, ",")
+			for _, pair := range pairs {
+				kv := strings.Split(pair, "=")
+				if len(kv) != 2 {
+					contextLogger.Fatalf("labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])\n")
+				}
+			}
 			labelFilter = fmt.Sprintf("--label %q", labelParam)
 		}
 
