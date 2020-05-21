@@ -12,11 +12,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/weaveworks/tcptracer-bpf/pkg/tracer"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 )
 
 var (
@@ -144,11 +144,7 @@ func main() {
 	}
 
 	// Connect to the API server
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		panic(err)
-	}
-	clientset, err := kubernetes.NewForConfig(config)
+	clientset, err := k8sutil.NewClientset(kubeconfig)
 	if err != nil {
 		panic(err)
 	}
