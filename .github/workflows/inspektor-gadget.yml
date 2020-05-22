@@ -56,6 +56,17 @@ jobs:
       run: |
         make test
 
+    - name: Setup Minikube
+      uses: manusa/actions-setup-minikube@v1.0.2
+      with:
+        minikube version: 'v1.9.2'
+        kubernetes version: 'v1.18.2'
+        github token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Integration tests
+      run: |
+        IMAGE_TAG=${{steps.publish-registry.outputs.snapshot-tag}} make integration-tests
+
     - name: Smoke test build of the dev image for minikube
       run: |
         mkdir ../traceloop

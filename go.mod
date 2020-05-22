@@ -7,6 +7,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/iovisor/gobpf v0.0.0-20191129151106-ac26197bb7be
 	github.com/kinvolk/traceloop v0.0.0-20200512161254-504867dad201
+	github.com/kr/pretty v0.1.0
 	github.com/opencontainers/runtime-spec v1.0.1
 	github.com/sirupsen/logrus v1.4.1
 	github.com/spf13/cobra v0.0.3

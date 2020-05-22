@@ -44,4 +44,11 @@ build-gadget-container:
 
 .PHONY: test
 test:
-	go test ./...
+	go test -test.v ./...
+
+.PHONY: integration-tests
+integration-tests:
+	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget-linux-amd64" \
+		go test -test.v ./integration/... \
+			-integration \
+			-image docker.io/kinvolk/gadget:$(shell ./tools/image-tag branch)
