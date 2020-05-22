@@ -299,6 +299,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				}
 			}(node.Name, i) // node.Name is invalidated by the above for loop, causes races
 		}
+		fmt.Println()
 
 		select {
 		case <-sigs:
