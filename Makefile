@@ -48,4 +48,7 @@ test:
 
 .PHONY: integration-tests
 integration-tests:
-	go test -test.v ./integration/... -integration -image docker.io/kinvolk/gadget:latest # FIXME
+	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget-linux-amd64" \
+		go test -test.v ./integration/... \
+			-integration \
+			-image docker.io/kinvolk/gadget:$(shell ./tools/image-tag branch)
