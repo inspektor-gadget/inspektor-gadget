@@ -44,4 +44,8 @@ build-gadget-container:
 
 .PHONY: test
 test:
-	go test ./...
+	go test -test.v ./...
+
+.PHONY: integration-tests
+integration-tests:
+	go test -test.v ./integration/... -integration -image docker.io/kinvolk/gadget:latest # FIXME
