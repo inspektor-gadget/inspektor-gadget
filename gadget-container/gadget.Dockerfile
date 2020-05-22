@@ -1,22 +1,22 @@
 # Builder: traceloop
 
 # traceloop built from:
-# https://github.com/kinvolk/traceloop/commit/a4887a9514f3cd7f38b714670a4e031cc2d1031d
+# https://github.com/kinvolk/traceloop/commit/0b9f44a1b61b528145f56c8e4b271186be6028f2
 # See:
 # - https://github.com/kinvolk/traceloop/actions
 # - https://hub.docker.com/repository/docker/kinvolk/traceloop/tags
 
-FROM docker.io/kinvolk/traceloop:20200514020844a4887a as traceloop
+FROM docker.io/kinvolk/traceloop:202005220209060b9f44 as traceloop
 
 # Main gadget image
 
 # BCC built from:
-# https://github.com/kinvolk/bcc/commit/ab54de2e4449027f2b4dccd022adc57bec4fd4eb
+# https://github.com/kinvolk/bcc/commit/32ab858309c84c23049715aaab936ce654ad5792
 # See:
 # - https://github.com/kinvolk/bcc/actions
 # - https://hub.docker.com/repository/docker/kinvolk/bcc/tags
 
-FROM docker.io/kinvolk/bcc:20200330122541ab54de
+FROM docker.io/kinvolk/bcc:2020052208101032ab85
 
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
