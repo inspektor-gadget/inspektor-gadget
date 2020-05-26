@@ -7,6 +7,10 @@ for i in ocihookgadget runc-hook-prestart.sh runc-hook-poststop.sh ; do
   /bin/rm -f /host/opt/bin/$i
 done
 
+# CRIO hooks
+/bin/rm -f /host/etc/containers/oci/hooks.d/gadget-prestart.json
+/bin/rm -f /host/etc/containers/oci/hooks.d/gadget-prestart.json
+
 # ld preload support
 if [ -f "/host/etc/ld.so.preload" ] ; then
   # remove entry in /host/etc/ld.so.preload
