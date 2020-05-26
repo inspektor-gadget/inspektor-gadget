@@ -67,11 +67,11 @@ programs are and how Inspektor Gadget uses them is briefly explained here:
 
 Install Inspektor Gadget (client-side):
 
+Use [krew](https://sigs.k8s.io/krew) plugin manager to install:
+
 ```
-$ wget https://github.com/kinvolk/inspektor-gadget/releases/download/v0.1.0/inspektor-gadget-linux-amd64.tar.gz
-$ tar xvf inspektor-gadget-linux-amd64.tar.gz
-$ sudo cp kubectl-gadget /usr/local/bin/
-$ kubectl gadget version
+kubectl krew install gadget
+kubectl gadget --help
 ```
 
 Install Inspektor Gadget on Kubernetes:
@@ -80,7 +80,7 @@ Install Inspektor Gadget on Kubernetes:
 $ kubectl gadget deploy | kubectl apply -f -
 ```
 
-[Read the detailed install instructions](Documentation/install.md)
+Read the detailed [install instructions](Documentation/install.md) to find more information.
 
 ## Contributing
 
