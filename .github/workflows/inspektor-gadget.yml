@@ -40,10 +40,17 @@ jobs:
       run: |
         IMAGE_TAG=${{steps.publish-registry.outputs.snapshot-tag}} make kubectl-gadget
 
-        mkdir -p out/inspektor-gadget
-        cp kubectl-gadget-* out/inspektor-gadget/
+        # Prepare assets for release and actions artifacts
 
-        tar --sort=name --owner=root:0 --group=root:0 -czf inspektor-gadget.tar.gz -C out .
+        platforms="darwin-amd64 linux-amd64"
+        for platform in $platforms; do
+          mkdir $platform
+          cp kubectl-gadget-$platform $platform/kubectl-gadget
+          cp LICENSE $platform/
+          tar --sort=name --owner=root:0 --group=root:0 \
+            -czf inspektor-gadget-$platform.tar.gz -C $platform \
+            kubectl-gadget LICENSE
+        done
 
     - name: Unit tests
       run: |
@@ -55,11 +62,17 @@ jobs:
         touch ../traceloop/traceloop
         MINIKUBE=true make -C gadget-container/ docker-gadget/minikube-build
 
-    - name: Upload Inspektor Gadget artifact
+    - name: Upload linux-amd64 artifact
       uses: actions/upload-artifact@v1
       with:
-        name: inspektor-gadget
-        path: inspektor-gadget.tar.gz
+        name: inspektor-gadget-linux-amd64
+        path: inspektor-gadget-linux-amd64.tar.gz
+
+    - name: Upload darwin-amd64 artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: inspektor-gadget-darwin-amd64
+        path: inspektor-gadget-darwin-amd64.tar.gz
 
     - name: Create Release
       id: create_release
@@ -72,14 +85,27 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: true
         prerelease: false
-    - name: Upload Release Asset
-      id: upload-release-asset
+
+    - name: Upload linux-amd64 Release Asset
+      id: upload-release-asset-linux-amd64
       uses: actions/upload-release-asset@v1.0.1
       if: startsWith(github.ref, 'refs/tags/v')
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: inspektor-gadget.tar.gz
-        asset_name: inspektor-gadget.tar.gz
+        asset_path: inspektor-gadget-linux-amd64.tar.gz
+        asset_name: inspektor-gadget-linux-amd64.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload darwin-amd64 Release Asset
+      id: upload-release-asset-darwin-amd64
+      uses: actions/upload-release-asset@v1.0.1
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: inspektor-gadget-darwin-amd64.tar.gz
+        asset_name: inspektor-gadget-darwin-amd64.tar.gz
         asset_content_type: application/gzip
