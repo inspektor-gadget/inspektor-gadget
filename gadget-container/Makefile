@@ -4,7 +4,7 @@ IMAGE_BRANCH_TAG=$(shell ../tools/image-tag branch)
 MINIKUBE ?= minikube
 
 .PHONY: gadget-container-deps
-gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor
+gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib
 
 .PHONY: gadgettracermanager
 gadgettracermanager:
@@ -32,6 +32,12 @@ networkpolicyadvisor:
 .PHONY: networkpolicyadvisor/push
 networkpolicyadvisor/push: networkpolicyadvisor
 	for POD in `kubectl get pod -n kube-system -l k8s-app=gadget -o=jsonpath='{.items[*].metadata.name}'` ; do kubectl cp ./bin/networkpolicyadvisor -n kube-system $$POD:/bin/ ; done
+
+.PHONY: runchookslib
+runchookslib:
+	mkdir -p bin
+	gcc -Wall -o bin/runchooks.so -shared -fPIC runchooks/runchooks.c -ldl
+
 
 .PHONY: build
 build: gadget-container-deps

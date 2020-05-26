@@ -39,32 +39,59 @@ ARGS=k8s
 FLATCAR_EDGE=0
 if grep -q '^ID=flatcar$' /host/etc/os-release > /dev/null ; then
   if grep -q '^GROUP=edge$' /host/etc/flatcar/update.conf > /dev/null ; then
+    echo "Flatcar Edge detected."
     FLATCAR_EDGE=1
+
+    CGROUP_V1_PATH=$(cat /proc/1/cgroup |grep ^1:|cut -d: -f3)
+    CGROUP_V2_PATH=$(cat /proc/1/cgroup |grep ^0:|cut -d: -f3)
+    if [ $CGROUP_V1_PATH != $CGROUP_V2_PATH ] ; then
+      echo "cgroup-v2 is not correctly enabled on Kubernetes pods" >&2
+      exit 1
+    fi
   fi
 fi
 
-if [ "$FLATCAR_EDGE" = 1 ] ; then
-  echo "Flatcar Edge detected."
-  echo "Installing scripts on host..."
+# Choose what runc hook mode to use based on the configuration detected
+RUNC_HOOK_MODE="$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS_MODE"
 
-  CGROUP_V1_PATH=$(cat /proc/1/cgroup |grep ^1:|cut -d: -f3)
-  CGROUP_V2_PATH=$(cat /proc/1/cgroup |grep ^0:|cut -d: -f3)
-  if [ $CGROUP_V1_PATH != $CGROUP_V2_PATH ] ; then
-    echo "cgroup-v2 is not correctly enabled on Kubernetes pods" >&2
-    exit 1
+if [ "$RUNC_HOOK_MODE" = "auto" ] ; then
+  if [ "$FLATCAR_EDGE" = 1 ] ; then
+    echo "runc hook mode flatcar_edge detected."
+    RUNC_HOOK_MODE="flatcar_edge"
+  else
+    RUNC_HOOK_MODE="error"
+    echo "Error detecting runc hook mode."
   fi
+fi
+
+if [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
+  echo "Installing ld.so.preload with runchooks.so for OCI hooks"
+  mkdir -p /host/opt/runchooks/
+  cp /opt/runchooks/runchooks.so /host/opt/runchooks/
+  cp /opt/runchooks/add-hooks.jq /host/opt/runchooks/
+  touch /host/etc/ld.so.preload
+  if grep -q ^/opt/runchooks/runchooks.so$ /host/etc/ld.so.preload > /dev/null ; then
+    echo "runchooks.so already setup in /etc/ld.so.preload"
+  else
+    echo "/opt/runchooks/runchooks.so" >> /host/etc/ld.so.preload
+  fi
+fi
+
+if [ "$RUNC_HOOK_MODE" = "flatcar_edge" ] ||
+   [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
+  echo "Installing hooks scripts on host..."
 
   mkdir -p /host/opt/bin/
   for i in ocihookgadget runc-hook-prestart.sh runc-hook-poststop.sh ; do
     echo "Installing $i..."
     cp /bin/$i /host/opt/bin/
   done
-  echo "Installation done "
-
-  echo "Starting the Gadget Tracer Manager in the background..."
-  rm -f /run/gadgettracermanager.socket
-  /bin/gadgettracermanager -serve &
+  echo "Installation done"
 fi
+
+echo "Starting the Gadget Tracer Manager in the background..."
+rm -f /run/gadgettracermanager.socket
+/bin/gadgettracermanager -serve &
 
 if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
   rm -f /run/traceloop.socket

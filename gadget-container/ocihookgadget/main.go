@@ -92,14 +92,18 @@ func main() {
 		return
 	}
 
-	// Get cgroup-v2 path
-	cgroupPath, err := containerutils.GetCgroup2Path(ociState.Pid)
+	// Get cgroup paths
+	cgroupPathV1, cgroupPathV2, err := containerutils.GetCgroupPaths(ociState.Pid)
 	if err != nil {
 		panic(err)
 	}
+	cgroupPathV2WithMountpoint, _ := containerutils.CgroupPathV2AddMountpoint(cgroupPathV2)
 
 	// Get cgroup-v2 id
-	cgroupId, err := containerutils.GetCgroupID(cgroupPath)
+	cgroupId, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
+
+	// Get mount namespace ino
+	mntns, err := containerutils.GetMntNs(ociState.Pid)
 	if err != nil {
 		panic(err)
 	}
@@ -169,9 +173,15 @@ func main() {
 	labels := []*pb.Label{}
 	for _, p := range pods.Items {
 		uid := string(p.ObjectMeta.UID)
-		uidWithUndescores := strings.ReplaceAll(uid, "-", "_")
-		if !strings.Contains(cgroupPath, uidWithUndescores) {
-			continue
+		uidWithUnderscores := strings.ReplaceAll(uid, "-", "_")
+		if cgroupPathV2 != "" {
+			if !strings.Contains(cgroupPathV2, uidWithUnderscores) && !strings.Contains(cgroupPathV2, uid) {
+				continue
+			}
+		} else {
+			if !strings.Contains(cgroupPathV1, uidWithUnderscores) && !strings.Contains(cgroupPathV1, uid) {
+				continue
+			}
 		}
 		namespace = p.ObjectMeta.Namespace
 		podname = p.ObjectMeta.Name
@@ -193,8 +203,9 @@ func main() {
 
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{
 		ContainerId:    ociState.ID,
-		CgroupPath:     cgroupPath,
+		CgroupPath:     cgroupPathV2WithMountpoint,
 		CgroupId:       cgroupId,
+		Mntns:          mntns,
 		Namespace:      namespace,
 		Podname:        podname,
 		ContainerIndex: int32(containerIndex),
