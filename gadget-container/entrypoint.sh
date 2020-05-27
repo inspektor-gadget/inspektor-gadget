@@ -92,11 +92,19 @@ if [ "$RUNC_HOOK_MODE" = "flatcar_edge" ] ||
    [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
   echo "Installing hooks scripts on host..."
 
+  KUBECONFIG_PARAM=`ps aux | grep kubelet | grep -Eo '\-\-kubeconfig=.[^ ]+' | head -1 | cut -c 2-`
+  echo "Using $KUBECONFIG_PARAM for ocihookgadget."
+
+
   mkdir -p /host/opt/bin/
   for i in ocihookgadget runc-hook-prestart.sh runc-hook-poststop.sh ; do
     echo "Installing $i..."
     cp /bin/$i /host/opt/bin/
   done
+
+  # get the kubeconfig flag from the kubelet process and set it to be
+  # used in ocihookgadget
+  sed -i "s@%KUBECONFIG%@$KUBECONFIG_PARAM@g" /host/opt/bin/runc-hook-{prestart,poststop}.sh
 
   if [ "$RUNC_HOOK_MODE" = "crio" ] ; then
     echo "Installing OCI hooks configuration in /etc/containers/oci/hooks.d/"
