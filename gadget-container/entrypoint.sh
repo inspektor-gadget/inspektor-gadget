@@ -114,6 +114,7 @@ if [ "$RUNC_HOOK_MODE" = "flatcar_edge" ] ||
     echo "Installing $i..."
     cp /bin/$i /host/opt/bin/
   done
+  sed -i "s/^NODE_NAME=.*$/NODE_NAME=$NODE_NAME/g" /host/opt/bin/runc-hook-{prestart,poststop}.sh
 
   if [ "$RUNC_HOOK_MODE" = "crio" ] ; then
     echo "Installing OCI hooks configuration in /etc/containers/oci/hooks.d/"

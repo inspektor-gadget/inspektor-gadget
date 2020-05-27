@@ -5,6 +5,7 @@ import (
 	"os"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -25,12 +26,14 @@ func InitialContainers() (arr []pb.ContainerDefinition, err error) {
 	}
 
 	// List pods
-	pods, err := clientset.CoreV1().Pods("").List(metav1.ListOptions{})
+	nodeSelf := os.Getenv("NODE_NAME")
+	pods, err := clientset.CoreV1().Pods("").List(metav1.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector("spec.nodeName", nodeSelf).String(),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	nodeSelf := os.Getenv("NODE_NAME")
 	for _, pod := range pods.Items {
 		if pod.Spec.NodeName != nodeSelf {
 			continue
