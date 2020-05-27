@@ -7,9 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"unsafe"
+
+	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 /*
@@ -171,4 +174,27 @@ func PidFromContainerId(containerID string) (int, error) {
 		return crioInspect.Pid, nil
 	}
 	return -1, fmt.Errorf("unknown container runtime: %s", containerID)
+}
+
+func ParseOCIState(stateBuf []byte) (id string, pid int, err error) {
+	ociState := &ocispec.State{}
+	err = json.Unmarshal(stateBuf, ociState)
+	if err != nil {
+		// Some versions of runc produce an invalid json...
+		// As a workaround, make it valid by trimming the invalid parts
+		fix := regexp.MustCompile(`(?ms)^(.*),"annotations":.*$`)
+		matches := fix.FindStringSubmatch(string(stateBuf))
+		if len(matches) != 2 {
+			err = fmt.Errorf("cannot parse OCI state: matches=%+v\n %v\n%s\n", matches, err, string(stateBuf))
+			return
+		}
+		err = json.Unmarshal([]byte(matches[1]+"}"), ociState)
+		if err != nil {
+			err = fmt.Errorf("cannot parse OCI state: %v\n%s\n", err, string(stateBuf))
+			return
+		}
+	}
+	id = ociState.ID
+	pid = ociState.Pid
+	return
 }

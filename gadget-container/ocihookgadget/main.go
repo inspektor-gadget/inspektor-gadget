@@ -57,15 +57,14 @@ func main() {
 		panic(fmt.Errorf("cannot read stdin: %v\n", err))
 	}
 
-	ociState := &ocispec.State{}
-	err = json.Unmarshal(stateBuf, ociState)
+	ociStateID, ociStatePid, err := containerutils.ParseOCIState(stateBuf)
 	if err != nil {
 		panic(fmt.Errorf("cannot parse stdin: %v\n%s\n", err, string(stateBuf)))
 	}
 
 	// Validate state
-	if ociState.ID == "" || (ociState.Pid == 0 && hook == "prestart") {
-		panic(fmt.Errorf("invalid OCI state: %+v", ociState))
+	if ociStateID == "" || (ociStatePid == 0 && hook == "prestart") {
+		panic(fmt.Errorf("invalid OCI state: %v %v", ociStateID, ociStatePid))
 	}
 
 	// Connect to the Gadget Tracer Manager
@@ -84,7 +83,7 @@ func main() {
 	// Handle the poststop hook first
 	if hook == "poststop" {
 		_, err := client.RemoveContainer(ctx, &pb.ContainerDefinition{
-			ContainerId: ociState.ID,
+			ContainerId: ociStateID,
 		})
 		if err != nil {
 			panic(err)
@@ -93,7 +92,7 @@ func main() {
 	}
 
 	// Get cgroup paths
-	cgroupPathV1, cgroupPathV2, err := containerutils.GetCgroupPaths(ociState.Pid)
+	cgroupPathV1, cgroupPathV2, err := containerutils.GetCgroupPaths(ociStatePid)
 	if err != nil {
 		panic(err)
 	}
@@ -103,14 +102,14 @@ func main() {
 	cgroupId, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
 
 	// Get mount namespace ino
-	mntns, err := containerutils.GetMntNs(ociState.Pid)
+	mntns, err := containerutils.GetMntNs(ociStatePid)
 	if err != nil {
 		panic(err)
 	}
 
 	// Get bundle directory and OCI spec (config.json)
 	ppid := 0
-	if statusFile, err := os.Open(filepath.Join("/proc", fmt.Sprintf("%d", ociState.Pid), "status")); err == nil {
+	if statusFile, err := os.Open(filepath.Join("/proc", fmt.Sprintf("%d", ociStatePid), "status")); err == nil {
 		defer statusFile.Close()
 		reader := bufio.NewReader(statusFile)
 		for {
@@ -202,7 +201,7 @@ func main() {
 	}
 
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{
-		ContainerId:    ociState.ID,
+		ContainerId:    ociStateID,
 		CgroupPath:     cgroupPathV2WithMountpoint,
 		CgroupId:       cgroupId,
 		Mntns:          mntns,

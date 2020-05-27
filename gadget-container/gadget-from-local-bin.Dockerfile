@@ -29,5 +29,8 @@ COPY bin/networkpolicyadvisor /bin/networkpolicyadvisor
 COPY bin/runchooks.so /opt/runchooks/runchooks.so
 COPY runchooks/add-hooks.jq /opt/runchooks/add-hooks.jq
 
+COPY crio-hooks/gadget-prestart.json /opt/crio-hooks/gadget-prestart.json
+COPY crio-hooks/gadget-poststop.json /opt/crio-hooks/gadget-poststop.json
+
 ADD traceloop /bin/traceloop
 

@@ -36,6 +36,13 @@ echo "-:pfree_uts_ns" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || 
 echo "-:pcap_capable" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
 
 ARGS=k8s
+
+CRIO=0
+if grep -q '^1:name=systemd:.*/crio-[0-9a-f]*\.scope$' /proc/self/cgroup > /dev/null ; then
+    echo "CRI-O detected."
+    CRIO=1
+fi
+
 FLATCAR_EDGE=0
 if grep -q '^ID=flatcar$' /host/etc/os-release > /dev/null ; then
   if grep -q '^GROUP=edge$' /host/etc/flatcar/update.conf > /dev/null ; then
@@ -51,11 +58,31 @@ if grep -q '^ID=flatcar$' /host/etc/os-release > /dev/null ; then
   fi
 fi
 
+if grep -q '^ID="rhcos"$' /host/etc/os-release > /dev/null ; then
+  if [ ! -d "/host/usr/src/kernels/$(uname -r)" ] ; then
+    echo "Fetching kernel-devel from CentOS 8."
+    REPO=http://mirror.centos.org/centos/8/BaseOS/x86_64/os/Packages/
+    RPM=kernel-devel-$(uname -r).rpm
+    RPMDIR=/opt/gadget-kernel/
+    RPMHOSTDIR=/host${RPMDIR}
+    mkdir -p $RPMHOSTDIR/usr/src/kernels/
+    test -r $RPMHOSTDIR/$RPM || \
+        curl -fsSLo $RPMHOSTDIR/$RPM $REPO/$RPM
+    test -r $RPMHOSTDIR/usr/src/kernels/`uname -r`/.config || \
+        chroot /host sh -c "cd $RPMDIR && rpm2cpio $RPM | cpio -i"
+    mkdir -p /usr/src/kernels/`uname -r`/
+    mount --bind $RPMHOSTDIR/usr/src/kernels/`uname -r` /usr/src/kernels/`uname -r`
+  fi
+fi
+
 # Choose what runc hook mode to use based on the configuration detected
 RUNC_HOOK_MODE="$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS_MODE"
 
 if [ "$RUNC_HOOK_MODE" = "auto" ] ; then
-  if [ "$FLATCAR_EDGE" = 1 ] ; then
+  if [ "$CRIO" = 1 ] ; then
+    echo "runc hook mode cri-o detected."
+    RUNC_HOOK_MODE="crio"
+  elif [ "$FLATCAR_EDGE" = 1 ] ; then
     echo "runc hook mode flatcar_edge detected."
     RUNC_HOOK_MODE="flatcar_edge"
   else
@@ -78,14 +105,31 @@ if [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
 fi
 
 if [ "$RUNC_HOOK_MODE" = "flatcar_edge" ] ||
+   [ "$RUNC_HOOK_MODE" = "crio" ] ||
    [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
   echo "Installing hooks scripts on host..."
+
+  KUBECONFIG_PARAM=`ps aux | grep kubelet | grep -Eo '\-\-kubeconfig=.[^ ]+' | head -1 | cut -c 2-`
+  echo "Using $KUBECONFIG_PARAM for ocihookgadget."
+
 
   mkdir -p /host/opt/bin/
   for i in ocihookgadget runc-hook-prestart.sh runc-hook-poststop.sh ; do
     echo "Installing $i..."
     cp /bin/$i /host/opt/bin/
   done
+
+  # get the kubeconfig flag from the kubelet process and set it to be
+  # used in ocihookgadget
+  sed -i "s@%KUBECONFIG%@$KUBECONFIG_PARAM@g" /host/opt/bin/runc-hook-{prestart,poststop}.sh
+
+  if [ "$RUNC_HOOK_MODE" = "crio" ] ; then
+    echo "Installing OCI hooks configuration in /etc/containers/oci/hooks.d/"
+    mkdir -p /host/etc/containers/oci/hooks.d/
+    cp /opt/crio-hooks/gadget-prestart.json /host/etc/containers/oci/hooks.d/gadget-prestart.json
+    cp /opt/crio-hooks/gadget-poststop.json /host/etc/containers/oci/hooks.d/gadget-poststop.json
+  fi
+
   echo "Installation done"
 fi
 
