@@ -68,9 +68,9 @@ programs are and how Inspektor Gadget uses them is briefly explained here:
 Install Inspektor Gadget (client-side):
 
 ```
-$ wget https://github.com/kinvolk/inspektor-gadget/releases/download/v0.1.0-alpha.5/inspektor-gadget.tar.gz
-$ tar xvf inspektor-gadget.tar.gz
-$ sudo cp inspektor-gadget/inspektor-gadget /usr/local/bin/kubectl-gadget
+$ wget https://github.com/kinvolk/inspektor-gadget/releases/download/v0.1.0/inspektor-gadget-linux-amd64.tar.gz
+$ tar xvf inspektor-gadget-linux-amd64.tar.gz
+$ sudo cp kubectl-gadget /usr/local/bin/
 $ kubectl gadget version
 ```
 
