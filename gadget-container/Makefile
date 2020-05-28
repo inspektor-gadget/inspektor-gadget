@@ -53,9 +53,10 @@ push:
 minikube: docker-gadget/minikube-build docker-gadget/minikube-install
 
 docker-gadget/minikube-build:
-	cp ../../traceloop/traceloop ./
+	cp ../../traceloop/traceloop ./bin/
 	eval $(shell $(MINIKUBE) docker-env | grep =) ; docker build -t docker.io/kinvolk/gadget:minikube -f gadget-from-local-bin.Dockerfile .
-	rm -f traceloop
+	mkdir -p ./bin
+	rm -f ./bin/traceloop
 
 docker-gadget/minikube-install:
 	kubectl patch ds -n kube-system gadget -p $$'spec:\n template:\n  spec:\n   containers:\n    - name: gadget\n      image: docker.io/kinvolk/gadget:minikube\n      imagePullPolicy: Never'
