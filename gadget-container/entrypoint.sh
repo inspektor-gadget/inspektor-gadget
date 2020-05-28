@@ -123,6 +123,8 @@ if [ "$RUNC_HOOK_MODE" = "flatcar_edge" ] ||
   # used in ocihookgadget
   sed -i "s@%KUBECONFIG%@$KUBECONFIG_PARAM@g" /host/opt/bin/runc-hook-{prestart,poststop}.sh
 
+  sed -i "s@%NODE%@-node $NODE_NAME@g" /host/opt/bin/runc-hook-{prestart,poststop}.sh
+
   if [ "$RUNC_HOOK_MODE" = "crio" ] ; then
     echo "Installing OCI hooks configuration in /etc/containers/oci/hooks.d/"
     mkdir -p /host/etc/containers/oci/hooks.d/

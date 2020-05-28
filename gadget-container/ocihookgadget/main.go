@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -31,12 +32,14 @@ var (
 	socketfile string
 	hook       string
 	kubeconfig string
+	node       string
 )
 
 func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
 	flag.StringVar(&hook, "hook", "", "OCI hook: prestart or poststop")
 	flag.StringVar(&kubeconfig, "kubeconfig", "/etc/kubernetes/kubeconfig", "path to a kubeconfig")
+	flag.StringVar(&node, "node", "", "node name as known in Kubernetes")
 }
 
 func main() {
@@ -162,7 +165,11 @@ func main() {
 		panic(err)
 	}
 
-	pods, err := clientset.CoreV1().Pods("").List(metav1.ListOptions{})
+	listOpts := metav1.ListOptions{}
+	if node != "" {
+		listOpts.FieldSelector = fields.OneTermEqualSelector("spec.nodeName", node).String()
+	}
+	pods, err := clientset.CoreV1().Pods("").List(listOpts)
 	if err != nil {
 		panic(err.Error())
 	}
