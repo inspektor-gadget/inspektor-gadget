@@ -19,11 +19,6 @@ import (
 
 	"google.golang.org/grpc"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils"
 )
@@ -31,14 +26,12 @@ import (
 var (
 	socketfile string
 	hook       string
-	kubeconfig string
 	node       string
 )
 
 func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
 	flag.StringVar(&hook, "hook", "", "OCI hook: prestart or poststop")
-	flag.StringVar(&kubeconfig, "kubeconfig", "/etc/kubernetes/kubeconfig", "path to a kubeconfig")
 	flag.StringVar(&node, "node", "", "node name as known in Kubernetes")
 }
 
@@ -155,56 +148,9 @@ func main() {
 		panic(fmt.Errorf("cannot parse config.json: %v\n%s\n", err, string(bundleConfig)))
 	}
 
-	// Get the pod from the API server
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		panic(err)
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err)
-	}
-
-	listOpts := metav1.ListOptions{}
-	if node != "" {
-		listOpts.FieldSelector = fields.OneTermEqualSelector("spec.nodeName", node).String()
-	}
-	pods, err := clientset.CoreV1().Pods("").List(listOpts)
-	if err != nil {
-		panic(err.Error())
-	}
-	namespace := ""
-	podname := ""
-	containerIndex := -1
-	labels := []*pb.Label{}
-	for _, p := range pods.Items {
-		uid := string(p.ObjectMeta.UID)
-		uidWithUnderscores := strings.ReplaceAll(uid, "-", "_")
-		if cgroupPathV2 != "" {
-			if !strings.Contains(cgroupPathV2, uidWithUnderscores) && !strings.Contains(cgroupPathV2, uid) {
-				continue
-			}
-		} else {
-			if !strings.Contains(cgroupPathV1, uidWithUnderscores) && !strings.Contains(cgroupPathV1, uid) {
-				continue
-			}
-		}
-		namespace = p.ObjectMeta.Namespace
-		podname = p.ObjectMeta.Name
-
-		for k, v := range p.ObjectMeta.Labels {
-			labels = append(labels, &pb.Label{Key: k, Value: v})
-		}
-
-		for i, container := range p.Spec.Containers {
-			for _, m := range ociSpec.Mounts {
-				pattern := fmt.Sprintf("pods/%s/containers/%s/", uid, container.Name)
-				if strings.Contains(m.Source, pattern) {
-					containerIndex = i
-					break
-				}
-			}
-		}
+	mountSources := []string{}
+	for _, m := range ociSpec.Mounts {
+		mountSources = append(mountSources, m.Source)
 	}
 
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{
@@ -212,10 +158,9 @@ func main() {
 		CgroupPath:     cgroupPathV2WithMountpoint,
 		CgroupId:       cgroupId,
 		Mntns:          mntns,
-		Namespace:      namespace,
-		Podname:        podname,
-		ContainerIndex: int32(containerIndex),
-		Labels:         labels,
+		CgroupV1:       cgroupPathV1,
+		CgroupV2:       cgroupPathV2,
+		MountSources:   mountSources,
 	})
 	if err != nil {
 		panic(err)

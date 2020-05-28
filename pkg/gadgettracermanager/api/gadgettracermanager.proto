@@ -75,6 +75,12 @@ message ContainerDefinition {
   string podname = 6;
   int32 container_index = 7;
   repeated Label labels = 8;
+
+  // Data required to find the container to Pod association in the
+  // gadgettracermanager.
+  string cgroup_v1 = 9;
+  string cgroup_v2 = 10;
+  repeated string mount_sources = 11;
 }
 
 message DumpStateRequest {
