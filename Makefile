@@ -49,6 +49,6 @@ test:
 .PHONY: integration-tests
 integration-tests:
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget-linux-amd64" \
-		go test -test.v ./integration/... \
+		go test ./integration/... \
 			-integration \
 			-image docker.io/kinvolk/gadget:$(shell ./tools/image-tag branch)

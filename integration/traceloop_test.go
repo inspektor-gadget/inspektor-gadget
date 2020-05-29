@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"os"
 	"os/exec"
 	"regexp"
 	"testing"
-	"text/template"
 
 	"github.com/kr/pretty"
 )
@@ -25,78 +23,63 @@ func TestTraceloop(t *testing.T) {
 	commands := []struct {
 		name           string
 		cmd            string
-		outputName     string
-		expected       string
+		expectedString string
 		expectedRegexp string
-		ignoreOutput   bool
-		debugFailed    bool
+		cleanup        bool
 	}{
 		{
-			name:         "Cleanup test namespace from previous tests",
-			cmd:          "kubectl delete ns test-ig --force --grace-period=0 || true",
-			ignoreOutput: true,
+			name:           "Deploy Inspektor Gadget",
+			cmd:            "$KUBECTL_GADGET deploy $GADGET_IMAGE_FLAG | kubectl apply -f -",
+			expectedRegexp: "gadget created",
 		},
 		{
-			name:         "Cleanup gadget deployment from previous tests",
-			cmd:          "$KUBECTL_GADGET deploy $GADGET_IMAGE_FLAG | kubectl delete --force --grace-period=0 -f - || true",
-			ignoreOutput: true,
+			name: "Wait until the gadget pods are started",
+			cmd:  "for POD in $(sleep 5 ; kubectl get pod -n kube-system -l k8s-app=gadget -o name) ; do kubectl wait --timeout=30s -n kube-system --for=condition=ready $POD ; done ; kubectl get pod -n kube-system",
 		},
 		{
-			name:     "Deploy Inspektor Gadget",
-			cmd:      "$KUBECTL_GADGET deploy $GADGET_IMAGE_FLAG | kubectl apply -f -",
-			expected: "serviceaccount/gadget created\nclusterrolebinding.rbac.authorization.k8s.io/gadget created\ndaemonset.apps/gadget created\n",
+			name: "Wait until Inspektor Gadget is initialised",
+			cmd:  "sleep 15",
 		},
 		{
-			name:         "Wait until Inspektor Gadget is ready",
-			cmd:          "for POD in $(sleep 5 ; kubectl get pod -n kube-system -l k8s-app=gadget -o name) ; do kubectl wait -n kube-system --for=condition=ready $POD ; done ; kubectl get pod -n kube-system ; sleep 15",
-			ignoreOutput: true,
+			name:           "Create test namespace",
+			cmd:            "kubectl create ns test-traceloop",
+			expectedString: "namespace/test-traceloop created\n",
 		},
 		{
-			name:     "Create test namespace",
-			cmd:      "kubectl create ns test-ig",
-			expected: "namespace/test-ig created\n",
+			name: "Run multiplication pod",
+			cmd:  "kubectl run --restart=Never -n test-traceloop --image=busybox multiplication -- sh -c 'RANDOM=output ; echo \"3*7*2\" | bc > /tmp/file-$RANDOM ; sleep infinity'",
 		},
 		{
-			name:         "Run multiplication pod",
-			cmd:          "kubectl run --restart=Never -n test-ig --image=busybox multiplication -- sh -c 'RANDOM=output ; echo \"3*7*2\" | bc > /tmp/file-$RANDOM ; sleep infinity'",
-			ignoreOutput: true,
+			name: "Wait until multiplication pod is ready",
+			cmd:  "sleep 5 ; kubectl wait -n test-traceloop --for=condition=ready pod/multiplication ; kubectl get pod -n test-traceloop ; sleep 2",
 		},
 		{
-			name:         "Wait until multiplication pod is ready",
-			cmd:          "sleep 5 ; kubectl wait -n test-ig --for=condition=ready pod/multiplication ; kubectl get pod -n test-ig ; sleep 2",
-			ignoreOutput: true,
+			name:           "Check traceloop list",
+			cmd:            "sleep 5 ; $KUBECTL_GADGET traceloop list -n test-traceloop --no-headers | grep multiplication | awk '{print $1\" \"$6}'",
+			expectedString: "multiplication started\n",
 		},
 		{
-			name:     "Check traceloop list",
-			cmd:      "sleep 5 ; $KUBECTL_GADGET traceloop list -n test-ig --no-headers | grep multiplication | awk '{print $1\" \"$6}'",
-			expected: "multiplication started\n",
-		},
-		{
-			name:         "Get trace ID for the multiplication pod",
-			cmd:          `$KUBECTL_GADGET traceloop list -n test-ig --no-headers | grep multiplication | awk '{printf "%s", $4}'`,
-			outputName:   "multiplication_trace_id",
-			ignoreOutput: true,
-		},
-		{
-			name:           "Check traceloop show",
-			cmd:            `$KUBECTL_GADGET traceloop show {{index .Value "multiplication_trace_id"}}`,
+			name: "Check traceloop show",
+			cmd: `TRACE_ID=$($KUBECTL_GADGET traceloop list -n test-traceloop --no-headers | grep multiplication | awk '{printf "%s", $4}') ; ` +
+				`$KUBECTL_GADGET traceloop show $TRACE_ID | grep -C 5 write`,
 			expectedRegexp: "\\[bc\\] write\\(1, \"42\\\\n\", 3\\) = 3\n",
 		},
 		{
-			name:         "traceloop list",
-			cmd:          "$KUBECTL_GADGET traceloop list -A",
-			ignoreOutput: true,
-			debugFailed:  true,
+			name:    "traceloop list",
+			cmd:     "$KUBECTL_GADGET traceloop list -A",
+			cleanup: true,
 		},
 		{
-			name:     "Cleanup test namespace",
-			cmd:      "kubectl delete ns test-ig",
-			expected: "namespace \"test-ig\" deleted\n",
+			name:           "Cleanup test namespace",
+			cmd:            "kubectl delete ns test-traceloop",
+			expectedString: "namespace \"test-traceloop\" deleted\n",
+			cleanup:        true,
 		},
 		{
-			name:     "Cleanup gadget deployment",
-			cmd:      "$KUBECTL_GADGET deploy $GADGET_IMAGE_FLAG | kubectl delete -f -",
-			expected: "serviceaccount \"gadget\" deleted\nclusterrolebinding.rbac.authorization.k8s.io \"gadget\" deleted\ndaemonset.apps \"gadget\" deleted\n",
+			name:           "Cleanup gadget deployment",
+			cmd:            "$KUBECTL_GADGET deploy $GADGET_IMAGE_FLAG | kubectl delete -f -",
+			expectedRegexp: "\"gadget\" deleted",
+			cleanup:        true,
 		},
 	}
 
@@ -108,31 +91,15 @@ func TestTraceloop(t *testing.T) {
 		os.Setenv("GADGET_IMAGE_FLAG", "--image "+*image)
 	}
 
-	type Outputs struct {
-		Value map[string]string
-	}
-	outputs := Outputs{Value: make(map[string]string)}
-
 	failed := false
 	for _, tt := range commands {
 		t.Run(tt.name, func(t *testing.T) {
-			if failed && !tt.debugFailed {
+			if failed && !tt.cleanup {
 				t.Skip("Previous command failed.")
 			}
-			tmpl, err := template.New("cmd").Parse(tt.cmd)
-			if err != nil {
-				failed = true
-				t.Fatalf("err: %v", err)
-			}
 
-			var tpl bytes.Buffer
-			if err := tmpl.Execute(&tpl, outputs); err != nil {
-				failed = true
-				t.Fatalf("err: %v", err)
-			}
-
-			t.Logf("Command: %s\n", tpl.String())
-			cmd := exec.Command("/bin/sh", "-c", tpl.String())
+			t.Logf("Command: %s\n", tt.cmd)
+			cmd := exec.Command("/bin/sh", "-c", tt.cmd)
 			output, err := cmd.CombinedOutput()
 			actual := string(output)
 			t.Logf("Command returned:\n%s\n", actual)
@@ -140,21 +107,17 @@ func TestTraceloop(t *testing.T) {
 				failed = true
 				t.Fatal(err)
 			}
-			if tt.outputName != "" {
-				outputs.Value[tt.outputName] = actual
-			}
 
-			if !tt.ignoreOutput {
-				if tt.expectedRegexp != "" {
-					r := regexp.MustCompile(tt.expectedRegexp)
-					if !r.MatchString(actual) {
-						failed = true
-						t.Fatalf("regexp didn't match: %s\n%s\n", tt.expectedRegexp, actual)
-					}
-				} else if actual != tt.expected {
+			if tt.expectedRegexp != "" {
+				r := regexp.MustCompile(tt.expectedRegexp)
+				if !r.MatchString(actual) {
 					failed = true
-					t.Fatalf("diff: %v", pretty.Diff(tt.expected, actual))
+					t.Fatalf("regexp didn't match: %s\n%s\n", tt.expectedRegexp, actual)
 				}
+			}
+			if tt.expectedString != "" && actual != tt.expectedString {
+				failed = true
+				t.Fatalf("diff: %v", pretty.Diff(tt.expectedString, actual))
 			}
 		})
 	}
