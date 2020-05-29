@@ -24,59 +24,51 @@ import (
 )
 
 var execsnoopCmd = &cobra.Command{
-	Use:               "execsnoop",
-	Short:             "Trace new processes",
-	Run:               bccCmd("execsnoop", "/usr/share/bcc/tools/execsnoop"),
-	PersistentPreRunE: doesKubeconfigExist,
+	Use:   "execsnoop",
+	Short: "Trace new processes",
+	Run:   bccCmd("execsnoop", "/usr/share/bcc/tools/execsnoop"),
 }
 
 var opensnoopCmd = &cobra.Command{
-	Use:               "opensnoop",
-	Short:             "Trace files",
-	Run:               bccCmd("opensnoop", "/usr/share/bcc/tools/opensnoop"),
-	PersistentPreRunE: doesKubeconfigExist,
+	Use:   "opensnoop",
+	Short: "Trace files",
+	Run:   bccCmd("opensnoop", "/usr/share/bcc/tools/opensnoop"),
 }
 
 var bindsnoopCmd = &cobra.Command{
-	Use:               "bindsnoop",
-	Short:             "Trace IPv4 and IPv6 bind() system calls",
-	Run:               bccCmd("opensnoop", "/usr/share/bcc/tools/bindsnoop"),
-	PersistentPreRunE: doesKubeconfigExist,
+	Use:   "bindsnoop",
+	Short: "Trace IPv4 and IPv6 bind() system calls",
+	Run:   bccCmd("opensnoop", "/usr/share/bcc/tools/bindsnoop"),
 }
 
 var profileCmd = &cobra.Command{
-	Use:               "profile",
-	Short:             "Profile CPU usage by sampling stack traces",
-	Run:               bccCmd("profile", "/usr/share/bcc/tools/profile"),
-	PersistentPreRunE: doesKubeconfigExist,
+	Use:   "profile",
+	Short: "Profile CPU usage by sampling stack traces",
+	Run:   bccCmd("profile", "/usr/share/bcc/tools/profile"),
 }
 
 var tcptopCmd = &cobra.Command{
-	Use:               "tcptop",
-	Short:             "Show the TCP traffic in a pod",
-	Run:               bccCmd("tcptop", "/usr/share/bcc/tools/tcptop"),
-	PersistentPreRunE: doesKubeconfigExist,
+	Use:   "tcptop",
+	Short: "Show the TCP traffic in a pod",
+	Run:   bccCmd("tcptop", "/usr/share/bcc/tools/tcptop"),
 }
 
 var tcpconnectCmd = &cobra.Command{
-	Use:               "tcpconnect",
-	Short:             "Suggest Kubernetes Network Policies",
-	Run:               bccCmd("tcpconnect", "/usr/share/bcc/tools/tcpconnect"),
-	PersistentPreRunE: doesKubeconfigExist,
+	Use:   "tcpconnect",
+	Short: "Suggest Kubernetes Network Policies",
+	Run:   bccCmd("tcpconnect", "/usr/share/bcc/tools/tcpconnect"),
 }
 
 var tcptracerCmd = &cobra.Command{
-	Use:               "tcptracer",
-	Short:             "trace tcp connect, accept and close",
-	Run:               bccCmd("tcptracer", "/usr/share/bcc/tools/tcptracer"),
-	PersistentPreRunE: doesKubeconfigExist,
+	Use:   "tcptracer",
+	Short: "trace tcp connect, accept and close",
+	Run:   bccCmd("tcptracer", "/usr/share/bcc/tools/tcptracer"),
 }
 
 var capabilitiesCmd = &cobra.Command{
-	Use:               "capabilities",
-	Short:             "Suggest Security Capabilities for securityContext",
-	Run:               bccCmd("capabilities", "/usr/share/bcc/tools/capable"),
-	PersistentPreRunE: doesKubeconfigExist,
+	Use:   "capabilities",
+	Short: "Suggest Security Capabilities for securityContext",
+	Run:   bccCmd("capabilities", "/usr/share/bcc/tools/capable"),
 }
 
 var (
@@ -126,8 +118,8 @@ func init() {
 
 type postProcess struct {
 	firstLinePrinted uint64
-	outStreams []*postProcessSingle
-	errStreams []*postProcessSingle
+	outStreams       []*postProcessSingle
+	errStreams       []*postProcessSingle
 }
 
 type postProcessSingle struct {
@@ -135,21 +127,21 @@ type postProcessSingle struct {
 	orig             io.Writer
 	firstLine        bool
 	firstLinePrinted *uint64
-	buffer           string  // buffer to save incomplete strings
+	buffer           string // buffer to save incomplete strings
 }
 
 func newPostProcess(n int, outStream io.Writer, errStream io.Writer) *postProcess {
 	p := &postProcess{
 		firstLinePrinted: 0,
-		outStreams: make([]*postProcessSingle, n),
-		errStreams: make([]*postProcessSingle, n),
+		outStreams:       make([]*postProcessSingle, n),
+		errStreams:       make([]*postProcessSingle, n),
 	}
 
 	for i := 0; i < n; i++ {
 		p.outStreams[i] = &postProcessSingle{
 			nodeShort:        " " + strconv.Itoa(i),
 			orig:             outStream,
-			firstLine:         true,
+			firstLine:        true,
 			firstLinePrinted: &p.firstLinePrinted,
 			buffer:           "",
 		}
@@ -157,7 +149,7 @@ func newPostProcess(n int, outStream io.Writer, errStream io.Writer) *postProces
 		p.errStreams[i] = &postProcessSingle{
 			nodeShort:        "E" + strconv.Itoa(i),
 			orig:             errStream,
-			firstLine:         false,
+			firstLine:        false,
 			firstLinePrinted: &p.firstLinePrinted,
 			buffer:           "",
 		}
@@ -176,7 +168,7 @@ func (post *postProcessSingle) Write(p []byte) (n int, err error) {
 	}
 
 	// Print lines with prefix but the last one
-	for _, line := range lines[0:len(lines)-1] {
+	for _, line := range lines[0 : len(lines)-1] {
 		if post.firstLine {
 			post.firstLine = false
 			if atomic.AddUint64(post.firstLinePrinted, 1) == 1 {
@@ -185,7 +177,7 @@ func (post *postProcessSingle) Write(p []byte) (n int, err error) {
 				continue // ignore this line, somebody else already printed it
 			}
 		}
-		fmt.Fprintf(post.orig, "%s\n", prefix + line)
+		fmt.Fprintf(post.orig, "%s\n", prefix+line)
 	}
 
 	post.buffer = lines[len(lines)-1] // Buffer last line to print in next iteration

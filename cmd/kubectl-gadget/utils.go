@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	corev1 "k8s.io/api/core/v1"
@@ -20,16 +18,6 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/pkg/factory"
 )
-
-// doesKubeconfigExist checks if the kubeconfig provided by user exists
-func doesKubeconfigExist(*cobra.Command, []string) error {
-	var err error
-	kubeconfig := viper.GetString("kubeconfig")
-	if _, err = os.Stat(kubeconfig); os.IsNotExist(err) {
-		return fmt.Errorf("Kubeconfig %q not found", kubeconfig)
-	}
-	return err
-}
 
 // getDefaultNamespace returns the configured default namespace for kubectl
 // returns "default" if it is not possible to determine the default namespace
