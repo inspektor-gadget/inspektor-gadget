@@ -28,9 +28,8 @@ import (
 )
 
 var traceloopCmd = &cobra.Command{
-	Use:               "traceloop",
-	Short:             "Get strace-like logs of a pod from the past",
-	PersistentPreRunE: doesKubeconfigExist,
+	Use:   "traceloop",
+	Short: "Get strace-like logs of a pod from the past",
 }
 
 var traceloopListCmd = &cobra.Command{

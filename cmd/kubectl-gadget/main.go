@@ -18,7 +18,7 @@ func init() {
 	// add kubeconfig flag
 	rootCmd.PersistentFlags().String(
 		"kubeconfig",
-		os.ExpandEnv("$HOME/.kube/config"),
+		"",
 		"Path to kubeconfig file")
 	viper.BindPFlag("kubeconfig", rootCmd.PersistentFlags().Lookup("kubeconfig"))
 }

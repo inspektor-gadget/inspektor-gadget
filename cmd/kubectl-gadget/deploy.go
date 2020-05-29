@@ -9,10 +9,9 @@ import (
 )
 
 var deployCmd = &cobra.Command{
-	Use:               "deploy",
-	Short:             "Deploy Inspektor Gadget on the worker nodes",
-	PersistentPreRunE: doesKubeconfigExist,
-	RunE:              runDeploy,
+	Use:   "deploy",
+	Short: "Deploy Inspektor Gadget on the worker nodes",
+	RunE:  runDeploy,
 }
 
 // This is set during build.
