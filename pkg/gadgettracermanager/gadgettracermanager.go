@@ -14,6 +14,7 @@ import (
 	_ "github.com/iovisor/gobpf/pkg/cpuonline"
 
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
 )
 
 type GadgetTracerManager struct {
@@ -158,6 +159,14 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 	}
 	if _, ok := g.containers[containerDefinition.ContainerId]; ok {
 		return nil, fmt.Errorf("container with cgroup id %v already exists", containerDefinition.CgroupId)
+	}
+
+	// If the pod name isn't provided, use k8s API server to get the
+	// missing information about the container.
+	if containerDefinition.Podname == "" {
+		if err := k8s.FillContainer(containerDefinition); err != nil {
+			return nil, err
+		}
 	}
 
 	for _, t := range g.tracers {
