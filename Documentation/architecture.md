@@ -1,6 +1,6 @@
 # Inspektor Gadget architecture
 
-Inspektor Gadget is deployed to each node as a privileged DeamonSet.
+Inspektor Gadget is deployed to each node as a privileged DaemonSet.
 It uses in-kernel BPF helper programs to monitor events mainly related to
 syscalls from userspace programs in a pod. The BPF programs are run by
 the kernel and gather the log data. Inspektor Gadget's userspace
