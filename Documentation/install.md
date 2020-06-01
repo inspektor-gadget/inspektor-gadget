@@ -5,7 +5,26 @@ system and a DaemonSet deployed in the cluster.
 
 ## Installing kubectl-gadget
 
-### Stable version
+Choose one way to install the Inspektor Gadget `kubectl` plugin.
+
+### Using krew
+
+[krew](https://sigs.k8s.io/krew) is the recommended way to install
+`kubectl-gadget`. You can follow the
+[krew's quickstart](https://krew.sigs.k8s.io/docs/user-guide/quickstart/)
+to install it and then install `kubectl-gadget` by executing the following
+commands.
+
+```
+kubectl krew install gadget
+kubectl gadget --help
+```
+
+### Install a specific release
+
+Download the asset for a given release and platform from the
+[releases page](https://github.com/kinvolk/inspektor-gadget/releases/),
+uncompress and move the `kubectl-gadget` executable to your `PATH`.
 
 ```
 $ wget https://github.com/kinvolk/inspektor-gadget/releases/download/v0.1.0/inspektor-gadget-linux-amd64.tar.gz
@@ -13,8 +32,6 @@ $ tar xvf inspektor-gadget-linux-amd64.tar.gz
 $ sudo cp kubectl-gadget /usr/local/bin/
 $ kubectl gadget version
 ```
-
-You can find other releases on [releases](https://github.com/kinvolk/inspektor-gadget/releases).
 
 ### Download from Github Actions artifacts
 
