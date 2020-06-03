@@ -92,6 +92,11 @@ If you're looking where to start, you can check the issues with the 'good first 
 
 Join the discussions on the `#inspektor-gadget` channel in the [Kubernetes Slack](http://kubernetes.slack.com/).
 
+## Talks
+
+- Inspektor Gadget and traceloop, [FOSDEM 2020 - Brussels](https://fosdem.org/2020/schedule/event/containers_bpf_tracing/)
+- Traceloop for systemd and Kubernetes + Inspektor Gadget, [All Systems Go 2019 - Berlin](https://cfp.all-systems-go.io/ASG2019/talk/98A9LW/)
+
 ## Thanks
 
 * [BPF Compiler Collection (BCC)](https://github.com/iovisor/bcc): the execsnoop, opensnoop, tcptop and tcpconnect gadgets use programs from BCC.
