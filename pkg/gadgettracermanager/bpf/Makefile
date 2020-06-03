@@ -17,17 +17,16 @@ build-docker-image:
 pull-bpf-builder-image:
 	$(SUDO) docker pull $(BUILDER_DOCKER_IMAGE)
 
-build-bpf-object:
-	$(SUDO) docker run -e DEBUG=$(DEBUG) \
+build-bpf-object: out/tracer-map-assets-bpf.go
+
+out/tracer-map-assets-bpf.go: bpf_helpers.h tracer-map.c
+	mkdir -p out
+	$(SUDO) docker run --user $(UID) -e DEBUG=$(DEBUG) \
 		-e CIRCLE_BUILD_URL=$(CIRCLE_BUILD_URL) \
 		--rm -v $(PWD):/src:ro -v $(PWD)/out:/dist/ \
 		--workdir=/src \
 		$(BUILDER_DOCKER_IMAGE) \
 		make -f bpf.mk build
-	sudo chown -R $(UID):$(UID) out
-	mv out/tracer-map-assets-bpf.go ./
-	rm -f out/tracer-map.o
-	rmdir out
 
 clean:
-	rm -f tracer-map-assets-bpf.go
+	rm -rf out
