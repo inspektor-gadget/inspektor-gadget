@@ -58,7 +58,7 @@ message ContainerSelector {
   string namespace = 1;
   string podname = 2;
   repeated Label labels = 3;
-  int32 container_index = 4;
+  string container_name = 4;
 }
 
 message TracerID {
@@ -73,7 +73,7 @@ message ContainerDefinition {
 
   string namespace = 5;
   string podname = 6;
-  int32 container_index = 7;
+  string container_name = 7;
   repeated Label labels = 8;
 
   // Data required to find the container to Pod association in the

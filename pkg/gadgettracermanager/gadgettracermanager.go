@@ -46,7 +46,7 @@ func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition
 	if s.Podname != "" && s.Podname != c.Podname {
 		return false
 	}
-	if s.ContainerIndex != -1 && s.ContainerIndex != c.ContainerIndex {
+	if s.ContainerName != "" && s.ContainerName != c.ContainerName {
 		return false
 	}
 	for _, l := range s.Labels {
@@ -217,11 +217,11 @@ func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRe
 	}
 	out += "List of tracers:\n"
 	for i, t := range g.tracers {
-		out += fmt.Sprintf("%v -> %q/%q (#%d) Labels: \n",
+		out += fmt.Sprintf("%v -> %q/%q (%s) Labels: \n",
 			i,
 			t.containerSelector.Namespace,
 			t.containerSelector.Podname,
-			t.containerSelector.ContainerIndex)
+			t.containerSelector.ContainerName)
 		for _, l := range t.containerSelector.Labels {
 			out += fmt.Sprintf("                  %v: %v\n", l.Key, l.Value)
 		}

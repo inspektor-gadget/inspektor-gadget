@@ -13,7 +13,7 @@ import (
 )
 
 // FillContainer uses the k8s API server to get the pod name, namespace,
-// labels and container index for the given container.
+// labels and container name for the given container.
 func FillContainer(containerDefinition *pb.ContainerDefinition) error {
 	// Get details of the container from the k8s API server
 	clientset, err := k8sutil.NewClientset("")
@@ -34,7 +34,7 @@ func FillContainer(containerDefinition *pb.ContainerDefinition) error {
 
 	namespace := ""
 	podname := ""
-	containerIndex := -1
+	containerName := ""
 	labels := []*pb.Label{}
 	for _, pod := range pods.Items {
 		uid := string(pod.ObjectMeta.UID)
@@ -54,11 +54,11 @@ func FillContainer(containerDefinition *pb.ContainerDefinition) error {
 		for k, v := range pod.ObjectMeta.Labels {
 			labels = append(labels, &pb.Label{Key: k, Value: v})
 		}
-		for i, container := range pod.Spec.Containers {
+		for _, container := range pod.Spec.Containers {
 			for _, mountSource := range containerDefinition.MountSources {
 				pattern := fmt.Sprintf("pods/%s/containers/%s/", uid, container.Name)
 				if strings.Contains(mountSource, pattern) {
-					containerIndex = i
+					containerName = container.Name
 					break
 				}
 			}
@@ -67,7 +67,7 @@ func FillContainer(containerDefinition *pb.ContainerDefinition) error {
 
 	containerDefinition.Namespace = namespace
 	containerDefinition.Podname = podname
-	containerDefinition.ContainerIndex = int32(containerIndex)
+	containerDefinition.ContainerName = containerName
 	containerDefinition.Labels = labels
 
 	return nil
