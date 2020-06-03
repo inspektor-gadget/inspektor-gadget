@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )
@@ -38,16 +38,16 @@ func FillContainer(containerDefinition *pb.ContainerDefinition) error {
 	labels := []*pb.Label{}
 	for _, pod := range pods.Items {
 		uid := string(pod.ObjectMeta.UID)
+		// check if this container is associated to this pod
 		uidWithUnderscores := strings.ReplaceAll(uid, "-", "_")
-		if cgroupPathV2 != "" {
-			if !strings.Contains(cgroupPathV2, uidWithUnderscores) && !strings.Contains(cgroupPathV2, uid) {
-				continue
-			}
-		} else {
-			if !strings.Contains(cgroupPathV1, uidWithUnderscores) && !strings.Contains(cgroupPathV1, uid) {
-				continue
-			}
+
+		if !strings.Contains(cgroupPathV2, uidWithUnderscores) &&
+			!strings.Contains(cgroupPathV2, uid) &&
+			!strings.Contains(cgroupPathV1, uidWithUnderscores) &&
+			!strings.Contains(cgroupPathV1, uid) {
+			continue
 		}
+
 		namespace = pod.ObjectMeta.Namespace
 		podname = pod.ObjectMeta.Name
 

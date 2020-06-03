@@ -134,7 +134,9 @@ if [ "$MANAGER" = "true" ] ; then
   MODE="--mntnsmap"
   MAPPATH=$BPFDIR/gadget/mntnsset-$TRACERID
   CGROUP_V2_PATH=$(cat /proc/self/cgroup |grep ^0:|cut -d: -f3)
-  if [ ! -z "$CGROUP_V2_PATH" ] && [ "$CGROUP_V2_PATH" != "/" ]; then
+  UID_UNDER=`echo $GADGET_POD_UID | sed 's/-/_/g'`
+  if [[ "$CGROUP_V2_PATH" == *"$GADGET_POD_UID"* ||
+      "$CGROUP_V2_PATH" == *"$UID_UNDER"* ]]; then
     MODE="--cgroupmap"
     MAPPATH=$BPFDIR/gadget/cgroupidset-$TRACERID
   fi
