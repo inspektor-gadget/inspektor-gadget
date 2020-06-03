@@ -172,6 +172,25 @@ func PidFromContainerId(containerID string) (int, error) {
 			return -1, fmt.Errorf("invalid pid")
 		}
 		return crioInspect.Pid, nil
+	} else if strings.HasPrefix(containerID, "containerd://") {
+		out, err := exec.Command("chroot", "/host", "crictl", "inspect", strings.TrimPrefix(containerID, "containerd://")).Output()
+		if err != nil {
+			return -1, err
+		}
+		type ContainerdInspect struct {
+			Info struct {
+				Pid int
+			}
+		}
+		var containerdInspect ContainerdInspect
+		err = json.Unmarshal(out, &containerdInspect)
+		if err != nil {
+			return -1, err
+		}
+		if containerdInspect.Info.Pid == 0 {
+			return -1, fmt.Errorf("invalid pid")
+		}
+		return containerdInspect.Info.Pid, nil
 	}
 	return -1, fmt.Errorf("unknown container runtime: %s", containerID)
 }
