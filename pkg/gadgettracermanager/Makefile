@@ -7,8 +7,7 @@ api/gadgettracermanager.pb.go: api/gadgettracermanager.proto
 .PHONY: tracer-map-assets-bpf.go
 tracer-map-assets-bpf.go:
 	make -C bpf
-	cp bpf/tracer-map-assets-bpf.go ./tracer-map-assets-bpf.go
-	make -C bpf clean
+	cp bpf/out/tracer-map-assets-bpf.go ./tracer-map-assets-bpf.go
 
 clean:
 	rm -f api/gadgettracermanager.pb.go tracer-map-assets-bpf.go
