@@ -14,13 +14,11 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-
-	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 )
 
 var execsnoopCmd = &cobra.Command{
@@ -74,7 +72,6 @@ var capabilitiesCmd = &cobra.Command{
 var (
 	labelParam         string
 	nodeParam          string
-	namespaceParam     string
 	podnameParam       string
 	containernameParam string
 
@@ -97,8 +94,8 @@ func init() {
 		tcptracerCmd,
 		capabilitiesCmd,
 	}
-	args := []string{"label", "node", "namespace", "podname", "containername"}
-	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam, &containernameParam}
+	args := []string{"label", "node", "podname", "containername"}
+	vars := []*string{&labelParam, &nodeParam, &podnameParam, &containernameParam}
 	for _, command := range commands {
 		rootCmd.AddCommand(command)
 		for i, _ := range args {
@@ -193,15 +190,15 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			"args":    args,
 		})
 
-		client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
+		client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 		if err != nil {
 			contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 		}
 
 		// tcptop only works on one pod at a time
 		if subCommand == "tcptop" {
-			if nodeParam == "" || namespaceParam == "" || podnameParam == "" {
-				contextLogger.Fatalf("tcptop only works with --node, --namespace and --podname")
+			if nodeParam == "" || podnameParam == "" {
+				contextLogger.Fatalf("tcptop only works with --node and --podname")
 			}
 		}
 
@@ -214,22 +211,20 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 					contextLogger.Fatalf("labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])\n")
 				}
 			}
-			labelFilter = fmt.Sprintf("--label %q", labelParam)
+			labelFilter = fmt.Sprintf("--label %s", labelParam)
 		}
 
-		namespaceFilter := ""
-		if namespaceParam != "" {
-			namespaceFilter = fmt.Sprintf("--namespace %q", namespaceParam)
-		}
+		namespace, _, _ := KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
+		namespaceFilter := fmt.Sprintf("--namespace %s", namespace)
 
 		podnameFilter := ""
 		if podnameParam != "" {
-			podnameFilter = fmt.Sprintf("--podname %q", podnameParam)
+			podnameFilter = fmt.Sprintf("--podname %s", podnameParam)
 		}
 
 		containernameFilter := ""
 		if containernameParam != "" {
-			containernameFilter = fmt.Sprintf("--containername %q", containernameParam)
+			containernameFilter = fmt.Sprintf("--containername %s", containernameParam)
 		}
 
 		gadgetParams := ""

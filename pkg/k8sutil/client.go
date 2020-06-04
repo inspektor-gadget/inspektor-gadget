@@ -3,6 +3,7 @@ package k8sutil
 import (
 	"path/filepath"
 
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	"k8s.io/client-go/rest"
@@ -37,4 +38,18 @@ func NewClientset(kubeconfigPath string) (*kubernetes.Clientset, error) {
 	}
 
 	return apiclientset, nil
+}
+
+func NewClientsetFromConfigFlags(flags *genericclioptions.ConfigFlags) (*kubernetes.Clientset, error) {
+	config, err := flags.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

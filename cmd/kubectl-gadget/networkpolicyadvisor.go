@@ -108,7 +108,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 		w = bufio.NewWriter(outputFile)
 	}
 
-	client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
+	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
 		contextLogger.Fatalf("Error setting up Kubernetes client: %q", err)
 	}
