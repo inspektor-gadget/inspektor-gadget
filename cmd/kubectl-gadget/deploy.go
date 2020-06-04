@@ -100,6 +100,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
+          - name: GADGET_POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
           - name: TRACELOOP_NODE_NAME
             valueFrom:
               fieldRef:
