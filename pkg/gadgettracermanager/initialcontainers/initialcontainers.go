@@ -1,6 +1,7 @@
 package initialcontainers
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -25,8 +26,20 @@ func InitialContainers() (arr []pb.ContainerDefinition, err error) {
 		return nil, err
 	}
 
-	// List pods
 	nodeSelf := os.Getenv("NODE_NAME")
+	node, err := clientset.CoreV1().Nodes().Get(nodeSelf, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get node %s", err)
+	}
+
+	// get a CRI client to talk to the CRI handling pods in this node
+	criClient, err := containerutils.NewCRIClient(node)
+	if err != nil {
+		return nil, err
+	}
+	defer criClient.Close()
+
+	// List pods
 	pods, err := clientset.CoreV1().Pods("").List(metav1.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector("spec.nodeName", nodeSelf).String(),
 	})
@@ -50,7 +63,7 @@ func InitialContainers() (arr []pb.ContainerDefinition, err error) {
 				continue
 			}
 
-			pid, err := containerutils.PidFromContainerId(s.ContainerID)
+			pid, err := criClient.PidFromContainerId(s.ContainerID)
 			if err != nil {
 				log.Printf("Skip pod %s/%s: cannot find pid: %v", pod.GetNamespace(), pod.GetName(), err)
 				continue
