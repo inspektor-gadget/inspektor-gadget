@@ -18,18 +18,18 @@ import (
 )
 
 var (
-	serve          bool
-	dump           bool
-	socketfile     string
-	method         string
-	label          string
-	tracerid       string
-	containerId    string
-	cgroupPath     string
-	cgroupId       uint64
-	namespace      string
-	podname        string
-	containerIndex int
+	serve         bool
+	dump          bool
+	socketfile    string
+	method        string
+	label         string
+	tracerid      string
+	containerId   string
+	cgroupPath    string
+	cgroupId      uint64
+	namespace     string
+	podname       string
+	containername string
 )
 
 func init() {
@@ -45,7 +45,7 @@ func init() {
 	flag.Uint64Var(&cgroupId, "cgroupid", 0, "cgroup id to use in add-container")
 	flag.StringVar(&namespace, "namespace", "", "namespace to use in add-container")
 	flag.StringVar(&podname, "podname", "", "podname to use in add-container")
-	flag.IntVar(&containerIndex, "containerindex", -1, "container index to use in add-container")
+	flag.StringVar(&containername, "containername", "", "container name to use in add-container")
 
 	flag.BoolVar(&dump, "dump", false, "Dump state for debugging")
 }
@@ -96,10 +96,10 @@ func main() {
 		out, err := client.AddTracer(ctx, &pb.AddTracerRequest{
 			Id: tracerid,
 			Selector: &pb.ContainerSelector{
-				Namespace:      namespace,
-				Podname:        podname,
-				Labels:         labels,
-				ContainerIndex: int32(containerIndex),
+				Namespace:     namespace,
+				Podname:       podname,
+				Labels:        labels,
+				ContainerName: containername,
 			},
 		})
 		if err != nil {
@@ -119,13 +119,13 @@ func main() {
 
 	case "add-container":
 		_, err := client.AddContainer(ctx, &pb.ContainerDefinition{
-			ContainerId:    containerId,
-			CgroupPath:     cgroupPath,
-			CgroupId:       cgroupId,
-			Namespace:      namespace,
-			Podname:        podname,
-			ContainerIndex: int32(containerIndex),
-			Labels:         labels,
+			ContainerId:   containerId,
+			CgroupPath:    cgroupPath,
+			CgroupId:      cgroupId,
+			Namespace:     namespace,
+			Podname:       podname,
+			ContainerName: containername,
+			Labels:        labels,
 		})
 		if err != nil {
 			log.Fatalf("%v", err)

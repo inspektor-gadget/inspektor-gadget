@@ -72,10 +72,11 @@ var capabilitiesCmd = &cobra.Command{
 }
 
 var (
-	labelParam     string
-	nodeParam      string
-	namespaceParam string
-	podnameParam   string
+	labelParam         string
+	nodeParam          string
+	namespaceParam     string
+	podnameParam       string
+	containernameParam string
 
 	stackFlag   bool
 	uniqueFlag  bool
@@ -96,8 +97,8 @@ func init() {
 		tcptracerCmd,
 		capabilitiesCmd,
 	}
-	args := []string{"label", "node", "namespace", "podname"}
-	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam}
+	args := []string{"label", "node", "namespace", "podname", "containername"}
+	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam, &containernameParam}
 	for _, command := range commands {
 		rootCmd.AddCommand(command)
 		for i, _ := range args {
@@ -226,6 +227,11 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			podnameFilter = fmt.Sprintf("--podname %q", podnameParam)
 		}
 
+		containernameFilter := ""
+		if containernameParam != "" {
+			containernameFilter = fmt.Sprintf("--containername %q", containernameParam)
+		}
+
 		gadgetParams := ""
 		switch subCommand {
 		case "capabilities":
@@ -277,8 +283,8 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			}
 			fmt.Printf(" %d = %s", i, node.Name)
 			go func(nodeName string, index int) {
-				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s -- %s",
-					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, gadgetParams)
+				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s %s -- %s",
+					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, containernameFilter, gadgetParams)
 				var err error
 				if subCommand != "tcptop" {
 					err = execPod(client, nodeName, cmd,

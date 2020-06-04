@@ -2,7 +2,6 @@
 
 set -e
 
-CONTAINERINDEX=-1
 MANAGER=true
 PROBECLEANUP=false
 FLATCAREDGEONLY=false
@@ -53,8 +52,8 @@ case $key in
         shift
         shift
         ;;
-    --containerindex)
-        CONTAINERINDEX="$2"
+    --containername)
+        CONTAINERNAME="$2"
         shift
         shift
         ;;
@@ -129,7 +128,7 @@ export TERM=xterm-256color
 export PYTHONUNBUFFERED=TRUE
 
 if [ "$MANAGER" = "true" ] ; then
-  $GADGETTRACERMANAGER -call add-tracer -tracerid "$TRACERID" -label "$LABEL" -namespace "$NAMESPACE" -podname "$PODNAME" -containerindex "$CONTAINERINDEX" > /dev/null
+  $GADGETTRACERMANAGER -call add-tracer -tracerid "$TRACERID" -label "$LABEL" -namespace "$NAMESPACE" -podname "$PODNAME" -containername "$CONTAINERNAME" > /dev/null
   # use the --cgroupmap option if the system is using cgroup-v2
   MODE="--mntnsmap"
   MAPPATH=$BPFDIR/gadget/mntnsset-$TRACERID

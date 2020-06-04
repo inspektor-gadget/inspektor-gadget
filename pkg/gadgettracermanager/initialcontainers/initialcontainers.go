@@ -42,7 +42,7 @@ func InitialContainers() (arr []pb.ContainerDefinition, err error) {
 		for k, v := range pod.ObjectMeta.Labels {
 			labels = append(labels, &pb.Label{Key: k, Value: v})
 		}
-		for i, s := range pod.Status.ContainerStatuses {
+		for _, s := range pod.Status.ContainerStatuses {
 			if s.ContainerID == "" {
 				continue
 			}
@@ -69,14 +69,14 @@ func InitialContainers() (arr []pb.ContainerDefinition, err error) {
 			}
 
 			containerDef := pb.ContainerDefinition{
-				ContainerId:    s.ContainerID,
-				CgroupPath:     cgroupPathV2WithMountpoint,
-				CgroupId:       cgroupId,
-				Mntns:          mntns,
-				Namespace:      pod.GetNamespace(),
-				Podname:        pod.GetName(),
-				ContainerIndex: int32(i),
-				Labels:         labels,
+				ContainerId:   s.ContainerID,
+				CgroupPath:    cgroupPathV2WithMountpoint,
+				CgroupId:      cgroupId,
+				Mntns:         mntns,
+				Namespace:     pod.GetNamespace(),
+				Podname:       pod.GetName(),
+				ContainerName: s.Name,
+				Labels:        labels,
 			}
 			arr = append(arr, containerDef)
 		}
