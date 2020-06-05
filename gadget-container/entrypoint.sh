@@ -35,8 +35,6 @@ echo $INSPEKTOR_GADGET_VERSION
 echo "-:pfree_uts_ns" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
 echo "-:pcap_capable" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
 
-ARGS=k8s
-
 CRIO=0
 if grep -q '^1:name=systemd:.*/crio-[0-9a-f]*\.scope$' /proc/self/cgroup > /dev/null ; then
     echo "CRI-O detected."
@@ -133,7 +131,11 @@ rm -f /run/gadgettracermanager.socket
 
 if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
   rm -f /run/traceloop.socket
-  exec /bin/traceloop $ARGS
+  if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP_LOGLEVEL" != "" ] ; then
+    exec /bin/traceloop -log "$INSPEKTOR_GADGET_OPTION_TRACELOOP_LOGLEVEL" k8s
+  else
+    exec /bin/traceloop k8s
+  fi
 fi
 
 echo "Ready."
