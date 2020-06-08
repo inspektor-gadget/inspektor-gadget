@@ -3,8 +3,8 @@ package gadgettracermanager
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"os"
 	"sync"
 	"unsafe"
