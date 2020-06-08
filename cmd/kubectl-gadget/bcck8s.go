@@ -59,7 +59,7 @@ var tcpconnectCmd = &cobra.Command{
 
 var tcptracerCmd = &cobra.Command{
 	Use:   "tcptracer",
-	Short: "trace tcp connect, accept and close",
+	Short: "Trace tcp connect, accept and close",
 	Run:   bccCmd("tcptracer", "/usr/share/bcc/tools/tcptracer"),
 }
 
@@ -74,6 +74,7 @@ var (
 	nodeParam          string
 	podnameParam       string
 	containernameParam string
+	allNamespaces      bool
 
 	stackFlag   bool
 	uniqueFlag  bool
@@ -94,18 +95,51 @@ func init() {
 		tcptracerCmd,
 		capabilitiesCmd,
 	}
-	args := []string{"label", "node", "podname", "containername"}
-	vars := []*string{&labelParam, &nodeParam, &podnameParam, &containernameParam}
+
+	// Add flags for all BCC gadgets
 	for _, command := range commands {
 		rootCmd.AddCommand(command)
-		for i, _ := range args {
-			command.PersistentFlags().StringVar(
-				vars[i],
-				args[i],
-				"",
-				fmt.Sprintf("Kubernetes %s selector", args[i]))
-		}
+		command.PersistentFlags().StringVarP(
+			&labelParam,
+			"selector",
+			"l",
+			"",
+			fmt.Sprintf("Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2)."),
+		)
+
+		command.PersistentFlags().StringVar(
+			&nodeParam,
+			"node",
+			"",
+			fmt.Sprintf("Show only events from pods running in that node"),
+		)
+
+		command.PersistentFlags().StringVarP(
+			&podnameParam,
+			"podname",
+			"p",
+			"",
+			fmt.Sprintf("Show only events from pods with that name"),
+		)
+
+		command.PersistentFlags().StringVarP(
+			&containernameParam,
+			"containername",
+			"c",
+			"",
+			fmt.Sprintf("Show only events from containers with that name"),
+		)
+
+		command.PersistentFlags().BoolVarP(
+			&allNamespaces,
+			"all-namespaces",
+			"A",
+			false,
+			fmt.Sprintf("Show events from pods in all namespaces"),
+		)
 	}
+
+	// Add flags specific to some BCC gadgets
 	capabilitiesCmd.PersistentFlags().BoolVarP(&stackFlag, "print-stack", "", false, "Print kernel and userspace call stack of cap_capable()")
 	capabilitiesCmd.PersistentFlags().BoolVarP(&uniqueFlag, "unique", "", false, "Don't print duplicate capability checks")
 	capabilitiesCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "", false, "Include non-audit")
@@ -214,8 +248,11 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			labelFilter = fmt.Sprintf("--label %s", labelParam)
 		}
 
-		namespace, _, _ := KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
-		namespaceFilter := fmt.Sprintf("--namespace %s", namespace)
+		namespaceFilter := ""
+		if !allNamespaces {
+			namespace, _, _ := KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
+			namespaceFilter = fmt.Sprintf("--namespace %s", namespace)
+		}
 
 		podnameFilter := ""
 		if podnameParam != "" {
