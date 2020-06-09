@@ -59,6 +59,12 @@ func TestGadgets(t *testing.T) {
 			background: true,
 		},
 		{
+			id:         "opensnoop",
+			name:       "Start opensnoop",
+			cmd:        "$KUBECTL_GADGET opensnoop --namespace test-snoop",
+			background: true,
+		},
+		{
 			id:         "tcptracer",
 			name:       "Start tcptracer",
 			cmd:        "$KUBECTL_GADGET tcptracer --namespace test-snoop",
@@ -82,6 +88,12 @@ func TestGadgets(t *testing.T) {
 			name: "Stop execsnoop",
 			expectedRegexp: "(?s)NODE PCOMM            PID    PPID   RET ARGS\n" +
 				".*/bin/cat /non-existent\n",
+		},
+		{
+			id:   "opensnoop",
+			name: "Stop opensnoop",
+			expectedRegexp: "(?s)NODE.*PID.*COMM.*FD.*ERR.*PATH\n" +
+				".*cat.*/non-existent\n",
 		},
 		{
 			id:             "tcptracer",
