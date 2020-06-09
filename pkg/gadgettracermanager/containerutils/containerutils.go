@@ -5,14 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
 	"unsafe"
 
+	"k8s.io/api/core/v1"
+
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
+
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/containerd"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/crio"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/docker"
 )
 
 /*
@@ -57,6 +62,32 @@ uint64_t get_cgroupid(char *path) {
 }
 */
 import "C"
+
+type CRIClient interface {
+	Close() error
+	PidFromContainerId(containerID string) (int, error)
+}
+
+func NewCRIClient(node *v1.Node) (CRIClient, error) {
+	criVersion := node.Status.NodeInfo.ContainerRuntimeVersion
+	list := strings.Split(criVersion, "://")
+	if len(list) < 1 {
+		return nil, fmt.Errorf("Impossible to get CRI type from %s", criVersion)
+	}
+
+	criType := list[0]
+
+	switch criType {
+	case "docker":
+		return docker.NewDockerClient(docker.DEFAULT_SOCKET_PATH)
+	case "containerd":
+		return containerd.NewContainerdClient(containerd.DEFAULT_SOCKET_PATH)
+	case "cri-o":
+		return crio.NewCrioClient(crio.DEFAULT_SOCKET_PATH)
+	default:
+		return nil, fmt.Errorf("Unknown '%s' cri", criType)
+	}
+}
 
 func CgroupPathV2AddMountpoint(path string) (string, error) {
 	pathWithMountpoint := filepath.Join("/sys/fs/cgroup/unified", path)
@@ -133,66 +164,6 @@ func GetMntNs(pid int) (uint64, error) {
 		return 0, fmt.Errorf("Not a syscall.Stat_t")
 	}
 	return stat.Ino, nil
-}
-
-func PidFromContainerId(containerID string) (int, error) {
-	if strings.HasPrefix(containerID, "docker://") {
-		out, err := exec.Command("chroot", "/host", "docker", "inspect", strings.TrimPrefix(containerID, "docker://")).Output()
-		if err != nil {
-			return -1, err
-		}
-		type DockerInspect struct {
-			State struct {
-				Pid int
-			}
-		}
-		var dockerInspect []DockerInspect
-		err = json.Unmarshal(out, &dockerInspect)
-		if err != nil {
-			return -1, err
-		}
-		if len(dockerInspect) != 1 {
-			return -1, fmt.Errorf("invalid output")
-		}
-		return dockerInspect[0].State.Pid, nil
-	} else if strings.HasPrefix(containerID, "cri-o://") {
-		out, err := exec.Command("chroot", "/host", "crictl", "inspect", strings.TrimPrefix(containerID, "cri-o://")).Output()
-		if err != nil {
-			return -1, err
-		}
-		type CRIOInspect struct {
-			Pid int
-		}
-		var crioInspect CRIOInspect
-		err = json.Unmarshal(out, &crioInspect)
-		if err != nil {
-			return -1, err
-		}
-		if crioInspect.Pid == 0 {
-			return -1, fmt.Errorf("invalid pid")
-		}
-		return crioInspect.Pid, nil
-	} else if strings.HasPrefix(containerID, "containerd://") {
-		out, err := exec.Command("chroot", "/host", "crictl", "inspect", strings.TrimPrefix(containerID, "containerd://")).Output()
-		if err != nil {
-			return -1, err
-		}
-		type ContainerdInspect struct {
-			Info struct {
-				Pid int
-			}
-		}
-		var containerdInspect ContainerdInspect
-		err = json.Unmarshal(out, &containerdInspect)
-		if err != nil {
-			return -1, err
-		}
-		if containerdInspect.Info.Pid == 0 {
-			return -1, fmt.Errorf("invalid pid")
-		}
-		return containerdInspect.Info.Pid, nil
-	}
-	return -1, fmt.Errorf("unknown container runtime: %s", containerID)
 }
 
 func ParseOCIState(stateBuf []byte) (id string, pid int, err error) {
