@@ -22,7 +22,8 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
-		ca-certificates curl
+		ca-certificates curl && \
+        rmdir /usr/src && ln -sf /host/usr/src /usr/src
 
 COPY entrypoint.sh /entrypoint.sh
 COPY cleanup.sh /cleanup.sh
