@@ -12,7 +12,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/docker/go-units"
 	"github.com/syndtr/gocapability/capability"
@@ -66,7 +65,6 @@ var (
 	optionListFull          bool
 	optionListAllNamespaces bool
 	optionListNoHeaders     bool
-	optionListNamespace     string
 )
 
 func init() {
@@ -93,12 +91,6 @@ func init() {
 		"no-headers", "",
 		false,
 		"don't print headers.")
-
-	traceloopListCmd.PersistentFlags().StringVarP(
-		&optionListNamespace,
-		"namespace", "n",
-		"",
-		"only show traces in the specified namespace.")
 }
 
 const (
@@ -170,7 +162,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		"args":    args,
 	})
 
-	client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
+	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
@@ -203,9 +195,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		return false
 	})
 
-	if optionListNamespace == "" {
-		optionListNamespace = getDefaultNamespace()
-	}
+	namespace, _, _ := KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 	if !optionListNoHeaders {
@@ -226,9 +216,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 			continue
 		}
 
-		if optionListNamespace != "" &&
-			trace.Namespace != optionListNamespace &&
-			!optionListAllNamespaces {
+		if trace.Namespace != namespace && !optionListAllNamespaces {
 			continue
 		}
 
@@ -285,7 +273,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Missing parameter: trace name")
 	}
 
-	client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
+	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
@@ -321,7 +309,7 @@ func runTraceloopPod(cmd *cobra.Command, args []string) {
 	podname := args[1]
 	idx := args[2]
 
-	client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
+	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
@@ -350,7 +338,7 @@ func runTraceloopClose(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Missing parameter: trace name")
 	}
 
-	client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
+	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}

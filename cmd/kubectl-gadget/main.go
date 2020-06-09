@@ -2,9 +2,11 @@ package main
 
 import (
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 var rootCmd = &cobra.Command{
@@ -12,15 +14,14 @@ var rootCmd = &cobra.Command{
 	Short: "Collection of gadgets for Kubernetes developers",
 }
 
+var (
+	KubernetesConfigFlags = genericclioptions.NewConfigFlags(false)
+)
+
 func init() {
 	cobra.OnInitialize(cobraInit)
-
-	// add kubeconfig flag
-	rootCmd.PersistentFlags().String(
-		"kubeconfig",
-		"",
-		"Path to kubeconfig file")
-	viper.BindPFlag("kubeconfig", rootCmd.PersistentFlags().Lookup("kubeconfig"))
+	KubernetesConfigFlags.AddFlags(rootCmd.PersistentFlags())
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 }
 
 func cobraInit() {

@@ -14,13 +14,11 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-
-	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 )
 
 var execsnoopCmd = &cobra.Command{
@@ -61,7 +59,7 @@ var tcpconnectCmd = &cobra.Command{
 
 var tcptracerCmd = &cobra.Command{
 	Use:   "tcptracer",
-	Short: "trace tcp connect, accept and close",
+	Short: "Trace tcp connect, accept and close",
 	Run:   bccCmd("tcptracer", "/usr/share/bcc/tools/tcptracer"),
 }
 
@@ -74,9 +72,9 @@ var capabilitiesCmd = &cobra.Command{
 var (
 	labelParam         string
 	nodeParam          string
-	namespaceParam     string
 	podnameParam       string
 	containernameParam string
+	allNamespaces      bool
 
 	stackFlag   bool
 	uniqueFlag  bool
@@ -97,18 +95,51 @@ func init() {
 		tcptracerCmd,
 		capabilitiesCmd,
 	}
-	args := []string{"label", "node", "namespace", "podname", "containername"}
-	vars := []*string{&labelParam, &nodeParam, &namespaceParam, &podnameParam, &containernameParam}
+
+	// Add flags for all BCC gadgets
 	for _, command := range commands {
 		rootCmd.AddCommand(command)
-		for i, _ := range args {
-			command.PersistentFlags().StringVar(
-				vars[i],
-				args[i],
-				"",
-				fmt.Sprintf("Kubernetes %s selector", args[i]))
-		}
+		command.PersistentFlags().StringVarP(
+			&labelParam,
+			"selector",
+			"l",
+			"",
+			fmt.Sprintf("Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2)."),
+		)
+
+		command.PersistentFlags().StringVar(
+			&nodeParam,
+			"node",
+			"",
+			fmt.Sprintf("Show only events from pods running in that node"),
+		)
+
+		command.PersistentFlags().StringVarP(
+			&podnameParam,
+			"podname",
+			"p",
+			"",
+			fmt.Sprintf("Show only events from pods with that name"),
+		)
+
+		command.PersistentFlags().StringVarP(
+			&containernameParam,
+			"containername",
+			"c",
+			"",
+			fmt.Sprintf("Show only events from containers with that name"),
+		)
+
+		command.PersistentFlags().BoolVarP(
+			&allNamespaces,
+			"all-namespaces",
+			"A",
+			false,
+			fmt.Sprintf("Show events from pods in all namespaces"),
+		)
 	}
+
+	// Add flags specific to some BCC gadgets
 	capabilitiesCmd.PersistentFlags().BoolVarP(&stackFlag, "print-stack", "", false, "Print kernel and userspace call stack of cap_capable()")
 	capabilitiesCmd.PersistentFlags().BoolVarP(&uniqueFlag, "unique", "", false, "Don't print duplicate capability checks")
 	capabilitiesCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "", false, "Include non-audit")
@@ -193,15 +224,15 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			"args":    args,
 		})
 
-		client, err := k8sutil.NewClientset(viper.GetString("kubeconfig"))
+		client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 		if err != nil {
 			contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 		}
 
 		// tcptop only works on one pod at a time
 		if subCommand == "tcptop" {
-			if nodeParam == "" || namespaceParam == "" || podnameParam == "" {
-				contextLogger.Fatalf("tcptop only works with --node, --namespace and --podname")
+			if nodeParam == "" || podnameParam == "" {
+				contextLogger.Fatalf("tcptop only works with --node and --podname")
 			}
 		}
 
@@ -214,22 +245,23 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 					contextLogger.Fatalf("labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])\n")
 				}
 			}
-			labelFilter = fmt.Sprintf("--label %q", labelParam)
+			labelFilter = fmt.Sprintf("--label %s", labelParam)
 		}
 
 		namespaceFilter := ""
-		if namespaceParam != "" {
-			namespaceFilter = fmt.Sprintf("--namespace %q", namespaceParam)
+		if !allNamespaces {
+			namespace, _, _ := KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
+			namespaceFilter = fmt.Sprintf("--namespace %s", namespace)
 		}
 
 		podnameFilter := ""
 		if podnameParam != "" {
-			podnameFilter = fmt.Sprintf("--podname %q", podnameParam)
+			podnameFilter = fmt.Sprintf("--podname %s", podnameParam)
 		}
 
 		containernameFilter := ""
 		if containernameParam != "" {
-			containernameFilter = fmt.Sprintf("--containername %q", containernameParam)
+			containernameFilter = fmt.Sprintf("--containername %s", containernameParam)
 		}
 
 		gadgetParams := ""
