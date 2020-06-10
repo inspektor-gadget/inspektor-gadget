@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"unsafe"
@@ -19,6 +20,12 @@ import (
 
 type GadgetTracerManager struct {
 	mu sync.Mutex
+
+	// node where this instance is running
+	nodeName string
+
+	// client to talk to the k8s API server to get information about pods
+	k8sClient *k8s.K8sClient
 
 	// containers by ContainerId
 	containers map[string]pb.ContainerDefinition
@@ -158,13 +165,13 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 		return nil, fmt.Errorf("cannot add container: container id not set")
 	}
 	if _, ok := g.containers[containerDefinition.ContainerId]; ok {
-		return nil, fmt.Errorf("container with cgroup id %v already exists", containerDefinition.CgroupId)
+		return nil, fmt.Errorf("container with id %s already exists", containerDefinition.ContainerId)
 	}
 
 	// If the pod name isn't provided, use k8s API server to get the
 	// missing information about the container.
 	if containerDefinition.Podname == "" {
-		if err := k8s.FillContainer(containerDefinition); err != nil {
+		if err := g.k8sClient.FillContainer(containerDefinition); err != nil {
 			return nil, err
 		}
 	}
@@ -235,13 +242,30 @@ func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRe
 	return &pb.Dump{State: out}, nil
 }
 
-func NewServer(initialContainers []pb.ContainerDefinition) *GadgetTracerManager {
+func NewServer(nodeName string) *GadgetTracerManager {
+	k8sClient, err := k8s.NewK8sClient(nodeName)
+	if err != nil {
+		return nil
+	}
+	// The CRI client is only used at the beginning, once the initial list
+	// of containers, it's not used after it.
+	defer k8sClient.CloseCRI()
+
 	g := &GadgetTracerManager{
+		nodeName:   nodeName,
 		containers: make(map[string]pb.ContainerDefinition),
 		tracers:    make(map[string]tracer),
+		k8sClient:  k8sClient,
 	}
-	for _, containerDefinition := range initialContainers {
-		g.containers[containerDefinition.ContainerId] = containerDefinition
+
+	containers, err := k8sClient.ListContainers()
+	if err != nil {
+		log.Printf("gadgettracermanager failed to list containers: %v", err)
+		for _, container := range containers {
+			g.containers[container.ContainerId] = container
+		}
+	} else {
+		log.Printf("gadgettracermanager found %d containers: %+v", len(containers), containers)
 	}
 	return g
 }

@@ -11,13 +11,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"k8s.io/api/core/v1"
-
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
-
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/containerd"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/crio"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/docker"
 )
 
 /*
@@ -66,27 +60,6 @@ import "C"
 type CRIClient interface {
 	Close() error
 	PidFromContainerId(containerID string) (int, error)
-}
-
-func NewCRIClient(node *v1.Node) (CRIClient, error) {
-	criVersion := node.Status.NodeInfo.ContainerRuntimeVersion
-	list := strings.Split(criVersion, "://")
-	if len(list) < 1 {
-		return nil, fmt.Errorf("Impossible to get CRI type from %s", criVersion)
-	}
-
-	criType := list[0]
-
-	switch criType {
-	case "docker":
-		return docker.NewDockerClient(docker.DEFAULT_SOCKET_PATH)
-	case "containerd":
-		return containerd.NewContainerdClient(containerd.DEFAULT_SOCKET_PATH)
-	case "cri-o":
-		return crio.NewCrioClient(crio.DEFAULT_SOCKET_PATH)
-	default:
-		return nil, fmt.Errorf("Unknown '%s' cri", criType)
-	}
 }
 
 func CgroupPathV2AddMountpoint(path string) (string, error) {
