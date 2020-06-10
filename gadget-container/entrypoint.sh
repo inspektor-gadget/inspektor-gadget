@@ -85,8 +85,8 @@ if [ "$RUNC_HOOK_MODE" = "auto" ] ; then
     echo "runc hook mode flatcar_edge detected."
     RUNC_HOOK_MODE="flatcar_edge"
   else
-    RUNC_HOOK_MODE="error"
-    echo "Error detecting runc hook mode."
+    RUNC_HOOK_MODE="podinformer"
+    echo "Falling back to podinformer runc-hook-mode."
   fi
 fi
 
@@ -126,9 +126,14 @@ if [ "$RUNC_HOOK_MODE" = "flatcar_edge" ] ||
   echo "Installation done"
 fi
 
+POD_INFORMER_PARAM=""
+if [ "$RUNC_HOOK_MODE" = "podinformer" ] ; then
+  POD_INFORMER_PARAM="-podinformer"
+fi
+
 echo "Starting the Gadget Tracer Manager in the background..."
 rm -f /run/gadgettracermanager.socket
-/bin/gadgettracermanager -serve &
+/bin/gadgettracermanager -serve $POD_INFORMER_PARAM &
 
 if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
   rm -f /run/traceloop.socket

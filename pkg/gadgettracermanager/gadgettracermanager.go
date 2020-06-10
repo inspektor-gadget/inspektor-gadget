@@ -10,6 +10,9 @@ import (
 	"sync"
 	"unsafe"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
+
 	bpflib "github.com/iovisor/gobpf/elf"
 	_ "github.com/iovisor/gobpf/pkg/bpffs"
 	_ "github.com/iovisor/gobpf/pkg/cpuonline"
@@ -32,6 +35,14 @@ type GadgetTracerManager struct {
 
 	// tracers by tracerId
 	tracers map[string]tracer
+
+	podInformer *k8s.PodInformer
+	createdChan chan *v1.Pod
+	deletedChan chan string
+	// containerIDsByKey is a map maintained by the controller
+	// key is "namespace/podname"
+	// value is an set of containerId
+	containerIDsByKey map[string]map[string]struct{}
 }
 
 type tracer struct {
@@ -242,12 +253,75 @@ func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRe
 	return &pb.Dump{State: out}, nil
 }
 
+func (g *GadgetTracerManager) run() {
+	for {
+		select {
+		case d := <-g.deletedChan:
+			if containerIDs, ok := g.containerIDsByKey[d]; ok {
+				for containerID, _ := range containerIDs {
+					containerDefinition := &pb.ContainerDefinition{
+						ContainerId: containerID,
+					}
+					g.RemoveContainer(nil, containerDefinition)
+				}
+			}
+		case c := <-g.createdChan:
+			containers := g.k8sClient.PodToContainers(c)
+			key, _ := cache.MetaNamespaceKeyFunc(c)
+			containerIDs, ok := g.containerIDsByKey[key]
+			if !ok {
+				containerIDs = make(map[string]struct{})
+				g.containerIDsByKey[key] = containerIDs
+			}
+			for _, container := range containers {
+				// The container is already registered, there is not any chance the
+				// PID will change, so ignore it.
+				if _, ok := containerIDs[container.ContainerId]; ok {
+					continue
+				}
+
+				g.AddContainer(nil, &container)
+				containerIDs[container.ContainerId] = struct{}{}
+			}
+		}
+	}
+}
+
+func NewServerWithPodInformer(nodeName string) *GadgetTracerManager {
+	createdChan := make(chan *v1.Pod)
+	deletedChan := make(chan string)
+
+	k8sClient, err := k8s.NewK8sClient(nodeName)
+	if err != nil {
+		return nil
+	}
+
+	podInformer, err := k8s.NewPodInformer(nodeName, createdChan, deletedChan)
+	if err != nil {
+		return nil
+	}
+	g := &GadgetTracerManager{
+		nodeName:          nodeName,
+		containers:        make(map[string]pb.ContainerDefinition),
+		tracers:           make(map[string]tracer),
+		podInformer:       podInformer,
+		createdChan:       createdChan,
+		deletedChan:       deletedChan,
+		containerIDsByKey: make(map[string]map[string]struct{}),
+		k8sClient:         k8sClient,
+	}
+
+	go g.run()
+
+	return g
+}
+
 func NewServer(nodeName string) *GadgetTracerManager {
 	k8sClient, err := k8s.NewK8sClient(nodeName)
 	if err != nil {
 		return nil
 	}
-	// The CRI client is only used at the beginning, once the initial list
+	// The CRI client is only used at the beginning to get the initial list
 	// of containers, it's not used after it.
 	defer k8sClient.CloseCRI()
 

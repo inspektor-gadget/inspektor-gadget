@@ -19,6 +19,7 @@ import (
 var (
 	serve         bool
 	dump          bool
+	podInformer   bool
 	socketfile    string
 	method        string
 	label         string
@@ -35,6 +36,7 @@ func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
+	flag.BoolVar(&podInformer, "podinformer", false, "Enable a Pod Informer to get Pod events from k8s API server")
 
 	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, add-container, remove-container)")
 	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
@@ -168,7 +170,13 @@ func main() {
 
 		var opts []grpc.ServerOption
 		grpcServer := grpc.NewServer(opts...)
-		pb.RegisterGadgetTracerManagerServer(grpcServer, gadgettracermanager.NewServer(node))
+
+		if podInformer {
+			pb.RegisterGadgetTracerManagerServer(grpcServer, gadgettracermanager.NewServerWithPodInformer(node))
+		} else {
+			pb.RegisterGadgetTracerManagerServer(grpcServer, gadgettracermanager.NewServer(node))
+		}
+
 		grpcServer.Serve(lis)
 	}
 }
