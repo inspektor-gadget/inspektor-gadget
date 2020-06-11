@@ -68,6 +68,7 @@ if grep -q '^ID="rhcos"$' /host/etc/os-release > /dev/null ; then
         curl -fsSLo $RPMHOSTDIR/$RPM $REPO/$RPM
     test -r $RPMHOSTDIR/usr/src/kernels/`uname -r`/.config || \
         chroot /host sh -c "cd $RPMDIR && rpm2cpio $RPM | cpio -i"
+    test ! -L /usr/src || /bin/rm -f /usr/src
     mkdir -p /usr/src/kernels/`uname -r`/
     mount --bind $RPMHOSTDIR/usr/src/kernels/`uname -r` /usr/src/kernels/`uname -r`
   fi
