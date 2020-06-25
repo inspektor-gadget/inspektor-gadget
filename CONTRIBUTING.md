@@ -107,7 +107,7 @@ Note that the minikube image only works with the traceloop gadget.
 You can run the different unit tests by:
 
 ```
-make test
+$ make test
 ```
 
 ### Integration tests
