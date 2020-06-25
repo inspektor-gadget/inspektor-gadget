@@ -1,9 +1,28 @@
 # Inspektor Gadget
 
 Inspektor Gadget is a collection of tools (or gadgets) for developers of
-Kubernetes applications. While it is primarily designed for Lokomotive,
+Kubernetes applications. While it is primarily designed for [Lokomotive](https://github.com/kinvolk/lokomotive),
 Kinvolk's open-source Kubernetes distribution, it can be used on other
 Kubernetes distributions.
+
+## Installation
+
+Install Inspektor Gadget (client-side):
+
+Use [krew](https://sigs.k8s.io/krew) plugin manager to install:
+
+```
+kubectl krew install gadget
+kubectl gadget --help
+```
+
+Install Inspektor Gadget on Kubernetes:
+
+```
+$ kubectl gadget deploy | kubectl apply -f -
+```
+
+Read the detailed [install instructions](Documentation/install.md) to find more information.
 
 ## How to use
 
@@ -25,18 +44,16 @@ Available Commands:
   profile        Profile CPU usage by sampling stack traces
   tcpconnect     Suggest Kubernetes Network Policies
   tcptop         Show the TCP traffic in a pod
-  tcptracer      trace tcp connect, accept and close
+  tcptracer      Trace tcp connect, accept and close
   traceloop      Get strace-like logs of a pod from the past
   version        Show version
 
 Flags:
-  -h, --help                help for kubectl-gadget
+  -h, --help                help for kubectl gadget
       --kubeconfig string   Path to kubeconfig file (default "/home/alban/.kube/config")
 
 Use "kubectl gadget [command] --help" for more information about a command.
 ```
-
-Inspektor Gadget is a kubectl plugin. It can also be invoked with `kubectl gadget`.
 
 - [Demo: the "bindsnoop" gadget](Documentation/demo-bindsnoop.md)
 - [Demo: the "execsnoop" gadget](Documentation/demo-execsnoop.md) – watch it [as GIF](Documentation/demos/demo-execsnoop-gifterminal.gif)
@@ -63,34 +80,13 @@ programs are and how Inspektor Gadget uses them is briefly explained here:
 
 [Read more about the architecture](Documentation/architecture.md)
 
-## Installation
-
-Install Inspektor Gadget (client-side):
-
-Use [krew](https://sigs.k8s.io/krew) plugin manager to install:
-
-```
-kubectl krew install gadget
-kubectl gadget --help
-```
-
-Install Inspektor Gadget on Kubernetes:
-
-```
-$ kubectl gadget deploy | kubectl apply -f -
-```
-
-Read the detailed [install instructions](Documentation/install.md) to find more information.
-
 ## Contributing
 
-Contributions are welcome!
-
-If you're looking where to start, you can check the issues with the 'good first issue' label on [Inspektor Gadget](https://github.com/kinvolk/inspektor-gadget/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [traceloop](https://github.com/kinvolk/traceloop/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22). Don't hesitate to [talk with us](https://github.com/kinvolk/inspektor-gadget#discussions) if you need further help.
+Contributions are welcome, see [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Discussions
 
-Join the discussions on the `#inspektor-gadget` channel in the [Kubernetes Slack](http://kubernetes.slack.com/).
+Join the discussions on the [`#inspektor-gadget`](https://kubernetes.slack.com/messages/inspektor-gadget/) channel in the Kubernetes Slack.
 
 ## Talks
 
@@ -99,7 +95,7 @@ Join the discussions on the `#inspektor-gadget` channel in the [Kubernetes Slack
 
 ## Thanks
 
-* [BPF Compiler Collection (BCC)](https://github.com/iovisor/bcc): the execsnoop, opensnoop, tcptop and tcpconnect gadgets use programs from BCC.
+* [BPF Compiler Collection (BCC)](https://github.com/iovisor/bcc): some of the gadgets are based on BCC tools.
 * [traceloop](https://github.com/kinvolk/traceloop): the traceloop gadget uses the traceloop tool, which can be used independenly of Kubernetes.
 * [gobpf](https://github.com/kinvolk/gobpf): the traceloop gadget heavily uses gobpf.
 * [kubectl-trace](https://github.com/iovisor/kubectl-trace): the Inspektor Gadget architecture was inspired from kubectl-trace.

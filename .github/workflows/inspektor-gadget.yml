@@ -21,6 +21,8 @@ jobs:
       uses: actions/checkout@v1
 
     - name: Build binaries for the gadget container image
+      env:
+        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
       run: |
         make -C gadget-container gadget-container-deps
 
@@ -28,17 +30,20 @@ jobs:
       id: publish-registry
       uses: elgohr/Publish-Docker-Github-Action@2.8
       with:
-        name: docker.io/kinvolk/gadget
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        name: ${{ secrets.CONTAINER_REPO }}
+        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
         workdir: gadget-container
         dockerfile: gadget.Dockerfile
         snapshot: true
         cache: ${{ github.event_name != 'schedule' }}
 
     - name: Build Inspektor Gadget
+      env:
+        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
+        IMAGE_TAG: ${{ steps.publish-registry.outputs.snapshot-tag }}
       run: |
-        IMAGE_TAG=${{steps.publish-registry.outputs.snapshot-tag}} make kubectl-gadget
+        make kubectl-gadget
 
         # Prepare assets for release and actions artifacts
 
@@ -53,6 +58,8 @@ jobs:
         done
 
     - name: Unit tests
+      env:
+        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
       run: |
         make test
 
@@ -65,26 +72,29 @@ jobs:
 
     - uses: azure/docker-login@v1
       with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
     - name: Integration tests
+      env:
+        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
+        IMAGE_TAG: ${{ steps.publish-registry.outputs.snapshot-tag }}
       run: |
-        export IMAGE_TAG=${{steps.publish-registry.outputs.snapshot-tag}}
         echo "Using IMAGE_TAG=$IMAGE_TAG"
 
-        make -C integration build push
-
         TESTS_DOCKER_ARGS="-e KUBECONFIG=/root/.kube/config -v /home/runner/.kube:/root/.kube -v /home/runner/work/_temp/.minikube:/home/runner/work/_temp/.minikube" \
-            make -C integration test
+            make -C integration build test
 
         sed -i "s/latest/$IMAGE_TAG/g" integration/gadget-integration-tests-job.yaml
 
     - name: Smoke test build of the dev image for minikube
+      env:
+        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
+        MINIKUBE: true
       run: |
         mkdir ../traceloop
         touch ../traceloop/traceloop
-        MINIKUBE=true make -C gadget-container/ docker-gadget/minikube-build
+        make -C gadget-container/ docker-gadget/minikube-build
 
     - name: Upload linux-amd64 artifact
       uses: actions/upload-artifact@v1
@@ -145,3 +155,11 @@ jobs:
         asset_path: integration/gadget-integration-tests-job.yaml
         asset_name: gadget-integration-tests-job.yaml
         asset_content_type: application/x-yaml
+
+    - name: Push Integration Test Image
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
+        IMAGE_TAG: ${{ steps.publish-registry.outputs.snapshot-tag }}
+      run: |
+        make -C integration push

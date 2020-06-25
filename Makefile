@@ -1,5 +1,6 @@
 TAG := `git describe --tags --always`
 VERSION :=
+CONTAINER_REPO ?= docker.io/kinvolk/gadget
 
 ## Adds a '-dirty' suffix to version string if there are uncommitted changes
 changes := $(shell git status --porcelain)
@@ -10,7 +11,7 @@ else
 endif
 
 LDFLAGS := "-X main.version=$(VERSION) \
--X main.gadgetimage=docker.io/kinvolk/gadget:$(shell ./tools/image-tag branch) \
+-X main.gadgetimage=$(CONTAINER_REPO):$(shell ./tools/image-tag branch) \
 -extldflags '-static'"
 
 .PHONY: build
@@ -51,4 +52,4 @@ integration-tests:
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget-linux-amd64" \
 		go test ./integration/... \
 			-integration \
-			-image docker.io/kinvolk/gadget:$(shell ./tools/image-tag branch)
+			-image $(CONTAINER_REPO):$(shell ./tools/image-tag branch)
