@@ -5,9 +5,13 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"unsafe"
+
+	"k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 
 	bpflib "github.com/iovisor/gobpf/elf"
 	_ "github.com/iovisor/gobpf/pkg/bpffs"
@@ -20,11 +24,25 @@ import (
 type GadgetTracerManager struct {
 	mu sync.Mutex
 
+	// node where this instance is running
+	nodeName string
+
+	// client to talk to the k8s API server to get information about pods
+	k8sClient *k8s.K8sClient
+
 	// containers by ContainerId
 	containers map[string]pb.ContainerDefinition
 
 	// tracers by tracerId
 	tracers map[string]tracer
+
+	podInformer *k8s.PodInformer
+	createdChan chan *v1.Pod
+	deletedChan chan string
+	// containerIDsByKey is a map maintained by the controller
+	// key is "namespace/podname"
+	// value is an set of containerId
+	containerIDsByKey map[string]map[string]struct{}
 }
 
 type tracer struct {
@@ -158,13 +176,13 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 		return nil, fmt.Errorf("cannot add container: container id not set")
 	}
 	if _, ok := g.containers[containerDefinition.ContainerId]; ok {
-		return nil, fmt.Errorf("container with cgroup id %v already exists", containerDefinition.CgroupId)
+		return nil, fmt.Errorf("container with id %s already exists", containerDefinition.ContainerId)
 	}
 
 	// If the pod name isn't provided, use k8s API server to get the
 	// missing information about the container.
 	if containerDefinition.Podname == "" {
-		if err := k8s.FillContainer(containerDefinition); err != nil {
+		if err := g.k8sClient.FillContainer(containerDefinition); err != nil {
 			return nil, err
 		}
 	}
@@ -235,13 +253,93 @@ func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRe
 	return &pb.Dump{State: out}, nil
 }
 
-func NewServer(initialContainers []pb.ContainerDefinition) *GadgetTracerManager {
+func (g *GadgetTracerManager) run() {
+	for {
+		select {
+		case d := <-g.deletedChan:
+			if containerIDs, ok := g.containerIDsByKey[d]; ok {
+				for containerID, _ := range containerIDs {
+					containerDefinition := &pb.ContainerDefinition{
+						ContainerId: containerID,
+					}
+					g.RemoveContainer(nil, containerDefinition)
+				}
+			}
+		case c := <-g.createdChan:
+			containers := g.k8sClient.PodToContainers(c)
+			key, _ := cache.MetaNamespaceKeyFunc(c)
+			containerIDs, ok := g.containerIDsByKey[key]
+			if !ok {
+				containerIDs = make(map[string]struct{})
+				g.containerIDsByKey[key] = containerIDs
+			}
+			for _, container := range containers {
+				// The container is already registered, there is not any chance the
+				// PID will change, so ignore it.
+				if _, ok := containerIDs[container.ContainerId]; ok {
+					continue
+				}
+
+				g.AddContainer(nil, &container)
+				containerIDs[container.ContainerId] = struct{}{}
+			}
+		}
+	}
+}
+
+func NewServerWithPodInformer(nodeName string) *GadgetTracerManager {
+	createdChan := make(chan *v1.Pod)
+	deletedChan := make(chan string)
+
+	k8sClient, err := k8s.NewK8sClient(nodeName)
+	if err != nil {
+		return nil
+	}
+
+	podInformer, err := k8s.NewPodInformer(nodeName, createdChan, deletedChan)
+	if err != nil {
+		return nil
+	}
 	g := &GadgetTracerManager{
+		nodeName:          nodeName,
+		containers:        make(map[string]pb.ContainerDefinition),
+		tracers:           make(map[string]tracer),
+		podInformer:       podInformer,
+		createdChan:       createdChan,
+		deletedChan:       deletedChan,
+		containerIDsByKey: make(map[string]map[string]struct{}),
+		k8sClient:         k8sClient,
+	}
+
+	go g.run()
+
+	return g
+}
+
+func NewServer(nodeName string) *GadgetTracerManager {
+	k8sClient, err := k8s.NewK8sClient(nodeName)
+	if err != nil {
+		return nil
+	}
+	// The CRI client is only used at the beginning to get the initial list
+	// of containers, it's not used after it.
+	defer k8sClient.CloseCRI()
+
+	g := &GadgetTracerManager{
+		nodeName:   nodeName,
 		containers: make(map[string]pb.ContainerDefinition),
 		tracers:    make(map[string]tracer),
+		k8sClient:  k8sClient,
 	}
-	for _, containerDefinition := range initialContainers {
-		g.containers[containerDefinition.ContainerId] = containerDefinition
+
+	containers, err := k8sClient.ListContainers()
+	if err != nil {
+		log.Printf("gadgettracermanager failed to list containers: %v", err)
+		for _, container := range containers {
+			g.containers[container.ContainerId] = container
+		}
+	} else {
+		log.Printf("gadgettracermanager found %d containers: %+v", len(containers), containers)
 	}
 	return g
 }

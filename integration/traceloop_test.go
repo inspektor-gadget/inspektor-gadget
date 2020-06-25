@@ -62,7 +62,7 @@ func TestTraceloop(t *testing.T) {
 			name: "Check traceloop show",
 			cmd: `TRACE_ID=$($KUBECTL_GADGET traceloop list -n test-traceloop --no-headers | grep multiplication | awk '{printf "%s", $4}') ; ` +
 				`$KUBECTL_GADGET traceloop show $TRACE_ID | grep -C 5 write`,
-			expectedRegexp: "\\[bc\\] write\\(1, \"42\\\\n\", 3\\) = 3\n",
+			expectedRegexp: "\\[bc\\] write\\(1, \"42\\\\n\", 3\\)",
 		},
 		{
 			name:    "traceloop list",

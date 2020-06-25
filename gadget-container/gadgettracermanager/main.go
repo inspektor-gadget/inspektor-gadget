@@ -14,12 +14,12 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/initialcontainers"
 )
 
 var (
 	serve         bool
 	dump          bool
+	podInformer   bool
 	socketfile    string
 	method        string
 	label         string
@@ -36,6 +36,7 @@ func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
+	flag.BoolVar(&podInformer, "podinformer", false, "Enable a Pod Informer to get Pod events from k8s API server")
 
 	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, add-container, remove-container)")
 	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
@@ -162,15 +163,20 @@ func main() {
 			log.Fatalf("failed to listen: %v", err)
 		}
 
+		node := os.Getenv("NODE_NAME")
+		if node == "" {
+			log.Fatalf("Environment variable NODE_NAME not set")
+		}
+
 		var opts []grpc.ServerOption
 		grpcServer := grpc.NewServer(opts...)
-		containers, err := initialcontainers.InitialContainers()
-		if err != nil {
-			log.Printf("gadgettracermanager failed to get initial containers: %v", err)
+
+		if podInformer {
+			pb.RegisterGadgetTracerManagerServer(grpcServer, gadgettracermanager.NewServerWithPodInformer(node))
 		} else {
-			log.Printf("gadgettracermanager found %d initial containers: %+v", len(containers), containers)
+			pb.RegisterGadgetTracerManagerServer(grpcServer, gadgettracermanager.NewServer(node))
 		}
-		pb.RegisterGadgetTracerManagerServer(grpcServer, gadgettracermanager.NewServer(containers))
+
 		grpcServer.Serve(lis)
 	}
 }
