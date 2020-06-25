@@ -116,8 +116,8 @@ The integration tests use a Kubernetes cluster to deploy and test Inspektor Gadg
 Be sure that you have a valid kubeconfig and run:
 
 ```
-export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
-make integration-tests
+$ export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
+$ make integration-tests
 ```
 
 ## Authoring PRs
