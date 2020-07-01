@@ -81,7 +81,7 @@ func TestGadgets(t *testing.T) {
 		},
 		{
 			name: "Run test pod",
-			cmd:  "kubectl run -i --restart=Never -n test-snoop --image=busybox snooptest -- sh -c 'sleep 2 ; cat /non-existent ; nc -w 1 -l -p 8080 & (echo ok | nc -w 1 127.0.0.1 8080) ; sleep 10 ; exit 0'",
+			cmd:  "kubectl run -i --restart=Never -n test-snoop --image=busybox snooptest -- sh -c 'sleep 10 ; cat /non-existent ; nc -w 1 -l -p 8080 & (echo ok | nc -w 1 127.0.0.1 8080) ; sleep 10 ; exit 0'",
 		},
 		{
 			id:   "execsnoop",
