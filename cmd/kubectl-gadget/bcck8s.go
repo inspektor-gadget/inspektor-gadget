@@ -36,7 +36,7 @@ var opensnoopCmd = &cobra.Command{
 var bindsnoopCmd = &cobra.Command{
 	Use:   "bindsnoop",
 	Short: "Trace IPv4 and IPv6 bind() system calls",
-	Run:   bccCmd("opensnoop", "/usr/share/bcc/tools/bindsnoop"),
+	Run:   bccCmd("bindsnoop", "/usr/share/bcc/tools/bindsnoop"),
 }
 
 var profileCmd = &cobra.Command{

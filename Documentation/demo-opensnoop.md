@@ -9,7 +9,7 @@ $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'while /bin/tru
 ```
 
 Using the opensnoop gadget, we can see which processes open what files.
-We can simply filter for the pod "mypod" and omit specifiying the node,
+We can simply filter for the pod "mypod" and omit specifying the node,
 thus snooping on all nodes for pod "mypod":
 
 ```
