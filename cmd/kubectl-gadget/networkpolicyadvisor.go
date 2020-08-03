@@ -72,7 +72,7 @@ func init() {
 
 	networkPolicyCmd.AddCommand(networkPolicyMonitorCmd)
 	networkPolicyMonitorCmd.PersistentFlags().StringVarP(&outputFileName, "output", "", "-", "File name output")
-	networkPolicyMonitorCmd.PersistentFlags().StringVarP(&namespaces, "namespaces", "", "default", "Comma-separated list of namespaces to monitor")
+	networkPolicyMonitorCmd.PersistentFlags().StringVarP(&namespaces, "namespaces", "", "", "Comma-separated list of namespaces to monitor")
 
 	networkPolicyCmd.AddCommand(networkPolicyReportCmd)
 	networkPolicyReportCmd.PersistentFlags().StringVarP(&inputFileName, "input", "", "-", "File name input")
@@ -137,6 +137,9 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error listing nodes: %q", err)
 	}
 
+	if namespaces == "" {
+		namespaces, _, _ = KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
+	}
 	namespaceFilter := fmt.Sprintf("--namespace %q", namespaces)
 
 	sigs := make(chan os.Signal, 1)
