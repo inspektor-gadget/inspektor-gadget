@@ -56,7 +56,7 @@ argument when deploying to the Kuberentes cluster.
 `gadget.Dockerfile` to pick your own image of traceloop.
 - As for traceloop, it is also possible to change the BCC to be used as
 described in [BCC](#Updating-BCC-from-upstream) section.
-- See the [minikube](#Development-environment-on-minikube-for-the-traceloop-gadget)
+- See the [minikube](#Development-environment-on-minikube)
 section for a faster development cycle.
 
 ## Workflows
@@ -75,10 +75,11 @@ to be able to use them:
 - `CONTAINER_REGISTRY`: The registry containing the repo above. Leave empty for Docker Hub. Example: ghcr.io, foo.azurecr.io, gcr.io
 - `CONTAINER_REGISTRY_USERNAME` & `CONTAINER_REGISTRY_PASSWORD`: Authentication information for the the repo above.
 
-### Development environment on minikube for the traceloop gadget
+### Development environment on minikube
 
-It's possible to make changes to traceloop and test them on minikube locally without pushing container images to any registry.
+It's possible to make changes to Inspektor Gadget and test them on minikube locally without pushing container images to any registry.
 
+* Follow the specific [installation instructions](Documentation/install.md#minikube) for minikube.
 * Make sure the git repositories `traceloop` and `inspektor-gadget` are cloned in sibling directories
 * Minikube with the Docker driver does not work for traceloop. You can use another driver, for example:
 ```
@@ -93,8 +94,6 @@ $ kubectl gadget deploy | kubectl apply -f -
 ```
 $ make -C gadget-container/ minikube
 ```
-
-Note that the minikube image only works with the traceloop gadget.
 
 ## Testing
 
