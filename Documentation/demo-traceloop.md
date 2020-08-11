@@ -1,4 +1,7 @@
-# Inspektor Gadget demo: the "traceloop" gadget
+---
+title: 'Inspektor Gadget demo: the "traceloop" gadget'
+weight: 10
+---
 
 ## Multiplication demo
 

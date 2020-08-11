@@ -1,4 +1,7 @@
-# Inspektor Gadget demo: the "tcpconnect" gadget
+---
+title: 'Inspektor Gadget demo: the "tcpconnect" gadget'
+weight: 10
+---
 
 The tcpconnect gadget traces TCP connect calls.
 This will help us to define a restrictive policy for outgoing connections.

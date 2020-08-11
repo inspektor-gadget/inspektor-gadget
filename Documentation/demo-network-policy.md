@@ -1,4 +1,7 @@
-# Inspektor Gadget demo: the "network-policy" gadget
+---
+title: 'Inspektor Gadget demo: the "network-policy" gadget'
+weight: 10
+---
 
 network-policy monitors the network activity in the specified namespaces and
 record the list of new TCP connections in a file. This file can then be used to
