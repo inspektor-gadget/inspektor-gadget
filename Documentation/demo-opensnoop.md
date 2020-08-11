@@ -1,4 +1,7 @@
-# Inspektor Gadget demo: the "opensnoop" gadget
+---
+title: 'Inspektor Gadget demo: the "opensnoop" gadget'
+weight: 10
+---
 
 The opensnoop gadget watches files that programs in pods open.
 Pods can be selected by Kubernetes labels, pod names, namespaces, and nodes.

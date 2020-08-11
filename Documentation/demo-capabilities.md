@@ -1,4 +1,7 @@
-# Inspektor Gadget demo: the "capabilities" gadget
+---
+title: 'Inspektor Gadget demo: the "capabilities" gadget'
+weight: 10
+---
 
 The capabilities gadget allows us to see what capability security checks
 are triggered by applications running in Kubernetes Pods.

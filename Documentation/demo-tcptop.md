@@ -1,4 +1,7 @@
-# Inspektor Gadget demo: the "tcptop" gadget
+---
+title: 'Inspektor Gadget demo: the "tcptop" gadget'
+weight: 10
+---
 
 The tcptop gadget allows us to see active TCP connections.
 Let's start a pod that fetches a website every 3 seconds.
