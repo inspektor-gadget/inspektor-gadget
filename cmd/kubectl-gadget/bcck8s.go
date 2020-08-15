@@ -29,7 +29,7 @@ var execsnoopCmd = &cobra.Command{
 
 var opensnoopCmd = &cobra.Command{
 	Use:   "opensnoop",
-	Short: "Trace files",
+	Short: "Trace open() system calls",
 	Run:   bccCmd("opensnoop", "/usr/share/bcc/tools/opensnoop"),
 }
 
@@ -53,7 +53,7 @@ var tcptopCmd = &cobra.Command{
 
 var tcpconnectCmd = &cobra.Command{
 	Use:   "tcpconnect",
-	Short: "Suggest Kubernetes Network Policies",
+	Short: "Trace TCP connect() system calls",
 	Run:   bccCmd("tcpconnect", "/usr/share/bcc/tools/tcpconnect"),
 }
 
