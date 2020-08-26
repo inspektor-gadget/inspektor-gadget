@@ -1,5 +1,5 @@
 ---
-title: 'Inspektor Gadget demo: the "tcptop" gadget'
+title: 'The "tcptop" gadget'
 weight: 10
 ---
 

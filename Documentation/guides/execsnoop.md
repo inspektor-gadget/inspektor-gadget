@@ -1,10 +1,9 @@
 ---
-title: 'Inspektor Gadget demo: the "execsnoop" gadget'
+title: 'The "execsnoop" gadget'
 weight: 10
 ---
 
-Pods can be selected by Kubernetes labels. Here we deploy a *myapp* which creates
-pods with the `role=demo` label:
+Pods can be selected by Kubernetes labels. Here we deploy a *myapp* which creates pods with the `role=demo` label:
 
 ```
 $ kubectl apply -f Documentation/examples/ds-myapp.yaml

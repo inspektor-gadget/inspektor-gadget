@@ -1,11 +1,10 @@
 ---
-title: 'Inspektor Gadget demo: the "tcpconnect" gadget'
+title: 'The "tcpconnect" gadget'
 weight: 10
 ---
 
 The tcpconnect gadget traces TCP connect calls.
 This will help us to define a restrictive policy for outgoing connections.
-
 
 Before we start a demo pod that connects to a public HTTP server, we already begin to trace
 the outgoing connections of our future pod (don't terminate it with Ctrl-C for now).

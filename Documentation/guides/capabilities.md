@@ -1,5 +1,5 @@
 ---
-title: 'Inspektor Gadget demo: the "capabilities" gadget'
+title: 'The "capabilities" gadget'
 weight: 10
 ---
 
@@ -73,7 +73,7 @@ all other capabilites from the default list (see link above) since `nice`
 did not use them:
 
 ```
-$ cat Documentation/examples/app-set-priority-locked-down.yaml 
+$ cat Documentation/examples/app-set-priority-locked-down.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -137,9 +137,9 @@ restricted                 false   SYS_NICE           RunAsAny   MustRunAs   Mus
 Let's verify that our locked-down version works.
 
 ```
-$ kubectl delete -f Documentation/examples/app-set-priority.yaml 
+$ kubectl delete -f Documentation/examples/app-set-priority.yaml
 deployment.apps "set-priority" deleted
-$ kubectl apply -f Documentation/examples/app-set-priority-locked-down.yaml 
+$ kubectl apply -f Documentation/examples/app-set-priority-locked-down.yaml
 deployment.apps/set-priority created
 $ kubectl logs -lname=set-priority
 
