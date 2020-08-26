@@ -1,5 +1,5 @@
 ---
-title: 'Inspektor Gadget demo: the "network-policy" gadget'
+title: 'The "network-policy" gadget'
 weight: 10
 ---
 

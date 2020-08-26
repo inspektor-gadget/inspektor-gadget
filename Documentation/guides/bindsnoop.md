@@ -1,5 +1,5 @@
 ---
-title: 'Inspektor Gadget demo: the "bindsnoop" gadget'
+title: 'The "bindsnoop" gadget'
 weight: 10
 ---
 

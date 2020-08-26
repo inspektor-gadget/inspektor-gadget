@@ -1,5 +1,5 @@
 ---
-title: 'Inspektor Gadget demo: the "profile" gadget'
+title: 'The "profile" gadget'
 weight: 10
 ---
 

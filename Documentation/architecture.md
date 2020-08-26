@@ -1,6 +1,8 @@
 ---
-title: Inspektor Gadget architecture
-weight: 10
+title: Architecture
+weight: 20
+description: >
+  Understand how everything comes together.
 ---
 
 Inspektor Gadget is deployed to each node as a privileged DaemonSet.
