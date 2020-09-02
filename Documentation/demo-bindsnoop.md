@@ -7,7 +7,7 @@ and displays the same output.
 
 In one terminal, start the bindsnoop gadget:
 ```
-$ kubectl gadget bindsnoop --label run=nginx-app
+$ kubectl gadget bindsnoop --selector run=nginx-app
 ```
 
 In another terminal, start nginx:
