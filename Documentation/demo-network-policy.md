@@ -86,3 +86,44 @@ spec:
   - Ingress
   - Egress
 ```
+
+Time to apply network policies:
+
+```
+$ kubectl apply -f network-policy.yaml
+networkpolicy.networking.k8s.io/cartservice-network created
+networkpolicy.networking.k8s.io/checkoutservice-network created
+networkpolicy.networking.k8s.io/currencyservice-network created
+networkpolicy.networking.k8s.io/frontend-network created
+networkpolicy.networking.k8s.io/productcatalogservice-network created
+networkpolicy.networking.k8s.io/redis-cart-network created
+networkpolicy.networking.k8s.io/shippingservice-network created
+```
+
+After a while we can see all the pods in the demo namespace:
+
+```
+$kubectl get pod -n demo
+NAME                                     READY   STATUS             RESTARTS   AGE
+adservice-58c85c77d8-k5667               1/1     Running            0          5m11s
+cartservice-579bdd6865-2wcbk             1/1     Running            0          5m12s
+checkoutservice-66d68cbdd-smp6w          1/1     Running            0          5m14s
+currencyservice-65dd85f486-62vld         1/1     Running            0          5m12s
+emailservice-84c98657cb-lqwfz            0/1     Running            5          5m14s
+frontend-788f7bdc86-q56rw                1/1     Running            0          5m13s
+loadgenerator-7699dc7d4b-j6vq6           1/1     Running            2          5m12s
+paymentservice-5c54c9887b-prz7n          1/1     Running            0          5m13s
+productcatalogservice-7df777f796-29lmz   1/1     Running            0          5m13s
+recommendationservice-89547cff8-xf4mv    0/1     Running            4          5m14s
+redis-cart-5f59546cdd-6rq8f              1/1     Running            0          5m11s
+shippingservice-778db496dd-mhdk5         1/1     Running            0          5m12s
+```
+
+(`emailservice-84c98657cb-lqwfz` and `recommendationservice-89547cff8-xf4mv` services are failing because `GOOGLE_APPLICATION_CREDENTIALS` are not set)
+
+Finally, we should delete the demo namespace:
+
+```
+$ kubectl delete namespace demo
+namespace "demo" deleted
+```

@@ -51,7 +51,7 @@ We could see the error messages in the pod's log.
 Let's use Inspektor Gadget to watch the capability checks:
 
 ```
-$ kubectl gadget capabilities --label name=set-priority
+$ kubectl gadget capabilities --selector name=set-priority
 TIME      UID    PID    TID    COMM             CAP  NAME                 AUDIT  INSETID
 13:01:54  1      4779   4779   true             6    CAP_SETGID           0      0
 13:01:54  1      4779   4779   true             7    CAP_SETUID           0      0

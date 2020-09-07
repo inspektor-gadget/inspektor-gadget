@@ -39,7 +39,7 @@ We could see the error messages in the pod's log. @@@@@ TERMINAL=3 PROMPT=1 PROM
 Since none of the default capabilities is dropped, we have to find out @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
 what non-default capability we have to add. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 Let's use Inspektor Gadget to watch the capability checks. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-kubectl gadget capabilities --label name=set-priority @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
+kubectl gadget capabilities --selector name=set-priority @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 TIME      UID    PID    TID    COMM   CAP  NAME                 AUDIT  INSETID @@@@@ SLEEP_NL=80
 13:01:54  1      4779   4779   true   6    CAP_SETGID           0      0
 13:01:54  1      4779   4779   true   7    CAP_SETUID           0      0
