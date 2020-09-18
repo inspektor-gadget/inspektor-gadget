@@ -26,13 +26,11 @@ import (
 var (
 	socketfile string
 	hook       string
-	node       string
 )
 
 func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
 	flag.StringVar(&hook, "hook", "", "OCI hook: prestart or poststop")
-	flag.StringVar(&node, "node", "", "node name as known in Kubernetes")
 }
 
 func main() {
