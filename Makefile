@@ -18,7 +18,7 @@ LDFLAGS := "-X main.version=$(VERSION) \
 build: kubectl-gadget build-gadget-container
 
 .PHONY: kubectl-gadget
-kubectl-gadget: kubectl-gadget-linux-amd64 kubectl-gadget-darwin-amd64
+kubectl-gadget: kubectl-gadget-linux-amd64 kubectl-gadget-darwin-amd64 kubectl-gadget-windows-amd64
 
 .PHONY: kubectl-gadget-linux-amd64
 kubectl-gadget-linux-amd64:
@@ -32,6 +32,13 @@ kubectl-gadget-darwin-amd64:
 	GO111MODULE=on CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build \
 		-ldflags $(LDFLAGS) \
 		-o kubectl-gadget-darwin-amd64 \
+		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
+
+.PHONY: kubectl-gadget-windows-amd64
+kubectl-gadget-windows-amd64:
+	GO111MODULE=on CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
+		-ldflags $(LDFLAGS) \
+		-o kubectl-gadget-windows-amd64 \
 		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
 
 .PHONY: install-user-linux
