@@ -39,7 +39,7 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		LabelSelector: "k8s-app=gadget",
 		FieldSelector: "spec.nodeName=" + node + ",status.phase=Running",
 	}
-	pods, err := client.CoreV1().Pods("kube-system").List(listOptions)
+	pods, err := client.CoreV1().Pods("").List(listOptions)
 	if err != nil {
 		return err
 	}
@@ -50,6 +50,8 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		return errors.New("Multiple Gadget Daemons found")
 	}
 	podName := pods.Items[0].Name
+
+	namespace := pods.Items[0].Namespace
 
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	loadingRules.DefaultClientConfig = &clientcmd.DefaultClientConfig
@@ -71,7 +73,7 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 	req := restClient.Post().
 		Resource("pods").
 		Name(podName).
-		Namespace("kube-system").
+		Namespace(namespace).
 		SubResource("exec").
 		Param("container", "gadget").
 		VersionedParams(&corev1.PodExecOptions{
