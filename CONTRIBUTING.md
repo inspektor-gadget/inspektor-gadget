@@ -124,41 +124,8 @@ $ make integration-tests
 
 ## Authoring PRs
 
-These are general guidelines for making PRs/commits easier to review:
-
- * Commits should be atomic and self-contained. Divide logically separate changes
-   to separate commits. This principle is best explained in the the Linux Kernel
-   [submitting patches][linux-sep-changes] guide.
-
- * Commit messages should explain the intention, _why_ something is done. This,
-   too, is best explained in [this section][linux-desc-changes] from the Linux
-   Kernel patch submission guide.
-
- * Commit titles (the first line in a commit) should be meaningful and describe
-   _what_ the commit does.
-
- * Don't add code you will change in a later commit (it makes it pointless to
-   review that commit), nor create a commit to add code an earlier commit should
-   have added. Consider squashing the relevant commits instead.
-
- * It's not important to retain your development history when contributing a
-   change. Use `git rebase` to squash and order commits in a way that makes them easy to
-   review. Keep the final, well-structured commits and not your development history
-   that led to the final state.
-
- * Consider reviewing the changes yourself before opening a PR. It is likely
-   you will catch errors when looking at your code critically and thus save the
-   reviewers (and yourself) time.
-
- * Use the PR's description as a "cover letter" and give the context you think
-   reviewers might need. Use the PR's description to explain why you are
-   proposing the change, give an overview, raise questions about yet-unresolved
-   issues in your PR, list TODO items etc.
-
-PRs which follow these rules are easier to review and merge.
-
-[linux-sep-changes]: https://www.kernel.org/doc/html/v4.17/process/submitting-patches.html#separate-your-changes
-[linux-desc-changes]: https://www.kernel.org/doc/html/v4.17/process/submitting-patches.html#describe-your-changes
+For making PRs/commits consistent and easier to review, please check out
+Kinvolk's [contribution guidelines on git](https://github.com/kinvolk/contribution/tree/master/git).
 
 ## Good first issues
 
