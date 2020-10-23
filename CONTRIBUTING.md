@@ -13,6 +13,7 @@
 - [Testing](#testing)
   - [Unit tests](#unit-tests)
   - [Integration tests](#integration-tests)
+- [Code of Conduct](#code-of-conduct)
 - [Authoring PRs](#authoring-prs)
 - [Good first issues](#good-first-issues)
 - [Proposing new features](#proposing-new-features)
@@ -121,6 +122,11 @@ Be sure that you have a valid kubeconfig and run:
 $ export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
 $ make integration-tests
 ```
+
+## Code of Conduct
+
+Please refer to the Kinvolk
+[Code of Conduct](https://github.com/kinvolk/contribution/blob/master/CODE_OF_CONDUCT.md).
 
 ## Authoring PRs
 
