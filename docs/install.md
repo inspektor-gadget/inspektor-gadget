@@ -1,4 +1,9 @@
-# Installation
+---
+title: Installation
+weight: 10
+description: >
+  How to install.
+---
 
 Inspektor Gadget is composed by a `kubectl` plugin executed in the user's
 system and a DaemonSet deployed in the cluster.

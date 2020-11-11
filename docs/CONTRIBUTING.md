@@ -1,26 +1,15 @@
-# Contributing to Inspektor Gadget
+---
+title: Contributing
+weight: 100
+description: >
+  How to contribute to Inspektor Gadget.
+---
 
-## Contents
-
-- [Architecture](#architecture)
-- [Setup developer environment](#setup-developer-environment)
-- [Building the code](#building-the-code)
-  - [Building the client executable](#building-the-client-executable)
-  - [Building the gadget container image](#building-the-gadget-container-image)
-- [Workflows](#workflows)
-  - [Github Actions](#github-actions)
-  - [Minikube](#development-environment-on-minikube-for-the-traceloop-gadget)
-- [Testing](#testing)
-  - [Unit tests](#unit-tests)
-  - [Integration tests](#integration-tests)
-- [Authoring PRs](#authoring-prs)
-- [Good first issues](#good-first-issues)
-- [Proposing new features](#proposing-new-features)
-- [Porting BCC gadgets](#porting-bcc-gadgets)
+Here you can learn how you can contribute to Inspektor Gadget.
 
 ## Architecture
 
-It's highly recommended to read the [architecture](./Documentation/architecture.md) documentation before starting
+It's highly recommended to read the [architecture](./docs/architecture.md) documentation before starting
 to play with Inspektor Gadget.
 
 ## Setup developer environment
@@ -122,43 +111,15 @@ $ export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
 $ make integration-tests
 ```
 
+## Code of Conduct
+
+Please refer to the Kinvolk
+[Code of Conduct](https://github.com/kinvolk/contribution/blob/master/CODE_OF_CONDUCT.md).
+
 ## Authoring PRs
 
-These are general guidelines for making PRs/commits easier to review:
-
- * Commits should be atomic and self-contained. Divide logically separate changes
-   to separate commits. This principle is best explained in the the Linux Kernel
-   [submitting patches][linux-sep-changes] guide.
-
- * Commit messages should explain the intention, _why_ something is done. This,
-   too, is best explained in [this section][linux-desc-changes] from the Linux
-   Kernel patch submission guide.
-
- * Commit titles (the first line in a commit) should be meaningful and describe
-   _what_ the commit does.
-
- * Don't add code you will change in a later commit (it makes it pointless to
-   review that commit), nor create a commit to add code an earlier commit should
-   have added. Consider squashing the relevant commits instead.
-
- * It's not important to retain your development history when contributing a
-   change. Use `git rebase` to squash and order commits in a way that makes them easy to
-   review. Keep the final, well-structured commits and not your development history
-   that led to the final state.
-
- * Consider reviewing the changes yourself before opening a PR. It is likely
-   you will catch errors when looking at your code critically and thus save the
-   reviewers (and yourself) time.
-
- * Use the PR's description as a "cover letter" and give the context you think
-   reviewers might need. Use the PR's description to explain why you are
-   proposing the change, give an overview, raise questions about yet-unresolved
-   issues in your PR, list TODO items etc.
-
-PRs which follow these rules are easier to review and merge.
-
-[linux-sep-changes]: https://www.kernel.org/doc/html/v4.17/process/submitting-patches.html#separate-your-changes
-[linux-desc-changes]: https://www.kernel.org/doc/html/v4.17/process/submitting-patches.html#describe-your-changes
+For making PRs/commits consistent and easier to review, please check out
+Kinvolk's [contribution guidelines on git](https://github.com/kinvolk/contribution/blob/master/topics/git.md).
 
 ## Good first issues
 

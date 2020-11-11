@@ -1,4 +1,7 @@
-# Inspektor Gadget demo: the "network-policy" gadget
+---
+title: 'The "network-policy" gadget'
+weight: 10
+---
 
 network-policy monitors the network activity in the specified namespaces and
 record the list of new TCP connections in a file. This file can then be used to
@@ -9,7 +12,7 @@ We will run this demo in the demo namespace:
 ```
 $ kubectl create ns demo
 namespace/demo created
-$ kubectl apply -f Documentation/examples/disable-psp-demo.yaml
+$ kubectl apply -f docs/examples/disable-psp-demo.yaml
 clusterrole.rbac.authorization.k8s.io/disable-psp-demo created
 clusterrolebinding.rbac.authorization.k8s.io/disable-psp-demo created
 ```

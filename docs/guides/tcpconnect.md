@@ -1,8 +1,10 @@
-# Inspektor Gadget demo: the "tcpconnect" gadget
+---
+title: 'The "tcpconnect" gadget'
+weight: 10
+---
 
 The tcpconnect gadget traces TCP connect calls.
 This will help us to define a restrictive policy for outgoing connections.
-
 
 Before we start a demo pod that connects to a public HTTP server, we already begin to trace
 the outgoing connections of our future pod (don't terminate it with Ctrl-C for now).
@@ -41,7 +43,7 @@ Since we now know which network accesses our pod does, we can define and apply a
 restrictive network policy:
 
 ```
-$ cat Documentation/examples/network-policy.yaml
+$ cat docs/examples/network-policy.yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -68,7 +70,7 @@ spec:
     - protocol: TCP
       port: 443
 
-$ kubectl apply -f Documentation/examples/network-policy.yaml
+$ kubectl apply -f docs/examples/network-policy.yaml
 networkpolicy.networking.k8s.io/restrictive-network-policy created
 ```
 
@@ -123,7 +125,7 @@ Finally, we should delete the demo pod and network policy again:
 ```
 $ kubectl delete pod mypod
 pod "mypod" deleted
-$ kubectl delete -f Documentation/examples/network-policy.yaml
+$ kubectl delete -f docs/examples/network-policy.yaml
 networkpolicy.networking.k8s.io "restrictive-network-policy" deleted
 ```
 

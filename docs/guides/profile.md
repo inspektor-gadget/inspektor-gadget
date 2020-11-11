@@ -1,4 +1,7 @@
-# Inspektor Gadget demo: the "profile" gadget
+---
+title: 'The "profile" gadget'
+weight: 10
+---
 
 The profile gadget takes samples of the stack traces.
 Pods can be selected by Kubernetes labels, pod names, namespaces, and nodes.

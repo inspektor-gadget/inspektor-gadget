@@ -1,4 +1,9 @@
-# Inspektor Gadget architecture
+---
+title: Architecture
+weight: 20
+description: >
+  Understand how everything comes together.
+---
 
 Inspektor Gadget is deployed to each node as a privileged DaemonSet.
 It uses in-kernel BPF helper programs to monitor events mainly related to

@@ -4,7 +4,7 @@ Inspektor Gadget “execsnoop” demo @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' D
 The execsnoop gadget watches programs executed in pods. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 Pods can be selected by Kubernetes labels. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 Here we deploy a "myapp" which creates pods with the "role=demo" label. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-kubectl apply -f Documentation/examples/ds-myapp.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
+kubectl apply -f docs/examples/ds-myapp.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 daemonset.apps/myapp1-pod created
 daemonset.apps/myapp2-pod created
 $ kubectl get pod --show-labels -o wide

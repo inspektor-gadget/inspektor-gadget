@@ -1,4 +1,7 @@
-# Inspektor Gadget demo: the "bindsnoop" gadget
+---
+title: 'The "bindsnoop" gadget'
+weight: 10
+---
 
 bindsnoop reports socket options set before the bind call that would impact
 this system call behavior. It comes from the [bcc bindsnoop

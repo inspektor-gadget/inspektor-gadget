@@ -20,7 +20,7 @@ There was a HTTP redirect to HTTPS, so we need to allow both @@@@@ TERMINAL=3 PR
 ports for our pod. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 Since we now know which network accesses our pod does, we can define @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'  SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
 and apply a very restrictive network policy. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-cat Documentation/examples/network-policy.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
+cat docs/examples/network-policy.yaml @@@@@ TERMINAL=2 DEFAULT_TERMINAL=2 PROMPT=1 PROMPT_CHAR=''
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -46,7 +46,7 @@ spec:
       port: 80
     - protocol: TCP
       port: 443  @@@@@ SLEEP_NL=30
-$ kubectl apply -f Documentation/examples/network-policy.yaml
+$ kubectl apply -f docs/examples/network-policy.yaml
 networkpolicy.networking.k8s.io/restrictive-network-policy created
 $ @@@@@ SKIP=1
 Let's test if the pod still works as expected. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
