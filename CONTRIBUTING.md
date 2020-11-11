@@ -131,7 +131,7 @@ Please refer to the Kinvolk
 ## Authoring PRs
 
 For making PRs/commits consistent and easier to review, please check out
-Kinvolk's [contribution guidelines on git](https://github.com/kinvolk/contribution/tree/master/git).
+Kinvolk's [contribution guidelines on git](https://github.com/kinvolk/contribution/blob/master/topics/git.md).
 
 ## Good first issues
 
