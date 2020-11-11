@@ -12,7 +12,7 @@ We will run this demo in the demo namespace:
 ```
 $ kubectl create ns demo
 namespace/demo created
-$ kubectl apply -f Documentation/examples/disable-psp-demo.yaml
+$ kubectl apply -f docs/examples/disable-psp-demo.yaml
 clusterrole.rbac.authorization.k8s.io/disable-psp-demo created
 clusterrolebinding.rbac.authorization.k8s.io/disable-psp-demo created
 ```

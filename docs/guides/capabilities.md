@@ -22,7 +22,7 @@ Since none of the default capabilities is dropped, we have to find
 out what non-default capability we have to add.
 
 ```
-$ cat Documentation/examples/app-set-priority.yaml
+$ cat docs/examples/app-set-priority.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -43,7 +43,7 @@ spec:
         image: busybox
         command: [ "sh", "-c", "while /bin/true ; do nice -n -20 echo ; sleep 5; done" ]
 
-$ kubectl apply -f Documentation/examples/app-set-priority.yaml
+$ kubectl apply -f docs/examples/app-set-priority.yaml
 deployment.apps/set-priority created
 $ kubectl logs -lname=set-priority
 nice: setpriority(-20): Permission denied
@@ -73,7 +73,7 @@ all other capabilites from the default list (see link above) since `nice`
 did not use them:
 
 ```
-$ cat Documentation/examples/app-set-priority-locked-down.yaml
+$ cat docs/examples/app-set-priority-locked-down.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -137,13 +137,13 @@ restricted                 false   SYS_NICE           RunAsAny   MustRunAs   Mus
 Let's verify that our locked-down version works.
 
 ```
-$ kubectl delete -f Documentation/examples/app-set-priority.yaml
+$ kubectl delete -f docs/examples/app-set-priority.yaml
 deployment.apps "set-priority" deleted
-$ kubectl apply -f Documentation/examples/app-set-priority-locked-down.yaml
+$ kubectl apply -f docs/examples/app-set-priority-locked-down.yaml
 deployment.apps/set-priority created
 $ kubectl logs -lname=set-priority
 
-$ kubectl delete -f Documentation/examples/app-set-priority-locked-down.yaml
+$ kubectl delete -f docs/examples/app-set-priority-locked-down.yaml
 ```
 
 The logs are clean, so everything works!

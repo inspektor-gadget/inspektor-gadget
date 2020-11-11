@@ -22,7 +22,7 @@ Install Inspektor Gadget on Kubernetes:
 $ kubectl gadget deploy | kubectl apply -f -
 ```
 
-Read the detailed [install instructions](Documentation/install.md) to find more information.
+Read the detailed [install instructions](docs/install.md) to find more information.
 
 ## How to use
 
@@ -55,19 +55,19 @@ Flags:
 Use "kubectl gadget [command] --help" for more information about a command.
 ```
 
-- [Demo: the "bindsnoop" gadget](Documentation/demo-bindsnoop.md)
-- [Demo: the "execsnoop" gadget](Documentation/demo-execsnoop.md) – watch it [as GIF](Documentation/demos/demo-execsnoop-gifterminal.gif)
-- [Demo: the "opensnoop" gadget](Documentation/demo-opensnoop.md) – watch it [as GIF](Documentation/demos/demo-opensnoop-gifterminal.gif)
-- [Demo: the "traceloop" gadget](Documentation/demo-traceloop.md) – watch it [as GIF](Documentation/demos/demo-traceloop-gifterminal.gif)
-- [Demo: the "capabilities" gadget](Documentation/demo-capabilities.md) – watch is [as GIF](Documentation/demos/demo-capabilities-gifterminal.gif)
-- [Demo: the "tcptop" gadget](Documentation/demo-tcptop.md) – watch it [as GIF](Documentation/demos/demo-tcptop-gifterminal.gif)
-- [Demo: the "tcpconnect" gadget](Documentation/demo-tcpconnect.md) — watch it [as GIF](Documentation/demos/demo-tcpconnect-gifterminal.gif)
-- [Demo: the "network-policy" gadget](Documentation/demo-network-policy.md)
-- [Demo: the "profile" gadget](Documentation/demo-profile.md)
+- [Demo: the "bindsnoop" gadget](docs/demo-bindsnoop.md)
+- [Demo: the "execsnoop" gadget](docs/demo-execsnoop.md) – watch it [as GIF](docs/demos/demo-execsnoop-gifterminal.gif)
+- [Demo: the "opensnoop" gadget](docs/demo-opensnoop.md) – watch it [as GIF](docs/demos/demo-opensnoop-gifterminal.gif)
+- [Demo: the "traceloop" gadget](docs/demo-traceloop.md) – watch it [as GIF](docs/demos/demo-traceloop-gifterminal.gif)
+- [Demo: the "capabilities" gadget](docs/demo-capabilities.md) – watch is [as GIF](docs/demos/demo-capabilities-gifterminal.gif)
+- [Demo: the "tcptop" gadget](docs/demo-tcptop.md) – watch it [as GIF](docs/demos/demo-tcptop-gifterminal.gif)
+- [Demo: the "tcpconnect" gadget](docs/demo-tcpconnect.md) — watch it [as GIF](docs/demos/demo-tcpconnect-gifterminal.gif)
+- [Demo: the "network-policy" gadget](docs/demo-network-policy.md)
+- [Demo: the "profile" gadget](docs/demo-profile.md)
 
 As preview for the above demos, here is the `opensnoop` demo:
 
-![](Documentation/demos/demo-opensnoop-gifterminal.gif)
+![](docs/demos/demo-opensnoop-gifterminal.gif)
 
 ## How does it work?
 
@@ -78,7 +78,7 @@ the kernel and gather the log data. Inspektor Gadget's userspace
 utilities fetch the log data from ring buffers and display it. What BPF
 programs are and how Inspektor Gadget uses them is briefly explained here:
 
-[Read more about the architecture](Documentation/architecture.md)
+[Read more about the architecture](docs/architecture.md)
 
 ## Contributing
 

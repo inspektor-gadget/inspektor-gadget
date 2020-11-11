@@ -7,7 +7,7 @@ We can debug missing capabilities and lock the security policy down to @@@@@ TER
 only the used capabilities. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 Here we have a small demo app which logs failures due to @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
 lacking capabilities. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-cat Documentation/examples/app-set-priority.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
+cat docs/examples/app-set-priority.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,7 +28,7 @@ spec:
         image: busybox
         command: [ "sh", "-c", "while /bin/true ; do nice -n -20 echo ; sleep 5; done" ]
 $
-$ kubectl apply -f Documentation/examples/app-set-priority.yaml
+$ kubectl apply -f docs/examples/app-set-priority.yaml
 deployment.apps/set-priority created
 $ kubectl logs -lname=set-priority
 nice: setpriority(-20): Permission denied
@@ -56,7 +56,7 @@ In the output we see that the SYS_NICE capability got checked when @@@@@ TERMINA
 We should probably add it to our pod template for "nice" to work. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
 We can also drop all other capabilites since "nice" does not use them @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold' SLEEP_EOL=0 SLEEP_PROMPT_EOL=0
 (SETGID/SETUID are not relevant for our demo app). @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-cat Documentation/examples/app-set-priority-locked-down.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
+cat docs/examples/app-set-priority-locked-down.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -83,9 +83,9 @@ spec:
 $
 $ @@@@@ SKIP=1
 Let's verify that our locked-down version works. @@@@@ TERMINAL=3 PROMPT=1 PROMPT_CHAR='' FONT='DejaVu-Sans-Condensed-Bold'
-kubectl delete -f Documentation/examples/app-set-priority.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
+kubectl delete -f docs/examples/app-set-priority.yaml @@@@@ TERMINAL=1 DEFAULT_TERMINAL=1 PROMPT=1 PROMPT_CHAR=''
 deployment.apps "set-priority" deleted
-$ kubectl apply -f Documentation/examles/app-set-priority-locked-down.yaml
+$ kubectl apply -f docs/examles/app-set-priority-locked-down.yaml
 deployment.apps/set-priority created
 $ kubectl logs -lname=set-priority
 $ @@@@@ SKIP=1
