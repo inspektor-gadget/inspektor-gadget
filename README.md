@@ -82,7 +82,7 @@ programs are and how Inspektor Gadget uses them is briefly explained here:
 
 ## Contributing
 
-Contributions are welcome, see [CONTRIBUTING](CONTRIBUTING.md).
+Contributions are welcome, see [CONTRIBUTING](docs/CONTRIBUTING.md).
 
 ## Discussions
 

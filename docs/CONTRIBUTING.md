@@ -1,23 +1,11 @@
-# Contributing to Inspektor Gadget
+---
+title: Contributing
+weight: 100
+description: >
+  How to contribute to Inspektor Gadget.
+---
 
-## Contents
-
-- [Architecture](#architecture)
-- [Setup developer environment](#setup-developer-environment)
-- [Building the code](#building-the-code)
-  - [Building the client executable](#building-the-client-executable)
-  - [Building the gadget container image](#building-the-gadget-container-image)
-- [Workflows](#workflows)
-  - [Github Actions](#github-actions)
-  - [Minikube](#development-environment-on-minikube-for-the-traceloop-gadget)
-- [Testing](#testing)
-  - [Unit tests](#unit-tests)
-  - [Integration tests](#integration-tests)
-- [Code of Conduct](#code-of-conduct)
-- [Authoring PRs](#authoring-prs)
-- [Good first issues](#good-first-issues)
-- [Proposing new features](#proposing-new-features)
-- [Porting BCC gadgets](#porting-bcc-gadgets)
+Here you can learn how you can contribute to Inspektor Gadget.
 
 ## Architecture
 
