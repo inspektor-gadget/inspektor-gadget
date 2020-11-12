@@ -1,9 +1,6 @@
 # Inspektor Gadget
 
-Inspektor Gadget is a collection of tools (or gadgets) for developers of
-Kubernetes applications. While it is primarily designed for [Lokomotive](https://github.com/kinvolk/lokomotive),
-Kinvolk's open-source Kubernetes distribution, it can be used on other
-Kubernetes distributions.
+Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes applications. While it was originally designed for [Lokomotive](https://kinvolk.io/lokomotive-kubernetes/), Kinvolk's open-source Kubernetes distribution, it works just as well on other Kubernetes distributions.
 
 ## Installation
 
