@@ -1,8 +1,8 @@
 ---
-title: Gadget & Guides
+title: Gadgets & Guides
 description: >
   Quick guides showing the capability and use cases of gadgets.
 weight: 30
 ---
 
-Here you can find guides explaining how to use each gadget.
+This section provides an overview of the gadgets included in Inspektor Gadget and guidance on how to use each.
