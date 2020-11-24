@@ -9,7 +9,7 @@ Here you can learn how you can contribute to Inspektor Gadget.
 
 ## Architecture
 
-It's highly recommended to read the [architecture](./docs/architecture.md) documentation before starting
+It's highly recommended to read the [architecture](architecture.md) documentation before starting
 to play with Inspektor Gadget.
 
 ## Setup developer environment
