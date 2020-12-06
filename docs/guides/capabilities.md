@@ -112,7 +112,7 @@ restricted                 false                      RunAsAny   MustRunAs   Mus
 ```
 
 For privileged pods adding `SYS_NICE` would work, but not for the default pods.
-We can change that by edditing the policy.
+We can change that by editing the policy.
 
 ```
 $ kubectl edit psp restricted  # opens the editor to add the below two lines
