@@ -4,7 +4,7 @@ weight: 10
 ---
 
 network-policy monitors the network activity in the specified namespaces and
-record the list of new TCP connections in a file. This file can then be used to
+records the list of new TCP connections in a file. This file can then be used to
 generate Kubernetes network policies.
 
 We will run this demo in the demo namespace:
