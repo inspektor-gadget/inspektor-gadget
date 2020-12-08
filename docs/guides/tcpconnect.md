@@ -30,7 +30,7 @@ PID    COMM         IP SADDR            DADDR            DPORT
 9386                wget         4  10.2.232.47      1.1.1.1          443
 ```
 
-(If the pod was started as part of a deployment, the name of the pod is not know
+(If the pod was started as part of a deployment, the name of the pod is not known
 in advance since random characters will be added as suffix.
 In that case, it is still possible to trace the connections. We would just
 use `kubectl gadget tcpconnect --selector key=value` to filter the pods by
