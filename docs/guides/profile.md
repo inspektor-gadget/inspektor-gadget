@@ -13,7 +13,7 @@ pod/random created
 ```
 
 Using the profile gadget, we can see the list of stack traces.
-The following command filter only for pods named "random", execute the command
+The following command filters only for pods named "random", execute the command
 and interrupt it after ~30 seconds. The `-K` option is passed to show only the
 kernel stack traces.
 
