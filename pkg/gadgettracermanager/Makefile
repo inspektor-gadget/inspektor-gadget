@@ -1,13 +1,8 @@
 .PHONY: generated-files
-generated-files: api/gadgettracermanager.pb.go tracer-map-assets-bpf.go
+generated-files: api/gadgettracermanager.pb.go
 
 api/gadgettracermanager.pb.go: api/gadgettracermanager.proto
 	protoc -I api/ api/gadgettracermanager.proto --go_out=plugins=grpc:api
 
-.PHONY: tracer-map-assets-bpf.go
-tracer-map-assets-bpf.go:
-	make -C bpf
-	cp bpf/out/tracer-map-assets-bpf.go ./tracer-map-assets-bpf.go
-
 clean:
-	rm -f api/gadgettracermanager.pb.go tracer-map-assets-bpf.go
+	rm -f api/gadgettracermanager.pb.go

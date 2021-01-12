@@ -2,16 +2,26 @@ IMAGE_TAG=$(shell ../tools/image-tag)
 IMAGE_BRANCH_TAG=$(shell ../tools/image-tag branch)
 
 MINIKUBE ?= minikube
+LOCAL_REPO ?= kinvolk/gadget
 CONTAINER_REPO ?= docker.io/kinvolk/gadget
 
 .PHONY: gadget-container-deps
 gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib
 
+OUT_DIR ?= ../dist
+LIBBPF_HEADERS := $(OUT_DIR)/libbpf/usr/include
+LIBBPF_OBJ := $(OUT_DIR)/libbpf/libbpf.a
+
 .PHONY: gadgettracermanager
 gadgettracermanager:
 	make -C ../pkg/gadgettracermanager/ generated-files
 	mkdir -p bin
-	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
+	GO111MODULE=on \
+	CGO_ENABLED=1 \
+	GOOS=linux \
+	CGO_CFLAGS="-I $(abspath $(LIBBPF_HEADERS))" \
+	CGO_LDFLAGS="$(abspath $(LIBBPF_OBJ))" \
+	go build \
 		-o bin/gadgettracermanager \
 		./gadgettracermanager/main.go
 
@@ -61,5 +71,10 @@ docker-gadget/minikube-build:
 
 docker-gadget/minikube-install:
 	kubectl patch ds -n kube-system gadget -p $$'spec:\n template:\n  spec:\n   containers:\n    - name: gadget\n      image: $(CONTAINER_REPO):minikube\n      imagePullPolicy: Never'
+	kubectl delete pod -n kube-system -l 'k8s-app=gadget'
+	kubectl get pod -n kube-system -l 'k8s-app=gadget'
+
+kubectl-local-install:
+	kubectl patch ds -n kube-system gadget -p $$'spec:\n template:\n  spec:\n   containers:\n    - name: gadget\n      image: $(LOCAL_REPO):$(IMAGE_BRANCH_TAG)\n      imagePullPolicy: Never'
 	kubectl delete pod -n kube-system -l 'k8s-app=gadget'
 	kubectl get pod -n kube-system -l 'k8s-app=gadget'

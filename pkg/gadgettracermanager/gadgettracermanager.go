@@ -1,22 +1,19 @@
 package gadgettracermanager
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
 	"log"
 	"os"
 	"sync"
-	"unsafe"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
-	bpflib "github.com/iovisor/gobpf/elf"
-	_ "github.com/iovisor/gobpf/pkg/bpffs"
-	_ "github.com/iovisor/gobpf/pkg/cpuonline"
+	bpf "github.com/aquasecurity/tracee/libbpfgo"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/seccomp"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
 )
@@ -43,6 +40,8 @@ type GadgetTracerManager struct {
 	// key is "namespace/podname"
 	// value is an set of containerId
 	containerIDsByKey map[string]map[string]struct{}
+
+	seccompAdvisor *seccomp.SeccompAdvisor
 }
 
 type tracer struct {
@@ -50,11 +49,9 @@ type tracer struct {
 
 	containerSelector pb.ContainerSelector
 
-	mapHolder          *bpflib.Module
-	cgroupIdSetMap     *bpflib.Map
-	cgroupIdSetMapPath string
-	mntnsSetMap        *bpflib.Map
-	mntnsSetMapPath    string
+	mapHolder       *bpf.Module
+	mntnsSetMap     *bpf.BPFMap
+	mntnsSetMapPath string
 }
 
 func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition) bool {
@@ -99,57 +96,51 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 		return nil, fmt.Errorf("tracer id %q already exists", tracerId)
 	}
 
-	buf, err := Asset("tracer-map.o")
+	buf, err := Asset("maps-bpf-asset.o")
 	if err != nil {
 		return nil, fmt.Errorf("couldn't find asset: %s", err)
 	}
-	reader := bytes.NewReader(buf)
 
-	m := bpflib.NewModuleFromReader(reader)
-	if m == nil {
-		return nil, fmt.Errorf("BPF not supported")
+	m, err := bpf.NewModuleFromBuffer(buf, "maps-bpf-asset.o")
+	if err != nil {
+		return nil, fmt.Errorf("couldn't load BPF module: %s", err)
 	}
 
-	cgroupIdSetMapPath := fmt.Sprintf("gadget/cgroupidset-%s", tracerId)
 	mntnsSetMapPath := fmt.Sprintf("gadget/mntnsset-%s", tracerId)
-	var sectionParams = map[string]bpflib.SectionParams{
-		"maps/cgroupid_set": bpflib.SectionParams{
-			PinPath: cgroupIdSetMapPath,
-		},
-		"maps/mntns_set": bpflib.SectionParams{
-			PinPath: mntnsSetMapPath,
-		},
+	m.ChangeMapPin("mntns_set", "/sys/fs/bpf/"+mntnsSetMapPath)
+
+	err = m.BPFLoadObject()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse BPF module: %s", err)
 	}
-	err = m.Load(sectionParams)
+
+	mntnsSetMap, err := m.GetMap("mntns_set")
 	if err != nil {
 		return nil, err
 	}
-	cgroupIdSetMap := m.Map("cgroupid_set")
-	mntnsSetMap := m.Map("mntns_set")
 
 	for _, c := range g.containers {
 		if containerSelectorMatches(req.Selector, &c) {
-			zero := uint32(0)
-			cgroupIdC := uint64(c.CgroupId)
-			if cgroupIdC != 0 {
-				m.UpdateElement(cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&zero), 0)
-			}
+			one := uint32(1)
 			mntnsC := uint64(c.Mntns)
 			if mntnsC != 0 {
-				m.UpdateElement(mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&zero), 0)
+				mntnsSetMap.Update(mntnsC, one)
 			}
 		}
 	}
 
 	g.tracers[tracerId] = tracer{
-		tracerId:           tracerId,
-		containerSelector:  *req.Selector,
-		mapHolder:          m,
-		cgroupIdSetMap:     cgroupIdSetMap,
-		cgroupIdSetMapPath: cgroupIdSetMapPath,
-		mntnsSetMap:        mntnsSetMap,
-		mntnsSetMapPath:    mntnsSetMapPath,
+		tracerId:          tracerId,
+		containerSelector: *req.Selector,
+		mapHolder:         m,
+		mntnsSetMap:       mntnsSetMap,
+		mntnsSetMapPath:   mntnsSetMapPath,
 	}
+
+	if tracerId == "seccomp" && g.seccompAdvisor != nil {
+		g.seccompAdvisor.Start()
+	}
+
 	return &pb.TracerID{Id: tracerId}, nil
 }
 
@@ -163,12 +154,33 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 		return nil, fmt.Errorf("cannot remove tracer: unknown tracer %q", tracerID.Id)
 	}
 
+	if tracerID.Id == "seccomp" && g.seccompAdvisor != nil {
+		g.seccompAdvisor.Stop()
+	}
+
 	t.mapHolder.Close()
-	os.Remove("/sys/fs/bpf/" + t.cgroupIdSetMapPath)
 	os.Remove("/sys/fs/bpf/" + t.mntnsSetMapPath)
 
 	delete(g.tracers, tracerID.Id)
 	return &pb.RemoveTracerResponse{}, nil
+}
+
+func (g *GadgetTracerManager) QueryTracer(ctx context.Context, tracerID *pb.TracerID) (*pb.QueryTracerResponse, error) {
+	if tracerID.Id == "" {
+		return nil, fmt.Errorf("cannot query tracer: Id not set")
+	}
+
+	_, ok := g.tracers[tracerID.Id]
+	if !ok {
+		return nil, fmt.Errorf("cannot query tracer: unknown tracer %q", tracerID.Id)
+	}
+
+	var out string
+	if tracerID.Id == "seccomp" && g.seccompAdvisor != nil {
+		out = g.seccompAdvisor.Query()
+	}
+
+	return &pb.QueryTracerResponse{Response: out}, nil
 }
 
 func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResponse, error) {
@@ -189,19 +201,18 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 
 	for _, t := range g.tracers {
 		if containerSelectorMatches(&t.containerSelector, containerDefinition) {
-			cgroupIdC := uint64(containerDefinition.CgroupId)
 			mntnsC := uint64(containerDefinition.Mntns)
-			zero := uint32(0)
-			if cgroupIdC != 0 {
-				t.mapHolder.UpdateElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&zero), 0)
-			}
+			one := uint32(1)
 			if mntnsC != 0 {
-				t.mapHolder.UpdateElement(t.mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&zero), 0)
+				t.mntnsSetMap.Update(mntnsC, one)
 			}
 		}
 	}
 
 	g.containers[containerDefinition.ContainerId] = *containerDefinition
+	if g.seccompAdvisor != nil {
+		g.seccompAdvisor.AddContainer(containerDefinition.Mntns, containerDefinition.Namespace, containerDefinition.Podname, containerDefinition.ContainerName)
+	}
 	return &pb.AddContainerResponse{}, nil
 }
 
@@ -214,13 +225,14 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 	if !ok {
 		return nil, fmt.Errorf("cannot remove container: unknown container %q", containerDefinition.ContainerId)
 	}
+	if g.seccompAdvisor != nil {
+		g.seccompAdvisor.RemoveContainer(c.Mntns, c.Namespace, c.Podname, c.ContainerName)
+	}
 
 	for _, t := range g.tracers {
 		if containerSelectorMatches(&t.containerSelector, &c) {
-			cgroupIdC := uint64(c.CgroupId)
 			mntnsC := uint64(c.Mntns)
-			t.mapHolder.DeleteElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC))
-			t.mapHolder.DeleteElement(t.mntnsSetMap, unsafe.Pointer(&mntnsC))
+			t.mntnsSetMap.Delete(mntnsC)
 		}
 	}
 
@@ -249,6 +261,9 @@ func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRe
 				out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupId=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupId)
 			}
 		}
+	}
+	if g.seccompAdvisor != nil {
+		out += g.seccompAdvisor.Dump()
 	}
 	return &pb.Dump{State: out}, nil
 }
@@ -300,6 +315,12 @@ func NewServerWithPodInformer(nodeName string) *GadgetTracerManager {
 	if err != nil {
 		return nil
 	}
+
+	seccompAdvisor, err := seccomp.NewAdvisor(nodeName)
+	if err != nil {
+		return nil
+	}
+
 	g := &GadgetTracerManager{
 		nodeName:          nodeName,
 		containers:        make(map[string]pb.ContainerDefinition),
@@ -309,6 +330,7 @@ func NewServerWithPodInformer(nodeName string) *GadgetTracerManager {
 		deletedChan:       deletedChan,
 		containerIDsByKey: make(map[string]map[string]struct{}),
 		k8sClient:         k8sClient,
+		seccompAdvisor:    seccompAdvisor,
 	}
 
 	go g.run()

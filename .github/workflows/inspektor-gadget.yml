@@ -17,6 +17,22 @@ jobs:
         go-version: 1.13
       id: go
 
+    - name: Cache LLVM and Clang
+      id: cache-llvm
+      uses: actions/cache@v2
+      with:
+        path: ${{ runner.temp }}/llvm
+        key: llvm-10.0
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "10.0"
+        directory: ${{ runner.temp }}/llvm
+        cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+
+    - name: Install build dependencies with apt
+      run: sudo apt-get install go-bindata libelf-dev
+
     - name: Check out code
       uses: actions/checkout@v1
 
@@ -24,6 +40,8 @@ jobs:
       env:
         CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
       run: |
+        make libbpf
+        make bpf-assets
         make -C gadget-container gadget-container-deps
 
     - name: Build gadget container and publish to Registry

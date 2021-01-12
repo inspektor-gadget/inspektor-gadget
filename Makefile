@@ -46,12 +46,18 @@ install-user-linux: kubectl-gadget-linux-amd64
 	mkdir -p ~/.local/bin/
 	cp kubectl-gadget-linux-amd64 ~/.local/bin/kubectl-gadget
 
+bpf_asset_list=$(shell find . -type f -name '*-bpf-asset.c')
+.PHONY: bpf-assets
+bpf-assets: $(bpf_asset_list:.c=.go)
+
 .PHONY: build-gadget-container
-build-gadget-container:
+build-gadget-container: bpf-assets
 	make -C gadget-container build
 
 .PHONY: test
 test:
+	CGO_CFLAGS="-I $(abspath $(LIBBPF_HEADERS))" \
+	CGO_LDFLAGS="$(abspath $(LIBBPF_OBJ))" \
 	go test -test.v ./...
 
 .PHONY: integration-tests
@@ -60,3 +66,5 @@ integration-tests:
 		go test ./integration/... \
 			-integration \
 			-image $(CONTAINER_REPO):$(shell ./tools/image-tag branch)
+
+include bpf.mk
