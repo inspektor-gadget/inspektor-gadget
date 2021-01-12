@@ -2,6 +2,7 @@ module github.com/kinvolk/inspektor-gadget
 
 require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
+	github.com/aquasecurity/tracee/libbpfgo v0.0.0-20210112071511-7ce92f697937
 	github.com/containerd/containerd v1.3.4 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200608131505-3aac5f0bbb5c+incompatible
@@ -10,7 +11,7 @@ require (
 	github.com/golang/protobuf v1.4.1
 	github.com/gorilla/mux v1.7.4 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
-	github.com/iovisor/gobpf v0.0.0-20191129151106-ac26197bb7be
+	github.com/iovisor/gobpf v0.0.0-20191129151106-ac26197bb7be // indirect
 	github.com/kinvolk/traceloop v0.0.0-20200512161254-504867dad201
 	github.com/kr/pretty v0.1.0
 	github.com/moby/term v0.0.0-20200507201656-73f35e472e8f // indirect
@@ -18,13 +19,15 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runtime-spec v1.0.1
+	github.com/seccomp/libseccomp-golang v0.9.1
 	github.com/sirupsen/logrus v1.4.1
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.3.2
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20190731111909-cd53e7c84bac
+	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	google.golang.org/grpc v1.27.0
-	google.golang.org/protobuf v1.24.0
+	google.golang.org/protobuf v1.24.0 // indirect
 	gotest.tools/v3 v3.0.2 // indirect
 	k8s.io/api v0.17.4
 	k8s.io/apimachinery v0.17.4
@@ -39,3 +42,5 @@ replace github.com/iovisor/gobpf => github.com/kinvolk/gobpf v0.0.0-201911271540
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.3+incompatible
 
 go 1.13
+
+replace github.com/aquasecurity/tracee/libbpfgo => github.com/kinvolk/tracee/libbpfgo v0.0.0-20210115171011-4ed975da0323

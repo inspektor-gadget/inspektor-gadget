@@ -21,6 +21,7 @@ service GadgetTracerManager {
 
   rpc AddTracer(AddTracerRequest) returns (TracerID) {}
   rpc RemoveTracer(TracerID) returns (RemoveTracerResponse) {}
+  rpc QueryTracer(TracerID) returns (QueryTracerResponse) {}
 
   // Methods called by OCI Hooks
 
@@ -44,6 +45,10 @@ message AddTracerRequest {
 
 message RemoveTracerResponse {
   string debug = 1;
+}
+
+message QueryTracerResponse {
+  string response = 1;
 }
 
 message AddContainerResponse {

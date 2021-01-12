@@ -38,9 +38,9 @@ func init() {
 	flag.BoolVar(&serve, "serve", false, "Start server")
 	flag.BoolVar(&podInformer, "podinformer", false, "Enable a Pod Informer to get Pod events from k8s API server")
 
-	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, add-container, remove-container)")
+	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, query-tracer, add-container, remove-container)")
 	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
-	flag.StringVar(&tracerid, "tracerid", "", "tracerid to use in remove-tracer")
+	flag.StringVar(&tracerid, "tracerid", "", "tracerid to use in remove-tracer, query-tracer")
 	flag.StringVar(&containerId, "containerid", "", "container id to use in add-container or remove-container")
 	flag.StringVar(&cgroupPath, "cgrouppath", "", "cgroup path to use in add-container")
 	flag.Uint64Var(&cgroupId, "cgroupid", 0, "cgroup id to use in add-container")
@@ -116,6 +116,16 @@ func main() {
 		if err != nil {
 			log.Fatalf("%v", err)
 		}
+		os.Exit(0)
+
+	case "query-tracer":
+		out, err := client.QueryTracer(ctx, &pb.TracerID{
+			Id: tracerid,
+		})
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+		fmt.Printf("%+v\n", out.Response)
 		os.Exit(0)
 
 	case "add-container":
