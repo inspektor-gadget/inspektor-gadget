@@ -140,7 +140,7 @@ func (a *NetworkPolicyAdvisor) networkPeerKey(e types.KubernetesConnectionEvent)
 	} else if e.RemoteKind == "other" {
 		ret = e.RemoteKind + ":" + e.RemoteOther
 	}
-	return ret + ":" + string(e.Port)
+	return ret + ":" + fmt.Sprint(e.Port)
 }
 
 func (a *NetworkPolicyAdvisor) eventToRule(e types.KubernetesConnectionEvent) (ports []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) {
