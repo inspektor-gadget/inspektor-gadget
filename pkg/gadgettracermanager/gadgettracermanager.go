@@ -10,7 +10,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
 	bpflib "github.com/iovisor/gobpf/elf"
@@ -129,14 +129,14 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 
 	for _, c := range g.containers {
 		if containerSelectorMatches(req.Selector, &c) {
-			zero := uint32(0)
+			one := uint32(1)
 			cgroupIdC := uint64(c.CgroupId)
 			if cgroupIdC != 0 {
-				m.UpdateElement(cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&zero), 0)
+				m.UpdateElement(cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&one), 0)
 			}
 			mntnsC := uint64(c.Mntns)
 			if mntnsC != 0 {
-				m.UpdateElement(mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&zero), 0)
+				m.UpdateElement(mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&one), 0)
 			}
 		}
 	}
@@ -191,12 +191,12 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 		if containerSelectorMatches(&t.containerSelector, containerDefinition) {
 			cgroupIdC := uint64(containerDefinition.CgroupId)
 			mntnsC := uint64(containerDefinition.Mntns)
-			zero := uint32(0)
+			one := uint32(1)
 			if cgroupIdC != 0 {
-				t.mapHolder.UpdateElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&zero), 0)
+				t.mapHolder.UpdateElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&one), 0)
 			}
 			if mntnsC != 0 {
-				t.mapHolder.UpdateElement(t.mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&zero), 0)
+				t.mapHolder.UpdateElement(t.mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&one), 0)
 			}
 		}
 	}
