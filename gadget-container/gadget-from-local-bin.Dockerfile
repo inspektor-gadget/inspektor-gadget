@@ -6,7 +6,7 @@
 # - https://github.com/kinvolk/bcc/actions
 # - https://hub.docker.com/r/kinvolk/bcc/tags
 
-FROM docker.io/kinvolk/bcc:202006031708335fed2a
+FROM docker.io/kinvolk/bcc:2020101208284649fdec
 
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
