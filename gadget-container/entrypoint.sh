@@ -41,21 +41,6 @@ if grep -q '^1:name=systemd:.*/crio-[0-9a-f]*\.scope$' /proc/self/cgroup > /dev/
     CRIO=1
 fi
 
-FLATCAR_EDGE=0
-if grep -q '^ID=flatcar$' /host/etc/os-release > /dev/null ; then
-  if grep -q '^GROUP=edge$' /host/etc/flatcar/update.conf > /dev/null ; then
-    echo "Flatcar Edge detected."
-    FLATCAR_EDGE=1
-
-    CGROUP_V1_PATH=$(cat /proc/1/cgroup |grep ^1:|cut -d: -f3)
-    CGROUP_V2_PATH=$(cat /proc/1/cgroup |grep ^0:|cut -d: -f3)
-    if [ $CGROUP_V1_PATH != $CGROUP_V2_PATH ] ; then
-      echo "cgroup-v2 is not correctly enabled on Kubernetes pods" >&2
-      exit 1
-    fi
-  fi
-fi
-
 if grep -q '^ID="rhcos"$' /host/etc/os-release > /dev/null ; then
   if [ ! -d "/host/usr/src/kernels/$(uname -r)" ] ; then
     echo "Fetching kernel-devel from CentOS 8."
@@ -81,9 +66,6 @@ if [ "$RUNC_HOOK_MODE" = "auto" ] ; then
   if [ "$CRIO" = 1 ] ; then
     echo "runc hook mode cri-o detected."
     RUNC_HOOK_MODE="crio"
-  elif [ "$FLATCAR_EDGE" = 1 ] ; then
-    echo "runc hook mode flatcar_edge detected."
-    RUNC_HOOK_MODE="flatcar_edge"
   else
     RUNC_HOOK_MODE="podinformer"
     echo "Falling back to podinformer runc-hook-mode."
@@ -103,8 +85,7 @@ if [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
   fi
 fi
 
-if [ "$RUNC_HOOK_MODE" = "flatcar_edge" ] ||
-   [ "$RUNC_HOOK_MODE" = "crio" ] ||
+if [ "$RUNC_HOOK_MODE" = "crio" ] ||
    [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
   echo "Installing hooks scripts on host..."
 

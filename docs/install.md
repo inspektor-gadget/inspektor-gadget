@@ -85,6 +85,5 @@ The different supported modes can be set by using the `runc-hooks-mode` option:
 
 - `auto`(default): Inspektor Gadget will try to find the best option based on the system it is running on.
 - `crio`: Use the [CRIO hooks](https://github.com/containers/libpod/blob/master/pkg/hooks/docs/oci-hooks.5.md) support. Inspektor Gadget installs the required hooks in `/etc/containers/oci/hooks.d/`, be sure that path is part of the `hooks_dir` option on [libpod.conf](https://github.com/containers/libpod/blob/master/docs/source/markdown/libpod.conf.5.md#options). If `hooks_dir` is not declared at all that path is considered by default.
-- `flatcar_edge`: Use a custom `runc` version shipped with Flatcar Container Linux Edge.
 - `podinformer`: Use a K8s controller to get information about new pods. This option is racy and the first events produced by a container could be lost. This mode is selected when `auto` is used and the above modes are not available.
 - `ldpreload`: Adds an entry in `/etc/ld.so.preload` to call a custom shared library that looks for `runc` calls and dynamically adds the needed OCI hooks to the cointainer `config.json` specification. Since this feature is highly experimental, it'll not be considered when `auto` is used.
