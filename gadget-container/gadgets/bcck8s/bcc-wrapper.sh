@@ -4,7 +4,6 @@ set -e
 
 MANAGER=true
 PROBECLEANUP=false
-FLATCAREDGEONLY=false
 
 while [[ $# -gt 0 ]]
 do
@@ -18,10 +17,6 @@ case $key in
         ;;
     --stop)
         STOP=true
-        shift
-        ;;
-    --flatcaredgeonly)
-        FLATCAREDGEONLY=true
         shift
         ;;
     --nomanager)
@@ -70,18 +65,6 @@ done
 
 GADGETTRACERMANAGER=/bin/gadgettracermanager
 BPFDIR="${BPFDIR:-/sys/fs/bpf}"
-
-if [ "$FLATCAREDGEONLY" = "true" ] ; then
-  if ! grep -q '^ID=flatcar$' /host/etc/os-release > /dev/null ; then
-    echo "Gadget not available." >&2
-    exit 1
-  fi
-  if ! grep -q '^GROUP=edge$' /host/etc/flatcar/update.conf > /dev/null ; then
-    echo "Gadget not available." >&2
-    exit 1
-  fi
-fi
-
 PIDFILE=/run/bcc-wrapper-$TRACERID.pid
 
 if [ "$STOP" = "true" ] ; then
