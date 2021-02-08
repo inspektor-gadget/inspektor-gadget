@@ -7,6 +7,18 @@ CONTAINER_REPO ?= docker.io/kinvolk/gadget
 .PHONY: gadget-container-deps
 gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib
 
+.PHONY: build
+build: gadget-container-deps
+	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget.Dockerfile .
+	docker tag $(CONTAINER_REPO):$(IMAGE_TAG) $(CONTAINER_REPO):$(IMAGE_BRANCH_TAG)
+
+.PHONY: push
+push:
+	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
+	docker push $(CONTAINER_REPO):$(IMAGE_BRANCH_TAG)
+
+# Gadgets
+
 .PHONY: gadgettracermanager
 gadgettracermanager:
 	make -C ../pkg/gadgettracermanager/ generated-files
@@ -15,14 +27,6 @@ gadgettracermanager:
 		-o bin/gadgettracermanager \
 		./gadgettracermanager/main.go
 
-.PHONY: ocihookgadget
-ocihookgadget:
-	mkdir -p bin
-	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
-		-o bin/ocihookgadget \
-		./ocihookgadget/main.go
-
-# gadgets
 .PHONY: networkpolicyadvisor
 networkpolicyadvisor:
 	mkdir -p bin
@@ -34,21 +38,19 @@ networkpolicyadvisor:
 networkpolicyadvisor/push: networkpolicyadvisor
 	for POD in `kubectl get pod -n kube-system -l k8s-app=gadget -o=jsonpath='{.items[*].metadata.name}'` ; do kubectl cp ./bin/networkpolicyadvisor -n kube-system $$POD:/bin/ ; done
 
+# Hooks
+
+.PHONY: ocihookgadget
+ocihookgadget:
+	mkdir -p bin
+	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
+		-o bin/ocihookgadget \
+		./hooks/oci/main.go
+
 .PHONY: runchookslib
 runchookslib:
 	mkdir -p bin
-	gcc -Wall -o bin/runchooks.so -shared -fPIC runchooks/runchooks.c -ldl
-
-
-.PHONY: build
-build: gadget-container-deps
-	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget.Dockerfile .
-	docker tag $(CONTAINER_REPO):$(IMAGE_TAG) $(CONTAINER_REPO):$(IMAGE_BRANCH_TAG)
-
-.PHONY: push
-push:
-	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
-	docker push $(CONTAINER_REPO):$(IMAGE_BRANCH_TAG)
+	gcc -Wall -o bin/runchooks.so -shared -fPIC hooks/runc/runchooks.c -ldl
 
 # minikube related
 minikube: docker-gadget/minikube-build docker-gadget/minikube-install

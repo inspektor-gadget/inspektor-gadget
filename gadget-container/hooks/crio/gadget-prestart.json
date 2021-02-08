@@ -5,7 +5,7 @@
     "args": [
       "sh",
       "-c",
-      "test ! -x /opt/bin/runc-hook-prestart.sh || /opt/bin/runc-hook-prestart.sh"
+      "test ! -x /opt/hooks/oci/prestart.sh || /opt/hooks/oci/prestart.sh"
     ]
   },
   "when": {

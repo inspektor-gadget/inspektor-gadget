@@ -78,12 +78,12 @@ If you wish to install an alternative gadget image, you could use the following 
 $ kubectl gadget deploy --image=docker.io/myfork/gadget:tag | kubectl apply -f -
 ```
 
-### runc hooks mode
+### Hook Mode
 
 Inspektor Gadget needs to detect when containers are started and stopped.
-The different supported modes can be set by using the `runc-hooks-mode` option:
+The different supported modes can be set by using the `hook-mode` option:
 
 - `auto`(default): Inspektor Gadget will try to find the best option based on the system it is running on.
-- `crio`: Use the [CRIO hooks](https://github.com/containers/libpod/blob/master/pkg/hooks/docs/oci-hooks.5.md) support. Inspektor Gadget installs the required hooks in `/etc/containers/oci/hooks.d/`, be sure that path is part of the `hooks_dir` option on [libpod.conf](https://github.com/containers/libpod/blob/master/docs/source/markdown/libpod.conf.5.md#options). If `hooks_dir` is not declared at all that path is considered by default.
-- `podinformer`: Use a K8s controller to get information about new pods. This option is racy and the first events produced by a container could be lost. This mode is selected when `auto` is used and the above modes are not available.
-- `ldpreload`: Adds an entry in `/etc/ld.so.preload` to call a custom shared library that looks for `runc` calls and dynamically adds the needed OCI hooks to the cointainer `config.json` specification. Since this feature is highly experimental, it'll not be considered when `auto` is used.
+- `crio`: Use the [CRIO hooks](https://github.com/containers/podman/blob/v3.0.0-rc3/pkg/hooks/docs/oci-hooks.5.md) support. Inspektor Gadget installs the required hooks in `/usr/share/containers/oci/hooks.d`, be sure that path is part of the `hooks_dir` option on [crio.conf](https://github.com/cri-o/cri-o/blob/v1.20.0/docs/crio.conf.5.md#crioruntime-table). If `hooks_dir` is not declared at all that path is considered by default.
+- `podinformer`: Use a Kubernetes controller to get information about new pods. This option is racy and the first events produced by a container could be lost. This mode is selected when `auto` is used and the above modes are not available.
+- `ldpreload`: Adds an entry in `/etc/ld.so.preload` to call a custom shared library that looks for `runc` calls and dynamically adds the needed OCI hooks to the cointainer `config.json` specification. This feature only works when runc is used. Since this feature is highly experimental, it'll not be considered when `auto` is used.

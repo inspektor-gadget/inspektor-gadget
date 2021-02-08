@@ -5,7 +5,7 @@
     "args": [
       "sh",
       "-c",
-      "test ! -x /opt/bin/runc-hook-poststop.sh || /opt/bin/runc-hook-poststop.sh"
+      "test ! -x /opt/hooks/oci/poststop.sh || /opt/hooks/oci/poststop.sh"
     ]
   },
   "when": {

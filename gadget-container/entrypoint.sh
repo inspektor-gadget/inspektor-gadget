@@ -67,62 +67,65 @@ if grep -q '^ID="rhcos"$' /host/etc/os-release > /dev/null ; then
         curl -fsSLo $RPMHOSTDIR/$RPM $REPO/$RPM
     test -r $RPMHOSTDIR/usr/src/kernels/`uname -r`/.config || \
         chroot /host sh -c "cd $RPMDIR && rpm2cpio $RPM | cpio -i"
-    test ! -L /usr/src || /bin/rm -f /usr/src
+    test ! -L /usr/src || rm -f /usr/src
     mkdir -p /usr/src/kernels/`uname -r`/
     mount --bind $RPMHOSTDIR/usr/src/kernels/`uname -r` /usr/src/kernels/`uname -r`
   fi
 fi
 
-# Choose what runc hook mode to use based on the configuration detected
-RUNC_HOOK_MODE="$INSPEKTOR_GADGET_OPTION_RUNC_HOOKS_MODE"
+## Hooks Begins ##
 
-if [ "$RUNC_HOOK_MODE" = "auto" ] ; then
+# Choose what hook mode to use based on the configuration detected
+HOOK_MODE="$INSPEKTOR_GADGET_OPTION_HOOK_MODE"
+
+if [ "$HOOK_MODE" = "auto" ] || [ -z "$HOOK_MODE" ] ; then
   if [ "$CRIO" = 1 ] ; then
-    echo "runc hook mode cri-o detected."
-    RUNC_HOOK_MODE="crio"
+    echo "hook mode cri-o detected."
+    HOOK_MODE="crio"
   else
-    RUNC_HOOK_MODE="podinformer"
-    echo "Falling back to podinformer runc-hook-mode."
+    HOOK_MODE="podinformer"
+    echo "Falling back to podinformer hook."
   fi
 fi
 
-if [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
+if [ "$HOOK_MODE" = "ldpreload" ] ; then
   echo "Installing ld.so.preload with runchooks.so for OCI hooks"
-  mkdir -p /host/opt/runchooks/
-  cp /opt/runchooks/runchooks.so /host/opt/runchooks/
-  cp /opt/runchooks/add-hooks.jq /host/opt/runchooks/
+  mkdir -p /host/opt/hooks/runc/
+  cp /opt/hooks/runc/runchooks.so /host/opt/hooks/runc/
+  cp /opt/hooks/runc/add-hooks.jq /host/opt/hooks/runc/
   touch /host/etc/ld.so.preload
-  if grep -q ^/opt/runchooks/runchooks.so$ /host/etc/ld.so.preload > /dev/null ; then
+  if grep -q ^/opt/hooks/runc/runchooks.so$ /host/etc/ld.so.preload > /dev/null ; then
     echo "runchooks.so already setup in /etc/ld.so.preload"
   else
-    echo "/opt/runchooks/runchooks.so" >> /host/etc/ld.so.preload
+    echo "/opt/hooks/runc/runchooks.so" >> /host/etc/ld.so.preload
   fi
 fi
 
-if [ "$RUNC_HOOK_MODE" = "crio" ] ||
-   [ "$RUNC_HOOK_MODE" = "ldpreload" ] ; then
+if [ "$HOOK_MODE" = "crio" ] || [ "$HOOK_MODE" = "ldpreload" ] ; then
   echo "Installing hooks scripts on host..."
 
-  mkdir -p /host/opt/bin/
-  for i in ocihookgadget runc-hook-prestart.sh runc-hook-poststop.sh ; do
+  mkdir -p /host/opt/hooks/oci/
+  for i in ocihookgadget prestart.sh poststop.sh ; do
     echo "Installing $i..."
-    cp /bin/$i /host/opt/bin/
+    cp /opt/hooks/oci/$i /host/opt/hooks/oci/
   done
 
-  if [ "$RUNC_HOOK_MODE" = "crio" ] ; then
-    echo "Installing OCI hooks configuration in /etc/containers/oci/hooks.d/"
-    mkdir -p /host/etc/containers/oci/hooks.d/
-    cp /opt/crio-hooks/gadget-prestart.json /host/etc/containers/oci/hooks.d/gadget-prestart.json
-    cp /opt/crio-hooks/gadget-poststop.json /host/etc/containers/oci/hooks.d/gadget-poststop.json
+  if [ "$HOOK_MODE" = "crio" ] ; then
+    echo "Installing OCI hooks configuration in /usr/share/containers/oci/hooks.d"
+    mkdir -p /host/usr/share/containers/oci/hooks.d
+    cp /opt/hooks/crio/gadget-prestart.json /host/usr/share/containers/oci/hooks.d/gadget-prestart.json
+    cp /opt/hooks/crio/gadget-poststop.json /host/usr/share/containers/oci/hooks.d/gadget-poststop.json
   fi
 
-  echo "Installation done"
+  echo "Hooks installation done"
 fi
 
 POD_INFORMER_PARAM=""
-if [ "$RUNC_HOOK_MODE" = "podinformer" ] ; then
+if [ "$HOOK_MODE" = "podinformer" ] ; then
   POD_INFORMER_PARAM="-podinformer"
 fi
+
+## Hooks Ends ##
 
 echo "Starting the Gadget Tracer Manager in the background..."
 rm -f /run/gadgettracermanager.socket

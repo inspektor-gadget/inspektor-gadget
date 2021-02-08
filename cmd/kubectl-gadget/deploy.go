@@ -35,7 +35,7 @@ var (
 	image             string
 	traceloop         bool
 	traceloopLoglevel string
-	runcHooksMode     string
+	hookMode          string
 )
 
 func init() {
@@ -55,10 +55,10 @@ func init() {
 		"info,json",
 		"loglevel (trace, debug, info, warn, error, fatal, panic, json, color, nocolor)")
 	deployCmd.PersistentFlags().StringVarP(
-		&runcHooksMode,
-		"runc-hooks-mode", "",
+		&hookMode,
+		"hook-mode", "",
 		"auto",
-		"how to attach runc hooks (auto, crio, ldpreload, podinformer)")
+		"how to get containers start/stop notifications (auto, crio, ldpreload, podinformer)")
 
 	rootCmd.AddCommand(deployCmd)
 }
@@ -100,7 +100,7 @@ spec:
         k8s-app: gadget
       annotations:
         inspektor-gadget.kinvolk.io/option-traceloop: "{{.Traceloop}}"
-        inspektor-gadget.kinvolk.io/option-runc-hooks: "{{.RuncHooksMode}}"
+        inspektor-gadget.kinvolk.io/option-hook-mode: "{{.HookMode}}"
     spec:
       serviceAccount: gadget
       hostPID: true
@@ -144,8 +144,8 @@ spec:
             value: "{{.Traceloop}}"
           - name: INSPEKTOR_GADGET_OPTION_TRACELOOP_LOGLEVEL
             value: "{{.TraceloopLoglevel}}"
-          - name: INSPEKTOR_GADGET_OPTION_RUNC_HOOKS_MODE
-            value: "{{.RuncHooksMode}}"
+          - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE
+            value: "{{.HookMode}}"
         securityContext:
           privileged: true
         volumeMounts:
@@ -198,15 +198,15 @@ type parameters struct {
 	Version           string
 	Traceloop         bool
 	TraceloopLoglevel string
-	RuncHooksMode     string
+	HookMode          string
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
-	if runcHooksMode != "auto" &&
-		runcHooksMode != "crio" &&
-		runcHooksMode != "ldpreload" &&
-		runcHooksMode != "podinformer" {
-		return fmt.Errorf("invalid argument %q for --runc-hooks=[auto,crio,ldpreload,podinformer]", runcHooksMode)
+	if hookMode != "auto" &&
+		hookMode != "crio" &&
+		hookMode != "ldpreload" &&
+		hookMode != "podinformer" {
+		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,ldpreload,podinformer]", hookMode)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
@@ -219,7 +219,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		version,
 		traceloop,
 		traceloopLoglevel,
-		runcHooksMode,
+		hookMode,
 	}
 
 	err = t.Execute(os.Stdout, p)
