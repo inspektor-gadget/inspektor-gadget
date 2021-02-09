@@ -335,11 +335,11 @@ func NewServer(nodeName string) *GadgetTracerManager {
 	containers, err := k8sClient.ListContainers()
 	if err != nil {
 		log.Printf("gadgettracermanager failed to list containers: %v", err)
+	} else {
+		log.Printf("gadgettracermanager found %d containers: %+v", len(containers), containers)
 		for _, container := range containers {
 			g.containers[container.ContainerId] = container
 		}
-	} else {
-		log.Printf("gadgettracermanager found %d containers: %+v", len(containers), containers)
 	}
 	return g
 }
