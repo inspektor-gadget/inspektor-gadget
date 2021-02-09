@@ -1,27 +1,10 @@
-IMAGE_TAG=$(shell ../tools/image-tag)
-IMAGE_BRANCH_TAG=$(shell ../tools/image-tag branch)
-
-MINIKUBE ?= minikube
-CONTAINER_REPO ?= docker.io/kinvolk/gadget
-
 .PHONY: gadget-container-deps
 gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib
-
-.PHONY: build
-build: gadget-container-deps
-	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget.Dockerfile .
-	docker tag $(CONTAINER_REPO):$(IMAGE_TAG) $(CONTAINER_REPO):$(IMAGE_BRANCH_TAG)
-
-.PHONY: push
-push:
-	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
-	docker push $(CONTAINER_REPO):$(IMAGE_BRANCH_TAG)
 
 # Gadgets
 
 .PHONY: gadgettracermanager
 gadgettracermanager:
-	make -C ../pkg/gadgettracermanager/ generated-files
 	mkdir -p bin
 	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
 		-o bin/gadgettracermanager \
@@ -51,17 +34,3 @@ ocihookgadget:
 runchookslib:
 	mkdir -p bin
 	gcc -Wall -o bin/runchooks.so -shared -fPIC hooks/runc/runchooks.c -ldl
-
-# minikube related
-minikube: docker-gadget/minikube-build docker-gadget/minikube-install
-
-docker-gadget/minikube-build:
-	cp ../../traceloop/traceloop ./bin/
-	eval $(shell $(MINIKUBE) docker-env | grep =) ; docker build -t $(CONTAINER_REPO):minikube -f gadget-from-local-bin.Dockerfile .
-	mkdir -p ./bin
-	rm -f ./bin/traceloop
-
-docker-gadget/minikube-install:
-	kubectl patch ds -n kube-system gadget -p $$'spec:\n template:\n  spec:\n   containers:\n    - name: gadget\n      image: $(CONTAINER_REPO):minikube\n      imagePullPolicy: Never'
-	kubectl delete pod -n kube-system -l 'k8s-app=gadget'
-	kubectl get pod -n kube-system -l 'k8s-app=gadget'

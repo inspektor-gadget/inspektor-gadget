@@ -20,12 +20,6 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v1
 
-    - name: Build binaries for the gadget container image
-      env:
-        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
-      run: |
-        make -C gadget-container gadget-container-deps
-
     - name: Build gadget container and publish to Registry
       id: publish-registry
       uses: elgohr/Publish-Docker-Github-Action@2.8
@@ -33,12 +27,11 @@ jobs:
         name: ${{ secrets.CONTAINER_REPO }}
         username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
         password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
-        workdir: gadget-container
         dockerfile: gadget.Dockerfile
         snapshot: true
         cache: ${{ github.event_name != 'schedule' }}
 
-    - name: Build Inspektor Gadget
+    - name: Build kubectl gadget Plugin
       env:
         CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
         IMAGE_TAG: ${{ steps.publish-registry.outputs.snapshot-tag }}
@@ -92,9 +85,10 @@ jobs:
         CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
         MINIKUBE: true
       run: |
-        mkdir ../traceloop
-        touch ../traceloop/traceloop
-        make -C gadget-container/ docker-gadget/minikube-build
+        # Fake file just to test container building
+        mkdir -p gadget-container/bin/
+        touch gadget-container/bin/traceloop
+        make gadget-container-local
 
     - name: Upload linux-amd64 artifact
       uses: actions/upload-artifact@v1
