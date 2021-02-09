@@ -1,0 +1,11 @@
+{
+    "version": "0.1",
+    "plugins": [
+        {
+            "type": "nrigadget",
+            "conf": {
+                "socketFile": "/run/gadgettracermanager.socket"
+            }
+        }
+    ]
+}

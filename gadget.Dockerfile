@@ -35,7 +35,7 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
-		ca-certificates curl && \
+		ca-certificates curl jq && \
         rmdir /usr/src && ln -sf /host/usr/src /usr/src
 
 COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
@@ -59,5 +59,9 @@ COPY gadget-container/hooks/runc/add-hooks.jq /opt/hooks/runc/
 
 # cri-o
 COPY gadget-container/hooks/crio/gadget-prestart.json gadget-container/hooks/crio/gadget-poststop.json /opt/hooks/crio/
+
+# nri
+COPY --from=builder /gadget/gadget-container/bin/nrigadget /opt/hooks/nri/
+COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
 
 ## Hooks Ends
