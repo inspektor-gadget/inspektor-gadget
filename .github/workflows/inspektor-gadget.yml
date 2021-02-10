@@ -87,24 +87,6 @@ jobs:
         touch gadget-container/bin/traceloop
         make gadget-container-local
 
-    - name: Upload linux-amd64 artifact
-      uses: actions/upload-artifact@v1
-      with:
-        name: inspektor-gadget-linux-amd64
-        path: inspektor-gadget-linux-amd64.tar.gz
-
-    - name: Upload darwin-amd64 artifact
-      uses: actions/upload-artifact@v1
-      with:
-        name: inspektor-gadget-darwin-amd64
-        path: inspektor-gadget-darwin-amd64.tar.gz
-
-    - name: Upload windows-amd64 artifact
-      uses: actions/upload-artifact@v1
-      with:
-        name: inspektor-gadget-windows-amd64
-        path: inspektor-gadget-windows-amd64.tar.gz
-
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1.0.0
