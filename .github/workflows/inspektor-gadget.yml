@@ -9,6 +9,8 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    env:
+      CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
     steps:
 
     - name: Set up Go 1.13
@@ -20,21 +22,17 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v1
 
-    - name: Build gadget container and publish to Registry
-      id: publish-registry
-      uses: elgohr/Publish-Docker-Github-Action@2.8
-      with:
-        name: ${{ secrets.CONTAINER_REPO }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
-        dockerfile: gadget.Dockerfile
-        snapshot: true
-        cache: ${{ github.event_name != 'schedule' }}
+    - name: Set IMAGE_TAG
+      run: |
+        TMP1=${GITHUB_REF#*/}
+        TMP2=${TMP1#*/}
+        echo IMAGE_TAG=${TMP2//\//-} >> $GITHUB_ENV
+
+    - name: Build gadget container
+      run: |
+        make gadget-container
 
     - name: Build kubectl gadget Plugin
-      env:
-        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
-        IMAGE_TAG: ${{ steps.publish-registry.outputs.snapshot-tag }}
       run: |
         make kubectl-gadget
 
@@ -51,8 +49,6 @@ jobs:
         done
 
     - name: Unit tests
-      env:
-        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
       run: |
         make test
 
@@ -68,10 +64,12 @@ jobs:
         username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
         password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
+    # TODO: how to avoid pushing a container before running integration tests
+    - name: Push Gadget Container
+      run: |
+          make push-gadget-container
+
     - name: Integration tests
-      env:
-        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
-        IMAGE_TAG: ${{ steps.publish-registry.outputs.snapshot-tag }}
       run: |
         echo "Using IMAGE_TAG=$IMAGE_TAG"
 
@@ -82,7 +80,6 @@ jobs:
 
     - name: Smoke test build of the dev image for minikube
       env:
-        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
         MINIKUBE: true
       run: |
         # Fake file just to test container building
@@ -170,9 +167,6 @@ jobs:
 
     - name: Push Integration Test Image
       if: startsWith(github.ref, 'refs/tags/v')
-      env:
-        CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
-        IMAGE_TAG: ${{ steps.publish-registry.outputs.snapshot-tag }}
       run: |
         make -C integration push
 

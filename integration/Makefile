@@ -1,5 +1,4 @@
-IMAGE_TAG=$(shell ../tools/image-tag)
-IMAGE_BRANCH_TAG=$(shell ../tools/image-tag branch)
+IMAGE_TAG=$(shell ../tools/image-tag branch)
 
 TESTS_DOCKER_ARGS ?= "-e KUBECONFIG=/opt/kubeconfig/config -v $(HOME)/.kube:/opt/kubeconfig"
 
@@ -9,12 +8,10 @@ build:
 	cp ../kubectl-gadget-linux-amd64 bin/kubectl-gadget
 	docker build -t docker.io/kinvolk/gadgettest:$(IMAGE_TAG) -f Dockerfile .
 	rm -f bin/kubectl-gadget
-	docker tag docker.io/kinvolk/gadgettest:$(IMAGE_TAG) docker.io/kinvolk/gadgettest:$(IMAGE_BRANCH_TAG)
 
 .PHONY: push
 push:
 	docker push docker.io/kinvolk/gadgettest:$(IMAGE_TAG)
-	docker push docker.io/kinvolk/gadgettest:$(IMAGE_BRANCH_TAG)
 
 .PHONY: test
 test:

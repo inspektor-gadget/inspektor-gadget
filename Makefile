@@ -2,8 +2,7 @@ TAG := `git describe --tags --always`
 VERSION :=
 
 CONTAINER_REPO ?= docker.io/kinvolk/gadget
-IMAGE_TAG=$(shell ./tools/image-tag)
-IMAGE_BRANCH_TAG=$(shell ./tools/image-tag branch)
+IMAGE_TAG=$(shell ./tools/image-tag branch)
 
 MINIKUBE ?= minikube
 
@@ -56,18 +55,15 @@ install-user-linux: kubectl-gadget-linux-amd64
 .PHONY: gadget-container
 gadget-container:
 	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget.Dockerfile .
-	docker tag $(CONTAINER_REPO):$(IMAGE_TAG) $(CONTAINER_REPO):$(IMAGE_BRANCH_TAG)
 
 .PHONY: gadget-container-local
 gadget-container-local:
 	make -C gadget-container
 	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget-local.Dockerfile .
-	docker tag $(CONTAINER_REPO):$(IMAGE_TAG) $(CONTAINER_REPO):$(IMAGE_BRANCH_TAG)
 
 .PHONY: push-gadget-container
 push-gadget-container:
 	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
-	docker push $(CONTAINER_REPO):$(IMAGE_BRANCH_TAG)
 
 # tests
 .PHONY: test
