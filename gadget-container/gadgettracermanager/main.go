@@ -185,12 +185,19 @@ func main() {
 		var opts []grpc.ServerOption
 		grpcServer := grpc.NewServer(opts...)
 
+		var tracerManager *gadgettracermanager.GadgetTracerManager
+
 		if podInformer {
-			pb.RegisterGadgetTracerManagerServer(grpcServer, gadgettracermanager.NewServerWithPodInformer(node))
+			tracerManager, err = gadgettracermanager.NewServerWithPodInformer(node)
 		} else {
-			pb.RegisterGadgetTracerManagerServer(grpcServer, gadgettracermanager.NewServer(node))
+			tracerManager, err = gadgettracermanager.NewServer(node)
 		}
 
+		if err != nil {
+			log.Fatalf("failed to create server %v", err)
+		}
+
+		pb.RegisterGadgetTracerManagerServer(grpcServer, tracerManager)
 		grpcServer.Serve(lis)
 	}
 }

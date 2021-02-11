@@ -96,3 +96,4 @@ Join the discussions on the [`#inspektor-gadget`](https://kubernetes.slack.com/m
 * [traceloop](https://github.com/kinvolk/traceloop): the traceloop gadget uses the traceloop tool, which can be used independenly of Kubernetes.
 * [gobpf](https://github.com/kinvolk/gobpf): the traceloop gadget heavily uses gobpf.
 * [kubectl-trace](https://github.com/iovisor/kubectl-trace): the Inspektor Gadget architecture was inspired from kubectl-trace.
+* [cilium/ebpf](https://github.com/cilium/ebpf): the gadget tracer manager uses the cilium/ebpf library.
