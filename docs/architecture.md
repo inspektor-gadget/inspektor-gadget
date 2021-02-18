@@ -47,7 +47,7 @@ the matching criteria.
 ![Gadget Tracer Manager](architecture/gadget-tracer-manager.svg)
 
 The execsnoop, opensnoop, tcptop and tcpconnect subcommands use programs
-from [bcc](https://github.com/iovisor/bcc) with additional [filtering modifications](https://github.com/iovisor/bcc/blob/master/docs/filtering_by_cgroups.md).
+from [bcc](https://github.com/iovisor/bcc) with [special_filtering](https://github.com/iovisor/bcc/blob/master/docs/special_filtering.md).
 They are directly started on the nodes and their output is forwarded to Inspektor Gadget.
 
 Sometimes it is useful to run a BPF program always in the background. It can trace
