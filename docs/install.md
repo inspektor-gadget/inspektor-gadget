@@ -36,20 +36,6 @@ $ curl -sL https://github.com/kinvolk/inspektor-gadget/releases/download/v0.2.0/
 $ kubectl gadget version
 ```
 
-### Download from Github Actions artifacts
-
-* Go to the [GitHub Actions page](https://github.com/kinvolk/inspektor-gadget/actions)
-* Select one successful build from the desired branch and commit
-* Download the artifact for your platform:
-  ![Download artifacts](github-actions-download-artifacts.png)
-* Finish the installation:
-
-```
-$ unzip -p inspektor-gadget-linux-amd64.zip | tar xvzf -
-$ sudo cp kubectl-gadget /usr/local/bin/
-$ kubectl gadget version
-```
-
 ### Compile from the sources
 
 ```
