@@ -64,7 +64,7 @@ jobs:
         make test
 
     - name: Setup Minikube
-      uses: manusa/actions-setup-minikube@v2.0.1
+      uses: manusa/actions-setup-minikube@v2.4.2
       with:
         minikube version: 'v1.9.2'
         kubernetes version: 'v1.18.2'
