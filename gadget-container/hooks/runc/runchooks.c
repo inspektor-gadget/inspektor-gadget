@@ -71,7 +71,7 @@ static void __myinit(void)
 
 	char cmd[1024] = {0,};
 
-	ret = snprintf(cmd, sizeof(cmd), "cd %s && cp config.json config.json.orig && cat config.json.orig | jq -r \". * `cat /opt/runchooks/add-hooks.jq`\" > config.json", bundledir);
+	ret = snprintf(cmd, sizeof(cmd), "cd %s && cp config.json config.json.orig && cat config.json.orig | jq -r \". * `cat /opt/hooks/runc/add-hooks.jq`\" > config.json", bundledir);
 	free(bundledir);
 	if (ret < sizeof(cmd))
 		system(cmd);

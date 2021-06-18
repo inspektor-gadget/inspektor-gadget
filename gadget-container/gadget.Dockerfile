@@ -28,19 +28,26 @@ RUN set -ex; \
 COPY entrypoint.sh /entrypoint.sh
 COPY cleanup.sh /cleanup.sh
 
-COPY ocihookgadget/runc-hook-prestart.sh /bin/runc-hook-prestart.sh
-COPY ocihookgadget/runc-hook-poststop.sh /bin/runc-hook-poststop.sh
-COPY bin/ocihookgadget /bin/ocihookgadget
-
 COPY bin/gadgettracermanager /bin/gadgettracermanager
 
 COPY gadgets/bcck8s /opt/bcck8s
 COPY bin/networkpolicyadvisor /bin/networkpolicyadvisor
 
-COPY bin/runchooks.so /opt/runchooks/runchooks.so
-COPY runchooks/add-hooks.jq /opt/runchooks/add-hooks.jq
-
-COPY crio-hooks/gadget-prestart.json /opt/crio-hooks/gadget-prestart.json
-COPY crio-hooks/gadget-poststop.json /opt/crio-hooks/gadget-poststop.json
-
 COPY --from=traceloop /bin/traceloop /bin/traceloop
+
+## Hooks Begins
+
+# OCI
+COPY hooks/oci/prestart.sh /opt/hooks/oci/prestart.sh
+COPY hooks/oci/poststop.sh /opt/hooks/oci/poststop.sh
+COPY bin/ocihookgadget /opt/hooks/oci/ocihookgadget
+
+# runc
+COPY bin/runchooks.so /opt/hooks/runc/runchooks.so
+COPY hooks/runc/add-hooks.jq /opt/hooks/runc/add-hooks.jq
+
+# cri-o
+COPY hooks/crio/gadget-prestart.json /opt/hooks/crio/gadget-prestart.json
+COPY hooks/crio/gadget-poststop.json /opt/hooks/crio/gadget-poststop.json
+
+## Hooks Ends
