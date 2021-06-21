@@ -15,24 +15,30 @@
 package gadgettracermanager
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
-	"unsafe"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
-	bpflib "github.com/iovisor/gobpf/elf"
-	_ "github.com/iovisor/gobpf/pkg/bpffs"
-	_ "github.com/iovisor/gobpf/pkg/cpuonline"
+	"github.com/cilium/ebpf"
+
+	"golang.org/x/sys/unix"
 
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
+)
+
+const (
+	PIN_PATH         = "/sys/fs/bpf/gadget"
+	MNTMAP_PREFIX    = "mntnsset_"
+	CGROUPMAP_PREFIX = "cgroupidset_"
 )
 
 type GadgetTracerManager struct {
@@ -64,11 +70,8 @@ type tracer struct {
 
 	containerSelector pb.ContainerSelector
 
-	mapHolder          *bpflib.Module
-	cgroupIdSetMap     *bpflib.Map
-	cgroupIdSetMapPath string
-	mntnsSetMap        *bpflib.Map
-	mntnsSetMapPath    string
+	cgroupIdSetMap *ebpf.Map
+	mntnsSetMap    *ebpf.Map
 }
 
 func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition) bool {
@@ -113,56 +116,52 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 		return nil, fmt.Errorf("tracer id %q already exists", tracerId)
 	}
 
-	buf, err := Asset("tracer-map.o")
+	// Create and pin BPF maps for this tracer.
+	cgroupIdSpec := &ebpf.MapSpec{
+		Name:       CGROUPMAP_PREFIX + tracerId,
+		Type:       ebpf.Hash,
+		KeySize:    8,
+		ValueSize:  4,
+		MaxEntries: 128,
+		Pinning:    ebpf.PinByName,
+	}
+	cgroupIdSetMap, err := ebpf.NewMapWithOptions(cgroupIdSpec, ebpf.MapOptions{PinPath: PIN_PATH})
 	if err != nil {
-		return nil, fmt.Errorf("couldn't find asset: %s", err)
-	}
-	reader := bytes.NewReader(buf)
-
-	m := bpflib.NewModuleFromReader(reader)
-	if m == nil {
-		return nil, fmt.Errorf("BPF not supported")
+		return nil, fmt.Errorf("error creating cgroupid map: %w", err)
 	}
 
-	cgroupIdSetMapPath := fmt.Sprintf("gadget/cgroupidset-%s", tracerId)
-	mntnsSetMapPath := fmt.Sprintf("gadget/mntnsset-%s", tracerId)
-	var sectionParams = map[string]bpflib.SectionParams{
-		"maps/cgroupid_set": bpflib.SectionParams{
-			PinPath: cgroupIdSetMapPath,
-		},
-		"maps/mntns_set": bpflib.SectionParams{
-			PinPath: mntnsSetMapPath,
-		},
+	mntnsSpec := &ebpf.MapSpec{
+		Name:       MNTMAP_PREFIX + tracerId,
+		Type:       ebpf.Hash,
+		KeySize:    8,
+		ValueSize:  4,
+		MaxEntries: 10240,
+		Pinning:    ebpf.PinByName,
 	}
-	err = m.Load(sectionParams)
+	mntnsSetMap, err := ebpf.NewMapWithOptions(mntnsSpec, ebpf.MapOptions{PinPath: PIN_PATH})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating mntnsset map: %w", err)
 	}
-	cgroupIdSetMap := m.Map("cgroupid_set")
-	mntnsSetMap := m.Map("mntns_set")
 
 	for _, c := range g.containers {
 		if containerSelectorMatches(req.Selector, &c) {
 			one := uint32(1)
 			cgroupIdC := uint64(c.CgroupId)
 			if cgroupIdC != 0 {
-				m.UpdateElement(cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&one), 0)
+				cgroupIdSetMap.Put(cgroupIdC, one)
 			}
 			mntnsC := uint64(c.Mntns)
 			if mntnsC != 0 {
-				m.UpdateElement(mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&one), 0)
+				mntnsSetMap.Put(mntnsC, one)
 			}
 		}
 	}
 
 	g.tracers[tracerId] = tracer{
-		tracerId:           tracerId,
-		containerSelector:  *req.Selector,
-		mapHolder:          m,
-		cgroupIdSetMap:     cgroupIdSetMap,
-		cgroupIdSetMapPath: cgroupIdSetMapPath,
-		mntnsSetMap:        mntnsSetMap,
-		mntnsSetMapPath:    mntnsSetMapPath,
+		tracerId:          tracerId,
+		containerSelector: *req.Selector,
+		cgroupIdSetMap:    cgroupIdSetMap,
+		mntnsSetMap:       mntnsSetMap,
 	}
 	return &pb.TracerID{Id: tracerId}, nil
 }
@@ -177,9 +176,11 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 		return nil, fmt.Errorf("cannot remove tracer: unknown tracer %q", tracerID.Id)
 	}
 
-	t.mapHolder.Close()
-	os.Remove("/sys/fs/bpf/" + t.cgroupIdSetMapPath)
-	os.Remove("/sys/fs/bpf/" + t.mntnsSetMapPath)
+	t.cgroupIdSetMap.Close()
+	t.mntnsSetMap.Close()
+
+	os.Remove(filepath.Join(PIN_PATH, CGROUPMAP_PREFIX+t.tracerId))
+	os.Remove(filepath.Join(PIN_PATH, MNTMAP_PREFIX+t.tracerId))
 
 	delete(g.tracers, tracerID.Id)
 	return &pb.RemoveTracerResponse{}, nil
@@ -207,10 +208,10 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 			mntnsC := uint64(containerDefinition.Mntns)
 			one := uint32(1)
 			if cgroupIdC != 0 {
-				t.mapHolder.UpdateElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC), unsafe.Pointer(&one), 0)
+				t.cgroupIdSetMap.Put(cgroupIdC, one)
 			}
 			if mntnsC != 0 {
-				t.mapHolder.UpdateElement(t.mntnsSetMap, unsafe.Pointer(&mntnsC), unsafe.Pointer(&one), 0)
+				t.mntnsSetMap.Put(mntnsC, one)
 			}
 		}
 	}
@@ -233,8 +234,8 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 		if containerSelectorMatches(&t.containerSelector, &c) {
 			cgroupIdC := uint64(c.CgroupId)
 			mntnsC := uint64(c.Mntns)
-			t.mapHolder.DeleteElement(t.cgroupIdSetMap, unsafe.Pointer(&cgroupIdC))
-			t.mapHolder.DeleteElement(t.mntnsSetMap, unsafe.Pointer(&mntnsC))
+			t.cgroupIdSetMap.Delete(cgroupIdC)
+			t.mntnsSetMap.Delete(mntnsC)
 		}
 	}
 
@@ -301,18 +302,22 @@ func (g *GadgetTracerManager) run() {
 	}
 }
 
-func NewServerWithPodInformer(nodeName string) *GadgetTracerManager {
+func NewServerWithPodInformer(nodeName string) (*GadgetTracerManager, error) {
+	if err := initServer(); err != nil {
+		return nil, err
+	}
+
 	createdChan := make(chan *v1.Pod)
 	deletedChan := make(chan string)
 
 	k8sClient, err := k8s.NewK8sClient(nodeName)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to create k8s client: %w", err)
 	}
 
 	podInformer, err := k8s.NewPodInformer(nodeName, createdChan, deletedChan)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to create pod informer: %w", err)
 	}
 	g := &GadgetTracerManager{
 		nodeName:          nodeName,
@@ -327,13 +332,17 @@ func NewServerWithPodInformer(nodeName string) *GadgetTracerManager {
 
 	go g.run()
 
-	return g
+	return g, nil
 }
 
-func NewServer(nodeName string) *GadgetTracerManager {
+func NewServer(nodeName string) (*GadgetTracerManager, error) {
+	if err := initServer(); err != nil {
+		return nil, err
+	}
+
 	k8sClient, err := k8s.NewK8sClient(nodeName)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to create k8s client: %w", err)
 	}
 	// The CRI client is only used at the beginning to get the initial list
 	// of containers, it's not used after it.
@@ -355,5 +364,25 @@ func NewServer(nodeName string) *GadgetTracerManager {
 			g.containers[container.ContainerId] = container
 		}
 	}
-	return g
+	return g, nil
+}
+
+func increaseRlimit() error {
+	limit := &unix.Rlimit{
+		Cur: unix.RLIM_INFINITY,
+		Max: unix.RLIM_INFINITY,
+	}
+	return unix.Setrlimit(unix.RLIMIT_MEMLOCK, limit)
+}
+
+func initServer() error {
+	if err := increaseRlimit(); err != nil {
+		return fmt.Errorf("failed to increase limit memlock limit: %w", err)
+	}
+
+	if err := os.Mkdir(PIN_PATH, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
+		return fmt.Errorf("failed to create folder for pinning bpf maps: %w", err)
+	}
+
+	return nil
 }

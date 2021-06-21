@@ -303,7 +303,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		b := make([]byte, 6)
 		_, err = rand.Read(b)
 		if err == nil {
-			tracerId = fmt.Sprintf("%s-%x", tracerId, b)
+			tracerId = fmt.Sprintf("%s_%x", tracerId, b)
 		}
 
 		var listOptions = metaV1.ListOptions{

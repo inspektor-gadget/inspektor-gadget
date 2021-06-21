@@ -128,13 +128,13 @@ if [ "$MANAGER" = "true" ] ; then
   $GADGETTRACERMANAGER -call add-tracer -tracerid "$TRACERID" -label "$LABEL" -namespace "$NAMESPACE" -podname "$PODNAME" -containername "$CONTAINERNAME" > /dev/null
   # use the --cgroupmap option if the system is using cgroup-v2
   MODE="--mntnsmap"
-  MAPPATH=$BPFDIR/gadget/mntnsset-$TRACERID
+  MAPPATH=$BPFDIR/gadget/mntnsset_$TRACERID
   CGROUP_V2_PATH=$(cat /proc/self/cgroup |grep ^0:|cut -d: -f3)
   UID_UNDER=`echo $GADGET_POD_UID | sed 's/-/_/g'`
   if [[ "$CGROUP_V2_PATH" == *"$GADGET_POD_UID"* ||
       "$CGROUP_V2_PATH" == *"$UID_UNDER"* ]]; then
     MODE="--cgroupmap"
-    MAPPATH=$BPFDIR/gadget/cgroupidset-$TRACERID
+    MAPPATH=$BPFDIR/gadget/cgroupidset_$TRACERID
   fi
   exec $GADGET $MODE $MAPPATH "$@"
 else
