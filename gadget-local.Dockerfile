@@ -20,7 +20,7 @@ COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
 COPY gadget-container/bin/gadgettracermanager /bin/
 COPY gadget-container/bin/networkpolicyadvisor /bin/
 
-COPY gadget-container/gadgets/bcck8s /opt/
+COPY gadget-container/gadgets/bcck8s /opt/bcck8s/
 
 COPY gadget-container/bin/traceloop /bin/
 
