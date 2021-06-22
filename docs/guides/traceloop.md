@@ -49,7 +49,7 @@ result was saved in `/tmp/file-1889` but we attempted to open
 
 We can close this trace now.
 ```
-$ kubectl gadget traceloop show 10.0.30.247_default_mypod
+$ kubectl gadget traceloop close 10.0.30.247_default_mypod
 closed
 ```
 
