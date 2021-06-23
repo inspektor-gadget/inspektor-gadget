@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -53,7 +54,7 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		LabelSelector: "k8s-app=gadget",
 		FieldSelector: "spec.nodeName=" + node + ",status.phase=Running",
 	}
-	pods, err := client.CoreV1().Pods("kube-system").List(listOptions)
+	pods, err := client.CoreV1().Pods("kube-system").List(context.TODO(), listOptions)
 	if err != nil {
 		return err
 	}

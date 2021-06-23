@@ -15,11 +15,12 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
@@ -52,7 +53,7 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 
 	fieldSelector := fields.OneTermEqualSelector("spec.nodeName", nodeName).String()
 
-	node, err := clientset.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	node, err := clientset.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get node %s", err)
 	}
@@ -100,7 +101,7 @@ func (k *K8sClient) CloseCRI() {
 // FillContainer uses the k8s API server to get the pod name, namespace,
 // labels and container name for the given container.
 func (k *K8sClient) FillContainer(containerDefinition *pb.ContainerDefinition) error {
-	pods, err := k.clientset.CoreV1().Pods("").List(metav1.ListOptions{
+	pods, err := k.clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
 		FieldSelector: k.fieldSelector,
 	})
 	if err != nil {
@@ -207,7 +208,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 // running in the node.
 func (k *K8sClient) ListContainers() (arr []pb.ContainerDefinition, err error) {
 	// List pods
-	pods, err := k.clientset.CoreV1().Pods("").List(metav1.ListOptions{
+	pods, err := k.clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
 		FieldSelector: k.fieldSelector,
 	})
 	if err != nil {

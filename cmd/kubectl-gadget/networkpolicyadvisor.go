@@ -16,6 +16,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -131,7 +132,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 		LabelSelector: labels.Everything().String(),
 		FieldSelector: fields.Everything().String(),
 	}
-	nodes, err := client.CoreV1().Nodes().List(listOptions)
+	nodes, err := client.CoreV1().Nodes().List(context.TODO(), listOptions)
 	if err != nil {
 		contextLogger.Fatalf("Error listing nodes: %q", err)
 	}

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -191,12 +192,12 @@ func main() {
 				for i := 0; i < eventCount; i++ {
 					batch[i] = <-mytracer.queue
 				}
-				pods, err := clientset.CoreV1().Pods("").List(metav1.ListOptions{})
+				pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
 				if err != nil {
 					fmt.Printf("Error: %s\n", err)
 					return
 				}
-				svcs, err := clientset.CoreV1().Services("").List(metav1.ListOptions{})
+				svcs, err := clientset.CoreV1().Services("").List(context.TODO(), metav1.ListOptions{})
 				if err != nil {
 					fmt.Printf("Error: %s\n", err)
 					return
