@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -117,7 +118,7 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 		LabelSelector: "k8s-app=gadget",
 		FieldSelector: fields.Everything().String(),
 	}
-	pods, err := client.CoreV1().Pods("kube-system").List(listOptions)
+	pods, err := client.CoreV1().Pods("kube-system").List(context.TODO(), listOptions)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot find gadget pods: %q", err)
 	}
@@ -328,7 +329,7 @@ func runTraceloopPod(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
 
-	pod, err := client.CoreV1().Pods(namespace).Get(podname, metaV1.GetOptions{})
+	pod, err := client.CoreV1().Pods(namespace).Get(context.TODO(), podname, metaV1.GetOptions{})
 	if err != nil {
 		contextLogger.Fatalf("Cannot get pod %s: %q", podname, err)
 	}
@@ -362,7 +363,7 @@ func runTraceloopClose(cmd *cobra.Command, args []string) {
 		FieldSelector: fields.Everything().String(),
 	}
 
-	nodes, err := client.CoreV1().Nodes().List(listOptions)
+	nodes, err := client.CoreV1().Nodes().List(context.TODO(), listOptions)
 	if err != nil {
 		contextLogger.Fatalf("Error in listing nodes: %q", err)
 	}

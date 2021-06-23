@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"io"
@@ -311,7 +312,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			FieldSelector: fields.Everything().String(),
 		}
 
-		nodes, err := client.CoreV1().Nodes().List(listOptions)
+		nodes, err := client.CoreV1().Nodes().List(context.TODO(), listOptions)
 		if err != nil {
 			contextLogger.Fatalf("Error in listing nodes: %q", err)
 		}
