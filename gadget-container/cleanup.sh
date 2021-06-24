@@ -34,4 +34,16 @@ fi
 rm -f /host/opt/hooks/runc/runchooks.so
 rm -f /host/opt/hooks/runc/add-hooks.jq
 
+# nri
+if [ -f "/host/etc/nri/conf.json" ] ; then
+  jq 'del(.plugins[] | select(.type == "nrigadget"))' /host/etc/nri/conf.json > /tmp/conf.json
+  if [ $(jq '.plugins | length' /tmp/conf.json) == 0 ] ; then
+    rm -f /host/etc/nri/conf.json
+  else
+    mv /tmp/conf.json /host/etc/nri/conf.json
+  fi
+fi
+
+rm -f /host/opt/nri/bin/nrigadget
+
 echo "Cleanup completed"

@@ -120,6 +120,24 @@ if [ "$HOOK_MODE" = "crio" ] || [ "$HOOK_MODE" = "ldpreload" ] ; then
   echo "Hooks installation done"
 fi
 
+if [ "$HOOK_MODE" = "nri" ] ; then
+  echo "Installing NRI hooks"
+
+  # first install the binary
+  mkdir -p /host/opt/nri/bin/
+  cp /opt/hooks/nri/nrigadget /host/opt/nri/bin/
+
+  # then install the configuration
+  # if the configuration already exists append a new plugin
+  if [ -f "/host/etc/nri/conf.json" ] ; then
+    jq '.plugins += [{"type": "nrigadget"}]' /host/etc/nri/conf.json > /tmp/conf.json
+    mv /tmp/conf.json /host/etc/nri/conf.json
+  else
+    mkdir -p /host/etc/nri/
+    cp /opt/hooks/nri/conf.json /host/etc/nri/
+  fi
+fi
+
 POD_INFORMER_PARAM=""
 if [ "$HOOK_MODE" = "podinformer" ] ; then
   POD_INFORMER_PARAM="-podinformer"

@@ -58,7 +58,7 @@ func init() {
 		&hookMode,
 		"hook-mode", "",
 		"auto",
-		"how to get containers start/stop notifications (auto, crio, ldpreload, podinformer)")
+		"how to get containers start/stop notifications (auto, crio, ldpreload, podinformer, nri)")
 
 	rootCmd.AddCommand(deployCmd)
 }
@@ -205,8 +205,9 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	if hookMode != "auto" &&
 		hookMode != "crio" &&
 		hookMode != "ldpreload" &&
-		hookMode != "podinformer" {
-		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,ldpreload,podinformer]", hookMode)
+		hookMode != "podinformer" &&
+		hookMode != "nri" {
+		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,ldpreload,podinformer,nri]", hookMode)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
