@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.7.4 // indirect
 	github.com/iovisor/gobpf v0.0.0-20191129151106-ac26197bb7be // indirect
 	github.com/kinvolk/traceloop v0.0.0-20210623155108-6f4efc6fca46
-	github.com/kr/pretty v0.2.0
+	github.com/kr/pretty v0.2.1
 	github.com/moby/term v0.0.0-20200507201656-73f35e472e8f // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d
