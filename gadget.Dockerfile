@@ -1,12 +1,16 @@
 # Prepare and build gadget artifacts in a container
-ARG OS_TAG=18.04
+ARG OS_TAG=20.04
 FROM ubuntu:${OS_TAG} as builder
 
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
-	apt-get install -y gcc make golang-1.13 ca-certificates git && \
-	ln -s /usr/lib/go-1.13/bin/go /bin/go
+	apt-get install -y gcc make golang-1.16 ca-certificates git clang \
+		software-properties-common && \
+	add-apt-repository -y ppa:tuxinvader/kernel-build-tools && \
+	apt-get update && \
+	apt-get install -y libbpf-dev && \
+	ln -s /usr/lib/go-1.16/bin/go /bin/go
 
 # Cache go modules so they won't be downloaded at each build
 COPY go.mod go.sum /gadget/
@@ -32,7 +36,7 @@ FROM docker.io/kinvolk/traceloop:202006050210553a5730 as traceloop
 # https://github.com/kinvolk/bcc/commit/4e8e8c65335d650414cd05a38b6860080dba81da
 # See BCC section in docs/CONTRIBUTING.md for further details.
 
-FROM docker.io/kinvolk/bcc:202107061407494e8e8c
+FROM quay.io/kinvolk/bcc:4e8e8c65335d650414cd05a38b6860080dba81da-focal-release
 
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
