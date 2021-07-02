@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
@@ -198,6 +200,10 @@ func main() {
 		}
 
 		pb.RegisterGadgetTracerManagerServer(grpcServer, tracerManager)
+
+		healthserver := health.NewServer()
+		healthpb.RegisterHealthServer(grpcServer, healthserver)
+
 		grpcServer.Serve(lis)
 	}
 }
