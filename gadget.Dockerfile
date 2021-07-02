@@ -8,6 +8,11 @@ RUN set -ex; \
 	apt-get install -y gcc make golang-1.13 ca-certificates git && \
 	ln -s /usr/lib/go-1.13/bin/go /bin/go
 
+# Cache go modules so they won't be downloaded at each build
+COPY go.mod go.sum /gadget/
+RUN cd /gadget && go mod download
+
+# This COPY is limited by .dockerignore
 COPY ./ /gadget
 RUN cd /gadget/gadget-container && make gadget-container-deps
 
