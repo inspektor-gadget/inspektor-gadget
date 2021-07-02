@@ -1,5 +1,21 @@
 .PHONY: gadget-container-deps
-gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib nrigadget
+gadget-container-deps: collector-process ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib nrigadget
+
+CLANG_OS_FLAGS = ""
+ifeq ($(shell grep -oP '^NAME="\K\w+(?=")' /etc/os-release), Ubuntu)
+	CLANG_OS_FLAGS="-I/usr/include/$(shell uname -m)-linux-gnu"
+endif
+
+# eBPF objects
+
+.PHONY: ebpf-objects
+ebpf-objects: gadgets/collector-process/bpf/collector-process.o gadgets/collector-process/bpf/collector-process-with-filter.o
+
+gadgets/collector-process/bpf/collector-process.o: gadgets/collector-process/bpf/collector-process.c
+	clang $(CLANG_OS_FLAGS) -target bpf -O2 -g -c -x c $< -o $@
+
+gadgets/collector-process/bpf/collector-process-with-filter.o: gadgets/collector-process/bpf/collector-process.c
+	clang $(CLANG_OS_FLAGS) -target bpf -O2 -g -c -x c $< -o $@ -DWITH_FILTER=1
 
 # Gadgets
 
@@ -16,6 +32,10 @@ networkpolicyadvisor:
 	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
 		-o bin/networkpolicyadvisor \
 		./gadgets/networkpolicyadvisor/main.go
+
+.PHONY: collector-process
+collector-process: gadgets/collector-process/bpf/collector-process.o gadgets/collector-process/bpf/collector-process-with-filter.o
+	go build -tags withebpf -o bin/collector-process ./gadgets/collector-process/
 
 .PHONY: networkpolicyadvisor/push
 networkpolicyadvisor/push: networkpolicyadvisor
