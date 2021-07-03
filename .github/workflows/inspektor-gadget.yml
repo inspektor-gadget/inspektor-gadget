@@ -85,15 +85,6 @@ jobs:
 
         sed -i "s/latest/$IMAGE_TAG/g" integration/gadget-integration-tests-job.yaml
 
-    - name: Smoke test build of the dev image for minikube
-      env:
-        MINIKUBE: true
-      run: |
-        # Fake file just to test container building
-        mkdir -p gadget-container/bin/
-        touch gadget-container/bin/traceloop
-        make gadget-container-local
-
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1.0.0
