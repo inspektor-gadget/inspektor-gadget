@@ -19,17 +19,16 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
-
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
-
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
 
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
@@ -63,6 +62,8 @@ type GadgetTracerManager struct {
 	// key is "namespace/podname"
 	// value is an set of containerId
 	containerIDsByKey map[string]map[string]struct{}
+
+	containersMap *ebpf.Map
 }
 
 type tracer struct {
@@ -72,6 +73,20 @@ type tracer struct {
 
 	cgroupIdSetMap *ebpf.Map
 	mntnsSetMap    *ebpf.Map
+}
+
+const (
+	NAME_MAX_LENGTH     = 256
+	NAME_MAX_CHARACTERS = 255
+)
+
+// struct container needs to be kept in sync with the same struct from
+// pkg/gadgettracermanager/gadget-tracer-manager-maps.h
+type container struct {
+	ContainerID         [NAME_MAX_LENGTH]byte
+	KubernetesNamespace [NAME_MAX_LENGTH]byte
+	KubernetesPod       [NAME_MAX_LENGTH]byte
+	KubernetesContainer [NAME_MAX_LENGTH]byte
 }
 
 func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition) bool {
@@ -217,6 +232,7 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 	}
 
 	g.containers[containerDefinition.ContainerId] = *containerDefinition
+	g.addContainerInMap(*containerDefinition)
 	return &pb.AddContainerResponse{}, nil
 }
 
@@ -239,6 +255,7 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 		}
 	}
 
+	g.deleteContainerFromMap(c)
 	delete(g.containers, containerDefinition.ContainerId)
 	return &pb.RemoveContainerResponse{}, nil
 }
@@ -302,6 +319,62 @@ func (g *GadgetTracerManager) run() {
 	}
 }
 
+// createContainersMap creates a global map /sys/fs/bpf/gadget/containers
+// exposing container details for each mount namespace.
+//
+// This makes it possible for gadgets to access that information and
+// display it directly from the BPF code. Example of such code:
+//
+//     struct container *container_entry;
+//     container_entry = bpf_map_lookup_elem(&containers, &mntns_id);
+//
+// See usage in gadget-container/gadgets/collector-process/bpf/collector-process.c
+//
+// External tools such as tracee or bpftrace could also benefit from this just
+// by using this "containers" map (other interaction with Inspektor Gadget is
+// not necessary for this).
+func (g *GadgetTracerManager) createContainersMap() error {
+	// Create and pin BPF map
+	containersMapSpec := &ebpf.MapSpec{
+		Name:       "containers",
+		Type:       ebpf.Hash,
+		KeySize:    8,
+		ValueSize:  uint32(unsafe.Sizeof(container{})),
+		MaxEntries: 1024,
+		Pinning:    ebpf.PinByName,
+	}
+	var err error
+	log.Printf("Creating BPF map: %s/%s", PIN_PATH, containersMapSpec.Name)
+	g.containersMap, err = ebpf.NewMapWithOptions(containersMapSpec, ebpf.MapOptions{PinPath: PIN_PATH})
+	if err != nil {
+		return fmt.Errorf("error creating containers map: %w", err)
+	}
+	return nil
+}
+
+func (g *GadgetTracerManager) addContainerInMap(c pb.ContainerDefinition) {
+	if g.containersMap == nil || c.Mntns == 0 {
+		return
+	}
+	mntnsC := uint64(c.Mntns)
+
+	val := container{}
+	copy(val.ContainerID[:NAME_MAX_CHARACTERS], []byte(c.ContainerId))
+	copy(val.KubernetesNamespace[:NAME_MAX_CHARACTERS], []byte(c.Namespace))
+	copy(val.KubernetesPod[:NAME_MAX_CHARACTERS], []byte(c.Podname))
+	copy(val.KubernetesContainer[:NAME_MAX_CHARACTERS], []byte(c.ContainerName))
+
+	g.containersMap.Put(mntnsC, val)
+}
+
+func (g *GadgetTracerManager) deleteContainerFromMap(c pb.ContainerDefinition) {
+	if g.containersMap == nil || c.Mntns == 0 {
+		return
+	}
+	mntnsC := uint64(c.Mntns)
+	g.containersMap.Delete(mntnsC)
+}
+
 func NewServerWithPodInformer(nodeName string) (*GadgetTracerManager, error) {
 	if err := initServer(); err != nil {
 		return nil, err
@@ -329,6 +402,9 @@ func NewServerWithPodInformer(nodeName string) (*GadgetTracerManager, error) {
 		containerIDsByKey: make(map[string]map[string]struct{}),
 		k8sClient:         k8sClient,
 	}
+	if err = g.createContainersMap(); err != nil {
+		return nil, err
+	}
 
 	go g.run()
 
@@ -354,6 +430,9 @@ func NewServer(nodeName string) (*GadgetTracerManager, error) {
 		tracers:    make(map[string]tracer),
 		k8sClient:  k8sClient,
 	}
+	if err = g.createContainersMap(); err != nil {
+		return nil, err
+	}
 
 	containers, err := k8sClient.ListContainers()
 	if err != nil {
@@ -362,6 +441,7 @@ func NewServer(nodeName string) (*GadgetTracerManager, error) {
 		log.Printf("gadgettracermanager found %d containers: %+v", len(containers), containers)
 		for _, container := range containers {
 			g.containers[container.ContainerId] = container
+			g.addContainerInMap(container)
 		}
 	}
 	return g, nil
