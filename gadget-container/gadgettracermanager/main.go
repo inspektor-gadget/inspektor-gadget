@@ -25,6 +25,10 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
@@ -33,6 +37,7 @@ import (
 var (
 	serve         bool
 	dump          bool
+	liveness      bool
 	podInformer   bool
 	socketfile    string
 	method        string
@@ -44,6 +49,10 @@ var (
 	namespace     string
 	podname       string
 	containername string
+)
+
+const (
+	clientTimeout = 2 * time.Second
 )
 
 func init() {
@@ -63,6 +72,7 @@ func init() {
 	flag.StringVar(&containername, "containername", "", "container name to use in add-container")
 
 	flag.BoolVar(&dump, "dump", false, "Dump state for debugging")
+	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
 }
 
 func main() {
@@ -91,15 +101,17 @@ func main() {
 	var client pb.GadgetTracerManagerClient
 	var ctx context.Context
 	var cancel context.CancelFunc
-	if dump || method != "" {
-		conn, err := grpc.Dial("unix://"+socketfile, grpc.WithInsecure())
+	var conn *grpc.ClientConn
+	if liveness || dump || method != "" {
+		var err error
+		conn, err = grpc.Dial("unix://"+socketfile, grpc.WithInsecure())
 		if err != nil {
 			log.Fatalf("fail to dial: %v", err)
 		}
 		defer conn.Close()
 		client = pb.NewGadgetTracerManagerClient(conn)
 
-		ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+		ctx, cancel = context.WithTimeout(context.Background(), clientTimeout)
 		defer cancel()
 	}
 
@@ -171,6 +183,29 @@ func main() {
 		os.Exit(0)
 	}
 
+	if liveness {
+		resp, err := healthpb.NewHealthClient(conn).Check(ctx, &healthpb.HealthCheckRequest{Service: ""})
+		if err != nil {
+			stat := status.Convert(err)
+
+			if stat.Code() == codes.DeadlineExceeded {
+				fmt.Printf("Gadget Tracer Manager health RPC reached the timeout: %v", clientTimeout)
+			} else {
+				fmt.Printf("Gadget Tracer Manager health RPC failed: '%s'", stat.Message())
+			}
+
+			os.Exit(1)
+		}
+
+		if resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+			fmt.Printf("Gadget Tracer Manager unhealthy: %s", resp.GetStatus().String())
+			os.Exit(1)
+		}
+
+		fmt.Printf("Gadget Tracer Manager healthy: %s", resp.GetStatus().String())
+		os.Exit(0)
+	}
+
 	if serve {
 		lis, err := net.Listen("unix", socketfile)
 		if err != nil {
@@ -198,6 +233,10 @@ func main() {
 		}
 
 		pb.RegisterGadgetTracerManagerServer(grpcServer, tracerManager)
+
+		healthserver := health.NewServer()
+		healthpb.RegisterHealthServer(grpcServer, healthserver)
+
 		grpcServer.Serve(lis)
 	}
 }

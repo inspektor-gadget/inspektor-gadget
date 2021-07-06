@@ -115,6 +115,13 @@ spec:
             exec:
               command:
                 - "/cleanup.sh"
+        livenessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          exec:
+            command:
+              - /bin/gadgettracermanager
+              - -liveness
         env:
           - name: NODE_NAME
             valueFrom:
