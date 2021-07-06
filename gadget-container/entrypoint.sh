@@ -49,6 +49,17 @@ echo $INSPEKTOR_GADGET_VERSION
 echo "-:pfree_uts_ns" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
 echo "-:pcap_capable" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
 
+# Workaround for Minikube with the Docker driver:
+# Since it starts an outer docker container with a read-only /sys without bpf
+# mounted, passing /sys/fs/bpf from the pseudo-host does not work.
+# See also:
+# https://github.com/kubernetes/minikube/blob/99a0c91459f17ad8c83c80fc37a9ded41e34370c/deploy/kicbase/entrypoint#L76-L81
+BPF_MOUNTPOINT_TYPE="`stat -f --format=%T /sys/fs/bpf`"
+if [ "$BPF_MOUNTPOINT_TYPE" != "bpf_fs" ] ; then
+  echo "/sys/fs/bpf is of type $BPF_MOUNTPOINT_TYPE. Remounting."
+  mount -t bpf bpf /sys/fs/bpf/
+fi
+
 CRIO=0
 if grep -q '^1:name=systemd:.*/crio-[0-9a-f]*\.scope$' /proc/self/cgroup > /dev/null ; then
     echo "CRI-O detected."
