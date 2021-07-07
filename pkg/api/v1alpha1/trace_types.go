@@ -21,19 +21,59 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// ContainerFilter filters events based on different criteria
+type ContainerFilter struct {
+	// Namespace selects events from this pod namespace
+	Namespace string `json:"namespace,omitempty"`
+
+	// Podname selects events from this pod name
+	Podname string `json:"podname,omitempty"`
+
+	// Podname selects events from pods with these labels
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// ContainerName selects events from containers with this name
+	ContainerName string `json:"containerName,omitempty"`
+}
+
 // TraceSpec defines the desired state of Trace
 type TraceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Trace. Edit trace_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Node is the name of the node on which this trace should run
+	Node string `json:"node,omitempty"`
+
+	// Gadget is the name of the gadget such as "seccomp"
+	Gadget string `json:"gadget,omitempty"`
+
+	// RunMode is "Auto" to automatically start the trace as soon as the
+	// resource is created, or "Manual" to be controlled by the
+	// "gadget.kinvolk.io/operation" annotation
+	RunMode string `json:"runMode,omitempty"`
+
+	// Filter is to tell the gadget to filter events based on namespace,
+	// pod name, labels or container name
+	Filter *ContainerFilter `json:"filter,omitempty"`
+
+	// OutputMode is "Status" or "File"
+	OutputMode string `json:"outputMode,omitempty"`
 }
 
 // TraceStatus defines the observed state of Trace
 type TraceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// State is "Started", "Stopped" or "Completed"
+	State string `json:"state,omitempty"`
+
+	// Output is the output of the gadget
+	Output string `json:"output,omitempty"`
+
+	// OperationError is the error returned by the gadget when applying the
+	// annotation gadget.kinvolk.io/operation=
+	OperationError string `json:"operationError,omitempty"`
 }
 
 //+kubebuilder:object:root=true

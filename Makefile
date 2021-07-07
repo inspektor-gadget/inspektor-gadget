@@ -14,12 +14,15 @@ else
 	VERSION := $(TAG)-dirty
 endif
 
+include crd.mk
+
 LDFLAGS := "-X main.version=$(VERSION) \
 -X main.gadgetimage=$(CONTAINER_REPO):$(IMAGE_TAG) \
 -extldflags '-static'"
 
+.DEFAULT_GOAL := build
 .PHONY: build
-build: kubectl-gadget gadget-container
+build: manifests generate kubectl-gadget gadget-container
 
 # kubectl-gadget
 .PHONY: kubectl-gadget
