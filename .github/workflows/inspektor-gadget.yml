@@ -35,6 +35,11 @@ jobs:
         TMP2=${TMP1#*/}
         echo IMAGE_TAG=${TMP2//\//-} >> $GITHUB_ENV
 
+    - name: Build generated files and check for any changes
+      run: |
+        make manifests generate
+        git diff --exit-code HEAD --
+
     - name: Build gadget container
       run: |
         make gadget-container

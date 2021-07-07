@@ -1,0 +1,12 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: network-policy-advisor
+  namespace: gadget
+spec:
+  node: minikube
+  gadget: network-policy-advisor
+  filter:
+    namespace: default
+    labels:
+      role: demo

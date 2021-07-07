@@ -1,0 +1,12 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: collector-process
+  namespace: gadget
+spec:
+  node: minikube
+  gadget: collector-process
+  filter:
+    namespace: default
+    labels:
+      role: demo

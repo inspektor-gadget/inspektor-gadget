@@ -20,6 +20,8 @@ import (
 	"text/template"
 
 	"github.com/spf13/cobra"
+
+	"github.com/kinvolk/inspektor-gadget/pkg/config"
 )
 
 var deployCmd = &cobra.Command{
@@ -230,6 +232,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		hookMode,
 	}
 
+	fmt.Printf("%s\n---\n", config.TracesCustomResource)
 	err = t.Execute(os.Stdout, p)
 	if err != nil {
 		return fmt.Errorf("failed to generate deploy template %w", err)

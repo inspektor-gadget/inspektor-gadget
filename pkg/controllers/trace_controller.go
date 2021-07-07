@@ -1,0 +1,239 @@
+// Copyright 2021 The Inspektor Gadget authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package controllers
+
+import (
+	"context"
+	"errors"
+	"os"
+	"strings"
+
+	log "github.com/sirupsen/logrus"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
+	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+)
+
+const (
+	/* Inspired from Gardener
+	 * https://gardener.cloud/documentation/guides/administer_shoots/trigger-shoot-operations/
+	 */
+
+	GADGET_OPERATION = "gadget.kinvolk.io/operation"
+)
+
+// TraceReconciler reconciles a Trace object
+type TraceReconciler struct {
+	client.Client
+	Scheme *runtime.Scheme
+	Node   string
+
+	GadgetRegistry map[string]gadgets.Gadget
+	TracerManager  *gadgettracermanager.GadgetTracerManager
+}
+
+//+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces/finalizers,verbs=update
+
+func genSelector(f *gadgetv1alpha1.ContainerFilter) *pb.ContainerSelector {
+	if f == nil {
+		return &pb.ContainerSelector{}
+	}
+	labels := []*pb.Label{}
+	for k, v := range f.Labels {
+		labels = append(labels, &pb.Label{Key: k, Value: v})
+	}
+	return &pb.ContainerSelector{
+		Namespace:     f.Namespace,
+		Podname:       f.Podname,
+		Labels:        labels,
+		ContainerName: f.ContainerName,
+	}
+}
+
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+// TODO(user): Modify the Reconcile function to compare the state specified by
+// the Trace object against the actual cluster state, and then
+// perform operations to make the cluster state reflect the state specified by
+// the user.
+//
+// For more details, check Reconcile and its Result here:
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
+func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	trace := &gadgetv1alpha1.Trace{}
+	err := r.Get(ctx, req.NamespacedName, trace)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			log.Infof("Trace %q has been deleted", req.NamespacedName.String())
+			return ctrl.Result{}, nil
+		}
+		log.Errorf("Failed to get Trace: %s", err)
+		return ctrl.Result{}, err
+	}
+
+	// Each node handles their own traces
+	if trace.Spec.Node != r.Node {
+		return ctrl.Result{}, nil
+	}
+
+	// Lookup gadget
+	gadget, ok := r.GadgetRegistry[trace.Spec.Gadget]
+	if !ok {
+		log.Infof("Unknown gadget %q", trace.Spec.Gadget)
+		return ctrl.Result{}, nil
+	}
+
+	log.Infof("Reconcile trace %s (gadget %s, node %s)",
+		req.NamespacedName,
+		trace.Spec.Gadget,
+		trace.Spec.Node)
+
+	// If the Trace is under deletion
+	gadgetFinalizer := "trace.gadget.kinvolk.io/finalizer"
+	if !trace.ObjectMeta.DeletionTimestamp.IsZero() {
+		if controllerutil.ContainsFinalizer(trace, gadgetFinalizer) {
+			// Inform the gadget that the trace is being deleted
+			err = gadget.Delete(req.NamespacedName)
+			if err != nil {
+				// The controller can retry later
+				log.Errorf("Failed to delete: gadget %s returned: %s", trace.Spec.Gadget, err)
+				return ctrl.Result{}, err
+			}
+
+			_, err = r.TracerManager.RemoveTracer(ctx,
+				&pb.TracerID{Id: gadgets.TraceNameFromNamespacedName(req.NamespacedName)})
+			if err != nil {
+				// Print error message but don't try again later
+				log.Errorf("Failed to delete tracer BPF map: %s", err)
+			}
+
+			// Remove our finalizer
+			controllerutil.RemoveFinalizer(trace, gadgetFinalizer)
+			if err := r.Update(ctx, trace); err != nil {
+				log.Errorf("Failed to remove finalizer: %s", err)
+				return ctrl.Result{}, err
+			}
+		}
+		// Stop reconciliation as the Trace is being deleted
+		log.Infof("Let trace %s be deleted", req.NamespacedName)
+		return ctrl.Result{}, nil
+	}
+
+	// The Trace is not being deleted, so register our finalizer
+	beforeFinalizer := trace.DeepCopy()
+	controllerutil.AddFinalizer(trace, gadgetFinalizer)
+	if err := r.Patch(ctx, trace, client.MergeFrom(beforeFinalizer)); err != nil {
+		log.Errorf("Failed to add finalizer: %s", err)
+		return ctrl.Result{}, err
+	}
+
+	// Register tracer
+	_, err = r.TracerManager.AddTracer(ctx,
+		&pb.AddTracerRequest{
+			Id:       gadgets.TraceNameFromNamespacedName(req.NamespacedName),
+			Selector: genSelector(trace.Spec.Filter),
+		})
+	if err != nil && !errors.Is(err, os.ErrExist) {
+		log.Errorf("Failed to add tracer BPF map: %s", err)
+		return ctrl.Result{}, err
+	}
+
+	output := trace.Status.Output
+	state := trace.Status.State
+	operationError := trace.Status.OperationError
+
+	// Lookup annotations
+	if trace.ObjectMeta.Annotations == nil {
+		log.Info("No annotations. Nothing to do.")
+		return ctrl.Result{}, nil
+	}
+	var op string
+	if op, ok = trace.ObjectMeta.Annotations[GADGET_OPERATION]; !ok {
+		log.Info("No operation annotation. Nothing to do.")
+		return ctrl.Result{}, nil
+	}
+
+	params := make(map[string]string)
+	for k, v := range trace.ObjectMeta.Annotations {
+		if !strings.HasPrefix(k, GADGET_OPERATION+"-") {
+			continue
+		}
+		params[strings.TrimPrefix(k, GADGET_OPERATION+"-")] = v
+	}
+
+	log.Infof("Gadget %s operation %q on %s", trace.Spec.Gadget, op, req.NamespacedName)
+
+	// Remove annotations first to avoid another execution in the next
+	// reconciliation loop.
+	withAnnotation := trace.DeepCopy()
+	annotations := trace.GetAnnotations()
+	delete(annotations, GADGET_OPERATION)
+	for k, _ := range params {
+		delete(annotations, GADGET_OPERATION+"-"+k)
+	}
+	trace.SetAnnotations(annotations)
+	err = r.Patch(ctx, trace, client.MergeFrom(withAnnotation))
+	if err != nil {
+		log.Errorf("Failed to update trace: %s", err)
+		return ctrl.Result{}, err
+	}
+
+	// Call gadget.Operation()
+	results := gadget.Operation(trace, op, params)
+	if results.Output != nil {
+		output = *results.Output
+	}
+	if results.State != nil {
+		state = *results.State
+	}
+	if results.OperationError != nil {
+		operationError = *results.OperationError
+	}
+	log.Infof("Gadget returned: %+v", results)
+
+	// Update Trace.Status
+	if trace.Status.Output != output || trace.Status.State != state || trace.Status.OperationError != operationError {
+		log.Infof("Updating trace status: state=%q operationError=%q output=<%d characters>", state, operationError, len(output))
+
+		patch := client.MergeFrom(trace.DeepCopy())
+		trace.Status.State = state
+		trace.Status.OperationError = operationError
+		trace.Status.Output = output
+		err = r.Status().Patch(ctx, trace, patch)
+
+		if err != nil {
+			log.Errorf("Failed to update trace status: %s", err)
+			return ctrl.Result{}, err
+		}
+	}
+
+	return ctrl.Result{}, nil
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *TraceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&gadgetv1alpha1.Trace{}).
+		Complete(r)
+}

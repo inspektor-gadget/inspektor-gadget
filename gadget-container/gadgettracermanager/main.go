@@ -18,11 +18,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -35,6 +38,7 @@ import (
 )
 
 var (
+	controller    bool
 	serve         bool
 	dump          bool
 	liveness      bool
@@ -59,6 +63,7 @@ func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
+	flag.BoolVar(&controller, "controller", false, "Enable the controller for custom resources")
 	flag.BoolVar(&podInformer, "podinformer", false, "Enable a Pod Informer to get Pod events from k8s API server")
 
 	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, add-container, remove-container)")
@@ -207,14 +212,14 @@ func main() {
 	}
 
 	if serve {
-		lis, err := net.Listen("unix", socketfile)
-		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
-		}
-
 		node := os.Getenv("NODE_NAME")
 		if node == "" {
 			log.Fatalf("Environment variable NODE_NAME not set")
+		}
+
+		lis, err := net.Listen("unix", socketfile)
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
 		}
 
 		var opts []grpc.ServerOption
@@ -237,6 +242,16 @@ func main() {
 		healthserver := health.NewServer()
 		healthpb.RegisterHealthServer(grpcServer, healthserver)
 
-		grpcServer.Serve(lis)
+		log.Printf("Serving on gRPC socket %s", socketfile)
+		go grpcServer.Serve(lis)
+
+		if controller {
+			log.Printf("Starting the trace controller manager")
+			go startController(node, tracerManager)
+		}
+
+		exitSignal := make(chan os.Signal)
+		signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
+		<-exitSignal
 	}
 }
