@@ -25,9 +25,7 @@ FROM docker.io/kinvolk/traceloop:202006050210553a5730 as traceloop
 
 # BCC built from:
 # https://github.com/kinvolk/bcc/commit/4e8e8c65335d650414cd05a38b6860080dba81da
-# See:
-# - https://github.com/kinvolk/bcc/actions
-# - https://hub.docker.com/r/kinvolk/bcc/tags
+# See BCC section in docs/CONTRIBUTING.md for further details.
 
 FROM docker.io/kinvolk/bcc:202107061407494e8e8c
 
