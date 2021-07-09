@@ -30,18 +30,6 @@ use the value of the `CONTAINER_REPO` env variable, it defaults to
 You can compile for all supported platforms by running `make kubectl-gadget`
 or build for a specific one with `make kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
 
-Note:
-- The compilation uses `tools/image-tag` to choose the tag of the container
-image to use according to the branch that you are compiling.
-- The container repository is set with the `CONTAINER_REPO` env variable.
-- You can push the container images to another registry and use the `--image`
-argument when deploying to the Kuberentes cluster.
-- If you wish to make changes to traceloop program, update
-`gadget-container/gadget.Dockerfile` to pick your own image of traceloop.
-
-See the [minikube](#Development-environment-on-minikube-for-the-traceloop-gadget)
-section for a faster development cycle.
-
 ### Building the gadget container image
 
 You can build and push the container gadget image by running the following commands:
@@ -54,6 +42,19 @@ $ make push
 
 The BPF code is built using a Docker container, so you don't have to worry
 installing the compilers to build it.
+
+### Building notes
+- The compilation uses `tools/image-tag` to choose the tag of the container
+image to use according to the branch that you are compiling.
+- The container repository is set with the `CONTAINER_REPO` env variable.
+- You can push the container images to another registry and use the `--image`
+argument when deploying to the Kuberentes cluster.
+- If you wish to make changes to traceloop program, update
+`gadget.Dockerfile` to pick your own image of traceloop.
+- As for traceloop, it is also possible to change the BCC to be used as
+described in [BCC](#Updating-BCC-from-upstream) section.
+- See the [minikube](#Development-environment-on-minikube-for-the-traceloop-gadget)
+section for a faster development cycle.
 
 ## Workflows
 
@@ -136,8 +137,9 @@ if you need further help.
 If you want to propose a new feature or do a big change in the architecture
 it's highly recommended to open an issue first to discuss it with the team.
 
-## Porting BCC gadgets
+## BCC
 
+### Porting BCC gadgets
 This project uses some gadgets from [BCC](https://github.com/iovisor/bcc/).
 Instead of keeping our patched versions, we prefer to make those gadgets
 suitable to be used with Inspektor Gadget by contributing to the upstream project.
@@ -158,3 +160,32 @@ PR is an example of it.
 
 The [adding new BCC-based gadgets in Inspektor Gadget](https://kinvolk.io/blog/2020/04/adding-new-bcc-based-gadgets-in-inspektor-gadget/)
 blogpost presents some more details about this process.
+
+### Updating BCC from upstream
+As you can see in `gadget.Dockerfile`, the gadget container image
+uses the BCC container image as its parent image.
+Given that there is not an official container repository to get that BCC image,
+we keep a synchronised [Kinvolk BCC fork](https://github.com/kinvolk/bcc)
+that is configured to publish the images on Kinvolk container registries
+[Quay](https://quay.io/repository/kinvolk/bcc) and
+[Docker Hub](https://hub.docker.com/r/kinvolk/bcc/), by using the
+[Github actions](https://github.com/iovisor/bcc/blob/master/.github/workflows/publish.yml)
+already available in [BCC upstream](https://github.com/iovisor/bcc).
+
+Given that, if you want to update the BCC version used by Inspektor Gadget,
+it is necessary to first update the
+[Kinvolk BCC fork](https://github.com/kinvolk/bcc)
+so that the Github actions are triggered, and a new image is published.
+Once the image is available in registries, you have to update
+`gadget.Dockerfile` so that it uses the just created image, same goes for local
+compilation with `gadget-local.Dockerfile`. The
+[Update BCC container image](https://github.com/kinvolk/inspektor-gadget/pull/190)
+PR is an example of it.
+
+Currently, we use Docker Hub to pull the BCC image when building the gadget
+container image. Notice we do not use the `latest` tag because it is overwritten
+after each push on master branch. Instead, we use the
+[stable unique tags](https://github.com/elgohr/Publish-Docker-Github-Action#snapshot)
+that are named with format: `<Timestamp><Commit-SHA>`. For instance, tag
+`202107061407494e8e8c` describes that it was created in 2021-07-06 at 14:07:49
+from commit SHA starting with `4e8e8c`.
