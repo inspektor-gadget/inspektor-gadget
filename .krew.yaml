@@ -17,7 +17,7 @@ spec:
     fetch the log data from ring buffers and display it. What BPF programs are
     and how Inspektor Gadget uses them is briefly explained in the architecture
     document:
-    https://github.com/kinvolk/inspektor-gadget/blob/master/Documentation/architecture.md
+    https://github.com/kinvolk/inspektor-gadget/blob/main/Documentation/architecture.md
   caveats: |
     Inspektor Gadget needs to be deployed to each node:
 
