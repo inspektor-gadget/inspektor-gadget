@@ -175,6 +175,10 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 			log.Printf("Skip pod %s/%s: cannot find pid: %v", pod.GetNamespace(), pod.GetName(), err)
 			continue
 		}
+		if pid == 0 {
+			log.Printf("Skip pod %s/%s: got zero pid", pod.GetNamespace(), pod.GetName())
+			continue
+		}
 		_, cgroupPathV2, err := containerutils.GetCgroupPaths(pid)
 		if err != nil {
 			log.Printf("Skip pod %s/%s: cannot find cgroup path: %v", pod.GetNamespace(), pod.GetName(), err)
