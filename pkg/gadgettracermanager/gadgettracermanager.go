@@ -377,7 +377,7 @@ func increaseRlimit() error {
 
 func initServer() error {
 	if err := increaseRlimit(); err != nil {
-		return fmt.Errorf("failed to increase limit memlock limit: %w", err)
+		return fmt.Errorf("failed to increase memlock limit: %w", err)
 	}
 
 	if err := os.Mkdir(PIN_PATH, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
