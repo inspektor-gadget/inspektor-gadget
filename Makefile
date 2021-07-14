@@ -56,11 +56,6 @@ install-user-linux: kubectl-gadget-linux-amd64
 gadget-container:
 	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget.Dockerfile .
 
-.PHONY: gadget-container-local
-gadget-container-local:
-	make -C gadget-container
-	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget-local.Dockerfile .
-
 .PHONY: push-gadget-container
 push-gadget-container:
 	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
@@ -78,8 +73,12 @@ integration-tests:
 			-image $(CONTAINER_REPO):$(shell ./tools/image-tag branch)
 
 # minikube
+LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 10
 .PHONY: minikube-install
-minikube-install: gadget-container-local
-	kubectl patch ds -n kube-system gadget -p $$'spec:\n template:\n  spec:\n   containers:\n    - name: gadget\n      image: $(CONTAINER_REPO):$(IMAGE_TAG)\n      imagePullPolicy: Never'
-	kubectl delete pod -n kube-system -l 'k8s-app=gadget'
-	kubectl get pod -n kube-system -l 'k8s-app=gadget'
+minikube-install: gadget-container
+	$(MINIKUBE) cache add $(CONTAINER_REPO):$(IMAGE_TAG)
+	./kubectl-gadget-linux-amd64 deploy | kubectl delete -f - || true
+	./kubectl-gadget-linux-amd64 deploy --traceloop=false | \
+		sed 's/imagePullPolicy: Always/imagePullPolicy: Never/g' | \
+		sed 's/initialDelaySeconds: 10/initialDelaySeconds: '$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS)'/g' | \
+		kubectl apply -f -

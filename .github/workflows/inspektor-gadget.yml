@@ -13,14 +13,21 @@ jobs:
       CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
     steps:
 
-    - name: Set up Go 1.13
+    - name: Set up Go 1.16
       uses: actions/setup-go@v1
       with:
-        go-version: 1.13
+        go-version: 1.16
       id: go
 
     - name: Check out code
       uses: actions/checkout@v1
+
+    - name: Install dependencies
+      run: |
+        sudo apt install -y software-properties-common
+        sudo add-apt-repository -y ppa:tuxinvader/kernel-build-tools
+        sudo apt-get update
+        sudo apt install -y libbpf-dev
 
     - name: Set IMAGE_TAG
       run: |
@@ -77,15 +84,6 @@ jobs:
             make -C integration build test
 
         sed -i "s/latest/$IMAGE_TAG/g" integration/gadget-integration-tests-job.yaml
-
-    - name: Smoke test build of the dev image for minikube
-      env:
-        MINIKUBE: true
-      run: |
-        # Fake file just to test container building
-        mkdir -p gadget-container/bin/
-        touch gadget-container/bin/traceloop
-        make gadget-container-local
 
     - name: Create Release
       id: create_release
