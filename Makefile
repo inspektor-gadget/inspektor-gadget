@@ -15,6 +15,7 @@ else
 endif
 
 include crd.mk
+include tests.mk
 
 LDFLAGS := "-X main.version=$(VERSION) \
 -X main.gadgetimage=$(CONTAINER_REPO):$(IMAGE_TAG) \
@@ -67,6 +68,14 @@ push-gadget-container:
 .PHONY: test
 test:
 	go test -test.v ./...
+
+.PHONY: controller-tests
+controller-tests: kube-apiserver etcd kubectl
+	ACK_GINKGO_DEPRECATIONS=1.16.4 \
+	TEST_ASSET_KUBE_APISERVER=$(KUBE_APISERVER_BIN) \
+	TEST_ASSET_ETCD=$(ETCD_BIN) \
+	TEST_ASSET_KUBECTL=$(KUBECTL_BIN) \
+	go test -test.v ./pkg/controllers/... -controller-test
 
 .PHONY: integration-tests
 integration-tests:

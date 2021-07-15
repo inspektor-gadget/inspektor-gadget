@@ -22,6 +22,16 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v1
 
+    - name: Cache external deps
+      uses: actions/cache@v2
+      with:
+        path: |
+          bin/etcd            # For tests, by tests.mk
+          bin/kube-apiserver  # ditto
+          bin/kubectl         # ditto
+          bin/controller-gen  # For generating code, by crd.mk
+        key: ${{ runner.os }}-${{ hashFiles('tests.mk', 'crd.mk') }}
+
     - name: Cache deb packages
       uses: actions/cache@v2
       id: cache-debs
@@ -123,9 +133,13 @@ jobs:
             kubectl-gadget LICENSE
         done
 
-    - name: Unit tests
+    - name: Basic unit tests
       run: |
         make test
+
+    - name: Unit tests for the controller
+      run: |
+        make controller-tests
 
     - name: Setup Minikube
       uses: manusa/actions-setup-minikube@v2.4.2
