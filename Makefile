@@ -76,7 +76,10 @@ integration-tests:
 LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 10
 .PHONY: minikube-install
 minikube-install: gadget-container
-	$(MINIKUBE) cache add $(CONTAINER_REPO):$(IMAGE_TAG)
+	# Unfortunately, minikube-cache and minikube-image have bugs in older
+	# versions. And new versions of minikube don't support all eBPF
+	# features. So we have to keep "docker-save|docker-load" for now.
+	docker save $(CONTAINER_REPO):$(IMAGE_TAG) | pv | (eval $(shell $(MINIKUBE) -p minikube docker-env | grep =) && docker load)
 	./kubectl-gadget-linux-amd64 deploy | kubectl delete -f - || true
 	./kubectl-gadget-linux-amd64 deploy --traceloop=false | \
 		sed 's/imagePullPolicy: Always/imagePullPolicy: Never/g' | \
