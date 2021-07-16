@@ -45,6 +45,16 @@ jobs:
             sudo dpkg -L libbpf-dev | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/cache-debs/
           fi
 
+    - name: Cache Go modules
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
     - name: Set IMAGE_TAG
       run: |
         TMP1=${GITHUB_REF#*/}
