@@ -59,7 +59,11 @@ jobs:
       run: |
         TMP1=${GITHUB_REF#*/}
         TMP2=${TMP1#*/}
-        echo IMAGE_TAG=${TMP2//\//-} >> $GITHUB_ENV
+        IMAGE_TAG=${TMP2//\//-}
+        if [ "$IMAGE_TAG" = "main" ]; then
+            IMAGE_TAG="latest"
+        fi
+        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
 
     - name: Build gadget container
       run: |
