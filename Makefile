@@ -2,7 +2,7 @@ TAG := `git describe --tags --always`
 VERSION :=
 
 CONTAINER_REPO ?= docker.io/kinvolk/gadget
-IMAGE_TAG=$(shell ./tools/image-tag branch)
+IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
 MINIKUBE ?= minikube
 
@@ -15,7 +15,7 @@ else
 endif
 
 LDFLAGS := "-X main.version=$(VERSION) \
--X main.gadgetimage=$(CONTAINER_REPO):$(shell ./tools/image-tag branch) \
+-X main.gadgetimage=$(CONTAINER_REPO):$(IMAGE_TAG) \
 -extldflags '-static'"
 
 .PHONY: build
@@ -70,7 +70,7 @@ integration-tests:
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget-linux-amd64" \
 		go test ./integration/... \
 			-integration \
-			-image $(CONTAINER_REPO):$(shell ./tools/image-tag branch)
+			-image $(CONTAINER_REPO):$(IMAGE_TAG)
 
 # minikube
 LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 10
