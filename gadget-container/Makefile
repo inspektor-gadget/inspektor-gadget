@@ -1,5 +1,5 @@
 .PHONY: gadget-container-deps
-gadget-container-deps: collector-process ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib nrigadget
+gadget-container-deps: dns collector-process ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib nrigadget
 
 CLANG_OS_FLAGS = ""
 ifeq ($(shell grep -oP '^NAME="\K\w+(?=")' /etc/os-release), Ubuntu)
@@ -9,13 +9,19 @@ endif
 # eBPF objects
 
 .PHONY: ebpf-objects
-ebpf-objects: gadgets/collector-process/bpf/collector-process.o gadgets/collector-process/bpf/collector-process-with-filter.o
+ebpf-objects: \
+		gadgets/collector-process/bpf/collector-process.o \
+		gadgets/collector-process/bpf/collector-process-with-filter.o \
+		gadgets/dns/bpf/dns.o
 
 gadgets/collector-process/bpf/collector-process.o: gadgets/collector-process/bpf/collector-process.c
 	clang $(CLANG_OS_FLAGS) -target bpf -O2 -g -c -x c $< -o $@
 
 gadgets/collector-process/bpf/collector-process-with-filter.o: gadgets/collector-process/bpf/collector-process.c
 	clang $(CLANG_OS_FLAGS) -target bpf -O2 -g -c -x c $< -o $@ -DWITH_FILTER=1
+
+gadgets/dns/bpf/dns.o: gadgets/dns/bpf/dns.c
+	clang $(CLANG_OS_FLAGS) -target bpf -O2 -g -c -x c $< -o $@
 
 # Gadgets
 
@@ -36,6 +42,10 @@ networkpolicyadvisor:
 .PHONY: collector-process
 collector-process: gadgets/collector-process/bpf/collector-process.o gadgets/collector-process/bpf/collector-process-with-filter.o
 	go build -tags withebpf -o bin/collector-process ./gadgets/collector-process/
+
+.PHONY: dns
+dns: gadgets/dns/bpf/dns.o
+	go build -tags withebpf -o bin/dns ./gadgets/dns/
 
 .PHONY: networkpolicyadvisor/push
 networkpolicyadvisor/push: networkpolicyadvisor
