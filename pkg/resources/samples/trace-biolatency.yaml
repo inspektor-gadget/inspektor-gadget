@@ -1,0 +1,14 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: biolatency
+  namespace: gadget
+spec:
+  node: minikube
+  gadget: biolatency
+  filter:
+    namespace: default
+    labels:
+      role: demo
+  runMode: Manual
+  outputMode: Status
