@@ -8,7 +8,7 @@ gadgettracermanager:
 	mkdir -p bin
 	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
 		-o bin/gadgettracermanager \
-		./gadgettracermanager/main.go
+		./gadgettracermanager/
 
 .PHONY: networkpolicyadvisor
 networkpolicyadvisor:

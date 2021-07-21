@@ -158,7 +158,7 @@ fi
 
 echo "Starting the Gadget Tracer Manager in the background..."
 rm -f /run/gadgettracermanager.socket
-/bin/gadgettracermanager -serve $POD_INFORMER_PARAM &
+/bin/gadgettracermanager -serve $POD_INFORMER_PARAM -controller &
 
 if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
   rm -f /run/traceloop.socket

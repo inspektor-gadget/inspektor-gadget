@@ -31,14 +31,9 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
-)
-
-const (
-	PIN_PATH         = "/sys/fs/bpf/gadget"
-	MNTMAP_PREFIX    = "mntnsset_"
-	CGROUPMAP_PREFIX = "cgroupidset_"
 )
 
 type GadgetTracerManager struct {
@@ -113,32 +108,32 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 		tracerId = req.Id
 	}
 	if _, ok := g.tracers[tracerId]; ok {
-		return nil, fmt.Errorf("tracer id %q already exists", tracerId)
+		return nil, fmt.Errorf("tracer id %q: %w", tracerId, os.ErrExist)
 	}
 
 	// Create and pin BPF maps for this tracer.
 	cgroupIdSpec := &ebpf.MapSpec{
-		Name:       CGROUPMAP_PREFIX + tracerId,
+		Name:       gadgets.CGROUPMAP_PREFIX + tracerId,
 		Type:       ebpf.Hash,
 		KeySize:    8,
 		ValueSize:  4,
 		MaxEntries: 128,
 		Pinning:    ebpf.PinByName,
 	}
-	cgroupIdSetMap, err := ebpf.NewMapWithOptions(cgroupIdSpec, ebpf.MapOptions{PinPath: PIN_PATH})
+	cgroupIdSetMap, err := ebpf.NewMapWithOptions(cgroupIdSpec, ebpf.MapOptions{PinPath: gadgets.PIN_PATH})
 	if err != nil {
 		return nil, fmt.Errorf("error creating cgroupid map: %w", err)
 	}
 
 	mntnsSpec := &ebpf.MapSpec{
-		Name:       MNTMAP_PREFIX + tracerId,
+		Name:       gadgets.MNTMAP_PREFIX + tracerId,
 		Type:       ebpf.Hash,
 		KeySize:    8,
 		ValueSize:  4,
 		MaxEntries: 10240,
 		Pinning:    ebpf.PinByName,
 	}
-	mntnsSetMap, err := ebpf.NewMapWithOptions(mntnsSpec, ebpf.MapOptions{PinPath: PIN_PATH})
+	mntnsSetMap, err := ebpf.NewMapWithOptions(mntnsSpec, ebpf.MapOptions{PinPath: gadgets.PIN_PATH})
 	if err != nil {
 		return nil, fmt.Errorf("error creating mntnsset map: %w", err)
 	}
@@ -179,8 +174,8 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 	t.cgroupIdSetMap.Close()
 	t.mntnsSetMap.Close()
 
-	os.Remove(filepath.Join(PIN_PATH, CGROUPMAP_PREFIX+t.tracerId))
-	os.Remove(filepath.Join(PIN_PATH, MNTMAP_PREFIX+t.tracerId))
+	os.Remove(filepath.Join(gadgets.PIN_PATH, gadgets.CGROUPMAP_PREFIX+t.tracerId))
+	os.Remove(filepath.Join(gadgets.PIN_PATH, gadgets.MNTMAP_PREFIX+t.tracerId))
 
 	delete(g.tracers, tracerID.Id)
 	return &pb.RemoveTracerResponse{}, nil
@@ -380,7 +375,7 @@ func initServer() error {
 		return fmt.Errorf("failed to increase memlock limit: %w", err)
 	}
 
-	if err := os.Mkdir(PIN_PATH, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
+	if err := os.Mkdir(gadgets.PIN_PATH, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
 		return fmt.Errorf("failed to create folder for pinning bpf maps: %w", err)
 	}
 

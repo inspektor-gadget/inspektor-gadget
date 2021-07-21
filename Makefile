@@ -14,12 +14,16 @@ else
 	VERSION := $(TAG)-dirty
 endif
 
+include crd.mk
+include tests.mk
+
 LDFLAGS := "-X main.version=$(VERSION) \
 -X main.gadgetimage=$(CONTAINER_REPO):$(IMAGE_TAG) \
 -extldflags '-static'"
 
+.DEFAULT_GOAL := build
 .PHONY: build
-build: kubectl-gadget gadget-container
+build: manifests generate kubectl-gadget gadget-container
 
 # kubectl-gadget
 .PHONY: kubectl-gadget
@@ -65,6 +69,14 @@ push-gadget-container:
 test:
 	go test -test.v ./...
 
+.PHONY: controller-tests
+controller-tests: kube-apiserver etcd kubectl
+	ACK_GINKGO_DEPRECATIONS=1.16.4 \
+	TEST_ASSET_KUBE_APISERVER=$(KUBE_APISERVER_BIN) \
+	TEST_ASSET_ETCD=$(ETCD_BIN) \
+	TEST_ASSET_KUBECTL=$(KUBECTL_BIN) \
+	go test -test.v ./pkg/controllers/... -controller-test
+
 .PHONY: integration-tests
 integration-tests:
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget-linux-amd64" \
@@ -80,6 +92,9 @@ minikube-install: gadget-container
 	# versions. And new versions of minikube don't support all eBPF
 	# features. So we have to keep "docker-save|docker-load" for now.
 	docker save $(CONTAINER_REPO):$(IMAGE_TAG) | pv | (eval $(shell $(MINIKUBE) -p minikube docker-env | grep =) && docker load)
+	# Delete traces CRD first: the gadget DaemonSet needs to be running
+	# because of Finalizers.
+	kubectl delete crd traces.gadget.kinvolk.io || true
 	./kubectl-gadget-linux-amd64 deploy | kubectl delete -f - || true
 	./kubectl-gadget-linux-amd64 deploy --traceloop=false | \
 		sed 's/imagePullPolicy: Always/imagePullPolicy: Never/g' | \
