@@ -58,6 +58,10 @@ type TraceSpec struct {
 
 	// OutputMode is "Status" or "File"
 	OutputMode string `json:"outputMode,omitempty"`
+
+	// OutputFile is the path of the file to save the output when OutputMode is
+	// "File"
+	OutputFile string `json:"outputFile,omitempty"`
 }
 
 // TraceStatus defines the observed state of Trace

@@ -172,7 +172,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// For now, only support output in the TraceStatus field
-	if trace.Spec.OutputMode != "Status" {
+	if trace.Spec.OutputMode != "Status" && trace.Spec.OutputMode != "File" {
 		log.Errorf("Unsupported OutputMode: %q", trace.Spec.OutputMode)
 		return ctrl.Result{}, nil
 	}

@@ -63,6 +63,10 @@ spec:
                 description: Node is the name of the node on which this trace should
                   run
                 type: string
+              outputFile:
+                description: OutputFile is the path of the file to save the output
+                  when OutputMode is "File"
+                type: string
               outputMode:
                 description: OutputMode is "Status" or "File"
                 type: string
