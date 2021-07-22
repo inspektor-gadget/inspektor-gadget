@@ -32,10 +32,13 @@ import (
 	gadgetkinvolkiov1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/controllers"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency"
-	networkpolicyadvisor "github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
+
 	//+kubebuilder:scaffold:imports
+
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop"
+	networkpolicyadvisor "github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
 )
 
 var (
@@ -61,6 +64,7 @@ func startController(node string, tracerManager *gadgettracermanager.GadgetTrace
 
 	traceFactories := make(map[string]gadgets.TraceFactory)
 	traceFactories["biolatency"] = &biolatency.TraceFactory{}
+	traceFactories["execsnoop"] = &execsnoop.TraceFactory{}
 	traceFactories["network-policy-advisor"] = &networkpolicyadvisor.TraceFactory{}
 
 	if err = (&controllers.TraceReconciler{
