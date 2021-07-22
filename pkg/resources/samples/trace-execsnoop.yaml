@@ -1,0 +1,13 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: execsnoop
+  namespace: gadget
+spec:
+  node: "127.0.0.1"
+  gadget: execsnoop
+  filter:
+    namespace: default
+  runMode: Manual
+  outputMode: File
+  outputFile: "/tmp/execsnoop.json"
