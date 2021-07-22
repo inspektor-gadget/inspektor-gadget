@@ -37,7 +37,7 @@ func TestPostProcessFirstLineOutStream(t *testing.T) {
 	postProcess.outStreams[1].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
 
 	expected := `
-NODE PCOMM  PID    PPID   RET ARGS
+PCOMM  PID    PPID   RET ARGS
 `
 	if "\n"+string(mock.output) != expected {
 		t.Fatalf("%v != %v", string(mock.output), expected)
@@ -54,8 +54,8 @@ func TestPostProcessFirstLineErrStream(t *testing.T) {
 	postProcess.errStreams[1].Write([]byte("error in node1\n"))
 
 	expected := `
-[E0] error in node0
-[E1] error in node1
+error in node0
+error in node1
 `
 	if "\n"+string(mock.output) != expected {
 		t.Fatalf("%v != %v", string(mock.output), expected)
@@ -71,7 +71,7 @@ func TestPostProcessMultipleLines(t *testing.T) {
 
 	postProcess.outStreams[0].Write([]byte("wget   "))
 	expected = `
-NODE PCOMM  PID    PPID   RET ARGS
+PCOMM  PID    PPID   RET ARGS
 `
 	if "\n"+string(mock.output) != expected {
 		t.Fatalf("%v != %v", string(mock.output), expected)
@@ -80,8 +80,8 @@ NODE PCOMM  PID    PPID   RET ARGS
 	postProcess.outStreams[0].Write([]byte("200000 200000   0 /usr/bin/wget\n"))
 
 	expected = `
-NODE PCOMM  PID    PPID   RET ARGS
-[ 0] wget   200000 200000   0 /usr/bin/wget
+PCOMM  PID    PPID   RET ARGS
+wget   200000 200000   0 /usr/bin/wget
 `
 	if "\n"+string(mock.output) != expected {
 		t.Fatalf("%v != %v", string(mock.output), expected)
@@ -107,10 +107,10 @@ func TestMultipleNodes(t *testing.T) {
 	postProcess.outStreams[2].Write([]byte("0 /usr/bin/mkdir /tmp/install.sh.10\n"))
 
 	expected := `
-NODE PCOMM  PID    PPID   RET ARGS
-[ 0] curl   100000 100000   0 /usr/bin/curl
-[ 1] wget   200000 200000   0 /usr/bin/wget
-[ 2] mkdir  199679 199678   0 /usr/bin/mkdir /tmp/install.sh.10
+PCOMM  PID    PPID   RET ARGS
+curl   100000 100000   0 /usr/bin/curl
+wget   200000 200000   0 /usr/bin/wget
+mkdir  199679 199678   0 /usr/bin/mkdir /tmp/install.sh.10
 `
 	if "\n"+string(mock.output) != expected {
 		t.Fatalf("%v != %v", string(mock.output), expected)
