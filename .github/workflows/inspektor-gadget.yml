@@ -37,12 +37,13 @@ jobs:
       id: cache-debs
       with:
           path: "~/cache-debs"
-          key: cache-debs-libbpf-1:0.4.0-1ubuntu1
+          key: cache-debs-libbpf-1:0.4.0-1ubuntu1-libseccomp-2.5.1-1ubuntu1~20.04.1
 
     - name: Install deb packages
       env:
         CACHE_HIT: ${{steps.cache-debs.outputs.cache-hit}}
         LIBBPF_VERSION: "1:0.4.0-1ubuntu1"
+        LIBSECCOMP_VERSION: "2.5.1-1ubuntu1~20.04.1"
       run: |
           if [[ "$CACHE_HIT" == 'true' ]]; then
             sudo cp --verbose --force --recursive ~/cache-debs/* /
@@ -50,9 +51,12 @@ jobs:
             sudo apt install -y software-properties-common
             sudo add-apt-repository -y ppa:tuxinvader/kernel-build-tools
             sudo apt-get update
-            sudo apt install -y libbpf-dev="$LIBBPF_VERSION"
+            sudo apt install -y libbpf-dev="$LIBBPF_VERSION" libseccomp-dev="$LIBSECCOMP_VERSION"
             mkdir -p ~/cache-debs
-            sudo dpkg -L libbpf-dev | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/cache-debs/
+            sudo dpkg -L libbpf-dev libseccomp-dev | \
+                while IFS= read -r f; do \
+                    if test -f $f; then echo $f; fi; \
+                done | xargs cp --parents --target-directory ~/cache-debs/
           fi
 
     - name: Cache Go modules
