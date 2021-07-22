@@ -29,10 +29,18 @@ const (
 	TRACE_DEFAULT_NAMESPACE = "gadget"
 )
 
+func TraceName(namespace, name string) string {
+	return "trace_" + namespace + "_" + name
+}
+
 func TraceNameFromNamespacedName(n types.NamespacedName) string {
-	return "trace_" + n.Namespace + "_" + n.Name
+	return TraceName(n.Namespace, n.Name)
+}
+
+func TracePinPath(namespace, name string) string {
+	return fmt.Sprintf("%s/%s%s", PIN_PATH, MNTMAP_PREFIX, TraceName(namespace, name))
 }
 
 func TracePinPathFromNamespacedName(n types.NamespacedName) string {
-	return fmt.Sprintf("%s/%s%s", PIN_PATH, MNTMAP_PREFIX, TraceNameFromNamespacedName(n))
+	return TracePinPath(n.Namespace, n.Name)
 }
