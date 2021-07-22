@@ -33,10 +33,10 @@ FROM docker.io/kinvolk/traceloop:202006050210553a5730 as traceloop
 # Main gadget image
 
 # BCC built from:
-# https://github.com/kinvolk/bcc/commit/321c9c979889abce48d0844b3d539ec9a01e6f3c
+# https://github.com/kinvolk/bcc/commit/9ee4930a5becb4e76ca10106e330f4148c7f2569
 # See BCC section in docs/CONTRIBUTING.md for further details.
 
-FROM quay.io/kinvolk/bcc:321c9c979889abce48d0844b3d539ec9a01e6f3c-focal-release
+FROM quay.io/kinvolk/bcc:9ee4930a5becb4e76ca10106e330f4148c7f2569-focal-release
 
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
