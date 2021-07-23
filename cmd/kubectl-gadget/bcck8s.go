@@ -274,6 +274,12 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		}
 
 		gadgetParams := ""
+
+		// add container info to gadgets that support it
+		if subCommand != "tcptop" {
+			gadgetParams = "--containersmap /sys/fs/bpf/gadget/containers"
+		}
+
 		switch subCommand {
 		case "capabilities":
 			if stackFlag {
