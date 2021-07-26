@@ -97,3 +97,9 @@ Join the discussions on the [`#inspektor-gadget`](https://kubernetes.slack.com/m
 * [gobpf](https://github.com/kinvolk/gobpf): the traceloop gadget heavily uses gobpf.
 * [kubectl-trace](https://github.com/iovisor/kubectl-trace): the Inspektor Gadget architecture was inspired from kubectl-trace.
 * [cilium/ebpf](https://github.com/cilium/ebpf): the gadget tracer manager uses the cilium/ebpf library.
+
+## License
+
+The Inspektor Gadget user space components are licensed under the
+[Apache License, Version 2.0](LICENSE). The BPF code templates are licensed
+under the [General Public License, Version 2.0, with the Linux-syscall-note](LICENSE-bpf.txt).
