@@ -1,7 +1,7 @@
 module github.com/kinvolk/inspektor-gadget
 
 require (
-	github.com/cilium/ebpf v0.6.2
+	github.com/cilium/ebpf v0.6.3-0.20210726151910-bf9a97c3237e
 	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200608131505-3aac5f0bbb5c+incompatible
 	github.com/docker/go-connections v0.4.0 // indirect
