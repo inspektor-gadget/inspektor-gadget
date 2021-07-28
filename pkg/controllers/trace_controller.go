@@ -216,7 +216,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// Call gadget.Operation()
 	traceBeforeOperation := trace.DeepCopy()
 	patch := client.MergeFrom(traceBeforeOperation)
-	factory.LookupOrCreate(req.NamespacedName).Operation(trace, op, params)
+	factory.LookupOrCreate(req.NamespacedName).Operation(trace, r.TracerManager, op, params)
 	if apiequality.Semantic.DeepEqual(traceBeforeOperation.Status, trace.Status) {
 		log.Info("Gadget completed operation without changing the trace status")
 	} else {

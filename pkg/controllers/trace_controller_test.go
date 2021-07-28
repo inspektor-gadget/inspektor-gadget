@@ -53,7 +53,7 @@ func (f *FakeFactory) Delete(name types.NamespacedName) error {
 	return nil
 }
 
-func (f *FakeFactory) Operation(trace *gadgetv1alpha1.Trace, operation string, params map[string]string) {
+func (f *FakeFactory) Operation(trace *gadgetv1alpha1.Trace, resolver gadgets.Resolver, operation string, params map[string]string) {
 	f.mu.Lock()
 	key := fmt.Sprintf("operation/%s/%s/%s/",
 		trace.ObjectMeta.Namespace,
