@@ -17,6 +17,7 @@ package gadgettracermanager
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
@@ -247,5 +248,29 @@ func TestContainer(t *testing.T) {
 	_, ok = g.containers["abcde2"]
 	if !ok {
 		t.Fatalf("Error while checking container %s: not found", "abcde2")
+	}
+
+	// Check content using LookupMntnsByPod
+	mntnsByContainer := g.LookupMntnsByPod("this-namespace", "my-pod")
+	if !reflect.DeepEqual(mntnsByContainer, map[string]uint64{"container0": 55555, "container2": 55557}) {
+		t.Fatalf("Error while looking up: unexpected %v", mntnsByContainer)
+	}
+	mntnsByContainer = g.LookupMntnsByPod("this-namespace", "this-other-pod")
+	if !reflect.DeepEqual(mntnsByContainer, map[string]uint64{}) {
+		t.Fatalf("Error while looking up: unexpected %v", mntnsByContainer)
+	}
+
+	// Check content using LookupMntnsByContainer
+	mntns := g.LookupMntnsByContainer("this-namespace", "my-pod", "container0")
+	if mntns != 55555 {
+		t.Fatalf("Error while looking up container0: unexpected mntns %v", mntns)
+	}
+	mntns = g.LookupMntnsByContainer("this-namespace", "my-pod", "container1")
+	if mntns != 0 {
+		t.Fatalf("Error while looking up container1: unexpected mntns %v", mntns)
+	}
+	mntns = g.LookupMntnsByContainer("this-namespace", "my-pod", "container2")
+	if mntns != 55557 {
+		t.Fatalf("Error while looking up container1: unexpected mntns %v", mntns)
 	}
 }

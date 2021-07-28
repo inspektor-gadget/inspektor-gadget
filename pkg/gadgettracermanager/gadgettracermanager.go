@@ -267,6 +267,41 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 	return &pb.RemoveContainerResponse{}, nil
 }
 
+// LookupMntnsByContainer returns the mount namespace inode of the container
+// specified in arguments or zero if not found
+func (g *GadgetTracerManager) LookupMntnsByContainer(namespace, pod, container string) uint64 {
+	for _, c := range g.containers {
+		if namespace != c.Namespace {
+			continue
+		}
+		if pod != c.Podname {
+			continue
+		}
+		if container != c.ContainerName {
+			continue
+		}
+		return c.Mntns
+	}
+	return 0
+}
+
+// LookupMntnsByPod returns the mount namespace inodes of all containers
+// belonging to the pod specified in arguments, indexed by the name of the
+// containers
+func (g *GadgetTracerManager) LookupMntnsByPod(namespace, pod string) map[string]uint64 {
+	ret := make(map[string]uint64)
+	for _, c := range g.containers {
+		if namespace != c.Namespace {
+			continue
+		}
+		if pod != c.Podname {
+			continue
+		}
+		ret[c.ContainerName] = c.Mntns
+	}
+	return ret
+}
+
 func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRequest) (*pb.Dump, error) {
 	out := "List of containers:\n"
 	for i, c := range g.containers {
