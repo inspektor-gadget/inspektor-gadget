@@ -1,12 +1,19 @@
 .PHONY: gadget-container-deps
 gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib nrigadget
 
+# eBPF objects
+
+.PHONY: ebpf-objects
+ebpf-objects:
+	$(foreach dir, $(shell find ../pkg -name bpf -type d), make -C $(dir);)
+
 # Gadgets
 
 .PHONY: gadgettracermanager
-gadgettracermanager:
+gadgettracermanager: ebpf-objects
 	mkdir -p bin
 	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
+		-tags withebpf \
 		-o bin/gadgettracermanager \
 		./gadgettracermanager/
 
