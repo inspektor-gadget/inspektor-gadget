@@ -20,10 +20,21 @@ import (
 )
 
 type Trace interface {
-	Operation(trace *gadgetv1alpha1.Trace, operation string, params map[string]string)
+	Operation(trace *gadgetv1alpha1.Trace, resolver Resolver, operation string, params map[string]string)
 }
 
 type TraceFactory interface {
 	LookupOrCreate(name types.NamespacedName) Trace
 	Delete(name types.NamespacedName) error
+}
+
+type Resolver interface {
+	// LookupMntnsByContainer returns the mount namespace inode of the container
+	// specified in arguments or zero if not found
+	LookupMntnsByContainer(namespace, pod, container string) uint64
+
+	// LookupMntnsByPod returns the mount namespace inodes of all containers
+	// belonging to the pod specified in arguments, indexed by the name of the
+	// containers
+	LookupMntnsByPod(namespace, pod string) map[string]uint64
 }

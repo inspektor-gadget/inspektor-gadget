@@ -72,7 +72,7 @@ func (f *TraceFactory) Delete(name types.NamespacedName) error {
 	return nil
 }
 
-func (t *Trace) Operation(trace *gadgetv1alpha1.Trace, operation string, params map[string]string) {
+func (t *Trace) Operation(trace *gadgetv1alpha1.Trace, resolver gadgets.Resolver, operation string, params map[string]string) {
 	if trace.ObjectMeta.Namespace != gadgets.TRACE_DEFAULT_NAMESPACE {
 		trace.Status.OperationError = fmt.Sprintf("This gadget only accepts operations on traces in the %s namespace", gadgets.TRACE_DEFAULT_NAMESPACE)
 		return
