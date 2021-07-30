@@ -21,7 +21,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -170,7 +169,6 @@ type postProcess struct {
 }
 
 type postProcessSingle struct {
-	nodeShort        string
 	orig             io.Writer
 	firstLine        bool
 	firstLinePrinted *uint64
@@ -186,7 +184,6 @@ func newPostProcess(n int, outStream io.Writer, errStream io.Writer) *postProces
 
 	for i := 0; i < n; i++ {
 		p.outStreams[i] = &postProcessSingle{
-			nodeShort:        " " + strconv.Itoa(i),
 			orig:             outStream,
 			firstLine:        true,
 			firstLinePrinted: &p.firstLinePrinted,
@@ -194,7 +191,6 @@ func newPostProcess(n int, outStream io.Writer, errStream io.Writer) *postProces
 		}
 
 		p.errStreams[i] = &postProcessSingle{
-			nodeShort:        "E" + strconv.Itoa(i),
 			orig:             errStream,
 			firstLine:        false,
 			firstLinePrinted: &p.firstLinePrinted,
@@ -206,7 +202,6 @@ func newPostProcess(n int, outStream io.Writer, errStream io.Writer) *postProces
 }
 
 func (post *postProcessSingle) Write(p []byte) (n int, err error) {
-	prefix := "[" + post.nodeShort + "] "
 	asStr := post.buffer + string(p)
 
 	lines := strings.Split(asStr, "\n")
@@ -216,15 +211,14 @@ func (post *postProcessSingle) Write(p []byte) (n int, err error) {
 
 	// Print lines with prefix but the last one
 	for _, line := range lines[0 : len(lines)-1] {
+		// Skip printing the header multiple times
 		if post.firstLine {
 			post.firstLine = false
-			if atomic.AddUint64(post.firstLinePrinted, 1) == 1 {
-				prefix = "NODE "
-			} else {
-				continue // ignore this line, somebody else already printed it
+			if atomic.AddUint64(post.firstLinePrinted, 1) != 1 {
+				continue
 			}
 		}
-		fmt.Fprintf(post.orig, "%s\n", prefix+line)
+		fmt.Fprintf(post.orig, "%s\n", line)
 	}
 
 	post.buffer = lines[len(lines)-1] // Buffer last line to print in next iteration
@@ -280,6 +274,12 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		}
 
 		gadgetParams := ""
+
+		// add container info to gadgets that support it
+		if subCommand != "tcptop" {
+			gadgetParams = "--containersmap /sys/fs/bpf/gadget/containers"
+		}
+
 		switch subCommand {
 		case "capabilities":
 			if stackFlag {
@@ -323,12 +323,10 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		postProcess := newPostProcess(len(nodes.Items), os.Stdout, os.Stderr)
 
-		fmt.Printf("Node numbers:")
 		for i, node := range nodes.Items {
 			if nodeParam != "" && node.Name != nodeParam {
 				continue
 			}
-			fmt.Printf(" %d = %s", i, node.Name)
 			go func(nodeName string, index int) {
 				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s %s -- %s",
 					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, containernameFilter, gadgetParams)
@@ -344,7 +342,6 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				}
 			}(node.Name, i) // node.Name is invalidated by the above for loop, causes races
 		}
-		fmt.Println()
 
 		select {
 		case <-sigs:
