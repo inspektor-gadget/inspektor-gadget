@@ -99,7 +99,7 @@ func (t traceCollector) Write(p []byte) (n int, err error) {
 	return
 }
 
-func newWriter(file string) (*bufio.Writer, func(),  error) {
+func newWriter(file string) (*bufio.Writer, func(), error) {
 	var w *bufio.Writer
 	var closure func()
 	if outputFileName == "-" {
@@ -125,13 +125,13 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 
 	w, closure, err := newWriter(outputFileName)
 	if err != nil {
-		contextLogger.Fatalf("Error creating file %q: %q", outputFileName, err)
+		contextLogger.Fatalf("Error creating file %q: %s", outputFileName, err)
 	}
 	defer closure()
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
-		contextLogger.Fatalf("Error setting up Kubernetes client: %q", err)
+		contextLogger.Fatalf("Error setting up Kubernetes client: %s", err)
 	}
 
 	var listOptions = metaV1.ListOptions{
@@ -140,7 +140,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	}
 	nodes, err := client.CoreV1().Nodes().List(context.TODO(), listOptions)
 	if err != nil {
-		contextLogger.Fatalf("Error listing nodes: %q", err)
+		contextLogger.Fatalf("Error listing nodes: %s", err)
 	}
 
 	if namespaces == "" {
@@ -160,7 +160,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 				namespaceFilter)
 			err := execPod(client, nodeName, cmd, collector, os.Stderr)
 			if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
-				failure <- fmt.Sprintf("Error running command: %q\n", err)
+				failure <- fmt.Sprintf("Error running command: %s\n", err)
 			}
 		}(node.Name)
 	}
@@ -169,14 +169,14 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	case <-sigs:
 		fmt.Printf("\nStopping...\n")
 	case e := <-failure:
-		fmt.Printf("Error detected: %q\n", e)
+		fmt.Printf("Error detected: %s\n", e)
 	}
 
 	for _, node := range nodes.Items {
 		_, _, err := execPodCapture(client, node.Name,
 			fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid networkpolicyadvisor --stop"))
 		if err != nil {
-			fmt.Printf("Error running command: %q\n", err)
+			fmt.Printf("Error running command: %s\n", err)
 		}
 	}
 }
@@ -200,17 +200,17 @@ func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
 
 	w, closure, err := newWriter(outputFileName)
 	if err != nil {
-		contextLogger.Fatalf("Error creating file %q: %q", outputFileName, err)
+		contextLogger.Fatalf("Error creating file %q: %s", outputFileName, err)
 	}
 	defer closure()
 
 	_, err = w.Write([]byte(advisor.FormatPolicies()))
 	if err != nil {
-		contextLogger.Fatalf("Error writing file %q: %q", outputFileName, err)
+		contextLogger.Fatalf("Error writing file %q: %s", outputFileName, err)
 	}
 	err = w.Flush()
 	if err != nil {
-		contextLogger.Fatalf("Error writing file %q: %q", outputFileName, err)
+		contextLogger.Fatalf("Error writing file %q: %s", outputFileName, err)
 	}
 
 	return nil
