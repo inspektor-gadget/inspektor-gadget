@@ -15,6 +15,7 @@ require (
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
 	github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d
+	github.com/seccomp/libseccomp-golang v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.0

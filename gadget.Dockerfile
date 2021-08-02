@@ -6,7 +6,7 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y gcc make golang-1.16 ca-certificates git clang \
-		software-properties-common && \
+		software-properties-common libseccomp-dev && \
 	add-apt-repository -y ppa:tuxinvader/kernel-build-tools && \
 	apt-get update && \
 	apt-get install -y libbpf-dev && \

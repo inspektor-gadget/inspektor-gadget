@@ -1,0 +1,13 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: seccomp
+  namespace: gadget
+spec:
+  node: minikube
+  gadget: seccomp
+  filter:
+    namespace: kube-system
+    podname: etcd-minikube
+  runMode: Manual
+  outputMode: Status
