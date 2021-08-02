@@ -89,6 +89,7 @@ var (
 	podnameParam       string
 	containernameParam string
 	allNamespaces      bool
+	jsonOutput         bool
 
 	stackFlag   bool
 	uniqueFlag  bool
@@ -151,6 +152,13 @@ func init() {
 			false,
 			fmt.Sprintf("Show events from pods in all namespaces"),
 		)
+		command.PersistentFlags().BoolVarP(
+			&jsonOutput,
+			"json",
+			"j",
+			false,
+			fmt.Sprintf("Output the events in json format"),
+		)
 	}
 
 	// Add flags specific to some BCC gadgets
@@ -173,9 +181,10 @@ type postProcessSingle struct {
 	firstLine        bool
 	firstLinePrinted *uint64
 	buffer           string // buffer to save incomplete strings
+	jsonOutput       bool
 }
 
-func newPostProcess(n int, outStream io.Writer, errStream io.Writer) *postProcess {
+func newPostProcess(n int, outStream io.Writer, errStream io.Writer, jsonOutput bool) *postProcess {
 	p := &postProcess{
 		firstLinePrinted: 0,
 		outStreams:       make([]*postProcessSingle, n),
@@ -188,6 +197,7 @@ func newPostProcess(n int, outStream io.Writer, errStream io.Writer) *postProces
 			firstLine:        true,
 			firstLinePrinted: &p.firstLinePrinted,
 			buffer:           "",
+			jsonOutput:       jsonOutput,
 		}
 
 		p.errStreams[i] = &postProcessSingle{
@@ -209,10 +219,10 @@ func (post *postProcessSingle) Write(p []byte) (n int, err error) {
 		return len(p), nil
 	}
 
-	// Print lines with prefix but the last one
+	// Print all complete lines
 	for _, line := range lines[0 : len(lines)-1] {
-		// Skip printing the header multiple times
-		if post.firstLine {
+		// Skip printing the header multiple times if json is not used
+		if !post.jsonOutput && post.firstLine {
 			post.firstLine = false
 			if atomic.AddUint64(post.firstLinePrinted, 1) != 1 {
 				continue
@@ -242,6 +252,10 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		if subCommand == "tcptop" {
 			if nodeParam == "" || podnameParam == "" {
 				contextLogger.Fatalf("tcptop only works with --node and --podname")
+			}
+
+			if jsonOutput {
+				contextLogger.Fatalf("tcptop doesn't support --json")
 			}
 		}
 
@@ -278,6 +292,10 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		// add container info to gadgets that support it
 		if subCommand != "tcptop" {
 			gadgetParams = "--containersmap /sys/fs/bpf/gadget/containers"
+		}
+
+		if jsonOutput {
+			gadgetParams += " --json"
 		}
 
 		switch subCommand {
@@ -321,7 +339,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		failure := make(chan string)
 
-		postProcess := newPostProcess(len(nodes.Items), os.Stdout, os.Stderr)
+		postProcess := newPostProcess(len(nodes.Items), os.Stdout, os.Stderr, jsonOutput)
 
 		for i, node := range nodes.Items {
 			if nodeParam != "" && node.Name != nodeParam {
@@ -345,7 +363,9 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		select {
 		case <-sigs:
-			fmt.Println("\nTerminating...")
+			if !jsonOutput {
+				fmt.Println("\nTerminating...")
+			}
 		case e := <-failure:
 			fmt.Printf("\n%s\n", e)
 		}

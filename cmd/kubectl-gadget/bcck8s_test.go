@@ -31,7 +31,7 @@ func (mock *mockWriter) Write(p []byte) (n int, err error) {
 // only once among the different nodes using out stream
 func TestPostProcessFirstLineOutStream(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := newPostProcess(2, mock, mock)
+	postProcess := newPostProcess(2, mock, mock, false)
 
 	postProcess.outStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
 	postProcess.outStreams[1].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
@@ -48,7 +48,7 @@ PCOMM  PID    PPID   RET ARGS
 // printed for errStream
 func TestPostProcessFirstLineErrStream(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := newPostProcess(2, mock, mock)
+	postProcess := newPostProcess(2, mock, mock, false)
 
 	postProcess.errStreams[0].Write([]byte("error in node0\n"))
 	postProcess.errStreams[1].Write([]byte("error in node1\n"))
@@ -65,7 +65,7 @@ error in node1
 func TestPostProcessMultipleLines(t *testing.T) {
 	var expected string
 	mock := &mockWriter{[]byte{}}
-	postProcess := newPostProcess(1, mock, mock)
+	postProcess := newPostProcess(1, mock, mock, false)
 
 	postProcess.outStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
 
@@ -90,7 +90,7 @@ wget   200000 200000   0 /usr/bin/wget
 
 func TestMultipleNodes(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := newPostProcess(3, mock, mock)
+	postProcess := newPostProcess(3, mock, mock, false)
 
 	postProcess.outStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
 	postProcess.outStreams[0].Write([]byte("curl   100000 100000   0 /usr/bin/curl\n"))
@@ -115,4 +115,36 @@ mkdir  199679 199678   0 /usr/bin/mkdir /tmp/install.sh.10
 	if "\n"+string(mock.output) != expected {
 		t.Fatalf("%v != %v", string(mock.output), expected)
 	}
+}
+
+func TestJson(t *testing.T) {
+	mock := &mockWriter{[]byte{}}
+	postProcess := newPostProcess(3, mock, mock, true)
+
+	postProcess.outStreams[0].Write([]byte(`{"pcomm": "cat", "pid": 11}` + "\n"))
+	postProcess.outStreams[0].Write([]byte(`{"pcomm": "ping", "pid": 22}` + "\n"))
+
+	postProcess.outStreams[0].Write([]byte(`{"pcomm": "curl", "pid": 33}` + "\n"))
+	postProcess.outStreams[0].Write([]byte(`{"pcomm": "nc", "pid": 44}` + "\n"))
+
+	// this prints json in different lines
+	postProcess.outStreams[2].Write([]byte(`{"pcomm": "rm"`))
+
+	postProcess.outStreams[1].Write([]byte(`{"pcomm": "sleep", "pid": 55}` + "\n"))
+
+	postProcess.outStreams[2].Write([]byte(` , "pid": 77}` + "\n"))
+
+	// first line is not skipped and incompleted ones are assembled together
+	expected := `
+{"pcomm": "cat", "pid": 11}
+{"pcomm": "ping", "pid": 22}
+{"pcomm": "curl", "pid": 33}
+{"pcomm": "nc", "pid": 44}
+{"pcomm": "sleep", "pid": 55}
+{"pcomm": "rm" , "pid": 77}
+`
+	if "\n"+string(mock.output) != expected {
+		t.Fatalf("%v != %v", string(mock.output), expected)
+	}
+
 }
