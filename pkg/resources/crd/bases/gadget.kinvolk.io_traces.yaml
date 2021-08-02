@@ -63,8 +63,19 @@ spec:
                 description: Node is the name of the node on which this trace should
                   run
                 type: string
+              output:
+                description: Output allows a gadget to output the results in the specified
+                  location. * With OutputMode=Status, Output is unused * With OutputMode=File,
+                  Output specifies the file path * With OutputMode=ExternalResource,
+                  Output specifies the external   resource (such as   seccompprofiles.security-profiles-operator.x-k8s.io
+                  for the   seccomp gadget)
+                type: string
               outputMode:
-                description: OutputMode is "Status" or "File"
+                description: OutputMode is "Status", "File" or "ExternalResource"
+                enum:
+                - Status
+                - File
+                - ExternalResource
                 type: string
               runMode:
                 description: RunMode is "Auto" to automatically start the trace as
@@ -84,6 +95,10 @@ spec:
                 type: string
               state:
                 description: State is "Started", "Stopped" or "Completed"
+                enum:
+                - Started
+                - Stopped
+                - Completed
                 type: string
             type: object
         type: object
