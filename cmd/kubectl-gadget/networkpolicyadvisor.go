@@ -27,7 +27,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -62,20 +61,15 @@ var (
 )
 
 func init() {
-	networkPolicyCmd.PersistentFlags().String(
-		"input",
-		"",
-		"recorded network activity file")
-	viper.BindPFlag("input", networkPolicyCmd.PersistentFlags().Lookup("input"))
-
 	rootCmd.AddCommand(networkPolicyCmd)
 
 	networkPolicyCmd.AddCommand(networkPolicyMonitorCmd)
 	networkPolicyMonitorCmd.PersistentFlags().StringVarP(&outputFileName, "output", "", "-", "File name output")
-	networkPolicyMonitorCmd.PersistentFlags().StringVarP(&namespaces, "namespaces", "", "default", "Comma-separated list of namespaces to monitor")
+	networkPolicyMonitorCmd.PersistentFlags().StringVarP(&namespaces, "namespaces", "", "", "Comma-separated list of namespaces to monitor")
 
 	networkPolicyCmd.AddCommand(networkPolicyReportCmd)
-	networkPolicyReportCmd.PersistentFlags().StringVarP(&inputFileName, "input", "", "-", "File name input")
+	networkPolicyReportCmd.PersistentFlags().StringVarP(&inputFileName, "input", "", "", "File with recorded network activity")
+	networkPolicyReportCmd.PersistentFlags().StringVarP(&outputFileName, "output", "", "-", "File name output")
 }
 
 type traceCollector struct {
@@ -105,27 +99,39 @@ func (t traceCollector) Write(p []byte) (n int, err error) {
 	return
 }
 
+func newWriter(file string) (*bufio.Writer, func(), error) {
+	var w *bufio.Writer
+	var closure func()
+	if outputFileName == "-" {
+		w = bufio.NewWriter(os.Stdout)
+		closure = func() {}
+	} else {
+		outputFile, err := os.Create(outputFileName)
+		if err != nil {
+			return nil, nil, err
+		}
+		closure = func() { outputFile.Close() }
+		w = bufio.NewWriter(outputFile)
+	}
+
+	return w, closure, nil
+}
+
 func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	contextLogger := log.WithFields(log.Fields{
 		"command": "kubectl-gadget network-policy monitor",
 		"args":    args,
 	})
 
-	var w *bufio.Writer
-	if outputFileName == "-" {
-		w = bufio.NewWriter(os.Stdout)
-	} else {
-		outputFile, err := os.Create(outputFileName)
-		if err != nil {
-			contextLogger.Fatalf("Error creating file %q: %q", outputFileName, err)
-		}
-		defer outputFile.Close()
-		w = bufio.NewWriter(outputFile)
+	w, closure, err := newWriter(outputFileName)
+	if err != nil {
+		contextLogger.Fatalf("Error creating file %q: %s", outputFileName, err)
 	}
+	defer closure()
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
-		contextLogger.Fatalf("Error setting up Kubernetes client: %q", err)
+		contextLogger.Fatalf("Error setting up Kubernetes client: %s", err)
 	}
 
 	var listOptions = metaV1.ListOptions{
@@ -134,9 +140,12 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	}
 	nodes, err := client.CoreV1().Nodes().List(context.TODO(), listOptions)
 	if err != nil {
-		contextLogger.Fatalf("Error listing nodes: %q", err)
+		contextLogger.Fatalf("Error listing nodes: %s", err)
 	}
 
+	if namespaces == "" {
+		namespaces, _, _ = KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
+	}
 	namespaceFilter := fmt.Sprintf("--namespace %q", namespaces)
 
 	sigs := make(chan os.Signal, 1)
@@ -151,7 +160,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 				namespaceFilter)
 			err := execPod(client, nodeName, cmd, collector, os.Stderr)
 			if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
-				failure <- fmt.Sprintf("Error running command: %q\n", err)
+				failure <- fmt.Sprintf("Error running command: %s\n", err)
 			}
 		}(node.Name)
 	}
@@ -160,19 +169,23 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	case <-sigs:
 		fmt.Printf("\nStopping...\n")
 	case e := <-failure:
-		fmt.Printf("Error detected: %q\n", e)
+		fmt.Printf("Error detected: %s\n", e)
 	}
 
 	for _, node := range nodes.Items {
 		_, _, err := execPodCapture(client, node.Name,
 			fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid networkpolicyadvisor --stop"))
 		if err != nil {
-			fmt.Printf("Error running command: %q\n", err)
+			fmt.Printf("Error running command: %s\n", err)
 		}
 	}
 }
 
 func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
+	contextLogger := log.WithFields(log.Fields{
+		"command": "kubectl-gadget network-policy report",
+		"args":    args,
+	})
 	if inputFileName == "" {
 		return fmt.Errorf("Parameter --input missing")
 	}
@@ -184,7 +197,21 @@ func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
 	}
 
 	advisor.GeneratePolicies()
-	fmt.Printf(advisor.FormatPolicies())
 
-	return err
+	w, closure, err := newWriter(outputFileName)
+	if err != nil {
+		contextLogger.Fatalf("Error creating file %q: %s", outputFileName, err)
+	}
+	defer closure()
+
+	_, err = w.Write([]byte(advisor.FormatPolicies()))
+	if err != nil {
+		contextLogger.Fatalf("Error writing file %q: %s", outputFileName, err)
+	}
+	err = w.Flush()
+	if err != nil {
+		contextLogger.Fatalf("Error writing file %q: %s", outputFileName, err)
+	}
+
+	return nil
 }
