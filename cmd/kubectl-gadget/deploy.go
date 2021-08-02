@@ -39,6 +39,7 @@ var (
 	traceloopLoglevel string
 	hookMode          string
 	livenessProbe     bool
+	toolsMode         string
 )
 
 func init() {
@@ -67,6 +68,11 @@ func init() {
 		"liveness-probe", "",
 		true,
 		"enable liveness probes")
+	deployCmd.PersistentFlags().StringVarP(
+		&toolsMode,
+		"tools-mode", "",
+		"auto",
+		"which kind of tools to use (auto, core, standard)")
 
 	rootCmd.AddCommand(deployCmd)
 }
@@ -163,6 +169,8 @@ spec:
             value: "{{.TraceloopLoglevel}}"
           - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE
             value: "{{.HookMode}}"
+          - name: INSPEKTOR_GADGET_OPTION_TOOLS_MODE
+            value: "{{.ToolsMode}}"
         securityContext:
           privileged: true
         volumeMounts:
@@ -217,6 +225,7 @@ type parameters struct {
 	TraceloopLoglevel string
 	HookMode          string
 	LivenessProbe     bool
+	ToolsMode         string
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
@@ -226,6 +235,10 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		hookMode != "podinformer" &&
 		hookMode != "nri" {
 		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,ldpreload,podinformer,nri]", hookMode)
+	}
+
+	if toolsMode != "auto" && toolsMode != "core" && toolsMode != "standard" {
+		return fmt.Errorf("invalid argument %q for --tools-mode=[auto,core,standard]", toolsMode)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
@@ -240,6 +253,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		traceloopLoglevel,
 		hookMode,
 		livenessProbe,
+		toolsMode,
 	}
 
 	fmt.Printf("%s\n---\n", resources.TracesCustomResource)
