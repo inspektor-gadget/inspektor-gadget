@@ -38,6 +38,7 @@ var (
 	traceloop         bool
 	traceloopLoglevel string
 	hookMode          string
+	livenessProbe     bool
 )
 
 func init() {
@@ -61,6 +62,11 @@ func init() {
 		"hook-mode", "",
 		"auto",
 		"how to get containers start/stop notifications (auto, crio, ldpreload, podinformer, nri)")
+	deployCmd.PersistentFlags().BoolVarP(
+		&livenessProbe,
+		"liveness-probe", "",
+		true,
+		"enable liveness probes")
 
 	rootCmd.AddCommand(deployCmd)
 }
@@ -117,6 +123,7 @@ spec:
             exec:
               command:
                 - "/cleanup.sh"
+{{if .LivenessProbe}}
         livenessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5
@@ -124,6 +131,7 @@ spec:
             command:
               - /bin/gadgettracermanager
               - -liveness
+{{end}}
         env:
           - name: NODE_NAME
             valueFrom:
@@ -208,6 +216,7 @@ type parameters struct {
 	Traceloop         bool
 	TraceloopLoglevel string
 	HookMode          string
+	LivenessProbe     bool
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
@@ -230,6 +239,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		traceloop,
 		traceloopLoglevel,
 		hookMode,
+		livenessProbe,
 	}
 
 	fmt.Printf("%s\n---\n", resources.TracesCustomResource)
