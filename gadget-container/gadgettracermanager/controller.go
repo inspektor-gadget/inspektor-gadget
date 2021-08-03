@@ -40,18 +40,26 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-var (
-	scheme = runtime.NewScheme()
-)
-
-func init() {
+func startController(node string, tracerManager *gadgettracermanager.GadgetTracerManager) {
+	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(gadgetkinvolkiov1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
-}
 
-func startController(node string, tracerManager *gadgettracermanager.GadgetTracerManager) {
+	traceFactories := make(map[string]gadgets.TraceFactory)
+	traceFactories["biolatency"] = &biolatency.TraceFactory{}
+	traceFactories["process-collector"] = &processcollector.TraceFactory{}
+	traceFactories["seccomp"] = &seccomp.TraceFactory{}
+	traceFactories["network-policy-advisor"] = &networkpolicyadvisor.TraceFactory{}
+
+	for _, factory := range traceFactories {
+		factoryWithScheme, ok := factory.(gadgets.TraceFactoryWithScheme)
+		if ok {
+			factoryWithScheme.AddToScheme(scheme)
+		}
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: "0", // TCP port can be set to "0" to disable the metrics serving
@@ -61,11 +69,9 @@ func startController(node string, tracerManager *gadgettracermanager.GadgetTrace
 		os.Exit(1)
 	}
 
-	traceFactories := make(map[string]gadgets.TraceFactory)
-	traceFactories["biolatency"] = &biolatency.TraceFactory{}
-	traceFactories["process-collector"] = &processcollector.TraceFactory{}
-	traceFactories["seccomp"] = &seccomp.TraceFactory{}
-	traceFactories["network-policy-advisor"] = &networkpolicyadvisor.TraceFactory{}
+	for _, factory := range traceFactories {
+		factory.Initialize(tracerManager, mgr.GetClient())
+	}
 
 	if err = (&controllers.TraceReconciler{
 		Client:         mgr.GetClient(),
