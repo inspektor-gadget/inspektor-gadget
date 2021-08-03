@@ -15,18 +15,24 @@
 package seccomp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 
+	commonseccomp "github.com/containers/common/pkg/seccomp"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	libseccomp "github.com/seccomp/libseccomp-golang"
 	log "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	seccompprofilev1alpha1 "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1alpha1"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
@@ -34,6 +40,9 @@ import (
 )
 
 type Trace struct {
+	resolver gadgets.Resolver
+	client   client.Client
+
 	started bool
 }
 
@@ -52,6 +61,14 @@ type TraceSingleton struct {
 
 var traceSingleton TraceSingleton
 
+func (f *TraceFactory) SupportsOutputMode(outputMode string) bool {
+	return outputMode == "Status" || outputMode == "ExternalResource"
+}
+
+func (f *TraceFactory) AddToScheme(scheme *apimachineryruntime.Scheme) {
+	utilruntime.Must(seccompprofilev1alpha1.AddToScheme(scheme))
+}
+
 func (f *TraceFactory) LookupOrCreate(name types.NamespacedName) gadgets.Trace {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -62,7 +79,10 @@ func (f *TraceFactory) LookupOrCreate(name types.NamespacedName) gadgets.Trace {
 	if ok {
 		return trace
 	}
-	trace = &Trace{}
+	trace = &Trace{
+		client:   f.Client,
+		resolver: f.Resolver,
+	}
 	f.traces[name.String()] = trace
 
 	return trace
@@ -102,7 +122,7 @@ func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
 	case "start":
 		t.Start(trace)
 	case "generate":
-		t.Generate(trace, resolver, params)
+		t.Generate(trace)
 	case "stop":
 		t.Stop(trace)
 	default:
@@ -137,7 +157,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	return
 }
 
-func (t *Trace) Generate(trace *gadgetv1alpha1.Trace, resolver gadgets.Resolver, params map[string]string) {
+func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	if !t.started {
 		trace.Status.OperationError = "Not started"
 		return
@@ -153,7 +173,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace, resolver gadgets.Resolver,
 
 	var mntns uint64
 	if trace.Spec.Filter.ContainerName != "" {
-		mntns = resolver.LookupMntnsByContainer(
+		mntns = t.resolver.LookupMntnsByContainer(
 			trace.Spec.Filter.Namespace,
 			trace.Spec.Filter.Podname,
 			trace.Spec.Filter.ContainerName,
@@ -167,7 +187,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace, resolver gadgets.Resolver,
 			return
 		}
 	} else {
-		mntnsMap := resolver.LookupMntnsByPod(
+		mntnsMap := t.resolver.LookupMntnsByPod(
 			trace.Spec.Filter.Namespace,
 			trace.Spec.Filter.Podname,
 		)
@@ -205,16 +225,36 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace, resolver gadgets.Resolver,
 
 	b := traceSingleton.tracer.Peek(mntns)
 
-	policy := syscallArrToLinuxSeccomp(b)
+	switch trace.Spec.OutputMode {
+	case "Status":
+		policy := syscallArrToLinuxSeccomp(b)
+		output, err := json.MarshalIndent(policy, "", "  ")
+		if err != nil {
+			trace.Status.OperationError = fmt.Sprintf("Failed to marshal seccomp policy: %s", err)
+			return
+		}
 
-	output, err := json.MarshalIndent(policy, "", "  ")
-	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf("Failed to marshal seccomp policy: %s", err)
-		return
+		trace.Status.Output = string(output)
+		trace.Status.OperationError = ""
+	case "ExternalResource":
+		parts := strings.SplitN(trace.Spec.Output, "/", 2)
+		var r *seccompprofilev1alpha1.SeccompProfile
+		if len(parts) == 2 {
+			r = syscallArrToSeccompPolicy(parts[0], parts[1], b)
+		} else {
+			r = syscallArrToSeccompPolicy(trace.ObjectMeta.Namespace, trace.Spec.Output, b)
+		}
+		err := t.client.Create(context.TODO(), r)
+		if err != nil {
+			trace.Status.OperationError = fmt.Sprintf("Failed to update resource: %s", err)
+			return
+		}
+		trace.Status.OperationError = ""
+	case "File":
+		fallthrough
+	default:
+		trace.Status.OperationError = fmt.Sprintf("OutputMode not supported: %s", trace.Spec.OutputMode)
 	}
-
-	trace.Status.Output = string(output)
-	trace.Status.OperationError = ""
 }
 
 func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
@@ -262,7 +302,7 @@ func arches() []specs.Arch {
 	}
 }
 
-func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
+func syscallArrToNameList(v []byte) []string {
 	names := []string{}
 	for i, val := range v {
 		if val == 0 {
@@ -276,10 +316,13 @@ func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	return names
+}
 
+func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
 	syscalls := []specs.LinuxSyscall{
 		{
-			Names:  names,
+			Names:  syscallArrToNameList(v),
 			Action: specs.ActAllow,
 			Args:   []specs.LinuxSeccompArg{},
 		},
@@ -291,4 +334,33 @@ func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
 		Syscalls:      syscalls,
 	}
 	return s
+}
+
+func syscallArrToSeccompPolicy(namespace, name string, v []byte) *seccompprofilev1alpha1.SeccompProfile {
+	syscalls := []*seccompprofilev1alpha1.Syscall{
+		{
+			Names:  syscallArrToNameList(v),
+			Action: commonseccomp.ActAllow,
+			Args:   []*seccompprofilev1alpha1.Arg{},
+		},
+	}
+
+	ret := seccompprofilev1alpha1.SeccompProfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Spec: seccompprofilev1alpha1.SeccompProfileSpec{
+			BaseProfileName: "",
+			DefaultAction:   commonseccomp.ActErrno,
+			Architectures:   nil,
+			Syscalls:        syscalls,
+		},
+	}
+	for _, a := range arches() {
+		arch := seccompprofilev1alpha1.Arch(a)
+		ret.Spec.Architectures = append(ret.Spec.Architectures, &arch)
+	}
+
+	return &ret
 }

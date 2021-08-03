@@ -10,4 +10,5 @@ spec:
     namespace: kube-system
     podname: etcd-minikube
   runMode: Manual
-  outputMode: Status
+  outputMode: ExternalResource
+  output: gadget/myseccomp
