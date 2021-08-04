@@ -25,12 +25,14 @@ jobs:
     - name: Cache external deps
       uses: actions/cache@v2
       with:
+        # - Tests (tests.mk) need etcd, kube-apiserver, kubectl
+        # - Generating code (crd.mk) needs controller-gen
         path: |
-          bin/etcd            # For tests, by tests.mk
-          bin/kube-apiserver  # ditto
-          bin/kubectl         # ditto
-          bin/controller-gen  # For generating code, by crd.mk
-        key: ${{ runner.os }}-${{ hashFiles('tests.mk', 'crd.mk') }}
+          bin/etcd
+          bin/kube-apiserver
+          bin/kubectl
+          bin/controller-gen
+        key: ${{ runner.os }}-${{ hashFiles('tests.mk', 'crd.mk', '.github/workflows/inspektor-gadget.yml') }}
 
     - name: Cache deb packages
       uses: actions/cache@v2
