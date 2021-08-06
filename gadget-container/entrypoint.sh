@@ -164,8 +164,28 @@ if [ "$TOOLS_MODE" = "auto" ] || [ -z "$TOOLS_MODE" ] ; then
     echo "BTF is available: Using CO-RE based tools"
     TOOLS_MODE="core"
   else
-    echo "BTF is not available: Using standard tools"
-    TOOLS_MODE="standard"
+    echo "BTF is not available: Trying btfhub"
+    source /host/etc/os-release
+
+    KERNEL=$(uname -r)
+    URL="https://github.com/aquasecurity/btfhub/raw/main/$ID/$VERSION_ID/$KERNEL.btf.tar.xz"
+
+    echo "Trying to download vmlinux from $URL"
+
+    if [[ $(wget -S --spider "$URL" 2>&1 | grep 'HTTP/1.1 200 OK') ]]; then
+      wget -q -O /tmp/vmlinux.btf.tar.xz "$URL"
+      tar -xf /tmp/vmlinux.btf.tar.xz
+      # Use objcopy to put the btf info in an ELF file as libbpf and cilium/ebpf
+      # by default check if there is an ELF file with the .BTF section at
+      # /boot/vmlinux-$KERNEL.
+      objcopy --input binary --output elf64-little --rename-section .data=.BTF $KERNEL.btf /boot/vmlinux-$KERNEL
+      rm $KERNEL.btf /tmp/vmlinux.btf.tar.xz
+      echo "vmlinux downloaded. Using CO-RE based tools"
+      TOOLS_MODE="core"
+    else
+      echo "vmlinux not found. Using standard tools"
+      TOOLS_MODE="standard"
+    fi
   fi
 fi
 
