@@ -168,7 +168,8 @@ if [ "$TOOLS_MODE" = "auto" ] || [ -z "$TOOLS_MODE" ] ; then
     source /host/etc/os-release
 
     KERNEL=$(uname -r)
-    URL="https://github.com/aquasecurity/btfhub/raw/main/$ID/$VERSION_ID/$KERNEL.btf.tar.xz"
+    ARCH=$(uname -m)
+    URL="https://github.com/aquasecurity/btfhub/raw/main/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
 
     echo "Trying to download vmlinux from $URL"
 
@@ -178,8 +179,7 @@ if [ "$TOOLS_MODE" = "auto" ] || [ -z "$TOOLS_MODE" ] ; then
       # Use objcopy to put the btf info in an ELF file as libbpf and cilium/ebpf
       # by default check if there is an ELF file with the .BTF section at
       # /boot/vmlinux-$KERNEL.
-      objcopy --input binary --output elf64-little --rename-section .data=.BTF $KERNEL.btf /boot/vmlinux-$KERNEL
-      rm $KERNEL.btf /tmp/vmlinux.btf.tar.xz
+      objcopy --input binary --output elf64-little --rename-section .data=.BTF *.btf /boot/vmlinux-$KERNEL
       echo "vmlinux downloaded. Using CO-RE based tools"
       TOOLS_MODE="core"
     else
