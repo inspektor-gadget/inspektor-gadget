@@ -38,19 +38,19 @@ import (
 var execsnoopCmd = &cobra.Command{
 	Use:   "execsnoop",
 	Short: "Trace new processes",
-	Run:   bccCmd("execsnoop", "/usr/share/bcc/tools/execsnoop"),
+	Run:   bccCmd("execsnoop", "/bin/gadgets/execsnoop"),
 }
 
 var opensnoopCmd = &cobra.Command{
 	Use:   "opensnoop",
 	Short: "Trace open() system calls",
-	Run:   bccCmd("opensnoop", "/usr/share/bcc/tools/opensnoop"),
+	Run:   bccCmd("opensnoop", "/bin/gadgets/opensnoop"),
 }
 
 var bindsnoopCmd = &cobra.Command{
 	Use:   "bindsnoop",
 	Short: "Trace IPv4 and IPv6 bind() system calls",
-	Run:   bccCmd("bindsnoop", "/usr/share/bcc/tools/bindsnoop"),
+	Run:   bccCmd("bindsnoop", "/bin/gadgets/bindsnoop"),
 }
 
 var profileCmd = &cobra.Command{
@@ -68,7 +68,7 @@ var tcptopCmd = &cobra.Command{
 var tcpconnectCmd = &cobra.Command{
 	Use:   "tcpconnect",
 	Short: "Trace TCP connect() system calls",
-	Run:   bccCmd("tcpconnect", "/usr/share/bcc/tools/tcpconnect"),
+	Run:   bccCmd("tcpconnect", "/bin/gadgets/tcpconnect"),
 }
 
 var tcptracerCmd = &cobra.Command{
