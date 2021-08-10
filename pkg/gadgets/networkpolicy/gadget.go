@@ -39,6 +39,7 @@ type Trace struct {
 }
 
 type TraceFactory struct {
+	gadgets.BaseFactory
 	mu     sync.Mutex
 	traces map[string]*Trace
 }
@@ -76,7 +77,10 @@ func (f *TraceFactory) Delete(name types.NamespacedName) error {
 	return nil
 }
 
-func (f *Trace) Operation(trace *gadgetv1alpha1.Trace, resolver gadgets.Resolver, operation string, params map[string]string) {
+func (f *Trace) Operation(trace *gadgetv1alpha1.Trace,
+	operation string,
+	params map[string]string) {
+
 	if trace.ObjectMeta.Namespace != gadgets.TRACE_DEFAULT_NAMESPACE {
 		trace.Status.OperationError = fmt.Sprintf("This gadget only accepts operations on traces in the %s namespace", gadgets.TRACE_DEFAULT_NAMESPACE)
 		return

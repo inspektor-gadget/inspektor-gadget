@@ -45,7 +45,7 @@ const (
 
 // TraceReconciler reconciles a Trace object
 type TraceReconciler struct {
-	client.Client
+	Client client.Client
 	Scheme *runtime.Scheme
 	Node   string
 
@@ -85,7 +85,7 @@ func genSelector(f *gadgetv1alpha1.ContainerFilter) *pb.ContainerSelector {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	trace := &gadgetv1alpha1.Trace{}
-	err := r.Get(ctx, req.NamespacedName, trace)
+	err := r.Client.Get(ctx, req.NamespacedName, trace)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			log.Infof("Trace %q has been deleted", req.NamespacedName.String())
@@ -134,7 +134,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 			// Remove our finalizer
 			controllerutil.RemoveFinalizer(trace, GADGET_FINALIZER)
-			if err := r.Update(ctx, trace); err != nil {
+			if err := r.Client.Update(ctx, trace); err != nil {
 				log.Errorf("Failed to remove finalizer: %s", err)
 				return ctrl.Result{}, err
 			}
@@ -147,7 +147,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// The Trace is not being deleted, so register our finalizer
 	beforeFinalizer := trace.DeepCopy()
 	controllerutil.AddFinalizer(trace, GADGET_FINALIZER)
-	if err := r.Patch(ctx, trace, client.MergeFrom(beforeFinalizer)); err != nil {
+	if err := r.Client.Patch(ctx, trace, client.MergeFrom(beforeFinalizer)); err != nil {
 		log.Errorf("Failed to add finalizer: %s", err)
 		return ctrl.Result{}, err
 	}
@@ -171,8 +171,12 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	// For now, only support output in the TraceStatus field
-	if trace.Spec.OutputMode != "Status" {
+	if factoryWithCaps, ok := factory.(gadgets.TraceFactoryWithCapabilities); ok {
+		if !factoryWithCaps.SupportsOutputMode(trace.Spec.OutputMode) {
+			log.Errorf("Unsupported OutputMode: %q", trace.Spec.OutputMode)
+			return ctrl.Result{}, nil
+		}
+	} else if trace.Spec.OutputMode != "Status" {
 		log.Errorf("Unsupported OutputMode: %q", trace.Spec.OutputMode)
 		return ctrl.Result{}, nil
 	}
@@ -207,7 +211,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		delete(annotations, GADGET_OPERATION+"-"+k)
 	}
 	trace.SetAnnotations(annotations)
-	err = r.Patch(ctx, trace, client.MergeFrom(withAnnotation))
+	err = r.Client.Patch(ctx, trace, client.MergeFrom(withAnnotation))
 	if err != nil {
 		log.Errorf("Failed to update trace: %s", err)
 		return ctrl.Result{}, err
@@ -216,7 +220,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// Call gadget.Operation()
 	traceBeforeOperation := trace.DeepCopy()
 	patch := client.MergeFrom(traceBeforeOperation)
-	factory.LookupOrCreate(req.NamespacedName).Operation(trace, r.TracerManager, op, params)
+	factory.LookupOrCreate(req.NamespacedName).Operation(trace, op, params)
 	if apiequality.Semantic.DeepEqual(traceBeforeOperation.Status, trace.Status) {
 		log.Info("Gadget completed operation without changing the trace status")
 	} else {
@@ -225,7 +229,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			trace.Status.OperationError,
 			len(trace.Status.Output),
 		)
-		err = r.Status().Patch(ctx, trace, patch)
+		err = r.Client.Status().Patch(ctx, trace, patch)
 		if err != nil {
 			log.Errorf("Failed to update trace status: %s", err)
 			return ctrl.Result{}, err

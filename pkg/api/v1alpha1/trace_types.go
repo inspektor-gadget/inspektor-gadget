@@ -56,8 +56,19 @@ type TraceSpec struct {
 	// pod name, labels or container name
 	Filter *ContainerFilter `json:"filter,omitempty"`
 
-	// OutputMode is "Status" or "File"
+	// OutputMode is "Status", "File" or "ExternalResource"
+	// +kubebuilder:validation:Enum=Status;File;ExternalResource
 	OutputMode string `json:"outputMode,omitempty"`
+
+	// Output allows a gadget to output the results in the specified
+	// location.
+	// * With OutputMode=Status, Output is unused
+	// * With OutputMode=File, Output specifies the file path
+	// * With OutputMode=ExternalResource, Output specifies the external
+	//   resource (such as
+	//   seccompprofiles.security-profiles-operator.x-k8s.io for the
+	//   seccomp gadget)
+	Output string `json:"output,omitempty"`
 }
 
 // TraceStatus defines the observed state of Trace
@@ -66,6 +77,7 @@ type TraceStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// State is "Started", "Stopped" or "Completed"
+	// +kubebuilder:validation:Enum=Started;Stopped;Completed
 	State string `json:"state,omitempty"`
 
 	// Output is the output of the gadget
