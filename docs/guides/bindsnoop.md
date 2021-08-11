@@ -23,7 +23,7 @@ When nginx starts, it binds on the TCP port 80. Inspektor Gadget will detect it
 and display the following output:
 
 ```
-[ 1] Tracing binds ... Hit Ctrl-C to end
-[ 1]      PID COMM         PROT ADDR            PORT   OPTS IF
-[ 1]    18411 nginx        TCP  0.0.0.0            80 ...R.  0
+Tracing binds ... Hit Ctrl-C to end
+NODE             NAMESPACE        PODNAME          CONTAINERNAME        PID COMM         PROT ADDR            PORT   OPTS IF
+ip-10-0-30-247   default          nginx-app        nginx-app         186667 nginx        UNKN 0.0.0.0            80 ...R.  0
 ```

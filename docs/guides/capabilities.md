@@ -55,15 +55,18 @@ Let's use Inspektor Gadget to watch the capability checks:
 
 ```
 $ kubectl gadget capabilities --selector name=set-priority
-TIME      UID    PID    TID    COMM             CAP  NAME                 AUDIT  INSETID
-13:01:54  1      4779   4779   true             6    CAP_SETGID           0      0
-13:01:54  1      4779   4779   true             7    CAP_SETUID           0      0
-13:01:54  1      4780   4780   nice             6    CAP_SETGID           0      0
-13:01:54  1      4780   4780   nice             7    CAP_SETUID           0      0
-13:01:54  1      4780   4780   nice             23   CAP_SYS_NICE         0      0
-13:01:54  1      4781   4781   sleep            6    CAP_SETGID           0      0
-13:01:54  1      4781   4781   sleep            7    CAP_SETUID           0      0
-^CInterrupted!
+NODE             NAMESPACE        PODNAME                       CONTAINERNAME   TIME      UID    PID    COMM             CAP  NAME                 AUDIT
+ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:13:54  0      146786 nice             23   CAP_SYS_NICE         1
+ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:13:59  0      146937 nice             23   CAP_SYS_NICE         1
+ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:04  0      147056 nice             23   CAP_SYS_NICE         1
+ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:09  0      147201 nice             23   CAP_SYS_NICE         1
+ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:14  0      147303 nice             23   CAP_SYS_NICE         1
+ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:19  0      147447 nice             23   CAP_SYS_NICE         1
+ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:24  0      147579 nice             23   CAP_SYS_NICE         1
+ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:29  0      147725 nice             23   CAP_SYS_NICE         1
+ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:34  0      147838 nice             23   CAP_SYS_NICE         1
+^C
+Terminating...
 ```
 
 We can leave the gadget with Ctrl-C.

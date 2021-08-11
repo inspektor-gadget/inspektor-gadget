@@ -25,28 +25,33 @@ ip-10-0-30-247 where myapp1-pod-4kz56 and myapp2-pod-tnthg are running:
 ```
 
 $ kubectl gadget execsnoop --selector role=demo --node ip-10-0-30-247
-PCOMM            PID    PPID   RET ARGS
-true             16510  11179    0 /bin/true
-date             16511  11179    0 /usr/bin/date
-cat              16512  11179    0 /usr/bin/cat /proc/version
-sleep            16513  11179    0 /usr/bin/sleep 1
-true             16514  11179    0 /bin/true
-date             16515  11179    0 /usr/bin/date
-cat              16516  11179    0 /usr/bin/cat /proc/version
-sleep            16517  11179    0 /usr/bin/sleep 1
-true             16520  11179    0 /bin/true
-date             16521  11179    0 /usr/bin/date
-cat              16522  11179    0 /usr/bin/cat /proc/version
-sleep            16523  11179    0 /usr/bin/sleep 1
-true             16524  10972    0 /bin/true
-date             16525  10972    0 /usr/bin/date
-echo             16526  10972    0 /bin/echo sleep-10
-sleep            16527  10972    0 /bin/sleep 10
-true             16528  11179    0 /bin/true
-date             16529  11179    0 /usr/bin/date
-cat              16530  11179    0 /usr/bin/cat /proc/version
-sleep            16531  11179    0 /usr/bin/sleep 1
-^CInterrupted!
+NODE             NAMESPACE        PODNAME          CONTAINERNAME   PCOMM            PID    PPID   RET ARGS
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      true             155962 155894   0 /bin/true
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      date             155963 155894   0 /usr/bin/date
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      cat              155964 155894   0 /usr/bin/cat /proc/version
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      sleep            155965 155894   0 /usr/bin/sleep 1
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      true             155970 155894   0 /bin/true
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      date             155971 155894   0 /usr/bin/date
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      cat              155972 155894   0 /usr/bin/cat /proc/version
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      sleep            155973 155894   0 /usr/bin/sleep 1
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      true             156019 155894   0 /bin/true
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      date             156020 155894   0 /usr/bin/date
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      cat              156021 155894   0 /usr/bin/cat /proc/version
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      sleep            156022 155894   0 /usr/bin/sleep 1
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      true             156043 155894   0 /bin/true
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      date             156044 155894   0 /usr/bin/date
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      cat              156045 155894   0 /usr/bin/cat /proc/version
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      sleep            156046 155894   0 /usr/bin/sleep 1
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      true             156060 155894   0 /bin/true
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      date             156061 155894   0 /usr/bin/date
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      cat              156062 155894   0 /usr/bin/cat /proc/version
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      sleep            156063 155894   0 /usr/bin/sleep 1
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      true             156105 155894   0 /bin/true
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      date             156106 155894   0 /usr/bin/date
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      cat              156107 155894   0 /usr/bin/cat /proc/version
+ip-10-0-30-247   default          myapp1-pod-qddtm myapp1-pod      sleep            156108 155894   0 /usr/bin/sleep 1
+^C
+Terminating...
 ```
 
 Processes of both pods are spawned: myapp1 spawns `cat /proc/version` and `sleep 1`,
