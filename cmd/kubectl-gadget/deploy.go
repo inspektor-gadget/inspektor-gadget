@@ -79,6 +79,11 @@ func init() {
 
 const deployYamlTmpl string = `
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: gadget
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: gadget

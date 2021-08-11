@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 
 	"github.com/spf13/viper"
 
@@ -49,6 +50,23 @@ func execPodCapture(client *kubernetes.Clientset, node string, podCmd string) (s
 	return stdout.String(), stderr.String(), err
 }
 
+func kubeRestConfig() (*restclient.Config, error) {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	loadingRules.DefaultClientConfig = &clientcmd.DefaultClientConfig
+	if viper.GetString("kubeconfig") != "" {
+		loadingRules.ExplicitPath = viper.GetString("kubeconfig")
+	}
+	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
+	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
+
+	restConfig, err := clientConfig.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	factory.SetKubernetesDefaults(restConfig)
+	return restConfig, nil
+}
+
 func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout io.Writer, cmdStderr io.Writer) error {
 	var listOptions = metaV1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
@@ -66,23 +84,16 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 	}
 	podName := pods.Items[0].Name
 
-	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	loadingRules.DefaultClientConfig = &clientcmd.DefaultClientConfig
-	if viper.GetString("kubeconfig") != "" {
-		loadingRules.ExplicitPath = viper.GetString("kubeconfig")
-	}
-	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
-	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
-
-	restConfig, err := clientConfig.ClientConfig()
+	restConfig, err := kubeRestConfig()
 	if err != nil {
 		return err
 	}
-	factory.SetKubernetesDefaults(restConfig)
+
 	restClient, err := restclient.RESTClientFor(restConfig)
 	if err != nil {
 		return err
 	}
+
 	req := restClient.Post().
 		Resource("pods").
 		Name(podName).
@@ -110,4 +121,13 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		Tty:    true,
 	})
 	return err
+}
+
+func randomTraceID() string {
+	output := make([]byte, 16)
+	allowedCharacters := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	for i := range output {
+		output[i] = allowedCharacters[rand.Int31n(int32(len(allowedCharacters)))]
+	}
+	return string(output)
 }
