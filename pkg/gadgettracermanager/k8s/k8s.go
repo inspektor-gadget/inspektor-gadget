@@ -201,6 +201,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 			Podname:       pod.GetName(),
 			ContainerName: s.Name,
 			Labels:        labels,
+			Pid:           uint32(pid),
 		}
 		containers = append(containers, containerDef)
 	}

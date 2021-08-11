@@ -164,6 +164,7 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 		Namespace:     namespace,
 		Podname:       podName,
 		ContainerName: containerName,
+		Pid:           uint32(r.Pid),
 	})
 	return err
 }

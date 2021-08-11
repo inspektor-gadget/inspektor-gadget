@@ -53,6 +53,7 @@ var (
 	namespace     string
 	podname       string
 	containername string
+	containerPid  uint
 )
 
 const (
@@ -75,6 +76,7 @@ func init() {
 	flag.StringVar(&namespace, "namespace", "", "namespace to use in add-container")
 	flag.StringVar(&podname, "podname", "", "podname to use in add-container")
 	flag.StringVar(&containername, "containername", "", "container name to use in add-container")
+	flag.UintVar(&containerPid, "containerpid", 0, "container PID to use in add-container")
 
 	flag.BoolVar(&dump, "dump", false, "Dump state for debugging")
 	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
@@ -158,6 +160,7 @@ func main() {
 			Podname:       podname,
 			ContainerName: containername,
 			Labels:        labels,
+			Pid:           uint32(containerPid),
 		})
 		if err != nil {
 			log.Fatalf("%v", err)

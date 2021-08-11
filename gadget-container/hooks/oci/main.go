@@ -173,6 +173,7 @@ func main() {
 		CgroupV1:     cgroupPathV1,
 		CgroupV2:     cgroupPathV2,
 		MountSources: mountSources,
+		Pid:          uint32(ociStatePid),
 	})
 	if err != nil {
 		panic(err)

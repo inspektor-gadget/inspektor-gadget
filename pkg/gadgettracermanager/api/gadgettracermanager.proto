@@ -83,6 +83,10 @@ message ContainerDefinition {
   string cgroup_v1 = 9;
   string cgroup_v2 = 10;
   repeated string mount_sources = 11;
+
+  // Pid is useful to find container namespaces, such as
+  // the network namespace in /proc/$pid/ns/net
+  uint32 pid = 12;
 }
 
 message DumpStateRequest {
