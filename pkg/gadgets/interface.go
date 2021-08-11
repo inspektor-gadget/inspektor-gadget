@@ -65,8 +65,17 @@ type Resolver interface {
 
 	// LookupMntnsByPod returns the mount namespace inodes of all containers
 	// belonging to the pod specified in arguments, indexed by the name of the
-	// containers
+	// containers or an empty map if not found
 	LookupMntnsByPod(namespace, pod string) map[string]uint64
+
+	// LookupPIDByContainer returns the PID of the container
+	// specified in arguments or zero if not found
+	LookupPIDByContainer(namespace, pod, container string) uint32
+
+	// LookupPIDByPod returns the PID of all containers belonging to
+	// the pod specified in arguments, indexed by the name of the
+	// containers or an empty map if not found
+	LookupPIDByPod(namespace, pod string) map[string]uint32
 }
 
 type BaseFactory struct {

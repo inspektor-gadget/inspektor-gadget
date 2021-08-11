@@ -288,7 +288,7 @@ func (g *GadgetTracerManager) LookupMntnsByContainer(namespace, pod, container s
 
 // LookupMntnsByPod returns the mount namespace inodes of all containers
 // belonging to the pod specified in arguments, indexed by the name of the
-// containers
+// containers or an empty map if not found
 func (g *GadgetTracerManager) LookupMntnsByPod(namespace, pod string) map[string]uint64 {
 	ret := make(map[string]uint64)
 	for _, c := range g.containers {
@@ -299,6 +299,41 @@ func (g *GadgetTracerManager) LookupMntnsByPod(namespace, pod string) map[string
 			continue
 		}
 		ret[c.ContainerName] = c.Mntns
+	}
+	return ret
+}
+
+// LookupPIDByContainer returns the PID of the container
+// specified in arguments or zero if not found
+func (g *GadgetTracerManager) LookupPIDByContainer(namespace, pod, container string) uint32 {
+	for _, c := range g.containers {
+		if namespace != c.Namespace {
+			continue
+		}
+		if pod != c.Podname {
+			continue
+		}
+		if container != c.ContainerName {
+			continue
+		}
+		return c.Pid
+	}
+	return 0
+}
+
+// LookupPIDByPod returns the PID of all containers belonging to
+// the pod specified in arguments, indexed by the name of the
+// containers or an empty map if not found
+func (g *GadgetTracerManager) LookupPIDByPod(namespace, pod string) map[string]uint32 {
+	ret := make(map[string]uint32)
+	for _, c := range g.containers {
+		if namespace != c.Namespace {
+			continue
+		}
+		if pod != c.Podname {
+			continue
+		}
+		ret[c.ContainerName] = c.Pid
 	}
 	return ret
 }
