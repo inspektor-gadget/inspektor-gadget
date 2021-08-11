@@ -197,6 +197,7 @@ func TestContainer(t *testing.T) {
 			Podname:       "my-pod",
 			ContainerName: fmt.Sprintf("container%d", i),
 			Mntns:         55555 + uint64(i),
+			Pid:           uint32(100 + i),
 		})
 		if err != nil {
 			t.Fatalf("Failed to add container: %v", err)
@@ -213,6 +214,7 @@ func TestContainer(t *testing.T) {
 		Podname:       "my-pod",
 		ContainerName: fmt.Sprintf("container%d", 0),
 		Mntns:         55555 + uint64(0),
+		Pid:           uint32(100),
 	})
 	if err == nil {
 		t.Fatal("Error while adding duplicate container: duplicate not detected")
@@ -253,11 +255,11 @@ func TestContainer(t *testing.T) {
 	// Check content using LookupMntnsByPod
 	mntnsByContainer := g.LookupMntnsByPod("this-namespace", "my-pod")
 	if !reflect.DeepEqual(mntnsByContainer, map[string]uint64{"container0": 55555, "container2": 55557}) {
-		t.Fatalf("Error while looking up: unexpected %v", mntnsByContainer)
+		t.Fatalf("Error while looking up mount ns by Pod: unexpected %v", mntnsByContainer)
 	}
 	mntnsByContainer = g.LookupMntnsByPod("this-namespace", "this-other-pod")
 	if !reflect.DeepEqual(mntnsByContainer, map[string]uint64{}) {
-		t.Fatalf("Error while looking up: unexpected %v", mntnsByContainer)
+		t.Fatalf("Error while looking up mount ns by Pod: unexpected %v", mntnsByContainer)
 	}
 
 	// Check content using LookupMntnsByContainer
@@ -271,6 +273,30 @@ func TestContainer(t *testing.T) {
 	}
 	mntns = g.LookupMntnsByContainer("this-namespace", "my-pod", "container2")
 	if mntns != 55557 {
-		t.Fatalf("Error while looking up container1: unexpected mntns %v", mntns)
+		t.Fatalf("Error while looking up container2: unexpected mntns %v", mntns)
+	}
+
+	// Check content using LookupPIDByPod
+	pidByContainer := g.LookupPIDByPod("this-namespace", "my-pod")
+	if !reflect.DeepEqual(pidByContainer, map[string]uint32{"container0": 100, "container2": 102}) {
+		t.Fatalf("Error while looking up PID by Pod: unexpected %v", pidByContainer)
+	}
+	pidByContainer = g.LookupPIDByPod("this-namespace", "this-other-pod")
+	if !reflect.DeepEqual(pidByContainer, map[string]uint32{}) {
+		t.Fatalf("Error while looking up PID by Pod: unexpected %v", pidByContainer)
+	}
+
+	// Check content using LookupPIDByContainer
+	pid := g.LookupPIDByContainer("this-namespace", "my-pod", "container0")
+	if pid != 100 {
+		t.Fatalf("Error while looking up container0: unexpected pid %v", pid)
+	}
+	pid = g.LookupPIDByContainer("this-namespace", "my-pod", "container1")
+	if pid != 0 {
+		t.Fatalf("Error while looking up container1: unexpected pid %v", pid)
+	}
+	pid = g.LookupPIDByContainer("this-namespace", "my-pod", "container2")
+	if pid != 102 {
+		t.Fatalf("Error while looking up container2: unexpected pid %v", pid)
 	}
 }
