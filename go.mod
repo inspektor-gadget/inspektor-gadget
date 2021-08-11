@@ -6,7 +6,6 @@ require (
 	github.com/containers/common v0.42.0
 	github.com/docker/docker v20.10.7+incompatible
 	github.com/docker/go-units v0.4.0
-	github.com/golang/protobuf v1.5.2
 	github.com/iovisor/gobpf v0.2.0 // indirect
 	github.com/kinvolk/traceloop v0.0.0-20210623155108-6f4efc6fca46
 	github.com/kr/pretty v0.2.1
