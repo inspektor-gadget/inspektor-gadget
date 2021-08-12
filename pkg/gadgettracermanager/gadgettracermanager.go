@@ -38,6 +38,7 @@ import (
 import "C"
 
 type GadgetTracerManager struct {
+	pb.UnimplementedGadgetTracerManagerServer
 	mu sync.Mutex
 
 	// node where this instance is running
