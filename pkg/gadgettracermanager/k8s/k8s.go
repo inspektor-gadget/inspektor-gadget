@@ -146,7 +146,7 @@ func (k *K8sClient) FillContainer(containerDefinition *pb.ContainerDefinition) e
 
 	containerDefinition.Namespace = namespace
 	containerDefinition.Podname = podname
-	containerDefinition.ContainerName = containerName
+	containerDefinition.Name = containerName
 	containerDefinition.Labels = labels
 
 	return nil
@@ -193,15 +193,15 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 		}
 
 		containerDef := pb.ContainerDefinition{
-			ContainerId:   s.ContainerID,
-			CgroupPath:    cgroupPathV2WithMountpoint,
-			CgroupId:      cgroupId,
-			Mntns:         mntns,
-			Namespace:     pod.GetNamespace(),
-			Podname:       pod.GetName(),
-			ContainerName: s.Name,
-			Labels:        labels,
-			Pid:           uint32(pid),
+			Id:         s.ContainerID,
+			CgroupPath: cgroupPathV2WithMountpoint,
+			CgroupId:   cgroupId,
+			Mntns:      mntns,
+			Namespace:  pod.GetNamespace(),
+			Podname:    pod.GetName(),
+			Name:       s.Name,
+			Labels:     labels,
+			Pid:        uint32(pid),
 		}
 		containers = append(containers, containerDef)
 	}

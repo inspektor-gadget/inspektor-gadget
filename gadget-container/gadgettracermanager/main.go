@@ -130,10 +130,10 @@ func main() {
 		out, err := client.AddTracer(ctx, &pb.AddTracerRequest{
 			Id: tracerid,
 			Selector: &pb.ContainerSelector{
-				Namespace:     namespace,
-				Podname:       podname,
-				Labels:        labels,
-				ContainerName: containername,
+				Namespace: namespace,
+				Podname:   podname,
+				Labels:    labels,
+				Name:      containername,
 			},
 		})
 		if err != nil {
@@ -153,14 +153,14 @@ func main() {
 
 	case "add-container":
 		_, err := client.AddContainer(ctx, &pb.ContainerDefinition{
-			ContainerId:   containerId,
-			CgroupPath:    cgroupPath,
-			CgroupId:      cgroupId,
-			Namespace:     namespace,
-			Podname:       podname,
-			ContainerName: containername,
-			Labels:        labels,
-			Pid:           uint32(containerPid),
+			Id:         containerId,
+			CgroupPath: cgroupPath,
+			CgroupId:   cgroupId,
+			Namespace:  namespace,
+			Podname:    podname,
+			Name:       containername,
+			Labels:     labels,
+			Pid:        uint32(containerPid),
 		})
 		if err != nil {
 			log.Fatalf("%v", err)
@@ -169,7 +169,7 @@ func main() {
 
 	case "remove-container":
 		_, err := client.RemoveContainer(ctx, &pb.ContainerDefinition{
-			ContainerId: containerId,
+			Id: containerId,
 		})
 		if err != nil {
 			log.Fatalf("%v", err)

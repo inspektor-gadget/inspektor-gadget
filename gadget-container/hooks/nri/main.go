@@ -111,7 +111,7 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 	// Handle the poststop hook first
 	if r.State == types.Delete {
 		_, err := client.RemoveContainer(ctx, &pb.ContainerDefinition{
-			ContainerId: r.ID,
+			Id: r.ID,
 		})
 		return err
 	}
@@ -156,15 +156,15 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 	}
 
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{
-		ContainerId:   r.ID,
-		CgroupPath:    cgroupPathV2WithMountpoint,
-		CgroupId:      cgroupId,
-		Mntns:         mntns,
-		Labels:        labels,
-		Namespace:     namespace,
-		Podname:       podName,
-		ContainerName: containerName,
-		Pid:           uint32(r.Pid),
+		Id:         r.ID,
+		CgroupPath: cgroupPathV2WithMountpoint,
+		CgroupId:   cgroupId,
+		Mntns:      mntns,
+		Labels:     labels,
+		Namespace:  namespace,
+		Podname:    podName,
+		Name:       containerName,
+		Pid:        uint32(r.Pid),
 	})
 	return err
 }

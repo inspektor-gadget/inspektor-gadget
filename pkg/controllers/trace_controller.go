@@ -67,10 +67,10 @@ func genSelector(f *gadgetv1alpha1.ContainerFilter) *pb.ContainerSelector {
 		labels = append(labels, &pb.Label{Key: k, Value: v})
 	}
 	return &pb.ContainerSelector{
-		Namespace:     f.Namespace,
-		Podname:       f.Podname,
-		Labels:        labels,
-		ContainerName: f.ContainerName,
+		Namespace: f.Namespace,
+		Podname:   f.Podname,
+		Labels:    labels,
+		Name:      f.ContainerName,
 	}
 }
 
