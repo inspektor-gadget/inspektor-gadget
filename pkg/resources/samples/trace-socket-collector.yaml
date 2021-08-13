@@ -1,0 +1,13 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: socket-collector
+  namespace: gadget
+spec:
+  node: my-node
+  gadget: socket-collector
+  filter:
+    namespace: default
+    podname: mypod
+  runMode: Manual
+  outputMode: Status

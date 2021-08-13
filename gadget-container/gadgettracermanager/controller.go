@@ -34,8 +34,9 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency"
 	networkpolicyadvisor "github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector"
+	processcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/seccomp"
+	socketcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
 	//+kubebuilder:scaffold:imports
 )
@@ -50,6 +51,7 @@ func startController(node string, tracerManager *gadgettracermanager.GadgetTrace
 	traceFactories := make(map[string]gadgets.TraceFactory)
 	traceFactories["biolatency"] = &biolatency.TraceFactory{}
 	traceFactories["process-collector"] = &processcollector.TraceFactory{}
+	traceFactories["socket-collector"] = &socketcollector.TraceFactory{}
 	traceFactories["seccomp"] = &seccomp.TraceFactory{}
 	traceFactories["network-policy-advisor"] = &networkpolicyadvisor.TraceFactory{}
 
