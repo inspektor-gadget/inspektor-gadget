@@ -39,6 +39,8 @@ import "C"
 
 type GadgetTracerManager struct {
 	pb.UnimplementedGadgetTracerManagerServer
+
+	// mu protects the containers and tracers maps from concurrent access
 	mu sync.Mutex
 
 	// node where this instance is running
@@ -56,10 +58,6 @@ type GadgetTracerManager struct {
 	podInformer *k8s.PodInformer
 	createdChan chan *v1.Pod
 	deletedChan chan string
-	// containerIDsByKey is a map maintained by the controller
-	// key is "namespace/podname"
-	// value is an set of containerId
-	containerIDsByKey map[string]map[string]struct{}
 
 	// withBPF tells whether GadgetTracerManager can run bpf() syscall.
 	// Normally, withBPF=true but it can be disabled so unit tests can run
@@ -107,6 +105,9 @@ func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition
 }
 
 func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRequest) (*pb.TracerID, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	tracerId := ""
 	if req.Id == "" {
 		b := make([]byte, 6)
@@ -177,6 +178,9 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 }
 
 func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.TracerID) (*pb.RemoveTracerResponse, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if tracerID.Id == "" {
 		return nil, fmt.Errorf("cannot remove tracer: Id not set")
 	}
@@ -203,6 +207,9 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 }
 
 func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResponse, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if containerDefinition.Id == "" {
 		return nil, fmt.Errorf("cannot add container: container id not set")
 	}
@@ -243,6 +250,9 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 }
 
 func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.RemoveContainerResponse, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if containerDefinition.Id == "" {
 		return nil, fmt.Errorf("cannot remove container: Id not set")
 	}
@@ -271,6 +281,9 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 // LookupMntnsByContainer returns the mount namespace inode of the container
 // specified in arguments or zero if not found
 func (g *GadgetTracerManager) LookupMntnsByContainer(namespace, pod, container string) uint64 {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	for _, c := range g.containers {
 		if namespace != c.Namespace {
 			continue
@@ -290,6 +303,9 @@ func (g *GadgetTracerManager) LookupMntnsByContainer(namespace, pod, container s
 // belonging to the pod specified in arguments, indexed by the name of the
 // containers or an empty map if not found
 func (g *GadgetTracerManager) LookupMntnsByPod(namespace, pod string) map[string]uint64 {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	ret := make(map[string]uint64)
 	for _, c := range g.containers {
 		if namespace != c.Namespace {
@@ -306,6 +322,9 @@ func (g *GadgetTracerManager) LookupMntnsByPod(namespace, pod string) map[string
 // LookupPIDByContainer returns the PID of the container
 // specified in arguments or zero if not found
 func (g *GadgetTracerManager) LookupPIDByContainer(namespace, pod, container string) uint32 {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	for _, c := range g.containers {
 		if namespace != c.Namespace {
 			continue
@@ -325,6 +344,9 @@ func (g *GadgetTracerManager) LookupPIDByContainer(namespace, pod, container str
 // the pod specified in arguments, indexed by the name of the
 // containers or an empty map if not found
 func (g *GadgetTracerManager) LookupPIDByPod(namespace, pod string) map[string]uint32 {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	ret := make(map[string]uint32)
 	for _, c := range g.containers {
 		if namespace != c.Namespace {
@@ -339,6 +361,9 @@ func (g *GadgetTracerManager) LookupPIDByPod(namespace, pod string) map[string]u
 }
 
 func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRequest) (*pb.Dump, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	out := "List of containers:\n"
 	for i, c := range g.containers {
 		out += fmt.Sprintf("%v -> %+v\n", i, c)
@@ -364,10 +389,18 @@ func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRe
 }
 
 func (g *GadgetTracerManager) run() {
+	// containerIDsByKey keeps track of container ids for each key. This is
+	// necessary because messages from deletedChan only gives the key
+	// without additional context.
+	//
+	// key is "namespace/podname"
+	// value is an set of containerId
+	containerIDsByKey := make(map[string]map[string]struct{})
+
 	for {
 		select {
 		case d := <-g.deletedChan:
-			if containerIDs, ok := g.containerIDsByKey[d]; ok {
+			if containerIDs, ok := containerIDsByKey[d]; ok {
 				for containerID, _ := range containerIDs {
 					containerDefinition := &pb.ContainerDefinition{
 						Id: containerID,
@@ -378,10 +411,10 @@ func (g *GadgetTracerManager) run() {
 		case c := <-g.createdChan:
 			containers := g.k8sClient.PodToContainers(c)
 			key, _ := cache.MetaNamespaceKeyFunc(c)
-			containerIDs, ok := g.containerIDsByKey[key]
+			containerIDs, ok := containerIDsByKey[key]
 			if !ok {
 				containerIDs = make(map[string]struct{})
-				g.containerIDsByKey[key] = containerIDs
+				containerIDsByKey[key] = containerIDs
 			}
 			for _, container := range containers {
 				// The container is already registered, there is not any chance the
@@ -456,11 +489,10 @@ func (g *GadgetTracerManager) deleteContainerFromMap(c pb.ContainerDefinition) {
 
 func newServer(nodeName string, withPodInformer, withBPF, withK8sClient bool) (*GadgetTracerManager, error) {
 	g := &GadgetTracerManager{
-		nodeName:          nodeName,
-		containers:        make(map[string]pb.ContainerDefinition),
-		tracers:           make(map[string]tracer),
-		containerIDsByKey: make(map[string]map[string]struct{}),
-		withBPF:           withBPF,
+		nodeName:   nodeName,
+		containers: make(map[string]pb.ContainerDefinition),
+		tracers:    make(map[string]tracer),
+		withBPF:    withBPF,
 	}
 
 	if withBPF {
