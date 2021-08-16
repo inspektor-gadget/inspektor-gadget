@@ -33,6 +33,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 )
 
 import "C"
@@ -67,6 +68,9 @@ type GadgetTracerManager struct {
 	// containersMap is the global map at /sys/fs/bpf/gadget/containers
 	// exposing container details for each mount namespace.
 	containersMap *ebpf.Map
+
+	// subs contains a list of subscribers
+	pubsub *pubsub.GadgetPubSub
 }
 
 type tracer struct {
@@ -246,6 +250,7 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 
 	g.containers[containerDefinition.Id] = *containerDefinition
 	g.addContainerInMap(*containerDefinition)
+	g.pubsub.Publish(pubsub.EVENT_TYPE_ADD_CONTAINER, *containerDefinition)
 	return &pb.AddContainerResponse{}, nil
 }
 
@@ -261,6 +266,8 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 	if !ok {
 		return nil, fmt.Errorf("cannot remove container: unknown container %q", containerDefinition.Id)
 	}
+
+	g.pubsub.Publish(pubsub.EVENT_TYPE_REMOVE_CONTAINER, c)
 
 	if g.withBPF {
 		for _, t := range g.tracers {
@@ -487,12 +494,32 @@ func (g *GadgetTracerManager) deleteContainerFromMap(c pb.ContainerDefinition) {
 	g.containersMap.Delete(uint64(c.Mntns))
 }
 
+// Subscribe returns the list of existing containers and registers a callback
+// for notifications about additions and deletions of containers
+func (g *GadgetTracerManager) Subscribe(key interface{}, f pubsub.FuncNotify) []pb.ContainerDefinition {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	g.pubsub.Subscribe(key, f)
+	ret := []pb.ContainerDefinition{}
+	for _, c := range g.containers {
+		ret = append(ret, c)
+	}
+	return ret
+}
+
+// Unsubscribe undoes a previous call to Subscribe
+func (g *GadgetTracerManager) Unsubscribe(key interface{}) {
+	g.pubsub.Unsubscribe(key)
+}
+
 func newServer(nodeName string, withPodInformer, withBPF, withK8sClient bool) (*GadgetTracerManager, error) {
 	g := &GadgetTracerManager{
 		nodeName:   nodeName,
 		containers: make(map[string]pb.ContainerDefinition),
 		tracers:    make(map[string]tracer),
 		withBPF:    withBPF,
+		pubsub:     pubsub.NewGadgetPubSub(),
 	}
 
 	if withBPF {
