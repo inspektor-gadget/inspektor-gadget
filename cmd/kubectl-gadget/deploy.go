@@ -71,7 +71,7 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&toolsMode,
 		"tools-mode", "",
-		"auto",
+		"standard",
 		"which kind of tools to use (auto, core, standard)")
 
 	rootCmd.AddCommand(deployCmd)
