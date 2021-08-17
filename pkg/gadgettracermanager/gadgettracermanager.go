@@ -34,6 +34,7 @@ import (
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
 )
 
 import "C"
@@ -80,6 +81,8 @@ type tracer struct {
 
 	cgroupIdSetMap *ebpf.Map
 	mntnsSetMap    *ebpf.Map
+
+	gadgetStream *stream.GadgetStream
 }
 
 func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition) bool {
@@ -177,6 +180,7 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 		containerSelector: *req.Selector,
 		cgroupIdSetMap:    cgroupIdSetMap,
 		mntnsSetMap:       mntnsSetMap,
+		gadgetStream:      stream.NewGadgetStream(),
 	}
 	return &pb.TracerID{Id: tracerId}, nil
 }
@@ -201,6 +205,8 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 		t.mntnsSetMap.Close()
 	}
 
+	t.gadgetStream.Close()
+
 	if g.withBPF {
 		os.Remove(filepath.Join(gadgets.PIN_PATH, gadgets.CGROUPMAP_PREFIX+t.tracerId))
 		os.Remove(filepath.Join(gadgets.PIN_PATH, gadgets.MNTMAP_PREFIX+t.tracerId))
@@ -208,6 +214,54 @@ func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.Tra
 
 	delete(g.tracers, tracerID.Id)
 	return &pb.RemoveTracerResponse{}, nil
+}
+
+func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.GadgetTracerManager_ReceiveStreamServer) error {
+	if tracerID.Id == "" {
+		return fmt.Errorf("cannot find tracer: Id not set")
+	}
+
+	g.mu.Lock()
+
+	t, ok := g.tracers[tracerID.Id]
+	if !ok {
+		g.mu.Unlock()
+		return fmt.Errorf("cannot find tracer: unknown tracer %q", tracerID.Id)
+	}
+
+	ch := t.gadgetStream.Subscribe()
+	defer t.gadgetStream.Unsubscribe(ch)
+
+	g.mu.Unlock()
+
+	for l := range ch {
+		if l.EventLost {
+			msg := fmt.Sprintf(`{"err": "events lost", "node": "%s"}\n`, g.nodeName)
+			err := stream.Send(&pb.StreamData{Line: msg})
+			return err
+		}
+
+		line := &pb.StreamData{Line: l.Line}
+		if err := stream.Send(line); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (g *GadgetTracerManager) PublishEvent(tracerID string, line string) error {
+	// TODO: reentrant locking :/
+	//g.mu.Lock()
+	//defer g.mu.Unlock()
+
+	t, ok := g.tracers[tracerID]
+	if !ok {
+		return fmt.Errorf("cannot find tracer: unknown tracer %q", tracerID)
+	}
+
+	t.gadgetStream.Publish(line)
+	return nil
 }
 
 func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResponse, error) {

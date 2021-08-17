@@ -24,6 +24,8 @@ service GadgetTracerManager {
   rpc AddTracer(AddTracerRequest) returns (TracerID) {}
   rpc RemoveTracer(TracerID) returns (RemoveTracerResponse) {}
 
+  rpc ReceiveStream(TracerID) returns (stream StreamData) {}
+
   // Methods called by OCI Hooks
 
   rpc AddContainer(ContainerDefinition) returns (AddContainerResponse) {}
@@ -65,6 +67,10 @@ message ContainerSelector {
 
 message TracerID {
   string id = 1;
+}
+
+message StreamData {
+  string line = 1;
 }
 
 message ContainerDefinition {

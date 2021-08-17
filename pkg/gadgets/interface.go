@@ -87,6 +87,8 @@ type Resolver interface {
 
 	// Unsubscribe undoes a previous call to Subscribe
 	Unsubscribe(key interface{})
+
+	PublishEvent(tracerID string, line string) error
 }
 
 type BaseFactory struct {
