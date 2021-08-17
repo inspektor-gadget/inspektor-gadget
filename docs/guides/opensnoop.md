@@ -17,12 +17,13 @@ thus snooping on all nodes for pod "mypod":
 
 ```
 $ kubectl gadget opensnoop --podname mypod
-PID    COMM               FD ERR PATH
-18455  whoami              3   0 /etc/passwd
-18521  whoami              3   0 /etc/passwd
-18525  whoami              3   0 /etc/passwd
-18530  whoami              3   0 /etc/passwd
-^CInterrupted!
+NODE             NAMESPACE        PODNAME          CONTAINERNAME   PID    COMM               FD ERR PATH
+ip-10-0-30-247   default          mypod            mypod           18455  whoami              3   0 /etc/passwd
+ip-10-0-30-247   default          mypod            mypod           18521  whoami              3   0 /etc/passwd
+ip-10-0-30-247   default          mypod            mypod           18525  whoami              3   0 /etc/passwd
+ip-10-0-30-247   default          mypod            mypod           18530  whoami              3   0 /etc/passwd
+^
+Terminating!
 ```
 
 Seems the whoami command opens "/etc/passwd" to map the user ID to a user name.

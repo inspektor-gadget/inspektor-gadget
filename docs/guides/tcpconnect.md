@@ -24,10 +24,11 @@ ok
 In our Inspektor Gadget terminal we can now see the logged connection:
 
 ```
-$ kubectl gadget tcpconnect --podname mypod  # (still running in old terminal)
-PID    COMM         IP SADDR            DADDR            DPORT
-9386                wget         4  10.2.232.47      1.1.1.1          80
-9386                wget         4  10.2.232.47      1.1.1.1          443
+$ kubectl gadget tcpconnect --podname mypod
+Tracing connect ... Hit Ctrl-C to end
+NODE             NAMESPACE        PODNAME          CONTAINERNAME   PID    COMM         IP SADDR            DADDR            DPORT
+ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          80
+ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          443
 ```
 
 (If the pod was started as part of a deployment, the name of the pod is not known
@@ -88,11 +89,11 @@ Switching to the Inspektor Gadget terminal, we see the same connections again
 
 ```
 $ kubectl gadget tcpconnect --podname mypod  # (still running in old terminal)
-PID    COMM         IP SADDR            DADDR            DPORT
-9386                wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
-9386                wget         4  10.2.232.47      1.1.1.1          443 # (previous output)
-16547               wget         4  10.2.232.51      1.1.1.1          80
-16547               wget         4  10.2.232.51      1.1.1.1          443
+NODE             NAMESPACE        PODNAME          CONTAINERNAME   PID    COMM         IP SADDR            DADDR            DPORT
+ip-10-0-30-247   default          mypod            mypod           9386                wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
+ip-10-0-30-247   default          mypod            mypod           9386                wget         4  10.2.232.47      1.1.1.1          443 # (previous output)
+ip-10-0-30-247   default          mypod            mypod           16547               wget         4  10.2.232.51      1.1.1.1          80
+ip-10-0-30-247   default          mypod            mypod           16547               wget         4  10.2.232.51      1.1.1.1          443
 ```
 
 But what if the pod would connect to other IP addresses which we disallowed?
@@ -111,12 +112,12 @@ there is no redirect visible to port 443:
 
 ```
 $ kubectl gadget tcpconnect --podname mypod  # (still running in old terminal)
-PID    COMM         IP SADDR            DADDR            DPORT
-9386                wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
-9386                wget         4  10.2.232.47      1.1.1.1          443 # (previous output)
-16547               wget         4  10.2.232.51      1.1.1.1          80  # (previous output)
-16547               wget         4  10.2.232.51      1.1.1.1          443 # (previous output)
-12418               wget         4  10.2.232.50      1.0.0.1          80
+NODE             NAMESPACE        PODNAME          CONTAINERNAME   PID    COMM         IP SADDR            DADDR            DPORT
+ip-10-0-30-247   default          mypod            mypod           9386   wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
+ip-10-0-30-247   default          mypod            mypod           9386   wget         4  10.2.232.47      1.1.1.1          443 # (previous output)
+ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          80  # (previous output)
+ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          443 # (previous output)
+ip-10-0-30-247   default          mypod            mypod           17418  wget         4  10.2.232.50      1.0.0.1          80
 ```
 
 We created a tailored network policy for our (original) demo pod by observing its connection behavior :)
@@ -128,4 +129,3 @@ pod "mypod" deleted
 $ kubectl delete -f docs/examples/network-policy.yaml
 networkpolicy.networking.k8s.io "restrictive-network-policy" deleted
 ```
-

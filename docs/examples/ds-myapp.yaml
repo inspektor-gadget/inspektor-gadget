@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: myapp1-pod
-        image: docker.io/albanc/toolbox
+        image: busybox
         command: [ "sh", "-c", "while /bin/true ; do date ; cat /proc/version ; sleep 1 ; done" ]
 ---
 apiVersion: apps/v1
@@ -43,5 +43,5 @@ spec:
     spec:
       containers:
       - name: myapp2-pod
-        image: docker.io/albanc/toolbox
+        image: busybox
         command: [ "sh", "-c", "while /bin/true ; do date ; /bin/echo sleep-10 ; /bin/sleep 10 ; done" ]
