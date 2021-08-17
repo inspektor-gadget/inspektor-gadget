@@ -5,7 +5,7 @@ gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor ru
 
 .PHONY: ebpf-objects
 ebpf-objects:
-	$(foreach dir, $(shell find ../pkg -name bpf -type d), make -C $(dir);)
+	$(foreach dir, $(shell find ../pkg -name bpf -type d), make -C $(dir) && ) true
 
 # Gadgets
 
