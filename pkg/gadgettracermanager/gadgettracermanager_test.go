@@ -35,27 +35,27 @@ func TestSelector(t *testing.T) {
 			match:       true,
 			selector:    &pb.ContainerSelector{},
 			container: &pb.ContainerDefinition{
-				Namespace:     "this-namespace",
-				Podname:       "this-pod",
-				ContainerName: "this-container",
+				Namespace: "this-namespace",
+				Podname:   "this-pod",
+				Name:      "this-container",
 			},
 		},
 		{
 			description: "Selector with all filters",
 			match:       true,
 			selector: &pb.ContainerSelector{
-				Namespace:     "this-namespace",
-				Podname:       "this-pod",
-				ContainerName: "this-container",
+				Namespace: "this-namespace",
+				Podname:   "this-pod",
+				Name:      "this-container",
 				Labels: []*pb.Label{
 					&pb.Label{Key: "key1", Value: "value1"},
 					&pb.Label{Key: "key2", Value: "value2"},
 				},
 			},
 			container: &pb.ContainerDefinition{
-				Namespace:     "this-namespace",
-				Podname:       "this-pod",
-				ContainerName: "this-container",
+				Namespace: "this-namespace",
+				Podname:   "this-pod",
+				Name:      "this-container",
 				Labels: []*pb.Label{
 					&pb.Label{Key: "unrelated-label", Value: "here"},
 					&pb.Label{Key: "key1", Value: "value1"},
@@ -71,27 +71,27 @@ func TestSelector(t *testing.T) {
 				Podname:   "this-pod",
 			},
 			container: &pb.ContainerDefinition{
-				Namespace:     "this-namespace",
-				Podname:       "a-misnamed-pod",
-				ContainerName: "this-container",
+				Namespace: "this-namespace",
+				Podname:   "a-misnamed-pod",
+				Name:      "this-container",
 			},
 		},
 		{
 			description: "One label doesn't match",
 			match:       false,
 			selector: &pb.ContainerSelector{
-				Namespace:     "this-namespace",
-				Podname:       "this-pod",
-				ContainerName: "this-container",
+				Namespace: "this-namespace",
+				Podname:   "this-pod",
+				Name:      "this-container",
 				Labels: []*pb.Label{
 					&pb.Label{Key: "key1", Value: "value1"},
 					&pb.Label{Key: "key2", Value: "value2"},
 				},
 			},
 			container: &pb.ContainerDefinition{
-				Namespace:     "this-namespace",
-				Podname:       "this-pod",
-				ContainerName: "this-container",
+				Namespace: "this-namespace",
+				Podname:   "this-pod",
+				Name:      "this-container",
 				Labels: []*pb.Label{
 					&pb.Label{Key: "key1", Value: "value1"},
 					&pb.Label{Key: "key2", Value: "something-else"},
@@ -192,11 +192,12 @@ func TestContainer(t *testing.T) {
 	// Add 3 Containers
 	for i := 0; i < 3; i++ {
 		respAddContainer, err := g.AddContainer(ctx, &pb.ContainerDefinition{
-			ContainerId:   fmt.Sprintf("abcde%d", i),
-			Namespace:     "this-namespace",
-			Podname:       "my-pod",
-			ContainerName: fmt.Sprintf("container%d", i),
-			Mntns:         55555 + uint64(i),
+			Id:        fmt.Sprintf("abcde%d", i),
+			Namespace: "this-namespace",
+			Podname:   "my-pod",
+			Name:      fmt.Sprintf("container%d", i),
+			Mntns:     55555 + uint64(i),
+			Pid:       uint32(100 + i),
 		})
 		if err != nil {
 			t.Fatalf("Failed to add container: %v", err)
@@ -208,11 +209,12 @@ func TestContainer(t *testing.T) {
 
 	// Check error on duplicate container
 	_, err = g.AddContainer(ctx, &pb.ContainerDefinition{
-		ContainerId:   fmt.Sprintf("abcde%d", 0),
-		Namespace:     "this-namespace",
-		Podname:       "my-pod",
-		ContainerName: fmt.Sprintf("container%d", 0),
-		Mntns:         55555 + uint64(0),
+		Id:        fmt.Sprintf("abcde%d", 0),
+		Namespace: "this-namespace",
+		Podname:   "my-pod",
+		Name:      fmt.Sprintf("container%d", 0),
+		Mntns:     55555 + uint64(0),
+		Pid:       uint32(100),
 	})
 	if err == nil {
 		t.Fatal("Error while adding duplicate container: duplicate not detected")
@@ -220,7 +222,7 @@ func TestContainer(t *testing.T) {
 
 	// Remove 1 Container
 	respRemoveContainer, err := g.RemoveContainer(ctx, &pb.ContainerDefinition{
-		ContainerId: "abcde1",
+		Id: "abcde1",
 	})
 	if err != nil {
 		t.Fatalf("Failed to remove container: %v", err)
@@ -231,7 +233,7 @@ func TestContainer(t *testing.T) {
 
 	// Remove non-existent Tracer
 	_, err = g.RemoveContainer(ctx, &pb.ContainerDefinition{
-		ContainerId: "abcde99",
+		Id: "abcde99",
 	})
 	if err == nil {
 		t.Fatal("Error while removing non-existent container: no error detected")
@@ -253,11 +255,11 @@ func TestContainer(t *testing.T) {
 	// Check content using LookupMntnsByPod
 	mntnsByContainer := g.LookupMntnsByPod("this-namespace", "my-pod")
 	if !reflect.DeepEqual(mntnsByContainer, map[string]uint64{"container0": 55555, "container2": 55557}) {
-		t.Fatalf("Error while looking up: unexpected %v", mntnsByContainer)
+		t.Fatalf("Error while looking up mount ns by Pod: unexpected %v", mntnsByContainer)
 	}
 	mntnsByContainer = g.LookupMntnsByPod("this-namespace", "this-other-pod")
 	if !reflect.DeepEqual(mntnsByContainer, map[string]uint64{}) {
-		t.Fatalf("Error while looking up: unexpected %v", mntnsByContainer)
+		t.Fatalf("Error while looking up mount ns by Pod: unexpected %v", mntnsByContainer)
 	}
 
 	// Check content using LookupMntnsByContainer
@@ -271,6 +273,30 @@ func TestContainer(t *testing.T) {
 	}
 	mntns = g.LookupMntnsByContainer("this-namespace", "my-pod", "container2")
 	if mntns != 55557 {
-		t.Fatalf("Error while looking up container1: unexpected mntns %v", mntns)
+		t.Fatalf("Error while looking up container2: unexpected mntns %v", mntns)
+	}
+
+	// Check content using LookupPIDByPod
+	pidByContainer := g.LookupPIDByPod("this-namespace", "my-pod")
+	if !reflect.DeepEqual(pidByContainer, map[string]uint32{"container0": 100, "container2": 102}) {
+		t.Fatalf("Error while looking up PID by Pod: unexpected %v", pidByContainer)
+	}
+	pidByContainer = g.LookupPIDByPod("this-namespace", "this-other-pod")
+	if !reflect.DeepEqual(pidByContainer, map[string]uint32{}) {
+		t.Fatalf("Error while looking up PID by Pod: unexpected %v", pidByContainer)
+	}
+
+	// Check content using LookupPIDByContainer
+	pid := g.LookupPIDByContainer("this-namespace", "my-pod", "container0")
+	if pid != 100 {
+		t.Fatalf("Error while looking up container0: unexpected pid %v", pid)
+	}
+	pid = g.LookupPIDByContainer("this-namespace", "my-pod", "container1")
+	if pid != 0 {
+		t.Fatalf("Error while looking up container1: unexpected pid %v", pid)
+	}
+	pid = g.LookupPIDByContainer("this-namespace", "my-pod", "container2")
+	if pid != 102 {
+		t.Fatalf("Error while looking up container2: unexpected pid %v", pid)
 	}
 }

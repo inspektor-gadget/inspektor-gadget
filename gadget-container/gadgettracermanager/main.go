@@ -53,6 +53,7 @@ var (
 	namespace     string
 	podname       string
 	containername string
+	containerPid  uint
 )
 
 const (
@@ -75,6 +76,7 @@ func init() {
 	flag.StringVar(&namespace, "namespace", "", "namespace to use in add-container")
 	flag.StringVar(&podname, "podname", "", "podname to use in add-container")
 	flag.StringVar(&containername, "containername", "", "container name to use in add-container")
+	flag.UintVar(&containerPid, "containerpid", 0, "container PID to use in add-container")
 
 	flag.BoolVar(&dump, "dump", false, "Dump state for debugging")
 	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
@@ -128,10 +130,10 @@ func main() {
 		out, err := client.AddTracer(ctx, &pb.AddTracerRequest{
 			Id: tracerid,
 			Selector: &pb.ContainerSelector{
-				Namespace:     namespace,
-				Podname:       podname,
-				Labels:        labels,
-				ContainerName: containername,
+				Namespace: namespace,
+				Podname:   podname,
+				Labels:    labels,
+				Name:      containername,
 			},
 		})
 		if err != nil {
@@ -151,13 +153,14 @@ func main() {
 
 	case "add-container":
 		_, err := client.AddContainer(ctx, &pb.ContainerDefinition{
-			ContainerId:   containerId,
-			CgroupPath:    cgroupPath,
-			CgroupId:      cgroupId,
-			Namespace:     namespace,
-			Podname:       podname,
-			ContainerName: containername,
-			Labels:        labels,
+			Id:         containerId,
+			CgroupPath: cgroupPath,
+			CgroupId:   cgroupId,
+			Namespace:  namespace,
+			Podname:    podname,
+			Name:       containername,
+			Labels:     labels,
+			Pid:        uint32(containerPid),
 		})
 		if err != nil {
 			log.Fatalf("%v", err)
@@ -166,7 +169,7 @@ func main() {
 
 	case "remove-container":
 		_, err := client.RemoveContainer(ctx, &pb.ContainerDefinition{
-			ContainerId: containerId,
+			Id: containerId,
 		})
 		if err != nil {
 			log.Fatalf("%v", err)

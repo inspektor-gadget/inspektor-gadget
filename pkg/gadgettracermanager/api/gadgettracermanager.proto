@@ -1,4 +1,4 @@
-// Copyright 2019 Inspektor Gadget authors.
+// Copyright 2019-2021 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ message ContainerSelector {
   string namespace = 1;
   string podname = 2;
   repeated Label labels = 3;
-  string container_name = 4;
+  string name = 4;
 }
 
 message TracerID {
@@ -68,14 +68,14 @@ message TracerID {
 }
 
 message ContainerDefinition {
-  string container_id = 1;
+  string id = 1;
   string cgroup_path = 2;
   uint64 cgroup_id = 3;
   uint64 mntns = 4;
 
   string namespace = 5;
   string podname = 6;
-  string container_name = 7;
+  string name = 7;
   repeated Label labels = 8;
 
   // Data required to find the container to Pod association in the
@@ -83,6 +83,10 @@ message ContainerDefinition {
   string cgroup_v1 = 9;
   string cgroup_v2 = 10;
   repeated string mount_sources = 11;
+
+  // Pid is useful to find container namespaces, such as
+  // the network namespace in /proc/$pid/ns/net
+  uint32 pid = 12;
 }
 
 message DumpStateRequest {

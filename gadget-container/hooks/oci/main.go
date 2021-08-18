@@ -91,7 +91,7 @@ func main() {
 	// Handle the poststop hook first
 	if hook == "poststop" {
 		_, err := client.RemoveContainer(ctx, &pb.ContainerDefinition{
-			ContainerId: ociStateID,
+			Id: ociStateID,
 		})
 		if err != nil {
 			panic(err)
@@ -166,13 +166,14 @@ func main() {
 	}
 
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{
-		ContainerId:  ociStateID,
+		Id:           ociStateID,
 		CgroupPath:   cgroupPathV2WithMountpoint,
 		CgroupId:     cgroupId,
 		Mntns:        mntns,
 		CgroupV1:     cgroupPathV1,
 		CgroupV2:     cgroupPathV2,
 		MountSources: mountSources,
+		Pid:          uint32(ociStatePid),
 	})
 	if err != nil {
 		panic(err)
