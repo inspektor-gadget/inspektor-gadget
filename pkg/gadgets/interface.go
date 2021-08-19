@@ -16,6 +16,9 @@ package gadgets
 
 import (
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
+	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
+
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -76,6 +79,14 @@ type Resolver interface {
 	// the pod specified in arguments, indexed by the name of the
 	// containers or an empty map if not found
 	LookupPIDByPod(namespace, pod string) map[string]uint32
+
+	// Subscribe returns the list of existing containers and registers a
+	// callback for notifications about additions and deletions of
+	// containers
+	Subscribe(key interface{}, f pubsub.FuncNotify) []pb.ContainerDefinition
+
+	// Unsubscribe undoes a previous call to Subscribe
+	Unsubscribe(key interface{})
 }
 
 type BaseFactory struct {
