@@ -1017,6 +1017,8 @@ github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ryancurrah/gomodguard v1.0.2/go.mod h1:9T/Cfuxs5StfsocWr4WzDL36HqnX0fVb9d5fSEaLhoE=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
+github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20201224085348-500f21fac20a h1:1JW3hIySH3x0IQ547qy7EGGu4aZBfC1VsoFdmZLNzP0=
+github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20201224085348-500f21fac20a/go.mod h1:wiP6GQ2T378F+YIyuNw7yXtBxJZR+fqrrn1Z6UHZi0Q=
 github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8/go.mod h1:Z0q5wiBQGYcxhMZ6gUqHn6pYNLypFAvaL3UvgZLR0U4=
 github.com/saschagrunert/ccli v1.0.2-0.20200423111659-b68f755cc0f5/go.mod h1:nF6F8YjOZIYqRQ2GVOi43O13vaN2W1OQq1LcxUGdAfw=
 github.com/saschagrunert/go-modiff v1.2.0/go.mod h1:YHrztU7folCi4YSHksLOYTX5KFGdHNr9O9DVKjpINMs=
