@@ -110,7 +110,7 @@ func TestSelector(t *testing.T) {
 }
 
 func TestTracer(t *testing.T) {
-	g, err := newServer("fake-node", false, false, false)
+	g, err := newServer("fake-node", false, false, false, false)
 	if err != nil {
 		t.Fatalf("Failed to create new server: %v", err)
 	}
@@ -185,7 +185,7 @@ func TestTracer(t *testing.T) {
 }
 
 func TestContainer(t *testing.T) {
-	g, err := newServer("fake-node", false, false, false)
+	g, err := newServer("fake-node", false, false, false, false)
 	if err != nil {
 		t.Fatalf("Failed to create new server: %v", err)
 	}
@@ -195,12 +195,14 @@ func TestContainer(t *testing.T) {
 	// Add 3 Containers
 	for i := 0; i < 3; i++ {
 		respAddContainer, err := g.AddContainer(ctx, &pb.ContainerDefinition{
-			Id:        fmt.Sprintf("abcde%d", i),
-			Namespace: "this-namespace",
-			Podname:   "my-pod",
-			Name:      fmt.Sprintf("container%d", i),
-			Mntns:     55555 + uint64(i),
-			Pid:       uint32(100 + i),
+			Id:         fmt.Sprintf("abcde%d", i),
+			Namespace:  "this-namespace",
+			Podname:    "my-pod",
+			Name:       fmt.Sprintf("container%d", i),
+			Mntns:      55555 + uint64(i),
+			Pid:        uint32(100 + i),
+			CgroupPath: "/none",
+			CgroupId:   1,
 		})
 		if err != nil {
 			t.Fatalf("Failed to add container: %v", err)
@@ -313,6 +315,9 @@ func TestContainer(t *testing.T) {
 			{Key: "key1", Value: "value1"},
 			{Key: "key2", Value: "value2"},
 		},
+		CgroupPath: "/none",
+		CgroupId:   1,
+		Mntns:      1,
 	})
 	if err != nil {
 		t.Fatalf("Failed to add container: %v", err)

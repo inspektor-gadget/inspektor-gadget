@@ -149,9 +149,11 @@ if [ "$HOOK_MODE" = "nri" ] ; then
   fi
 fi
 
-POD_INFORMER_PARAM=""
+GADGET_EXTRA_PARAMS=""
 if [ "$HOOK_MODE" = "podinformer" ] ; then
-  POD_INFORMER_PARAM="-podinformer"
+  GADGET_EXTRA_PARAMS="-podinformer"
+elif [ "$HOOK_MODE" = "fanotify" ] ; then
+  GADGET_EXTRA_PARAMS="-runcfanotify"
 fi
 
 ## Hooks Ends ##
@@ -198,7 +200,7 @@ fi
 
 echo "Starting the Gadget Tracer Manager in the background..."
 rm -f /run/gadgettracermanager.socket
-/bin/gadgettracermanager -serve $POD_INFORMER_PARAM -controller &
+/bin/gadgettracermanager -serve $GADGET_EXTRA_PARAMS -controller &
 
 if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
   rm -f /run/traceloop.socket
