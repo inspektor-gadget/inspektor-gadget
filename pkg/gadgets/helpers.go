@@ -17,6 +17,7 @@ package gadgets
 import (
 	"fmt"
 
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -43,4 +44,10 @@ func TracePinPath(namespace, name string) string {
 
 func TracePinPathFromNamespacedName(n types.NamespacedName) string {
 	return TracePinPath(n.Namespace, n.Name)
+}
+
+func SetStatusError(trace *gadgetv1alpha1.Trace, err string) {
+	trace.Status.OperationError = err
+	trace.Status.Output = ""
+	trace.Status.State = "Stopped"
 }
