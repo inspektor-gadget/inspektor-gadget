@@ -320,15 +320,15 @@ func collectorCmdRun(subCommand string) func(*cobra.Command, []string) {
 			KubernetesPod       string `json:"kubernetes_pod,omitempty"`
 			KubernetesContainer string `json:"kubernetes_container,omitempty"`
 		}
-		var allProcesses []Process
+		allProcesses := []Process{}
 
 		for _, i := range results.Items {
-			var processes []Process
+			processes := []Process{}
 			json.Unmarshal([]byte(i.Status.Output), &processes)
 			allProcesses = append(allProcesses, processes...)
 		}
 		if !collectorParamThreads {
-			var allProcessesTrimmed []Process
+			allProcessesTrimmed := []Process{}
 			for _, i := range allProcesses {
 				if i.Tgid == i.Pid {
 					allProcessesTrimmed = append(allProcessesTrimmed, i)
