@@ -421,6 +421,21 @@ func (g *GadgetTracerManager) LookupPIDByPod(namespace, pod string) map[string]u
 	return ret
 }
 
+// GetContainersBySelector returns a slice of containers that match
+// the selector or an empty slice if there are not matches
+func (g *GadgetTracerManager) GetContainersBySelector(containerSelector *pb.ContainerSelector) []pb.ContainerDefinition {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	selectedContainers := []pb.ContainerDefinition{}
+	for _, c := range g.containers {
+		if containerSelectorMatches(containerSelector, &c) {
+			selectedContainers = append(selectedContainers, c)
+		}
+	}
+	return selectedContainers
+}
+
 func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRequest) (*pb.Dump, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
