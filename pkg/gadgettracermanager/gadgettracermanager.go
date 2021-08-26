@@ -550,14 +550,20 @@ func (g *GadgetTracerManager) deleteContainerFromMap(c pb.ContainerDefinition) {
 
 // Subscribe returns the list of existing containers and registers a callback
 // for notifications about additions and deletions of containers
-func (g *GadgetTracerManager) Subscribe(key interface{}, f pubsub.FuncNotify) []pb.ContainerDefinition {
+func (g *GadgetTracerManager) Subscribe(key interface{}, selector pb.ContainerSelector, f pubsub.FuncNotify) []pb.ContainerDefinition {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	g.pubsub.Subscribe(key, f)
+	g.pubsub.Subscribe(key, func(event pubsub.PubSubEvent) {
+		if containerSelectorMatches(&selector, &event.Container) {
+			f(event)
+		}
+	})
 	ret := []pb.ContainerDefinition{}
 	for _, c := range g.containers {
-		ret = append(ret, c)
+		if containerSelectorMatches(&selector, &c) {
+			ret = append(ret, c)
+		}
 	}
 	return ret
 }

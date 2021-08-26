@@ -83,7 +83,7 @@ type Resolver interface {
 	// Subscribe returns the list of existing containers and registers a
 	// callback for notifications about additions and deletions of
 	// containers
-	Subscribe(key interface{}, f pubsub.FuncNotify) []pb.ContainerDefinition
+	Subscribe(key interface{}, s pb.ContainerSelector, f pubsub.FuncNotify) []pb.ContainerDefinition
 
 	// Unsubscribe undoes a previous call to Subscribe
 	Unsubscribe(key interface{})
