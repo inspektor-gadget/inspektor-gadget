@@ -32,12 +32,15 @@ import (
 var processCollectorCmd = &cobra.Command{
 	Use:   "process-collector",
 	Short: "Collect processes",
-	Run:   collectorCmdRun("process-collector"),
+	Run:   processCollectorCmdRun("process-collector"),
 }
 
 var (
-	collectorParams       utils.CommonFlags
-	collectorParamThreads bool
+	commonParams utils.CommonFlags
+)
+
+var (
+	processCollectorParamThreads bool
 )
 
 func init() {
@@ -45,22 +48,23 @@ func init() {
 		processCollectorCmd,
 	}
 
-	// Add flags for all collector gadgets
+	// Add common flags for all collector gadgets
 	for _, command := range commands {
 		rootCmd.AddCommand(command)
-		utils.AddCommonFlags(command, &collectorParams)
+		utils.AddCommonFlags(command, &commonParams)
 	}
 
+	// Add specific flags
 	processCollectorCmd.PersistentFlags().BoolVarP(
-		&collectorParamThreads,
+		&processCollectorParamThreads,
 		"threads",
 		"t",
 		false,
-		fmt.Sprintf("Show all threads"),
+		"Show all threads",
 	)
 }
 
-func collectorCmdRun(subCommand string) func(*cobra.Command, []string) {
+func processCollectorCmdRun(subCommand string) func(*cobra.Command, []string) {
 	callback := func(contextLogger *log.Entry, nodes *corev1.NodeList, results *gadgetv1alpha1.TraceList) {
 		// Display results
 		type Process struct {
@@ -78,7 +82,7 @@ func collectorCmdRun(subCommand string) func(*cobra.Command, []string) {
 			json.Unmarshal([]byte(i.Status.Output), &processes)
 			allProcesses = append(allProcesses, processes...)
 		}
-		if !collectorParamThreads {
+		if !processCollectorParamThreads {
 			allProcessesTrimmed := []Process{}
 			for _, i := range allProcesses {
 				if i.Tgid == i.Pid {
@@ -106,7 +110,7 @@ func collectorCmdRun(subCommand string) func(*cobra.Command, []string) {
 
 			}
 		})
-		if collectorParams.JsonOutput {
+		if commonParams.JsonOutput {
 			b, err := json.MarshalIndent(allProcesses, "", "  ")
 			if err != nil {
 				contextLogger.Fatalf("Error marshalling results: %s", err)
@@ -114,7 +118,7 @@ func collectorCmdRun(subCommand string) func(*cobra.Command, []string) {
 			fmt.Printf("%s\n", b)
 		} else {
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-			if collectorParamThreads {
+			if processCollectorParamThreads {
 				fmt.Fprintln(w, "NAMESPACE\tPOD\tCONTAINER\tCOMM\tTGID\tPID\t")
 				for _, p := range allProcesses {
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%d\t\n",
@@ -142,6 +146,6 @@ func collectorCmdRun(subCommand string) func(*cobra.Command, []string) {
 		}
 	}
 	return func(cmd *cobra.Command, args []string) {
-		utils.GenericTraceCommand(subCommand, &collectorParams, args, "Status", callback, nil)
+		utils.GenericTraceCommand(subCommand, &commonParams, args, "Status", callback, nil)
 	}
 }
