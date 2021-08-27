@@ -166,6 +166,9 @@ func TestTracer(t *testing.T) {
 	if err == nil {
 		t.Fatal("Error while removing non-existent tracer: no error detected")
 	}
+	if respRemoveTracer != nil {
+		t.Fatal("Error while removing tracer: invalid response")
+	}
 
 	// Check content
 	if len(g.tracers) != 2 {
@@ -231,7 +234,7 @@ func TestContainer(t *testing.T) {
 		t.Fatal("Error while removing container: invalid response")
 	}
 
-	// Remove non-existent Tracer
+	// Remove non-existent Container
 	_, err = g.RemoveContainer(ctx, &pb.ContainerDefinition{
 		Id: "abcde99",
 	})
@@ -241,7 +244,7 @@ func TestContainer(t *testing.T) {
 
 	// Check content
 	if len(g.containers) != 2 {
-		t.Fatalf("Error while checking tracers: len %d", len(g.tracers))
+		t.Fatalf("Error while checking containers: len %d", len(g.containers))
 	}
 	_, ok := g.containers["abcde0"]
 	if !ok {
