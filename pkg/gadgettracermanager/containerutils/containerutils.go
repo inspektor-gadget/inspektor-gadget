@@ -141,8 +141,8 @@ func GetCgroupPaths(pid int) (string, string, error) {
 	return cgroupPathV1, cgroupPathV2, nil
 }
 
-func GetMntNs(pid int) (uint64, error) {
-	fileinfo, err := os.Stat(filepath.Join("/proc", fmt.Sprintf("%d", pid), "ns/mnt"))
+func getNamespaceInode(pid int, nsType string) (uint64, error) {
+	fileinfo, err := os.Stat(filepath.Join("/proc", fmt.Sprintf("%d", pid), "ns", nsType))
 	if err != nil {
 		return 0, err
 	}
@@ -151,6 +151,14 @@ func GetMntNs(pid int) (uint64, error) {
 		return 0, fmt.Errorf("Not a syscall.Stat_t")
 	}
 	return stat.Ino, nil
+}
+
+func GetMntNs(pid int) (uint64, error) {
+	return getNamespaceInode(pid, "mnt")
+}
+
+func GetNetNs(pid int) (uint64, error) {
+	return getNamespaceInode(pid, "net")
 }
 
 func ParseOCIState(stateBuf []byte) (id string, pid int, err error) {
