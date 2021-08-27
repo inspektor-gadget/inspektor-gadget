@@ -27,12 +27,19 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
+	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
 )
 
 var processCollectorCmd = &cobra.Command{
 	Use:   "process-collector",
 	Short: "Collect processes",
-	Run:   processCollectorCmdRun("process-collector"),
+	Run:   processCollectorCmdRun,
+}
+
+var socketCollectorCmd = &cobra.Command{
+	Use:   "socket-collector",
+	Short: "Collect sockets",
+	Run:   socketCollectorCmdRun,
 }
 
 var (
@@ -46,6 +53,7 @@ var (
 func init() {
 	commands := []*cobra.Command{
 		processCollectorCmd,
+		socketCollectorCmd,
 	}
 
 	// Add common flags for all collector gadgets
@@ -64,7 +72,7 @@ func init() {
 	)
 }
 
-func processCollectorCmdRun(subCommand string) func(*cobra.Command, []string) {
+func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 	callback := func(contextLogger *log.Entry, nodes *corev1.NodeList, results *gadgetv1alpha1.TraceList) {
 		// Display results
 		type Process struct {
@@ -145,7 +153,71 @@ func processCollectorCmdRun(subCommand string) func(*cobra.Command, []string) {
 			w.Flush()
 		}
 	}
-	return func(cmd *cobra.Command, args []string) {
-		utils.GenericTraceCommand(subCommand, &commonParams, args, "Status", callback, nil)
+
+	utils.GenericTraceCommand("process-collector", &commonParams, args, "Status", callback, nil)
+}
+
+func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
+	callback := func(contextLogger *log.Entry, nodes *corev1.NodeList, results *gadgetv1alpha1.TraceList) {
+		allSockets := []socketcollectortypes.Event{}
+
+		for _, i := range results.Items {
+			var sockets []socketcollectortypes.Event
+			json.Unmarshal([]byte(i.Status.Output), &sockets)
+			allSockets = append(allSockets, sockets...)
+		}
+
+		sort.Slice(allSockets, func(i, j int) bool {
+			si, sj := allSockets[i], allSockets[j]
+			switch {
+			case si.Event.Node != sj.Event.Node:
+				return si.Event.Node < sj.Event.Node
+			case si.Event.Namespace != sj.Event.Namespace:
+				return si.Event.Namespace < sj.Event.Namespace
+			case si.Event.Pod != sj.Event.Pod:
+				return si.Event.Pod < sj.Event.Pod
+			case si.Protocol != sj.Protocol:
+				return si.Protocol < sj.Protocol
+			case si.Status != sj.Status:
+				return si.Status < sj.Status
+			case si.LocalAddress != sj.LocalAddress:
+				return si.LocalAddress < sj.LocalAddress
+			case si.RemoteAddress != sj.RemoteAddress:
+				return si.RemoteAddress < sj.RemoteAddress
+			case si.LocalPort != sj.LocalPort:
+				return si.LocalPort < sj.LocalPort
+			default:
+				return si.RemotePort < sj.RemotePort
+			}
+		})
+
+		if commonParams.JsonOutput {
+			b, err := json.MarshalIndent(allSockets, "", "  ")
+			if err != nil {
+				contextLogger.Fatalf("Error marshalling results: %s", err)
+			}
+			fmt.Printf("%s\n", b)
+		} else {
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+
+			fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tPROTOCOL\tLOCAL\tREMOTE\tSTATUS")
+
+			for _, s := range allSockets {
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s:%d\t%s:%d\t%s\n",
+					s.Event.Node,
+					s.Event.Namespace,
+					s.Event.Pod,
+					s.Protocol,
+					s.LocalAddress,
+					s.LocalPort,
+					s.RemoteAddress,
+					s.RemotePort,
+					s.Status,
+				)
+			}
+			w.Flush()
+		}
 	}
+
+	utils.GenericTraceCommand("socket-collector", &commonParams, args, "Status", callback, nil)
 }
