@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
+	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -50,4 +51,20 @@ func SetStatusError(trace *gadgetv1alpha1.Trace, err string) {
 	trace.Status.OperationError = err
 	trace.Status.Output = ""
 	trace.Status.State = "Stopped"
+}
+
+func ContainerSelectorFromContainerFilter(f *gadgetv1alpha1.ContainerFilter) *pb.ContainerSelector {
+	if f == nil {
+		return &pb.ContainerSelector{}
+	}
+	labels := []*pb.Label{}
+	for k, v := range f.Labels {
+		labels = append(labels, &pb.Label{Key: k, Value: v})
+	}
+	return &pb.ContainerSelector{
+		Namespace: f.Namespace,
+		Podname:   f.Podname,
+		Labels:    labels,
+		Name:      f.ContainerName,
+	}
 }

@@ -58,22 +58,6 @@ type TraceReconciler struct {
 //+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces/finalizers,verbs=update
 
-func genSelector(f *gadgetv1alpha1.ContainerFilter) *pb.ContainerSelector {
-	if f == nil {
-		return &pb.ContainerSelector{}
-	}
-	labels := []*pb.Label{}
-	for k, v := range f.Labels {
-		labels = append(labels, &pb.Label{Key: k, Value: v})
-	}
-	return &pb.ContainerSelector{
-		Namespace: f.Namespace,
-		Podname:   f.Podname,
-		Labels:    labels,
-		Name:      f.ContainerName,
-	}
-}
-
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
@@ -157,7 +141,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		_, err = r.TracerManager.AddTracer(ctx,
 			&pb.AddTracerRequest{
 				Id:       gadgets.TraceNameFromNamespacedName(req.NamespacedName),
-				Selector: genSelector(trace.Spec.Filter),
+				Selector: gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 			})
 		if err != nil && !errors.Is(err, os.ErrExist) {
 			log.Errorf("Failed to add tracer BPF map: %s", err)
