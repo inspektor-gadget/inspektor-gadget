@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
@@ -129,7 +130,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	}
 	defer closure()
 
-	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
+	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
 		contextLogger.Fatalf("Error setting up Kubernetes client: %s", err)
 	}
@@ -144,7 +145,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	}
 
 	if namespaces == "" {
-		namespaces, _, _ = KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
+		namespaces = utils.GetNamespace()
 	}
 	namespaceFilter := fmt.Sprintf("--namespace %q", namespaces)
 
@@ -158,7 +159,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 			collector := traceCollector{&m, w, nodeName}
 			cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid networkpolicyadvisor --nomanager --probecleanup --gadget /bin/networkpolicyadvisor -- %s",
 				namespaceFilter)
-			err := execPod(client, nodeName, cmd, collector, os.Stderr)
+			err := utils.ExecPod(client, nodeName, cmd, collector, os.Stderr)
 			if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
 				failure <- fmt.Sprintf("Error running command: %s\n", err)
 			}
@@ -173,7 +174,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	}
 
 	for _, node := range nodes.Items {
-		_, _, err := execPodCapture(client, node.Name,
+		_, _, err := utils.ExecPodCapture(client, node.Name,
 			fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid networkpolicyadvisor --stop"))
 		if err != nil {
 			fmt.Printf("Error running command: %s\n", err)

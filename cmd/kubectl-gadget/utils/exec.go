@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package utils
 
 import (
 	"bytes"
@@ -20,23 +20,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
-
-	"github.com/spf13/viper"
 
 	corev1 "k8s.io/api/core/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
-
-	"github.com/kinvolk/inspektor-gadget/pkg/factory"
 )
 
-func execPodSimple(client *kubernetes.Clientset, node string, podCmd string) string {
-	stdout, stderr, err := execPodCapture(client, node, podCmd)
+func ExecPodSimple(client *kubernetes.Clientset, node string, podCmd string) string {
+	stdout, stderr, err := ExecPodCapture(client, node, podCmd)
 	if err != nil {
 		return fmt.Sprintf("%s", err) + stdout + stderr
 	} else {
@@ -44,31 +38,14 @@ func execPodSimple(client *kubernetes.Clientset, node string, podCmd string) str
 	}
 }
 
-func execPodCapture(client *kubernetes.Clientset, node string, podCmd string) (string, string, error) {
+func ExecPodCapture(client *kubernetes.Clientset, node string, podCmd string) (string, string, error) {
 	var stdout, stderr bytes.Buffer
-	err := execPod(client, node, podCmd, &stdout, &stderr)
+	err := ExecPod(client, node, podCmd, &stdout, &stderr)
 	return stdout.String(), stderr.String(), err
 }
 
-func kubeRestConfig() (*restclient.Config, error) {
-	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	loadingRules.DefaultClientConfig = &clientcmd.DefaultClientConfig
-	if viper.GetString("kubeconfig") != "" {
-		loadingRules.ExplicitPath = viper.GetString("kubeconfig")
-	}
-	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
-	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
-
-	restConfig, err := clientConfig.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-	factory.SetKubernetesDefaults(restConfig)
-	return restConfig, nil
-}
-
-func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout io.Writer, cmdStderr io.Writer) error {
-	var listOptions = metaV1.ListOptions{
+func ExecPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout io.Writer, cmdStderr io.Writer) error {
+	var listOptions = metav1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
 		FieldSelector: "spec.nodeName=" + node + ",status.phase=Running",
 	}
@@ -121,13 +98,4 @@ func execPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		Tty:    true,
 	})
 	return err
-}
-
-func randomTraceID() string {
-	output := make([]byte, 16)
-	allowedCharacters := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	for i := range output {
-		output[i] = allowedCharacters[rand.Int31n(int32(len(allowedCharacters)))]
-	}
-	return string(output)
 }

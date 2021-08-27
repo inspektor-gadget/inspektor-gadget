@@ -18,6 +18,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -67,7 +68,7 @@ func init() {
 	flag.BoolVar(&controller, "controller", false, "Enable the controller for custom resources")
 	flag.BoolVar(&podInformer, "podinformer", false, "Enable a Pod Informer to get Pod events from k8s API server")
 
-	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, add-container, remove-container)")
+	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, receive-stream, add-container, remove-container)")
 	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
 	flag.StringVar(&tracerid, "tracerid", "", "tracerid to use in remove-tracer")
 	flag.StringVar(&containerId, "containerid", "", "container id to use in add-container or remove-container")
@@ -149,6 +150,26 @@ func main() {
 		if err != nil {
 			log.Fatalf("%v", err)
 		}
+		os.Exit(0)
+
+	case "receive-stream":
+		stream, err := client.ReceiveStream(context.Background(), &pb.TracerID{
+			Id: tracerid,
+		})
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+		for {
+			line, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("%v.ReceiveStream(_) = _, %v", client, err)
+			}
+			fmt.Println(line.Line)
+		}
+
 		os.Exit(0)
 
 	case "add-container":

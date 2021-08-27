@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package utils
 
 import (
 	"testing"
@@ -31,10 +31,10 @@ func (mock *mockWriter) Write(p []byte) (n int, err error) {
 // only once among the different nodes using out stream
 func TestPostProcessFirstLineOutStream(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := newPostProcess(2, mock, mock, false)
+	postProcess := NewPostProcess(2, mock, mock, nil, nil)
 
-	postProcess.outStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
-	postProcess.outStreams[1].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
+	postProcess.OutStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
+	postProcess.OutStreams[1].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
 
 	expected := `
 PCOMM  PID    PPID   RET ARGS
@@ -48,10 +48,10 @@ PCOMM  PID    PPID   RET ARGS
 // printed for errStream
 func TestPostProcessFirstLineErrStream(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := newPostProcess(2, mock, mock, false)
+	postProcess := NewPostProcess(2, mock, mock, nil, nil)
 
-	postProcess.errStreams[0].Write([]byte("error in node0\n"))
-	postProcess.errStreams[1].Write([]byte("error in node1\n"))
+	postProcess.ErrStreams[0].Write([]byte("error in node0\n"))
+	postProcess.ErrStreams[1].Write([]byte("error in node1\n"))
 
 	expected := `
 error in node0
@@ -65,11 +65,11 @@ error in node1
 func TestPostProcessMultipleLines(t *testing.T) {
 	var expected string
 	mock := &mockWriter{[]byte{}}
-	postProcess := newPostProcess(1, mock, mock, false)
+	postProcess := NewPostProcess(1, mock, mock, nil, nil)
 
-	postProcess.outStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
+	postProcess.OutStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
 
-	postProcess.outStreams[0].Write([]byte("wget   "))
+	postProcess.OutStreams[0].Write([]byte("wget   "))
 	expected = `
 PCOMM  PID    PPID   RET ARGS
 `
@@ -77,7 +77,7 @@ PCOMM  PID    PPID   RET ARGS
 		t.Fatalf("%v != %v", string(mock.output), expected)
 	}
 
-	postProcess.outStreams[0].Write([]byte("200000 200000   0 /usr/bin/wget\n"))
+	postProcess.OutStreams[0].Write([]byte("200000 200000   0 /usr/bin/wget\n"))
 
 	expected = `
 PCOMM  PID    PPID   RET ARGS
@@ -90,21 +90,21 @@ wget   200000 200000   0 /usr/bin/wget
 
 func TestMultipleNodes(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := newPostProcess(3, mock, mock, false)
+	postProcess := NewPostProcess(3, mock, mock, nil, nil)
 
-	postProcess.outStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
-	postProcess.outStreams[0].Write([]byte("curl   100000 100000   0 /usr/bin/curl\n"))
+	postProcess.OutStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
+	postProcess.OutStreams[0].Write([]byte("curl   100000 100000   0 /usr/bin/curl\n"))
 
-	postProcess.outStreams[1].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
-	postProcess.outStreams[2].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
+	postProcess.OutStreams[1].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
+	postProcess.OutStreams[2].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
 
-	postProcess.outStreams[2].Write([]byte("mkdir  "))
+	postProcess.OutStreams[2].Write([]byte("mkdir  "))
 
-	postProcess.outStreams[1].Write([]byte("wget   200000 200000   0 /usr/bin/wget\n"))
+	postProcess.OutStreams[1].Write([]byte("wget   200000 200000   0 /usr/bin/wget\n"))
 
-	postProcess.outStreams[2].Write([]byte("199679 "))
-	postProcess.outStreams[2].Write([]byte("199678   "))
-	postProcess.outStreams[2].Write([]byte("0 /usr/bin/mkdir /tmp/install.sh.10\n"))
+	postProcess.OutStreams[2].Write([]byte("199679 "))
+	postProcess.OutStreams[2].Write([]byte("199678   "))
+	postProcess.OutStreams[2].Write([]byte("0 /usr/bin/mkdir /tmp/install.sh.10\n"))
 
 	expected := `
 PCOMM  PID    PPID   RET ARGS
@@ -119,20 +119,20 @@ mkdir  199679 199678   0 /usr/bin/mkdir /tmp/install.sh.10
 
 func TestJson(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := newPostProcess(3, mock, mock, true)
+	postProcess := NewPostProcess(3, mock, mock, &CommonFlags{JsonOutput: true}, nil)
 
-	postProcess.outStreams[0].Write([]byte(`{"pcomm": "cat", "pid": 11}` + "\n"))
-	postProcess.outStreams[0].Write([]byte(`{"pcomm": "ping", "pid": 22}` + "\n"))
+	postProcess.OutStreams[0].Write([]byte(`{"pcomm": "cat", "pid": 11}` + "\n"))
+	postProcess.OutStreams[0].Write([]byte(`{"pcomm": "ping", "pid": 22}` + "\n"))
 
-	postProcess.outStreams[0].Write([]byte(`{"pcomm": "curl", "pid": 33}` + "\n"))
-	postProcess.outStreams[0].Write([]byte(`{"pcomm": "nc", "pid": 44}` + "\n"))
+	postProcess.OutStreams[0].Write([]byte(`{"pcomm": "curl", "pid": 33}` + "\n"))
+	postProcess.OutStreams[0].Write([]byte(`{"pcomm": "nc", "pid": 44}` + "\n"))
 
 	// this prints json in different lines
-	postProcess.outStreams[2].Write([]byte(`{"pcomm": "rm"`))
+	postProcess.OutStreams[2].Write([]byte(`{"pcomm": "rm"`))
 
-	postProcess.outStreams[1].Write([]byte(`{"pcomm": "sleep", "pid": 55}` + "\n"))
+	postProcess.OutStreams[1].Write([]byte(`{"pcomm": "sleep", "pid": 55}` + "\n"))
 
-	postProcess.outStreams[2].Write([]byte(` , "pid": 77}` + "\n"))
+	postProcess.OutStreams[2].Write([]byte(` , "pid": 77}` + "\n"))
 
 	// first line is not skipped and incompleted ones are assembled together
 	expected := `

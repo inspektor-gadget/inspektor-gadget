@@ -29,6 +29,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -243,7 +244,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			"args":    args,
 		})
 
-		client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
+		client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 		if err != nil {
 			contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 		}
@@ -273,7 +274,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		namespaceFilter := ""
 		if !allNamespaces {
-			namespace, _, _ := KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
+			namespace := utils.GetNamespace()
 			namespaceFilter = fmt.Sprintf("--namespace %s", namespace)
 		}
 
@@ -350,10 +351,10 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, containernameFilter, gadgetParams)
 				var err error
 				if subCommand != "tcptop" {
-					err = execPod(client, nodeName, cmd,
+					err = utils.ExecPod(client, nodeName, cmd,
 						postProcess.outStreams[index], postProcess.errStreams[index])
 				} else {
-					err = execPod(client, nodeName, cmd, os.Stdout, os.Stderr)
+					err = utils.ExecPod(client, nodeName, cmd, os.Stdout, os.Stderr)
 				}
 				if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
 					failure <- fmt.Sprintf("Error running command: %v\n", err)
@@ -376,7 +377,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				continue
 			}
 			// ignore errors, there is nothing the user can do about it
-			execPodCapture(client, node.Name,
+			utils.ExecPodCapture(client, node.Name,
 				fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --stop", tracerId))
 		}
 		fmt.Printf("\n")

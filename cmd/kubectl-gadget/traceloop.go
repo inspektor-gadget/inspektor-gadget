@@ -37,6 +37,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/kinvolk/traceloop/pkg/tracemeta"
 )
@@ -177,7 +178,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		"args":    args,
 	})
 
-	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
+	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
@@ -210,7 +211,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		return false
 	})
 
-	namespace, _, _ := KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
+	namespace := utils.GetNamespace()
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 	if !optionListNoHeaders {
@@ -288,7 +289,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Missing parameter: trace name")
 	}
 
-	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
+	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
@@ -301,7 +302,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) {
 	for node, tm := range tracesPerNode {
 		for _, trace := range tm {
 			if trace.TraceID == args[0] {
-				fmt.Printf("%s", execPodSimple(client, node,
+				fmt.Printf("%s", utils.ExecPodSimple(client, node,
 					fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/dump-by-traceid?traceid=%s' ; echo`, args[0])))
 			}
 		}
@@ -324,7 +325,7 @@ func runTraceloopPod(cmd *cobra.Command, args []string) {
 	podname := args[1]
 	idx := args[2]
 
-	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
+	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
@@ -338,7 +339,7 @@ func runTraceloopPod(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Pod %s not scheduled yet", podname)
 	}
 
-	fmt.Printf("%s", execPodSimple(client, pod.Spec.NodeName,
+	fmt.Printf("%s", utils.ExecPodSimple(client, pod.Spec.NodeName,
 		fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/dump-pod?namespace=%s&podname=%s&idx=%s' ; echo`,
 			namespace, podname, idx)))
 }
@@ -353,7 +354,7 @@ func runTraceloopClose(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Missing parameter: trace name")
 	}
 
-	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
+	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
@@ -372,7 +373,7 @@ func runTraceloopClose(cmd *cobra.Command, args []string) {
 		if !strings.HasPrefix(args[0], node.Status.Addresses[0].Address+"_") {
 			continue
 		}
-		fmt.Printf("%s", execPodSimple(client, node.Name,
+		fmt.Printf("%s", utils.ExecPodSimple(client, node.Name,
 			fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/close-by-name?name=%s' ; echo`, args[0])))
 	}
 

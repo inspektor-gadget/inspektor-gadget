@@ -16,11 +16,10 @@ package main
 
 import (
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
 var rootCmd = &cobra.Command{
@@ -28,18 +27,8 @@ var rootCmd = &cobra.Command{
 	Short: "Collection of gadgets for Kubernetes developers",
 }
 
-var (
-	KubernetesConfigFlags = genericclioptions.NewConfigFlags(false)
-)
-
 func init() {
-	cobra.OnInitialize(cobraInit)
-	KubernetesConfigFlags.AddFlags(rootCmd.PersistentFlags())
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-}
-
-func cobraInit() {
-	viper.AutomaticEnv()
+	utils.FlagInit(rootCmd)
 }
 
 func main() {
