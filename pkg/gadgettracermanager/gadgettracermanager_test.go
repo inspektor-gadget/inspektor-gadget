@@ -302,4 +302,214 @@ func TestContainer(t *testing.T) {
 	if pid != 102 {
 		t.Fatalf("Error while looking up container2: unexpected pid %v", pid)
 	}
+
+	// Add new container with same pod and container name of container0 but in different namespace
+	respAddContainer, err := g.AddContainer(ctx, &pb.ContainerDefinition{
+		Id:        "abcde0-different",
+		Namespace: "another-namespace",
+		Podname:   "my-pod",
+		Name:      "container0",
+		Labels: []*pb.Label{
+			{Key: "key1", Value: "value1"},
+			{Key: "key2", Value: "value2"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to add container: %v", err)
+	}
+	if respAddContainer == nil {
+		t.Fatal("Error while adding container: invalid response")
+	}
+
+	// Look up containers with label 'key1=value1'
+	selectedContainers := g.GetContainersBySelector(&pb.ContainerSelector{
+		Labels: []*pb.Label{
+			{Key: "key1", Value: "value1"},
+		},
+	})
+	if len(selectedContainers) != 1 {
+		t.Fatalf("Error while looking up containers by one label: invalid number of matches")
+	}
+	found := false
+	for _, l := range selectedContainers[0].Labels {
+		if l.Key == "key1" && l.Value == "value1" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("Error while looking up containers by one label: unexpected container %+v",
+			selectedContainers[0])
+	}
+
+	// Look up containers with label 'key1=value1' and 'key2=value2'
+	selector := pb.ContainerSelector{
+		Labels: []*pb.Label{
+			{Key: "key1", Value: "value1"},
+			{Key: "key2", Value: "value2"},
+		}}
+	selectedContainers = g.GetContainersBySelector(&selector)
+	if len(selectedContainers) != 1 {
+		t.Fatalf("Error while looking up containers by multiple labels: invalid number of matches")
+	}
+	for _, sl := range selector.Labels {
+		found := false
+		for _, l := range selectedContainers[0].Labels {
+			if l.Key == sl.Key && l.Value == sl.Value {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Error while looking up containers by multiple labels: unexpected container %+v",
+				selectedContainers[0])
+		}
+	}
+
+	// Look up containers in 'this-namespace'
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Namespace: "this-namespace",
+	})
+	if len(selectedContainers) != 2 {
+		t.Fatalf("Error while looking up containers by namespace: invalid number of matches")
+	}
+	for _, container := range selectedContainers {
+		if container.Namespace != "this-namespace" {
+			t.Fatalf("Error while looking up containers by namespace: unexpected container %+v",
+				container)
+		}
+	}
+
+	// Look up containers in 'this-namespace' and 'my-pod'
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Namespace: "this-namespace",
+		Podname:   "my-pod",
+	})
+	if len(selectedContainers) != 2 {
+		t.Fatalf("Error while looking up containers by namespace and pod: invalid number of matches")
+	}
+	for _, container := range selectedContainers {
+		if container.Namespace != "this-namespace" || container.Podname != "my-pod" {
+			t.Fatalf("Error while looking up containers by namespace and pod: unexpected container %+v",
+				container)
+		}
+	}
+
+	// Look up containers named 'container0' anywhere
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Name: "container0",
+	})
+	if len(selectedContainers) != 2 {
+		t.Fatalf("Error while looking up containers by name: invalid number of matches")
+	}
+	for _, container := range selectedContainers {
+		if container.Name != "container0" {
+			t.Fatalf("Error while looking up containers by name: unexpected container %+v",
+				container)
+		}
+	}
+
+	// Look up containers named 'container0' in 'my-pod' but any namespace
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Podname: "my-pod",
+		Name:    "container0",
+	})
+	if len(selectedContainers) != 2 {
+		t.Fatalf("Error while looking up containers by name and pod: invalid number of matches")
+	}
+	for _, container := range selectedContainers {
+		if container.Podname != "my-pod" || container.Name != "container0" {
+			t.Fatalf("Error while looking up containers by name and pod: unexpected container %+v",
+				container)
+		}
+	}
+
+	// Look up container0 in 'this-namespace' and 'my-pod'
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Namespace: "this-namespace",
+		Podname:   "my-pod",
+		Name:      "container0",
+	})
+	if len(selectedContainers) != 1 {
+		t.Fatalf("Error while looking up specific container: invalid number of matches")
+	}
+	if selectedContainers[0].Namespace != "this-namespace" || selectedContainers[0].Podname != "my-pod" || selectedContainers[0].Name != "container0" {
+		t.Fatalf("Error while looking up specific container: unexpected container %+v",
+			selectedContainers[0])
+	}
+
+	// Look up container0 in 'another-namespace' and 'my-pod'
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Namespace: "another-namespace",
+		Podname:   "my-pod",
+		Name:      "container0",
+	})
+	if len(selectedContainers) != 1 {
+		t.Fatalf("Error while looking up specific container: invalid number of matches")
+	}
+	if selectedContainers[0].Namespace != "another-namespace" || selectedContainers[0].Podname != "my-pod" || selectedContainers[0].Name != "container0" {
+		t.Fatalf("Error while looking up specific container: unexpected container %+v",
+			selectedContainers[0])
+	}
+
+	// Look up container2 in 'this-namespace' and 'my-pod'
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Namespace: "this-namespace",
+		Podname:   "my-pod",
+		Name:      "container2",
+	})
+	if len(selectedContainers) != 1 {
+		t.Fatalf("Error while looking up specific container: invalid number of matches")
+	}
+	if selectedContainers[0].Namespace != "this-namespace" || selectedContainers[0].Podname != "my-pod" || selectedContainers[0].Name != "container2" {
+		t.Fatalf("Error while looking up specific container: unexpected container %+v",
+			selectedContainers[0])
+	}
+
+	// Look up a non-existent container
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Namespace: "this-namespace",
+		Podname:   "my-pod",
+		Name:      "non-existent",
+	})
+	if len(selectedContainers) != 0 {
+		t.Fatalf("Error while looking up a non-existent container")
+	}
+
+	// Look up containers in a non-existent pod
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Namespace: "this-namespace",
+		Podname:   "non-existent",
+	})
+	if len(selectedContainers) != 0 {
+		t.Fatalf("Error while looking up containers in a non-existent pod")
+	}
+
+	// Look up containers in a non-existent pod
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Namespace: "this-namespace",
+		Podname:   "non-existent",
+		Name:      "container0",
+	})
+	if len(selectedContainers) != 0 {
+		t.Fatalf("Error while looking up containers in a non-existent namespace")
+	}
+
+	// Look up containers in a non-existent namespace
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Namespace: "non-existent",
+	})
+	if len(selectedContainers) != 0 {
+		t.Fatalf("Error while looking up containers in a non-existent namespace")
+	}
+
+	// Look up containers in a non-existent namespace
+	selectedContainers = g.GetContainersBySelector(&pb.ContainerSelector{
+		Namespace: "non-existent",
+		Podname:   "my-pod",
+		Name:      "container0",
+	})
+	if len(selectedContainers) != 0 {
+		t.Fatalf("Error while looking up containers in a non-existent namespace")
+	}
 }
