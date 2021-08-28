@@ -36,3 +36,11 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 		"traceloop":              traceloop.NewFactory(),
 	}
 }
+
+func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
+	return map[string]gadgets.TraceFactory{
+		"dns":              dns.NewFactory(),
+		"socket-collector": socketcollector.NewFactory(),
+		"seccomp":          seccomp.NewFactory(),
+	}
+}
