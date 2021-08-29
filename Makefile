@@ -95,6 +95,16 @@ controller-tests: kube-apiserver etcd kubectl
 	TEST_ASSET_KUBECTL=$(KUBECTL_BIN) \
 	go test -test.v ./pkg/controllers/... -controller-test
 
+.PHONY: local-gadget-tests
+local-gadget-tests:
+	make -C gadget-container ebpf-objects
+	# Compile and execute in separate commands because Go might not be
+	# available in the root environment
+	go test -c ./pkg/local-gadget-manager \
+		-tags withebpf
+	sudo ./local-gadget-manager.test -test.v -root-test
+	rm -f ./local-gadget-manager.test
+
 .PHONY: integration-tests
 integration-tests: kubectl-gadget
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \

@@ -147,6 +147,10 @@ jobs:
       run: |
         make controller-tests
 
+    - name: Unit tests for local-gadget (as root)
+      run: |
+        make local-gadget-tests
+
     - name: Setup Minikube
       uses: manusa/actions-setup-minikube@v2.4.2
       with:
