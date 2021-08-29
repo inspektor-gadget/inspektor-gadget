@@ -166,7 +166,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 		trace.Status.OperationError = "Missing pod"
 		return
 	}
-	if trace.Spec.Filter.Labels != nil {
+	if len(trace.Spec.Filter.Labels) != 0 {
 		trace.Status.OperationError = "Seccomp gadget does not support filtering by labels"
 		return
 	}

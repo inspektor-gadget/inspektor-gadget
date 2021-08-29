@@ -80,6 +80,10 @@ func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
 	case "start":
 		var pid uint32 = 0
 
+		if trace.Spec.Filter == nil {
+			gadgets.SetStatusError(trace, "Missing filter")
+			return
+		}
 		if trace.Spec.Filter.Namespace == "" {
 			gadgets.SetStatusError(trace, "Invalid filter: missing namespace")
 			return
@@ -88,7 +92,7 @@ func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
 			gadgets.SetStatusError(trace, "TODO: Filtering only by namespace is not currently supported")
 			return
 		}
-		if trace.Spec.Filter.Labels != nil {
+		if len(trace.Spec.Filter.Labels) != 0 {
 			gadgets.SetStatusError(trace, "TODO: Filtering by labels is not currently supported")
 			return
 		}
@@ -111,7 +115,7 @@ func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
 
 		if pid == 0 {
 			gadgets.SetStatusError(trace, fmt.Sprintf("Couldn't find a valid PID for Podname %q in Namespace %q",
-				trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname))
+				trace.Spec.Filter.Podname, trace.Spec.Filter.Namespace))
 			return
 		}
 
