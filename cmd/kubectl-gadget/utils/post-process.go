@@ -104,13 +104,7 @@ func (post *postProcessSingle) Write(p []byte) (n int, err error) {
 		}
 
 		if post.transform != nil {
-			if event.Notice != "" && !post.jsonOutput {
-				if post.verbose {
-					fmt.Fprintf(post.orig, "Notice on node %s: %s\n", event.Node, event.Notice)
-				}
-			} else {
-				fmt.Fprintf(post.orig, "%s\n", post.transform(line))
-			}
+			fmt.Fprintf(post.orig, "%s\n", post.transform(line))
 		} else {
 			fmt.Fprintf(post.orig, "%s\n", line)
 		}
