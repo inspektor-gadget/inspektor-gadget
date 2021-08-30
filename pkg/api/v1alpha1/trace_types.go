@@ -56,13 +56,13 @@ type TraceSpec struct {
 	// pod name, labels or container name
 	Filter *ContainerFilter `json:"filter,omitempty"`
 
-	// OutputMode is "Status", "File" or "ExternalResource"
-	// +kubebuilder:validation:Enum=Status;File;ExternalResource
+	// OutputMode is "Status", "Stream, ""File" or "ExternalResource"
+	// +kubebuilder:validation:Enum=Status;Stream;File;ExternalResource
 	OutputMode string `json:"outputMode,omitempty"`
 
 	// Output allows a gadget to output the results in the specified
 	// location.
-	// * With OutputMode=Status, Output is unused
+	// * With OutputMode=Status|Stream, Output is unused
 	// * With OutputMode=File, Output specifies the file path
 	// * With OutputMode=ExternalResource, Output specifies the external
 	//   resource (such as
