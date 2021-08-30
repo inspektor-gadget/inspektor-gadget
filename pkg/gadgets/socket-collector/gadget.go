@@ -128,7 +128,9 @@ func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace, pid uint32) {
 	output, err := tracer.RunCollector(
 		pid,
-		trace.Spec.Filter,
+		trace.Spec.Filter.Podname,
+		trace.Spec.Filter.Namespace,
+		trace.Spec.Node,
 	)
 	if err != nil {
 		gadgets.SetStatusError(trace, err.Error())
