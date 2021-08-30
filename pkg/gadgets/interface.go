@@ -80,6 +80,10 @@ type Resolver interface {
 	// containers or an empty map if not found
 	LookupPIDByPod(namespace, pod string) map[string]uint32
 
+	// GetContainersBySelector returns a slice of containers that match
+	// the selector or an empty slice if there are not matches
+	GetContainersBySelector(containerSelector *pb.ContainerSelector) []pb.ContainerDefinition
+
 	// Subscribe returns the list of existing containers and registers a
 	// callback for notifications about additions and deletions of
 	// containers
