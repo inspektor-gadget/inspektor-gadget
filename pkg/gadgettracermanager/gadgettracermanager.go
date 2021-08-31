@@ -30,10 +30,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 )
@@ -42,8 +42,9 @@ import "C"
 
 type GadgetTracerManager struct {
 	pb.UnimplementedGadgetTracerManagerServer
+	containercollection.ContainerCollection
 
-	// mu protects the containers and tracers maps from concurrent access
+	// mu protects the tracers map from concurrent access
 	mu sync.Mutex
 
 	// node where this instance is running
@@ -51,9 +52,6 @@ type GadgetTracerManager struct {
 
 	// client to talk to the k8s API server to get information about pods
 	k8sClient *k8s.K8sClient
-
-	// containers by Id
-	containers map[string]pb.ContainerDefinition
 
 	// tracers by tracerId
 	tracers map[string]tracer
@@ -72,9 +70,6 @@ type GadgetTracerManager struct {
 	// containersMap is the global map at /sys/fs/bpf/gadget/containers
 	// exposing container details for each mount namespace.
 	containersMap *ebpf.Map
-
-	// subs contains a list of subscribers
-	pubsub *pubsub.GadgetPubSub
 }
 
 type tracer struct {
@@ -86,32 +81,6 @@ type tracer struct {
 	mntnsSetMap    *ebpf.Map
 
 	gadgetStream *stream.GadgetStream
-}
-
-func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition) bool {
-	if s.Namespace != "" && s.Namespace != c.Namespace {
-		return false
-	}
-	if s.Podname != "" && s.Podname != c.Podname {
-		return false
-	}
-	if s.Name != "" && s.Name != c.Name {
-		return false
-	}
-	for _, l := range s.Labels {
-		found := false
-		for _, cl := range c.Labels {
-			if cl.Key == l.Key && cl.Value == l.Value {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	return true
 }
 
 func (g *GadgetTracerManager) AddTracer(_ context.Context, req *pb.AddTracerRequest) (*pb.TracerID, error) {
@@ -163,19 +132,17 @@ func (g *GadgetTracerManager) AddTracer(_ context.Context, req *pb.AddTracerRequ
 			return nil, fmt.Errorf("error creating mntnsset map: %w", err)
 		}
 
-		for _, c := range g.containers {
-			if containerSelectorMatches(req.Selector, &c) {
-				one := uint32(1)
-				cgroupIdC := uint64(c.CgroupId)
-				if cgroupIdC != 0 {
-					cgroupIdSetMap.Put(cgroupIdC, one)
-				}
-				mntnsC := uint64(c.Mntns)
-				if mntnsC != 0 {
-					mntnsSetMap.Put(mntnsC, one)
-				}
+		g.ContainerRangeWithSelector(req.Selector, func(c pb.ContainerDefinition) {
+			one := uint32(1)
+			cgroupIdC := uint64(c.CgroupId)
+			if cgroupIdC != 0 {
+				cgroupIdSetMap.Put(cgroupIdC, one)
 			}
-		}
+			mntnsC := uint64(c.Mntns)
+			if mntnsC != 0 {
+				mntnsSetMap.Put(mntnsC, one)
+			}
+		})
 	}
 
 	g.tracers[tracerId] = tracer{
@@ -274,7 +241,7 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 	if containerDefinition.Id == "" {
 		return nil, fmt.Errorf("cannot add container: container id not set")
 	}
-	if _, ok := g.containers[containerDefinition.Id]; ok {
+	if g.ContainerCollection.GetContainer(containerDefinition.Id) != nil {
 		return nil, fmt.Errorf("container with id %s already exists", containerDefinition.Id)
 	}
 
@@ -298,7 +265,7 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 
 	if g.withBPF {
 		for _, t := range g.tracers {
-			if containerSelectorMatches(&t.containerSelector, containerDefinition) {
+			if containercollection.ContainerSelectorMatches(&t.containerSelector, containerDefinition) {
 				cgroupIdC := uint64(containerDefinition.CgroupId)
 				mntnsC := uint64(containerDefinition.Mntns)
 				one := uint32(1)
@@ -312,9 +279,8 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 		}
 	}
 
-	g.containers[containerDefinition.Id] = *containerDefinition
+	g.ContainerCollection.AddContainer(*containerDefinition)
 	g.addContainerInMap(*containerDefinition)
-	g.pubsub.Publish(pubsub.EVENT_TYPE_ADD_CONTAINER, *containerDefinition)
 	return &pb.AddContainerResponse{}, nil
 }
 
@@ -326,16 +292,14 @@ func (g *GadgetTracerManager) RemoveContainer(_ context.Context, containerDefini
 		return nil, fmt.Errorf("cannot remove container: Id not set")
 	}
 
-	c, ok := g.containers[containerDefinition.Id]
-	if !ok {
+	c := g.ContainerCollection.GetContainer(containerDefinition.Id)
+	if c == nil {
 		return nil, fmt.Errorf("cannot remove container: unknown container %q", containerDefinition.Id)
 	}
 
-	g.pubsub.Publish(pubsub.EVENT_TYPE_REMOVE_CONTAINER, c)
-
 	if g.withBPF {
 		for _, t := range g.tracers {
-			if containerSelectorMatches(&t.containerSelector, &c) {
+			if containercollection.ContainerSelectorMatches(&t.containerSelector, c) {
 				cgroupIdC := uint64(c.CgroupId)
 				mntnsC := uint64(c.Mntns)
 				t.cgroupIdSetMap.Delete(cgroupIdC)
@@ -344,106 +308,9 @@ func (g *GadgetTracerManager) RemoveContainer(_ context.Context, containerDefini
 		}
 	}
 
-	g.deleteContainerFromMap(c)
-	delete(g.containers, containerDefinition.Id)
+	g.deleteContainerFromMap(*c)
+	g.ContainerCollection.RemoveContainer(containerDefinition.Id)
 	return &pb.RemoveContainerResponse{}, nil
-}
-
-// LookupMntnsByContainer returns the mount namespace inode of the container
-// specified in arguments or zero if not found
-func (g *GadgetTracerManager) LookupMntnsByContainer(namespace, pod, container string) uint64 {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	for _, c := range g.containers {
-		if namespace != c.Namespace {
-			continue
-		}
-		if pod != c.Podname {
-			continue
-		}
-		if container != c.Name {
-			continue
-		}
-		return c.Mntns
-	}
-	return 0
-}
-
-// LookupMntnsByPod returns the mount namespace inodes of all containers
-// belonging to the pod specified in arguments, indexed by the name of the
-// containers or an empty map if not found
-func (g *GadgetTracerManager) LookupMntnsByPod(namespace, pod string) map[string]uint64 {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	ret := make(map[string]uint64)
-	for _, c := range g.containers {
-		if namespace != c.Namespace {
-			continue
-		}
-		if pod != c.Podname {
-			continue
-		}
-		ret[c.Name] = c.Mntns
-	}
-	return ret
-}
-
-// LookupPIDByContainer returns the PID of the container
-// specified in arguments or zero if not found
-func (g *GadgetTracerManager) LookupPIDByContainer(namespace, pod, container string) uint32 {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	for _, c := range g.containers {
-		if namespace != c.Namespace {
-			continue
-		}
-		if pod != c.Podname {
-			continue
-		}
-		if container != c.Name {
-			continue
-		}
-		return c.Pid
-	}
-	return 0
-}
-
-// LookupPIDByPod returns the PID of all containers belonging to
-// the pod specified in arguments, indexed by the name of the
-// containers or an empty map if not found
-func (g *GadgetTracerManager) LookupPIDByPod(namespace, pod string) map[string]uint32 {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	ret := make(map[string]uint32)
-	for _, c := range g.containers {
-		if namespace != c.Namespace {
-			continue
-		}
-		if pod != c.Podname {
-			continue
-		}
-		ret[c.Name] = c.Pid
-	}
-	return ret
-}
-
-// GetContainersBySelector returns a slice of containers that match
-// the selector or an empty slice if there are not matches
-func (g *GadgetTracerManager) GetContainersBySelector(containerSelector *pb.ContainerSelector) []pb.ContainerDefinition {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	selectedContainers := []pb.ContainerDefinition{}
-	for _, c := range g.containers {
-		if containerSelectorMatches(containerSelector, &c) {
-			selectedContainers = append(selectedContainers, c)
-		}
-	}
-	return selectedContainers
 }
 
 func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequest) (*pb.Dump, error) {
@@ -451,9 +318,9 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 	defer g.mu.Unlock()
 
 	out := "List of containers:\n"
-	for i, c := range g.containers {
-		out += fmt.Sprintf("%v -> %+v\n", i, c)
-	}
+	g.ContainerRange(func(c pb.ContainerDefinition) {
+		out += fmt.Sprintf("%+v\n", c)
+	})
 	out += "List of tracers:\n"
 	for i, t := range g.tracers {
 		out += fmt.Sprintf("%v -> %q/%q (%s) Labels: \n",
@@ -465,11 +332,9 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 			out += fmt.Sprintf("                  %v: %v\n", l.Key, l.Value)
 		}
 		out += "        Matches:\n"
-		for _, c := range g.containers {
-			if containerSelectorMatches(&t.containerSelector, &c) {
-				out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupId=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupId)
-			}
-		}
+		g.ContainerRangeWithSelector(&t.containerSelector, func(c pb.ContainerDefinition) {
+			out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupId=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupId)
+		})
 	}
 	return &pb.Dump{State: out}, nil
 }
@@ -573,39 +438,13 @@ func (g *GadgetTracerManager) deleteContainerFromMap(c pb.ContainerDefinition) {
 	g.containersMap.Delete(uint64(c.Mntns))
 }
 
-// Subscribe returns the list of existing containers and registers a callback
-// for notifications about additions and deletions of containers
-func (g *GadgetTracerManager) Subscribe(key interface{}, selector pb.ContainerSelector, f pubsub.FuncNotify) []pb.ContainerDefinition {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	g.pubsub.Subscribe(key, func(event pubsub.PubSubEvent) {
-		if containerSelectorMatches(&selector, &event.Container) {
-			f(event)
-		}
-	})
-	ret := []pb.ContainerDefinition{}
-	for _, c := range g.containers {
-		if containerSelectorMatches(&selector, &c) {
-			ret = append(ret, c)
-		}
-	}
-	return ret
-}
-
-// Unsubscribe undoes a previous call to Subscribe
-func (g *GadgetTracerManager) Unsubscribe(key interface{}) {
-	g.pubsub.Unsubscribe(key)
-}
-
 func newServer(nodeName string, withPodInformer, withRuncFanotify, withBPF, withK8sClient bool) (*GadgetTracerManager, error) {
 	g := &GadgetTracerManager{
-		nodeName:   nodeName,
-		containers: make(map[string]pb.ContainerDefinition),
-		tracers:    make(map[string]tracer),
-		withBPF:    withBPF,
-		pubsub:     pubsub.NewGadgetPubSub(),
+		nodeName: nodeName,
+		tracers:  make(map[string]tracer),
+		withBPF:  withBPF,
 	}
+	g.ContainerCollectionInitialize()
 
 	if withBPF {
 		if err := initServer(); err != nil {
@@ -679,7 +518,7 @@ func newServer(nodeName string, withPodInformer, withRuncFanotify, withBPF, with
 		} else {
 			log.Printf("gadgettracermanager found %d containers: %+v", len(containers), containers)
 			for _, container := range containers {
-				g.containers[container.Id] = container
+				g.ContainerCollection.AddContainer(container)
 				g.addContainerInMap(container)
 			}
 		}

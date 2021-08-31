@@ -1,0 +1,54 @@
+// Copyright 2019-2021 The Inspektor Gadget authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package containercollection
+
+import (
+	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
+)
+
+// ContainerResolver offers primitives to look up running containers with
+// various criteria, and to subscribe to container creation and termination.
+type ContainerResolver interface {
+	// LookupMntnsByContainer returns the mount namespace inode of the container
+	// specified in arguments or zero if not found
+	LookupMntnsByContainer(namespace, pod, container string) uint64
+
+	// LookupMntnsByPod returns the mount namespace inodes of all containers
+	// belonging to the pod specified in arguments, indexed by the name of the
+	// containers or an empty map if not found
+	LookupMntnsByPod(namespace, pod string) map[string]uint64
+
+	// LookupPIDByContainer returns the PID of the container
+	// specified in arguments or zero if not found
+	LookupPIDByContainer(namespace, pod, container string) uint32
+
+	// LookupPIDByPod returns the PID of all containers belonging to
+	// the pod specified in arguments, indexed by the name of the
+	// containers or an empty map if not found
+	LookupPIDByPod(namespace, pod string) map[string]uint32
+
+	// GetContainersBySelector returns a slice of containers that match
+	// the selector or an empty slice if there are not matches
+	GetContainersBySelector(containerSelector *pb.ContainerSelector) []pb.ContainerDefinition
+
+	// Subscribe returns the list of existing containers and registers a
+	// callback for notifications about additions and deletions of
+	// containers
+	Subscribe(key interface{}, s pb.ContainerSelector, f pubsub.FuncNotify) []pb.ContainerDefinition
+
+	// Unsubscribe undoes a previous call to Subscribe
+	Unsubscribe(key interface{})
+}

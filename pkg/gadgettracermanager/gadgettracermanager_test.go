@@ -23,92 +23,6 @@ import (
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
-func TestSelector(t *testing.T) {
-	table := []struct {
-		description string
-		match       bool
-		selector    *pb.ContainerSelector
-		container   *pb.ContainerDefinition
-	}{
-		{
-			description: "Selector without filter",
-			match:       true,
-			selector:    &pb.ContainerSelector{},
-			container: &pb.ContainerDefinition{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
-			},
-		},
-		{
-			description: "Selector with all filters",
-			match:       true,
-			selector: &pb.ContainerSelector{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
-				Labels: []*pb.Label{
-					{Key: "key1", Value: "value1"},
-					{Key: "key2", Value: "value2"},
-				},
-			},
-			container: &pb.ContainerDefinition{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
-				Labels: []*pb.Label{
-					{Key: "unrelated-label", Value: "here"},
-					{Key: "key1", Value: "value1"},
-					{Key: "key2", Value: "value2"},
-				},
-			},
-		},
-		{
-			description: "Podname does not match",
-			match:       false,
-			selector: &pb.ContainerSelector{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-			},
-			container: &pb.ContainerDefinition{
-				Namespace: "this-namespace",
-				Podname:   "a-misnamed-pod",
-				Name:      "this-container",
-			},
-		},
-		{
-			description: "One label doesn't match",
-			match:       false,
-			selector: &pb.ContainerSelector{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
-				Labels: []*pb.Label{
-					{Key: "key1", Value: "value1"},
-					{Key: "key2", Value: "value2"},
-				},
-			},
-			container: &pb.ContainerDefinition{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
-				Labels: []*pb.Label{
-					{Key: "key1", Value: "value1"},
-					{Key: "key2", Value: "something-else"},
-				},
-			},
-		},
-	}
-
-	for i, entry := range table {
-		result := containerSelectorMatches(entry.selector, entry.container)
-		if entry.match != result {
-			t.Fatalf("Failed test %q (index %d): result %v expected %v",
-				entry.description, i, result, entry.match)
-		}
-	}
-}
-
 func TestTracer(t *testing.T) {
 	g, err := newServer("fake-node", false, false, false, false)
 	if err != nil {
@@ -245,15 +159,13 @@ func TestContainer(t *testing.T) {
 	}
 
 	// Check content
-	if len(g.containers) != 2 {
-		t.Fatalf("Error while checking containers: len %d", len(g.containers))
+	if g.ContainerLen() != 2 {
+		t.Fatalf("Error while checking containers: len %d", g.ContainerLen())
 	}
-	_, ok := g.containers["abcde0"]
-	if !ok {
+	if g.GetContainer("abcde0") == nil {
 		t.Fatalf("Error while checking container %s: not found", "abcde0")
 	}
-	_, ok = g.containers["abcde2"]
-	if !ok {
+	if g.GetContainer("abcde2") == nil {
 		t.Fatalf("Error while checking container %s: not found", "abcde2")
 	}
 

@@ -36,7 +36,7 @@ func TestPubSub(t *testing.T) {
 		done <- struct{}{}
 	}
 
-	p.Subscribe(key, callback)
+	p.Subscribe(key, callback, nil)
 
 	p.Publish(EVENT_TYPE_REMOVE_CONTAINER, pb.ContainerDefinition{Id: "container1"})
 	_, ok := <-done

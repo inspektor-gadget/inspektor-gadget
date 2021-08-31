@@ -51,11 +51,19 @@ func NewGadgetPubSub() *GadgetPubSub {
 	}
 }
 
-func (g *GadgetPubSub) Subscribe(key interface{}, f FuncNotify) {
+// Subscribe registers the callback to be called for every container event
+// published with Publish(). Optionally, the caller can pass an initializer()
+// function that is guaranteed to be called before any new container events are
+// published.
+func (g *GadgetPubSub) Subscribe(key interface{}, callback FuncNotify, initializer func()) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	g.subs[key] = f
+	g.subs[key] = callback
+
+	if initializer != nil {
+		initializer()
+	}
 }
 
 func (g *GadgetPubSub) Unsubscribe(key interface{}) {

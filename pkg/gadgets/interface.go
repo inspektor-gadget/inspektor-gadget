@@ -18,8 +18,7 @@ import (
 	"sync"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 
 	log "github.com/sirupsen/logrus"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
@@ -87,35 +86,7 @@ type TraceOperation struct {
 }
 
 type Resolver interface {
-	// LookupMntnsByContainer returns the mount namespace inode of the container
-	// specified in arguments or zero if not found
-	LookupMntnsByContainer(namespace, pod, container string) uint64
-
-	// LookupMntnsByPod returns the mount namespace inodes of all containers
-	// belonging to the pod specified in arguments, indexed by the name of the
-	// containers or an empty map if not found
-	LookupMntnsByPod(namespace, pod string) map[string]uint64
-
-	// LookupPIDByContainer returns the PID of the container
-	// specified in arguments or zero if not found
-	LookupPIDByContainer(namespace, pod, container string) uint32
-
-	// LookupPIDByPod returns the PID of all containers belonging to
-	// the pod specified in arguments, indexed by the name of the
-	// containers or an empty map if not found
-	LookupPIDByPod(namespace, pod string) map[string]uint32
-
-	// GetContainersBySelector returns a slice of containers that match
-	// the selector or an empty slice if there are not matches
-	GetContainersBySelector(containerSelector *pb.ContainerSelector) []pb.ContainerDefinition
-
-	// Subscribe returns the list of existing containers and registers a
-	// callback for notifications about additions and deletions of
-	// containers
-	Subscribe(key interface{}, s pb.ContainerSelector, f pubsub.FuncNotify) []pb.ContainerDefinition
-
-	// Unsubscribe undoes a previous call to Subscribe
-	Unsubscribe(key interface{})
+	containercollection.ContainerResolver
 
 	PublishEvent(tracerID string, line string) error
 }
