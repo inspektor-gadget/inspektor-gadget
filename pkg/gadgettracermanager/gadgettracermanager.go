@@ -33,6 +33,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/match"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
@@ -88,32 +89,6 @@ type tracer struct {
 	gadgetStream *stream.GadgetStream
 }
 
-func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition) bool {
-	if s.Namespace != "" && s.Namespace != c.Namespace {
-		return false
-	}
-	if s.Podname != "" && s.Podname != c.Podname {
-		return false
-	}
-	if s.Name != "" && s.Name != c.Name {
-		return false
-	}
-	for _, l := range s.Labels {
-		found := false
-		for _, cl := range c.Labels {
-			if cl.Key == l.Key && cl.Value == l.Value {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	return true
-}
-
 func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRequest) (*pb.TracerID, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -164,7 +139,7 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 		}
 
 		for _, c := range g.containers {
-			if containerSelectorMatches(req.Selector, &c) {
+			if match.ContainerSelectorMatches(req.Selector, &c) {
 				one := uint32(1)
 				cgroupIdC := uint64(c.CgroupId)
 				if cgroupIdC != 0 {
@@ -298,7 +273,7 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 
 	if g.withBPF {
 		for _, t := range g.tracers {
-			if containerSelectorMatches(&t.containerSelector, containerDefinition) {
+			if match.ContainerSelectorMatches(&t.containerSelector, containerDefinition) {
 				cgroupIdC := uint64(containerDefinition.CgroupId)
 				mntnsC := uint64(containerDefinition.Mntns)
 				one := uint32(1)
@@ -335,7 +310,7 @@ func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefi
 
 	if g.withBPF {
 		for _, t := range g.tracers {
-			if containerSelectorMatches(&t.containerSelector, &c) {
+			if match.ContainerSelectorMatches(&t.containerSelector, &c) {
 				cgroupIdC := uint64(c.CgroupId)
 				mntnsC := uint64(c.Mntns)
 				t.cgroupIdSetMap.Delete(cgroupIdC)
@@ -439,7 +414,7 @@ func (g *GadgetTracerManager) GetContainersBySelector(containerSelector *pb.Cont
 
 	selectedContainers := []pb.ContainerDefinition{}
 	for _, c := range g.containers {
-		if containerSelectorMatches(containerSelector, &c) {
+		if match.ContainerSelectorMatches(containerSelector, &c) {
 			selectedContainers = append(selectedContainers, c)
 		}
 	}
@@ -466,7 +441,7 @@ func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRe
 		}
 		out += fmt.Sprintf("        Matches:\n")
 		for _, c := range g.containers {
-			if containerSelectorMatches(&t.containerSelector, &c) {
+			if match.ContainerSelectorMatches(&t.containerSelector, &c) {
 				out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupId=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupId)
 			}
 		}
@@ -580,13 +555,13 @@ func (g *GadgetTracerManager) Subscribe(key interface{}, selector pb.ContainerSe
 	defer g.mu.Unlock()
 
 	g.pubsub.Subscribe(key, func(event pubsub.PubSubEvent) {
-		if containerSelectorMatches(&selector, &event.Container) {
+		if match.ContainerSelectorMatches(&selector, &event.Container) {
 			f(event)
 		}
 	})
 	ret := []pb.ContainerDefinition{}
 	for _, c := range g.containers {
-		if containerSelectorMatches(&selector, &c) {
+		if match.ContainerSelectorMatches(&selector, &c) {
 			ret = append(ret, c)
 		}
 	}

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/match"
 )
 
 func TestSelector(t *testing.T) {
@@ -101,7 +102,7 @@ func TestSelector(t *testing.T) {
 	}
 
 	for i, entry := range table {
-		result := containerSelectorMatches(entry.selector, entry.container)
+		result := match.ContainerSelectorMatches(entry.selector, entry.container)
 		if entry.match != result {
 			t.Fatalf("Failed test %q (index %d): result %v expected %v",
 				entry.description, i, result, entry.match)
