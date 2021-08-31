@@ -40,5 +40,5 @@ type Event struct {
 
 	// Container where the event comes from, or empty for host-level or
 	// pod-level event
-	Container string `json:"contaienr,omitempty"`
+	Container string `json:"container,omitempty"`
 }
