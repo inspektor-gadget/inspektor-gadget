@@ -81,7 +81,8 @@ func GenericTraceCommand(
 	subCommand string,
 	params *CommonFlags,
 	args []string,
-	displayResults func(contextLogger *log.Entry, nodes *corev1.NodeList, results *gadgetv1alpha1.TraceList),
+	outputMode string,
+	customResultsDisplay func(contextLogger *log.Entry, nodes *corev1.NodeList, results *gadgetv1alpha1.TraceList),
 	transformLine func(string) string,
 ) {
 
@@ -161,7 +162,7 @@ func GenericTraceCommand(
 					Labels:        labelsSelector,
 				},
 				RunMode:    "Manual",
-				OutputMode: "Status",
+				OutputMode: outputMode,
 			},
 		}
 
@@ -248,10 +249,13 @@ RetryLoop:
 		break RetryLoop
 	}
 
-	if displayResults == nil {
+	if customResultsDisplay == nil {
+		if outputMode != "Stream" {
+			panic(fmt.Errorf("OutputMode=%q needs a custom display function", outputMode))
+		}
 		genericStreamsDisplay(contextLogger, client, params, &results, transformLine)
 	} else {
-		displayResults(contextLogger, nodes, &results)
+		customResultsDisplay(contextLogger, nodes, &results)
 	}
 	deleteTraces(contextLogger, traceRestClient, traceID)
 }

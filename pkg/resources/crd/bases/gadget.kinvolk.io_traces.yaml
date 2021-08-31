@@ -65,15 +65,16 @@ spec:
                 type: string
               output:
                 description: Output allows a gadget to output the results in the specified
-                  location. * With OutputMode=Status, Output is unused * With OutputMode=File,
-                  Output specifies the file path * With OutputMode=ExternalResource,
+                  location. * With OutputMode=Status|Stream, Output is unused * With
+                  OutputMode=File, Output specifies the file path * With OutputMode=ExternalResource,
                   Output specifies the external   resource (such as   seccompprofiles.security-profiles-operator.x-k8s.io
                   for the   seccomp gadget)
                 type: string
               outputMode:
-                description: OutputMode is "Status", "File" or "ExternalResource"
+                description: OutputMode is "Status", "Stream, ""File" or "ExternalResource"
                 enum:
                 - Status
+                - Stream
                 - File
                 - ExternalResource
                 type: string

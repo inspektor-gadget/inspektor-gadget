@@ -142,6 +142,6 @@ func collectorCmdRun(subCommand string) func(*cobra.Command, []string) {
 		}
 	}
 	return func(cmd *cobra.Command, args []string) {
-		utils.GenericTraceCommand(subCommand, &collectorParams, args, callback, nil)
+		utils.GenericTraceCommand(subCommand, &collectorParams, args, "Status", callback, nil)
 	}
 }

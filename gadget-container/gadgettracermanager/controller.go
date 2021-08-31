@@ -33,6 +33,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/controllers"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns"
 	networkpolicyadvisor "github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
 	processcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/seccomp"
@@ -50,6 +51,7 @@ func startController(node string, tracerManager *gadgettracermanager.GadgetTrace
 
 	traceFactories := make(map[string]gadgets.TraceFactory)
 	traceFactories["biolatency"] = &biolatency.TraceFactory{}
+	traceFactories["dns"] = &dns.TraceFactory{}
 	traceFactories["process-collector"] = &processcollector.TraceFactory{}
 	traceFactories["socket-collector"] = &socketcollector.TraceFactory{}
 	traceFactories["seccomp"] = &seccomp.TraceFactory{}
