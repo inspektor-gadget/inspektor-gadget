@@ -44,6 +44,7 @@ var (
 	dump          bool
 	liveness      bool
 	podInformer   bool
+	runcFanotify  bool
 	socketfile    string
 	method        string
 	label         string
@@ -67,6 +68,7 @@ func init() {
 	flag.BoolVar(&serve, "serve", false, "Start server")
 	flag.BoolVar(&controller, "controller", false, "Enable the controller for custom resources")
 	flag.BoolVar(&podInformer, "podinformer", false, "Enable a Pod Informer to get Pod events from k8s API server")
+	flag.BoolVar(&runcFanotify, "runcfanotify", false, "Enable runc fanotify to get events")
 
 	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, receive-stream, add-container, remove-container)")
 	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
@@ -253,6 +255,8 @@ func main() {
 
 		if podInformer {
 			tracerManager, err = gadgettracermanager.NewServerWithPodInformer(node)
+		} else if runcFanotify {
+			tracerManager, err = gadgettracermanager.NewServerWithRuncFanotify(node)
 		} else {
 			tracerManager, err = gadgettracermanager.NewServer(node)
 		}

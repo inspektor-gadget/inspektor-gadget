@@ -101,6 +101,36 @@ func (k *K8sClient) CloseCRI() {
 // FillContainer uses the k8s API server to get the pod name, namespace,
 // labels and container name for the given container.
 func (k *K8sClient) FillContainer(containerDefinition *pb.ContainerDefinition) error {
+	// Fill local fields
+	// The fanotify hook mode prepares the pid but some other local fields are missing
+	if containerDefinition.CgroupPath == "" ||
+		containerDefinition.CgroupId == 0 ||
+		containerDefinition.Mntns == 0 ||
+		containerDefinition.CgroupV1 == "" ||
+		containerDefinition.CgroupV2 == "" {
+
+		if containerDefinition.Pid == 0 {
+			return fmt.Errorf("need either pid or (cgroup path, cgroup id and mntns): %s", containerDefinition.Id)
+		}
+
+		cgroupPathV1, cgroupPathV2, err := containerutils.GetCgroupPaths(int(containerDefinition.Pid))
+		if err != nil {
+			return fmt.Errorf("cannot find cgroup path for container %s: %v", containerDefinition.Id, err)
+		}
+		cgroupPathV2WithMountpoint, _ := containerutils.CgroupPathV2AddMountpoint(cgroupPathV2)
+		cgroupId, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
+		mntns, err := containerutils.GetMntNs(int(containerDefinition.Pid))
+		if err != nil {
+			return fmt.Errorf("cannot find mnt namespace for container %s: %v", containerDefinition.Id, err)
+		}
+
+		containerDefinition.CgroupPath = cgroupPathV2WithMountpoint
+		containerDefinition.CgroupId = cgroupId
+		containerDefinition.Mntns = mntns
+		containerDefinition.CgroupV1 = cgroupPathV1
+		containerDefinition.CgroupV2 = cgroupPathV2
+	}
+
 	pods, err := k.clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
 		FieldSelector: k.fieldSelector,
 	})
@@ -108,9 +138,7 @@ func (k *K8sClient) FillContainer(containerDefinition *pb.ContainerDefinition) e
 		return err
 	}
 
-	cgroupPathV1 := containerDefinition.CgroupV1
-	cgroupPathV2 := containerDefinition.CgroupV2
-
+	// Fill Kubernetes fields
 	namespace := ""
 	podname := ""
 	containerName := ""
@@ -120,10 +148,10 @@ func (k *K8sClient) FillContainer(containerDefinition *pb.ContainerDefinition) e
 		// check if this container is associated to this pod
 		uidWithUnderscores := strings.ReplaceAll(uid, "-", "_")
 
-		if !strings.Contains(cgroupPathV2, uidWithUnderscores) &&
-			!strings.Contains(cgroupPathV2, uid) &&
-			!strings.Contains(cgroupPathV1, uidWithUnderscores) &&
-			!strings.Contains(cgroupPathV1, uid) {
+		if !strings.Contains(containerDefinition.CgroupV2, uidWithUnderscores) &&
+			!strings.Contains(containerDefinition.CgroupV2, uid) &&
+			!strings.Contains(containerDefinition.CgroupV1, uidWithUnderscores) &&
+			!strings.Contains(containerDefinition.CgroupV1, uid) {
 			continue
 		}
 
@@ -179,7 +207,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 			log.Printf("Skip pod %s/%s: got zero pid", pod.GetNamespace(), pod.GetName())
 			continue
 		}
-		_, cgroupPathV2, err := containerutils.GetCgroupPaths(pid)
+		cgroupPathV1, cgroupPathV2, err := containerutils.GetCgroupPaths(pid)
 		if err != nil {
 			log.Printf("Skip pod %s/%s: cannot find cgroup path: %v", pod.GetNamespace(), pod.GetName(), err)
 			continue
@@ -196,6 +224,8 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 			Id:         s.ContainerID,
 			CgroupPath: cgroupPathV2WithMountpoint,
 			CgroupId:   cgroupId,
+			CgroupV1:   cgroupPathV1,
+			CgroupV2:   cgroupPathV2,
 			Mntns:      mntns,
 			Namespace:  pod.GetNamespace(),
 			Podname:    pod.GetName(),

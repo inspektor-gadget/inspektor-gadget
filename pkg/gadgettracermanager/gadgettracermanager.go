@@ -35,6 +35,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
+	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 )
 
 import "C"
@@ -60,6 +61,8 @@ type GadgetTracerManager struct {
 	podInformer *k8s.PodInformer
 	createdChan chan *v1.Pod
 	deletedChan chan string
+
+	runcNotifier *runcfanotify.RuncNotifier
 
 	// withBPF tells whether GadgetTracerManager can run bpf() syscall.
 	// Normally, withBPF=true but it can be disabled so unit tests can run
@@ -283,6 +286,13 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 		}
 		if err := g.k8sClient.FillContainer(containerDefinition); err != nil {
 			return nil, err
+		}
+		if containerDefinition.Podname == "" {
+			return nil, fmt.Errorf("container with id %s not found in Kubernetes", containerDefinition.Id)
+		}
+		// Skip the pause container
+		if containerDefinition.Name == "" {
+			return nil, fmt.Errorf("container with id %s is the pause container and cannot be added", containerDefinition.Id)
 		}
 	}
 
@@ -588,7 +598,7 @@ func (g *GadgetTracerManager) Unsubscribe(key interface{}) {
 	g.pubsub.Unsubscribe(key)
 }
 
-func newServer(nodeName string, withPodInformer, withBPF, withK8sClient bool) (*GadgetTracerManager, error) {
+func newServer(nodeName string, withPodInformer, withRuncFanotify, withBPF, withK8sClient bool) (*GadgetTracerManager, error) {
 	g := &GadgetTracerManager{
 		nodeName:   nodeName,
 		containers: make(map[string]pb.ContainerDefinition),
@@ -628,6 +638,32 @@ func newServer(nodeName string, withPodInformer, withBPF, withK8sClient bool) (*
 		g.podInformer = podInformer
 	}
 
+	if withRuncFanotify {
+		log.Printf("experimental hook mode fanotify")
+		runcNotifier, err := runcfanotify.NewRuncNotifier(func(notif runcfanotify.ContainerEvent) {
+			switch notif.Type {
+			case runcfanotify.EVENT_TYPE_ADD_CONTAINER:
+				mountSources := []string{}
+				for _, m := range notif.ContainerConfig.Mounts {
+					mountSources = append(mountSources, m.Source)
+				}
+				g.AddContainer(nil, &pb.ContainerDefinition{
+					Id:           notif.ContainerID,
+					Pid:          notif.ContainerPID,
+					MountSources: mountSources,
+				})
+			case runcfanotify.EVENT_TYPE_REMOVE_CONTAINER:
+				g.RemoveContainer(nil, &pb.ContainerDefinition{
+					Id: notif.ContainerID,
+				})
+			}
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create runc fanotifier: %w", err)
+		}
+		g.runcNotifier = runcNotifier
+	}
+
 	if withBPF {
 		if err := g.createContainersMap(); err != nil {
 			return nil, err
@@ -653,11 +689,15 @@ func newServer(nodeName string, withPodInformer, withBPF, withK8sClient bool) (*
 }
 
 func NewServerWithPodInformer(nodeName string) (*GadgetTracerManager, error) {
-	return newServer(nodeName, true, true, true)
+	return newServer(nodeName, true, false, true, true)
+}
+
+func NewServerWithRuncFanotify(nodeName string) (*GadgetTracerManager, error) {
+	return newServer(nodeName, false, true, true, true)
 }
 
 func NewServer(nodeName string) (*GadgetTracerManager, error) {
-	return newServer(nodeName, false, true, true)
+	return newServer(nodeName, false, false, true, true)
 }
 
 func increaseRlimit() error {
