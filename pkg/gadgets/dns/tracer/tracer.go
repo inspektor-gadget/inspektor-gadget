@@ -215,6 +215,7 @@ func (t *Tracer) listen(rd *perf.Reader, f func(name, pktType string)) {
 				return
 			}
 			log.Errorf("Error while reading from perf event reader: %s", err)
+			return
 		}
 
 		if record.LostSamples != 0 {
