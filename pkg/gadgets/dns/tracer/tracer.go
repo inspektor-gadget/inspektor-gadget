@@ -45,6 +45,11 @@ type link struct {
 	perfRd     *perf.Reader
 
 	sockFd int
+
+	// users count how many users called Attach(). This can happen for two reasons:
+	// 1. several containers in a pod (sharing the netns)
+	// 2. pods with networkHost=true
+	users int
 }
 
 type Tracer struct {
@@ -120,12 +125,9 @@ func NewTracer() (*Tracer, error) {
 }
 
 func (t *Tracer) Attach(key string, pid uint32, f func(name, pktType string)) error {
-	if _, ok := t.attachments[key]; ok {
-		if key == "host" {
-			return nil
-		} else {
-			return fmt.Errorf("key already attached: %q", key)
-		}
+	if l, ok := t.attachments[key]; ok {
+		l.users++
+		return nil
 	}
 
 	coll, err := ebpf.NewCollectionWithOptions(t.spec, ebpf.CollectionOptions{Programs: ebpf.ProgramOptions{LogSize: ebpf.DefaultVerifierLogSize * 100}})
@@ -156,10 +158,11 @@ func (t *Tracer) Attach(key string, pid uint32, f func(name, pktType string)) er
 		collection: coll,
 		sockFd:     sockFd,
 		perfRd:     rd,
+		users:      1,
 	}
 	t.attachments[key] = l
 
-	go t.listen(rd, f)
+	go t.listen(key, rd, f)
 
 	return nil
 }
@@ -207,19 +210,19 @@ func parseDNSEvent(rawSample []byte) (ret string, pktType string) {
 	return
 }
 
-func (t *Tracer) listen(rd *perf.Reader, f func(name, pktType string)) {
+func (t *Tracer) listen(key string, rd *perf.Reader, f func(name, pktType string)) {
 	for {
 		record, err := rd.Read()
 		if err != nil {
 			if perf.IsClosed(err) {
 				return
 			}
-			log.Errorf("Error while reading from perf event reader: %s", err)
+			log.Errorf("Error while reading from perf event reader (%s): %s", key, err)
 			return
 		}
 
 		if record.LostSamples != 0 {
-			log.Warnf("Warning: perf event ring buffer full, dropped %d samples", record.LostSamples)
+			log.Warnf("Warning: perf event ring buffer full, dropped %d samples (%s)", record.LostSamples, key)
 			continue
 		}
 
@@ -234,12 +237,19 @@ func (t *Tracer) listen(rd *perf.Reader, f func(name, pktType string)) {
 
 }
 
+func (t *Tracer) releaseLink(key string, l *link) {
+	l.perfRd.Close()
+	unix.Close(l.sockFd)
+	l.collection.Close()
+	delete(t.attachments, key)
+}
+
 func (t *Tracer) Detach(key string) error {
 	if l, ok := t.attachments[key]; ok {
-		l.perfRd.Close()
-		unix.Close(l.sockFd)
-		l.collection.Close()
-		delete(t.attachments, key)
+		l.users--
+		if l.users == 0 {
+			t.releaseLink(key, l)
+		}
 		return nil
 	} else {
 		return fmt.Errorf("key not attached: %q", key)
@@ -247,7 +257,7 @@ func (t *Tracer) Detach(key string) error {
 }
 
 func (t *Tracer) Close() {
-	for key := range t.attachments {
-		t.Detach(key)
+	for key, l := range t.attachments {
+		t.releaseLink(key, l)
 	}
 }
