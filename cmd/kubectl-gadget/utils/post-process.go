@@ -19,32 +19,27 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"sync/atomic"
 
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type PostProcess struct {
-	firstLinePrinted uint64
-	OutStreams       []*postProcessSingle
-	ErrStreams       []*postProcessSingle
+	OutStreams []*postProcessSingle
+	ErrStreams []*postProcessSingle
 }
 
 type postProcessSingle struct {
-	orig             io.Writer
-	transform        func(string) string
-	firstLine        bool
-	firstLinePrinted *uint64
-	buffer           string // buffer to save incomplete strings
-	jsonOutput       bool
-	verbose          bool
+	orig       io.Writer
+	transform  func(string) string
+	buffer     string // buffer to save incomplete strings
+	jsonOutput bool
+	verbose    bool
 }
 
 func NewPostProcess(n int, outStream io.Writer, errStream io.Writer, params *CommonFlags, transform func(string) string) *PostProcess {
 	p := &PostProcess{
-		firstLinePrinted: 0,
-		OutStreams:       make([]*postProcessSingle, n),
-		ErrStreams:       make([]*postProcessSingle, n),
+		OutStreams: make([]*postProcessSingle, n),
+		ErrStreams: make([]*postProcessSingle, n),
 	}
 
 	jsonOutput := false
@@ -56,21 +51,17 @@ func NewPostProcess(n int, outStream io.Writer, errStream io.Writer, params *Com
 
 	for i := 0; i < n; i++ {
 		p.OutStreams[i] = &postProcessSingle{
-			orig:             outStream,
-			transform:        transform,
-			firstLine:        true,
-			firstLinePrinted: &p.firstLinePrinted,
-			buffer:           "",
-			jsonOutput:       jsonOutput,
-			verbose:          verbose,
+			orig:       outStream,
+			transform:  transform,
+			buffer:     "",
+			jsonOutput: jsonOutput,
+			verbose:    verbose,
 		}
 
 		p.ErrStreams[i] = &postProcessSingle{
-			orig:             errStream,
-			transform:        transform,
-			firstLine:        false,
-			firstLinePrinted: &p.firstLinePrinted,
-			buffer:           "",
+			orig:      errStream,
+			transform: transform,
+			buffer:    "",
 		}
 	}
 
@@ -87,14 +78,6 @@ func (post *postProcessSingle) Write(p []byte) (n int, err error) {
 
 	// Print all complete lines
 	for _, line := range lines[0 : len(lines)-1] {
-		// Skip printing the header multiple times if json is not used
-		if !post.jsonOutput && post.firstLine {
-			post.firstLine = false
-			if atomic.AddUint64(post.firstLinePrinted, 1) != 1 {
-				continue
-			}
-		}
-
 		event := eventtypes.Event{}
 		json.Unmarshal([]byte(line), &event)
 
