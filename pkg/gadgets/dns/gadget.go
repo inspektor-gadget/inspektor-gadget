@@ -197,7 +197,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		}
 		t.resolver.PublishEvent(
 			traceName,
-			printEvent("attaching dns tracer", errMsg, key, "", ""),
+			printEvent("tracer attached", errMsg, key, "", ""),
 		)
 		return nil
 	}
@@ -214,7 +214,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		}
 		t.resolver.PublishEvent(
 			traceName,
-			printEvent("detaching dns tracer", errMsg, key, "", ""),
+			printEvent("tracer detached", errMsg, key, "", ""),
 		)
 	}
 

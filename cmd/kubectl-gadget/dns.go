@@ -71,7 +71,11 @@ func transformLine(line string) string {
 		return fmt.Sprintf("Error on node %s: %s: %s", event.Node, event.Notice, event.Err)
 	}
 	if event.Notice != "" {
-		return fmt.Sprintf("Notice on node %s %s/%s: %s", event.Node, event.Namespace, event.Pod, event.Notice)
+		podMsgSuffix := ""
+		if event.Namespace != "" && event.Pod != "" {
+			podMsgSuffix = ", pod " + event.Namespace + "/" + event.Pod
+		}
+		return fmt.Sprintf("Notice on node %s%s: %s", event.Node, podMsgSuffix, event.Notice)
 	}
 	if dnsParams.AllNamespaces {
 		return fmt.Sprintf(FMT_ALL, event.Node, event.Namespace, event.Pod, event.PktType, event.DNSName)
