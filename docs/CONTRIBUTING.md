@@ -72,6 +72,7 @@ to be able to use them:
 
 
 - `CONTAINER_REPO`: The container repository to use. Example: docker.io/kinvolk/gadget
+- `CONTAINER_REGISTRY`: The registry containing the repo above. Leave empty for Docker Hub. Example: ghcr.io, foo.azurecr.io, gcr.io
 - `CONTAINER_REGISTRY_USERNAME` & `CONTAINER_REGISTRY_PASSWORD`: Authentication information for the the repo above.
 
 ### Development environment on minikube for the traceloop gadget

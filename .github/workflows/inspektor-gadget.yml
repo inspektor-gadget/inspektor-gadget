@@ -98,9 +98,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-single-buildx
 
-    - name: Login to DockerHub
+    - name: Login to Container Registry
       uses: docker/login-action@v1
       with:
+        registry: ${{ secrets.CONTAINER_REGISTRY }}
         username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
         password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
