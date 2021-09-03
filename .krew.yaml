@@ -32,12 +32,28 @@ spec:
         arch: amd64
     {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/inspektor-gadget-linux-amd64.tar.gz" .TagName }}
     bin: kubectl-gadget
+
+  - selector:
+      matchLabels:
+        os: linux
+        arch: arm64
+    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/inspektor-gadget-linux-arm64.tar.gz" .TagName }}
+    bin: kubectl-gadget
+
   - selector:
       matchLabels:
         os: darwin
         arch: amd64
     {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/inspektor-gadget-darwin-amd64.tar.gz" .TagName }}
     bin: kubectl-gadget
+
+  - selector:
+      matchLabels:
+        os: darwin
+        arch: arm64
+    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/inspektor-gadget-darwin-arm64.tar.gz" .TagName }}
+    bin: kubectl-gadget
+
   - selector:
       matchLabels:
         os: windows

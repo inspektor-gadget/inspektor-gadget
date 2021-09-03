@@ -27,8 +27,11 @@ use the value of the `CONTAINER_REPO` env variable, it defaults to
 
 ### Building the client executable
 
-You can compile for all supported platforms by running `make kubectl-gadget`
-or build for a specific one with `make kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
+You can compile for your platform by running `make kubectl-gadget`.
+
+To cross compile for all supported platforms, you can run `make
+kubectl-gadget-all` or select a specific one with `make
+kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
 
 ### Building the gadget container image
 
