@@ -23,23 +23,13 @@ import (
 	"runtime"
 
 	"github.com/cilium/ebpf/link"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
+	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	"github.com/vishvananda/netns"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang IterTCPv4 ./bpf/tcp4-collector.c -- -I../../.. -Werror -O2 -g -c -x c
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang IterUDPv4 ./bpf/udp4-collector.c -- -I../../.. -Werror -O2 -g -c -x c
-
-type Socket struct {
-	Protocol            string `json:"protocol"`
-	LocalAddress        string `json:"local_address"`
-	LocalPort           uint16 `json:"local_port"`
-	RemoteAddress       string `json:"remote_address"`
-	RemotePort          uint16 `json:"remote_port"`
-	Status              string `json:"status"`
-	KubernetesNamespace string `json:"kubernetes_namespace"`
-	KubernetesPod       string `json:"kubernetes_pod"`
-}
 
 func parseIPv4(ipU32 uint32) string {
 	ipBytes := make([]byte, 4)
@@ -113,7 +103,7 @@ func getUDPIter() (*link.Iter, error) {
 	return it, nil
 }
 
-func RunCollector(pid uint32, filter *gadgetv1alpha1.ContainerFilter) (string, error) {
+func RunCollector(pid uint32, podname, namespace, node string) (string, error) {
 	var err error
 	var it *link.Iter
 	iters := []*link.Iter{}
@@ -154,7 +144,7 @@ func RunCollector(pid uint32, filter *gadgetv1alpha1.ContainerFilter) (string, e
 		return "", fmt.Errorf("error changing network namespace of PID %d: %w", pid, err)
 	}
 
-	sockets := []Socket{}
+	sockets := []socketcollectortypes.Event{}
 
 	for _, it := range iters {
 		reader, err := it.Open()
@@ -183,15 +173,18 @@ func RunCollector(pid uint32, filter *gadgetv1alpha1.ContainerFilter) (string, e
 				return "", err
 			}
 
-			sockets = append(sockets, Socket{
-				Protocol:            proto,
-				LocalAddress:        parseIPv4(src),
-				LocalPort:           srcp,
-				RemoteAddress:       parseIPv4(dest),
-				RemotePort:          destp,
-				Status:              status,
-				KubernetesNamespace: filter.Namespace,
-				KubernetesPod:       filter.Podname,
+			sockets = append(sockets, socketcollectortypes.Event{
+				Event: eventtypes.Event{
+					Node:      node,
+					Namespace: namespace,
+					Pod:       podname,
+				},
+				Protocol:      proto,
+				LocalAddress:  parseIPv4(src),
+				LocalPort:     srcp,
+				RemoteAddress: parseIPv4(dest),
+				RemotePort:    destp,
+				Status:        status,
 			})
 		}
 
