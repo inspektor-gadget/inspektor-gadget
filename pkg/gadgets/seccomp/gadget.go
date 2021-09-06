@@ -26,10 +26,8 @@ import (
 	commonseccomp "github.com/containers/common/pkg/seccomp"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	libseccomp "github.com/seccomp/libseccomp-golang"
-	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	seccompprofilev1alpha1 "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1alpha1"
@@ -48,9 +46,6 @@ type Trace struct {
 
 type TraceFactory struct {
 	gadgets.BaseFactory
-
-	mu     sync.Mutex
-	traces map[string]*Trace
 }
 
 type TraceSingleton struct {
@@ -65,6 +60,10 @@ func NewFactory() gadgets.TraceFactory {
 	return &TraceFactory{}
 }
 
+func (f *TraceFactory) Description() string {
+	return `The seccomp gadget traces system calls for each container in order to generate seccomp policies on-demand.`
+}
+
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 	return map[string]struct{}{
 		"Status":           {},
@@ -76,34 +75,9 @@ func (f *TraceFactory) AddToScheme(scheme *apimachineryruntime.Scheme) {
 	utilruntime.Must(seccompprofilev1alpha1.AddToScheme(scheme))
 }
 
-func (f *TraceFactory) LookupOrCreate(name types.NamespacedName) gadgets.Trace {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.traces == nil {
-		f.traces = make(map[string]*Trace)
-	}
-	trace, ok := f.traces[name.String()]
-	if ok {
-		return trace
-	}
-	trace = &Trace{
-		client:   f.Client,
-		resolver: f.Resolver,
-	}
-	f.traces[name.String()] = trace
-
-	return trace
-}
-
-func (f *TraceFactory) Delete(name types.NamespacedName) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	t, ok := f.traces[name.String()]
-	if !ok {
-		log.Infof("Deleting %s: does not exist", name.String())
-		return nil
-	}
-	if t.started {
+func (f *TraceFactory) DeleteTrace(name string, t interface{}) {
+	trace := t.(*Trace)
+	if trace.started {
 		traceSingleton.mu.Lock()
 		defer traceSingleton.mu.Unlock()
 		traceSingleton.users--
@@ -112,9 +86,38 @@ func (f *TraceFactory) Delete(name types.NamespacedName) error {
 			traceSingleton.tracer = nil
 		}
 	}
-	log.Infof("Deleting %s", name.String())
-	delete(f.traces, name.String())
-	return nil
+}
+
+func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
+	n := func() interface{} {
+		return &Trace{
+			client:   f.Client,
+			resolver: f.Resolver,
+		}
+	}
+	return map[string]gadgets.TraceOperation{
+		"start": {
+			Doc: "Start recording syscalls",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Start(trace)
+			},
+			Order: 1,
+		},
+		"generate": {
+			Doc: "Generate a seccomp profile",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Generate(trace)
+			},
+			Order: 2,
+		},
+		"stop": {
+			Doc: "Stop recording syscalls",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Stop(trace)
+			},
+			Order: 3,
+		},
+	}
 }
 
 func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,

@@ -17,16 +17,13 @@ package socketcollector
 import (
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/types"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/tracer"
 	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 type Trace struct {
@@ -35,88 +32,50 @@ type Trace struct {
 
 type TraceFactory struct {
 	gadgets.BaseFactory
-	mu     sync.Mutex
-	traces map[string]*Trace
 }
 
 func NewFactory() gadgets.TraceFactory {
 	return &TraceFactory{}
 }
 
-func (f *TraceFactory) LookupOrCreate(name types.NamespacedName) gadgets.Trace {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.traces == nil {
-		f.traces = make(map[string]*Trace)
-	}
-	trace, ok := f.traces[name.String()]
-	if ok {
-		return trace
-	}
-	trace = &Trace{
-		resolver: f.Resolver,
-	}
-	f.traces[name.String()] = trace
-
-	return trace
+func (f *TraceFactory) Description() string {
+	return `The socket-collector gadget collects tcp and udp sockets.`
 }
 
-func (f *TraceFactory) Delete(name types.NamespacedName) error {
-	log.Infof("Deleting %s", name.String())
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	_, ok := f.traces[name.String()]
-	if !ok {
-		log.Infof("Deleting %s: does not exist", name.String())
-		return nil
+func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
+	n := func() interface{} {
+		return &Trace{
+			resolver: f.Resolver,
+		}
 	}
-	delete(f.traces, name.String())
-	return nil
+
+	return map[string]gadgets.TraceOperation{
+		"start": {
+			Doc: "Collect a snapshot of the list of sockets",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Start(trace)
+			},
+		},
+	}
 }
 
-func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
-	operation string,
-	params map[string]string) {
+func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
+	if trace.Spec.Filter != nil && trace.Spec.Filter.ContainerName != "" {
+		log.Warningf("Gadget %s: Container name filter is not applicable in this gadget, ignoring it!",
+			trace.Spec.Gadget)
+	}
 
-	if trace.ObjectMeta.Namespace != gadgets.TRACE_DEFAULT_NAMESPACE {
-		gadgets.SetStatusError(trace, fmt.Sprintf("This gadget only accepts operations on traces in the %s namespace",
-			gadgets.TRACE_DEFAULT_NAMESPACE))
+	selector := gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter)
+	filteredContainers := t.resolver.GetContainersBySelector(selector)
+	if len(filteredContainers) == 0 {
+		log.Warningf("No container matches the requested filter: %+v", *trace.Spec.Filter)
+
+		trace.Status.OperationError = ""
+		trace.Status.Output = ""
+		trace.Status.State = "Completed"
 		return
 	}
 
-	switch operation {
-	case "start":
-		if trace.Spec.Filter != nil && trace.Spec.Filter.ContainerName != "" {
-			log.Warningf("Gadget %s: Container name filter is not applicable in this gadget, ignoring it!",
-				trace.Spec.Gadget)
-		}
-
-		selector := gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter)
-		filteredContainers := t.resolver.GetContainersBySelector(selector)
-		if len(filteredContainers) == 0 {
-			log.Warningf("No container matches the requested filter: %+v", *trace.Spec.Filter)
-
-			trace.Status.OperationError = ""
-			trace.Status.Output = ""
-			trace.Status.State = "Completed"
-			return
-		}
-
-		output, err := start(trace.Spec.Gadget, trace.Spec.Node, filteredContainers)
-		if err != nil {
-			gadgets.SetStatusError(trace, err.Error())
-			return
-		}
-
-		trace.Status.OperationError = ""
-		trace.Status.Output = output
-		trace.Status.State = "Completed"
-	default:
-		gadgets.SetStatusError(trace, fmt.Sprintf("Unknown operation %q", operation))
-	}
-}
-
-func start(gadgetName, node string, filteredContainers []pb.ContainerDefinition) (string, error) {
 	allSockets := []socketcollectortypes.Event{}
 
 	// Given that the socket-collector tracer works per network namespace and
@@ -130,7 +89,8 @@ func start(gadgetName, node string, filteredContainers []pb.ContainerDefinition)
 			// Make the whole gadget fail if there is a container without PID
 			// because it would be an inconsistency that has to be notified
 			if container.Pid == 0 {
-				return "", fmt.Errorf("aborting! The following container does not have PID %+v", container)
+				gadgets.SetStatusError(trace, fmt.Sprintf("aborting! The following container does not have PID %+v", container))
+				return
 			}
 
 			// The stored value does not matter, we are just keeping
@@ -138,12 +98,13 @@ func start(gadgetName, node string, filteredContainers []pb.ContainerDefinition)
 			visitedPods[key] = struct{}{}
 
 			log.Debugf("Gadget %s: Using PID %d to retrieve network namespace of Pod %q in Namespace %q",
-				gadgetName, container.Pid, container.Podname, container.Namespace)
+				trace.Spec.Gadget, container.Pid, container.Podname, container.Namespace)
 
 			podSockets, err := tracer.RunCollector(container.Pid, container.Podname,
-				container.Namespace, node)
+				container.Namespace, trace.Spec.Node)
 			if err != nil {
-				return "", err
+				gadgets.SetStatusError(trace, err.Error())
+				return
 			}
 
 			allSockets = append(allSockets, podSockets...)
@@ -152,8 +113,11 @@ func start(gadgetName, node string, filteredContainers []pb.ContainerDefinition)
 
 	output, err := json.MarshalIndent(allSockets, "", " ")
 	if err != nil {
-		return "", fmt.Errorf("failed marshalling sockets: %w", err)
+		gadgets.SetStatusError(trace, fmt.Sprintf("failed marshalling sockets: %s", err))
+		return
 	}
 
-	return string(output), nil
+	trace.Status.OperationError = ""
+	trace.Status.Output = string(output)
+	trace.Status.State = "Completed"
 }

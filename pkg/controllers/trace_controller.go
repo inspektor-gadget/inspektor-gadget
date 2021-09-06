@@ -17,6 +17,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -100,12 +101,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if !trace.ObjectMeta.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(trace, GADGET_FINALIZER) {
 			// Inform the factory that the trace is being deleted
-			err = factory.Delete(req.NamespacedName)
-			if err != nil {
-				// The controller can retry later
-				log.Errorf("Failed to delete: gadget %s returned: %s", trace.Spec.Gadget, err)
-				return ctrl.Result{}, err
-			}
+			factory.Delete(req.NamespacedName.String())
 
 			if r.TracerManager != nil {
 				_, err = r.TracerManager.RemoveTracer(ctx,
@@ -202,10 +198,17 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	// Call gadget.Operation()
+	// Call gadget operation
 	traceBeforeOperation := trace.DeepCopy()
 	patch := client.MergeFrom(traceBeforeOperation)
-	factory.LookupOrCreate(req.NamespacedName).Operation(trace, op, params)
+
+	gadgetOperation, ok := factory.Operations()[op]
+	if !ok {
+		trace.Status.OperationError = fmt.Sprintf("Unknown operation %q", op)
+	} else {
+		gadgetOperation.Operation(req.NamespacedName.String(), trace)
+	}
+
 	if apiequality.Semantic.DeepEqual(traceBeforeOperation.Status, trace.Status) {
 		log.Info("Gadget completed operation without changing the trace status")
 	} else {

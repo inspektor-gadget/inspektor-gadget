@@ -19,10 +19,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 
 	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
@@ -45,13 +43,14 @@ type Trace struct {
 
 type TraceFactory struct {
 	gadgets.BaseFactory
-
-	mu     sync.Mutex
-	traces map[string]*Trace
 }
 
 func NewFactory() gadgets.TraceFactory {
 	return &TraceFactory{}
+}
+
+func (f *TraceFactory) Description() string {
+	return `The dns gadget traces DNS requests.`
 }
 
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
@@ -60,43 +59,38 @@ func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 	}
 }
 
-func (f *TraceFactory) LookupOrCreate(name types.NamespacedName) gadgets.Trace {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.traces == nil {
-		f.traces = make(map[string]*Trace)
+func (f *TraceFactory) DeleteTrace(name string, t interface{}) {
+	trace := t.(*Trace)
+	if trace.started {
+		trace.resolver.Unsubscribe(genPubSubKey(name))
+		trace.tracer.Close()
+		trace.tracer = nil
 	}
-	trace, ok := f.traces[name.String()]
-	if ok {
-		return trace
-	}
-	trace = &Trace{
-		client:   f.Client,
-		resolver: f.Resolver,
-	}
-	f.traces[name.String()] = trace
-
-	return trace
 }
 
-func (f *TraceFactory) Delete(name types.NamespacedName) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	t, ok := f.traces[name.String()]
-	if !ok {
-		log.Infof("Deleting %s: does not exist", name.String())
-		return nil
+func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
+	n := func() interface{} {
+		return &Trace{
+			client:   f.Client,
+			resolver: f.Resolver,
+		}
 	}
-	if t.started {
-		t.resolver.Unsubscribe(genPubSubKey(name.Namespace, name.Name))
-		t.tracer.Close()
-		t.tracer = nil
-	}
-	log.Infof("Deleting %s", name.String())
-	delete(f.traces, name.String())
-	return nil
-}
 
+	return map[string]gadgets.TraceOperation{
+		"start": {
+			Doc: "Start dns",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Start(trace)
+			},
+		},
+		"stop": {
+			Doc: "Stop dns and store results",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Stop(trace)
+			},
+		},
+	}
+}
 func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
 	operation string,
 	params map[string]string) {
@@ -117,8 +111,8 @@ func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
 
 type pubSubKey string
 
-func genPubSubKey(namespace, name string) pubSubKey {
-	return pubSubKey(fmt.Sprintf("gadget/dns/%s/%s", namespace, name))
+func genPubSubKey(name string) pubSubKey {
+	return pubSubKey(fmt.Sprintf("gadget/dns/%s", name))
 }
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
@@ -234,7 +228,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	existingContainers := t.resolver.Subscribe(
-		genPubSubKey(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
+		genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
 		*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 		containerEventCallback,
 	)
@@ -260,7 +254,7 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	t.resolver.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name))
+	t.resolver.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
 	t.tracer.Close()
 	t.tracer = nil
 	t.started = false
