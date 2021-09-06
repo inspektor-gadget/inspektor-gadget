@@ -39,6 +39,10 @@ type TraceFactory struct {
 	traces map[string]*Trace
 }
 
+func NewFactory() gadgets.TraceFactory {
+	return &TraceFactory{}
+}
+
 func (f *TraceFactory) LookupOrCreate(name types.NamespacedName) gadgets.Trace {
 	f.mu.Lock()
 	defer f.mu.Unlock()

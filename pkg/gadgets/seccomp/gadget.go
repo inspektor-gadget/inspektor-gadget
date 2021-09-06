@@ -61,6 +61,10 @@ type TraceSingleton struct {
 
 var traceSingleton TraceSingleton
 
+func NewFactory() gadgets.TraceFactory {
+	return &TraceFactory{}
+}
+
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 	return map[string]struct{}{
 		"Status":           {},

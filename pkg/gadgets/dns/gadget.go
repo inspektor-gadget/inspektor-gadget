@@ -50,6 +50,10 @@ type TraceFactory struct {
 	traces map[string]*Trace
 }
 
+func NewFactory() gadgets.TraceFactory {
+	return &TraceFactory{}
+}
+
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 	return map[string]struct{}{
 		"Stream": {},
