@@ -56,9 +56,10 @@ type TraceFactoryWithScheme interface {
 type TraceFactoryWithCapabilities interface {
 	TraceFactory
 
-	// SupportsOutputMode tells if the OutputMode is supported. If the
-	// interface is not implemented, only "Status" is supported.
-	SupportsOutputMode(string) bool
+	// OutputModesSupported returns the set of OutputMode supported by the
+	// gadget. If the interface is not implemented, only "Status" is
+	// supported.
+	OutputModesSupported() map[string]struct{}
 }
 
 type Resolver interface {

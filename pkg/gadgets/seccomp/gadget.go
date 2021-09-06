@@ -61,8 +61,11 @@ type TraceSingleton struct {
 
 var traceSingleton TraceSingleton
 
-func (f *TraceFactory) SupportsOutputMode(outputMode string) bool {
-	return outputMode == "Status" || outputMode == "ExternalResource"
+func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
+	return map[string]struct{}{
+		"Status":           {},
+		"ExternalResource": {},
+	}
 }
 
 func (f *TraceFactory) AddToScheme(scheme *apimachineryruntime.Scheme) {

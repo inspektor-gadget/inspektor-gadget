@@ -156,7 +156,8 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	if factoryWithCaps, ok := factory.(gadgets.TraceFactoryWithCapabilities); ok {
-		if !factoryWithCaps.SupportsOutputMode(trace.Spec.OutputMode) {
+		outputModes := factoryWithCaps.OutputModesSupported()
+		if _, ok := outputModes[trace.Spec.OutputMode]; !ok {
 			log.Errorf("Unsupported OutputMode: %q", trace.Spec.OutputMode)
 			return ctrl.Result{}, nil
 		}

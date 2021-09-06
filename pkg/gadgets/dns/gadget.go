@@ -50,8 +50,10 @@ type TraceFactory struct {
 	traces map[string]*Trace
 }
 
-func (f *TraceFactory) SupportsOutputMode(outputMode string) bool {
-	return outputMode == "Stream"
+func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
+	return map[string]struct{}{
+		"Stream": {},
+	}
 }
 
 func (f *TraceFactory) LookupOrCreate(name types.NamespacedName) gadgets.Trace {
