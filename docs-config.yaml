@@ -1,0 +1,6 @@
+crds:
+  traces.gadget.kinvolk.io:
+    owner:
+      - https://github.com/kinvolk
+    topics:
+      - gadget
