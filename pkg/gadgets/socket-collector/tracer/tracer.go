@@ -17,7 +17,6 @@ package tracer
 import (
 	"bufio"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"net"
 	"runtime"
@@ -103,7 +102,7 @@ func getUDPIter() (*link.Iter, error) {
 	return it, nil
 }
 
-func RunCollector(pid uint32, podname, namespace, node string) (string, error) {
+func RunCollector(pid uint32, podname, namespace, node string) ([]socketcollectortypes.Event, error) {
 	var err error
 	var it *link.Iter
 	iters := []*link.Iter{}
@@ -111,13 +110,13 @@ func RunCollector(pid uint32, podname, namespace, node string) (string, error) {
 	// TODO: Use filters to collect only TCP or only UDP information
 	it, err = getTCPIter()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	iters = append(iters, it)
 
 	it, err = getUDPIter()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	iters = append(iters, it)
 
@@ -130,7 +129,7 @@ func RunCollector(pid uint32, podname, namespace, node string) (string, error) {
 	// we need to change network namespace before opening the iterator
 	netnsHandle, err := netns.GetFromPid(int(pid))
 	if err != nil {
-		return "", fmt.Errorf("failed to retrieve network namespace from PID %d: %w", pid, err)
+		return nil, fmt.Errorf("failed to retrieve network namespace from PID %d: %w", pid, err)
 	}
 	defer netnsHandle.Close()
 
@@ -141,7 +140,7 @@ func RunCollector(pid uint32, podname, namespace, node string) (string, error) {
 	defer origns.Close()
 
 	if err := netns.Set(netnsHandle); err != nil {
-		return "", fmt.Errorf("error changing network namespace of PID %d: %w", pid, err)
+		return nil, fmt.Errorf("error changing network namespace of PID %d: %w", pid, err)
 	}
 
 	sockets := []socketcollectortypes.Event{}
@@ -149,7 +148,7 @@ func RunCollector(pid uint32, podname, namespace, node string) (string, error) {
 	for _, it := range iters {
 		reader, err := it.Open()
 		if err != nil {
-			return "", fmt.Errorf("failed to open BPF iterator: %w", err)
+			return nil, fmt.Errorf("failed to open BPF iterator: %w", err)
 		}
 		defer reader.Close()
 
@@ -165,12 +164,12 @@ func RunCollector(pid uint32, podname, namespace, node string) (string, error) {
 			len, err := fmt.Sscanf(scanner.Text(), "%s %08X %04X %08X %04X %02X",
 				&proto, &src, &srcp, &dest, &destp, &hexStatus)
 			if err != nil || len != 6 {
-				return "", fmt.Errorf("failed to parse sockets information: %w", err)
+				return nil, fmt.Errorf("failed to parse sockets information: %w", err)
 			}
 
 			status, err = parseStatus(proto, hexStatus)
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 
 			sockets = append(sockets, socketcollectortypes.Event{
@@ -189,10 +188,9 @@ func RunCollector(pid uint32, podname, namespace, node string) (string, error) {
 		}
 
 		if err := scanner.Err(); err != nil {
-			return "", fmt.Errorf("failed reading output of BPF iterator: %w", err)
+			return nil, fmt.Errorf("failed reading output of BPF iterator: %w", err)
 		}
 	}
 
-	output, _ := json.MarshalIndent(sockets, "", " ")
-	return string(output), nil
+	return sockets, nil
 }

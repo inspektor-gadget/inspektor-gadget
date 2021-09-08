@@ -15,6 +15,7 @@
 package socketcollector
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -24,6 +25,8 @@ import (
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/tracer"
+	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
+	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 type Trace struct {
@@ -72,71 +75,81 @@ func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
 	params map[string]string) {
 
 	if trace.ObjectMeta.Namespace != gadgets.TRACE_DEFAULT_NAMESPACE {
-		gadgets.SetStatusError(trace, fmt.Sprintf("This gadget only accepts operations on traces in the %s namespace", gadgets.TRACE_DEFAULT_NAMESPACE))
+		gadgets.SetStatusError(trace, fmt.Sprintf("This gadget only accepts operations on traces in the %s namespace",
+			gadgets.TRACE_DEFAULT_NAMESPACE))
 		return
 	}
 
 	switch operation {
 	case "start":
-		var pid uint32 = 0
-
-		if trace.Spec.Filter == nil {
-			gadgets.SetStatusError(trace, "Missing filter")
-			return
-		}
-		if trace.Spec.Filter.Namespace == "" {
-			gadgets.SetStatusError(trace, "Invalid filter: missing namespace")
-			return
-		}
-		if trace.Spec.Filter.Podname == "" {
-			gadgets.SetStatusError(trace, "TODO: Filtering only by namespace is not currently supported")
-			return
-		}
-		if len(trace.Spec.Filter.Labels) != 0 {
-			gadgets.SetStatusError(trace, "TODO: Filtering by labels is not currently supported")
-			return
-		}
-		if trace.Spec.Filter.ContainerName != "" {
-			log.Warningf("Gadget %s: Container name filter is not applicable in this gadget, ignoring it!", trace.Spec.Gadget)
+		if trace.Spec.Filter != nil && trace.Spec.Filter.ContainerName != "" {
+			log.Warningf("Gadget %s: Container name filter is not applicable in this gadget, ignoring it!",
+				trace.Spec.Gadget)
 		}
 
-		pidsInPod := t.resolver.LookupPIDByPod(trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
+		selector := gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter)
+		filteredContainers := t.resolver.GetContainersBySelector(selector)
+		if len(filteredContainers) == 0 {
+			log.Warningf("No container matches the requested filter: %+v", *trace.Spec.Filter)
 
-		// All containers inside a pod share the same network namespace
-		// thus we can just take the first valid pid we found
-		for _, pid = range pidsInPod {
-			if pid != 0 {
-				break
-			}
-		}
-
-		log.Infof("Gadget %s: Using PID %d to retrieve network namespaces of Podname %q in Namespace %q",
-			trace.Spec.Gadget, pid, trace.Spec.Filter.Podname, trace.Spec.Filter.Namespace)
-
-		if pid == 0 {
-			gadgets.SetStatusError(trace, fmt.Sprintf("Couldn't find a valid PID for Podname %q in Namespace %q",
-				trace.Spec.Filter.Podname, trace.Spec.Filter.Namespace))
+			trace.Status.OperationError = ""
+			trace.Status.Output = ""
+			trace.Status.State = "Completed"
 			return
 		}
 
-		t.Start(trace, pid)
+		output, err := start(trace.Spec.Gadget, trace.Spec.Node, filteredContainers)
+		if err != nil {
+			gadgets.SetStatusError(trace, err.Error())
+			return
+		}
+
+		trace.Status.OperationError = ""
+		trace.Status.Output = output
+		trace.Status.State = "Completed"
 	default:
 		gadgets.SetStatusError(trace, fmt.Sprintf("Unknown operation %q", operation))
 	}
 }
 
-func (t *Trace) Start(trace *gadgetv1alpha1.Trace, pid uint32) {
-	output, err := tracer.RunCollector(
-		pid,
-		trace.Spec.Filter.Podname,
-		trace.Spec.Filter.Namespace,
-		trace.Spec.Node,
-	)
-	if err != nil {
-		gadgets.SetStatusError(trace, err.Error())
-		return
+func start(gadgetName, node string, filteredContainers []pb.ContainerDefinition) (string, error) {
+	allSockets := []socketcollectortypes.Event{}
+
+	// Given that the socket-collector tracer works per network namespace and
+	// all the containers inside a namespace/pod share the network namespace,
+	// we only need to run the tracer with one valid PID per namespace/pod
+	visitedPods := make(map[string]struct{})
+
+	for _, container := range filteredContainers {
+		key := container.Namespace + "/" + container.Podname
+		if _, ok := visitedPods[key]; !ok {
+			// Make the whole gadget fail if there is a container without PID
+			// because it would be an inconsistency that has to be notified
+			if container.Pid == 0 {
+				return "", fmt.Errorf("aborting! The following container does not have PID %+v", container)
+			}
+
+			// The stored value does not matter, we are just keeping
+			// track of the visited Pods per Namespace
+			visitedPods[key] = struct{}{}
+
+			log.Debugf("Gadget %s: Using PID %d to retrieve network namespace of Pod %q in Namespace %q",
+				gadgetName, container.Pid, container.Podname, container.Namespace)
+
+			podSockets, err := tracer.RunCollector(container.Pid, container.Podname,
+				container.Namespace, node)
+			if err != nil {
+				return "", err
+			}
+
+			allSockets = append(allSockets, podSockets...)
+		}
 	}
-	trace.Status.OperationError = ""
-	trace.Status.Output = output
-	trace.Status.State = "Completed"
+
+	output, err := json.MarshalIndent(allSockets, "", " ")
+	if err != nil {
+		return "", fmt.Errorf("failed marshalling sockets: %w", err)
+	}
+
+	return string(output), nil
 }
