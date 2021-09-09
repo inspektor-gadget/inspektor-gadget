@@ -27,8 +27,11 @@ use the value of the `CONTAINER_REPO` env variable, it defaults to
 
 ### Building the client executable
 
-You can compile for all supported platforms by running `make kubectl-gadget`
-or build for a specific one with `make kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
+You can compile for your platform by running `make kubectl-gadget`.
+
+To cross compile for all supported platforms, you can run `make
+kubectl-gadget-all` or select a specific one with `make
+kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
 
 ### Building the gadget container image
 
@@ -69,6 +72,7 @@ to be able to use them:
 
 
 - `CONTAINER_REPO`: The container repository to use. Example: docker.io/kinvolk/gadget
+- `CONTAINER_REGISTRY`: The registry containing the repo above. Leave empty for Docker Hub. Example: ghcr.io, foo.azurecr.io, gcr.io
 - `CONTAINER_REGISTRY_USERNAME` & `CONTAINER_REGISTRY_PASSWORD`: Authentication information for the the repo above.
 
 ### Development environment on minikube for the traceloop gadget

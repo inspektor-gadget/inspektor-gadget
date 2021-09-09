@@ -4,9 +4,7 @@
 *.dll
 *.so
 *.dylib
-/kubectl-gadget-darwin-amd64
-/kubectl-gadget-linux-amd64
-/kubectl-gadget-windows-amd64
+/kubectl-gadget-*-*
 /gadget-container/bin
 
 # Test binary, build with `go test -c`

@@ -6,6 +6,9 @@ IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
 MINIKUBE ?= minikube
 
+GOHOSTOS ?= $(shell go env GOHOSTOS)
+GOHOSTARCH ?= $(shell go env GOHOSTARCH)
+
 # Adds a '-dirty' suffix to version string if there are uncommitted changes
 changes := $(shell git status --porcelain)
 ifeq ($(changes),)
@@ -25,35 +28,40 @@ LDFLAGS := "-X main.version=$(VERSION) \
 .PHONY: build
 build: manifests generate kubectl-gadget gadget-container
 
-# kubectl-gadget
-.PHONY: kubectl-gadget
-kubectl-gadget: kubectl-gadget-linux-amd64 kubectl-gadget-darwin-amd64 kubectl-gadget-windows-amd64
+# make does not allow implicit rules (with '%') to be phony so let's use
+# the 'phony_explicit' dependency to make implicit rules inherit the phony
+# attribute
+.PHONY: phony_explicit
+phony_explicit:
 
-.PHONY: kubectl-gadget-linux-amd64
-kubectl-gadget-linux-amd64:
-	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-		-ldflags $(LDFLAGS) \
-		-o kubectl-gadget-linux-amd64 \
+KUBECTL_GADGET_TARGETS = \
+	kubectl-gadget-linux-amd64 \
+	kubectl-gadget-linux-arm64 \
+	kubectl-gadget-darwin-amd64 \
+	kubectl-gadget-darwin-arm64 \
+	kubectl-gadget-windows-amd64
+
+.PHONY: list-kubectl-gadget-targets
+list-kubectl-gadget-targets:
+	@echo $(KUBECTL_GADGET_TARGETS)
+
+.PHONY: kubectl-gadget-all
+kubectl-gadget-all: $(KUBECTL_GADGET_TARGETS)
+
+kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
+	mv kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) kubectl-gadget
+
+kubectl-gadget-%: phony_explicit
+	export GO111MODULE=on CGO_ENABLED=0 && \
+	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
+	go build -ldflags $(LDFLAGS) \
+		-o kubectl-gadget-$${GOOS}-$${GOARCH} \
 		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
 
-.PHONY: kubectl-gadget-darwin-amd64
-kubectl-gadget-darwin-amd64:
-	GO111MODULE=on CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build \
-		-ldflags $(LDFLAGS) \
-		-o kubectl-gadget-darwin-amd64 \
-		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
-
-.PHONY: kubectl-gadget-windows-amd64
-kubectl-gadget-windows-amd64:
-	GO111MODULE=on CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
-		-ldflags $(LDFLAGS) \
-		-o kubectl-gadget-windows-amd64 \
-		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
-
-.PHONY: install-user-linux
-install-user-linux: kubectl-gadget-linux-amd64
+.PHONY: install/kubectl-gadget
+install/kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
 	mkdir -p ~/.local/bin/
-	cp kubectl-gadget-linux-amd64 ~/.local/bin/kubectl-gadget
+	cp kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) ~/.local/bin/kubectl-gadget
 
 # gadget container
 .PHONY: gadget-container
@@ -79,7 +87,7 @@ controller-tests: kube-apiserver etcd kubectl
 
 .PHONY: integration-tests
 integration-tests:
-	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget-linux-amd64" \
+	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)" \
 		go test ./integration/... \
 			-integration \
 			-image $(CONTAINER_REPO):$(IMAGE_TAG)
@@ -95,8 +103,8 @@ minikube-install: gadget-container
 	# Delete traces CRD first: the gadget DaemonSet needs to be running
 	# because of Finalizers.
 	kubectl delete crd traces.gadget.kinvolk.io || true
-	./kubectl-gadget-linux-amd64 deploy | kubectl delete -f - || true
-	./kubectl-gadget-linux-amd64 deploy --traceloop=false --hook-mode=fanotify | \
+	./kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) deploy | kubectl delete -f - || true
+	./kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) deploy --traceloop=false --hook-mode=fanotify | \
 		sed 's/imagePullPolicy: Always/imagePullPolicy: Never/g' | \
 		sed 's/initialDelaySeconds: 10/initialDelaySeconds: '$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS)'/g' | \
 		kubectl apply -f -

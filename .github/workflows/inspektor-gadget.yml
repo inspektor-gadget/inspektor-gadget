@@ -98,9 +98,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-single-buildx
 
-    - name: Login to DockerHub
+    - name: Login to Container Registry
       uses: docker/login-action@v1
       with:
+        registry: ${{ secrets.CONTAINER_REGISTRY }}
         username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
         password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
@@ -123,14 +124,13 @@ jobs:
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-    - name: Build kubectl gadget Plugin
+    - name: Build kubectl gadget plugin for all platforms
       run: |
-        make kubectl-gadget
+        make kubectl-gadget-all
 
         # Prepare assets for release and actions artifacts
-
-        platforms="darwin-amd64 linux-amd64 windows-amd64"
-        for platform in $platforms; do
+        for target in $(make list-kubectl-gadget-targets); do
+          platform=$(echo $target|cut -d- -f3-4)
           mkdir $platform
           cp kubectl-gadget-$platform $platform/kubectl-gadget
           cp LICENSE $platform/
@@ -175,41 +175,13 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Upload linux-amd64 Release Asset
-      id: upload-release-asset-linux-amd64
-      uses: actions/upload-release-asset@v1.0.1
+    - name: Upload kubectl-gadget Release Assets
+      uses: csexton/release-asset-action@v2
       if: startsWith(github.ref, 'refs/tags/v')
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: inspektor-gadget-linux-amd64.tar.gz
-        asset_name: inspektor-gadget-linux-amd64.tar.gz
-        asset_content_type: application/gzip
-
-    - name: Upload darwin-amd64 Release Asset
-      id: upload-release-asset-darwin-amd64
-      uses: actions/upload-release-asset@v1.0.1
-      if: startsWith(github.ref, 'refs/tags/v')
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: inspektor-gadget-darwin-amd64.tar.gz
-        asset_name: inspektor-gadget-darwin-amd64.tar.gz
-        asset_content_type: application/gzip
-
-    - name: Upload windows-amd64 Release Asset
-      id: upload-release-asset-windows-amd64
-      uses: actions/upload-release-asset@v1.0.1
-      if: startsWith(github.ref, 'refs/tags/v')
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: inspektor-gadget-windows-amd64.tar.gz
-        asset_name: inspektor-gadget-windows-amd64.tar.gz
-        asset_content_type: application/gzip
+        pattern: "inspektor-gadget-*-*.tar.gz"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
 
     - name: Upload Testing Asset
       id: upload-release-asset-testing
@@ -230,4 +202,4 @@ jobs:
 
     - name: Update new version in krew-index
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: rajatjindal/krew-release-bot@v0.0.38
+      uses: rajatjindal/krew-release-bot@v0.0.40
