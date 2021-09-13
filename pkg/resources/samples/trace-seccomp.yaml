@@ -6,9 +6,19 @@ metadata:
 spec:
   node: minikube
   gadget: seccomp
+
+  # Example of filter for manual generation with the
+  # gadget.kinvolk.io/operation=generate annotation. This needs a namespace and
+  # podname at the exclusion of other fields.
   filter:
-    namespace: kube-system
-    podname: etcd-minikube
+    namespace: default
+    podname: mypod
+
+  # # Another example of filter for automatic generation when containers
+  # # terminate. All fields are supported.
+  # filter:
+  #   namespace: default
+
   runMode: Manual
   outputMode: ExternalResource
   output: gadget/myseccomp
