@@ -25,7 +25,7 @@ func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
 	panic("Not implemented")
 	return nil
 }
-func syscallArrToSeccompPolicy(namespace, name string, v []byte) *seccompprofilev1alpha1.SeccompProfile {
+func syscallArrToSeccompPolicy(namespace, name, generateName string, v []byte) *seccompprofilev1alpha1.SeccompProfile {
 	panic("Not implemented")
 	return nil
 }

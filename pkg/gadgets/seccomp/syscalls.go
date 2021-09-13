@@ -86,7 +86,7 @@ func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
 	return s
 }
 
-func syscallArrToSeccompPolicy(namespace, name string, v []byte) *seccompprofilev1alpha1.SeccompProfile {
+func syscallArrToSeccompPolicy(namespace, name, generateName string, v []byte) *seccompprofilev1alpha1.SeccompProfile {
 	syscalls := []*seccompprofilev1alpha1.Syscall{
 		{
 			Names:  syscallArrToNameList(v),
@@ -97,8 +97,11 @@ func syscallArrToSeccompPolicy(namespace, name string, v []byte) *seccompprofile
 
 	ret := seccompprofilev1alpha1.SeccompProfile{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Namespace:    namespace,
+			Name:         name,
+			GenerateName: generateName,
+			Annotations:  map[string]string{},
+			Labels:       map[string]string{},
 		},
 		Spec: seccompprofilev1alpha1.SeccompProfileSpec{
 			BaseProfileName: "",
