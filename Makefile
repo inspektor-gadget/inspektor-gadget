@@ -94,7 +94,7 @@ integration-tests:
 
 .PHONY: generate-documentation
 generate-documentation:
-	go run cmd/gen-doc/gen-doc.go -repo $(shell pwd)
+	go run -tags docs cmd/gen-doc/gen-doc.go -repo $(shell pwd)
 
 # minikube
 LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 10

@@ -18,15 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
 
-	commonseccomp "github.com/containers/common/pkg/seccomp"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	libseccomp "github.com/seccomp/libseccomp-golang"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -286,91 +281,4 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	trace.Status.OperationError = ""
 	trace.Status.State = "Stopped"
 	return
-}
-
-/* Function arches() under the Apache License, Version 2.0 by the containerd authors:
- * https://github.com/containerd/containerd/blob/66fec3bbbf91520a1433faa16e99e5a314a61902/contrib/seccomp/seccomp_default.go#L29
- */
-func arches() []specs.Arch {
-	switch runtime.GOARCH {
-	case "amd64":
-		return []specs.Arch{specs.ArchX86_64, specs.ArchX86, specs.ArchX32}
-	case "arm64":
-		return []specs.Arch{specs.ArchARM, specs.ArchAARCH64}
-	case "mips64":
-		return []specs.Arch{specs.ArchMIPS, specs.ArchMIPS64, specs.ArchMIPS64N32}
-	case "mips64n32":
-		return []specs.Arch{specs.ArchMIPS, specs.ArchMIPS64, specs.ArchMIPS64N32}
-	case "mipsel64":
-		return []specs.Arch{specs.ArchMIPSEL, specs.ArchMIPSEL64, specs.ArchMIPSEL64N32}
-	case "mipsel64n32":
-		return []specs.Arch{specs.ArchMIPSEL, specs.ArchMIPSEL64, specs.ArchMIPSEL64N32}
-	case "s390x":
-		return []specs.Arch{specs.ArchS390, specs.ArchS390X}
-	default:
-		return []specs.Arch{}
-	}
-}
-
-func syscallArrToNameList(v []byte) []string {
-	names := []string{}
-	for i, val := range v {
-		if val == 0 {
-			continue
-		}
-		call1 := libseccomp.ScmpSyscall(i)
-		name, err := call1.GetName()
-		if err != nil {
-			name = fmt.Sprintf("syscall%d", i)
-		}
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
-func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
-	syscalls := []specs.LinuxSyscall{
-		{
-			Names:  syscallArrToNameList(v),
-			Action: specs.ActAllow,
-			Args:   []specs.LinuxSeccompArg{},
-		},
-	}
-
-	s := &specs.LinuxSeccomp{
-		DefaultAction: specs.ActErrno,
-		Architectures: arches(),
-		Syscalls:      syscalls,
-	}
-	return s
-}
-
-func syscallArrToSeccompPolicy(namespace, name string, v []byte) *seccompprofilev1alpha1.SeccompProfile {
-	syscalls := []*seccompprofilev1alpha1.Syscall{
-		{
-			Names:  syscallArrToNameList(v),
-			Action: commonseccomp.ActAllow,
-			Args:   []*seccompprofilev1alpha1.Arg{},
-		},
-	}
-
-	ret := seccompprofilev1alpha1.SeccompProfile{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
-		},
-		Spec: seccompprofilev1alpha1.SeccompProfileSpec{
-			BaseProfileName: "",
-			DefaultAction:   commonseccomp.ActErrno,
-			Architectures:   nil,
-			Syscalls:        syscalls,
-		},
-	}
-	for _, a := range arches() {
-		arch := seccompprofilev1alpha1.Arch(a)
-		ret.Spec.Architectures = append(ret.Spec.Architectures, &arch)
-	}
-
-	return &ret
 }
