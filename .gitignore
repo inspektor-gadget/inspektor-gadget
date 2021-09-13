@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+/kubectl-gadget
 /kubectl-gadget-*-*
 /gadget-container/bin
 
