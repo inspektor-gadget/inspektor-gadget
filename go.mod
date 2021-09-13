@@ -1,7 +1,7 @@
 module github.com/kinvolk/inspektor-gadget
 
 require (
-	github.com/cilium/ebpf v0.6.3-0.20210726151910-bf9a97c3237e
+	github.com/cilium/ebpf v0.6.3-0.20210910140648-4d5607ee1690
 	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
 	github.com/containers/common v0.42.0
 	github.com/docker/docker v20.10.7+incompatible
@@ -20,7 +20,7 @@ require (
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20200114145059-84a08fc667c0
-	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
+	golang.org/x/sys v0.0.0-20210906170528-6f6e22806c34
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.26.0
 	k8s.io/api v0.21.2
