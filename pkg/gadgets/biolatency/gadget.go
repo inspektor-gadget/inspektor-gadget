@@ -31,7 +31,8 @@ import (
 type Trace struct {
 	started bool
 	cmd     *exec.Cmd
-	out     bytes.Buffer
+	stdout  bytes.Buffer
+	stderr  bytes.Buffer
 }
 
 type TraceFactory struct {
@@ -100,8 +101,10 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	t.cmd = exec.Command("/usr/share/bcc/tools/biolatency")
-	t.out.Reset()
-	t.cmd.Stdout = &t.out
+	t.stdout.Reset()
+	t.stderr.Reset()
+	t.cmd.Stdout = &t.stdout
+	t.cmd.Stderr = &t.stderr
 	err := t.cmd.Start()
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("Failed to start: %s", err)
@@ -122,19 +125,29 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	}
 	err := t.cmd.Process.Signal(syscall.SIGINT)
 	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf("Failed to send SIGINT to process: %s", err)
+		trace.Status.OperationError = fmt.Sprintf(
+			"Failed to send SIGINT to process: %s (stdout: %q stderr: %q)",
+			err,
+			t.stdout.String(),
+			t.stderr.String(),
+		)
 		return
 	}
 
 	err = t.cmd.Wait()
 	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf("Failed to wait for process: %s", err)
+		trace.Status.OperationError = fmt.Sprintf(
+			"Failed to wait for process: %s (stdout: %q stderr: %q)",
+			err,
+			t.stdout.String(),
+			t.stderr.String(),
+		)
 		return
 	}
 	t.cmd = nil
 	t.started = false
 
-	output := t.out.String()
+	output := t.stdout.String()
 
 	trace.Status.OperationError = ""
 	trace.Status.Output = output
