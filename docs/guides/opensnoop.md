@@ -4,7 +4,7 @@ weight: 10
 ---
 
 The opensnoop gadget watches files that programs in pods open.
-Pods can be selected by Kubernetes labels, pod names, namespaces, and nodes.
+
 Here we deploy a small demo pod "mypod":
 
 ```

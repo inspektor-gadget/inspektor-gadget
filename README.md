@@ -23,48 +23,49 @@ Read the detailed [install instructions](docs/install.md) to find more informati
 
 ## How to use
 
-```
-$ kubectl gadget
-Collection of gadgets for Kubernetes developers
+`kubectl gadget --help` will provide you the list of supported commands and their
+flags.
 
+```
+$ kubectl gadget --help
 Usage:
   kubectl gadget [command]
 
 Available Commands:
-  bindsnoop      Trace IPv4 and IPv6 bind() system calls
-  capabilities   Suggest Security Capabilities for securityContext
-  deploy         Deploy Inspektor Gadget on the worker nodes
-  execsnoop      Trace new processes
-  help           Help about any command
-  network-policy Generate network policies based on recorded network activity
-  opensnoop      Trace files
-  profile        Profile CPU usage by sampling stack traces
-  tcpconnect     Suggest Kubernetes Network Policies
-  tcptop         Show the TCP traffic in a pod
-  tcptracer      Trace tcp connect, accept and close
-  traceloop      Get strace-like logs of a pod from the past
-  version        Show version
+  bindsnoop         Trace IPv4 and IPv6 bind() system calls
+  capabilities      Trace capabilities security checks triggered by applications
+  completion        generate the autocompletion script for the specified shell
+  deploy            Deploy Inspektor Gadget on the worker nodes
+  dns               Trace DNS requests
+  execsnoop         Trace new processes
+  help              Help about any command
+  network-policy    Generate network policies based on recorded network activity
+  opensnoop         Trace open() system calls
+  process-collector Collect processes
+  profile           Profile CPU usage by sampling stack traces
+  socket-collector  Collect sockets
+  tcpconnect        Trace TCP connect() system calls
+  tcptop            Show the TCP traffic in a pod
+  tcptracer         Trace tcp connect, accept and close
+  traceloop         Get strace-like logs of a pod from the past
+  version           Show version
 
-Flags:
-  -h, --help                help for kubectl gadget
-      --kubeconfig string   Path to kubeconfig file (default "/home/alban/.kube/config")
-
-Use "kubectl gadget [command] --help" for more information about a command.
+...
 ```
 
-- [Demo: the "bindsnoop" gadget](docs/guides/bindsnoop.md)
-- [Demo: the "execsnoop" gadget](docs/guides/execsnoop.md) – watch it [as GIF](docs/demos/demo-execsnoop-gifterminal.gif)
-- [Demo: the "opensnoop" gadget](docs/guides/opensnoop.md) – watch it [as GIF](docs/demos/demo-opensnoop-gifterminal.gif)
-- [Demo: the "traceloop" gadget](docs/guides/traceloop.md) – watch it [as GIF](docs/demos/demo-traceloop-gifterminal.gif)
-- [Demo: the "capabilities" gadget](docs/guides/capabilities.md) – watch is [as GIF](docs/demos/demo-capabilities-gifterminal.gif)
-- [Demo: the "tcptop" gadget](docs/guides/tcptop.md) – watch it [as GIF](docs/demos/demo-tcptop-gifterminal.gif)
-- [Demo: the "tcpconnect" gadget](docs/guides/tcpconnect.md) — watch it [as GIF](docs/demos/demo-tcpconnect-gifterminal.gif)
-- [Demo: the "network-policy" gadget](docs/guides/network-policy.md)
-- [Demo: the "profile" gadget](docs/guides/profile.md)
+### Gadgets Documentation
 
-As preview for the above demos, here is the `opensnoop` demo:
+Specific documentation for the gadgets can be found in the following links:
 
-![](docs/demos/demo-opensnoop-gifterminal.gif)
+- [bindsnoop](docs/guides/bindsnoop.md)
+- [capabilities](docs/guides/capabilities.md)
+- [execsnoop](docs/guides/execsnoop.md)
+- [network-policy](docs/guides/network-policy.md)
+- [opensnoop](docs/guides/opensnoop.md)
+- [profile](docs/guides/profile.md)
+- [tcpconnect](docs/guides/tcpconnect.md)
+- [tcptop](docs/guides/tcptop.md)
+- [traceloop](docs/guides/traceloop.md)
 
 ## How does it work?
 
@@ -75,7 +76,7 @@ the kernel and gather the log data. Inspektor Gadget's userspace
 utilities fetch the log data from ring buffers and display it. What BPF
 programs are and how Inspektor Gadget uses them is briefly explained here:
 
-[Read more about the architecture](docs/architecture.md)
+You can read further details about the architecture [here](docs/architecture.md).
 
 ## Contributing
 
@@ -96,7 +97,7 @@ Join the discussions on the [`#inspektor-gadget`](https://kubernetes.slack.com/m
 * [traceloop](https://github.com/kinvolk/traceloop): the traceloop gadget uses the traceloop tool, which can be used independenly of Kubernetes.
 * [gobpf](https://github.com/kinvolk/gobpf): the traceloop gadget heavily uses gobpf.
 * [kubectl-trace](https://github.com/iovisor/kubectl-trace): the Inspektor Gadget architecture was inspired from kubectl-trace.
-* [cilium/ebpf](https://github.com/cilium/ebpf): the gadget tracer manager uses the cilium/ebpf library.
+* [cilium/ebpf](https://github.com/cilium/ebpf): the gadget tracer manager and some other gadgets use the cilium/ebpf library.
 
 ## License
 
