@@ -92,6 +92,10 @@ integration-tests:
 			-integration \
 			-image $(CONTAINER_REPO):$(IMAGE_TAG)
 
+.PHONY: generate-documentation
+generate-documentation:
+	go run -tags docs cmd/gen-doc/gen-doc.go -repo $(shell pwd)
+
 # minikube
 LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 10
 .PHONY: minikube-install

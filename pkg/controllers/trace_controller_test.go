@@ -17,7 +17,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"sort"
 	"sync"
 
 	. "github.com/onsi/ginkgo"
@@ -25,7 +24,6 @@ import (
 	. "github.com/onsi/gomega/types"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
@@ -40,39 +38,34 @@ type FakeFactory struct {
 	calls map[string]struct{}
 }
 
-func (f *FakeFactory) LookupOrCreate(name types.NamespacedName) gadgets.Trace {
+func (f *FakeFactory) Delete(name string) {
 	f.mu.Lock()
-	f.calls["lookup/"+name.String()] = struct{}{}
+	f.calls["delete/"+name] = struct{}{}
 	f.mu.Unlock()
-	return f
 }
 
-func (f *FakeFactory) Delete(name types.NamespacedName) error {
-	f.mu.Lock()
-	f.calls["delete/"+name.String()] = struct{}{}
-	f.mu.Unlock()
-	return nil
+func (f *FakeFactory) Operations() map[string]gadgets.TraceOperation {
+	n := func() interface{} {
+		return f
+	}
+	return map[string]gadgets.TraceOperation{
+		"magic": {
+			Doc: "Collect a snapshot of the list of sockets",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*FakeFactory).Magic(trace)
+			},
+		},
+	}
 }
 
-func (f *FakeFactory) Operation(trace *gadgetv1alpha1.Trace,
-	operation string,
-	params map[string]string) {
+func (f *FakeFactory) Magic(trace *gadgetv1alpha1.Trace) {
 
 	f.mu.Lock()
 	key := fmt.Sprintf("operation/%s/%s/%s/",
 		trace.ObjectMeta.Namespace,
 		trace.ObjectMeta.Name,
-		operation,
+		"magic",
 	)
-	paramsKeys := make([]string, 0, len(params))
-	for k := range params {
-		paramsKeys = append(paramsKeys, k)
-	}
-	sort.Strings(paramsKeys)
-
-	for _, k := range paramsKeys {
-		key += fmt.Sprintf("%s/%s/", k, params[k])
-	}
 	f.calls[key] = struct{}{}
 	f.mu.Unlock()
 
@@ -91,22 +84,12 @@ func (f *FakeFactory) methodHasBeenCalled(key string) bool {
 	return ok
 }
 
-// LookupOrCreateMethodHasBeenCalled returns a Gomega assertion checking if the method
-// LookupOrCreate() has been called
-func LookupOrCreateMethodHasBeenCalled(fakeGadget *FakeFactory, name string) func() bool {
-	key := "lookup/" + name
-	return func() bool {
-		return fakeGadget.methodHasBeenCalled(key)
-	}
-}
-
 // OperationMethodHasBeenCalled returns a Gomega assertion checking if the
 // method Operation() has been called
-func OperationMethodHasBeenCalled(fakeGadget *FakeFactory, name, operation, params string) func() bool {
-	key := fmt.Sprintf("operation/%s/%s/%s",
+func OperationMethodHasBeenCalled(fakeGadget *FakeFactory, name, operation string) func() bool {
+	key := fmt.Sprintf("operation/%s/%s/",
 		name,
 		operation,
-		params,
 	)
 	return func() bool {
 		return fakeGadget.methodHasBeenCalled(key)
@@ -227,8 +210,7 @@ var _ = Context("Controller with a fake gadget", func() {
 			err := k8sClient.Create(ctx, myTrace)
 			Expect(err).NotTo(HaveOccurred(), "failed to create test Trace resource")
 
-			Eventually(LookupOrCreateMethodHasBeenCalled(fakeFactory, traceObjectKey.String())).Should(BeTrue())
-			Eventually(OperationMethodHasBeenCalled(fakeFactory, traceObjectKey.String(), "magic", "")).Should(BeTrue())
+			Eventually(OperationMethodHasBeenCalled(fakeFactory, traceObjectKey.String(), "magic")).Should(BeTrue())
 
 			Eventually(UpdatedTrace(ctx, traceObjectKey)).Should(SatisfyAll(
 				HaveState("Completed"),
@@ -238,7 +220,7 @@ var _ = Context("Controller with a fake gadget", func() {
 				HaveAnnotation("hiking.walking", "mountains"),
 			))
 
-			Consistently(OperationMethodHasBeenCalled(fakeFactory, traceObjectKey.String(), "magic", "")).Should(BeFalse())
+			Consistently(OperationMethodHasBeenCalled(fakeFactory, traceObjectKey.String(), "magic")).Should(BeFalse())
 
 			err = k8sClient.Delete(ctx, myTrace)
 			Expect(err).NotTo(HaveOccurred(), "failed to delete test Trace resource")

@@ -20,11 +20,9 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"sync"
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/types"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
@@ -40,41 +38,58 @@ type Trace struct {
 
 type TraceFactory struct {
 	gadgets.BaseFactory
-	mu     sync.Mutex
-	traces map[string]*Trace
 }
 
-func (f *TraceFactory) LookupOrCreate(name types.NamespacedName) gadgets.Trace {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.traces == nil {
-		f.traces = make(map[string]*Trace)
-	}
-	trace, ok := f.traces[name.String()]
-	if ok {
-		return trace
-	}
-	trace = &Trace{}
-	f.traces[name.String()] = trace
-
-	return trace
+func NewFactory() gadgets.TraceFactory {
+	return &TraceFactory{}
 }
 
-func (f *TraceFactory) Delete(name types.NamespacedName) error {
-	log.Infof("Deleting %s", name.String())
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	t, ok := f.traces[name.String()]
-	if !ok {
-		log.Infof("Deleting %s: does not exist", name.String())
-		return nil
+func (f *TraceFactory) Description() string {
+	return `The network-policy gadget monitor the network activity in order to generate Kubernetes network policies.`
+}
+
+func (f *TraceFactory) DeleteTrace(name string, t interface{}) {
+	trace := t.(*Trace)
+	if trace.started {
+		trace.cancel()
+		trace.cmd.Wait()
 	}
-	if t.started {
-		t.cancel()
-		t.cmd.Wait()
+}
+
+func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
+	n := func() interface{} {
+		return &Trace{}
 	}
-	delete(f.traces, name.String())
-	return nil
+	return map[string]gadgets.TraceOperation{
+		"start": {
+			Doc: "Start network-policy",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Start(trace)
+			},
+			Order: 1,
+		},
+		"update": {
+			Doc: "Update results in Trace.Status.Output",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).UpdateOutput(trace)
+			},
+			Order: 2,
+		},
+		"report": {
+			Doc: "Convert results into network policies",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Report(trace)
+			},
+			Order: 3,
+		},
+		"stop": {
+			Doc: "Stop network-policy",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Stop(trace)
+			},
+			Order: 4,
+		},
+	}
 }
 
 func (f *Trace) Operation(trace *gadgetv1alpha1.Trace,

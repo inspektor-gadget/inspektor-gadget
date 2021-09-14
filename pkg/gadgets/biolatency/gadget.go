@@ -18,11 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
-	"sync"
 	"syscall"
-
-	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/types"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
@@ -36,41 +32,45 @@ type Trace struct {
 
 type TraceFactory struct {
 	gadgets.BaseFactory
-	mu     sync.Mutex
-	traces map[string]*Trace
 }
 
-func (f *TraceFactory) LookupOrCreate(name types.NamespacedName) gadgets.Trace {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.traces == nil {
-		f.traces = make(map[string]*Trace)
-	}
-	trace, ok := f.traces[name.String()]
-	if ok {
-		return trace
-	}
-	trace = &Trace{}
-	f.traces[name.String()] = trace
-
-	return trace
+func NewFactory() gadgets.TraceFactory {
+	return &TraceFactory{}
 }
 
-func (f *TraceFactory) Delete(name types.NamespacedName) error {
-	log.Infof("Deleting %s", name.String())
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	t, ok := f.traces[name.String()]
-	if !ok {
-		log.Infof("Deleting %s: does not exist", name.String())
-		return nil
+func (f *TraceFactory) Description() string {
+	return `The biolatency gadget traces block device I/O (disk I/O), and records the
+distribution of I/O latency (time), giving this as a histogram when it is
+stopped.`
+}
+
+func (f *TraceFactory) DeleteTrace(name string, t interface{}) {
+	trace := t.(*Trace)
+	if trace.started {
+		trace.cmd.Process.Kill()
+		trace.cmd.Wait()
 	}
-	if t.started {
-		t.cmd.Process.Kill()
-		t.cmd.Wait()
+}
+
+func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
+	n := func() interface{} {
+		return &Trace{}
 	}
-	delete(f.traces, name.String())
-	return nil
+
+	return map[string]gadgets.TraceOperation{
+		"start": {
+			Doc: "Start biolatency",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Start(trace)
+			},
+		},
+		"stop": {
+			Doc: "Stop biolatency and store results",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				f.LookupOrCreate(name, n).(*Trace).Stop(trace)
+			},
+		},
+	}
 }
 
 func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,

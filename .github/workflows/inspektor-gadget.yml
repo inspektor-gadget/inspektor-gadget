@@ -83,7 +83,7 @@ jobs:
 
     - name: Check if generated files are updated
       run: |
-        make manifests generate
+        make manifests generate generate-documentation
         git diff --exit-code HEAD --
 
     - name: Set up Docker Buildx
