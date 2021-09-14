@@ -92,32 +92,6 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	}
 }
 
-func (f *Trace) Operation(trace *gadgetv1alpha1.Trace,
-	operation string,
-	params map[string]string) {
-
-	if trace.ObjectMeta.Namespace != gadgets.TRACE_DEFAULT_NAMESPACE {
-		trace.Status.OperationError = fmt.Sprintf("This gadget only accepts operations on traces in the %s namespace", gadgets.TRACE_DEFAULT_NAMESPACE)
-		return
-	}
-	if trace.ObjectMeta.Name != "network-policy-advisor" {
-		trace.Status.OperationError = "This gadget only accepts operations on the trace named network-policy-advisor"
-		return
-	}
-	switch operation {
-	case "start":
-		f.Start(trace)
-	case "update":
-		f.UpdateOutput(trace)
-	case "report":
-		f.Report(trace)
-	case "stop":
-		f.Stop(trace)
-	default:
-		trace.Status.OperationError = fmt.Sprintf("Unknown operation %q", operation)
-	}
-}
-
 func (f *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if f.started {
 		trace.Status.OperationError = ""

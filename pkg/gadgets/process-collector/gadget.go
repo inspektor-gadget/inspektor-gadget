@@ -15,8 +15,6 @@
 package processcollector
 
 import (
-	"fmt"
-
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/tracer"
@@ -48,22 +46,6 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 				f.LookupOrCreate(name, n).(*Trace).Start(trace)
 			},
 		},
-	}
-}
-
-func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
-	operation string,
-	params map[string]string) {
-
-	if trace.ObjectMeta.Namespace != gadgets.TRACE_DEFAULT_NAMESPACE {
-		trace.Status.OperationError = fmt.Sprintf("This gadget only accepts operations on traces in the %s namespace", gadgets.TRACE_DEFAULT_NAMESPACE)
-		return
-	}
-	switch operation {
-	case "start":
-		t.Start(trace)
-	default:
-		trace.Status.OperationError = fmt.Sprintf("Unknown operation %q", operation)
 	}
 }
 
