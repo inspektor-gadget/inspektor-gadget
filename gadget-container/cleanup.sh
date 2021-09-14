@@ -46,4 +46,9 @@ fi
 
 rm -f /host/opt/nri/bin/nrigadget
 
+# This is a last resource to remove all possible pinned ebpf objects created by
+# Inspektor Gadget & Traceloop
+rm -rf /sys/fs/bpf/gadget/
+rm -rf /sys/fs/bpf/straceback/
+
 echo "Cleanup completed"
