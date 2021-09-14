@@ -200,16 +200,16 @@ fi
 
 echo "Starting the Gadget Tracer Manager in the background..."
 rm -f /run/gadgettracermanager.socket
-/bin/gadgettracermanager -serve $GADGET_EXTRA_PARAMS -controller &
 
 if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
+  /bin/gadgettracermanager -serve $GADGET_EXTRA_PARAMS -controller &
+
   rm -f /run/traceloop.socket
   if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP_LOGLEVEL" != "" ] ; then
     exec /bin/traceloop -log "$INSPEKTOR_GADGET_OPTION_TRACELOOP_LOGLEVEL" k8s
   else
     exec /bin/traceloop k8s
   fi
+else
+  exec /bin/gadgettracermanager -serve $GADGET_EXTRA_PARAMS -controller
 fi
-
-echo "Ready."
-sleep infinity
