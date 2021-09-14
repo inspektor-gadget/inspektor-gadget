@@ -280,5 +280,7 @@ func main() {
 		exitSignal := make(chan os.Signal)
 		signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
 		<-exitSignal
+
+		tracerManager.Close()
 	}
 }

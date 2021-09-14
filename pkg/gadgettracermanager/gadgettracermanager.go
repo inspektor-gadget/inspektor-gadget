@@ -700,6 +700,14 @@ func NewServer(nodeName string) (*GadgetTracerManager, error) {
 	return newServer(nodeName, false, false, true, true)
 }
 
+// Close releases any resource that could be in use by the tracer manager, like
+// ebpf maps.
+func (m *GadgetTracerManager) Close() {
+	if m.containersMap != nil {
+		os.Remove(filepath.Join(gadgets.PIN_PATH, "containers"))
+	}
+}
+
 func increaseRlimit() error {
 	limit := &unix.Rlimit{
 		Cur: unix.RLIM_INFINITY,
