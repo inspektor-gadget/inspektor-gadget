@@ -91,23 +91,6 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 		},
 	}
 }
-func (t *Trace) Operation(trace *gadgetv1alpha1.Trace,
-	operation string,
-	params map[string]string) {
-
-	if trace.ObjectMeta.Namespace != gadgets.TRACE_DEFAULT_NAMESPACE {
-		trace.Status.OperationError = fmt.Sprintf("This gadget only accepts operations on traces in the %s namespace", gadgets.TRACE_DEFAULT_NAMESPACE)
-		return
-	}
-	switch operation {
-	case "start":
-		t.Start(trace)
-	case "stop":
-		t.Stop(trace)
-	default:
-		trace.Status.OperationError = fmt.Sprintf("Unknown operation %q", operation)
-	}
-}
 
 type pubSubKey string
 
