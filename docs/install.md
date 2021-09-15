@@ -87,6 +87,7 @@ The different supported modes can be set by using the `hook-mode` option:
 - `podinformer`: Use a Kubernetes controller to get information about new pods. This option is racy and the first events produced by a container could be lost. This mode is selected when `auto` is used and the above modes are not available.
 - `ldpreload`: Adds an entry in `/etc/ld.so.preload` to call a custom shared library that looks for `runc` calls and dynamically adds the needed OCI hooks to the cointainer `config.json` specification. This feature only works when runc is used. Since this feature is highly experimental, it'll not be considered when `auto` is used.
 - `nri`: Use the [Node Resource Interface](https://github.com/containerd/nri). It requires containerd v1.5 and it's not considered when `auto` is used.
+- `fanotify`: Uses the Linux [fanotify](https://man7.org/linux/man-pages/man7/fanotify.7.html) API. It only works with runc and it's not considered when `auto` is used.
 
 ### Specific Information for Different Platforms
 
