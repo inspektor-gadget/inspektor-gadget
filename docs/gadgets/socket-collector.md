@@ -3,7 +3,7 @@
 title: Gadget socket-collector
 ---
 
-The socket-collector gadget collects tcp and udp sockets.
+The socket-collector gadget gathers information about TCP and UDP sockets.
 
 ### Example CR
 
@@ -28,7 +28,7 @@ spec:
 
 #### start
 
-Collect a snapshot of the list of sockets
+Create a snapshot of the currently open TCP and UDP sockets. Once taken, the snapshot is not updated automatically. However one can call the start operation again at any time to update the snapshot.
 
 ```
 $ kubectl annotate -n gadget trace/socket-collector \

@@ -32,13 +32,13 @@ import (
 
 var processCollectorCmd = &cobra.Command{
 	Use:   "process-collector",
-	Short: "Collect processes",
+	Short: "Gather information about running processes",
 	Run:   processCollectorCmdRun,
 }
 
 var socketCollectorCmd = &cobra.Command{
 	Use:   "socket-collector",
-	Short: "Collect sockets",
+	Short: "Gather information about network sockets",
 	Run:   socketCollectorCmdRun,
 }
 
