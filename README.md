@@ -89,6 +89,9 @@ Join the discussions on the [`#inspektor-gadget`](https://kubernetes.slack.com/m
 
 - Inspektor Gadget and traceloop, [FOSDEM 2020 - Brussels](https://fosdem.org/2020/schedule/event/containers_bpf_tracing/)
 - Traceloop for systemd and Kubernetes + Inspektor Gadget, [All Systems Go 2019 - Berlin](https://cfp.all-systems-go.io/ASG2019/talk/98A9LW/)
+- Using Inspektor Gadget with OpenShift, [Openshift Commons 2020](https://www.youtube.com/watch?v=X9PI7OWLJSY)
+- Using Inspektor Gadget and kubectl-trace, [Open Source Summit EU 2020](https://www.youtube.com/watch?v=2f54ni2X-zo) (live version of the [Cloud Native BPF workshop](https://github.com/kinvolk/cloud-native-bpf-workshop))
+- Inspektor Gadget, introduction and demos, [eCHO Livestream - September 2021](https://www.youtube.com/watch?v=RZ2qNm_vlUc)
 
 ## Thanks
 
