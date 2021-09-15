@@ -34,6 +34,12 @@ const (
 type Tracer struct {
 	collection *ebpf.Collection
 	seccompMap *ebpf.Map
+
+	// progLink links the BPF program to the tracepoint.
+	// A reference is kept so it can be closed it explicitly, otherwise
+	// the garbage collector might unlink it via the finalizer at any
+	// moment.
+	progLink link.Link
 }
 
 func NewTracer() (*Tracer, error) {
@@ -59,7 +65,7 @@ func NewTracer() (*Tracer, error) {
 		return nil, fmt.Errorf("failed to find BPF program %q", BPF_PROG_NAME)
 	}
 
-	_, err = link.AttachRawTracepoint(link.RawTracepointOptions{
+	t.progLink, err = link.AttachRawTracepoint(link.RawTracepointOptions{
 		Name:    "sys_enter",
 		Program: tracepointProg,
 	})
@@ -81,6 +87,7 @@ func (t *Tracer) Peek(mntns uint64) []byte {
 	// we need to test b==nil too
 	if b == nil {
 		// The container just hasn't done any syscall
+		log.Errorf("No syscall found with mntns %d", mntns)
 		return make([]byte, C.SYSCALLS_COUNT)
 	}
 	if len(b) < C.SYSCALLS_COUNT {
@@ -91,5 +98,6 @@ func (t *Tracer) Peek(mntns uint64) []byte {
 }
 
 func (t *Tracer) Close() {
+	t.progLink.Close()
 	t.collection.Close()
 }
