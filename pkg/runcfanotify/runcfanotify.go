@@ -135,7 +135,12 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 	}
 
 	// Don't leak the fd received by GetEvent
-	defer data.Close()
+	// Cannot use data.Close() and data.File() for the same data: the file
+	// would be closed twice:
+	// 1. data.Close() -> closed directly with unix.Close()
+	// 2. data.File()  -> closed indirectly by os.File's finalizer
+	dataFile := data.File()
+	defer dataFile.Close()
 
 	if !data.MatchMask(unix.FAN_ACCESS_PERM) {
 		// This should not happen: FAN_ACCESS_PERM is the only mask Marked
@@ -160,7 +165,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		return false, nil
 	}
 
-	pidFileContent, err := ioutil.ReadAll(data.File())
+	pidFileContent, err := ioutil.ReadAll(dataFile)
 	if err != nil {
 		return false, err
 	}
@@ -309,7 +314,8 @@ func (n *RuncNotifier) watchRuncIterate() (bool, error) {
 	}
 
 	// Don't leak the fd received by GetEvent
-	defer data.Close()
+	dataFile := data.File()
+	defer dataFile.Close()
 
 	if !data.MatchMask(unix.FAN_OPEN_EXEC_PERM) {
 		// This should not happen: FAN_OPEN_EXEC_PERM is the only mask Marked
