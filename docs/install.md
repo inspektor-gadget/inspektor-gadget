@@ -5,6 +5,19 @@ description: >
   How to install.
 ---
 
+<!-- toc -->
+- [Installing kubectl-gadget](#installing-kubectl-gadget)
+  * [Using krew](#using-krew)
+  * [Install a specific release](#install-a-specific-release)
+  * [Compile from the sources](#compile-from-the-sources)
+- [Installing in the cluster](#installing-in-the-cluster)
+  * [Quick installation](#quick-installation)
+  * [Choosing the gadget image](#choosing-the-gadget-image)
+  * [Hook Mode](#hook-mode)
+  * [Specific Information for Different Platforms](#specific-information-for-different-platforms)
+    + [Minikube](#minikube)
+<!-- /toc -->
+
 Inspektor Gadget is composed by a `kubectl` plugin executed in the user's
 system and a DaemonSet deployed in the cluster.
 
@@ -74,6 +87,42 @@ The different supported modes can be set by using the `hook-mode` option:
 - `podinformer`: Use a Kubernetes controller to get information about new pods. This option is racy and the first events produced by a container could be lost. This mode is selected when `auto` is used and the above modes are not available.
 - `ldpreload`: Adds an entry in `/etc/ld.so.preload` to call a custom shared library that looks for `runc` calls and dynamically adds the needed OCI hooks to the cointainer `config.json` specification. This feature only works when runc is used. Since this feature is highly experimental, it'll not be considered when `auto` is used.
 - `nri`: Use the [Node Resource Interface](https://github.com/containerd/nri). It requires containerd v1.5 and it's not considered when `auto` is used.
+
+### Specific Information for Different Platforms
+
+This section explains the additional steps that are required to run Inspektor
+Gadget in some platforms.
+
+#### Minikube
+
+You should create the minikube cluster in different ways according to the gadget
+you want to use. If you want to use traceloop or the network policy advisor you
+should use the VM driver. Otherwise the docker driver is the recommented option.
+
+
+##### Using a VM driver
+
+This option uses a VM driver (like Virtualbox or kvm2) and a custom minikube
+image that contains a more recent kernel version (5.4.40) and some features
+enabled to make eBPF programs work there. More details are available
+[here](https://github.com/kinvolk/cloud-native-bpf-workshop/blob/master/minikube.md#our-branch).
+
+```
+$ wget https://cloud-native-bpf-workshop-public.s3.eu-central-1.amazonaws.com/minikube.iso
+$ minikube start --driver=kvm2 --iso-url=file://$(pwd)/minikube.iso
+
+# Deploy Inspektor Gadget in the cluster as described above
+```
+
+##### Using the docker driver
+
+This option uses docker and hence the kernel of the host.
+
+```
+$ minikube start --driver=docker
+
+# Deploy Inspektor Gadget in the cluster as described above
+```
 
 ## Required Kernel Versions
 
