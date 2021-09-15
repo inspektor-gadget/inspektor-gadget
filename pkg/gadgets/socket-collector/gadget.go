@@ -39,7 +39,7 @@ func NewFactory() gadgets.TraceFactory {
 }
 
 func (f *TraceFactory) Description() string {
-	return `The socket-collector gadget collects tcp and udp sockets.`
+	return `The socket-collector gadget gathers information about TCP and UDP sockets.`
 }
 
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
@@ -51,7 +51,9 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 
 	return map[string]gadgets.TraceOperation{
 		"start": {
-			Doc: "Collect a snapshot of the list of sockets",
+			Doc: "Create a snapshot of the currently open TCP and UDP sockets. " +
+				"Once taken, the snapshot is not updated automatically. " +
+				"However one can call the start operation again at any time to update the snapshot.",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				f.LookupOrCreate(name, n).(*Trace).Start(trace)
 			},

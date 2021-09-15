@@ -3,7 +3,7 @@
 title: Gadget process-collector
 ---
 
-The process-collector gadget collects processes
+The process-collector gadget gathers information about running processes
 
 ### Example CR
 
@@ -29,7 +29,7 @@ spec:
 
 #### start
 
-Collect a snapshot of the list of processes
+Create a snapshot of the currently running processes. Once taken, the snapshot is not updated automatically. However one can call the start operation again at any time to update the snapshot.
 
 ```
 $ kubectl annotate -n gadget trace/process-collector \

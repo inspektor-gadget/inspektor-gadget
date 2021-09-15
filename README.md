@@ -41,9 +41,9 @@ Available Commands:
   help              Help about any command
   network-policy    Generate network policies based on recorded network activity
   opensnoop         Trace open() system calls
-  process-collector Collect processes
+  process-collector Gather information about running processes
   profile           Profile CPU usage by sampling stack traces
-  socket-collector  Collect sockets
+  socket-collector  Gather information about network sockets
   tcpconnect        Trace TCP connect() system calls
   tcptop            Show the TCP traffic in a pod
   tcptracer         Trace tcp connect, accept and close
