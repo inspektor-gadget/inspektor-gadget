@@ -79,7 +79,7 @@ to be able to use them:
 
 It's possible to make changes to Inspektor Gadget and test them on minikube locally without pushing container images to any registry.
 
-* Follow the specific [installation instructions](Documentation/install.md#minikube) for minikube.
+* Follow the specific [installation instructions](install.md#minikube) for minikube.
 * Make sure the git repositories `traceloop` and `inspektor-gadget` are cloned in sibling directories
 * Minikube with the Docker driver does not work for traceloop. You can use another driver, for example:
 ```
