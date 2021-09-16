@@ -280,7 +280,12 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		failure := make(chan string)
 
-		postProcess := utils.NewPostProcess(len(nodes.Items), os.Stdout, os.Stderr, &params, nil)
+		postProcess := utils.NewPostProcess(&utils.PostProcessConfig{
+			Flows:         len(nodes.Items),
+			OutStream:     os.Stdout,
+			ErrStream:     os.Stderr,
+			SkipFirstLine: !params.JsonOutput, // skip first line if json is not used
+		})
 
 		for i, node := range nodes.Items {
 			if params.Node != "" && node.Name != params.Node {

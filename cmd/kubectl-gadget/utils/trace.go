@@ -290,7 +290,17 @@ func genericStreamsDisplay(
 		}
 		return transformLine(line)
 	}
-	postProcess := NewPostProcess(len(results.Items), os.Stdout, os.Stderr, params, callback)
+
+	config := &PostProcessConfig{
+		Flows:         len(results.Items),
+		OutStream:     os.Stdout,
+		ErrStream:     os.Stderr,
+		SkipFirstLine: !params.JsonOutput, // skip first line if json is not used
+		Transform:     callback,
+		Verbose:       !params.JsonOutput && params.Verbose, // verbose only when not json is used
+	}
+
+	postProcess := NewPostProcess(config)
 
 	streamCount := int32(0)
 	for index, i := range results.Items {
