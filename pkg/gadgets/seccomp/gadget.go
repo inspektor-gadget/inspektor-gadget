@@ -27,6 +27,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	seccompprofilev1alpha1 "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1alpha1"
+	k8syaml "sigs.k8s.io/yaml"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
@@ -99,6 +100,7 @@ merely copied for convenience.
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 	return map[string]struct{}{
 		"Status":           {},
+		"Stream":           {},
 		"ExternalResource": {},
 	}
 }
@@ -163,9 +165,6 @@ func genPubSubKey(namespace, name string) pubSubKey {
 // terminated on the node. It is used to generate a SeccompProfile when a
 // container terminates.
 func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.PubSubEvent) {
-	if trace.Spec.OutputMode != "ExternalResource" {
-		return
-	}
 	if event.Container.Mntns == 0 {
 		log.Errorf("Container has unknown mntns")
 		return
@@ -196,9 +195,22 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/container-id"] = event.Container.Id
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/pid"] = fmt.Sprint(event.Container.Pid)
 
-	err := t.client.Create(context.TODO(), r)
-	if err != nil {
-		log.Errorf("Failed to create Seccomp Profile for pod %s: %s", podName, err)
+	switch trace.Spec.OutputMode {
+	case "ExternalResource":
+		err := t.client.Create(context.TODO(), r)
+		if err != nil {
+			log.Errorf("Failed to create Seccomp Profile for pod %s: %s", podName, err)
+		}
+	case "Stream":
+		yamlOutput, err := k8syaml.Marshal(r)
+		if err != nil {
+			log.Errorf("Failed to convert Seccomp Profile to yaml: %s", err)
+			return
+		}
+		t.resolver.PublishEvent(
+			gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
+			fmt.Sprintf("%s\n---\n", string(yamlOutput)),
+		)
 	}
 }
 

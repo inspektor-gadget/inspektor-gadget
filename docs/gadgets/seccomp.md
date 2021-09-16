@@ -102,3 +102,4 @@ $ kubectl annotate -n gadget trace/seccomp \
 
 * ExternalResource
 * Status
+* Stream
