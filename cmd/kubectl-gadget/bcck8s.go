@@ -18,11 +18,9 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"strings"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -171,72 +169,6 @@ func init() {
 	profileCmd.PersistentFlags().BoolVarP(&profileKernel, "kernel", "K", false, "Show stacks from kernel space only (no user space stacks)")
 }
 
-type postProcess struct {
-	firstLinePrinted uint64
-	outStreams       []*postProcessSingle
-	errStreams       []*postProcessSingle
-}
-
-type postProcessSingle struct {
-	orig             io.Writer
-	firstLine        bool
-	firstLinePrinted *uint64
-	buffer           string // buffer to save incomplete strings
-	jsonOutput       bool
-}
-
-func newPostProcess(n int, outStream io.Writer, errStream io.Writer, jsonOutput bool) *postProcess {
-	p := &postProcess{
-		firstLinePrinted: 0,
-		outStreams:       make([]*postProcessSingle, n),
-		errStreams:       make([]*postProcessSingle, n),
-	}
-
-	for i := 0; i < n; i++ {
-		p.outStreams[i] = &postProcessSingle{
-			orig:             outStream,
-			firstLine:        true,
-			firstLinePrinted: &p.firstLinePrinted,
-			buffer:           "",
-			jsonOutput:       jsonOutput,
-		}
-
-		p.errStreams[i] = &postProcessSingle{
-			orig:             errStream,
-			firstLine:        false,
-			firstLinePrinted: &p.firstLinePrinted,
-			buffer:           "",
-		}
-	}
-
-	return p
-}
-
-func (post *postProcessSingle) Write(p []byte) (n int, err error) {
-	asStr := post.buffer + string(p)
-
-	lines := strings.Split(asStr, "\n")
-	if len(lines) == 0 {
-		return len(p), nil
-	}
-
-	// Print all complete lines
-	for _, line := range lines[0 : len(lines)-1] {
-		// Skip printing the header multiple times if json is not used
-		if !post.jsonOutput && post.firstLine {
-			post.firstLine = false
-			if atomic.AddUint64(post.firstLinePrinted, 1) != 1 {
-				continue
-			}
-		}
-		fmt.Fprintf(post.orig, "%s\n", line)
-	}
-
-	post.buffer = lines[len(lines)-1] // Buffer last line to print in next iteration
-
-	return len(p), nil
-}
-
 func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		contextLogger := log.WithFields(log.Fields{
@@ -340,7 +272,11 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		failure := make(chan string)
 
-		postProcess := newPostProcess(len(nodes.Items), os.Stdout, os.Stderr, jsonOutput)
+		flags := &utils.CommonFlags{
+			JsonOutput: jsonOutput,
+		}
+
+		postProcess := utils.NewPostProcess(len(nodes.Items), os.Stdout, os.Stderr, flags, nil)
 
 		for i, node := range nodes.Items {
 			if nodeParam != "" && node.Name != nodeParam {
@@ -352,7 +288,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				var err error
 				if subCommand != "tcptop" {
 					err = utils.ExecPod(client, nodeName, cmd,
-						postProcess.outStreams[index], postProcess.errStreams[index])
+						postProcess.OutStreams[index], postProcess.ErrStreams[index])
 				} else {
 					err = utils.ExecPod(client, nodeName, cmd, os.Stdout, os.Stderr)
 				}
