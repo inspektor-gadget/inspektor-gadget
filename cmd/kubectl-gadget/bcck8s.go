@@ -118,14 +118,14 @@ func init() {
 			"selector",
 			"l",
 			"",
-			fmt.Sprintf("Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2)."),
+			"Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2).",
 		)
 
 		command.PersistentFlags().StringVar(
 			&nodeParam,
 			"node",
 			"",
-			fmt.Sprintf("Show only events from pods running in that node"),
+			"Show only events from pods running in that node",
 		)
 
 		command.PersistentFlags().StringVarP(
@@ -133,7 +133,7 @@ func init() {
 			"podname",
 			"p",
 			"",
-			fmt.Sprintf("Show only events from pods with that name"),
+			"Show only events from pods with that name",
 		)
 
 		command.PersistentFlags().StringVarP(
@@ -141,7 +141,7 @@ func init() {
 			"containername",
 			"c",
 			"",
-			fmt.Sprintf("Show only events from containers with that name"),
+			"Show only events from containers with that name",
 		)
 
 		command.PersistentFlags().BoolVarP(
@@ -149,14 +149,14 @@ func init() {
 			"all-namespaces",
 			"A",
 			false,
-			fmt.Sprintf("Show events from pods in all namespaces"),
+			"Show events from pods in all namespaces",
 		)
 		command.PersistentFlags().BoolVarP(
 			&jsonOutput,
 			"json",
 			"j",
 			false,
-			fmt.Sprintf("Output the events in json format"),
+			"Output the events in json format",
 		)
 	}
 
