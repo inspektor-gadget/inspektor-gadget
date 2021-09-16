@@ -18,8 +18,8 @@ import (
 	"context"
 	"flag"
 	"os"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 
@@ -65,7 +65,9 @@ func runTestContainer(t *testing.T, name, command string, containerReadyCallback
 		t.Fatalf("Failed to start container: %s", err)
 	}
 
-	containerReadyCallback()
+	if containerReadyCallback != nil {
+		containerReadyCallback()
+	}
 
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
@@ -100,19 +102,20 @@ func TestSeccomp(t *testing.T) {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
 
-	runTestContainer(t, containerName, "mkdir /foo ; sleep 4", func() {
-		time.Sleep(2 * time.Second)
-		err = localGadgetManager.Operation("my-tracer", "generate")
-		if err != nil {
-			t.Fatalf("Failed to generate: %s", err)
-		}
+	runTestContainer(t, containerName, "mkdir /foo", func() {
+		//err = localGadgetManager.Operation("my-tracer", "generate")
+		//if err != nil {
+		//	t.Fatalf("Failed to generate: %s", err)
+		//}
 	})
 
-	// TODO: cannot get seccomp policies of deleted pods
-	// https://github.com/kinvolk/inspektor-gadget/issues/265#issuecomment-917615594
-	err = localGadgetManager.Operation("my-tracer", "generate")
+	ch, err := localGadgetManager.Stream("my-tracer", nil)
 	if err != nil {
-		t.Fatalf("Failed to generate: %s", err)
+		t.Fatalf("Failed to get stream: %s", err)
+	}
+	results := <-ch
+	if !strings.Contains(results, "- mkdir") {
+		t.Fatalf("Failed to get correct Seccomp Policy: %s", results)
 	}
 }
 
