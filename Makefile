@@ -86,8 +86,8 @@ controller-tests: kube-apiserver etcd kubectl
 	go test -test.v ./pkg/controllers/... -controller-test
 
 .PHONY: integration-tests
-integration-tests:
-	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)" \
+integration-tests: kubectl-gadget
+	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \
 		go test ./integration/... \
 			-integration \
 			-image $(CONTAINER_REPO):$(IMAGE_TAG)
