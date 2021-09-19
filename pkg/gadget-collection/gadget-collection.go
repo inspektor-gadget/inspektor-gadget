@@ -21,6 +21,7 @@ import (
 	networkpolicyadvisor "github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
 	processcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/seccomp"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/signal"
 	socketcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector"
 )
 
@@ -31,6 +32,7 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 		"process-collector":      processcollector.NewFactory(),
 		"socket-collector":       socketcollector.NewFactory(),
 		"seccomp":                seccomp.NewFactory(),
+		"signal":                 signal.NewFactory(),
 		"network-policy-advisor": networkpolicyadvisor.NewFactory(),
 	}
 }

@@ -1,0 +1,10 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: seccomp
+  namespace: gadget
+spec:
+  node: minikube
+  gadget: signal
+  runMode: Manual
+  outputMode: Status
