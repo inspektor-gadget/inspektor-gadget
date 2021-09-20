@@ -164,7 +164,7 @@ func HaveAnnotation(annotation, expectedOperation string) GomegaMatcher {
 		if annotations == nil {
 			return ""
 		}
-		op, _ := annotations[annotation]
+		op := annotations[annotation]
 		return op
 	}, Equal(expectedOperation))
 }

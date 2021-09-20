@@ -33,9 +33,9 @@ import (
 )
 
 var defaultLabelsToIgnore = map[string]struct{}{
-	"controller-revision-hash": struct{}{},
-	"pod-template-generation":  struct{}{},
-	"pod-template-hash":        struct{}{},
+	"controller-revision-hash": {},
+	"pod-template-generation":  {},
+	"pod-template-hash":        {},
 }
 
 type NetworkPolicyAdvisor struct {
@@ -161,14 +161,14 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.KubernetesConnectionEvent) (p
 	port := intstr.FromInt(int(e.Port))
 	protocol := v1.Protocol("TCP")
 	ports = []networkingv1.NetworkPolicyPort{
-		networkingv1.NetworkPolicyPort{
+		{
 			Port:     &port,
 			Protocol: &protocol,
 		},
 	}
 	if e.RemoteKind == "pod" {
 		peers = []networkingv1.NetworkPolicyPeer{
-			networkingv1.NetworkPolicyPeer{
+			{
 				PodSelector: &metav1.LabelSelector{MatchLabels: a.labelFilter(e.RemotePodLabels)},
 			},
 		}
@@ -182,7 +182,7 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.KubernetesConnectionEvent) (p
 		}
 	} else if e.RemoteKind == "svc" {
 		peers = []networkingv1.NetworkPolicyPeer{
-			networkingv1.NetworkPolicyPeer{
+			{
 				PodSelector: &metav1.LabelSelector{MatchLabels: e.RemoteSvcLabelSelector},
 			},
 		}
@@ -196,7 +196,7 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.KubernetesConnectionEvent) (p
 		}
 	} else if e.RemoteKind == "other" {
 		peers = []networkingv1.NetworkPolicyPeer{
-			networkingv1.NetworkPolicyPeer{
+			{
 				IPBlock: &networkingv1.IPBlock{
 					CIDR: e.RemoteOther + "/32",
 				},
