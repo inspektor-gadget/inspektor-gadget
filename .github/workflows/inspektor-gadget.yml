@@ -126,6 +126,14 @@ jobs:
 
     - name: Build kubectl gadget plugin for all platforms
       run: |
+        # Prevent releases with -dirty suffix due to forgotten entries in
+        # .gitignore.
+        changes="$(git status --porcelain)"
+        if [ -n "$changes" ] ; then
+          echo "$changes"
+          exit 1
+        fi
+
         make kubectl-gadget-all
 
         # Prepare assets for release and actions artifacts
