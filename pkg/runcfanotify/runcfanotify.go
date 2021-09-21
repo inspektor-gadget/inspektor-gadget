@@ -207,7 +207,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		defer unix.Close(int(pidfd))
 		for {
 			fds := []unix.PollFd{
-				unix.PollFd{
+				{
 					Fd:      int32(pidfd),
 					Events:  unix.POLLIN,
 					Revents: 0,

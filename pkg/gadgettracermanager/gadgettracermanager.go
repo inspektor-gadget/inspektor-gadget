@@ -114,7 +114,7 @@ func containerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition
 	return true
 }
 
-func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRequest) (*pb.TracerID, error) {
+func (g *GadgetTracerManager) AddTracer(_ context.Context, req *pb.AddTracerRequest) (*pb.TracerID, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -188,7 +188,7 @@ func (g *GadgetTracerManager) AddTracer(ctx context.Context, req *pb.AddTracerRe
 	return &pb.TracerID{Id: tracerId}, nil
 }
 
-func (g *GadgetTracerManager) RemoveTracer(ctx context.Context, tracerID *pb.TracerID) (*pb.RemoveTracerResponse, error) {
+func (g *GadgetTracerManager) RemoveTracer(_ context.Context, tracerID *pb.TracerID) (*pb.RemoveTracerResponse, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -267,7 +267,7 @@ func (g *GadgetTracerManager) PublishEvent(tracerID string, line string) error {
 	return nil
 }
 
-func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResponse, error) {
+func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinition *pb.ContainerDefinition) (*pb.AddContainerResponse, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -318,7 +318,7 @@ func (g *GadgetTracerManager) AddContainer(ctx context.Context, containerDefinit
 	return &pb.AddContainerResponse{}, nil
 }
 
-func (g *GadgetTracerManager) RemoveContainer(ctx context.Context, containerDefinition *pb.ContainerDefinition) (*pb.RemoveContainerResponse, error) {
+func (g *GadgetTracerManager) RemoveContainer(_ context.Context, containerDefinition *pb.ContainerDefinition) (*pb.RemoveContainerResponse, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -446,7 +446,7 @@ func (g *GadgetTracerManager) GetContainersBySelector(containerSelector *pb.Cont
 	return selectedContainers
 }
 
-func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRequest) (*pb.Dump, error) {
+func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequest) (*pb.Dump, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -464,7 +464,7 @@ func (g *GadgetTracerManager) DumpState(ctx context.Context, req *pb.DumpStateRe
 		for _, l := range t.containerSelector.Labels {
 			out += fmt.Sprintf("                  %v: %v\n", l.Key, l.Value)
 		}
-		out += fmt.Sprintf("        Matches:\n")
+		out += "        Matches:\n"
 		for _, c := range g.containers {
 			if containerSelectorMatches(&t.containerSelector, &c) {
 				out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupId=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupId)
@@ -487,7 +487,7 @@ func (g *GadgetTracerManager) run() {
 		select {
 		case d := <-g.deletedChan:
 			if containerIDs, ok := containerIDsByKey[d]; ok {
-				for containerID, _ := range containerIDs {
+				for containerID := range containerIDs {
 					containerDefinition := &pb.ContainerDefinition{
 						Id: containerID,
 					}

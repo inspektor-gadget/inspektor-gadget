@@ -188,7 +188,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	withAnnotation := trace.DeepCopy()
 	annotations := trace.GetAnnotations()
 	delete(annotations, GADGET_OPERATION)
-	for k, _ := range params {
+	for k := range params {
 		delete(annotations, GADGET_OPERATION+"-"+k)
 	}
 	trace.SetAnnotations(annotations)

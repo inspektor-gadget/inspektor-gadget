@@ -87,7 +87,7 @@ func startController(node string, tracerManager *gadgettracermanager.GadgetTrace
 		os.Exit(1)
 	}
 
-	log.Info("starting trace controller manager")
+	log.Info("Starting trace controller manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		log.Errorf("problem running manager: %s", err)
 		os.Exit(1)

@@ -48,8 +48,8 @@ func TestSelector(t *testing.T) {
 				Podname:   "this-pod",
 				Name:      "this-container",
 				Labels: []*pb.Label{
-					&pb.Label{Key: "key1", Value: "value1"},
-					&pb.Label{Key: "key2", Value: "value2"},
+					{Key: "key1", Value: "value1"},
+					{Key: "key2", Value: "value2"},
 				},
 			},
 			container: &pb.ContainerDefinition{
@@ -57,9 +57,9 @@ func TestSelector(t *testing.T) {
 				Podname:   "this-pod",
 				Name:      "this-container",
 				Labels: []*pb.Label{
-					&pb.Label{Key: "unrelated-label", Value: "here"},
-					&pb.Label{Key: "key1", Value: "value1"},
-					&pb.Label{Key: "key2", Value: "value2"},
+					{Key: "unrelated-label", Value: "here"},
+					{Key: "key1", Value: "value1"},
+					{Key: "key2", Value: "value2"},
 				},
 			},
 		},
@@ -84,8 +84,8 @@ func TestSelector(t *testing.T) {
 				Podname:   "this-pod",
 				Name:      "this-container",
 				Labels: []*pb.Label{
-					&pb.Label{Key: "key1", Value: "value1"},
-					&pb.Label{Key: "key2", Value: "value2"},
+					{Key: "key1", Value: "value1"},
+					{Key: "key2", Value: "value2"},
 				},
 			},
 			container: &pb.ContainerDefinition{
@@ -93,8 +93,8 @@ func TestSelector(t *testing.T) {
 				Podname:   "this-pod",
 				Name:      "this-container",
 				Labels: []*pb.Label{
-					&pb.Label{Key: "key1", Value: "value1"},
-					&pb.Label{Key: "key2", Value: "something-else"},
+					{Key: "key1", Value: "value1"},
+					{Key: "key2", Value: "something-else"},
 				},
 			},
 		},
