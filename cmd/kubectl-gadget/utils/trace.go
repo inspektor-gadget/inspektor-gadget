@@ -136,10 +136,12 @@ func GenericTraceCommand(
 		contextLogger.Fatalf("Error while getting trace rest client: %s", err)
 	}
 
+	nodeFound := false
 	for _, node := range nodes.Items {
 		if params.Node != "" && node.Name != params.Node {
 			continue
 		}
+		nodeFound = true
 
 		trace := &gadgetv1alpha1.Trace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -177,6 +179,10 @@ func GenericTraceCommand(
 			deleteTraces(nil, traceRestClient, traceID)
 			contextLogger.Fatalf("Error creating trace on node %s: %q", node.Name, err)
 		}
+	}
+
+	if params.Node != "" && !nodeFound {
+		contextLogger.Fatalf("Invalid filter: Node %q does not exist", params.Node)
 	}
 
 	var listTracesOptions = metav1.ListOptions{
