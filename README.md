@@ -33,6 +33,7 @@ Usage:
 
 Available Commands:
   bindsnoop         Trace IPv4 and IPv6 bind() system calls
+  biotop            Trace block device I/O top
   capabilities      Trace capabilities security checks triggered by applications
   completion        generate the autocompletion script for the specified shell
   deploy            Deploy Inspektor Gadget on the worker nodes
@@ -58,6 +59,7 @@ Available Commands:
 Specific documentation for the gadgets can be found in the following links:
 
 - [bindsnoop](docs/guides/bindsnoop.md)
+- [biotop](docs/guides/biotop.md)
 - [capabilities](docs/guides/capabilities.md)
 - [execsnoop](docs/guides/execsnoop.md)
 - [network-policy](docs/guides/network-policy.md)
