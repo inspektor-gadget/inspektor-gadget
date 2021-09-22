@@ -17,6 +17,13 @@ else
 	VERSION := $(TAG)-dirty
 endif
 
+pvpath := $(shell command -v pv 2>/dev/null || true)
+ifeq ($(pvpath),)
+	PV :=
+else
+	PV := | $(pvpath)
+endif
+
 include crd.mk
 include tests.mk
 
@@ -103,7 +110,7 @@ minikube-install: gadget-container
 	# Unfortunately, minikube-cache and minikube-image have bugs in older
 	# versions. And new versions of minikube don't support all eBPF
 	# features. So we have to keep "docker-save|docker-load" for now.
-	docker save $(CONTAINER_REPO):$(IMAGE_TAG) | pv | (eval $(shell $(MINIKUBE) -p minikube docker-env | grep =) && docker load)
+	docker save $(CONTAINER_REPO):$(IMAGE_TAG) $(PV) | (eval $(shell $(MINIKUBE) -p minikube docker-env | grep =) && docker load)
 	# Delete traces CRD first: the gadget DaemonSet needs to be running
 	# because of Finalizers.
 	kubectl delete crd traces.gadget.kinvolk.io || true
