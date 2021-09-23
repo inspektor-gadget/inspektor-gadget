@@ -75,6 +75,11 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 }
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
+	if trace.Spec.Filter != nil {
+		trace.Status.OperationError = "Invalid filter: Filtering is not supported"
+		return
+	}
+
 	if t.started {
 		trace.Status.OperationError = ""
 		trace.Status.Output = ""
