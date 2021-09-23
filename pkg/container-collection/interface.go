@@ -42,12 +42,12 @@ type ContainerResolver interface {
 
 	// GetContainersBySelector returns a slice of containers that match
 	// the selector or an empty slice if there are not matches
-	GetContainersBySelector(containerSelector *pb.ContainerSelector) []pb.ContainerDefinition
+	GetContainersBySelector(containerSelector *pb.ContainerSelector) []*pb.ContainerDefinition
 
 	// Subscribe returns the list of existing containers and registers a
 	// callback for notifications about additions and deletions of
 	// containers
-	Subscribe(key interface{}, s pb.ContainerSelector, f pubsub.FuncNotify) []pb.ContainerDefinition
+	Subscribe(key interface{}, s pb.ContainerSelector, f pubsub.FuncNotify) []*pb.ContainerDefinition
 
 	// Unsubscribe undoes a previous call to Subscribe
 	Unsubscribe(key interface{})

@@ -28,15 +28,12 @@ import (
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
-	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 )
 
 import "C"
@@ -51,17 +48,8 @@ type GadgetTracerManager struct {
 	// node where this instance is running
 	nodeName string
 
-	// client to talk to the k8s API server to get information about pods
-	k8sClient *k8s.K8sClient
-
 	// tracers by tracerId
 	tracers map[string]tracer
-
-	podInformer *k8s.PodInformer
-	createdChan chan *v1.Pod
-	deletedChan chan string
-
-	runcNotifier *runcfanotify.RuncNotifier
 
 	// withBPF tells whether GadgetTracerManager can run bpf() syscall.
 	// Normally, withBPF=true but it can be disabled so unit tests can run
@@ -133,7 +121,7 @@ func (g *GadgetTracerManager) AddTracer(_ context.Context, req *pb.AddTracerRequ
 			return nil, fmt.Errorf("error creating mntnsset map: %w", err)
 		}
 
-		g.ContainerRangeWithSelector(req.Selector, func(c pb.ContainerDefinition) {
+		g.ContainerRangeWithSelector(req.Selector, func(c *pb.ContainerDefinition) {
 			one := uint32(1)
 			cgroupIdC := uint64(c.CgroupId)
 			if cgroupIdC != 0 {
@@ -246,42 +234,8 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 		return nil, fmt.Errorf("container with id %s already exists", containerDefinition.Id)
 	}
 
-	// If the pod name isn't provided, use k8s API server to get the
-	// missing information about the container.
-	if containerDefinition.Podname == "" {
-		if g.k8sClient == nil {
-			return nil, fmt.Errorf("container with id %s does not have a pod name and access to the Kubernetes API is disabled", containerDefinition.Id)
-		}
-		if err := g.k8sClient.FillContainer(containerDefinition); err != nil {
-			return nil, err
-		}
-		if containerDefinition.Podname == "" {
-			return nil, fmt.Errorf("container with id %s not found in Kubernetes", containerDefinition.Id)
-		}
-		// Skip the pause container
-		if containerDefinition.Name == "" {
-			return nil, fmt.Errorf("container with id %s is the pause container and cannot be added", containerDefinition.Id)
-		}
-	}
+	g.ContainerCollection.AddContainer(containerDefinition)
 
-	if g.withBPF {
-		for _, t := range g.tracers {
-			if containercollection.ContainerSelectorMatches(&t.containerSelector, containerDefinition) {
-				cgroupIdC := uint64(containerDefinition.CgroupId)
-				mntnsC := uint64(containerDefinition.Mntns)
-				one := uint32(1)
-				if cgroupIdC != 0 {
-					t.cgroupIdSetMap.Put(cgroupIdC, one)
-				}
-				if mntnsC != 0 {
-					t.mntnsSetMap.Put(mntnsC, one)
-				}
-			}
-		}
-	}
-
-	g.ContainerCollection.AddContainer(*containerDefinition)
-	g.addContainerInMap(*containerDefinition)
 	return &pb.AddContainerResponse{}, nil
 }
 
@@ -298,18 +252,6 @@ func (g *GadgetTracerManager) RemoveContainer(_ context.Context, containerDefini
 		return nil, fmt.Errorf("cannot remove container: unknown container %q", containerDefinition.Id)
 	}
 
-	if g.withBPF {
-		for _, t := range g.tracers {
-			if containercollection.ContainerSelectorMatches(&t.containerSelector, c) {
-				cgroupIdC := uint64(c.CgroupId)
-				mntnsC := uint64(c.Mntns)
-				t.cgroupIdSetMap.Delete(cgroupIdC)
-				t.mntnsSetMap.Delete(mntnsC)
-			}
-		}
-	}
-
-	g.deleteContainerFromMap(*c)
 	g.ContainerCollection.RemoveContainer(containerDefinition.Id)
 	return &pb.RemoveContainerResponse{}, nil
 }
@@ -319,7 +261,7 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 	defer g.mu.Unlock()
 
 	out := "List of containers:\n"
-	g.ContainerRange(func(c pb.ContainerDefinition) {
+	g.ContainerRange(func(c *pb.ContainerDefinition) {
 		out += fmt.Sprintf("%+v\n", c)
 	})
 	out += "List of tracers:\n"
@@ -333,7 +275,7 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 			out += fmt.Sprintf("                  %v: %v\n", l.Key, l.Value)
 		}
 		out += "        Matches:\n"
-		g.ContainerRangeWithSelector(&t.containerSelector, func(c pb.ContainerDefinition) {
+		g.ContainerRangeWithSelector(&t.containerSelector, func(c *pb.ContainerDefinition) {
 			out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupId=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupId)
 		})
 	}
@@ -343,63 +285,6 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 	out += fmt.Sprintf("%s\n", buf[:stacklen])
 
 	return &pb.Dump{State: out}, nil
-}
-
-func (g *GadgetTracerManager) run() {
-	// containerIDsByKey keeps track of container ids for each key. This is
-	// necessary because messages from deletedChan only gives the key
-	// without additional context.
-	//
-	// key is "namespace/podname"
-	// value is an set of containerId
-	containerIDsByKey := make(map[string]map[string]struct{})
-
-	for {
-		select {
-		case d := <-g.deletedChan:
-			if containerIDs, ok := containerIDsByKey[d]; ok {
-				for containerID := range containerIDs {
-					containerDefinition := &pb.ContainerDefinition{
-						Id: containerID,
-					}
-					g.RemoveContainer(nil, containerDefinition)
-				}
-			}
-		case c := <-g.createdChan:
-			key, _ := cache.MetaNamespaceKeyFunc(c)
-			containerIDs, ok := containerIDsByKey[key]
-			if !ok {
-				containerIDs = make(map[string]struct{})
-				containerIDsByKey[key] = containerIDs
-			}
-
-			// first: remove containers that are not running anymore
-			nonrunning := g.k8sClient.GetNonRunningContainers(c)
-			for _, id := range nonrunning {
-				// container had not been added, no need to remove it
-				if _, ok := containerIDs[id]; !ok {
-					continue
-				}
-
-				g.RemoveContainer(nil, &pb.ContainerDefinition{
-					Id: id,
-				})
-			}
-
-			// second: add containers that are in running state
-			containers := g.k8sClient.PodToContainers(c)
-			for _, container := range containers {
-				// The container is already registered, there is not any chance the
-				// PID will change, so ignore it.
-				if _, ok := containerIDs[container.Id]; ok {
-					continue
-				}
-
-				g.AddContainer(nil, &container)
-				containerIDs[container.Id] = struct{}{}
-			}
-		}
-	}
 }
 
 // createContainersMap creates a global map /sys/fs/bpf/gadget/containers
@@ -436,7 +321,7 @@ func (g *GadgetTracerManager) createContainersMap() error {
 	return nil
 }
 
-func (g *GadgetTracerManager) addContainerInMap(c pb.ContainerDefinition) {
+func (g *GadgetTracerManager) addContainerInMap(c *pb.ContainerDefinition) {
 	if g.containersMap == nil || c.Mntns == 0 {
 		return
 	}
@@ -452,7 +337,7 @@ func (g *GadgetTracerManager) addContainerInMap(c pb.ContainerDefinition) {
 	g.containersMap.Put(mntnsC, val)
 }
 
-func (g *GadgetTracerManager) deleteContainerFromMap(c pb.ContainerDefinition) {
+func (g *GadgetTracerManager) deleteContainerFromMap(c *pb.ContainerDefinition) {
 	if g.containersMap == nil || c.Mntns == 0 {
 		return
 	}
@@ -465,84 +350,84 @@ func newServer(nodeName string, withPodInformer, withRuncFanotify, withBPF, with
 		tracers:  make(map[string]tracer),
 		withBPF:  withBPF,
 	}
-	g.ContainerCollectionInitialize()
+
+	containerEventFuncs := []pubsub.FuncNotify{}
 
 	if withBPF {
-		if err := initServer(); err != nil {
-			return nil, err
+		if err := increaseRlimit(); err != nil {
+			return nil, fmt.Errorf("failed to increase memlock limit: %w", err)
 		}
-	}
 
-	if withK8sClient {
-		k8sClient, err := k8s.NewK8sClient(nodeName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create k8s client: %w", err)
+		if err := os.Mkdir(gadgets.PIN_PATH, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
+			return nil, fmt.Errorf("failed to create folder for pinning bpf maps: %w", err)
 		}
-		g.k8sClient = k8sClient
 
-		if !withPodInformer {
-			// The CRI client is only used at the beginning to get the initial list
-			// of containers, it's not used after it.
-			defer k8sClient.CloseCRI()
-		}
-	}
-
-	if withPodInformer {
-		g.createdChan = make(chan *v1.Pod)
-		g.deletedChan = make(chan string)
-
-		podInformer, err := k8s.NewPodInformer(nodeName, g.createdChan, g.deletedChan)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create pod informer: %w", err)
-		}
-		g.podInformer = podInformer
-	}
-
-	if withRuncFanotify {
-		log.Printf("experimental hook mode fanotify")
-		runcNotifier, err := runcfanotify.NewRuncNotifier(func(notif runcfanotify.ContainerEvent) {
-			switch notif.Type {
-			case runcfanotify.EVENT_TYPE_ADD_CONTAINER:
-				mountSources := []string{}
-				for _, m := range notif.ContainerConfig.Mounts {
-					mountSources = append(mountSources, m.Source)
-				}
-				g.AddContainer(nil, &pb.ContainerDefinition{
-					Id:           notif.ContainerID,
-					Pid:          notif.ContainerPID,
-					MountSources: mountSources,
-				})
-			case runcfanotify.EVENT_TYPE_REMOVE_CONTAINER:
-				g.RemoveContainer(nil, &pb.ContainerDefinition{
-					Id: notif.ContainerID,
-				})
-			}
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create runc fanotifier: %w", err)
-		}
-		g.runcNotifier = runcNotifier
-	}
-
-	if withBPF {
 		if err := g.createContainersMap(); err != nil {
 			return nil, err
 		}
+
+		containerEventFuncs = append(containerEventFuncs, func(event pubsub.PubSubEvent) {
+			switch event.Type {
+			case pubsub.EVENT_TYPE_ADD_CONTAINER:
+				// Skip the pause container
+				if event.Container.Name == "" {
+					return
+				}
+
+				log.Infof("pubsub: ADD_CONTAINER: %s/%s/%s", event.Container.Namespace, event.Container.Podname, event.Container.Name)
+
+				g.addContainerInMap(&event.Container)
+
+				for _, t := range g.tracers {
+					if containercollection.ContainerSelectorMatches(&t.containerSelector, &event.Container) {
+						cgroupIdC := uint64(event.Container.CgroupId)
+						mntnsC := uint64(event.Container.Mntns)
+						one := uint32(1)
+						if cgroupIdC != 0 {
+							t.cgroupIdSetMap.Put(cgroupIdC, one)
+						}
+						if mntnsC != 0 {
+							t.mntnsSetMap.Put(mntnsC, one)
+						} else {
+							log.Errorf("new container with mntns=0")
+						}
+					}
+				}
+
+			case pubsub.EVENT_TYPE_REMOVE_CONTAINER:
+				g.deleteContainerFromMap(&event.Container)
+
+				for _, t := range g.tracers {
+					if containercollection.ContainerSelectorMatches(&t.containerSelector, &event.Container) {
+						cgroupIdC := uint64(event.Container.CgroupId)
+						mntnsC := uint64(event.Container.Mntns)
+						t.cgroupIdSetMap.Delete(cgroupIdC)
+						t.mntnsSetMap.Delete(mntnsC)
+					}
+				}
+			}
+		})
 	}
 
+	opts := []containercollection.ContainerCollectionOption{
+		containercollection.WithPubSub(containerEventFuncs...),
+		containercollection.WithCgroupEnrichment(),
+		containercollection.WithLinuxNamespaceEnrichment(),
+	}
+	if withK8sClient {
+		opts = append(opts, containercollection.WithKubernetesEnrichment(nodeName))
+	}
+	if withRuncFanotify {
+		opts = append(opts, containercollection.WithRuncFanotify())
+	}
 	if withPodInformer {
-		go g.run()
+		opts = append(opts, containercollection.WithPodInformer(nodeName))
 	} else if withK8sClient {
-		containers, err := g.k8sClient.ListContainers()
-		if err != nil {
-			log.Printf("gadgettracermanager failed to list containers: %v", err)
-		} else {
-			log.Printf("gadgettracermanager found %d containers: %+v", len(containers), containers)
-			for _, container := range containers {
-				g.ContainerCollection.AddContainer(container)
-				g.addContainerInMap(container)
-			}
-		}
+		opts = append(opts, containercollection.WithInitialKubernetesContainers(nodeName))
+	}
+	err := g.ContainerCollectionInitialize(opts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return g, nil
@@ -574,16 +459,4 @@ func increaseRlimit() error {
 		Max: unix.RLIM_INFINITY,
 	}
 	return unix.Setrlimit(unix.RLIMIT_MEMLOCK, limit)
-}
-
-func initServer() error {
-	if err := increaseRlimit(); err != nil {
-		return fmt.Errorf("failed to increase memlock limit: %w", err)
-	}
-
-	if err := os.Mkdir(gadgets.PIN_PATH, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
-		return fmt.Errorf("failed to create folder for pinning bpf maps: %w", err)
-	}
-
-	return nil
 }
