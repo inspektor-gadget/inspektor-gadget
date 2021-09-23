@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/s3rj1k/go-fanotify/fanotify"
@@ -57,6 +58,15 @@ type RuncNotifyFunc func(notif ContainerEvent)
 type RuncNotifier struct {
 	runcBinaryNotify *fanotify.NotifyFD
 	callback         RuncNotifyFunc
+
+	// containers is the set of containers that are being watched for
+	// termination. This prevents duplicate calls to
+	// AddWatchContainerTermination.
+	//
+	// Keys: Container ID
+	// Value: dummy struct
+	containers map[string]struct{}
+	mu         sync.Mutex
 }
 
 // runcPaths is the list of paths where runc could be installed. Depending on
@@ -83,7 +93,8 @@ var runcPaths = []string{
 // - Linux >= 5.3 (for pidfd_open)
 func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	n := &RuncNotifier{
-		callback: callback,
+		callback:   callback,
+		containers: make(map[string]struct{}),
 	}
 
 	fanotifyFlags := uint(unix.FAN_CLOEXEC | unix.FAN_CLASS_CONTENT | unix.FAN_UNLIMITED_QUEUE | unix.FAN_UNLIMITED_MARKS)
@@ -117,6 +128,57 @@ func commFromPid(pid int) string {
 func cmdlineFromPid(pid int) []string {
 	cmdline, _ := ioutil.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
 	return strings.Split(string(cmdline), "\x00")
+}
+
+// AddWatchContainerTermination watches a container for termination and
+// generates an event on the notifier. This is automatically called for new
+// containers detected by RuncNotifier, but it can also be called for
+// containers detected externally such as initial containers.
+func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containerPID int) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	if _, ok := n.containers[containerID]; ok {
+		// This container is already being watched for termination
+		return
+	}
+	n.containers[containerID] = struct{}{}
+
+	go n.watchContainerTermination(containerID, containerPID)
+}
+
+func (n *RuncNotifier) watchContainerTermination(containerID string, containerPID int) {
+	defer func() {
+		n.mu.Lock()
+		defer n.mu.Unlock()
+		delete(n.containers, containerID)
+	}()
+
+	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, uintptr(containerPID), 0, 0)
+	if errno != 0 {
+		log.Errorf("pidfd_open on %d returned %v", containerPID, errno)
+		return
+	}
+	defer unix.Close(int(pidfd))
+
+	for {
+		fds := []unix.PollFd{
+			{
+				Fd:      int32(pidfd),
+				Events:  unix.POLLIN,
+				Revents: 0,
+			},
+		}
+		count, err := unix.Poll(fds, -1)
+		if err == nil && count == 1 {
+			n.callback(ContainerEvent{
+				Type:         EVENT_TYPE_REMOVE_CONTAINER,
+				ContainerID:  containerID,
+				ContainerPID: uint32(containerPID),
+			})
+			return
+		}
+	}
 }
 
 func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, bundleDir string, pidFile string, pidFileDir string) (bool, error) {
@@ -186,11 +248,6 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		return false, nil
 	}
 
-	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, uintptr(containerPID), 0, 0)
-	if errno != 0 {
-		return false, fmt.Errorf("pidfd_open returned %v", errno)
-	}
-
 	bundleConfigJson, err := ioutil.ReadFile(filepath.Join(bundleDir, "config.json"))
 	if err != nil {
 		return false, err
@@ -203,28 +260,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 
 	containerID := filepath.Base(filepath.Clean(bundleDir))
 
-	go func() {
-		defer unix.Close(int(pidfd))
-		for {
-			fds := []unix.PollFd{
-				{
-					Fd:      int32(pidfd),
-					Events:  unix.POLLIN,
-					Revents: 0,
-				},
-			}
-			count, err := unix.Poll(fds, -1)
-			if err == nil && count == 1 {
-				n.callback(ContainerEvent{
-					Type:            EVENT_TYPE_REMOVE_CONTAINER,
-					ContainerID:     containerID,
-					ContainerPID:    uint32(containerPID),
-					ContainerConfig: containerConfig,
-				})
-				return
-			}
-		}
-	}()
+	n.AddWatchContainerTermination(containerID, containerPID)
 
 	n.callback(ContainerEvent{
 		Type:            EVENT_TYPE_ADD_CONTAINER,
