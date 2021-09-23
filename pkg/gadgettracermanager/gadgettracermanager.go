@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"unsafe"
 
@@ -336,6 +337,11 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 			out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupId=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupId)
 		})
 	}
+	out += "List of stacks:\n"
+	buf := make([]byte, 1<<20)
+	stacklen := runtime.Stack(buf, true)
+	out += fmt.Sprintf("%s\n", buf[:stacklen])
+
 	return &pb.Dump{State: out}, nil
 }
 
