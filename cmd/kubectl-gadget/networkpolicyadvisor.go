@@ -33,7 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/advisor"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 )
@@ -191,13 +191,13 @@ func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Parameter --input missing")
 	}
 
-	advisor := networkpolicy.NewAdvisor()
-	err := advisor.LoadFile(inputFileName)
+	adv := advisor.NewAdvisor()
+	err := adv.LoadFile(inputFileName)
 	if err != nil {
 		return err
 	}
 
-	advisor.GeneratePolicies()
+	adv.GeneratePolicies()
 
 	w, closure, err := newWriter(outputFileName)
 	if err != nil {
@@ -205,7 +205,7 @@ func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
 	}
 	defer closure()
 
-	_, err = w.Write([]byte(advisor.FormatPolicies()))
+	_, err = w.Write([]byte(adv.FormatPolicies()))
 	if err != nil {
 		contextLogger.Fatalf("Error writing file %q: %s", outputFileName, err)
 	}

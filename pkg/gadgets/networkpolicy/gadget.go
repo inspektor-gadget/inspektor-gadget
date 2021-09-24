@@ -26,6 +26,7 @@ import (
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/advisor"
 )
 
 type Trace struct {
@@ -141,15 +142,15 @@ func (f *Trace) UpdateOutput(trace *gadgetv1alpha1.Trace) {
 }
 
 func (f *Trace) Report(trace *gadgetv1alpha1.Trace) {
-	advisor := NewAdvisor()
-	err := advisor.LoadBuffer([]byte(trace.Status.Output))
+	adv := advisor.NewAdvisor()
+	err := adv.LoadBuffer([]byte(trace.Status.Output))
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("Cannot parse report: %s", err)
 		return
 	}
 
-	advisor.GeneratePolicies()
-	output := advisor.FormatPolicies()
+	adv.GeneratePolicies()
+	output := adv.FormatPolicies()
 
 	trace.Status.OperationError = ""
 	trace.Status.Output = output
