@@ -35,6 +35,12 @@ func (f *TraceFactory) Description() string {
 	return `The process-collector gadget gathers information about running processes`
 }
 
+func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
+	return map[string]struct{}{
+		"Status": {},
+	}
+}
+
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{}

@@ -52,6 +52,12 @@ func deleteTrace(name string, trace interface{}) {
 	f.mu.Unlock()
 }
 
+func (f *FakeFactory) OutputModesSupported() map[string]struct{} {
+	return map[string]struct{}{
+		"Status": {},
+	}
+}
+
 func (f *FakeFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return f

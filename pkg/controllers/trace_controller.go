@@ -151,13 +151,8 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	if factoryWithCaps, ok := factory.(gadgets.TraceFactoryWithCapabilities); ok {
-		outputModes := factoryWithCaps.OutputModesSupported()
-		if _, ok := outputModes[trace.Spec.OutputMode]; !ok {
-			log.Errorf("Unsupported OutputMode: %q", trace.Spec.OutputMode)
-			return ctrl.Result{}, nil
-		}
-	} else if trace.Spec.OutputMode != "Status" {
+	outputModes := factory.OutputModesSupported()
+	if _, ok := outputModes[trace.Spec.OutputMode]; !ok {
 		log.Errorf("Unsupported OutputMode: %q", trace.Spec.OutputMode)
 		return ctrl.Result{}, nil
 	}

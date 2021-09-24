@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
+	gadgetcollection "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 )
 
@@ -83,15 +83,12 @@ func main() {
 	}
 
 	for _, gadget := range getTraceFactories() {
-		if factoryWithCaps, ok := gadget.Factory.(gadgets.TraceFactoryWithCapabilities); ok {
-			outputModesSet := factoryWithCaps.OutputModesSupported()
-			for k := range outputModesSet {
-				gadget.OutputModes = append(gadget.OutputModes, k)
-			}
-			sort.Strings(gadget.OutputModes)
-		} else {
-			gadget.OutputModes = []string{"Status"}
+		outputModesSet := gadget.Factory.OutputModesSupported()
+		for k := range outputModesSet {
+			gadget.OutputModes = append(gadget.OutputModes, k)
 		}
+		sort.Strings(gadget.OutputModes)
+
 		for name, op := range gadget.Factory.Operations() {
 			gadget.Operations = append(gadget.Operations, GadgetOperation{
 				Name:  name,

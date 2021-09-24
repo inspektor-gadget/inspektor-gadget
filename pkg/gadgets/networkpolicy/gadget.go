@@ -51,6 +51,12 @@ func (f *TraceFactory) Description() string {
 	return `The network-policy gadget monitor the network activity in order to generate Kubernetes network policies.`
 }
 
+func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
+	return map[string]struct{}{
+		"Status": {},
+	}
+}
+
 func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
 	if trace.started {
