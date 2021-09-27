@@ -180,6 +180,18 @@ func (k *K8sClient) FillContainer(containerDefinition *pb.ContainerDefinition) e
 	return nil
 }
 
+// GetNonRunningContainers returns the list of containers IDs that are not running
+func (k *K8sClient) GetNonRunningContainers(pod *v1.Pod) []string {
+	ret := []string{}
+	for _, s := range pod.Status.ContainerStatuses {
+		if s.ContainerID != "" && s.State.Running == nil {
+			ret = append(ret, s.ContainerID)
+		}
+	}
+
+	return ret
+}
+
 // PodToContainers return a list of the containers of a given Pod.
 // Containers that are not running or don't have an ID are not considered.
 func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
