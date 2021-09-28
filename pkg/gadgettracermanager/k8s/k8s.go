@@ -137,31 +137,14 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 			log.Printf("Skip pod %s/%s: got zero pid", pod.GetNamespace(), pod.GetName())
 			continue
 		}
-		cgroupPathV1, cgroupPathV2, err := containerutils.GetCgroupPaths(pid)
-		if err != nil {
-			log.Printf("Skip pod %s/%s: cannot find cgroup path: %v", pod.GetNamespace(), pod.GetName(), err)
-			continue
-		}
-		cgroupPathV2WithMountpoint, _ := containerutils.CgroupPathV2AddMountpoint(cgroupPathV2)
-		cgroupId, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
-		mntns, err := containerutils.GetMntNs(pid)
-		if err != nil {
-			log.Printf("Skip pod %s/%s: cannot find mnt namespace: %v", pod.GetNamespace(), pod.GetName(), err)
-			continue
-		}
 
 		containerDef := pb.ContainerDefinition{
-			Id:         s.ContainerID,
-			CgroupPath: cgroupPathV2WithMountpoint,
-			CgroupId:   cgroupId,
-			CgroupV1:   cgroupPathV1,
-			CgroupV2:   cgroupPathV2,
-			Mntns:      mntns,
-			Namespace:  pod.GetNamespace(),
-			Podname:    pod.GetName(),
-			Name:       s.Name,
-			Labels:     labels,
-			Pid:        uint32(pid),
+			Id:        s.ContainerID,
+			Namespace: pod.GetNamespace(),
+			Podname:   pod.GetName(),
+			Name:      s.Name,
+			Labels:    labels,
+			Pid:       uint32(pid),
 		}
 		containers = append(containers, containerDef)
 	}

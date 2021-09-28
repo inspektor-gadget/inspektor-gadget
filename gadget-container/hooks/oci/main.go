@@ -99,22 +99,6 @@ func main() {
 		return
 	}
 
-	// Get cgroup paths
-	cgroupPathV1, cgroupPathV2, err := containerutils.GetCgroupPaths(ociStatePid)
-	if err != nil {
-		panic(err)
-	}
-	cgroupPathV2WithMountpoint, _ := containerutils.CgroupPathV2AddMountpoint(cgroupPathV2)
-
-	// Get cgroup-v2 id
-	cgroupId, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
-
-	// Get mount namespace ino
-	mntns, err := containerutils.GetMntNs(ociStatePid)
-	if err != nil {
-		panic(err)
-	}
-
 	// Get bundle directory and OCI spec (config.json)
 	ppid := 0
 	if statusFile, err := os.Open(filepath.Join("/proc", fmt.Sprintf("%d", ociStatePid), "status")); err == nil {
@@ -167,11 +151,6 @@ func main() {
 
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{
 		Id:           ociStateID,
-		CgroupPath:   cgroupPathV2WithMountpoint,
-		CgroupId:     cgroupId,
-		Mntns:        mntns,
-		CgroupV1:     cgroupPathV1,
-		CgroupV2:     cgroupPathV2,
 		MountSources: mountSources,
 		Pid:          uint32(ociStatePid),
 	})
