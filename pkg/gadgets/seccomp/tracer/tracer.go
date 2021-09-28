@@ -97,6 +97,10 @@ func (t *Tracer) Peek(mntns uint64) []byte {
 	return b[:C.SYSCALLS_COUNT]
 }
 
+func (t *Tracer) Delete(mntns uint64) {
+	t.seccompMap.Delete(mntns)
+}
+
 func (t *Tracer) Close() {
 	t.progLink.Close()
 	t.collection.Close()

@@ -3,7 +3,44 @@
 title: Gadget seccomp
 ---
 
-The seccomp gadget traces system calls for each container in order to generate seccomp policies on-demand.
+The seccomp gadget traces system calls for each container in order to generate
+seccomp policies.
+
+The seccomp policies can be generated in two ways:
+1. on demand with the gadget.kinvolk.io/operation=generate annotation. In this
+   case, the Trace.Spec.Filter should specify the namespace and pod name to the
+   exclusion of other fields because there can be only one SeccompProfile
+   written in the Trace.Status.Output or in the SeccompProfile resource named
+   by Trace.Spec.Output. The on-demand generation supports the outputMode
+   Status and ExternalResource.
+2. automatically when containers matching the Trace.Spec.Filter terminate. In
+   this case, all filters are supported. The at-termination generation supports
+   the outputMode ExternalResource and Stream.
+
+The seccomp policies can be written in the Status field of the Trace custom
+resource, or in SeccompProfiles custom resources managed by the [Kubernetes
+Security Profiles
+Operator](https://github.com/kubernetes-sigs/security-profiles-operator).
+
+SeccompProfiles will have the following annotations:
+
+* seccomp.gadget.kinvolk.io/trace: the namespaced name of the Trace custom
+  resource that generated this SeccompProfile
+* seccomp.gadget.kinvolk.io/node: the node where this SeccompProfile was
+  generated
+* seccomp.gadget.kinvolk.io/pod: the pod namespaced name of the pod that was
+  traced
+* seccomp.gadget.kinvolk.io/container: the container name in the pod that was
+  traced
+* seccomp.gadget.kinvolk.io/container-id: the container ID in the pod that
+  was traced. Typically, 64 hexadecimal characters.
+* seccomp.gadget.kinvolk.io/pid: the process ID of the container in the pod
+  that was traced.
+
+SeccompProfiles will have the same labels as the Trace custom resource that
+generated them. They don&#39;t have meaning for the seccomp gadget. They are
+merely copied for convenience.
+
 
 ### Example CR
 
@@ -16,9 +53,19 @@ metadata:
 spec:
   node: minikube
   gadget: seccomp
+
+  # # Example of filter for manual generation with the
+  # # gadget.kinvolk.io/operation=generate annotation. This needs a namespace and
+  # # podname at the exclusion of other fields.
+  # filter:
+  #   namespace: default
+  #   podname: mypod
+
+  # Another example of filter for automatic generation when containers
+  # terminate. All fields are supported.
   filter:
-    namespace: kube-system
-    podname: etcd-minikube
+    namespace: default
+
   runMode: Manual
   outputMode: ExternalResource
   output: gadget/myseccomp
@@ -37,7 +84,8 @@ $ kubectl annotate -n gadget trace/seccomp \
 ```
 #### generate
 
-Generate a seccomp profile
+Generate a seccomp profile for the pod specified in Trace.Spec.Filter. The
+namespace and pod name should be specified at the exclusion of other fields.
 
 ```
 $ kubectl annotate -n gadget trace/seccomp \
@@ -56,3 +104,4 @@ $ kubectl annotate -n gadget trace/seccomp \
 
 * ExternalResource
 * Status
+* Stream
