@@ -34,6 +34,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+var biotopCmd = &cobra.Command{
+	Use:   "biotop",
+	Short: "Trace block device I/O",
+	Run:   bccCmd("biotop", "/bin/gadgets/biotop"),
+}
+
 var execsnoopCmd = &cobra.Command{
 	Use:   "execsnoop",
 	Short: "Trace new processes",
@@ -100,6 +106,7 @@ var (
 
 func init() {
 	commands := []*cobra.Command{
+		biotopCmd,
 		execsnoopCmd,
 		opensnoopCmd,
 		bindsnoopCmd,
@@ -192,6 +199,25 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			}
 		}
 
+		// biotop only works per node
+		if subCommand == "biotop" {
+			if nodeParam == "" {
+				contextLogger.Fatalf("biotop only works with --node")
+			}
+
+			if containernameParam != "" || podnameParam != "" {
+				contextLogger.Fatalf("biotop doesn't support --containername or --podname")
+			}
+
+			if !allNamespaces {
+				contextLogger.Fatalf("biotop only works with --all-namespaces")
+			}
+
+			if jsonOutput {
+				contextLogger.Fatalf("biotop doesn't support --json")
+			}
+		}
+
 		labelFilter := ""
 		if labelParam != "" {
 			pairs := strings.Split(labelParam, ",")
@@ -220,10 +246,17 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			containernameFilter = fmt.Sprintf("--containername %s", containernameParam)
 		}
 
+		extraParams := ""
+
+		// disable manager for biotop
+		if subCommand == "biotop" {
+			extraParams += " --nomanager"
+		}
+
 		gadgetParams := ""
 
 		// add container info to gadgets that support it
-		if subCommand != "tcptop" && subCommand != "profile" {
+		if subCommand != "tcptop" && subCommand != "profile" && subCommand != "biotop" {
 			gadgetParams = "--containersmap /sys/fs/bpf/gadget/containers"
 		}
 
@@ -283,8 +316,8 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				continue
 			}
 			go func(nodeName string, index int) {
-				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s %s -- %s",
-					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, containernameFilter, gadgetParams)
+				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s %s %s -- %s",
+					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, containernameFilter, extraParams, gadgetParams)
 				var err error
 				if subCommand != "tcptop" {
 					err = utils.ExecPod(client, nodeName, cmd,
