@@ -41,6 +41,7 @@ import (
 
 const (
 	GADGET_OPERATION = "gadget.kinvolk.io/operation"
+	traceTimeout     = 2 * time.Second
 )
 
 func init() {
@@ -230,7 +231,7 @@ RetryLoop:
 			contextLogger.Fatalf("Error getting traces: %q", err)
 		}
 
-		timeout := time.Now().Sub(start) > 2*time.Second
+		timeout := time.Since(start) > traceTimeout
 		successNodeCount := 0
 		nodeErrors := make(map[string]string)
 		for _, i := range results.Items {
@@ -245,9 +246,15 @@ RetryLoop:
 				successNodeCount++
 			} else {
 				if timeout {
-					nodeErrors[i.Spec.Node] = i.Status.OperationError
+					if i.Status.OperationError != "" {
+						nodeErrors[i.Spec.Node] = i.Status.OperationError
+					} else {
+						nodeErrors[i.Spec.Node] = fmt.Sprintf("No results received from trace within %v",
+							traceTimeout)
+					}
 					continue
 				}
+
 				time.Sleep(100 * time.Millisecond)
 				continue RetryLoop
 			}
