@@ -366,13 +366,28 @@ func (g *GadgetTracerManager) run() {
 				}
 			}
 		case c := <-g.createdChan:
-			containers := g.k8sClient.PodToContainers(c)
 			key, _ := cache.MetaNamespaceKeyFunc(c)
 			containerIDs, ok := containerIDsByKey[key]
 			if !ok {
 				containerIDs = make(map[string]struct{})
 				containerIDsByKey[key] = containerIDs
 			}
+
+			// first: remove containers that are not running anymore
+			nonrunning := g.k8sClient.GetNonRunningContainers(c)
+			for _, id := range nonrunning {
+				// container had not been added, no need to remove it
+				if _, ok := containerIDs[id]; !ok {
+					continue
+				}
+
+				g.RemoveContainer(nil, &pb.ContainerDefinition{
+					Id: id,
+				})
+			}
+
+			// second: add containers that are in running state
+			containers := g.k8sClient.PodToContainers(c)
 			for _, container := range containers {
 				// The container is already registered, there is not any chance the
 				// PID will change, so ignore it.
