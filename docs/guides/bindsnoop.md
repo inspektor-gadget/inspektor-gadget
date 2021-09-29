@@ -15,7 +15,7 @@ $ kubectl gadget bindsnoop --selector run=nginx-app
 
 In another terminal, start nginx:
 ```
-$ kubectl run --generator=run-pod/v1 --image=nginx nginx-app --port=80
+$ kubectl run --image=nginx nginx-app --port=80
 pod/nginx-app created
 ```
 
