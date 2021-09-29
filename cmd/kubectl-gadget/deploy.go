@@ -62,7 +62,7 @@ func init() {
 		&hookMode,
 		"hook-mode", "",
 		"auto",
-		"how to get containers start/stop notifications (auto, crio, ldpreload, podinformer, nri, fanotify)")
+		"how to get containers start/stop notifications (auto, crio, podinformer, nri, fanotify)")
 	deployCmd.PersistentFlags().BoolVarP(
 		&livenessProbe,
 		"liveness-probe", "",
@@ -236,11 +236,10 @@ type parameters struct {
 func runDeploy(cmd *cobra.Command, args []string) error {
 	if hookMode != "auto" &&
 		hookMode != "crio" &&
-		hookMode != "ldpreload" &&
 		hookMode != "podinformer" &&
 		hookMode != "nri" &&
 		hookMode != "fanotify" {
-		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,ldpreload,podinformer,nri,fanotify]", hookMode)
+		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,podinformer,nri,fanotify]", hookMode)
 	}
 
 	if toolsMode != "auto" && toolsMode != "core" && toolsMode != "standard" {

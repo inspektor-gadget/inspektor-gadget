@@ -99,20 +99,7 @@ if [ "$HOOK_MODE" = "auto" ] || [ -z "$HOOK_MODE" ] ; then
   fi
 fi
 
-if [ "$HOOK_MODE" = "ldpreload" ] ; then
-  echo "Installing ld.so.preload with runchooks.so for OCI hooks"
-  mkdir -p /host/opt/hooks/runc/
-  cp /opt/hooks/runc/runchooks.so /host/opt/hooks/runc/
-  cp /opt/hooks/runc/add-hooks.jq /host/opt/hooks/runc/
-  touch /host/etc/ld.so.preload
-  if grep -q ^/opt/hooks/runc/runchooks.so$ /host/etc/ld.so.preload > /dev/null ; then
-    echo "runchooks.so already setup in /etc/ld.so.preload"
-  else
-    echo "/opt/hooks/runc/runchooks.so" >> /host/etc/ld.so.preload
-  fi
-fi
-
-if [ "$HOOK_MODE" = "crio" ] || [ "$HOOK_MODE" = "ldpreload" ] ; then
+if [ "$HOOK_MODE" = "crio" ] ; then
   echo "Installing hooks scripts on host..."
 
   mkdir -p /host/opt/hooks/oci/

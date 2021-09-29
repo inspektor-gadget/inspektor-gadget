@@ -1,5 +1,5 @@
 .PHONY: gadget-container-deps
-gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor runchookslib nrigadget
+gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor nrigadget
 
 # eBPF objects
 
@@ -36,11 +36,6 @@ ocihookgadget:
 	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go build \
 		-o bin/ocihookgadget \
 		./hooks/oci/main.go
-
-.PHONY: runchookslib
-runchookslib:
-	mkdir -p bin
-	gcc -Wall -o bin/runchooks.so -shared -fPIC hooks/runc/runchooks.c -ldl
 
 .PHONY: nrigadget
 nrigadget:
