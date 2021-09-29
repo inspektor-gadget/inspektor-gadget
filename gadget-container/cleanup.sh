@@ -31,9 +31,6 @@ if [ -f "/host/etc/ld.so.preload" ] ; then
   sed -i '/\/opt\/hooks\/runc\/runchooks.so/d' "/host/etc/ld.so.preload"
 fi
 
-rm -f /host/opt/hooks/runc/runchooks.so
-rm -f /host/opt/hooks/runc/add-hooks.jq
-
 # nri
 if [ -f "/host/etc/nri/conf.json" ] ; then
   jq 'del(.plugins[] | select(.type == "nrigadget"))' /host/etc/nri/conf.json > /tmp/conf.json

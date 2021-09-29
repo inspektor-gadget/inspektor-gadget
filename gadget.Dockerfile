@@ -60,10 +60,6 @@ COPY --from=traceloop /bin/traceloop /bin/
 COPY gadget-container/hooks/oci/prestart.sh gadget-container/hooks/oci/poststop.sh /opt/hooks/oci/
 COPY --from=builder /gadget/gadget-container/bin/ocihookgadget /opt/hooks/oci/
 
-# runc
-COPY --from=builder /gadget/gadget-container/bin/runchooks.so /opt/hooks/runc/
-COPY gadget-container/hooks/runc/add-hooks.jq /opt/hooks/runc/
-
 # cri-o
 COPY gadget-container/hooks/crio/gadget-prestart.json gadget-container/hooks/crio/gadget-poststop.json /opt/hooks/crio/
 
