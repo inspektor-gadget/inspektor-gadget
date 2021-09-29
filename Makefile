@@ -17,6 +17,13 @@ else
 	VERSION := $(TAG)-dirty
 endif
 
+pvpath := $(shell command -v pv 2>/dev/null || true)
+ifeq ($(pvpath),)
+	PV :=
+else
+	PV := | $(pvpath)
+endif
+
 include crd.mk
 include tests.mk
 
@@ -99,16 +106,16 @@ generate-documentation:
 # minikube
 LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 10
 .PHONY: minikube-install
-minikube-install: gadget-container
+minikube-install: gadget-container kubectl-gadget
 	# Unfortunately, minikube-cache and minikube-image have bugs in older
 	# versions. And new versions of minikube don't support all eBPF
 	# features. So we have to keep "docker-save|docker-load" for now.
-	docker save $(CONTAINER_REPO):$(IMAGE_TAG) | pv | (eval $(shell $(MINIKUBE) -p minikube docker-env | grep =) && docker load)
+	docker save $(CONTAINER_REPO):$(IMAGE_TAG) $(PV) | (eval $(shell $(MINIKUBE) -p minikube docker-env | grep =) && docker load)
 	# Delete traces CRD first: the gadget DaemonSet needs to be running
 	# because of Finalizers.
 	kubectl delete crd traces.gadget.kinvolk.io || true
-	./kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) deploy | kubectl delete -f - || true
-	./kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) deploy --traceloop=false --hook-mode=fanotify | \
+	./kubectl-gadget deploy | kubectl delete -f - || true
+	./kubectl-gadget deploy --traceloop=false --hook-mode=fanotify | \
 		sed 's/imagePullPolicy: Always/imagePullPolicy: Never/g' | \
 		sed 's/initialDelaySeconds: 10/initialDelaySeconds: '$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS)'/g' | \
 		kubectl apply -f -
