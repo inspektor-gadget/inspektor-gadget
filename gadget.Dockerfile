@@ -23,12 +23,12 @@ RUN cd /gadget/gadget-container && make gadget-container-deps
 # Builder: traceloop
 
 # traceloop built from:
-# https://github.com/kinvolk/traceloop/commit/3a57301aba445720c630ba99b58892da72a31e35
+# https://github.com/kinvolk/traceloop/commit/6f4efc6fca46d92c75f4ec4e6c6e1d829bdeaddf
 # See:
 # - https://github.com/kinvolk/traceloop/actions
 # - https://hub.docker.com/r/kinvolk/traceloop/tags
 
-FROM docker.io/kinvolk/traceloop:202006050210553a5730 as traceloop
+FROM docker.io/kinvolk/traceloop:202109280218336f4efc as traceloop
 
 # Main gadget image
 
