@@ -145,36 +145,45 @@ fi
 
 ## Hooks Ends ##
 
+# Use BTFHub if needed
+KERNEL=$(uname -r)
+ARCH=$(uname -m)
+if test -f /sys/kernel/btf/vmlinux; then
+  echo "BTF is available at /sys/kernel/btf/vmlinux"
+else
+  echo "BTF is not available: Trying BTFHub"
+  source /host/etc/os-release
+
+  URL="https://github.com/aquasecurity/btfhub/raw/main/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
+
+  echo "Trying to download vmlinux from $URL"
+
+  if [[ $(wget -S --spider "$URL" 2>&1 | grep 'HTTP/1.1 200 OK') ]]; then
+    wget -q -O /tmp/vmlinux.btf.tar.xz "$URL"
+    tar -xf /tmp/vmlinux.btf.tar.xz
+    # Use objcopy to put the btf info in an ELF file as libbpf and cilium/ebpf
+    # by default check if there is an ELF file with the .BTF section at
+    # /boot/vmlinux-$KERNEL.
+    objcopy --input binary --output elf64-little --rename-section .data=.BTF *.btf /boot/vmlinux-$KERNEL
+    echo "vmlinux downloaded at /boot/vmlinux-$KERNEL"
+  else
+    echo "vmlinux not found"
+  fi
+fi
+
 # Choose what kind of tools based on the configuration detected
 TOOLS_MODE="$INSPEKTOR_GADGET_OPTION_TOOLS_MODE"
 
 if [ "$TOOLS_MODE" = "auto" ] || [ -z "$TOOLS_MODE" ] ; then
   if test -f /sys/kernel/btf/vmlinux; then
-    echo "BTF is available: Using CO-RE based tools"
+    echo "BTF is available at /sys/kernel/btf/vmlinux: Using CO-RE based tools"
+    TOOLS_MODE="core"
+  elif test -f /boot/vmlinux-$KERNEL; then
+    echo "BTF is available at /boot/vmlinux-$KERNEL: Using CO-RE based tools"
     TOOLS_MODE="core"
   else
-    echo "BTF is not available: Trying btfhub"
-    source /host/etc/os-release
-
-    KERNEL=$(uname -r)
-    ARCH=$(uname -m)
-    URL="https://github.com/aquasecurity/btfhub/raw/main/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
-
-    echo "Trying to download vmlinux from $URL"
-
-    if [[ $(wget -S --spider "$URL" 2>&1 | grep 'HTTP/1.1 200 OK') ]]; then
-      wget -q -O /tmp/vmlinux.btf.tar.xz "$URL"
-      tar -xf /tmp/vmlinux.btf.tar.xz
-      # Use objcopy to put the btf info in an ELF file as libbpf and cilium/ebpf
-      # by default check if there is an ELF file with the .BTF section at
-      # /boot/vmlinux-$KERNEL.
-      objcopy --input binary --output elf64-little --rename-section .data=.BTF *.btf /boot/vmlinux-$KERNEL
-      echo "vmlinux downloaded. Using CO-RE based tools"
-      TOOLS_MODE="core"
-    else
-      echo "vmlinux not found. Using standard tools"
-      TOOLS_MODE="standard"
-    fi
+    echo "vmlinux not found. Using standard tools"
+    TOOLS_MODE="standard"
   fi
 fi
 
