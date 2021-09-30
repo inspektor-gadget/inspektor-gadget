@@ -18,10 +18,6 @@ metadata:
 spec:
   node: minikube
   gadget: biolatency
-  filter:
-    namespace: default
-    labels:
-      role: demo
   runMode: Manual
   outputMode: Status
 ```
