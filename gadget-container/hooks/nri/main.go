@@ -24,7 +24,6 @@ import (
 	"google.golang.org/grpc"
 
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils"
 
 	"github.com/containerd/nri/skel"
 	types "github.com/containerd/nri/types/v1"
@@ -116,22 +115,6 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 		return err
 	}
 
-	// Get cgroup paths
-	_, cgroupPathV2, err := containerutils.GetCgroupPaths(r.Pid)
-	if err != nil {
-		return err
-	}
-	cgroupPathV2WithMountpoint, _ := containerutils.CgroupPathV2AddMountpoint(cgroupPathV2)
-
-	// Get cgroup-v2 id
-	cgroupId, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
-
-	// Get mount namespace info
-	mntns, err := containerutils.GetMntNs(r.Pid)
-	if err != nil {
-		return err
-	}
-
 	labels := []*pb.Label{}
 
 	for key, value := range r.Labels {
@@ -156,15 +139,12 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 	}
 
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{
-		Id:         r.ID,
-		CgroupPath: cgroupPathV2WithMountpoint,
-		CgroupId:   cgroupId,
-		Mntns:      mntns,
-		Labels:     labels,
-		Namespace:  namespace,
-		Podname:    podName,
-		Name:       containerName,
-		Pid:        uint32(r.Pid),
+		Id:        r.ID,
+		Labels:    labels,
+		Namespace: namespace,
+		Podname:   podName,
+		Name:      containerName,
+		Pid:       uint32(r.Pid),
 	})
 	return err
 }
