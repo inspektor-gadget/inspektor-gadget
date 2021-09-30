@@ -15,7 +15,7 @@ $ kubectl gadget bindsnoop --selector run=nginx-app
 
 In another terminal, start nginx:
 ```
-$ kubectl run --generator=run-pod/v1 --image=nginx nginx-app --port=80
+$ kubectl run --image=nginx nginx-app --port=80
 pod/nginx-app created
 ```
 
@@ -27,3 +27,7 @@ Tracing binds ... Hit Ctrl-C to end
 NODE             NAMESPACE        PODNAME          CONTAINERNAME        PID COMM         PROT ADDR            PORT   OPTS IF
 ip-10-0-30-247   default          nginx-app        nginx-app         186667 nginx        UNKN 0.0.0.0            80 ...R.  0
 ```
+
+**Note:** It's possible that this example doesn't work if you're using the
+podinformer [hook](../install.md#hook-mode). It happens because it's possible
+that the first events in the pod are lost when using that hook.
