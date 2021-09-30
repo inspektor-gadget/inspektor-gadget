@@ -89,16 +89,10 @@ var capabilitiesCmd = &cobra.Command{
 }
 
 var (
-	labelParam         string
-	nodeParam          string
-	podnameParam       string
-	containernameParam string
-	allNamespaces      bool
-	jsonOutput         bool
+	params utils.CommonFlags
 
-	stackFlag   bool
-	uniqueFlag  bool
-	verboseFlag bool
+	stackFlag  bool
+	uniqueFlag bool
 
 	profileKernel bool
 	profileUser   bool
@@ -120,60 +114,39 @@ func init() {
 	// Add flags for all BCC gadgets
 	for _, command := range commands {
 		rootCmd.AddCommand(command)
-		command.PersistentFlags().StringVarP(
-			&labelParam,
-			"selector",
-			"l",
-			"",
-			"Labels selector to filter on. Only '=' is supported (e.g. key1=value1,key2=value2).",
-		)
-
-		command.PersistentFlags().StringVar(
-			&nodeParam,
-			"node",
-			"",
-			"Show only events from pods running in that node",
-		)
-
-		command.PersistentFlags().StringVarP(
-			&podnameParam,
-			"podname",
-			"p",
-			"",
-			"Show only events from pods with that name",
-		)
-
-		command.PersistentFlags().StringVarP(
-			&containernameParam,
-			"containername",
-			"c",
-			"",
-			"Show only events from containers with that name",
-		)
-
-		command.PersistentFlags().BoolVarP(
-			&allNamespaces,
-			"all-namespaces",
-			"A",
-			false,
-			"Show events from pods in all namespaces",
-		)
-		command.PersistentFlags().BoolVarP(
-			&jsonOutput,
-			"json",
-			"j",
-			false,
-			"Output the events in json format",
-		)
+		utils.AddCommonFlags(command, &params)
 	}
 
 	// Add flags specific to some BCC gadgets
-	capabilitiesCmd.PersistentFlags().BoolVarP(&stackFlag, "print-stack", "", false, "Print kernel and userspace call stack of cap_capable()")
-	capabilitiesCmd.PersistentFlags().BoolVarP(&uniqueFlag, "unique", "", false, "Don't print duplicate capability checks")
-	capabilitiesCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "", false, "Include non-audit")
+	capabilitiesCmd.PersistentFlags().BoolVarP(
+		&stackFlag,
+		"print-stack",
+		"",
+		false,
+		"Print kernel and userspace call stack of cap_capable()",
+	)
+	capabilitiesCmd.PersistentFlags().BoolVarP(
+		&uniqueFlag,
+		"unique",
+		"",
+		false,
+		"Don't print duplicate capability checks",
+	)
 
-	profileCmd.PersistentFlags().BoolVarP(&profileUser, "user", "U", false, "Show stacks from user space only (no kernel space stacks)")
-	profileCmd.PersistentFlags().BoolVarP(&profileKernel, "kernel", "K", false, "Show stacks from kernel space only (no user space stacks)")
+	profileCmd.PersistentFlags().BoolVarP(
+		&profileUser,
+		"user",
+		"U",
+		false,
+		"Show stacks from user space only (no kernel space stacks)",
+	)
+	profileCmd.PersistentFlags().BoolVarP(
+		&profileKernel,
+		"kernel",
+		"K",
+		false,
+		"Show stacks from kernel space only (no user space stacks)",
+	)
 }
 
 func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
@@ -190,60 +163,60 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		// tcptop only works on one pod at a time
 		if subCommand == "tcptop" {
-			if nodeParam == "" || podnameParam == "" {
+			if params.Node == "" || params.Podname == "" {
 				contextLogger.Fatalf("tcptop only works with --node and --podname")
 			}
 
-			if jsonOutput {
+			if params.JsonOutput {
 				contextLogger.Fatalf("tcptop doesn't support --json")
 			}
 		}
 
 		// biotop only works per node
 		if subCommand == "biotop" {
-			if nodeParam == "" {
+			if params.Node == "" {
 				contextLogger.Fatalf("biotop only works with --node")
 			}
 
-			if containernameParam != "" || podnameParam != "" {
+			if params.Containername != "" || params.Podname != "" {
 				contextLogger.Fatalf("biotop doesn't support --containername or --podname")
 			}
 
-			if !allNamespaces {
+			if params.AllNamespaces {
 				contextLogger.Fatalf("biotop only works with --all-namespaces")
 			}
 
-			if jsonOutput {
+			if params.JsonOutput {
 				contextLogger.Fatalf("biotop doesn't support --json")
 			}
 		}
 
 		labelFilter := ""
-		if labelParam != "" {
-			pairs := strings.Split(labelParam, ",")
+		if params.Label != "" {
+			pairs := strings.Split(params.Label, ",")
 			for _, pair := range pairs {
 				kv := strings.Split(pair, "=")
 				if len(kv) != 2 {
 					contextLogger.Fatalf("labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])\n")
 				}
 			}
-			labelFilter = fmt.Sprintf("--label %s", labelParam)
+			labelFilter = fmt.Sprintf("--label %s", params.Label)
 		}
 
 		namespaceFilter := ""
-		if !allNamespaces {
+		if !params.AllNamespaces {
 			namespace := utils.GetNamespace()
 			namespaceFilter = fmt.Sprintf("--namespace %s", namespace)
 		}
 
 		podnameFilter := ""
-		if podnameParam != "" {
-			podnameFilter = fmt.Sprintf("--podname %s", podnameParam)
+		if params.Podname != "" {
+			podnameFilter = fmt.Sprintf("--podname %s", params.Podname)
 		}
 
 		containernameFilter := ""
-		if containernameParam != "" {
-			containernameFilter = fmt.Sprintf("--containername %s", containernameParam)
+		if params.Containername != "" {
+			containernameFilter = fmt.Sprintf("--containername %s", params.Containername)
 		}
 
 		extraParams := ""
@@ -260,7 +233,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			gadgetParams = "--containersmap /sys/fs/bpf/gadget/containers"
 		}
 
-		if jsonOutput {
+		if params.JsonOutput {
 			gadgetParams += " --json"
 		}
 
@@ -272,7 +245,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			if uniqueFlag {
 				gadgetParams += " --unique"
 			}
-			if verboseFlag {
+			if params.Verbose {
 				gadgetParams += " -v"
 			}
 		case "profile":
@@ -305,14 +278,10 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		failure := make(chan string)
 
-		flags := &utils.CommonFlags{
-			JsonOutput: jsonOutput,
-		}
-
-		postProcess := utils.NewPostProcess(len(nodes.Items), os.Stdout, os.Stderr, flags, nil)
+		postProcess := utils.NewPostProcess(len(nodes.Items), os.Stdout, os.Stderr, &params, nil)
 
 		for i, node := range nodes.Items {
-			if nodeParam != "" && node.Name != nodeParam {
+			if params.Node != "" && node.Name != params.Node {
 				continue
 			}
 			go func(nodeName string, index int) {
@@ -333,7 +302,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		select {
 		case <-sigs:
-			if !jsonOutput {
+			if !params.JsonOutput {
 				fmt.Println("\nTerminating...")
 			}
 		case e := <-failure:
@@ -342,7 +311,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		// remove tracers from the nodes
 		for _, node := range nodes.Items {
-			if nodeParam != "" && node.Name != nodeParam {
+			if params.Node != "" && node.Name != params.Node {
 				continue
 			}
 			// ignore errors, there is nothing the user can do about it
