@@ -93,6 +93,8 @@ message ContainerDefinition {
   // Pid is useful to find container namespaces, such as
   // the network namespace in /proc/$pid/ns/net
   uint32 pid = 12;
+
+  uint64 netns = 13;
 }
 
 message DumpStateRequest {
