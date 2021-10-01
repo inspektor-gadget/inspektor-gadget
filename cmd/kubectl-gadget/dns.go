@@ -67,11 +67,20 @@ func init() {
 func transformLine(line string) string {
 	event := &dnstypes.Event{}
 	json.Unmarshal([]byte(line), event)
+
+	podMsgSuffix := ""
+	if event.Namespace != "" && event.Pod != "" {
+		podMsgSuffix = ", pod " + event.Namespace + "/" + event.Pod
+	}
+
 	if event.Err != "" {
-		return fmt.Sprintf("Error on node %s: %s: %s", event.Node, event.Notice, event.Err)
+		return fmt.Sprintf("Error on node %s%s: %s: %s", event.Node, podMsgSuffix, event.Notice, event.Err)
 	}
 	if event.Notice != "" {
-		return fmt.Sprintf("Notice on node %s %s/%s: %s", event.Node, event.Namespace, event.Pod, event.Notice)
+		if !dnsParams.Verbose {
+			return ""
+		}
+		return fmt.Sprintf("Notice on node %s%s: %s", event.Node, podMsgSuffix, event.Notice)
 	}
 	if dnsParams.AllNamespaces {
 		return fmt.Sprintf(FMT_ALL, event.Node, event.Namespace, event.Pod, event.PktType, event.DNSName)

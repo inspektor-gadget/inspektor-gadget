@@ -15,13 +15,10 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
 	"sync/atomic"
-
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type PostProcess struct {
@@ -95,23 +92,10 @@ func (post *postProcessSingle) Write(p []byte) (n int, err error) {
 			}
 		}
 
-		event := eventtypes.Event{}
-		json.Unmarshal([]byte(line), &event)
-
-		if event.Err != "" {
-			err = fmt.Errorf("Error on node %s: %s", event.Node, event.Err)
-			break
-		}
-
 		if post.transform != nil {
-			if event.Notice != "" && !post.jsonOutput {
-				if post.verbose {
-					fmt.Fprintf(post.orig, "Notice on node %s: %s\n", event.Node, event.Notice)
-				}
-			} else {
-				fmt.Fprintf(post.orig, "%s\n", post.transform(line))
-			}
-		} else {
+			line = post.transform(line)
+		}
+		if line != "" {
 			fmt.Fprintf(post.orig, "%s\n", line)
 		}
 	}
