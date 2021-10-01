@@ -93,8 +93,6 @@ var capabilitiesCmd = &cobra.Command{
 }
 
 var (
-	params utils.CommonFlags
-
 	stackFlag  bool
 	uniqueFlag bool
 
