@@ -115,6 +115,8 @@ minikube-install: gadget-container kubectl-gadget
 	# because of Finalizers.
 	kubectl delete crd traces.gadget.kinvolk.io || true
 	./kubectl-gadget deploy | kubectl delete -f - || true
+	time kubectl wait --for=delete namespace gadget 2>/dev/null || true
+	time kubectl wait --for=delete daemonset -n kube-system gadget 2>/dev/null || true
 	./kubectl-gadget deploy --traceloop=false --hook-mode=fanotify | \
 		sed 's/imagePullPolicy: Always/imagePullPolicy: Never/g' | \
 		sed 's/initialDelaySeconds: 10/initialDelaySeconds: '$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS)'/g' | \
