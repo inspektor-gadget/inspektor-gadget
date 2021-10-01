@@ -34,6 +34,7 @@ import (
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
+	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 )
 
 import "C"
@@ -344,16 +345,16 @@ func (g *GadgetTracerManager) deleteContainerFromMap(c *pb.ContainerDefinition) 
 	g.containersMap.Delete(uint64(c.Mntns))
 }
 
-func newServer(nodeName string, withPodInformer, withRuncFanotify, withBPF, withK8sClient bool) (*GadgetTracerManager, error) {
+func newServer(nodeName string, hookMode string, testonly bool) (*GadgetTracerManager, error) {
 	g := &GadgetTracerManager{
 		nodeName: nodeName,
 		tracers:  make(map[string]tracer),
-		withBPF:  withBPF,
+		withBPF:  !testonly,
 	}
 
 	containerEventFuncs := []pubsub.FuncNotify{}
 
-	if withBPF {
+	if !testonly {
 		if err := increaseRlimit(); err != nil {
 			return nil, fmt.Errorf("failed to increase memlock limit: %w", err)
 		}
@@ -411,20 +412,38 @@ func newServer(nodeName string, withPodInformer, withRuncFanotify, withBPF, with
 
 	opts := []containercollection.ContainerCollectionOption{
 		containercollection.WithPubSub(containerEventFuncs...),
-		containercollection.WithCgroupEnrichment(),
-		containercollection.WithLinuxNamespaceEnrichment(),
 	}
-	if withK8sClient {
+	if !testonly {
+		opts = append(opts, containercollection.WithCgroupEnrichment())
+		opts = append(opts, containercollection.WithLinuxNamespaceEnrichment())
 		opts = append(opts, containercollection.WithKubernetesEnrichment(nodeName))
 	}
-	if withRuncFanotify {
-		opts = append(opts, containercollection.WithRuncFanotify())
-	}
-	if withPodInformer {
+
+	switch hookMode {
+	case "none":
+		// Nothing to do: grpc calls will be enough
+		// Used by nri and crio
+		log.Infof("GadgetTracerManager: hook mode: none")
+	case "auto":
+		if runcfanotify.Supported() {
+			log.Infof("GadgetTracerManager: hook mode: fanotify (auto)")
+			opts = append(opts, containercollection.WithRuncFanotify())
+			opts = append(opts, containercollection.WithInitialKubernetesContainers(nodeName))
+		} else {
+			log.Infof("GadgetTracerManager: hook mode: podinformer (auto)")
+			opts = append(opts, containercollection.WithPodInformer(nodeName))
+		}
+	case "podinformer":
+		log.Infof("GadgetTracerManager: hook mode: podinformer")
 		opts = append(opts, containercollection.WithPodInformer(nodeName))
-	} else if withK8sClient {
+	case "fanotify":
+		log.Infof("GadgetTracerManager: hook mode: fanotify")
+		opts = append(opts, containercollection.WithRuncFanotify())
 		opts = append(opts, containercollection.WithInitialKubernetesContainers(nodeName))
+	default:
+		return nil, fmt.Errorf("invalid hook mode: %s", hookMode)
 	}
+
 	err := g.ContainerCollectionInitialize(opts...)
 	if err != nil {
 		return nil, err
@@ -433,16 +452,8 @@ func newServer(nodeName string, withPodInformer, withRuncFanotify, withBPF, with
 	return g, nil
 }
 
-func NewServerWithPodInformer(nodeName string) (*GadgetTracerManager, error) {
-	return newServer(nodeName, true, false, true, true)
-}
-
-func NewServerWithRuncFanotify(nodeName string) (*GadgetTracerManager, error) {
-	return newServer(nodeName, false, true, true, true)
-}
-
-func NewServer(nodeName string) (*GadgetTracerManager, error) {
-	return newServer(nodeName, false, false, true, true)
+func NewServer(nodeName string, hookMode string) (*GadgetTracerManager, error) {
+	return newServer(nodeName, hookMode, false)
 }
 
 // Close releases any resource that could be in use by the tracer manager, like
