@@ -37,7 +37,7 @@ import (
 
 const (
 	/* Inspired from Gardener
-	 * https://gardener.cloud/documentation/guides/administer_shoots/trigger-shoot-operations/
+	 * https://gardener.cloud/docs/guides/administer_shoots/trigger-shoot-operations/
 	 */
 
 	GADGET_OPERATION = "gadget.kinvolk.io/operation"
