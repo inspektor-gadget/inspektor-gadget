@@ -55,6 +55,35 @@ type TraceReconciler struct {
 	TracerManager  *gadgettracermanager.GadgetTracerManager
 }
 
+func updateTraceStatus(ctx context.Context, cli client.Client,
+	traceNsName string,
+	trace *gadgetv1alpha1.Trace,
+	patch client.Patch,
+) {
+	log.Infof("Updating new status of trace %q: "+
+		"state=%s operationError=%s output=<%d characters>",
+		traceNsName,
+		trace.Status.State,
+		trace.Status.OperationError,
+		len(trace.Status.Output),
+	)
+
+	err := cli.Status().Patch(ctx, trace, patch)
+	if err != nil {
+		log.Errorf("Failed to update trace %q status: %s", traceNsName, err)
+	}
+}
+
+func setTraceOpError(ctx context.Context, cli client.Client,
+	traceNsName string,
+	trace *gadgetv1alpha1.Trace,
+	strError string,
+) {
+	patch := client.MergeFrom(trace.DeepCopy())
+	trace.Status.OperationError = strError
+	updateTraceStatus(ctx, cli, traceNsName, trace, patch)
+}
+
 //+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces/finalizers,verbs=update
@@ -76,7 +105,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			log.Infof("Trace %q has been deleted", req.NamespacedName.String())
 			return ctrl.Result{}, nil
 		}
-		log.Errorf("Failed to get Trace: %s", err)
+		log.Errorf("Failed to get Trace %q: %s", req.NamespacedName.String(), err)
 		return ctrl.Result{}, err
 	}
 
@@ -85,23 +114,20 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	// Lookup factory
-	factory, ok := r.TraceFactories[trace.Spec.Gadget]
-	if !ok {
-		log.Errorf("Unknown gadget %q", trace.Spec.Gadget)
-		return ctrl.Result{}, nil
-	}
-
 	log.Infof("Reconcile trace %s (gadget %s, node %s)",
 		req.NamespacedName,
 		trace.Spec.Gadget,
 		trace.Spec.Node)
 
-	// If the Trace is under deletion
+	// Verify if the Trace is under deletion. Notice we must do it before
+	// checking the Trace specs to avoid blocking the deletion.
 	if !trace.ObjectMeta.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(trace, GADGET_FINALIZER) {
-			// Inform the factory that the trace is being deleted
-			factory.Delete(req.NamespacedName.String())
+			// Inform the factory (if valid gadget) that the trace is being deleted
+			factory, ok := r.TraceFactories[trace.Spec.Gadget]
+			if ok {
+				factory.Delete(req.NamespacedName.String())
+			}
 
 			if r.TracerManager != nil {
 				_, err = r.TracerManager.RemoveTracer(ctx,
@@ -124,7 +150,33 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 
-	// The Trace is not being deleted, so register our finalizer
+	// Check trace specs before adding the finalizer and registering the trace.
+	// If there is an error updating the Trace, return anyway nil to prevent
+	// the Reconcile() from being called again and again by the controller.
+	factory, ok := r.TraceFactories[trace.Spec.Gadget]
+	if !ok {
+		setTraceOpError(ctx, r.Client, req.NamespacedName.String(),
+			trace, fmt.Sprintf("Unknown gadget %q", trace.Spec.Gadget))
+
+		return ctrl.Result{}, nil
+	}
+	if trace.Spec.RunMode != "Manual" {
+		setTraceOpError(ctx, r.Client, req.NamespacedName.String(),
+			trace, fmt.Sprintf("Unsupported RunMode %q for gadget %q",
+				trace.Spec.RunMode, trace.Spec.Gadget))
+
+		return ctrl.Result{}, nil
+	}
+	outputModes := factory.OutputModesSupported()
+	if _, ok := outputModes[trace.Spec.OutputMode]; !ok {
+		setTraceOpError(ctx, r.Client, req.NamespacedName.String(),
+			trace, fmt.Sprintf("Unsupported OutputMode %q for gadget %q",
+				trace.Spec.OutputMode, trace.Spec.Gadget))
+
+		return ctrl.Result{}, nil
+	}
+
+	// The Trace is not being deleted and specs are valid, we can register our finalizer
 	beforeFinalizer := trace.DeepCopy()
 	controllerutil.AddFinalizer(trace, GADGET_FINALIZER)
 	if err := r.Client.Patch(ctx, trace, client.MergeFrom(beforeFinalizer)); err != nil {
@@ -145,23 +197,13 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 	}
 
-	// For now, only support control via the GADGET_OPERATION
-	if trace.Spec.RunMode != "Manual" {
-		log.Errorf("Unsupported RunMode: %q", trace.Spec.RunMode)
-		return ctrl.Result{}, nil
-	}
-
-	outputModes := factory.OutputModesSupported()
-	if _, ok := outputModes[trace.Spec.OutputMode]; !ok {
-		log.Errorf("Unsupported OutputMode: %q", trace.Spec.OutputMode)
-		return ctrl.Result{}, nil
-	}
-
 	// Lookup annotations
 	if trace.ObjectMeta.Annotations == nil {
 		log.Info("No annotations. Nothing to do.")
 		return ctrl.Result{}, nil
 	}
+
+	// For now, only support control via the GADGET_OPERATION
 	var op string
 	if op, ok = trace.ObjectMeta.Annotations[GADGET_OPERATION]; !ok {
 		log.Info("No operation annotation. Nothing to do.")
@@ -193,30 +235,26 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
+	// Check operation is supported for this specific gadget
+	gadgetOperation, ok := factory.Operations()[op]
+	if !ok {
+		setTraceOpError(ctx, r.Client, req.NamespacedName.String(),
+			trace, fmt.Sprintf("Unsupported operation %q for gadget %q",
+				op, trace.Spec.Gadget))
+
+		return ctrl.Result{}, nil
+	}
+
 	// Call gadget operation
 	traceBeforeOperation := trace.DeepCopy()
 	patch := client.MergeFrom(traceBeforeOperation)
-
-	gadgetOperation, ok := factory.Operations()[op]
-	if !ok {
-		trace.Status.OperationError = fmt.Sprintf("Unknown operation %q", op)
-	} else {
-		gadgetOperation.Operation(req.NamespacedName.String(), trace)
-	}
+	gadgetOperation.Operation(req.NamespacedName.String(), trace)
 
 	if apiequality.Semantic.DeepEqual(traceBeforeOperation.Status, trace.Status) {
 		log.Info("Gadget completed operation without changing the trace status")
 	} else {
-		log.Infof("Gadget completed operation: updating state=%s operationError=%s output=<%d characters>",
-			trace.Status.State,
-			trace.Status.OperationError,
-			len(trace.Status.Output),
-		)
-		err = r.Client.Status().Patch(ctx, trace, patch)
-		if err != nil {
-			log.Errorf("Failed to update trace status: %s", err)
-			return ctrl.Result{}, err
-		}
+		log.Infof("Gadget completed operation. Trace status will be updated accordingly")
+		updateTraceStatus(ctx, r.Client, req.NamespacedName.String(), trace, patch)
 	}
 
 	return ctrl.Result{}, nil
