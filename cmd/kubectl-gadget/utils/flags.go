@@ -38,14 +38,12 @@ func cobraInit() {
 }
 
 const (
-	OutputModeDefault = ""
-	OutputModeJson    = "json"
+	OutputModeColumns       = "columns"
+	OutputModeJson          = "json"
+	OutputModeCustomColumns = "custom-columns"
 )
 
-var outputModeValidValues = map[string]struct{}{
-	OutputModeDefault: {},
-	OutputModeJson:    {},
-}
+var supportedOutputModes = []string{OutputModeColumns, OutputModeJson, OutputModeCustomColumns}
 
 // CommonFlags contains CLI flags common to several gadgets
 type CommonFlags struct {
@@ -73,6 +71,9 @@ type CommonFlags struct {
 
 	// Verbose prints additional information
 	Verbose bool
+
+	// List of columns to print (only meaningful when OutputMode is "columns=...")
+	CustomColumns []string
 }
 
 // GetNamespace returns the namespace specified by '-n' or the default
@@ -84,7 +85,27 @@ func GetNamespace() string {
 
 func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 	command.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		if _, ok := outputModeValidValues[params.OutputMode]; !ok {
+		switch {
+		case params.OutputMode == OutputModeColumns:
+			fallthrough
+		case params.OutputMode == OutputModeJson:
+			return nil
+		case strings.HasPrefix(params.OutputMode, OutputModeCustomColumns):
+			parts := strings.Split(params.OutputMode, "=")
+			if len(parts) != 2 {
+				return fmt.Errorf("%s= expects a comma separated list of columns to use", OutputModeCustomColumns)
+			}
+
+			cols := strings.Split(strings.ToLower(parts[1]), ",")
+			for _, col := range cols {
+				if len(col) == 0 {
+					return fmt.Errorf("column can't be empty")
+				}
+			}
+
+			params.CustomColumns = cols
+			params.OutputMode = OutputModeCustomColumns
+		default:
 			return fmt.Errorf("%q is not a valid value for -o / --output", params.OutputMode)
 		}
 		return nil
@@ -136,8 +157,8 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		&params.OutputMode,
 		"output",
 		"o",
-		"",
-		"Output format. One of: json",
+		OutputModeColumns,
+		fmt.Sprintf("Output format (%s).", strings.Join(supportedOutputModes, ", ")),
 	)
 
 	command.PersistentFlags().BoolVarP(
