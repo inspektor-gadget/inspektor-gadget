@@ -79,9 +79,9 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 			Tgid                int    `json:"tgid,omitempty"`
 			Pid                 int    `json:"pid,omitempty"`
 			Comm                string `json:"comm,omitempty"`
-			KubernetesNamespace string `json:"kubernetes_namespace,omitempty"`
-			KubernetesPod       string `json:"kubernetes_pod,omitempty"`
-			KubernetesContainer string `json:"kubernetes_container,omitempty"`
+			KubernetesNamespace string `json:"namespace,omitempty"`
+			KubernetesPod       string `json:"pod,omitempty"`
+			KubernetesContainer string `json:"container,omitempty"`
 		}
 		allProcesses := []Process{}
 

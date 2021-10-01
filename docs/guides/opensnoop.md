@@ -17,7 +17,7 @@ thus snooping on all nodes for pod "mypod":
 
 ```
 $ kubectl gadget opensnoop --podname mypod
-NODE             NAMESPACE        PODNAME          CONTAINERNAME   PID    COMM               FD ERR PATH
+NODE             NAMESPACE        POD              CONTAINER       PID    COMM               FD ERR PATH
 ip-10-0-30-247   default          mypod            mypod           18455  whoami              3   0 /etc/passwd
 ip-10-0-30-247   default          mypod            mypod           18521  whoami              3   0 /etc/passwd
 ip-10-0-30-247   default          mypod            mypod           18525  whoami              3   0 /etc/passwd

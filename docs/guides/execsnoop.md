@@ -26,7 +26,7 @@ ip-10-0-30-247 where myapp1-pod-2gs5r and myapp2-pod-mqfxv are running:
 
 ```
 $ kubectl gadget ./kubectl-gadget execsnoop --selector role=demo --node ip-10-0-30-247
-NODE                NAMESPACE        PODNAME          CONTAINERNAME   PCOMM            PID    PPID   RET ARGS
+NODE                NAMESPACE        POD              CONTAINER       PCOMM            PID    PPID   RET ARGS
 ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      date             728770 728166   0 /bin/date
 ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      cat              728771 728166   0 /bin/cat /proc/version
 ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      sleep            728772 728166   0 /bin/sleep 1

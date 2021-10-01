@@ -216,12 +216,12 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 	if !optionListNoHeaders {
 		if optionListFull {
-			fmt.Fprintln(w, "NODE\tNAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\tCAPABILITIES\t")
+			fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\tCAPABILITIES\t")
 		} else {
 			if !optionListAllNamespaces {
-				fmt.Fprintln(w, "PODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
+				fmt.Fprintln(w, "POD\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
 			} else {
-				fmt.Fprintln(w, "NAMESPACE\tPODNAME\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
+				fmt.Fprintln(w, "NAMESPACE\tPOD\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
 			}
 		}
 	}

@@ -26,7 +26,7 @@ In our Inspektor Gadget terminal we can now see the logged connection:
 ```
 $ kubectl gadget tcpconnect --podname mypod
 Tracing connect ... Hit Ctrl-C to end
-NODE             NAMESPACE        PODNAME          CONTAINERNAME   PID    COMM         IP SADDR            DADDR            DPORT
+NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            DPORT
 ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          80
 ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          443
 ```
@@ -89,7 +89,7 @@ Switching to the Inspektor Gadget terminal, we see the same connections again
 
 ```
 $ kubectl gadget tcpconnect --podname mypod  # (still running in old terminal)
-NODE             NAMESPACE        PODNAME          CONTAINERNAME   PID    COMM         IP SADDR            DADDR            DPORT
+NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            DPORT
 ip-10-0-30-247   default          mypod            mypod           9386                wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
 ip-10-0-30-247   default          mypod            mypod           9386                wget         4  10.2.232.47      1.1.1.1          443 # (previous output)
 ip-10-0-30-247   default          mypod            mypod           16547               wget         4  10.2.232.51      1.1.1.1          80
@@ -112,7 +112,7 @@ there is no redirect visible to port 443:
 
 ```
 $ kubectl gadget tcpconnect --podname mypod  # (still running in old terminal)
-NODE             NAMESPACE        PODNAME          CONTAINERNAME   PID    COMM         IP SADDR            DADDR            DPORT
+NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            DPORT
 ip-10-0-30-247   default          mypod            mypod           9386   wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
 ip-10-0-30-247   default          mypod            mypod           9386   wget         4  10.2.232.47      1.1.1.1          443 # (previous output)
 ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          80  # (previous output)
