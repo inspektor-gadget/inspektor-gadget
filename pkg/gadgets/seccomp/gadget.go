@@ -55,7 +55,9 @@ type TraceSingleton struct {
 var traceSingleton TraceSingleton
 
 func NewFactory() gadgets.TraceFactory {
-	return &TraceFactory{}
+	return &TraceFactory{
+		BaseFactory: gadgets.BaseFactory{DeleteTrace: deleteTrace},
+	}
 }
 
 func (f *TraceFactory) Description() string {
@@ -111,7 +113,7 @@ func (f *TraceFactory) AddToScheme(scheme *apimachineryruntime.Scheme) {
 	utilruntime.Must(seccompprofilev1alpha1.AddToScheme(scheme))
 }
 
-func (f *TraceFactory) DeleteTrace(name string, t interface{}) {
+func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
 	if trace.started {
 		traceSingleton.mu.Lock()

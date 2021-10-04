@@ -36,7 +36,9 @@ type TraceFactory struct {
 }
 
 func NewFactory() gadgets.TraceFactory {
-	return &TraceFactory{}
+	return &TraceFactory{
+		BaseFactory: gadgets.BaseFactory{DeleteTrace: deleteTrace},
+	}
 }
 
 func (f *TraceFactory) Description() string {
@@ -45,7 +47,7 @@ distribution of I/O latency (time), giving this as a histogram when it is
 stopped.`
 }
 
-func (f *TraceFactory) DeleteTrace(name string, t interface{}) {
+func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
 	if trace.started {
 		trace.cmd.Process.Kill()
