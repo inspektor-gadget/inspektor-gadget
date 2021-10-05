@@ -1,0 +1,13 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: seccomp
+  namespace: gadget
+spec:
+  node: demo-node
+  gadget: seccomp
+  filter:
+    namespace: seccomp-demo
+    podname: hello-python
+  runMode: Manual
+  outputMode: Status

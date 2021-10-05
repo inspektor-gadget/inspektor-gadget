@@ -1,0 +1,38 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: seccomp-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-script
+  namespace: seccomp-demo
+data:
+  main.py: |
+    from flask import Flask
+    app = Flask(__name__)
+    @app.route("/")
+    def hello():
+      return "Hello World!\n"
+    if __name__ == "__main__":
+        app.run(host="0.0.0.0", debug=True, port=80)
+  uwsgi.ini: |
+    [uwsgi]
+    module=main
+    callable=app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-python-service
+  namespace: seccomp-demo
+spec:
+  selector:
+    app: hello-python
+  ports:
+  - protocol: "TCP"
+    port: 6000
+    targetPort: 80
+  type: LoadBalancer
