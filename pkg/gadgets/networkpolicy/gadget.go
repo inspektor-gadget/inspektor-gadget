@@ -42,14 +42,16 @@ type TraceFactory struct {
 }
 
 func NewFactory() gadgets.TraceFactory {
-	return &TraceFactory{}
+	return &TraceFactory{
+		BaseFactory: gadgets.BaseFactory{DeleteTrace: deleteTrace},
+	}
 }
 
 func (f *TraceFactory) Description() string {
 	return `The network-policy gadget monitor the network activity in order to generate Kubernetes network policies.`
 }
 
-func (f *TraceFactory) DeleteTrace(name string, t interface{}) {
+func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
 	if trace.started {
 		trace.cancel()

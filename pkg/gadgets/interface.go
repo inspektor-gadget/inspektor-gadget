@@ -18,7 +18,7 @@ import (
 	"sync"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 
 	log "github.com/sirupsen/logrus"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
@@ -62,14 +62,6 @@ type TraceFactoryWithDocumentation interface {
 	Description() string
 }
 
-type TraceFactoryWithDeleteTrace interface {
-	TraceFactory
-
-	// DeleteTrace is called by Delete. gadgets can promote DeleteTrace to
-	// implement their own.
-	DeleteTrace(name string, trace interface{})
-}
-
 // TraceOperation packages an operation on a gadget that users can call via the
 // annotation gadget.kinvolk.io/operation.
 type TraceOperation struct {
@@ -94,6 +86,16 @@ type Resolver interface {
 type BaseFactory struct {
 	Resolver Resolver
 	Client   client.Client
+
+	// DeleteTrace is optionally set by gadgets if they need to do
+	// specialised clean up. Example:
+	//
+	// func NewFactory() gadgets.TraceFactory {
+	// 	return &TraceFactory{
+	// 		BaseFactory: gadgets.BaseFactory{DeleteTrace: deleteTrace},
+	// 	}
+	// }
+	DeleteTrace func(name string, trace interface{})
 
 	mu     sync.Mutex
 	traces map[string]interface{}
@@ -135,9 +137,8 @@ func (f *BaseFactory) Delete(name string) {
 		log.Infof("Deleting %s: does not exist", name)
 		return
 	}
-	factory, ok := TraceFactory(f).(TraceFactoryWithDeleteTrace)
-	if ok {
-		factory.DeleteTrace(name, trace)
+	if f.DeleteTrace != nil {
+		f.DeleteTrace(name, trace)
 	}
 	delete(f.traces, name)
 	return

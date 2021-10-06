@@ -38,7 +38,15 @@ type FakeFactory struct {
 	calls map[string]struct{}
 }
 
-func (f *FakeFactory) Delete(name string) {
+func NewFakeFactory() gadgets.TraceFactory {
+	return &FakeFactory{
+		BaseFactory: gadgets.BaseFactory{DeleteTrace: deleteTrace},
+		calls:       make(map[string]struct{}),
+	}
+}
+
+func deleteTrace(name string, trace interface{}) {
+	f := trace.(*FakeFactory)
 	f.mu.Lock()
 	f.calls["delete/"+name] = struct{}{}
 	f.mu.Unlock()
@@ -86,7 +94,8 @@ func (f *FakeFactory) methodHasBeenCalled(key string) bool {
 
 // OperationMethodHasBeenCalled returns a Gomega assertion checking if the
 // method Operation() has been called
-func OperationMethodHasBeenCalled(fakeGadget *FakeFactory, name, operation string) func() bool {
+func OperationMethodHasBeenCalled(factory gadgets.TraceFactory, name, operation string) func() bool {
+	fakeGadget := factory.(*FakeFactory)
 	key := fmt.Sprintf("operation/%s/%s/",
 		name,
 		operation,
@@ -98,7 +107,8 @@ func OperationMethodHasBeenCalled(fakeGadget *FakeFactory, name, operation strin
 
 // DeleteMethodHasBeenCalled returns a Gomega assertion checking if the method
 // Delete() has been called
-func DeleteMethodHasBeenCalled(fakeGadget *FakeFactory, name string) func() bool {
+func DeleteMethodHasBeenCalled(factory gadgets.TraceFactory, name string) func() bool {
+	fakeGadget := factory.(*FakeFactory)
 	key := "delete/" + name
 	return func() bool {
 		return fakeGadget.methodHasBeenCalled(key)
@@ -174,9 +184,7 @@ func HaveAnnotation(annotation, expectedOperation string) GomegaMatcher {
 var _ = Context("Controller with a fake gadget", func() {
 	ctx := context.TODO()
 	traceFactories := make(map[string]gadgets.TraceFactory)
-	fakeFactory := &FakeFactory{
-		calls: make(map[string]struct{}),
-	}
+	fakeFactory := NewFakeFactory()
 	traceFactories["fakegadget"] = fakeFactory
 
 	ns := SetupTest(ctx, traceFactories)
