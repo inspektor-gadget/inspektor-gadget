@@ -71,9 +71,9 @@ int dump_task(struct bpf_iter__task *ctx)
 	container_entry = bpf_map_lookup_elem(&containers, &mntns_id);
 	if (container_entry) {
 		BPF_SEQ_PRINTF(seq, ",\n    \"container_id\": \"%s\"", container_entry->container_id);
-		BPF_SEQ_PRINTF(seq, ",\n    \"kubernetes_namespace\": \"%s\"", container_entry->kubernetes_namespace);
-		BPF_SEQ_PRINTF(seq, ",\n    \"kubernetes_pod\": \"%s\"", container_entry->kubernetes_pod);
-		BPF_SEQ_PRINTF(seq, ",\n    \"kubernetes_container\": \"%s\"", container_entry->kubernetes_container);
+		BPF_SEQ_PRINTF(seq, ",\n    \"namespace\": \"%s\"", container_entry->namespace);
+		BPF_SEQ_PRINTF(seq, ",\n    \"pod\": \"%s\"", container_entry->pod);
+		BPF_SEQ_PRINTF(seq, ",\n    \"container\": \"%s\"", container_entry->container);
 	}
 
 	BPF_SEQ_PRINTF(seq, "\n  }");

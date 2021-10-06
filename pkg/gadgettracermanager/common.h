@@ -9,9 +9,9 @@
 
 struct container {
 	char container_id[NAME_MAX_LENGTH];
-	char kubernetes_namespace[NAME_MAX_LENGTH];
-	char kubernetes_pod[NAME_MAX_LENGTH];
-	char kubernetes_container[NAME_MAX_LENGTH];
+	char namespace[NAME_MAX_LENGTH];
+	char pod[NAME_MAX_LENGTH];
+	char container[NAME_MAX_LENGTH];
 };
 
 #endif

@@ -76,17 +76,17 @@ $ kubectl gadget process-collector -n demo --json
     "tgid": 34270,
     "pid": 34270,
     "comm": "nginx",
-    "kubernetes_namespace": "demo",
-    "kubernetes_pod": "mypod",
-    "kubernetes_container": "mypod"
+    "namespace": "demo",
+    "pod": "mypod",
+    "container": "mypod"
   },
   {
     "tgid": 37928,
     "pid": 37928,
     "comm": "nginx",
-    "kubernetes_namespace": "demo",
-    "kubernetes_pod": "mypod",
-    "kubernetes_container": "mypod"
+    "namespace": "demo",
+    "pod": "mypod",
+    "container": "mypod"
   },
   ...
 ]

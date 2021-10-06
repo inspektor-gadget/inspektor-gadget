@@ -330,9 +330,9 @@ func (g *GadgetTracerManager) addContainerInMap(c *pb.ContainerDefinition) {
 	val := container{}
 
 	copyToC(&val.container_id, c.Id)
-	copyToC(&val.kubernetes_namespace, c.Namespace)
-	copyToC(&val.kubernetes_pod, c.Podname)
-	copyToC(&val.kubernetes_container, c.Name)
+	copyToC(&val.namespace, c.Namespace)
+	copyToC(&val.pod, c.Podname)
+	copyToC(&val.container, c.Name)
 
 	g.containersMap.Put(mntnsC, val)
 }

@@ -24,7 +24,7 @@ and display the following output:
 
 ```
 Tracing binds ... Hit Ctrl-C to end
-NODE             NAMESPACE        PODNAME          CONTAINERNAME        PID COMM         PROT ADDR            PORT   OPTS IF
+NODE             NAMESPACE        POD              CONTAINER            PID COMM         PROT ADDR            PORT   OPTS IF
 ip-10-0-30-247   default          nginx-app        nginx-app         186667 nginx        UNKN 0.0.0.0            80 ...R.  0
 ```
 
