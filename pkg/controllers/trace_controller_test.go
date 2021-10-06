@@ -84,6 +84,7 @@ func (f *FakeFactory) Magic(trace *gadgetv1alpha1.Trace) {
 	f.mu.Unlock()
 
 	trace.Status.OperationError = "FakeError"
+	trace.Status.OperationWarning = "FakeWarning"
 	trace.Status.State = "Completed"
 	trace.Status.Output = "FakeOutput"
 }
@@ -158,6 +159,17 @@ func HaveOperationError(expectedOperationError string) GomegaMatcher {
 	}, Equal(expectedOperationError))
 }
 
+// HaveOperationWarning returns a GomegaMatcher that checks if the
+// Trace.Status.OperationWarning has the expected value
+func HaveOperationWarning(expectedOperationWarning string) GomegaMatcher {
+	return WithTransform(func(trace *gadgetv1alpha1.Trace) string {
+		if trace == nil {
+			return "<trace is nil>"
+		}
+		return trace.Status.OperationWarning
+	}, Equal(expectedOperationWarning))
+}
+
 // HaveOutput returns a GomegaMatcher that checks if the Trace.Status.Output
 // has the expected value
 func HaveOutput(expectedOutput string) GomegaMatcher {
@@ -229,6 +241,7 @@ var _ = Context("Controller with a fake gadget", func() {
 			Eventually(UpdatedTrace(ctx, traceObjectKey)).Should(SatisfyAll(
 				HaveState("Completed"),
 				HaveOperationError("FakeError"),
+				HaveOperationWarning("FakeWarning"),
 				HaveOutput("FakeOutput"),
 				HaveAnnotation(GADGET_OPERATION, ""),
 				HaveAnnotation("hiking.walking", "mountains"),
