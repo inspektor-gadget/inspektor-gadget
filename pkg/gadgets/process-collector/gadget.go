@@ -21,6 +21,7 @@ import (
 )
 
 type Trace struct {
+	resolver gadgets.Resolver
 }
 
 type TraceFactory struct {
@@ -43,8 +44,11 @@ func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
-		return &Trace{}
+		return &Trace{
+			resolver: f.Resolver,
+		}
 	}
+
 	return map[string]gadgets.TraceOperation{
 		"start": {
 			Doc: "Create a snapshot of the currently running processes. " +
@@ -58,10 +62,18 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 }
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
+	selector := gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter)
+	if len(t.resolver.GetContainersBySelector(selector)) == 0 {
+		gadgets.CleanupTraceStatus(trace)
+		trace.Status.OperationWarning = "No container matches the requested filter"
+		return
+	}
+
 	output, err := tracer.RunCollector(
 		gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
 	)
 	if err != nil {
+		gadgets.CleanupTraceStatus(trace)
 		trace.Status.OperationError = err.Error()
 		return
 	}

@@ -268,13 +268,6 @@ RetryLoop:
 		nodeWarnings := make(map[string]string)
 		for _, i := range results.Items {
 			if i.Status.State == "Completed" || i.Status.State == "Started" {
-				if i.Status.Output == "" && i.Spec.OutputMode == "Status" {
-					// Ignoring empty outputs allows us to show an error instead of
-					// an empty list when none of the traces generate an output.
-					// This is particularly useful for gadgets like socket-collector
-					// where an empty list could be misunderstood.
-					continue
-				}
 				successNodeCount++
 			} else {
 				if timeout {
