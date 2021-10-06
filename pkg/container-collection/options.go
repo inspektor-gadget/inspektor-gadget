@@ -376,7 +376,7 @@ func WithCgroupEnrichment() ContainerCollectionOption {
 	}
 }
 
-// WithCgroupEnrichment enables an enricher to add the mount namespace metadata
+// WithLinuxNamespaceEnrichment enables an enricher to add the namespaces metadata
 func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *pb.ContainerDefinition) bool {
@@ -392,6 +392,13 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 				return true
 			}
 			container.Mntns = mntns
+
+			netns, err := containerutils.GetNetNs(pid)
+			if err != nil {
+				log.Errorf("namespace enricher: failed to get net namespace on container %s: %s", container.Id, err)
+				return true
+			}
+			container.Netns = netns
 			return true
 		})
 		return nil
