@@ -285,19 +285,24 @@ func genericStreamsDisplay(
 	completion := make(chan string)
 
 	callback := func(line string) string {
-		if params.JsonOutput {
+		if params.OutputMode == OutputModeJson {
 			return line
 		}
 		return transformLine(line)
 	}
 
+	verbose := false
+	// verbose only when not json is used
+	if params.Verbose && params.OutputMode != OutputModeJson {
+		verbose = true
+	}
+
 	config := &PostProcessConfig{
-		Flows:         len(results.Items),
-		OutStream:     os.Stdout,
-		ErrStream:     os.Stderr,
-		SkipFirstLine: !params.JsonOutput, // skip first line if json is not used
-		Transform:     callback,
-		Verbose:       !params.JsonOutput && params.Verbose, // verbose only when not json is used
+		Flows:     len(results.Items),
+		OutStream: os.Stdout,
+		ErrStream: os.Stderr,
+		Transform: callback,
+		Verbose:   verbose,
 	}
 
 	postProcess := NewPostProcess(config)
@@ -324,7 +329,7 @@ func genericStreamsDisplay(
 	for {
 		select {
 		case <-sigs:
-			if !params.JsonOutput {
+			if params.OutputMode != OutputModeJson {
 				fmt.Println("\nTerminating...")
 			}
 			return

@@ -33,7 +33,7 @@ var dnsCmd = &cobra.Command{
 	Use:   "dns",
 	Short: "Trace DNS requests",
 	Run: func(cmd *cobra.Command, args []string) {
-		if !params.JsonOutput {
+		if params.OutputMode != utils.OutputModeJson {
 			if params.AllNamespaces {
 				fmt.Printf(FMT_ALL+"\n",
 					"NODE",

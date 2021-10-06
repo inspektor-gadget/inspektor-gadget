@@ -169,7 +169,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				contextLogger.Fatalf("tcptop only works with --node and --podname")
 			}
 
-			if params.JsonOutput {
+			if params.OutputMode == utils.OutputModeJson {
 				contextLogger.Fatalf("tcptop doesn't support --json")
 			}
 		}
@@ -188,7 +188,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				contextLogger.Fatalf("biotop only works with --all-namespaces")
 			}
 
-			if params.JsonOutput {
+			if params.OutputMode == utils.OutputModeJson {
 				contextLogger.Fatalf("biotop doesn't support --json")
 			}
 		}
@@ -235,7 +235,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			gadgetParams = "--containersmap /sys/fs/bpf/gadget/containers"
 		}
 
-		if params.JsonOutput {
+		if params.OutputMode == utils.OutputModeJson {
 			gadgetParams += " --json"
 		}
 
@@ -284,7 +284,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			Flows:         len(nodes.Items),
 			OutStream:     os.Stdout,
 			ErrStream:     os.Stderr,
-			SkipFirstLine: !params.JsonOutput, // skip first line if json is not used
+			SkipFirstLine: params.OutputMode != utils.OutputModeJson, // skip first line if json is not used
 		})
 
 		for i, node := range nodes.Items {
@@ -309,7 +309,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		select {
 		case <-sigs:
-			if !params.JsonOutput {
+			if params.OutputMode != utils.OutputModeJson {
 				fmt.Println("\nTerminating...")
 			}
 		case e := <-failure:

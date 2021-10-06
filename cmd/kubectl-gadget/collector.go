@@ -114,7 +114,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 
 			}
 		})
-		if params.JsonOutput {
+		if params.OutputMode == utils.OutputModeJson {
 			b, err := json.MarshalIndent(allProcesses, "", "  ")
 			if err != nil {
 				contextLogger.Fatalf("Error marshalling results: %s", err)
@@ -187,7 +187,7 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 			}
 		})
 
-		if params.JsonOutput {
+		if params.OutputMode == utils.OutputModeJson {
 			b, err := json.MarshalIndent(allSockets, "", "  ")
 			if err != nil {
 				contextLogger.Fatalf("Error marshalling results: %s", err)
