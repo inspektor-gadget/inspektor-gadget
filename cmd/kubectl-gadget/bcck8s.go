@@ -34,10 +34,14 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+// create the commands for the different gadgets. The gadgets that have CO-RE
+// support should use "/bin/gadgets/" as the path for the binary. Otherwise
+// "/usr/share/bcc/tools/" should be used.
+
 var biotopCmd = &cobra.Command{
 	Use:   "biotop",
 	Short: "Trace block device I/O",
-	Run:   bccCmd("biotop", "/bin/gadgets/biotop"),
+	Run:   bccCmd("biotop", "/usr/share/bcc/tools/biotop"),
 }
 
 var execsnoopCmd = &cobra.Command{
