@@ -42,6 +42,12 @@ func (f *TraceFactory) Description() string {
 	return `The socket-collector gadget gathers information about TCP and UDP sockets.`
 }
 
+func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
+	return map[string]struct{}{
+		"Status": {},
+	}
+}
+
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{

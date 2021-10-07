@@ -47,6 +47,12 @@ distribution of I/O latency (time), giving this as a histogram when it is
 stopped.`
 }
 
+func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
+	return map[string]struct{}{
+		"Status": {},
+	}
+}
+
 func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
 	if trace.started {
