@@ -1,0 +1,10 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: traceloop
+  namespace: gadget
+spec:
+  node: ubuntu-hirsute
+  gadget: traceloop
+  runMode: Manual
+  outputMode: ExternalResource

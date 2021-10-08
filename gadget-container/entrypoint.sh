@@ -31,23 +31,13 @@ echo -n "bcc detected: "
 dpkg-query --show libbcc|awk '{print $2}'
 
 echo -n "Gadget image: "
-echo $TRACELOOP_IMAGE
+echo $GADGET_IMAGE
 
 echo "Deployment options:"
 env | grep '^INSPEKTOR_GADGET_OPTION_.*='
 
 echo -n "Inspektor Gadget version: "
 echo $INSPEKTOR_GADGET_VERSION
-
-# gobpf currently uses global kprobes via debugfs/tracefs and not the Perf
-# Event file descriptor based kprobe (Linux >=4.17). So unfortunately, kprobes
-# can remain from previous executions. Ideally, gobpf should implement Perf
-# Event based kprobe and fallback to debugfs/tracefs, like bcc:
-# https://github.com/iovisor/bcc/blob/6e9b4509fc7a063302b574520bac6d49b01ca97e/src/cc/libbpf.c#L1021-L1027
-# Meanwhile, as a workaround, delete probes manually.
-# See: https://github.com/iovisor/gobpf/issues/223
-echo "-:pfree_uts_ns" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-echo "-:pcap_capable" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
 
 # Workaround for Minikube with the Docker driver:
 # Since it starts an outer docker container with a read-only /sys without bpf
@@ -197,19 +187,7 @@ elif [ "$TOOLS_MODE" = "standard" ] ; then
   ln -s /usr/share/bcc/tools/ /bin/gadgets
 fi
 
-echo "Starting the Gadget Tracer Manager in the background..."
+echo "Starting the Gadget Tracer Manager..."
 rm -f /run/gadgettracermanager.socket
-
-if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
-  /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE -controller &
-
-  rm -f /run/traceloop.socket
-  if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP_LOGLEVEL" != "" ] ; then
-    exec /bin/traceloop -log "$INSPEKTOR_GADGET_OPTION_TRACELOOP_LOGLEVEL" k8s
-  else
-    exec /bin/traceloop k8s
-  fi
-else
-  exec /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE \
+exec /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE \
     -controller -fallback-podinformer=$INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
-fi

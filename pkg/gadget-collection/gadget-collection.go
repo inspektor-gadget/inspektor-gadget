@@ -22,15 +22,17 @@ import (
 	processcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/seccomp"
 	socketcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/traceloop"
 )
 
 func TraceFactories() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
 		"biolatency":             biolatency.NewFactory(),
 		"dns":                    dns.NewFactory(),
-		"process-collector":      processcollector.NewFactory(),
-		"socket-collector":       socketcollector.NewFactory(),
-		"seccomp":                seccomp.NewFactory(),
 		"network-policy-advisor": networkpolicyadvisor.NewFactory(),
+		"process-collector":      processcollector.NewFactory(),
+		"seccomp":                seccomp.NewFactory(),
+		"socket-collector":       socketcollector.NewFactory(),
+		"traceloop":              traceloop.NewFactory(),
 	}
 }

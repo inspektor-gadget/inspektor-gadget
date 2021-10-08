@@ -31,7 +31,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/syndtr/gocapability/capability"
 
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -49,6 +49,18 @@ var traceloopListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "list possible traces",
 	Run:   runTraceloopList,
+}
+
+var traceloopStartCmd = &cobra.Command{
+	Use:   "start",
+	Short: "start traceloop",
+	Run:   runTraceloopStart,
+}
+
+var traceloopStopCmd = &cobra.Command{
+	Use:   "stop",
+	Short: "stop traceloop",
+	Run:   runTraceloopStop,
 }
 
 var traceloopShowCmd = &cobra.Command{
@@ -83,6 +95,8 @@ var (
 
 func init() {
 	rootCmd.AddCommand(traceloopCmd)
+	traceloopCmd.AddCommand(traceloopStartCmd)
+	traceloopCmd.AddCommand(traceloopStopCmd)
 	traceloopCmd.AddCommand(traceloopListCmd)
 	traceloopCmd.AddCommand(traceloopShowCmd)
 	traceloopCmd.AddCommand(traceloopPodCmd)
@@ -108,12 +122,11 @@ func init() {
 }
 
 const (
-	igOptionTraceloopAnnotation = "inspektor-gadget.kinvolk.io/option-traceloop"
-	traceloopStateAnnotation    = "traceloop.kinvolk.io/state"
+	traceloopStateAnnotation = "traceloop.kinvolk.io/state"
 )
 
 func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracemeta.TraceMeta, err error) {
-	var listOptions = metaV1.ListOptions{
+	var listOptions = metav1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
 	}
 	pods, err := client.CoreV1().Pods("kube-system").List(context.TODO(), listOptions)
@@ -132,17 +145,13 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 			continue
 		}
 
-		if pod.ObjectMeta.Annotations[igOptionTraceloopAnnotation] != "true" {
-			continue
-		}
-
-		validGadgetCount++
-
 		var tm []tracemeta.TraceMeta
 		state := pod.ObjectMeta.Annotations[traceloopStateAnnotation]
 		if state == "" {
 			continue
 		}
+
+		validGadgetCount++
 
 		err := json.Unmarshal([]byte(state), &tm)
 		if err != nil {
@@ -153,7 +162,7 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 	}
 
 	if validGadgetCount == 0 {
-		err = fmt.Errorf("None of the gadget pods have traceloop enabled.")
+		err = fmt.Errorf("Traceloop is not running on any node. Please start it with 'kubectl gadget traceloop start'.")
 	}
 
 	return
@@ -167,6 +176,44 @@ func capDecode(caps uint64) (out string) {
 	}
 	out = strings.TrimSuffix(out, ",")
 	return
+}
+
+func runTraceloopStart(cmd *cobra.Command, args []string) {
+	contextLogger := log.WithFields(log.Fields{
+		"command": "kubectl-gadget traceloop start",
+		"args":    args,
+	})
+
+	traces, err := utils.ListTracesByGadgetName("traceloop")
+	if err != nil {
+		contextLogger.Fatalf("Error checking traces: %v", err)
+	}
+
+	if len(traces) != 0 {
+		contextLogger.Fatalf("traceloop already running. Run 'kubectl gadget traceloop stop' before.")
+	}
+
+	// Create traceloop trace
+	_, err = utils.CreateTrace(&utils.TraceConfig{
+		GadgetName:      "traceloop",
+		Operation:       "start",
+		TraceOutputMode: "ExternalResource",
+		CommonFlags:     &params,
+	})
+	if err != nil {
+		contextLogger.Fatalf("Error creating trace: %v\n", err)
+	}
+}
+
+func runTraceloopStop(cmd *cobra.Command, args []string) {
+	contextLogger := log.WithFields(log.Fields{
+		"command": "kubectl-gadget traceloop stop",
+		"args":    args,
+	})
+	err := utils.DeleteTracesByGadgetName("traceloop")
+	if err != nil {
+		contextLogger.Fatalf("Error removing traces: %v\n", err)
+	}
 }
 
 func runTraceloopList(cmd *cobra.Command, args []string) {
@@ -327,7 +374,7 @@ func runTraceloopPod(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
 
-	pod, err := client.CoreV1().Pods(namespace).Get(context.TODO(), podname, metaV1.GetOptions{})
+	pod, err := client.CoreV1().Pods(namespace).Get(context.TODO(), podname, metav1.GetOptions{})
 	if err != nil {
 		contextLogger.Fatalf("Cannot get pod %s: %q", podname, err)
 	}
@@ -356,7 +403,7 @@ func runTraceloopClose(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
 
-	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
+	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		contextLogger.Fatalf("Error in listing nodes: %q", err)
 	}

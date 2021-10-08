@@ -3,6 +3,14 @@ title: 'The "traceloop" gadget'
 weight: 10
 ---
 
+## Start traceloop
+
+Traceloop is disabled by default from version 0.4.0. It can be enabled by using:
+
+```
+$ kubectl gadget traceloop start
+```
+
 ## Multiplication demo
 
 Let's run a pod to compute an important multiplication:
@@ -90,3 +98,10 @@ $ kubectl gadget traceloop close 10.0.30.247_default_mypod
 closed
 ```
 
+## Stop traceloop
+
+We can stop the traceloop gadget now that we're done.
+
+```
+$ kubectl gadget traceloop stop
+```
