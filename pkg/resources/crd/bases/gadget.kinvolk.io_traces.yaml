@@ -71,7 +71,7 @@ spec:
                   for the   seccomp gadget)
                 type: string
               outputMode:
-                description: OutputMode is "Status", "Stream, ""File" or "ExternalResource"
+                description: OutputMode is "Status", "Stream", "File" or "ExternalResource"
                 enum:
                 - Status
                 - Stream
