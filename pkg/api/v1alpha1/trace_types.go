@@ -56,7 +56,7 @@ type TraceSpec struct {
 	// pod name, labels or container name
 	Filter *ContainerFilter `json:"filter,omitempty"`
 
-	// OutputMode is "Status", "Stream, ""File" or "ExternalResource"
+	// OutputMode is "Status", "Stream", "File" or "ExternalResource"
 	// +kubebuilder:validation:Enum=Status;Stream;File;ExternalResource
 	OutputMode string `json:"outputMode,omitempty"`
 
