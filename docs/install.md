@@ -86,7 +86,7 @@ The different supported modes can be set by using the `hook-mode` option:
 - `crio`: Use the [CRIO hooks](https://github.com/containers/podman/blob/v3.0.0-rc3/pkg/hooks/docs/oci-hooks.5.md) support. Inspektor Gadget installs the required hooks in `/usr/share/containers/oci/hooks.d`, be sure that path is part of the `hooks_dir` option on [crio.conf](https://github.com/cri-o/cri-o/blob/v1.20.0/docs/crio.conf.5.md#crioruntime-table). If `hooks_dir` is not declared at all that path is considered by default.
 - `podinformer`: Use a Kubernetes controller to get information about new pods. This option is racy and the first events produced by a container could be lost. This mode is selected when `auto` is used and the above modes are not available.
 - `nri`: Use the [Node Resource Interface](https://github.com/containerd/nri). It requires containerd v1.5 and it's not considered when `auto` is used.
-- `fanotify`: Uses the Linux [fanotify](https://man7.org/linux/man-pages/man7/fanotify.7.html) API. It only works with runc and it's not considered when `auto` is used.
+- `fanotify`: Uses the Linux [fanotify](https://man7.org/linux/man-pages/man7/fanotify.7.html) API. It only works with runc.
 
 ### Specific Information for Different Platforms
 

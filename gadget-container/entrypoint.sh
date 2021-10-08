@@ -93,9 +93,6 @@ if [ "$HOOK_MODE" = "auto" ] || [ -z "$HOOK_MODE" ] ; then
   if [ "$CRIO" = 1 ] ; then
     echo "hook mode cri-o detected."
     HOOK_MODE="crio"
-  else
-    HOOK_MODE="podinformer"
-    echo "Falling back to podinformer hook."
   fi
 fi
 
@@ -108,12 +105,10 @@ if [ "$HOOK_MODE" = "crio" ] ; then
     cp /opt/hooks/oci/$i /host/opt/hooks/oci/
   done
 
-  if [ "$HOOK_MODE" = "crio" ] ; then
-    echo "Installing OCI hooks configuration in /usr/share/containers/oci/hooks.d"
-    mkdir -p /host/usr/share/containers/oci/hooks.d
-    cp /opt/hooks/crio/gadget-prestart.json /host/usr/share/containers/oci/hooks.d/gadget-prestart.json
-    cp /opt/hooks/crio/gadget-poststop.json /host/usr/share/containers/oci/hooks.d/gadget-poststop.json
-  fi
+  echo "Installing OCI hooks configuration in /usr/share/containers/oci/hooks.d"
+  mkdir -p /host/usr/share/containers/oci/hooks.d
+  cp /opt/hooks/crio/gadget-prestart.json /host/usr/share/containers/oci/hooks.d/gadget-prestart.json
+  cp /opt/hooks/crio/gadget-poststop.json /host/usr/share/containers/oci/hooks.d/gadget-poststop.json
 
   echo "Hooks installation done"
 fi
@@ -136,12 +131,20 @@ if [ "$HOOK_MODE" = "nri" ] ; then
   fi
 fi
 
-GADGET_EXTRA_PARAMS=""
-if [ "$HOOK_MODE" = "podinformer" ] ; then
-  GADGET_EXTRA_PARAMS="-podinformer"
-elif [ "$HOOK_MODE" = "fanotify" ] ; then
-  GADGET_EXTRA_PARAMS="-runcfanotify"
+if [ "$HOOK_MODE" = "crio" ] || [ "$HOOK_MODE" = "nri" ] ; then
+  # For crio and nri, the gadgettracermanager process can passively wait for
+  # the gRPC calls without monitoring containers itself.
+  GADGET_TRACER_MANAGER_HOOK_MODE=none
+elif [ "$HOOK_MODE" = "fanotify" ] || [ "$HOOK_MODE" = "podinformer" ] ; then
+  # fanotify and podinformer are implemented in the gadgettracermanager
+  # process.
+  GADGET_TRACER_MANAGER_HOOK_MODE="$HOOK_MODE"
+else
+  # Use fanotify if possible, or fall back on podinformer
+  GADGET_TRACER_MANAGER_HOOK_MODE="auto"
 fi
+
+echo "Gadget Tracer Manager hook mode: ${GADGET_TRACER_MANAGER_HOOK_MODE}"
 
 ## Hooks Ends ##
 
@@ -198,7 +201,7 @@ echo "Starting the Gadget Tracer Manager in the background..."
 rm -f /run/gadgettracermanager.socket
 
 if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
-  /bin/gadgettracermanager -serve $GADGET_EXTRA_PARAMS -controller &
+  /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE -controller &
 
   rm -f /run/traceloop.socket
   if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP_LOGLEVEL" != "" ] ; then
@@ -207,5 +210,5 @@ if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
     exec /bin/traceloop k8s
   fi
 else
-  exec /bin/gadgettracermanager -serve $GADGET_EXTRA_PARAMS -controller
+  exec /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE -controller
 fi

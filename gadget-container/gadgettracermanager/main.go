@@ -43,8 +43,7 @@ var (
 	serve         bool
 	dump          bool
 	liveness      bool
-	podInformer   bool
-	runcFanotify  bool
+	hookMode      string
 	socketfile    string
 	method        string
 	label         string
@@ -64,11 +63,10 @@ const (
 
 func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
+	flag.StringVar(&hookMode, "hook-mode", "auto", "how to get containers start/stop notifications (podinformer, fanotify, auto, none)")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
 	flag.BoolVar(&controller, "controller", false, "Enable the controller for custom resources")
-	flag.BoolVar(&podInformer, "podinformer", false, "Enable a Pod Informer to get Pod events from k8s API server")
-	flag.BoolVar(&runcFanotify, "runcfanotify", false, "Enable runc fanotify to get events")
 
 	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, receive-stream, add-container, remove-container)")
 	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
@@ -253,13 +251,7 @@ func main() {
 
 		var tracerManager *gadgettracermanager.GadgetTracerManager
 
-		if podInformer {
-			tracerManager, err = gadgettracermanager.NewServerWithPodInformer(node)
-		} else if runcFanotify {
-			tracerManager, err = gadgettracermanager.NewServerWithRuncFanotify(node)
-		} else {
-			tracerManager, err = gadgettracermanager.NewServer(node)
-		}
+		tracerManager, err = gadgettracermanager.NewServer(node, hookMode)
 
 		if err != nil {
 			log.Fatalf("failed to create server %v", err)

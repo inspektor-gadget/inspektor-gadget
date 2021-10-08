@@ -85,6 +85,29 @@ var runcPaths = []string{
 	"/host/run/torcx/unpack/docker/bin/runc",
 }
 
+// Supported detects if RuncNotifier is supported in the current environment
+func Supported() bool {
+	// Test that runc is available
+	runcFound := false
+	for _, path := range runcPaths {
+		if _, err := os.Stat(path); err == nil {
+			runcFound = true
+			break
+		}
+	}
+	if !runcFound {
+		return false
+	}
+
+	// Test that pidfd_open() is available
+	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, uintptr(os.Getpid()), 0, 0)
+	if errno != 0 {
+		return false
+	}
+	unix.Close(int(pidfd))
+	return true
+}
+
 // NewRuncNotifier uses fanotify to detect when runc containers are created
 // or terminated, and call the callback on such event.
 //
