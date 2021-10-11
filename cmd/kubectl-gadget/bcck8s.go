@@ -244,7 +244,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		switch subCommand {
 		case "capabilities":
 			if stackFlag {
-				gadgetParams += " -K"
+				gadgetParams += " -K -U"
 			}
 			if uniqueFlag {
 				gadgetParams += " --unique"
