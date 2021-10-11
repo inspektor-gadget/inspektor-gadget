@@ -61,6 +61,9 @@ func WithDockerEnrichment() ContainerCollectionOption {
 				log.Errorf("failed to inspect container %s: %s", container.ID, err)
 				continue
 			}
+			if !res.State.Running {
+				continue
+			}
 			if res.State.Pid == 0 {
 				log.Errorf("failed to inspect container %s: container pid is 0", container.ID)
 				continue
