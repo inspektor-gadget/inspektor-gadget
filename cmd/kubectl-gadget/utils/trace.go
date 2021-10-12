@@ -267,23 +267,18 @@ RetryLoop:
 		nodeErrors := make(map[string]string)
 		nodeWarnings := make(map[string]string)
 		for _, i := range results.Items {
-			if i.Status.State == "Completed" || i.Status.State == "Started" {
+			if i.Status.OperationError != "" {
+				nodeErrors[i.Spec.Node] = i.Status.OperationError
+			} else if i.Status.OperationWarning != "" {
+				nodeWarnings[i.Spec.Node] = i.Status.OperationWarning
+			} else if i.Status.State == "Completed" || i.Status.State == "Started" {
 				successNodeCount++
 			} else {
+				// Consider Trace as timed out if it neither moved the state forward
+				// nor notified of an error or warning within the time window.
 				if timeout {
-					if i.Status.OperationError != "" {
-						nodeErrors[i.Spec.Node] = i.Status.OperationError
-					}
-					if i.Status.OperationWarning != "" {
-						nodeWarnings[i.Spec.Node] = i.Status.OperationWarning
-					}
-
-					// Consider Trace as timed out if it neither moved the state forward
-					// nor notified of an error or warning within the time window.
-					if i.Status.OperationError == "" && i.Status.OperationWarning == "" {
-						nodeErrors[i.Spec.Node] = fmt.Sprintf("No results received from trace within %v",
-							traceTimeout)
-					}
+					nodeErrors[i.Spec.Node] = fmt.Sprintf("No results received from trace within %v",
+						traceTimeout)
 					continue
 				}
 
