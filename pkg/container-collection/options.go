@@ -91,7 +91,10 @@ func WithDockerEnrichment() ContainerCollectionOption {
 			}
 			if len(containers) == 1 {
 				if len(containers[0].Names) > 0 {
-					container.Podname = strings.TrimPrefix(containers[0].Names[0], "/")
+					container.Name = strings.TrimPrefix(containers[0].Names[0], "/")
+					// Some gadgets require the namespace and pod name to be set
+					container.Namespace = "default"
+					container.Podname = container.Name
 				}
 			} else {
 				log.Errorf("container %s has %d names", container.Id, len(containers))
