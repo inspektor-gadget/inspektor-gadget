@@ -24,10 +24,6 @@ import (
 	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
 )
 
-var (
-	dnsParams utils.CommonFlags
-)
-
 const (
 	FMT_ALL   = "%-16.16s %-16.16s %-30.30s %-9.9s %s"
 	FMT_SHORT = "%-30.30s %-9.9s %s"
@@ -37,8 +33,8 @@ var dnsCmd = &cobra.Command{
 	Use:   "dns",
 	Short: "Trace DNS requests",
 	Run: func(cmd *cobra.Command, args []string) {
-		if !dnsParams.JsonOutput {
-			if dnsParams.AllNamespaces {
+		if params.OutputMode != utils.OutputModeJson {
+			if params.AllNamespaces {
 				fmt.Printf(FMT_ALL+"\n",
 					"NODE",
 					"NAMESPACE",
@@ -55,13 +51,13 @@ var dnsCmd = &cobra.Command{
 			}
 		}
 
-		utils.GenericTraceCommand("dns", &dnsParams, args, "Stream", nil, transformLine)
+		utils.GenericTraceCommand("dns", &params, args, "Stream", nil, transformLine)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(dnsCmd)
-	utils.AddCommonFlags(dnsCmd, &dnsParams)
+	utils.AddCommonFlags(dnsCmd, &params)
 }
 
 func transformLine(line string) string {
@@ -77,12 +73,12 @@ func transformLine(line string) string {
 		return fmt.Sprintf("Error on node %s%s: %s: %s", event.Node, podMsgSuffix, event.Notice, event.Err)
 	}
 	if event.Notice != "" {
-		if !dnsParams.Verbose {
+		if !params.Verbose {
 			return ""
 		}
 		return fmt.Sprintf("Notice on node %s%s: %s", event.Node, podMsgSuffix, event.Notice)
 	}
-	if dnsParams.AllNamespaces {
+	if params.AllNamespaces {
 		return fmt.Sprintf(FMT_ALL, event.Node, event.Namespace, event.Pod, event.PktType, event.DNSName)
 	} else {
 		return fmt.Sprintf(FMT_SHORT, event.Pod, event.PktType, event.DNSName)

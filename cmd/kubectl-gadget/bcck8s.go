@@ -93,8 +93,6 @@ var capabilitiesCmd = &cobra.Command{
 }
 
 var (
-	params utils.CommonFlags
-
 	stackFlag  bool
 	uniqueFlag bool
 
@@ -171,7 +169,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				contextLogger.Fatalf("tcptop only works with --node and --podname")
 			}
 
-			if params.JsonOutput {
+			if params.OutputMode == utils.OutputModeJson {
 				contextLogger.Fatalf("tcptop doesn't support --json")
 			}
 		}
@@ -190,7 +188,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				contextLogger.Fatalf("biotop only works with --all-namespaces")
 			}
 
-			if params.JsonOutput {
+			if params.OutputMode == utils.OutputModeJson {
 				contextLogger.Fatalf("biotop doesn't support --json")
 			}
 		}
@@ -237,7 +235,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			gadgetParams = "--containersmap /sys/fs/bpf/gadget/containers"
 		}
 
-		if params.JsonOutput {
+		if params.OutputMode == utils.OutputModeJson {
 			gadgetParams += " --json"
 		}
 
@@ -282,7 +280,12 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		failure := make(chan string)
 
-		postProcess := utils.NewPostProcess(len(nodes.Items), os.Stdout, os.Stderr, &params, nil)
+		postProcess := utils.NewPostProcess(&utils.PostProcessConfig{
+			Flows:         len(nodes.Items),
+			OutStream:     os.Stdout,
+			ErrStream:     os.Stderr,
+			SkipFirstLine: params.OutputMode != utils.OutputModeJson, // skip first line if json is not used
+		})
 
 		for i, node := range nodes.Items {
 			if params.Node != "" && node.Name != params.Node {
@@ -306,7 +309,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		select {
 		case <-sigs:
-			if !params.JsonOutput {
+			if params.OutputMode != utils.OutputModeJson {
 				fmt.Println("\nTerminating...")
 			}
 		case e := <-failure:

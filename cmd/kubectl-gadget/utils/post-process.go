@@ -30,44 +30,40 @@ type PostProcess struct {
 type postProcessSingle struct {
 	orig             io.Writer
 	transform        func(string) string
-	firstLine        bool
 	firstLinePrinted *uint64
 	buffer           string // buffer to save incomplete strings
-	jsonOutput       bool
+	skipFirstLine    bool
 	verbose          bool
 }
 
-func NewPostProcess(n int, outStream io.Writer, errStream io.Writer, params *CommonFlags, transform func(string) string) *PostProcess {
+type PostProcessConfig struct {
+	Flows         int                 // number of flow this should process
+	Transform     func(string) string // function to be called to transform the output before printing
+	OutStream     io.Writer           // stream to print the standard output
+	ErrStream     io.Writer           // stream to print the error output
+	SkipFirstLine bool                // only print the first line once
+	Verbose       bool                // Verbose mode
+}
+
+func NewPostProcess(config *PostProcessConfig) *PostProcess {
 	p := &PostProcess{
 		firstLinePrinted: 0,
-		OutStreams:       make([]*postProcessSingle, n),
-		ErrStreams:       make([]*postProcessSingle, n),
+		OutStreams:       make([]*postProcessSingle, config.Flows),
+		ErrStreams:       make([]*postProcessSingle, config.Flows),
 	}
 
-	jsonOutput := false
-	verbose := false
-	if params != nil {
-		jsonOutput = params.JsonOutput
-		verbose = params.Verbose
-	}
-
-	for i := 0; i < n; i++ {
+	for i := 0; i < config.Flows; i++ {
 		p.OutStreams[i] = &postProcessSingle{
-			orig:             outStream,
-			transform:        transform,
-			firstLine:        true,
+			orig:             config.OutStream,
+			transform:        config.Transform,
 			firstLinePrinted: &p.firstLinePrinted,
-			buffer:           "",
-			jsonOutput:       jsonOutput,
-			verbose:          verbose,
+			skipFirstLine:    config.SkipFirstLine,
+			verbose:          config.Verbose,
 		}
 
 		p.ErrStreams[i] = &postProcessSingle{
-			orig:             errStream,
-			transform:        transform,
-			firstLine:        false,
-			firstLinePrinted: &p.firstLinePrinted,
-			buffer:           "",
+			orig:      config.ErrStream,
+			transform: config.Transform,
 		}
 	}
 
@@ -84,10 +80,11 @@ func (post *postProcessSingle) Write(p []byte) (n int, err error) {
 
 	// Print all complete lines
 	for _, line := range lines[0 : len(lines)-1] {
-		// Skip printing the header multiple times if json is not used
-		if !post.jsonOutput && post.firstLine {
-			post.firstLine = false
+		// Skip printing the first line (header) multiple times if requested by the caller
+		if post.skipFirstLine {
+			post.skipFirstLine = false // we already processed the first line. Don't care about it anymore.
 			if atomic.AddUint64(post.firstLinePrinted, 1) != 1 {
+				// first line already printed by another stream, skip it.
 				continue
 			}
 		}

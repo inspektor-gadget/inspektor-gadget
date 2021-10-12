@@ -22,6 +22,11 @@ import (
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
+var (
+	// common params for all gadgets
+	params utils.CommonFlags
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "kubectl-gadget",
 	Short: "Collection of gadgets for Kubernetes developers",

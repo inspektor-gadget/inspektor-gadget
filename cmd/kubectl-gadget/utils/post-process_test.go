@@ -31,7 +31,13 @@ func (mock *mockWriter) Write(p []byte) (n int, err error) {
 // only once among the different nodes using out stream
 func TestPostProcessFirstLineOutStream(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := NewPostProcess(2, mock, mock, nil, nil)
+
+	postProcess := NewPostProcess(&PostProcessConfig{
+		Flows:         2,
+		OutStream:     mock,
+		ErrStream:     mock,
+		SkipFirstLine: true,
+	})
 
 	postProcess.OutStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
 	postProcess.OutStreams[1].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
@@ -48,7 +54,12 @@ PCOMM  PID    PPID   RET ARGS
 // printed for errStream
 func TestPostProcessFirstLineErrStream(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := NewPostProcess(2, mock, mock, nil, nil)
+	postProcess := NewPostProcess(&PostProcessConfig{
+		Flows:         2,
+		OutStream:     mock,
+		ErrStream:     mock,
+		SkipFirstLine: true,
+	})
 
 	postProcess.ErrStreams[0].Write([]byte("error in node0\n"))
 	postProcess.ErrStreams[1].Write([]byte("error in node1\n"))
@@ -65,7 +76,12 @@ error in node1
 func TestPostProcessMultipleLines(t *testing.T) {
 	var expected string
 	mock := &mockWriter{[]byte{}}
-	postProcess := NewPostProcess(1, mock, mock, nil, nil)
+	postProcess := NewPostProcess(&PostProcessConfig{
+		Flows:         1,
+		OutStream:     mock,
+		ErrStream:     mock,
+		SkipFirstLine: true,
+	})
 
 	postProcess.OutStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
 
@@ -90,7 +106,12 @@ wget   200000 200000   0 /usr/bin/wget
 
 func TestMultipleNodes(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := NewPostProcess(3, mock, mock, nil, nil)
+	postProcess := NewPostProcess(&PostProcessConfig{
+		Flows:         3,
+		OutStream:     mock,
+		ErrStream:     mock,
+		SkipFirstLine: true,
+	})
 
 	postProcess.OutStreams[0].Write([]byte("PCOMM  PID    PPID   RET ARGS\n"))
 	postProcess.OutStreams[0].Write([]byte("curl   100000 100000   0 /usr/bin/curl\n"))
@@ -117,9 +138,15 @@ mkdir  199679 199678   0 /usr/bin/mkdir /tmp/install.sh.10
 	}
 }
 
-func TestJson(t *testing.T) {
+// Test that the first line is not skiped
+func TestSkipFirstLineFalse(t *testing.T) {
 	mock := &mockWriter{[]byte{}}
-	postProcess := NewPostProcess(3, mock, mock, &CommonFlags{JsonOutput: true}, nil)
+	postProcess := NewPostProcess(&PostProcessConfig{
+		Flows:         3,
+		OutStream:     mock,
+		ErrStream:     mock,
+		SkipFirstLine: false,
+	})
 
 	postProcess.OutStreams[0].Write([]byte(`{"pcomm": "cat", "pid": 11}` + "\n"))
 	postProcess.OutStreams[0].Write([]byte(`{"pcomm": "ping", "pid": 22}` + "\n"))

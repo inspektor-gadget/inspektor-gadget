@@ -15,6 +15,7 @@
 package utils
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -34,6 +35,16 @@ func FlagInit(rootCmd *cobra.Command) {
 
 func cobraInit() {
 	viper.AutomaticEnv()
+}
+
+const (
+	OutputModeDefault = ""
+	OutputModeJson    = "json"
+)
+
+var outputModeValidValues = map[string]struct{}{
+	OutputModeDefault: {},
+	OutputModeJson:    {},
 }
 
 // CommonFlags contains CLI flags common to several gadgets
@@ -57,8 +68,8 @@ type CommonFlags struct {
 	// Containername allows to filter containers by name
 	Containername string
 
-	// JsonOutput returns the results in json
-	JsonOutput bool
+	// OutputMode specifies the way output should be printed
+	OutputMode string
 
 	// Verbose prints additional information
 	Verbose bool
@@ -72,6 +83,16 @@ func GetNamespace() string {
 }
 
 func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
+	command.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if _, ok := outputModeValidValues[params.OutputMode]; !ok {
+			return fmt.Errorf("%q is not a valid value for -o / --output", params.OutputMode)
+		}
+		return nil
+	}
+
+	// do not print usage when there is an error
+	command.SilenceUsage = true
+
 	command.PersistentFlags().StringVarP(
 		&params.Label,
 		"selector",
@@ -111,12 +132,12 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		"Show data from pods in all namespaces",
 	)
 
-	command.PersistentFlags().BoolVarP(
-		&params.JsonOutput,
-		"json",
-		"j",
-		false,
-		"Output the processes in json format",
+	command.PersistentFlags().StringVarP(
+		&params.OutputMode,
+		"output",
+		"o",
+		"",
+		"Output format. One of: json",
 	)
 
 	command.PersistentFlags().BoolVarP(

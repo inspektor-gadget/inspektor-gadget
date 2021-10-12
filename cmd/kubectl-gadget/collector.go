@@ -43,10 +43,6 @@ var socketCollectorCmd = &cobra.Command{
 }
 
 var (
-	commonParams utils.CommonFlags
-)
-
-var (
 	processCollectorParamThreads bool
 )
 
@@ -59,7 +55,7 @@ func init() {
 	// Add common flags for all collector gadgets
 	for _, command := range commands {
 		rootCmd.AddCommand(command)
-		utils.AddCommonFlags(command, &commonParams)
+		utils.AddCommonFlags(command, &params)
 	}
 
 	// Add specific flags
@@ -118,7 +114,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 
 			}
 		})
-		if commonParams.JsonOutput {
+		if params.OutputMode == utils.OutputModeJson {
 			b, err := json.MarshalIndent(allProcesses, "", "  ")
 			if err != nil {
 				contextLogger.Fatalf("Error marshalling results: %s", err)
@@ -154,7 +150,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	utils.GenericTraceCommand("process-collector", &commonParams, args, "Status", callback, nil)
+	utils.GenericTraceCommand("process-collector", &params, args, "Status", callback, nil)
 }
 
 func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
@@ -191,7 +187,7 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 			}
 		})
 
-		if commonParams.JsonOutput {
+		if params.OutputMode == utils.OutputModeJson {
 			b, err := json.MarshalIndent(allSockets, "", "  ")
 			if err != nil {
 				contextLogger.Fatalf("Error marshalling results: %s", err)
@@ -219,5 +215,5 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	utils.GenericTraceCommand("socket-collector", &commonParams, args, "Status", callback, nil)
+	utils.GenericTraceCommand("socket-collector", &params, args, "Status", callback, nil)
 }

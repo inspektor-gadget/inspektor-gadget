@@ -285,12 +285,27 @@ func genericStreamsDisplay(
 	completion := make(chan string)
 
 	callback := func(line string) string {
-		if params.JsonOutput {
+		if params.OutputMode == OutputModeJson {
 			return line
 		}
 		return transformLine(line)
 	}
-	postProcess := NewPostProcess(len(results.Items), os.Stdout, os.Stderr, params, callback)
+
+	verbose := false
+	// verbose only when not json is used
+	if params.Verbose && params.OutputMode != OutputModeJson {
+		verbose = true
+	}
+
+	config := &PostProcessConfig{
+		Flows:     len(results.Items),
+		OutStream: os.Stdout,
+		ErrStream: os.Stderr,
+		Transform: callback,
+		Verbose:   verbose,
+	}
+
+	postProcess := NewPostProcess(config)
 
 	streamCount := int32(0)
 	for index, i := range results.Items {
@@ -314,7 +329,7 @@ func genericStreamsDisplay(
 	for {
 		select {
 		case <-sigs:
-			if !params.JsonOutput {
+			if params.OutputMode != OutputModeJson {
 				fmt.Println("\nTerminating...")
 			}
 			return
