@@ -50,6 +50,12 @@ var execsnoopCmd = &cobra.Command{
 	Run:   bccCmd("execsnoop", "/bin/gadgets/execsnoop"),
 }
 
+var mountsnoopCmd = &cobra.Command{
+	Use:   "mountsnoop",
+	Short: "Trace mount and umount syscalls",
+	Run:   bccCmd("mountsnoop", "/bin/gadgets/mountsnoop"),
+}
+
 var opensnoopCmd = &cobra.Command{
 	Use:   "opensnoop",
 	Short: "Trace open() system calls",
@@ -104,6 +110,7 @@ func init() {
 	commands := []*cobra.Command{
 		biotopCmd,
 		execsnoopCmd,
+		mountsnoopCmd,
 		opensnoopCmd,
 		bindsnoopCmd,
 		profileCmd,
