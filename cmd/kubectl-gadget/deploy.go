@@ -118,6 +118,12 @@ spec:
       labels:
         k8s-app: gadget
       annotations:
+        # We need to set gadget container as unconfined so it is able to write
+        # /sys/fs/bpf as well as /sys/kernel/debug/tracing.
+        # Otherwise, we can have error like:
+        # "failed to create server failed to create folder for pinning bpf maps: mkdir /sys/fs/bpf/gadget: permission denied"
+        # (For reference, see: https://github.com/kinvolk/inspektor-gadget/runs/3966318270?check_suite_focus=true#step:20:221)
+        container.apparmor.security.beta.kubernetes.io/gadget: "unconfined"
         inspektor-gadget.kinvolk.io/option-traceloop: "{{.Traceloop}}"
         inspektor-gadget.kinvolk.io/option-hook-mode: "{{.HookMode}}"
     spec:
@@ -177,13 +183,68 @@ spec:
           - name: INSPEKTOR_GADGET_OPTION_TOOLS_MODE
             value: "{{.ToolsMode}}"
         securityContext:
-          privileged: true
+          capabilities:
+            add:
+              # We need CAP_NET_ADMIN to be able to create BPF link.
+              # Indeed, link_create is called with prog->type which equals
+              # BPF_PROG_TYPE_CGROUP_SKB.
+              # This value is then checked in
+              # bpf_prog_attach_check_attach_type() which also checks if we have
+              # CAP_NET_ADMIN:
+              # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/bpf/syscall.c#L4099
+              # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/bpf/syscall.c#L2967
+              - NET_ADMIN
+
+              # We need CAP_SYS_ADMIN to use Python-BCC gadgets because bcc
+              # internally calls bpf_get_map_fd_by_id() which contains the
+              # following snippet:
+              # if (!capable(CAP_SYS_ADMIN))
+              # 	return -EPERM;
+              # (https://elixir.bootlin.com/linux/v5.10.73/source/kernel/bpf/syscall.c#L3254)
+              #
+              # Details about this are given in:
+              # > The important design decision is to allow ID->FD transition for
+              # CAP_SYS_ADMIN only. What it means that user processes can run
+              # with CAP_BPF and CAP_NET_ADMIN and they will not be able to affect each
+              # other unless they pass FDs via scm_rights or via pinning in bpffs.
+              # ID->FD is a mechanism for human override and introspection.
+              # An admin can do 'sudo bpftool prog ...'. It's possible to enforce via LSM that
+              # only bpftool binary does bpf syscall with CAP_SYS_ADMIN and the rest of user
+              # space processes do bpf syscall with CAP_BPF isolating bpf objects (progs, maps,
+              # links) that are owned by such processes from each other.
+              # (https://lwn.net/Articles/820560/)
+              #
+              # Note that even with a kernel providing CAP_BPF, the above
+              # statement is still true.
+              - SYS_ADMIN
+
+              # We need this capability to get addresses from /proc/kallsyms.
+              # Without it, addresses displayed when reading this file will be
+              # 0.
+              # Thus, bcc_procutils_each_ksym will never call callback, so KSyms
+              # syms_ vector will be empty and it will return false.
+              # As a consequence, no prefix will be found in
+              # get_syscall_prefix(), so a default prefix (_sys) will be
+              # returned.
+              # Sadly, this default prefix is not used by the running kernel,
+              # which instead uses: __x64_sys_
+              - SYSLOG
+
+              # traceloop gadget uses strace which in turns use ptrace()
+              # syscall.
+              # Within kernel code, ptrace() calls ptrace_attach() which in
+              # turns calls __ptrace_may_access() which calls ptrace_has_cap()
+              # where CAP_SYS_PTRACE is finally checked:
+              # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/ptrace.c#L284
+              - SYS_PTRACE
+
+              # Needed by setrlimit in gadgettracermanager.
+              - SYS_RESOURCE
         volumeMounts:
         - name: host
           mountPath: /host
         - name: run
           mountPath: /run
-          mountPropagation: Bidirectional
         - name: modules
           mountPath: /lib/modules
         - name: debugfs
