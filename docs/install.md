@@ -6,7 +6,7 @@ description: >
 ---
 
 <!-- toc -->
-- [Installing kubectl-gadget](#installing-kubectl-gadget)
+- [Installing kubectl gadget](#installing-kubectl-gadget)
   * [Using krew](#using-krew)
   * [Install a specific release](#install-a-specific-release)
   * [Compile from the sources](#compile-from-the-sources)
@@ -21,16 +21,16 @@ description: >
 Inspektor Gadget is composed by a `kubectl` plugin executed in the user's
 system and a DaemonSet deployed in the cluster.
 
-## Installing kubectl-gadget
+## Installing kubectl gadget
 
 Choose one way to install the Inspektor Gadget `kubectl` plugin.
 
 ### Using krew
 
 [krew](https://sigs.k8s.io/krew) is the recommended way to install
-`kubectl-gadget`. You can follow the
+`kubectl gadget`. You can follow the
 [krew's quickstart](https://krew.sigs.k8s.io/docs/user-guide/quickstart/)
-to install it and then install `kubectl-gadget` by executing the following
+to install it and then install `kubectl gadget` by executing the following
 commands.
 
 ```
