@@ -76,11 +76,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	selector := gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter)
 	filteredContainers := t.resolver.GetContainersBySelector(selector)
 	if len(filteredContainers) == 0 {
-		log.Warningf("No container matches the requested filter: %+v", *trace.Spec.Filter)
-
-		trace.Status.OperationError = ""
-		trace.Status.Output = ""
-		trace.Status.State = "Completed"
+		gadgets.CleanupTraceStatus(trace)
+		trace.Status.OperationWarning = "No container matches the requested filter"
 		return
 	}
 
@@ -97,7 +94,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			// Make the whole gadget fail if there is a container without PID
 			// because it would be an inconsistency that has to be notified
 			if container.Pid == 0 {
-				gadgets.SetStatusError(trace, fmt.Sprintf("aborting! The following container does not have PID %+v", container))
+				gadgets.CleanupTraceStatus(trace)
+				trace.Status.OperationError = fmt.Sprintf("aborting! The following container does not have PID %+v", container)
 				return
 			}
 
@@ -111,7 +109,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			podSockets, err := tracer.RunCollector(container.Pid, container.Podname,
 				container.Namespace, trace.Spec.Node)
 			if err != nil {
-				gadgets.SetStatusError(trace, err.Error())
+				gadgets.CleanupTraceStatus(trace)
+				trace.Status.OperationError = err.Error()
 				return
 			}
 
@@ -121,7 +120,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	output, err := json.MarshalIndent(allSockets, "", " ")
 	if err != nil {
-		gadgets.SetStatusError(trace, fmt.Sprintf("failed marshalling sockets: %s", err))
+		gadgets.CleanupTraceStatus(trace)
+		trace.Status.OperationError = fmt.Sprintf("failed marshalling sockets: %s", err)
 		return
 	}
 

@@ -61,10 +61,11 @@ func updateTraceStatus(ctx context.Context, cli client.Client,
 	patch client.Patch,
 ) {
 	log.Infof("Updating new status of trace %q: "+
-		"state=%s operationError=%s output=<%d characters>",
+		"state=%s operationError=%q operationWarning=%q output=<%d characters>",
 		traceNsName,
 		trace.Status.State,
 		trace.Status.OperationError,
+		trace.Status.OperationWarning,
 		len(trace.Status.Output),
 	)
 

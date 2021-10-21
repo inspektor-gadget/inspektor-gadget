@@ -86,6 +86,12 @@ type TraceStatus struct {
 	// OperationError is the error returned by the gadget when applying the
 	// annotation gadget.kinvolk.io/operation=
 	OperationError string `json:"operationError,omitempty"`
+
+	// OperationWarning is returned by the gadget to notify about a malfunction
+	// when applying the annotation gadget.kinvolk.io/operation=. Unlike the
+	// OperationError that represents a fatal error, the OperationWarning could
+	// be ignored according to the context.
+	OperationWarning string `json:"operationWarning,omitempty"`
 }
 
 //+kubebuilder:object:root=true
