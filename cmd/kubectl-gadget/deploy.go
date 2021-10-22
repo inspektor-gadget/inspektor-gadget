@@ -35,6 +35,7 @@ var gadgetimage = "undefined"
 
 var (
 	image             string
+	imagePullPolicy   string
 	traceloop         bool
 	traceloopLoglevel string
 	hookMode          string
@@ -48,6 +49,11 @@ func init() {
 		"image", "",
 		gadgetimage,
 		"container image")
+	deployCmd.PersistentFlags().StringVarP(
+		&imagePullPolicy,
+		"image-pull-policy", "",
+		"Always",
+		"pull policy for the container image")
 	deployCmd.PersistentFlags().BoolVarP(
 		&traceloop,
 		"traceloop", "",
@@ -127,7 +133,7 @@ spec:
       containers:
       - name: gadget
         image: {{.Image}}
-        imagePullPolicy: Always
+        imagePullPolicy: {{.ImagePullPolicy}}
         command: [ "/entrypoint.sh" ]
         lifecycle:
           preStop:
@@ -225,6 +231,7 @@ spec:
 
 type parameters struct {
 	Image             string
+	ImagePullPolicy   string
 	Version           string
 	Traceloop         bool
 	TraceloopLoglevel string
@@ -253,6 +260,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 	p := parameters{
 		image,
+		imagePullPolicy,
 		version,
 		traceloop,
 		traceloopLoglevel,
