@@ -80,6 +80,17 @@ programs are and how Inspektor Gadget uses them is briefly explained here:
 
 You can read further details about the architecture [here](docs/architecture.md).
 
+## Kernel requirements
+
+The different gadgets shipped with Inspektor Gadget use a variety of eBPF
+capabilities. The capabilities available depend on the version and
+configuration of the kernel running in the node. To be able to run all the
+gadgets, you'll need to have at least 5.10 with
+[BTF](https://www.kernel.org/doc/html/latest/bpf/btf.html) enabled.
+
+See [requirements](docs/requirements.md) for a detailed list of the
+requirements per gadget.
+
 ## Contributing
 
 Contributions are welcome, see [CONTRIBUTING](docs/CONTRIBUTING.md).
