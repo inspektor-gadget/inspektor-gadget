@@ -41,6 +41,7 @@ build: manifests generate kubectl-gadget gadget-container
 .PHONY: phony_explicit
 phony_explicit:
 
+# CLI
 KUBECTL_GADGET_TARGETS = \
 	kubectl-gadget-linux-amd64 \
 	kubectl-gadget-linux-arm64 \
@@ -79,6 +80,35 @@ gadget-container:
 push-gadget-container:
 	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
 
+.PHONY: deploy-gadget-container
+deploy-gadget-container: kubectl-gadget uninstall-gadget-container
+	./kubectl-gadget deploy --traceloop=false --hook-mode=fanotify | \
+		kubectl apply -f -
+
+.PHONY: deploy-local-gadget-container
+deploy-local-gadget-container: kubectl-gadget uninstall-gadget-container
+	./kubectl-gadget deploy --traceloop=false --hook-mode=fanotify --image-pull-policy=Never | \
+		kubectl apply -f -
+
+.PHONY: uninstall-gadget-container
+uninstall-gadget-container: kubectl-gadget
+	# Delete traces CRD first: the gadget DaemonSet needs to be running
+	# because of Finalizers.
+	kubectl delete crd traces.gadget.kinvolk.io || true
+	./kubectl-gadget deploy | kubectl delete -f - || true
+	# Wait until the environment is cleaned up before proceeding
+	time kubectl wait --for=delete namespace gadget 2>/dev/null || true
+	time kubectl wait --for=delete daemonset -n kube-system gadget 2>/dev/null || true
+	for TERMINATING_POD in $(shell kubectl get pod -n kube-system -l k8s-app=gadget -o name); do \
+		kubectl wait --for=delete -n kube-system $$TERMINATING_POD 2>/dev/null || true ; \
+	done
+
+.PHONY: install-gadget-container
+install-gadget-container: gadget-container kubectl-gadget push-gadget-container deploy-gadget-container
+
+.PHONY: install-local-gadget-container
+install-local-gadget-container: gadget-container kubectl-gadget deploy-local-gadget-container
+
 # tests
 .PHONY: test
 test:
@@ -99,28 +129,18 @@ integration-tests: kubectl-gadget
 			-integration \
 			-image $(CONTAINER_REPO):$(IMAGE_TAG)
 
+# docs
 .PHONY: generate-documentation
 generate-documentation:
 	go run -tags docs cmd/gen-doc/gen-doc.go -repo $(shell pwd)
 
 # minikube
-LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 10
-.PHONY: minikube-install
-minikube-install: gadget-container kubectl-gadget
+.PHONY: minikube-push
+minikube-push:
 	# Unfortunately, minikube-cache and minikube-image have bugs in older
 	# versions. And new versions of minikube don't support all eBPF
 	# features. So we have to keep "docker-save|docker-load" for now.
 	docker save $(CONTAINER_REPO):$(IMAGE_TAG) $(PV) | (eval $(shell $(MINIKUBE) -p minikube docker-env | grep =) && docker load)
-	# Delete traces CRD first: the gadget DaemonSet needs to be running
-	# because of Finalizers.
-	kubectl delete crd traces.gadget.kinvolk.io || true
-	./kubectl-gadget deploy | kubectl delete -f - || true
-	# Wait until the environment is cleaned up before proceeding
-	time kubectl wait --for=delete namespace gadget 2>/dev/null || true
-	time kubectl wait --for=delete daemonset -n kube-system gadget 2>/dev/null || true
-	TERMINATING_POD=$(shell kubectl get pod -n kube-system -l k8s-app=gadget -o name); \
-		kubectl wait --for=delete -n kube-system $$TERMINATING_POD 2>/dev/null || true
-	./kubectl-gadget deploy --traceloop=false --hook-mode=fanotify \
-		--image-pull-policy=Never | \
-		sed 's/initialDelaySeconds: 10/initialDelaySeconds: '$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS)'/g' | \
-		kubectl apply -f -
+
+.PHONY: minikube-install
+minikube-install: gadget-container kubectl-gadget minikube-push deploy-local-gadget-container
