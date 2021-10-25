@@ -1,5 +1,6 @@
 ---
-title: 'The "dns" gadget' weight: 10
+title: 'The "dns" gadget'
+weight: 10
 ---
 
 The dns gadget prints information about DNS requests performed by the different
