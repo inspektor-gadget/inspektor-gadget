@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
-	"unsafe"
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
@@ -32,6 +31,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
@@ -303,19 +303,8 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 // by using this "containers" map (other interaction with Inspektor Gadget is
 // not necessary for this).
 func (g *GadgetTracerManager) createContainersMap() error {
-	// Create and pin BPF map
-	containersMapSpec := &ebpf.MapSpec{
-		Name:       "containers",
-		Type:       ebpf.Hash,
-		KeySize:    8,
-		ValueSize:  uint32(unsafe.Sizeof(container{})),
-		MaxEntries: MAX_CONTAINERS_PER_NODE,
-		Pinning:    ebpf.PinByName,
-	}
 	var err error
-	log.Printf("Creating BPF map: %s/%s", gadgets.PIN_PATH, containersMapSpec.Name)
-	g.containersMap, err = ebpf.NewMapWithOptions(containersMapSpec,
-		ebpf.MapOptions{PinPath: gadgets.PIN_PATH})
+	g.containersMap, err = containersmap.CreateContainersMap(gadgets.PIN_PATH)
 	if err != nil {
 		return fmt.Errorf("error creating containers map: %w", err)
 	}
