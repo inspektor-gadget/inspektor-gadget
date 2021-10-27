@@ -129,7 +129,10 @@ func (cc *ContainerCollection) AddContainer(container *pb.ContainerDefinition) {
 		}
 	}
 
-	cc.containers.Store(container.Id, container)
+	_, loaded := cc.containers.LoadOrStore(container.Id, container)
+	if loaded {
+		return
+	}
 	if cc.pubsub != nil {
 		cc.pubsub.Publish(pubsub.EVENT_TYPE_ADD_CONTAINER, *container)
 	}

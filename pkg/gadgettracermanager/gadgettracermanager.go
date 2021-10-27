@@ -438,6 +438,11 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 		return nil, fmt.Errorf("invalid hook mode: %s", conf.HookMode)
 	}
 
+	if conf.FallbackPodInformer && conf.HookMode != "podinformer" {
+		log.Infof("GadgetTracerManager: enabling fallback podinformer")
+		opts = append(opts, containercollection.WithFallbackPodInformer(g.nodeName))
+	}
+
 	err := g.ContainerCollectionInitialize(opts...)
 	if err != nil {
 		return nil, err
@@ -447,9 +452,10 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 }
 
 type Conf struct {
-	NodeName string
-	HookMode string
-	TestOnly bool
+	NodeName            string
+	HookMode            string
+	FallbackPodInformer bool
+	TestOnly            bool
 }
 
 func NewServer(conf *Conf) (*GadgetTracerManager, error) {

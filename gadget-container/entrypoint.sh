@@ -210,5 +210,6 @@ if [ "$INSPEKTOR_GADGET_OPTION_TRACELOOP" = "true" ] ; then
     exec /bin/traceloop k8s
   fi
 else
-  exec /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE -controller
+  exec /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE \
+    -controller -fallback-podinformer=$INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
 fi
