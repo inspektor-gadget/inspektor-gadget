@@ -30,12 +30,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	types "k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 
@@ -465,11 +463,6 @@ func PrintTraceOutputFromStream(traceID string, expectedState string, params *Co
 		return err
 	}
 
-	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
-	if err != nil {
-		return fmt.Errorf("Error setting up Kubernetes client: %w", err)
-	}
-
 	return genericStreamsDisplay(params, &traces, transformLine)
 }
 
@@ -497,211 +490,6 @@ func DeleteTrace(traceID string) error {
 	deleteTraces(nil, traceRestClient, traceID)
 
 	return nil
-}
-
-func GenericTraceCommand(
-	subCommand string,
-	params *CommonFlags,
-	args []string,
-	outputMode string,
-	customResultsDisplay func(contextLogger *log.Entry, nodes *corev1.NodeList, results *gadgetv1alpha1.TraceList),
-	transformLine func(string) string,
-) {
-
-	contextLogger := log.WithFields(log.Fields{
-		"command": fmt.Sprintf("kubectl-gadget %s", subCommand),
-		"args":    args,
-	})
-
-	traceID := randomTraceID()
-
-	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
-	if err != nil {
-		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
-	}
-
-	labelsSelector := map[string]string{}
-	if params.Label != "" {
-		pairs := strings.Split(params.Label, ",")
-		for _, pair := range pairs {
-			kv := strings.Split(pair, "=")
-			if len(kv) != 2 {
-				contextLogger.Fatalf("labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])\n")
-			}
-			labelsSelector[kv[0]] = kv[1]
-		}
-	}
-
-	namespace := ""
-	if !params.AllNamespaces {
-		namespace = GetNamespace()
-	}
-
-	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		contextLogger.Fatalf("Error in listing nodes: %q", err)
-	}
-
-	restConfig, err := kubeRestConfig()
-	if err != nil {
-		contextLogger.Fatalf("Error while getting rest config: %s", err)
-	}
-
-	traceConfig := *restConfig
-	traceConfig.ContentConfig.GroupVersion = &gadgetv1alpha1.GroupVersion
-	traceConfig.APIPath = "/apis"
-	traceConfig.NegotiatedSerializer = serializer.NewCodecFactory(scheme.Scheme)
-	traceConfig.UserAgent = restclient.DefaultKubernetesUserAgent()
-
-	traceRestClient, err := restclient.UnversionedRESTClientFor(&traceConfig)
-	if err != nil {
-		contextLogger.Fatalf("Error while getting trace rest client: %s", err)
-	}
-
-	nodeFound := false
-	for _, node := range nodes.Items {
-		if params.Node != "" && node.Name != params.Node {
-			continue
-		}
-		nodeFound = true
-
-		trace := &gadgetv1alpha1.Trace{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: subCommand + "-",
-				Namespace:    "gadget",
-				Annotations: map[string]string{
-					GADGET_OPERATION: "start",
-				},
-				Labels: map[string]string{
-					"trace-template-hash": traceID,
-				},
-			},
-			Spec: gadgetv1alpha1.TraceSpec{
-				Node:   node.Name,
-				Gadget: subCommand,
-				Filter: &gadgetv1alpha1.ContainerFilter{
-					Namespace:     namespace,
-					Podname:       params.Podname,
-					ContainerName: params.Containername,
-					Labels:        labelsSelector,
-				},
-				RunMode:    "Manual",
-				OutputMode: outputMode,
-			},
-		}
-
-		err = traceRestClient.
-			Post().
-			Namespace(trace.ObjectMeta.Namespace).
-			Resource("traces").
-			Body(trace).
-			Do(context.TODO()).
-			Error()
-		if err != nil {
-			deleteTraces(nil, traceRestClient, traceID)
-			contextLogger.Fatalf("Error creating trace on node %s: %q", node.Name, err)
-		}
-	}
-
-	if params.Node != "" && !nodeFound {
-		contextLogger.Fatalf("Invalid filter: Node %q does not exist", params.Node)
-	}
-
-	var listTracesOptions = metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("trace-template-hash=%s", traceID),
-		FieldSelector: fields.Everything().String(),
-	}
-
-	// Wait until results are ready and fetch all results
-	// TODO: use a watcher to avoid looping client-side
-	//
-	// watch, err := traceRestClient.
-	//	Get().
-	//	Namespace("gadget").
-	//	Resource("traces").
-	//	VersionedParams(&listTracesOptions, scheme.ParameterCodec).
-	//	Watch(context.TODO())
-	// if err != nil {
-	//	contextLogger.Fatalf("Error waiting for traces: %q", err)
-	// }
-	// for event := range watch.ResultChan() {
-	//	fmt.Printf("Event: %v\n", event)
-	//	if data, ok := event.Object.(*metav1.Status); ok {
-	//		contextLogger.Infof("watcher status: %s", data.Message)
-	//	} else if t, ok := event.Object.(*gadgetv1alpha1.Trace); ok {
-	//		fmt.Printf("Got: %v\n", t)
-	//	} else {
-	//		contextLogger.Fatalf("Error waiting for traces: got unexpected %v", event)
-	//	}
-	// }
-
-	var results gadgetv1alpha1.TraceList
-	start := time.Now()
-RetryLoop:
-	for {
-		results = gadgetv1alpha1.TraceList{}
-		err = traceRestClient.
-			Get().
-			Namespace("gadget").
-			Resource("traces").
-			VersionedParams(&listTracesOptions, scheme.ParameterCodec).
-			Do(context.TODO()).
-			Into(&results)
-		if err != nil {
-			deleteTraces(contextLogger, traceRestClient, traceID)
-			contextLogger.Fatalf("Error getting traces: %q", err)
-		}
-
-		timeout := time.Since(start) > traceTimeout
-		successNodeCount := 0
-		nodeErrors := make(map[string]string)
-		nodeWarnings := make(map[string]string)
-		for _, i := range results.Items {
-			if i.Status.OperationError != "" {
-				nodeErrors[i.Spec.Node] = i.Status.OperationError
-			} else if i.Status.OperationWarning != "" {
-				nodeWarnings[i.Spec.Node] = i.Status.OperationWarning
-			} else if i.Status.State == "Completed" || i.Status.State == "Started" {
-				successNodeCount++
-			} else {
-				// Consider Trace as timed out if it neither moved the state forward
-				// nor notified of an error or warning within the time window.
-				if timeout {
-					nodeErrors[i.Spec.Node] = fmt.Sprintf("No results received from trace within %v",
-						traceTimeout)
-					continue
-				}
-
-				time.Sleep(100 * time.Millisecond)
-				continue RetryLoop
-			}
-		}
-
-		// Don't print warnings if at least one node succeeded. This avoids showing
-		// warnings together with the actual output generated by other nodes.
-		if successNodeCount == 0 {
-			printTraceFeedback(contextLogger.Warningf, nodeWarnings)
-		}
-
-		// Print errors even if other nodes succeeded.
-		printTraceFeedback(contextLogger.Errorf, nodeErrors)
-
-		if successNodeCount == 0 {
-			deleteTraces(contextLogger, traceRestClient, traceID)
-			contextLogger.Fatalf("Failed to run the gadget on all nodes: None of them succeeded")
-		}
-		break RetryLoop
-	}
-
-	if customResultsDisplay == nil {
-		if outputMode != "Stream" {
-			panic(fmt.Errorf("OutputMode=%q needs a custom display function", outputMode))
-		}
-		genericStreamsDisplay(contextLogger, client, params, &results, transformLine)
-	} else {
-		customResultsDisplay(contextLogger, nodes, &results)
-	}
-	deleteTraces(contextLogger, traceRestClient, traceID)
 }
 
 // labelsFromFilter creates a string containing labels value from the given
@@ -856,7 +644,6 @@ func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func
 
 func genericStreamsDisplay(
 	contextLogger *log.Entry,
-	client *kubernetes.Clientset,
 	params *CommonFlags,
 	results *gadgetv1alpha1.TraceList,
 	transformLine func(string) string,
@@ -864,6 +651,11 @@ func genericStreamsDisplay(
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	completion := make(chan string)
+
+	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
+	if err != nil {
+		return fmt.Errorf("Error setting up Kubernetes client: %w", err)
+	}
 
 	callback := func(line string) string {
 		if params.OutputMode == OutputModeJson {
