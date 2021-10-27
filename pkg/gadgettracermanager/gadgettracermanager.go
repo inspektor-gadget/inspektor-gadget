@@ -385,6 +385,8 @@ func newServer(nodeName string, hookMode string, testonly bool) (*GadgetTracerMa
 				}
 
 			case pubsub.EVENT_TYPE_REMOVE_CONTAINER:
+				log.Infof("pubsub: REMOVE_CONTAINER: %s/%s/%s", event.Container.Namespace, event.Container.Podname, event.Container.Name)
+
 				g.deleteContainerFromMap(&event.Container)
 
 				for _, t := range g.tracers {
@@ -413,6 +415,9 @@ func newServer(nodeName string, hookMode string, testonly bool) (*GadgetTracerMa
 		// Nothing to do: grpc calls will be enough
 		// Used by nri and crio
 		log.Infof("GadgetTracerManager: hook mode: none")
+		if !testonly {
+			opts = append(opts, containercollection.WithInitialKubernetesContainers(nodeName))
+		}
 	case "auto":
 		if runcfanotify.Supported() {
 			log.Infof("GadgetTracerManager: hook mode: fanotify (auto)")
