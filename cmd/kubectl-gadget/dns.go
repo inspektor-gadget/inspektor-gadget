@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -62,7 +63,20 @@ var dnsCmd = &cobra.Command{
 			)
 		}
 
-		utils.GenericTraceCommand("dns", &params, args, "Stream", nil, transform)
+		config := &utils.TraceConfig{
+			GadgetName:       "dns",
+			Operation:        "start",
+			TraceOutputMode:  "Stream",
+			TraceOutputState: "Started",
+			CommonFlags:      &params,
+		}
+
+		err := utils.RunTraceAndPrintStream(config, transform)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+
+			os.Exit(1)
+		}
 	},
 }
 

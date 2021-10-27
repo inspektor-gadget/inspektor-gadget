@@ -21,9 +21,7 @@ import (
 	"sort"
 	"text/tabwriter"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
@@ -69,7 +67,7 @@ func init() {
 }
 
 func processCollectorCmdRun(cmd *cobra.Command, args []string) {
-	callback := func(contextLogger *log.Entry, nodes *corev1.NodeList, results *gadgetv1alpha1.TraceList) {
+	callback := func(results *gadgetv1alpha1.TraceList) {
 		// Display results
 		type Process struct {
 			Tgid                int    `json:"tgid,omitempty"`
@@ -119,7 +117,9 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 		case utils.OutputModeJson:
 			b, err := json.MarshalIndent(allProcesses, "", "  ")
 			if err != nil {
-				contextLogger.Fatalf("Error marshalling results: %s", err)
+				fmt.Fprintf(os.Stderr, "Error marshalling results: %s", err)
+
+				os.Exit(1)
 			}
 			fmt.Printf("%s\n", b)
 		case utils.OutputModeCustomColumns:
@@ -130,7 +130,9 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 			for _, p := range allProcesses {
 				b, err := json.Marshal(p)
 				if err != nil {
-					contextLogger.Fatalf("Error marshalling results: %s", err)
+					fmt.Fprintf(os.Stderr, "Error marshalling results: %s", err)
+
+					os.Exit(1)
 				}
 
 				fmt.Println(transform(string(b)))
@@ -165,11 +167,24 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	utils.GenericTraceCommand("process-collector", &params, args, "Status", callback, nil)
+	config := &utils.TraceConfig{
+		GadgetName:       "process-collector",
+		Operation:        "start",
+		TraceOutputMode:  "Status",
+		TraceOutputState: "Completed",
+		CommonFlags:      &params,
+	}
+
+	err := utils.RunTraceAndPrintStatusOutput(config, callback)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+
+		os.Exit(1)
+	}
 }
 
 func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
-	callback := func(contextLogger *log.Entry, nodes *corev1.NodeList, results *gadgetv1alpha1.TraceList) {
+	callback := func(results *gadgetv1alpha1.TraceList) {
 		allSockets := []socketcollectortypes.Event{}
 
 		for _, i := range results.Items {
@@ -206,7 +221,9 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 		case utils.OutputModeJson:
 			b, err := json.MarshalIndent(allSockets, "", "  ")
 			if err != nil {
-				contextLogger.Fatalf("Error marshalling results: %s", err)
+				fmt.Fprintf(os.Stderr, "Error marshalling results: %s", err)
+
+				os.Exit(1)
 			}
 			fmt.Printf("%s\n", b)
 		case utils.OutputModeCustomColumns:
@@ -217,7 +234,9 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 			for _, p := range allSockets {
 				b, err := json.Marshal(p)
 				if err != nil {
-					contextLogger.Fatalf("Error marshalling results: %s", err)
+					fmt.Fprintf(os.Stderr, "Error marshalling results: %s", err)
+
+					os.Exit(1)
 				}
 
 				fmt.Println(transform(string(b)))
@@ -244,5 +263,18 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	utils.GenericTraceCommand("socket-collector", &params, args, "Status", callback, nil)
+	config := &utils.TraceConfig{
+		GadgetName:       "socket-collector",
+		Operation:        "start",
+		TraceOutputMode:  "Status",
+		TraceOutputState: "Completed",
+		CommonFlags:      &params,
+	}
+
+	err := utils.RunTraceAndPrintStatusOutput(config, callback)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+
+		os.Exit(1)
+	}
 }
