@@ -17,4 +17,9 @@ the kernel and gather the log data. Inspektor Gadget's userspace
 utilities fetch the log data from ring buffers and display it. What BPF
 programs are and how Inspektor Gadget uses them is briefly explained here:
 
-[Read more about the architecture](architecture.md)
+## Further Reading
+
+* [Read more about the architecture](architecture.md)
+* [Learn how to install Inspektor Gadget](installation.md)
+* [Kernel requirements for each gadget](requirements.md)
+* [Using `Trace` resources](custom-resources.md)
