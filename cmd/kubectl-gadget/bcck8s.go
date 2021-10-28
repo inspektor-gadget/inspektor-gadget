@@ -242,6 +242,18 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			gadgetParams = "--containersmap /sys/fs/bpf/gadget/containers"
 		}
 
+		var transform func(line string) string
+
+		if params.OutputMode == utils.OutputModeCustomColumns {
+			table := utils.NewTableFormater(params.CustomColumns, map[string]int{})
+			fmt.Println(table.GetHeader())
+			transform = table.GetTransformFunc()
+
+			// ask the gadget to send the output in json mode to be able to
+			// parse it to print only the columns required by the user
+			params.OutputMode = utils.OutputModeJson
+		}
+
 		if params.OutputMode == utils.OutputModeJson {
 			gadgetParams += " --json"
 		}
@@ -292,6 +304,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			OutStream:     os.Stdout,
 			ErrStream:     os.Stderr,
 			SkipFirstLine: params.OutputMode != utils.OutputModeJson, // skip first line if json is not used
+			Transform:     transform,
 		})
 
 		for i, node := range nodes.Items {

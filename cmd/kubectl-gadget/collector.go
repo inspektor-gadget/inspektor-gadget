@@ -114,13 +114,28 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 
 			}
 		})
-		if params.OutputMode == utils.OutputModeJson {
+
+		switch params.OutputMode {
+		case utils.OutputModeJson:
 			b, err := json.MarshalIndent(allProcesses, "", "  ")
 			if err != nil {
 				contextLogger.Fatalf("Error marshalling results: %s", err)
 			}
 			fmt.Printf("%s\n", b)
-		} else {
+		case utils.OutputModeCustomColumns:
+			table := utils.NewTableFormater(params.CustomColumns, map[string]int{})
+			fmt.Println(table.GetHeader())
+			transform := table.GetTransformFunc()
+
+			for _, p := range allProcesses {
+				b, err := json.Marshal(p)
+				if err != nil {
+					contextLogger.Fatalf("Error marshalling results: %s", err)
+				}
+
+				fmt.Println(transform(string(b)))
+			}
+		default:
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 			if processCollectorParamThreads {
 				fmt.Fprintln(w, "NAMESPACE\tPOD\tCONTAINER\tCOMM\tTGID\tPID\t")
@@ -187,13 +202,27 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 			}
 		})
 
-		if params.OutputMode == utils.OutputModeJson {
+		switch params.OutputMode {
+		case utils.OutputModeJson:
 			b, err := json.MarshalIndent(allSockets, "", "  ")
 			if err != nil {
 				contextLogger.Fatalf("Error marshalling results: %s", err)
 			}
 			fmt.Printf("%s\n", b)
-		} else {
+		case utils.OutputModeCustomColumns:
+			table := utils.NewTableFormater(params.CustomColumns, map[string]int{})
+			fmt.Println(table.GetHeader())
+			transform := table.GetTransformFunc()
+
+			for _, p := range allSockets {
+				b, err := json.Marshal(p)
+				if err != nil {
+					contextLogger.Fatalf("Error marshalling results: %s", err)
+				}
+
+				fmt.Println(transform(string(b)))
+			}
+		default:
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 
 			fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tPROTOCOL\tLOCAL\tREMOTE\tSTATUS")

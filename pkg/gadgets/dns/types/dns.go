@@ -21,6 +21,6 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	DNSName string `json:"dns_name,omitempty"`
+	DNSName string `json:"name,omitempty"`
 	PktType string `json:"pkt_type,omitempty"`
 }

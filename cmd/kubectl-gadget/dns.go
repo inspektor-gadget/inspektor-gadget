@@ -29,29 +29,40 @@ const (
 	FMT_SHORT = "%-30.30s %-9.9s %s"
 )
 
+var colLens = map[string]int{
+	"pkt_type": 10,
+	"name":     30,
+}
+
 var dnsCmd = &cobra.Command{
 	Use:   "dns",
 	Short: "Trace DNS requests",
 	Run: func(cmd *cobra.Command, args []string) {
-		if params.OutputMode != utils.OutputModeJson {
-			if params.AllNamespaces {
-				fmt.Printf(FMT_ALL+"\n",
-					"NODE",
-					"NAMESPACE",
-					"POD",
-					"TYPE",
-					"NAME",
-				)
-			} else {
-				fmt.Printf(FMT_SHORT+"\n",
-					"POD",
-					"TYPE",
-					"NAME",
-				)
-			}
+		transform := transformLine
+
+		switch {
+		case params.OutputMode == utils.OutputModeJson: // don't print any header
+		case params.OutputMode == utils.OutputModeCustomColumns:
+			table := utils.NewTableFormater(params.CustomColumns, colLens)
+			fmt.Println(table.GetHeader())
+			transform = table.GetTransformFunc()
+		case params.AllNamespaces:
+			fmt.Printf(FMT_ALL+"\n",
+				"NODE",
+				"NAMESPACE",
+				"POD",
+				"TYPE",
+				"NAME",
+			)
+		default:
+			fmt.Printf(FMT_SHORT+"\n",
+				"POD",
+				"TYPE",
+				"NAME",
+			)
 		}
 
-		utils.GenericTraceCommand("dns", &params, args, "Stream", nil, transformLine)
+		utils.GenericTraceCommand("dns", &params, args, "Stream", nil, transform)
 	},
 }
 
