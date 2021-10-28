@@ -251,7 +251,10 @@ func main() {
 
 		var tracerManager *gadgettracermanager.GadgetTracerManager
 
-		tracerManager, err = gadgettracermanager.NewServer(node, hookMode)
+		tracerManager, err = gadgettracermanager.NewServer(&gadgettracermanager.Conf{
+			NodeName: node,
+			HookMode: hookMode,
+		})
 
 		if err != nil {
 			log.Fatalf("failed to create server %v", err)

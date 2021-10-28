@@ -28,10 +28,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containers-map"
+	containersmap "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
@@ -334,16 +334,16 @@ func (g *GadgetTracerManager) deleteContainerFromMap(c *pb.ContainerDefinition) 
 	g.containersMap.Delete(uint64(c.Mntns))
 }
 
-func newServer(nodeName string, hookMode string, testonly bool) (*GadgetTracerManager, error) {
+func newServer(conf *Conf) (*GadgetTracerManager, error) {
 	g := &GadgetTracerManager{
-		nodeName: nodeName,
+		nodeName: conf.NodeName,
 		tracers:  make(map[string]tracer),
-		withBPF:  !testonly,
+		withBPF:  !conf.TestOnly,
 	}
 
 	containerEventFuncs := []pubsub.FuncNotify{}
 
-	if !testonly {
+	if !conf.TestOnly {
 		if err := increaseRlimit(); err != nil {
 			return nil, fmt.Errorf("failed to increase memlock limit: %w", err)
 		}
@@ -404,38 +404,38 @@ func newServer(nodeName string, hookMode string, testonly bool) (*GadgetTracerMa
 	opts := []containercollection.ContainerCollectionOption{
 		containercollection.WithPubSub(containerEventFuncs...),
 	}
-	if !testonly {
+	if !conf.TestOnly {
 		opts = append(opts, containercollection.WithCgroupEnrichment())
 		opts = append(opts, containercollection.WithLinuxNamespaceEnrichment())
-		opts = append(opts, containercollection.WithKubernetesEnrichment(nodeName))
+		opts = append(opts, containercollection.WithKubernetesEnrichment(g.nodeName))
 	}
 
-	switch hookMode {
+	switch conf.HookMode {
 	case "none":
 		// Nothing to do: grpc calls will be enough
 		// Used by nri and crio
 		log.Infof("GadgetTracerManager: hook mode: none")
-		if !testonly {
-			opts = append(opts, containercollection.WithInitialKubernetesContainers(nodeName))
+		if !conf.TestOnly {
+			opts = append(opts, containercollection.WithInitialKubernetesContainers(g.nodeName))
 		}
 	case "auto":
 		if runcfanotify.Supported() {
 			log.Infof("GadgetTracerManager: hook mode: fanotify (auto)")
 			opts = append(opts, containercollection.WithRuncFanotify())
-			opts = append(opts, containercollection.WithInitialKubernetesContainers(nodeName))
+			opts = append(opts, containercollection.WithInitialKubernetesContainers(g.nodeName))
 		} else {
 			log.Infof("GadgetTracerManager: hook mode: podinformer (auto)")
-			opts = append(opts, containercollection.WithPodInformer(nodeName))
+			opts = append(opts, containercollection.WithPodInformer(g.nodeName))
 		}
 	case "podinformer":
 		log.Infof("GadgetTracerManager: hook mode: podinformer")
-		opts = append(opts, containercollection.WithPodInformer(nodeName))
+		opts = append(opts, containercollection.WithPodInformer(g.nodeName))
 	case "fanotify":
 		log.Infof("GadgetTracerManager: hook mode: fanotify")
 		opts = append(opts, containercollection.WithRuncFanotify())
-		opts = append(opts, containercollection.WithInitialKubernetesContainers(nodeName))
+		opts = append(opts, containercollection.WithInitialKubernetesContainers(g.nodeName))
 	default:
-		return nil, fmt.Errorf("invalid hook mode: %s", hookMode)
+		return nil, fmt.Errorf("invalid hook mode: %s", conf.HookMode)
 	}
 
 	err := g.ContainerCollectionInitialize(opts...)
@@ -446,8 +446,14 @@ func newServer(nodeName string, hookMode string, testonly bool) (*GadgetTracerMa
 	return g, nil
 }
 
-func NewServer(nodeName string, hookMode string) (*GadgetTracerManager, error) {
-	return newServer(nodeName, hookMode, false)
+type Conf struct {
+	NodeName string
+	HookMode string
+	TestOnly bool
+}
+
+func NewServer(conf *Conf) (*GadgetTracerManager, error) {
+	return newServer(conf)
 }
 
 // Close releases any resource that could be in use by the tracer manager, like
