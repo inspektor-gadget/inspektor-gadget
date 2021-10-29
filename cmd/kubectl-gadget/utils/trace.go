@@ -28,8 +28,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -120,7 +118,7 @@ func printTraceFeedback(f func(format string, args ...interface{}), m map[string
 	}
 }
 
-func deleteTraces(contextLogger *log.Entry, traceRestClient *restclient.RESTClient, traceID string) {
+func deleteTraces(traceRestClient *restclient.RESTClient, traceID string) {
 	var listTracesOptions = metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
 		FieldSelector: fields.Everything().String(),
@@ -132,8 +130,8 @@ func deleteTraces(contextLogger *log.Entry, traceRestClient *restclient.RESTClie
 		VersionedParams(&listTracesOptions, scheme.ParameterCodec).
 		Do(context.TODO()).
 		Error()
-	if contextLogger != nil && err != nil {
-		contextLogger.Warningf("Error deleting traces: %q", err)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error deleting traces: %q", err)
 	}
 }
 
@@ -203,7 +201,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 			traceID, present := trace.ObjectMeta.Labels[GLOBAL_TRACE_ID]
 			if present {
 				// Clean before exiting!
-				deleteTraces(nil, traceRestClient, traceID)
+				deleteTraces(traceRestClient, traceID)
 			}
 
 			return fmt.Errorf("Error creating trace on node %q: %w", node.Name, err)
@@ -487,7 +485,7 @@ func DeleteTrace(traceID string) error {
 		return err
 	}
 
-	deleteTraces(nil, traceRestClient, traceID)
+	deleteTraces(traceRestClient, traceID)
 
 	return nil
 }
@@ -643,7 +641,6 @@ func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func
 }
 
 func genericStreamsDisplay(
-	contextLogger *log.Entry,
 	params *CommonFlags,
 	results *gadgetv1alpha1.TraceList,
 	transformLine func(string) string,
