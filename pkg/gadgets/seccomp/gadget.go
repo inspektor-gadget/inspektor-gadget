@@ -120,6 +120,7 @@ func deleteTrace(name string, t interface{}) {
 		defer traceSingleton.mu.Unlock()
 		traceSingleton.users--
 		if traceSingleton.users == 0 {
+			trace.resolver.Unsubscribe(genPubSubKey(name))
 			traceSingleton.tracer.Close()
 			traceSingleton.tracer = nil
 		}
@@ -161,14 +162,19 @@ namespace and pod name should be specified at the exclusion of other fields.`,
 
 type pubSubKey string
 
-func genPubSubKey(namespace, name string) pubSubKey {
-	return pubSubKey(fmt.Sprintf("gadget/seccomp/%s/%s", namespace, name))
+func genPubSubKey(name string) pubSubKey {
+	return pubSubKey(fmt.Sprintf("gadget/seccomp/%s", name))
 }
 
 // containerTerminated is a callback called every time a container is
 // terminated on the node. It is used to generate a SeccompProfile when a
 // container terminates.
 func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.PubSubEvent) {
+	if traceSingleton.tracer == nil {
+		log.Errorf("Seccomp tracer is nil")
+		return
+	}
+
 	if event.Container.Mntns == 0 {
 		log.Errorf("Container has unknown mntns")
 		return
@@ -248,7 +254,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		// don't need the list of existing containers, so the return
 		// value is ignored.
 		_ = t.resolver.Subscribe(
-			genPubSubKey(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
+			genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
 			*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 			func(event pubsub.PubSubEvent) {
 				// Ignore container creation events.
@@ -269,6 +275,11 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 }
 
 func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
+	if traceSingleton.tracer == nil {
+		log.Errorf("Seccomp tracer is nil")
+		return
+	}
+
 	if !t.started {
 		trace.Status.OperationError = "Not started"
 		return
@@ -379,7 +390,7 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	defer traceSingleton.mu.Unlock()
 	traceSingleton.users--
 	if traceSingleton.users == 0 {
-		t.resolver.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name))
+		t.resolver.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
 		traceSingleton.tracer.Close()
 		traceSingleton.tracer = nil
 	}
