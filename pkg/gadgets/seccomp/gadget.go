@@ -90,10 +90,6 @@ SeccompProfiles will have the following annotations:
   traced
 * seccomp.gadget.kinvolk.io/container: the container name in the pod that was
   traced
-* seccomp.gadget.kinvolk.io/container-id: the container ID in the pod that
-  was traced. Typically, 64 hexadecimal characters.
-* seccomp.gadget.kinvolk.io/pid: the process ID of the container in the pod
-  that was traced.
 
 SeccompProfiles will have the same labels as the Trace custom resource that
 generated them. They don't have meaning for the seccomp gadget. They are
@@ -165,6 +161,35 @@ func genPubSubKey(namespace, name string) pubSubKey {
 	return pubSubKey(fmt.Sprintf("gadget/seccomp/%s/%s", namespace, name))
 }
 
+func seccompProfileAddLabelsAndAnnotations(
+	r *seccompprofilev1alpha1.SeccompProfile,
+	trace *gadgetv1alpha1.Trace,
+	event *pubsub.PubSubEvent,
+	containerName string,
+) {
+	var podName string
+	if event != nil {
+		podName = fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
+		containerName = event.Container.Name
+	} else {
+		podName = fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
+	}
+
+	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/trace"] = traceName
+	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/node"] = trace.Spec.Node
+	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/pod"] = podName
+	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/container"] = containerName
+
+	// Copy labels from the trace into the SeccompProfile. This will allow
+	// the CLI to add a label on the trace and gather its output
+	if trace.ObjectMeta.Labels != nil {
+		for key, value := range trace.ObjectMeta.Labels {
+			r.ObjectMeta.Labels[key] = value
+		}
+	}
+}
+
 // containerTerminated is a callback called every time a container is
 // terminated on the node. It is used to generate a SeccompProfile when a
 // container terminates.
@@ -184,21 +209,9 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 	generateName := trace.ObjectMeta.Name + "-"
 	r = syscallArrToSeccompPolicy(trace.ObjectMeta.Namespace, "", generateName, b)
 
-	// Copy labels from the trace into the SeccompProfile. This will allow
-	// the CLI to add a label on the trace and gather its output
-	if trace.ObjectMeta.Labels != nil {
-		for key, value := range trace.ObjectMeta.Labels {
-			r.ObjectMeta.Labels[key] = value
-		}
-	}
 	podName := fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
 	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
-	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/trace"] = traceName
-	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/node"] = trace.Spec.Node
-	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/pod"] = podName
-	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/container"] = event.Container.Name
-	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/container-id"] = event.Container.Id
-	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/pid"] = fmt.Sprint(event.Container.Pid)
+	seccompProfileAddLabelsAndAnnotations(r, trace, &event, "")
 
 	switch trace.Spec.OutputMode {
 	case "ExternalResource":
@@ -283,6 +296,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	}
 
 	var mntns uint64
+	var containerName string
 	if trace.Spec.Filter.ContainerName != "" {
 		mntns = t.resolver.LookupMntnsByContainer(
 			trace.Spec.Filter.Namespace,
@@ -297,6 +311,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 			)
 			return
 		}
+		containerName = trace.Spec.Filter.ContainerName
 	} else {
 		mntnsMap := t.resolver.LookupMntnsByPod(
 			trace.Spec.Filter.Namespace,
@@ -312,6 +327,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 
 		containerList := []string{}
 		for k, v := range mntnsMap {
+			containerName = k
 			mntns = v
 			containerList = append(containerList, k)
 		}
@@ -356,6 +372,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 		} else {
 			r = syscallArrToSeccompPolicy(trace.ObjectMeta.Namespace, trace.Spec.Output, "", b)
 		}
+		seccompProfileAddLabelsAndAnnotations(r, trace, nil, containerName)
 		err := t.client.Create(context.TODO(), r)
 		if err != nil {
 			trace.Status.OperationError = fmt.Sprintf("Failed to update resource: %s", err)
