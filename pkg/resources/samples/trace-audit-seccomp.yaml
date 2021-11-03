@@ -1,0 +1,10 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: audit-seccomp
+  namespace: gadget
+spec:
+  node: minikube
+  gadget: audit-seccomp
+  runMode: Manual
+  outputMode: Stream
