@@ -47,15 +47,20 @@ var supportedOutputModes = []string{OutputModeColumns, OutputModeJson, OutputMod
 
 // CommonFlags contains CLI flags common to several gadgets
 type CommonFlags struct {
-	// Label allows to filter containers with a label selector in the
-	// following format: key1=value1,key2=value2
-	Label string
+	// LabelsRaw allows to filter containers with a label selector in the
+	// following format: key1=value1,key2=value2.
+	// It's the raw representation as passed by the user.
+	LabelsRaw string
+
+	// Labels is a parsed representation of LabelsRaw
+	Labels map[string]string
 
 	// Node allows to filter containers by node name
 	Node string
 
-	// No 'Namespace' field because it's added automatically by
-	// KubernetesConfigFlags.AddFlags(rootCmd.PersistentFlags())
+	// Namespace allows to filter by Kubernetes namespace. Ignored if
+	// AllNamespaces is true
+	Namespace string
 
 	// AllNamespaces disables the container filtering by namespace
 	AllNamespaces bool
@@ -85,6 +90,25 @@ func GetNamespace() string {
 
 func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 	command.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		// Namespace
+		if !params.AllNamespaces {
+			params.Namespace = GetNamespace()
+		}
+
+		// Labels
+		if params.LabelsRaw != "" {
+			params.Labels = make(map[string]string)
+			pairs := strings.Split(params.LabelsRaw, ",")
+			for _, pair := range pairs {
+				kv := strings.Split(pair, "=")
+				if len(kv) != 2 {
+					return fmt.Errorf("labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])")
+				}
+				params.Labels[kv[0]] = kv[1]
+			}
+		}
+
+		// Output Mode
 		switch {
 		case params.OutputMode == OutputModeColumns:
 			fallthrough
@@ -114,8 +138,11 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 	// do not print usage when there is an error
 	command.SilenceUsage = true
 
+	// No 'Namespace' flag because it's added automatically by
+	// KubernetesConfigFlags.AddFlags(rootCmd.PersistentFlags())
+
 	command.PersistentFlags().StringVarP(
-		&params.Label,
+		&params.LabelsRaw,
 		"selector",
 		"l",
 		"",

@@ -22,7 +22,6 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
-	"strings"
 	"sync/atomic"
 	"syscall"
 	"text/tabwriter"
@@ -269,23 +268,6 @@ func updateTraceOperation(trace *gadgetv1alpha1.Trace, operation string) error {
 func CreateTrace(config *TraceConfig) (string, error) {
 	traceID := randomTraceID()
 
-	labelsSelector := map[string]string{}
-	if config.CommonFlags.Label != "" {
-		pairs := strings.Split(config.CommonFlags.Label, ",")
-		for _, pair := range pairs {
-			kv := strings.Split(pair, "=")
-			if len(kv) != 2 {
-				return "", errors.New("Labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])")
-			}
-			labelsSelector[kv[0]] = kv[1]
-		}
-	}
-
-	namespace := ""
-	if !config.CommonFlags.AllNamespaces {
-		namespace = GetNamespace()
-	}
-
 	trace := &gadgetv1alpha1.Trace{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: config.GadgetName + "-",
@@ -299,7 +281,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 				// to them when calling getTraceListFromParameters().
 				"gadgetName":    config.GadgetName,
 				"nodeName":      config.CommonFlags.Node,
-				"namespace":     namespace,
+				"namespace":     config.CommonFlags.Namespace,
 				"podName":       config.CommonFlags.Podname,
 				"containerName": config.CommonFlags.Containername,
 				"outputMode":    config.TraceOutputMode,
@@ -309,10 +291,10 @@ func CreateTrace(config *TraceConfig) (string, error) {
 			Node:   config.CommonFlags.Node,
 			Gadget: config.GadgetName,
 			Filter: &gadgetv1alpha1.ContainerFilter{
-				Namespace:     namespace,
+				Namespace:     config.CommonFlags.Namespace,
 				Podname:       config.CommonFlags.Podname,
 				ContainerName: config.CommonFlags.Containername,
-				Labels:        labelsSelector,
+				Labels:        config.CommonFlags.Labels,
 			},
 			RunMode:    "Manual",
 			OutputMode: config.TraceOutputMode,
@@ -510,15 +492,10 @@ func labelsFromFilter(filter map[string]string) string {
 
 // getTraceListFromParameters returns traces associated with the given config.
 func getTraceListFromParameters(config *TraceConfig) ([]gadgetv1alpha1.Trace, error) {
-	namespace := ""
-	if !config.CommonFlags.AllNamespaces {
-		namespace = GetNamespace()
-	}
-
 	filter := map[string]string{
 		"gadgetName":    config.GadgetName,
 		"nodeName":      config.CommonFlags.Node,
-		"namespace":     namespace,
+		"namespace":     config.CommonFlags.Namespace,
 		"podName":       config.CommonFlags.Podname,
 		"containerName": config.CommonFlags.Containername,
 		"outputMode":    config.TraceOutputMode,
