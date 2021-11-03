@@ -34,13 +34,14 @@ var deployCmd = &cobra.Command{
 var gadgetimage = "undefined"
 
 var (
-	image             string
-	imagePullPolicy   string
-	traceloop         bool
-	traceloopLoglevel string
-	hookMode          string
-	livenessProbe     bool
-	toolsMode         string
+	image               string
+	imagePullPolicy     string
+	traceloop           bool
+	traceloopLoglevel   string
+	hookMode            string
+	livenessProbe       bool
+	toolsMode           string
+	fallbackPodInformer bool
 )
 
 func init() {
@@ -79,7 +80,11 @@ func init() {
 		"tools-mode", "",
 		"standard",
 		"which kind of tools to use (auto, core, standard)")
-
+	deployCmd.PersistentFlags().BoolVarP(
+		&fallbackPodInformer,
+		"fallback-podinformer", "",
+		true,
+		"Use pod informer as a fallback for the main hook")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -188,6 +193,8 @@ spec:
             value: "{{.HookMode}}"
           - name: INSPEKTOR_GADGET_OPTION_TOOLS_MODE
             value: "{{.ToolsMode}}"
+          - name: INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
+            value: "{{.FallbackPodInformer}}"
         securityContext:
           capabilities:
             add:
@@ -291,14 +298,15 @@ spec:
 `
 
 type parameters struct {
-	Image             string
-	ImagePullPolicy   string
-	Version           string
-	Traceloop         bool
-	TraceloopLoglevel string
-	HookMode          string
-	LivenessProbe     bool
-	ToolsMode         string
+	Image               string
+	ImagePullPolicy     string
+	Version             string
+	Traceloop           bool
+	TraceloopLoglevel   string
+	HookMode            string
+	LivenessProbe       bool
+	ToolsMode           string
+	FallbackPodInformer bool
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
@@ -328,6 +336,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		hookMode,
 		livenessProbe,
 		toolsMode,
+		fallbackPodInformer,
 	}
 
 	fmt.Printf("%s\n---\n", resources.TracesCustomResource)

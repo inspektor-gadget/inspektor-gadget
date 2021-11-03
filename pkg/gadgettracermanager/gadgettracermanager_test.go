@@ -24,7 +24,7 @@ import (
 )
 
 func TestTracer(t *testing.T) {
-	g, err := newServer("fake-node", "none", true)
+	g, err := newServer(&Conf{NodeName: "fake-node", HookMode: "none", TestOnly: true})
 	if err != nil {
 		t.Fatalf("Failed to create new server: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestTracer(t *testing.T) {
 }
 
 func TestContainer(t *testing.T) {
-	g, err := newServer("fake-node", "none", true)
+	g, err := newServer(&Conf{NodeName: "fake-node", HookMode: "none", TestOnly: true})
 	if err != nil {
 		t.Fatalf("Failed to create new server: %v", err)
 	}

@@ -138,8 +138,13 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 			continue
 		}
 
+		idParts := strings.SplitN(s.ContainerID, "//", 2)
+		if len(idParts) != 2 {
+			continue
+		}
+
 		containerDef := pb.ContainerDefinition{
-			Id:        s.ContainerID,
+			Id:        idParts[1],
 			Namespace: pod.GetNamespace(),
 			Podname:   pod.GetName(),
 			Name:      s.Name,

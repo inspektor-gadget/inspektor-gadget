@@ -106,6 +106,18 @@ func WithDockerEnrichment() ContainerCollectionOption {
 // This cannot be used together with WithInitialKubernetesContainers() since
 // the pod informer already gets initial containers.
 func WithPodInformer(nodeName string) ContainerCollectionOption {
+	return withPodInformer(nodeName, false)
+}
+
+// WithFallbackPodInformer uses a pod informer as a fallback mechanism to a main
+// hook. If the podinformer detects a new container and it hasn't been added to
+// the list of containers it means the main hook is not working fine. We warn
+// the user about it.
+func WithFallbackPodInformer(nodeName string) ContainerCollectionOption {
+	return withPodInformer(nodeName, true)
+}
+
+func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		k8sClient, err := k8s.NewK8sClient(nodeName)
 		if err != nil {
@@ -169,7 +181,13 @@ func WithPodInformer(nodeName string) ContainerCollectionOption {
 						// each iteration of the loop
 						newContainer := pb.ContainerDefinition{}
 						newContainer = container
-
+						if fallbackMode {
+							if cc.GetContainer(container.Id) != nil {
+								continue // container is already there. All good!
+							}
+							log.Warnf("container %s/%s/%s wasn't detected by the main hook! The fallback pod informer will add it.",
+								container.Namespace, container.Podname, container.Name)
+						}
 						cc.AddContainer(&newContainer)
 
 						containerIDs[container.Id] = struct{}{}

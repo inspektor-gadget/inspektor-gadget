@@ -39,22 +39,23 @@ import (
 )
 
 var (
-	controller    bool
-	serve         bool
-	dump          bool
-	liveness      bool
-	hookMode      string
-	socketfile    string
-	method        string
-	label         string
-	tracerid      string
-	containerId   string
-	cgroupPath    string
-	cgroupId      uint64
-	namespace     string
-	podname       string
-	containername string
-	containerPid  uint
+	controller          bool
+	serve               bool
+	dump                bool
+	liveness            bool
+	fallbackPodInformer bool
+	hookMode            string
+	socketfile          string
+	method              string
+	label               string
+	tracerid            string
+	containerId         string
+	cgroupPath          string
+	cgroupId            uint64
+	namespace           string
+	podname             string
+	containername       string
+	containerPid        uint
 )
 
 const (
@@ -81,6 +82,7 @@ func init() {
 
 	flag.BoolVar(&dump, "dump", false, "Dump state for debugging")
 	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
+	flag.BoolVar(&fallbackPodInformer, "fallback-podinformer", true, "Use pod informer as a fallback for main hook")
 }
 
 func main() {
@@ -251,7 +253,11 @@ func main() {
 
 		var tracerManager *gadgettracermanager.GadgetTracerManager
 
-		tracerManager, err = gadgettracermanager.NewServer(node, hookMode)
+		tracerManager, err = gadgettracermanager.NewServer(&gadgettracermanager.Conf{
+			NodeName:            node,
+			HookMode:            hookMode,
+			FallbackPodInformer: fallbackPodInformer,
+		})
 
 		if err != nil {
 			log.Fatalf("failed to create server %v", err)
