@@ -3,6 +3,8 @@ kind: Trace
 metadata:
   name: seccomp
   namespace: gadget
+  labels:
+    team: devops
 spec:
   node: minikube
   gadget: seccomp

@@ -32,10 +32,6 @@ SeccompProfiles will have the following annotations:
   traced
 * seccomp.gadget.kinvolk.io/container: the container name in the pod that was
   traced
-* seccomp.gadget.kinvolk.io/container-id: the container ID in the pod that
-  was traced. Typically, 64 hexadecimal characters.
-* seccomp.gadget.kinvolk.io/pid: the process ID of the container in the pod
-  that was traced.
 
 SeccompProfiles will have the same labels as the Trace custom resource that
 generated them. They don&#39;t have meaning for the seccomp gadget. They are
@@ -50,6 +46,8 @@ kind: Trace
 metadata:
   name: seccomp
   namespace: gadget
+  labels:
+    team: devops
 spec:
   node: minikube
   gadget: seccomp
