@@ -23,11 +23,18 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/giantswarm/crd-docs-generator/pkg/crd"
+	"github.com/giantswarm/crd-docs-generator/pkg/metadata"
+	"github.com/giantswarm/crd-docs-generator/pkg/output"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+
 	gadgetcollection "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 )
 
-var repo string
+var (
+	repo string
+)
 
 func init() {
 	flag.StringVar(&repo, "repo", "", "path to the repository")
@@ -57,6 +64,22 @@ func getTraceFactories() (ret []GadgetData) {
 			Description: factory.(gadgets.TraceFactoryWithDocumentation).Description(),
 			Factory:     factory,
 		})
+	}
+	return ret
+}
+
+func getCrds() (ret []apiextensionsv1.CustomResourceDefinition) {
+	crdDir := filepath.Join(repo, "pkg/resources/crd/bases")
+	crdFiles, err := os.ReadDir(crdDir)
+	if err != nil {
+		panic(err)
+	}
+	for _, crdFile := range crdFiles {
+		crds, err := crd.Read(filepath.Join(crdDir, crdFile.Name()))
+		if err != nil {
+			panic(err)
+		}
+		ret = append(ret, crds...)
 	}
 	return ret
 }
@@ -112,6 +135,21 @@ func main() {
 		}
 
 		err = tpl.Execute(f, gadget)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	for _, c := range getCrds() {
+		err = output.WritePage(
+			&c,
+			[]output.CRDAnnotationSupport{},
+			metadata.CRDItem{},
+			filepath.Join(repo, "pkg/resources/samples"),
+			filepath.Join(repo, "docs/crds"),
+			"github.com/kinvolk/inspektor-gadget",
+			"version-unknown",
+			filepath.Join(repo, "cmd/gen-doc/crd.template"))
 		if err != nil {
 			panic(err)
 		}
