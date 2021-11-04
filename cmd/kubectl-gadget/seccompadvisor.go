@@ -50,14 +50,38 @@ var seccompAdvisorListCmd = &cobra.Command{
 	SilenceUsage: true,
 }
 
+var (
+	outputMode         string
+	seccompProfileName string
+)
+
 func init() {
 	// Add generic information.
 	rootCmd.AddCommand(seccompAdvisorCmd)
 	utils.AddCommonFlags(seccompAdvisorCmd, &params)
 
 	seccompAdvisorCmd.AddCommand(seccompAdvisorStartCmd)
+	seccompAdvisorStartCmd.PersistentFlags().StringVarP(&outputMode,
+		"output-mode", "m",
+		"terminal",
+		"The trace output mode, possibles values are terminal and seccomp-profile.")
+	seccompAdvisorStartCmd.PersistentFlags().StringVar(&seccompProfileName,
+		"seccomp-profile-name", "",
+		"Name of the seccomp profile to be created when using --output-mode=seccomp-profile.\nNamespace can be specified by using namespace/profile-name.")
+
 	seccompAdvisorCmd.AddCommand(seccompAdvisorStopCmd)
 	seccompAdvisorCmd.AddCommand(seccompAdvisorListCmd)
+}
+
+func outputModeToTraceOutputMode(outputMode string) (string, error) {
+	switch outputMode {
+	case "terminal":
+		return "Status", nil
+	case "seccomp-profile":
+		return "ExternalResource", nil
+	default:
+		return "", fmt.Errorf("%q is not an accepted value for --output-mode, possible values are: terminal (default) and seccomp-profile", outputMode)
+	}
 }
 
 // runSeccompAdvisorStart starts monitoring of syscalls for the given
@@ -67,10 +91,24 @@ func runSeccompAdvisorStart(cmd *cobra.Command, args []string) error {
 		return errors.New("Usage: kubectl gadget seccompadvisor start -p podname")
 	}
 
+	traceOutputMode, err := outputModeToTraceOutputMode(outputMode)
+	if err != nil {
+		return err
+	}
+
+	if traceOutputMode != "ExternalResource" && seccompProfileName != "" {
+		return errors.New("You can only use --seccomp-profile-name with --output seccomp-profile.")
+	}
+
+	if traceOutputMode == "ExternalResource" && seccompProfileName == "" {
+		return errors.New("You must specify --seccomp-profile-name when using --output seccomp-profile.")
+	}
+
 	config := &utils.TraceConfig{
 		GadgetName:        "seccomp",
 		Operation:         "start",
-		TraceOutputMode:   "Status",
+		TraceOutputMode:   traceOutputMode,
+		TraceOutput:       seccompProfileName,
 		TraceInitialState: "Started",
 		CommonFlags:       &params,
 	}
@@ -94,6 +132,12 @@ func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 
 	callback := func(results []gadgetv1alpha1.Trace) error {
 		for _, i := range results {
+			if i.Spec.OutputMode == "ExternalResource" {
+				fmt.Printf("Successfully created seccomp profile %q!\n", i.Spec.Output)
+
+				return nil
+			}
+
 			if i.Status.Output != "" {
 				fmt.Printf("%v\n", i.Status.Output)
 			}

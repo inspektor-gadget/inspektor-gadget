@@ -70,6 +70,11 @@ type TraceConfig struct {
 	// But other gadgets, like dns, can contain output only in Started state.
 	TraceOutputState string
 
+	// TraceOutput is either the name of the file when TraceOutputMode is File or
+	// the name of the external resource when TraceOutputMode is ExternalResource.
+	// Otherwise, its value is ignored.
+	TraceOutput string
+
 	// TraceInitialState is the state in which the trace should be after its
 	// creation.
 	// This field is only used by "multi-rounds gadgets" like biolatency.
@@ -307,6 +312,8 @@ func CreateTrace(config *TraceConfig) (string, error) {
 				"podName":       config.CommonFlags.Podname,
 				"containerName": config.CommonFlags.Containername,
 				"outputMode":    config.TraceOutputMode,
+				// We will not add config.TraceOutput as label because it can contain
+				// "/" which is forbidden in labels.
 			},
 		},
 		Spec: gadgetv1alpha1.TraceSpec{
@@ -315,6 +322,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 			Filter:     filter,
 			RunMode:    "Manual",
 			OutputMode: config.TraceOutputMode,
+			Output:     config.TraceOutput,
 		},
 	}
 
