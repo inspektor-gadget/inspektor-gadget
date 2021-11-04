@@ -157,7 +157,7 @@ else
   echo "BTF is not available: Trying BTFHub"
   source /host/etc/os-release
 
-  URL="https://github.com/aquasecurity/btfhub/raw/main/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
+  URL="https://github.com/aquasecurity/btfhub/raw/main/archive/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
 
   echo "Trying to download vmlinux from $URL"
 
