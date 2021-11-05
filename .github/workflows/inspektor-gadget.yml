@@ -1,8 +1,6 @@
 name: Compile Inspektor Gadget
 on:
   push:
-  schedule:
-    - cron: '0 2 * * *' # Night builds at 02:00
 
 jobs:
 
