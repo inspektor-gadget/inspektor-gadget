@@ -49,9 +49,11 @@ const (
 type TraceConfig struct {
 	// GadgetName is gadget name, e.g. socket-collector.
 	GadgetName string
+
 	// Operation is the gadget operation to apply to this trace, e.g. start to
 	// start the tracing.
 	Operation string
+
 	// TraceOutputMode is the trace output mode, the correct values are:
 	// * "Status": The trace prints information when its status changes.
 	// * "Stream": The trace prints information as events arrive.
@@ -59,11 +61,13 @@ type TraceConfig struct {
 	// * "ExternalResource": The trace prints information an external resource,
 	// e.g. a seccomp profile.
 	TraceOutputMode string
+
 	// TraceOutputState is the state in which the trace can output information.
 	// For example, trace for *-collector gadget contains output while in
 	// Completed state.
 	// But other gadgets, like dns, can contain output only in Started state.
 	TraceOutputState string
+
 	// CommonFlags is used to hold parameters given on the command line interface.
 	CommonFlags *CommonFlags
 }
@@ -264,6 +268,19 @@ func updateTraceOperation(trace *gadgetv1alpha1.Trace, operation string) error {
 func CreateTrace(config *TraceConfig) (string, error) {
 	traceID := randomTraceID()
 
+	var filter *gadgetv1alpha1.ContainerFilter
+
+	// Keep Filter field empty if it is not really used
+	if config.CommonFlags.Namespace != "" || config.CommonFlags.Podname != "" ||
+		config.CommonFlags.Containername != "" || len(config.CommonFlags.Labels) > 0 {
+		filter = &gadgetv1alpha1.ContainerFilter{
+			Namespace:     config.CommonFlags.Namespace,
+			Podname:       config.CommonFlags.Podname,
+			ContainerName: config.CommonFlags.Containername,
+			Labels:        config.CommonFlags.Labels,
+		}
+	}
+
 	trace := &gadgetv1alpha1.Trace{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: config.GadgetName + "-",
@@ -284,14 +301,9 @@ func CreateTrace(config *TraceConfig) (string, error) {
 			},
 		},
 		Spec: gadgetv1alpha1.TraceSpec{
-			Node:   config.CommonFlags.Node,
-			Gadget: config.GadgetName,
-			Filter: &gadgetv1alpha1.ContainerFilter{
-				Namespace:     config.CommonFlags.Namespace,
-				Podname:       config.CommonFlags.Podname,
-				ContainerName: config.CommonFlags.Containername,
-				Labels:        config.CommonFlags.Labels,
-			},
+			Node:       config.CommonFlags.Node,
+			Gadget:     config.GadgetName,
+			Filter:     filter,
 			RunMode:    "Manual",
 			OutputMode: config.TraceOutputMode,
 		},
@@ -546,13 +558,17 @@ func PrintAllTraces(config *TraceConfig) error {
 			printingMap[id].nodeName = printingMap[id].nodeName + "," + node
 		} else {
 			// Otherwise, we simply create a new entry.
-			filter := trace.Spec.Filter
-
-			printingMap[id] = &printingInformation{
-				namespace:     filter.Namespace,
-				nodeName:      node,
-				podname:       filter.Podname,
-				containerName: filter.ContainerName,
+			if filter := trace.Spec.Filter; filter != nil {
+				printingMap[id] = &printingInformation{
+					namespace:     filter.Namespace,
+					nodeName:      node,
+					podname:       filter.Podname,
+					containerName: filter.ContainerName,
+				}
+			} else {
+				printingMap[id] = &printingInformation{
+					nodeName: node,
+				}
 			}
 		}
 	}
