@@ -67,7 +67,7 @@ func init() {
 }
 
 func processCollectorCmdRun(cmd *cobra.Command, args []string) {
-	callback := func(results *gadgetv1alpha1.TraceList) {
+	callback := func(results []gadgetv1alpha1.Trace) error {
 		// Display results
 		type Process struct {
 			Tgid                int    `json:"tgid,omitempty"`
@@ -79,7 +79,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 		}
 		allProcesses := []Process{}
 
-		for _, i := range results.Items {
+		for _, i := range results {
 			processes := []Process{}
 			json.Unmarshal([]byte(i.Status.Output), &processes)
 			allProcesses = append(allProcesses, processes...)
@@ -117,9 +117,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 		case utils.OutputModeJson:
 			b, err := json.MarshalIndent(allProcesses, "", "  ")
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error marshalling results: %s", err)
-
-				os.Exit(1)
+				return fmt.Errorf("error marshalling results: %w", err)
 			}
 			fmt.Printf("%s\n", b)
 		case utils.OutputModeCustomColumns:
@@ -130,9 +128,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 			for _, p := range allProcesses {
 				b, err := json.Marshal(p)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error marshalling results: %s", err)
-
-					os.Exit(1)
+					return fmt.Errorf("error marshalling results: %w", err)
 				}
 
 				fmt.Println(transform(string(b)))
@@ -165,6 +161,8 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 			}
 			w.Flush()
 		}
+
+		return nil
 	}
 
 	config := &utils.TraceConfig{
@@ -184,10 +182,10 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 }
 
 func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
-	callback := func(results *gadgetv1alpha1.TraceList) {
+	callback := func(results []gadgetv1alpha1.Trace) error {
 		allSockets := []socketcollectortypes.Event{}
 
-		for _, i := range results.Items {
+		for _, i := range results {
 			var sockets []socketcollectortypes.Event
 			json.Unmarshal([]byte(i.Status.Output), &sockets)
 			allSockets = append(allSockets, sockets...)
@@ -221,9 +219,7 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 		case utils.OutputModeJson:
 			b, err := json.MarshalIndent(allSockets, "", "  ")
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error marshalling results: %s", err)
-
-				os.Exit(1)
+				return fmt.Errorf("error marshalling results: %w", err)
 			}
 			fmt.Printf("%s\n", b)
 		case utils.OutputModeCustomColumns:
@@ -234,9 +230,7 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 			for _, p := range allSockets {
 				b, err := json.Marshal(p)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error marshalling results: %s", err)
-
-					os.Exit(1)
+					return fmt.Errorf("error marshalling results: %w", err)
 				}
 
 				fmt.Println(transform(string(b)))
@@ -261,6 +255,8 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 			}
 			w.Flush()
 		}
+
+		return nil
 	}
 
 	config := &utils.TraceConfig{

@@ -442,15 +442,13 @@ func PrintTraceOutputFromStream(traceID string, expectedState string, params *Co
 // PrintTraceOutputFromStatus is used to print trace output using function
 // pointer provided by caller.
 // It will parse trace.Spec.Output and print it calling the function pointer.
-func PrintTraceOutputFromStatus(traceID string, expectedState string, customResultsDisplay func(results *gadgetv1alpha1.TraceList)) error {
+func PrintTraceOutputFromStatus(traceID string, expectedState string, customResultsDisplay func(results []gadgetv1alpha1.Trace) error) error {
 	traces, err := waitForOutput(traceID, expectedState)
 	if err != nil {
 		return err
 	}
 
-	customResultsDisplay(&traces)
-
-	return nil
+	return customResultsDisplay(traces.Items)
 }
 
 // DeleteTrace deletes the traces for the given trace ID using RESTClient.
@@ -595,7 +593,7 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 // and DeleteTrace().
 // This function is thought to be used with "one-run" gadget, i.e. gadget
 // which runs a trace when it is created.
-func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func(results *gadgetv1alpha1.TraceList)) error {
+func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func(results []gadgetv1alpha1.Trace) error) error {
 	if config.TraceOutputMode == "Stream" {
 		return errors.New("TraceOutputMode must not be Stream. Otherwise, call RunTraceAndPrintStream!")
 	}
