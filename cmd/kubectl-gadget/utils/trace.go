@@ -16,6 +16,8 @@ package utils
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -23,15 +25,13 @@ import (
 	"strings"
 	"sync/atomic"
 	"syscall"
+	"text/tabwriter"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/client-go/kubernetes"
+	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 
@@ -41,8 +41,34 @@ import (
 
 const (
 	GADGET_OPERATION = "gadget.kinvolk.io/operation"
-	traceTimeout     = 2 * time.Second
+	// We name it "global" as if one trace is created on several nodes, then each
+	// copy of the trace on each node will share the same id.
+	GLOBAL_TRACE_ID = "global-trace-id"
+	traceTimeout    = 2 * time.Second
 )
+
+// TraceConfig is used to contain information used to manage a trace.
+type TraceConfig struct {
+	// GadgetName is gadget name, e.g. socket-collector.
+	GadgetName string
+	// Operation is the gadget operation to apply to this trace, e.g. start to
+	// start the tracing.
+	Operation string
+	// TraceOutputMode is the trace output mode, the correct values are:
+	// * "Status": The trace prints information when its status changes.
+	// * "Stream": The trace prints information as events arrive.
+	// * "File": The trace prints information into a file.
+	// * "ExternalResource": The trace prints information an external resource,
+	// e.g. a seccomp profile.
+	TraceOutputMode string
+	// TraceOutputState is the state in which the trace can output information.
+	// For example, trace for *-collector gadget contains output while in
+	// Completed state.
+	// But other gadgets, like dns, can contain output only in Started state.
+	TraceOutputState string
+	// CommonFlags is used to hold parameters given on the command line interface.
+	CommonFlags *CommonFlags
+}
 
 func init() {
 	// The Trace REST client needs to know the Trace CRD
@@ -92,9 +118,9 @@ func printTraceFeedback(f func(format string, args ...interface{}), m map[string
 	}
 }
 
-func deleteTraces(contextLogger *log.Entry, traceRestClient *restclient.RESTClient, traceID string) {
+func deleteTraces(traceRestClient *restclient.RESTClient, traceID string) {
 	var listTracesOptions = metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("trace-template-hash=%s", traceID),
+		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
 		FieldSelector: fields.Everything().String(),
 	}
 	err := traceRestClient.
@@ -104,57 +130,17 @@ func deleteTraces(contextLogger *log.Entry, traceRestClient *restclient.RESTClie
 		VersionedParams(&listTracesOptions, scheme.ParameterCodec).
 		Do(context.TODO()).
 		Error()
-	if contextLogger != nil && err != nil {
-		contextLogger.Warningf("Error deleting traces: %q", err)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error deleting traces: %q", err)
 	}
 }
 
-func GenericTraceCommand(
-	subCommand string,
-	params *CommonFlags,
-	args []string,
-	outputMode string,
-	customResultsDisplay func(contextLogger *log.Entry, nodes *corev1.NodeList, results *gadgetv1alpha1.TraceList),
-	transformLine func(string) string,
-) {
-
-	contextLogger := log.WithFields(log.Fields{
-		"command": fmt.Sprintf("kubectl-gadget %s", subCommand),
-		"args":    args,
-	})
-
-	traceID := randomTraceID()
-
-	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
-	if err != nil {
-		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
-	}
-
-	labelsSelector := map[string]string{}
-	if params.Label != "" {
-		pairs := strings.Split(params.Label, ",")
-		for _, pair := range pairs {
-			kv := strings.Split(pair, "=")
-			if len(kv) != 2 {
-				contextLogger.Fatalf("labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])\n")
-			}
-			labelsSelector[kv[0]] = kv[1]
-		}
-	}
-
-	namespace := ""
-	if !params.AllNamespaces {
-		namespace = GetNamespace()
-	}
-
-	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		contextLogger.Fatalf("Error in listing nodes: %q", err)
-	}
-
+// getRestClient returns the RESTClient associated with kubeRestConfig() for
+// APIPath /apis and GroupVersion &gadgetv1alpha1.GroupVersion.
+func getRestClient() (*restclient.RESTClient, error) {
 	restConfig, err := kubeRestConfig()
 	if err != nil {
-		contextLogger.Fatalf("Error while getting rest config: %s", err)
+		return nil, fmt.Errorf("Error while getting rest config: %w", err)
 	}
 
 	traceConfig := *restConfig
@@ -165,40 +151,44 @@ func GenericTraceCommand(
 
 	traceRestClient, err := restclient.UnversionedRESTClientFor(&traceConfig)
 	if err != nil {
-		contextLogger.Fatalf("Error while getting trace rest client: %s", err)
+		return nil, fmt.Errorf("Error setting up trace REST client: %w", err)
+	}
+
+	return traceRestClient, nil
+}
+
+// createTraces creates a trace using Kubernetes REST API.
+// Note that, this function will create the trace on all existing node if
+// trace.Spec.Node is empty.
+func createTraces(trace *gadgetv1alpha1.Trace) error {
+	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
+	if err != nil {
+		return fmt.Errorf("Error setting up Kubernetes client: %w", err)
+	}
+
+	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("Error listing nodes: %w", err)
+	}
+
+	traceRestClient, err := getRestClient()
+	if err != nil {
+		return fmt.Errorf("Error setting up trace REST client: %w", err)
 	}
 
 	nodeFound := false
+	traceNode := trace.Spec.Node
+
 	for _, node := range nodes.Items {
-		if params.Node != "" && node.Name != params.Node {
+		if traceNode != "" && node.Name != traceNode {
 			continue
 		}
-		nodeFound = true
-
-		trace := &gadgetv1alpha1.Trace{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: subCommand + "-",
-				Namespace:    "gadget",
-				Annotations: map[string]string{
-					GADGET_OPERATION: "start",
-				},
-				Labels: map[string]string{
-					"trace-template-hash": traceID,
-				},
-			},
-			Spec: gadgetv1alpha1.TraceSpec{
-				Node:   node.Name,
-				Gadget: subCommand,
-				Filter: &gadgetv1alpha1.ContainerFilter{
-					Namespace:     namespace,
-					Podname:       params.Podname,
-					ContainerName: params.Containername,
-					Labels:        labelsSelector,
-				},
-				RunMode:    "Manual",
-				OutputMode: outputMode,
-			},
+		// If no particular node was given, we need to apply this trace on all
+		// available nodes.
+		if traceNode == "" {
+			trace.Spec.Node = node.Name
 		}
+		nodeFound = true
 
 		err = traceRestClient.
 			Post().
@@ -208,77 +198,234 @@ func GenericTraceCommand(
 			Do(context.TODO()).
 			Error()
 		if err != nil {
-			deleteTraces(nil, traceRestClient, traceID)
-			contextLogger.Fatalf("Error creating trace on node %s: %q", node.Name, err)
+			traceID, present := trace.ObjectMeta.Labels[GLOBAL_TRACE_ID]
+			if present {
+				// Clean before exiting!
+				deleteTraces(traceRestClient, traceID)
+			}
+
+			return fmt.Errorf("Error creating trace on node %q: %w", node.Name, err)
 		}
 	}
 
-	if params.Node != "" && !nodeFound {
-		contextLogger.Fatalf("Invalid filter: Node %q does not exist", params.Node)
+	// It is possible we change this value in the above loop, restore it to its
+	// previous value.
+	trace.Spec.Node = traceNode
+
+	if traceNode != "" && !nodeFound {
+		return fmt.Errorf("Invalid filter: Node %q does not exist", traceNode)
 	}
 
+	return nil
+}
+
+// updateTraceOperation updates operation for an already existing trace using
+// Kubernetes REST API.
+func updateTraceOperation(trace *gadgetv1alpha1.Trace, operation string) error {
+	traceRestClient, err := getRestClient()
+	if err != nil {
+		return err
+	}
+
+	// This trace will be used as JSON merge patch to update GADGET_OPERATION,
+	// see:
+	// https://datatracker.ietf.org/doc/html/rfc6902
+	// https://datatracker.ietf.org/doc/html/rfc7386
+	type Annotations map[string]string
+	type ObjectMeta struct {
+		Annotations Annotations `json:"annotations"`
+	}
+	type JSONMergePatch struct {
+		ObjectMeta ObjectMeta `json:"metadata"`
+	}
+	patch := JSONMergePatch{
+		ObjectMeta: ObjectMeta{
+			Annotations{
+				GADGET_OPERATION: operation,
+			},
+		},
+	}
+
+	patchBytes, err := json.Marshal(patch)
+	if err != nil {
+		return fmt.Errorf("Error marshalling the operation annotations: %w", err)
+	}
+
+	return traceRestClient.
+		Patch(types.MergePatchType).
+		Namespace(trace.ObjectMeta.Namespace).
+		Resource("traces").
+		Name(trace.ObjectMeta.Name).
+		Body(patchBytes).
+		Do(context.TODO()).
+		Error()
+}
+
+// CreateTrace initializes a trace object with its field according to the given
+// parameter.
+// The trace is then posted to the RESTClient which returns an error if
+// something wrong occurred.
+// A unique trace identifier is returned, this identifier will be used as other
+// function parameter.
+// A trace obtained with this function must be deleted calling DeleteTrace.
+func CreateTrace(config *TraceConfig) (string, error) {
+	traceID := randomTraceID()
+
+	labelsSelector := map[string]string{}
+	if config.CommonFlags.Label != "" {
+		pairs := strings.Split(config.CommonFlags.Label, ",")
+		for _, pair := range pairs {
+			kv := strings.Split(pair, "=")
+			if len(kv) != 2 {
+				return "", errors.New("Labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])")
+			}
+			labelsSelector[kv[0]] = kv[1]
+		}
+	}
+
+	namespace := ""
+	if !config.CommonFlags.AllNamespaces {
+		namespace = GetNamespace()
+	}
+
+	trace := &gadgetv1alpha1.Trace{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: config.GadgetName + "-",
+			Namespace:    "gadget",
+			Annotations: map[string]string{
+				GADGET_OPERATION: config.Operation,
+			},
+			Labels: map[string]string{
+				GLOBAL_TRACE_ID: traceID,
+				// Add all this information here to be able to find the trace thanks
+				// to them when calling getTraceListFromParameters().
+				"gadgetName":    config.GadgetName,
+				"nodeName":      config.CommonFlags.Node,
+				"namespace":     namespace,
+				"podName":       config.CommonFlags.Podname,
+				"containerName": config.CommonFlags.Containername,
+				"outputMode":    config.TraceOutputMode,
+			},
+		},
+		Spec: gadgetv1alpha1.TraceSpec{
+			Node:   config.CommonFlags.Node,
+			Gadget: config.GadgetName,
+			Filter: &gadgetv1alpha1.ContainerFilter{
+				Namespace:     namespace,
+				Podname:       config.CommonFlags.Podname,
+				ContainerName: config.CommonFlags.Containername,
+				Labels:        labelsSelector,
+			},
+			RunMode:    "Manual",
+			OutputMode: config.TraceOutputMode,
+		},
+	}
+
+	err := createTraces(trace)
+	if err != nil {
+		return "", err
+	}
+
+	return traceID, nil
+}
+
+// getTraceListFromOptions returns a list of traces corresponding to the given
+// options.
+func getTraceListFromOptions(listTracesOptions metav1.ListOptions) (gadgetv1alpha1.TraceList, error) {
+	traceRestClient, err := getRestClient()
+	if err != nil {
+		return gadgetv1alpha1.TraceList{}, err
+	}
+
+	var traces gadgetv1alpha1.TraceList
+
+	err = traceRestClient.
+		Get().
+		Namespace("gadget").
+		Resource("traces").
+		VersionedParams(&listTracesOptions, scheme.ParameterCodec).
+		Do(context.TODO()).
+		Into(&traces)
+	if err != nil {
+		return traces, err
+	}
+
+	return traces, nil
+}
+
+// getTraceListFromID returns an array of pointers to gadgetv1alpha1.Trace
+// corresponding to the given traceID.
+// If no trace corresponds to this ID, error is set.
+func getTraceListFromID(traceID string) (gadgetv1alpha1.TraceList, error) {
 	var listTracesOptions = metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("trace-template-hash=%s", traceID),
+		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
 		FieldSelector: fields.Everything().String(),
 	}
 
-	// Wait until results are ready and fetch all results
-	// TODO: use a watcher to avoid looping client-side
-	//
-	// watch, err := traceRestClient.
-	//	Get().
-	//	Namespace("gadget").
-	//	Resource("traces").
-	//	VersionedParams(&listTracesOptions, scheme.ParameterCodec).
-	//	Watch(context.TODO())
-	// if err != nil {
-	//	contextLogger.Fatalf("Error waiting for traces: %q", err)
-	// }
-	// for event := range watch.ResultChan() {
-	//	fmt.Printf("Event: %v\n", event)
-	//	if data, ok := event.Object.(*metav1.Status); ok {
-	//		contextLogger.Infof("watcher status: %s", data.Message)
-	//	} else if t, ok := event.Object.(*gadgetv1alpha1.Trace); ok {
-	//		fmt.Printf("Got: %v\n", t)
-	//	} else {
-	//		contextLogger.Fatalf("Error waiting for traces: got unexpected %v", event)
-	//	}
-	// }
+	traces, err := getTraceListFromOptions(listTracesOptions)
+	if err != nil {
+		return traces, fmt.Errorf("Error getting traces from traceID %q: %w", traceID, err)
+	}
 
-	var results gadgetv1alpha1.TraceList
+	if len(traces.Items) == 0 {
+		return traces, fmt.Errorf("No traces found for traceID %q!", traceID)
+	}
+
+	return traces, nil
+}
+
+// SetTraceOperation sets the operation of an existing trace.
+// If trace does not exist an error is returned.
+func SetTraceOperation(traceID string, operation string) error {
+	traces, err := getTraceListFromID(traceID)
+	if err != nil {
+		return err
+	}
+
+	for _, trace := range traces.Items {
+		localError := updateTraceOperation(&trace, operation)
+		if localError != nil {
+			err = fmt.Errorf("%w\nError updating trace operation for %s: %v", err, traceID, localError)
+		}
+	}
+
+	return err
+}
+
+// waitForOutput loops over all trace whom ID is given as parameter waiting
+// until they are in the expected state.
+// After this function and if correct state was given as parameter, the trace
+// output should contain the needed information.
+func waitForOutput(traceID string, expectedState string) (gadgetv1alpha1.TraceList, error) {
 	start := time.Now()
+
 RetryLoop:
 	for {
-		results = gadgetv1alpha1.TraceList{}
-		err = traceRestClient.
-			Get().
-			Namespace("gadget").
-			Resource("traces").
-			VersionedParams(&listTracesOptions, scheme.ParameterCodec).
-			Do(context.TODO()).
-			Into(&results)
-		if err != nil {
-			deleteTraces(contextLogger, traceRestClient, traceID)
-			contextLogger.Fatalf("Error getting traces: %q", err)
-		}
-
-		timeout := time.Since(start) > traceTimeout
 		successNodeCount := 0
+		timeout := time.Since(start) > traceTimeout
 		nodeErrors := make(map[string]string)
 		nodeWarnings := make(map[string]string)
-		for _, i := range results.Items {
+
+		traces, err := getTraceListFromID(traceID)
+		if err != nil {
+			return gadgetv1alpha1.TraceList{}, err
+		}
+
+		for _, i := range traces.Items {
 			if i.Status.OperationError != "" {
 				nodeErrors[i.Spec.Node] = i.Status.OperationError
 			} else if i.Status.OperationWarning != "" {
 				nodeWarnings[i.Spec.Node] = i.Status.OperationWarning
-			} else if i.Status.State == "Completed" || i.Status.State == "Started" {
+				// TODO(francis) This code will not work if the trace is already in the
+				// expected state, for example if we decide to generate it twice.
+				// We need to add a cookie (and check it) to be sure the trace is ready.
+			} else if i.Status.State == expectedState {
 				successNodeCount++
 			} else {
 				// Consider Trace as timed out if it neither moved the state forward
 				// nor notified of an error or warning within the time window.
 				if timeout {
-					nodeErrors[i.Spec.Node] = fmt.Sprintf("No results received from trace within %v",
-						traceTimeout)
+					nodeErrors[i.Spec.Node] = fmt.Sprintf("No results received from trace within %v", traceTimeout)
 					continue
 				}
 
@@ -287,43 +434,225 @@ RetryLoop:
 			}
 		}
 
+		printTraceFeedbackFunction := func(format string, args ...interface{}) { fmt.Fprintf(os.Stderr, format+"\n", args...) }
+
+		// Print errors even if some nodes succeeded.
+		defer printTraceFeedback(printTraceFeedbackFunction, nodeErrors)
+
 		// Don't print warnings if at least one node succeeded. This avoids showing
 		// warnings together with the actual output generated by other nodes.
 		if successNodeCount == 0 {
-			printTraceFeedback(contextLogger.Warningf, nodeWarnings)
+			printTraceFeedback(printTraceFeedbackFunction, nodeWarnings)
+
+			return gadgetv1alpha1.TraceList{}, errors.New("Failed to run the gadget on all nodes: None of them succeeded")
 		}
 
-		// Print errors even if other nodes succeeded.
-		printTraceFeedback(contextLogger.Errorf, nodeErrors)
+		return traces, nil
+	}
+}
 
-		if successNodeCount == 0 {
-			deleteTraces(contextLogger, traceRestClient, traceID)
-			contextLogger.Fatalf("Failed to run the gadget on all nodes: None of them succeeded")
-		}
-		break RetryLoop
+// PrintTraceOutputFromStream is used to print trace output using generic
+// printing function.
+// This function is must be used by trace which has TraceOutputMode set to
+// Stream.
+func PrintTraceOutputFromStream(traceID string, expectedState string, params *CommonFlags, transformLine func(string) string) error {
+	traces, err := waitForOutput(traceID, expectedState)
+	if err != nil {
+		return err
 	}
 
-	if customResultsDisplay == nil {
-		if outputMode != "Stream" {
-			panic(fmt.Errorf("OutputMode=%q needs a custom display function", outputMode))
-		}
-		genericStreamsDisplay(contextLogger, client, params, &results, transformLine)
-	} else {
-		customResultsDisplay(contextLogger, nodes, &results)
+	return genericStreamsDisplay(params, &traces, transformLine)
+}
+
+// PrintTraceOutputFromStatus is used to print trace output using function
+// pointer provided by caller.
+// It will parse trace.Spec.Output and print it calling the function pointer.
+func PrintTraceOutputFromStatus(traceID string, expectedState string, customResultsDisplay func(results *gadgetv1alpha1.TraceList)) error {
+	traces, err := waitForOutput(traceID, expectedState)
+	if err != nil {
+		return err
 	}
-	deleteTraces(contextLogger, traceRestClient, traceID)
+
+	customResultsDisplay(&traces)
+
+	return nil
+}
+
+// DeleteTrace deletes the traces for the given trace ID using RESTClient.
+func DeleteTrace(traceID string) error {
+	traceRestClient, err := getRestClient()
+	if err != nil {
+		return err
+	}
+
+	deleteTraces(traceRestClient, traceID)
+
+	return nil
+}
+
+// labelsFromFilter creates a string containing labels value from the given
+// labelFilter.
+func labelsFromFilter(filter map[string]string) string {
+	labels := ""
+	separator := ""
+
+	// Loop on all fields of labelFilter.
+	for labelName, labelValue := range filter {
+		// If this field has no value, just skip it.
+		if labelValue == "" {
+			continue
+		}
+
+		// Concatenate the label to existing one.
+		labels = fmt.Sprintf("%s%s%s=%v", labels, separator, labelName, labelValue)
+		separator = ","
+	}
+
+	return labels
+}
+
+// getTraceListFromParameters returns traces associated with the given config.
+func getTraceListFromParameters(config *TraceConfig) ([]gadgetv1alpha1.Trace, error) {
+	namespace := ""
+	if !config.CommonFlags.AllNamespaces {
+		namespace = GetNamespace()
+	}
+
+	filter := map[string]string{
+		"gadgetName":    config.GadgetName,
+		"nodeName":      config.CommonFlags.Node,
+		"namespace":     namespace,
+		"podName":       config.CommonFlags.Podname,
+		"containerName": config.CommonFlags.Containername,
+		"outputMode":    config.TraceOutputMode,
+	}
+
+	var listTracesOptions = metav1.ListOptions{
+		LabelSelector: labelsFromFilter(filter),
+	}
+
+	traces, err := getTraceListFromOptions(listTracesOptions)
+	if err != nil {
+		return []gadgetv1alpha1.Trace{}, err
+	}
+
+	return traces.Items, nil
+}
+
+// PrintAllTraces prints all traces corresponding to the given config.CommonFlags.
+func PrintAllTraces(config *TraceConfig) error {
+	traces, err := getTraceListFromParameters(config)
+	if err != nil {
+		return err
+	}
+
+	type printingInformation struct {
+		namespace     string
+		nodeName      string
+		podname       string
+		containerName string
+	}
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+
+	fmt.Fprintln(w, "NAMESPACE\tNODE(S)\tPOD\tCONTAINER\tTRACEID")
+
+	printingMap := map[string]*printingInformation{}
+
+	for _, trace := range traces {
+		id, present := trace.ObjectMeta.Labels[GLOBAL_TRACE_ID]
+		if !present {
+			continue
+		}
+
+		node := trace.Spec.Node
+
+		_, present = printingMap[id]
+		if present {
+			if node == "" {
+				continue
+			}
+
+			// If an entry with this traceID already exists, we just update the node
+			// name by concatenating it to the string.
+			printingMap[id].nodeName = printingMap[id].nodeName + "," + node
+		} else {
+			// Otherwise, we simply create a new entry.
+			filter := trace.Spec.Filter
+
+			printingMap[id] = &printingInformation{
+				namespace:     filter.Namespace,
+				nodeName:      node,
+				podname:       filter.Podname,
+				containerName: filter.ContainerName,
+			}
+		}
+	}
+
+	for id, info := range printingMap {
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\n", info.namespace, info.nodeName, info.podname, info.containerName, id)
+	}
+
+	w.Flush()
+
+	return nil
+}
+
+// RunTraceAndPrintStream creates a trace, prints its output and deletes
+// it.
+// It equals calling separately CreateTrace(), then PrintTraceOutputFromStream()
+// and DeleteTrace().
+// This function is thought to be used with "one-run" gadget, i.e. gadget
+// which runs a trace when it is created.
+func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) string) error {
+	if config.TraceOutputMode != "Stream" {
+		return errors.New("TraceOutputMode must be Stream. Otherwise, call RunTraceAndPrintStatusOutput!")
+	}
+
+	traceID, err := CreateTrace(config)
+	if err != nil {
+		return fmt.Errorf("error creating trace: %w", err)
+	}
+
+	defer DeleteTrace(traceID)
+
+	return PrintTraceOutputFromStream(traceID, config.TraceOutputState, config.CommonFlags, transformLine)
+}
+
+// RunTraceAndPrintStatusOutput creates a trace, prints its output and deletes
+// it.
+// It equals calling separately CreateTrace(), then PrintTraceOutputFromStatus()
+// and DeleteTrace().
+// This function is thought to be used with "one-run" gadget, i.e. gadget
+// which runs a trace when it is created.
+func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func(results *gadgetv1alpha1.TraceList)) error {
+	if config.TraceOutputMode == "Stream" {
+		return errors.New("TraceOutputMode must not be Stream. Otherwise, call RunTraceAndPrintStream!")
+	}
+
+	traceID, err := CreateTrace(config)
+	if err != nil {
+		return fmt.Errorf("error creating trace: %w", err)
+	}
+
+	defer DeleteTrace(traceID)
+
+	return PrintTraceOutputFromStatus(traceID, config.TraceOutputState, customResultsDisplay)
 }
 
 func genericStreamsDisplay(
-	contextLogger *log.Entry,
-	client *kubernetes.Clientset,
 	params *CommonFlags,
 	results *gadgetv1alpha1.TraceList,
 	transformLine func(string) string,
-) {
+) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	completion := make(chan string)
+
+	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
+	if err != nil {
+		return fmt.Errorf("Error setting up Kubernetes client: %w", err)
+	}
 
 	callback := func(line string) string {
 		if params.OutputMode == OutputModeJson {
@@ -373,11 +702,11 @@ func genericStreamsDisplay(
 			if params.OutputMode != OutputModeJson {
 				fmt.Println("\nTerminating...")
 			}
-			return
+			return nil
 		case msg := <-completion:
 			fmt.Printf("%s", msg)
 			if atomic.AddInt32(&streamCount, -1) == 0 {
-				return
+				return nil
 			}
 		}
 	}
