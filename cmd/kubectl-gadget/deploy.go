@@ -253,6 +253,10 @@ spec:
 
               # Needed by setrlimit in gadgettracermanager.
               - SYS_RESOURCE
+
+              # Needed for gadgets that don't dumb the memory rlimit.
+              # (Currently only applies to BCC python-based gadgets)
+              - IPC_LOCK
         volumeMounts:
         - name: host
           mountPath: /host
