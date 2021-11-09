@@ -205,10 +205,6 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 		}
 	}
 
-	// It is possible we change this value in the above loop, restore it to its
-	// previous value.
-	trace.Spec.Node = traceNode
-
 	if traceNode != "" && !nodeFound {
 		return fmt.Errorf("Invalid filter: Node %q does not exist", traceNode)
 	}
