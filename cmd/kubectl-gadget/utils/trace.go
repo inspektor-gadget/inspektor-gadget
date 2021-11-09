@@ -29,7 +29,6 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -121,7 +120,6 @@ func printTraceFeedback(f func(format string, args ...interface{}), m map[string
 func deleteTraces(traceRestClient *restclient.RESTClient, traceID string) {
 	var listTracesOptions = metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
-		FieldSelector: fields.Everything().String(),
 	}
 	err := traceRestClient.
 		Delete().
@@ -359,7 +357,6 @@ func getTraceListFromOptions(listTracesOptions metav1.ListOptions) (gadgetv1alph
 func getTraceListFromID(traceID string) (gadgetv1alpha1.TraceList, error) {
 	var listTracesOptions = metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
-		FieldSelector: fields.Everything().String(),
 	}
 
 	traces, err := getTraceListFromOptions(listTracesOptions)

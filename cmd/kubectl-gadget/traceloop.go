@@ -32,8 +32,6 @@ import (
 	"github.com/syndtr/gocapability/capability"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -117,7 +115,6 @@ const (
 func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracemeta.TraceMeta, err error) {
 	var listOptions = metaV1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
-		FieldSelector: fields.Everything().String(),
 	}
 	pods, err := client.CoreV1().Pods("kube-system").List(context.TODO(), listOptions)
 	if err != nil {
@@ -359,12 +356,7 @@ func runTraceloopClose(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
 	}
 
-	var listOptions = metaV1.ListOptions{
-		LabelSelector: labels.Everything().String(),
-		FieldSelector: fields.Everything().String(),
-	}
-
-	nodes, err := client.CoreV1().Nodes().List(context.TODO(), listOptions)
+	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		contextLogger.Fatalf("Error in listing nodes: %q", err)
 	}
