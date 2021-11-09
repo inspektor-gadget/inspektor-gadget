@@ -51,6 +51,11 @@ func TestTraceloop(t *testing.T) {
 			cmd:  "for POD in $(sleep 5 ; kubectl get pod -n kube-system -l k8s-app=gadget -o name) ; do kubectl wait --timeout=30s -n kube-system --for=condition=ready $POD ; done ; kubectl get pod -n kube-system",
 		},
 		{
+			name:           "Start the traceloop gadget",
+			cmd:            "$KUBECTL_GADGET traceloop start",
+			expectedString: "",
+		},
+		{
 			name: "Wait until Inspektor Gadget is initialised",
 			cmd:  "sleep 15",
 		},
@@ -88,6 +93,17 @@ func TestTraceloop(t *testing.T) {
 			cmd:            "kubectl delete ns test-traceloop",
 			expectedString: "namespace \"test-traceloop\" deleted\n",
 			cleanup:        true,
+		},
+		{
+			name:           "Stop the traceloop gadget",
+			cmd:            "$KUBECTL_GADGET traceloop stop",
+			expectedString: "",
+			cleanup:        true,
+		},
+		{
+			name:    "Wait until traceloop is stopped",
+			cmd:     "sleep 15",
+			cleanup: true,
 		},
 		{
 			name:           "Cleanup gadget deployment",

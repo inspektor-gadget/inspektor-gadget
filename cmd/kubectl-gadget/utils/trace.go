@@ -708,3 +708,35 @@ func genericStreamsDisplay(
 		}
 	}
 }
+
+// DeleteTraceByGadgetName removes all traces with this gadget name
+func DeleteTracesByGadgetName(gadget string) error {
+	traceRestClient, err := getRestClient()
+	if err != nil {
+		return err
+	}
+
+	var listTracesOptions = metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("gadgetName=%s", gadget),
+	}
+	return traceRestClient.
+		Delete().
+		Namespace("gadget").
+		Resource("traces").
+		VersionedParams(&listTracesOptions, scheme.ParameterCodec).
+		Do(context.TODO()).
+		Error()
+}
+
+func ListTracesByGadgetName(gadget string) ([]gadgetv1alpha1.Trace, error) {
+	var listTracesOptions = metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("gadgetName=%s", gadget),
+	}
+
+	traces, err := getTraceListFromOptions(listTracesOptions)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting traces by gadget name %w", err)
+	}
+
+	return traces.Items, nil
+}

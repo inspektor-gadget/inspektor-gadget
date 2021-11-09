@@ -36,8 +36,6 @@ var gadgetimage = "undefined"
 var (
 	image               string
 	imagePullPolicy     string
-	traceloop           bool
-	traceloopLoglevel   string
 	hookMode            string
 	livenessProbe       bool
 	toolsMode           string
@@ -55,16 +53,6 @@ func init() {
 		"image-pull-policy", "",
 		"Always",
 		"pull policy for the container image")
-	deployCmd.PersistentFlags().BoolVarP(
-		&traceloop,
-		"traceloop", "",
-		true,
-		"enable the traceloop gadget")
-	deployCmd.PersistentFlags().StringVarP(
-		&traceloopLoglevel,
-		"traceloop-loglevel", "",
-		"info,json",
-		"loglevel (trace, debug, info, warn, error, fatal, panic, json, color, nocolor)")
 	deployCmd.PersistentFlags().StringVarP(
 		&hookMode,
 		"hook-mode", "",
@@ -135,7 +123,6 @@ spec:
         # "failed to create server failed to create folder for pinning bpf maps: mkdir /sys/fs/bpf/gadget: permission denied"
         # (For reference, see: https://github.com/kinvolk/inspektor-gadget/runs/3966318270?check_suite_focus=true#step:20:221)
         container.apparmor.security.beta.kubernetes.io/gadget: "unconfined"
-        inspektor-gadget.kinvolk.io/option-traceloop: "{{.Traceloop}}"
         inspektor-gadget.kinvolk.io/option-hook-mode: "{{.HookMode}}"
     spec:
       serviceAccount: gadget
@@ -181,14 +168,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          - name: TRACELOOP_IMAGE
+          - name: GADGET_IMAGE
             value: {{.Image}}
           - name: INSPEKTOR_GADGET_VERSION
             value: {{.Version}}
-          - name: INSPEKTOR_GADGET_OPTION_TRACELOOP
-            value: "{{.Traceloop}}"
-          - name: INSPEKTOR_GADGET_OPTION_TRACELOOP_LOGLEVEL
-            value: "{{.TraceloopLoglevel}}"
           - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE
             value: "{{.HookMode}}"
           - name: INSPEKTOR_GADGET_OPTION_TOOLS_MODE
@@ -305,8 +288,6 @@ type parameters struct {
 	Image               string
 	ImagePullPolicy     string
 	Version             string
-	Traceloop           bool
-	TraceloopLoglevel   string
 	HookMode            string
 	LivenessProbe       bool
 	ToolsMode           string
@@ -335,8 +316,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		image,
 		imagePullPolicy,
 		version,
-		traceloop,
-		traceloopLoglevel,
 		hookMode,
 		livenessProbe,
 		toolsMode,
