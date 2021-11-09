@@ -30,8 +30,6 @@ import (
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 // create the commands for the different gadgets. The gadgets that have CO-RE
@@ -285,12 +283,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			tracerId = fmt.Sprintf("%s_%x", tracerId, b)
 		}
 
-		var listOptions = metaV1.ListOptions{
-			LabelSelector: labels.Everything().String(),
-			FieldSelector: fields.Everything().String(),
-		}
-
-		nodes, err := client.CoreV1().Nodes().List(context.TODO(), listOptions)
+		nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
 		if err != nil {
 			contextLogger.Fatalf("Error in listing nodes: %q", err)
 		}

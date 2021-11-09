@@ -29,8 +29,6 @@ import (
 	"github.com/spf13/cobra"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/advisor"
@@ -135,11 +133,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 		contextLogger.Fatalf("Error setting up Kubernetes client: %s", err)
 	}
 
-	var listOptions = metaV1.ListOptions{
-		LabelSelector: labels.Everything().String(),
-		FieldSelector: fields.Everything().String(),
-	}
-	nodes, err := client.CoreV1().Nodes().List(context.TODO(), listOptions)
+	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		contextLogger.Fatalf("Error listing nodes: %s", err)
 	}
