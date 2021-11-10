@@ -139,7 +139,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 	}
 
 	if namespaces == "" {
-		namespaces = utils.GetNamespace()
+		namespaces, _ = utils.GetNamespace()
 	}
 	namespaceFilter := fmt.Sprintf("--namespace %q", namespaces)
 
