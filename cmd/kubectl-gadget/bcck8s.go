@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -199,21 +198,13 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		}
 
 		labelFilter := ""
-		if params.Label != "" {
-			pairs := strings.Split(params.Label, ",")
-			for _, pair := range pairs {
-				kv := strings.Split(pair, "=")
-				if len(kv) != 2 {
-					contextLogger.Fatalf("labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])\n")
-				}
-			}
-			labelFilter = fmt.Sprintf("--label %s", params.Label)
+		if params.LabelsRaw != "" {
+			labelFilter = fmt.Sprintf("--label %s", params.LabelsRaw)
 		}
 
 		namespaceFilter := ""
 		if !params.AllNamespaces {
-			namespace := utils.GetNamespace()
-			namespaceFilter = fmt.Sprintf("--namespace %s", namespace)
+			namespaceFilter = fmt.Sprintf("--namespace %s", params.Namespace)
 		}
 
 		podnameFilter := ""
