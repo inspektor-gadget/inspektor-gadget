@@ -61,6 +61,9 @@ func WithDockerEnrichment() ContainerCollectionOption {
 				log.Errorf("failed to inspect container %s: %s", container.ID, err)
 				continue
 			}
+			if !res.State.Running {
+				continue
+			}
 			if res.State.Pid == 0 {
 				log.Errorf("failed to inspect container %s: container pid is 0", container.ID)
 				continue
@@ -88,7 +91,10 @@ func WithDockerEnrichment() ContainerCollectionOption {
 			}
 			if len(containers) == 1 {
 				if len(containers[0].Names) > 0 {
-					container.Podname = strings.TrimPrefix(containers[0].Names[0], "/")
+					container.Name = strings.TrimPrefix(containers[0].Names[0], "/")
+					// Some gadgets require the namespace and pod name to be set
+					container.Namespace = "default"
+					container.Podname = container.Name
 				}
 			} else {
 				log.Errorf("container %s has %d names", container.Id, len(containers))
@@ -359,7 +365,11 @@ func WithRuncFanotify() ContainerCollectionOption {
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *pb.ContainerDefinition) bool {
-			runcNotifier.AddWatchContainerTermination(container.Id, int(container.Pid))
+			err := runcNotifier.AddWatchContainerTermination(container.Id, int(container.Pid))
+			if err != nil {
+				log.Errorf("runc fanotify enricher: failed to watch container %s: %s", container.Id, err)
+				return false
+			}
 			return true
 		})
 		return nil

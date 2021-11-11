@@ -157,32 +157,33 @@ func cmdlineFromPid(pid int) []string {
 // generates an event on the notifier. This is automatically called for new
 // containers detected by RuncNotifier, but it can also be called for
 // containers detected externally such as initial containers.
-func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containerPID int) {
+func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containerPID int) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
 	if _, ok := n.containers[containerID]; ok {
 		// This container is already being watched for termination
-		return
+		return nil
 	}
 	n.containers[containerID] = struct{}{}
 
-	go n.watchContainerTermination(containerID, containerPID)
+	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, uintptr(containerPID), 0, 0)
+	if errno != 0 {
+		return fmt.Errorf("pidfd_open returned %v", errno)
+	}
+
+	go n.watchContainerTermination(containerID, containerPID, int(pidfd))
+	return nil
 }
 
-func (n *RuncNotifier) watchContainerTermination(containerID string, containerPID int) {
+func (n *RuncNotifier) watchContainerTermination(containerID string, containerPID int, pidfd int) {
 	defer func() {
 		n.mu.Lock()
 		defer n.mu.Unlock()
 		delete(n.containers, containerID)
 	}()
 
-	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, uintptr(containerPID), 0, 0)
-	if errno != 0 {
-		log.Errorf("pidfd_open on %d returned %v", containerPID, errno)
-		return
-	}
-	defer unix.Close(int(pidfd))
+	defer unix.Close(pidfd)
 
 	for {
 		fds := []unix.PollFd{
@@ -283,7 +284,11 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 
 	containerID := filepath.Base(filepath.Clean(bundleDir))
 
-	n.AddWatchContainerTermination(containerID, containerPID)
+	err = n.AddWatchContainerTermination(containerID, containerPID)
+	if err != nil {
+		log.Errorf("runc fanotify: container %s with pid %d terminated before we could watch it: %s", containerID, containerPID, err)
+		return true, nil
+	}
 
 	n.callback(ContainerEvent{
 		Type:            EVENT_TYPE_ADD_CONTAINER,
@@ -292,7 +297,6 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		ContainerConfig: containerConfig,
 	})
 	return true, nil
-
 }
 
 func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) error {

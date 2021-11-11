@@ -33,7 +33,17 @@ LDFLAGS := "-X main.version=$(VERSION) \
 
 .DEFAULT_GOAL := build
 .PHONY: build
-build: manifests generate kubectl-gadget gadget-container
+build: manifests generate local-gadget kubectl-gadget gadget-container
+
+# local-gadget
+.PHONY: local-gadget
+local-gadget:
+	make -C gadget-container ebpf-objects
+	go build \
+		-tags withebpf \
+		-ldflags "-X main.version=$(VERSION)" \
+		-o local-gadget \
+		github.com/kinvolk/inspektor-gadget/cmd/local-gadget
 
 # make does not allow implicit rules (with '%') to be phony so let's use
 # the 'phony_explicit' dependency to make implicit rules inherit the phony
@@ -91,6 +101,16 @@ controller-tests: kube-apiserver etcd kubectl
 	TEST_ASSET_ETCD=$(ETCD_BIN) \
 	TEST_ASSET_KUBECTL=$(KUBECTL_BIN) \
 	go test -test.v ./pkg/controllers/... -controller-test
+
+.PHONY: local-gadget-tests
+local-gadget-tests:
+	make -C gadget-container ebpf-objects
+	# Compile and execute in separate commands because Go might not be
+	# available in the root environment
+	go test -c ./pkg/local-gadget-manager \
+		-tags withebpf
+	sudo ./local-gadget-manager.test -test.v -root-test
+	rm -f ./local-gadget-manager.test
 
 .PHONY: integration-tests
 integration-tests: kubectl-gadget

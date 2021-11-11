@@ -153,6 +153,34 @@ jobs:
       run: |
         make controller-tests
 
+    - name: Unit tests for local-gadget (as root)
+      run: |
+        KERNEL=$(uname -r)
+        ARCH=$(uname -m)
+        if test -f /sys/kernel/btf/vmlinux; then
+          echo "BTF is available at /sys/kernel/btf/vmlinux"
+        else
+          echo "BTF is not available: Trying BTFHub"
+          source /etc/os-release
+          URL="https://github.com/aquasecurity/btfhub/raw/main/archive/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
+          echo "Trying to download vmlinux from $URL"
+
+          if [[ $(wget -S --spider "$URL" 2>&1 | grep 'HTTP/1.1 200 OK') ]]; then
+            wget -q -O /tmp/vmlinux.btf.tar.xz "$URL"
+            tar -xvf /tmp/vmlinux.btf.tar.xz
+            # Use objcopy to put the btf info in an ELF file as libbpf and cilium/ebpf
+            # by default check if there is an ELF file with the .BTF section at
+            # /boot/vmlinux-$KERNEL.
+            sudo objcopy --input binary --output elf64-little --rename-section .data=.BTF *.btf /boot/vmlinux-$KERNEL
+            rm *.btf
+            echo "vmlinux downloaded at /boot/vmlinux-$KERNEL"
+          else
+            echo "vmlinux not found"
+          fi
+        fi
+
+        make local-gadget-tests
+
     - name: Setup Minikube
       uses: manusa/actions-setup-minikube@v2.4.2
       with:

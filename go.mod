@@ -1,10 +1,11 @@
 module github.com/kinvolk/inspektor-gadget
 
 require (
+	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/cilium/ebpf v0.6.3-0.20210910140648-4d5607ee1690
 	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
 	github.com/containers/common v0.42.0
-	github.com/docker/docker v20.10.7+incompatible
+	github.com/docker/docker v20.10.8+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/giantswarm/crd-docs-generator v0.7.1
 	github.com/iovisor/gobpf v0.2.0 // indirect
