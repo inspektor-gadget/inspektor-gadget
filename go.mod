@@ -6,6 +6,7 @@ require (
 	github.com/containers/common v0.42.0
 	github.com/docker/docker v20.10.7+incompatible
 	github.com/docker/go-units v0.4.0
+	github.com/giantswarm/crd-docs-generator v0.7.1
 	github.com/iovisor/gobpf v0.2.0 // indirect
 	github.com/kinvolk/traceloop v0.0.0-20210623155108-6f4efc6fca46
 	github.com/kr/pretty v0.2.1
@@ -24,6 +25,7 @@ require (
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.26.0
 	k8s.io/api v0.21.2
+	k8s.io/apiextensions-apiserver v0.21.2
 	k8s.io/apimachinery v0.21.2
 	k8s.io/cli-runtime v0.20.6
 	k8s.io/client-go v0.21.2
