@@ -62,6 +62,11 @@ type CommonFlags struct {
 	// AllNamespaces is true
 	Namespace string
 
+	// NamespaceOverridden will be true only if the CommonFlags.Namespace
+	// field contains the value passed by the user using the '-n' flag
+	// and not the default value configured in the kubeconfig file.
+	NamespaceOverridden bool
+
 	// AllNamespaces disables the container filtering by namespace
 	AllNamespaces bool
 
@@ -82,17 +87,18 @@ type CommonFlags struct {
 }
 
 // GetNamespace returns the namespace specified by '-n' or the default
-// namespace configured in the kubeconfig file.
-func GetNamespace() string {
-	namespace, _, _ := KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
-	return namespace
+// namespace configured in the kubeconfig file. It also returns a boolean
+// that specifies if the namespace comes from the '-n' flag or not.
+func GetNamespace() (string, bool) {
+	namespace, overridden, _ := KubernetesConfigFlags.ToRawKubeConfigLoader().Namespace()
+	return namespace, overridden
 }
 
 func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 	command.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// Namespace
 		if !params.AllNamespaces {
-			params.Namespace = GetNamespace()
+			params.Namespace, params.NamespaceOverridden = GetNamespace()
 		}
 
 		// Labels

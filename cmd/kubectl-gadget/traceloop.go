@@ -255,7 +255,7 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		return false
 	})
 
-	namespace := utils.GetNamespace()
+	namespace, _ := utils.GetNamespace()
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 	if !optionListNoHeaders {
