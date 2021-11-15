@@ -26,8 +26,8 @@ kernels than the one mentioned here.
 
 | Gadget                 | Tools Mode | Required Kernel                 | BTF Required |
 |------------------------|------------|---------------------------------|--------------|
-| bindnsoop              | standard   | 4.15                            | N            |
-| bindnsoop              | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
+| bindsnoop              | standard   | 4.15                            | N            |
+| bindsnoop              | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
 | biolatency             | standard   | 4.15                            | N            |
 | capabilities           |            | 4.15                            | N            |
 | dns                    |            | 5.4                             | N            |
