@@ -35,21 +35,48 @@ LDFLAGS := "-X main.version=$(VERSION) \
 .PHONY: build
 build: manifests generate local-gadget kubectl-gadget gadget-container
 
-# local-gadget
-.PHONY: local-gadget
-local-gadget:
-	make -C gadget-container ebpf-objects
-	go build \
-		-tags withebpf \
-		-ldflags "-X main.version=$(VERSION)" \
-		-o local-gadget \
-		github.com/kinvolk/inspektor-gadget/cmd/local-gadget
-
 # make does not allow implicit rules (with '%') to be phony so let's use
 # the 'phony_explicit' dependency to make implicit rules inherit the phony
 # attribute
 .PHONY: phony_explicit
 phony_explicit:
+
+# local-gadget
+
+LOCAL_GADGET_TARGETS = \
+	local-gadget-linux-amd64 \
+	local-gadget-linux-arm64
+
+.PHONY: list-local-gadget-targets
+list-local-gadget-targets:
+	@echo $(LOCAL_GADGET_TARGETS)
+
+.PHONY: local-gadget-all
+local-gadget-all: $(LOCAL_GADGET_TARGETS)
+
+local-gadget: local-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
+	mv local-gadget-$(GOHOSTOS)-$(GOHOSTARCH) local-gadget
+
+local-gadget-%: phony_explicit
+	echo Building local-gadget-$* && \
+	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
+	if [ "$(shell go env GOOS)" = "$${GOOS}" -a "$(shell go env GOARCH)" = "$${GOARCH}" ] ; then \
+		export CGO_ENABLED=1 && \
+		export GO111MODULE=on && \
+		make -C gadget-container ebpf-objects && \
+		go build \
+			-tags withebpf \
+			-ldflags "-X main.version=$(VERSION)" \
+			-o local-gadget-$${GOOS}-$${GOARCH} \
+			github.com/kinvolk/inspektor-gadget/cmd/local-gadget ; \
+	elif [ -f "local-gadget-$*.Dockerfile" ] ; then \
+		docker build -t local-gadget-$*-builder -f local-gadget-$*.Dockerfile . && \
+		docker run --rm --entrypoint cat local-gadget-$*-builder local-gadget-$* > local-gadget-$* && \
+		chmod +x local-gadget-$* ; \
+	else \
+		echo "Cross compiling for $${GOOS}-$${GOARCH} not supported" && \
+		exit 1 ; \
+	fi
 
 KUBECTL_GADGET_TARGETS = \
 	kubectl-gadget-linux-amd64 \
