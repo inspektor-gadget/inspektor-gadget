@@ -29,17 +29,19 @@ flags.
 ```
 $ kubectl gadget --help
 Usage:
-  kubectl gadget [command]
+  kubectl-gadget [command]
 
 Available Commands:
   bindsnoop         Trace IPv4 and IPv6 bind() system calls
-  biotop            Trace block device I/O top
-  capabilities      Trace capabilities security checks triggered by applications
+  biolatency        Generate a histogram with the distribution of block device I/O latency
+  biotop            Trace block device I/O
+  capabilities      Suggest Security Capabilities for securityContext
   completion        generate the autocompletion script for the specified shell
   deploy            Deploy Inspektor Gadget on the worker nodes
   dns               Trace DNS requests
   execsnoop         Trace new processes
   help              Help about any command
+  mountsnoop        Trace mount and umount syscalls
   network-policy    Generate network policies based on recorded network activity
   opensnoop         Trace open() system calls
   process-collector Gather information about running processes
@@ -59,12 +61,18 @@ Available Commands:
 Specific documentation for the gadgets can be found in the following links:
 
 - [bindsnoop](docs/guides/bindsnoop.md)
+- [biolatency](docs/guides/biolatency.md)
 - [biotop](docs/guides/biotop.md)
 - [capabilities](docs/guides/capabilities.md)
+- [dns](docs/guides/dns.md)
 - [execsnoop](docs/guides/execsnoop.md)
+- [mountsnoop](docs/guides/mountsnoop.md)
 - [network-policy](docs/guides/network-policy.md)
 - [opensnoop](docs/guides/opensnoop.md)
+- [process-collector](docs/guides/process-collector.md)
 - [profile](docs/guides/profile.md)
+- [seccomp](docs/guides/seccomp.md)
+- [socket-collector](docs/guides/socket-collector.md)
 - [tcpconnect](docs/guides/tcpconnect.md)
 - [tcptop](docs/guides/tcptop.md)
 - [traceloop](docs/guides/traceloop.md)
