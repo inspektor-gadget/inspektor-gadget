@@ -414,7 +414,6 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 
 	t.started = false
 
-	trace.Status.OperationError = ""
 	trace.Status.State = "Stopped"
 	return
 }
