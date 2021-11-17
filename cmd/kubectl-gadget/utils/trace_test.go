@@ -77,10 +77,10 @@ func TestPrintTraceFeedback(t *testing.T) {
 
 	var out string
 
-	runprintTraceFeedback := func(m map[string]string) string {
+	runprintTraceFeedback := func(m map[string]string, n int) string {
 		r, w, _ := os.Pipe()
 		os.Stderr = w
-		printTraceFeedback(m)
+		printTraceFeedback(m, n)
 		w.Close()
 		out, _ := ioutil.ReadAll(r)
 		os.Stderr = originalStderr
@@ -93,10 +93,10 @@ func TestPrintTraceFeedback(t *testing.T) {
 		"node": "Err/Warn Message",
 	}
 
-	out = runprintTraceFeedback(m)
+	out = runprintTraceFeedback(m, 1)
 	expected := "Failed to run the gadget on node \"node\": Err/Warn Message\n"
 	if expected != out {
-		t.Fatalf("%v != %v", out, expected)
+		t.Fatalf("'%v' != '%v'", out, expected)
 	}
 
 	// It should print all the messages because they are not all the same.
@@ -105,11 +105,27 @@ func TestPrintTraceFeedback(t *testing.T) {
 		"node2": "Err/Warn Message 2",
 		"node3": "Err/Warn Message 2",
 	}
-	out = runprintTraceFeedback(m)
+	out = runprintTraceFeedback(m, 3)
 	for node, msg := range m {
 		expected = fmt.Sprintf("Failed to run the gadget on node \"%s\": %s", node, msg)
 		if !strings.Contains(out, expected) {
-			t.Fatalf("Output %v does not contain %v", out, expected)
+			t.Fatalf("Output '%v' does not contain '%v'", out, expected)
+		}
+	}
+
+	// It should print all the messages because even if they are all the same,
+	// there was a node that didn't report an error. Therefore, the final error
+	// message can say "Failed to run the gadget on all nodes" but only on the
+	// ones that it really failed.
+	m = map[string]string{
+		"node2": "Err/Warn Message 2",
+		"node3": "Err/Warn Message 2",
+	}
+	out = runprintTraceFeedback(m, 3)
+	for node, msg := range m {
+		expected = fmt.Sprintf("Failed to run the gadget on node \"%s\": %s", node, msg)
+		if !strings.Contains(out, expected) {
+			t.Fatalf("Output '%v' does not contain '%v'", out, expected)
 		}
 	}
 
@@ -119,9 +135,9 @@ func TestPrintTraceFeedback(t *testing.T) {
 		"node2": "Err/Warn Message",
 		"node3": "Err/Warn Message",
 	}
-	out = runprintTraceFeedback(m)
+	out = runprintTraceFeedback(m, 3)
 	expected = "Failed to run the gadget on all nodes: Err/Warn Message\n"
 	if expected != out {
-		t.Fatalf("%v != %v", out, expected)
+		t.Fatalf("'%v' != '%v'", out, expected)
 	}
 }
