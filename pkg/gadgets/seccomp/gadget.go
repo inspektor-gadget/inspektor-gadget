@@ -315,7 +315,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 			trace.Spec.Filter.ContainerName,
 		)
 		if mntns == 0 {
-			trace.Status.OperationError = fmt.Sprintf("Container %s/%s/%s not found on this node",
+			trace.Status.OperationWarning = fmt.Sprintf("Container %s/%s/%s not found",
 				trace.Spec.Filter.Namespace,
 				trace.Spec.Filter.Podname,
 				trace.Spec.Filter.ContainerName,
@@ -329,7 +329,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 			trace.Spec.Filter.Podname,
 		)
 		if len(mntnsMap) == 0 {
-			trace.Status.OperationError = fmt.Sprintf("Pod %s/%s not found on this node",
+			trace.Status.OperationWarning = fmt.Sprintf("Pod %s/%s not found",
 				trace.Spec.Filter.Namespace,
 				trace.Spec.Filter.Podname,
 			)
