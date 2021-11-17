@@ -28,6 +28,7 @@ kernels than the one mentioned here.
 |------------------------|------------|---------------------------------|--------------|
 | bindnsoop              | standard   | 4.15                            | N            |
 | bindnsoop              | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
+| biolatency             | standard   | 4.15                            | N            |
 | capabilities           |            | 4.15                            | N            |
 | dns                    |            | 5.4                             | N            |
 | execsnoop              | standard   | 4.15                            | N            |
