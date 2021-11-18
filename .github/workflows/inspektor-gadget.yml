@@ -143,6 +143,23 @@ jobs:
           tar --sort=name --owner=root:0 --group=root:0 \
             -czf inspektor-gadget-$platform.tar.gz -C $platform \
             kubectl-gadget LICENSE
+          rm -rf $platform
+        done
+
+    - name: Build local-gadget for all platforms
+      run: |
+        make local-gadget-all
+
+        # Prepare assets for release and actions artifacts
+        for target in $(make list-local-gadget-targets); do
+          platform=$(echo $target|cut -d- -f3-4)
+          mkdir $platform
+          cp local-gadget-$platform $platform/local-gadget
+          cp LICENSE $platform/
+          tar --sort=name --owner=root:0 --group=root:0 \
+            -czf local-gadget-$platform.tar.gz -C $platform \
+            local-gadget LICENSE
+          rm -rf $platform
         done
 
     - name: Basic unit tests
@@ -209,11 +226,11 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Upload kubectl-gadget Release Assets
+    - name: Upload Gadget Release Assets
       uses: csexton/release-asset-action@v2
       if: startsWith(github.ref, 'refs/tags/v')
       with:
-        pattern: "inspektor-gadget-*-*.tar.gz"
+        pattern: "*-gadget-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
 
