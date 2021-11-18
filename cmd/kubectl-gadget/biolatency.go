@@ -25,16 +25,18 @@ import (
 )
 
 const (
-	GADGET_NAME        = "biolatency"
-	GADGET_OUTPUTMODE  = "Status"
-	GADGET_OUTPUTSTATE = "Completed"
+	GADGET_NAME         = "biolatency"
+	GADGET_OUTPUTMODE   = "Status"
+	GADGET_OUTPUTSTATE  = "Completed"
+	GADGET_INITIALSTATE = "Started"
 )
 
 var biolatencyTraceConfig = &utils.TraceConfig{
-	GadgetName:       GADGET_NAME,
-	TraceOutputMode:  GADGET_OUTPUTMODE,
-	TraceOutputState: GADGET_OUTPUTSTATE,
-	CommonFlags:      &params,
+	GadgetName:        GADGET_NAME,
+	TraceOutputMode:   GADGET_OUTPUTMODE,
+	TraceOutputState:  GADGET_OUTPUTSTATE,
+	TraceInitialState: GADGET_INITIALSTATE,
+	CommonFlags:       &params,
 }
 
 var biolatencyCmd = &cobra.Command{
