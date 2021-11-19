@@ -438,6 +438,41 @@ RetryLoop:
 	}
 }
 
+var sigIntReceivedNumber = 0
+
+// sigHandler installs a handler for all signals which cause termination as
+// their default behavior.
+// On reception of this signal, the given trace will be deleted.
+// This function fixes trace not being deleted when calling:
+// kubectl gadget process-collector -A | head -n0
+func sigHandler(traceID *string) {
+	c := make(chan os.Signal)
+	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGILL, syscall.SIGABRT, syscall.SIGFPE, syscall.SIGKILL, syscall.SIGSEGV, syscall.SIGPIPE, syscall.SIGALRM, syscall.SIGTERM, syscall.SIGBUS, syscall.SIGTRAP)
+	go func() {
+		sig := <-c
+
+		// This code is here in case DeleteTrace() hangs.
+		// In this case, we install again this handler and if SIGINT is received
+		// another time (thus getting it twice) we exit the whole program without
+		// trying to delete the trace.
+		if sig == syscall.SIGINT {
+			sigIntReceivedNumber++
+
+			if sigIntReceivedNumber > 1 {
+				os.Exit(1)
+			}
+
+			sigHandler(traceID)
+		}
+
+		if *traceID != "" {
+			DeleteTrace(*traceID)
+		}
+
+		os.Exit(1)
+	}()
+}
+
 // PrintTraceOutputFromStream is used to print trace output using generic
 // printing function.
 // This function is must be used by trace which has TraceOutputMode set to
@@ -589,6 +624,10 @@ func PrintAllTraces(config *TraceConfig) error {
 // This function is thought to be used with "one-run" gadget, i.e. gadget
 // which runs a trace when it is created.
 func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) string) error {
+	var traceID string
+
+	sigHandler(&traceID)
+
 	if config.TraceOutputMode != "Stream" {
 		return errors.New("TraceOutputMode must be Stream. Otherwise, call RunTraceAndPrintStatusOutput!")
 	}
@@ -610,6 +649,10 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 // This function is thought to be used with "one-run" gadget, i.e. gadget
 // which runs a trace when it is created.
 func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func(results []gadgetv1alpha1.Trace) error) error {
+	var traceID string
+
+	sigHandler(&traceID)
+
 	if config.TraceOutputMode == "Stream" {
 		return errors.New("TraceOutputMode must not be Stream. Otherwise, call RunTraceAndPrintStream!")
 	}
