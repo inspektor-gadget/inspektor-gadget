@@ -1,6 +1,15 @@
 # Prepare and build gadget artifacts in a container
+
+# BCC built from the gadget branch in the kinvolk/bcc fork.
+# See BCC section in docs/CONTRIBUTING.md for further details.
+ARG BCC="quay.io/kinvolk/bcc:520591c0fc491862c12337609ff9cbc9375d4de3-focal-release"
 ARG OS_TAG=20.04
+
+FROM ${BCC} as bcc
 FROM ubuntu:${OS_TAG} as builder
+
+ARG ENABLE_BTFGEN=false
+ENV ENABLE_BTFGEN=${ENABLE_BTFGEN}
 
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
@@ -12,6 +21,14 @@ RUN set -ex; \
 	apt-get install -y libbpf-dev && \
 	ln -s /usr/lib/go-1.16/bin/go /bin/go
 
+# Download BTFHub files
+COPY ./tools /btf-tools
+RUN set -ex; mkdir -p /tmp/btfs && \
+	if [ "$ENABLE_BTFGEN" = true ]; then \
+		cd /btf-tools && \
+		./getbtfhub.sh; \
+	fi
+
 # Cache go modules so they won't be downloaded at each build
 COPY go.mod go.sum /gadget/
 RUN cd /gadget && go mod download
@@ -19,6 +36,14 @@ RUN cd /gadget && go mod download
 # This COPY is limited by .dockerignore
 COPY ./ /gadget
 RUN cd /gadget/gadget-container && make gadget-container-deps
+
+# Execute BTFGen
+COPY --from=bcc /objs /objs
+RUN set -ex; \
+	if [ "$ENABLE_BTFGEN" = true ]; then \
+		cd /btf-tools && \
+		LIBBPFTOOLS=/objs BTFHUB=/tmp/btfhub INSPEKTOR_GADGET=/gadget ./btfgen.sh; \
+	fi
 
 # Builder: traceloop
 
@@ -32,11 +57,7 @@ FROM docker.io/kinvolk/traceloop:20211109004128958575 as traceloop
 
 # Main gadget image
 
-# BCC built from the gadget branch in the kinvolk/bcc fork:
-# https://github.com/kinvolk/bcc/commit/a81b62e2d04fbebfbbd75787a735edede4555cf8
-# See BCC section in docs/CONTRIBUTING.md for further details.
-
-FROM quay.io/kinvolk/bcc:a81b62e2d04fbebfbbd75787a735edede4555cf8-focal-release
+FROM bcc
 
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
@@ -68,3 +89,6 @@ COPY --from=builder /gadget/gadget-container/bin/nrigadget /opt/hooks/nri/
 COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
 
 ## Hooks Ends
+
+# BTF files
+COPY --from=builder /tmp/btfs /btfs/

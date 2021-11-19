@@ -38,9 +38,8 @@ kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
 You can build and push the container gadget image by running the following commands:
 
 ```
-$ cd gadget-container
-$ make build
-$ make push
+$ make gadget-container
+$ make push-gadget-container
 ```
 
 The BPF code is built using a Docker container, so you don't have to worry
@@ -58,6 +57,8 @@ argument when deploying to the Kuberentes cluster.
 described in [BCC](#Updating-BCC-from-upstream) section.
 - See the [minikube](#Development-environment-on-minikube)
 section for a faster development cycle.
+- You can generate the required BTF information for some well known
+  kernel versions by setting `ENABLE_BTFGEN=true`
 
 ## Workflows
 

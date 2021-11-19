@@ -12,9 +12,11 @@ node, as well as whether or not the kernel has
 [BTF](https://www.kernel.org/doc/html/latest/bpf/btf.html) enabled (via
 `CONFIG_DEBUG_INFO_BTF=y`).
 
-For some well known kernel versions, the lack of BTF is remediated by
-downloading the symbols from
-[btfhub](https://github.com/aquasecurity/btfhub/).
+The required BTF information for some well known kernel versions is
+generated with [BTFGen](https://github.com/kinvolk/btfgen) and shipped
+within the gadget container image. If there are not shipped types for
+the running kernel then they are downloaded from
+[BTFhub](https://github.com/aquasecurity/btfhub/).
 
 ## Required Kernel Versions
 

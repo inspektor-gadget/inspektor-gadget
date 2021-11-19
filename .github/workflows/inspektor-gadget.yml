@@ -108,6 +108,8 @@ jobs:
       with:
         context: .
         file: gadget.Dockerfile
+        build-args: |
+          ENABLE_BTFGEN=true
         # TODO: how to avoid pushing a container before running integration tests
         push: true
         tags: ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
