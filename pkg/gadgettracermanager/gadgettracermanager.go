@@ -344,8 +344,8 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 	containerEventFuncs := []pubsub.FuncNotify{}
 
 	if !conf.TestOnly {
-		if err := increaseRlimit(); err != nil {
-			return nil, fmt.Errorf("failed to increase memlock limit: %w", err)
+		if _, err := ebpf.RemoveMemlockRlimit(); err != nil {
+			return nil, err
 		}
 
 		if err := os.Mkdir(gadgets.PIN_PATH, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
@@ -468,12 +468,4 @@ func (m *GadgetTracerManager) Close() {
 	if m.containersMap != nil {
 		os.Remove(filepath.Join(gadgets.PIN_PATH, "containers"))
 	}
-}
-
-func increaseRlimit() error {
-	limit := &unix.Rlimit{
-		Cur: unix.RLIM_INFINITY,
-		Max: unix.RLIM_INFINITY,
-	}
-	return unix.Setrlimit(unix.RLIMIT_MEMLOCK, limit)
 }

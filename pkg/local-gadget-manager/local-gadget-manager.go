@@ -26,6 +26,7 @@ import (
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
 
+	"github.com/cilium/ebpf"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -275,6 +276,10 @@ func (l *LocalGadgetManager) Dump() string {
 }
 
 func NewManager() (*LocalGadgetManager, error) {
+	if _, err := ebpf.RemoveMemlockRlimit(); err != nil {
+		return nil, err
+	}
+
 	l := &LocalGadgetManager{
 		traceFactories: gadgetcollection.TraceFactoriesForLocalGadget(),
 		tracers:        make(map[string]tracer),
