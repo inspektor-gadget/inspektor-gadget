@@ -16,6 +16,8 @@ package utils
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 )
@@ -69,44 +71,57 @@ func (mock *mockWriter) Printf(format string, args ...interface{}) {
 }
 
 func TestPrintTraceFeedback(t *testing.T) {
-	mock := &mockWriter{}
+	// get reference to original stderr and restore on exit
+	originalStderr := os.Stderr
+	defer func() { os.Stderr = originalStderr }()
+
+	var out string
+
+	runprintTraceFeedback := func(m map[string]string) string {
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+		printTraceFeedback(m)
+		w.Close()
+		out, _ := ioutil.ReadAll(r)
+		os.Stderr = originalStderr
+
+		return string(out)
+	}
 
 	// Test one single element in the array.
-	mock.output = []byte{}
 	m := map[string]string{
 		"node": "Err/Warn Message",
 	}
-	printTraceFeedback(mock.Printf, m)
-	expected := "Failed to run the gadget on node \"node\": Err/Warn Message"
-	if expected != string(mock.output) {
-		t.Fatalf("%v != %v", string(mock.output), expected)
+
+	out = runprintTraceFeedback(m)
+	expected := "Failed to run the gadget on node \"node\": Err/Warn Message\n"
+	if expected != out {
+		t.Fatalf("%v != %v", out, expected)
 	}
 
 	// It should print all the messages because they are not all the same.
-	mock.output = []byte{}
 	m = map[string]string{
 		"node1": "Err/Warn Message 1",
 		"node2": "Err/Warn Message 2",
 		"node3": "Err/Warn Message 2",
 	}
-	printTraceFeedback(mock.Printf, m)
+	out = runprintTraceFeedback(m)
 	for node, msg := range m {
 		expected = fmt.Sprintf("Failed to run the gadget on node \"%s\": %s", node, msg)
-		if !strings.Contains(string(mock.output), expected) {
-			t.Fatalf("Output %v does not contain %v", string(mock.output), expected)
+		if !strings.Contains(out, expected) {
+			t.Fatalf("Output %v does not contain %v", out, expected)
 		}
 	}
 
 	// It should print one single message because they are the same.
-	mock.output = []byte{}
 	m = map[string]string{
 		"node1": "Err/Warn Message",
 		"node2": "Err/Warn Message",
 		"node3": "Err/Warn Message",
 	}
-	printTraceFeedback(mock.Printf, m)
-	expected = "Failed to run the gadget on all nodes: Err/Warn Message"
-	if expected != string(mock.output) {
-		t.Fatalf("%v != %v", string(mock.output), expected)
+	out = runprintTraceFeedback(m)
+	expected = "Failed to run the gadget on all nodes: Err/Warn Message\n"
+	if expected != out {
+		t.Fatalf("%v != %v", out, expected)
 	}
 }
