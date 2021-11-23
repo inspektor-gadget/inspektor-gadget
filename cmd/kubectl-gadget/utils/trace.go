@@ -68,6 +68,11 @@ type TraceConfig struct {
 	// But other gadgets, like dns, can contain output only in Started state.
 	TraceOutputState string
 
+	// TraceInitialState is the state in which the trace should be after its
+	// creation.
+	// This field is only used by "multi-rounds gadgets" like biolatency.
+	TraceInitialState string
+
 	// CommonFlags is used to hold parameters given on the command line interface.
 	CommonFlags *CommonFlags
 }
@@ -265,6 +270,8 @@ func updateTraceOperation(trace *gadgetv1alpha1.Trace, operation string) error {
 // A unique trace identifier is returned, this identifier will be used as other
 // function parameter.
 // A trace obtained with this function must be deleted calling DeleteTrace.
+// Note that, if config.TraceInitialState is not empty, this function will
+// succeed only if the trace was created and goes into the requested state.
 func CreateTrace(config *TraceConfig) (string, error) {
 	traceID := randomTraceID()
 
@@ -312,6 +319,21 @@ func CreateTrace(config *TraceConfig) (string, error) {
 	err := createTraces(trace)
 	if err != nil {
 		return "", err
+	}
+
+	if config.TraceInitialState != "" {
+		// Once the traces are created, we wait for them to be in
+		// config.TraceInitialState state, so they are ready to be used by the user.
+		_, err = waitForTraceState(traceID, config.TraceInitialState)
+		if err != nil {
+			deleteError := DeleteTrace(traceID)
+
+			if deleteError != nil {
+				fmt.Fprintf(os.Stderr, "%v\n", err)
+			}
+
+			return "", err
+		}
 	}
 
 	return traceID, nil
@@ -379,11 +401,9 @@ func SetTraceOperation(traceID string, operation string) error {
 	return err
 }
 
-// waitForOutput loops over all trace whom ID is given as parameter waiting
-// until they are in the expected state.
-// After this function and if correct state was given as parameter, the trace
-// output should contain the needed information.
-func waitForOutput(traceID string, expectedState string) (gadgetv1alpha1.TraceList, error) {
+// waitForTraceState loops over all trace whom ID is given as parameter
+// waiting until they are in the expected state.
+func waitForTraceState(traceID string, expectedState string) (gadgetv1alpha1.TraceList, error) {
 	start := time.Now()
 
 RetryLoop:
@@ -476,7 +496,7 @@ func sigHandler(traceID *string) {
 // This function is must be used by trace which has TraceOutputMode set to
 // Stream.
 func PrintTraceOutputFromStream(traceID string, expectedState string, params *CommonFlags, transformLine func(string) string) error {
-	traces, err := waitForOutput(traceID, expectedState)
+	traces, err := waitForTraceState(traceID, expectedState)
 	if err != nil {
 		return err
 	}
@@ -488,7 +508,7 @@ func PrintTraceOutputFromStream(traceID string, expectedState string, params *Co
 // pointer provided by caller.
 // It will parse trace.Spec.Output and print it calling the function pointer.
 func PrintTraceOutputFromStatus(traceID string, expectedState string, customResultsDisplay func(results []gadgetv1alpha1.Trace) error) error {
-	traces, err := waitForOutput(traceID, expectedState)
+	traces, err := waitForTraceState(traceID, expectedState)
 	if err != nil {
 		return err
 	}
