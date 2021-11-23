@@ -179,7 +179,7 @@ jobs:
         else
           echo "BTF is not available: Trying BTFHub"
           source /etc/os-release
-          URL="https://github.com/aquasecurity/btfhub/raw/main/archive/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
+          URL="https://github.com/aquasecurity/btfhub-archive/raw/main/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
           echo "Trying to download vmlinux from $URL"
 
           if [[ $(wget -S --spider "$URL" 2>&1 | grep 'HTTP/1.1 200 OK') ]]; then
