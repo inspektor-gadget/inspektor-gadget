@@ -24,6 +24,8 @@ Create a pod on the `demo` namespace using the `nginx` image:
 ```
 $ kubectl -n demo run mypod --image=nginx
 pod/mypod created
+$ kubectl wait -n demo --for=condition=ready pod/mypod
+pod/mypod condition met
 ```
 
 After the pod is running, we can try to get the list of running processes again:
@@ -67,10 +69,10 @@ demo         mypod    mypod        nginx    37935
 demo         mypod    mypod        sleep    41165
 ```
 
-We can also get the information in JSON format, by passing the `--json` flag.
+We can also get the information in JSON format, by passing the `-o json` flag.
 
 ```
-$ kubectl gadget process-collector -n demo --json
+$ kubectl gadget process-collector -n demo -o json
 [
   {
     "tgid": 34270,
