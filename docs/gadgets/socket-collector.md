@@ -26,13 +26,13 @@ spec:
 ### Operations
 
 
-#### start
+#### collect
 
-Create a snapshot of the currently open TCP and UDP sockets. Once taken, the snapshot is not updated automatically. However one can call the start operation again at any time to update the snapshot.
+Create a snapshot of the currently open TCP and UDP sockets. Once taken, the snapshot is not updated automatically. However one can call the collect operation again at any time to update the snapshot.
 
 ```
 $ kubectl annotate -n gadget trace/socket-collector \
-    gadget.kinvolk.io/operation=start
+    gadget.kinvolk.io/operation=collect
 ```
 
 ### Output Modes

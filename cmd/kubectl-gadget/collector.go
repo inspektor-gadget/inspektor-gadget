@@ -167,7 +167,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 
 	config := &utils.TraceConfig{
 		GadgetName:       "process-collector",
-		Operation:        "start",
+		Operation:        "collect",
 		TraceOutputMode:  "Status",
 		TraceOutputState: "Completed",
 		CommonFlags:      &params,
@@ -261,7 +261,7 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 
 	config := &utils.TraceConfig{
 		GadgetName:       "socket-collector",
-		Operation:        "start",
+		Operation:        "collect",
 		TraceOutputMode:  "Status",
 		TraceOutputState: "Completed",
 		CommonFlags:      &params,
