@@ -4,7 +4,7 @@ metadata:
   name: seccomp
   namespace: gadget
 spec:
-  node: demo-node
+  node: minikube
   gadget: seccomp
   filter:
     namespace: seccomp-demo
