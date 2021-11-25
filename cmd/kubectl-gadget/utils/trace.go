@@ -182,9 +182,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 		return fmt.Errorf("Error setting up trace REST client: %w", err)
 	}
 
-	nodeFound := false
 	traceNode := trace.Spec.Node
-
 	for _, node := range nodes.Items {
 		if traceNode != "" && node.Name != traceNode {
 			continue
@@ -194,7 +192,6 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 		if traceNode == "" {
 			trace.Spec.Node = node.Name
 		}
-		nodeFound = true
 
 		err = traceRestClient.
 			Post().
@@ -212,10 +209,6 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 
 			return fmt.Errorf("Error creating trace on node %q: %w", node.Name, err)
 		}
-	}
-
-	if traceNode != "" && !nodeFound {
-		return fmt.Errorf("Invalid filter: Node %q does not exist", traceNode)
 	}
 
 	return nil
