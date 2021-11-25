@@ -22,6 +22,8 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"sort"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"text/tabwriter"
@@ -581,7 +583,7 @@ func PrintAllTraces(config *TraceConfig) error {
 
 	type printingInformation struct {
 		namespace     string
-		nodeName      string
+		nodes         []string
 		podname       string
 		containerName string
 	}
@@ -608,26 +610,27 @@ func PrintAllTraces(config *TraceConfig) error {
 
 			// If an entry with this traceID already exists, we just update the node
 			// name by concatenating it to the string.
-			printingMap[id].nodeName = printingMap[id].nodeName + "," + node
+			printingMap[id].nodes = append(printingMap[id].nodes, node)
 		} else {
 			// Otherwise, we simply create a new entry.
 			if filter := trace.Spec.Filter; filter != nil {
 				printingMap[id] = &printingInformation{
 					namespace:     filter.Namespace,
-					nodeName:      node,
+					nodes:         []string{node},
 					podname:       filter.Podname,
 					containerName: filter.ContainerName,
 				}
 			} else {
 				printingMap[id] = &printingInformation{
-					nodeName: node,
+					nodes: []string{node},
 				}
 			}
 		}
 	}
 
 	for id, info := range printingMap {
-		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\n", info.namespace, info.nodeName, info.podname, info.containerName, id)
+		sort.Strings(info.nodes)
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\n", info.namespace, strings.Join(info.nodes, ","), info.podname, info.containerName, id)
 	}
 
 	w.Flush()
