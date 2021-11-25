@@ -48,10 +48,10 @@ NODE       NAMESPACE               POD          PROTOCOL    LOCAL           REMO
 my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:8080    0.0.0.0:0    LISTEN
 ```
 
-We can also get the information in JSON format, by passing the --json flag.
+We can also get the information in JSON format, by passing the `-o json` flag.
 Just take into account that IP address and port are displayed separated with this format:
 ```
-$ kubectl gadget socket-collector -n test-socketcollector --json
+$ kubectl gadget socket-collector -n test-socketcollector -o json
 [
   {
     "node": "my-node",

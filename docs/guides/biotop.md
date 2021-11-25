@@ -9,7 +9,7 @@ The gadget doesn't support the following flags:
  * `--containername`
  * `--podname`
  * `--namespace`
- * `--json`
+ * `--output`
 
 ```
 $ kubectl gadget biotop --node ip-10-0-30-247 --all-namespaces
