@@ -30,12 +30,11 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	restclient "k8s.io/client-go/rest"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	clientset "github.com/kinvolk/inspektor-gadget/pkg/client/clientset/versioned"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 )
 
@@ -132,42 +131,31 @@ func printTraceFeedback(m map[string]string, totalNodes int) {
 	}
 }
 
-func deleteTraces(traceRestClient *restclient.RESTClient, traceID string) {
+func deleteTraces(traceClient *clientset.Clientset, traceID string) {
 	var listTracesOptions = metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
 	}
-	err := traceRestClient.
-		Delete().
-		Namespace("gadget").
-		Resource("traces").
-		VersionedParams(&listTracesOptions, scheme.ParameterCodec).
-		Do(context.TODO()).
-		Error()
+
+	err := traceClient.GadgetV1alpha1().Traces("gadget").DeleteCollection(
+		context.TODO(), metav1.DeleteOptions{}, listTracesOptions,
+	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error deleting traces: %q", err)
 	}
 }
 
-// getRestClient returns the RESTClient associated with kubeRestConfig() for
-// APIPath /apis and GroupVersion &gadgetv1alpha1.GroupVersion.
-func getRestClient() (*restclient.RESTClient, error) {
-	restConfig, err := kubeRestConfig()
+func getTraceClient() (*clientset.Clientset, error) {
+	config, err := KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
-		return nil, fmt.Errorf("Error while getting rest config: %w", err)
+		return nil, fmt.Errorf("Error creating RESTConfig: %w", err)
 	}
 
-	traceConfig := *restConfig
-	traceConfig.ContentConfig.GroupVersion = &gadgetv1alpha1.GroupVersion
-	traceConfig.APIPath = "/apis"
-	traceConfig.NegotiatedSerializer = serializer.NewCodecFactory(scheme.Scheme)
-	traceConfig.UserAgent = restclient.DefaultKubernetesUserAgent()
-
-	traceRestClient, err := restclient.UnversionedRESTClientFor(&traceConfig)
+	traceClient, err := clientset.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("Error setting up trace REST client: %w", err)
+		return nil, fmt.Errorf("Error setting up trace client: %w", err)
 	}
 
-	return traceRestClient, nil
+	return traceClient, err
 }
 
 // createTraces creates a trace using Kubernetes REST API.
@@ -179,14 +167,14 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 		return fmt.Errorf("Error setting up Kubernetes client: %w", err)
 	}
 
+	traceClient, err := getTraceClient()
+	if err != nil {
+		return err
+	}
+
 	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("Error listing nodes: %w", err)
-	}
-
-	traceRestClient, err := getRestClient()
-	if err != nil {
-		return fmt.Errorf("Error setting up trace REST client: %w", err)
 	}
 
 	traceNode := trace.Spec.Node
@@ -200,18 +188,14 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 			trace.Spec.Node = node.Name
 		}
 
-		err = traceRestClient.
-			Post().
-			Namespace(trace.ObjectMeta.Namespace).
-			Resource("traces").
-			Body(trace).
-			Do(context.TODO()).
-			Error()
+		_, err := traceClient.GadgetV1alpha1().Traces("gadget").Create(
+			context.TODO(), trace, metav1.CreateOptions{},
+		)
 		if err != nil {
 			traceID, present := trace.ObjectMeta.Labels[GLOBAL_TRACE_ID]
 			if present {
 				// Clean before exiting!
-				deleteTraces(traceRestClient, traceID)
+				deleteTraces(traceClient, traceID)
 			}
 
 			return fmt.Errorf("Error creating trace on node %q: %w", node.Name, err)
@@ -224,7 +208,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 // updateTraceOperation updates operation for an already existing trace using
 // Kubernetes REST API.
 func updateTraceOperation(trace *gadgetv1alpha1.Trace, operation string) error {
-	traceRestClient, err := getRestClient()
+	traceClient, err := getTraceClient()
 	if err != nil {
 		return err
 	}
@@ -253,14 +237,11 @@ func updateTraceOperation(trace *gadgetv1alpha1.Trace, operation string) error {
 		return fmt.Errorf("Error marshalling the operation annotations: %w", err)
 	}
 
-	return traceRestClient.
-		Patch(types.MergePatchType).
-		Namespace(trace.ObjectMeta.Namespace).
-		Resource("traces").
-		Name(trace.ObjectMeta.Name).
-		Body(patchBytes).
-		Do(context.TODO()).
-		Error()
+	_, err = traceClient.GadgetV1alpha1().Traces("gadget").Patch(
+		context.TODO(), trace.ObjectMeta.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{},
+	)
+
+	return err
 }
 
 // CreateTrace initializes a trace object with its field according to the given
@@ -344,32 +325,21 @@ func CreateTrace(config *TraceConfig) (string, error) {
 
 // getTraceListFromOptions returns a list of traces corresponding to the given
 // options.
-func getTraceListFromOptions(listTracesOptions metav1.ListOptions) (gadgetv1alpha1.TraceList, error) {
-	traceRestClient, err := getRestClient()
+func getTraceListFromOptions(listTracesOptions metav1.ListOptions) (*gadgetv1alpha1.TraceList, error) {
+	traceClient, err := getTraceClient()
 	if err != nil {
-		return gadgetv1alpha1.TraceList{}, err
+		return nil, err
 	}
 
-	var traces gadgetv1alpha1.TraceList
-
-	err = traceRestClient.
-		Get().
-		Namespace("gadget").
-		Resource("traces").
-		VersionedParams(&listTracesOptions, scheme.ParameterCodec).
-		Do(context.TODO()).
-		Into(&traces)
-	if err != nil {
-		return traces, err
-	}
-
-	return traces, nil
+	return traceClient.GadgetV1alpha1().Traces("gadget").List(
+		context.TODO(), listTracesOptions,
+	)
 }
 
 // getTraceListFromID returns an array of pointers to gadgetv1alpha1.Trace
 // corresponding to the given traceID.
 // If no trace corresponds to this ID, error is set.
-func getTraceListFromID(traceID string) (gadgetv1alpha1.TraceList, error) {
+func getTraceListFromID(traceID string) (*gadgetv1alpha1.TraceList, error) {
 	var listTracesOptions = metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
 	}
@@ -406,7 +376,7 @@ func SetTraceOperation(traceID string, operation string) error {
 
 // waitForTraceState loops over all trace whom ID is given as parameter
 // waiting until they are in the expected state.
-func waitForTraceState(traceID string, expectedState string) (gadgetv1alpha1.TraceList, error) {
+func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.TraceList, error) {
 	start := time.Now()
 
 RetryLoop:
@@ -418,7 +388,7 @@ RetryLoop:
 
 		traces, err := getTraceListFromID(traceID)
 		if err != nil {
-			return gadgetv1alpha1.TraceList{}, err
+			return nil, err
 		}
 
 		for _, i := range traces.Items {
@@ -452,7 +422,7 @@ RetryLoop:
 		if successNodeCount == 0 {
 			printTraceFeedback(nodeWarnings, len(traces.Items))
 
-			return gadgetv1alpha1.TraceList{}, errors.New("Failed to run the gadget on all nodes: None of them succeeded")
+			return nil, errors.New("Failed to run the gadget on all nodes: None of them succeeded")
 		}
 
 		return traces, nil
@@ -504,7 +474,7 @@ func PrintTraceOutputFromStream(traceID string, expectedState string, params *Co
 		return err
 	}
 
-	return genericStreamsDisplay(params, &traces, transformLine)
+	return genericStreamsDisplay(params, traces, transformLine)
 }
 
 // PrintTraceOutputFromStatus is used to print trace output using function
@@ -521,12 +491,12 @@ func PrintTraceOutputFromStatus(traceID string, expectedState string, customResu
 
 // DeleteTrace deletes the traces for the given trace ID using RESTClient.
 func DeleteTrace(traceID string) error {
-	traceRestClient, err := getRestClient()
+	traceClient, err := getTraceClient()
 	if err != nil {
 		return err
 	}
 
-	deleteTraces(traceRestClient, traceID)
+	deleteTraces(traceClient, traceID)
 
 	return nil
 }
@@ -763,7 +733,7 @@ func genericStreamsDisplay(
 
 // DeleteTraceByGadgetName removes all traces with this gadget name
 func DeleteTracesByGadgetName(gadget string) error {
-	traceRestClient, err := getRestClient()
+	traceClient, err := getTraceClient()
 	if err != nil {
 		return err
 	}
@@ -771,13 +741,10 @@ func DeleteTracesByGadgetName(gadget string) error {
 	var listTracesOptions = metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("gadgetName=%s", gadget),
 	}
-	return traceRestClient.
-		Delete().
-		Namespace("gadget").
-		Resource("traces").
-		VersionedParams(&listTracesOptions, scheme.ParameterCodec).
-		Do(context.TODO()).
-		Error()
+
+	return traceClient.GadgetV1alpha1().Traces("gadget").DeleteCollection(
+		context.TODO(), metav1.DeleteOptions{}, listTracesOptions,
+	)
 }
 
 func ListTracesByGadgetName(gadget string) ([]gadgetv1alpha1.Trace, error) {
