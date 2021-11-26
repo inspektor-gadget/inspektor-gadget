@@ -30,6 +30,7 @@ require (
 	k8s.io/apimachinery v0.21.2
 	k8s.io/cli-runtime v0.20.6
 	k8s.io/client-go v0.21.2
+	k8s.io/code-generator v0.21.2
 	k8s.io/cri-api v0.20.6
 	sigs.k8s.io/controller-runtime v0.9.2
 	sigs.k8s.io/security-profiles-operator v0.3.0
