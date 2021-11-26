@@ -94,6 +94,7 @@ type TraceStatus struct {
 	OperationWarning string `json:"operationWarning,omitempty"`
 }
 
+// +genclient
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
