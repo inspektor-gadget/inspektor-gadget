@@ -20,7 +20,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 )
 

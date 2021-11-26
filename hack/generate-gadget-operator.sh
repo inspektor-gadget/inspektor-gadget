@@ -17,8 +17,8 @@ operator-sdk create api --group gadget --version v1alpha1 --kind Trace --resourc
 make manifests
 
 if [ "$1" = "gen" ] ; then
-  mkdir -p ../pkg/api/v1alpha1
-  cp -a api/v1alpha1/*.go ../pkg/api/v1alpha1/
+  mkdir -p ../pkg/apis/gadget/v1alpha1/
+  cp -a api/v1alpha1/*.go ../pkg/apis/gadget/v1alpha1/
 
   cp -a main.go ../gadget-container/gadgettracermanager/controller.go
 
@@ -33,7 +33,7 @@ if [ "$1" = "gen" ] ; then
 
   cd ..
 
-  git add pkg/api/v1alpha1/*.go
+  git add pkg/apis/gadget/v1alpha1/*.go
   git add gadget-container/gadgettracermanager/controller.go
   git add pkg/controllers/*.go
   git add pkg/resources/crd/bases/*.yaml

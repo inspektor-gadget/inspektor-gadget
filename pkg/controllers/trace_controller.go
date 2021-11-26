@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"

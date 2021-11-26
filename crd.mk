@@ -20,9 +20,7 @@ controller-gen: ## Download controller-gen locally if necessary.
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=gadget-manager-role webhook paths="./pkg/api/..." output:crd:artifacts:config=pkg/resources/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=gadget-manager-role webhook paths="./pkg/apis/..." output:crd:artifacts:config=pkg/resources/crd/bases
 
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./pkg/api/..."
-
-
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./pkg/apis/..."

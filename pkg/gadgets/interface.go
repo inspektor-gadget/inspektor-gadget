@@ -17,7 +17,7 @@ package gadgets
 import (
 	"sync"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 
 	log "github.com/sirupsen/logrus"
