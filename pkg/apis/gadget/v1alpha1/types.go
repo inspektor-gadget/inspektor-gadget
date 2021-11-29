@@ -29,7 +29,7 @@ type ContainerFilter struct {
 	// Podname selects events from this pod name
 	Podname string `json:"podname,omitempty"`
 
-	// Podname selects events from pods with these labels
+	// Labels selects events from pods with these labels
 	Labels map[string]string `json:"labels,omitempty"`
 
 	// ContainerName selects events from containers with this name
