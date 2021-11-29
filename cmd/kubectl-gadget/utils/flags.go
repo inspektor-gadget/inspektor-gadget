@@ -15,11 +15,14 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -111,6 +114,32 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 					return fmt.Errorf("labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])")
 				}
 				params.Labels[kv[0]] = kv[1]
+			}
+		}
+
+		// Verify if the node specified in the filter actually exist. This check
+		// will be removed when we will support the addition/deletion of nodes.
+		if params.Node != "" {
+			client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
+			if err != nil {
+				return fmt.Errorf("failed creating kubernetes client to check if node exists: %v", err)
+			}
+
+			nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
+			if err != nil {
+				return fmt.Errorf("failed gathering cluster nodes to check if node exists: %v", err)
+			}
+
+			nodeFound := false
+			for _, node := range nodes.Items {
+				if node.Name == params.Node {
+					nodeFound = true
+					break
+				}
+			}
+
+			if !nodeFound {
+				return fmt.Errorf("invalid filter: node %q does not exist", params.Node)
 			}
 		}
 
