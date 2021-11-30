@@ -234,8 +234,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if t.started {
-		trace.Status.OperationError = ""
-		trace.Status.Output = ""
+		gadgets.CleanupTraceStatus(trace)
 		trace.Status.State = "Started"
 		return
 	}
@@ -273,10 +272,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	traceSingleton.users++
 	t.started = true
 
-	trace.Status.OperationError = ""
-	trace.Status.Output = ""
+	gadgets.CleanupTraceStatus(trace)
 	trace.Status.State = "Started"
-	return
 }
 
 func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
@@ -410,5 +407,4 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	t.started = false
 
 	trace.Status.State = "Stopped"
-	return
 }
