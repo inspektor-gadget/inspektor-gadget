@@ -23,6 +23,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/seccomp"
 	socketcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/traceloop"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tracepkt"
 )
 
 func TraceFactories() map[string]gadgets.TraceFactory {
@@ -34,6 +35,7 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 		"seccomp":                seccomp.NewFactory(),
 		"socket-collector":       socketcollector.NewFactory(),
 		"traceloop":              traceloop.NewFactory(),
+		"tracepkt":               tracepkt.NewFactory(),
 	}
 }
 
@@ -42,5 +44,6 @@ func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
 		"dns":              dns.NewFactory(),
 		"socket-collector": socketcollector.NewFactory(),
 		"seccomp":          seccomp.NewFactory(),
+		"tracepkt":         tracepkt.NewFactory(),
 	}
 }

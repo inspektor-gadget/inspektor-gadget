@@ -1,0 +1,10 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: tracepkt
+  namespace: gadget
+spec:
+  node: aks-agentpool-27868156-vmss000000
+  gadget: tracepkt
+  runMode: Manual
+  outputMode: Stream

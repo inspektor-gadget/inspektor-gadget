@@ -1,0 +1,95 @@
+apiVersion: projectcalico.org/v3
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: tracepkt-demo
+spec:
+  order: 10
+  selector: role == 'demo'
+  types:
+  - Egress
+  egress:
+  - action: Allow
+    protocol: TCP
+    destination:
+      ports:
+      - 53
+  - action: Allow
+    protocol: UDP
+    destination:
+      ports:
+      - 53
+    metadata:
+      annotations:
+        reason: dns
+---
+apiVersion: projectcalico.org/v3
+kind: NetworkPolicy
+metadata:
+  name: block-metadata
+  namespace: tracepkt-demo
+spec:
+  order: 20
+  selector: role == 'demo'
+  types:
+  - Egress
+  egress:
+  - action: Deny
+    protocol: TCP
+    destination:
+      nets:
+      - 100.100.200.200/32
+      ports:
+      - 80
+    metadata:
+      annotations:
+        cloud: some
+  - action: Deny
+    protocol: TCP
+    destination:
+      nets:
+      - 169.254.169.254/32
+      ports:
+      - 80
+      - 443
+    metadata:
+      annotations:
+        cloud: most
+        reason: dangerous
+---
+apiVersion: projectcalico.org/v3
+kind: NetworkPolicy
+metadata:
+  name: allow-http
+  namespace: tracepkt-demo
+spec:
+  order: 30
+  selector: role == 'demo'
+  types:
+  - Egress
+  egress:
+  - action: Allow
+    protocol: TCP
+    destination:
+      ports:
+      - 80
+      - 443
+    metadata:
+      annotations:
+        reason: http
+---
+apiVersion: projectcalico.org/v3
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: tracepkt-demo
+spec:
+  order: 40
+  selector: role == 'demo'
+  types:
+  - Egress
+  egress:
+  - action: Deny
+    metadata:
+      annotations:
+        reason: default-deny
