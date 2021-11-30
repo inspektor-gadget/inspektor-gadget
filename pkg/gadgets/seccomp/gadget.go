@@ -165,17 +165,9 @@ func genPubSubKey(name string) pubSubKey {
 func seccompProfileAddLabelsAndAnnotations(
 	r *seccompprofilev1alpha1.SeccompProfile,
 	trace *gadgetv1alpha1.Trace,
-	event *pubsub.PubSubEvent,
+	podName string,
 	containerName string,
 ) {
-	var podName string
-	if event != nil {
-		podName = fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
-		containerName = event.Container.Name
-	} else {
-		podName = fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
-	}
-
 	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/trace"] = traceName
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/node"] = trace.Spec.Node
@@ -217,7 +209,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 
 	podName := fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
 	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
-	seccompProfileAddLabelsAndAnnotations(r, trace, &event, "")
+	seccompProfileAddLabelsAndAnnotations(r, trace, podName, event.Container.Name)
 
 	switch trace.Spec.OutputMode {
 	case "ExternalResource":
@@ -383,7 +375,10 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 		} else {
 			r = syscallArrToSeccompPolicy(trace.ObjectMeta.Namespace, trace.Spec.Output, "", b)
 		}
-		seccompProfileAddLabelsAndAnnotations(r, trace, nil, containerName)
+
+		podName := fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
+		seccompProfileAddLabelsAndAnnotations(r, trace, podName, containerName)
+
 		err := t.client.Create(context.TODO(), r)
 		if err != nil {
 			trace.Status.OperationError = fmt.Sprintf("Failed to update resource: %s", err)
