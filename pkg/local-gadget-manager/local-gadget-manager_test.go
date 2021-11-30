@@ -262,8 +262,8 @@ func TestCollector(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer1", "start")
+	err = localGadgetManager.Operation("my-tracer1", "collect")
 	if err != nil {
-		t.Fatalf("Failed to start the tracer: %s", err)
+		t.Fatalf("Failed to run the tracer: %s", err)
 	}
 }

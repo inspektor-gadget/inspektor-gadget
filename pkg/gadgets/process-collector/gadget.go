@@ -50,18 +50,18 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	}
 
 	return map[string]gadgets.TraceOperation{
-		"start": {
+		"collect": {
 			Doc: "Create a snapshot of the currently running processes. " +
 				"Once taken, the snapshot is not updated automatically. " +
-				"However one can call the start operation again at any time to update the snapshot.",
+				"However one can call the collect operation again at any time to update the snapshot.",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
-				f.LookupOrCreate(name, n).(*Trace).Start(trace)
+				f.LookupOrCreate(name, n).(*Trace).Collect(trace)
 			},
 		},
 	}
 }
 
-func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
+func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 	selector := gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter)
 	if len(t.resolver.GetContainersBySelector(selector)) == 0 {
 		gadgets.CleanupTraceStatus(trace)

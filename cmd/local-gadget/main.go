@@ -26,7 +26,7 @@ import (
 	"github.com/chzyer/readline"
 	"github.com/spf13/cobra"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
+	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
 )
 
 // This variable is used by the "version" command and is set during build.
@@ -105,7 +105,14 @@ func newRootCmd() *cobra.Command {
 					fmt.Println(err.Error())
 					return
 				}
-				err = localGadgetManager.Operation(name, "start")
+
+				operations := localGadgetManager.ListOperations(name)
+				if len(operations) == 1 {
+					err = localGadgetManager.Operation(name, operations[0])
+				} else {
+					err = localGadgetManager.Operation(name, "start")
+				}
+
 				if err != nil {
 					fmt.Println(err.Error())
 					return
