@@ -41,6 +41,11 @@ type Trace struct {
 	client   client.Client
 
 	started bool
+
+	// policyGenerated is used to know if there was a policy generated
+	// at pod termination so that the Generate() operation does not have
+	// to notify that it did not find a pod that matches the filter.
+	policyGenerated bool
 }
 
 type TraceFactory struct {
@@ -324,7 +329,9 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 		err := t.client.Create(context.TODO(), r)
 		if err != nil {
 			log.Errorf("Failed to create Seccomp Profile for pod %s: %s", podName, err)
+			return
 		}
+		t.policyGenerated = true
 	case "Stream":
 		log.Infof("Trace %s: adding SeccompProfile for pod %s in stream", traceName, podName)
 		yamlOutput, err := k8syaml.Marshal(r)
@@ -336,6 +343,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 			gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
 			fmt.Sprintf("%s\n---\n", string(yamlOutput)),
 		)
+		t.policyGenerated = true
 	}
 }
 
@@ -343,6 +351,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if t.started {
 		gadgets.CleanupTraceStatus(trace)
 		trace.Status.State = "Started"
+
+		t.policyGenerated = false
 		return
 	}
 
@@ -378,6 +388,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	traceSingleton.users++
 	t.started = true
+	t.policyGenerated = false
 
 	gadgets.CleanupTraceStatus(trace)
 	trace.Status.State = "Started"
@@ -411,11 +422,14 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 			trace.Spec.Filter.ContainerName,
 		)
 		if mntns == 0 {
-			trace.Status.OperationWarning = fmt.Sprintf("Container %s/%s/%s not found",
-				trace.Spec.Filter.Namespace,
-				trace.Spec.Filter.Podname,
-				trace.Spec.Filter.ContainerName,
-			)
+			// Notify this only if the policy was not already generated at pod termination
+			if !t.policyGenerated {
+				trace.Status.OperationWarning = fmt.Sprintf("Container %s/%s/%s not found",
+					trace.Spec.Filter.Namespace,
+					trace.Spec.Filter.Podname,
+					trace.Spec.Filter.ContainerName,
+				)
+			}
 			return
 		}
 		containerName = trace.Spec.Filter.ContainerName
@@ -425,10 +439,13 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 			trace.Spec.Filter.Podname,
 		)
 		if len(mntnsMap) == 0 {
-			trace.Status.OperationWarning = fmt.Sprintf("Pod %s/%s not found",
-				trace.Spec.Filter.Namespace,
-				trace.Spec.Filter.Podname,
-			)
+			// Notify this only if the policy was not already generated at pod termination
+			if !t.policyGenerated {
+				trace.Status.OperationWarning = fmt.Sprintf("Pod %s/%s not found",
+					trace.Spec.Filter.Namespace,
+					trace.Spec.Filter.Podname,
+				)
+			}
 			return
 		}
 
