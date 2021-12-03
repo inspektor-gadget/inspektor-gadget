@@ -188,7 +188,7 @@ spec:
 </div>
 
 <div class="property-description">
-<p>Podname selects events from pods with these labels</p>
+<p>Labels selects events from pods with these labels</p>
 
 </div>
 

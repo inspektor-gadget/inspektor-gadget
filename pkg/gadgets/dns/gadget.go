@@ -23,7 +23,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	dnstracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/tracer"
 	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"

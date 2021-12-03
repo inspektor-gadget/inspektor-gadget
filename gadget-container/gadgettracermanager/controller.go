@@ -29,9 +29,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
-	gadgetkinvolkiov1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/api/v1alpha1"
+	gadgetkinvolkiov1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/controllers"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
+	gadgetcollection "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
 	//+kubebuilder:scaffold:imports

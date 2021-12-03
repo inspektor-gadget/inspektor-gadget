@@ -47,7 +47,7 @@ spec:
                   labels:
                     additionalProperties:
                       type: string
-                    description: Podname selects events from pods with these labels
+                    description: Labels selects events from pods with these labels
                     type: object
                   namespace:
                     description: Namespace selects events from this pod namespace
