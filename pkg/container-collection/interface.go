@@ -26,6 +26,10 @@ type ContainerResolver interface {
 	// specified in arguments or zero if not found
 	LookupMntnsByContainer(namespace, pod, container string) uint64
 
+	// LookupContainerByMntns returns a container by its mount namespace
+	// inode id. If not found nil is returned.
+	LookupContainerByMntns(mntnsid uint64) *pb.ContainerDefinition
+
 	// LookupMntnsByPod returns the mount namespace inodes of all containers
 	// belonging to the pod specified in arguments, indexed by the name of the
 	// containers or an empty map if not found
