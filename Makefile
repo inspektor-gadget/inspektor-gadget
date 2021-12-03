@@ -9,6 +9,8 @@ MINIKUBE ?= minikube
 GOHOSTOS ?= $(shell go env GOHOSTOS)
 GOHOSTARCH ?= $(shell go env GOHOSTARCH)
 
+ENABLE_BTFGEN ?= false
+
 # Adds a '-dirty' suffix to version string if there are uncommitted changes
 changes := $(shell git status --porcelain)
 ifeq ($(changes),)
@@ -110,7 +112,8 @@ install/kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
 # gadget container
 .PHONY: gadget-container
 gadget-container:
-	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget.Dockerfile .
+	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget.Dockerfile \
+		--build-arg ENABLE_BTFGEN=$(ENABLE_BTFGEN) .
 
 .PHONY: push-gadget-container
 push-gadget-container:
@@ -168,3 +171,7 @@ minikube-install: gadget-container kubectl-gadget
 		--image-pull-policy=Never | \
 		sed 's/initialDelaySeconds: 10/initialDelaySeconds: '$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS)'/g' | \
 		kubectl apply -f -
+
+.PHONY: btfgen
+btfgen:
+	./tools/btfgen.sh
