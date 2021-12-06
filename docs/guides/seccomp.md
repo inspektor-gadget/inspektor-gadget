@@ -315,7 +315,7 @@ spec:
   securityContext:
     seccompProfile:
       type: Localhost
-      localhostProfile: operator/seccomp-demo/hello-profile
+      localhostProfile: operator/seccomp-demo/hello-profile.json
 ```
 
 We have this change already applied in the `confined.yaml` file. To apply
@@ -349,10 +349,8 @@ pod:
 
 ```bash
 $ kubectl exec -it -n seccomp-demo hello-python -- /bin/bash
-OCI runtime exec failed: exec failed: container_linux.go:380: starting
-container process caused: exec: "/bin/bash": stat /bin/bash: operation not
-permitted: unknown
-command terminated with exit code 126
+bash: initialize_job_control: getpgrp failed: Success
+command terminated with exit code 1
 ```
 
 We see that the seccomp profile is preventing this execution, and it will
@@ -375,13 +373,7 @@ namespace "seccomp-demo" deleted
    correctly. You can also look at the `Status` field of the `Trace` for
    other possible errors.
 
-2. If applying the policy causes the pod not to start, check that you're
-   setting `AllowPrivilegeEscalation=false` in the container's security
-   context, as having privilege escalation enabled doesn't work well with
-   seccomp. See [#267](https://github.com/kinvolk/inspektor-gadget/issues/267)
-   for more information.
-
-3. If the confined pod fails to start with this error:
+2. If the confined pod fails to start with this error:
    `cannot load seccomp profile "/var/lib/kubelet/seccomp/operator/seccomp-demo/hello-profile.json"`,
    check that the operator is correctly installed and all pods involved are
    running.

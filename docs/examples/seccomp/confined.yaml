@@ -19,8 +19,6 @@ spec:
     volumeMounts:
     - name: app-script
       mountPath: /app/
-    securityContext:
-      allowPrivilegeEscalation: false
   volumes:
   - name: app-script
     configMap:
