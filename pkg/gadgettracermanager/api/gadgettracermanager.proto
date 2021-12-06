@@ -95,6 +95,7 @@ message ContainerDefinition {
   uint32 pid = 12;
 
   uint64 netns = 13;
+  string veth_peer_name = 14;
 }
 
 message DumpStateRequest {

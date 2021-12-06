@@ -17,12 +17,15 @@ package containercollection
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strings"
 
 	dockertypes "github.com/docker/docker/api/types"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	dockerclient "github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -427,6 +430,96 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 				return true
 			}
 			container.Netns = netns
+			return true
+		})
+		return nil
+	}
+}
+
+func netnsEnter(pid int, f func() error) error {
+	// Lock the OS Thread so we don't accidentally switch namespaces
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	// Save the current network namespace
+	origns, _ := netns.Get()
+	defer origns.Close()
+
+	netnsHandle, err := netns.GetFromPid(pid)
+	if err != nil {
+		return err
+	}
+	defer netnsHandle.Close()
+	err = netns.Set(netnsHandle)
+	if err != nil {
+		return err
+	}
+
+	// Switch back to the original namespace
+	defer netns.Set(origns)
+
+	return f()
+}
+
+func findPeerIndexInCurrentNetns() (int, error) {
+	links, err := netlink.LinkList()
+	if err != nil {
+		return -1, err
+	}
+
+	for _, l := range links {
+		switch l := l.(type) {
+		case *netlink.Veth:
+			peerIndex, err := netlink.VethPeerIndex(l)
+			if err != nil {
+				return -1, err
+			}
+			return peerIndex, nil
+		default:
+			continue
+		}
+	}
+	return -1, fmt.Errorf("no veth found")
+}
+
+// WithVethEnrichment enables an enricher to add the name of the veth in the host namespace for that container
+func WithVethEnrichment() ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *pb.ContainerDefinition) bool {
+			// skip containers with host netns
+			if cc.netnsHost == container.Netns {
+				return true
+			}
+
+			pid := int(container.Pid)
+			if pid == 0 {
+				log.Errorf("veth enricher: failed to enrich container %s with pid zero", container.Id)
+				return true
+			}
+
+			var peerIndex int
+			err := netnsEnter(pid, func() error {
+				var err error
+				peerIndex, err = findPeerIndexInCurrentNetns()
+				return err
+			})
+			if err != nil {
+				log.Errorf("veth enricher: failed to enter net namespace on container %s: %s", container.Id, err)
+				return true
+			}
+
+			pl, err := netlink.LinkByIndex(peerIndex)
+			if err != nil {
+				log.Errorf("veth enricher: failed to get veth peer link on container %s: %s", container.Id, err)
+				return true
+			}
+			peerLink, ok := pl.(*netlink.Veth)
+			if !ok {
+				log.Errorf("veth enricher: veth peer link of wrong type on container %s: %s", container.Id, err)
+				return true
+			}
+
+			container.VethPeerName = peerLink.Name
 			return true
 		})
 		return nil

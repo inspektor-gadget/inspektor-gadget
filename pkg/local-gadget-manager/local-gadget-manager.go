@@ -288,6 +288,7 @@ func NewManager() (*LocalGadgetManager, error) {
 		containercollection.WithPubSub(),
 		containercollection.WithCgroupEnrichment(),
 		containercollection.WithLinuxNamespaceEnrichment(),
+		containercollection.WithVethEnrichment(),
 		containercollection.WithDockerEnrichment(),
 		containercollection.WithRuncFanotify(),
 	)

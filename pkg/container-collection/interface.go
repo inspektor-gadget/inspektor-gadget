@@ -31,6 +31,9 @@ type ContainerResolver interface {
 	// containers or an empty map if not found
 	LookupMntnsByPod(namespace, pod string) map[string]uint64
 
+	// LookupPodByNetns TODO
+	LookupPodByNetns(netns uint64) (found, host bool, namespace, pod string)
+
 	// LookupPIDByContainer returns the PID of the container
 	// specified in arguments or zero if not found
 	LookupPIDByContainer(namespace, pod, container string) uint32

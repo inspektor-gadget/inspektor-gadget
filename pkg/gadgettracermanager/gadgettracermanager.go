@@ -407,6 +407,7 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 	if !conf.TestOnly {
 		opts = append(opts, containercollection.WithCgroupEnrichment())
 		opts = append(opts, containercollection.WithLinuxNamespaceEnrichment())
+		opts = append(opts, containercollection.WithVethEnrichment())
 		opts = append(opts, containercollection.WithKubernetesEnrichment(g.nodeName))
 	}
 
