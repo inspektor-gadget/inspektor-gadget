@@ -164,7 +164,6 @@ minikube-install: gadget-container kubectl-gadget
 	# Remove all resources created by Inspektor Gadget.
 	./kubectl-gadget undeploy || true
 	time kubectl wait --for=delete namespace gadget 2>/dev/null || true
-	time kubectl wait --for=delete daemonset -n kube-system gadget 2>/dev/null || true
 	./kubectl-gadget deploy --hook-mode=fanotify \
 		--image-pull-policy=Never | \
 		sed 's/initialDelaySeconds: 10/initialDelaySeconds: '$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS)'/g' | \

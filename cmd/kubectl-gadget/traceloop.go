@@ -129,7 +129,7 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 	var listOptions = metav1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
 	}
-	pods, err := client.CoreV1().Pods("kube-system").List(context.TODO(), listOptions)
+	pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), listOptions)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot find gadget pods: %q", err)
 	}

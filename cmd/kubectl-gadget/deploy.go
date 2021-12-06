@@ -86,7 +86,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: gadget
-  namespace: kube-system
+  namespace: gadget
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -95,7 +95,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: gadget
-  namespace: kube-system
+  namespace: gadget
 roleRef:
   kind: ClusterRole
   name: cluster-admin
@@ -105,7 +105,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: gadget
-  namespace: kube-system
+  namespace: gadget
   labels:
     k8s-app: gadget
 spec:
