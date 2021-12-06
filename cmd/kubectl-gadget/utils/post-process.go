@@ -29,7 +29,9 @@ type PostProcess struct {
 
 type postProcessSingle struct {
 	orig             io.Writer
-	transform        func(string) string
+	Node             string
+	callback         func(line string, node string)
+	transform        func(line string) string
 	firstLinePrinted *uint64
 	buffer           string // buffer to save incomplete strings
 	skipFirstLine    bool
@@ -37,12 +39,25 @@ type postProcessSingle struct {
 }
 
 type PostProcessConfig struct {
-	Flows         int                 // number of flow this should process
-	Transform     func(string) string // function to be called to transform the output before printing
-	OutStream     io.Writer           // stream to print the standard output
-	ErrStream     io.Writer           // stream to print the error output
-	SkipFirstLine bool                // only print the first line once
-	Verbose       bool                // Verbose mode
+	// Number of flow this should process.
+	Flows int
+
+	// Function to be called each time there is new data from the node.
+	Callback func(line string, node string)
+
+	// Function to be called to transform the output before printing.
+	// It's only called if Callback is nil.
+	Transform func(line string) string
+
+	// Streams to print the standard and error outputs.
+	OutStream io.Writer
+	ErrStream io.Writer
+
+	// Only print the first line once.
+	SkipFirstLine bool
+
+	// Verbose mode
+	Verbose bool
 }
 
 func NewPostProcess(config *PostProcessConfig) *PostProcess {
@@ -55,6 +70,7 @@ func NewPostProcess(config *PostProcessConfig) *PostProcess {
 	for i := 0; i < config.Flows; i++ {
 		p.OutStreams[i] = &postProcessSingle{
 			orig:             config.OutStream,
+			callback:         config.Callback,
 			transform:        config.Transform,
 			firstLinePrinted: &p.firstLinePrinted,
 			skipFirstLine:    config.SkipFirstLine,
@@ -63,6 +79,7 @@ func NewPostProcess(config *PostProcessConfig) *PostProcess {
 
 		p.ErrStreams[i] = &postProcessSingle{
 			orig:      config.ErrStream,
+			callback:  config.Callback,
 			transform: config.Transform,
 		}
 	}
@@ -89,11 +106,16 @@ func (post *postProcessSingle) Write(p []byte) (n int, err error) {
 			}
 		}
 
-		if post.transform != nil {
-			line = post.transform(line)
-		}
-		if line != "" {
-			fmt.Fprintf(post.orig, "%s\n", line)
+		if post.callback != nil {
+			post.callback(line, post.Node)
+		} else {
+			if post.transform != nil {
+				line = post.transform(line)
+			}
+
+			if line != "" {
+				fmt.Fprintf(post.orig, "%s\n", line)
+			}
 		}
 	}
 
