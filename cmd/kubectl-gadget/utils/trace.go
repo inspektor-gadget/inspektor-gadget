@@ -589,7 +589,8 @@ func sigHandler(traceID *string) {
 // printing function.
 // This function is must be used by trace which has TraceOutputMode set to
 // Stream.
-func PrintTraceOutputFromStream(traceID string, expectedState string, params *CommonFlags, transformLine func(string) string) error {
+func PrintTraceOutputFromStream(traceID string, expectedState string, params *CommonFlags,
+	transformLine func(string) string) error {
 	traces, err := waitForTraceState(traceID, expectedState)
 	if err != nil {
 		return err
@@ -755,6 +756,32 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 	return PrintTraceOutputFromStream(traceID, config.TraceOutputState, config.CommonFlags, transformLine)
 }
 
+// RunTraceStreamCallback creates a stream trace and calls callback each
+// time one of the tracers produces a new line on any of the nodes.
+func RunTraceStreamCallback(config *TraceConfig, callback func(line string, node string)) error {
+	var traceID string
+
+	sigHandler(&traceID)
+
+	if config.TraceOutputMode != "Stream" {
+		return errors.New("TraceOutputMode must be Stream")
+	}
+
+	traceID, err := CreateTrace(config)
+	if err != nil {
+		return fmt.Errorf("error creating trace: %w", err)
+	}
+
+	defer DeleteTrace(traceID)
+
+	traces, err := waitForTraceState(traceID, config.TraceOutputState)
+	if err != nil {
+		return err
+	}
+
+	return genericStreams(config.CommonFlags, traces, callback, nil)
+}
+
 // RunTraceAndPrintStatusOutput creates a trace, prints its output and deletes
 // it.
 // It equals calling separately CreateTrace(), then PrintTraceOutputFromStatus()
@@ -785,6 +812,22 @@ func genericStreamsDisplay(
 	results *gadgetv1alpha1.TraceList,
 	transformLine func(string) string,
 ) error {
+	transform := func(line string) string {
+		if params.OutputMode == OutputModeJson {
+			return line
+		}
+		return transformLine(line)
+	}
+
+	return genericStreams(params, results, nil, transform)
+}
+
+func genericStreams(
+	params *CommonFlags,
+	results *gadgetv1alpha1.TraceList,
+	callback func(line string, node string),
+	transform func(line string) string,
+) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	completion := make(chan string)
@@ -792,13 +835,6 @@ func genericStreamsDisplay(
 	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
 		return fmt.Errorf("Error setting up Kubernetes client: %w", err)
-	}
-
-	callback := func(line string) string {
-		if params.OutputMode == OutputModeJson {
-			return line
-		}
-		return transformLine(line)
 	}
 
 	verbose := false
@@ -811,7 +847,8 @@ func genericStreamsDisplay(
 		Flows:     len(results.Items),
 		OutStream: os.Stdout,
 		ErrStream: os.Stderr,
-		Transform: callback,
+		Callback:  callback,
+		Transform: transform,
 		Verbose:   verbose,
 	}
 
@@ -826,6 +863,7 @@ func genericStreamsDisplay(
 		go func(nodeName, namespace, name string, index int) {
 			cmd := fmt.Sprintf("exec gadgettracermanager -call receive-stream -tracerid trace_%s_%s",
 				namespace, name)
+			postProcess.OutStreams[index].Node = nodeName
 			err := ExecPod(client, nodeName, cmd,
 				postProcess.OutStreams[index], postProcess.ErrStreams[index])
 			if err == nil {
