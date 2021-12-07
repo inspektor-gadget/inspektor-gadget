@@ -274,7 +274,14 @@ $ kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/security-pr
 Once installed, the seccomp gadget can generate `seccompprofile` resources
 that can be used directly by our pods.
 
-To do this, we need to use the `--seccomp-profile` option of the command line.
+We need to use the `--output-mode` (or simply `-m`) option to create the
+`SeccompProfile` resource instead of printing the policy in the terminal
+(default behaviour). Consider that using the option `--profile-prefix`,
+we can specify the namespace and the prefix-name of the resource:
+`namespace/prefix-name`. Notice the namespace is not mandatory.
+If the option `--profile-prefix` is not used, the resource will be
+automatically named using the pod name, and it will be created in the
+trace's namespace (`gadget` if kubectl-gadget CLI was used).
 
 ```bash
 # Delete the pod.
@@ -282,7 +289,7 @@ $ kubectl delete -f docs/examples/seccomp/unconfined.yaml
 pod "hello-python" deleted
 
 # Create the pod and start a new trace again
-$ kubectl gadget seccomp-advisor start -n seccomp-demo -m seccomp-profile --seccomp-profile-name seccomp-demo/hello-profile -p hello-python
+$ kubectl gadget seccomp-advisor start -m seccomp-profile -n seccomp-demo -p hello-python
 TAyR9BXes6GU04rG
 $ kubectl apply -f docs/examples/seccomp/unconfined.yaml
 pod/hello-python created
@@ -300,9 +307,9 @@ $ kill %1
 
 # Now stop the gadget to generate the seccomp profile.
 $ kubectl gadget seccomp-advisor stop TAyR9BXes6GU04rG
-$ kubectl get -n seccomp-demo seccompprofile
+$ kubectl get seccompprofile -n gadget
 NAME            STATUS      AGE
-hello-profile   Installed   42s
+hello-python    Installed   9s
 ```
 
 This profile can now be used as the seccomp profile for our pod. To do
@@ -315,7 +322,7 @@ spec:
   securityContext:
     seccompProfile:
       type: Localhost
-      localhostProfile: operator/seccomp-demo/hello-profile.json
+      localhostProfile: operator/gadget/hello-python.json
 ```
 
 We have this change already applied in the `confined.yaml` file. To apply
