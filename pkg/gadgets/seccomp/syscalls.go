@@ -86,7 +86,7 @@ func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
 	return s
 }
 
-func syscallArrToSeccompPolicy(namespace, name, generateName string, v []byte) *seccompprofilev1alpha1.SeccompProfile {
+func syscallArrToSeccompPolicy(profileName *SeccompProfileNsName, v []byte) *seccompprofilev1alpha1.SeccompProfile {
 	syscalls := []*seccompprofilev1alpha1.Syscall{
 		{
 			Names:  syscallArrToNameList(v),
@@ -97,11 +97,9 @@ func syscallArrToSeccompPolicy(namespace, name, generateName string, v []byte) *
 
 	ret := seccompprofilev1alpha1.SeccompProfile{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    namespace,
-			Name:         name,
-			GenerateName: generateName,
-			Annotations:  map[string]string{},
-			Labels:       map[string]string{},
+			Namespace:   profileName.namespace,
+			Annotations: map[string]string{},
+			Labels:      map[string]string{},
 		},
 		Spec: seccompprofilev1alpha1.SeccompProfileSpec{
 			BaseProfileName: "",
@@ -110,6 +108,13 @@ func syscallArrToSeccompPolicy(namespace, name, generateName string, v []byte) *
 			Syscalls:        syscalls,
 		},
 	}
+
+	if profileName.generateName {
+		ret.ObjectMeta.GenerateName = profileName.name + "-"
+	} else {
+		ret.ObjectMeta.Name = profileName.name
+	}
+
 	for _, a := range arches() {
 		arch := seccompprofilev1alpha1.Arch(a)
 		ret.Spec.Architectures = append(ret.Spec.Architectures, &arch)
