@@ -51,8 +51,8 @@ var seccompAdvisorListCmd = &cobra.Command{
 }
 
 var (
-	outputMode         string
-	seccompProfileName string
+	outputMode    string
+	profilePrefix string
 )
 
 func init() {
@@ -65,9 +65,9 @@ func init() {
 		"output-mode", "m",
 		"terminal",
 		"The trace output mode, possibles values are terminal and seccomp-profile.")
-	seccompAdvisorStartCmd.PersistentFlags().StringVar(&seccompProfileName,
-		"seccomp-profile-name", "",
-		"Name of the seccomp profile to be created when using --output-mode=seccomp-profile.\nNamespace can be specified by using namespace/profile-name.")
+	seccompAdvisorStartCmd.PersistentFlags().StringVar(&profilePrefix,
+		"profile-prefix", "",
+		"Name prefix of the seccomp profile to be created when using --output-mode=seccomp-profile.\nNamespace can be specified by using namespace/profile-prefix.")
 
 	seccompAdvisorCmd.AddCommand(seccompAdvisorStopCmd)
 	seccompAdvisorCmd.AddCommand(seccompAdvisorListCmd)
@@ -88,7 +88,7 @@ func outputModeToTraceOutputMode(outputMode string) (string, error) {
 // parameters.
 func runSeccompAdvisorStart(cmd *cobra.Command, args []string) error {
 	if params.Podname == "" {
-		return errors.New("Usage: kubectl gadget seccompadvisor start -p podname")
+		return errors.New("usage: kubectl gadget seccompadvisor start -p podname")
 	}
 
 	traceOutputMode, err := outputModeToTraceOutputMode(outputMode)
@@ -96,19 +96,15 @@ func runSeccompAdvisorStart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if traceOutputMode != "ExternalResource" && seccompProfileName != "" {
-		return errors.New("You can only use --seccomp-profile-name with --output seccomp-profile.")
-	}
-
-	if traceOutputMode == "ExternalResource" && seccompProfileName == "" {
-		return errors.New("You must specify --seccomp-profile-name when using --output seccomp-profile.")
+	if traceOutputMode != "ExternalResource" && profilePrefix != "" {
+		return errors.New("you can only use --profile-prefix with --output seccomp-profile")
 	}
 
 	config := &utils.TraceConfig{
 		GadgetName:        "seccomp",
 		Operation:         "start",
 		TraceOutputMode:   traceOutputMode,
-		TraceOutput:       seccompProfileName,
+		TraceOutput:       profilePrefix,
 		TraceInitialState: "Started",
 		CommonFlags:       &params,
 	}
@@ -127,13 +123,13 @@ func runSeccompAdvisorStart(cmd *cobra.Command, args []string) error {
 // as parameter.
 func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.New("Usage: kubectl gadget seccomp-advisor stop global-trace-id\n")
+		return errors.New("usage: kubectl gadget seccomp-advisor stop global-trace-id")
 	}
 
 	callback := func(results []gadgetv1alpha1.Trace) error {
 		for _, i := range results {
 			if i.Spec.OutputMode == "ExternalResource" {
-				fmt.Printf("Successfully created seccomp profile %q!\n", i.Spec.Output)
+				fmt.Printf("Successfully created seccomp profile\n")
 
 				return nil
 			}
