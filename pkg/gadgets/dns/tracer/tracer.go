@@ -19,7 +19,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
-	"runtime"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -27,8 +26,9 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
 	log "github.com/sirupsen/logrus"
-	"github.com/vishvananda/netns"
 	"golang.org/x/sys/unix"
+
+	"github.com/kinvolk/inspektor-gadget/pkg/netnsenter"
 )
 
 // #include "bpf/dns-common.h"
@@ -66,38 +66,25 @@ type Tracer struct {
 // MIT License
 // https://github.com/cilium/ebpf/blob/eaa1fe7482d837490c22d9d96a788f669b9e3843/example_sock_elf_test.go#L146-L166
 func openRawSock(pid uint32) (int, error) {
-	if pid != 0 {
-		// Lock the OS Thread so we don't accidentally switch namespaces
-		runtime.LockOSThread()
-		defer runtime.UnlockOSThread()
+	var sock int
+	err := netnsenter.NetnsEnter(int(pid), func() error {
+		var err error
 
-		// Save the current network namespace
-		origns, _ := netns.Get()
-		defer origns.Close()
-
-		netnsHandle, err := netns.GetFromPid(int(pid))
+		sock, err = syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW|syscall.SOCK_NONBLOCK|syscall.SOCK_CLOEXEC, int(htons(syscall.ETH_P_ALL)))
 		if err != nil {
-			return -1, err
+			return err
 		}
-		defer netnsHandle.Close()
-		err = netns.Set(netnsHandle)
-		if err != nil {
-			return -1, err
+		sll := syscall.SockaddrLinklayer{
+			Ifindex:  0, // 0 matches any interface
+			Protocol: htons(syscall.ETH_P_ALL),
 		}
+		if err := syscall.Bind(sock, &sll); err != nil {
+			return err
+		}
+		return nil
 
-		// Switch back to the original namespace
-		defer netns.Set(origns)
-	}
-
-	sock, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW|syscall.SOCK_NONBLOCK|syscall.SOCK_CLOEXEC, int(htons(syscall.ETH_P_ALL)))
+	})
 	if err != nil {
-		return -1, err
-	}
-	sll := syscall.SockaddrLinklayer{
-		Ifindex:  0, // 0 matches any interface
-		Protocol: htons(syscall.ETH_P_ALL),
-	}
-	if err := syscall.Bind(sock, &sll); err != nil {
 		return -1, err
 	}
 	return sock, nil
