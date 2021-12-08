@@ -123,7 +123,7 @@ again:
 
 	// 3. gadget cluster role binding
 	err = k8sClient.RbacV1().ClusterRoleBindings().Delete(
-		context.TODO(), "gadget", metav1.DeleteOptions{},
+		context.TODO(), "gadget-cluster-role-binding", metav1.DeleteOptions{},
 	)
 	if err != nil {
 		errs = append(
@@ -131,8 +131,18 @@ again:
 		)
 	}
 
-	// 4. gadget namespace (it also removes daemonset as well as serviceaccount
-	// since they live in this namespace).
+	// 4. gadget cluster role
+	err = k8sClient.RbacV1().ClusterRoles().Delete(
+		context.TODO(), "gadget-cluster-role", metav1.DeleteOptions{},
+	)
+	if err != nil {
+		errs = append(
+			errs, fmt.Sprintf("failed to remove \"gadget\" cluster role: %s", err),
+		)
+	}
+
+	// 5. gadget namespace (it also removes daemonset, serviceaccount, rolebinding
+	// and role since they live in this namespace).
 	err = k8sClient.CoreV1().Namespaces().Delete(
 		context.TODO(), "gadget", metav1.DeleteOptions{},
 	)
