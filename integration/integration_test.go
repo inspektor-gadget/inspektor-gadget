@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 )
 
 var integration = flag.Bool("integration", false, "run integration tests")
@@ -29,6 +30,15 @@ var image = flag.String("image", "", "gadget container image")
 func runCommands(cmds []*command, t *testing.T) {
 	defer func() {
 		for _, cmd := range cmds {
+			if cmd.startAndStop && cmd.started {
+				// Wait a bit before stopping the command.
+				time.Sleep(10 * time.Second)
+
+				cmd.stop(t)
+
+				continue
+			}
+
 			if !cmd.cleanup {
 				continue
 			}

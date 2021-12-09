@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"testing"
@@ -31,6 +32,16 @@ type command struct {
 	// cmd is a string of the command which will be run.
 	cmd string
 
+	// command is a Cmd object used when we want to start the command, then other
+	// do stuff and wait for its completion.
+	command *exec.Cmd
+
+	// stdout contains command standard output when started using Startcommand().
+	stdout bytes.Buffer
+
+	// stderr contains command standard output when started using Startcommand().
+	stderr bytes.Buffer
+
 	// expectedString contains the exact expected output of the command.
 	expectedString string
 
@@ -40,6 +51,14 @@ type command struct {
 	// cleanup indicates this command is used to clean resource and should not be
 	// skipped even if previous commands failed.
 	cleanup bool
+
+	// startAndStop indicates this command should first be started then stopped.
+	// It corresponds to gadget like execsnoop which wait user to type Ctrl^C.
+	startAndStop bool
+
+	// started indicates this command was started.
+	// It is only used by command which have startAndStop set.
+	started bool
 }
 
 var deployInspektorGadget *command = &command{
@@ -64,6 +83,19 @@ var createTestNamespace *command = &command{
 	expectedString: "namespace/test-ns created\n",
 }
 
+var waitUntilTestPodReady *command = &command{
+	name:           "Wait until test pod ready",
+	cmd:            "kubectl wait pod --for condition=ready -n test-ns test-pod",
+	expectedString: "pod/test-pod condition met\n",
+}
+
+var deleteTestPod *command = &command{
+	name:           "Delete test pod",
+	cmd:            "kubectl delete pod -n test-ns test-pod",
+	expectedString: "pod \"test-pod\" deleted\n",
+	cleanup:        true,
+}
+
 var cleanupTestNamespace *command = &command{
 	name:           "cleanup test namespace",
 	cmd:            "kubectl delete ns test-ns",
@@ -79,8 +111,19 @@ var cleanupInspektorGadget *command = &command{
 }
 
 // run runs the command on the given as parameter test.
-// It returns true to indicate the command failed, false if it succeeded.
 func (c *command) run(t *testing.T) {
+	if c.startAndStop {
+		if !c.started {
+			c.start(t)
+
+			c.started = true
+		} else {
+			c.stop(t)
+		}
+
+		return
+	}
+
 	t.Logf("command: %s\n", c.cmd)
 	cmd := exec.Command("/bin/sh", "-c", c.cmd)
 	output, err := cmd.CombinedOutput()
@@ -126,4 +169,47 @@ func (c *command) runWithoutTest() error {
 	}
 
 	return nil
+}
+
+// start starts the command on the given as parameter test, you need to
+// wait it using stop().
+func (c *command) start(t *testing.T) {
+	t.Logf("Start command: %s\n", c.cmd)
+	cmd := exec.Command("/bin/sh", "-c", c.cmd)
+	cmd.Stdout = &c.stdout
+	cmd.Stderr = &c.stderr
+
+	err := cmd.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c.command = cmd
+}
+
+// stop stops a command previously started with start().
+// To do so, it Kill() the process corresponding to this Cmd and then wait for
+// its termination.
+// Cmd output is then checked with regard to expectedString and expectedRegexp
+func (c *command) stop(t *testing.T) {
+	t.Logf("Stop command: %s\n", c.cmd)
+	err := c.command.Process.Kill()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stdout := c.stdout.String()
+	stderr := c.stderr.String()
+
+	if c.expectedRegexp != "" {
+		r := regexp.MustCompile(c.expectedRegexp)
+		if !r.MatchString(stdout) {
+			fmt.Fprintf(os.Stderr, "%s\n", stderr)
+			t.Fatalf("regexp didn't match: %s\n%s\n", c.expectedRegexp, stdout)
+		}
+	}
+	if c.expectedString != "" && stdout != c.expectedString {
+		fmt.Fprintf(os.Stderr, "%s\n", stderr)
+		t.Fatalf("diff: %v", pretty.Diff(c.expectedString, stdout))
+	}
 }
