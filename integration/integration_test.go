@@ -104,6 +104,28 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
+func TestCapabilities(t *testing.T) {
+	capabilitiesCmd := &command{
+		name:           "Start capabilities gadget",
+		cmd:            "$KUBECTL_GADGET capabilities -n test-ns",
+		expectedRegexp: `test-ns\s+test-pod.*nice.*CAP_SYS_NICE`,
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		capabilitiesCmd,
+		{
+			name:           "Run pod which fails to run nice",
+			cmd:            busyboxPodCommand("while true; do nice -n -20 echo; done"),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReady,
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestDns(t *testing.T) {
 	dnsCmd := &command{
 		name:           "Start dns gadget",
