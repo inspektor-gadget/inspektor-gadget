@@ -73,6 +73,13 @@ message StreamData {
   string line = 1;
 }
 
+message OwnerReference {
+  string apiversion = 1;
+  string kind = 2;
+  string name = 3;
+  string uid = 4;
+}
+
 message ContainerDefinition {
   string id = 1;
   string cgroup_path = 2;
@@ -95,6 +102,10 @@ message ContainerDefinition {
   uint32 pid = 12;
 
   uint64 netns = 13;
+
+  // The owner reference information is added to the seccomp profile as
+  // annotations to help users to identify the workflow of the profile.
+  OwnerReference owner_reference = 14;
 }
 
 message DumpStateRequest {
