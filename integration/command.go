@@ -213,3 +213,9 @@ func (c *command) stop(t *testing.T) {
 		t.Fatalf("diff: %v", pretty.Diff(c.expectedString, stdout))
 	}
 }
+
+// busyboxPodCommand returns a string which can be used as command to run a
+// busybox pod whom inner command is given as parameter.
+func busyboxPodCommand(cmd string) string {
+	return fmt.Sprintf("kubectl run --restart=Never --image=busybox -n test-ns test-pod -- sh -c '%s'", cmd)
+}

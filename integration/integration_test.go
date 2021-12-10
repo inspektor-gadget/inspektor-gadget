@@ -104,6 +104,28 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
+func TestMountsnoop(t *testing.T) {
+	mountsnoopCmd := &command{
+		name:           "Start mountsnoop gadget",
+		cmd:            "$KUBECTL_GADGET mountsnoop -n test-ns",
+		expectedRegexp: `test-pod\s+test-pod\s+mount.*mount\("/mnt", "/mnt", .*\) = -ENOENT`,
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		mountsnoopCmd,
+		{
+			name:           "Run pod which tries to mount a directory",
+			cmd:            busyboxPodCommand("while true; do mount /mnt /mnt; done"),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReady,
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestTraceloop(t *testing.T) {
 	commands := []*command{
 		{
