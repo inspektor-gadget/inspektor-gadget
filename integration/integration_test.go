@@ -104,6 +104,28 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
+func TestDns(t *testing.T) {
+	dnsCmd := &command{
+		name:           "Start dns gadget",
+		cmd:            "$KUBECTL_GADGET dns -n test-ns",
+		expectedRegexp: `test-pod\s+OUTGOING\s+microsoft.com`,
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		dnsCmd,
+		{
+			name:           "Run pod which interacts with dns",
+			cmd:            "kubectl run --restart=Never --image=praqma/network-multitool -n test-ns test-pod -- sh -c 'while true; do nslookup microsoft.com; done'",
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReady,
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestExecsnoop(t *testing.T) {
 	execsnoopCmd := &command{
 		name:           "Start execsnoop gadget",
