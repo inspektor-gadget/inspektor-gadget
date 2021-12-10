@@ -33,6 +33,7 @@ import (
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	seccomptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/seccomp/tracer"
+	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 )
 
@@ -173,12 +174,19 @@ func seccompProfileAddLabelsAndAnnotations(
 	trace *gadgetv1alpha1.Trace,
 	podName string,
 	containerName string,
+	ownerReference *pb.OwnerReference,
 ) {
 	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/trace"] = traceName
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/node"] = trace.Spec.Node
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/pod"] = podName
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/container"] = containerName
+	if ownerReference != nil {
+		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-ApiVersion"] = ownerReference.Apiversion
+		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-Kind"] = ownerReference.Kind
+		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-Name"] = ownerReference.Name
+		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-UID"] = ownerReference.Uid
+	}
 
 	// Copy labels from the trace into the SeccompProfile. This will allow
 	// the CLI to add a label on the trace and gather its output
@@ -321,7 +329,8 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 
 	r := syscallArrToSeccompPolicy(profileName, b)
 	podName := fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
-	seccompProfileAddLabelsAndAnnotations(r, trace, podName, event.Container.Name)
+	seccompProfileAddLabelsAndAnnotations(r, trace, podName,
+		event.Container.Name, event.Container.OwnerReference)
 
 	switch trace.Spec.OutputMode {
 	case "ExternalResource":
@@ -502,7 +511,8 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 
 		r := syscallArrToSeccompPolicy(profileName, b)
 		podName := fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
-		seccompProfileAddLabelsAndAnnotations(r, trace, podName, containerName)
+		ownerReference := t.resolver.LookupOwnerReferenceByMntns(mntns)
+		seccompProfileAddLabelsAndAnnotations(r, trace, podName, containerName, ownerReference)
 
 		err = t.client.Create(context.TODO(), r)
 		if err != nil {
