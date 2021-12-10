@@ -19,12 +19,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"runtime"
 
 	"github.com/cilium/ebpf/link"
+
 	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/netnsenter"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
-	"github.com/vishvananda/netns"
 )
 
 //go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang IterTCPv4 ./bpf/tcp4-collector.c -- -I../../.. -Werror -O2 -g -c -x c"
@@ -120,76 +120,59 @@ func RunCollector(pid uint32, podname, namespace, node string) ([]socketcollecto
 	}
 	iters = append(iters, it)
 
-	// Lock the OS Thread so we don't accidentally switch namespaces. Further details in:
-	// https://github.com/vishvananda/netns/blob/2eb08e3e575f00733a612d25cc5d7470f8db6f35/README.md
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	// TCP/UDP BPF Iters read information from the current namespace thus
-	// we need to change network namespace before opening the iterator
-	netnsHandle, err := netns.GetFromPid(int(pid))
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve network namespace from PID %d: %w", pid, err)
-	}
-	defer netnsHandle.Close()
-
-	// Ensure original network namespace is set back to avoid problems in
-	// other goroutines that will be scheduled in the same golang thread
-	origns, _ := netns.Get()
-	defer netns.Set(origns)
-	defer origns.Close()
-
-	if err := netns.Set(netnsHandle); err != nil {
-		return nil, fmt.Errorf("error changing network namespace of PID %d: %w", pid, err)
-	}
-
 	sockets := []socketcollectortypes.Event{}
-
-	for _, it := range iters {
-		reader, err := it.Open()
-		if err != nil {
-			return nil, fmt.Errorf("failed to open BPF iterator: %w", err)
-		}
-		defer reader.Close()
-
-		scanner := bufio.NewScanner(reader)
-		for scanner.Scan() {
-			var status, proto string
-			var destp, srcp uint16
-			var dest, src uint32
-			var hexStatus uint8
-
-			// Format from socket_bpf_seq_print() in bpf/socket_common.h
-			// IP addresses and ports are in host-byte order
-			len, err := fmt.Sscanf(scanner.Text(), "%s %08X %04X %08X %04X %02X",
-				&proto, &src, &srcp, &dest, &destp, &hexStatus)
-			if err != nil || len != 6 {
-				return nil, fmt.Errorf("failed to parse sockets information: %w", err)
-			}
-
-			status, err = parseStatus(proto, hexStatus)
+	err = netnsenter.NetnsEnter(int(pid), func() error {
+		for _, it := range iters {
+			reader, err := it.Open()
 			if err != nil {
-				return nil, err
+				return fmt.Errorf("failed to open BPF iterator: %w", err)
+			}
+			defer reader.Close()
+
+			scanner := bufio.NewScanner(reader)
+			for scanner.Scan() {
+				var status, proto string
+				var destp, srcp uint16
+				var dest, src uint32
+				var hexStatus uint8
+
+				// Format from socket_bpf_seq_print() in bpf/socket_common.h
+				// IP addresses and ports are in host-byte order
+				len, err := fmt.Sscanf(scanner.Text(), "%s %08X %04X %08X %04X %02X",
+					&proto, &src, &srcp, &dest, &destp, &hexStatus)
+				if err != nil || len != 6 {
+					return fmt.Errorf("failed to parse sockets information: %w", err)
+				}
+
+				status, err = parseStatus(proto, hexStatus)
+				if err != nil {
+					return err
+				}
+
+				sockets = append(sockets, socketcollectortypes.Event{
+					Event: eventtypes.Event{
+						Node:      node,
+						Namespace: namespace,
+						Pod:       podname,
+					},
+					Protocol:      proto,
+					LocalAddress:  parseIPv4(src),
+					LocalPort:     srcp,
+					RemoteAddress: parseIPv4(dest),
+					RemotePort:    destp,
+					Status:        status,
+				})
 			}
 
-			sockets = append(sockets, socketcollectortypes.Event{
-				Event: eventtypes.Event{
-					Node:      node,
-					Namespace: namespace,
-					Pod:       podname,
-				},
-				Protocol:      proto,
-				LocalAddress:  parseIPv4(src),
-				LocalPort:     srcp,
-				RemoteAddress: parseIPv4(dest),
-				RemotePort:    destp,
-				Status:        status,
-			})
+			if err := scanner.Err(); err != nil {
+				return fmt.Errorf("failed reading output of BPF iterator: %w", err)
+			}
 		}
+		return nil
+	})
 
-		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("failed reading output of BPF iterator: %w", err)
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	return sockets, nil
