@@ -117,6 +117,9 @@ func TestContainer(t *testing.T) {
 			Pid:        uint32(100 + i),
 			CgroupPath: "/none",
 			CgroupId:   1,
+			OwnerReference: &pb.OwnerReference{
+				Uid: fmt.Sprintf("abcde%d", i),
+			},
 		})
 		if err != nil {
 			t.Fatalf("Failed to add container: %v", err)
@@ -215,6 +218,23 @@ func TestContainer(t *testing.T) {
 	pid = g.LookupPIDByContainer("this-namespace", "my-pod", "container2")
 	if pid != 102 {
 		t.Fatalf("Error while looking up container2: unexpected pid %v", pid)
+	}
+
+	// Check content using LookupOwnerReferenceByMntns
+	ownerRef := g.LookupOwnerReferenceByMntns(55555)
+	if ownerRef == nil || ownerRef.Uid != "abcde0" {
+		t.Fatalf("Error while looking up owner reference: unexpected %v", ownerRef)
+	}
+
+	ownerRef = g.LookupOwnerReferenceByMntns(55557)
+	if ownerRef == nil || ownerRef.Uid != "abcde2" {
+		t.Fatalf("Error while looking up owner reference: unexpected %v", ownerRef)
+	}
+
+	// Non-existent mntns
+	ownerRef = g.LookupOwnerReferenceByMntns(55556)
+	if ownerRef != nil {
+		t.Fatalf("Error while looking up owner reference: unexpected %v", ownerRef)
 	}
 
 	// Add new container with same pod and container name of container0 but in different namespace

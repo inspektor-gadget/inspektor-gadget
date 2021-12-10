@@ -40,6 +40,10 @@ type ContainerResolver interface {
 	// containers or an empty map if not found
 	LookupPIDByPod(namespace, pod string) map[string]uint32
 
+	// LookupOwnerReferenceByMntns returns a pointer to the owner reference of the
+	// container identified by the mount namespace, or nil if not found
+	LookupOwnerReferenceByMntns(mntns uint64) *pb.OwnerReference
+
 	// GetContainersBySelector returns a slice of containers that match
 	// the selector or an empty slice if there are not matches
 	GetContainersBySelector(containerSelector *pb.ContainerSelector) []*pb.ContainerDefinition
