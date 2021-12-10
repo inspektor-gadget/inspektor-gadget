@@ -9,7 +9,7 @@ spec:
   securityContext:
     seccompProfile:
       type: Localhost
-      localhostProfile: operator/seccomp-demo/hello-profile.json
+      localhostProfile: operator/gadget/hello-python.json
   containers:
   - name: hello-python
     image: tiangolo/uwsgi-nginx-flask:latest

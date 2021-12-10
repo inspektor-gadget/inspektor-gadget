@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -165,17 +166,9 @@ func genPubSubKey(name string) pubSubKey {
 func seccompProfileAddLabelsAndAnnotations(
 	r *seccompprofilev1alpha1.SeccompProfile,
 	trace *gadgetv1alpha1.Trace,
-	event *pubsub.PubSubEvent,
+	podName string,
 	containerName string,
 ) {
-	var podName string
-	if event != nil {
-		podName = fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
-		containerName = event.Container.Name
-	} else {
-		podName = fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
-	}
-
 	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/trace"] = traceName
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/node"] = trace.Spec.Node
@@ -189,6 +182,103 @@ func seccompProfileAddLabelsAndAnnotations(
 			r.ObjectMeta.Labels[key] = value
 		}
 	}
+}
+
+type SeccompProfileNsName struct {
+	namespace string
+	name      string
+
+	// generateName indicates whether the name field has to be used as
+	// resource's Name or GeneratedName
+	generateName bool
+}
+
+// getSeccompProfileNextName computes the next profile name that has to be used
+// for a specific podname given a SeccompProfile list. This function returns:
+// podName: If there do not exist profiles with podname or podname-X as name.
+// podName-2: If there exist a profile with the podname but no one with podname-X.
+// podName-<X+1>: If there exist at least one profile with podname-X.
+func getSeccompProfileNextName(profileList []seccompprofilev1alpha1.SeccompProfile, podName string) string {
+	currentCounter := 0
+	for _, profile := range profileList {
+		if !strings.HasPrefix(profile.Name, podName) {
+			continue
+		}
+
+		if profile.Name == podName && currentCounter == 0 {
+			currentCounter++
+			continue
+		}
+
+		c, err := strconv.Atoi(strings.TrimLeft(profile.Name, podName+"-"))
+		if err != nil {
+			// Ignore profiles with "podname" prefix but no "podname-X" syntax.
+			continue
+		}
+
+		if c > currentCounter {
+			currentCounter = c
+		}
+	}
+
+	// It is the first profile for this pod, use the podname as resource's name.
+	if currentCounter == 0 {
+		return podName
+	}
+
+	return fmt.Sprintf("%s-%d", podName, currentCounter+1)
+}
+
+// getSeccompProfileNsName computes the seccomp profile namespace and name
+// based on the traceOutputName parameter. If it was not specified or does not
+// contains the namespace, fallback to the trace's namespace and podname.
+func getSeccompProfileNsName(
+	cli client.Client,
+	traceNs, traceOutputName, podname string,
+) (*SeccompProfileNsName, error) {
+	if traceOutputName != "" {
+		parts := strings.SplitN(traceOutputName, "/", 2)
+		if len(parts) == 2 {
+			// Use namespace and prefix-name provided by the user.
+			return &SeccompProfileNsName{
+				namespace:    parts[0],
+				name:         parts[1],
+				generateName: true,
+			}, nil
+		}
+
+		// Fallback to the trace's namespace and use prefix-name provided by the user.
+		return &SeccompProfileNsName{
+			namespace:    traceNs,
+			name:         traceOutputName,
+			generateName: true,
+		}, nil
+	}
+
+	// Fallback to the trace's namespace and podname but adding a counter
+	// suffix in case there is already a profile with the podname name.
+	var profileName string
+	if cli != nil {
+		profileList := &seccompprofilev1alpha1.SeccompProfileList{}
+		err := cli.List(
+			context.TODO(),
+			profileList,
+			client.InNamespace(traceNs),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve SeccompProfiles in %q: %w", traceNs, err)
+		}
+		profileName = getSeccompProfileNextName(profileList.Items, podname)
+	} else {
+		// This is mainly for the local-gadget where name verification is not needed
+		profileName = podname
+	}
+
+	return &SeccompProfileNsName{
+		namespace:    traceNs,
+		name:         profileName,
+		generateName: false,
+	}, nil
 }
 
 // containerTerminated is a callback called every time a container is
@@ -205,19 +295,28 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 		return
 	}
 
+	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+
 	// Get the list of syscalls from the BPF hash map
 	b := traceSingleton.tracer.Peek(event.Container.Mntns)
 
 	// The container has terminated. Cleanup the BPF hash map
 	traceSingleton.tracer.Delete(event.Container.Mntns)
 
-	var r *seccompprofilev1alpha1.SeccompProfile
-	generateName := trace.ObjectMeta.Name + "-"
-	r = syscallArrToSeccompPolicy(trace.ObjectMeta.Namespace, "", generateName, b)
+	profileName, err := getSeccompProfileNsName(
+		t.client,
+		trace.ObjectMeta.Namespace,
+		trace.Spec.Output,
+		event.Container.Podname,
+	)
+	if err != nil {
+		log.Errorf("Trace %s: Failed to get the profile name: %s", traceName, err)
+		return
+	}
 
+	r := syscallArrToSeccompPolicy(profileName, b)
 	podName := fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
-	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
-	seccompProfileAddLabelsAndAnnotations(r, trace, &event, "")
+	seccompProfileAddLabelsAndAnnotations(r, trace, podName, event.Container.Name)
 
 	switch trace.Spec.OutputMode {
 	case "ExternalResource":
@@ -242,8 +341,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if t.started {
-		trace.Status.OperationError = ""
-		trace.Status.Output = ""
+		gadgets.CleanupTraceStatus(trace)
 		trace.Status.State = "Started"
 		return
 	}
@@ -281,10 +379,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	traceSingleton.users++
 	t.started = true
 
-	trace.Status.OperationError = ""
-	trace.Status.Output = ""
+	gadgets.CleanupTraceStatus(trace)
 	trace.Status.State = "Started"
-	return
 }
 
 func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
@@ -376,15 +472,22 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 		trace.Status.Output = string(output)
 		trace.Status.OperationError = ""
 	case "ExternalResource":
-		parts := strings.SplitN(trace.Spec.Output, "/", 2)
-		var r *seccompprofilev1alpha1.SeccompProfile
-		if len(parts) == 2 {
-			r = syscallArrToSeccompPolicy(parts[0], parts[1], "", b)
-		} else {
-			r = syscallArrToSeccompPolicy(trace.ObjectMeta.Namespace, trace.Spec.Output, "", b)
+		profileName, err := getSeccompProfileNsName(
+			t.client,
+			trace.ObjectMeta.Namespace,
+			trace.Spec.Output,
+			trace.Spec.Filter.Podname,
+		)
+		if err != nil {
+			trace.Status.OperationError = fmt.Sprintf("Failed to get the profile name: %s", err)
+			return
 		}
-		seccompProfileAddLabelsAndAnnotations(r, trace, nil, containerName)
-		err := t.client.Create(context.TODO(), r)
+
+		r := syscallArrToSeccompPolicy(profileName, b)
+		podName := fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
+		seccompProfileAddLabelsAndAnnotations(r, trace, podName, containerName)
+
+		err = t.client.Create(context.TODO(), r)
 		if err != nil {
 			trace.Status.OperationError = fmt.Sprintf("Failed to update resource: %s", err)
 			return
@@ -415,5 +518,4 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	t.started = false
 
 	trace.Status.State = "Stopped"
-	return
 }
