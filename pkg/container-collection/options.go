@@ -23,9 +23,12 @@ import (
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	dockerclient "github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -217,12 +220,12 @@ func WithInitialKubernetesContainers(nodeName string) ContainerCollectionOption 
 	return func(cc *ContainerCollection) error {
 		k8sClient, err := k8s.NewK8sClient(nodeName)
 		if err != nil {
-			return fmt.Errorf("failed to create Kubernetes client: %s", err)
+			return fmt.Errorf("failed to create Kubernetes client: %w", err)
 		}
 
 		containers, err := k8sClient.ListContainers()
 		if err != nil {
-			return fmt.Errorf("failed to list containers: %v", err)
+			return fmt.Errorf("failed to list containers: %w", err)
 		}
 
 		for _, container := range containers {
@@ -252,6 +255,147 @@ func WithPubSub(funcs ...pubsub.FuncNotify) ContainerCollectionOption {
 	}
 }
 
+// getExpectedOwnerReference returns a resource only if it has an expected kind.
+// In the case of multiple references, it first tries to find the controller
+// reference. If there does not exist or it does not have an expected kind, the
+// function will try to find the first resource with one of the expected
+// resource kinds. Otherwise, it returns nil.
+func getExpectedOwnerReference(ownerReferences []metav1.OwnerReference) *metav1.OwnerReference {
+	// From: https://kubernetes.io/docs/concepts/workloads/controllers/
+	expectedResKinds := map[string]struct{}{
+		"Deployment":            {},
+		"ReplicaSet":            {},
+		"StatefulSet":           {},
+		"DaemonSet":             {},
+		"Job":                   {},
+		"CronJob":               {},
+		"ReplicationController": {},
+	}
+
+	var ownerRef *metav1.OwnerReference
+
+	for i, or := range ownerReferences {
+		if _, ok := expectedResKinds[or.Kind]; !ok {
+			continue
+		}
+
+		if or.Controller != nil && *or.Controller {
+			// There is at most one controller reference per resource
+			return &or
+		}
+
+		// Keep track of the first expected reference in case it will be needed
+		if ownerRef == nil {
+			ownerRef = &ownerReferences[i]
+		}
+	}
+
+	return ownerRef
+}
+
+func getKubeClientDynamic() (dynamic.Interface, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get Kubernetes config: %w", err)
+	}
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create dynamic Kubernetes client: %w", err)
+	}
+	return dynamicClient, nil
+}
+
+func getOwnerReferences(dynamicClient dynamic.Interface,
+	resNamespace, resKind, resGroupVersion, resName string,
+) ([]metav1.OwnerReference, error) {
+	gv, err := schema.ParseGroupVersion(resGroupVersion)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse %s/%s groupVersion %s: %w",
+			resNamespace, resName, resGroupVersion, err)
+	}
+
+	params := schema.GroupVersionResource{
+		Group:    gv.Group,
+		Version:  gv.Version,
+		Resource: resKind,
+	}
+
+	res, err := dynamicClient.
+		Resource(params).
+		Namespace(resNamespace).
+		Get(context.TODO(), resName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("cannot fetch %s/%s %s/%s: %w",
+			resKind, resGroupVersion, resNamespace, resName, err)
+	}
+
+	return res.GetOwnerReferences(), nil
+}
+
+func ownerReferenceEnrichment(
+	containerDefinition *pb.ContainerDefinition,
+	ownerReferences []metav1.OwnerReference,
+) error {
+	if containerDefinition.OwnerReference != nil {
+		// Already set. Do nothing
+		return nil
+	}
+
+	dynamicClient, err := getKubeClientDynamic()
+	if err != nil {
+		return fmt.Errorf("failed to get dynamic Kubernetes client: %w", err)
+	}
+
+	resGroupVersion := "v1"
+	resKind := "pods"
+	resName := containerDefinition.Podname
+	resNamespace := containerDefinition.Namespace
+
+	var highestOwnerRef *metav1.OwnerReference
+
+	// Iterate until we reach the highest level of reference
+	for {
+		if len(ownerReferences) == 0 {
+			ownerReferences, err = getOwnerReferences(dynamicClient,
+				resNamespace, resKind, resGroupVersion, resName)
+			if err != nil {
+				return fmt.Errorf("failed to get %s/%s/%s/%s owner reference: %w",
+					resNamespace, resKind, resGroupVersion, resName, err)
+			}
+
+			// No owner reference found
+			if len(ownerReferences) == 0 {
+				break
+			}
+		}
+
+		ownerRef := getExpectedOwnerReference(ownerReferences)
+		if ownerRef == nil {
+			// None expected owner reference found
+			break
+		}
+
+		// Update parameters for next iteration (Namespace does not change)
+		highestOwnerRef = ownerRef
+		resGroupVersion = ownerRef.APIVersion
+		resKind = strings.ToLower(ownerRef.Kind) + "s"
+		resName = ownerRef.Name
+		ownerReferences = nil
+	}
+
+	// Update container's owner reference (If any)
+	if highestOwnerRef != nil {
+		containerDefinition.OwnerReference = &pb.OwnerReference{
+			Apiversion: highestOwnerRef.APIVersion,
+			Kind:       highestOwnerRef.Kind,
+			Name:       highestOwnerRef.Name,
+			Uid:        string(highestOwnerRef.UID),
+		}
+	}
+
+	return nil
+}
+
 // WithKubernetesEnrichment automatically adds pod metadata
 //
 // ContainerCollection.ContainerCollectionInitialize(WithKubernetesEnrichment())
@@ -259,21 +403,26 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		config, err := rest.InClusterConfig()
 		if err != nil {
-			return fmt.Errorf("cannot start Kubernetes client: %s", err)
+			return fmt.Errorf("cannot start Kubernetes client: %w", err)
 		}
 		clientset, err := kubernetes.NewForConfig(config)
 		if err != nil {
-			return fmt.Errorf("cannot start Kubernetes client: %s", err)
+			return fmt.Errorf("cannot start Kubernetes client: %w", err)
 		}
+
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(containerDefinition *pb.ContainerDefinition) bool {
-			// No need for this enricher if the data is already there
+			// Enrich only with owner reference if the data is already there
 			if containerDefinition.Podname != "" {
+				err := ownerReferenceEnrichment(containerDefinition, nil)
+				if err != nil {
+					log.Errorf("kubernetes enricher: Failed to enrich with owner reference: %s", err)
+				}
 				return true
 			}
 
 			if containerDefinition.CgroupV1 == "" || containerDefinition.CgroupV2 == "" {
-				log.Errorf("Kubernetes enrichment cannot work without cgroup paths")
+				log.Errorf("kubernetes enricher: cannot work without cgroup paths")
 				return true
 			}
 
@@ -282,7 +431,7 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 				FieldSelector: fieldSelector,
 			})
 			if err != nil {
-				log.Errorf("cannot fetch pods: %s", err)
+				log.Errorf("kubernetes enricher: cannot fetch pods: %s", err)
 				return true
 			}
 
@@ -291,6 +440,7 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 			podname := ""
 			containerName := ""
 			labels := []*pb.Label{}
+			var podOwnerRef []metav1.OwnerReference
 			for _, pod := range pods.Items {
 				uid := string(pod.ObjectMeta.UID)
 				// check if this container is associated to this pod
@@ -314,6 +464,9 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 						pattern := fmt.Sprintf("pods/%s/containers/%s/", uid, container.Name)
 						if strings.Contains(mountSource, pattern) {
 							containerName = container.Name
+
+							// Keep track of the pod owner reference
+							podOwnerRef = pod.GetOwnerReferences()
 							break
 						}
 					}
@@ -329,6 +482,14 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 			if containerDefinition.Podname != "" && containerName == "" {
 				return false
 			}
+
+			if len(podOwnerRef) != 0 {
+				err := ownerReferenceEnrichment(containerDefinition, podOwnerRef)
+				if err != nil {
+					log.Errorf("kubernetes enricher: Failed to enrich with owner reference: %s", err)
+				}
+			}
+
 			return true
 		})
 		return nil
@@ -360,7 +521,7 @@ func WithRuncFanotify() ContainerCollectionOption {
 			}
 		})
 		if err != nil {
-			return fmt.Errorf("cannot start runc fanotify: %s", err)
+			return fmt.Errorf("cannot start runc fanotify: %w", err)
 		}
 
 		// Future containers
