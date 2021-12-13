@@ -106,6 +106,18 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
+func TestBiolatency(t *testing.T) {
+	commands := []*command{
+		{
+			name:           "Run biolatency gadget",
+			cmd:            "id=$($KUBECTL_GADGET biolatency start --node $(kubectl get node --no-headers | cut -d' ' -f1)); sleep 15; $KUBECTL_GADGET biolatency stop $id",
+			expectedRegexp: `usecs\s+:\s+count\s+distribution`,
+		},
+	}
+
+	runCommands(commands, t)
+}
+
 func TestBiotop(t *testing.T) {
 	biotopCmd := &command{
 		name:           "Start biotop gadget",
