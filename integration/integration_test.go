@@ -258,6 +258,25 @@ func TestProcessCollector(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestProfile(t *testing.T) {
+	commands := []*command{
+		{
+			name:           "Run test pod",
+			cmd:            busyboxPodCommand("while true; do echo foo > /dev/null; done"),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReady,
+		{
+			name:           "Run profile gadget",
+			cmd:            "$KUBECTL_GADGET profile -n test-ns -p test-pod -K & sleep 15; kill $!",
+			expectedRegexp: `sh;\w+;\w+;\w+open`, // echo is builtin.
+		},
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestSocketCollector(t *testing.T) {
 	if *githubCI {
 		t.Skip("Cannot run socket-collector within GitHub CI.")
