@@ -303,6 +303,28 @@ func TestTcpconnect(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestTcptop(t *testing.T) {
+	tcptopCmd := &command{
+		name:           "Start tcptop gadget",
+		cmd:            "$KUBECTL_GADGET tcptop --node $(kubectl get node --no-headers | cut -d' ' -f1) -n test-ns -p test-pod",
+		expectedRegexp: `wget`,
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		tcptopCmd,
+		{
+			name:           "Run pod which opens TCP socket",
+			cmd:            busyboxPodCommand("while true; do wget -q -O /dev/null https://kinvolk.io; done"),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReady,
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestTraceloop(t *testing.T) {
 	commands := []*command{
 		{
