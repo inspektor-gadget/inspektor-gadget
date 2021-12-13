@@ -106,6 +106,28 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
+func TestBindsnoop(t *testing.T) {
+	bindsnoopCmd := &command{
+		name:           "Start bindsnoop gadget",
+		cmd:            "$KUBECTL_GADGET bindsnoop -n test-ns",
+		expectedRegexp: `test-ns\s+test-pod\s+test-pod\s+\d+\s+nc`,
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		bindsnoopCmd,
+		{
+			name:           "Run pod which calls bind()",
+			cmd:            busyboxPodCommand("while true; do nc -l -p 9090 -w 1; done"),
+			expectedString: "pod/test-pod created\n",
+		},
+		waitUntilTestPodReady,
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestBiolatency(t *testing.T) {
 	commands := []*command{
 		{
