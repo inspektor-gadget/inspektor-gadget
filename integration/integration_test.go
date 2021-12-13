@@ -277,6 +277,29 @@ func TestProfile(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestSeccompadvisor(t *testing.T) {
+	if *githubCI {
+		t.Skip("seccomp-advisor timed out within GitHub CI.")
+	}
+
+	commands := []*command{
+		{
+			name:           "Run test pod",
+			cmd:            busyboxPodCommand("while true; do echo foo; done"),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReady,
+		{
+			name:           "Run seccomp-advisor gadget",
+			cmd:            "id=$($KUBECTL_GADGET seccomp-advisor start -n test-ns -p test-pod); sleep 30; $KUBECTL_GADGET seccomp-advisor stop $id",
+			expectedRegexp: `write`,
+		},
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestSocketCollector(t *testing.T) {
 	if *githubCI {
 		t.Skip("Cannot run socket-collector within GitHub CI.")
