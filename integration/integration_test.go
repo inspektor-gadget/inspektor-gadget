@@ -192,6 +192,28 @@ func TestMountsnoop(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestOpensnoop(t *testing.T) {
+	opensnoopCmd := &command{
+		name:           "Start opensnoop gadget",
+		cmd:            "$KUBECTL_GADGET opensnoop -n test-ns",
+		expectedRegexp: `test-ns\s+test-pod\s+test-pod\s+\d+\s+whoami\s+3`,
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		opensnoopCmd,
+		{
+			name:           "Run pod which calls open()",
+			cmd:            busyboxPodCommand("while true; do whoami; done"),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReady,
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestTraceloop(t *testing.T) {
 	commands := []*command{
 		{
