@@ -239,6 +239,29 @@ func TestProcessCollector(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestSocketCollector(t *testing.T) {
+	if *githubCI {
+		t.Skip("Cannot run socket-collector within GitHub CI.")
+	}
+
+	commands := []*command{
+		{
+			name:           "Run nginx pod",
+			cmd:            "kubectl run --restart=Never --image=nginx -n test-ns test-pod",
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReady,
+		{
+			name:           "Run socket-collector gadget",
+			cmd:            "$KUBECTL_GADGET socket-collector -n test-ns",
+			expectedRegexp: `test-ns\s+test-pod\s+TCP\s+0\.0\.0\.0`,
+		},
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestTraceloop(t *testing.T) {
 	commands := []*command{
 		{
