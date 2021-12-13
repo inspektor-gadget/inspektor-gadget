@@ -27,6 +27,8 @@ var integration = flag.Bool("integration", false, "run integration tests")
 // image such as docker.io/kinvolk/gadget:latest
 var image = flag.String("image", "", "gadget container image")
 
+var githubCI = flag.Bool("github-ci", false, "skip some tests which cannot be run on GitHub CI due to host kernel not BPF ready")
+
 func runCommands(cmds []*command, t *testing.T) {
 	defer func() {
 		for _, cmd := range cmds {
@@ -208,6 +210,29 @@ func TestOpensnoop(t *testing.T) {
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReady,
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
+func TestProcessCollector(t *testing.T) {
+	if *githubCI {
+		t.Skip("Cannot run process-collector within GitHub CI.")
+	}
+
+	commands := []*command{
+		{
+			name:           "Run nginx pod",
+			cmd:            "kubectl run --restart=Never --image=nginx -n test-ns test-pod",
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReady,
+		{
+			name:           "Run process-collector gadget",
+			cmd:            "$KUBECTL_GADGET process-collector -n test-ns",
+			expectedRegexp: `test-ns\s+test-pod\s+test-pod\s+nginx\s+\d+`,
+		},
 		deleteTestPod,
 	}
 
