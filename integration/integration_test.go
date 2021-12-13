@@ -247,6 +247,25 @@ func TestMountsnoop(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestNetworkpolicy(t *testing.T) {
+	commands := []*command{
+		{
+			name:           "Run test pod",
+			cmd:            busyboxPodCommand("while true; do wget -q -O /dev/null https://kinvolk.io; done"),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReady,
+		{
+			name:           "Run network-policy gadget",
+			cmd:            "$KUBECTL_GADGET network-policy monitor -n test-ns --output ./networktrace.log & sleep 15; kill $!; head networktrace.log",
+			expectedRegexp: `"type":"connect".*"test-ns".*"test-pod"`,
+		},
+		deleteTestPod,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestOpensnoop(t *testing.T) {
 	opensnoopCmd := &command{
 		name:           "Start opensnoop gadget",
