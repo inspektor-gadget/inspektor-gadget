@@ -85,6 +85,9 @@ type TraceConfig struct {
 
 	// CommonFlags is used to hold parameters given on the command line interface.
 	CommonFlags *CommonFlags
+
+	// Parameters is used to pass specific gadget configurations.
+	Parameters map[string]string
 }
 
 func init() {
@@ -301,6 +304,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 			RunMode:    "Manual",
 			OutputMode: config.TraceOutputMode,
 			Output:     config.TraceOutput,
+			Parameters: config.Parameters,
 		},
 	}
 
