@@ -15,8 +15,26 @@
 package types
 
 import (
+	"fmt"
+	"strings"
+
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
+
+type Proto int
+
+const (
+	INVALID Proto = iota
+	ALL
+	TCP
+	UDP
+)
+
+var ProtocolsMap = map[string]Proto{
+	"all": ALL,
+	"tcp": TCP,
+	"udp": UDP,
+}
 
 type Event struct {
 	eventtypes.Event
@@ -27,4 +45,12 @@ type Event struct {
 	RemoteAddress string `json:"remote_address"`
 	RemotePort    uint16 `json:"remote_port"`
 	Status        string `json:"status"`
+}
+
+func ParseProtocol(protocol string) (Proto, error) {
+	if r, ok := ProtocolsMap[strings.ToLower(protocol)]; ok {
+		return r, nil
+	}
+
+	return INVALID, fmt.Errorf("%q is not a valid protocol value", protocol)
 }

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -42,6 +43,7 @@ var socketCollectorCmd = &cobra.Command{
 
 var (
 	processCollectorParamThreads bool
+	socketCollectorProtocol      string
 )
 
 func init() {
@@ -63,6 +65,19 @@ func init() {
 		"t",
 		false,
 		"Show all threads",
+	)
+
+	var protocols []string
+	for protocol, _ := range socketcollectortypes.ProtocolsMap {
+		protocols = append(protocols, protocol)
+	}
+
+	socketCollectorCmd.PersistentFlags().StringVarP(
+		&socketCollectorProtocol,
+		"proto",
+		"",
+		"all",
+		fmt.Sprintf("Show only sockets using this protocol (%s)", strings.Join(protocols, ", ")),
 	)
 }
 
@@ -259,12 +274,20 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 		return nil
 	}
 
+	if _, err := socketcollectortypes.ParseProtocol(socketCollectorProtocol); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(1)
+	}
+
 	config := &utils.TraceConfig{
 		GadgetName:       "socket-collector",
 		Operation:        "collect",
 		TraceOutputMode:  "Status",
 		TraceOutputState: "Completed",
 		CommonFlags:      &params,
+		Parameters: map[string]string{
+			"protocol": socketCollectorProtocol,
+		},
 	}
 
 	err := utils.RunTraceAndPrintStatusOutput(config, callback)

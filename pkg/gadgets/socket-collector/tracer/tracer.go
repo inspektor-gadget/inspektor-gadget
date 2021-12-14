@@ -102,23 +102,26 @@ func getUDPIter() (*link.Iter, error) {
 	return it, nil
 }
 
-func RunCollector(pid uint32, podname, namespace, node string) ([]socketcollectortypes.Event, error) {
+func RunCollector(pid uint32, podname, namespace, node string, proto socketcollectortypes.Proto) ([]socketcollectortypes.Event, error) {
 	var err error
 	var it *link.Iter
 	iters := []*link.Iter{}
 
-	// TODO: Use filters to collect only TCP or only UDP information
-	it, err = getTCPIter()
-	if err != nil {
-		return nil, err
+	if proto == socketcollectortypes.TCP || proto == socketcollectortypes.ALL {
+		it, err = getTCPIter()
+		if err != nil {
+			return nil, err
+		}
+		iters = append(iters, it)
 	}
-	iters = append(iters, it)
 
-	it, err = getUDPIter()
-	if err != nil {
-		return nil, err
+	if proto == socketcollectortypes.UDP || proto == socketcollectortypes.ALL {
+		it, err = getUDPIter()
+		if err != nil {
+			return nil, err
+		}
+		iters = append(iters, it)
 	}
-	iters = append(iters, it)
 
 	sockets := []socketcollectortypes.Event{}
 	err = netnsenter.NetnsEnter(int(pid), func() error {

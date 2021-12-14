@@ -21,6 +21,8 @@ spec:
     podname: mypod
   runMode: Manual
   outputMode: Status
+  parameters:
+    proto: all # all, udp and tcp are allowed
 ```
 
 ### Operations
