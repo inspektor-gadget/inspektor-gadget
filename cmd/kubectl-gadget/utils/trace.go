@@ -33,6 +33,9 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/watch"
+
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	clientset "github.com/kinvolk/inspektor-gadget/pkg/client/clientset/versioned"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
@@ -372,6 +375,52 @@ func SetTraceOperation(traceID string, operation string) error {
 	}
 
 	return err
+}
+
+// untilWithoutRetry is a simplified version (only one function as argument)
+// version of UntilWithoutRetry, we keep this here because UntilWithoutRetry
+// could be deprecated in the future.
+// As archive, here is UntilWithoutRetry documentation:
+// UntilWithoutRetry reads items from the watch until each provided condition succeeds, and then returns the last watch
+// encountered. The first condition that returns an error terminates the watch (and the event is also returned).
+// If no event has been received, the returned event will be nil.
+// Conditions are satisfied sequentially so as to provide a useful primitive for higher level composition.
+// Waits until context deadline or until context is canceled.
+//
+// Warning: Unless you have a very specific use case (probably a special Watcher) don't use this function!!!
+// Warning: This will fail e.g. on API timeouts and/or 'too old resource version' error.
+// Warning: You are most probably looking for a function *Until* or *UntilWithSync* below,
+// Warning: solving such issues.
+// TODO: Consider making this function private to prevent misuse when the other occurrences in our codebase are gone.
+func untilWithoutRetry(ctx context.Context, watcher watch.Interface, condition func(event watch.Event) (bool, error)) (*watch.Event, error) {
+	ch := watcher.ResultChan()
+	defer watcher.Stop()
+
+	var retEvent *watch.Event
+
+Loop:
+	for {
+		select {
+		case event, ok := <-ch:
+			if !ok {
+				return retEvent, errors.New("watch closed before untilWithoutRetry timeout")
+			}
+			retEvent = &event
+
+			done, err := condition(event)
+			if err != nil {
+				return retEvent, err
+			}
+			if done {
+				break Loop
+			}
+
+		case <-ctx.Done():
+			return retEvent, wait.ErrWaitTimeout
+		}
+	}
+
+	return retEvent, nil
 }
 
 // waitForTraceState loops over all trace whom ID is given as parameter
