@@ -69,6 +69,12 @@ type TraceSpec struct {
 	//   seccompprofiles.security-profiles-operator.x-k8s.io for the
 	//   seccomp gadget)
 	Output string `json:"output,omitempty"`
+
+	// TODO: Ideally it should be a map[string]interface{} but it's not
+	// supported: https://github.com/kubernetes-sigs/controller-tools/issues/636
+
+	// Parameters contains gadget specific configurations.
+	Parameters map[string]string `json:"parameters,omitempty"`
 }
 
 // TraceStatus defines the observed state of Trace
