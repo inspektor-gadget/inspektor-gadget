@@ -18,12 +18,17 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y gcc make ca-certificates git clang \
-		software-properties-common libseccomp-dev llvm && \
-	add-apt-repository -y ppa:tuxinvader/kernel-build-tools && \
+		software-properties-common libelf-dev pkg-config libseccomp-dev llvm && \
 	apt-add-repository -y ppa:longsleep/golang-backports && \
 	apt-get update && \
-	apt-get install -y libbpf-dev golang-1.17 && \
+	apt-get install -y golang-1.17 && \
 	ln -s /usr/lib/go-1.17/bin/go /bin/go
+
+# Install libbpf-dev 0.7.0 from source to be cross-platform.
+RUN git clone https://github.com/libbpf/libbpf.git && \
+	cd libbpf/src && \
+	git checkout v0.7.0 && \
+	make -j$(nproc) install
 
 # Download BTFHub files
 COPY ./tools /btf-tools

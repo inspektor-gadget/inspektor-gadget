@@ -6,7 +6,7 @@ ARG BUILDER_IMAGE=ubuntu:20.04
 
 # BCC built from the gadget branch in the kinvolk/bcc fork.
 # See BCC section in docs/CONTRIBUTING.md for further details.
-ARG BCC="quay.io/kinvolk/bcc:64a64b4ba0a719fb6b79a4705f29ad5e1fa1e47d-focal-release"
+ARG BCC="quay.io/kinvolk/bcc:4b74e843ca90ac0b39ebca2685c939f511aa2c11-focal-release"
 
 FROM ${BCC} as bcc
 FROM ${BUILDER_IMAGE} as builder
@@ -18,12 +18,17 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y gcc make ca-certificates git clang \
-		software-properties-common libseccomp-dev llvm && \
-	add-apt-repository -y ppa:tuxinvader/kernel-build-tools && \
+		software-properties-common libelf-dev pkg-config libseccomp-dev llvm && \
 	apt-add-repository -y ppa:longsleep/golang-backports && \
 	apt-get update && \
-	apt-get install -y libbpf-dev golang-1.17 && \
+	apt-get install -y golang-1.17 && \
 	ln -s /usr/lib/go-1.17/bin/go /bin/go
+
+# Install libbpf-dev 0.7.0 from source to be cross-platform.
+RUN git clone https://github.com/libbpf/libbpf.git && \
+	cd libbpf/src && \
+	git checkout v0.7.0 && \
+	make -j$(nproc) install
 
 # Download BTFHub files
 COPY ./tools /btf-tools
@@ -56,7 +61,7 @@ RUN set -ex; \
 # - https://github.com/kinvolk/traceloop/actions
 # - https://hub.docker.com/r/kinvolk/traceloop/tags
 
-FROM docker.io/kinvolk/traceloop:20211109004128958575 as traceloop
+FROM docker.io/kinvolk/traceloop:2059b729c0ac8aa79016dacb06fbdaa1867c1446 as traceloop
 
 # Main gadget image
 
