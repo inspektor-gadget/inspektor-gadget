@@ -198,6 +198,9 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+      if: github.ref == 'main'
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
@@ -225,8 +228,27 @@ jobs:
             IMAGE_TAG="latest"
         fi
         echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-    - name: Build gadget default container
+    - name: Cross build gadget container for amd64 and arm64
       uses: docker/build-push-action@v2
+      # We cross build only on main because it takes a lot of time.
+      if: github.ref == 'main'
+      with:
+        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget-default.Dockerfile
+        build-args: |
+          ENABLE_BTFGEN=true
+        # TODO: how to avoid pushing a container before running integration tests
+        # Answer: push to runner registry first, if integration tests are OK
+        # push to final registry
+        push: true
+        tags: ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new
+        # For the moment, we only support these two platforms.
+        platforms: linux/amd64,linux/arm64
+    - name: Build gadget container
+      uses: docker/build-push-action@v2
+      if: github.ref != 'main'
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget-default.Dockerfile
@@ -245,6 +267,9 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+      if: github.ref == 'main'
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
@@ -272,8 +297,26 @@ jobs:
             IMAGE_TAG="latest"
         fi
         echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
+    - name: Cross build gadget CO-RE container for amd64 and arm64
+      uses: docker/build-push-action@v2
+      if: github.ref == 'main'
+      with:
+        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget-core.Dockerfile
+        build-args: |
+          ENABLE_BTFGEN=true
+        # TODO: how to avoid pushing a container before running integration tests
+        # Answer: push to runner registry first, if integration tests are OK
+        # push to final registry
+        push: false # TODO: just build the image for the time being
+        tags: ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new
+        # For the moment, we only support these two platforms.
+        platforms: linux/amd64,linux/arm64
     - name: Build gadget CO-RE container
       uses: docker/build-push-action@v2
+      if: github.ref != 'main'
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget-core.Dockerfile
