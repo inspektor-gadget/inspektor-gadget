@@ -32,6 +32,14 @@ SeccompProfiles will have the following annotations:
   traced
 * seccomp.gadget.kinvolk.io/container: the container name in the pod that was
   traced
+* seccomp.gadget.kinvolk.io/ownerReference-ApiVersion: the ownerReference&#39;s
+  ApiVersion of the pod that was traced
+* seccomp.gadget.kinvolk.io/ownerReference-Kind: the ownerReference&#39;s Kind of the
+  pod that was traced
+* seccomp.gadget.kinvolk.io/ownerReference-Name: the ownerReference&#39;s Name of the
+  pod that was traced
+* seccomp.gadget.kinvolk.io/ownerReference-UID: the ownerReference&#39;s UID of the
+  pod that was traced
 
 SeccompProfiles will have the same labels as the Trace custom resource that
 generated them. They don&#39;t have meaning for the seccomp gadget. They are
