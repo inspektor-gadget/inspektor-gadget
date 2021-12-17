@@ -78,6 +78,11 @@ spec:
                 - File
                 - ExternalResource
                 type: string
+              parameters:
+                additionalProperties:
+                  type: string
+                description: Parameters contains gadget specific configurations.
+                type: object
               runMode:
                 description: RunMode is "Auto" to automatically start the trace as
                   soon as the resource is created, or "Manual" to be controlled by

@@ -106,8 +106,21 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 			log.Debugf("Gadget %s: Using PID %d to retrieve network namespace of Pod %q in Namespace %q",
 				trace.Spec.Gadget, container.Pid, container.Podname, container.Namespace)
 
+			protocol := socketcollectortypes.ALL
+
+			if trace.Spec.Parameters != nil {
+				if val, ok := trace.Spec.Parameters["protocol"]; ok {
+					var err error
+					protocol, err = socketcollectortypes.ParseProtocol(val)
+					if err != nil {
+						trace.Status.OperationError = err.Error()
+						return
+					}
+				}
+			}
+
 			podSockets, err := tracer.RunCollector(container.Pid, container.Podname,
-				container.Namespace, trace.Spec.Node)
+				container.Namespace, trace.Spec.Node, protocol)
 			if err != nil {
 				gadgets.CleanupTraceStatus(trace)
 				trace.Status.OperationError = err.Error()
