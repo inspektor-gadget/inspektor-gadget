@@ -302,6 +302,25 @@ func getSeccompProfileNsName(
 	}, nil
 }
 
+// generateSeccompPolicy generates a seccomp policy which is ready to be
+// created.
+func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, syscalls []byte, podname, containername, fullPodName string, ownerReference *pb.OwnerReference) (*seccompprofilev1alpha1.SeccompProfile, error) {
+	profileName, err := getSeccompProfileNsName(
+		client,
+		trace.ObjectMeta.Namespace,
+		trace.Spec.Output,
+		podname,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the profile name: %w", err)
+	}
+
+	r := syscallArrToSeccompPolicy(profileName, syscalls)
+	seccompProfileAddLabelsAndAnnotations(r, trace, fullPodName, containername, ownerReference)
+
+	return r, nil
+}
+
 // containerTerminated is a callback called every time a container is
 // terminated on the node. It is used to generate a SeccompProfile when a
 // container terminates.
@@ -324,33 +343,25 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 	// The container has terminated. Cleanup the BPF hash map
 	traceSingleton.tracer.Delete(event.Container.Mntns)
 
-	profileName, err := getSeccompProfileNsName(
-		t.client,
-		trace.ObjectMeta.Namespace,
-		trace.Spec.Output,
-		event.Container.Podname,
-	)
+	namespacedName := fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
+
+	r, err := generateSeccompPolicy(t.client, trace, b, event.Container.Podname, event.Container.Name, namespacedName, event.Container.OwnerReference)
 	if err != nil {
-		log.Errorf("Trace %s: Failed to get the profile name: %s", traceName, err)
+		log.Errorf("Trace %s: %v", traceName, err)
 		return
 	}
 
-	r := syscallArrToSeccompPolicy(profileName, b)
-	podName := fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
-	seccompProfileAddLabelsAndAnnotations(r, trace, podName,
-		event.Container.Name, event.Container.OwnerReference)
-
 	switch trace.Spec.OutputMode {
 	case "ExternalResource":
-		log.Infof("Trace %s: creating SeccompProfile for pod %s", traceName, podName)
+		log.Infof("Trace %s: creating SeccompProfile for pod %s", traceName, namespacedName)
 		err := t.client.Create(context.TODO(), r)
 		if err != nil {
-			log.Errorf("Failed to create Seccomp Profile for pod %s: %s", podName, err)
+			log.Errorf("Failed to create Seccomp Profile for pod %s: %s", namespacedName, err)
 			return
 		}
 		t.policyGenerated = true
 	case "Stream":
-		log.Infof("Trace %s: adding SeccompProfile for pod %s in stream", traceName, podName)
+		log.Infof("Trace %s: adding SeccompProfile for pod %s in stream", traceName, namespacedName)
 		yamlOutput, err := k8syaml.Marshal(r)
 		if err != nil {
 			log.Errorf("Failed to convert Seccomp Profile to yaml: %s", err)
@@ -506,21 +517,15 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 		trace.Status.Output = string(output)
 		trace.Status.OperationError = ""
 	case "ExternalResource":
-		profileName, err := getSeccompProfileNsName(
-			t.client,
-			trace.ObjectMeta.Namespace,
-			trace.Spec.Output,
-			trace.Spec.Filter.Podname,
-		)
+		podName := fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
+
+		ownerReference := t.resolver.LookupOwnerReferenceByMntns(mntns)
+
+		r, err := generateSeccompPolicy(t.client, trace, b, trace.Spec.Filter.Podname, containerName, podName, ownerReference)
 		if err != nil {
-			trace.Status.OperationError = fmt.Sprintf("Failed to get the profile name: %s", err)
+			trace.Status.OperationError = err.Error()
 			return
 		}
-
-		r := syscallArrToSeccompPolicy(profileName, b)
-		podName := fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
-		ownerReference := t.resolver.LookupOwnerReferenceByMntns(mntns)
-		seccompProfileAddLabelsAndAnnotations(r, trace, podName, containerName, ownerReference)
 
 		err = t.client.Create(context.TODO(), r)
 		if err != nil {
