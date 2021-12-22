@@ -104,10 +104,9 @@ var cleanupTestNamespace *command = &command{
 }
 
 var cleanupInspektorGadget *command = &command{
-	name:           "cleanup gadget deployment",
-	cmd:            "$KUBECTL_GADGET deploy $GADGET_IMAGE_FLAG | kubectl delete --wait=false -f -",
-	expectedRegexp: "\"gadget\" deleted",
-	cleanup:        true,
+	name:    "cleanup gadget deployment",
+	cmd:     "$KUBECTL_GADGET undeploy",
+	cleanup: true,
 }
 
 // run runs the command on the given as parameter test.
