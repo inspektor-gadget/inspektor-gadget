@@ -23,6 +23,7 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -87,21 +88,23 @@ func init() {
 
 func transformLine(line string) string {
 	event := &dnstypes.Event{}
-	json.Unmarshal([]byte(line), event)
+	if err := json.Unmarshal([]byte(line), event); err != nil {
+		return fmt.Sprintf("error unmarshaling event: %s", err)
+	}
 
 	podMsgSuffix := ""
 	if event.Namespace != "" && event.Pod != "" {
 		podMsgSuffix = ", pod " + event.Namespace + "/" + event.Pod
 	}
 
-	if event.Err != "" {
-		return fmt.Sprintf("Error on node %s%s: %s: %s", event.Node, podMsgSuffix, event.Notice, event.Err)
+	if event.Type == eventtypes.ERR {
+		return fmt.Sprintf("Error on node %s%s: %s", event.Node, podMsgSuffix, event.Message)
 	}
-	if event.Notice != "" {
+	if event.Type == eventtypes.DEBUG {
 		if !params.Verbose {
 			return ""
 		}
-		return fmt.Sprintf("Notice on node %s%s: %s", event.Node, podMsgSuffix, event.Notice)
+		return fmt.Sprintf("Debug on node %s%s: %s", event.Node, podMsgSuffix, event.Message)
 	}
 	if params.AllNamespaces {
 		return fmt.Sprintf(FMT_ALL, event.Node, event.Namespace, event.Pod, event.PktType, event.DNSName)

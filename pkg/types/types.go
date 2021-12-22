@@ -14,22 +14,38 @@
 
 package types
 
+type EventType string
+
+const (
+	// Indicates a generic event produced by a gadget. Gadgets extend
+	// the base event to contain the specific data the gadget provides
+	NORMAL EventType = "normal"
+
+	// Event is an error message
+	ERR EventType = "err"
+
+	// Event is a warning message
+	WARN EventType = "warn"
+
+	// Event is a debug message
+	DEBUG EventType = "debug"
+
+	// Event is a info message
+	INFO EventType = "info"
+
+	// Indicates the tracer in the node is now is able to produce events
+	READY EventType = "ready"
+)
+
 type Event struct {
-	// Err is a fatal error; clients should stop parsing
-	Err string `json:"err,omitempty"`
+	// Type indicates the kind of this event
+	Type EventType `json:"type"`
 
-	// Notice is additional information to be displayed with 'verbose'
-	// option
-	Notice string `json:"notice,omitempty"`
-
-	// Ready should be sent only once per node
-	Ready bool `json:"ready,omitempty"`
+	// Message when Type is ERR, WARN, DEBUG or INFO
+	Message string `json:"message,omitempty"`
 
 	// Node where the event comes from
 	Node string `json:"node,omitempty"`
-
-	// Host if the event comes from the host
-	Host bool `json:"host,omitempty"`
 
 	// Pod namespace where the event comes from, or empty for host-level
 	// event

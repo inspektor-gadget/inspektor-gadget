@@ -17,6 +17,7 @@ package localgadgetmanager
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -31,6 +32,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+
+	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 var rootTest = flag.Bool("root-test", false, "enable tests requiring root")
@@ -222,17 +226,73 @@ func TestDNS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
-	results := <-ch + "\n"
-	results += <-ch + "\n"
-	results += <-ch + "\n"
-	t.Logf("Output:\n%s", results)
 
-	expectedResults := `{"notice":"tracer attached","node":"local","namespace":"default","pod":"test-local-gadget-dns001"}
-{"node":"local","namespace":"default","pod":"test-local-gadget-dns001","name":"microsoft.com.","pkt_type":"OUTGOING"}
-{"notice":"tracer detached","node":"local","namespace":"default","pod":"test-local-gadget-dns001"}
-`
-	if results != expectedResults {
-		t.Fatalf("Failed to get correct DNS: %s", results)
+	var event dnstypes.Event
+	var expectedEvent dnstypes.Event
+	var result string
+
+	// check that attached message is sent
+	result = <-ch
+	event = dnstypes.Event{}
+	if err := json.Unmarshal([]byte(result), &event); err != nil {
+		t.Fatalf("failed to unmarshal json: %s", err)
+	}
+
+	expectedEvent = dnstypes.Event{
+		Event: eventtypes.Event{
+			Type:      eventtypes.DEBUG,
+			Message:   "tracer attached",
+			Node:      "local",
+			Namespace: "default",
+			Pod:       "test-local-gadget-dns001",
+		},
+	}
+
+	if event != expectedEvent {
+		t.Fatalf("Received: %v, Expected: %v", event, expectedEvent)
+	}
+
+	// check dns request is traced
+	result = <-ch
+	event = dnstypes.Event{}
+	if err := json.Unmarshal([]byte(result), &event); err != nil {
+		t.Fatalf("failed to unmarshal json: %s", err)
+	}
+
+	expectedEvent = dnstypes.Event{
+		Event: eventtypes.Event{
+			Type:      eventtypes.NORMAL,
+			Node:      "local",
+			Namespace: "default",
+			Pod:       "test-local-gadget-dns001",
+		},
+		DNSName: "microsoft.com.",
+		PktType: "OUTGOING",
+	}
+
+	if event != expectedEvent {
+		t.Fatalf("Received: %v, Expected: %v", event, expectedEvent)
+	}
+
+	// check that detached message is sent
+	result = <-ch
+	event = dnstypes.Event{}
+	if err := json.Unmarshal([]byte(result), &event); err != nil {
+		t.Fatalf("failed to unmarshal json: %s", err)
+	}
+
+	expectedEvent = dnstypes.Event{
+		Event: eventtypes.Event{
+			Type:      eventtypes.DEBUG,
+			Message:   "tracer detached",
+			Node:      "local",
+			Namespace: "default",
+			Pod:       "test-local-gadget-dns001",
+		},
+	}
+
+	if event != expectedEvent {
+		t.Fatalf("Received: %v, Expected: %v", event, expectedEvent)
 	}
 
 	err = localGadgetManager.Delete("my-tracer")

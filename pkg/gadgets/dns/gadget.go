@@ -123,30 +123,50 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	printEvent := func(notice, err, key, name, pktType string) string {
+	fillEvent := func(event *dnstypes.Event, key string) {
+		keyParts := strings.SplitN(key, "/", 2)
+		if len(keyParts) == 2 {
+			event.Namespace = keyParts[0]
+			event.Pod = keyParts[1]
+		} else if key != "" {
+			event.Type = eventtypes.ERR
+			event.Message = fmt.Sprintf("unknown key %s", key)
+		}
+	}
+
+	printMessage := func(key string, t eventtypes.EventType, message string) string {
 		event := &dnstypes.Event{
 			Event: eventtypes.Event{
-				Notice: notice,
-				Err:    err,
-				Node:   trace.Spec.Node,
+				Type:    t,
+				Node:    trace.Spec.Node,
+				Message: message,
+			},
+		}
+
+		fillEvent(event, key)
+
+		b, err := json.Marshal(event)
+		if err != nil {
+			return ""
+		}
+		return string(b)
+	}
+
+	printEvent := func(key, name, pktType string) string {
+		event := &dnstypes.Event{
+			Event: eventtypes.Event{
+				Type: eventtypes.NORMAL,
+				Node: trace.Spec.Node,
 			},
 			DNSName: name,
 			PktType: pktType,
 		}
 
-		keyParts := strings.SplitN(key, "/", 2)
-		if len(keyParts) == 2 {
-			event.Namespace = keyParts[0]
-			event.Pod = keyParts[1]
-		} else if key == "host" {
-			event.Host = true
-		} else if key != "" {
-			event.Err = fmt.Sprintf("unknown key %s", key)
-		}
+		fillEvent(event, key)
 
-		b, e := json.Marshal(event)
-		if e != nil {
-			return `{"err": "cannot marshal event"}`
+		b, err := json.Marshal(event)
+		if err != nil {
+			return ""
 		}
 		return string(b)
 	}
@@ -157,7 +177,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return func(name, pktType string) {
 			t.resolver.PublishEvent(
 				traceName,
-				printEvent("", "", key, name, pktType),
+				printEvent(key, name, pktType),
 			)
 		}
 	}
@@ -176,13 +196,13 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		if err != nil {
 			t.resolver.PublishEvent(
 				traceName,
-				printEvent("failed to attach tracer", err.Error(), key, "", ""),
+				printMessage(key, eventtypes.ERR, fmt.Sprintf("failed to attach tracer: %s", err)),
 			)
 			return err
 		}
 		t.resolver.PublishEvent(
 			traceName,
-			printEvent("tracer attached", "", key, "", ""),
+			printMessage(key, eventtypes.DEBUG, "tracer attached"),
 		)
 		return nil
 	}
@@ -194,13 +214,13 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		if err != nil {
 			t.resolver.PublishEvent(
 				traceName,
-				printEvent("failed to detach tracer", err.Error(), key, "", ""),
+				printMessage(key, eventtypes.ERR, fmt.Sprintf("failed to detach tracer: %s", err)),
 			)
 			return
 		}
 		t.resolver.PublishEvent(
 			traceName,
-			printEvent("tracer detached", "", key, "", ""),
+			printMessage(key, eventtypes.DEBUG, "tracer detached"),
 		)
 	}
 
