@@ -573,8 +573,11 @@ func sigHandler(traceID *string) {
 		if *traceID != "" {
 			DeleteTrace(*traceID)
 		}
-
-		os.Exit(1)
+		if sig == syscall.SIGINT {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
 	}()
 }
 
