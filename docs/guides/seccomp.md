@@ -262,13 +262,13 @@ Operator](https://github.com/kubernetes-sigs/security-profiles-operator).
 To install the operator, use the following commands:
 
 <!--
-In our code, we include seccompprofile/v1alpha1, thus we apply from v0.3.0 to
+In our code, we include seccompprofile/v1beta1, thus we apply from v0.4.0 to
 ensure operator.yaml applies on our code.
 -->
 ```bash
 $ kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.6.0/cert-manager.yaml
 $ kubectl --namespace cert-manager wait --for condition=ready pod -l app.kubernetes.io/instance=cert-manager
-$ kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.3.0/deploy/operator.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.0/deploy/operator.yaml
 ```
 
 Once installed, the seccomp gadget can generate `seccompprofile` resources
