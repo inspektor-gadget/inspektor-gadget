@@ -95,6 +95,9 @@ message ContainerDefinition {
   uint32 pid = 12;
 
   uint64 netns = 13;
+
+  // Add this field here to be able to print node when using process-collector.
+  string node = 14;
 }
 
 message DumpStateRequest {

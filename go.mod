@@ -24,7 +24,8 @@ require (
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20200114145059-84a08fc667c0
 	golang.org/x/sys v0.0.0-20210906170528-6f6e22806c34
 	google.golang.org/grpc v1.38.0
-	google.golang.org/protobuf v1.26.0
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0 // indirect
+	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.21.2
 	k8s.io/apiextensions-apiserver v0.21.2
 	k8s.io/apimachinery v0.21.2
