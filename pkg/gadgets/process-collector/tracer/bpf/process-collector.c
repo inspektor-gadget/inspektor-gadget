@@ -74,6 +74,7 @@ int dump_task(struct bpf_iter__task *ctx)
 		BPF_SEQ_PRINTF(seq, ",\n    \"namespace\": \"%s\"", container_entry->namespace);
 		BPF_SEQ_PRINTF(seq, ",\n    \"pod\": \"%s\"", container_entry->pod);
 		BPF_SEQ_PRINTF(seq, ",\n    \"container\": \"%s\"", container_entry->container);
+		BPF_SEQ_PRINTF(seq, ",\n    \"node\": \"%s\"", container_entry->node);
 	}
 
 	BPF_SEQ_PRINTF(seq, "\n  }");

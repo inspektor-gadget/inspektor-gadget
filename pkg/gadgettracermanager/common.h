@@ -12,6 +12,7 @@ struct container {
 	char namespace[NAME_MAX_LENGTH];
 	char pod[NAME_MAX_LENGTH];
 	char container[NAME_MAX_LENGTH];
+	char node[NAME_MAX_LENGTH];
 };
 
 #endif
