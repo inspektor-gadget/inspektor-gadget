@@ -59,7 +59,7 @@ static unsigned long sock_i_ino(const struct sock *sk)
 static inline void socket_bpf_seq_print(struct seq_file *seq,
                 const char* protocol, const __be32 src,
                 const __u16 srcp, const __be32 dest,
-                const __u16 destp, const unsigned char state)
+                const __u16 destp, const unsigned char state, long ino)
 {
     /*
      * Notice that client side program is expecting socket information exactly
@@ -68,10 +68,11 @@ static inline void socket_bpf_seq_print(struct seq_file *seq,
      * protocol: "TCP" or "UDP"
      * IP addresses and ports: Hexadecimal in host-byte order.
      * state: Hexadecimal of https://github.com/torvalds/linux/blob/v5.13/include/net/tcp_states.h#L12-L24
+     * ino: unsigned long.
      */
-    BPF_SEQ_PRINTF(seq, "%s %08X %04X %08X %04X %02X\n",
+    BPF_SEQ_PRINTF(seq, "%s %08X %04X %08X %04X %02X %lu\n",
         protocol, bpf_ntohl(src), bpf_ntohs(srcp),
-        bpf_ntohl(dest), bpf_ntohs(destp), state);
+        bpf_ntohl(dest), bpf_ntohs(destp), state, ino);
 }
 
 #endif /* __GADGET_SOCKET_COMMON_H__ */

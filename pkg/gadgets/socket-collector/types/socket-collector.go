@@ -45,6 +45,7 @@ type Event struct {
 	RemoteAddress string `json:"remote_address"`
 	RemotePort    uint16 `json:"remote_port"`
 	Status        string `json:"status"`
+	InodeNumber   uint64 `json:"inode_number"`
 }
 
 func ParseProtocol(protocol string) (Proto, error) {

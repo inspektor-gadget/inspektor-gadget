@@ -44,7 +44,7 @@ int dump_udp4(struct bpf_iter__udp *ctx)
 
 	socket_bpf_seq_print(seq, proto, inet->inet_rcv_saddr,
 		inet->inet_sport, inet->inet_daddr,
-		inet->inet_dport, inet->sk.sk_state);
+		inet->inet_dport, inet->sk.sk_state, sock_i_ino(&inet->sk));
 
 	return 0;
 }
