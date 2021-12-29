@@ -44,6 +44,7 @@ var socketCollectorCmd = &cobra.Command{
 var (
 	processCollectorParamThreads bool
 	socketCollectorProtocol      string
+	socketCollectorParamExtended bool
 )
 
 func init() {
@@ -78,6 +79,13 @@ func init() {
 		"",
 		"all",
 		fmt.Sprintf("Show only sockets using this protocol (%s)", strings.Join(protocols, ", ")),
+	)
+	socketCollectorCmd.PersistentFlags().BoolVarP(
+		&socketCollectorParamExtended,
+		"extend",
+		"e",
+		false,
+		"Display other/more information (like socket inode)",
 	)
 }
 
@@ -230,8 +238,10 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 				return si.RemoteAddress < sj.RemoteAddress
 			case si.LocalPort != sj.LocalPort:
 				return si.LocalPort < sj.LocalPort
-			default:
+			case si.RemotePort != sj.RemotePort:
 				return si.RemotePort < sj.RemotePort
+			default:
+				return si.InodeNumber < sj.InodeNumber
 			}
 		})
 
@@ -258,10 +268,20 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 		default:
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 
-			fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tPROTOCOL\tLOCAL\tREMOTE\tSTATUS")
+			extendedHeader := "\n"
+			if socketCollectorParamExtended {
+				extendedHeader = "\tINODE\n"
+			}
+
+			fmt.Fprintf(w, "NODE\tNAMESPACE\tPOD\tPROTOCOL\tLOCAL\tREMOTE\tSTATUS%s", extendedHeader)
 
 			for _, s := range allSockets {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s:%d\t%s:%d\t%s\n",
+				extendedInformation := "\n"
+				if socketCollectorParamExtended {
+					extendedInformation = fmt.Sprintf("\t%d\n", s.InodeNumber)
+				}
+
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s:%d\t%s:%d\t%s%s",
 					s.Event.Node,
 					s.Event.Namespace,
 					s.Event.Pod,
@@ -271,6 +291,7 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 					s.RemoteAddress,
 					s.RemotePort,
 					s.Status,
+					extendedInformation,
 				)
 			}
 			w.Flush()
