@@ -29,6 +29,29 @@
 #define tw_rcv_saddr    __tw_common.skc_rcv_saddr
 #define tw_dport        __tw_common.skc_dport
 
+/**
+ * sock_i_ino - Returns the inode identifier associated to a socket.
+ * @sk: The socket whom inode identifier will be returned.
+ *
+ * Returns the inode identifier corresponding to the given as parameter socket.
+ *
+ * Returns:
+ * * The inode identifier associated to the socket.
+ */
+static unsigned long sock_i_ino(const struct sock *sk)
+{
+	const struct socket *sk_socket = sk->sk_socket;
+	const struct inode *inode;
+	unsigned long ino;
+
+	if (!sk_socket)
+		return 0;
+
+	inode = &container_of(sk_socket, struct socket_alloc, socket)->vfs_inode;
+	bpf_probe_read_kernel(&ino, sizeof(ino), &inode->i_ino);
+	return ino;
+}
+
 /*
  * This function receives arguments as they are stored
  * in the different socket structure, i.e. network-byte order.
