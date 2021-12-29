@@ -169,8 +169,8 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		// tcptop only works on one pod at a time
 		if subCommand == "tcptop" {
-			if params.Node == "" || params.Podname == "" {
-				contextLogger.Fatalf("tcptop only works with --node and --podname")
+			if params.Podname == "" {
+				contextLogger.Fatalf("tcptop only works with --podname")
 			}
 
 			if params.OutputMode == utils.OutputModeJson {
