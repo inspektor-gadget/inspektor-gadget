@@ -10,20 +10,20 @@ Before we start a demo pod that connects to a public HTTP server, we already beg
 the outgoing connections of our future pod (don't terminate it with Ctrl-C for now).
 
 
-```
+```bash
 $ kubectl gadget tcpconnect --podname mypod
 ```
 
 When we run the pod in a new terminal, we see the output `ok` since the public HTTP server was reached.
 
-```
+```bash
 $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.1.1.1 && echo ok || echo failed'
 ok
 ```
 
 In our Inspektor Gadget terminal we can now see the logged connection:
 
-```
+```bash
 $ kubectl gadget tcpconnect --podname mypod
 Tracing connect ... Hit Ctrl-C to end
 NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            DPORT
@@ -43,7 +43,7 @@ Don't terminate it yet, we will have another look later.
 Since we now know which network accesses our pod does, we can define and apply a very
 restrictive network policy:
 
-```
+```bash
 $ cat docs/examples/network-policy.yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -77,7 +77,7 @@ networkpolicy.networking.k8s.io/restrictive-network-policy created
 
 Let's test if the pod still works as expected:
 
-```
+```bash
 $ kubectl delete pod mypod
 $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.1.1.1 && echo ok || echo failed'
 ok
@@ -87,7 +87,7 @@ ok
 Switching to the Inspektor Gadget terminal, we see the same connections again
 (but now with a new PID since it's a new pod):
 
-```
+```bash
 $ kubectl gadget tcpconnect --podname mypod  # (still running in old terminal)
 NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            DPORT
 ip-10-0-30-247   default          mypod            mypod           9386                wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
@@ -99,7 +99,7 @@ ip-10-0-30-247   default          mypod            mypod           16547        
 But what if the pod would connect to other IP addresses which we disallowed?
 Let's modify our pod to connect to a different address to verify that the connection fails.
 
-```
+```bash
 $ kubectl delete pod mypod
 $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /dev/null -T 3 http://1.0.0.1 && echo ok || echo failed'
 wget: download timed out
@@ -110,7 +110,7 @@ Indeed the network policy was applied and we can also see in Inspektor Gadget wh
 connection the pod wanted to make in the last line. Since connecting to port 80 failed
 there is no redirect visible to port 443:
 
-```
+```bash
 $ kubectl gadget tcpconnect --podname mypod  # (still running in old terminal)
 NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            DPORT
 ip-10-0-30-247   default          mypod            mypod           9386   wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
@@ -123,7 +123,7 @@ ip-10-0-30-247   default          mypod            mypod           17418  wget  
 We created a tailored network policy for our (original) demo pod by observing its connection behavior :)
 Finally, we should delete the demo pod and network policy again:
 
-```
+```bash
 $ kubectl delete pod mypod
 pod "mypod" deleted
 $ kubectl delete -f docs/examples/network-policy.yaml

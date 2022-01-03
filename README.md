@@ -8,14 +8,14 @@ Install Inspektor Gadget (client-side):
 
 Use [krew](https://sigs.k8s.io/krew) plugin manager to install:
 
-```
-kubectl krew install gadget
-kubectl gadget --help
+```bash
+$ kubectl krew install gadget
+$ kubectl gadget --help
 ```
 
 Install Inspektor Gadget on Kubernetes:
 
-```
+```bash
 $ kubectl gadget deploy | kubectl apply -f -
 ```
 
@@ -26,7 +26,7 @@ Read the detailed [install instructions](docs/install.md) to find more informati
 `kubectl gadget --help` will provide you the list of supported commands and their
 flags.
 
-```
+```bash
 $ kubectl gadget --help
 Usage:
   kubectl-gadget [command]

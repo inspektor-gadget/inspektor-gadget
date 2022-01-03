@@ -21,7 +21,7 @@ Here we have a small demo app which logs failures due to lacking capabilities.
 Since none of the default capabilities is dropped, we have to find
 out what non-default capability we have to add.
 
-```
+```bash
 $ cat docs/examples/app-set-priority.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -53,7 +53,7 @@ nice: setpriority(-20): Permission denied
 We could see the error messages in the pod's log.
 Let's use Inspektor Gadget to watch the capability checks:
 
-```
+```bash
 $ kubectl gadget capabilities --selector name=set-priority
 NODE             NAMESPACE        POD                           CONTAINER       TIME      UID    PID    COMM             CAP  NAME                 AUDIT
 ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:13:54  0      146786 nice             23   CAP_SYS_NICE         1
@@ -75,7 +75,7 @@ We should probably add it to our pod template for `nice` to work. We can also dr
 all other capabilites from the default list (see link above) since `nice`
 did not use them:
 
-```
+```bash
 $ cat docs/examples/app-set-priority-locked-down.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -106,7 +106,7 @@ spec:
 At this moment we have to make sure that we are allowed to grant `SYS_NICE` for new pods in the
 restricted pod security policy.
 
-```
+```bash
 $ kubectl get psp
 NAME                       PRIV    CAPS               SELINUX    RUNASUSER   FSGROUP     SUPGROUP    READONLYROOTFS   VOLUMES
 nginx-ingress-controller   false   NET_BIND_SERVICE   RunAsAny   MustRunAs   MustRunAs   MustRunAs   false            configMap,secret
@@ -117,7 +117,7 @@ restricted                 false                      RunAsAny   MustRunAs   Mus
 For privileged pods adding `SYS_NICE` would work, but not for the default pods.
 We can change that by editing the policy.
 
-```
+```bash
 $ kubectl edit psp restricted  # opens the editor to add the below two lines
 spec:
   allowPrivilegeEscalation: false
@@ -129,7 +129,7 @@ spec:
 
 After saving we can verify that we are allowed to add new pods which grant `SYS_NICE`.
 
-```
+```bash
 $ kubectl get psp
 NAME                       PRIV    CAPS               SELINUX    RUNASUSER   FSGROUP     SUPGROUP    READONLYROOTFS   VOLUMES
 nginx-ingress-controller   false   NET_BIND_SERVICE   RunAsAny   MustRunAs   MustRunAs   MustRunAs   false            configMap,secret
@@ -139,7 +139,7 @@ restricted                 false   SYS_NICE           RunAsAny   MustRunAs   Mus
 
 Let's verify that our locked-down version works.
 
-```
+```bash
 $ kubectl delete -f docs/examples/app-set-priority.yaml
 deployment.apps "set-priority" deleted
 $ kubectl apply -f docs/examples/app-set-priority-locked-down.yaml

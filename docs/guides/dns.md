@@ -8,21 +8,21 @@ pods.
 
 Create a `demo` namespace:
 
-```
+```bash
 $ kubectl create ns demo
 namespace/demo created
 ```
 
 Start the dns gadget:
 
-```
+```bash
 $ kubectl gadget dns -n demo
 POD                            TYPE      NAME
 ```
 
 Run a pod on a different terminal and perform some DNS requests:
 
-```
+```bash
 $ kubectl -n demo run mypod -it --image=praqma/network-multitool -- /bin/sh
 # nslookup www.microsoft.com
 # nslookup www.google.com
@@ -31,7 +31,7 @@ $ kubectl -n demo run mypod -it --image=praqma/network-multitool -- /bin/sh
 
 The requests will be logged by the DNS gadget:
 
-```
+```bash
 POD                            TYPE      NAME
 mypod                          OUTGOING  www.microsoft.com.demo.svc.cluster.local.
 mypod                          OUTGOING  www.microsoft.com.svc.cluster.local.
@@ -52,7 +52,7 @@ mypod                          OUTGOING  www-amazon-com.customer.fastly.net.
 
 Delete the demo test namespace:
 
-```
+```bash
 $ kubectl delete ns demo
 namespace "demo" deleted
 ```

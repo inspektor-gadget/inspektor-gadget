@@ -75,7 +75,7 @@ command terminated with exit code 255
 ```
 
 Go back to the first terminal, you should only output related to `mount /foo /bar` as a result of using `--selector` options filtering the pods:
-```
+```bash
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
 minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext3", MS_SILENT, "") = -ENOENT
 minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext2", MS_SILENT, "") = -ENOENT

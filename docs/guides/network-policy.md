@@ -9,7 +9,7 @@ generate Kubernetes network policies.
 
 We will run this demo in the demo namespace:
 
-```
+```bash
 $ kubectl create ns demo
 namespace/demo created
 $ kubectl apply -f docs/examples/disable-psp-demo.yaml
@@ -19,12 +19,13 @@ clusterrolebinding.rbac.authorization.k8s.io/disable-psp-demo created
 
 In one terminal, start the network-policy gadget:
 
-```
+```bash
 $ kubectl gadget network-policy monitor --namespaces demo --output ./networktrace.log
 ```
 
 In another terminal, deploy [GoogleCloudPlatform/microservices-demo](https://github.com/GoogleCloudPlatform/microservices-demo/blob/master/release/kubernetes-manifests.yaml) in the demo namespace:
-```
+
+```bash
 $ wget -O network-policy-demo.yaml https://raw.githubusercontent.com/GoogleCloudPlatform/microservices-demo/ccff406cdcd3e043b432fe99b4038d1b4699c702/release/kubernetes-manifests.yaml
 $ kubectl apply -f network-policy-demo.yaml -n demo
 ```
@@ -32,7 +33,7 @@ $ kubectl apply -f network-policy-demo.yaml -n demo
 Once the demo is deployed and running correctly, we can see all the pods in the
 demo namespace:
 
-```
+```bash
 $ kubectl get pod -n demo
 NAME                                     READY   STATUS    RESTARTS   AGE
 adservice-58c85c77d8-k5667               1/1     Running   0          44s
@@ -52,13 +53,13 @@ shippingservice-778db496dd-mhdk5         1/1     Running   0          45s
 At this point, let's stop the recording with Ctrl-C, and generate the
 Kubernetes network policies:
 
-```
+```bash
 $ kubectl gadget network-policy report --input ./networktrace.log > network-policy.yaml
 ```
 
 Example for the cartservice: it can receive connections from the frontend and can initiate connections to redis-cart.
 
-```
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -92,7 +93,7 @@ spec:
 
 Time to apply network policies:
 
-```
+```bash
 $ kubectl apply -f network-policy.yaml
 networkpolicy.networking.k8s.io/cartservice-network created
 networkpolicy.networking.k8s.io/checkoutservice-network created
@@ -105,7 +106,7 @@ networkpolicy.networking.k8s.io/shippingservice-network created
 
 After a while we can see all the pods in the demo namespace:
 
-```
+```bash
 $kubectl get pod -n demo
 NAME                                     READY   STATUS             RESTARTS   AGE
 adservice-58c85c77d8-k5667               1/1     Running            0          5m11s
@@ -126,7 +127,7 @@ shippingservice-778db496dd-mhdk5         1/1     Running            0          5
 
 Finally, we should delete the demo namespace:
 
-```
+```bash
 $ kubectl delete namespace demo
 namespace "demo" deleted
 ```

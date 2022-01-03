@@ -11,7 +11,7 @@ resources are used to control which gadgets run in a given cluster.
 
 This is the basic format of this resource:
 
-```
+```yaml
 apiVersion: gadget.kinvolk.io/v1alpha1
 kind: Trace
 metadata:
@@ -68,8 +68,9 @@ the specified trace.
 
 After creating the resource, the corresponding operation can be set with
 `kubectl annotate`, as in the following example:
-```
-kubectl annotate -n gadget trace/trace-name gadget.kinvolk.io/operation=start
+
+```bash
+$ kubectl annotate -n gadget trace/trace-name gadget.kinvolk.io/operation=start
 ```
 
 ### Using `Trace` resources from graphical interfaces

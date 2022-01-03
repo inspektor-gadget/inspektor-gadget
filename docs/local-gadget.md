@@ -11,7 +11,7 @@ Inspektor Gadget can also be used without Kubernetes to trace containers with th
 
 ### biolatency
 
-```
+```bash
 $ sudo ./local-gadget
 » create biolatency trace1
 » operation trace1 stop
@@ -37,7 +37,8 @@ Tracing block device I/O... Hit Ctrl-C to end.
 ### dns
 
 Start the DNS gadget:
-```
+
+```bash
 $ sudo ./local-gadget 
 » create dns trace1 --container-selector shell01
 » stream trace1 -f
@@ -52,24 +53,27 @@ $ sudo ./local-gadget
 ```
 
 Start a container:
-```
+
+```bash
 $ docker run -ti --rm --name shell01 busybox wget wikipedia.org
 ```
 
 ### seccomp
 
-```
+```bash
 $ sudo ./local-gadget
 » create seccomp trace1 --container-selector shell01 --output-mode Status
 ```
 
 Start a container:
-```
-docker run -ti --rm --name shell01 busybox
+
+```bash
+$ docker run -ti --rm --name shell01 busybox
 ```
 
 Resume from the local-gadget terminal:
-```
+
+```bash
 » operation trace1 generate
 State: Started
 {
