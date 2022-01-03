@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	DEFAULT_SOCKET_PATH = "/var/run/docker.sock"
+	DEFAULT_SOCKET_PATH = "/run/docker.sock"
 	DEFAULT_TIMEOUT     = 2 * time.Second
 )
 
