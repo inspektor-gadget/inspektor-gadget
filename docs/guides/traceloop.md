@@ -7,7 +7,7 @@ weight: 10
 
 Traceloop is disabled by default from version 0.4.0. It can be enabled by using:
 
-```
+```bash
 $ kubectl gadget traceloop start
 ```
 
@@ -15,7 +15,7 @@ $ kubectl gadget traceloop start
 
 Let's run a pod to compute an important multiplication:
 
-```
+```bash
 $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'RANDOM=output ; echo "3*7*2" | bc > /tmp/file-$RANDOM ; cat /tmp/file-$RANDOM'
 cat: can't open '/tmp/file-3240': No such file or directory
 pod default/mypod terminated (Error)
@@ -26,7 +26,7 @@ pod "mypod" deleted
 Oh no! We made a mistake in the shell script: we opened the wrong file. Is the
 result lost forever? Let's check with the traceloop gadget:
 
-```
+```bash
 $ kubectl gadget traceloop list
 NODE              TRACES
 ip-10-0-30-247    10.0.30.247_default_mypod
@@ -36,7 +36,7 @@ ip-10-0-5-181
 
 Let's inspect the traceloop log:
 
-```
+```bash
 $ kubectl gadget traceloop show 10.0.30.247_default_mypod | grep -E 'write|/tmp/file'
 00:00.001792832 cpu#0 pid 14276 [runc:[2:INIT]] write(fd=4, buf=842351188896 "{\"type\":\"procReady\"}", count=20)...
 00:00.001808990 cpu#0 pid 14276 [runc:[2:INIT]] ...write() = 20
@@ -56,7 +56,7 @@ result was saved in `/tmp/file-1889` but we attempted to open
 `/tmp/file-3240`.
 
 We can close this trace now.
-```
+```bash
 $ kubectl gadget traceloop close 10.0.30.247_default_mypod
 closed
 ```
@@ -66,7 +66,7 @@ closed
 With traceloop, we can strace pods in the past, even after they terminated.
 
 Example: let's list the programs in /bin:
-```
+```bash
 $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'ls -l /bin | grep wget'
 -rwxr-xr-x  395 root     root       1120520 Apr  2 04:32 wget
 $ kubectl delete pod mypod
@@ -75,7 +75,7 @@ pod "mypod" deleted
 
 Because of the `grep wget`, we only see one entry. But traceloop can recover other entries:
 
-```
+```bash
 $ kubectl gadget traceloop list
 NODE              TRACES
 ip-10-0-30-247    10.0.30.247_default_mypod
@@ -102,6 +102,6 @@ closed
 
 We can stop the traceloop gadget now that we're done.
 
-```
+```bash
 $ kubectl gadget traceloop stop
 ```

@@ -33,9 +33,9 @@ Choose one way to install the Inspektor Gadget `kubectl` plugin.
 to install it and then install `kubectl gadget` by executing the following
 commands.
 
-```
-kubectl krew install gadget
-kubectl gadget --help
+```bash
+$ kubectl krew install gadget
+$ kubectl gadget --help
 ```
 
 ### Install a specific release
@@ -44,14 +44,14 @@ Download the asset for a given release and platform from the
 [releases page](https://github.com/kinvolk/inspektor-gadget/releases/),
 uncompress and move the `kubectl-gadget` executable to your `PATH`.
 
-```
+```bash
 $ curl -sL https://github.com/kinvolk/inspektor-gadget/releases/download/v0.2.0/inspektor-gadget-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - kubectl-gadget
 $ kubectl gadget version
 ```
 
 ### Compile from the sources
 
-```
+```bash
 $ git clone https://github.com/kinvolk/inspektor-gadget.git
 $ cd inspektor-gadget
 $ make kubectl-gadget-linux-amd64
@@ -63,7 +63,7 @@ $ kubectl gadget version
 
 ### Quick installation
 
-```
+```bash
 $ kubectl gadget deploy | kubectl apply -f -
 ```
 
@@ -73,7 +73,7 @@ This will deploy the gadget DaemonSet along with its RBAC rules.
 
 If you wish to install an alternative gadget image, you could use the following commands:
 
-```
+```bash
 $ kubectl gadget deploy --image=docker.io/myfork/gadget:tag | kubectl apply -f -
 ```
 
@@ -107,7 +107,7 @@ image that contains a more recent kernel version (5.4.40) and some features
 enabled to make eBPF programs work there. More details are available
 [here](https://github.com/kinvolk/cloud-native-bpf-workshop/blob/master/minikube.md#our-branch).
 
-```
+```bash
 $ wget https://cloud-native-bpf-workshop-public.s3.eu-central-1.amazonaws.com/minikube.iso
 $ minikube start --driver=kvm2 --iso-url=file://$(pwd)/minikube.iso
 
@@ -118,7 +118,7 @@ $ minikube start --driver=kvm2 --iso-url=file://$(pwd)/minikube.iso
 
 This option uses docker and hence the kernel of the host.
 
-```
+```bash
 $ minikube start --driver=docker
 
 # Deploy Inspektor Gadget in the cluster as described above

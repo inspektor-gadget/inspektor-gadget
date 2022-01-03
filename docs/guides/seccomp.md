@@ -96,7 +96,7 @@ You can also interact with this gadget by using `kubectl annotate`.
 To keep our example, you will need to use `trace-status.yaml` which content is
 the following:
 
-```
+```yaml
 apiVersion: gadget.kinvolk.io/v1alpha1
 kind: Trace
 metadata:
@@ -317,7 +317,7 @@ that, we need to edit the configuration and replace the `Unconfined`
 setting in our profile type, set it to `Localhost`, and add a
 `localhostProfile` entry that points to the profile we just generated.
 
-```
+```yaml
 spec:
   securityContext:
     seccompProfile:

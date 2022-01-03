@@ -37,7 +37,7 @@ kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
 
 You can build and push the container gadget image by running the following commands:
 
-```
+```bash
 $ make gadget-container
 $ make push-gadget-container
 ```
@@ -88,7 +88,7 @@ It's possible to make changes to Inspektor Gadget and test them on minikube loca
 
 You can run the different unit tests with:
 
-```
+```bash
 $ make test
 ```
 
@@ -97,7 +97,7 @@ $ make test
 The integration tests use a Kubernetes cluster to deploy and test Inspektor Gadget.
 Be sure that you have a valid kubeconfig and run:
 
-```
+```bash
 $ export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
 $ make integration-tests
 ```
