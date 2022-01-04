@@ -30,7 +30,7 @@ spec:
 
 Start dns
 
-```
+```bash
 $ kubectl annotate -n gadget trace/dns \
     gadget.kinvolk.io/operation=start
 ```
@@ -38,7 +38,7 @@ $ kubectl annotate -n gadget trace/dns \
 
 Stop dns and store results
 
-```
+```bash
 $ kubectl annotate -n gadget trace/dns \
     gadget.kinvolk.io/operation=stop
 ```

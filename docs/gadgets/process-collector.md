@@ -31,7 +31,7 @@ spec:
 
 Create a snapshot of the currently running processes. Once taken, the snapshot is not updated automatically. However one can call the collect operation again at any time to update the snapshot.
 
-```
+```bash
 $ kubectl annotate -n gadget trace/process-collector \
     gadget.kinvolk.io/operation=collect
 ```

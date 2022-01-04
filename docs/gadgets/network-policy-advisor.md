@@ -31,7 +31,7 @@ spec:
 
 Start network-policy
 
-```
+```bash
 $ kubectl annotate -n gadget trace/network-policy-advisor \
     gadget.kinvolk.io/operation=start
 ```
@@ -39,7 +39,7 @@ $ kubectl annotate -n gadget trace/network-policy-advisor \
 
 Update results in Trace.Status.Output
 
-```
+```bash
 $ kubectl annotate -n gadget trace/network-policy-advisor \
     gadget.kinvolk.io/operation=update
 ```
@@ -47,7 +47,7 @@ $ kubectl annotate -n gadget trace/network-policy-advisor \
 
 Convert results into network policies
 
-```
+```bash
 $ kubectl annotate -n gadget trace/network-policy-advisor \
     gadget.kinvolk.io/operation=report
 ```
@@ -55,7 +55,7 @@ $ kubectl annotate -n gadget trace/network-policy-advisor \
 
 Stop network-policy
 
-```
+```bash
 $ kubectl annotate -n gadget trace/network-policy-advisor \
     gadget.kinvolk.io/operation=stop
 ```

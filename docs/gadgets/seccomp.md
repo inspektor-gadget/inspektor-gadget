@@ -76,7 +76,7 @@ spec:
 
 Start recording syscalls
 
-```
+```bash
 $ kubectl annotate -n gadget trace/seccomp \
     gadget.kinvolk.io/operation=start
 ```
@@ -85,7 +85,7 @@ $ kubectl annotate -n gadget trace/seccomp \
 Generate a seccomp profile for the pod specified in Trace.Spec.Filter. The
 namespace and pod name should be specified at the exclusion of other fields.
 
-```
+```bash
 $ kubectl annotate -n gadget trace/seccomp \
     gadget.kinvolk.io/operation=generate
 ```
@@ -93,7 +93,7 @@ $ kubectl annotate -n gadget trace/seccomp \
 
 Stop recording syscalls
 
-```
+```bash
 $ kubectl annotate -n gadget trace/seccomp \
     gadget.kinvolk.io/operation=stop
 ```
