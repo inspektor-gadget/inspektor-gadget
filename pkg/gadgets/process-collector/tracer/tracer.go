@@ -15,38 +15,39 @@
 package tracer
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	processcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/types"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 const (
 	BPF_ITER_NAME = "dump_task"
 )
 
-func RunCollector(mntnsmap string) (string, error) {
+func RunCollector(resolver gadgets.Resolver, mntnsmap string) ([]processcollectortypes.Event, error) {
 	var prog []byte
 	if mntnsmap == "" {
 		prog = ebpfProg
 	} else {
 		if filepath.Dir(mntnsmap) != gadgets.PIN_PATH {
-			return "", fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PIN_PATH)
+			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PIN_PATH)
 		}
 
 		prog = ebpfProgWithFilter
 	}
 	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(prog))
 	if err != nil {
-		return "", fmt.Errorf("failed to load asset: %w", err)
+		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
 
-	spec.Maps["containers"].Pinning = ebpf.PinByName
 	if mntnsmap != "" {
 		spec.Maps["filter"].Name = filepath.Base(mntnsmap)
 		spec.Maps["filter"].Pinning = ebpf.PinByName
@@ -60,29 +61,59 @@ func RunCollector(mntnsmap string) (string, error) {
 		},
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to create BPF collection: %w", err)
+		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}
 
 	dumpTask, ok := coll.Programs[BPF_ITER_NAME]
 	if !ok {
-		return "", fmt.Errorf("failed to find BPF iterator %q", BPF_ITER_NAME)
+		return nil, fmt.Errorf("failed to find BPF iterator %q", BPF_ITER_NAME)
 	}
 	dumpTaskIter, err := link.AttachIter(link.IterOptions{
 		Program: dumpTask,
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to attach BPF iterator: %w", err)
+		return nil, fmt.Errorf("failed to attach BPF iterator: %w", err)
 	}
 
 	file, err := dumpTaskIter.Open()
 	if err != nil {
-		return "", fmt.Errorf("failed to open BPF iterator: %w", err)
+		return nil, fmt.Errorf("failed to open BPF iterator: %w", err)
 	}
 	defer file.Close()
 
-	contents, err := ioutil.ReadAll(file)
-	if err != nil {
-		return "", fmt.Errorf("failed to read BPF iterator: %w", err)
+	var events []processcollectortypes.Event
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		var command string
+		var tgid, pid int
+		var mntnsid uint64
+
+		matchedElems, err := fmt.Sscanf(scanner.Text(), "%d %d %s %d", &tgid, &pid, &command, &mntnsid)
+		if err != nil {
+			return nil, err
+		}
+		if matchedElems != 4 {
+			return nil, fmt.Errorf("failed to parse process information, expected 4 matched elements had %d", matchedElems)
+		}
+
+		container := resolver.LookupContainerByMntns(mntnsid)
+		if container == nil {
+			continue
+		}
+
+		events = append(events, processcollectortypes.Event{
+			Event: eventtypes.Event{
+				Namespace: container.Namespace,
+				Pod:       container.Podname,
+				Container: container.Name,
+			},
+			Tgid:    tgid,
+			Pid:     pid,
+			Command: command,
+			MntNsId: mntnsid,
+		})
 	}
-	return string(contents), nil
+
+	return events, nil
 }
