@@ -32,7 +32,7 @@ const (
 	BPF_ITER_NAME = "dump_task"
 )
 
-func RunCollector(resolver gadgets.Resolver, mntnsmap string) ([]processcollectortypes.Event, error) {
+func RunCollector(resolver gadgets.Resolver, node, mntnsmap string) ([]processcollectortypes.Event, error) {
 	var prog []byte
 	if mntnsmap == "" {
 		prog = ebpfProg
@@ -104,6 +104,7 @@ func RunCollector(resolver gadgets.Resolver, mntnsmap string) ([]processcollecto
 
 		events = append(events, processcollectortypes.Event{
 			Event: eventtypes.Event{
+				Node:      node,
 				Namespace: container.Namespace,
 				Pod:       container.Podname,
 				Container: container.Name,

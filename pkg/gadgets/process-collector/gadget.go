@@ -65,7 +65,7 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 }
 
 func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
-	events, err := tracer.RunCollector(t.resolver, gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name))
+	events, err := tracer.RunCollector(t.resolver, trace.Spec.Node, gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name))
 	if err != nil {
 		gadgets.CleanupTraceStatus(trace)
 		trace.Status.OperationError = err.Error()
