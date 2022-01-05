@@ -189,7 +189,7 @@ func TestDns(t *testing.T) {
 	dnsCmd := &command{
 		name:           "Start dns gadget",
 		cmd:            "$KUBECTL_GADGET dns -n test-ns",
-		expectedRegexp: `test-pod\s+OUTGOING\s+microsoft.com`,
+		expectedRegexp: `test-pod\s+OUTGOING\s+A\s+microsoft.com`,
 		startAndStop:   true,
 	}
 
