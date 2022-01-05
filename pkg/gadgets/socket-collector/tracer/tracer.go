@@ -43,9 +43,11 @@ func parseIPv4(ipU32 uint32) string {
 
 // Format from socket_bpf_seq_print() in bpf/socket_common.h
 func parseStatus(proto string, statusUint uint8) (string, error) {
-	statusMap := [...]string{"ESTABLISHED", "SYN_SENT", "SYN_RECV",
+	statusMap := [...]string{
+		"ESTABLISHED", "SYN_SENT", "SYN_RECV",
 		"FIN_WAIT1", "FIN_WAIT2", "TIME_WAIT", "CLOSE", "CLOSE_WAIT",
-		"LAST_ACK", "LISTEN", "CLOSING", "NEW_SYN_RECV"}
+		"LAST_ACK", "LISTEN", "CLOSING", "NEW_SYN_RECV",
+	}
 
 	// Kernel enum starts from 1, adjust it to the statusMap
 	if statusUint == 0 || len(statusMap) <= int(statusUint-1) {

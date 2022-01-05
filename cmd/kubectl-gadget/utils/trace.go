@@ -139,7 +139,7 @@ func printTraceFeedback(m map[string]string, totalNodes int) {
 }
 
 func deleteTraces(traceClient *clientset.Clientset, traceID string) {
-	var listTracesOptions = metav1.ListOptions{
+	listTracesOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
 	}
 
@@ -352,7 +352,7 @@ func getTraceListFromOptions(listTracesOptions metav1.ListOptions) (*gadgetv1alp
 // corresponding to the given traceID.
 // If no trace corresponds to this ID, error is set.
 func getTraceListFromID(traceID string) (*gadgetv1alpha1.TraceList, error) {
-	var listTracesOptions = metav1.ListOptions{
+	listTracesOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
 	}
 
@@ -440,7 +440,7 @@ func getTraceWatcher(traceID string) (watch.Interface, error) {
 		return nil, err
 	}
 
-	var watchOptions = metav1.ListOptions{
+	watchOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
 	}
 
@@ -654,7 +654,7 @@ func getTraceListFromParameters(config *TraceConfig) ([]gadgetv1alpha1.Trace, er
 		"outputMode":    config.TraceOutputMode,
 	}
 
-	var listTracesOptions = metav1.ListOptions{
+	listTracesOptions := metav1.ListOptions{
 		LabelSelector: labelsFromFilter(filter),
 	}
 
@@ -859,7 +859,7 @@ func DeleteTracesByGadgetName(gadget string) error {
 		return err
 	}
 
-	var listTracesOptions = metav1.ListOptions{
+	listTracesOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("gadgetName=%s", gadget),
 	}
 
@@ -869,7 +869,7 @@ func DeleteTracesByGadgetName(gadget string) error {
 }
 
 func ListTracesByGadgetName(gadget string) ([]gadgetv1alpha1.Trace, error) {
-	var listTracesOptions = metav1.ListOptions{
+	listTracesOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("gadgetName=%s", gadget),
 	}
 

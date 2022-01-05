@@ -284,7 +284,8 @@ func TestContainer(t *testing.T) {
 		Labels: []*pb.Label{
 			{Key: "key1", Value: "value1"},
 			{Key: "key2", Value: "value2"},
-		}}
+		},
+	}
 	selectedContainers = g.GetContainersBySelector(&selector)
 	if len(selectedContainers) != 1 {
 		t.Fatalf("Error while looking up containers by multiple labels: invalid number of matches")

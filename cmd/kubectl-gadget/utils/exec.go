@@ -45,7 +45,7 @@ func ExecPodCapture(client *kubernetes.Clientset, node string, podCmd string) (s
 }
 
 func ExecPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout io.Writer, cmdStderr io.Writer) error {
-	var listOptions = metav1.ListOptions{
+	listOptions := metav1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
 		FieldSelector: "spec.nodeName=" + node + ",status.phase=Running",
 	}

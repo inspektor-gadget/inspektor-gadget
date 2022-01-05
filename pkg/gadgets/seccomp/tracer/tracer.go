@@ -78,7 +78,6 @@ func NewTracer() (*Tracer, error) {
 
 func (t *Tracer) Peek(mntns uint64) []byte {
 	b, err := t.seccompMap.LookupBytes(mntns)
-
 	if err != nil {
 		log.Errorf("Error while looking up the seccomp map: %s", err)
 		return make([]byte, C.SYSCALLS_COUNT)

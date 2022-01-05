@@ -126,7 +126,7 @@ const (
 )
 
 func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracemeta.TraceMeta, err error) {
-	var listOptions = metav1.ListOptions{
+	listOptions := metav1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
 	}
 	pods, err := client.CoreV1().Pods("kube-system").List(context.TODO(), listOptions)
@@ -320,7 +320,6 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		}
 	}
 	w.Flush()
-
 }
 
 func runTraceloopShow(cmd *cobra.Command, args []string) {
@@ -350,7 +349,6 @@ func runTraceloopShow(cmd *cobra.Command, args []string) {
 					fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/dump-by-traceid?traceid=%s' ; echo`, args[0])))
 			}
 		}
-
 	}
 }
 
@@ -415,5 +413,4 @@ func runTraceloopClose(cmd *cobra.Command, args []string) {
 		fmt.Printf("%s", utils.ExecPodSimple(client, node.Name,
 			fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/close-by-name?name=%s' ; echo`, args[0])))
 	}
-
 }

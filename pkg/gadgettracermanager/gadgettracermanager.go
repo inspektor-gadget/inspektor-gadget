@@ -212,8 +212,8 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 
 func (g *GadgetTracerManager) PublishEvent(tracerID string, line string) error {
 	// TODO: reentrant locking :/
-	//g.mu.Lock()
-	//defer g.mu.Unlock()
+	// g.mu.Lock()
+	// defer g.mu.Unlock()
 
 	t, ok := g.tracers[tracerID]
 	if !ok {
@@ -348,7 +348,7 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 			return nil, err
 		}
 
-		if err := os.Mkdir(gadgets.PIN_PATH, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
+		if err := os.Mkdir(gadgets.PIN_PATH, 0o700); err != nil && !errors.Is(err, unix.EEXIST) {
 			return nil, fmt.Errorf("failed to create folder for pinning bpf maps: %w", err)
 		}
 

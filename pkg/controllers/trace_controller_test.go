@@ -73,7 +73,6 @@ func (f *FakeFactory) Operations() map[string]gadgets.TraceOperation {
 }
 
 func (f *FakeFactory) Magic(trace *gadgetv1alpha1.Trace) {
-
 	f.mu.Lock()
 	key := fmt.Sprintf("operation/%s/%s/%s/",
 		trace.ObjectMeta.Namespace,
