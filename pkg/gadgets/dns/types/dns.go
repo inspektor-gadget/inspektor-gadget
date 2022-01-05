@@ -23,4 +23,5 @@ type Event struct {
 
 	DNSName string `json:"name,omitempty"`
 	PktType string `json:"pkt_type,omitempty"`
+	QType   string `json:"qtype,omitempty"`
 }

@@ -152,7 +152,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return string(b)
 	}
 
-	printEvent := func(key, name, pktType string) string {
+	printEvent := func(key, name, pktType, qType string) string {
 		event := &dnstypes.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
@@ -160,6 +160,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			},
 			DNSName: name,
 			PktType: pktType,
+			QType:   qType,
 		}
 
 		fillEvent(event, key)
@@ -173,11 +174,11 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
-	newDNSRequestCallback := func(key string) func(name, pktType string) {
-		return func(name, pktType string) {
+	newDNSRequestCallback := func(key string) func(name, pktType, qType string) {
+		return func(name, pktType, qType string) {
 			t.resolver.PublishEvent(
 				traceName,
-				printEvent(key, name, pktType),
+				printEvent(key, name, pktType, qType),
 			)
 		}
 	}
