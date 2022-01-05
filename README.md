@@ -46,6 +46,7 @@ Available Commands:
   opensnoop         Trace open() system calls
   process-collector Gather information about running processes
   profile           Profile CPU usage by sampling stack traces
+  seccomp-advisor   Generate seccomp policies based on recorded syscalls activity
   socket-collector  Gather information about network sockets
   tcpconnect        Trace TCP connect() system calls
   tcptop            Show the TCP traffic in a pod
