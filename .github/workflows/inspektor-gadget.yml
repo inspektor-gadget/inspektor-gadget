@@ -200,6 +200,11 @@ jobs:
 
         make local-gadget-tests
 
+    - name: Lint
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: v1.43.0
+
     - name: Setup Minikube
       uses: manusa/actions-setup-minikube@v2.4.2
       with:
