@@ -1,3 +1,4 @@
+//go:build !withebpf
 // +build !withebpf
 
 // Copyright 2019-2021 The Inspektor Gadget authors
