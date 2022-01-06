@@ -227,7 +227,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 		gadgetParams := ""
 
 		// add container info to gadgets that support it
-		if subCommand != "tcptop" && subCommand != "profile" && subCommand != "biotop" {
+		if subCommand != "tcptop" && subCommand != "profile" {
 			gadgetParams = "--containersmap /sys/fs/bpf/gadget/containers"
 		}
 
