@@ -198,6 +198,22 @@ func (cc *ContainerCollection) LookupPIDByPod(namespace, pod string) map[string]
 	return ret
 }
 
+// LookupOwnerReferenceByMntns returns a pointer to the owner reference of the
+// container identified by the mount namespace, or nil if not found
+func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *pb.OwnerReference {
+	var ownerRef *pb.OwnerReference
+	cc.containers.Range(func(key, value interface{}) bool {
+		c := value.(*pb.ContainerDefinition)
+		if mntns == c.Mntns {
+			ownerRef = c.OwnerReference
+			// container found, stop iterating
+			return false
+		}
+		return true
+	})
+	return ownerRef
+}
+
 // GetContainersBySelector returns a slice of containers that match
 // the selector or an empty slice if there are not matches
 func (cc *ContainerCollection) GetContainersBySelector(
