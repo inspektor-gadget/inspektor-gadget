@@ -29,7 +29,7 @@ spec:
 
 Start biolatency
 
-```
+```bash
 $ kubectl annotate -n gadget trace/biolatency \
     gadget.kinvolk.io/operation=start
 ```
@@ -37,7 +37,7 @@ $ kubectl annotate -n gadget trace/biolatency \
 
 Stop biolatency and store results
 
-```
+```bash
 $ kubectl annotate -n gadget trace/biolatency \
     gadget.kinvolk.io/operation=stop
 ```

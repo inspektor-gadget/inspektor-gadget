@@ -35,7 +35,7 @@ spec:
 
 Start traceloop
 
-```
+```bash
 $ kubectl annotate -n gadget trace/traceloop \
     gadget.kinvolk.io/operation=start
 ```
@@ -43,7 +43,7 @@ $ kubectl annotate -n gadget trace/traceloop \
 
 Stop traceloop
 
-```
+```bash
 $ kubectl annotate -n gadget trace/traceloop \
     gadget.kinvolk.io/operation=stop
 ```

@@ -17,7 +17,7 @@ title: Gadget {{ .Name }}
 
 {{$operation.Doc}}
 
-```
+```bash
 $ kubectl annotate -n gadget trace/{{$.Name}} \
     gadget.kinvolk.io/operation={{$operation.Name}}
 ```
