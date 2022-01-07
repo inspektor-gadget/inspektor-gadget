@@ -37,7 +37,7 @@ Available Commands:
   biotop            Trace block device I/O
   capabilities      Suggest Security Capabilities for securityContext
   completion        generate the autocompletion script for the specified shell
-  deploy            Deploy Inspektor Gadget on the worker nodes
+  deploy            Deploy Inspektor Gadget on the cluster
   dns               Trace DNS requests
   execsnoop         Trace new processes
   help              Help about any command
@@ -46,11 +46,13 @@ Available Commands:
   opensnoop         Trace open() system calls
   process-collector Gather information about running processes
   profile           Profile CPU usage by sampling stack traces
+  seccomp-advisor   Generate seccomp policies based on recorded syscalls activity
   socket-collector  Gather information about network sockets
   tcpconnect        Trace TCP connect() system calls
   tcptop            Show the TCP traffic in a pod
   tcptracer         Trace tcp connect, accept and close
   traceloop         Get strace-like logs of a pod from the past
+  undeploy          Undeploy Inspektor Gadget from cluster
   version           Show version
 
 ...

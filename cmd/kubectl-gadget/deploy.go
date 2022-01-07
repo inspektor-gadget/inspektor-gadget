@@ -26,7 +26,7 @@ import (
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
-	Short: "Deploy Inspektor Gadget on the worker nodes",
+	Short: "Deploy Inspektor Gadget on the cluster",
 	RunE:  runDeploy,
 }
 

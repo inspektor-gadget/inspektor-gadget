@@ -151,6 +151,10 @@ func deleteTraces(traceClient *clientset.Clientset, traceID string) {
 	}
 }
 
+func GetTraceClient() (*clientset.Clientset, error) {
+	return getTraceClient()
+}
+
 func getTraceClient() (*clientset.Clientset, error) {
 	config, err := KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {

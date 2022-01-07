@@ -161,10 +161,8 @@ minikube-install: gadget-container kubectl-gadget
 	# versions. And new versions of minikube don't support all eBPF
 	# features. So we have to keep "docker-save|docker-load" for now.
 	docker save $(CONTAINER_REPO):$(IMAGE_TAG) $(PV) | (eval $(shell $(MINIKUBE) -p minikube docker-env | grep =) && docker load)
-	# Delete traces CRD first: the gadget DaemonSet needs to be running
-	# because of Finalizers.
-	kubectl delete crd traces.gadget.kinvolk.io || true
-	./kubectl-gadget deploy | kubectl delete -f - || true
+	# Remove all resources created by Inspektor Gadget.
+	./kubectl-gadget undeploy || true
 	time kubectl wait --for=delete namespace gadget 2>/dev/null || true
 	time kubectl wait --for=delete daemonset -n kube-system gadget 2>/dev/null || true
 	./kubectl-gadget deploy --hook-mode=fanotify \

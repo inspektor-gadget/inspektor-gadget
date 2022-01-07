@@ -124,3 +124,11 @@ $ minikube start --driver=docker
 # Deploy Inspektor Gadget in the cluster as described above
 ```
 
+## Uninstalling from the cluster
+
+The following command will remove all the resources created by Inspektor
+Gadget from the cluster:
+
+```
+$ kubectl gadget undeploy
+```
