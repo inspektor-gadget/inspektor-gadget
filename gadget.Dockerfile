@@ -92,3 +92,6 @@ COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
 
 # BTF files
 COPY --from=builder /tmp/btfs /btfs/
+
+# Mitigate https://github.com/kubernetes/kubernetes/issues/106962.
+RUN rm /var/run
