@@ -64,7 +64,7 @@ spec:
   node: minikube
   gadget: dns
   filter:
-    namespace: kube-system
+    namespace: gadget
     podname: etcd-minikube
   runMode: Manual
   outputMode: Stream

@@ -86,26 +86,67 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: gadget
-  namespace: kube-system
+  namespace: gadget
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: gadget
+  name: gadget-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  # update is needed by traceloop gadget.
+  verbs: ["update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gadget-role-binding
+  namespace: gadget
+subjects:
+- kind: ServiceAccount
+  name: gadget
+roleRef:
+  kind: Role
+  name: gadget-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gadget-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["namespaces", "nodes", "pods"]
+  verbs: ["get", "watch", "list"]
+- apiGroups: [""]
+  resources: ["services"]
+  # list services is needed by network-policy gadget.
+  verbs: ["list"]
+- apiGroups: ["gadget.kinvolk.io"]
+  resources: ["traces", "traces/status"]
+  # For traces, we need all rights on them as we define this resource.
+  verbs: ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: gadget
+  name: gadget-cluster-role-binding
 subjects:
 - kind: ServiceAccount
   name: gadget
-  namespace: kube-system
+  namespace: gadget
 roleRef:
   kind: ClusterRole
-  name: cluster-admin
+  name: gadget-cluster-role
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: gadget
-  namespace: kube-system
+  namespace: gadget
   labels:
     k8s-app: gadget
 spec:
