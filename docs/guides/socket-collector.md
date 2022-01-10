@@ -53,6 +53,14 @@ NODE       NAMESPACE               POD          PROTOCOL    LOCAL           REMO
 my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:8080    0.0.0.0:0    LISTEN
 ```
 
+To get extended information, like the socket inode number, just the `-e` or `--extend` flag:
+
+```bash
+$ kubectl gadget socket-collector -n test-socketcollector -e
+NODE       NAMESPACE               POD          PROTOCOL    LOCAL           REMOTE       STATUS         INODE
+my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:8080    0.0.0.0:0    LISTEN         22866
+```
+
 We can also get the information in JSON format, by passing the `-o json` flag.
 Just take into account that IP address and port are displayed separated with this format:
 
