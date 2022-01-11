@@ -22,10 +22,8 @@ import (
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
-var (
-	// common params for all gadgets
-	params utils.CommonFlags
-)
+// common params for all gadgets
+var params utils.CommonFlags
 
 var rootCmd = &cobra.Command{
 	Use:   "kubectl-gadget",

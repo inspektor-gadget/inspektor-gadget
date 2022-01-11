@@ -14,12 +14,13 @@ ENV ENABLE_BTFGEN=${ENABLE_BTFGEN}
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
-	apt-get install -y gcc make golang-1.16 ca-certificates git clang \
+	apt-get install -y gcc make ca-certificates git clang \
 		software-properties-common libseccomp-dev && \
 	add-apt-repository -y ppa:tuxinvader/kernel-build-tools && \
+	apt-add-repository -y ppa:longsleep/golang-backports && \
 	apt-get update && \
-	apt-get install -y libbpf-dev && \
-	ln -s /usr/lib/go-1.16/bin/go /bin/go
+	apt-get install -y libbpf-dev golang-1.17 && \
+	ln -s /usr/lib/go-1.17/bin/go /bin/go
 
 # Download BTFHub files
 COPY ./tools /btf-tools

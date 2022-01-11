@@ -26,9 +26,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-var (
-	KubernetesConfigFlags = genericclioptions.NewConfigFlags(false)
-)
+var KubernetesConfigFlags = genericclioptions.NewConfigFlags(false)
 
 func FlagInit(rootCmd *cobra.Command) {
 	cobra.OnInitialize(cobraInit)

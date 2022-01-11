@@ -68,7 +68,7 @@ func init() {
 	)
 
 	var protocols []string
-	for protocol, _ := range socketcollectortypes.ProtocolsMap {
+	for protocol := range socketcollectortypes.ProtocolsMap {
 		protocols = append(protocols, protocol)
 	}
 

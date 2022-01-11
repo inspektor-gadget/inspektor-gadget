@@ -285,7 +285,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var completer = readline.NewPrefixCompleter(
+	completer := readline.NewPrefixCompleter(
 		readline.PcItem("list-gadgets"),
 		readline.PcItem("list-containers"),
 		readline.PcItem("list-traces"),

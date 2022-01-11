@@ -11,10 +11,10 @@ jobs:
       CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
     steps:
 
-    - name: Set up Go 1.16
+    - name: Set up Go 1.17
       uses: actions/setup-go@v1
       with:
-        go-version: 1.16
+        go-version: 1.17
       id: go
 
     - name: Check out code
@@ -36,8 +36,8 @@ jobs:
       uses: actions/cache@v2
       id: cache-debs
       with:
-          path: "~/cache-debs"
-          key: cache-debs-libbpf-1:0.4.0-1ubuntu1-libseccomp-2.5.1-1ubuntu1~20.04.1
+        path: "~/cache-debs"
+        key: cache-debs-libbpf-1:0.4.0-1ubuntu1-libseccomp-2.5.1-1ubuntu1~20.04.1
 
     - name: Install deb packages
       env:
@@ -116,9 +116,9 @@ jobs:
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
 
-      # Temp fix
-      # https://github.com/docker/build-push-action/issues/252
-      # https://github.com/moby/buildkit/issues/1896
+    # Temp fix
+    # https://github.com/docker/build-push-action/issues/252
+    # https://github.com/moby/buildkit/issues/1896
     - name: Move Docker layers cache
       run: |
         rm -rf /tmp/.buildx-cache
@@ -199,6 +199,11 @@ jobs:
         fi
 
         make local-gadget-tests
+
+    - name: Lint
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: v1.43.0
 
     - name: Setup Minikube
       uses: manusa/actions-setup-minikube@v2.4.2

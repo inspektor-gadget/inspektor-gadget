@@ -32,9 +32,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 )
 
-var (
-	repo string
-)
+var repo string
 
 func init() {
 	flag.StringVar(&repo, "repo", "", "path to the repository")

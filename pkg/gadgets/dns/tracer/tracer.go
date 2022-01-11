@@ -82,7 +82,6 @@ func openRawSock(pid uint32) (int, error) {
 			return err
 		}
 		return nil
-
 	})
 	if err != nil {
 		return -1, err
@@ -221,7 +220,6 @@ func (t *Tracer) listen(key string, rd *perf.Reader, f func(name, pktType string
 			f(name, pktType)
 		}
 	}
-
 }
 
 func (t *Tracer) releaseLink(key string, l *link) {

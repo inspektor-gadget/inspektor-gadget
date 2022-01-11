@@ -89,7 +89,6 @@ func TestMain(m *testing.M) {
 	fmt.Printf("Setup inspektor-gadget:\n")
 	for _, cmd := range initCommands {
 		err := cmd.runWithoutTest()
-
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 

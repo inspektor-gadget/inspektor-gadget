@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-/local-gadget
+/local-gadget*
 /kubectl-gadget
 /kubectl-gadget-*-*
 /gadget-container/bin
@@ -17,3 +17,7 @@
 
 # Downloaded binaries
 bin/
+
+# Build artifacts
+*.o
+!pkg/gadgets/socket-collector/tracer/*.o

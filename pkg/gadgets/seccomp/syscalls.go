@@ -1,3 +1,4 @@
+//go:build !docs
 // +build !docs
 
 // Copyright 2019-2021 The Inspektor Gadget authors

@@ -173,5 +173,4 @@ func TestSkipFirstLineFalse(t *testing.T) {
 	if "\n"+string(mock.output) != expected {
 		t.Fatalf("%v != %v", string(mock.output), expected)
 	}
-
 }

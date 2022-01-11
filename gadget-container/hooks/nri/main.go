@@ -44,17 +44,14 @@ const (
 	ContainerName = "io.kubernetes.cri.container-name"
 )
 
-var (
-	socketfile string
-)
+var socketfile string
 
 type igHookConf struct {
 	Socketfile string
 	Debug      bool
 }
 
-type igHook struct {
-}
+type igHook struct{}
 
 func (i *igHook) Type() string {
 	return "ighook"

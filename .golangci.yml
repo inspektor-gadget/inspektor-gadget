@@ -1,0 +1,18 @@
+output:
+  sort-results: true
+
+run:
+  build-tags:
+  - withebpf
+  - tools
+  - docs
+
+issues:
+  exclude-use-default: false
+  max-same-issues: 0
+  max-issues-per-linter: 0
+
+linters:
+  disable-all: true
+  enable:
+  - gofumpt
