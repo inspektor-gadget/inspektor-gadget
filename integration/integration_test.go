@@ -143,7 +143,7 @@ func TestBiotop(t *testing.T) {
 	biotopCmd := &command{
 		name:           "Start biotop gadget",
 		cmd:            "$KUBECTL_GADGET biotop --node $(kubectl get node --no-headers | cut -d' ' -f1)",
-		expectedRegexp: `etcd`,
+		expectedRegexp: `kube-system\s+etcd[\w-]+\s+etcd\s+\d+\s+etcd`,
 		startAndStop:   true,
 	}
 
