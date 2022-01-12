@@ -30,27 +30,28 @@ var image = flag.String("image", "", "gadget container image")
 var githubCI = flag.Bool("github-ci", false, "skip some tests which cannot be run on GitHub CI due to host kernel not BPF ready")
 
 func runCommands(cmds []*command, t *testing.T) {
+	// defer all cleanup commands so we are sure to exit clean whatever
+	// happened
+	defer func() {
+		for _, cmd := range cmds {
+			if cmd.cleanup {
+				cmd.run(t)
+			}
+		}
+	}()
+
+	// defer stopping commands
 	defer func() {
 		for _, cmd := range cmds {
 			if cmd.startAndStop && cmd.started {
 				// Wait a bit before stopping the command.
 				time.Sleep(10 * time.Second)
-
 				cmd.stop(t)
-
-				continue
 			}
-
-			if !cmd.cleanup {
-				continue
-			}
-
-			// Defer all cleanup commands so we are sure to exit clean whatever
-			// happened.
-			cmd.run(t)
 		}
 	}()
 
+	// run all commands but cleanup ones
 	for _, cmd := range cmds {
 		if cmd.cleanup {
 			continue
@@ -96,11 +97,15 @@ func TestMain(m *testing.M) {
 		}
 	}
 
-	ret := m.Run()
+	// defer the cleanup to be sure it's called even if the test
+	// fails (hence calling runtime.Goexit())
+	defer func() {
+		fmt.Printf("Clean inspektor-gadget:\n")
+		cleanupTestNamespace.runWithoutTest()
+		cleanupInspektorGadget.runWithoutTest()
+	}()
 
-	fmt.Printf("Clean inspektor-gadget:\n")
-	cleanupTestNamespace.runWithoutTest()
-	cleanupInspektorGadget.runWithoutTest()
+	ret := m.Run()
 
 	os.Exit(ret)
 }
