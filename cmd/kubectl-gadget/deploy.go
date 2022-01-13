@@ -132,6 +132,10 @@ rules:
   resources: ["deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers"]
   # Required to retrieve the owner references used by the seccomp gadget.
   verbs: ["get"]
+- apiGroups: ["security-profiles-operator.x-k8s.io"]
+  resources: ["seccompprofiles"]
+  # Required for integration with the Kubernetes Security Profiles Operator
+  verbs: ["list", "watch", "create"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
