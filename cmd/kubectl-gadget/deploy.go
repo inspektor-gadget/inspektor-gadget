@@ -128,6 +128,10 @@ rules:
   resources: ["traces", "traces/status"]
   # For traces, we need all rights on them as we define this resource.
   verbs: ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"]
+- apiGroups: ["*"]
+  resources: ["deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers"]
+  # Required to retrieve the owner references used by the seccomp gadget.
+  verbs: ["get"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

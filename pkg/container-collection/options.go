@@ -262,6 +262,8 @@ func WithPubSub(funcs ...pubsub.FuncNotify) ContainerCollectionOption {
 // resource kinds. Otherwise, it returns nil.
 func getExpectedOwnerReference(ownerReferences []metav1.OwnerReference) *metav1.OwnerReference {
 	// From: https://kubernetes.io/docs/concepts/workloads/controllers/
+	// Notice that any change on this map needs to be aligned with the gadget
+	// cluster role.
 	expectedResKinds := map[string]struct{}{
 		"Deployment":            {},
 		"ReplicaSet":            {},
@@ -353,7 +355,9 @@ func ownerReferenceEnrichment(
 
 	var highestOwnerRef *metav1.OwnerReference
 
-	// Iterate until we reach the highest level of reference
+	// Iterate until we reach the highest level of reference with one of the
+	// expected resource kind. Take into account that if this logic is changed,
+	// the gadget cluster role needs to be updated accordingly.
 	for {
 		if len(ownerReferences) == 0 {
 			ownerReferences, err = getOwnerReferences(dynamicClient,
