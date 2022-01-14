@@ -268,6 +268,7 @@ func TestDNS(t *testing.T) {
 		},
 		DNSName: "microsoft.com.",
 		PktType: "OUTGOING",
+		QType:   "A",
 	}
 
 	if event != expectedEvent {

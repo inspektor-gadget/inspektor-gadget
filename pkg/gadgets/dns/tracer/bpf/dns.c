@@ -94,7 +94,7 @@ int bpf_prog1(struct __sk_buff *skb)
 		if (skip != 0) {
 			skip--;
 		} else {
-			int label_len = load_byte(skb, DNS_OFF + 12 + i);
+			int label_len = load_byte(skb, DNS_OFF + sizeof(struct dnshdr) + i);
 			if (label_len == 0)
 				break;
 			// The simple solution "i += label_len" gives verifier
@@ -107,9 +107,13 @@ int bpf_prog1(struct __sk_buff *skb)
 
 	struct event_t event = {0,};
 	if (len > 0)
-		bpf_skb_load_bytes(skb, DNS_OFF + 12, event.name, len);
+		bpf_skb_load_bytes(skb, DNS_OFF + sizeof(struct dnshdr), event.name, len);
 
 	event.pkt_type = skb->pkt_type;
+
+	// Read QTYPE right after the QNAME
+	// https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.2
+	event.qtype = load_half(skb, DNS_OFF + sizeof(struct dnshdr) + len + 1);
 
 	// TODO: we should not send the event when len == 0. But the verifier
 	// won't let us.

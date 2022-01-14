@@ -8,6 +8,7 @@
 struct event_t {
 	char name[MAX_DNS_NAME];
 	unsigned char pkt_type;
+	unsigned short qtype;
 };
 
 #endif

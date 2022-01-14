@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	FMT_ALL   = "%-16.16s %-16.16s %-30.30s %-9.9s %s"
-	FMT_SHORT = "%-30.30s %-9.9s %s"
+	FMT_SHORT = "%-30.30s %-9.9s %-10.10s %s"
+	FMT_ALL   = "%-16.16s %-16.16s " + FMT_SHORT
 )
 
 var colLens = map[string]int{
@@ -54,12 +54,14 @@ var dnsCmd = &cobra.Command{
 				"NAMESPACE",
 				"POD",
 				"TYPE",
+				"QTYPE",
 				"NAME",
 			)
 		default:
 			fmt.Printf(FMT_SHORT+"\n",
 				"POD",
 				"TYPE",
+				"QTYPE",
 				"NAME",
 			)
 		}
@@ -107,8 +109,8 @@ func transformLine(line string) string {
 		return fmt.Sprintf("Debug on node %s%s: %s", event.Node, podMsgSuffix, event.Message)
 	}
 	if params.AllNamespaces {
-		return fmt.Sprintf(FMT_ALL, event.Node, event.Namespace, event.Pod, event.PktType, event.DNSName)
+		return fmt.Sprintf(FMT_ALL, event.Node, event.Namespace, event.Pod, event.PktType, event.QType, event.DNSName)
 	} else {
-		return fmt.Sprintf(FMT_SHORT, event.Pod, event.PktType, event.DNSName)
+		return fmt.Sprintf(FMT_SHORT, event.Pod, event.PktType, event.QType, event.DNSName)
 	}
 }

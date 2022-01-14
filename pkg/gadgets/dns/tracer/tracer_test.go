@@ -61,7 +61,7 @@ func TestParsing(t *testing.T) {
 	}
 
 	for _, entry := range table {
-		output, _ := parseDNSEvent(entry.input)
+		output, _, _ := parseDNSEvent(entry.input)
 		if output != entry.output {
 			t.Fatalf("Failed to parse DNS string: got %q, expected %q", output, entry.output)
 		}

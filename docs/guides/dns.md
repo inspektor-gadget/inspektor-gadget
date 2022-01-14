@@ -17,7 +17,7 @@ Start the dns gadget:
 
 ```bash
 $ kubectl gadget dns -n demo
-POD                            TYPE      NAME
+POD                            TYPE      QTYPE     NAME
 ```
 
 Run a pod on a different terminal and perform some DNS requests:
@@ -32,22 +32,22 @@ $ kubectl -n demo run mypod -it --image=praqma/network-multitool -- /bin/sh
 The requests will be logged by the DNS gadget:
 
 ```bash
-POD                            TYPE      NAME
-mypod                          OUTGOING  www.microsoft.com.demo.svc.cluster.local.
-mypod                          OUTGOING  www.microsoft.com.svc.cluster.local.
-mypod                          OUTGOING  www.microsoft.com.cluster.local.
-mypod                          OUTGOING  www.microsoft.com.
-mypod                          OUTGOING  e13678.dscb.akamaiedge.net.
-mypod                          OUTGOING  www.google.com.demo.svc.cluster.local.
-mypod                          OUTGOING  www.google.com.svc.cluster.local.
-mypod                          OUTGOING  www.google.com.cluster.local.
-mypod                          OUTGOING  www.google.com.
-mypod                          OUTGOING  www.google.com.
-mypod                          OUTGOING  www.amazon.com.demo.svc.cluster.local.
-mypod                          OUTGOING  www.amazon.com.svc.cluster.local.
-mypod                          OUTGOING  www.amazon.com.cluster.local.
-mypod                          OUTGOING  www.amazon.com.
-mypod                          OUTGOING  www-amazon-com.customer.fastly.net.
+POD                            TYPE      QTYPE     NAME
+mypod                          OUTGOING  A         microsoft.com.demo.svc.cluster.local.
+mypod                          OUTGOING  A         microsoft.com.svc.cluster.local.
+mypod                          OUTGOING  A         microsoft.com.cluster.local.
+mypod                          OUTGOING  A         microsoft.com.
+mypod                          OUTGOING  AAAA      microsoft.com.
+mypod                          OUTGOING  A         www.google.com.demo.svc.cluster.local.
+mypod                          OUTGOING  A         www.google.com.svc.cluster.local.
+mypod                          OUTGOING  A         www.google.com.cluster.local.
+mypod                          OUTGOING  A         www.google.com.
+mypod                          OUTGOING  AAAA      www.google.com.
+mypod                          OUTGOING  A         www.amazon.com.demo.svc.cluster.local.
+mypod                          OUTGOING  A         www.amazon.com.svc.cluster.local.
+mypod                          OUTGOING  A         www.amazon.com.cluster.local.
+mypod                          OUTGOING  A         www.amazon.com.
+mypod                          OUTGOING  AAAA      e15316.a.akamaiedge.net.
 ```
 
 Delete the demo test namespace:
