@@ -237,6 +237,25 @@ func TestContainer(t *testing.T) {
 		t.Fatalf("Error while looking up owner reference: unexpected %v", ownerRef)
 	}
 
+	// Check LookupContainerByMntns
+	containerByMntns0 := g.LookupContainerByMntns(55555)
+	if containerByMntns0.Name != "container0" {
+		t.Fatalf("Error in LookupContainerByMntns: expected %s, found %s", "container0",
+			containerByMntns0.Name)
+	}
+
+	// Check LookupContainerByMntns
+	containerByMntns2 := g.LookupContainerByMntns(55555 + 2)
+	if containerByMntns2.Name != "container2" {
+		t.Fatalf("Error in LookupContainerByMntns: expected %s, found %s", "container2",
+			containerByMntns2.Name)
+	}
+
+	containerByMntnsNotFound := g.LookupContainerByMntns(989898)
+	if containerByMntnsNotFound != nil {
+		t.Fatalf("Error in LookupContainerByMntns: returned non nil")
+	}
+
 	// Add new container with same pod and container name of container0 but in different namespace
 	respAddContainer, err := g.AddContainer(ctx, &pb.ContainerDefinition{
 		Id:        "abcde0-different",
