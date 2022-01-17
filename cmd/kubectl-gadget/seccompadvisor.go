@@ -15,13 +15,20 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	seccompprofilev1alpha1 "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1alpha1"
 )
 
 var seccompAdvisorCmd = &cobra.Command{
@@ -119,6 +126,51 @@ func runSeccompAdvisorStart(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// getSeccompProfilesName returns the seccomp profiles name associated with the
+// given as parameter traceID.
+// Indeed, a seccomp profile created by seccomp-advisor gadgets has, in its
+// Labels, the trace's id which created it.
+func getSeccompProfilesName(traceID string) ([]string, error) {
+	// seccompprofile does not provide an API to get Get, List, etc. seccomp
+	// profiles, thus we need to make it ourselves.
+	// To be able to retrieve seccompprofile, we need to add them to a scheme.
+	scheme := runtime.NewScheme()
+	seccompprofilev1alpha1.AddToScheme(scheme)
+
+	// Get a manager on seccompprofile.
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme:             scheme,
+		MetricsBindAddress: "0", // TCP port can be set to "0" to disable the metrics serving
+		ClientDisableCacheFor: []client.Object{
+			// We need to disable cache otherwise we get the following error message:
+			// the cache is not started, can not read objects
+			// Since this manager will be created each time user interacts with the
+			// CLI the cache will not persist, so there is not really advantages of
+			// using a cache.
+			&seccompprofilev1alpha1.SeccompProfile{},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to create manager: %w", err)
+	}
+
+	// Get a client on seccompprofile.
+	cli := mgr.GetClient()
+
+	profilesList := &seccompprofilev1alpha1.SeccompProfileList{}
+	err = cli.List(context.TODO(), profilesList, client.MatchingLabels{utils.GLOBAL_TRACE_ID: traceID})
+	if err != nil {
+		return nil, fmt.Errorf("problem while listing seccomp profiles: %w\n", err)
+	}
+
+	var profilesName []string
+	for _, profile := range profilesList.Items {
+		profilesName = append(profilesName, profile.Name)
+	}
+
+	return profilesName, nil
+}
+
 // runSeccompAdvisorStop reports an already running trace which ID was given
 // as parameter.
 func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
@@ -126,10 +178,22 @@ func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 		return errors.New("usage: kubectl gadget seccomp-advisor stop global-trace-id")
 	}
 
+	traceID := args[0]
+
 	callback := func(results []gadgetv1alpha1.Trace) error {
 		for _, i := range results {
 			if i.Spec.OutputMode == "ExternalResource" {
-				fmt.Printf("Successfully created seccomp profile\n")
+				profilesName, err := getSeccompProfilesName(traceID)
+				if err != nil {
+					return err
+				}
+
+				profilePlural := ""
+				if len(profilesName) > 1 {
+					profilePlural = "s"
+				}
+
+				fmt.Printf("Successfully created seccomp profile%s: %s\n", profilePlural, strings.Join(profilesName, ","))
 
 				return nil
 			}
@@ -141,8 +205,6 @@ func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 
 		return nil
 	}
-
-	traceID := args[0]
 
 	// Maybe there is no trace with the given ID.
 	// But it is better to try to delete something which does not exist than
