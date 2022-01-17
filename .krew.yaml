@@ -30,33 +30,33 @@ spec:
       matchLabels:
         os: linux
         arch: amd64
-    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/inspektor-gadget-linux-amd64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-linux-amd64.tar.gz" .TagName }}
     bin: kubectl-gadget
 
   - selector:
       matchLabels:
         os: linux
         arch: arm64
-    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/inspektor-gadget-linux-arm64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-linux-arm64.tar.gz" .TagName }}
     bin: kubectl-gadget
 
   - selector:
       matchLabels:
         os: darwin
         arch: amd64
-    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/inspektor-gadget-darwin-amd64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-darwin-amd64.tar.gz" .TagName }}
     bin: kubectl-gadget
 
   - selector:
       matchLabels:
         os: darwin
         arch: arm64
-    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/inspektor-gadget-darwin-arm64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-darwin-arm64.tar.gz" .TagName }}
     bin: kubectl-gadget
 
   - selector:
       matchLabels:
         os: windows
         arch: amd64
-    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/inspektor-gadget-windows-amd64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-windows-amd64.tar.gz" .TagName }}
     bin: kubectl-gadget
