@@ -19,13 +19,6 @@
 
 #include <gadgettracermanager/bpf-maps.h>
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, __u64);
-	__type(value, __u64);
-	__uint(max_entries, 128);
-} context SEC(".maps");
-
 SEC("iter/task")
 int dump_task(struct bpf_iter__task *ctx)
 {
@@ -33,23 +26,8 @@ int dump_task(struct bpf_iter__task *ctx)
 	__u32 seq_num = ctx->meta->seq_num;
 	__u64 session_id = ctx->meta->session_id;
 	struct task_struct *task = ctx->task;
-	__u64 *counter;
-	__u64 zero = 0;
 
-	if (seq_num == 0) {
-		BPF_SEQ_PRINTF(seq, "[\n");
-		bpf_map_update_elem(&context, &session_id, &zero, BPF_ANY);
-	}
-
-	counter = bpf_map_lookup_elem(&context, &session_id);
-	if (!counter)
-		return 0;
-
-	if (task == (void *)0) {
-		if (*counter)
-			BPF_SEQ_PRINTF(seq, "\n");
-		BPF_SEQ_PRINTF(seq, "]\n");
-		bpf_map_delete_elem(&context, &session_id);
+	if (task == NULL) {
 		return 0;
 	}
 
@@ -61,22 +39,7 @@ int dump_task(struct bpf_iter__task *ctx)
 		return 0;
 #endif
 
-	if (*counter)
-		BPF_SEQ_PRINTF(seq, ",\n");
-
-	__sync_fetch_and_add(counter, 1);
-	BPF_SEQ_PRINTF(seq, "  {\n    \"tgid\": %d,\n    \"pid\": %d,\n    \"comm\": \"%s\",\n    \"mntns\": %llu", task->tgid, task->pid, task->comm, mntns_id);
-
-	struct container *container_entry;
-	container_entry = bpf_map_lookup_elem(&containers, &mntns_id);
-	if (container_entry) {
-		BPF_SEQ_PRINTF(seq, ",\n    \"container_id\": \"%s\"", container_entry->container_id);
-		BPF_SEQ_PRINTF(seq, ",\n    \"namespace\": \"%s\"", container_entry->namespace);
-		BPF_SEQ_PRINTF(seq, ",\n    \"pod\": \"%s\"", container_entry->pod);
-		BPF_SEQ_PRINTF(seq, ",\n    \"container\": \"%s\"", container_entry->container);
-	}
-
-	BPF_SEQ_PRINTF(seq, "\n  }");
+	BPF_SEQ_PRINTF(seq, "%d %d %s %llu\n", task->tgid, task->pid, task->comm, mntns_id);
 
 	return 0;
 }

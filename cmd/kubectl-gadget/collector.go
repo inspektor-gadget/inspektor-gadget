@@ -91,6 +91,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 			KubernetesNamespace string `json:"namespace,omitempty"`
 			KubernetesPod       string `json:"pod,omitempty"`
 			KubernetesContainer string `json:"container,omitempty"`
+			KubernetesNode      string `json:"node,omitempty"`
 		}
 		allProcesses := []Process{}
 
@@ -112,6 +113,8 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 		sort.Slice(allProcesses, func(i, j int) bool {
 			pi, pj := allProcesses[i], allProcesses[j]
 			switch {
+			case pi.KubernetesNode != pj.KubernetesNode:
+				return pi.KubernetesNode < pj.KubernetesNode
 			case pi.KubernetesNamespace != pj.KubernetesNamespace:
 				return pi.KubernetesNamespace < pj.KubernetesNamespace
 			case pi.KubernetesPod != pj.KubernetesPod:
@@ -151,9 +154,10 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 		default:
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 			if processCollectorParamThreads {
-				fmt.Fprintln(w, "NAMESPACE\tPOD\tCONTAINER\tCOMM\tTGID\tPID\t")
+				fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tCONTAINER\tCOMM\tTGID\tPID\t")
 				for _, p := range allProcesses {
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%d\t\n",
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%d\t\n",
+						p.KubernetesNode,
 						p.KubernetesNamespace,
 						p.KubernetesPod,
 						p.KubernetesContainer,
@@ -163,9 +167,10 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 					)
 				}
 			} else {
-				fmt.Fprintln(w, "NAMESPACE\tPOD\tCONTAINER\tCOMM\tPID\t")
+				fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tCONTAINER\tCOMM\tPID\t")
 				for _, p := range allProcesses {
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t\n",
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t\n",
+						p.KubernetesNode,
 						p.KubernetesNamespace,
 						p.KubernetesPod,
 						p.KubernetesContainer,

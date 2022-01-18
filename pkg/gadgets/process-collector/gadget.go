@@ -15,6 +15,9 @@
 package processcollector
 
 import (
+	"encoding/json"
+	"fmt"
+
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/tracer"
@@ -62,22 +65,27 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 }
 
 func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
-	selector := gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter)
-	if len(t.resolver.GetContainersBySelector(selector)) == 0 {
-		gadgets.CleanupTraceStatus(trace)
-		trace.Status.OperationWarning = "No container matches the requested filter"
-		return
-	}
-
-	output, err := tracer.RunCollector(
-		gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
-	)
+	events, err := tracer.RunCollector(t.resolver, trace.Spec.Node, gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name))
 	if err != nil {
 		gadgets.CleanupTraceStatus(trace)
 		trace.Status.OperationError = err.Error()
 		return
 	}
+
+	if len(events) == 0 {
+		gadgets.CleanupTraceStatus(trace)
+		trace.Status.OperationWarning = "No container matches the requested filter"
+		return
+	}
+
+	output, err := json.MarshalIndent(events, "", " ")
+	if err != nil {
+		gadgets.CleanupTraceStatus(trace)
+		trace.Status.OperationError = fmt.Sprintf("failed marshalling processes: %s", err)
+		return
+	}
+
 	trace.Status.OperationError = ""
-	trace.Status.Output = output
+	trace.Status.Output = string(output)
 	trace.Status.State = "Completed"
 }
