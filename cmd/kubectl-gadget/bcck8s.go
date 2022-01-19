@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,77 +32,88 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// create the commands for the different gadgets. The gadgets that have CO-RE
-// support should use "/bin/gadgets/" as the path for the binary. Otherwise
-// "/usr/share/bcc/tools/" should be used.
-
 var biotopCmd = &cobra.Command{
 	Use:   "biotop",
 	Short: "Trace block device I/O",
-	Run:   bccCmd("biotop", "/usr/share/bcc/tools/biotop"),
+	Run:   bccCmd("biotop"),
 }
 
 var execsnoopCmd = &cobra.Command{
 	Use:   "execsnoop",
 	Short: "Trace new processes",
-	Run:   bccCmd("execsnoop", "/bin/gadgets/execsnoop"),
+	Run:   bccCmd("execsnoop"),
 }
 
 var mountsnoopCmd = &cobra.Command{
 	Use:   "mountsnoop",
 	Short: "Trace mount and umount syscalls",
-	Run:   bccCmd("mountsnoop", "/bin/gadgets/mountsnoop"),
+	Run:   bccCmd("mountsnoop"),
 }
 
 var opensnoopCmd = &cobra.Command{
 	Use:   "opensnoop",
 	Short: "Trace open() system calls",
-	Run:   bccCmd("opensnoop", "/bin/gadgets/opensnoop"),
+	Run:   bccCmd("opensnoop"),
 }
 
 var bindsnoopCmd = &cobra.Command{
 	Use:   "bindsnoop",
 	Short: "Trace IPv4 and IPv6 bind() system calls",
-	Run:   bccCmd("bindsnoop", "/bin/gadgets/bindsnoop"),
+	Run:   bccCmd("bindsnoop"),
 }
 
 var profileCmd = &cobra.Command{
 	Use:   "profile",
 	Short: "Profile CPU usage by sampling stack traces",
-	Run:   bccCmd("profile", "/usr/share/bcc/tools/profile"),
+	Run:   bccCmd("profile"),
 }
 
 var tcptopCmd = &cobra.Command{
 	Use:   "tcptop",
 	Short: "Show the TCP traffic in a pod",
-	Run:   bccCmd("tcptop", "/usr/share/bcc/tools/tcptop"),
+	Run:   bccCmd("tcptop"),
 }
 
 var tcpconnectCmd = &cobra.Command{
 	Use:   "tcpconnect",
 	Short: "Trace TCP connect() system calls",
-	Run:   bccCmd("tcpconnect", "/bin/gadgets/tcpconnect"),
+	Run:   bccCmd("tcpconnect"),
 }
 
 var tcptracerCmd = &cobra.Command{
 	Use:   "tcptracer",
 	Short: "Trace tcp connect, accept and close",
-	Run:   bccCmd("tcptracer", "/usr/share/bcc/tools/tcptracer"),
+	Run:   bccCmd("tcptracer"),
 }
 
 var capabilitiesCmd = &cobra.Command{
 	Use:   "capabilities",
 	Short: "Suggest Security Capabilities for securityContext",
-	Run:   bccCmd("capabilities", "/usr/share/bcc/tools/capable"),
+	Run:   bccCmd("capabilities"),
 }
 
 var (
+	toolMode string
+
 	stackFlag  bool
 	uniqueFlag bool
 
 	profileKernel bool
 	profileUser   bool
 )
+
+const (
+	// Use the value passed at deployment time with --default-tool-mode
+	ToolModeDefault = "default"
+	// Probe the best mode supported for the tool
+	ToolModeAuto = "auto"
+	// Use eBPF CORE tools
+	ToolModeCore = "core"
+	// Use Python base tools
+	ToolModeStandard = "standard"
+)
+
+var supportedToolModes = []string{ToolModeDefault, ToolModeAuto, ToolModeCore, ToolModeStandard}
 
 func init() {
 	commands := []*cobra.Command{
@@ -121,6 +133,15 @@ func init() {
 	for _, command := range commands {
 		rootCmd.AddCommand(command)
 		utils.AddCommonFlags(command, &params)
+
+		command.PersistentFlags().StringVarP(
+			&toolMode,
+			"tool-mode",
+			"",
+			ToolModeDefault,
+			fmt.Sprintf("Tools mode (%s).", strings.Join(supportedToolModes, ", ")),
+		)
+
 	}
 
 	// Add flags specific to some BCC gadgets
@@ -155,7 +176,7 @@ func init() {
 	)
 }
 
-func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
+func bccCmd(subCommand string) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		contextLogger := log.WithFields(log.Fields{
 			"command": fmt.Sprintf("kubectl-gadget %s", subCommand),
@@ -194,6 +215,32 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 			if params.OutputMode == utils.OutputModeJson {
 				contextLogger.Fatalf("biotop doesn't support --json")
+			}
+		}
+
+		// Tools Mode
+		toolModeValid := false
+		for _, val := range supportedToolModes {
+			if toolMode == val {
+				toolModeValid = true
+				break
+			}
+		}
+
+		if !toolModeValid {
+			contextLogger.Fatalf("%q is not a valid value for --tool-mode", toolMode)
+		}
+
+		// check if the gadget supports core mode
+		if subCommand == "biotopCmd" || subCommand == "profile" || subCommand == "tcptop" ||
+			subCommand == "capabilities" {
+			if toolMode == ToolModeCore {
+				contextLogger.Fatalf("gadget %s doesn't support core mode", subCommand)
+			}
+
+			// force these gadgets to use the standard version
+			if toolMode == ToolModeAuto {
+				toolMode = ToolModeStandard
 			}
 		}
 
@@ -291,13 +338,18 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 			Transform:     transform,
 		})
 
+		// There is a name difference between the gadget and the bcc tool for this one.
+		if subCommand == "capabilities" {
+			subCommand = "capable"
+		}
+
 		for i, node := range nodes.Items {
 			if params.Node != "" && node.Name != params.Node {
 				continue
 			}
 			go func(nodeName string, index int) {
-				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s %s %s -- %s",
-					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, containernameFilter, extraParams, gadgetParams)
+				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --tool-mode %s --gadget %s %s %s %s %s %s -- %s",
+					tracerId, toolMode, subCommand, labelFilter, namespaceFilter, podnameFilter, containernameFilter, extraParams, gadgetParams)
 				var err error
 				if subCommand != "tcptop" {
 					err = utils.ExecPod(client, nodeName, cmd,

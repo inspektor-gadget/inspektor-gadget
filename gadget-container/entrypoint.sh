@@ -172,29 +172,6 @@ else
   fi
 fi
 
-# Choose what kind of tools based on the configuration detected
-TOOLS_MODE="$INSPEKTOR_GADGET_OPTION_TOOLS_MODE"
-
-if [ "$TOOLS_MODE" = "auto" ] || [ -z "$TOOLS_MODE" ] ; then
-  if test -f /sys/kernel/btf/vmlinux; then
-    echo "BTF is available at /sys/kernel/btf/vmlinux: Using CO-RE based tools"
-    TOOLS_MODE="core"
-  elif test -f /boot/vmlinux-$KERNEL; then
-    echo "BTF is available at /boot/vmlinux-$KERNEL: Using CO-RE based tools"
-    TOOLS_MODE="core"
-  else
-    echo "vmlinux not found. Using standard tools"
-    TOOLS_MODE="standard"
-  fi
-fi
-
-# Create symlinks for tools according to the value of TOOLS_MODE
-if [ "$TOOLS_MODE" = "core" ] ; then
-  ln -s /bin/libbpf-tools/ /bin/gadgets
-elif [ "$TOOLS_MODE" = "standard" ] ; then
-  ln -s /usr/share/bcc/tools/ /bin/gadgets
-fi
-
 echo "Starting the Gadget Tracer Manager..."
 rm -f /run/gadgettracermanager.socket
 exec /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE \

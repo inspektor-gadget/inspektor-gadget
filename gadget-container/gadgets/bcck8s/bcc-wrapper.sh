@@ -66,6 +66,11 @@ case $key in
         shift
         shift
         ;;
+    --tool-mode)
+        TOOLMODE="$2"
+        shift
+        shift
+        ;;
     --)
         shift
         break
@@ -100,7 +105,6 @@ if [ "$PROBECLEANUP" = "true" ] ; then
     rm -f "$PIDFILE"
     sleep 0.5
   fi
-
   # gobpf currently uses global kprobes via debugfs/tracefs and not the Perf
   # Event file descriptor based kprobe (Linux >=4.17). So unfortunately, kprobes
   # can remain from previous executions. Ideally, gobpf should implement Perf
@@ -117,6 +121,33 @@ if [ "$PROBECLEANUP" = "true" ] ; then
   echo "-:ptcp_close" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
   echo "-:pfd_install" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
   echo "-:rfd_install" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
+fi
+
+if [ "$TOOLMODE" = "default" ] || [ -z "$TOOLMODE" ]; then
+  TOOLMODE="$INSPEKTOR_GADGET_OPTION_DEFAULT_TOOL_MODE"
+fi
+
+if [ "$TOOLMODE" = "auto" ] ; then
+  # kernel provided BTF
+  if test -f /sys/kernel/btf/vmlinux; then
+    TOOLMODE="core"
+  # btfhub / btfgen provided BTF
+  elif test -f /boot/vmlinux-$KERNEL; then
+    TOOLMODE="core"
+  else
+    TOOLMODE="standard"
+  fi
+fi
+
+if [ "$MANAGER" = "false" ] ; then
+  GADGETPATH="$GADGET"
+elif [ "$TOOLMODE" = "standard" ] ; then
+  GADGETPATH="/usr/share/bcc/tools/$GADGET"
+elif [ "$TOOLMODE" = "core" ]; then
+  GADGETPATH="/bin/libbpf-tools/$GADGET"
+else
+  echo "Invalid value for tools-mode: $TOOLMODE"
+  exit 1
 fi
 
 echo $$ > $PIDFILE
@@ -136,7 +167,7 @@ if [ "$MANAGER" = "true" ] ; then
     MODE="--cgroupmap"
     MAPPATH=$BPFDIR/gadget/cgroupidset_$TRACERID
   fi
-  exec $GADGET $MODE $MAPPATH "$@"
+  exec $GADGETPATH $MODE $MAPPATH "$@"
 else
-  exec $GADGET "$@"
+  exec $GADGETPATH "$@"
 fi

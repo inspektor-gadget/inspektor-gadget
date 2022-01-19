@@ -38,7 +38,7 @@ var (
 	imagePullPolicy     string
 	hookMode            string
 	livenessProbe       bool
-	toolsMode           string
+	DefaultToolMode     string
 	fallbackPodInformer bool
 )
 
@@ -64,10 +64,10 @@ func init() {
 		true,
 		"enable liveness probes")
 	deployCmd.PersistentFlags().StringVarP(
-		&toolsMode,
-		"tools-mode", "",
+		&DefaultToolMode,
+		"default-tool-mode", "",
 		"standard",
-		"which kind of tools to use (auto, core, standard)")
+		"default kind of tools to use (auto, core, standard)")
 	deployCmd.PersistentFlags().BoolVarP(
 		&fallbackPodInformer,
 		"fallback-podinformer", "",
@@ -223,8 +223,8 @@ spec:
             value: {{.Version}}
           - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE
             value: "{{.HookMode}}"
-          - name: INSPEKTOR_GADGET_OPTION_TOOLS_MODE
-            value: "{{.ToolsMode}}"
+          - name: INSPEKTOR_GADGET_OPTION_DEFAULT_TOOL_MODE
+            value: "{{.DefaultToolMode}}"
           - name: INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
             value: "{{.FallbackPodInformer}}"
         securityContext:
@@ -339,7 +339,7 @@ type parameters struct {
 	Version             string
 	HookMode            string
 	LivenessProbe       bool
-	ToolsMode           string
+	DefaultToolMode     string
 	FallbackPodInformer bool
 }
 
@@ -352,8 +352,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,podinformer,nri,fanotify]", hookMode)
 	}
 
-	if toolsMode != "auto" && toolsMode != "core" && toolsMode != "standard" {
-		return fmt.Errorf("invalid argument %q for --tools-mode=[auto,core,standard]", toolsMode)
+	if DefaultToolMode != "auto" && DefaultToolMode != "core" && DefaultToolMode != "standard" {
+		return fmt.Errorf("invalid argument %q for --tools-mode=[auto,core,standard]", DefaultToolMode)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
@@ -367,7 +367,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		version,
 		hookMode,
 		livenessProbe,
-		toolsMode,
+		DefaultToolMode,
 		fallbackPodInformer,
 	}
 
