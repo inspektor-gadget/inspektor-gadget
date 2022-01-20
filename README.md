@@ -63,6 +63,7 @@ Available Commands:
   deploy            Deploy Inspektor Gadget on the cluster
   dns               Trace DNS requests
   execsnoop         Trace new processes
+  filetop           Trace reads and writes by file, with container details
   help              Help about any command
   mountsnoop        Trace mount and umount syscalls
   network-policy    Generate network policies based on recorded network activity
