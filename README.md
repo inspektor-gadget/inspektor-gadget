@@ -1,6 +1,29 @@
 # Inspektor Gadget
 
-Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes applications. While it was originally designed for [Lokomotive](https://kinvolk.io/lokomotive-kubernetes/), Kinvolk's open-source Kubernetes distribution, it works just as well on other Kubernetes distributions.
+Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. It manages the packaging, deployment and execution of custom-built and [BCC](https://github.com/iovisor/bcc)-based BPF programs in a Kubernetes cluster. It automatically maps low-level kernel primitives to high-level Kubernetes resources, making it easier and quicker to find the relevant information.
+
+## The Gadgets
+
+Inspektor Gadget tools are known as gadgets. You can deploy one, two or many gadgets.
+
+Exploring the following documentation will best help you learn which tools can help you in your investigations.
+
+- [bindsnoop](docs/guides/bindsnoop.md)
+- [biolatency](docs/guides/biolatency.md)
+- [biotop](docs/guides/biotop.md)
+- [capabilities](docs/guides/capabilities.md)
+- [dns](docs/guides/dns.md)
+- [execsnoop](docs/guides/execsnoop.md)
+- [mountsnoop](docs/guides/mountsnoop.md)
+- [network-policy](docs/guides/network-policy.md)
+- [opensnoop](docs/guides/opensnoop.md)
+- [process-collector](docs/guides/process-collector.md)
+- [profile](docs/guides/profile.md)
+- [seccomp](docs/guides/seccomp.md)
+- [socket-collector](docs/guides/socket-collector.md)
+- [tcpconnect](docs/guides/tcpconnect.md)
+- [tcptop](docs/guides/tcptop.md)
+- [traceloop](docs/guides/traceloop.md)
 
 ## Installation
 
@@ -57,27 +80,6 @@ Available Commands:
 
 ...
 ```
-
-### Gadgets Documentation
-
-Specific documentation for the gadgets can be found in the following links:
-
-- [bindsnoop](docs/guides/bindsnoop.md)
-- [biolatency](docs/guides/biolatency.md)
-- [biotop](docs/guides/biotop.md)
-- [capabilities](docs/guides/capabilities.md)
-- [dns](docs/guides/dns.md)
-- [execsnoop](docs/guides/execsnoop.md)
-- [mountsnoop](docs/guides/mountsnoop.md)
-- [network-policy](docs/guides/network-policy.md)
-- [opensnoop](docs/guides/opensnoop.md)
-- [process-collector](docs/guides/process-collector.md)
-- [profile](docs/guides/profile.md)
-- [seccomp](docs/guides/seccomp.md)
-- [socket-collector](docs/guides/socket-collector.md)
-- [tcpconnect](docs/guides/tcpconnect.md)
-- [tcptop](docs/guides/tcptop.md)
-- [traceloop](docs/guides/traceloop.md)
 
 ## How does it work?
 
