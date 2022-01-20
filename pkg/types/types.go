@@ -58,3 +58,35 @@ type Event struct {
 	// pod-level event
 	Container string `json:"container,omitempty"`
 }
+
+func Err(msg, node string) Event {
+	return Event{
+		Type:    ERR,
+		Node:    node,
+		Message: msg,
+	}
+}
+
+func Warn(msg, node string) Event {
+	return Event{
+		Type:    WARN,
+		Node:    node,
+		Message: msg,
+	}
+}
+
+func Debug(msg, node string) Event {
+	return Event{
+		Type:    DEBUG,
+		Node:    node,
+		Message: msg,
+	}
+}
+
+func Info(msg, node string) Event {
+	return Event{
+		Type:    INFO,
+		Node:    node,
+		Message: msg,
+	}
+}
