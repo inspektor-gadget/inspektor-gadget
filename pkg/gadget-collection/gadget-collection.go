@@ -18,6 +18,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/filetop"
 	networkpolicyadvisor "github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
 	processcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector"
@@ -30,6 +31,7 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
 		"biolatency":             biolatency.NewFactory(),
 		"dns":                    dns.NewFactory(),
+		"execsnoop":              execsnoop.NewFactory(),
 		"filetop":                filetop.NewFactory(),
 		"network-policy-advisor": networkpolicyadvisor.NewFactory(),
 		"process-collector":      processcollector.NewFactory(),
