@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"regexp"
@@ -75,32 +76,6 @@ var waitUntilInspektorGadgetPodsDeployed *command = &command{
 var waitUntilInspektorGadgetPodsInitialized *command = &command{
 	name: "Wait until Inspektor Gadget is initialised",
 	cmd:  "sleep 15",
-}
-
-var createTestNamespace *command = &command{
-	name:           "Create test namespace",
-	cmd:            "kubectl create ns test-ns",
-	expectedString: "namespace/test-ns created\n",
-}
-
-var waitUntilTestPodReady *command = &command{
-	name:           "Wait until test pod ready",
-	cmd:            "kubectl wait pod --for condition=ready -n test-ns test-pod",
-	expectedString: "pod/test-pod condition met\n",
-}
-
-var deleteTestPod *command = &command{
-	name:           "Delete test pod",
-	cmd:            "kubectl delete pod -n test-ns test-pod",
-	expectedString: "pod \"test-pod\" deleted\n",
-	cleanup:        true,
-}
-
-var cleanupTestNamespace *command = &command{
-	name:           "cleanup test namespace",
-	cmd:            "kubectl delete ns test-ns",
-	expectedString: "namespace \"test-ns\" deleted\n",
-	cleanup:        true,
 }
 
 var cleanupInspektorGadget *command = &command{
@@ -215,6 +190,44 @@ func (c *command) stop(t *testing.T) {
 
 // busyboxPodCommand returns a string which can be used as command to run a
 // busybox pod whom inner command is given as parameter.
-func busyboxPodCommand(cmd string) string {
-	return fmt.Sprintf("kubectl run --restart=Never --image=busybox -n test-ns test-pod -- sh -c '%s'", cmd)
+func busyboxPodCommand(namespace, cmd string) string {
+	return fmt.Sprintf("kubectl run --restart=Never --image=busybox -n %s test-pod -- sh -c '%s'", namespace, cmd)
+}
+
+// generateTestNamespaceName returns a string which can be used as unique
+// namespace.
+// The returned value is: namespace_parameter-random_integer.
+func generateTestNamespaceName(namespace string) string {
+	return fmt.Sprintf("%s-%d", namespace, rand.Int())
+}
+
+// createTestNamespaceCommand returns a command which creates a namespace whom
+// name is given as parameter.
+func createTestNamespaceCommand(namespace string) *command {
+	return &command{
+		name:           "Create test namespace",
+		cmd:            fmt.Sprintf("kubectl create ns %s", namespace),
+		expectedString: fmt.Sprintf("namespace/%s created\n", namespace),
+	}
+}
+
+// deleteTestNamespaceCommand returns a command which deletes a namespace whom
+// name is given as parameter.
+func deleteTestNamespaceCommand(namespace string) *command {
+	return &command{
+		name:           "Delete test namespace",
+		cmd:            fmt.Sprintf("kubectl delete ns %s", namespace),
+		expectedString: fmt.Sprintf("namespace \"%s\" deleted\n", namespace),
+		cleanup:        true,
+	}
+}
+
+// waitUntilTestPodReadyCommand returns a command which waits until test-pod in
+// the given as parameter namespace is ready.
+func waitUntilTestPodReadyCommand(namespace string) *command {
+	return &command{
+		name:           "Wait until test pod ready",
+		cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready -n %s test-pod", namespace),
+		expectedString: "pod/test-pod condition met\n",
+	}
 }

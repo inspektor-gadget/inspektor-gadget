@@ -84,12 +84,10 @@ func TestMain(m *testing.M) {
 		deployInspektorGadget,
 		waitUntilInspektorGadgetPodsDeployed,
 		waitUntilInspektorGadgetPodsInitialized,
-		createTestNamespace,
 	}
 
 	cleanup := func() {
 		fmt.Printf("Clean inspektor-gadget:\n")
-		cleanupTestNamespace.runWithoutTest()
 		cleanupInspektorGadget.runWithoutTest()
 	}
 
@@ -109,29 +107,34 @@ func TestMain(m *testing.M) {
 
 	ret := m.Run()
 
-	// os.Exit() doesn't call defered functions, hence do the cleanup manually.
+	// os.Exit() doesn't call deferred functions, hence do the cleanup manually.
 	cleanup()
 
 	os.Exit(ret)
 }
 
 func TestBindsnoop(t *testing.T) {
+	ns := generateTestNamespaceName("test-bindsnoop")
+
+	t.Parallel()
+
 	bindsnoopCmd := &command{
 		name:           "Start bindsnoop gadget",
-		cmd:            "$KUBECTL_GADGET bindsnoop -n test-ns",
-		expectedRegexp: `test-ns\s+test-pod\s+test-pod\s+\d+\s+nc`,
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET bindsnoop -n %s", ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+nc`, ns),
 		startAndStop:   true,
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		bindsnoopCmd,
 		{
 			name:           "Run pod which calls bind()",
-			cmd:            busyboxPodCommand("while true; do nc -l -p 9090 -w 1; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do nc -l -p 9090 -w 1; done"),
 			expectedString: "pod/test-pod created\n",
 		},
-		waitUntilTestPodReady,
-		deleteTestPod,
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
@@ -169,268 +172,333 @@ func TestBiotop(t *testing.T) {
 }
 
 func TestCapabilities(t *testing.T) {
+	ns := generateTestNamespaceName("test-capabilities")
+
+	t.Parallel()
+
 	capabilitiesCmd := &command{
 		name:           "Start capabilities gadget",
-		cmd:            "$KUBECTL_GADGET capabilities -n test-ns",
-		expectedRegexp: `test-ns\s+test-pod.*nice.*CAP_SYS_NICE`,
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET capabilities -n %s", ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod.*nice.*CAP_SYS_NICE`, ns),
 		startAndStop:   true,
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		capabilitiesCmd,
 		{
 			name:           "Run pod which fails to run nice",
-			cmd:            busyboxPodCommand("while true; do nice -n -20 echo; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do nice -n -20 echo; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
-		deleteTestPod,
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestDns(t *testing.T) {
+	ns := generateTestNamespaceName("test-dns")
+
+	t.Parallel()
+
 	dnsCmd := &command{
 		name:           "Start dns gadget",
-		cmd:            "$KUBECTL_GADGET dns -n test-ns",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET dns -n %s", ns),
 		expectedRegexp: `test-pod\s+OUTGOING\s+A\s+microsoft.com`,
 		startAndStop:   true,
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		dnsCmd,
 		{
 			name:           "Run pod which interacts with dns",
-			cmd:            "kubectl run --restart=Never --image=praqma/network-multitool -n test-ns test-pod -- sh -c 'while true; do nslookup microsoft.com; done'",
+			cmd:            fmt.Sprintf("kubectl run --restart=Never --image=praqma/network-multitool -n %s test-pod -- sh -c 'while true; do nslookup microsoft.com; done'", ns),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
-		deleteTestPod,
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestExecsnoop(t *testing.T) {
+	ns := generateTestNamespaceName("test-execsnoop")
+
+	t.Parallel()
+
 	execsnoopCmd := &command{
 		name:           "Start execsnoop gadget",
-		cmd:            "$KUBECTL_GADGET execsnoop -n test-ns",
-		expectedRegexp: `test-ns\s+test-pod\s+test-pod\s+date`,
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET execsnoop -n %s", ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+date`, ns),
 		startAndStop:   true,
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		execsnoopCmd,
 		{
 			name:           "Run pod which does a lot of exec",
-			cmd:            busyboxPodCommand("while true; do date; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do date; done"),
 			expectedString: "pod/test-pod created\n",
 		},
-		waitUntilTestPodReady,
-		deleteTestPod,
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestMountsnoop(t *testing.T) {
+	ns := generateTestNamespaceName("test-mountsnoop")
+
+	t.Parallel()
+
 	mountsnoopCmd := &command{
 		name:           "Start mountsnoop gadget",
-		cmd:            "$KUBECTL_GADGET mountsnoop -n test-ns",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET mountsnoop -n %s", ns),
 		expectedRegexp: `test-pod\s+test-pod\s+mount.*mount\("/mnt", "/mnt", .*\) = -ENOENT`,
 		startAndStop:   true,
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		mountsnoopCmd,
 		{
 			name:           "Run pod which tries to mount a directory",
-			cmd:            busyboxPodCommand("while true; do mount /mnt /mnt; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do mount /mnt /mnt; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
-		deleteTestPod,
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestNetworkpolicy(t *testing.T) {
+	ns := generateTestNamespaceName("test-networkpolicy")
+
+	t.Parallel()
+
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		{
 			name:           "Run test pod",
-			cmd:            busyboxPodCommand("while true; do wget -q -O /dev/null https://kinvolk.io; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null https://kinvolk.io; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
+		waitUntilTestPodReadyCommand(ns),
 		{
 			name:           "Run network-policy gadget",
-			cmd:            "$KUBECTL_GADGET network-policy monitor -n test-ns --output ./networktrace.log & sleep 15; kill $!; head networktrace.log",
-			expectedRegexp: `"type":"connect".*"test-ns".*"test-pod"`,
+			cmd:            fmt.Sprintf("$KUBECTL_GADGET network-policy monitor -n %s --output ./networktrace.log & sleep 15; kill $!; head networktrace.log", ns),
+			expectedRegexp: fmt.Sprintf(`"type":"connect".*"%s".*"test-pod"`, ns),
 		},
-		deleteTestPod,
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestOpensnoop(t *testing.T) {
+	ns := generateTestNamespaceName("test-opensnoop")
+
+	t.Parallel()
+
 	opensnoopCmd := &command{
 		name:           "Start opensnoop gadget",
-		cmd:            "$KUBECTL_GADGET opensnoop -n test-ns",
-		expectedRegexp: `test-ns\s+test-pod\s+test-pod\s+\d+\s+whoami\s+3`,
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET opensnoop -n %s", ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+whoami\s+3`, ns),
 		startAndStop:   true,
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		opensnoopCmd,
 		{
 			name:           "Run pod which calls open()",
-			cmd:            busyboxPodCommand("while true; do whoami; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do whoami; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
-		deleteTestPod,
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestProcessCollector(t *testing.T) {
+	ns := generateTestNamespaceName("test-process-collector")
+
+	t.Parallel()
+
 	if *githubCI {
 		t.Skip("Cannot run process-collector within GitHub CI.")
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		{
 			name:           "Run nginx pod",
-			cmd:            "kubectl run --restart=Never --image=nginx -n test-ns test-pod",
+			cmd:            fmt.Sprintf("kubectl run --restart=Never --image=nginx -n %s test-pod", ns),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
+		waitUntilTestPodReadyCommand(ns),
 		{
 			name:           "Run process-collector gadget",
-			cmd:            "$KUBECTL_GADGET process-collector -n test-ns",
-			expectedRegexp: `test-ns\s+test-pod\s+test-pod\s+nginx\s+\d+`,
+			cmd:            fmt.Sprintf("$KUBECTL_GADGET process-collector -n %s", ns),
+			expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+nginx\s+\d+`, ns),
 		},
-		deleteTestPod,
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestProfile(t *testing.T) {
+	ns := generateTestNamespaceName("test-profile")
+
+	t.Parallel()
+
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		{
 			name:           "Run test pod",
-			cmd:            busyboxPodCommand("while true; do echo foo > /dev/null; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do echo foo > /dev/null; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
+		waitUntilTestPodReadyCommand(ns),
 		{
 			name:           "Run profile gadget",
-			cmd:            "$KUBECTL_GADGET profile -n test-ns -p test-pod -K & sleep 15; kill $!",
+			cmd:            fmt.Sprintf("$KUBECTL_GADGET profile -n %s -p test-pod -K & sleep 15; kill $!", ns),
 			expectedRegexp: `sh;\w+;\w+;\w+open`, // echo is builtin.
 		},
-		deleteTestPod,
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestSeccompadvisor(t *testing.T) {
+	ns := generateTestNamespaceName("test-seccomp-advisor")
+
+	t.Parallel()
+
 	if *githubCI {
 		t.Skip("seccomp-advisor timed out within GitHub CI.")
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		{
 			name:           "Run test pod",
-			cmd:            busyboxPodCommand("while true; do echo foo; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do echo foo; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
+		waitUntilTestPodReadyCommand(ns),
 		{
 			name:           "Run seccomp-advisor gadget",
-			cmd:            "id=$($KUBECTL_GADGET seccomp-advisor start -n test-ns -p test-pod); sleep 30; $KUBECTL_GADGET seccomp-advisor stop $id",
+			cmd:            fmt.Sprintf("id=$($KUBECTL_GADGET seccomp-advisor start -n %s -p test-pod); sleep 30; $KUBECTL_GADGET seccomp-advisor stop $id", ns),
 			expectedRegexp: `write`,
 		},
-		deleteTestPod,
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestSocketCollector(t *testing.T) {
+	ns := generateTestNamespaceName("test-socket-collector")
+
+	t.Parallel()
+
 	if *githubCI {
 		t.Skip("Cannot run socket-collector within GitHub CI.")
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		{
 			name:           "Run nginx pod",
-			cmd:            "kubectl run --restart=Never --image=nginx -n test-ns test-pod",
+			cmd:            fmt.Sprintf("kubectl run --restart=Never --image=nginx -n %s test-pod", ns),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
+		waitUntilTestPodReadyCommand(ns),
 		{
 			name:           "Run socket-collector gadget",
-			cmd:            "$KUBECTL_GADGET socket-collector -n test-ns",
-			expectedRegexp: `test-ns\s+test-pod\s+TCP\s+0\.0\.0\.0`,
+			cmd:            fmt.Sprintf("$KUBECTL_GADGET socket-collector -n %s", ns),
+			expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+TCP\s+0\.0\.0\.0`, ns),
 		},
-		deleteTestPod,
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestTcpconnect(t *testing.T) {
+	ns := generateTestNamespaceName("test-tcpconnect")
+
+	t.Parallel()
+
 	tcpconnectCmd := &command{
 		name:           "Start tcpconnect gadget",
-		cmd:            "$KUBECTL_GADGET tcpconnect -n test-ns",
-		expectedRegexp: `test-ns\s+test-pod\s+test-pod\s+\d+\s+wget`,
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET tcpconnect -n %s", ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+wget`, ns),
 		startAndStop:   true,
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		tcpconnectCmd,
 		{
 			name:           "Run pod which opens TCP socket",
-			cmd:            busyboxPodCommand("while true; do wget -q -O /dev/null -T 3 http://1.1.1.1; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null -T 3 http://1.1.1.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
-		deleteTestPod,
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestTcptop(t *testing.T) {
+	ns := generateTestNamespaceName("test-tcptop")
+
+	t.Parallel()
+
 	tcptopCmd := &command{
 		name:           "Start tcptop gadget",
-		cmd:            "$KUBECTL_GADGET tcptop --node $(kubectl get node --no-headers | cut -d' ' -f1) -n test-ns -p test-pod",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET tcptop --node $(kubectl get node --no-headers | cut -d' ' -f1) -n %s -p test-pod", ns),
 		expectedRegexp: `wget`,
 		startAndStop:   true,
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		tcptopCmd,
 		{
 			name:           "Run pod which opens TCP socket",
-			cmd:            busyboxPodCommand("while true; do wget -q -O /dev/null https://kinvolk.io; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null https://kinvolk.io; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
-		waitUntilTestPodReady,
-		deleteTestPod,
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
 }
 
 func TestTraceloop(t *testing.T) {
+	ns := generateTestNamespaceName("test-traceloop")
+
+	t.Parallel()
+
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		{
 			name: "Start the traceloop gadget",
 			cmd:  "$KUBECTL_GADGET traceloop start",
@@ -441,21 +509,20 @@ func TestTraceloop(t *testing.T) {
 		},
 		{
 			name: "Run multiplication pod",
-			cmd:  "kubectl run --restart=Never -n test-ns --image=busybox multiplication -- sh -c 'RANDOM=output ; echo \"3*7*2\" | bc > /tmp/file-$RANDOM ; sleep infinity'",
+			cmd:  fmt.Sprintf("kubectl run --restart=Never -n %s --image=busybox multiplication -- sh -c 'RANDOM=output ; echo \"3*7*2\" | bc > /tmp/file-$RANDOM ; sleep infinity'", ns),
 		},
 		{
 			name: "Wait until multiplication pod is ready",
-			cmd:  "sleep 5 ; kubectl wait -n test-ns --for=condition=ready pod/multiplication ; kubectl get pod -n test-ns ; sleep 2",
+			cmd:  fmt.Sprintf("sleep 5 ; kubectl wait -n %s --for=condition=ready pod/multiplication ; kubectl get pod -n %s ; sleep 2", ns, ns),
 		},
 		{
 			name:           "Check traceloop list",
-			cmd:            "sleep 20 ; $KUBECTL_GADGET traceloop list -n test-ns --no-headers | grep multiplication | awk '{print $1\" \"$6}'",
+			cmd:            fmt.Sprintf("sleep 20 ; $KUBECTL_GADGET traceloop list -n %s --no-headers | grep multiplication | awk '{print $1\" \"$6}'", ns),
 			expectedString: "multiplication started\n",
 		},
 		{
-			name: "Check traceloop show",
-			cmd: `TRACE_ID=$($KUBECTL_GADGET traceloop list -n test-ns --no-headers | grep multiplication | awk '{printf "%s", $4}') ; ` +
-				`$KUBECTL_GADGET traceloop show $TRACE_ID | grep -C 5 write`,
+			name:           "Check traceloop show",
+			cmd:            fmt.Sprintf(`TRACE_ID=$($KUBECTL_GADGET traceloop list -n %s --no-headers | `, ns) + `grep multiplication | awk '{printf "%s", $4}') ; $KUBECTL_GADGET traceloop show $TRACE_ID | grep -C 5 write`,
 			expectedRegexp: "\\[bc\\] write\\(1, \"42\\\\n\", 3\\)",
 		},
 		{
@@ -474,6 +541,7 @@ func TestTraceloop(t *testing.T) {
 			cmd:     "sleep 15",
 			cleanup: true,
 		},
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
