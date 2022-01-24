@@ -87,25 +87,30 @@ func TestMain(m *testing.M) {
 		createTestNamespace,
 	}
 
+	cleanup := func() {
+		fmt.Printf("Clean inspektor-gadget:\n")
+		cleanupTestNamespace.runWithoutTest()
+		cleanupInspektorGadget.runWithoutTest()
+	}
+
+	// defer the cleanup to be sure it's called if the test
+	// fails (hence calling runtime.Goexit())
+	defer cleanup()
+
 	fmt.Printf("Setup inspektor-gadget:\n")
 	for _, cmd := range initCommands {
 		err := cmd.runWithoutTest()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
-
+			cleanup()
 			os.Exit(-1)
 		}
 	}
 
-	// defer the cleanup to be sure it's called even if the test
-	// fails (hence calling runtime.Goexit())
-	defer func() {
-		fmt.Printf("Clean inspektor-gadget:\n")
-		cleanupTestNamespace.runWithoutTest()
-		cleanupInspektorGadget.runWithoutTest()
-	}()
-
 	ret := m.Run()
+
+	// os.Exit() doesn't call defered functions, hence do the cleanup manually.
+	cleanup()
 
 	os.Exit(ret)
 }
