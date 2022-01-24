@@ -78,32 +78,6 @@ var waitUntilInspektorGadgetPodsInitialized *command = &command{
 	cmd:  "sleep 15",
 }
 
-var createTestNamespace *command = &command{
-	name:           "Create test namespace",
-	cmd:            "kubectl create ns test-ns",
-	expectedString: "namespace/test-ns created\n",
-}
-
-var waitUntilTestPodReady *command = &command{
-	name:           "Wait until test pod ready",
-	cmd:            "kubectl wait pod --for condition=ready -n test-ns test-pod",
-	expectedString: "pod/test-pod condition met\n",
-}
-
-var deleteTestPod *command = &command{
-	name:           "Delete test pod",
-	cmd:            "kubectl delete pod -n test-ns test-pod",
-	expectedString: "pod \"test-pod\" deleted\n",
-	cleanup:        true,
-}
-
-var cleanupTestNamespace *command = &command{
-	name:           "cleanup test namespace",
-	cmd:            "kubectl delete ns test-ns",
-	expectedString: "namespace \"test-ns\" deleted\n",
-	cleanup:        true,
-}
-
 var cleanupInspektorGadget *command = &command{
 	name:    "cleanup gadget deployment",
 	cmd:     "$KUBECTL_GADGET undeploy",
@@ -216,8 +190,8 @@ func (c *command) stop(t *testing.T) {
 
 // busyboxPodCommand returns a string which can be used as command to run a
 // busybox pod whom inner command is given as parameter.
-func busyboxPodCommand(cmd string) string {
-	return fmt.Sprintf("kubectl run --restart=Never --image=busybox -n test-ns test-pod -- sh -c '%s'", cmd)
+func busyboxPodCommand(namespace, cmd string) string {
+	return fmt.Sprintf("kubectl run --restart=Never --image=busybox -n %s test-pod -- sh -c '%s'", namespace, cmd)
 }
 
 // generateTestNamespaceName returns a string which can be used as unique
