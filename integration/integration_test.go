@@ -252,6 +252,33 @@ func TestExecsnoop(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestFiletop(t *testing.T) {
+	ns := generateTestNamespaceName("test-filetop")
+
+	t.Parallel()
+
+	filetopCmd := &command{
+		name:           "Start filetop gadget",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET filetop -n %s", ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+\S*\s+0\s+\d+\s+0\s+\d+\s+R\s+date`, ns),
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		createTestNamespaceCommand(ns),
+		filetopCmd,
+		{
+			name:           "Run pod which does IO",
+			cmd:            busyboxPodCommand(ns, "while true; do echo date >> /tmp/date.txt; done"),
+			expectedString: "pod/test-pod created\n",
+		},
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
+	}
+
+	runCommands(commands, t)
+}
+
 func TestMountsnoop(t *testing.T) {
 	ns := generateTestNamespaceName("test-mountsnoop")
 

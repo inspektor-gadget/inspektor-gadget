@@ -23,6 +23,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20200114145059-84a08fc667c0
 	golang.org/x/sys v0.0.0-20210906170528-6f6e22806c34
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.26.0
 	k8s.io/api v0.21.2

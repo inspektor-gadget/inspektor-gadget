@@ -35,6 +35,7 @@ kernels than the one mentioned here.
 | dns                    |            | 5.4                             | N            |
 | execsnoop              | standard   | 4.15                            | N            |
 | execsnoop              | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
+| filetop                |            | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
 | network policy advisor |            |                                 |              |
 | opensnoop              | standard   | 4.15                            | N            |
 | opensnoop              | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
