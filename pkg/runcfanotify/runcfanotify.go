@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/s3rj1k/go-fanotify/fanotify"
@@ -98,13 +100,6 @@ func Supported() bool {
 	if !runcFound {
 		return false
 	}
-
-	// Test that pidfd_open() is available
-	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, uintptr(os.Getpid()), 0, 0)
-	if errno != 0 {
-		return false
-	}
-	unix.Close(int(pidfd))
 	return true
 }
 
@@ -113,7 +108,6 @@ func Supported() bool {
 //
 // Limitations:
 // - runc must be installed in one of the paths listed by runcPaths
-// - Linux >= 5.3 (for pidfd_open)
 func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	n := &RuncNotifier{
 		callback:   callback,
@@ -168,14 +162,23 @@ func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containe
 	n.containers[containerID] = struct{}{}
 
 	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, uintptr(containerPID), 0, 0)
+	if errno == unix.ENOSYS {
+		// pidfd_open not available. As a fallback, check if the
+		// process exists every second
+		go n.watchContainerTerminationFallback(containerID, containerPID)
+		return nil
+	}
 	if errno != 0 {
 		return fmt.Errorf("pidfd_open returned %v", errno)
 	}
 
+	// watch for container termination with pidfd_open
 	go n.watchContainerTermination(containerID, containerPID, int(pidfd))
 	return nil
 }
 
+// watchContainerTermination waits until the container terminates using
+// pidfd_open (Linux >= 5.3), then sends a notification.
 func (n *RuncNotifier) watchContainerTermination(containerID string, containerPID int, pidfd int) {
 	defer func() {
 		n.mu.Lock()
@@ -195,6 +198,35 @@ func (n *RuncNotifier) watchContainerTermination(containerID string, containerPI
 		}
 		count, err := unix.Poll(fds, -1)
 		if err == nil && count == 1 {
+			n.callback(ContainerEvent{
+				Type:         EVENT_TYPE_REMOVE_CONTAINER,
+				ContainerID:  containerID,
+				ContainerPID: uint32(containerPID),
+			})
+			return
+		}
+	}
+}
+
+// watchContainerTerminationFallback waits until the container terminates
+// *without* using pidfd_open so it works on older kernels, then sends a notification.
+func (n *RuncNotifier) watchContainerTerminationFallback(containerID string, containerPID int) {
+	defer func() {
+		n.mu.Lock()
+		defer n.mu.Unlock()
+		delete(n.containers, containerID)
+	}()
+
+	for {
+		time.Sleep(time.Second)
+		process, err := os.FindProcess(containerPID)
+		if err == nil {
+			// no signal is sent: signal 0 just check for the
+			// existence of the process
+			err = process.Signal(syscall.Signal(0))
+		}
+
+		if err != nil {
 			n.callback(ContainerEvent{
 				Type:         EVENT_TYPE_REMOVE_CONTAINER,
 				ContainerID:  containerID,
