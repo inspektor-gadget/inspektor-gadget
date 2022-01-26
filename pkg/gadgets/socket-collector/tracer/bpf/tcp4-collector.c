@@ -34,7 +34,7 @@ static int dump_tcp_sock(struct seq_file *seq, struct tcp_sock *tp)
 
 	socket_bpf_seq_print(seq, proto, inet->inet_rcv_saddr,
 		inet->inet_sport, inet->inet_daddr,
-		inet->inet_dport, sp->sk_state);
+		inet->inet_dport, sp->sk_state, sock_i_ino(sp));
 
 	return 0;
 }
@@ -45,7 +45,20 @@ static int dump_tw_sock(struct seq_file *seq, struct tcp_timewait_sock *ttw)
 
 	socket_bpf_seq_print(seq, proto, tw->tw_rcv_saddr,
 		tw->tw_sport, tw->tw_daddr,
-		tw->tw_dport, tw->tw_substate);
+		/*
+		 * tcp_timewait_sock represents socket in TIME_WAIT state.
+		 * Socket is this particular state are not associated with a
+		 * struct sock:
+		 * https://elixir.bootlin.com/linux/v5.15.12/source/include/linux/tcp.h#L442
+		 * https://elixir.bootlin.com/linux/v5.15.12/source/include/net/inet_timewait_sock.h#L33
+		 * Hence, they do not have an underlying file and, as a
+		 * consequence, no inode.
+		 *
+		 * Like /proc/net/tcp, we print 0 as inode number for TIME_WAIT
+		 * (state 6) socket:
+		 * https://elixir.bootlin.com/linux/v5.15.12/source/include/net/tcp_states.h#L18
+		 */
+		tw->tw_dport, tw->tw_substate, 0);
 
 	return 0;
 }
@@ -56,7 +69,7 @@ static int dump_req_sock(struct seq_file *seq, struct tcp_request_sock *treq)
 
 	socket_bpf_seq_print(seq, proto, irsk->ir_loc_addr,
 		irsk->ir_num, irsk->ir_rmt_addr, irsk->ir_rmt_port,
-		TCP_SYN_RECV);
+		TCP_SYN_RECV, sock_i_ino(treq->req.req.sk));
 
 	return 0;
 }

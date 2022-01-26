@@ -140,12 +140,13 @@ func RunCollector(pid uint32, podname, namespace, node string, proto socketcolle
 				var destp, srcp uint16
 				var dest, src uint32
 				var hexStatus uint8
+				var inodeNumber uint64
 
 				// Format from socket_bpf_seq_print() in bpf/socket_common.h
 				// IP addresses and ports are in host-byte order
-				len, err := fmt.Sscanf(scanner.Text(), "%s %08X %04X %08X %04X %02X",
-					&proto, &src, &srcp, &dest, &destp, &hexStatus)
-				if err != nil || len != 6 {
+				len, err := fmt.Sscanf(scanner.Text(), "%s %08X %04X %08X %04X %02X %d",
+					&proto, &src, &srcp, &dest, &destp, &hexStatus, &inodeNumber)
+				if err != nil || len != 7 {
 					return fmt.Errorf("failed to parse sockets information: %w", err)
 				}
 
@@ -166,6 +167,7 @@ func RunCollector(pid uint32, podname, namespace, node string, proto socketcolle
 					RemoteAddress: parseIPv4(dest),
 					RemotePort:    destp,
 					Status:        status,
+					InodeNumber:   inodeNumber,
 				})
 			}
 
