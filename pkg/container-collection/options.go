@@ -425,7 +425,7 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 				return true
 			}
 
-			if containerDefinition.CgroupV1 == "" || containerDefinition.CgroupV2 == "" {
+			if containerDefinition.CgroupV1 == "" && containerDefinition.CgroupV2 == "" {
 				log.Errorf("kubernetes enricher: cannot work without cgroup paths")
 				return true
 			}
