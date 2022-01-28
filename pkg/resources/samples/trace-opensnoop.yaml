@@ -1,0 +1,12 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: opensnoop
+  namespace: gadget
+spec:
+  node: ubuntu-hirsute
+  gadget: opensnoop
+  runMode: Manual
+  outputMode: Stream
+  filter:
+    namespace: default
