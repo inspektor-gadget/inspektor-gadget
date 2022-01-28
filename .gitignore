@@ -21,3 +21,4 @@ bin/
 # Build artifacts
 *.o
 !pkg/gadgets/socket-collector/tracer/*.o
+!pkg/gadgets/execsnoop/tracer/core/*.o
