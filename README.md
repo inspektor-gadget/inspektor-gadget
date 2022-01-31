@@ -14,6 +14,7 @@ Exploring the following documentation will best help you learn which tools can h
 - [capabilities](docs/guides/capabilities.md)
 - [dns](docs/guides/dns.md)
 - [execsnoop](docs/guides/execsnoop.md)
+- [filetop](docs/guides/filetop.md)
 - [mountsnoop](docs/guides/mountsnoop.md)
 - [network-policy](docs/guides/network-policy.md)
 - [opensnoop](docs/guides/opensnoop.md)
