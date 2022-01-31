@@ -26,7 +26,7 @@ type Event struct {
 	Uid       uint32 `json:"uid,omitempty"`
 	Comm      string `json:"pcomm,omitempty"`
 	Fd        int    `json:"fd,omitempty"`
-	Retval    int    `json:"ret,omitempty"`
+	Ret       int    `json:"ret,omitempty"`
 	Err       int    `json:"err,omitempty"`
 	Path      string `json:"path,omitempty"`
 }
