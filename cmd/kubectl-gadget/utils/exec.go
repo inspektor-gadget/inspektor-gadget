@@ -29,6 +29,11 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
+var (
+	ErrGadgetPodNotFound      = errors.New("Gadget pod not found")
+	ErrMultipleGadgetPodFound = errors.New("Multiple gadget pods found")
+)
+
 func ExecPodSimple(client *kubernetes.Clientset, node string, podCmd string) string {
 	stdout, stderr, err := ExecPodCapture(client, node, podCmd)
 	if err != nil {
@@ -54,10 +59,10 @@ func ExecPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		return err
 	}
 	if len(pods.Items) == 0 {
-		return errors.New("Gadget Daemon not found")
+		return ErrGadgetPodNotFound
 	}
 	if len(pods.Items) != 1 {
-		return errors.New("Multiple Gadget Daemons found")
+		return ErrMultipleGadgetPodFound
 	}
 	podName := pods.Items[0].Name
 

@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -281,7 +282,12 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-		failure := make(chan string)
+
+		type nodeResult struct {
+			nodeName string
+			err      error
+		}
+		failure := make(chan nodeResult)
 
 		postProcess := utils.NewPostProcess(&utils.PostProcessConfig{
 			Flows:         len(nodes.Items),
@@ -306,18 +312,32 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 					err = utils.ExecPod(client, nodeName, cmd, os.Stdout, os.Stderr)
 				}
 				if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
-					failure <- fmt.Sprintf("Error running command: %v\n", err)
+					failure <- nodeResult{nodeName, err}
 				}
 			}(node.Name, i) // node.Name is invalidated by the above for loop, causes races
 		}
 
-		select {
-		case <-sigs:
-			if params.OutputMode != utils.OutputModeJson {
-				fmt.Println("\nTerminating...")
+	waitingAllNodes:
+		for {
+			select {
+			case <-sigs:
+				if params.OutputMode != utils.OutputModeJson {
+					fmt.Println("\nTerminating...")
+				}
+				break waitingAllNodes
+			case e := <-failure:
+				if errors.Is(e.err, utils.ErrGadgetPodNotFound) {
+					fmt.Printf("Node %s: %s\n", e.nodeName, e.err)
+					if params.Node != "" {
+						// If the user selected a single node, the error is fatal
+						break waitingAllNodes
+					} else {
+						// The error is not fatal: we could have other worker nodes
+						continue waitingAllNodes
+					}
+				}
+				fmt.Printf("\nError running command on node %s: %v\n", e.nodeName, e.err)
 			}
-		case e := <-failure:
-			fmt.Printf("\n%s\n", e)
 		}
 
 		// remove tracers from the nodes
