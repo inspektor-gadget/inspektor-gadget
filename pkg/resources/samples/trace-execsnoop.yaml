@@ -1,0 +1,12 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: execsnoop
+  namespace: gadget
+spec:
+  node: ubuntu-hirsute
+  gadget: execsnoop
+  runMode: Manual
+  outputMode: Stream
+  filter:
+    namespace: default
