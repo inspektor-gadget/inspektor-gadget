@@ -389,8 +389,6 @@ jobs:
         echo "Using IMAGE_TAG=$IMAGE_TAG"
 
         tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
-
-        tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
         mv kubectl-gadget kubectl-gadget-linux-amd64
 
         TESTS_DOCKER_ARGS="-e KUBECONFIG=/root/.kube/config -v /home/runner/.kube:/root/.kube -v /home/runner/work/_temp/.minikube:/home/runner/work/_temp/.minikube" \
@@ -418,7 +416,7 @@ jobs:
   release:
     name: Release
     # level: 2
-    needs: test-integration
+    needs: [documentation-checks, lint, test-integration, test-local-gadget]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
