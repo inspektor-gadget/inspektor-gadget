@@ -18,12 +18,12 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	seccompprofilev1alpha1 "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1alpha1"
+	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 )
 
 func TestGetSeccompProfileNextName(t *testing.T) {
 	// Empty profile list
-	profileList := []seccompprofilev1alpha1.SeccompProfile{}
+	profileList := []seccompprofile.SeccompProfile{}
 	podName := "podname"
 	expectedNextName := "podname"
 	nextName := getSeccompProfileNextName(profileList, podName)
@@ -33,7 +33,7 @@ func TestGetSeccompProfileNextName(t *testing.T) {
 	}
 
 	// There do not exist profiles with podname or podname-X as name.
-	profileList = []seccompprofilev1alpha1.SeccompProfile{
+	profileList = []seccompprofile.SeccompProfile{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "another-name",
@@ -54,7 +54,7 @@ func TestGetSeccompProfileNextName(t *testing.T) {
 	}
 
 	// There exist a profile with the podname but no one with podname-X.
-	profileList = []seccompprofilev1alpha1.SeccompProfile{
+	profileList = []seccompprofile.SeccompProfile{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "another-name",
@@ -80,7 +80,7 @@ func TestGetSeccompProfileNextName(t *testing.T) {
 	}
 
 	// There exist a profile with the podname and another with podname-X.
-	profileList = []seccompprofilev1alpha1.SeccompProfile{
+	profileList = []seccompprofile.SeccompProfile{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "another-name",
@@ -111,7 +111,7 @@ func TestGetSeccompProfileNextName(t *testing.T) {
 	}
 
 	// There exist at least one profile with podname-X.
-	profileList = []seccompprofilev1alpha1.SeccompProfile{
+	profileList = []seccompprofile.SeccompProfile{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "another-name",
@@ -137,7 +137,7 @@ func TestGetSeccompProfileNextName(t *testing.T) {
 	}
 
 	// There exist multiple profiles with podname-X.
-	profileList = []seccompprofilev1alpha1.SeccompProfile{
+	profileList = []seccompprofile.SeccompProfile{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "another-name",
@@ -168,7 +168,7 @@ func TestGetSeccompProfileNextName(t *testing.T) {
 	}
 
 	// Ignoring profiles with sintax podname-X where X is not a number.
-	profileList = []seccompprofilev1alpha1.SeccompProfile{
+	profileList = []seccompprofile.SeccompProfile{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "another-name",
@@ -190,7 +190,7 @@ func TestGetSeccompProfileNextName(t *testing.T) {
 
 	// Another case where function must ignore the profiles with
 	// syntax podname-X where X is not a number.
-	profileList = []seccompprofilev1alpha1.SeccompProfile{
+	profileList = []seccompprofile.SeccompProfile{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "another-name",

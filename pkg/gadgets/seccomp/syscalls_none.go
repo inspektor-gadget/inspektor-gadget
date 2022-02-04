@@ -19,7 +19,7 @@ package seccomp
 
 import (
 	"github.com/opencontainers/runtime-spec/specs-go"
-	seccompprofilev1alpha1 "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1alpha1"
+	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 )
 
 func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
@@ -27,7 +27,7 @@ func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
 	return nil
 }
 
-func syscallArrToSeccompPolicy(profileName *SeccompProfileNsName, v []byte) *seccompprofilev1alpha1.SeccompProfile {
+func syscallArrToSeccompPolicy(profileName *SeccompProfileNsName, v []byte) *seccompprofile.SeccompProfile {
 	panic("Not implemented")
 	return nil
 }

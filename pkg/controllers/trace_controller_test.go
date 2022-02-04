@@ -21,7 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/types"
+	gomegatype "github.com/onsi/gomega/types"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -138,7 +138,7 @@ func UpdatedTrace(ctx context.Context, key client.ObjectKey) func() *gadgetv1alp
 
 // HaveState returns a GomegaMatcher that checks if the Trace.Status.State has
 // the expected value
-func HaveState(expectedState string) GomegaMatcher {
+func HaveState(expectedState string) gomegatype.GomegaMatcher {
 	return WithTransform(func(trace *gadgetv1alpha1.Trace) string {
 		if trace == nil {
 			return "<trace is nil>"
@@ -149,7 +149,7 @@ func HaveState(expectedState string) GomegaMatcher {
 
 // HaveOperationError returns a GomegaMatcher that checks if the
 // Trace.Status.OperationError has the expected value
-func HaveOperationError(expectedOperationError string) GomegaMatcher {
+func HaveOperationError(expectedOperationError string) gomegatype.GomegaMatcher {
 	return WithTransform(func(trace *gadgetv1alpha1.Trace) string {
 		if trace == nil {
 			return "<trace is nil>"
@@ -160,7 +160,7 @@ func HaveOperationError(expectedOperationError string) GomegaMatcher {
 
 // HaveOperationWarning returns a GomegaMatcher that checks if the
 // Trace.Status.OperationWarning has the expected value
-func HaveOperationWarning(expectedOperationWarning string) GomegaMatcher {
+func HaveOperationWarning(expectedOperationWarning string) gomegatype.GomegaMatcher {
 	return WithTransform(func(trace *gadgetv1alpha1.Trace) string {
 		if trace == nil {
 			return "<trace is nil>"
@@ -171,7 +171,7 @@ func HaveOperationWarning(expectedOperationWarning string) GomegaMatcher {
 
 // HaveOutput returns a GomegaMatcher that checks if the Trace.Status.Output
 // has the expected value
-func HaveOutput(expectedOutput string) GomegaMatcher {
+func HaveOutput(expectedOutput string) gomegatype.GomegaMatcher {
 	return WithTransform(func(trace *gadgetv1alpha1.Trace) string {
 		if trace == nil {
 			return "<trace is nil>"
@@ -182,7 +182,7 @@ func HaveOutput(expectedOutput string) GomegaMatcher {
 
 // HaveAnnotation returns a GomegaMatcher that checks if the Trace
 // has an annotation with the expected value
-func HaveAnnotation(annotation, expectedOperation string) GomegaMatcher {
+func HaveAnnotation(annotation, expectedOperation string) gomegatype.GomegaMatcher {
 	return WithTransform(func(trace *gadgetv1alpha1.Trace) string {
 		if trace == nil {
 			return "<trace is nil>"

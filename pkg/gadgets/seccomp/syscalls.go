@@ -26,7 +26,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	libseccomp "github.com/seccomp/libseccomp-golang"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	seccompprofilev1alpha1 "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1alpha1"
+	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 )
 
 /* Function arches() under the Apache License, Version 2.0 by the containerd authors:
@@ -87,22 +87,22 @@ func syscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
 	return s
 }
 
-func syscallArrToSeccompPolicy(profileName *SeccompProfileNsName, v []byte) *seccompprofilev1alpha1.SeccompProfile {
-	syscalls := []*seccompprofilev1alpha1.Syscall{
+func syscallArrToSeccompPolicy(profileName *SeccompProfileNsName, v []byte) *seccompprofile.SeccompProfile {
+	syscalls := []*seccompprofile.Syscall{
 		{
 			Names:  syscallArrToNameList(v),
 			Action: commonseccomp.ActAllow,
-			Args:   []*seccompprofilev1alpha1.Arg{},
+			Args:   []*seccompprofile.Arg{},
 		},
 	}
 
-	ret := seccompprofilev1alpha1.SeccompProfile{
+	ret := seccompprofile.SeccompProfile{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   profileName.namespace,
 			Annotations: map[string]string{},
 			Labels:      map[string]string{},
 		},
-		Spec: seccompprofilev1alpha1.SeccompProfileSpec{
+		Spec: seccompprofile.SeccompProfileSpec{
 			BaseProfileName: "",
 			DefaultAction:   commonseccomp.ActErrno,
 			Architectures:   nil,
@@ -117,8 +117,8 @@ func syscallArrToSeccompPolicy(profileName *SeccompProfileNsName, v []byte) *sec
 	}
 
 	for _, a := range arches() {
-		arch := seccompprofilev1alpha1.Arch(a)
-		ret.Spec.Architectures = append(ret.Spec.Architectures, &arch)
+		arch := seccompprofile.Arch(a)
+		ret.Spec.Architectures = append(ret.Spec.Architectures, arch)
 	}
 
 	return &ret
