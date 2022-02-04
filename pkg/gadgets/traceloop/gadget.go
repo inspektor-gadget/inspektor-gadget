@@ -121,6 +121,13 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		echo "-:pfree_uts_ns" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
 		echo "-:pcap_capable" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
 
+		# Remove the opened files limit to avoid getting this error:
+		# error while loading "tracepoint/raw_syscalls/sys_enter" (too many open files):
+		# Indeed, traceloop creates a lof of tracers which each has maps and events:
+		# https://github.com/kinvolk/traceloop/blob/6f4efc6fca46d92c75f4ec4e6c6e1d829bdeaddf/bpf/straceback-guess-bpf.h#L27-L28
+		# So, this can generate a lof ot opened files.
+		ulimit -n unlimited
+
 		rm -f /run/traceloop.socket
 		exec /bin/traceloop k8s
 	`)

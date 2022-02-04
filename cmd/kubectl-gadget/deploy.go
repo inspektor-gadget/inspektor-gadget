@@ -291,7 +291,8 @@ spec:
               # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/ptrace.c#L284
               - SYS_PTRACE
 
-              # Needed by setrlimit in gadgettracermanager.
+              # Needed by setrlimit in gadgettracermanager and by the traceloop
+              # gadget.
               - SYS_RESOURCE
 
               # Needed for gadgets that don't dumb the memory rlimit.
