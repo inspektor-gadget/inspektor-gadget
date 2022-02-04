@@ -28,7 +28,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	seccompprofilev1alpha1 "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1alpha1"
+	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 )
 
 var seccompAdvisorCmd = &cobra.Command{
@@ -135,7 +135,7 @@ func getSeccompProfilesName(traceID string) ([]string, error) {
 	// profiles, thus we need to make it ourselves.
 	// To be able to retrieve seccompprofile, we need to add them to a scheme.
 	scheme := runtime.NewScheme()
-	seccompprofilev1alpha1.AddToScheme(scheme)
+	seccompprofile.AddToScheme(scheme)
 
 	// Get a manager on seccompprofile.
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -147,7 +147,7 @@ func getSeccompProfilesName(traceID string) ([]string, error) {
 			// Since this manager will be created each time user interacts with the
 			// CLI the cache will not persist, so there is not really advantages of
 			// using a cache.
-			&seccompprofilev1alpha1.SeccompProfile{},
+			&seccompprofile.SeccompProfile{},
 		},
 	})
 	if err != nil {
@@ -157,7 +157,7 @@ func getSeccompProfilesName(traceID string) ([]string, error) {
 	// Get a client on seccompprofile.
 	cli := mgr.GetClient()
 
-	profilesList := &seccompprofilev1alpha1.SeccompProfileList{}
+	profilesList := &seccompprofile.SeccompProfileList{}
 	err = cli.List(context.TODO(), profilesList, client.MatchingLabels{utils.GLOBAL_TRACE_ID: traceID})
 	if err != nil {
 		return nil, fmt.Errorf("problem while listing seccomp profiles: %w\n", err)
