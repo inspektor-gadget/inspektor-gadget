@@ -1,6 +1,7 @@
 name: Inspektor Gadget CI
 env:
   CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
+  SKIP_DOCKER_IMAGE_BUILD: true
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
