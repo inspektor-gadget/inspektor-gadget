@@ -79,6 +79,9 @@ jobs:
       with:
         version: v1.43.0
         working-directory: /home/runner/work/inspektor-gadget/inspektor-gadget
+        # Workaround to display the output:
+        # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648
+        args: "--out-${NO_FUTURE}format colored-line-number"
 
   build-kubectl-gadget:
     name: Build kubectl-gadget
