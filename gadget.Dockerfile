@@ -64,7 +64,7 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
-		ca-certificates curl jq wget xz-utils binutils && \
+		ca-certificates curl jq wget xz-utils binutils rpm2cpio cpio && \
 		rmdir /usr/src && ln -sf /host/usr/src /usr/src
 
 COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /

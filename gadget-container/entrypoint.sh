@@ -21,11 +21,14 @@ if [ ! -r /host/etc/os-release ] ; then
   exit 1
 fi
 
-echo -n "OS detected: "
-grep PRETTY_NAME= /host/etc/os-release|cut -d= -f2-
+source /host/etc/os-release
 
+echo -n "OS detected: "
+echo $PRETTY_NAME
+
+KERNEL=$(uname -r)
 echo -n "Kernel detected: "
-uname -r
+echo $KERNEL
 
 echo -n "bcc detected: "
 dpkg-query --show libbcc|awk '{print $2}'
@@ -56,21 +59,60 @@ if grep -q '^1:name=systemd:.*/crio-[0-9a-f]*\.scope$' /proc/self/cgroup > /dev/
     CRIO=1
 fi
 
-if grep -q '^ID="rhcos"$' /host/etc/os-release > /dev/null ; then
-  if [ ! -d "/host/usr/src/kernels/$(uname -r)" ] ; then
-    echo "Fetching kernel-devel from CentOS 8."
-    REPO=http://mirror.centos.org/centos/8/BaseOS/x86_64/os/Packages/
-    RPM=kernel-devel-$(uname -r).rpm
-    RPMDIR=/opt/gadget-kernel/
-    RPMHOSTDIR=/host${RPMDIR}
-    mkdir -p $RPMHOSTDIR/usr/src/kernels/
-    test -r $RPMHOSTDIR/$RPM || \
-        curl -fsSLo $RPMHOSTDIR/$RPM $REPO/$RPM
-    test -r $RPMHOSTDIR/usr/src/kernels/`uname -r`/.config || \
-        chroot /host sh -c "cd $RPMDIR && rpm2cpio $RPM | cpio -i"
-    test ! -L /usr/src || rm -f /usr/src
-    mkdir -p /usr/src/kernels/`uname -r`/
-    mount --bind $RPMHOSTDIR/usr/src/kernels/`uname -r` /usr/src/kernels/`uname -r`
+# In the gadget image, /usr/src is a symlink to /host/usr/src (see gadget.Dockerfile).
+# If the kernel headers are already available on the gadget pod via the symlink,
+# no need to download them.
+if [ "$ID" = "rhcos" ] && [ ! -d "/usr/src/kernels/$KERNEL" ]; then
+  # Using Centos RPMs because RHCOS ones are not publicly available (they are the same).
+  echo "Fetching kernel-devel from CentOS Vault Mirror..."
+
+  # CentOS version is composed by <RHEL_VERSION>.<RELEASE_YEAR><RELEASE_MONTH>
+  # https://access.redhat.com/articles/3078#RHEL8
+  case $RHEL_VERSION in
+    "8")
+      CENTOS_VERSION="8.0.1905"
+      ;;
+    "8.1")
+      CENTOS_VERSION="8.1.1911"
+      ;;
+    "8.2")
+      CENTOS_VERSION="8.2.2004"
+      ;;
+    "8.3")
+      CENTOS_VERSION="8.3.2011"
+      ;;
+    "8.4")
+      CENTOS_VERSION="8.4.2105"
+      ;;
+    "8.5")
+      CENTOS_VERSION="8.5.2111"
+      ;;
+    *)
+      echo "Couldn't retrieve CentOS repository from RHEL version $RHEL_VERSION" >&2
+      ;;
+  esac
+
+  if [ ! -z $CENTOS_VERSION ]; then
+    REPO=http://vault.centos.org/$CENTOS_VERSION/BaseOS/x86_64/os/Packages
+    RPMDIR=/tmp/gadget-kernel/$KERNEL
+    RPM=kernel-devel-$KERNEL.rpm
+
+    mkdir -p $RPMDIR/usr/src/kernels/
+    curl -fsSLo $RPMDIR/$RPM $REPO/$RPM || true
+
+    if test -f $RPMDIR/$RPM; then
+      cd $RPMDIR && rpm2cpio $RPM | cpio --quiet -i
+
+      # In the gadget image, /usr/src is a symlink to /host/usr/src (see gadget.Dockerfile).
+      # But in the case of RHCOS, remove the symlink and install files in the container.
+      test ! -L /usr/src || rm -f /usr/src
+      mkdir -p /usr/src/kernels/
+      mv $RPMDIR/usr/src/kernels/$KERNEL /usr/src/kernels/$KERNEL
+    else
+      echo "Failed to fetch kernel-devel package $REPO/$RPM" >&2
+    fi
+
+    rm -rf $RPMDIR
   fi
 fi
 
@@ -81,7 +123,7 @@ HOOK_MODE="$INSPEKTOR_GADGET_OPTION_HOOK_MODE"
 
 if [ "$HOOK_MODE" = "auto" ] || [ -z "$HOOK_MODE" ] ; then
   if [ "$CRIO" = 1 ] ; then
-    echo "hook mode cri-o detected."
+    echo "Hook mode CRI-O detected"
     HOOK_MODE="crio"
   fi
 fi
@@ -139,13 +181,10 @@ echo "Gadget Tracer Manager hook mode: ${GADGET_TRACER_MANAGER_HOOK_MODE}"
 ## Hooks Ends ##
 
 # Use BTFHub if needed
-KERNEL=$(uname -r)
 ARCH=$(uname -m)
 if test -f /sys/kernel/btf/vmlinux; then
   echo "Kernel provided BTF is available at /sys/kernel/btf/vmlinux"
 else
-  source /host/etc/os-release
-
   echo "Kernel provided BTF is not available: Trying shipped BTF files"
   SOURCE_BTF=/btfs/$ID/$VERSION_ID/$ARCH/$KERNEL.btf
   if [ -f $SOURCE_BTF ]; then
