@@ -137,12 +137,16 @@ if [ "$HOOK_MODE" = "crio" ] ; then
     cp /opt/hooks/oci/$i /host/opt/hooks/oci/
   done
 
-  echo "Installing OCI hooks configuration in /usr/share/containers/oci/hooks.d"
-  mkdir -p /host/usr/share/containers/oci/hooks.d
-  cp /opt/hooks/crio/gadget-prestart.json /host/usr/share/containers/oci/hooks.d/gadget-prestart.json
-  cp /opt/hooks/crio/gadget-poststop.json /host/usr/share/containers/oci/hooks.d/gadget-poststop.json
+  echo "Installing OCI hooks configuration in /etc/containers/oci/hooks.d"
+  mkdir -p /host/etc/containers/oci/hooks.d
+  cp /opt/hooks/crio/gadget-prestart.json /host/etc/containers/oci/hooks.d/ 2>/dev/null || true
+  cp /opt/hooks/crio/gadget-poststop.json /host/etc/containers/oci/hooks.d/ 2>/dev/null || true
 
-  echo "Hooks installation done"
+  if ! ls /host/etc/containers/oci/hooks.d/gadget-{prestart,poststop}.json > /dev/null 2>&1; then
+    echo "Couldn't install OCI hooks configuration" >&2
+  else
+    echo "Hooks installation done"
+  fi
 fi
 
 if [ "$HOOK_MODE" = "nri" ] ; then
