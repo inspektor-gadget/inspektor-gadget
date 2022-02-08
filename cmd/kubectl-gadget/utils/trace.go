@@ -555,6 +555,19 @@ func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.Tr
 	})
 }
 
+// waitForNoOperation waits for the traces with the ID received as parameter to
+// not have an operation.
+func waitForNoOperation(traceID string) (*gadgetv1alpha1.TraceList, error) {
+	return waitForCondition(traceID, func(trace *gadgetv1alpha1.Trace) bool {
+		if trace.ObjectMeta.Annotations == nil {
+			return true
+		}
+
+		_, present := trace.ObjectMeta.Annotations[GADGET_OPERATION]
+		return !present
+	})
+}
+
 var sigIntReceivedNumber = 0
 
 // sigHandler installs a handler for all signals which cause termination as
