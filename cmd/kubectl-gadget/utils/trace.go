@@ -452,14 +452,17 @@ func getTraceWatcher(traceID string) (watch.Interface, error) {
 	return watcher, nil
 }
 
-// waitForTraceState wait for traces whom ID is given as parameter to be in the
-// expected state.
-func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.TraceList, error) {
+// waitForCondition waits for the traces with the ID received as parameter to
+// satisfy the conditionFunction received as parameter.
+func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Trace) bool) (*gadgetv1alpha1.TraceList, error) {
 	var returnedTraces gadgetv1alpha1.TraceList
 
 	tracesNumber := 0
 	watchedTracesNumber := 0
 
+	// Get a watcher on all the traces which have the same ID.
+	// Indeed, all the traces on different nodes but linked to one gadget share
+	// the same ID.
 	watcher, err := getTraceWatcher(traceID)
 	if err != nil {
 		return nil, err
@@ -514,8 +517,9 @@ func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.Tr
 			return false, nil
 		}
 
-		// If the trace is not in the state we expect, we are not interested.
-		if trace.Status.State != expectedState {
+		// If the trace does not satisfy the condition function, we are not
+		// interested.
+		if !conditionFunction(trace) {
 			return false, nil
 		}
 
@@ -541,6 +545,14 @@ func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.Tr
 	}
 
 	return &returnedTraces, nil
+}
+
+// waitForTraceState waits for the traces with the ID received as parameter to
+// be in the expected state.
+func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.TraceList, error) {
+	return waitForCondition(traceID, func(trace *gadgetv1alpha1.Trace) bool {
+		return trace.Status.State == expectedState
+	})
 }
 
 var sigIntReceivedNumber = 0
