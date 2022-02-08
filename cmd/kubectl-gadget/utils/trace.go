@@ -371,7 +371,15 @@ func getTraceListFromID(traceID string) (*gadgetv1alpha1.TraceList, error) {
 // SetTraceOperation sets the operation of an existing trace.
 // If trace does not exist an error is returned.
 func SetTraceOperation(traceID string, operation string) error {
-	traces, err := getTraceListFromID(traceID)
+	// We have to wait for the previous operation to start before changing the
+	// trace operation.
+	// The trace controller deletes the GADGET_OPERATION field from Annotations
+	// when it is about to deal with an operation.
+	// Thus, to avoid losing operations, we need to wait for GADGET_OPERATION to
+	// be deleted before changing to the current operation.
+	// It is the same like when you are in the restaurant, you need to wait for
+	// the chef to cook the main dishes before ordering the dessert.
+	traces, err := waitForNoOperation(traceID)
 	if err != nil {
 		return err
 	}
