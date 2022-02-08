@@ -9,12 +9,14 @@ In this guide, we will learn how to use it by running a small `kubernetes` clust
 ## How to use it?
 
 First, we need to create two pods for us to play with:
+
 ```bash
 $ kubectl run busybox-0 --image busybox:latest sleep inf
 $ kubectl run busybox-1 --image busybox:latest sleep inf
 ```
 
 You can now use the gadget, but output will be empty:
+
 ```bash
 $ kubectl gadget mountsnoop
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
@@ -22,6 +24,7 @@ NODE             NAMESPACE        POD              CONTAINER        COMM        
 
 Indeed, it is waiting for `mount` and `umount` to be called.
 So, in *an other terminal*, `exec` a container and try to `mount` something:
+
 ```bash
 $ kubectl get pods
 NAME        READY   STATUS    RESTARTS   AGE
@@ -33,6 +36,7 @@ command terminated with exit code 255
 ```
 
 Go back to *the first terminal* and see:
+
 ```bash
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
 minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext3", MS_SILENT, "") = -ENOENT
@@ -52,6 +56,7 @@ All these lines correspond to the error we get from `mount` inside the pod.
 It can be useful to restrain the output to certains pods.
 For this, you can use `--selector` option.
 In a first terminal, run the following:
+
 ```bash
 $ kubectl get pods --show-labels
 NAME        READY   STATUS    RESTARTS   AGE     LABELS
@@ -63,6 +68,7 @@ NODE             NAMESPACE        POD              CONTAINER        COMM        
 
 As you can see, the `--selector` option, and its `-l` shorthand awaits for pods labels as argument.
 In an *other terminal*, run these commands:
+
 ```bash
 # Exec the first pod:
 $ kubectl exec -ti busybox-0 -- mount /foo /bar
@@ -75,6 +81,7 @@ command terminated with exit code 255
 ```
 
 Go back to the first terminal, you should only output related to `mount /foo /bar` as a result of using `--selector` options filtering the pods:
+
 ```bash
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
 minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext3", MS_SILENT, "") = -ENOENT
@@ -90,6 +97,7 @@ minikube         default          busybox-0        busybox-0        mount       
 ## Use JSON output.
 
 This gadget supports JSON output, for this simply use `-o json`:
+
 ```bash
 $ kubectl gadget mountsnoop -o json
 {"node": "minikube", "pcomm": "runc", "pid": 15207, "comm": "mount", "pod": "busybox-1", "data": "", "mnt_ns": 4026532573, "container": "busybox-1", "target": "/quuz", "tgid": 15207, "namespace": "default", "source": "/quux", "flags": 32768, "mntnsid": 0, "ppid": 15197, "type": "ext3"}
@@ -134,6 +142,7 @@ $ kubectl gadget mountsnoop -o json | jq
 
 Congratulations! You reached the end of this guide!
 You can now delete the two pods we created:
+
 ```bash
 $ kubectl delete pod busybox-0 busybox-1
 pod "busybox-0" deleted

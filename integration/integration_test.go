@@ -330,6 +330,51 @@ func TestNetworkpolicy(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestOomkill(t *testing.T) {
+	ns := generateTestNamespaceName("test-oomkill")
+
+	t.Parallel()
+
+	oomkillCmd := &command{
+		name:           "Start oomkill gadget",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET oomkill -n %s", ns),
+		expectedRegexp: `\d+\s+tail`,
+		startAndStop:   true,
+	}
+
+	limitPodYaml := fmt.Sprintf(`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: %s
+spec:
+  containers:
+  - name: test-pod-container
+    image: busybox
+    resources:
+      limits:
+        memory: "128Mi"
+    command: ["/bin/sh", "-c"]
+    args:
+    - while true; do tail /dev/zero; done
+`, ns)
+
+	commands := []*command{
+		createTestNamespaceCommand(ns),
+		oomkillCmd,
+		{
+			name:           "Run pod which exhaust memory with memory limits",
+			cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
+	}
+
+	runCommands(commands, t)
+}
+
 func TestOpensnoop(t *testing.T) {
 	ns := generateTestNamespaceName("test-opensnoop")
 

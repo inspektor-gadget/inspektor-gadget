@@ -17,6 +17,7 @@ Exploring the following documentation will best help you learn which tools can h
 - [filetop](docs/guides/filetop.md)
 - [mountsnoop](docs/guides/mountsnoop.md)
 - [network-policy](docs/guides/network-policy.md)
+- [oomkill](docs/guides/oomkill.md)
 - [opensnoop](docs/guides/opensnoop.md)
 - [process-collector](docs/guides/process-collector.md)
 - [profile](docs/guides/profile.md)

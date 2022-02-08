@@ -32,6 +32,7 @@ ${BTFHUB}/tools/btfgen.sh -a ${ARCH}                                    \
     -o ${LIBBPFTOOLS}/tcpconnect.bpf.o                                  \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/seccomp/tracer/bpf/seccomp.o     \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/filetop/tracer/filetop_bpfel.o   \
+    -o ${INSPEKTOR_GADGET}/pkg/gadgets/oomkill/tracer/oomkill_bpfel.o   \
     #
 
 mkdir -p ${OUTPUT}
