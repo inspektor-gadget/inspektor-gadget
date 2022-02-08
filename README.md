@@ -69,6 +69,7 @@ Available Commands:
   help              Help about any command
   mountsnoop        Trace mount and umount syscalls
   network-policy    Generate network policies based on recorded network activity
+  oomkill           Trace the Linux out-of-memory (OOM) killer
   opensnoop         Trace open() system calls
   process-collector Gather information about running processes
   profile           Profile CPU usage by sampling stack traces
