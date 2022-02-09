@@ -28,7 +28,7 @@ pod/hello-python created
 It is now time to monitor system calls made by our pod:
 
 ```bash
-$ kubectl gadget seccomp-advisor start -n seccomp-demo -p hello-python
+$ kubectl gadget advise seccomp-profile start -n seccomp-demo -p hello-python
 jMzhur2dQjZJxDCI
 ```
 
@@ -54,7 +54,7 @@ Once we have captured the syscalls, we can ask the gadget to generate the
 corresponding profile:
 
 ```bash
-$ kubectl gadget seccomp-advisor stop jMzhur2dQjZJxDCI
+$ kubectl gadget advise seccomp-profile stop jMzhur2dQjZJxDCI
 {
   "defaultAction": "SCMP_ACT_ERRNO",
   "architectures": [
@@ -218,7 +218,7 @@ pod "hello-python" deleted
 Now we can create a new trace, and then create the pod again.
 
 ```bash
-$ kubectl gadget seccomp-advisor start -n seccomp-demo -p hello-python
+$ kubectl gadget advise seccomp-profile start -n seccomp-demo -p hello-python
 TAyR9BXes6GU04rG
 $ kubectl apply -f docs/examples/seccomp/unconfined.yaml
 pod/hello-python created
@@ -243,7 +243,7 @@ $ kill %1
 And now generate the policy again:
 
 ```bash
-$ kubectl gadget seccomp-advisor stop TAyR9BXes6GU04rG
+$ kubectl gadget advise seccomp-profile stop TAyR9BXes6GU04rG
 {
 	...
 }
@@ -289,7 +289,7 @@ $ kubectl delete -f docs/examples/seccomp/unconfined.yaml
 pod "hello-python" deleted
 
 # Create the pod and start a new trace again
-$ kubectl gadget seccomp-advisor start -m seccomp-profile -n seccomp-demo -p hello-python
+$ kubectl gadget advise seccomp-profile start -m seccomp-profile -n seccomp-demo -p hello-python
 TAyR9BXes6GU04rG
 $ kubectl apply -f docs/examples/seccomp/unconfined.yaml
 pod/hello-python created
@@ -306,7 +306,7 @@ $ kill %1
 [1]+  Terminated              kubectl port-forward service/hello-python-service -n seccomp-demo 8080:6000
 
 # Now stop the gadget to generate the seccomp profile.
-$ kubectl gadget seccomp-advisor stop TAyR9BXes6GU04rG
+$ kubectl gadget advise seccomp-profile stop TAyR9BXes6GU04rG
 $ kubectl get seccompprofile -n gadget
 NAME            STATUS      AGE
 hello-python    Installed   9s

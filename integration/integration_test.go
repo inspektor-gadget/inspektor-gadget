@@ -372,7 +372,7 @@ func TestNetworkpolicy(t *testing.T) {
 		waitUntilTestPodReadyCommand(ns),
 		{
 			name:           "Run network-policy gadget",
-			cmd:            fmt.Sprintf("$KUBECTL_GADGET network-policy monitor -n %s --output ./networktrace.log & sleep 15; kill $!; head networktrace.log", ns),
+			cmd:            fmt.Sprintf("$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace.log & sleep 15; kill $!; head networktrace.log", ns),
 			expectedRegexp: fmt.Sprintf(`"type":"connect".*"%s".*"test-pod"`, ns),
 		},
 		deleteTestNamespaceCommand(ns),
@@ -516,7 +516,7 @@ func TestSeccompadvisor(t *testing.T) {
 		waitUntilTestPodReadyCommand(ns),
 		{
 			name:           "Run seccomp-advisor gadget",
-			cmd:            fmt.Sprintf("id=$($KUBECTL_GADGET seccomp-advisor start -n %s -p test-pod); sleep 30; $KUBECTL_GADGET seccomp-advisor stop $id", ns),
+			cmd:            fmt.Sprintf("id=$($KUBECTL_GADGET advise seccomp-profile start -n %s -p test-pod); sleep 30; $KUBECTL_GADGET advise seccomp-profile stop $id", ns),
 			expectedRegexp: `write`,
 		},
 		deleteTestNamespaceCommand(ns),
