@@ -136,6 +136,14 @@ rules:
   resources: ["seccompprofiles"]
   # Required for integration with the Kubernetes Security Profiles Operator
   verbs: ["list", "watch", "create"]
+- apiGroups: ["security.openshift.io"]
+  # It is necessary to use the 'privileged' security context constraints to be
+  # able mount host directories as volumes, use the host networking, among others.
+  # This will be used only when running on OpenShift:
+  # https://docs.openshift.com/container-platform/4.9/authentication/managing-security-context-constraints.html#default-sccs_configuring-internal-oauth
+  resources: ["securitycontextconstraints"]
+  resourceNames: ["privileged"]
+  verbs: ["use"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
