@@ -11,10 +11,11 @@ Exploring the following documentation will best help you learn which tools can h
 - [audit-seccomp](docs/guides/audit-seccomp.md)
 - [biolatency](docs/guides/biolatency.md)
 - [network-policy](docs/guides/network-policy.md)
-- [process-collector](docs/guides/process-collector.md)
 - [profile](docs/guides/profile.md)
 - [seccomp](docs/guides/seccomp.md)
-- [socket-collector](docs/guides/socket-collector.md)
+- `snapshot`:
+	- [`process`](docs/guides/snapshot/process.md)
+	- [`socket`](docs/guides/snapshot/socket.md)
 - `top`:
 	- [`block-io`](docs/guides/top/block-io.md)
 	- [`file`](docs/guides/top/file.md)
@@ -64,23 +65,22 @@ Usage:
   kubectl-gadget [command]
 
 Available Commands:
-  audit-seccomp     Trace syscalls that seccomp sent to the audit log
-  biolatency        Generate a histogram with the distribution of block device I/O latency
-  biotop            Trace block devices I/O, with container details
-  completion        generate the autocompletion script for the specified shell
-  deploy            Deploy Inspektor Gadget on the cluster
-  help              Help about any command
-  network-policy    Generate network policies based on recorded network activity
-  process-collector Gather information about running processes
-  profile           Profile CPU usage by sampling stack traces
-  seccomp-advisor   Generate seccomp policies based on recorded syscalls activity
-  socket-collector  Gather information about network sockets
-  tcptop            Trace TCP connection, with container details
-  top               Gather, sort and print events according to a given criteria
-  trace             Trace and print system events
-  traceloop         Get strace-like logs of a pod from the past
-  undeploy          Undeploy Inspektor Gadget from cluster
-  version           Show version
+  audit-seccomp   Trace syscalls that seccomp sent to the audit log
+  biolatency      Generate a histogram with the distribution of block device I/O latency
+  biotop          Trace block devices I/O, with container details
+  completion      generate the autocompletion script for the specified shell
+  deploy          Deploy Inspektor Gadget on the cluster
+  help            Help about any command
+  network-policy  Generate network policies based on recorded network activity
+  profile         Profile CPU usage by sampling stack traces
+  seccomp-advisor Generate seccomp policies based on recorded syscalls activity
+  snapshot        Take a snapshot of a subsystem and print it
+  tcptop          Trace TCP connection, with container details
+  top             Gather, sort and print events according to a given criteria
+  trace           Trace and print system events
+  traceloop       Get strace-like logs of a pod from the past
+  undeploy        Undeploy Inspektor Gadget from cluster
+  version         Show version
 
 ...
 ```
@@ -88,6 +88,17 @@ Available Commands:
 You can then get help for each subcommand:
 
 ```bash
+$ kubectl gadget snapshot --help
+Take a snapshot of a subsystem and print it
+
+Usage:
+  kubectl-gadget snapshot [command]
+
+Available Commands:
+  process     Gather information about running processes
+  socket      Gather information about network sockets
+
+...
 $ kubectl gadget top --help
 Gather, sort and print events according to a given criteria
 

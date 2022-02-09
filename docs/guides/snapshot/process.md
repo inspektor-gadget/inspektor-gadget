@@ -15,7 +15,7 @@ namespace/demo created
 There is not any running process in the `demo` namespace now:
 
 ```bash
-$ kubectl gadget process-collector -n demo
+$ kubectl gadget snapshot process -n demo
 NAMESPACE    POD    CONTAINER    COMM    PID
 ```
 
@@ -31,7 +31,7 @@ pod/mypod condition met
 After the pod is running, we can try to get the list of running processes again:
 
 ```bash
-$ kubectl gadget process-collector -n demo
+$ kubectl gadget snapshot process -n demo
 NAMESPACE    POD      CONTAINER    COMM     PID
 demo         mypod    mypod        nginx    34270
 demo         mypod    mypod        nginx    34308
@@ -55,7 +55,7 @@ $ kubectl -n demo exec  mypod -- /bin/sh -c "sleep 1000 &"
 Now there is an additional `sleep` processes running in `mypod`:
 
 ```bash
-$ kubectl gadget process-collector -n demo
+$ kubectl gadget snapshot process -n demo
 NAMESPACE    POD      CONTAINER    COMM     PID
 demo         mypod    mypod        nginx    34270
 demo         mypod    mypod        nginx    37928
@@ -72,7 +72,7 @@ demo         mypod    mypod        sleep    41165
 We can also get the information in JSON format, by passing the `-o json` flag.
 
 ```bash
-$ kubectl gadget process-collector -n demo -o json
+$ kubectl gadget snapshot process -n demo -o json
 [
   {
     "tgid": 34270,

@@ -28,7 +28,7 @@ of the nginx-app pod. Notice we are filtering by namespace but we could have
 done it also using the podname or labels:
 
 ```bash
-$ kubectl gadget socket-collector -n test-socketcollector
+$ kubectl gadget snapshot socket -n test-socketcollector
 NODE       NAMESPACE               POD          PROTOCOL    LOCAL         REMOTE       STATUS
 my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:80    0.0.0.0:0    LISTEN
 ```
@@ -48,7 +48,7 @@ $ kubectl exec -n test-socketcollector nginx-app -- /bin/bash -c "sed -i 's/list
 Check with Inspektor Gadget what are the sockets now:
 
 ```bash
-$ kubectl gadget socket-collector -n test-socketcollector
+$ kubectl gadget snapshot socket -n test-socketcollector
 NODE       NAMESPACE               POD          PROTOCOL    LOCAL           REMOTE       STATUS
 my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:8080    0.0.0.0:0    LISTEN
 ```
@@ -56,7 +56,7 @@ my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:8080    0.0.
 To get extended information, like the socket inode number, just the `-e` or `--extend` flag:
 
 ```bash
-$ kubectl gadget socket-collector -n test-socketcollector -e
+$ kubectl gadget snapshot socket -n test-socketcollector -e
 NODE       NAMESPACE               POD          PROTOCOL    LOCAL           REMOTE       STATUS         INODE
 my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:8080    0.0.0.0:0    LISTEN         22866
 ```
@@ -65,7 +65,7 @@ We can also get the information in JSON format, by passing the `-o json` flag.
 Just take into account that IP address and port are displayed separated with this format:
 
 ```bash
-$ kubectl gadget socket-collector -n test-socketcollector -o json
+$ kubectl gadget snapshot socket -n test-socketcollector -o json
 [
   {
     "node": "my-node",
