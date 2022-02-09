@@ -18,7 +18,7 @@ and interrupt it after ~30 seconds. The `-K` option is passed to show only the
 kernel stack traces.
 
 ```bash
-$ kubectl gadget profile --podname random -K
+$ kubectl gadget profile cpu --podname random -K
 Node numbers: 0 = ip-10-0-23-61 1 = ip-10-0-3-62^C
 ```
 

@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package profile
 
 import (
 	"errors"
@@ -33,7 +33,7 @@ var biolatencyTraceConfig = &utils.TraceConfig{
 }
 
 var biolatencyCmd = &cobra.Command{
-	Use:   "biolatency",
+	Use:   "block-io",
 	Short: "Generate a histogram with the distribution of block device I/O latency",
 }
 
@@ -73,7 +73,7 @@ func init() {
 	biolatencyCmd.AddCommand(biolatencyStopCmd)
 	biolatencyCmd.AddCommand(biolatencyListCmd)
 
-	rootCmd.AddCommand(biolatencyCmd)
+	ProfilerCmd.AddCommand(biolatencyCmd)
 
 	// Common flags are meaningless for list and stop sub-commands
 	utils.AddCommonFlags(biolatencyStartCmd, &params)

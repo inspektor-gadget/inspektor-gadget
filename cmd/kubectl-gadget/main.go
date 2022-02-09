@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/profile"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/snapshot"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/top"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/trace"
@@ -37,6 +38,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	utils.FlagInit(rootCmd)
 
+	rootCmd.AddCommand(profile.ProfilerCmd)
 	rootCmd.AddCommand(snapshot.SnapshotCmd)
 	rootCmd.AddCommand(top.TopCmd)
 	rootCmd.AddCommand(trace.TraceCmd)

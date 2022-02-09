@@ -160,7 +160,7 @@ func TestBiolatency(t *testing.T) {
 	commands := []*command{
 		{
 			name:           "Run biolatency gadget",
-			cmd:            "id=$($KUBECTL_GADGET biolatency start --node $(kubectl get node --no-headers | cut -d' ' -f1)); sleep 15; $KUBECTL_GADGET biolatency stop $id",
+			cmd:            "id=$($KUBECTL_GADGET profile block-io start --node $(kubectl get node --no-headers | cut -d' ' -f1)); sleep 15; $KUBECTL_GADGET profile block-io stop $id",
 			expectedRegexp: `usecs\s+:\s+count\s+distribution`,
 		},
 	}
@@ -492,7 +492,7 @@ func TestProfile(t *testing.T) {
 		waitUntilTestPodReadyCommand(ns),
 		{
 			name:           "Run profile gadget",
-			cmd:            fmt.Sprintf("$KUBECTL_GADGET profile -n %s -p test-pod -K & sleep 15; kill $!", ns),
+			cmd:            fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -K & sleep 15; kill $!", ns),
 			expectedRegexp: `sh;\w+;\w+;\w+open`, // echo is builtin.
 		},
 		deleteTestNamespaceCommand(ns),

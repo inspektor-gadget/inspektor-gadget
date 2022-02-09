@@ -27,13 +27,13 @@ testing node with its normal load work:
 
 ```bash
 # Start the gadget on the worker-node node
-$ kubectl gadget biolatency start --node worker-node
+$ kubectl gadget profile block-io start --node worker-node
 4b5501BrEjiw2GxG
 
 # Wait for around 1 minute
 
 # Stop the gadget to generate the histogram
-$ kubectl gadget biolatency stop 4b5501BrEjiw2GxG
+$ kubectl gadget profile block-io stop 4b5501BrEjiw2GxG
 Tracing block device I/O... Hit Ctrl-C to end.
 
      usecs               : count     distribution
@@ -80,12 +80,12 @@ disk I/O with this load:
 
 ```bash
 # Start the gadget again
-$ kubectl gadget biolatency start --node worker-node
+$ kubectl gadget profile block-io start --node worker-node
 pCkmJ3jDtDz9yVyc
 
 # Wait again for 1 minute
 
-$ kubectl-gadget biolatency stop pCkmJ3jDtDz9yVyc
+$ kubectl-gadget profile block-io stop pCkmJ3jDtDz9yVyc
 Tracing block device I/O... Hit Ctrl-C to end.
 
      usecs               : count     distribution
