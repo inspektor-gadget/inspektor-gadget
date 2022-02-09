@@ -30,15 +30,11 @@ var execsnoopCmd = &cobra.Command{
 	Use:   "execsnoop",
 	Short: "Trace new processes",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var transform func(string) string
+		// print header
 		switch params.OutputMode {
-		case utils.OutputModeJson: // don't print any header
 		case utils.OutputModeCustomColumns:
 			fmt.Println(getCustomExecsnoopColsHeader(params.CustomColumns))
-			transform = formatEventExecsnoopCostumCols
 		case utils.OutputModeColumns:
-			transform = execsnoopTransformLine
-
 			fmt.Printf("%-16s %-16s %-16s %-16s %-16s %-6s %-6s %3s %s\n",
 				"NODE", "NAMESPACE", "POD", "CONTAINER",
 				"PCOMM", "PID", "PPID", "RET", "ARGS")
@@ -52,7 +48,7 @@ var execsnoopCmd = &cobra.Command{
 			CommonFlags:      &params,
 		}
 
-		err := utils.RunTraceAndPrintStream(config, transform)
+		err := utils.RunTraceAndPrintStream(config, execsnoopTransformLine)
 		if err != nil {
 			return fmt.Errorf("failed to run tracer: %w", err)
 		}
@@ -66,6 +62,8 @@ func init() {
 	utils.AddCommonFlags(execsnoopCmd, &params)
 }
 
+// execsnoopTransformLine is called to transform an event to columns
+// format according to the parameters
 func execsnoopTransformLine(line string) string {
 	var sb strings.Builder
 	var e types.Event
@@ -75,8 +73,17 @@ func execsnoopTransformLine(line string) string {
 		return ""
 	}
 
-	switch e.Type {
-	case eventtypes.NORMAL:
+	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
+		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
+		fmt.Fprintf(os.Stderr, "%s: node %s: %s", e.Type, e.Node, e.Message)
+		return ""
+	}
+
+	if e.Type != eventtypes.NORMAL {
+		return ""
+	}
+	switch params.OutputMode {
+	case utils.OutputModeColumns:
 		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-6d %3d",
 			e.Node, e.Namespace, e.Pod, e.Container,
 			e.Comm, e.Pid, e.Ppid, e.Retval))
@@ -84,14 +91,35 @@ func execsnoopTransformLine(line string) string {
 		for _, arg := range e.Args {
 			sb.WriteString(" " + arg)
 		}
-
-		return sb.String()
-	case eventtypes.ERR:
-		fmt.Fprintf(os.Stderr, "error from node %s: %s", e.Node, e.Message)
-		return ""
+	case utils.OutputModeCustomColumns:
+		for _, col := range params.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
+			case "pcomm":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
+			case "ppid":
+				sb.WriteString(fmt.Sprintf("%-6d", e.Ppid))
+			case "ret":
+				sb.WriteString(fmt.Sprintf("%-3d", e.Retval))
+			case "args":
+				for _, arg := range e.Args {
+					sb.WriteString(fmt.Sprintf("%s ", arg))
+				}
+			}
+			sb.WriteRune(' ')
+		}
 	}
 
-	return ""
+	return sb.String()
 }
 
 func getCustomExecsnoopColsHeader(cols []string) string {
@@ -117,44 +145,6 @@ func getCustomExecsnoopColsHeader(cols []string) string {
 			sb.WriteString(fmt.Sprintf("%-3s", "RET"))
 		case "args":
 			sb.WriteString(fmt.Sprintf("%-24s", "ARGS"))
-		}
-		sb.WriteRune(' ')
-	}
-
-	return sb.String()
-}
-
-func formatEventExecsnoopCostumCols(line string) string {
-	var sb strings.Builder
-
-	var event types.Event
-	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "error unmarshalling json: %s", err)
-		return ""
-	}
-
-	for _, col := range params.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", event.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", event.Container))
-		case "pcomm":
-			sb.WriteString(fmt.Sprintf("%-16s", event.Comm))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6d", event.Pid))
-		case "ppid":
-			sb.WriteString(fmt.Sprintf("%-6d", event.Ppid))
-		case "ret":
-			sb.WriteString(fmt.Sprintf("%-3d", event.Retval))
-		case "args":
-			for _, arg := range event.Args {
-				sb.WriteString(fmt.Sprintf("%s ", arg))
-			}
 		}
 		sb.WriteRune(' ')
 	}

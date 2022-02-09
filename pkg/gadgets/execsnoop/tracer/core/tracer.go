@@ -68,10 +68,6 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 }
 
 func (t *Tracer) Stop() {
-	t.stop()
-}
-
-func (t *Tracer) stop() {
 	if t.enterLink != nil {
 		t.enterLink.Close()
 		t.enterLink = nil
