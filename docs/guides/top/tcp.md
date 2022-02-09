@@ -1,9 +1,9 @@
 ---
-title: 'The "tcptop" gadget'
+title: 'The "top tcp" gadget'
 weight: 10
 ---
 
-The `tcptop` gadget is used to monitor TCP connections.
+The `top tcp` gadget is used to monitor TCP connections.
 
 ## How to use it?
 
@@ -16,7 +16,7 @@ $ kubectl run test-pod --image busybox:latest sleep inf
 You can now use the gadget, but output will be empty:
 
 ```bash
-$ kubectl gadget tcptop
+$ kubectl gadget top tcp
 NODE             NAMESPACE        POD              CONTAINER        PID     COMM             IPv LADDR
     RADDR                                               RX_KB   TX_KB
 ```
@@ -45,7 +45,7 @@ You can customize the information printed using `-o custom-columns=column0,...,c
 This command will only show the PID and command of the process which sent a signal:
 
 ```bash
-$ kubectl gadget tcptop -o custom-columns=pid,comm
+$ kubectl gadget top tcp -o custom-columns=pid,comm
 PID     COMM
 49447   wget
 ```
@@ -53,7 +53,7 @@ PID     COMM
 The following command is the same as default printing:
 
 ```bash
-$ kubectl gadget tcptop -o custom-columns=node,namespace,pod,container,pid,comm,family,saddr,daddr,sent,received
+$ kubectl gadget top tcp -o custom-columns=node,namespace,pod,container,pid,comm,family,saddr,daddr,sent,received
 NODE             NAMESPACE        POD              CONTAINER        PID     COMM             IPv LADDR
     RADDR                                               RX_KB   TX_KB
 minikube         default          test-pod         test-pod         49447   wget             4   10.244.2.2:45426
@@ -65,12 +65,12 @@ minikube         default          test-pod         test-pod         49447   wget
 This gadget supports JSON output, for this simply use `-o json`:
 
 ```bash
-$ kubectl gadget tcptop -o json
+$ kubectl gadget top tcp -o json
 []
 [{"node":"minikube","namespace":"default","pod":"test-pod","container":"test-pod","saddr":"10.244.2.2","daddr":"188.114.96.3","mountnsid":4026532438,"pid":51782,"comm":"wget","sport":38338,"dport":443,"family":2,"received":8802}]
 []
 # You can use jq to make the output easier to read:
-$ kubectl gadget tcptop -o json | jq
+$ kubectl gadget top tcp -o json | jq
 []
 [
   {

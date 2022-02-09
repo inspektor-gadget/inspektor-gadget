@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,36 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package top
 
 import (
-	"os"
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 
 	"github.com/spf13/cobra"
-
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/top"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/trace"
-
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
-// common params for all gadgets
+// All the gadgets within this package use this global variable, so let's
+// declare it here.
 var params utils.CommonFlags
 
-var rootCmd = &cobra.Command{
-	Use:   "kubectl-gadget",
-	Short: "Collection of gadgets for Kubernetes developers",
-}
-
-func init() {
-	utils.FlagInit(rootCmd)
-
-	rootCmd.AddCommand(top.TopCmd)
-	rootCmd.AddCommand(trace.TraceCmd)
-}
-
-func main() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
-	}
+var TopCmd = &cobra.Command{
+	Use:   "top",
+	Short: "Gather, sort and print events according to a given criteria",
 }

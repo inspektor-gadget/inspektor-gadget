@@ -38,36 +38,6 @@ func BccCmd(subCommand, bccScript string, params *utils.CommonFlags, gadgetSpeci
 			return utils.WrapInErrSetupK8sClient(err)
 		}
 
-		// tcptop only works on one pod at a time
-		if subCommand == "tcptop" {
-			if params.Node == "" || params.Podname == "" {
-				return utils.WrapInErrMissingArgs("--node and --podname")
-			}
-
-			if params.OutputMode == utils.OutputModeJSON {
-				return utils.ErrJSONNotSupported
-			}
-		}
-
-		// biotop only works per node
-		if subCommand == "biotop" {
-			if params.Node == "" {
-				return utils.WrapInErrMissingArgs("--node")
-			}
-
-			if params.Containername != "" || params.Podname != "" {
-				return utils.WrapInErrMissingArgs("--all-namespaces")
-			}
-
-			if params.AllNamespaces {
-				return utils.WrapInErrArgsNotSupported("--containername and --podname")
-			}
-
-			if params.OutputMode == utils.OutputModeJSON {
-				return utils.ErrJSONNotSupported
-			}
-		}
-
 		labelFilter := ""
 		if params.LabelsRaw != "" {
 			labelFilter = fmt.Sprintf("--label %s", params.LabelsRaw)
@@ -90,24 +60,16 @@ func BccCmd(subCommand, bccScript string, params *utils.CommonFlags, gadgetSpeci
 
 		extraParams := ""
 
-		// disable manager for biotop
-		if subCommand == "biotop" {
-			extraParams += " --nomanager"
-		}
-
 		gadgetParams := ""
 
 		// add container info to gadgets that support it
-		if subCommand != "tcptop" && subCommand != "profile" {
+		if subCommand != "profile" {
 			gadgetParams = "--containersmap /sys/fs/bpf/gadget/containers"
 		}
-
-		var transform func(line string) string
 
 		if params.OutputMode == utils.OutputModeCustomColumns {
 			table := utils.NewTableFormater(params.CustomColumns, map[string]int{})
 			fmt.Println(table.GetHeader())
-			transform = table.GetTransformFunc()
 
 			// ask the gadget to send the output in json mode to be able to
 			// parse it to print only the columns required by the user
@@ -141,14 +103,6 @@ func BccCmd(subCommand, bccScript string, params *utils.CommonFlags, gadgetSpeci
 		}
 		failure := make(chan nodeResult)
 
-		postProcess := utils.NewPostProcess(&utils.PostProcessConfig{
-			Flows:         len(nodes.Items),
-			OutStream:     os.Stdout,
-			ErrStream:     os.Stderr,
-			SkipFirstLine: params.OutputMode != utils.OutputModeJSON, // skip first line if json is not used
-			Transform:     transform,
-		})
-
 		for i, node := range nodes.Items {
 			if params.Node != "" && node.Name != params.Node {
 				continue
@@ -156,13 +110,7 @@ func BccCmd(subCommand, bccScript string, params *utils.CommonFlags, gadgetSpeci
 			go func(nodeName string, index int) {
 				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s %s %s -- %s",
 					tracerID, bccScript, labelFilter, namespaceFilter, podnameFilter, containernameFilter, extraParams, gadgetParams)
-				var err error
-				if subCommand != "tcptop" {
-					err = utils.ExecPod(client, nodeName, cmd,
-						postProcess.OutStreams[index], postProcess.ErrStreams[index])
-				} else {
-					err = utils.ExecPod(client, nodeName, cmd, os.Stdout, os.Stderr)
-				}
+				err := utils.ExecPod(client, nodeName, cmd, os.Stdout, os.Stderr)
 				if fmt.Sprintf("%s", err) != "command terminated with exit code 137" {
 					failure <- nodeResult{nodeName, err}
 				}

@@ -175,7 +175,7 @@ func TestBiotop(t *testing.T) {
 
 	biotopCmd := &command{
 		name:           "Start biotop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET biotop -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s", ns),
 		expectedRegexp: `test-pod\s+test-pod\s+\d+\s+dd`,
 		startAndStop:   true,
 	}
@@ -283,7 +283,7 @@ func TestFiletop(t *testing.T) {
 
 	filetopCmd := &command{
 		name:           "Start filetop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET filetop -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET top file -n %s", ns),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+\S*\s+0\s+\d+\s+0\s+\d+\s+R\s+date`, ns),
 		startAndStop:   true,
 	}
@@ -733,7 +733,7 @@ func TestTcptop(t *testing.T) {
 
 	tcptopCmd := &command{
 		name:           "Start tcptop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET tcptop --node $(kubectl get node --no-headers | cut -d' ' -f1) -n %s -p test-pod", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET top tcp --node $(kubectl get node --no-headers | cut -d' ' -f1) -n %s -p test-pod", ns),
 		expectedRegexp: `wget`,
 		startAndStop:   true,
 	}

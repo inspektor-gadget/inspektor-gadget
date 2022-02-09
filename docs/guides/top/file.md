@@ -1,9 +1,9 @@
 ---
-title: 'The "filetop" gadget'
+title: 'The "top file" gadget'
 weight: 10
 ---
 
-filetop shows reads and writes by file, with container details.
+`top file` shows reads and writes by file, with container details.
 
 This guide will deploy an example workload that perform some disk I/O
 activity to show how to use filetop.
@@ -12,7 +12,7 @@ Before starting our workload, let's start filetop to be sure it captures
 all the events from the beginning:
 
 ```bash
-$ kubectl gadget filetop -p mypod
+$ kubectl gadget top file -p mypod
 NODE             NAMESPACE        POD              CONTAINER        PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
 ...
 ```
@@ -63,17 +63,17 @@ $ kubectl delete pod mypod
 By default filetop prints a summary each second. It accepts a numeric argument to indicate the interval to use:
 
 ```bash
-$ kubectl gadget filetop 5 # will print a summary each 5 seconds
+$ kubectl gadget top file 5 # will print a summary each 5 seconds
 ```
 
 filetop supports the following flags to customize the output:
 
 ```bash
-$ kubectl gadget filetop --help
-Trace reads and writes by file, with container details
+$ kubectl gadget top file --help
+Trace reads and writes by file
 
 Usage:
-  kubectl-gadget filetop [interval] [flags]
+  kubectl-gadget top file [interval] [flags]
 
 Flags:
   -a, --all-files              Include non-regular file types (sockets, FIFOs, etc)

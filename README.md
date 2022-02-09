@@ -10,13 +10,15 @@ Exploring the following documentation will best help you learn which tools can h
 
 - [audit-seccomp](docs/guides/audit-seccomp.md)
 - [biolatency](docs/guides/biolatency.md)
-- [biotop](docs/guides/biotop.md)
-- [filetop](docs/guides/filetop.md)
 - [network-policy](docs/guides/network-policy.md)
 - [process-collector](docs/guides/process-collector.md)
 - [profile](docs/guides/profile.md)
 - [seccomp](docs/guides/seccomp.md)
 - [socket-collector](docs/guides/socket-collector.md)
+- `top`:
+	- [`block-io`](docs/guides/top/block-io.md)
+	- [`file`](docs/guides/top/file.md)
+	- [`tcp`](docs/guides/top/tcp.md)
 - `trace`:
 	- [`bind`](docs/guides/trace/bind.md)
 	- [`capabilities`](docs/guides/trace/capabilities.md)
@@ -29,7 +31,6 @@ Exploring the following documentation will best help you learn which tools can h
 	- [`signal`](docs/guides/trace/signal.md)
 	- [`tcp`](docs/guides/trace/tcp.md)
 	- [`tcpconnect`](docs/guides/trace/tcpconnect.md)
-- [tcptop](docs/guides/tcptop.md)
 - [traceloop](docs/guides/traceloop.md)
 
 ## Installation
@@ -68,7 +69,6 @@ Available Commands:
   biotop            Trace block devices I/O, with container details
   completion        generate the autocompletion script for the specified shell
   deploy            Deploy Inspektor Gadget on the cluster
-  filetop           Trace reads and writes by file, with container details
   help              Help about any command
   network-policy    Generate network policies based on recorded network activity
   process-collector Gather information about running processes
@@ -76,6 +76,7 @@ Available Commands:
   seccomp-advisor   Generate seccomp policies based on recorded syscalls activity
   socket-collector  Gather information about network sockets
   tcptop            Trace TCP connection, with container details
+  top               Gather, sort and print events according to a given criteria
   trace             Trace and print system events
   traceloop         Get strace-like logs of a pod from the past
   undeploy          Undeploy Inspektor Gadget from cluster
@@ -87,6 +88,18 @@ Available Commands:
 You can then get help for each subcommand:
 
 ```bash
+$ kubectl gadget top --help
+Gather, sort and print events according to a given criteria
+
+Usage:
+  kubectl-gadget top [command]
+
+Available Commands:
+  block-io    Trace block devices I/O
+  file        Trace reads and writes by file
+  tcp         Trace TCP connection
+
+...
 $ kubectl gadget trace --help
 Trace and print system events
 

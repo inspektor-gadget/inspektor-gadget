@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2021 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package top
 
 import (
 	"encoding/json"
@@ -27,56 +27,60 @@ import (
 	"golang.org/x/term"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biotop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/filetop/types"
 )
 
 var (
-	nodeBioStats map[string][]types.Stats
-	mutex        sync.Mutex
-	finished     bool = false
+	nodeStats map[string][]types.Stats
+	mu        sync.Mutex
+	done      bool = false
 )
 
 var (
 	// arguments
-	printInterval int = types.IntervalDefault
+	interval int = 1
 
 	// flags
-	biotopMaximumRows int
-	biotopSortTypeStr string
-	biotopSortType    types.SortBy
+	maxRows   int
+	sortByStr string
+	sortBy    types.SortBy
+	allFiles  bool
 )
 
-var biotopCmd = &cobra.Command{
-	Use:   fmt.Sprintf("biotop [interval=%d]", types.IntervalDefault),
-	Short: "Trace block devices I/O, with container details",
+var filetopCmd = &cobra.Command{
+	Use:   "file [interval]",
+	Short: "Trace reads and writes by file",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 
-		nodeBioStats = make(map[string][]types.Stats)
+		nodeStats = make(map[string][]types.Stats)
 
 		if len(args) == 1 {
-			printInterval, err = strconv.Atoi(args[0])
+			interval, err = strconv.Atoi(args[0])
 			if err != nil {
-				return utils.WrapInErrInvalidArg("<interval>", fmt.Errorf("%q is not a valid value", args[0]))
+				return utils.WrapInErrInvalidArg("<interval>",
+					fmt.Errorf("%q is not a valid value", args[0]))
 			}
 		}
 
 		config := &utils.TraceConfig{
-			GadgetName:       "biotop",
+			GadgetName:       "filetop",
 			Operation:        "start",
 			TraceOutputMode:  "Stream",
 			TraceOutputState: "Started",
 			CommonFlags:      &params,
 			Parameters: map[string]string{
-				types.IntervalParam: strconv.Itoa(printInterval),
-				types.MaxRowsParam:  strconv.Itoa(biotopMaximumRows),
-				types.SortByParam:   biotopSortTypeStr,
+				types.MaxRowsParam:  strconv.Itoa(maxRows),
+				types.IntervalParam: strconv.Itoa(interval),
+				types.SortByParam:   sortByStr,
+				types.AllFilesParam: strconv.FormatBool(allFiles),
 			},
 		}
 
-		biotopStartOutput()
+		startprint()
 
-		if err := utils.RunTraceStreamCallback(config, biotopHook); err != nil {
+		err = utils.RunTraceStreamCallback(config, callback)
+		if err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
 
@@ -85,7 +89,7 @@ var biotopCmd = &cobra.Command{
 	SilenceUsage: true,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		var err error
-		biotopSortType, err = types.ParseSortBy(biotopSortTypeStr)
+		sortBy, err = types.ParseSortBy(sortByStr)
 		if err != nil {
 			return utils.WrapInErrInvalidArg("--sort", err)
 		}
@@ -96,16 +100,17 @@ var biotopCmd = &cobra.Command{
 }
 
 func init() {
-	biotopCmd.Flags().IntVarP(&biotopMaximumRows, "maximum-rows", "r", types.MaxRowsDefault, "Maximum rows to print")
-	biotopCmd.Flags().StringVarP(&biotopSortTypeStr, "sort", "", types.SortBySlice[0], fmt.Sprintf("Sort column, possible values are: %s (default to %s)", strings.Join(types.SortBySlice, ", "), types.SortBySlice[0]))
+	filetopCmd.Flags().IntVarP(&maxRows, "maxrows", "r", 20, "Maximum rows to print")
+	filetopCmd.Flags().StringVarP(&sortByStr, "sort", "", "rbytes", fmt.Sprintf("Sort column (%s)", strings.Join(types.SortBySlice, ", ")))
+	filetopCmd.Flags().BoolVarP(&allFiles, "all-files", "a", false, "Include non-regular file types (sockets, FIFOs, etc)")
 
-	rootCmd.AddCommand(biotopCmd)
-	utils.AddCommonFlags(biotopCmd, &params)
+	TopCmd.AddCommand(filetopCmd)
+	utils.AddCommonFlags(filetopCmd, &params)
 }
 
-func biotopHook(line string, node string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func callback(line string, node string) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	var event types.Event
 
@@ -119,33 +124,33 @@ func biotopHook(line string, node string) {
 		return
 	}
 
-	nodeBioStats[node] = event.Stats
+	nodeStats[node] = event.Stats
 }
 
-func biotopStartOutput() {
-	ticker := time.NewTicker(time.Duration(printInterval) * time.Second)
+func startprint() {
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 
 	go func() {
 		for {
-			biotopOutput()
-			<-ticker.C
+			print()
+			_ = <-ticker.C
 		}
 	}()
 }
 
-func biotopOutput() {
+func print() {
 	// sort and print events
-	mutex.Lock()
+	mu.Lock()
 
 	stats := []types.Stats{}
-	for _, stat := range nodeBioStats {
+	for _, stat := range nodeStats {
 		stats = append(stats, stat...)
 	}
-	nodeBioStats = make(map[string][]types.Stats)
+	nodeStats = make(map[string][]types.Stats)
 
-	mutex.Unlock()
+	mu.Unlock()
 
-	types.SortStats(stats, biotopSortType)
+	types.SortStats(stats, sortBy)
 
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
@@ -154,24 +159,17 @@ func biotopOutput() {
 		} else {
 			fmt.Println("")
 		}
-
-		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-3s %-6s %-6s %-7s %-8s %s\n",
+		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-6s %-6s %-7s %-7s %1s %s\n",
 			"NODE", "NAMESPACE", "POD", "CONTAINER",
-			"PID", "COMM", "R/W", "MAJOR", "MINOR", "BYTES", "TIME(µs)", "IOs")
+			"PID", "COMM", "READS", "WRITES", "R_Kb", "W_Kb", "T", "FILE")
 		for idx, event := range stats {
-			if idx == biotopMaximumRows {
+			if idx == maxRows {
 				break
 			}
-
-			rw := 'R'
-			if event.Write {
-				rw = 'W'
-			}
-
-			fmt.Printf("%-16s %-16s %-16s %-16s %-7d %-16s %-3c %-6d %-6d %-7d %-8d %d\n",
+			fmt.Printf("%-16s %-16s %-16s %-16s %-7d %-16s %-6d %-6d %-7d %-7d %c %s\n",
 				event.Node, event.Namespace, event.Pod, event.Container,
-				event.Pid, event.Comm, rw, event.Major, event.Minor, event.Bytes,
-				event.MicroSecs, event.Operations)
+				event.Pid, event.Comm, event.Reads, event.Writes, event.ReadBytes/1024,
+				event.WriteBytes/1024, event.FileType, event.Filename)
 		}
 	case utils.OutputModeJSON:
 		b, err := json.Marshal(stats)
@@ -186,17 +184,17 @@ func biotopOutput() {
 		} else {
 			fmt.Println("")
 		}
-		fmt.Println(getCustomColumnsHeader(params.CustomColumns))
+		fmt.Println(getCustomColsHeader(params.CustomColumns))
 		for idx, stat := range stats {
-			if idx == biotopMaximumRows {
+			if idx == maxRows {
 				break
 			}
-			fmt.Println(formatEventCustomCols(&stat, params.CustomColumns))
+			fmt.Println(formatEventCostumCols(&stat, params.CustomColumns))
 		}
 	}
 }
 
-func getCustomColumnsHeader(cols []string) string {
+func getCustomColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -211,20 +209,22 @@ func getCustomColumnsHeader(cols []string) string {
 			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
 		case "pid":
 			sb.WriteString(fmt.Sprintf("%-7s", "PID"))
+		case "tid":
+			sb.WriteString(fmt.Sprintf("%-7s", "TID"))
 		case "comm":
 			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
-		case "r/w":
-			sb.WriteString(fmt.Sprintf("%-3s", "R/W"))
-		case "major":
-			sb.WriteString(fmt.Sprintf("%-6s", "MAJOR"))
-		case "minor":
-			sb.WriteString(fmt.Sprintf("%-6s", "MINOR"))
-		case "bytes":
-			sb.WriteString(fmt.Sprintf("%-7s", "BYTES"))
-		case "time":
-			sb.WriteString(fmt.Sprintf("%-8s", "TIME(µs)"))
-		case "ios":
-			sb.WriteString(fmt.Sprintf("%-8s", "IOs"))
+		case "reads":
+			sb.WriteString(fmt.Sprintf("%-6s", "READS"))
+		case "writes":
+			sb.WriteString(fmt.Sprintf("%-6s", "WRITES"))
+		case "r_kb":
+			sb.WriteString(fmt.Sprintf("%-7s", "R_kb"))
+		case "w_kb":
+			sb.WriteString(fmt.Sprintf("%-7s", "W_kb"))
+		case "t":
+			sb.WriteString(fmt.Sprintf("%s", "T"))
+		case "file":
+			sb.WriteString(fmt.Sprintf("%s", "FILE"))
 		}
 		sb.WriteRune(' ')
 	}
@@ -232,7 +232,7 @@ func getCustomColumnsHeader(cols []string) string {
 	return sb.String()
 }
 
-func formatEventCustomCols(stats *types.Stats, cols []string) string {
+func formatEventCostumCols(stats *types.Stats, cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -247,25 +247,22 @@ func formatEventCustomCols(stats *types.Stats, cols []string) string {
 			sb.WriteString(fmt.Sprintf("%-16s", stats.Container))
 		case "pid":
 			sb.WriteString(fmt.Sprintf("%-7d", stats.Pid))
+		case "tid":
+			sb.WriteString(fmt.Sprintf("%-7d", stats.Tid))
 		case "comm":
 			sb.WriteString(fmt.Sprintf("%-16s", stats.Comm))
-		case "r/w":
-			rw := 'R'
-			if stats.Write {
-				rw = 'W'
-			}
-
-			sb.WriteString(fmt.Sprintf("%-3c", rw))
-		case "major":
-			sb.WriteString(fmt.Sprintf("%-6d", stats.Major))
-		case "minor":
-			sb.WriteString(fmt.Sprintf("%-6d", stats.Minor))
-		case "bytes":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.Bytes))
-		case "time":
-			sb.WriteString(fmt.Sprintf("%-8d", stats.MicroSecs))
-		case "ios":
-			sb.WriteString(fmt.Sprintf("%-8d", stats.Operations))
+		case "reads":
+			sb.WriteString(fmt.Sprintf("%-6d", stats.Reads))
+		case "writes":
+			sb.WriteString(fmt.Sprintf("%-6d", stats.Writes))
+		case "r_kb":
+			sb.WriteString(fmt.Sprintf("%-7d", stats.ReadBytes))
+		case "w_kb":
+			sb.WriteString(fmt.Sprintf("%-7d", stats.WriteBytes))
+		case "t":
+			sb.WriteString(fmt.Sprintf("%c", stats.FileType))
+		case "file":
+			sb.WriteString(fmt.Sprintf("%s", stats.Filename))
 		}
 		sb.WriteRune(' ')
 	}

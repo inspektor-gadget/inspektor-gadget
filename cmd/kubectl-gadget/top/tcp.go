@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package top
 
 import (
 	"encoding/json"
@@ -49,8 +49,8 @@ var (
 )
 
 var tcptopCmd = &cobra.Command{
-	Use:   fmt.Sprintf("tcptop [interval=%d]", types.IntervalDefault),
-	Short: "Trace TCP connection, with container details",
+	Use:   fmt.Sprintf("tcp [interval=%d]", types.IntervalDefault),
+	Short: "Trace TCP connection",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 
@@ -125,7 +125,7 @@ func init() {
 		"Show only TCP events for this IP version: either 4 or 6 (by default all will be printed)",
 	)
 
-	rootCmd.AddCommand(tcptopCmd)
+	TopCmd.AddCommand(tcptopCmd)
 	utils.AddCommonFlags(tcptopCmd, &params)
 }
 
