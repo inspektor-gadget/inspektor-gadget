@@ -1,9 +1,9 @@
 ---
-title: 'The "mountsnoop" gadget'
+title: 'The "trace mount" gadget'
 weight: 10
 ---
 
-The `mountsnoop` gadget is used to monitor `mount` and `umount` syscalls.
+The `trace mount` gadget is used to monitor `mount` and `umount` syscalls.
 In this guide, we will learn how to use it by running a small `kubernetes` cluster inside `minikube`.
 
 ## How to use it?
@@ -18,7 +18,7 @@ $ kubectl run busybox-1 --image busybox:latest sleep inf
 You can now use the gadget, but output will be empty:
 
 ```bash
-$ kubectl gadget mountsnoop
+$ kubectl gadget trace mount
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
 ```
 
@@ -62,7 +62,7 @@ $ kubectl get pods --show-labels
 NAME        READY   STATUS    RESTARTS   AGE     LABELS
 busybox-0   1/1     Running   0          2m9s    run=busybox-0
 busybox-1   1/1     Running   0          3m59s   run=busybox-1
-$ kubectl gadget mountsnoop --selector run=busybox-0
+$ kubectl gadget trace mount --selector run=busybox-0
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
 ```
 
@@ -99,7 +99,7 @@ minikube         default          busybox-0        busybox-0        mount       
 This gadget supports JSON output, for this simply use `-o json`:
 
 ```bash
-$ kubectl gadget mountsnoop -o json
+$ kubectl gadget trace mount -o json
 {"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":7954,"fs":"ext3","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
 {"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":4051,"fs":"ext2","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
 {"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":3702,"fs":"ext4","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
@@ -109,7 +109,7 @@ $ kubectl gadget mountsnoop -o json
 {"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":4232,"fs":"fuseblk","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
 {"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":3586,"fs":"xfs","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
 # You can use jq to make the output easier to read:
-$ kubectl gadget mountsnoop -o json | jq
+$ kubectl gadget trace mount -o json | jq
 {
   "type": "normal",
   "node": "minikube",

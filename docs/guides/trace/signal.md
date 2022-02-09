@@ -1,9 +1,9 @@
 ---
-title: 'The "sigsnoop" gadget'
+title: 'The "trace signal" gadget'
 weight: 10
 ---
 
-The `sigsnoop` gadget is used to trace signal sent system-wide.
+The `trace signal` gadget is used to trace signal sent system-wide.
 
 ## How to use it?
 
@@ -16,7 +16,7 @@ $ kubectl run debian --image debian:latest sleep inf
 You can now use the gadget, but output will be empty:
 
 ```bash
-$ kubectl gadget sigsnoop
+$ kubectl gadget trace signal
 NODE             NAMESPACE        POD              CONTAINER        PID    COMM             SIGNAL    TPID   RET
 ```
 
@@ -77,7 +77,7 @@ You can customize the information printed using `-o custom-columns=column0,...,c
 This command will only show the PID and command of the process which sent a signal:
 
 ```bash
-$ kubectl gadget sigsnoop -o custom-columns=pid,comm
+$ kubectl gadget trace signal -o custom-columns=pid,comm
 PID    COMM
 131951 sh
 ```
@@ -85,7 +85,7 @@ PID    COMM
 The following command is the same as default printing:
 
 ```bash
-$ kubectl gadget sigsnoop -A -o custom-columns=node,namespace,container,pod,pid,comm,signal,tpid,ret
+$ kubectl gadget trace signal -A -o custom-columns=node,namespace,container,pod,pid,comm,signal,tpid,ret
 NODE             NAMESPACE        POD              CONTAINER        PID    COMM             SIGNAL    TPID   RET
 minikube         default          debian           debian           129484 sh               SIGKILL   129491 0
 minikube         default          debian           debian           129484 sh               SIGHUP    129491 0
@@ -97,10 +97,10 @@ minikube         default          debian           debian           129484 sh   
 This gadget supports JSON output, for this simply use `-o json`:
 
 ```bash
-$ kubectl gadget sigsnoop -o json
+$ kubectl gadget trace signal -o json
 {"type":"normal","node":"minikube","namespace":"default","pod":"debian","container":"debian","pid":142872,"tpid":142885,"signal":9,"comm":"sh","mountnsid":4026532588}
 # You can use jq to make the output easier to read:
-$ kubectl gadget sigsnoop -o json | jq
+$ kubectl gadget trace signal -o json | jq
 {
   "type": "normal",
   "node": "minikube",

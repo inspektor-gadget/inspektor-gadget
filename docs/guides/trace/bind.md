@@ -1,9 +1,9 @@
 ---
-title: 'The "bindsnoop" gadget'
+title: 'The "trace bind" gadget'
 weight: 10
 ---
 
-The `bindsnoop` gadget is used to trace the kernel functions performing socket binding.
+The `bind` gadget is used to trace the kernel functions performing socket binding.
 
 ## How to use it?
 
@@ -16,7 +16,7 @@ $ kubectl run test-pod --image busybox:latest sleep inf
 You can now use the gadget, but output will be empty:
 
 ```bash
-$ kubectl gadget bindsnoop
+$ kubectl gadget trace bind
 NODE             NAMESPACE        POD              CONTAINER        PID    COMM             PROTO  ADDR             PORT   OPTS   IF
 ```
 
@@ -49,7 +49,7 @@ With the following option, you can restrain the output:
 So, this command will print all (*i.e.* succeeded and failed) attempt to bind a socket on port 4242 or 4343 by PID 42:
 
 ```bash
-$ kubectl gadget bindsnoop -i=false --pid 42 -P=4242,4343
+$ kubectl gadget trace bind -i=false --pid 42 -P=4242,4343
 ```
 
 ## Only print some information
@@ -58,7 +58,7 @@ You can customize the information printed using `-o custom-columns=column0,...,c
 This command will only show the PID and command of the process which sent a signal:
 
 ```bash
-$ kubectl gadget bindsnoop -o custom-columns=pid,comm
+$ kubectl gadget trace bind -o custom-columns=pid,comm
 PID    COMM
 61198  nc
 ```
@@ -66,7 +66,7 @@ PID    COMM
 The following command is the same as default printing:
 
 ```bash
-$ kubectl gadget bindsnoop -o custom-columns=node,namespace,container,pod,pid,proto,addr,port,opts,if
+$ kubectl gadget trace bind -o custom-columns=node,namespace,container,pod,pid,proto,addr,port,opts,if
 NODE             NAMESPACE        CONTAINER        POD              PID    PROTO  ADDR             PORT   OPTS   IF
 minikube         default          test-pod         test-pod         61985  IP     ::               4242   .....  0
 ```
@@ -76,10 +76,10 @@ minikube         default          test-pod         test-pod         61985  IP   
 This gadget supports JSON output, for this simply use `-o json`:
 
 ```bash
-$ kubectl gadget bindsnoop -o json
+$ kubectl gadget trace bind -o json
 {"type":"normal","node":"minikube","namespace":"default","pod":"test-pod","container":"test-pod","pid":62232,"comm":"nc","proto":"IP","addr":"::","port":4343,"opts":".....","if":"0","mountnsid":4026532579}
 # You can use jq to make the output easier to read:
-$ kubectl gadget bindsnoop -o json | jq
+$ kubectl gadget trace bind -o json | jq
 {
   "type": "normal",
   "node": "minikube",

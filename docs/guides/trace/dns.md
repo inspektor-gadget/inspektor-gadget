@@ -16,7 +16,7 @@ namespace/demo created
 Start the dns gadget:
 
 ```bash
-$ kubectl gadget dns -n demo
+$ kubectl gadget trace dns -n demo
 POD                            TYPE      QTYPE     NAME
 ```
 

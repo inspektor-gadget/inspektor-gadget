@@ -12,7 +12,7 @@ slower than 1 ms.
 Let's start the gadget before running our workload:
 
 ```bash
-$ kubectl gadget fsslower -t ext4 -m 1 -p mypod
+$ kubectl gadget trace fsslower -t ext4 -m 1 -p mypod
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID    T BYTES  OFFSET  LAT(ms)  FILE
 ```
 
@@ -35,7 +35,7 @@ $ kubectl run -it mypod --image ubuntu -- /bin/sh -c "apt-get update && apt-get 
 We can see how fsslower shows the operations that are taking longer than 1ms:
 
 ```bash
-$ kubectl gadget fsslower -t ext4 -m 1 -p mypod
+$ kubectl gadget trace fsslower -t ext4 -m 1 -p mypod
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID    T BYTES  OFFSET  LAT(ms)  FILE
 ubuntu-hirsute   default          mypod            mypod            dpkg             579778 F 0      0       2.66     perl-modules-5.30.list-new
 ubuntu-hirsute   default          mypod            mypod            dpkg             579778 F 0      0       1.49     libperl5.30:amd64.list-new

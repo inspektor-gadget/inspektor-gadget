@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package trace
 
 import (
 	"encoding/json"
@@ -21,34 +21,34 @@ import (
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	"github.com/spf13/cobra"
 )
 
-var execsnoopCmd = &cobra.Command{
-	Use:   "execsnoop",
-	Short: "Trace new processes",
+var tcptracerCmd = &cobra.Command{
+	Use:   "tcp",
+	Short: "Trace tcp connect, accept and close",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// print header
 		switch params.OutputMode {
 		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomExecsnoopColsHeader(params.CustomColumns))
+			fmt.Println(getCustomTcptracerColsHeader(params.CustomColumns))
 		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-16s %-6s %-6s %3s %s\n",
+			fmt.Printf("%-16s %-16s %-16s %-16s %s %-6s %-16s %-3s %-16s %-16s %-7s %-7s\n",
 				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"PCOMM", "PID", "PPID", "RET", "ARGS")
+				"T", "PID", "COMM", "IP", "SADDR", "DADDR", "SPORT", "DPORT")
 		}
 
 		config := &utils.TraceConfig{
-			GadgetName:       "execsnoop",
+			GadgetName:       "tcptracer",
 			Operation:        "start",
 			TraceOutputMode:  "Stream",
 			TraceOutputState: "Started",
 			CommonFlags:      &params,
 		}
 
-		err := utils.RunTraceAndPrintStream(config, execsnoopTransformLine)
+		err := utils.RunTraceAndPrintStream(config, tcptracerTransformLine)
 		if err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
@@ -58,13 +58,28 @@ var execsnoopCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(execsnoopCmd)
-	utils.AddCommonFlags(execsnoopCmd, &params)
+	TraceCmd.AddCommand(tcptracerCmd)
+	utils.AddCommonFlags(tcptracerCmd, &params)
 }
 
-// execsnoopTransformLine is called to transform an event to columns
+var operations = map[string]string{
+	"accept":  "A",
+	"connect": "C",
+	"close":   "X",
+	"unknown": "U",
+}
+
+func getOperationShort(operation string) string {
+	if op, ok := operations[operation]; ok {
+		return op
+	}
+
+	return "U"
+}
+
+// tcptracerTransformLine is called to transform an event to columns
 // format according to the parameters
-func execsnoopTransformLine(line string) string {
+func tcptracerTransformLine(line string) string {
 	var sb strings.Builder
 	var e types.Event
 
@@ -75,22 +90,20 @@ func execsnoopTransformLine(line string) string {
 
 	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
 		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
-		fmt.Fprintf(os.Stderr, "%s: node %q: %s", e.Type, e.Node, e.Message)
+		fmt.Fprintf(os.Stderr, "%s: node %s: %s", e.Type, e.Node, e.Message)
 		return ""
 	}
 
 	if e.Type != eventtypes.NORMAL {
 		return ""
 	}
+
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-6d %3d",
+		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %s %-6d %-16s %-3d %-16s %-16s %-7d %-7d",
 			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Comm, e.Pid, e.Ppid, e.Retval))
-
-		for _, arg := range e.Args {
-			sb.WriteString(" " + arg)
-		}
+			getOperationShort(e.Operation), e.Pid, e.Comm, e.IPVersion,
+			e.Saddr, e.Daddr, e.Sport, e.Dport))
 	case utils.OutputModeCustomColumns:
 		for _, col := range params.CustomColumns {
 			switch col {
@@ -102,18 +115,22 @@ func execsnoopTransformLine(line string) string {
 				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
 			case "container":
 				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "pcomm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
+			case "t":
+				sb.WriteString(fmt.Sprintf("%s", getOperationShort(e.Operation)))
 			case "pid":
 				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "ppid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Ppid))
-			case "ret":
-				sb.WriteString(fmt.Sprintf("%-3d", e.Retval))
-			case "args":
-				for _, arg := range e.Args {
-					sb.WriteString(fmt.Sprintf("%s ", arg))
-				}
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
+			case "ip":
+				sb.WriteString(fmt.Sprintf("%-3d", e.IPVersion))
+			case "saddr":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Saddr))
+			case "daddr":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Daddr))
+			case "sport":
+				sb.WriteString(fmt.Sprintf("%-7d", e.Sport))
+			case "dport":
+				sb.WriteString(fmt.Sprintf("%-7d", e.Dport))
 			}
 			sb.WriteRune(' ')
 		}
@@ -122,7 +139,7 @@ func execsnoopTransformLine(line string) string {
 	return sb.String()
 }
 
-func getCustomExecsnoopColsHeader(cols []string) string {
+func getCustomTcptracerColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -135,16 +152,22 @@ func getCustomExecsnoopColsHeader(cols []string) string {
 			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
 		case "container":
 			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
-		case "pcomm":
-			sb.WriteString(fmt.Sprintf("%-16s", "PCOMM"))
+		case "t":
+			sb.WriteString(fmt.Sprintf("%s", "T"))
 		case "pid":
 			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
-		case "ppid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PPID"))
-		case "ret":
-			sb.WriteString(fmt.Sprintf("%-3s", "RET"))
-		case "args":
-			sb.WriteString(fmt.Sprintf("%-24s", "ARGS"))
+		case "comm":
+			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
+		case "ip":
+			sb.WriteString(fmt.Sprintf("%-3s", "IP"))
+		case "saddr":
+			sb.WriteString(fmt.Sprintf("%-16s", "SADDR"))
+		case "daddr":
+			sb.WriteString(fmt.Sprintf("%-16s", "DADDR"))
+		case "sport":
+			sb.WriteString(fmt.Sprintf("%-7s", "SPORT"))
+		case "dport":
+			sb.WriteString(fmt.Sprintf("%-7s", "DPORT"))
 		}
 		sb.WriteRune(' ')
 	}

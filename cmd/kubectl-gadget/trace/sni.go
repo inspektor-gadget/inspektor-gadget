@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package trace
 
 import (
 	"encoding/json"
@@ -36,8 +36,8 @@ var colSnisnoopLens = map[string]int{
 }
 
 var snisnoopCmd = &cobra.Command{
-	Use:   "snisnoop",
-	Short: "Trace SNI requests",
+	Use:   "sni",
+	Short: "Trace Server Name Indicator requests",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		transform := snisnoopTransformLine
 
@@ -79,7 +79,7 @@ var snisnoopCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(snisnoopCmd)
+	TraceCmd.AddCommand(snisnoopCmd)
 	utils.AddCommonFlags(snisnoopCmd, &params)
 }
 

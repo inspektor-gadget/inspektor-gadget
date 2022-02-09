@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package trace
 
 import (
 	"encoding/json"
@@ -21,34 +21,34 @@ import (
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/oomkill/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	"github.com/spf13/cobra"
 )
 
-var oomkillCmd = &cobra.Command{
-	Use:   "oomkill",
-	Short: "Trace when OOM killer is triggered and kills a process",
+var tcpconnectCmd = &cobra.Command{
+	Use:   "tcpconnect",
+	Short: "Trace connect system calls",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// print header
 		switch params.OutputMode {
 		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomOomkillColsHeader(params.CustomColumns))
+			fmt.Println(getCustomTcpconnectColsHeader(params.CustomColumns))
 		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-16s %-6s %-6s %-16s\n",
+			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-16s %-3s %-16s %-16s %-7s\n",
 				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"KPID", "KCOMM", "PAGES", "TPID", "TCOMM")
+				"PID", "COMM", "IP", "SADDR", "DADDR", "DPORT")
 		}
 
 		config := &utils.TraceConfig{
-			GadgetName:       "oomkill",
+			GadgetName:       "tcpconnect",
 			Operation:        "start",
 			TraceOutputMode:  "Stream",
 			TraceOutputState: "Started",
 			CommonFlags:      &params,
 		}
 
-		err := utils.RunTraceAndPrintStream(config, oomkillTransformLine)
+		err := utils.RunTraceAndPrintStream(config, tcpconnectTransformLine)
 		if err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
@@ -58,13 +58,13 @@ var oomkillCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(oomkillCmd)
-	utils.AddCommonFlags(oomkillCmd, &params)
+	TraceCmd.AddCommand(tcpconnectCmd)
+	utils.AddCommonFlags(tcpconnectCmd, &params)
 }
 
-// oomkillTransformLine is called to transform an event to columns
+// tcpconnectTransformLine is called to transform an event to columns
 // format according to the parameters
-func oomkillTransformLine(line string) string {
+func tcpconnectTransformLine(line string) string {
 	var sb strings.Builder
 	var e types.Event
 
@@ -85,9 +85,9 @@ func oomkillTransformLine(line string) string {
 
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-16s %-6d %-6d %-16s",
+		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-16s %-3d %-16s %-16s %-7d",
 			e.Node, e.Namespace, e.Pod, e.Container,
-			e.KilledPid, e.KilledComm, e.Pages, e.TriggeredPid, e.TriggeredComm))
+			e.Pid, e.Comm, e.IPVersion, e.Saddr, e.Daddr, e.Dport))
 	case utils.OutputModeCustomColumns:
 		for _, col := range params.CustomColumns {
 			switch col {
@@ -99,16 +99,18 @@ func oomkillTransformLine(line string) string {
 				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
 			case "container":
 				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "kpid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.KilledPid))
-			case "kcomm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.KilledComm))
-			case "tpid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.TriggeredPid))
-			case "tcomm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.TriggeredComm))
-			case "pages":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pages))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
+			case "ip":
+				sb.WriteString(fmt.Sprintf("%-3d", e.IPVersion))
+			case "saddr":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Saddr))
+			case "daddr":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Daddr))
+			case "dport":
+				sb.WriteString(fmt.Sprintf("%-7d", e.Dport))
 			}
 			sb.WriteRune(' ')
 		}
@@ -117,7 +119,7 @@ func oomkillTransformLine(line string) string {
 	return sb.String()
 }
 
-func getCustomOomkillColsHeader(cols []string) string {
+func getCustomTcpconnectColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -130,16 +132,18 @@ func getCustomOomkillColsHeader(cols []string) string {
 			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
 		case "container":
 			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
-		case "kpid":
-			sb.WriteString(fmt.Sprintf("%-6s", "KPID"))
-		case "kcomm":
-			sb.WriteString(fmt.Sprintf("%-16s", "KCOMM"))
-		case "pages":
-			sb.WriteString(fmt.Sprintf("%-6s", "PAGES"))
-		case "tpid":
-			sb.WriteString(fmt.Sprintf("%-6s", "TPID"))
-		case "tcomm":
-			sb.WriteString(fmt.Sprintf("%-16s", "TCOMM"))
+		case "pid":
+			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+		case "comm":
+			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
+		case "ip":
+			sb.WriteString(fmt.Sprintf("%-3s", "IP"))
+		case "saddr":
+			sb.WriteString(fmt.Sprintf("%-16s", "SADDR"))
+		case "daddr":
+			sb.WriteString(fmt.Sprintf("%-16s", "DADDR"))
+		case "dport":
+			sb.WriteString(fmt.Sprintf("%-7s", "DPORT"))
 		}
 		sb.WriteRune(' ')
 	}

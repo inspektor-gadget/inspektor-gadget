@@ -54,7 +54,7 @@ We could see the error messages in the pod's log.
 Let's use Inspektor Gadget to watch the capability checks:
 
 ```bash
-$ kubectl gadget capabilities --selector name=set-priority
+$ kubectl gadget trace capabilities --selector name=set-priority
 NODE             NAMESPACE        POD                           CONTAINER       TIME      UID    PID    COMM             CAP  NAME                 AUDIT
 ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:13:54  0      146786 nice             23   CAP_SYS_NICE         1
 ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:13:59  0      146937 nice             23   CAP_SYS_NICE         1

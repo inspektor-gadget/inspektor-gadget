@@ -134,7 +134,7 @@ func TestBindsnoop(t *testing.T) {
 
 	bindsnoopCmd := &command{
 		name:           "Start bindsnoop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET bindsnoop -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace bind -n %s", ns),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+nc`, ns),
 		startAndStop:   true,
 	}
@@ -202,7 +202,7 @@ func TestCapabilities(t *testing.T) {
 
 	capabilitiesCmd := &command{
 		name:           "Start capabilities gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET capabilities -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace capabilities -n %s", ns),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod.*nice.*CAP_SYS_NICE`, ns),
 		startAndStop:   true,
 	}
@@ -229,7 +229,7 @@ func TestDns(t *testing.T) {
 
 	dnsCmd := &command{
 		name:           "Start dns gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET dns -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace dns -n %s", ns),
 		expectedRegexp: `test-pod\s+OUTGOING\s+A\s+microsoft.com`,
 		startAndStop:   true,
 	}
@@ -256,7 +256,7 @@ func TestExecsnoop(t *testing.T) {
 
 	execsnoopCmd := &command{
 		name:           "Start execsnoop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET execsnoop -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s", ns),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+date`, ns),
 		startAndStop:   true,
 	}
@@ -310,7 +310,7 @@ func TestFsslower(t *testing.T) {
 
 	fsslowerCmd := &command{
 		name:           "Start fsslower gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET fsslower -n %s -t ext4 -m 0", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace fsslower -n %s -t ext4 -m 0", ns),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+cat`, ns),
 		startAndStop:   true,
 	}
@@ -337,7 +337,7 @@ func TestMountsnoop(t *testing.T) {
 
 	mountsnoopCmd := &command{
 		name:           "Start mountsnoop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET mountsnoop -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace mount -n %s", ns),
 		expectedRegexp: `test-pod\s+test-pod\s+mount.*mount\("/mnt", "/mnt", .*\) = -2`,
 		startAndStop:   true,
 	}
@@ -388,7 +388,7 @@ func TestOomkill(t *testing.T) {
 
 	oomkillCmd := &command{
 		name:           "Start oomkill gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET oomkill -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace oomkill -n %s", ns),
 		expectedRegexp: `\d+\s+tail`,
 		startAndStop:   true,
 	}
@@ -433,7 +433,7 @@ func TestOpensnoop(t *testing.T) {
 
 	opensnoopCmd := &command{
 		name:           "Start opensnoop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET opensnoop -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace open -n %s", ns),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+whoami\s+3`, ns),
 		startAndStop:   true,
 	}
@@ -601,7 +601,7 @@ func TestSigsnoop(t *testing.T) {
 
 	sigsnoopCmd := &command{
 		name:           "Start sigsnoop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET sigsnoop -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace signal -n %s", ns),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+sh\s+SIGTERM`, ns),
 		startAndStop:   true,
 	}
@@ -628,7 +628,7 @@ func TestSnisnoop(t *testing.T) {
 
 	snisnoopCmd := &command{
 		name:           "Start snisnoop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET snisnoop -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace sni -n %s", ns),
 		expectedRegexp: `test-pod\s+kinvolk.io`,
 		startAndStop:   true,
 	}
@@ -679,7 +679,7 @@ func TestTcpconnect(t *testing.T) {
 
 	tcpconnectCmd := &command{
 		name:           "Start tcpconnect gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET tcpconnect -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s", ns),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+wget`, ns),
 		startAndStop:   true,
 	}
@@ -706,7 +706,7 @@ func TestTcptracer(t *testing.T) {
 
 	tcptracerCmd := &command{
 		name:           "Start tcptracer gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET tcptracer -n %s", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace tcp -n %s", ns),
 		expectedRegexp: `C\s+\d+\s+wget\s+\d\s+[\w\.:]+\s+1\.1\.1\.1\s+\d+\s+80`,
 		startAndStop:   true,
 	}

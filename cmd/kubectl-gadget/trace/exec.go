@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package trace
 
 import (
 	"encoding/json"
@@ -21,34 +21,34 @@ import (
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	"github.com/spf13/cobra"
 )
 
-var opensnoopCmd = &cobra.Command{
-	Use:   "opensnoop",
-	Short: "Trace open() system calls",
+var execsnoopCmd = &cobra.Command{
+	Use:   "exec",
+	Short: "Trace new processes",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// print header
 		switch params.OutputMode {
 		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomOpensnoopColsHeader(params.CustomColumns))
+			fmt.Println(getCustomExecsnoopColsHeader(params.CustomColumns))
 		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-16s %-3s %3s %s\n",
+			fmt.Printf("%-16s %-16s %-16s %-16s %-16s %-6s %-6s %3s %s\n",
 				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"PID", "COMM", "FD", "ERR", "PATH")
+				"PCOMM", "PID", "PPID", "RET", "ARGS")
 		}
 
 		config := &utils.TraceConfig{
-			GadgetName:       "opensnoop",
+			GadgetName:       "execsnoop",
 			Operation:        "start",
 			TraceOutputMode:  "Stream",
 			TraceOutputState: "Started",
 			CommonFlags:      &params,
 		}
 
-		err := utils.RunTraceAndPrintStream(config, opensnoopTransformLine)
+		err := utils.RunTraceAndPrintStream(config, execsnoopTransformLine)
 		if err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
@@ -58,13 +58,13 @@ var opensnoopCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(opensnoopCmd)
-	utils.AddCommonFlags(opensnoopCmd, &params)
+	TraceCmd.AddCommand(execsnoopCmd)
+	utils.AddCommonFlags(execsnoopCmd, &params)
 }
 
-// opensnoopTransformLine is called to transform an event to columns
+// execsnoopTransformLine is called to transform an event to columns
 // format according to the parameters
-func opensnoopTransformLine(line string) string {
+func execsnoopTransformLine(line string) string {
 	var sb strings.Builder
 	var e types.Event
 
@@ -82,12 +82,15 @@ func opensnoopTransformLine(line string) string {
 	if e.Type != eventtypes.NORMAL {
 		return ""
 	}
-
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-16s %-3d %3d %s",
+		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-6d %3d",
 			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Pid, e.Comm, e.Fd, e.Err, e.Path))
+			e.Comm, e.Pid, e.Ppid, e.Retval))
+
+		for _, arg := range e.Args {
+			sb.WriteString(" " + arg)
+		}
 	case utils.OutputModeCustomColumns:
 		for _, col := range params.CustomColumns {
 			switch col {
@@ -99,16 +102,18 @@ func opensnoopTransformLine(line string) string {
 				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
 			case "container":
 				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
+			case "pcomm":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
 			case "pid":
 				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "fd":
-				sb.WriteString(fmt.Sprintf("%-2d", e.Fd))
-			case "err":
-				sb.WriteString(fmt.Sprintf("%-3d", e.Err))
-			case "path":
-				sb.WriteString(fmt.Sprintf("%-24s", e.Path))
+			case "ppid":
+				sb.WriteString(fmt.Sprintf("%-6d", e.Ppid))
+			case "ret":
+				sb.WriteString(fmt.Sprintf("%-3d", e.Retval))
+			case "args":
+				for _, arg := range e.Args {
+					sb.WriteString(fmt.Sprintf("%s ", arg))
+				}
 			}
 			sb.WriteRune(' ')
 		}
@@ -117,7 +122,7 @@ func opensnoopTransformLine(line string) string {
 	return sb.String()
 }
 
-func getCustomOpensnoopColsHeader(cols []string) string {
+func getCustomExecsnoopColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -130,16 +135,16 @@ func getCustomOpensnoopColsHeader(cols []string) string {
 			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
 		case "container":
 			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
+		case "pcomm":
+			sb.WriteString(fmt.Sprintf("%-16s", "PCOMM"))
 		case "pid":
 			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
-		case "fd":
-			sb.WriteString(fmt.Sprintf("%-3s", "FD"))
-		case "err":
-			sb.WriteString(fmt.Sprintf("%-3s", "ERR"))
-		case "path":
-			sb.WriteString(fmt.Sprintf("%-24s", "PATH"))
+		case "ppid":
+			sb.WriteString(fmt.Sprintf("%-6s", "PPID"))
+		case "ret":
+			sb.WriteString(fmt.Sprintf("%-3s", "RET"))
+		case "args":
+			sb.WriteString(fmt.Sprintf("%-24s", "ARGS"))
 		}
 		sb.WriteRune(' ')
 	}

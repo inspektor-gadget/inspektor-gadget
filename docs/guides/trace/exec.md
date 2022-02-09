@@ -1,9 +1,9 @@
 ---
-title: 'The "execsnoop" gadget'
+title: 'The "trace exec" gadget'
 weight: 10
 ---
 
-execsnoop traces new processes creation.
+trace exec traces new processes creation.
 
 Let's deploy an example application that will spawn few new processes:
 
@@ -21,11 +21,11 @@ myapp2-pod-mqfxv   1/1     Running   0          2m24s   10.2.232.5   ip-10-0-30-
 
 ```
 
-Using the execsnoop gadget, we can see which new processes are spawned on node
+Using the trace exec gadget, we can see which new processes are spawned on node
 ip-10-0-30-247 where myapp1-pod-2gs5r and myapp2-pod-mqfxv are running:
 
 ```bash
-$ kubectl gadget execsnoop --selector role=demo --node ip-10-0-30-247
+$ kubectl gadget trace exec --selector role=demo --node ip-10-0-30-247
 NODE                NAMESPACE        POD              CONTAINER       PCOMM            PID    PPID   RET ARGS
 ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      date             728770 728166   0 /bin/date
 ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      cat              728771 728166   0 /bin/cat /proc/version

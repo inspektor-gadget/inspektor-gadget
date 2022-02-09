@@ -1,9 +1,9 @@
 ---
-title: 'The "tcptracer" gadget'
+title: 'The "trace tcp" gadget'
 weight: 10
 ---
 
-The `tcptracer` gadget is used to monitor tcp connections.
+The `tcp` gadget is used to monitor tcp connections.
 
 ## How to use it?
 
@@ -17,7 +17,7 @@ pod/busybox created
 You can now use the gadget, but output will be empty:
 
 ```bash
-$ kubectl gadget tcptracer
+$ kubectl gadget trace tcp
 NODE             NAMESPACE        POD              CONTAINER        KPID   KCOMM            PAGES  TPID             TCOMM
 ```
 
@@ -66,7 +66,7 @@ You can restrain the information printed using `-o custom-columns=column0,...,co
 This command will only show the PID and command:
 
 ```bash
-$ kubectl gadget tcptracer -A -o custom-columns=pid,comm
+$ kubectl gadget trace tcp -A -o custom-columns=pid,comm
 PID    COMM
 28489  wget
 ```
@@ -74,7 +74,7 @@ PID    COMM
 The following command is the same as default printing:
 
 ```bash
-$ kubectl gadget tcptracer -A -o custom-columns=node,namespace,container,pod,t,pid,comm,ip,saddr,daddr,sport,dport
+$ kubectl gadget trace tcp -A -o custom-columns=node,namespace,container,pod,t,pid,comm,ip,saddr,daddr,sport,dport
 NODE             NAMESPACE        CONTAINER        POD              T PID    COMM             IP  SADDR            DADDR            SPORT   DPORT
 minikube         <>               <>               <>               C 16266  wget             4   172.17.0.3       188.114.97.3     34878   443
 ```
@@ -84,10 +84,10 @@ minikube         <>               <>               <>               C 16266  wge
 This gadget supports JSON output, for this simply use `-o json`:
 
 ```bash
-$ kubectl gadget tcptracer -o json
+$ kubectl gadget trace tcp -o json
 {"type":"normal","node":"minikube","namespace":"\u003c\u003e","pod":"\u003c\u003e","container":"\u003c\u003e","pid":16734,"comm":"wget","ipversion":4,"saddr":"172.17.0.3","daddr":"188.114.97.3","sport":35186,"dport":443,"operation":"connect"}
 # You can use jq to make the output easier to read:
-$ kubectl gadget tcptracer -o json | jq
+$ kubectl gadget trace tcp -o json | jq
 {
   "type": "normal",
   "node": "minikube",

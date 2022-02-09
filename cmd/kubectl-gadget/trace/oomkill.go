@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2019-2021 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package trace
 
 import (
 	"encoding/json"
@@ -21,34 +21,34 @@ import (
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/oomkill/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	"github.com/spf13/cobra"
 )
 
-var tcptracerCmd = &cobra.Command{
-	Use:   "tcptracer",
-	Short: "Trace tcp connect, accept and close",
+var oomkillCmd = &cobra.Command{
+	Use:   "oomkill",
+	Short: "Trace when OOM killer is triggered and kills a process",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// print header
 		switch params.OutputMode {
 		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomTcptracerColsHeader(params.CustomColumns))
+			fmt.Println(getCustomOomkillColsHeader(params.CustomColumns))
 		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %s %-6s %-16s %-3s %-16s %-16s %-7s %-7s\n",
+			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-16s %-6s %-6s %-16s\n",
 				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"T", "PID", "COMM", "IP", "SADDR", "DADDR", "SPORT", "DPORT")
+				"KPID", "KCOMM", "PAGES", "TPID", "TCOMM")
 		}
 
 		config := &utils.TraceConfig{
-			GadgetName:       "tcptracer",
+			GadgetName:       "oomkill",
 			Operation:        "start",
 			TraceOutputMode:  "Stream",
 			TraceOutputState: "Started",
 			CommonFlags:      &params,
 		}
 
-		err := utils.RunTraceAndPrintStream(config, tcptracerTransformLine)
+		err := utils.RunTraceAndPrintStream(config, oomkillTransformLine)
 		if err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
@@ -58,28 +58,13 @@ var tcptracerCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(tcptracerCmd)
-	utils.AddCommonFlags(tcptracerCmd, &params)
+	TraceCmd.AddCommand(oomkillCmd)
+	utils.AddCommonFlags(oomkillCmd, &params)
 }
 
-var operations = map[string]string{
-	"accept":  "A",
-	"connect": "C",
-	"close":   "X",
-	"unknown": "U",
-}
-
-func getOperationShort(operation string) string {
-	if op, ok := operations[operation]; ok {
-		return op
-	}
-
-	return "U"
-}
-
-// tcptracerTransformLine is called to transform an event to columns
+// oomkillTransformLine is called to transform an event to columns
 // format according to the parameters
-func tcptracerTransformLine(line string) string {
+func oomkillTransformLine(line string) string {
 	var sb strings.Builder
 	var e types.Event
 
@@ -90,7 +75,7 @@ func tcptracerTransformLine(line string) string {
 
 	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
 		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
-		fmt.Fprintf(os.Stderr, "%s: node %s: %s", e.Type, e.Node, e.Message)
+		fmt.Fprintf(os.Stderr, "%s: node %q: %s", e.Type, e.Node, e.Message)
 		return ""
 	}
 
@@ -100,10 +85,9 @@ func tcptracerTransformLine(line string) string {
 
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %s %-6d %-16s %-3d %-16s %-16s %-7d %-7d",
+		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-16s %-6d %-6d %-16s",
 			e.Node, e.Namespace, e.Pod, e.Container,
-			getOperationShort(e.Operation), e.Pid, e.Comm, e.IPVersion,
-			e.Saddr, e.Daddr, e.Sport, e.Dport))
+			e.KilledPid, e.KilledComm, e.Pages, e.TriggeredPid, e.TriggeredComm))
 	case utils.OutputModeCustomColumns:
 		for _, col := range params.CustomColumns {
 			switch col {
@@ -115,22 +99,16 @@ func tcptracerTransformLine(line string) string {
 				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
 			case "container":
 				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "t":
-				sb.WriteString(fmt.Sprintf("%s", getOperationShort(e.Operation)))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "ip":
-				sb.WriteString(fmt.Sprintf("%-3d", e.IPVersion))
-			case "saddr":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Saddr))
-			case "daddr":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Daddr))
-			case "sport":
-				sb.WriteString(fmt.Sprintf("%-7d", e.Sport))
-			case "dport":
-				sb.WriteString(fmt.Sprintf("%-7d", e.Dport))
+			case "kpid":
+				sb.WriteString(fmt.Sprintf("%-6d", e.KilledPid))
+			case "kcomm":
+				sb.WriteString(fmt.Sprintf("%-16s", e.KilledComm))
+			case "tpid":
+				sb.WriteString(fmt.Sprintf("%-6d", e.TriggeredPid))
+			case "tcomm":
+				sb.WriteString(fmt.Sprintf("%-16s", e.TriggeredComm))
+			case "pages":
+				sb.WriteString(fmt.Sprintf("%-6d", e.Pages))
 			}
 			sb.WriteRune(' ')
 		}
@@ -139,7 +117,7 @@ func tcptracerTransformLine(line string) string {
 	return sb.String()
 }
 
-func getCustomTcptracerColsHeader(cols []string) string {
+func getCustomOomkillColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -152,22 +130,16 @@ func getCustomTcptracerColsHeader(cols []string) string {
 			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
 		case "container":
 			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
-		case "t":
-			sb.WriteString(fmt.Sprintf("%s", "T"))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
-		case "ip":
-			sb.WriteString(fmt.Sprintf("%-3s", "IP"))
-		case "saddr":
-			sb.WriteString(fmt.Sprintf("%-16s", "SADDR"))
-		case "daddr":
-			sb.WriteString(fmt.Sprintf("%-16s", "DADDR"))
-		case "sport":
-			sb.WriteString(fmt.Sprintf("%-7s", "SPORT"))
-		case "dport":
-			sb.WriteString(fmt.Sprintf("%-7s", "DPORT"))
+		case "kpid":
+			sb.WriteString(fmt.Sprintf("%-6s", "KPID"))
+		case "kcomm":
+			sb.WriteString(fmt.Sprintf("%-16s", "KCOMM"))
+		case "pages":
+			sb.WriteString(fmt.Sprintf("%-6s", "PAGES"))
+		case "tpid":
+			sb.WriteString(fmt.Sprintf("%-6s", "TPID"))
+		case "tcomm":
+			sb.WriteString(fmt.Sprintf("%-16s", "TCOMM"))
 		}
 		sb.WriteRune(' ')
 	}

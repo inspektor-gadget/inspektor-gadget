@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2019-2021 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package trace
 
 import (
 	"encoding/json"
@@ -21,34 +21,34 @@ import (
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/mountsnoop/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	"github.com/spf13/cobra"
 )
 
-var capabilitiesCmd = &cobra.Command{
-	Use:   "capabilities",
-	Short: "Trace security capability checks",
+var mountsnoopCmd = &cobra.Command{
+	Use:   "mount",
+	Short: "Trace mount and umount system calls",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// print header
 		switch params.OutputMode {
 		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomOpensnoopColsHeader(params.CustomColumns))
+			fmt.Println(getCustomMountsnoopColsHeader(params.CustomColumns))
 		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-6s %-16s %-4s %-16s %-6s\n",
+			fmt.Printf("%-16s %-16s %-16s %-16s %-16s %-6s %-6s %-10s %s\n",
 				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"UID", "PID", "COMM", "CAP", "NAME", "AUDIT")
+				"COMM", "PID", "TID", "MNT_NS", "CALL")
 		}
 
 		config := &utils.TraceConfig{
-			GadgetName:       "capabilities",
+			GadgetName:       "mountsnoop",
 			Operation:        "start",
 			TraceOutputMode:  "Stream",
 			TraceOutputState: "Started",
 			CommonFlags:      &params,
 		}
 
-		err := utils.RunTraceAndPrintStream(config, capabilitiesTransformLine)
+		err := utils.RunTraceAndPrintStream(config, mountsnoopTransformLine)
 		if err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
@@ -58,13 +58,27 @@ var capabilitiesCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(capabilitiesCmd)
-	utils.AddCommonFlags(capabilitiesCmd, &params)
+	TraceCmd.AddCommand(mountsnoopCmd)
+	utils.AddCommonFlags(mountsnoopCmd, &params)
 }
 
-// capabilitiesTransformLine is called to transform an event to columns
+func getCall(e *types.Event) string {
+	switch e.Operation {
+	case "mount":
+		format := `mount("%s", "%s", "%s", %s, "%s") = %d`
+		return fmt.Sprintf(format, e.Source, e.Target, e.Fs, strings.Join(e.Flags, " | "),
+			e.Data, e.Retval)
+	case "umount":
+		format := `umount("%s", %s) = %d`
+		return fmt.Sprintf(format, e.Target, strings.Join(e.Flags, " | "), e.Retval)
+	}
+
+	return ""
+}
+
+// mountsnoopTransformLine is called to transform an event to columns
 // format according to the parameters
-func capabilitiesTransformLine(line string) string {
+func mountsnoopTransformLine(line string) string {
 	var sb strings.Builder
 	var e types.Event
 
@@ -85,9 +99,9 @@ func capabilitiesTransformLine(line string) string {
 
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-6d %-16s %-4d %-16s %-6d",
+		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-6d %-10d %s",
 			e.Node, e.Namespace, e.Pod, e.Container,
-			e.UID, e.Pid, e.Comm, e.Cap, e.CapName, e.Audit))
+			e.Comm, e.Pid, e.Tid, e.MountNsID, getCall(&e)))
 	case utils.OutputModeCustomColumns:
 		for _, col := range params.CustomColumns {
 			switch col {
@@ -101,16 +115,30 @@ func capabilitiesTransformLine(line string) string {
 				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
 			case "pid":
 				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "uid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.UID))
+			case "tid":
+				sb.WriteString(fmt.Sprintf("%-6d", e.Tid))
+			case "mnt_ns":
+				sb.WriteString(fmt.Sprintf("%-10d", e.MountNsID))
 			case "comm":
 				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "cap":
-				sb.WriteString(fmt.Sprintf("%-4d", e.Cap))
-			case "name":
-				sb.WriteString(fmt.Sprintf("%-16s", e.CapName))
-			case "audit":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Audit))
+			case "op":
+				sb.WriteString(fmt.Sprintf("%-6s", e.Operation))
+			case "ret":
+				sb.WriteString(fmt.Sprintf("%-4d", e.Retval))
+			case "lat":
+				sb.WriteString(fmt.Sprintf("%-8d", e.Latency/1000))
+			case "fs":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Fs))
+			case "src":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Source))
+			case "target":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Target))
+			case "data":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Data))
+			case "flags":
+				sb.WriteString(fmt.Sprintf("%-16s", strings.Join(e.Flags, " | ")))
+			case "call":
+				sb.WriteString(fmt.Sprintf("%-16s", getCall(&e)))
 			}
 			sb.WriteRune(' ')
 		}
@@ -119,7 +147,7 @@ func capabilitiesTransformLine(line string) string {
 	return sb.String()
 }
 
-func getCustomCapabilitiesColsHeader(cols []string) string {
+func getCustomMountsnoopColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -134,16 +162,30 @@ func getCustomCapabilitiesColsHeader(cols []string) string {
 			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
 		case "pid":
 			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
-		case "uid":
-			sb.WriteString(fmt.Sprintf("%-6s", "UID"))
+		case "tid":
+			sb.WriteString(fmt.Sprintf("%-6s", "TID"))
+		case "mnt_ns":
+			sb.WriteString(fmt.Sprintf("%-10s", "MNT_NS"))
 		case "comm":
 			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
-		case "cap":
-			sb.WriteString(fmt.Sprintf("%-4s", "CAP"))
-		case "name":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAME"))
-		case "audit":
-			sb.WriteString(fmt.Sprintf("%-6s", "AUDIT"))
+		case "op":
+			sb.WriteString(fmt.Sprintf("%-6s", "OP"))
+		case "ret":
+			sb.WriteString(fmt.Sprintf("%-4s", "RET"))
+		case "lat":
+			sb.WriteString(fmt.Sprintf("%-8s", "LAT(us)"))
+		case "fs":
+			sb.WriteString(fmt.Sprintf("%-16s", "FS"))
+		case "src":
+			sb.WriteString(fmt.Sprintf("%-16s", "SRC"))
+		case "target":
+			sb.WriteString(fmt.Sprintf("%-16s", "TARGET"))
+		case "data":
+			sb.WriteString(fmt.Sprintf("%-16s", "DATA"))
+		case "flags":
+			sb.WriteString(fmt.Sprintf("%-16s", "FLAGS"))
+		case "call":
+			sb.WriteString(fmt.Sprintf("%-16s", "CALL"))
 		}
 		sb.WriteRune(' ')
 	}

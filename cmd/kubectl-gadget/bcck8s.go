@@ -53,6 +53,7 @@ func init() {
 		utils.AddCommonFlags(command, &params)
 	}
 
+	// Add flags specific to some BCC gadgets
 	profileCmd.PersistentFlags().BoolVarP(
 		&profileUser,
 		"user",

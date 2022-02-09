@@ -9,24 +9,26 @@ Inspektor Gadget tools are known as gadgets. You can deploy one, two or many gad
 Exploring the following documentation will best help you learn which tools can help you in your investigations.
 
 - [audit-seccomp](docs/guides/audit-seccomp.md)
-- [bindsnoop](docs/guides/bindsnoop.md)
 - [biolatency](docs/guides/biolatency.md)
 - [biotop](docs/guides/biotop.md)
-- [capabilities](docs/guides/capabilities.md)
-- [dns](docs/guides/dns.md)
-- [execsnoop](docs/guides/execsnoop.md)
 - [filetop](docs/guides/filetop.md)
-- [fsslower](docs/guides/fsslower.md)
-- [mountsnoop](docs/guides/mountsnoop.md)
 - [network-policy](docs/guides/network-policy.md)
-- [oomkill](docs/guides/oomkill.md)
-- [opensnoop](docs/guides/opensnoop.md)
 - [process-collector](docs/guides/process-collector.md)
 - [profile](docs/guides/profile.md)
 - [seccomp](docs/guides/seccomp.md)
-- [sigsnoop](docs/guides/sigsnoop.md)
 - [socket-collector](docs/guides/socket-collector.md)
-- [tcpconnect](docs/guides/tcpconnect.md)
+- `trace`:
+	- [`bind`](docs/guides/trace/bind.md)
+	- [`capabilities`](docs/guides/trace/capabilities.md)
+	- [`dns`](docs/guides/trace/dns.md)
+	- [`exec`](docs/guides/trace/exec.md)
+	- [`fsslower`](docs/guides/trace/fsslower.md)
+	- [`mount`](docs/guides/trace/mount.md)
+	- [`oomkill`](docs/guides/trace/oomkill.md)
+	- [`open`](docs/guides/trace/open.md)
+	- [`signal`](docs/guides/trace/signal.md)
+	- [`tcp`](docs/guides/trace/tcp.md)
+	- [`tcpconnect`](docs/guides/trace/tcpconnect.md)
 - [tcptop](docs/guides/tcptop.md)
 - [traceloop](docs/guides/traceloop.md)
 
@@ -51,8 +53,7 @@ Read the detailed [install instructions](docs/install.md) to find more informati
 
 ## How to use
 
-`kubectl gadget --help` will provide you the list of supported commands and their
-flags.
+`kubectl gadget --help` will provide you the list of supported commands and their flags.
 
 ```bash
 $ kubectl gadget --help
@@ -63,33 +64,48 @@ Usage:
 
 Available Commands:
   audit-seccomp     Trace syscalls that seccomp sent to the audit log
-  bindsnoop         Trace the kernel functions performing socket binding
   biolatency        Generate a histogram with the distribution of block device I/O latency
-  biotop            Trace block device I/O
-  capabilities      Trace security capability checks
+  biotop            Trace block devices I/O, with container details
   completion        generate the autocompletion script for the specified shell
   deploy            Deploy Inspektor Gadget on the cluster
-  dns               Trace DNS requests
-  execsnoop         Trace new processes
   filetop           Trace reads and writes by file, with container details
-  fsslower          Trace open, read, write and fsync operations slower than a threshold
   help              Help about any command
-  mountsnoop        Trace open() system calls
   network-policy    Generate network policies based on recorded network activity
-  oomkill           Trace when OOM killer is triggered and kills a process
-  opensnoop         Trace open() system calls
   process-collector Gather information about running processes
   profile           Profile CPU usage by sampling stack traces
   seccomp-advisor   Generate seccomp policies based on recorded syscalls activity
-  sigsnoop          Trace signals received by processes
-  snisnoop          Trace SNI requests
   socket-collector  Gather information about network sockets
-  tcpconnect        Trace connect() system calls
-  tcptop            Show the TCP traffic in a pod
-  tcptracer         Trace tcp connect, accept and close
+  tcptop            Trace TCP connection, with container details
+  trace             Trace and print system events
   traceloop         Get strace-like logs of a pod from the past
   undeploy          Undeploy Inspektor Gadget from cluster
   version           Show version
+
+...
+```
+
+You can then get help for each subcommand:
+
+```bash
+$ kubectl gadget trace --help
+Trace and print system events
+
+Usage:
+  kubectl-gadget trace [command]
+
+Available Commands:
+  bind         Trace the kernel functions performing socket binding
+  capabilities Trace security capability checks
+  dns          Trace DNS requests
+  exec         Trace new processes
+  fsslower     Trace open, read, write and fsync operations slower than a threshold
+  mount        Trace mount and umount system calls
+  oomkill      Trace when OOM killer is triggered and kills a process
+  open         Trace open system calls
+  signal       Trace signals received by processes
+  sni          Trace Server Name Indicator requests
+  tcp          Trace tcp connect, accept and close
+  tcpconnect   Trace connect system calls
 
 ...
 ```
