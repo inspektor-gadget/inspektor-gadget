@@ -16,6 +16,7 @@ package crio
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
@@ -63,6 +64,43 @@ func (c *CrioClient) Close() error {
 	return nil
 }
 
+// parseExtraInfo parses the container extra information returned by
+// ContainerStatus(). It keeps backward compatibility after the reply format was
+// modified in v1.18.0:
+// https://github.com/cri-o/cri-o/commit/be8e876cdabec4e055820502fed227aa44971ddc
+func parseExtraInfo(extraInfo map[string]string) (int, error) {
+	info, ok := extraInfo["info"]
+	if !ok {
+		// Try with format used before CRI-O v1.18.0
+		pidStr, ok := extraInfo["pid"]
+		if !ok {
+			return -1, fmt.Errorf("container status reply from runtime doesn't contain pid")
+		}
+
+		pid, err := strconv.Atoi(pidStr)
+		if err != nil {
+			return -1, fmt.Errorf("failed to parse pid %q: %w", pidStr, err)
+		}
+
+		return pid, nil
+	}
+
+	type InfoContent struct {
+		Pid int `json:"pid"`
+	}
+
+	var infoContent InfoContent
+	err := json.Unmarshal([]byte(info), &infoContent)
+	if err != nil {
+		return -1, fmt.Errorf("failed extracting pid from container status reply: %w", err)
+	}
+	if infoContent.Pid == 0 {
+		return -1, fmt.Errorf("couldn't extract pid from container status reply: %s", info)
+	}
+
+	return infoContent.Pid, nil
+}
+
 func (c *CrioClient) PidFromContainerId(containerID string) (int, error) {
 	if !strings.HasPrefix(containerID, "cri-o://") {
 		return -1, fmt.Errorf("Invalid CRI %s, it should be cri-o", containerID)
@@ -75,20 +113,10 @@ func (c *CrioClient) PidFromContainerId(containerID string) (int, error) {
 		Verbose:     true,
 	}
 
-	status, err := c.client.ContainerStatus(context.Background(), request)
+	res, err := c.client.ContainerStatus(context.Background(), request)
 	if err != nil {
 		return -1, err
 	}
 
-	pidStr, ok := status.Info["pid"]
-	if !ok {
-		return -1, fmt.Errorf("container status reply from runtime doesn't contain 'pid'")
-	}
-
-	pid, err := strconv.Atoi(pidStr)
-	if err != nil {
-		return -1, err
-	}
-
-	return pid, nil
+	return parseExtraInfo(res.Info)
 }
