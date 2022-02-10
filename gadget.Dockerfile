@@ -65,7 +65,8 @@ RUN set -ex; \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
 		ca-certificates curl jq wget xz-utils binutils rpm2cpio cpio && \
-		rmdir /usr/src && ln -sf /host/usr/src /usr/src
+		rmdir /usr/src && ln -sf /host/usr/src /usr/src && \
+		rm /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
 
 COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
 

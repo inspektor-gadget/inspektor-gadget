@@ -310,8 +310,6 @@ spec:
           mountPath: /sys/fs/cgroup
         - name: bpffs
           mountPath: /sys/fs/bpf
-        - name: localtime
-          mountPath: /etc/localtime
       tolerations:
       - effect: NoSchedule
         operator: Exists
@@ -336,9 +334,6 @@ spec:
       - name: debugfs
         hostPath:
           path: /sys/kernel/debug
-      - name: localtime
-        hostPath:
-          path: /etc/localtime
 `
 
 type parameters struct {
