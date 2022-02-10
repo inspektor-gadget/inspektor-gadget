@@ -22,5 +22,6 @@ bin/
 *.o
 !pkg/gadgets/socket-collector/tracer/*.o
 !pkg/gadgets/execsnoop/tracer/core/*.o
+!pkg/gadgets/fsslower/tracer/core/*.o
 !pkg/gadgets/oomkill/tracer/*.o
 !pkg/gadgets/opensnoop/tracer/core/*.o
