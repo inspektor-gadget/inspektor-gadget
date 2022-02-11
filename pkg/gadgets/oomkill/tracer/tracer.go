@@ -151,17 +151,17 @@ func (t *Tracer) run() {
 			return
 		}
 
-		eventC := (*C.struct_event)(unsafe.Pointer(&record.RawSample[0]))
+		eventC := (*C.struct_data_t)(unsafe.Pointer(&record.RawSample[0]))
 
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 				Node: t.node,
 			},
-			TriggeredPid:  uint32(eventC.tpid),
-			TriggeredComm: C.GoString(&eventC.tcomm[0]),
-			KilledPid:     uint32(eventC.kpid),
-			KilledComm:    C.GoString(&eventC.kcomm[0]),
+			TriggeredPid:  uint32(eventC.fpid),
+			TriggeredComm: C.GoString(&eventC.fcomm[0]),
+			KilledPid:     uint32(eventC.tpid),
+			KilledComm:    C.GoString(&eventC.tcomm[0]),
 			Pages:         uint64(eventC.pages),
 			MountNsId:     uint64(eventC.mount_ns_id),
 		}
