@@ -22,6 +22,7 @@ package tracer
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"unsafe"
@@ -148,7 +149,7 @@ func (t *Tracer) run() {
 	for {
 		record, err := t.reader.Read()
 		if err != nil {
-			if err == perf.ErrClosed {
+			if errors.Is(err, perf.ErrClosed) {
 				// nothing to do, we're done
 				return
 			}

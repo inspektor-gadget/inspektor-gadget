@@ -17,6 +17,7 @@ package tracer
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -300,7 +301,7 @@ func (t *Tracer) listen(key string, rd *perf.Reader, f func(name, pktType, qType
 	for {
 		record, err := rd.Read()
 		if err != nil {
-			if perf.IsClosed(err) {
+			if errors.Is(err, perf.ErrClosed) {
 				return
 			}
 			log.Errorf("Error while reading from perf event reader (%s): %s", key, err)
