@@ -15,6 +15,7 @@ Exploring the following documentation will best help you learn which tools can h
 - [dns](docs/guides/dns.md)
 - [execsnoop](docs/guides/execsnoop.md)
 - [filetop](docs/guides/filetop.md)
+- [fsslower](docs/guides/fsslower.md)
 - [mountsnoop](docs/guides/mountsnoop.md)
 - [network-policy](docs/guides/network-policy.md)
 - [oomkill](docs/guides/oomkill.md)
@@ -66,6 +67,7 @@ Available Commands:
   dns               Trace DNS requests
   execsnoop         Trace new processes
   filetop           Trace reads and writes by file, with container details
+  fsslower          Trace I/O operations slower than a threshold
   help              Help about any command
   mountsnoop        Trace mount and umount syscalls
   network-policy    Generate network policies based on recorded network activity
