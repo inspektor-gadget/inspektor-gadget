@@ -20,6 +20,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/filetop"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/fsslower"
 	networkpolicyadvisor "github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/oomkill"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop"
@@ -35,6 +36,7 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 		"dns":                    dns.NewFactory(),
 		"execsnoop":              execsnoop.NewFactory(),
 		"filetop":                filetop.NewFactory(),
+		"fsslower":               fsslower.NewFactory(),
 		"opensnoop":              opensnoop.NewFactory(),
 		"network-policy-advisor": networkpolicyadvisor.NewFactory(),
 		"oomkill":                oomkill.NewFactory(),

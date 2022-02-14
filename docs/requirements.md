@@ -36,6 +36,7 @@ kernels than the one mentioned here.
 | execsnoop              | standard   | 4.15                            | N            |
 | execsnoop              | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
 | filetop                |            | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
+| fsslower               | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
 | network policy advisor |            |                                 |              |
 | oomkill                | core       | 5.10                            | Y            |
 | opensnoop              | standard   | 4.15                            | N            |
