@@ -7,6 +7,7 @@
 struct event {
 	__u32 pid;
 	__u32 tpid;
+	__u64 mntns_id;
 	int sig;
 	int ret;
 	char comm[TASK_COMM_LEN];

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
 /* Copyright (c) 2021~2022 Hengqi Chen */
-#include <vmlinux.h>
+#include <vmlinux/vmlinux.h>
+#include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include "sigsnoop.h"
 
@@ -9,6 +10,7 @@
 const volatile pid_t filtered_pid = 0;
 const volatile int target_signal = 0;
 const volatile bool failed_only = false;
+const volatile bool filter_by_mnt_ns = false;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -23,11 +25,25 @@ struct {
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1024);
+	__uint(key_size, sizeof(u64));
+	__uint(value_size, sizeof(u32));
+} mount_ns_set SEC(".maps");
+
 static int probe_entry(pid_t tpid, int sig)
 {
 	struct event event = {};
 	__u64 pid_tgid;
 	__u32 pid, tid;
+	u64 mntns_id;
+	struct task_struct *task;
+
+	task = (struct task_struct *) bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+		return 0;
 
 	if (target_signal && sig != target_signal)
 		return 0;
@@ -41,6 +57,7 @@ static int probe_entry(pid_t tpid, int sig)
 	event.pid = pid;
 	event.tpid = tpid;
 	event.sig = sig;
+	event.mntns_id = mntns_id;
 	bpf_get_current_comm(event.comm, sizeof(event.comm));
 	bpf_map_update_elem(&values, &tid, &event, BPF_ANY);
 	return 0;
@@ -121,6 +138,13 @@ int sig_trace(struct trace_event_raw_signal_generate *ctx)
 	int sig = ctx->sig;
 	__u64 pid_tgid;
 	__u32 pid;
+	u64 mntns_id;
+	struct task_struct *task;
+
+	task = (struct task_struct *) bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+		return 0;
 
 	if (failed_only && ret == 0)
 		return 0;
@@ -135,6 +159,7 @@ int sig_trace(struct trace_event_raw_signal_generate *ctx)
 
 	event.pid = pid;
 	event.tpid = tpid;
+	event.mntns_id = mntns_id;
 	event.sig = sig;
 	event.ret = ret;
 	bpf_get_current_comm(event.comm, sizeof(event.comm));
