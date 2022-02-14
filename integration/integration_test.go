@@ -559,6 +559,33 @@ func TestSeccompadvisor(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestSigsnoop(t *testing.T) {
+	ns := generateTestNamespaceName("test-sigsnoop")
+
+	t.Parallel()
+
+	sigsnoopCmd := &command{
+		name:           "Start sigsnoop gadget",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET sigsnoop -n %s", ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+sh\s+SIGTERM`, ns),
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		createTestNamespaceCommand(ns),
+		sigsnoopCmd,
+		{
+			name:           "Run pod which sends signal",
+			cmd:            busyboxPodCommand(ns, "while true; do sleep 3 & kill $!; done"),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
+	}
+
+	runCommands(commands, t)
+}
+
 func TestSocketCollector(t *testing.T) {
 	ns := generateTestNamespaceName("test-socket-collector")
 
