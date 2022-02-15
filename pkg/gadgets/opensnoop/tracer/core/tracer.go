@@ -18,7 +18,7 @@
 package tracer
 
 // #include <linux/types.h>
-// #include "./bpf/execsnoop.h"
+// #include "./bpf/opensnoop.h"
 import "C"
 
 import (
@@ -31,12 +31,12 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang opensnoop ./bpf/opensnoop.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
 
 type Tracer struct {
 	config        *tracer.Config
@@ -44,20 +44,21 @@ type Tracer struct {
 	eventCallback func(types.Event)
 	node          string
 
-	objs      execsnoopObjects
-	enterLink link.Link
-	exitLink  link.Link
-	reader    *perf.Reader
+	objs            opensnoopObjects
+	openEnterLink   link.Link
+	openAtEnterLink link.Link
+	openExitLink    link.Link
+	openAtExitLink  link.Link
+	reader          *perf.Reader
 }
 
 func NewTracer(config *tracer.Config, resolver containercollection.ContainerResolver,
 	eventCallback func(types.Event), node string) (*Tracer, error) {
-	t := &Tracer{
-		config:        config,
-		resolver:      resolver,
-		eventCallback: eventCallback,
-		node:          node,
-	}
+	t := &Tracer{config: config}
+
+	t.resolver = resolver
+	t.eventCallback = eventCallback
+	t.node = node
 
 	if err := t.start(); err != nil {
 		t.Stop()
@@ -68,13 +69,21 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 }
 
 func (t *Tracer) Stop() {
-	if t.enterLink != nil {
-		t.enterLink.Close()
-		t.enterLink = nil
+	if t.openEnterLink != nil {
+		t.openEnterLink.Close()
+		t.openEnterLink = nil
 	}
-	if t.exitLink != nil {
-		t.exitLink.Close()
-		t.exitLink = nil
+	if t.openAtEnterLink != nil {
+		t.openAtEnterLink.Close()
+		t.openAtEnterLink = nil
+	}
+	if t.openExitLink != nil {
+		t.openExitLink.Close()
+		t.openExitLink = nil
+	}
+	if t.openAtExitLink != nil {
+		t.openAtExitLink.Close()
+		t.openAtExitLink = nil
 	}
 
 	if t.reader != nil {
@@ -86,7 +95,7 @@ func (t *Tracer) Stop() {
 }
 
 func (t *Tracer) start() error {
-	spec, err := loadExecsnoop()
+	spec, err := loadOpensnoop()
 	if err != nil {
 		return fmt.Errorf("Failed to load ebpf program: %w", err)
 	}
@@ -118,19 +127,31 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("Failed to load ebpf program: %w", err)
 	}
 
-	enter, err := link.Tracepoint("syscalls", "sys_enter_execve", t.objs.TracepointSyscallsSysEnterExecve)
+	openEnter, err := link.Tracepoint("syscalls", "sys_enter_open", t.objs.TracepointSyscallsSysEnterOpen)
 	if err != nil {
 		return fmt.Errorf("Error opening tracepoint: %w", err)
 	}
-	t.enterLink = enter
+	t.openEnterLink = openEnter
 
-	exit, err := link.Tracepoint("syscalls", "sys_exit_execve", t.objs.TracepointSyscallsSysExitExecve)
+	openAtEnter, err := link.Tracepoint("syscalls", "sys_enter_openat", t.objs.TracepointSyscallsSysEnterOpenat)
 	if err != nil {
 		return fmt.Errorf("Error opening tracepoint: %w", err)
 	}
-	t.exitLink = exit
+	t.openAtEnterLink = openAtEnter
 
-	reader, err := perf.NewReader(t.objs.execsnoopMaps.Events, 4096)
+	openExit, err := link.Tracepoint("syscalls", "sys_exit_open", t.objs.TracepointSyscallsSysExitOpen)
+	if err != nil {
+		return fmt.Errorf("Error opening tracepoint: %w", err)
+	}
+	t.openExitLink = openExit
+
+	openAtExit, err := link.Tracepoint("syscalls", "sys_exit_openat", t.objs.TracepointSyscallsSysExitOpenat)
+	if err != nil {
+		return fmt.Errorf("Error opening tracepoint: %w", err)
+	}
+	t.openAtExitLink = openAtExit
+
+	reader, err := perf.NewReader(t.objs.opensnoopMaps.Events, 4096)
 	if err != nil {
 		return fmt.Errorf("Error creating perf ring buffer: %w", err)
 	}
@@ -163,31 +184,29 @@ func (t *Tracer) run() {
 
 		eventC := (*C.struct_event)(unsafe.Pointer(&record.RawSample[0]))
 
+		ret := int(eventC.ret)
+		fd := 0
+		errval := 0
+
+		if ret >= 0 {
+			fd = ret
+		} else {
+			errval = -ret
+		}
+
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 				Node: t.node,
 			},
-			Pid:       uint32(eventC.pid),
-			Ppid:      uint32(eventC.ppid),
-			Uid:       uint32(eventC.uid),
 			MountNsId: uint64(eventC.mntns_id),
-			Retval:    int(eventC.retval),
+			Pid:       uint32(eventC.pid),
+			Uid:       uint32(eventC.uid),
 			Comm:      C.GoString(&eventC.comm[0]),
-		}
-
-		args_count := 0
-		buf := []byte{}
-
-		for i := 0; i < int(eventC.args_size) && args_count < int(eventC.args_count); i++ {
-			c := eventC.args[i]
-			if c == 0 {
-				event.Args = append(event.Args, string(buf))
-				args_count = 0
-				buf = []byte{}
-			} else {
-				buf = append(buf, byte(c))
-			}
+			Ret:       ret,
+			Fd:        fd,
+			Err:       errval,
+			Path:      C.GoString(&eventC.fname[0]),
 		}
 
 		container := t.resolver.LookupContainerByMntns(event.MountNsId)

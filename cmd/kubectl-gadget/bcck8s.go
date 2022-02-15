@@ -48,12 +48,6 @@ var mountsnoopCmd = &cobra.Command{
 	Run:   bccCmd("mountsnoop", "/bin/gadgets/mountsnoop"),
 }
 
-var opensnoopCmd = &cobra.Command{
-	Use:   "opensnoop",
-	Short: "Trace open() system calls",
-	Run:   bccCmd("opensnoop", "/bin/gadgets/opensnoop"),
-}
-
 var bindsnoopCmd = &cobra.Command{
 	Use:   "bindsnoop",
 	Short: "Trace IPv4 and IPv6 bind() system calls",
@@ -102,7 +96,6 @@ func init() {
 	commands := []*cobra.Command{
 		biotopCmd,
 		mountsnoopCmd,
-		opensnoopCmd,
 		bindsnoopCmd,
 		profileCmd,
 		tcptopCmd,

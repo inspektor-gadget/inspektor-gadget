@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package execsnoop
+package opensnoop
 
 import (
 	"encoding/json"
@@ -21,11 +21,11 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer"
 
-	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/tracer/standard"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/types"
+	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer/core"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer/standard"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/types"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
@@ -48,7 +48,7 @@ func NewFactory() gadgets.TraceFactory {
 }
 
 func (f *TraceFactory) Description() string {
-	return `execsnoop shows new created processes, with container details.`
+	return `opensnoop traces open() system calls`
 }
 
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
@@ -73,13 +73,13 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 
 	return map[string]gadgets.TraceOperation{
 		"start": {
-			Doc: "Start execsnoop gadget",
+			Doc: "Start opensnoop gadget",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				f.LookupOrCreate(name, n).(*Trace).Start(trace)
 			},
 		},
 		"stop": {
-			Doc: "Stop execsnoop gadget",
+			Doc: "Stop opensnoop gadget",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				f.LookupOrCreate(name, n).(*Trace).Stop(trace)
 			},
