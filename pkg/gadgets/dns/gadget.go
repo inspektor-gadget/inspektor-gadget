@@ -182,6 +182,14 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			)
 		}
 	}
+	errFunc := func(key string) func(err error) {
+		return func(err error) {
+			t.resolver.PublishEvent(
+				traceName,
+				printMessage(key, eventtypes.ERR, err.Error()),
+			)
+		}
+	}
 
 	genKey := func(container *pb.ContainerDefinition) string {
 		if container.Netns == t.netnsHost {
@@ -193,7 +201,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	attachContainerFunc := func(container *pb.ContainerDefinition) error {
 		key := genKey(container)
 
-		err = t.tracer.Attach(key, container.Pid, newDNSRequestCallback(key))
+		err = t.tracer.Attach(key, container.Pid, newDNSRequestCallback(key), errFunc(key))
 		if err != nil {
 			t.resolver.PublishEvent(
 				traceName,

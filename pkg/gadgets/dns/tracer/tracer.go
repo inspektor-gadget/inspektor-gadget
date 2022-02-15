@@ -26,7 +26,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/netnsenter"
@@ -111,7 +110,12 @@ func NewTracer() (*Tracer, error) {
 	return t, nil
 }
 
-func (t *Tracer) Attach(key string, pid uint32, f func(name, pktType, qType string)) error {
+func (t *Tracer) Attach(
+	key string,
+	pid uint32,
+	callback func(name, pktType, qType string),
+	errFunc func(err error),
+) error {
 	if l, ok := t.attachments[key]; ok {
 		l.users++
 		return nil
@@ -149,7 +153,7 @@ func (t *Tracer) Attach(key string, pid uint32, f func(name, pktType, qType stri
 	}
 	t.attachments[key] = l
 
-	go t.listen(key, rd, f)
+	go t.listen(key, rd, callback, errFunc)
 
 	return nil
 }
@@ -297,19 +301,24 @@ func parseDNSEvent(rawSample []byte) (ret string, pktType string, qType string) 
 	return
 }
 
-func (t *Tracer) listen(key string, rd *perf.Reader, f func(name, pktType, qType string)) {
+func (t *Tracer) listen(
+	key string,
+	rd *perf.Reader,
+	callback func(name, pktType, qType string),
+	errFunc func(err error),
+) {
 	for {
 		record, err := rd.Read()
 		if err != nil {
 			if errors.Is(err, perf.ErrClosed) {
 				return
 			}
-			log.Errorf("Error while reading from perf event reader (%s): %s", key, err)
+			errFunc(fmt.Errorf("error while reading from perf event reader (%s): %s", key, err))
 			return
 		}
 
 		if record.LostSamples != 0 {
-			log.Warnf("Warning: perf event ring buffer full, dropped %d samples (%s)", record.LostSamples, key)
+			errFunc(fmt.Errorf("Warning: perf event ring buffer full, dropped %d samples (%s)", record.LostSamples, key))
 			continue
 		}
 
@@ -318,7 +327,7 @@ func (t *Tracer) listen(key string, rd *perf.Reader, f func(name, pktType, qType
 		// TODO: Ideally, messages with name=="" should not be emitted
 		// by the BPF program (see TODO in dns.c).
 		if len(name) > 0 {
-			f(name, pktType, qType)
+			callback(name, pktType, qType)
 		}
 	}
 }
