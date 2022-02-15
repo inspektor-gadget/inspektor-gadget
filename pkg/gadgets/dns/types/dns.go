@@ -25,3 +25,9 @@ type Event struct {
 	PktType string `json:"pkt_type,omitempty"`
 	QType   string `json:"qtype,omitempty"`
 }
+
+func Base(ev eventtypes.Event) Event {
+	return Event{
+		Event: ev,
+	}
+}

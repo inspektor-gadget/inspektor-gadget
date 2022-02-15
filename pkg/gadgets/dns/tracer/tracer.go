@@ -27,7 +27,9 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"golang.org/x/sys/unix"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/rawsock"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 // #include "bpf/dns-common.h"
@@ -78,8 +80,8 @@ func NewTracer() (*Tracer, error) {
 func (t *Tracer) Attach(
 	key string,
 	pid uint32,
-	callback func(name, pktType, qType string),
-	errFunc func(err error),
+	eventCallback func(types.Event),
+	node string,
 ) error {
 	if l, ok := t.attachments[key]; ok {
 		l.users++
@@ -118,7 +120,7 @@ func (t *Tracer) Attach(
 	}
 	t.attachments[key] = l
 
-	go t.listen(key, rd, callback, errFunc)
+	go t.listen(key, rd, eventCallback, node)
 
 	return nil
 }
@@ -269,8 +271,8 @@ func parseDNSEvent(rawSample []byte) (ret string, pktType string, qType string) 
 func (t *Tracer) listen(
 	key string,
 	rd *perf.Reader,
-	callback func(name, pktType, qType string),
-	errFunc func(err error),
+	eventCallback func(types.Event),
+	node string,
 ) {
 	for {
 		record, err := rd.Read()
@@ -278,12 +280,15 @@ func (t *Tracer) listen(
 			if errors.Is(err, perf.ErrClosed) {
 				return
 			}
-			errFunc(fmt.Errorf("error while reading from perf event reader (%s): %s", key, err))
+
+			msg := fmt.Sprintf("Error reading perf ring buffer (%s): %s", key, err)
+			eventCallback(types.Base(eventtypes.Err(msg, node)))
 			return
 		}
 
 		if record.LostSamples != 0 {
-			errFunc(fmt.Errorf("Warning: perf event ring buffer full, dropped %d samples (%s)", record.LostSamples, key))
+			msg := fmt.Sprintf("lost %d samples (%s)", record.LostSamples, key)
+			eventCallback(types.Base(eventtypes.Warn(msg, node)))
 			continue
 		}
 
@@ -292,7 +297,16 @@ func (t *Tracer) listen(
 		// TODO: Ideally, messages with name=="" should not be emitted
 		// by the BPF program (see TODO in dns.c).
 		if len(name) > 0 {
-			callback(name, pktType, qType)
+			event := types.Event{
+				Event: eventtypes.Event{
+					Type: eventtypes.NORMAL,
+					Node: node,
+				},
+				DNSName: name,
+				PktType: pktType,
+				QType:   qType,
+			}
+			eventCallback(event)
 		}
 	}
 }

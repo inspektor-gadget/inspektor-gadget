@@ -15,7 +15,6 @@
 package dns
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -26,7 +25,7 @@ import (
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	dnstracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/tracer"
-	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
@@ -108,6 +107,44 @@ func genPubSubKey(name string) pubSubKey {
 	return pubSubKey(fmt.Sprintf("gadget/dns/%s", name))
 }
 
+func (t *Trace) publishMessage(
+	trace *gadgetv1alpha1.Trace,
+	eventType eventtypes.EventType,
+	key string,
+	msg string,
+) {
+	event := &types.Event{
+		Event: eventtypes.Event{
+			Type:    eventType,
+			Node:    trace.Spec.Node,
+			Message: msg,
+		},
+	}
+
+	t.publishEvent(trace, event, key)
+}
+
+func (t *Trace) publishEvent(
+	trace *gadgetv1alpha1.Trace,
+	event *types.Event,
+	key string,
+) {
+	keyParts := strings.SplitN(key, "/", 2)
+	if len(keyParts) == 2 {
+		event.Namespace = keyParts[0]
+		event.Pod = keyParts[1]
+	} else if key != "host" {
+		event.Type = eventtypes.ERR
+		event.Message = fmt.Sprintf("unknown key %s", key)
+	}
+
+	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	t.resolver.PublishEvent(
+		traceName,
+		eventtypes.EventString(event),
+	)
+}
+
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if t.started {
 		trace.Status.OperationError = ""
@@ -123,71 +160,9 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	fillEvent := func(event *dnstypes.Event, key string) {
-		keyParts := strings.SplitN(key, "/", 2)
-		if len(keyParts) == 2 {
-			event.Namespace = keyParts[0]
-			event.Pod = keyParts[1]
-		} else if key != "host" {
-			event.Type = eventtypes.ERR
-			event.Message = fmt.Sprintf("unknown key %s", key)
-		}
-	}
-
-	printMessage := func(key string, t eventtypes.EventType, message string) string {
-		event := &dnstypes.Event{
-			Event: eventtypes.Event{
-				Type:    t,
-				Node:    trace.Spec.Node,
-				Message: message,
-			},
-		}
-
-		fillEvent(event, key)
-
-		b, err := json.Marshal(event)
-		if err != nil {
-			return ""
-		}
-		return string(b)
-	}
-
-	printEvent := func(key, name, pktType, qType string) string {
-		event := &dnstypes.Event{
-			Event: eventtypes.Event{
-				Type: eventtypes.NORMAL,
-				Node: trace.Spec.Node,
-			},
-			DNSName: name,
-			PktType: pktType,
-			QType:   qType,
-		}
-
-		fillEvent(event, key)
-
-		b, err := json.Marshal(event)
-		if err != nil {
-			return ""
-		}
-		return string(b)
-	}
-
-	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
-
-	newDNSRequestCallback := func(key string) func(name, pktType, qType string) {
-		return func(name, pktType, qType string) {
-			t.resolver.PublishEvent(
-				traceName,
-				printEvent(key, name, pktType, qType),
-			)
-		}
-	}
-	errFunc := func(key string) func(err error) {
-		return func(err error) {
-			t.resolver.PublishEvent(
-				traceName,
-				printMessage(key, eventtypes.ERR, err.Error()),
-			)
+	eventCallback := func(key string) func(event types.Event) {
+		return func(event types.Event) {
+			t.publishEvent(trace, &event, key)
 		}
 	}
 
@@ -201,18 +176,12 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	attachContainerFunc := func(container *pb.ContainerDefinition) error {
 		key := genKey(container)
 
-		err = t.tracer.Attach(key, container.Pid, newDNSRequestCallback(key), errFunc(key))
+		err = t.tracer.Attach(key, container.Pid, eventCallback(key), trace.Spec.Node)
 		if err != nil {
-			t.resolver.PublishEvent(
-				traceName,
-				printMessage(key, eventtypes.ERR, fmt.Sprintf("failed to attach tracer: %s", err)),
-			)
+			t.publishMessage(trace, eventtypes.ERR, key, fmt.Sprintf("failed to attach tracer: %s", err))
 			return err
 		}
-		t.resolver.PublishEvent(
-			traceName,
-			printMessage(key, eventtypes.DEBUG, "tracer attached"),
-		)
+		t.publishMessage(trace, eventtypes.DEBUG, key, "tracer attached")
 		return nil
 	}
 
@@ -221,16 +190,10 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 		err := t.tracer.Detach(key)
 		if err != nil {
-			t.resolver.PublishEvent(
-				traceName,
-				printMessage(key, eventtypes.ERR, fmt.Sprintf("failed to detach tracer: %s", err)),
-			)
+			t.publishMessage(trace, eventtypes.ERR, key, fmt.Sprintf("failed to detach tracer: %s", err))
 			return
 		}
-		t.resolver.PublishEvent(
-			traceName,
-			printMessage(key, eventtypes.DEBUG, "tracer detached"),
-		)
+		t.publishMessage(trace, eventtypes.DEBUG, key, "tracer detached")
 	}
 
 	containerEventCallback := func(event pubsub.PubSubEvent) {
