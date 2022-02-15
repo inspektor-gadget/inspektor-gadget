@@ -16,7 +16,6 @@ package tracer
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -28,7 +27,7 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"golang.org/x/sys/unix"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/netnsenter"
+	"github.com/kinvolk/inspektor-gadget/pkg/rawsock"
 )
 
 // #include "bpf/dns-common.h"
@@ -60,40 +59,6 @@ type Tracer struct {
 	// key: namespace/podname
 	// value: Tracelet
 	attachments map[string]*link
-}
-
-// Both openRawSock and htons are from github.com/cilium/ebpf:
-// MIT License
-// https://github.com/cilium/ebpf/blob/eaa1fe7482d837490c22d9d96a788f669b9e3843/example_sock_elf_test.go#L146-L166
-func openRawSock(pid uint32) (int, error) {
-	var sock int
-	err := netnsenter.NetnsEnter(int(pid), func() error {
-		var err error
-
-		sock, err = syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW|syscall.SOCK_NONBLOCK|syscall.SOCK_CLOEXEC, int(htons(syscall.ETH_P_ALL)))
-		if err != nil {
-			return err
-		}
-		sll := syscall.SockaddrLinklayer{
-			Ifindex:  0, // 0 matches any interface
-			Protocol: htons(syscall.ETH_P_ALL),
-		}
-		if err := syscall.Bind(sock, &sll); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return -1, err
-	}
-	return sock, nil
-}
-
-// htons converts an unsigned short integer from host byte order to network byte order.
-func htons(i uint16) uint16 {
-	b := make([]byte, 2)
-	binary.BigEndian.PutUint16(b, i)
-	return *(*uint16)(unsafe.Pointer(&b[0]))
 }
 
 func NewTracer() (*Tracer, error) {
@@ -136,7 +101,7 @@ func (t *Tracer) Attach(
 		return fmt.Errorf("Failed to find BPF program %q", BPF_PROG_NAME)
 	}
 
-	sockFd, err := openRawSock(pid)
+	sockFd, err := rawsock.OpenRawSock(pid)
 	if err != nil {
 		return fmt.Errorf("Failed to open raw socket: %w", err)
 	}
