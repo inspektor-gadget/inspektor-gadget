@@ -128,7 +128,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		if len(keyParts) == 2 {
 			event.Namespace = keyParts[0]
 			event.Pod = keyParts[1]
-		} else if key != "" {
+		} else if key != "host" {
 			event.Type = eventtypes.ERR
 			event.Message = fmt.Sprintf("unknown key %s", key)
 		}
