@@ -9,6 +9,7 @@
 #define MAX_ENTRIES 10240
 
 const volatile pid_t target_pid = 0;
+const volatile bool filter_by_mnt_ns = false;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -30,13 +31,31 @@ struct {
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-static int probe_entry(const char *src, const char *dest, const char *fs,
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1024);
+	__uint(key_size, sizeof(u64));
+	__uint(value_size, sizeof(u32));
+} mount_ns_set SEC(".maps");
+
+// TODO: have to use "inline" to avoid this error:
+// bpf/mountsnoop.bpf.c:41:12: error: defined with too many args
+// static int probe_entry(const char *src, const char *dest, const char *fs,
+static inline int probe_entry(const char *src, const char *dest, const char *fs,
 		       __u64 flags, const char *data, enum op op)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
+	struct task_struct *task;
 	struct arg arg = {};
+	u64 mntns_id;
+
+	task = (struct task_struct*) bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+		return 0;
 
 	if (target_pid && target_pid != pid)
 		return 0;
@@ -62,6 +81,13 @@ static int probe_exit(void *ctx, int ret)
 	struct event *eventp;
 	struct task_struct *task;
 	int zero = 0;
+	u64 mntns_id;
+
+	task = (struct task_struct*) bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+		return 0;
 
 	argp = bpf_map_lookup_elem(&args, &tid);
 	if (!argp)
@@ -71,7 +97,7 @@ static int probe_exit(void *ctx, int ret)
 	if (!eventp)
 		return 0;
 
-	task = (struct task_struct *)bpf_get_current_task();
+	eventp->mount_ns_id = mntns_id;
 	eventp->delta = bpf_ktime_get_ns() - argp->ts;
 	eventp->flags = argp->flags;
 	eventp->pid = pid;
