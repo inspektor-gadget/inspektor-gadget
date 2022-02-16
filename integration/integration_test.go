@@ -346,7 +346,7 @@ func TestMountsnoop(t *testing.T) {
 	mountsnoopCmd := &command{
 		name:           "Start mountsnoop gadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET mountsnoop -n %s", ns),
-		expectedRegexp: `test-pod\s+test-pod\s+mount.*mount\("/mnt", "/mnt", .*\) = -ENOENT`,
+		expectedRegexp: `test-pod\s+test-pod\s+mount.*mount\("/mnt", "/mnt", .*\) = -2`,
 		startAndStop:   true,
 	}
 
