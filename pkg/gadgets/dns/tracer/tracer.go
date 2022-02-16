@@ -16,7 +16,6 @@ package tracer
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
@@ -26,10 +25,11 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/netnsenter"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/rawsock"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 // #include "bpf/dns-common.h"
@@ -63,40 +63,6 @@ type Tracer struct {
 	attachments map[string]*link
 }
 
-// Both openRawSock and htons are from github.com/cilium/ebpf:
-// MIT License
-// https://github.com/cilium/ebpf/blob/eaa1fe7482d837490c22d9d96a788f669b9e3843/example_sock_elf_test.go#L146-L166
-func openRawSock(pid uint32) (int, error) {
-	var sock int
-	err := netnsenter.NetnsEnter(int(pid), func() error {
-		var err error
-
-		sock, err = syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW|syscall.SOCK_NONBLOCK|syscall.SOCK_CLOEXEC, int(htons(syscall.ETH_P_ALL)))
-		if err != nil {
-			return err
-		}
-		sll := syscall.SockaddrLinklayer{
-			Ifindex:  0, // 0 matches any interface
-			Protocol: htons(syscall.ETH_P_ALL),
-		}
-		if err := syscall.Bind(sock, &sll); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return -1, err
-	}
-	return sock, nil
-}
-
-// htons converts an unsigned short integer from host byte order to network byte order.
-func htons(i uint16) uint16 {
-	b := make([]byte, 2)
-	binary.BigEndian.PutUint16(b, i)
-	return *(*uint16)(unsafe.Pointer(&b[0]))
-}
-
 func NewTracer() (*Tracer, error) {
 	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(ebpfProg))
 	if err != nil {
@@ -111,7 +77,12 @@ func NewTracer() (*Tracer, error) {
 	return t, nil
 }
 
-func (t *Tracer) Attach(key string, pid uint32, f func(name, pktType, qType string)) error {
+func (t *Tracer) Attach(
+	key string,
+	pid uint32,
+	eventCallback func(types.Event),
+	node string,
+) error {
 	if l, ok := t.attachments[key]; ok {
 		l.users++
 		return nil
@@ -132,7 +103,7 @@ func (t *Tracer) Attach(key string, pid uint32, f func(name, pktType, qType stri
 		return fmt.Errorf("Failed to find BPF program %q", BPF_PROG_NAME)
 	}
 
-	sockFd, err := openRawSock(pid)
+	sockFd, err := rawsock.OpenRawSock(pid)
 	if err != nil {
 		return fmt.Errorf("Failed to open raw socket: %w", err)
 	}
@@ -149,7 +120,7 @@ func (t *Tracer) Attach(key string, pid uint32, f func(name, pktType, qType stri
 	}
 	t.attachments[key] = l
 
-	go t.listen(key, rd, f)
+	go t.listen(key, rd, eventCallback, node)
 
 	return nil
 }
@@ -297,19 +268,27 @@ func parseDNSEvent(rawSample []byte) (ret string, pktType string, qType string) 
 	return
 }
 
-func (t *Tracer) listen(key string, rd *perf.Reader, f func(name, pktType, qType string)) {
+func (t *Tracer) listen(
+	key string,
+	rd *perf.Reader,
+	eventCallback func(types.Event),
+	node string,
+) {
 	for {
 		record, err := rd.Read()
 		if err != nil {
 			if errors.Is(err, perf.ErrClosed) {
 				return
 			}
-			log.Errorf("Error while reading from perf event reader (%s): %s", key, err)
+
+			msg := fmt.Sprintf("Error reading perf ring buffer (%s): %s", key, err)
+			eventCallback(types.Base(eventtypes.Err(msg, node)))
 			return
 		}
 
 		if record.LostSamples != 0 {
-			log.Warnf("Warning: perf event ring buffer full, dropped %d samples (%s)", record.LostSamples, key)
+			msg := fmt.Sprintf("lost %d samples (%s)", record.LostSamples, key)
+			eventCallback(types.Base(eventtypes.Warn(msg, node)))
 			continue
 		}
 
@@ -318,7 +297,16 @@ func (t *Tracer) listen(key string, rd *perf.Reader, f func(name, pktType, qType
 		// TODO: Ideally, messages with name=="" should not be emitted
 		// by the BPF program (see TODO in dns.c).
 		if len(name) > 0 {
-			f(name, pktType, qType)
+			event := types.Event{
+				Event: eventtypes.Event{
+					Type: eventtypes.NORMAL,
+					Node: node,
+				},
+				DNSName: name,
+				PktType: pktType,
+				QType:   qType,
+			}
+			eventCallback(event)
 		}
 	}
 }

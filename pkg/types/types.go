@@ -14,6 +14,11 @@
 
 package types
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 type EventType string
 
 const (
@@ -89,4 +94,12 @@ func Info(msg, node string) Event {
 		Node:    node,
 		Message: msg,
 	}
+}
+
+func EventString(i interface{}) string {
+	b, err := json.Marshal(i)
+	if err != nil {
+		return fmt.Sprintf("error marshalling event: %s\n", err)
+	}
+	return string(b)
 }
