@@ -18,13 +18,13 @@ push:
 test:
 	if [ "x$(KUBECONFIG)" = "x" ] ; then \
 		echo "Running tests without KUBECONFIG variable" ; \
-		docker run -i \
+		docker run --rm -i \
 			--net=host \
 			$(TESTS_DOCKER_ARGS) \
 			$(CONTAINER_REPO)test:$(IMAGE_TAG) ; \
 	else \
 		echo "Running tests with KUBECONFIG = $(KUBECONFIG)" ; \
-		docker run -i \
+		docker run --rm -i \
 			--net=host \
 			-e KUBECONFIG=/opt/kubeconfig/$(shell basename "$(KUBECONFIG)") \
 			-v $(shell dirname "$(KUBECONFIG)"):/opt/kubeconfig \
