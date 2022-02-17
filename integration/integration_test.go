@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -79,6 +80,10 @@ func TestMain(m *testing.M) {
 	if *image != "" {
 		os.Setenv("GADGET_IMAGE_FLAG", "--image "+*image)
 	}
+
+	seed := time.Now().UTC().UnixNano()
+	rand.Seed(seed)
+	fmt.Printf("using random seed: %d\n", seed)
 
 	initCommands := []*command{
 		deployInspektorGadget,
@@ -270,6 +275,33 @@ func TestFiletop(t *testing.T) {
 		{
 			name:           "Run pod which does IO",
 			cmd:            busyboxPodCommand(ns, "while true; do echo date >> /tmp/date.txt; done"),
+			expectedString: "pod/test-pod created\n",
+		},
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
+	}
+
+	runCommands(commands, t)
+}
+
+func TestFsslower(t *testing.T) {
+	ns := generateTestNamespaceName("test-fsslower")
+
+	t.Parallel()
+
+	fsslowerCmd := &command{
+		name:           "Start fsslower gadget",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET fsslower -n %s -t ext4 -m 0", ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+touch`, ns),
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		createTestNamespaceCommand(ns),
+		fsslowerCmd,
+		{
+			name:           "Run pod which touches a file",
+			cmd:            busyboxPodCommand(ns, "while true; do touch foo && sleep 0.1; done"),
 			expectedString: "pod/test-pod created\n",
 		},
 		waitUntilTestPodReadyCommand(ns),

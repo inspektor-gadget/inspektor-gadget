@@ -30,6 +30,7 @@ ${BTFHUB}/tools/btfgen.sh -a ${ARCH}                                            
     -o ${LIBBPFTOOLS}/tcpconnect.bpf.o                                                  \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/execsnoop/tracer/core/execsnoop_bpfel.o          \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/filetop/tracer/filetop_bpfel.o                   \
+    -o ${INSPEKTOR_GADGET}/pkg/gadgets/fsslower/tracer/core/fsslower_bpfel.o            \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/oomkill/tracer/oomkill_bpfel.o                   \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/opensnoop/tracer/core/opensnoop_bpfel.o          \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/seccomp/tracer/bpf/seccomp.o                     \
