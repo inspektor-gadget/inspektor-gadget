@@ -6,6 +6,7 @@
 
 struct bind_event {
 	unsigned __int128 addr;
+	__u64 mount_ns_id;
 	__u64 ts_us;
 	__u32 pid;
 	__u32 bound_dev_if;
