@@ -55,6 +55,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/types"
