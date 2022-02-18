@@ -93,18 +93,18 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	if (filter_by_port && !port)
 		goto cleanup;
 
-	opts.fields.freebind             = BPF_CORE_READ_BITFIELD_PROBED(inet_sock, freebind);
-	opts.fields.transparent          = BPF_CORE_READ_BITFIELD_PROBED(inet_sock, transparent);
-	opts.fields.bind_address_no_port = BPF_CORE_READ_BITFIELD_PROBED(inet_sock, bind_address_no_port);
-	opts.fields.reuseaddress         = BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_reuse);
-	opts.fields.reuseport            = BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_reuseport);
+// 	opts.fields.freebind             = BPF_CORE_READ_BITFIELD_PROBED(inet_sock, freebind);
+// 	opts.fields.transparent          = BPF_CORE_READ_BITFIELD_PROBED(inet_sock, transparent);
+// 	opts.fields.bind_address_no_port = BPF_CORE_READ_BITFIELD_PROBED(inet_sock, bind_address_no_port);
+// 	opts.fields.reuseaddress         = BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_reuse);
+// 	opts.fields.reuseport            = BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_reuseport);
 	event.opts = opts.data;
 	event.ts_us = bpf_ktime_get_ns() / 1000;
 	event.pid = pid;
 	event.port = sport;
 	event.bound_dev_if = BPF_CORE_READ(sock, __sk_common.skc_bound_dev_if);
 	event.ret = ret;
-	event.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
+// 	event.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	event.mount_ns_id = mntns_id;
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	if (ver == 4) {
