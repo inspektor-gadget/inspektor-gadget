@@ -53,12 +53,6 @@ var tcptopCmd = &cobra.Command{
 	RunE:  bccCmd("tcptop", "/usr/share/bcc/tools/tcptop"),
 }
 
-var tcptracerCmd = &cobra.Command{
-	Use:   "tcptracer",
-	Short: "Trace tcp connect, accept and close",
-	RunE:  bccCmd("tcptracer", "/usr/share/bcc/tools/tcptracer"),
-}
-
 var (
 	stackFlag  bool
 	uniqueFlag bool
@@ -72,7 +66,6 @@ func init() {
 		biotopCmd,
 		profileCmd,
 		tcptopCmd,
-		tcptracerCmd,
 	}
 
 	// Add flags for all BCC gadgets
