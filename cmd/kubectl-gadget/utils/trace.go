@@ -503,11 +503,7 @@ func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.Tr
 		trace := event.Object.(*gadgetv1alpha1.Trace)
 
 		if trace.Status.OperationWarning != "" {
-			watchedTracesNumber++
-
 			nodeWarnings[trace.Spec.Node] = trace.Status.OperationWarning
-
-			return false, nil
 		}
 
 		if trace.Status.OperationError != "" {
