@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop"
 	processcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/seccomp"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snisnoop"
 	socketcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/traceloop"
 )
@@ -42,6 +43,7 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 		"oomkill":                oomkill.NewFactory(),
 		"process-collector":      processcollector.NewFactory(),
 		"seccomp":                seccomp.NewFactory(),
+		"snisnoop":               snisnoop.NewFactory(),
 		"socket-collector":       socketcollector.NewFactory(),
 		"traceloop":              traceloop.NewFactory(),
 	}
@@ -52,5 +54,6 @@ func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
 		"dns":              dns.NewFactory(),
 		"socket-collector": socketcollector.NewFactory(),
 		"seccomp":          seccomp.NewFactory(),
+		"snisnoop":         snisnoop.NewFactory(),
 	}
 }

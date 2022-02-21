@@ -1,0 +1,12 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: snisnoop
+  namespace: gadget
+spec:
+  node: minikube
+  gadget: snisnoop
+  filter:
+    namespace: default
+  runMode: Manual
+  outputMode: Stream
