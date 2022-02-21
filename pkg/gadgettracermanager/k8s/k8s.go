@@ -17,8 +17,9 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -130,11 +131,11 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 
 		pid, err := k.criClient.PidFromContainerId(s.ContainerID)
 		if err != nil {
-			log.Printf("Skip pod %s/%s: cannot find pid: %v", pod.GetNamespace(), pod.GetName(), err)
+			log.Warnf("Skip pod %s/%s: cannot find pid: %v", pod.GetNamespace(), pod.GetName(), err)
 			continue
 		}
 		if pid == 0 {
-			log.Printf("Skip pod %s/%s: got zero pid", pod.GetNamespace(), pod.GetName())
+			log.Warnf("Skip pod %s/%s: got zero pid", pod.GetNamespace(), pod.GetName())
 			continue
 		}
 
