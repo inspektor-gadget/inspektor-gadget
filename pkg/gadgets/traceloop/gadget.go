@@ -79,8 +79,6 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				t := f.LookupOrCreate(name, n).(*Trace)
 				if t.started {
-					trace.Status.OperationError = ""
-					trace.Status.Output = ""
 					trace.Status.State = "Started"
 					return
 				}
@@ -135,8 +133,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	t.started = true
 
-	trace.Status.OperationError = ""
-	trace.Status.Output = ""
 	trace.Status.State = "Started"
 }
 
@@ -176,7 +172,5 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	trace.Status.OperationError = ""
-	trace.Status.Output = ""
 	trace.Status.State = "Stopped"
 }

@@ -110,7 +110,6 @@ func genPubSubKey(name string) pubSubKey {
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if t.started {
-		gadgets.CleanupTraceStatus(trace)
 		trace.Status.State = "Started"
 		return
 	}
@@ -243,9 +242,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	t.started = true
 
-	gadgets.CleanupTraceStatus(trace)
 	trace.Status.State = "Started"
-	return
 }
 
 func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
@@ -259,7 +256,5 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	t.tracer = nil
 	t.started = false
 
-	gadgets.CleanupTraceStatus(trace)
 	trace.Status.State = "Stopped"
-	return
 }

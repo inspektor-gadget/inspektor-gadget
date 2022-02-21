@@ -248,6 +248,8 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// Call gadget operation
 	traceBeforeOperation := trace.DeepCopy()
+	trace.Status.OperationError = ""
+	trace.Status.OperationWarning = ""
 	patch := client.MergeFrom(traceBeforeOperation)
 	gadgetOperation.Operation(req.NamespacedName.String(), trace)
 

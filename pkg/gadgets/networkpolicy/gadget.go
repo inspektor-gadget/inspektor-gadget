@@ -102,9 +102,8 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 }
 
 func (f *Trace) Start(trace *gadgetv1alpha1.Trace) {
+	trace.Status.Output = ""
 	if f.started {
-		trace.Status.OperationError = ""
-		trace.Status.Output = ""
 		trace.Status.State = "Started"
 		return
 	}
@@ -130,10 +129,7 @@ func (f *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	f.started = true
 
-	trace.Status.OperationError = ""
-	trace.Status.Output = ""
 	trace.Status.State = "Started"
-	return
 }
 
 func (f *Trace) UpdateOutput(trace *gadgetv1alpha1.Trace) {
@@ -144,9 +140,7 @@ func (f *Trace) UpdateOutput(trace *gadgetv1alpha1.Trace) {
 	output := f.out.String()
 	log.Infof("Network Policy Advisor output:\n%s\n", output)
 
-	trace.Status.OperationError = ""
 	trace.Status.Output = output
-	return
 }
 
 func (f *Trace) Report(trace *gadgetv1alpha1.Trace) {
@@ -160,9 +154,7 @@ func (f *Trace) Report(trace *gadgetv1alpha1.Trace) {
 	adv.GeneratePolicies()
 	output := adv.FormatPolicies()
 
-	trace.Status.OperationError = ""
 	trace.Status.Output = output
-	return
 }
 
 func (f *Trace) Stop(trace *gadgetv1alpha1.Trace) {
@@ -182,7 +174,5 @@ func (f *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	output := f.out.String()
 	log.Infof("Network Policy Advisor output:\n%s\n", output)
 
-	trace.Status.OperationError = ""
 	trace.Status.Output = output
-	return
 }

@@ -67,25 +67,21 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 	events, err := tracer.RunCollector(t.resolver, trace.Spec.Node, gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name))
 	if err != nil {
-		gadgets.CleanupTraceStatus(trace)
 		trace.Status.OperationError = err.Error()
 		return
 	}
 
 	if len(events) == 0 {
-		gadgets.CleanupTraceStatus(trace)
 		trace.Status.OperationWarning = "No container matches the requested filter"
 		return
 	}
 
 	output, err := json.MarshalIndent(events, "", " ")
 	if err != nil {
-		gadgets.CleanupTraceStatus(trace)
 		trace.Status.OperationError = fmt.Sprintf("failed marshalling processes: %s", err)
 		return
 	}
 
-	trace.Status.OperationError = ""
 	trace.Status.Output = string(output)
 	trace.Status.State = "Completed"
 }

@@ -376,10 +376,9 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.Pu
 }
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
+	trace.Status.Output = ""
 	if t.started {
-		gadgets.CleanupTraceStatus(trace)
 		trace.Status.State = "Started"
-
 		t.policyGenerated = false
 		return
 	}
@@ -418,7 +417,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	t.started = true
 	t.policyGenerated = false
 
-	gadgets.CleanupTraceStatus(trace)
 	trace.Status.State = "Started"
 }
 
@@ -515,7 +513,6 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 		}
 
 		trace.Status.Output = string(output)
-		trace.Status.OperationError = ""
 	case "ExternalResource":
 		podName := fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
 
@@ -532,7 +529,6 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 			trace.Status.OperationError = fmt.Sprintf("Failed to update resource: %s", err)
 			return
 		}
-		trace.Status.OperationError = ""
 	case "File":
 		fallthrough
 	default:

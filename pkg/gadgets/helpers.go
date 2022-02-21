@@ -48,13 +48,6 @@ func TracePinPathFromNamespacedName(n types.NamespacedName) string {
 	return TracePinPath(n.Namespace, n.Name)
 }
 
-func CleanupTraceStatus(trace *gadgetv1alpha1.Trace) {
-	trace.Status.OperationError = ""
-	trace.Status.OperationWarning = ""
-	trace.Status.Output = ""
-	trace.Status.State = ""
-}
-
 func ContainerSelectorFromContainerFilter(f *gadgetv1alpha1.ContainerFilter) *pb.ContainerSelector {
 	if f == nil {
 		return &pb.ContainerSelector{}

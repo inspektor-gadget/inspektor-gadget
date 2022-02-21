@@ -96,7 +96,6 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if t.started {
-		gadgets.CleanupTraceStatus(trace)
 		trace.Status.State = "Started"
 		return
 	}
@@ -115,7 +114,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	var err error
 
 	if trace.Spec.Parameters == nil {
-		gadgets.CleanupTraceStatus(trace)
 		trace.Status.OperationError = "missing parameters"
 		return
 	}
@@ -124,7 +122,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	filesystem, ok := params["filesystem"]
 	if !ok {
-		gadgets.CleanupTraceStatus(trace)
 		trace.Status.OperationError = "missing filesystem"
 		return
 	}
@@ -135,7 +132,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if ok {
 		minLatencyParsed, err := strconv.ParseUint(val, 10, 32)
 		if err != nil {
-			gadgets.CleanupTraceStatus(trace)
 			trace.Status.OperationError = fmt.Sprintf("%q is not valid for minlatency", val)
 			return
 		}
@@ -149,14 +145,12 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	t.tracer, err = coretracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
 	if err != nil {
-		gadgets.CleanupTraceStatus(trace)
 		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 		return
 	}
 
 	t.started = true
 
-	gadgets.CleanupTraceStatus(trace)
 	trace.Status.State = "Started"
 }
 
@@ -170,6 +164,5 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	t.tracer = nil
 	t.started = false
 
-	trace.Status.OperationError = ""
 	trace.Status.State = "Stopped"
 }

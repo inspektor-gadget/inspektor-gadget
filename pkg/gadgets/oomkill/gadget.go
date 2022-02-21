@@ -85,8 +85,6 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if t.started {
-		gadgets.CleanupTraceStatus(trace)
-
 		trace.Status.State = "Started"
 
 		return
@@ -116,7 +114,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	t.started = true
 
-	gadgets.CleanupTraceStatus(trace)
 	trace.Status.State = "Started"
 }
 
@@ -130,6 +127,5 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	t.tracer = nil
 	t.started = false
 
-	trace.Status.OperationError = ""
 	trace.Status.State = "Stopped"
 }
