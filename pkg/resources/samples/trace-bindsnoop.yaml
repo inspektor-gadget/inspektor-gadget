@@ -1,0 +1,12 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: bindsnoop
+  namespace: gadget
+spec:
+  node: ubuntu-hirsute
+  gadget: bindsnoop
+  runMode: Manual
+  outputMode: Stream
+  filter:
+    namespace: default
