@@ -20,6 +20,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -101,6 +102,6 @@ func (t *Tracer) Delete(mntns uint64) {
 }
 
 func (t *Tracer) Close() {
-	t.progLink.Close()
+	t.progLink = gadgets.CloseLink(t.progLink)
 	t.collection.Close()
 }

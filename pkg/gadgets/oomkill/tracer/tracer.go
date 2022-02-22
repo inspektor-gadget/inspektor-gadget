@@ -32,6 +32,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/oomkill/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
@@ -76,10 +77,7 @@ func (t *Tracer) Stop() {
 }
 
 func (t *Tracer) stop() {
-	if t.oomLink != nil {
-		t.oomLink.Close()
-		t.oomLink = nil
-	}
+	t.oomLink = gadgets.CloseLink(t.oomLink)
 
 	if t.reader != nil {
 		t.reader.Close()

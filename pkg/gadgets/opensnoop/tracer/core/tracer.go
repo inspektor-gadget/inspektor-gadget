@@ -31,6 +31,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -69,22 +70,10 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 }
 
 func (t *Tracer) Stop() {
-	if t.openEnterLink != nil {
-		t.openEnterLink.Close()
-		t.openEnterLink = nil
-	}
-	if t.openAtEnterLink != nil {
-		t.openAtEnterLink.Close()
-		t.openAtEnterLink = nil
-	}
-	if t.openExitLink != nil {
-		t.openExitLink.Close()
-		t.openExitLink = nil
-	}
-	if t.openAtExitLink != nil {
-		t.openAtExitLink.Close()
-		t.openAtExitLink = nil
-	}
+	t.openEnterLink = gadgets.CloseLink(t.openEnterLink)
+	t.openAtEnterLink = gadgets.CloseLink(t.openAtEnterLink)
+	t.openExitLink = gadgets.CloseLink(t.openExitLink)
+	t.openAtExitLink = gadgets.CloseLink(t.openAtExitLink)
 
 	if t.reader != nil {
 		t.reader.Close()

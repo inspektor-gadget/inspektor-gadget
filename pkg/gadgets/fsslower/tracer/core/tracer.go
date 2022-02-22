@@ -31,6 +31,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/fsslower/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/fsslower/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -107,30 +108,22 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 	return t, nil
 }
 
-// closeLink closes l if it's not nil and returns nil
-func closeLink(l link.Link) link.Link {
-	if l != nil {
-		l.Close()
-	}
-	return nil
-}
-
 func (t *Tracer) Stop() {
 	// read
-	t.readEnterLink = closeLink(t.readEnterLink)
-	t.readExitLink = closeLink(t.readExitLink)
+	t.readEnterLink = gadgets.CloseLink(t.readEnterLink)
+	t.readExitLink = gadgets.CloseLink(t.readExitLink)
 
 	// write
-	t.writeEnterLink = closeLink(t.writeEnterLink)
-	t.writeExitLink = closeLink(t.writeExitLink)
+	t.writeEnterLink = gadgets.CloseLink(t.writeEnterLink)
+	t.writeExitLink = gadgets.CloseLink(t.writeExitLink)
 
 	// open
-	t.openEnterLink = closeLink(t.openEnterLink)
-	t.openExitLink = closeLink(t.openExitLink)
+	t.openEnterLink = gadgets.CloseLink(t.openEnterLink)
+	t.openExitLink = gadgets.CloseLink(t.openExitLink)
 
 	// sync
-	t.syncEnterLink = closeLink(t.syncEnterLink)
-	t.syncExitLink = closeLink(t.syncExitLink)
+	t.syncEnterLink = gadgets.CloseLink(t.syncEnterLink)
+	t.syncExitLink = gadgets.CloseLink(t.syncExitLink)
 
 	if t.reader != nil {
 		t.reader.Close()
