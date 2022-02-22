@@ -146,6 +146,8 @@ func TestBindsnoop(t *testing.T) {
 }
 
 func TestBiolatency(t *testing.T) {
+	t.Parallel()
+
 	commands := []*command{
 		{
 			name:           "Run biolatency gadget",
@@ -158,19 +160,27 @@ func TestBiolatency(t *testing.T) {
 }
 
 func TestBiotop(t *testing.T) {
+	ns := generateTestNamespaceName("test-biotop")
+
+	t.Parallel()
+
 	biotopCmd := &command{
 		name:           "Start biotop gadget",
 		cmd:            "$KUBECTL_GADGET biotop --node $(kubectl get node --no-headers | cut -d' ' -f1)",
-		expectedRegexp: `kube-system\s+etcd[\w-]+\s+etcd\s+\d+\s+etcd`,
+		expectedRegexp: `test-pod\s+test-pod\s+\d+\s+dd`,
 		startAndStop:   true,
 	}
 
 	commands := []*command{
+		createTestNamespaceCommand(ns),
 		biotopCmd,
 		{
-			name: "Wait a bit.",
-			cmd:  "sleep 10",
+			name:           "Run pod which generates I/O",
+			cmd:            busyboxPodCommand(ns, "while true; do dd if=/dev/zero of=/tmp/test count=4096; done"),
+			expectedRegexp: "pod/test-pod created",
 		},
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
 	}
 
 	runCommands(commands, t)
