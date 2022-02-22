@@ -70,7 +70,15 @@ var deployInspektorGadget *command = &command{
 
 var waitUntilInspektorGadgetPodsDeployed *command = &command{
 	name: "Wait until the gadget pods are started",
-	cmd:  "for POD in $(sleep 5 ; kubectl get pod -n gadget -l k8s-app=gadget -o name) ; do kubectl wait --timeout=30s -n gadget --for=condition=ready $POD ; done ; kubectl get pod -n gadget",
+	cmd: `
+	for POD in $(sleep 5; kubectl get pod -n gadget -l k8s-app=gadget -o name) ; do
+		kubectl wait --timeout=30s -n gadget --for=condition=ready $POD
+		if [ $? -ne 0 ]; then
+			kubectl get pod -n gadget
+			kubectl describe $POD -n gadget
+			exit 1
+		fi
+	done`,
 }
 
 var waitUntilInspektorGadgetPodsInitialized *command = &command{
