@@ -21,15 +21,18 @@ import (
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/runtime"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type FuncPublisher func(runtime.Object, interface{})
 
 type TraceFactory interface {
 	// Initialize gives the Resolver and the Client to the gadget. Gadgets
 	// don't need to implement this method if they use BaseFactory as an
 	// anonymous field.
-	Initialize(Resolver Resolver, Client client.Client)
+	Initialize(Resolver, client.Client, FuncPublisher)
 
 	// Delete request a gadget to release the information it has about a
 	// trace. BaseFactory implements this method, so gadgets who embed
@@ -79,8 +82,9 @@ type Resolver interface {
 }
 
 type BaseFactory struct {
-	Resolver Resolver
-	Client   client.Client
+	Resolver  Resolver
+	Client    client.Client
+	Publisher FuncPublisher
 
 	// DeleteTrace is optionally set by gadgets if they need to do
 	// specialised clean up. Example:
@@ -96,9 +100,10 @@ type BaseFactory struct {
 	traces map[string]interface{}
 }
 
-func (f *BaseFactory) Initialize(r Resolver, c client.Client) {
+func (f *BaseFactory) Initialize(r Resolver, c client.Client, publisher FuncPublisher) {
 	f.Resolver = r
 	f.Client = c
+	f.Publisher = publisher
 }
 
 func (f *BaseFactory) LookupOrCreate(name string, newTrace func() interface{}) interface{} {

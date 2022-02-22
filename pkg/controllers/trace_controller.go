@@ -25,6 +25,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -46,9 +47,10 @@ const (
 
 // TraceReconciler reconciles a Trace object
 type TraceReconciler struct {
-	Client client.Client
-	Scheme *runtime.Scheme
-	Node   string
+	Client   client.Client
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
+	Node     string
 
 	// TraceFactories contains the trace factories keyed by the gadget name
 	TraceFactories map[string]gadgets.TraceFactory

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -23,6 +24,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -62,13 +64,24 @@ func startController(node string, tracerManager *gadgettracermanager.GadgetTrace
 		os.Exit(1)
 	}
 
-	for _, factory := range traceFactories {
-		factory.Initialize(tracerManager, mgr.GetClient())
+	recorder := mgr.GetEventRecorderFor("trace-controller")
+	for gadget, factory := range traceFactories {
+		publisher := func(trace runtime.Object, i interface{}) {
+			r, err := json.Marshal(i)
+			if err != nil {
+				log.Warnf("Gadget %s: error marshalling event: %s", gadget, err)
+				return
+			}
+			recorder.Event(trace, corev1.EventTypeNormal,
+				"GadgetEvent", string(r))
+		}
+		factory.Initialize(tracerManager, mgr.GetClient(), publisher)
 	}
 
 	if err = (&controllers.TraceReconciler{
 		Client:         mgr.GetClient(),
 		Scheme:         mgr.GetScheme(),
+		Recorder:       recorder,
 		Node:           node,
 		TraceFactories: traceFactories,
 		TracerManager:  tracerManager,

@@ -31,7 +31,8 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
+	resolver  gadgets.Resolver
+	publisher gadgets.FuncPublisher
 
 	started bool
 	tracer  tracer.Tracer
@@ -67,7 +68,8 @@ func deleteTrace(name string, t interface{}) {
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
-			resolver: f.Resolver,
+			resolver:  f.Resolver,
+			publisher: f.Publisher,
 		}
 	}
 
@@ -103,6 +105,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			return
 		}
 		t.resolver.PublishEvent(traceName, string(r))
+		t.publisher(trace, event)
 	}
 
 	var err error

@@ -296,7 +296,7 @@ func NewManager() (*LocalGadgetManager, error) {
 	}
 
 	for _, factory := range l.traceFactories {
-		factory.Initialize(l, nil)
+		factory.Initialize(l, nil, nil)
 	}
 
 	return l, nil

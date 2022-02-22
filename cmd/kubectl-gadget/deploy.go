@@ -136,6 +136,9 @@ rules:
   resources: ["seccompprofiles"]
   # Required for integration with the Kubernetes Security Profiles Operator
   verbs: ["list", "watch", "create"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["list", "watch", "create"]
 - apiGroups: ["security.openshift.io"]
   # It is necessary to use the 'privileged' security context constraints to be
   # able mount host directories as volumes, use the host networking, among others.
