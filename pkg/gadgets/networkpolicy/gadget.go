@@ -175,4 +175,5 @@ func (f *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	log.Infof("Network Policy Advisor output:\n%s\n", output)
 
 	trace.Status.Output = output
+	trace.Status.State = "Stopped"
 }
