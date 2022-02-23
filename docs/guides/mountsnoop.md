@@ -39,14 +39,14 @@ Go back to *the first terminal* and see:
 
 ```bash
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext3", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext2", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext4", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "vfat", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "msdos", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "iso9660", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "fuseblk", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "xfs", MS_SILENT, "") = -ENOENT
+minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext3", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext2", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext4", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "vfat", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "msdos", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "iso9660", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "fuseblk", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "xfs", MS_SILENT, "") = -2
 ```
 
 All these lines correspond to the error we get from `mount` inside the pod.
@@ -84,14 +84,14 @@ Go back to the first terminal, you should only output related to `mount /foo /ba
 
 ```bash
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext3", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext2", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext4", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "vfat", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "msdos", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "iso9660", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "fuseblk", MS_SILENT, "") = -ENOENT
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "xfs", MS_SILENT, "") = -ENOENT
+minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext3", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext2", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext4", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "vfat", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "msdos", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "iso9660", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "fuseblk", MS_SILENT, "") = -2
+minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "xfs", MS_SILENT, "") = -2
 ```
 
 ## Use JSON output.
@@ -100,39 +100,40 @@ This gadget supports JSON output, for this simply use `-o json`:
 
 ```bash
 $ kubectl gadget mountsnoop -o json
-{"node": "minikube", "pcomm": "runc", "pid": 15207, "comm": "mount", "pod": "busybox-1", "data": "", "mnt_ns": 4026532573, "container": "busybox-1", "target": "/quuz", "tgid": 15207, "namespace": "default", "source": "/quux", "flags": 32768, "mntnsid": 0, "ppid": 15197, "type": "ext3"}
-{"node": "minikube", "pcomm": "runc", "pid": 15207, "comm": "mount", "pod": "busybox-1", "data": "", "mnt_ns": 4026532573, "container": "busybox-1", "target": "/quuz", "tgid": 15207, "namespace": "default", "source": "/quux", "flags": 32768, "mntnsid": 0, "ppid": 15197, "type": "ext2"}
-{"node": "minikube", "pcomm": "runc", "pid": 15207, "comm": "mount", "pod": "busybox-1", "data": "", "mnt_ns": 4026532573, "container": "busybox-1", "target": "/quuz", "tgid": 15207, "namespace": "default", "source": "/quux", "flags": 32768, "mntnsid": 0, "ppid": 15197, "type": "ext4"}
-{"node": "minikube", "pcomm": "runc", "pid": 15207, "comm": "mount", "pod": "busybox-1", "data": "", "mnt_ns": 4026532573, "container": "busybox-1", "target": "/quuz", "tgid": 15207, "namespace": "default", "source": "/quux", "flags": 32768, "mntnsid": 0, "ppid": 15197, "type": "vfat"}
-{"node": "minikube", "pcomm": "runc", "pid": 15207, "comm": "mount", "pod": "busybox-1", "data": "", "mnt_ns": 4026532573, "container": "busybox-1", "target": "/quuz", "tgid": 15207, "namespace": "default", "source": "/quux", "flags": 32768, "mntnsid": 0, "ppid": 15197, "type": "msdos"}
-{"node": "minikube", "pcomm": "runc", "pid": 15207, "comm": "mount", "pod": "busybox-1", "data": "", "mnt_ns": 4026532573, "container": "busybox-1", "target": "/quuz", "tgid": 15207, "namespace": "default", "source": "/quux", "flags": 32768, "mntnsid": 0, "ppid": 15197, "type": "iso9660"}
-{"node": "minikube", "pcomm": "containerd-shim", "pid": 15207, "comm": "mount", "pod": "busybox-1", "data": "", "mnt_ns": 4026532573, "container": "busybox-1", "target": "/quuz", "tgid": 15207, "namespace": "default", "source": "/quux", "flags": 32768, "mntnsid": 0, "ppid": 11312, "type": "fuseblk"}
-{"node": "minikube", "pcomm": "containerd-shim", "pid": 15207, "comm": "mount", "pod": "busybox-1", "data": "", "mnt_ns": 4026532573, "container": "busybox-1", "target": "/quuz", "tgid": 15207, "namespace": "default", "source": "/quux", "flags": 32768, "mntnsid": 0, "ppid": 11312, "type": "xfs"}
+{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":7954,"fs":"ext3","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
+{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":4051,"fs":"ext2","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
+{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":3702,"fs":"ext4","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
+{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":11737,"fs":"vfat","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
+{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":4145,"fs":"msdos","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
+{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":10073,"fs":"iso9660","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
+{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":4232,"fs":"fuseblk","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
+{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":3586,"fs":"xfs","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
 # You can use jq to make the output easier to read:
 $ kubectl gadget mountsnoop -o json | jq
 {
+  "type": "normal",
   "node": "minikube",
-  "pcomm": "runc",
-  "pid": 15681,
-  "comm": "mount",
-  "pod": "busybox-1",
-  "data": "",
-  "mnt_ns": 4026532573,
-  "container": "busybox-1",
-  "target": "/quuz",
-  "tgid": 15681,
   "namespace": "default",
-  "source": "/quux",
-  "flags": 32768,
-  "mntnsid": 0,
-  "ppid": 15670,
-  "type": "ext3"
+  "pod": "busybox-0",
+  "container": "busybox-0",
+  "mntnsid": 4026532588,
+  "pid": 5307,
+  "tid": 5307,
+  "comm": "mount",
+  "operation": "mount",
+  "ret": -2,
+  "latency": 7954,
+  "fs": "ext3",
+  "source": "/mnt",
+  "target": "/mnt",
+  "flags": [
+    "MS_SILENT"
+  ]
 }
 {
+  "type": "normal",
   "node": "minikube",
-  "pcomm": "runc",
-  "pid": 15681,
-  "comm": "mount",
+  "namespace": "default",
   ...
 }
 ...
