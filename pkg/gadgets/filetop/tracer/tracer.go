@@ -25,6 +25,7 @@ import (
 	"unsafe"
 
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/filetop/types"
 
 	"github.com/cilium/ebpf"
@@ -82,14 +83,8 @@ func NewTracer(config *Config, resolver containercollection.ContainerResolver,
 func (t *Tracer) Stop() {
 	close(t.done)
 
-	if t.readLink != nil {
-		t.readLink.Close()
-		t.readLink = nil
-	}
-	if t.writeLink != nil {
-		t.writeLink.Close()
-		t.writeLink = nil
-	}
+	t.readLink = gadgets.CloseLink(t.readLink)
+	t.writeLink = gadgets.CloseLink(t.writeLink)
 
 	t.objs.Close()
 }

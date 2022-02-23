@@ -17,6 +17,7 @@ package gadgets
 import (
 	"fmt"
 
+	"github.com/cilium/ebpf/link"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"k8s.io/apimachinery/pkg/types"
@@ -68,4 +69,12 @@ func ContainerSelectorFromContainerFilter(f *gadgetv1alpha1.ContainerFilter) *pb
 		Labels:    labels,
 		Name:      f.ContainerName,
 	}
+}
+
+// CloseLink closes l if it's not nil and returns nil
+func CloseLink(l link.Link) link.Link {
+	if l != nil {
+		l.Close()
+	}
+	return nil
 }
