@@ -16,4 +16,4 @@ RUN mv ./kubectl /usr/local/bin
 
 COPY bin/kubectl-gadget /bin/kubectl-gadget
 COPY --from=build_base /build/gadget-integration.test /bin/gadget-integration.test
-CMD ["/bin/sh", "-c", "gadget-integration.test -integration -test.timeout 20m -github-ci"]
+CMD ["/bin/sh", "-c", "gadget-integration.test -integration -test.timeout 20m"]

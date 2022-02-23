@@ -29,8 +29,6 @@ var (
 	// image such as docker.io/kinvolk/gadget:latest
 	image = flag.String("image", "", "gadget container image")
 
-	githubCI = flag.Bool("github-ci", false, "skip some tests which cannot be run on GitHub CI due to host kernel not BPF ready")
-
 	doNotDeploy = flag.Bool("no-deploy", false, "don't deploy Inspektor Gadget")
 )
 
@@ -484,10 +482,6 @@ func TestProcessCollector(t *testing.T) {
 
 	t.Parallel()
 
-	if *githubCI {
-		t.Skip("Cannot run process-collector within GitHub CI.")
-	}
-
 	commands := []*command{
 		createTestNamespaceCommand(ns),
 		{
@@ -586,10 +580,6 @@ func TestSocketCollector(t *testing.T) {
 	ns := generateTestNamespaceName("test-socket-collector")
 
 	t.Parallel()
-
-	if *githubCI {
-		t.Skip("Cannot run socket-collector within GitHub CI.")
-	}
 
 	commands := []*command{
 		createTestNamespaceCommand(ns),
