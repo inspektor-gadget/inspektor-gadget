@@ -23,12 +23,16 @@ import (
 	"time"
 )
 
-var integration = flag.Bool("integration", false, "run integration tests")
+var (
+	integration = flag.Bool("integration", false, "run integration tests")
 
-// image such as docker.io/kinvolk/gadget:latest
-var image = flag.String("image", "", "gadget container image")
+	// image such as docker.io/kinvolk/gadget:latest
+	image = flag.String("image", "", "gadget container image")
 
-var githubCI = flag.Bool("github-ci", false, "skip some tests which cannot be run on GitHub CI due to host kernel not BPF ready")
+	githubCI = flag.Bool("github-ci", false, "skip some tests which cannot be run on GitHub CI due to host kernel not BPF ready")
+
+	doNotDeploy = flag.Bool("no-deploy", false, "don't deploy Inspektor Gadget")
+)
 
 func runCommands(cmds []*command, t *testing.T) {
 	// defer all cleanup commands so we are sure to exit clean whatever
@@ -96,24 +100,28 @@ func TestMain(m *testing.M) {
 		cleanupInspektorGadget.runWithoutTest()
 	}
 
-	// defer the cleanup to be sure it's called if the test
-	// fails (hence calling runtime.Goexit())
-	defer cleanup()
+	if !*doNotDeploy {
+		// defer the cleanup to be sure it's called if the test
+		// fails (hence calling runtime.Goexit())
+		defer cleanup()
 
-	fmt.Printf("Setup inspektor-gadget:\n")
-	for _, cmd := range initCommands {
-		err := cmd.runWithoutTest()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			cleanup()
-			os.Exit(-1)
+		fmt.Printf("Setup inspektor-gadget:\n")
+		for _, cmd := range initCommands {
+			err := cmd.runWithoutTest()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%v\n", err)
+				cleanup()
+				os.Exit(-1)
+			}
 		}
 	}
 
 	ret := m.Run()
 
-	// os.Exit() doesn't call deferred functions, hence do the cleanup manually.
-	cleanup()
+	if !*doNotDeploy {
+		// os.Exit() doesn't call deferred functions, hence do the cleanup manually.
+		cleanup()
+	}
 
 	os.Exit(ret)
 }
