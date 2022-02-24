@@ -337,7 +337,7 @@ func TestFsslower(t *testing.T) {
 	fsslowerCmd := &command{
 		name:           "Start fsslower gadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET fsslower -n %s -t ext4 -m 0", ns),
-		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+touch`, ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+cat`, ns),
 		startAndStop:   true,
 	}
 
@@ -346,7 +346,7 @@ func TestFsslower(t *testing.T) {
 		fsslowerCmd,
 		{
 			name:           "Run pod which touches a file",
-			cmd:            busyboxPodCommand(ns, "while true; do touch foo && sleep 0.1; done"),
+			cmd:            busyboxPodCommand(ns, `echo "this is foo" > foo && while true; do cat foo && sleep 0.1; done`),
 			expectedString: "pod/test-pod created\n",
 		},
 		waitUntilTestPodReadyCommand(ns),
