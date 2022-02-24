@@ -196,21 +196,21 @@ func (t *Tracer) start() error {
 	}
 
 	// open
-	t.writeEnterLink, err = link.Kprobe(fsConf.open, t.objs.FileOpenEntry)
+	t.openEnterLink, err = link.Kprobe(fsConf.open, t.objs.FileOpenEntry)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
-	t.writeExitLink, err = link.Kretprobe(fsConf.open, t.objs.FileOpenExit)
+	t.openExitLink, err = link.Kretprobe(fsConf.open, t.objs.FileOpenExit)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
 	// sync
-	t.writeEnterLink, err = link.Kprobe(fsConf.fsync, t.objs.FileSyncEntry)
+	t.syncEnterLink, err = link.Kprobe(fsConf.fsync, t.objs.FileSyncEntry)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
-	t.writeExitLink, err = link.Kretprobe(fsConf.fsync, t.objs.FileSyncExit)
+	t.syncExitLink, err = link.Kretprobe(fsConf.fsync, t.objs.FileSyncExit)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
