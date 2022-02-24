@@ -1,7 +1,4 @@
-//go:build !withebpf
-// +build !withebpf
-
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,4 +14,17 @@
 
 package tracer
 
-var ebpfProg []byte
+type Tracer interface {
+	Stop()
+}
+
+type Config struct {
+	// TODO: Make it a *ebpf.Map once
+	// https://github.com/cilium/ebpf/issues/515 and
+	// https://github.com/cilium/ebpf/issues/517 are fixed
+	MountnsMap string
+
+	TargetSignal string
+	TargetPid    int32
+	FailedOnly   bool
+}

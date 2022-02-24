@@ -34,6 +34,7 @@ ${BTFHUB}/tools/btfgen.sh -a ${ARCH}                                            
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/oomkill/tracer/oomkill_bpfel.o                   \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/opensnoop/tracer/core/opensnoop_bpfel.o          \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/seccomp/tracer/bpf/seccomp.o                     \
+    -o ${INSPEKTOR_GADGET}/pkg/gadgets/sigsnoop/tracer/core/sigsnoop_bpfel.o            \
     #
 
 mkdir -p ${OUTPUT}
