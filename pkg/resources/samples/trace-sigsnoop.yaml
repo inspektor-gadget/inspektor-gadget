@@ -1,0 +1,12 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: sigsnoop
+  namespace: gadget
+spec:
+  node: ubuntu-hirsute
+  gadget: sigsnoop
+  runMode: Manual
+  outputMode: Stream
+  filter:
+    namespace: default

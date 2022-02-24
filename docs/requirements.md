@@ -38,9 +38,10 @@ kernels than the one mentioned here.
 | filetop                |            | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
 | fsslower               | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
 | network policy advisor |            |                                 |              |
-| oomkill                | core       | 5.10                            | Y            |
+| oomkill                | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
 | opensnoop              | standard   | 4.15                            | N            |
 | opensnoop              | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
+| sigsnoop               | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
 | socket collector       |            | 5.10                            | Y            |
 | process collector      |            | 5.10                            | Y            |
 | tcpconnect             | standard   | 4.15                            | N            |

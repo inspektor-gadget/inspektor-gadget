@@ -23,6 +23,7 @@ Exploring the following documentation will best help you learn which tools can h
 - [process-collector](docs/guides/process-collector.md)
 - [profile](docs/guides/profile.md)
 - [seccomp](docs/guides/seccomp.md)
+- [sigsnoop](docs/guides/sigsnoop.md)
 - [socket-collector](docs/guides/socket-collector.md)
 - [tcpconnect](docs/guides/tcpconnect.md)
 - [tcptop](docs/guides/tcptop.md)
@@ -76,6 +77,7 @@ Available Commands:
   process-collector Gather information about running processes
   profile           Profile CPU usage by sampling stack traces
   seccomp-advisor   Generate seccomp policies based on recorded syscalls activity
+  sigsnoop          Trace signals issued by syscalls system-wide
   socket-collector  Gather information about network sockets
   tcpconnect        Trace TCP connect() system calls
   tcptop            Show the TCP traffic in a pod

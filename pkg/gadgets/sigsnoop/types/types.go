@@ -1,6 +1,3 @@
-//go:build !withebpf
-// +build !withebpf
-
 // Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tracer
+package types
 
-var ebpfProg []byte
+import (
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+)
+
+type Event struct {
+	eventtypes.Event
+
+	Pid       uint32 `json:"pid,omitempty"`
+	TargetPid uint32 `json:"tpid,omitempty"`
+	Signal    string `json:"signal,omitempty"`
+	Retval    int    `json:"ret,omitempty"`
+	Comm      string `json:"comm,omitempty"`
+	MountNsId uint64 `json:"mountnsid,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event {
+	return Event{
+		Event: ev,
+	}
+}
