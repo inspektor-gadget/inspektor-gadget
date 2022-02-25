@@ -23,7 +23,7 @@ NODE             NAMESPACE        POD              CONTAINER        KPID   KCOMM
 ```
 
 Indeed, it is waiting for OOM killer to kick in and kills a process in `oomkill-demo` namespace (you can use `-A` to monitor all namespaces and then be sure to not miss any event).
-So, in *an other terminal*, `exec` a container and run this `perl` one-liner to exhaust the memory:
+So, in *an other terminal*, `exec` a container and run this command to exhaust the memory:
 
 ```bash
 $ kubectl get pod -n oomkill-demo
