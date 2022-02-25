@@ -83,7 +83,7 @@ var waitUntilInspektorGadgetPodsDeployed *command = &command{
 
 var waitUntilInspektorGadgetPodsInitialized *command = &command{
 	name: "Wait until Inspektor Gadget is initialised",
-	cmd:  "sleep 15",
+	cmd:  "uname -a; zgrep BTF /proc/config.gz; sleep 15",
 }
 
 var cleanupInspektorGadget *command = &command{
