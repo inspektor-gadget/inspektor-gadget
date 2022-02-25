@@ -111,8 +111,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	t.tracer, err = coretracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
 	if err != nil {
-		// TODO: The following line causes the client to fail.
-		// trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
+		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
 
 		// fallback to standard tracer
 		log.Infof("Gadget %s: falling back to standard tracer. CO-RE tracer failed: %s",
