@@ -89,8 +89,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	if t.started {
-		trace.Status.OperationError = ""
-		trace.Status.Output = ""
 		trace.Status.State = "Started"
 		return
 	}
@@ -107,7 +105,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	t.started = true
 
-	trace.Status.OperationError = ""
 	trace.Status.Output = ""
 	trace.Status.State = "Started"
 	return
@@ -144,7 +141,6 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 
 	output := t.stdout.String()
 
-	trace.Status.OperationError = ""
 	trace.Status.Output = output
 	trace.Status.State = "Completed"
 	return

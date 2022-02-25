@@ -103,7 +103,6 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if t.started {
-		gadgets.CleanupTraceStatus(trace)
 		trace.Status.State = "Started"
 		return
 	}
@@ -122,7 +121,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		if val, ok := params["max_rows"]; ok {
 			maxRows, err = strconv.Atoi(val)
 			if err != nil {
-				gadgets.CleanupTraceStatus(trace)
 				trace.Status.OperationError = fmt.Sprintf("%q is not valid for ouput_rows", val)
 				return
 			}
@@ -131,7 +129,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		if val, ok := params["interval"]; ok {
 			intervalSeconds, err = strconv.Atoi(val)
 			if err != nil {
-				gadgets.CleanupTraceStatus(trace)
 				trace.Status.OperationError = fmt.Sprintf("%q is not valid for interval", val)
 				return
 			}
@@ -140,7 +137,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		if val, ok := params["sortby"]; ok {
 			sortBy, err = types.ParseSortBy(val)
 			if err != nil {
-				gadgets.CleanupTraceStatus(trace)
 				trace.Status.OperationError = fmt.Sprintf("%q is not valid for sortby", val)
 				return
 			}
@@ -149,7 +145,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		if val, ok := params["all_files"]; ok {
 			allFiles, err = strconv.ParseBool(val)
 			if err != nil {
-				gadgets.CleanupTraceStatus(trace)
 				trace.Status.OperationError = fmt.Sprintf("%q is not valid for all_files", val)
 				return
 			}
@@ -201,7 +196,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	t.tracer = tracer
 	t.started = true
 
-	gadgets.CleanupTraceStatus(trace)
 	trace.Status.State = "Started"
 }
 
@@ -215,6 +209,5 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	t.tracer = nil
 	t.started = false
 
-	gadgets.CleanupTraceStatus(trace)
 	trace.Status.State = "Stopped"
 }

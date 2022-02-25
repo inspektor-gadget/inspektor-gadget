@@ -147,8 +147,6 @@ func (t *Trace) publishEvent(
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if t.started {
-		trace.Status.OperationError = ""
-		trace.Status.Output = ""
 		trace.Status.State = "Started"
 		return
 	}
@@ -220,10 +218,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	t.started = true
 
-	trace.Status.OperationError = ""
-	trace.Status.Output = ""
 	trace.Status.State = "Started"
-	return
 }
 
 func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
@@ -237,7 +232,5 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	t.tracer = nil
 	t.started = false
 
-	trace.Status.OperationError = ""
 	trace.Status.State = "Stopped"
-	return
 }
