@@ -246,33 +246,6 @@ func TestDns(t *testing.T) {
 	runCommands(commands, t)
 }
 
-func TestSnisnoop(t *testing.T) {
-	ns := generateTestNamespaceName("test-snisnoop")
-
-	t.Parallel()
-
-	snisnoopCmd := &command{
-		name:           "Start snisnoop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET snisnoop -n %s", ns),
-		expectedRegexp: `test-pod\s+kinvolk.io`,
-		startAndStop:   true,
-	}
-
-	commands := []*command{
-		createTestNamespaceCommand(ns),
-		snisnoopCmd,
-		{
-			name:           "Run pod which interacts with snisnoop",
-			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null https://kinvolk.io; done"),
-			expectedRegexp: "pod/test-pod created",
-		},
-		waitUntilTestPodReadyCommand(ns),
-		deleteTestNamespaceCommand(ns),
-	}
-
-	runCommands(commands, t)
-}
-
 func TestExecsnoop(t *testing.T) {
 	ns := generateTestNamespaceName("test-execsnoop")
 
@@ -576,6 +549,33 @@ func TestSigsnoop(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestSnisnoop(t *testing.T) {
+	ns := generateTestNamespaceName("test-snisnoop")
+
+	t.Parallel()
+
+	snisnoopCmd := &command{
+		name:           "Start snisnoop gadget",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET snisnoop -n %s", ns),
+		expectedRegexp: `test-pod\s+kinvolk.io`,
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		createTestNamespaceCommand(ns),
+		snisnoopCmd,
+		{
+			name:           "Run pod which interacts with snisnoop",
+			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null https://kinvolk.io; done"),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
+	}
+
+	runCommands(commands, t)
+}
+
 func TestSocketCollector(t *testing.T) {
 	ns := generateTestNamespaceName("test-socket-collector")
 
@@ -615,6 +615,33 @@ func TestTcpconnect(t *testing.T) {
 	commands := []*command{
 		createTestNamespaceCommand(ns),
 		tcpconnectCmd,
+		{
+			name:           "Run pod which opens TCP socket",
+			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null -T 3 http://1.1.1.1; done"),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReadyCommand(ns),
+		deleteTestNamespaceCommand(ns),
+	}
+
+	runCommands(commands, t)
+}
+
+func TestTcptracer(t *testing.T) {
+	ns := generateTestNamespaceName("test-tcptracer")
+
+	t.Parallel()
+
+	tcptracerCmd := &command{
+		name:           "Start tcptracer gadget",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET tcptracer -n %s", ns),
+		expectedRegexp: `C\s+\d+\s+wget\s+\d\s+[\w\.:]+\s+1\.1\.1\.1\s+\d+\s+80`,
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		createTestNamespaceCommand(ns),
+		tcptracerCmd,
 		{
 			name:           "Run pod which opens TCP socket",
 			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null -T 3 http://1.1.1.1; done"),
