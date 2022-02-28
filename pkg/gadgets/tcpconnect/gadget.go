@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package opensnoop
+package tcpconnect
 
 import (
 	"encoding/json"
@@ -21,11 +21,11 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/tracer"
 
-	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer/standard"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/types"
+	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/tracer/core"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/tracer/standard"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/types"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
@@ -48,7 +48,7 @@ func NewFactory() gadgets.TraceFactory {
 }
 
 func (f *TraceFactory) Description() string {
-	return `opensnoop traces open() system calls`
+	return `tcpconnect traces connect() system calls`
 }
 
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
@@ -73,13 +73,13 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 
 	return map[string]gadgets.TraceOperation{
 		"start": {
-			Doc: "Start opensnoop gadget",
+			Doc: "Start tcpconnect gadget",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				f.LookupOrCreate(name, n).(*Trace).Start(trace)
 			},
 		},
 		"stop": {
-			Doc: "Stop opensnoop gadget",
+			Doc: "Stop tcpconnect gadget",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				f.LookupOrCreate(name, n).(*Trace).Stop(trace)
 			},
@@ -125,6 +125,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	t.started = true
+
 	trace.Status.State = "Started"
 }
 
