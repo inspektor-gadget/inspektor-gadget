@@ -371,7 +371,15 @@ func getTraceListFromID(traceID string) (*gadgetv1alpha1.TraceList, error) {
 // SetTraceOperation sets the operation of an existing trace.
 // If trace does not exist an error is returned.
 func SetTraceOperation(traceID string, operation string) error {
-	traces, err := getTraceListFromID(traceID)
+	// We have to wait for the previous operation to start before changing the
+	// trace operation.
+	// The trace controller deletes the GADGET_OPERATION field from Annotations
+	// when it is about to deal with an operation.
+	// Thus, to avoid losing operations, we need to wait for GADGET_OPERATION to
+	// be deleted before changing to the current operation.
+	// It is the same like when you are in the restaurant, you need to wait for
+	// the chef to cook the main dishes before ordering the dessert.
+	traces, err := waitForNoOperation(traceID)
 	if err != nil {
 		return err
 	}
@@ -452,14 +460,17 @@ func getTraceWatcher(traceID string) (watch.Interface, error) {
 	return watcher, nil
 }
 
-// waitForTraceState wait for traces whom ID is given as parameter to be in the
-// expected state.
-func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.TraceList, error) {
+// waitForCondition waits for the traces with the ID received as parameter to
+// satisfy the conditionFunction received as parameter.
+func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Trace) bool) (*gadgetv1alpha1.TraceList, error) {
 	var returnedTraces gadgetv1alpha1.TraceList
 
 	tracesNumber := 0
 	watchedTracesNumber := 0
 
+	// Get a watcher on all the traces which have the same ID.
+	// Indeed, all the traces on different nodes but linked to one gadget share
+	// the same ID.
 	watcher, err := getTraceWatcher(traceID)
 	if err != nil {
 		return nil, err
@@ -514,8 +525,9 @@ func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.Tr
 			return false, nil
 		}
 
-		// If the trace is not in the state we expect, we are not interested.
-		if trace.Status.State != expectedState {
+		// If the trace does not satisfy the condition function, we are not
+		// interested.
+		if !conditionFunction(trace) {
 			return false, nil
 		}
 
@@ -541,6 +553,27 @@ func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.Tr
 	}
 
 	return &returnedTraces, nil
+}
+
+// waitForTraceState waits for the traces with the ID received as parameter to
+// be in the expected state.
+func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.TraceList, error) {
+	return waitForCondition(traceID, func(trace *gadgetv1alpha1.Trace) bool {
+		return trace.Status.State == expectedState
+	})
+}
+
+// waitForNoOperation waits for the traces with the ID received as parameter to
+// not have an operation.
+func waitForNoOperation(traceID string) (*gadgetv1alpha1.TraceList, error) {
+	return waitForCondition(traceID, func(trace *gadgetv1alpha1.Trace) bool {
+		if trace.ObjectMeta.Annotations == nil {
+			return true
+		}
+
+		_, present := trace.ObjectMeta.Annotations[GADGET_OPERATION]
+		return !present
+	})
 }
 
 var sigIntReceivedNumber = 0

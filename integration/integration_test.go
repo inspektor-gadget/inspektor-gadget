@@ -536,10 +536,6 @@ func TestSeccompadvisor(t *testing.T) {
 
 	t.Parallel()
 
-	if *githubCI {
-		t.Skip("seccomp-advisor timed out within GitHub CI.")
-	}
-
 	commands := []*command{
 		createTestNamespaceCommand(ns),
 		{
