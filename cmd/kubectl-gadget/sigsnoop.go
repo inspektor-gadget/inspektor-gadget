@@ -38,7 +38,7 @@ var sigsnoopCmd = &cobra.Command{
 	Short: "Trace signals received by processes",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		switch params.OutputMode {
-		case utils.OutputModeJson: // don't print any header
+		case utils.OutputModeJSON: // don't print any header
 		case utils.OutputModeCustomColumns:
 			fmt.Println(getCustomSigsnoopColsHeader(params.CustomColumns))
 		case utils.OutputModeColumns:

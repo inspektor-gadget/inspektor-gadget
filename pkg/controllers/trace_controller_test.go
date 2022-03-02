@@ -218,7 +218,7 @@ var _ = Context("Controller with a fake gadget", func() {
 					Name:      traceObjectKey.Name,
 					Namespace: traceObjectKey.Namespace,
 					Annotations: map[string]string{
-						GADGET_OPERATION: "magic",
+						GadgetOperation:  "magic",
 						"hiking.walking": "mountains",
 					},
 				},
@@ -242,7 +242,7 @@ var _ = Context("Controller with a fake gadget", func() {
 				HaveOperationError("FakeError"),
 				HaveOperationWarning("FakeWarning"),
 				HaveOutput("FakeOutput"),
-				HaveAnnotation(GADGET_OPERATION, ""),
+				HaveAnnotation(GadgetOperation, ""),
 				HaveAnnotation("hiking.walking", "mountains"),
 			))
 

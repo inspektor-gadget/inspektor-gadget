@@ -132,7 +132,7 @@ func (c *command) runWithoutTest() error {
 	cmd := exec.Command("/bin/sh", "-c", c.cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, string(output))
+		fmt.Fprint(os.Stderr, string(output))
 		return err
 	}
 
@@ -142,7 +142,7 @@ func (c *command) runWithoutTest() error {
 	if c.expectedRegexp != "" {
 		r := regexp.MustCompile(c.expectedRegexp)
 		if !r.MatchString(actual) {
-			return fmt.Errorf("regexp didn't match: %s\n%s\n", c.expectedRegexp, actual)
+			return fmt.Errorf("regexp didn't match: %s\n%s", c.expectedRegexp, actual)
 		}
 	}
 

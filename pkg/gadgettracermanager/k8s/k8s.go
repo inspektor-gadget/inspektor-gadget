@@ -56,7 +56,7 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 
 	node, err := clientset.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get node %s", err)
+		return nil, fmt.Errorf("failed to get node %w", err)
 	}
 
 	// get a CRI client to talk to the CRI handling pods in this node
@@ -78,20 +78,20 @@ func newCRIClient(node *v1.Node) (containerutils.CRIClient, error) {
 	criVersion := node.Status.NodeInfo.ContainerRuntimeVersion
 	list := strings.Split(criVersion, "://")
 	if len(list) < 1 {
-		return nil, fmt.Errorf("Impossible to get CRI type from %s", criVersion)
+		return nil, fmt.Errorf("impossible to get CRI type from %s", criVersion)
 	}
 
 	criType := list[0]
 
 	switch criType {
 	case "docker":
-		return docker.NewDockerClient(docker.DEFAULT_SOCKET_PATH)
+		return docker.NewDockerClient(docker.DefaultSocketPath)
 	case "containerd":
-		return containerd.NewContainerdClient(containerd.DEFAULT_SOCKET_PATH)
+		return containerd.NewContainerdClient(containerd.DefaultSocketPath)
 	case "cri-o":
-		return crio.NewCrioClient(crio.DEFAULT_SOCKET_PATH)
+		return crio.NewCrioClient(crio.DefaultSocketPath)
 	default:
-		return nil, fmt.Errorf("Unknown '%s' cri", criType)
+		return nil, fmt.Errorf("unknown '%s' cri", criType)
 	}
 }
 
@@ -129,7 +129,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 			continue
 		}
 
-		pid, err := k.criClient.PidFromContainerId(s.ContainerID)
+		pid, err := k.criClient.PidFromContainerID(s.ContainerID)
 		if err != nil {
 			log.Warnf("Skip pod %s/%s: cannot find pid: %v", pod.GetNamespace(), pod.GetName(), err)
 			continue

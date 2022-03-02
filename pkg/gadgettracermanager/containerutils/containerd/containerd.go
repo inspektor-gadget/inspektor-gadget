@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	DEFAULT_SOCKET_PATH = "/run/containerd/containerd.sock"
-	DEFAULT_TIMEOUT     = 2 * time.Second
+	DefaultSocketPath = "/run/containerd/containerd.sock"
+	DefaultTimeout    = 2 * time.Second
 )
 
 type ContainerdClient struct {
@@ -41,7 +41,7 @@ func NewContainerdClient(path string) (*ContainerdClient, error) {
 		path,
 		grpc.WithInsecure(),
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", path, DEFAULT_TIMEOUT)
+			return net.DialTimeout("unix", path, DefaultTimeout)
 		}),
 	)
 	if err != nil {
@@ -63,9 +63,9 @@ func (c *ContainerdClient) Close() error {
 	return nil
 }
 
-func (c *ContainerdClient) PidFromContainerId(containerID string) (int, error) {
+func (c *ContainerdClient) PidFromContainerID(containerID string) (int, error) {
 	if !strings.HasPrefix(containerID, "containerd://") {
-		return -1, fmt.Errorf("Invalid CRI %s, it should be containerd", containerID)
+		return -1, fmt.Errorf("invalid CRI %s, it should be containerd", containerID)
 	}
 
 	containerID = strings.TrimPrefix(containerID, "containerd://")

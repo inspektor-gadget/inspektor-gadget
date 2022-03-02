@@ -94,7 +94,7 @@ var fsslowerCmd = &cobra.Command{
 
 func init() {
 	fsslowerCmd.Flags().UintVarP(
-		&fsslowerMinLatency, "min", "m", types.MIN_LATENCY_DEFAULT,
+		&fsslowerMinLatency, "min", "m", types.MinLatencyDefault,
 		"Min latency to trace, in ms",
 	)
 	fsslowerCmd.Flags().StringVarP(

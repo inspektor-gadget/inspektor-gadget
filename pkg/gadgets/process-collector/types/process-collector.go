@@ -20,8 +20,8 @@ import (
 
 type Event struct {
 	eventtypes.Event
-	Tgid    int    `json:"tgid"`
-	Pid     int    `json:"pid"`
-	Command string `json:"comm"`
-	MntNsId uint64 `json:"mntns"`
+	Tgid      int    `json:"tgid"`
+	Pid       int    `json:"pid"`
+	Command   string `json:"comm"`
+	MountNsID uint64 `json:"mntns"`
 }

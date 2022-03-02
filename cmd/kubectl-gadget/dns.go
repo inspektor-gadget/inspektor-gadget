@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	FMT_SHORT = "%-30.30s %-9.9s %-10.10s %s"
-	FMT_ALL   = "%-16.16s %-16.16s " + FMT_SHORT
+	FmtShortDNS = "%-30.30s %-9.9s %-10.10s %s"
+	FmtAllDNS   = "%-16.16s %-16.16s " + FmtShortDNS
 )
 
 var colLens = map[string]int{
@@ -43,13 +43,13 @@ var dnsCmd = &cobra.Command{
 		transform := transformLine
 
 		switch {
-		case params.OutputMode == utils.OutputModeJson: // don't print any header
+		case params.OutputMode == utils.OutputModeJSON: // don't print any header
 		case params.OutputMode == utils.OutputModeCustomColumns:
 			table := utils.NewTableFormater(params.CustomColumns, colLens)
 			fmt.Println(table.GetHeader())
 			transform = table.GetTransformFunc()
 		case params.AllNamespaces:
-			fmt.Printf(FMT_ALL+"\n",
+			fmt.Printf(FmtAllDNS+"\n",
 				"NODE",
 				"NAMESPACE",
 				"POD",
@@ -58,7 +58,7 @@ var dnsCmd = &cobra.Command{
 				"NAME",
 			)
 		default:
-			fmt.Printf(FMT_SHORT+"\n",
+			fmt.Printf(FmtShortDNS+"\n",
 				"POD",
 				"TYPE",
 				"QTYPE",
@@ -110,8 +110,8 @@ func transformLine(line string) string {
 		return fmt.Sprintf("Debug on node %s%s: %s", event.Node, podMsgSuffix, event.Message)
 	}
 	if params.AllNamespaces {
-		return fmt.Sprintf(FMT_ALL, event.Node, event.Namespace, event.Pod, event.PktType, event.QType, event.DNSName)
+		return fmt.Sprintf(FmtAllDNS, event.Node, event.Namespace, event.Pod, event.PktType, event.QType, event.DNSName)
 	} else {
-		return fmt.Sprintf(FMT_SHORT, event.Pod, event.PktType, event.QType, event.DNSName)
+		return fmt.Sprintf(FmtShortDNS, event.Pod, event.PktType, event.QType, event.DNSName)
 	}
 }

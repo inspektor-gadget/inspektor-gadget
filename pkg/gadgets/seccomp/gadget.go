@@ -406,7 +406,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 			func(event pubsub.PubSubEvent) {
 				// Ignore container creation events.
-				if event.Type != pubsub.EVENT_TYPE_REMOVE_CONTAINER {
+				if event.Type != pubsub.EventTypeRemoveContainer {
 					return
 				}
 				t.containerTerminated(traceCopy, event)

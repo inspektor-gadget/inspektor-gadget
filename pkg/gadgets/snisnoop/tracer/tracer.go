@@ -36,9 +36,9 @@ import (
 import "C"
 
 const (
-	BPF_PROG_NAME = "bpf_prog1"
-	BPF_MAP_NAME  = "events"
-	SO_ATTACH_BPF = 50
+	BPFProgName     = "bpf_prog1"
+	BPFMapName      = "events"
+	BPFSocketAttach = 50
 )
 
 type link struct {
@@ -100,14 +100,14 @@ func (t *Tracer) Attach(
 		return fmt.Errorf("failed to create BPF collection: %w", err)
 	}
 
-	rd, err := perf.NewReader(coll.Maps[BPF_MAP_NAME], os.Getpagesize())
+	rd, err := perf.NewReader(coll.Maps[BPFMapName], os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("failed to get a perf reader: %w", err)
 	}
 
-	prog, ok := coll.Programs[BPF_PROG_NAME]
+	prog, ok := coll.Programs[BPFProgName]
 	if !ok {
-		return fmt.Errorf("failed to find BPF program %q", BPF_PROG_NAME)
+		return fmt.Errorf("failed to find BPF program %q", BPFProgName)
 	}
 
 	sockFd, err := rawsock.OpenRawSock(pid)
@@ -115,7 +115,7 @@ func (t *Tracer) Attach(
 		return fmt.Errorf("failed to open raw socket: %w", err)
 	}
 
-	if err := syscall.SetsockoptInt(sockFd, syscall.SOL_SOCKET, SO_ATTACH_BPF, prog.FD()); err != nil {
+	if err := syscall.SetsockoptInt(sockFd, syscall.SOL_SOCKET, BPFSocketAttach, prog.FD()); err != nil {
 		return fmt.Errorf("failed to attach BPF program: %w", err)
 	}
 

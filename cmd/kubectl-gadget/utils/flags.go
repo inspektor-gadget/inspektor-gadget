@@ -41,11 +41,11 @@ func cobraInit() {
 
 const (
 	OutputModeColumns       = "columns"
-	OutputModeJson          = "json"
+	OutputModeJSON          = "json"
 	OutputModeCustomColumns = "custom-columns"
 )
 
-var supportedOutputModes = []string{OutputModeColumns, OutputModeJson, OutputModeCustomColumns}
+var supportedOutputModes = []string{OutputModeColumns, OutputModeJSON, OutputModeCustomColumns}
 
 // CommonFlags contains CLI flags common to several gadgets
 type CommonFlags struct {
@@ -148,7 +148,7 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		switch {
 		case params.OutputMode == OutputModeColumns:
 			fallthrough
-		case params.OutputMode == OutputModeJson:
+		case params.OutputMode == OutputModeJSON:
 			return nil
 		case strings.HasPrefix(params.OutputMode, OutputModeCustomColumns):
 			parts := strings.Split(params.OutputMode, "=")

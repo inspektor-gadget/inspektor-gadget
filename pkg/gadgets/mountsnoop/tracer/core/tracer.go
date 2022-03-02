@@ -40,7 +40,7 @@ import (
 
 //go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang mountsnoop ./bpf/mountsnoop.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
 
-const PERF_BUFFER_PAGES = 64
+const PerfBufferPages = 64
 
 type Tracer struct {
 	config        *tracer.Config
@@ -90,20 +90,20 @@ func (t *Tracer) start() error {
 	var err error
 	spec, err := loadMountsnoop()
 	if err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	filter_by_mnt_ns := false
+	filterByMntNs := false
 
 	if t.config.MountnsMap != "" {
-		filter_by_mnt_ns = true
+		filterByMntNs = true
 		m := spec.Maps["mount_ns_set"]
 		m.Pinning = ebpf.PinByName
 		m.Name = filepath.Base(t.config.MountnsMap)
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filter_by_mnt_ns,
+		"filter_by_mnt_ns": filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -117,32 +117,32 @@ func (t *Tracer) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	t.mountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_mount", t.objs.MountEntry)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
 	t.mountExitLink, err = link.Tracepoint("syscalls", "sys_exit_mount", t.objs.MountExit)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
 	t.umountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_umount", t.objs.UmountEntry)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
 	t.umountExitLink, err = link.Tracepoint("syscalls", "sys_exit_umount", t.objs.UmountExit)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.reader, err = perf.NewReader(t.objs.mountsnoopMaps.Events, PERF_BUFFER_PAGES*os.Getpagesize())
+	t.reader, err = perf.NewReader(t.objs.mountsnoopMaps.Events, PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("Error creating perf ring buffer: %w", err)
+		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
 
 	go t.run()
@@ -177,7 +177,7 @@ func (t *Tracer) run() {
 				Type: eventtypes.NORMAL,
 				Node: t.node,
 			},
-			MountNsId: uint64(eventC.mount_ns_id),
+			MountNsID: uint64(eventC.mount_ns_id),
 			Pid:       uint32(eventC.pid),
 			Tid:       uint32(eventC.tid),
 			Comm:      C.GoString(&eventC.comm[0]),
@@ -200,7 +200,7 @@ func (t *Tracer) run() {
 
 		event.Flags = tracer.DecodeFlags(uint64(eventC.flags))
 
-		container := t.resolver.LookupContainerByMntns(event.MountNsId)
+		container := t.resolver.LookupContainerByMntns(event.MountNsID)
 		if container != nil {
 			event.Container = container.Name
 			event.Pod = container.Podname

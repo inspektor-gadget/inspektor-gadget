@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	BPF_ITER_NAME = "dump_task"
+	BPFIterName = "dump_task"
 )
 
 func RunCollector(resolver gadgets.Resolver, node, mntnsmap string) ([]processcollectortypes.Event, error) {
@@ -37,8 +37,8 @@ func RunCollector(resolver gadgets.Resolver, node, mntnsmap string) ([]processco
 	if mntnsmap == "" {
 		prog = ebpfProg
 	} else {
-		if filepath.Dir(mntnsmap) != gadgets.PIN_PATH {
-			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PIN_PATH)
+		if filepath.Dir(mntnsmap) != gadgets.PinPath {
+			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PinPath)
 		}
 
 		prog = ebpfProgWithFilter
@@ -56,7 +56,7 @@ func RunCollector(resolver gadgets.Resolver, node, mntnsmap string) ([]processco
 	coll, err := ebpf.NewCollectionWithOptions(spec,
 		ebpf.CollectionOptions{
 			Maps: ebpf.MapOptions{
-				PinPath: gadgets.PIN_PATH,
+				PinPath: gadgets.PinPath,
 			},
 		},
 	)
@@ -64,9 +64,9 @@ func RunCollector(resolver gadgets.Resolver, node, mntnsmap string) ([]processco
 		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}
 
-	dumpTask, ok := coll.Programs[BPF_ITER_NAME]
+	dumpTask, ok := coll.Programs[BPFIterName]
 	if !ok {
-		return nil, fmt.Errorf("failed to find BPF iterator %q", BPF_ITER_NAME)
+		return nil, fmt.Errorf("failed to find BPF iterator %q", BPFIterName)
 	}
 	dumpTaskIter, err := link.AttachIter(link.IterOptions{
 		Program: dumpTask,
@@ -109,10 +109,10 @@ func RunCollector(resolver gadgets.Resolver, node, mntnsmap string) ([]processco
 				Pod:       container.Podname,
 				Container: container.Name,
 			},
-			Tgid:    tgid,
-			Pid:     pid,
-			Command: command,
-			MntNsId: mntnsid,
+			Tgid:      tgid,
+			Pid:       pid,
+			Command:   command,
+			MountNsID: mntnsid,
 		})
 	}
 

@@ -21,7 +21,7 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	MountNsId uint64   `json:"mntnsid,omitempty"`
+	MountNsID uint64   `json:"mntnsid,omitempty"`
 	Pid       uint32   `json:"pid,omitempty"`
 	Tid       uint32   `json:"tid,omitempty"`
 	Comm      string   `json:"comm,omitempty"`

@@ -78,18 +78,18 @@ type Stats struct {
 	WriteBytes uint64 `json:"wbytes,omitempty"`
 	Pid        uint32 `json:"pid,omitempty"`
 	Tid        uint32 `json:"tid,omitempty"`
-	MountNsId  uint64 `json:"mountnsid,omitempty"`
+	MountNsID  uint64 `json:"mountnsid,omitempty"`
 	Filename   string `json:"filename,omitempty"`
 	Comm       string `json:"comm,omitempty"`
 	FileType   byte   `json:"file_type,omitempty"`
 }
 
-func SortStats(stats []Stats, sort_by SortBy) {
+func SortStats(stats []Stats, sortBy SortBy) {
 	sort.Slice(stats, func(i, j int) bool {
 		a := stats[i]
 		b := stats[j]
 
-		switch sort_by {
+		switch sortBy {
 		case READS:
 			return a.Reads > b.Reads
 		case WRITES:

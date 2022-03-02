@@ -28,8 +28,8 @@ import (
 import "C"
 
 const (
-	BPF_PROG_NAME = "tracepoint__raw_syscalls__sys_enter"
-	BPF_MAP_NAME  = "syscalls_per_mntns"
+	BPFProgName = "tracepoint__raw_syscalls__sys_enter"
+	BPFMapName  = "syscalls_per_mntns"
 )
 
 type Tracer struct {
@@ -46,24 +46,24 @@ type Tracer struct {
 func NewTracer() (*Tracer, error) {
 	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(ebpfProg))
 	if err != nil {
-		return nil, fmt.Errorf("failed to load asset: %s", err)
+		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
 
 	coll, err := ebpf.NewCollection(spec)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create BPF collection: %s", err)
+		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}
 
 	t := &Tracer{
 		collection: coll,
-		seccompMap: coll.Maps[BPF_MAP_NAME],
+		seccompMap: coll.Maps[BPFMapName],
 	}
 
 	t.seccompMap.Update(uint64(0), [C.SYSCALLS_MAP_VALUE_SIZE]byte{}, ebpf.UpdateAny)
 
-	tracepointProg, ok := coll.Programs[BPF_PROG_NAME]
+	tracepointProg, ok := coll.Programs[BPFProgName]
 	if !ok {
-		return nil, fmt.Errorf("failed to find BPF program %q", BPF_PROG_NAME)
+		return nil, fmt.Errorf("failed to find BPF program %q", BPFProgName)
 	}
 
 	t.progLink, err = link.AttachRawTracepoint(link.RawTracepointOptions{
@@ -71,7 +71,7 @@ func NewTracer() (*Tracer, error) {
 		Program: tracepointProg,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to open tracepoint: %s", err)
+		return nil, fmt.Errorf("failed to open tracepoint: %w", err)
 	}
 
 	return t, nil

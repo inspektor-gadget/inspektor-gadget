@@ -24,18 +24,11 @@ import (
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
-const (
-	GADGET_NAME         = "biolatency"
-	GADGET_OUTPUTMODE   = "Status"
-	GADGET_OUTPUTSTATE  = "Completed"
-	GADGET_INITIALSTATE = "Started"
-)
-
 var biolatencyTraceConfig = &utils.TraceConfig{
-	GadgetName:        GADGET_NAME,
-	TraceOutputMode:   GADGET_OUTPUTMODE,
-	TraceOutputState:  GADGET_OUTPUTSTATE,
-	TraceInitialState: GADGET_INITIALSTATE,
+	GadgetName:        "biolatency",
+	TraceOutputMode:   "Status",
+	TraceOutputState:  "Completed",
+	TraceInitialState: "Started",
 	CommonFlags:       &params,
 }
 

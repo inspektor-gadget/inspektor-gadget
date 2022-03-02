@@ -28,7 +28,7 @@ type Event struct {
 	Port      uint16 `json:"port,omitempty"`
 	Options   string `json:"opts,omitempty"`
 	Interface string `json:"if,omitempty"`
-	MountNsId uint64 `json:"mountnsid,omitempty"`
+	MountNsID uint64 `json:"mountnsid,omitempty"`
 }
 
 func Base(ev eventtypes.Event) Event {

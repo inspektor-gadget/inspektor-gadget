@@ -508,7 +508,7 @@ func WithRuncFanotify() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		runcNotifier, err := runcfanotify.NewRuncNotifier(func(notif runcfanotify.ContainerEvent) {
 			switch notif.Type {
-			case runcfanotify.EVENT_TYPE_ADD_CONTAINER:
+			case runcfanotify.EventTypeAddContainer:
 				mountSources := []string{}
 				for _, m := range notif.ContainerConfig.Mounts {
 					mountSources = append(mountSources, m.Source)
@@ -520,7 +520,7 @@ func WithRuncFanotify() ContainerCollectionOption {
 				}
 
 				cc.AddContainer(containerDefinition)
-			case runcfanotify.EVENT_TYPE_REMOVE_CONTAINER:
+			case runcfanotify.EventTypeRemoveContainer:
 				cc.RemoveContainer(notif.ContainerID)
 			}
 		})
@@ -557,10 +557,10 @@ func WithCgroupEnrichment() ContainerCollectionOption {
 				return true
 			}
 			cgroupPathV2WithMountpoint, _ := containerutils.CgroupPathV2AddMountpoint(cgroupPathV2)
-			cgroupId, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
+			cgroupID, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
 
 			container.CgroupPath = cgroupPathV2WithMountpoint
-			container.CgroupId = cgroupId
+			container.CgroupId = cgroupID
 			container.CgroupV1 = cgroupPathV1
 			container.CgroupV2 = cgroupPathV2
 			return true

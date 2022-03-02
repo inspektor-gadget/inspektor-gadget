@@ -55,8 +55,8 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -80,7 +80,8 @@ type Tracer struct {
 }
 
 func NewTracer(config *tracer.Config, resolver containercollection.ContainerResolver,
-	eventCallback func(types.Event), node string) (*Tracer, error) {
+	eventCallback func(types.Event), node string,
+) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
 		resolver:      resolver,
@@ -113,33 +114,33 @@ func (t *Tracer) Stop() {
 func (t *Tracer) start() error {
 	spec, err := loadBindsnoop()
 	if err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	filter_by_mnt_ns := false
+	filterByMntNs := false
 
 	if t.config.MountnsMap != "" {
-		filter_by_mnt_ns = true
+		filterByMntNs = true
 		m := spec.Maps["mount_ns_set"]
 		m.Pinning = ebpf.PinByName
 		m.Name = filepath.Base(t.config.MountnsMap)
 	}
 
-	filter_by_port := false
+	filterByPort := false
 	if len(t.config.TargetPorts) > 0 {
-		filter_by_port = true
+		filterByPort = true
 
 		m := spec.Maps["ports"]
 		for _, port := range t.config.TargetPorts {
-			m.Contents = append(m.Contents, ebpf.MapKV{port, port})
+			m.Contents = append(m.Contents, ebpf.MapKV{Key: port, Value: port})
 		}
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filter_by_mnt_ns,
-		"target_pid": t.config.TargetPid,
-		"filter_by_port": filter_by_port,
-		"ignore_errors": t.config.IgnoreErrors,
+		"filter_by_mnt_ns": filterByMntNs,
+		"target_pid":       t.config.TargetPid,
+		"filter_by_port":   filterByPort,
+		"ignore_errors":    t.config.IgnoreErrors,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -153,32 +154,32 @@ func (t *Tracer) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	t.ipv4Entry, err = link.Kprobe("inet_bind", t.objs.Ipv4BindEntry)
 	if err != nil {
-		return fmt.Errorf("Error opening ipv4 kprobe: %w", err)
+		return fmt.Errorf("error opening ipv4 kprobe: %w", err)
 	}
 
 	t.ipv4Exit, err = link.Kretprobe("inet_bind", t.objs.Ipv4BindExit)
 	if err != nil {
-		return fmt.Errorf("Error opening ipv4 kprobe: %w", err)
+		return fmt.Errorf("error opening ipv4 kprobe: %w", err)
 	}
 
 	t.ipv6Entry, err = link.Kprobe("inet6_bind", t.objs.Ipv6BindEntry)
 	if err != nil {
-		return fmt.Errorf("Error opening ipv6 kprobe: %w", err)
+		return fmt.Errorf("error opening ipv6 kprobe: %w", err)
 	}
 
 	t.ipv6Exit, err = link.Kretprobe("inet6_bind", t.objs.Ipv6BindExit)
 	if err != nil {
-		return fmt.Errorf("Error opening ipv6 kprobe: %w", err)
+		return fmt.Errorf("error opening ipv6 kprobe: %w", err)
 	}
 
 	t.reader, err = perf.NewReader(t.objs.bindsnoopMaps.Events, os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("Error creating perf ring buffer: %w", err)
+		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
 
 	go t.run()
@@ -303,10 +304,10 @@ func (t *Tracer) run() {
 			Options:   optionsToString(uint8(eventC.opts)),
 			Interface: interfaceString,
 			Comm:      C.GoString(&eventC.task[0]),
-			MountNsId: uint64(eventC.mount_ns_id),
+			MountNsID: uint64(eventC.mount_ns_id),
 		}
 
-		container := t.resolver.LookupContainerByMntns(event.MountNsId)
+		container := t.resolver.LookupContainerByMntns(event.MountNsID)
 		if container != nil {
 			event.Container = container.Name
 			event.Pod = container.Podname

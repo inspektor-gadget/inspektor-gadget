@@ -15,6 +15,7 @@
 package k8sutil
 
 import (
+	"errors"
 	"path/filepath"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -34,7 +35,7 @@ func NewClientset(kubeconfigPath string) (*kubernetes.Clientset, error) {
 	} else {
 		// kubeconfig from a pod Service Account token
 		config, err = rest.InClusterConfig()
-		if err == rest.ErrNotInCluster {
+		if errors.Is(err, rest.ErrNotInCluster) {
 			// kubeconfig from $HOME/.kube/config
 			if home := homedir.HomeDir(); home != "" {
 				config, err = clientcmd.BuildConfigFromFlags("", filepath.Join(home, ".kube", "config"))

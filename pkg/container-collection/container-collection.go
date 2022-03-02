@@ -88,7 +88,7 @@ initialContainersLoop:
 
 		cc.containers.Store(container.Id, container)
 		if cc.pubsub != nil {
-			cc.pubsub.Publish(pubsub.EVENT_TYPE_ADD_CONTAINER, *container)
+			cc.pubsub.Publish(pubsub.EventTypeAddContainer, *container)
 		}
 	}
 	cc.initialContainers = nil
@@ -115,7 +115,7 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 		return
 	}
 
-	cc.pubsub.Publish(pubsub.EVENT_TYPE_REMOVE_CONTAINER, *v.(*pb.ContainerDefinition))
+	cc.pubsub.Publish(pubsub.EventTypeRemoveContainer, *v.(*pb.ContainerDefinition))
 }
 
 // AddContainer adds a container to the collection.
@@ -134,7 +134,7 @@ func (cc *ContainerCollection) AddContainer(container *pb.ContainerDefinition) {
 		return
 	}
 	if cc.pubsub != nil {
-		cc.pubsub.Publish(pubsub.EVENT_TYPE_ADD_CONTAINER, *container)
+		cc.pubsub.Publish(pubsub.EventTypeAddContainer, *container)
 	}
 }
 

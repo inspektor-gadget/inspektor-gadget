@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	HISTORY_SIZE     = 100
-	SUB_CHANNEL_SIZE = 250
+	HistorySize    = 100
+	SubChannelSize = 250
 )
 
 type TimestampedLine struct {
@@ -30,7 +30,6 @@ type TimestampedLine struct {
 	EventLost bool
 }
 
-// GadgetStream
 type GadgetStream struct {
 	mu sync.RWMutex
 
@@ -56,7 +55,7 @@ func (g *GadgetStream) Subscribe() chan TimestampedLine {
 		return nil
 	}
 
-	ch := make(chan TimestampedLine, SUB_CHANNEL_SIZE)
+	ch := make(chan TimestampedLine, SubChannelSize)
 	for _, l := range g.previousLines {
 		ch <- l
 	}
@@ -93,7 +92,7 @@ func (g *GadgetStream) Publish(line string) {
 		Timestamp: time.Now(),
 	}
 
-	if len(g.previousLines) == HISTORY_SIZE {
+	if len(g.previousLines) == HistorySize {
 		// Force new array allocation to avoid an ever growing underlying array
 		// TODO: check possible performance issue
 		g.previousLines = append([]TimestampedLine{}, g.previousLines[1:]...)

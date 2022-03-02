@@ -138,12 +138,12 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 func (t *Trace) stop() error {
 	if !t.started {
-		return errors.New("Not started")
+		return errors.New("not started")
 	}
 
 	err := t.cmd.Process.Signal(syscall.SIGINT)
 	if err != nil {
-		return fmt.Errorf("Failed to send SIGINT to process: %w", err)
+		return fmt.Errorf("failed to send SIGINT to process: %w", err)
 	}
 
 	timeout := time.After(2 * time.Second)

@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	BPF_MAP_NAME = "containers"
+	BPFMapName = "containers"
 )
 
 func CreateContainersMap(pinPath string) (*ebpf.Map, error) {
@@ -39,5 +39,5 @@ func CreateContainersMap(pinPath string) (*ebpf.Map, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}
-	return coll.Maps[BPF_MAP_NAME], nil
+	return coll.Maps[BPFMapName], nil
 }

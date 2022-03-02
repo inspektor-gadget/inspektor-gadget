@@ -55,7 +55,7 @@ The following parameters are supported:
 - filesystem: Which filesystem to trace [%s]
 - minlatency: Min latency to trace, in ms. (default %d)`
 
-	return fmt.Sprintf(t, strings.Join(validFilesystems, ", "), types.MIN_LATENCY_DEFAULT)
+	return fmt.Sprintf(t, strings.Join(validFilesystems, ", "), types.MinLatencyDefault)
 }
 
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
@@ -126,7 +126,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	minLatency := types.MIN_LATENCY_DEFAULT
+	minLatency := types.MinLatencyDefault
 
 	val, ok := params["minlatency"]
 	if ok {

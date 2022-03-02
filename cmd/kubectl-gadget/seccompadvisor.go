@@ -158,7 +158,7 @@ func getSeccompProfilesName(traceID string) ([]string, error) {
 	cli := mgr.GetClient()
 
 	profilesList := &seccompprofile.SeccompProfileList{}
-	err = cli.List(context.TODO(), profilesList, client.MatchingLabels{utils.GLOBAL_TRACE_ID: traceID})
+	err = cli.List(context.TODO(), profilesList, client.MatchingLabels{utils.GlobalTraceID: traceID})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list seccomp profiles: %w", err)
 	}

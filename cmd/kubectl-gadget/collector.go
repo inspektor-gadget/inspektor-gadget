@@ -142,7 +142,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) error {
 		})
 
 		switch params.OutputMode {
-		case utils.OutputModeJson:
+		case utils.OutputModeJSON:
 			b, err := json.MarshalIndent(allProcesses, "", "  ")
 			if err != nil {
 				return utils.WrapInErrMarshalOutput(err)
@@ -250,7 +250,7 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) error {
 		})
 
 		switch params.OutputMode {
-		case utils.OutputModeJson:
+		case utils.OutputModeJSON:
 			b, err := json.MarshalIndent(allSockets, "", "  ")
 			if err != nil {
 				return utils.WrapInErrMarshalOutput(err)

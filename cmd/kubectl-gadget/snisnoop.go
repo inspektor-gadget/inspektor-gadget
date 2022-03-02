@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	FMT_SNISNOOP_ALL   = "%-16.16s %-16.16s %-30.30s %s"
-	FMT_SNISNOOP_SHORT = "%-30.30s %s"
+	FmtAllSnisnoop   = "%-16.16s %-16.16s %-30.30s %s"
+	FmtShortSniSnoop = "%-30.30s %s"
 )
 
 var colSnisnoopLens = map[string]int{
@@ -42,20 +42,20 @@ var snisnoopCmd = &cobra.Command{
 		transform := snisnoopTransformLine
 
 		switch {
-		case params.OutputMode == utils.OutputModeJson: // don't print any header
+		case params.OutputMode == utils.OutputModeJSON: // don't print any header
 		case params.OutputMode == utils.OutputModeCustomColumns:
 			table := utils.NewTableFormater(params.CustomColumns, colSnisnoopLens)
 			fmt.Println(table.GetHeader())
 			transform = table.GetTransformFunc()
 		case params.AllNamespaces:
-			fmt.Printf(FMT_SNISNOOP_ALL+"\n",
+			fmt.Printf(FmtAllSnisnoop+"\n",
 				"NODE",
 				"NAMESPACE",
 				"POD",
 				"NAME",
 			)
 		default:
-			fmt.Printf(FMT_SNISNOOP_SHORT+"\n",
+			fmt.Printf(FmtShortSniSnoop+"\n",
 				"POD",
 				"NAME",
 			)
@@ -104,8 +104,8 @@ func snisnoopTransformLine(line string) string {
 		return fmt.Sprintf("Debug on node %s%s: %s", event.Node, podMsgSuffix, event.Message)
 	}
 	if params.AllNamespaces {
-		return fmt.Sprintf(FMT_SNISNOOP_ALL, event.Node, event.Namespace, event.Pod, event.Name)
+		return fmt.Sprintf(FmtAllSnisnoop, event.Node, event.Namespace, event.Pod, event.Name)
 	} else {
-		return fmt.Sprintf(FMT_SNISNOOP_SHORT, event.Pod, event.Name)
+		return fmt.Sprintf(FmtShortSniSnoop, event.Pod, event.Name)
 	}
 }

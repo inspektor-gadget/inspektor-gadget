@@ -31,10 +31,10 @@ import (
 )
 
 const (
-	MAX_ROWS_DEFAULT  = 20
-	INTERVAL_DEFAULT  = 1
-	SORT_BY_DEFAULT   = types.RBYTES
-	ALL_FILES_DEFAULT = false
+	MaxRowsDefault  = 20
+	IntervalDefault = 1
+	SortByDefault   = types.RBYTES
+	AllFilesDefault = false
 )
 
 type Trace struct {
@@ -61,8 +61,8 @@ The following parameters are supported:
  - interval: Output interval, in seconds. (default %d)
  - max_rows: Maximum rows to print. (default %d)
  - sort: The field to sort the results by (%s). (default %s)`
-	return fmt.Sprintf(t, INTERVAL_DEFAULT, MAX_ROWS_DEFAULT,
-		strings.Join(types.SortBySlice, ","), SORT_BY_DEFAULT)
+	return fmt.Sprintf(t, IntervalDefault, MaxRowsDefault,
+		strings.Join(types.SortBySlice, ","), SortByDefault)
 }
 
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
@@ -109,10 +109,10 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
-	maxRows := MAX_ROWS_DEFAULT
-	intervalSeconds := INTERVAL_DEFAULT
-	sortBy := SORT_BY_DEFAULT
-	allFiles := ALL_FILES_DEFAULT
+	maxRows := MaxRowsDefault
+	intervalSeconds := IntervalDefault
+	sortBy := SortByDefault
+	allFiles := AllFilesDefault
 
 	if trace.Spec.Parameters != nil {
 		params := trace.Spec.Parameters
