@@ -75,6 +75,12 @@ We should probably add it to our pod template for `nice` to work. We can also dr
 all other capabilites from the default list (see link above) since `nice`
 did not use them:
 
+The meaning of the columns is:
+
+* `CAP`: capability number.
+* `NAME`: capability name in a human friendly format.
+* `AUDIT`: whether the kernel should audit the security request or not.
+
 ```bash
 $ cat docs/examples/app-set-priority-locked-down.yaml
 apiVersion: apps/v1

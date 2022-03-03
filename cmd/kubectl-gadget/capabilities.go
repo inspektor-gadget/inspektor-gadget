@@ -87,7 +87,7 @@ func capabilitiesTransformLine(line string) string {
 	case utils.OutputModeColumns:
 		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-6d %-16s %-4d %-16s %-6d",
 			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Uid, e.Pid, e.Comm, e.Cap, e.CapName, e.Audit))
+			e.UID, e.Pid, e.Comm, e.Cap, e.CapName, e.Audit))
 	case utils.OutputModeCustomColumns:
 		for _, col := range params.CustomColumns {
 			switch col {
@@ -101,6 +101,8 @@ func capabilitiesTransformLine(line string) string {
 				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
 			case "pid":
 				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
+			case "uid":
+				sb.WriteString(fmt.Sprintf("%-6d", e.UID))
 			case "comm":
 				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
 			case "cap":
@@ -132,6 +134,8 @@ func getCustomCapabilitiesColsHeader(cols []string) string {
 			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
 		case "pid":
 			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+		case "uid":
+			sb.WriteString(fmt.Sprintf("%-6s", "UID"))
 		case "comm":
 			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
 		case "cap":
