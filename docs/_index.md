@@ -20,6 +20,6 @@ programs are and how Inspektor Gadget uses them is briefly explained here:
 ## Further Reading
 
 * [Read more about the architecture](architecture.md)
-* [Learn how to install Inspektor Gadget](installation.md)
+* [Learn how to install Inspektor Gadget](install.md)
 * [Kernel requirements for each gadget](requirements.md)
 * [Using `Trace` resources](custom-resources.md)
