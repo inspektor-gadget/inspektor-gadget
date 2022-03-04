@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2022 Francis Laniel <flaniel@linux.microsoft.com>
-#include <vmlinux.h>
+#include <vmlinux/vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
 #include "biotop.h"
 #include "maps.bpf.h"
+
+const volatile bool filter_by_mnt_ns = false;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -29,14 +31,31 @@ struct {
 	__type(value, struct val_t);
 } counts SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1024);
+	__uint(key_size, sizeof(u64));
+	__uint(value_size, sizeof(u32));
+} mount_ns_set SEC(".maps");
+
 SEC("kprobe/blk_account_io_start")
 int BPF_KPROBE(blk_account_io_start, struct request *req)
 {
+	struct task_struct *task;
+	u64 mntns_id;
+
+	task = (struct task_struct*) bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+		return 0;
+
 	struct who_t who = {};
 
 	// cache PID and comm by-req
 	bpf_get_current_comm(&who.name, sizeof(who.name));
 	who.pid = bpf_get_current_pid_tgid() >> 32;
+	who.mntnsid = mntns_id;
 	bpf_map_update_elem(&whobyreq, &req, &who, 0);
 
 	return 0;
@@ -47,6 +66,14 @@ int BPF_KPROBE(blk_mq_start_request, struct request *req)
 {
 	/* time block I/O */
 	struct start_req_t start_req;
+	struct task_struct *task;
+	u64 mntns_id;
+
+	task = (struct task_struct*) bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+		return 0;
 
 	start_req.ts = bpf_ktime_get_ns();
 	start_req.data_len = BPF_CORE_READ(req, __data_len);
@@ -83,6 +110,7 @@ int BPF_KPROBE(blk_account_io_done, struct request *req, u64 now)
 	whop = bpf_map_lookup_elem(&whobyreq, &req);
 	if (whop) {
 		info.pid = whop->pid;
+		info.mntnsid = whop->mntnsid;
 		__builtin_memcpy(&info.name, whop->name, sizeof(info.name));
 	}
 

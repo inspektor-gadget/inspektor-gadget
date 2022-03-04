@@ -15,12 +15,14 @@ struct start_req_t {
 
 // for saving process info by request
 struct who_t {
+	__u64 mntnsid;
 	__u32 pid;
 	char name[TASK_COMM_LEN];
 };
 
 // the key for the output summary
 struct info_t {
+	__u64 mntnsid;
 	__u32 pid;
 	int rwflag;
 	int major;
