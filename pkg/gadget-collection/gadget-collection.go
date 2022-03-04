@@ -19,6 +19,7 @@ import (
 	auditseccomp "github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit-seccomp"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biotop"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop"
@@ -44,6 +45,7 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 		"audit-seccomp":          auditseccomp.NewFactory(),
 		"bindsnoop":              bindsnoop.NewFactory(),
 		"biolatency":             biolatency.NewFactory(),
+		"biotop":                 biotop.NewFactory(),
 		"capabilities":           capabilities.NewFactory(),
 		"dns":                    dns.NewFactory(),
 		"execsnoop":              execsnoop.NewFactory(),
