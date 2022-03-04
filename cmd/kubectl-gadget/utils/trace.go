@@ -440,16 +440,19 @@ Loop:
 	return retEvent, nil
 }
 
-// getTraceWatcher returns a watcher on trace(s) whom ID was given as parameter.
-// This watcher can then be used to wait on State.Output modification.
-func getTraceWatcher(traceID string) (watch.Interface, error) {
+// getTraceWatcher returns a watcher on trace(s) for the received ID.
+// If resourceVersion is set, the watcher will watch for traces which have at
+// least the received ResourceVersion, otherwise it will watch all traces.
+// This watcher can then be used to wait until the State.Output is modified.
+func getTraceWatcher(traceID, resourceVersion string) (watch.Interface, error) {
 	traceClient, err := getTraceClient()
 	if err != nil {
 		return nil, err
 	}
 
 	watchOptions := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
+		LabelSelector:   fmt.Sprintf("%s=%s", GLOBAL_TRACE_ID, traceID),
+		ResourceVersion: resourceVersion,
 	}
 
 	watcher, err := traceClient.GadgetV1alpha1().Traces("gadget").Watch(context.TODO(), watchOptions)
@@ -463,93 +466,150 @@ func getTraceWatcher(traceID string) (watch.Interface, error) {
 // waitForCondition waits for the traces with the ID received as parameter to
 // satisfy the conditionFunction received as parameter.
 func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Trace) bool) (*gadgetv1alpha1.TraceList, error) {
+	satisfiedTraces := make(map[string]*gadgetv1alpha1.Trace)
+	erroredTraces := make(map[string]*gadgetv1alpha1.Trace)
 	var returnedTraces gadgetv1alpha1.TraceList
+	nodeWarnings := make(map[string]string)
+	nodeErrors := make(map[string]string)
 
-	tracesNumber := 0
-	watchedTracesNumber := 0
-
-	// Get a watcher on all the traces which have the same ID.
-	// Indeed, all the traces on different nodes but linked to one gadget share
-	// the same ID.
-	watcher, err := getTraceWatcher(traceID)
+	traceList, err := getTraceListFromID(traceID)
 	if err != nil {
 		return nil, err
 	}
 
-	nodeErrors := make(map[string]string)
-	nodeWarnings := make(map[string]string)
-
-	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), traceTimeout)
-	_, err = untilWithoutRetry(ctx, watcher, func(event watch.Event) (bool, error) {
-		// This function will be executed until:
-		// 1. The number of watched traces equals the number of traces, i.e. we
-		// dealt with the traces which interest us.
-		// 2. Or it returns an error.
-		// 3. Or time out is fired.
-		// NOTE In case 2 and 3, it exists, at least, one trace we did not deal
-		// with.
-
-		// Deal particularly with error.
-		if event.Type == watch.Error {
-			return false, err
-		}
-
-		// We are only interested in Added and Modified event, as we want
-		// Status.State value to change.
-		// More particularly, we monitor Added event for gadget like dns and
-		// Modified for gadget like seccompadvisor.
-		if event.Type != watch.Added && event.Type != watch.Modified {
-			return false, nil
-		}
-
-		if event.Type == watch.Added {
-			// The API adds fake watch.Added events, so we use them to count the
-			// number of trace:
-			// To establish initial state, the watch begins with synthetic "Added"
-			// events of all resources instances that exist at the starting resource
-			// version
-			tracesNumber++
-		}
-
-		trace := event.Object.(*gadgetv1alpha1.Trace)
-
+	// Maybe some traces already satisfy conditionFunction?
+	for i, trace := range traceList.Items {
 		if trace.Status.OperationWarning != "" {
+			// The trace can have a warning but satisfies conditionFunction.
+			// So, we do not add it to the map here.
 			nodeWarnings[trace.Spec.Node] = trace.Status.OperationWarning
 		}
 
 		if trace.Status.OperationError != "" {
-			watchedTracesNumber++
+			erroredTraces[trace.ObjectMeta.Name] = &traceList.Items[i]
 
-			nodeErrors[trace.Spec.Node] = trace.Status.OperationError
-
-			return false, nil
+			continue
 		}
 
-		// If the trace does not satisfy the condition function, we are not
-		// interested.
-		if !conditionFunction(trace) {
-			return false, nil
+		if !conditionFunction(&trace) {
+			continue
 		}
 
-		watchedTracesNumber++
-		// If the current trace matches our filter we add it to the list of trace
-		// we will return.
-		returnedTraces.Items = append(returnedTraces.Items, *trace)
+		satisfiedTraces[trace.ObjectMeta.Name] = &traceList.Items[i]
+	}
 
-		return watchedTracesNumber == tracesNumber, nil
-	})
-	cancel()
+	tracesNumber := len(traceList.Items)
+
+	// We only watch the traces if there are some which did not already satisfy
+	// the conditionFunction.
+	if len(satisfiedTraces)+len(erroredTraces) < tracesNumber {
+		var watcher watch.Interface
+
+		// We will need to watch events on them.
+		// For this, we will get a watcher on all the traces which share the same
+		// ID.
+		// Get a watcher on all the traces which have the same ID.
+		// Indeed, all the traces on different nodes but linked to one gadget share
+		// the same ID.
+		// We will also begin to monitor events since the above GET of the traces
+		// list.
+		watcher, err = getTraceWatcher(traceID, traceList.ListMeta.ResourceVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), traceTimeout)
+		_, err = untilWithoutRetry(ctx, watcher, func(event watch.Event) (bool, error) {
+			// This function will be executed until:
+			// 1. The number of watched traces equals the number of traces to watch,
+			// i.e. we dealt with the traces which interest us.
+			// 2. Or it returns an error.
+			// 3. Or time out is fired.
+			// NOTE In case 2 and 3, it exists, at least, one trace we did not deal
+			// with.
+			switch event.Type {
+			case watch.Deleted:
+				// If for some strange reasons (e.g. users deleted a trace during this
+				// operation) a trace is deleted, we need to take care of this by
+				// decrementing the tracesNumber.
+				// Otherwise we would still wait for the old number and we would
+				// timeout.
+				tracesNumber--
+
+				trace, _ := event.Object.(*gadgetv1alpha1.Trace)
+				traceName := trace.ObjectMeta.Name
+
+				// We also remove it from the maps to avoid returning a deleted trace
+				// and timeing out.
+				delete(satisfiedTraces, traceName)
+				delete(erroredTraces, traceName)
+
+				return false, nil
+			case watch.Modified:
+				// We will deal with this type of event below
+			case watch.Error:
+				// Deal particularly with error.
+				return false, fmt.Errorf("Received event is an error one: %v", event)
+			case watch.Added:
+				// createTraces() creates traces synchronously.
+				// So, if a watch.Added event occurs it means there is a problem (e.g.
+				// the user creates a trace by snooping on the traceID of existing
+				// traces).
+				return false, fmt.Errorf("No traces with the given traceID (%s) should be created", traceID)
+			default:
+				// We are not interested in other event types.
+				return false, nil
+			}
+
+			trace, _ := event.Object.(*gadgetv1alpha1.Trace)
+
+			if trace.Status.OperationWarning != "" {
+				// The trace can have a warning but satisfies conditionFunction.
+				// So, we do not add it to the map here.
+				nodeWarnings[trace.Spec.Node] = trace.Status.OperationWarning
+			}
+
+			if trace.Status.OperationError != "" {
+				erroredTraces[trace.ObjectMeta.Name] = trace
+
+				// If the trace satisfied the function, we do not care now because it
+				// has an error.
+				delete(satisfiedTraces, trace.ObjectMeta.Name)
+
+				return len(satisfiedTraces)+len(erroredTraces) == tracesNumber, nil
+			}
+
+			// If the trace does not satisfy the condition function, we are not
+			// interested.
+			if !conditionFunction(trace) {
+				return false, nil
+			}
+
+			satisfiedTraces[trace.ObjectMeta.Name] = trace
+
+			return len(satisfiedTraces)+len(erroredTraces) == tracesNumber, nil
+		})
+		cancel()
+	}
+
+	for _, trace := range erroredTraces {
+		nodeErrors[trace.Spec.Node] = trace.Status.OperationError
+	}
 
 	// We print errors whatever happened.
-	defer printTraceFeedback(nodeErrors, tracesNumber)
+	printTraceFeedback(nodeErrors, tracesNumber)
 
 	// We print warnings only if all trace failed.
-	if len(returnedTraces.Items) == 0 {
+	if len(satisfiedTraces) == 0 {
 		printTraceFeedback(nodeWarnings, tracesNumber)
 	}
 
 	if err != nil {
 		return nil, err
+	}
+
+	for _, trace := range satisfiedTraces {
+		returnedTraces.Items = append(returnedTraces.Items, *trace)
 	}
 
 	return &returnedTraces, nil
