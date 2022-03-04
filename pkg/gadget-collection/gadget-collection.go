@@ -16,6 +16,7 @@ package gadgetcollection
 
 import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop"
@@ -36,6 +37,7 @@ import (
 
 func TraceFactories() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
+		"bindsnoop":              bindsnoop.NewFactory(),
 		"biolatency":             biolatency.NewFactory(),
 		"dns":                    dns.NewFactory(),
 		"execsnoop":              execsnoop.NewFactory(),
