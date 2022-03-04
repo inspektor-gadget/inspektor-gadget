@@ -31,12 +31,6 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var biotopCmd = &cobra.Command{
-	Use:   "biotop",
-	Short: "Trace block device I/O",
-	RunE:  bccCmd("biotop", "/usr/share/bcc/tools/biotop"),
-}
-
 var profileCmd = &cobra.Command{
 	Use:   "profile",
 	Short: "Profile CPU usage by sampling stack traces",
@@ -53,7 +47,6 @@ var (
 
 func init() {
 	commands := []*cobra.Command{
-		biotopCmd,
 		profileCmd,
 	}
 
@@ -90,25 +83,6 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
 		if subCommand == "tcptop" {
 			if params.Node == "" || params.Podname == "" {
 				return utils.WrapInErrMissingArgs("--node and --podname")
-			}
-
-			if params.OutputMode == utils.OutputModeJSON {
-				return utils.ErrJSONNotSupported
-			}
-		}
-
-		// biotop only works per node
-		if subCommand == "biotop" {
-			if params.Node == "" {
-				return utils.WrapInErrMissingArgs("--node")
-			}
-
-			if params.AllNamespaces {
-				return utils.WrapInErrMissingArgs("--all-namespaces")
-			}
-
-			if params.Containername != "" || params.Podname != "" {
-				return utils.WrapInErrArgsNotSupported("--containername and --podname")
 			}
 
 			if params.OutputMode == utils.OutputModeJSON {
@@ -167,16 +141,6 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
 		}
 
 		switch subCommand {
-		case "capabilities":
-			if stackFlag {
-				gadgetParams += " -K"
-			}
-			if uniqueFlag {
-				gadgetParams += " --unique"
-			}
-			if params.Verbose {
-				gadgetParams += " -v"
-			}
 		case "profile":
 			gadgetParams += " -f -d "
 			if profileUser {

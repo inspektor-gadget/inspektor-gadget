@@ -175,7 +175,7 @@ func TestBiotop(t *testing.T) {
 
 	biotopCmd := &command{
 		name:           "Start biotop gadget",
-		cmd:            "$KUBECTL_GADGET biotop --node $(kubectl get node --no-headers | cut -d' ' -f1)",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET biotop -n %s", ns),
 		expectedRegexp: `test-pod\s+test-pod\s+\d+\s+dd`,
 		startAndStop:   true,
 	}
