@@ -32,10 +32,6 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// create the commands for the different gadgets. The gadgets that have CO-RE
-// support should use "/bin/gadgets/" as the path for the binary. Otherwise
-// "/usr/share/bcc/tools/" should be used.
-
 var biotopCmd = &cobra.Command{
 	Use:   "biotop",
 	Short: "Trace block device I/O",
