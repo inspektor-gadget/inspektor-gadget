@@ -99,10 +99,14 @@ func (k *K8sClient) CloseCRI() {
 	k.criClient.Close()
 }
 
-// GetNonRunningContainers returns the list of containers IDs that are not running
+// GetNonRunningContainers returns the list of containers IDs that are not running.
 func (k *K8sClient) GetNonRunningContainers(pod *v1.Pod) []string {
 	ret := []string{}
-	for _, s := range pod.Status.ContainerStatuses {
+
+	containerStatuses := append([]v1.ContainerStatus{}, pod.Status.InitContainerStatuses...)
+	containerStatuses = append(containerStatuses, pod.Status.ContainerStatuses...)
+
+	for _, s := range containerStatuses {
 		if s.ContainerID != "" && s.State.Running == nil {
 			ret = append(ret, s.ContainerID)
 		}
@@ -111,7 +115,7 @@ func (k *K8sClient) GetNonRunningContainers(pod *v1.Pod) []string {
 	return ret
 }
 
-// PodToContainers return a list of the containers of a given Pod.
+// PodToContainers returns a list of the containers of a given Pod.
 // Containers that are not running or don't have an ID are not considered.
 func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 	containers := []pb.ContainerDefinition{}
@@ -121,11 +125,11 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 		labels = append(labels, &pb.Label{Key: k, Value: v})
 	}
 
-	for _, s := range pod.Status.ContainerStatuses {
-		if s.ContainerID == "" {
-			continue
-		}
-		if s.State.Running == nil {
+	containerStatuses := append([]v1.ContainerStatus{}, pod.Status.InitContainerStatuses...)
+	containerStatuses = append(containerStatuses, pod.Status.ContainerStatuses...)
+
+	for _, s := range containerStatuses {
+		if s.ContainerID == "" || s.State.Running == nil {
 			continue
 		}
 

@@ -463,7 +463,11 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 				for k, v := range pod.ObjectMeta.Labels {
 					labels = append(labels, &pb.Label{Key: k, Value: v})
 				}
-				for _, container := range pod.Spec.Containers {
+
+				containers := append([]v1.Container{}, pod.Spec.InitContainers...)
+				containers = append(containers, pod.Spec.Containers...)
+
+				for _, container := range containers {
 					for _, mountSource := range containerDefinition.MountSources {
 						pattern := fmt.Sprintf("pods/%s/containers/%s/", uid, container.Name)
 						if strings.Contains(mountSource, pattern) {
