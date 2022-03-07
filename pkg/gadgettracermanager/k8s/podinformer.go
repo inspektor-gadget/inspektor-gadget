@@ -20,7 +20,7 @@
 package k8s
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -146,7 +146,7 @@ func (p *PodInformer) Run(threadiness int, stopCh chan struct{}) {
 
 	// Wait for all involved caches to be synced, before processing items from the queue is started
 	if !cache.WaitForCacheSync(stopCh, p.informer.HasSynced) {
-		runtime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
+		runtime.HandleError(errors.New("timed out waiting for caches to sync"))
 		return
 	}
 

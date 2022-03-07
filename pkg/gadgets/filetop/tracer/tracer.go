@@ -92,13 +92,13 @@ func (t *Tracer) Stop() {
 func (t *Tracer) start() error {
 	spec, err := loadFiletop()
 	if err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	filter_by_mnt_ns := false
+	filterByMntNs := false
 
 	if t.config.MountnsMap != "" {
-		filter_by_mnt_ns = true
+		filterByMntNs = true
 		m := spec.Maps["mount_ns_set"]
 		m.Pinning = ebpf.PinByName
 		m.Name = filepath.Base(t.config.MountnsMap)
@@ -107,7 +107,7 @@ func (t *Tracer) start() error {
 	consts := map[string]interface{}{
 		"target_pid":        uint32(t.config.TargetPid),
 		"regular_file_only": !t.config.AllFiles,
-		"filter_by_mnt_ns":  filter_by_mnt_ns,
+		"filter_by_mnt_ns":  filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -121,18 +121,18 @@ func (t *Tracer) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	kpread, err := link.Kprobe("vfs_read", t.objs.VfsReadEntry)
 	if err != nil {
-		return fmt.Errorf("Error opening kprobe: %w", err)
+		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 	t.readLink = kpread
 
 	kpwrite, err := link.Kprobe("vfs_write", t.objs.VfsWriteEntry)
 	if err != nil {
-		return fmt.Errorf("Error opening kprobe: %w", err)
+		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 	t.writeLink = kpwrite
 
@@ -141,7 +141,7 @@ func (t *Tracer) start() error {
 	return nil
 }
 
-func (t *Tracer) next_stats() ([]types.Stats, error) {
+func (t *Tracer) nextStats() ([]types.Stats, error) {
 	stats := []types.Stats{}
 
 	var prev *C.struct_file_id = nil
@@ -173,29 +173,29 @@ func (t *Tracer) next_stats() ([]types.Stats, error) {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			return stats, nil
 		}
-		return nil, fmt.Errorf("Error getting next key: %w", err)
+		return nil, fmt.Errorf("error getting next key: %w", err)
 	}
 
 	for {
-		file_stat := C.struct_file_stat{}
-		if err := entries.Lookup(key, unsafe.Pointer(&file_stat)); err != nil {
+		fileStat := C.struct_file_stat{}
+		if err := entries.Lookup(key, unsafe.Pointer(&fileStat)); err != nil {
 			return nil, err
 		}
 
 		stat := types.Stats{
-			Reads:      uint64(file_stat.reads),
-			Writes:     uint64(file_stat.writes),
-			ReadBytes:  uint64(file_stat.read_bytes),
-			WriteBytes: uint64(file_stat.write_bytes),
-			Pid:        uint32(file_stat.pid),
-			Tid:        uint32(file_stat.tid),
-			Filename:   C.GoString(&file_stat.filename[0]),
-			Comm:       C.GoString(&file_stat.comm[0]),
-			FileType:   byte(file_stat.type_),
-			MountNsId:  uint64(file_stat.mntns_id),
+			Reads:      uint64(fileStat.reads),
+			Writes:     uint64(fileStat.writes),
+			ReadBytes:  uint64(fileStat.read_bytes),
+			WriteBytes: uint64(fileStat.write_bytes),
+			Pid:        uint32(fileStat.pid),
+			Tid:        uint32(fileStat.tid),
+			Filename:   C.GoString(&fileStat.filename[0]),
+			Comm:       C.GoString(&fileStat.comm[0]),
+			FileType:   byte(fileStat.type_),
+			MountNsID:  uint64(fileStat.mntns_id),
 		}
 
-		container := t.resolver.LookupContainerByMntns(stat.MountNsId)
+		container := t.resolver.LookupContainerByMntns(stat.MountNsID)
 		if container != nil {
 			stat.Container = container.Name
 			stat.Pod = container.Podname
@@ -210,7 +210,7 @@ func (t *Tracer) next_stats() ([]types.Stats, error) {
 			if errors.Is(err, ebpf.ErrKeyNotExist) {
 				break
 			}
-			return nil, fmt.Errorf("error getting next key: %w\n", err)
+			return nil, fmt.Errorf("error getting next key: %w", err)
 		}
 	}
 
@@ -226,9 +226,8 @@ func (t *Tracer) run() {
 		for {
 			select {
 			case <-t.done:
-				break
 			case <-ticker.C:
-				stats, err := t.next_stats()
+				stats, err := t.nextStats()
 				if err != nil {
 					t.errorCallback(err)
 					return

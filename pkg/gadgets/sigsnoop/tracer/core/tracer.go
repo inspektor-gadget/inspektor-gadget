@@ -119,13 +119,13 @@ func (t *Tracer) Stop() {
 func (t *Tracer) start() error {
 	spec, err := loadSigsnoop()
 	if err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	filter_by_mnt_ns := false
+	filterByMntNs := false
 
 	if t.config.MountnsMap != "" {
-		filter_by_mnt_ns = true
+		filterByMntNs = true
 		m := spec.Maps["mount_ns_set"]
 		m.Pinning = ebpf.PinByName
 		m.Name = filepath.Base(t.config.MountnsMap)
@@ -137,7 +137,7 @@ func (t *Tracer) start() error {
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filter_by_mnt_ns,
+		"filter_by_mnt_ns": filterByMntNs,
 		"filtered_pid":     t.config.TargetPid,
 		"target_signal":    signal,
 		"failed_only":      t.config.FailedOnly,
@@ -154,47 +154,47 @@ func (t *Tracer) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	t.enterKillLink, err = link.Tracepoint("syscalls", "sys_enter_kill", t.objs.KillEntry)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
 	t.exitKillLink, err = link.Tracepoint("syscalls", "sys_exit_kill", t.objs.KillExit)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
 	t.enterTkillLink, err = link.Tracepoint("syscalls", "sys_enter_tkill", t.objs.TkillEntry)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
 	t.exitTkillLink, err = link.Tracepoint("syscalls", "sys_exit_tkill", t.objs.TkillExit)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
 	t.enterTgkillLink, err = link.Tracepoint("syscalls", "sys_enter_tgkill", t.objs.TgkillEntry)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
 	t.exitTgkillLink, err = link.Tracepoint("syscalls", "sys_exit_tgkill", t.objs.TgkillExit)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
 	t.signalGenerateLink, err = link.Tracepoint("signal", "signal_generate", t.objs.SigTrace)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
 	t.reader, err = perf.NewReader(t.objs.sigsnoopMaps.Events, 64*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("Error creating perf ring buffer: %w", err)
+		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
 
 	go t.run()
@@ -233,11 +233,11 @@ func (t *Tracer) run() {
 			TargetPid: uint32(eventC.tpid),
 			Signal:    signalIntToString(int(eventC.sig)),
 			Retval:    int(eventC.ret),
-			MountNsId: uint64(eventC.mntns_id),
+			MountNsID: uint64(eventC.mntns_id),
 			Comm:      C.GoString(&eventC.comm[0]),
 		}
 
-		container := t.resolver.LookupContainerByMntns(event.MountNsId)
+		container := t.resolver.LookupContainerByMntns(event.MountNsID)
 		if container != nil {
 			event.Container = container.Name
 			event.Pod = container.Podname

@@ -73,7 +73,7 @@ import (
 
 //go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang tcpconnect ./bpf/tcpconnect.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
 
-const PERF_BUFFER_PAGES = 64
+const PerfBufferPages = 64
 
 type Tracer struct {
 	config        *tracer.Config
@@ -118,20 +118,20 @@ func (t *Tracer) start() error {
 	var err error
 	spec, err := loadTcpconnect()
 	if err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	filter_by_mnt_ns := false
+	filterByMntNs := false
 
 	if t.config.MountnsMap != "" {
-		filter_by_mnt_ns = true
+		filterByMntNs = true
 		m := spec.Maps["mount_ns_set"]
 		m.Pinning = ebpf.PinByName
 		m.Name = filepath.Base(t.config.MountnsMap)
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filter_by_mnt_ns,
+		"filter_by_mnt_ns": filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -145,7 +145,7 @@ func (t *Tracer) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	t.v4EnterLink, err = link.Kprobe("tcp_v4_connect", t.objs.TcpV4Connect)
@@ -168,7 +168,7 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
-	reader, err := perf.NewReader(t.objs.tcpconnectMaps.Events, PERF_BUFFER_PAGES*os.Getpagesize())
+	reader, err := perf.NewReader(t.objs.tcpconnectMaps.Events, PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
@@ -206,9 +206,9 @@ func (t *Tracer) run() {
 				Type: eventtypes.NORMAL,
 				Node: t.node,
 			},
-			MountNsId: uint64(eventC.mntns_id),
+			MountNsID: uint64(eventC.mntns_id),
 			Pid:       uint32(eventC.pid),
-			Uid:       uint32(eventC.uid),
+			UID:       uint32(eventC.uid),
 			Comm:      C.GoString(&eventC.task[0]),
 			Dport:     uint16(C.htons(eventC.dport)),
 		}
@@ -219,15 +219,15 @@ func (t *Tracer) run() {
 			event.IPVersion = 6
 		}
 
-		src_addr := C.get_src_addr(eventC)
-		event.Saddr = C.GoString(src_addr)
-		C.free(unsafe.Pointer(src_addr))
+		srcAddr := C.get_src_addr(eventC)
+		event.Saddr = C.GoString(srcAddr)
+		C.free(unsafe.Pointer(srcAddr))
 
-		dst_addr := C.get_dst_addr(eventC)
-		event.Daddr = C.GoString(dst_addr)
-		C.free(unsafe.Pointer(dst_addr))
+		dstAddr := C.get_dst_addr(eventC)
+		event.Daddr = C.GoString(dstAddr)
+		C.free(unsafe.Pointer(dstAddr))
 
-		container := t.resolver.LookupContainerByMntns(event.MountNsId)
+		container := t.resolver.LookupContainerByMntns(event.MountNsID)
 		if container != nil {
 			event.Container = container.Name
 			event.Pod = container.Podname

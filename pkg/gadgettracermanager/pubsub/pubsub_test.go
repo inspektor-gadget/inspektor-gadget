@@ -38,13 +38,13 @@ func TestPubSub(t *testing.T) {
 
 	p.Subscribe(key, callback, nil)
 
-	p.Publish(EVENT_TYPE_REMOVE_CONTAINER, pb.ContainerDefinition{Id: "container1"})
+	p.Publish(EventTypeRemoveContainer, pb.ContainerDefinition{Id: "container1"})
 	_, ok := <-done
 	if !ok {
 		t.Fatalf("Failed to receive event from callback")
 	}
 
-	if event.Type != EVENT_TYPE_REMOVE_CONTAINER {
+	if event.Type != EventTypeRemoveContainer {
 		t.Fatalf("Failed to receive correct event of type EVENT_TYPE_REMOVE_CONTAINER")
 	}
 	if event.Container.Id != "container1" {
@@ -52,7 +52,7 @@ func TestPubSub(t *testing.T) {
 	}
 
 	p.Unsubscribe(key)
-	p.Publish(EVENT_TYPE_REMOVE_CONTAINER, pb.ContainerDefinition{Id: "container2"})
+	p.Publish(EventTypeRemoveContainer, pb.ContainerDefinition{Id: "container2"})
 	if counter != 1 {
 		t.Fatalf("Callback called too many times")
 	}

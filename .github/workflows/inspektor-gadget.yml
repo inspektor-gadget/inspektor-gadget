@@ -75,9 +75,9 @@ jobs:
       run: |
         make -C gadget-container ebpf-objects
     - name: Lint
-      uses: golangci/golangci-lint-action@v2
+      uses: golangci/golangci-lint-action@v3.1.0
       with:
-        version: v1.43.0
+        version: v1.44.2
         working-directory: /home/runner/work/inspektor-gadget/inspektor-gadget
         # Workaround to display the output:
         # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648

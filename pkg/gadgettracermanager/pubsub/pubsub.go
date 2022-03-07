@@ -25,8 +25,8 @@ type EventType int
 type FuncNotify func(event PubSubEvent)
 
 const (
-	EVENT_TYPE_ADD_CONTAINER EventType = iota
-	EVENT_TYPE_REMOVE_CONTAINER
+	EventTypeAddContainer EventType = iota
+	EventTypeRemoveContainer
 )
 
 type PubSubEvent struct {

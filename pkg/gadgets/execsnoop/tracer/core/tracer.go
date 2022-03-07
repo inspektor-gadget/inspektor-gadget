@@ -83,20 +83,20 @@ func (t *Tracer) Stop() {
 func (t *Tracer) start() error {
 	spec, err := loadExecsnoop()
 	if err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	filter_by_mnt_ns := false
+	filterByMntNs := false
 
 	if t.config.MountnsMap != "" {
-		filter_by_mnt_ns = true
+		filterByMntNs = true
 		m := spec.Maps["mount_ns_set"]
 		m.Pinning = ebpf.PinByName
 		m.Name = filepath.Base(t.config.MountnsMap)
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filter_by_mnt_ns,
+		"filter_by_mnt_ns": filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -110,24 +110,24 @@ func (t *Tracer) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	enter, err := link.Tracepoint("syscalls", "sys_enter_execve", t.objs.TracepointSyscallsSysEnterExecve)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.enterLink = enter
 
 	exit, err := link.Tracepoint("syscalls", "sys_exit_execve", t.objs.TracepointSyscallsSysExitExecve)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.exitLink = exit
 
 	reader, err := perf.NewReader(t.objs.execsnoopMaps.Events, 4096)
 	if err != nil {
-		return fmt.Errorf("Error creating perf ring buffer: %w", err)
+		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
 	t.reader = reader
 
@@ -165,27 +165,27 @@ func (t *Tracer) run() {
 			},
 			Pid:       uint32(eventC.pid),
 			Ppid:      uint32(eventC.ppid),
-			Uid:       uint32(eventC.uid),
-			MountNsId: uint64(eventC.mntns_id),
+			UID:       uint32(eventC.uid),
+			MountNsID: uint64(eventC.mntns_id),
 			Retval:    int(eventC.retval),
 			Comm:      C.GoString(&eventC.comm[0]),
 		}
 
-		args_count := 0
+		argsCount := 0
 		buf := []byte{}
 
-		for i := 0; i < int(eventC.args_size) && args_count < int(eventC.args_count); i++ {
+		for i := 0; i < int(eventC.args_size) && argsCount < int(eventC.args_count); i++ {
 			c := eventC.args[i]
 			if c == 0 {
 				event.Args = append(event.Args, string(buf))
-				args_count = 0
+				argsCount = 0
 				buf = []byte{}
 			} else {
 				buf = append(buf, byte(c))
 			}
 		}
 
-		container := t.resolver.LookupContainerByMntns(event.MountNsId)
+		container := t.resolver.LookupContainerByMntns(event.MountNsID)
 		if container != nil {
 			event.Container = container.Name
 			event.Pod = container.Podname

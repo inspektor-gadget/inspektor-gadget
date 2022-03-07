@@ -26,7 +26,7 @@ type Event struct {
 	Signal    string `json:"signal,omitempty"`
 	Retval    int    `json:"ret,omitempty"`
 	Comm      string `json:"comm,omitempty"`
-	MountNsId uint64 `json:"mountnsid,omitempty"`
+	MountNsID uint64 `json:"mountnsid,omitempty"`
 }
 
 func Base(ev eventtypes.Event) Event {

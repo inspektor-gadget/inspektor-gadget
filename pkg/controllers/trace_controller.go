@@ -40,8 +40,8 @@ const (
 	 * https://gardener.cloud/docs/guides/administer_shoots/trigger-shoot-operations/
 	 */
 
-	GADGET_OPERATION = "gadget.kinvolk.io/operation"
-	GADGET_FINALIZER = "gadget.kinvolk.io/finalizer"
+	GadgetOperation = "gadget.kinvolk.io/operation"
+	GadgetFinalizer = "gadget.kinvolk.io/finalizer"
 )
 
 // TraceReconciler reconciles a Trace object
@@ -123,7 +123,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// Verify if the Trace is under deletion. Notice we must do it before
 	// checking the Trace specs to avoid blocking the deletion.
 	if !trace.ObjectMeta.DeletionTimestamp.IsZero() {
-		if controllerutil.ContainsFinalizer(trace, GADGET_FINALIZER) {
+		if controllerutil.ContainsFinalizer(trace, GadgetFinalizer) {
 			// Inform the factory (if valid gadget) that the trace is being deleted
 			factory, ok := r.TraceFactories[trace.Spec.Gadget]
 			if ok {
@@ -140,7 +140,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 
 			// Remove our finalizer
-			controllerutil.RemoveFinalizer(trace, GADGET_FINALIZER)
+			controllerutil.RemoveFinalizer(trace, GadgetFinalizer)
 			if err := r.Client.Update(ctx, trace); err != nil {
 				log.Errorf("Failed to remove finalizer: %s", err)
 				return ctrl.Result{}, err
@@ -179,7 +179,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// The Trace is not being deleted and specs are valid, we can register our finalizer
 	beforeFinalizer := trace.DeepCopy()
-	controllerutil.AddFinalizer(trace, GADGET_FINALIZER)
+	controllerutil.AddFinalizer(trace, GadgetFinalizer)
 	if err := r.Client.Patch(ctx, trace, client.MergeFrom(beforeFinalizer)); err != nil {
 		log.Errorf("Failed to add finalizer: %s", err)
 		return ctrl.Result{}, err
@@ -206,17 +206,17 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// For now, only support control via the GADGET_OPERATION
 	var op string
-	if op, ok = trace.ObjectMeta.Annotations[GADGET_OPERATION]; !ok {
+	if op, ok = trace.ObjectMeta.Annotations[GadgetOperation]; !ok {
 		log.Info("No operation annotation. Nothing to do.")
 		return ctrl.Result{}, nil
 	}
 
 	params := make(map[string]string)
 	for k, v := range trace.ObjectMeta.Annotations {
-		if !strings.HasPrefix(k, GADGET_OPERATION+"-") {
+		if !strings.HasPrefix(k, GadgetOperation+"-") {
 			continue
 		}
-		params[strings.TrimPrefix(k, GADGET_OPERATION+"-")] = v
+		params[strings.TrimPrefix(k, GadgetOperation+"-")] = v
 	}
 
 	log.Infof("Gadget %s operation %q on %s", trace.Spec.Gadget, op, req.NamespacedName)
@@ -225,9 +225,9 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// reconciliation loop.
 	withAnnotation := trace.DeepCopy()
 	annotations := trace.GetAnnotations()
-	delete(annotations, GADGET_OPERATION)
+	delete(annotations, GadgetOperation)
 	for k := range params {
-		delete(annotations, GADGET_OPERATION+"-"+k)
+		delete(annotations, GadgetOperation+"-"+k)
 	}
 	trace.SetAnnotations(annotations)
 	err = r.Client.Patch(ctx, trace, client.MergeFrom(withAnnotation))

@@ -26,6 +26,7 @@ var (
 )
 
 // Kubernetes client
+
 func WrapInErrSetupK8sClient(err error) error {
 	return fmt.Errorf("failed to set up Kubernetes client: %w", err)
 }
@@ -35,6 +36,7 @@ func WrapInErrListNodes(err error) error {
 }
 
 // Gadget operations
+
 func WrapInErrRunGadget(err error) error {
 	return fmt.Errorf("failed to run gadget: %w", err)
 }
@@ -64,7 +66,8 @@ func WrapInErrListGadgetTraces(err error) error {
 }
 
 // Arguments
-var ErrJsonNotSupported = errors.New("JSON output format is not supported")
+
+var ErrJSONNotSupported = errors.New("JSON output format is not supported")
 
 func WrapInErrArgsNotSupported(args string) error {
 	return fmt.Errorf("arguments not supported: %s", args)
@@ -79,6 +82,7 @@ func WrapInErrInvalidArg(arg string, err error) error {
 }
 
 // JSON parsing
+
 func WrapInErrUnmarshalOutput(err error) error {
 	return fmt.Errorf("failed to unmarshal output: %w", err)
 }

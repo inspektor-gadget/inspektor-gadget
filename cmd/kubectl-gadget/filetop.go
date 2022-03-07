@@ -41,10 +41,10 @@ var (
 	interval int = 1
 
 	// flags
-	maxrows    int
-	sortby_str string
-	sortby     types.SortBy
-	allFiles   bool
+	maxRows   int
+	sortByStr string
+	sortBy    types.SortBy
+	allFiles  bool
 )
 
 var filetopCmd = &cobra.Command{
@@ -70,9 +70,9 @@ var filetopCmd = &cobra.Command{
 			TraceOutputState: "Started",
 			CommonFlags:      &params,
 			Parameters: map[string]string{
-				"max_rows":  strconv.Itoa(maxrows),
+				"max_rows":  strconv.Itoa(maxRows),
 				"interval":  strconv.Itoa(interval),
-				"sort_by":   sortby_str,
+				"sort_by":   sortByStr,
 				"all_files": strconv.FormatBool(allFiles),
 			},
 		}
@@ -89,7 +89,7 @@ var filetopCmd = &cobra.Command{
 	SilenceUsage: true,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		var err error
-		sortby, err = types.ParseSortBy(sortby_str)
+		sortBy, err = types.ParseSortBy(sortByStr)
 		if err != nil {
 			return utils.WrapInErrInvalidArg("--sort", err)
 		}
@@ -100,8 +100,8 @@ var filetopCmd = &cobra.Command{
 }
 
 func init() {
-	filetopCmd.Flags().IntVarP(&maxrows, "maxrows", "r", 20, "Maximum rows to print")
-	filetopCmd.Flags().StringVarP(&sortby_str, "sort", "", "rbytes", "Sort column")
+	filetopCmd.Flags().IntVarP(&maxRows, "maxrows", "r", 20, "Maximum rows to print")
+	filetopCmd.Flags().StringVarP(&sortByStr, "sort", "", "rbytes", "Sort column")
 	filetopCmd.Flags().BoolVarP(&allFiles, "all-files", "a", false, "Include non-regular file types (sockets, FIFOs, etc)")
 
 	rootCmd.AddCommand(filetopCmd)
@@ -150,7 +150,7 @@ func print() {
 
 	mu.Unlock()
 
-	types.SortStats(stats, sortby)
+	types.SortStats(stats, sortBy)
 
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
@@ -163,7 +163,7 @@ func print() {
 			"NODE", "NAMESPACE", "POD", "CONTAINER",
 			"PID", "COMM", "READS", "WRITES", "R_Kb", "W_Kb", "T", "FILE")
 		for idx, event := range stats {
-			if idx == maxrows {
+			if idx == maxRows {
 				break
 			}
 			fmt.Printf("%-16s %-16s %-16s %-16s %-7d %-16s %-6d %-6d %-7d %-7d %c %s\n",
@@ -171,7 +171,7 @@ func print() {
 				event.Pid, event.Comm, event.Reads, event.Writes, event.ReadBytes/1024,
 				event.WriteBytes/1024, event.FileType, event.Filename)
 		}
-	case utils.OutputModeJson:
+	case utils.OutputModeJSON:
 		b, err := json.Marshal(stats)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrMarshalOutput(err))
@@ -186,7 +186,7 @@ func print() {
 		}
 		fmt.Println(getCustomColsHeader(params.CustomColumns))
 		for idx, stat := range stats {
-			if idx == maxrows {
+			if idx == maxRows {
 				break
 			}
 			fmt.Println(formatEventCostumCols(&stat, params.CustomColumns))

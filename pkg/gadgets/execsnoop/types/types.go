@@ -23,8 +23,8 @@ type Event struct {
 
 	Pid       uint32   `json:"pid,omitempty"`
 	Ppid      uint32   `json:"ppid,omitempty"`
-	Uid       uint32   `json:"uid,omitempty"`
-	MountNsId uint64   `json:"mountnsid,omitempty"`
+	UID       uint32   `json:"uid,omitempty"`
+	MountNsID uint64   `json:"mountnsid,omitempty"`
 	Retval    int      `json:"ret,omitempty"`
 	Comm      string   `json:"pcomm,omitempty"`
 	Args      []string `json:"args,omitempty"`

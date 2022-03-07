@@ -90,20 +90,20 @@ func (t *Tracer) stop() {
 func (t *Tracer) start() error {
 	spec, err := loadOomkill()
 	if err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	filter_by_mnt_ns := false
+	filterByMntNs := false
 
 	if t.config.MountnsMap != "" {
-		filter_by_mnt_ns = true
+		filterByMntNs = true
 		m := spec.Maps["mount_ns_set"]
 		m.Pinning = ebpf.PinByName
 		m.Name = filepath.Base(t.config.MountnsMap)
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filter_by_mnt_ns,
+		"filter_by_mnt_ns": filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -117,18 +117,18 @@ func (t *Tracer) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	kprobe, err := link.Kprobe("oom_kill_process", t.objs.OomKillProcess)
 	if err != nil {
-		return fmt.Errorf("Error opening kprobe: %w", err)
+		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 	t.oomLink = kprobe
 
 	reader, err := perf.NewReader(t.objs.oomkillMaps.Events, os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("Error creating perf ring buffer: %w", err)
+		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
 	t.reader = reader
 
@@ -162,10 +162,10 @@ func (t *Tracer) run() {
 			KilledPid:     uint32(eventC.tpid),
 			KilledComm:    C.GoString(&eventC.tcomm[0]),
 			Pages:         uint64(eventC.pages),
-			MountNsId:     uint64(eventC.mount_ns_id),
+			MountNsID:     uint64(eventC.mount_ns_id),
 		}
 
-		container := t.resolver.LookupContainerByMntns(event.MountNsId)
+		container := t.resolver.LookupContainerByMntns(event.MountNsID)
 		if container != nil {
 			event.Container = container.Name
 			event.Pod = container.Podname

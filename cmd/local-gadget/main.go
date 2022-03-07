@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -373,12 +374,12 @@ func main() {
 
 	for {
 		input, err := l.Readline()
-		if err == readline.ErrInterrupt {
+		if errors.Is(err, readline.ErrInterrupt) {
 			if len(input) == 0 {
 				break
 			}
 			continue
-		} else if err == io.EOF {
+		} else if errors.Is(err, io.EOF) {
 			break
 		}
 

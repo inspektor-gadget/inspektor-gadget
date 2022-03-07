@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -49,9 +50,9 @@ var (
 	method              string
 	label               string
 	tracerid            string
-	containerId         string
+	containerID         string
 	cgroupPath          string
-	cgroupId            uint64
+	cgroupID            uint64
 	namespace           string
 	podname             string
 	containername       string
@@ -72,9 +73,9 @@ func init() {
 	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, receive-stream, add-container, remove-container)")
 	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
 	flag.StringVar(&tracerid, "tracerid", "", "tracerid to use in remove-tracer")
-	flag.StringVar(&containerId, "containerid", "", "container id to use in add-container or remove-container")
+	flag.StringVar(&containerID, "containerid", "", "container id to use in add-container or remove-container")
 	flag.StringVar(&cgroupPath, "cgrouppath", "", "cgroup path to use in add-container")
-	flag.Uint64Var(&cgroupId, "cgroupid", 0, "cgroup id to use in add-container")
+	flag.Uint64Var(&cgroupID, "cgroupid", 0, "cgroup id to use in add-container")
 	flag.StringVar(&namespace, "namespace", "", "namespace to use in add-container")
 	flag.StringVar(&podname, "podname", "", "podname to use in add-container")
 	flag.StringVar(&containername, "containername", "", "container name to use in add-container")
@@ -163,7 +164,7 @@ func main() {
 		}
 		for {
 			line, err := stream.Recv()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			if err != nil {
@@ -176,9 +177,9 @@ func main() {
 
 	case "add-container":
 		_, err := client.AddContainer(ctx, &pb.ContainerDefinition{
-			Id:         containerId,
+			Id:         containerID,
 			CgroupPath: cgroupPath,
-			CgroupId:   cgroupId,
+			CgroupId:   cgroupID,
 			Namespace:  namespace,
 			Podname:    podname,
 			Name:       containername,
@@ -192,7 +193,7 @@ func main() {
 
 	case "remove-container":
 		_, err := client.RemoveContainer(ctx, &pb.ContainerDefinition{
-			Id: containerId,
+			Id: containerID,
 		})
 		if err != nil {
 			log.Fatalf("%v", err)
@@ -275,7 +276,7 @@ func main() {
 			go startController(node, tracerManager)
 		}
 
-		exitSignal := make(chan os.Signal)
+		exitSignal := make(chan os.Signal, 1)
 		signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
 		<-exitSignal
 

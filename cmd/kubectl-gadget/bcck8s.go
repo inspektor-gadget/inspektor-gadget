@@ -133,8 +133,8 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
 				return utils.WrapInErrMissingArgs("--node and --podname")
 			}
 
-			if params.OutputMode == utils.OutputModeJson {
-				return utils.ErrJsonNotSupported
+			if params.OutputMode == utils.OutputModeJSON {
+				return utils.ErrJSONNotSupported
 			}
 		}
 
@@ -152,8 +152,8 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
 				return utils.WrapInErrArgsNotSupported("--containername and --podname")
 			}
 
-			if params.OutputMode == utils.OutputModeJson {
-				return utils.ErrJsonNotSupported
+			if params.OutputMode == utils.OutputModeJSON {
+				return utils.ErrJSONNotSupported
 			}
 		}
 
@@ -200,10 +200,10 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
 
 			// ask the gadget to send the output in json mode to be able to
 			// parse it to print only the columns required by the user
-			params.OutputMode = utils.OutputModeJson
+			params.OutputMode = utils.OutputModeJSON
 		}
 
-		if params.OutputMode == utils.OutputModeJson {
+		if params.OutputMode == utils.OutputModeJSON {
 			gadgetParams += " --json"
 		}
 
@@ -227,11 +227,11 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
 			}
 		}
 
-		tracerId := time.Now().Format("20060102150405")
+		tracerID := time.Now().Format("20060102150405")
 		b := make([]byte, 6)
 		_, err = rand.Read(b)
 		if err == nil {
-			tracerId = fmt.Sprintf("%s_%x", tracerId, b)
+			tracerID = fmt.Sprintf("%s_%x", tracerID, b)
 		}
 
 		nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
@@ -252,7 +252,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
 			Flows:         len(nodes.Items),
 			OutStream:     os.Stdout,
 			ErrStream:     os.Stderr,
-			SkipFirstLine: params.OutputMode != utils.OutputModeJson, // skip first line if json is not used
+			SkipFirstLine: params.OutputMode != utils.OutputModeJSON, // skip first line if json is not used
 			Transform:     transform,
 		})
 
@@ -262,7 +262,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
 			}
 			go func(nodeName string, index int) {
 				cmd := fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --gadget %s %s %s %s %s %s -- %s",
-					tracerId, bccScript, labelFilter, namespaceFilter, podnameFilter, containernameFilter, extraParams, gadgetParams)
+					tracerID, bccScript, labelFilter, namespaceFilter, podnameFilter, containernameFilter, extraParams, gadgetParams)
 				var err error
 				if subCommand != "tcptop" {
 					err = utils.ExecPod(client, nodeName, cmd,
@@ -280,7 +280,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
 		for {
 			select {
 			case <-sigs:
-				if params.OutputMode != utils.OutputModeJson {
+				if params.OutputMode != utils.OutputModeJSON {
 					fmt.Println("\nTerminating...")
 				}
 				break waitingAllNodes
@@ -307,7 +307,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
 			}
 			// ignore errors, there is nothing the user can do about it
 			utils.ExecPodCapture(client, node.Name,
-				fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --stop", tracerId))
+				fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --stop", tracerID))
 		}
 		fmt.Printf("\n")
 

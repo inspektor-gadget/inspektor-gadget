@@ -138,20 +138,20 @@ func (t *Tracer) start() error {
 
 	spec, err := loadFsslower()
 	if err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	filter_by_mnt_ns := false
+	filterByMntNs := false
 
 	if t.config.MountnsMap != "" {
-		filter_by_mnt_ns = true
+		filterByMntNs = true
 		m := spec.Maps["mount_ns_set"]
 		m.Pinning = ebpf.PinByName
 		m.Name = filepath.Base(t.config.MountnsMap)
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filter_by_mnt_ns,
+		"filter_by_mnt_ns": filterByMntNs,
 		"min_lat_ns":       uint64(t.config.MinLatency * 1000 * 1000),
 	}
 
@@ -166,7 +166,7 @@ func (t *Tracer) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	// choose a configuration based on the filesystem type passed
@@ -253,7 +253,7 @@ func (t *Tracer) run() {
 				Type: eventtypes.NORMAL,
 				Node: t.node,
 			},
-			MountNsId: uint64(eventC.mntns_id),
+			MountNsID: uint64(eventC.mntns_id),
 			Comm:      C.GoString(&eventC.task[0]),
 			Pid:       uint32(eventC.pid),
 			Op:        ops[int(eventC.op)],
@@ -263,7 +263,7 @@ func (t *Tracer) run() {
 			File:      C.GoString(&eventC.file[0]),
 		}
 
-		container := t.resolver.LookupContainerByMntns(event.MountNsId)
+		container := t.resolver.LookupContainerByMntns(event.MountNsID)
 		if container != nil {
 			event.Container = container.Name
 			event.Pod = container.Podname

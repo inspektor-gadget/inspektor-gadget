@@ -19,13 +19,13 @@ import (
 )
 
 const (
-	MIN_LATENCY_DEFAULT = uint(10)
+	MinLatencyDefault = uint(10)
 )
 
 type Event struct {
 	eventtypes.Event
 
-	MountNsId uint64 `json:"mountnsid,omitempty"`
+	MountNsID uint64 `json:"mountnsid,omitempty"`
 	Comm      string `json:"comm,omitempty"`
 	Pid       uint32 `json:"pid,omitempty"`
 	Op        string `json:"op,omitempty"`

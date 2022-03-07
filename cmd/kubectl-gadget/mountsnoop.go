@@ -101,7 +101,7 @@ func mountsnoopTransformLine(line string) string {
 	case utils.OutputModeColumns:
 		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-6d %-10d %s",
 			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Comm, e.Pid, e.Tid, e.MountNsId, getCall(&e)))
+			e.Comm, e.Pid, e.Tid, e.MountNsID, getCall(&e)))
 	case utils.OutputModeCustomColumns:
 		for _, col := range params.CustomColumns {
 			switch col {
@@ -118,7 +118,7 @@ func mountsnoopTransformLine(line string) string {
 			case "tid":
 				sb.WriteString(fmt.Sprintf("%-6d", e.Tid))
 			case "mnt_ns":
-				sb.WriteString(fmt.Sprintf("%-10d", e.MountNsId))
+				sb.WriteString(fmt.Sprintf("%-10d", e.MountNsID))
 			case "comm":
 				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
 			case "op":

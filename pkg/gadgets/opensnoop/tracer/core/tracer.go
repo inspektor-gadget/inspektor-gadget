@@ -86,20 +86,20 @@ func (t *Tracer) Stop() {
 func (t *Tracer) start() error {
 	spec, err := loadOpensnoop()
 	if err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	filter_by_mnt_ns := false
+	filterByMntNs := false
 
 	if t.config.MountnsMap != "" {
-		filter_by_mnt_ns = true
+		filterByMntNs = true
 		m := spec.Maps["mount_ns_set"]
 		m.Pinning = ebpf.PinByName
 		m.Name = filepath.Base(t.config.MountnsMap)
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filter_by_mnt_ns,
+		"filter_by_mnt_ns": filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -113,36 +113,36 @@ func (t *Tracer) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("Failed to load ebpf program: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	openEnter, err := link.Tracepoint("syscalls", "sys_enter_open", t.objs.TracepointSyscallsSysEnterOpen)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.openEnterLink = openEnter
 
 	openAtEnter, err := link.Tracepoint("syscalls", "sys_enter_openat", t.objs.TracepointSyscallsSysEnterOpenat)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.openAtEnterLink = openAtEnter
 
 	openExit, err := link.Tracepoint("syscalls", "sys_exit_open", t.objs.TracepointSyscallsSysExitOpen)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.openExitLink = openExit
 
 	openAtExit, err := link.Tracepoint("syscalls", "sys_exit_openat", t.objs.TracepointSyscallsSysExitOpenat)
 	if err != nil {
-		return fmt.Errorf("Error opening tracepoint: %w", err)
+		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.openAtExitLink = openAtExit
 
 	reader, err := perf.NewReader(t.objs.opensnoopMaps.Events, 4096)
 	if err != nil {
-		return fmt.Errorf("Error creating perf ring buffer: %w", err)
+		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
 	t.reader = reader
 
@@ -188,9 +188,9 @@ func (t *Tracer) run() {
 				Type: eventtypes.NORMAL,
 				Node: t.node,
 			},
-			MountNsId: uint64(eventC.mntns_id),
+			MountNsID: uint64(eventC.mntns_id),
 			Pid:       uint32(eventC.pid),
-			Uid:       uint32(eventC.uid),
+			UID:       uint32(eventC.uid),
 			Comm:      C.GoString(&eventC.comm[0]),
 			Ret:       ret,
 			Fd:        fd,
@@ -198,7 +198,7 @@ func (t *Tracer) run() {
 			Path:      C.GoString(&eventC.fname[0]),
 		}
 
-		container := t.resolver.LookupContainerByMntns(event.MountNsId)
+		container := t.resolver.LookupContainerByMntns(event.MountNsID)
 		if container != nil {
 			event.Container = container.Name
 			event.Pod = container.Podname

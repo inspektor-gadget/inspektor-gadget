@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	DEFAULT_SOCKET_PATH = "/run/crio/crio.sock"
-	DEFAULT_TIMEOUT     = 2 * time.Second
+	DefaultSocketPath = "/run/crio/crio.sock"
+	DefaultTimeout    = 2 * time.Second
 )
 
 type CrioClient struct {
@@ -42,7 +42,7 @@ func NewCrioClient(path string) (*CrioClient, error) {
 		path,
 		grpc.WithInsecure(),
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", path, DEFAULT_TIMEOUT)
+			return net.DialTimeout("unix", path, DefaultTimeout)
 		}),
 	)
 	if err != nil {
@@ -101,9 +101,9 @@ func parseExtraInfo(extraInfo map[string]string) (int, error) {
 	return infoContent.Pid, nil
 }
 
-func (c *CrioClient) PidFromContainerId(containerID string) (int, error) {
+func (c *CrioClient) PidFromContainerID(containerID string) (int, error) {
 	if !strings.HasPrefix(containerID, "cri-o://") {
-		return -1, fmt.Errorf("Invalid CRI %s, it should be cri-o", containerID)
+		return -1, fmt.Errorf("invalid CRI %s, it should be cri-o", containerID)
 	}
 
 	containerID = strings.TrimPrefix(containerID, "cri-o://")

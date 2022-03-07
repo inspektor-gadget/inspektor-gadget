@@ -174,7 +174,7 @@ func (l *LocalGadgetManager) Operation(name, opname string) error {
 	if opname != "" {
 		gadgetOperation, ok := tracer.factory.Operations()[opname]
 		if !ok {
-			return fmt.Errorf("Unknown operation %q", opname)
+			return fmt.Errorf("unknown operation %q", opname)
 		}
 		tracerNamespacedName := tracer.traceResource.ObjectMeta.Namespace +
 			"/" + tracer.traceResource.ObjectMeta.Name

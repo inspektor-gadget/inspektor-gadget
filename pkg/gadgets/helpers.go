@@ -24,12 +24,12 @@ import (
 )
 
 const (
-	PIN_PATH         = "/sys/fs/bpf/gadget"
-	MNTMAP_PREFIX    = "mntnsset_"
-	CGROUPMAP_PREFIX = "cgroupidset_"
+	PinPath         = "/sys/fs/bpf/gadget"
+	MountMapPrefix  = "mntnsset_"
+	CGroupMapPrefix = "cgroupidset_"
 
 	// The Trace custom resource is preferably in the "gadget" namespace
-	TRACE_DEFAULT_NAMESPACE = "gadget"
+	TraceDefaultNamespace = "gadget"
 )
 
 func TraceName(namespace, name string) string {
@@ -41,7 +41,7 @@ func TraceNameFromNamespacedName(n types.NamespacedName) string {
 }
 
 func TracePinPath(namespace, name string) string {
-	return fmt.Sprintf("%s/%s%s", PIN_PATH, MNTMAP_PREFIX, TraceName(namespace, name))
+	return fmt.Sprintf("%s/%s%s", PinPath, MountMapPrefix, TraceName(namespace, name))
 }
 
 func TracePinPathFromNamespacedName(n types.NamespacedName) string {

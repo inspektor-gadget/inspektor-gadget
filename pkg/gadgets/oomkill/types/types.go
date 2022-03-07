@@ -26,7 +26,7 @@ type Event struct {
 	KilledPid     uint32 `json:"kpid,omitempty"`
 	KilledComm    string `json:"kcomm,omitempty"`
 	Pages         uint64 `json:"pages,omitempty"`
-	MountNsId     uint64 `json:"mountnsid,omitempty"`
+	MountNsID     uint64 `json:"mountnsid,omitempty"`
 }
 
 func Base(ev eventtypes.Event) Event {

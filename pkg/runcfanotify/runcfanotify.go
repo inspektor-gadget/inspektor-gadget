@@ -35,8 +35,8 @@ import (
 type EventType int
 
 const (
-	EVENT_TYPE_ADD_CONTAINER EventType = iota
-	EVENT_TYPE_REMOVE_CONTAINER
+	EventTypeAddContainer EventType = iota
+	EventTypeRemoveContainer
 )
 
 // ContainerEvent is the notification for container creation or termination
@@ -169,7 +169,7 @@ func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containe
 		return nil
 	}
 	if errno != 0 {
-		return fmt.Errorf("pidfd_open returned %v", errno)
+		return fmt.Errorf("pidfd_open returned %w", errno)
 	}
 
 	// watch for container termination with pidfd_open
@@ -199,7 +199,7 @@ func (n *RuncNotifier) watchContainerTermination(containerID string, containerPI
 		count, err := unix.Poll(fds, -1)
 		if err == nil && count == 1 {
 			n.callback(ContainerEvent{
-				Type:         EVENT_TYPE_REMOVE_CONTAINER,
+				Type:         EventTypeRemoveContainer,
 				ContainerID:  containerID,
 				ContainerPID: uint32(containerPID),
 			})
@@ -228,7 +228,7 @@ func (n *RuncNotifier) watchContainerTerminationFallback(containerID string, con
 
 		if err != nil {
 			n.callback(ContainerEvent{
-				Type:         EVENT_TYPE_REMOVE_CONTAINER,
+				Type:         EventTypeRemoveContainer,
 				ContainerID:  containerID,
 				ContainerPID: uint32(containerPID),
 			})
@@ -304,12 +304,12 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		return false, nil
 	}
 
-	bundleConfigJson, err := ioutil.ReadFile(filepath.Join(bundleDir, "config.json"))
+	bundleConfigJSON, err := ioutil.ReadFile(filepath.Join(bundleDir, "config.json"))
 	if err != nil {
 		return false, err
 	}
 	containerConfig := &ocispec.Spec{}
-	err = json.Unmarshal(bundleConfigJson, containerConfig)
+	err = json.Unmarshal(bundleConfigJSON, containerConfig)
 	if err != nil {
 		return false, err
 	}
@@ -323,7 +323,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 	}
 
 	n.callback(ContainerEvent{
-		Type:            EVENT_TYPE_ADD_CONTAINER,
+		Type:            EventTypeAddContainer,
 		ContainerID:     containerID,
 		ContainerPID:    uint32(containerPID),
 		ContainerConfig: containerConfig,
@@ -357,11 +357,11 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 	// This is best effort because the ignore mask is unfortunately not
 	// respected until a fix in Linux 5.9:
 	// https://github.com/torvalds/linux/commit/497b0c5a7c0688c1b100a9c2e267337f677c198e
-	configJsonPath := filepath.Join(bundleDir, "config.json")
-	err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJsonPath)
+	configJSONPath := filepath.Join(bundleDir, "config.json")
+	err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
 	if err != nil {
 		pidFileDirNotify.File.Close()
-		return fmt.Errorf("cannot ignore %s: %w", configJsonPath, err)
+		return fmt.Errorf("cannot ignore %s: %w", configJSONPath, err)
 	}
 
 	go func() {

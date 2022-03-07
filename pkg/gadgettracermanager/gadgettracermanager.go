@@ -63,11 +63,11 @@ type GadgetTracerManager struct {
 }
 
 type tracer struct {
-	tracerId string
+	tracerID string
 
 	containerSelector pb.ContainerSelector
 
-	cgroupIdSetMap *ebpf.Map
+	cgroupIDSetMap *ebpf.Map
 	mntnsSetMap    *ebpf.Map
 
 	gadgetStream *stream.GadgetStream
@@ -77,56 +77,56 @@ func (g *GadgetTracerManager) AddTracer(_ context.Context, req *pb.AddTracerRequ
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	tracerId := ""
+	tracerID := ""
 	if req.Id == "" {
 		b := make([]byte, 6)
 		_, err := rand.Read(b)
 		if err != nil {
-			return nil, fmt.Errorf("cannot generate random number: %v", err)
+			return nil, fmt.Errorf("cannot generate random number: %w", err)
 		}
-		tracerId = fmt.Sprintf("%x", b)
+		tracerID = fmt.Sprintf("%x", b)
 	} else {
-		tracerId = req.Id
+		tracerID = req.Id
 	}
-	if _, ok := g.tracers[tracerId]; ok {
-		return nil, fmt.Errorf("tracer id %q: %w", tracerId, os.ErrExist)
+	if _, ok := g.tracers[tracerID]; ok {
+		return nil, fmt.Errorf("tracer id %q: %w", tracerID, os.ErrExist)
 	}
 
 	// Create and pin BPF maps for this tracer.
-	var mntnsSetMap, cgroupIdSetMap *ebpf.Map
+	var mntnsSetMap, cgroupIDSetMap *ebpf.Map
 	var err error
 	if g.withBPF {
-		cgroupIdSpec := &ebpf.MapSpec{
-			Name:       gadgets.CGROUPMAP_PREFIX + tracerId,
+		cgroupIDSpec := &ebpf.MapSpec{
+			Name:       gadgets.CGroupMapPrefix + tracerID,
 			Type:       ebpf.Hash,
 			KeySize:    8,
 			ValueSize:  4,
-			MaxEntries: MAX_CONTAINERS_PER_NODE,
+			MaxEntries: MaxContainersPerNode,
 			Pinning:    ebpf.PinByName,
 		}
-		cgroupIdSetMap, err = ebpf.NewMapWithOptions(cgroupIdSpec, ebpf.MapOptions{PinPath: gadgets.PIN_PATH})
+		cgroupIDSetMap, err = ebpf.NewMapWithOptions(cgroupIDSpec, ebpf.MapOptions{PinPath: gadgets.PinPath})
 		if err != nil {
 			return nil, fmt.Errorf("error creating cgroupid map: %w", err)
 		}
 
 		mntnsSpec := &ebpf.MapSpec{
-			Name:       gadgets.MNTMAP_PREFIX + tracerId,
+			Name:       gadgets.MountMapPrefix + tracerID,
 			Type:       ebpf.Hash,
 			KeySize:    8,
 			ValueSize:  4,
-			MaxEntries: MAX_CONTAINERS_PER_NODE,
+			MaxEntries: MaxContainersPerNode,
 			Pinning:    ebpf.PinByName,
 		}
-		mntnsSetMap, err = ebpf.NewMapWithOptions(mntnsSpec, ebpf.MapOptions{PinPath: gadgets.PIN_PATH})
+		mntnsSetMap, err = ebpf.NewMapWithOptions(mntnsSpec, ebpf.MapOptions{PinPath: gadgets.PinPath})
 		if err != nil {
 			return nil, fmt.Errorf("error creating mntnsset map: %w", err)
 		}
 
 		g.ContainerRangeWithSelector(req.Selector, func(c *pb.ContainerDefinition) {
 			one := uint32(1)
-			cgroupIdC := uint64(c.CgroupId)
-			if cgroupIdC != 0 {
-				cgroupIdSetMap.Put(cgroupIdC, one)
+			cgroupIDC := uint64(c.CgroupId)
+			if cgroupIDC != 0 {
+				cgroupIDSetMap.Put(cgroupIDC, one)
 			}
 			mntnsC := uint64(c.Mntns)
 			if mntnsC != 0 {
@@ -135,14 +135,14 @@ func (g *GadgetTracerManager) AddTracer(_ context.Context, req *pb.AddTracerRequ
 		})
 	}
 
-	g.tracers[tracerId] = tracer{
-		tracerId:          tracerId,
+	g.tracers[tracerID] = tracer{
+		tracerID:          tracerID,
 		containerSelector: *req.Selector,
-		cgroupIdSetMap:    cgroupIdSetMap,
+		cgroupIDSetMap:    cgroupIDSetMap,
 		mntnsSetMap:       mntnsSetMap,
 		gadgetStream:      stream.NewGadgetStream(),
 	}
-	return &pb.TracerID{Id: tracerId}, nil
+	return &pb.TracerID{Id: tracerID}, nil
 }
 
 func (g *GadgetTracerManager) RemoveTracer(_ context.Context, tracerID *pb.TracerID) (*pb.RemoveTracerResponse, error) {
@@ -158,8 +158,8 @@ func (g *GadgetTracerManager) RemoveTracer(_ context.Context, tracerID *pb.Trace
 		return nil, fmt.Errorf("cannot remove tracer: unknown tracer %q", tracerID.Id)
 	}
 
-	if t.cgroupIdSetMap != nil {
-		t.cgroupIdSetMap.Close()
+	if t.cgroupIDSetMap != nil {
+		t.cgroupIDSetMap.Close()
 	}
 	if t.mntnsSetMap != nil {
 		t.mntnsSetMap.Close()
@@ -168,8 +168,8 @@ func (g *GadgetTracerManager) RemoveTracer(_ context.Context, tracerID *pb.Trace
 	t.gadgetStream.Close()
 
 	if g.withBPF {
-		os.Remove(filepath.Join(gadgets.PIN_PATH, gadgets.CGROUPMAP_PREFIX+t.tracerId))
-		os.Remove(filepath.Join(gadgets.PIN_PATH, gadgets.MNTMAP_PREFIX+t.tracerId))
+		os.Remove(filepath.Join(gadgets.PinPath, gadgets.CGroupMapPrefix+t.tracerID))
+		os.Remove(filepath.Join(gadgets.PinPath, gadgets.MountMapPrefix+t.tracerID))
 	}
 
 	delete(g.tracers, tracerID.Id)
@@ -304,7 +304,7 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 // not necessary for this).
 func (g *GadgetTracerManager) createContainersMap() error {
 	var err error
-	g.containersMap, err = containersmap.CreateContainersMap(gadgets.PIN_PATH)
+	g.containersMap, err = containersmap.CreateContainersMap(gadgets.PinPath)
 	if err != nil {
 		return fmt.Errorf("error creating containers map: %w", err)
 	}
@@ -348,7 +348,7 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 			return nil, err
 		}
 
-		if err := os.Mkdir(gadgets.PIN_PATH, 0o700); err != nil && !errors.Is(err, unix.EEXIST) {
+		if err := os.Mkdir(gadgets.PinPath, 0o700); err != nil && !errors.Is(err, unix.EEXIST) {
 			return nil, fmt.Errorf("failed to create folder for pinning bpf maps: %w", err)
 		}
 
@@ -358,7 +358,7 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 
 		containerEventFuncs = append(containerEventFuncs, func(event pubsub.PubSubEvent) {
 			switch event.Type {
-			case pubsub.EVENT_TYPE_ADD_CONTAINER:
+			case pubsub.EventTypeAddContainer:
 				// Skip the pause container
 				if event.Container.Name == "" {
 					return
@@ -370,11 +370,11 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 
 				for _, t := range g.tracers {
 					if containercollection.ContainerSelectorMatches(&t.containerSelector, &event.Container) {
-						cgroupIdC := uint64(event.Container.CgroupId)
+						cgroupIDC := uint64(event.Container.CgroupId)
 						mntnsC := uint64(event.Container.Mntns)
 						one := uint32(1)
-						if cgroupIdC != 0 {
-							t.cgroupIdSetMap.Put(cgroupIdC, one)
+						if cgroupIDC != 0 {
+							t.cgroupIDSetMap.Put(cgroupIDC, one)
 						}
 						if mntnsC != 0 {
 							t.mntnsSetMap.Put(mntnsC, one)
@@ -384,16 +384,16 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 					}
 				}
 
-			case pubsub.EVENT_TYPE_REMOVE_CONTAINER:
+			case pubsub.EventTypeRemoveContainer:
 				log.Infof("pubsub: REMOVE_CONTAINER: %s/%s/%s", event.Container.Namespace, event.Container.Podname, event.Container.Name)
 
 				g.deleteContainerFromMap(&event.Container)
 
 				for _, t := range g.tracers {
 					if containercollection.ContainerSelectorMatches(&t.containerSelector, &event.Container) {
-						cgroupIdC := uint64(event.Container.CgroupId)
+						cgroupIDC := uint64(event.Container.CgroupId)
 						mntnsC := uint64(event.Container.Mntns)
-						t.cgroupIdSetMap.Delete(cgroupIdC)
+						t.cgroupIDSetMap.Delete(cgroupIDC)
 						t.mntnsSetMap.Delete(mntnsC)
 					}
 				}
@@ -466,6 +466,6 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 // ebpf maps.
 func (m *GadgetTracerManager) Close() {
 	if m.containersMap != nil {
-		os.Remove(filepath.Join(gadgets.PIN_PATH, "containers"))
+		os.Remove(filepath.Join(gadgets.PinPath, "containers"))
 	}
 }

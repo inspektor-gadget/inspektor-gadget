@@ -56,18 +56,18 @@ func main() {
 	}
 
 	if hook != "prestart" && hook != "poststop" {
-		panic(fmt.Errorf("hook %q not supported\n", hook))
+		panic(fmt.Errorf("hook %q not supported", hook))
 	}
 
 	// Parse state from stdin
 	stateBuf, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
-		panic(fmt.Errorf("cannot read stdin: %v\n", err))
+		panic(fmt.Errorf("cannot read stdin: %w", err))
 	}
 
 	ociStateID, ociStatePid, err := containerutils.ParseOCIState(stateBuf)
 	if err != nil {
-		panic(fmt.Errorf("cannot parse stdin: %v\n%s\n", err, string(stateBuf)))
+		panic(fmt.Errorf("cannot parse stdin: %w\n%s", err, string(stateBuf)))
 	}
 
 	// Validate state
@@ -114,17 +114,17 @@ func main() {
 				ppidStr = strings.TrimSuffix(ppidStr, "\n")
 				ppid, err = strconv.Atoi(ppidStr)
 				if err != nil {
-					panic(fmt.Errorf("cannot parse ppid (%q): %v", ppidStr, err))
+					panic(fmt.Errorf("cannot parse ppid (%q): %w", ppidStr, err))
 				}
 				break
 			}
 		}
 	} else {
-		panic(fmt.Errorf("cannot parse /proc/PID/status: %v", err))
+		panic(fmt.Errorf("cannot parse /proc/PID/status: %w", err))
 	}
 	cmdline, err := ioutil.ReadFile(filepath.Join("/proc", fmt.Sprintf("%d", ppid), "cmdline"))
 	if err != nil {
-		panic(fmt.Errorf("cannot read /proc/PID/cmdline: %v", err))
+		panic(fmt.Errorf("cannot read /proc/PID/cmdline: %w", err))
 	}
 	cmdline = bytes.ReplaceAll(cmdline, []byte{0}, []byte("\n"))
 	r := regexp.MustCompile("--bundle\n([^\n]*)\n")
@@ -135,13 +135,13 @@ func main() {
 	bundle := matches[1]
 	bundleConfig, err := ioutil.ReadFile(filepath.Join(bundle, "config.json"))
 	if err != nil {
-		panic(fmt.Errorf("cannot read config.json from bundle directory %q: %v", bundle, err))
+		panic(fmt.Errorf("cannot read config.json from bundle directory %q: %w", bundle, err))
 	}
 
 	ociSpec := &ocispec.Spec{}
 	err = json.Unmarshal(bundleConfig, ociSpec)
 	if err != nil {
-		panic(fmt.Errorf("cannot parse config.json: %v\n%s\n", err, string(bundleConfig)))
+		panic(fmt.Errorf("cannot parse config.json: %w\n%s", err, string(bundleConfig)))
 	}
 
 	mountSources := []string{}
