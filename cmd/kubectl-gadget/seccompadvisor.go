@@ -44,7 +44,7 @@ var seccompAdvisorStartCmd = &cobra.Command{
 }
 
 var seccompAdvisorStopCmd = &cobra.Command{
-	Use:          "stop",
+	Use:          "stop <trace-id>",
 	Short:        "Stop monitoring and report the policies",
 	RunE:         runSeccompAdvisorStop,
 	SilenceUsage: true,
