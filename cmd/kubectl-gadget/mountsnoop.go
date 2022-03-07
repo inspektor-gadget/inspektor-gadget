@@ -50,7 +50,7 @@ var mountsnoopCmd = &cobra.Command{
 
 		err := utils.RunTraceAndPrintStream(config, mountsnoopTransformLine)
 		if err != nil {
-			return fmt.Errorf("failed to run tracer: %w", err)
+			return utils.WrapInErrRunGadget(err)
 		}
 
 		return nil
@@ -83,13 +83,13 @@ func mountsnoopTransformLine(line string) string {
 	var e types.Event
 
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "error unmarshalling json: %s", err)
+		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err))
 		return ""
 	}
 
 	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
 		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
-		fmt.Fprintf(os.Stderr, "%s: node %s: %s", e.Type, e.Node, e.Message)
+		fmt.Fprintf(os.Stderr, "%s: node %q: %s", e.Type, e.Node, e.Message)
 		return ""
 	}
 

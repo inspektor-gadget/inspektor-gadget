@@ -50,7 +50,7 @@ var tcpconnectCmd = &cobra.Command{
 
 		err := utils.RunTraceAndPrintStream(config, tcpconnectTransformLine)
 		if err != nil {
-			return fmt.Errorf("failed to run gadget: %w", err)
+			return utils.WrapInErrRunGadget(err)
 		}
 
 		return nil
@@ -69,7 +69,7 @@ func tcpconnectTransformLine(line string) string {
 	var e types.Event
 
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to unmarshal event: %s", err)
+		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err))
 		return ""
 	}
 

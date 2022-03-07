@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -70,7 +71,7 @@ var snisnoopCmd = &cobra.Command{
 
 		err := utils.RunTraceAndPrintStream(config, transform)
 		if err != nil {
-			return err
+			return utils.WrapInErrRunGadget(err)
 		}
 
 		return nil
@@ -85,7 +86,7 @@ func init() {
 func snisnoopTransformLine(line string) string {
 	event := &snitypes.Event{}
 	if err := json.Unmarshal([]byte(line), event); err != nil {
-		return fmt.Sprintf("error unmarshaling event: %s", err)
+		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err))
 	}
 
 	podMsgSuffix := ""

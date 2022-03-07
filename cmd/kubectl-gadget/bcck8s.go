@@ -24,7 +24,6 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
@@ -39,31 +38,31 @@ import (
 var biotopCmd = &cobra.Command{
 	Use:   "biotop",
 	Short: "Trace block device I/O",
-	Run:   bccCmd("biotop", "/usr/share/bcc/tools/biotop"),
+	RunE:  bccCmd("biotop", "/usr/share/bcc/tools/biotop"),
 }
 
 var profileCmd = &cobra.Command{
 	Use:   "profile",
 	Short: "Profile CPU usage by sampling stack traces",
-	Run:   bccCmd("profile", "/usr/share/bcc/tools/profile"),
+	RunE:  bccCmd("profile", "/usr/share/bcc/tools/profile"),
 }
 
 var tcptopCmd = &cobra.Command{
 	Use:   "tcptop",
 	Short: "Show the TCP traffic in a pod",
-	Run:   bccCmd("tcptop", "/usr/share/bcc/tools/tcptop"),
+	RunE:  bccCmd("tcptop", "/usr/share/bcc/tools/tcptop"),
 }
 
 var tcptracerCmd = &cobra.Command{
 	Use:   "tcptracer",
 	Short: "Trace tcp connect, accept and close",
-	Run:   bccCmd("tcptracer", "/usr/share/bcc/tools/tcptracer"),
+	RunE:  bccCmd("tcptracer", "/usr/share/bcc/tools/tcptracer"),
 }
 
 var capabilitiesCmd = &cobra.Command{
 	Use:   "capabilities",
 	Short: "Suggest Security Capabilities for securityContext",
-	Run:   bccCmd("capabilities", "/usr/share/bcc/tools/capable"),
+	RunE:  bccCmd("capabilities", "/usr/share/bcc/tools/capable"),
 }
 
 var (
@@ -121,45 +120,40 @@ func init() {
 	)
 }
 
-func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
-	return func(cmd *cobra.Command, args []string) {
-		contextLogger := log.WithFields(log.Fields{
-			"command": fmt.Sprintf("kubectl-gadget %s", subCommand),
-			"args":    args,
-		})
-
+func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
 		client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 		if err != nil {
-			contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
+			return utils.WrapInErrSetupK8sClient(err)
 		}
 
 		// tcptop only works on one pod at a time
 		if subCommand == "tcptop" {
 			if params.Node == "" || params.Podname == "" {
-				contextLogger.Fatalf("tcptop only works with --node and --podname")
+				return utils.WrapInErrMissingArgs("--node and --podname")
 			}
 
 			if params.OutputMode == utils.OutputModeJson {
-				contextLogger.Fatalf("tcptop doesn't support --json")
+				return utils.ErrJsonNotSupported
 			}
 		}
 
 		// biotop only works per node
 		if subCommand == "biotop" {
 			if params.Node == "" {
-				contextLogger.Fatalf("biotop only works with --node")
-			}
-
-			if params.Containername != "" || params.Podname != "" {
-				contextLogger.Fatalf("biotop doesn't support --containername or --podname")
+				return utils.WrapInErrMissingArgs("--node")
 			}
 
 			if params.AllNamespaces {
-				contextLogger.Fatalf("biotop only works with --all-namespaces")
+				return utils.WrapInErrMissingArgs("--all-namespaces")
+			}
+
+			if params.Containername != "" || params.Podname != "" {
+				return utils.WrapInErrArgsNotSupported("--containername and --podname")
 			}
 
 			if params.OutputMode == utils.OutputModeJson {
-				contextLogger.Fatalf("biotop doesn't support --json")
+				return utils.ErrJsonNotSupported
 			}
 		}
 
@@ -242,7 +236,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 
 		nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
 		if err != nil {
-			contextLogger.Fatalf("Error in listing nodes: %q", err)
+			return utils.WrapInErrListNodes(err)
 		}
 
 		sigs := make(chan os.Signal, 1)
@@ -291,8 +285,10 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				}
 				break waitingAllNodes
 			case e := <-failure:
+				fmt.Fprintf(os.Stderr, "\nError: %s\n",
+					utils.WrapInErrRunGadgetOnNode(e.nodeName, e.err))
+
 				if errors.Is(e.err, utils.ErrGadgetPodNotFound) {
-					fmt.Printf("Node %s: %s\n", e.nodeName, e.err)
 					if params.Node != "" {
 						// If the user selected a single node, the error is fatal
 						break waitingAllNodes
@@ -301,7 +297,6 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 						continue waitingAllNodes
 					}
 				}
-				fmt.Printf("\nError running command on node %s: %v\n", e.nodeName, e.err)
 			}
 		}
 
@@ -315,5 +310,7 @@ func bccCmd(subCommand, bccScript string) func(*cobra.Command, []string) {
 				fmt.Sprintf("exec /opt/bcck8s/bcc-wrapper.sh --tracerid %s --stop", tracerId))
 		}
 		fmt.Printf("\n")
+
+		return nil
 	}
 }

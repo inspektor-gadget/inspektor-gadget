@@ -123,18 +123,20 @@ func getIdenticalValue(m map[string]string) string {
 
 // If there are more than one element in the map and the Error/Warning is
 // the same for all the nodes, printTraceFeedback will print it only once.
-func printTraceFeedback(m map[string]string, totalNodes int) {
+func printTraceFeedback(prefix string, m map[string]string, totalNodes int) {
 	// Do not print `len(m)` times the same message if it's the same from all nodes
 	if len(m) > 1 && len(m) == totalNodes {
 		value := getIdenticalValue(m)
 		if value != "" {
-			fmt.Fprintf(os.Stderr, "Failed to run the gadget on all nodes: %s\n", value)
+			fmt.Fprintf(os.Stderr, "%s: %s\n",
+				prefix, WrapInErrRunGadgetOnAllNode(errors.New(value)))
 			return
 		}
 	}
 
 	for node, msg := range m {
-		fmt.Fprintf(os.Stderr, "Failed to run the gadget on node %q: %s\n", node, msg)
+		fmt.Fprintf(os.Stderr, "%s: %s\n",
+			prefix, WrapInErrRunGadgetOnNode(node, errors.New(msg)))
 	}
 }
 
@@ -158,12 +160,12 @@ func GetTraceClient() (*clientset.Clientset, error) {
 func getTraceClient() (*clientset.Clientset, error) {
 	config, err := KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
-		return nil, fmt.Errorf("Error creating RESTConfig: %w", err)
+		return nil, fmt.Errorf("failed to creating RESTConfig: %w", err)
 	}
 
 	traceClient, err := clientset.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("Error setting up trace client: %w", err)
+		return nil, fmt.Errorf("failed to set up trace client: %w", err)
 	}
 
 	return traceClient, err
@@ -175,7 +177,7 @@ func getTraceClient() (*clientset.Clientset, error) {
 func createTraces(trace *gadgetv1alpha1.Trace) error {
 	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
-		return fmt.Errorf("Error setting up Kubernetes client: %w", err)
+		return WrapInErrSetupK8sClient(err)
 	}
 
 	traceClient, err := getTraceClient()
@@ -185,7 +187,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 
 	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("Error listing nodes: %w", err)
+		return WrapInErrListNodes(err)
 	}
 
 	traceNode := trace.Spec.Node
@@ -209,7 +211,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 				deleteTraces(traceClient, traceID)
 			}
 
-			return fmt.Errorf("Error creating trace on node %q: %w", node.Name, err)
+			return fmt.Errorf("failed to create trace on node %q: %w", node.Name, err)
 		}
 	}
 
@@ -245,7 +247,7 @@ func updateTraceOperation(trace *gadgetv1alpha1.Trace, operation string) error {
 
 	patchBytes, err := json.Marshal(patch)
 	if err != nil {
-		return fmt.Errorf("Error marshalling the operation annotations: %w", err)
+		return fmt.Errorf("failed to marshal the operation annotations: %w", err)
 	}
 
 	_, err = traceClient.GadgetV1alpha1().Traces("gadget").Patch(
@@ -358,11 +360,11 @@ func getTraceListFromID(traceID string) (*gadgetv1alpha1.TraceList, error) {
 
 	traces, err := getTraceListFromOptions(listTracesOptions)
 	if err != nil {
-		return traces, fmt.Errorf("Error getting traces from traceID %q: %w", traceID, err)
+		return traces, fmt.Errorf("failed to get traces from traceID %q: %w", traceID, err)
 	}
 
 	if len(traces.Items) == 0 {
-		return traces, fmt.Errorf("No traces found for traceID %q!", traceID)
+		return traces, fmt.Errorf("no traces found for traceID %q", traceID)
 	}
 
 	return traces, nil
@@ -387,7 +389,7 @@ func SetTraceOperation(traceID string, operation string) error {
 	for _, trace := range traces.Items {
 		localError := updateTraceOperation(&trace, operation)
 		if localError != nil {
-			err = fmt.Errorf("%w\nError updating trace operation for %s: %v", err, traceID, localError)
+			err = fmt.Errorf("%w\nError updating trace operation for %q: %s", err, traceID, localError)
 		}
 	}
 
@@ -597,11 +599,11 @@ func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Tra
 	}
 
 	// We print errors whatever happened.
-	printTraceFeedback(nodeErrors, tracesNumber)
+	printTraceFeedback("Error", nodeErrors, tracesNumber)
 
 	// We print warnings only if all trace failed.
 	if len(satisfiedTraces) == 0 {
-		printTraceFeedback(nodeWarnings, tracesNumber)
+		printTraceFeedback("Warn", nodeWarnings, tracesNumber)
 	}
 
 	if err != nil {
@@ -679,7 +681,8 @@ func sigHandler(traceID *string) {
 // This function is must be used by trace which has TraceOutputMode set to
 // Stream.
 func PrintTraceOutputFromStream(traceID string, expectedState string, params *CommonFlags,
-	transformLine func(string) string) error {
+	transformLine func(string) string,
+) error {
 	traces, err := waitForTraceState(traceID, expectedState)
 	if err != nil {
 		return err
@@ -832,7 +835,7 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 	sigHandler(&traceID)
 
 	if config.TraceOutputMode != "Stream" {
-		return errors.New("TraceOutputMode must be Stream. Otherwise, call RunTraceAndPrintStatusOutput!")
+		return errors.New("TraceOutputMode must be Stream. Otherwise, call RunTraceAndPrintStatusOutput")
 	}
 
 	traceID, err := CreateTrace(config)
@@ -883,7 +886,7 @@ func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func
 	sigHandler(&traceID)
 
 	if config.TraceOutputMode == "Stream" {
-		return errors.New("TraceOutputMode must not be Stream. Otherwise, call RunTraceAndPrintStream!")
+		return errors.New("TraceOutputMode must not be Stream. Otherwise, call RunTraceAndPrintStream")
 	}
 
 	traceID, err := CreateTrace(config)
@@ -923,7 +926,7 @@ func genericStreams(
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
-		return fmt.Errorf("Error setting up Kubernetes client: %w", err)
+		return WrapInErrSetupK8sClient(err)
 	}
 
 	verbose := false
@@ -956,9 +959,9 @@ func genericStreams(
 			err := ExecPod(client, nodeName, cmd,
 				postProcess.OutStreams[index], postProcess.ErrStreams[index])
 			if err == nil {
-				completion <- fmt.Sprintf("Trace completed on node %s\n", nodeName)
+				completion <- fmt.Sprintf("Trace completed on node %q\n", nodeName)
 			} else {
-				completion <- fmt.Sprintf("Error running command on node %s: %v\n", nodeName, err)
+				completion <- fmt.Sprintf("Error: failed to receive stream on node %q: %v\n", nodeName, err)
 			}
 		}(i.Spec.Node, i.ObjectMeta.Namespace, i.ObjectMeta.Name, index)
 	}
@@ -1002,7 +1005,7 @@ func ListTracesByGadgetName(gadget string) ([]gadgetv1alpha1.Trace, error) {
 
 	traces, err := getTraceListFromOptions(listTracesOptions)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting traces by gadget name %w", err)
+		return nil, fmt.Errorf("failed to get traces by gadget name: %w", err)
 	}
 
 	return traces.Items, nil

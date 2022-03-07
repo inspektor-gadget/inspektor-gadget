@@ -49,17 +49,17 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 
 	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		return fmt.Errorf("Error setting up Kubernetes client: %w", err)
+		return utils.WrapInErrSetupK8sClient(err)
 	}
 
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
-		return fmt.Errorf("Error creating RESTConfig: %w", err)
+		return fmt.Errorf("failed to create RESTConfig: %w", err)
 	}
 
 	crdClient, err := clientset.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("Error setting up CRD client: %w", err)
+		return fmt.Errorf("failed to set up CRD client: %w", err)
 	}
 
 	errs := []string{}
