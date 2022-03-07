@@ -67,7 +67,7 @@ var bindsnoopCmd = &cobra.Command{
 
 		err := utils.RunTraceAndPrintStream(config, bindsnoopTransformLine)
 		if err != nil {
-			return fmt.Errorf("failed to run tracer: %w", err)
+			return utils.WrapInErrRunGadget(err)
 		}
 
 		return nil
@@ -108,7 +108,7 @@ func bindsnoopTransformLine(line string) string {
 	var e types.Event
 
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "error unmarshalling json: %s", err)
+		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err))
 		return ""
 	}
 

@@ -16,6 +16,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -109,7 +110,8 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 			for _, pair := range pairs {
 				kv := strings.Split(pair, "=")
 				if len(kv) != 2 {
-					return fmt.Errorf("labels should be a comma-separated list of key-value pairs (key=value[,key=value,...])")
+					return WrapInErrInvalidArg("--selector / -l",
+						fmt.Errorf("should be a comma-separated list of key-value pairs (key=value[,key=value,...])"))
 				}
 				params.Labels[kv[0]] = kv[1]
 			}
@@ -120,12 +122,12 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		if params.Node != "" {
 			client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 			if err != nil {
-				return fmt.Errorf("failed creating kubernetes client to check if node exists: %v", err)
+				return WrapInErrSetupK8sClient(err)
 			}
 
 			nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
 			if err != nil {
-				return fmt.Errorf("failed gathering cluster nodes to check if node exists: %v", err)
+				return WrapInErrListNodes(err)
 			}
 
 			nodeFound := false
@@ -137,7 +139,8 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 			}
 
 			if !nodeFound {
-				return fmt.Errorf("invalid filter: node %q does not exist", params.Node)
+				return WrapInErrInvalidArg("--node",
+					fmt.Errorf("node %q does not exist", params.Node))
 			}
 		}
 
@@ -150,20 +153,23 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		case strings.HasPrefix(params.OutputMode, OutputModeCustomColumns):
 			parts := strings.Split(params.OutputMode, "=")
 			if len(parts) != 2 {
-				return fmt.Errorf("%s= expects a comma separated list of columns to use", OutputModeCustomColumns)
+				return WrapInErrInvalidArg(OutputModeCustomColumns,
+					errors.New("expects a comma separated list of columns to use"))
 			}
 
 			cols := strings.Split(strings.ToLower(parts[1]), ",")
 			for _, col := range cols {
 				if len(col) == 0 {
-					return fmt.Errorf("column can't be empty")
+					return WrapInErrInvalidArg(OutputModeCustomColumns,
+						errors.New("column can't be empty"))
 				}
 			}
 
 			params.CustomColumns = cols
 			params.OutputMode = OutputModeCustomColumns
 		default:
-			return fmt.Errorf("%q is not a valid value for -o / --output", params.OutputMode)
+			return WrapInErrInvalidArg("--output / -o",
+				fmt.Errorf("%q is not a valid output format", params.OutputMode))
 		}
 		return nil
 	}

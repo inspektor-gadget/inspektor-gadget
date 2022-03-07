@@ -58,7 +58,8 @@ var filetopCmd = &cobra.Command{
 		if len(args) == 1 {
 			interval, err = strconv.Atoi(args[0])
 			if err != nil {
-				return fmt.Errorf("%q is not a valid value for interval", args[0])
+				return utils.WrapInErrInvalidArg("<interval>",
+					fmt.Errorf("%q is not a valid value", args[0]))
 			}
 		}
 
@@ -78,8 +79,9 @@ var filetopCmd = &cobra.Command{
 
 		startprint()
 
-		if err := utils.RunTraceStreamCallback(config, callback); err != nil {
-			return fmt.Errorf("error running trace: %w", err)
+		err = utils.RunTraceStreamCallback(config, callback)
+		if err != nil {
+			return utils.WrapInErrRunGadget(err)
 		}
 
 		return nil
@@ -89,7 +91,7 @@ var filetopCmd = &cobra.Command{
 		var err error
 		sortby, err = types.ParseSortBy(sortby_str)
 		if err != nil {
-			return err
+			return utils.WrapInErrInvalidArg("--sort", err)
 		}
 
 		return nil
@@ -113,12 +115,12 @@ func callback(line string, node string) {
 	var event types.Event
 
 	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "error unmarshalling json: %s", err)
+		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err))
 		return
 	}
 
 	if event.Error != "" {
-		fmt.Fprintf(os.Stderr, "error in node %s:%s", event.Node, event.Error)
+		fmt.Fprintf(os.Stderr, "Error: failed on node %q: %s", event.Node, event.Error)
 		return
 	}
 
@@ -172,7 +174,7 @@ func print() {
 	case utils.OutputModeJson:
 		b, err := json.Marshal(stats)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error marshalling json: %v", err)
+			fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrMarshalOutput(err))
 			return
 		}
 		fmt.Println(string(b))

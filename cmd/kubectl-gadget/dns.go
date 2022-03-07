@@ -39,7 +39,7 @@ var colLens = map[string]int{
 var dnsCmd = &cobra.Command{
 	Use:   "dns",
 	Short: "Trace DNS requests",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		transform := transformLine
 
 		switch {
@@ -76,10 +76,10 @@ var dnsCmd = &cobra.Command{
 
 		err := utils.RunTraceAndPrintStream(config, transform)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-
-			os.Exit(1)
+			return utils.WrapInErrRunGadget(err)
 		}
+
+		return nil
 	},
 }
 
@@ -91,7 +91,8 @@ func init() {
 func transformLine(line string) string {
 	event := &dnstypes.Event{}
 	if err := json.Unmarshal([]byte(line), event); err != nil {
-		return fmt.Sprintf("error unmarshaling event: %s", err)
+		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err))
+		return ""
 	}
 
 	podMsgSuffix := ""

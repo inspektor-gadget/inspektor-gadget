@@ -25,7 +25,6 @@ import (
 	"sync"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,7 +43,7 @@ var networkPolicyCmd = &cobra.Command{
 var networkPolicyMonitorCmd = &cobra.Command{
 	Use:   "monitor",
 	Short: "Monitor the network traffic",
-	Run:   runNetworkPolicyMonitor,
+	RunE:  runNetworkPolicyMonitor,
 }
 
 var networkPolicyReportCmd = &cobra.Command{
@@ -86,7 +85,7 @@ func (t traceCollector) Write(p []byte) (n int, err error) {
 	if len(text) != 0 {
 		err := json.Unmarshal([]byte(text), &event)
 		if err == nil && event.Type == "ready" {
-			fmt.Printf("Node %s ready.\n", t.node)
+			fmt.Printf("Node %q ready.\n", t.node)
 		}
 	}
 
@@ -116,26 +115,21 @@ func newWriter(file string) (*bufio.Writer, func(), error) {
 	return w, closure, nil
 }
 
-func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
-	contextLogger := log.WithFields(log.Fields{
-		"command": "kubectl-gadget network-policy monitor",
-		"args":    args,
-	})
-
+func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) error {
 	w, closure, err := newWriter(outputFileName)
 	if err != nil {
-		contextLogger.Fatalf("Error creating file %q: %s", outputFileName, err)
+		return fmt.Errorf("failed to create file %q: %w", outputFileName, err)
 	}
 	defer closure()
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		contextLogger.Fatalf("Error setting up Kubernetes client: %s", err)
+		return utils.WrapInErrSetupK8sClient(err)
 	}
 
 	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
-		contextLogger.Fatalf("Error listing nodes: %s", err)
+		return utils.WrapInErrListNodes(err)
 	}
 
 	if namespaces == "" {
@@ -174,15 +168,13 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) {
 			fmt.Printf("Error running command: %s\n", err)
 		}
 	}
+
+	return nil
 }
 
 func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
-	contextLogger := log.WithFields(log.Fields{
-		"command": "kubectl-gadget network-policy report",
-		"args":    args,
-	})
 	if inputFileName == "" {
-		return fmt.Errorf("Parameter --input missing")
+		return utils.WrapInErrMissingArgs("--input")
 	}
 
 	adv := advisor.NewAdvisor()
@@ -195,17 +187,17 @@ func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
 
 	w, closure, err := newWriter(outputFileName)
 	if err != nil {
-		contextLogger.Fatalf("Error creating file %q: %s", outputFileName, err)
+		return fmt.Errorf("failed to create file %q: %w", outputFileName, err)
 	}
 	defer closure()
 
 	_, err = w.Write([]byte(adv.FormatPolicies()))
 	if err != nil {
-		contextLogger.Fatalf("Error writing file %q: %s", outputFileName, err)
+		return fmt.Errorf("failed to write file %q: %w", outputFileName, err)
 	}
 	err = w.Flush()
 	if err != nil {
-		contextLogger.Fatalf("Error writing file %q: %s", outputFileName, err)
+		return fmt.Errorf("failed to flush file %q: %w", outputFileName, err)
 	}
 
 	return nil

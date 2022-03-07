@@ -88,13 +88,13 @@ func init() {
 
 func runBiolatencyStart(cmd *cobra.Command, args []string) error {
 	if params.Node == "" {
-		return fmt.Errorf("%s only works with --node", GADGET_NAME)
+		return utils.WrapInErrMissingArgs("--node")
 	}
 
 	biolatencyTraceConfig.Operation = "start"
 	traceID, err := utils.CreateTrace(biolatencyTraceConfig)
 	if err != nil {
-		return fmt.Errorf("failure creating trace: %w", err)
+		return utils.WrapInErrRunGadget(err)
 	}
 
 	fmt.Printf("%s\n", traceID)
@@ -104,13 +104,13 @@ func runBiolatencyStart(cmd *cobra.Command, args []string) error {
 
 func runBiolatencyStop(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("it is necessary to specify a <trace-id>")
+		return utils.WrapInErrMissingArgs("<trace-id>")
 	}
 	traceID := args[0]
 
 	err := utils.SetTraceOperation(traceID, "stop")
 	if err != nil {
-		return err
+		return utils.WrapInErrStopGadget(err)
 	}
 
 	displayResultsCallback := func(results []gadgetv1alpha1.Trace) error {
@@ -127,7 +127,7 @@ func runBiolatencyStop(cmd *cobra.Command, args []string) error {
 	err = utils.PrintTraceOutputFromStatus(traceID,
 		biolatencyTraceConfig.TraceOutputState, displayResultsCallback)
 	if err != nil {
-		return fmt.Errorf("failure printing the trace output: %w", err)
+		return utils.WrapInErrGetGadgetOutput(err)
 	}
 
 	return nil
@@ -136,7 +136,7 @@ func runBiolatencyStop(cmd *cobra.Command, args []string) error {
 func runBiolatencyList(cmd *cobra.Command, args []string) error {
 	err := utils.PrintAllTraces(biolatencyTraceConfig)
 	if err != nil {
-		return fmt.Errorf("failure collecting the running traces: %w", err)
+		return utils.WrapInErrListGadgetTraces(err)
 	}
 	return nil
 }

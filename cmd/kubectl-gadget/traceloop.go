@@ -25,7 +25,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/docker/go-units"
@@ -48,25 +47,25 @@ var traceloopCmd = &cobra.Command{
 var traceloopListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "list possible traces",
-	Run:   runTraceloopList,
+	RunE:  runTraceloopList,
 }
 
 var traceloopStartCmd = &cobra.Command{
 	Use:   "start",
 	Short: "start traceloop",
-	Run:   runTraceloopStart,
+	RunE:  runTraceloopStart,
 }
 
 var traceloopStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "stop traceloop",
-	Run:   runTraceloopStop,
+	RunE:  runTraceloopStop,
 }
 
 var traceloopShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "show one trace",
-	Run:   runTraceloopShow,
+	RunE:  runTraceloopShow,
 }
 
 var traceloopPodCmd = &cobra.Command{
@@ -74,17 +73,17 @@ var traceloopPodCmd = &cobra.Command{
 	Short: "show the traces in one pod",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 3 {
-			return errors.New("requires 3 arguments: namespace, pod name and idx")
+			return utils.WrapInErrMissingArgs("<namespace>, <podname> and <idx>")
 		}
 		return nil
 	},
-	Run: runTraceloopPod,
+	RunE: runTraceloopPod,
 }
 
 var traceloopCloseCmd = &cobra.Command{
 	Use:   "close",
 	Short: "close one trace",
-	Run:   runTraceloopClose,
+	RunE:  runTraceloopClose,
 }
 
 var (
@@ -131,10 +130,10 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 	}
 	pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), listOptions)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot find gadget pods: %q", err)
+		return nil, fmt.Errorf("failed to get gadget pods: %w", err)
 	}
 	if len(pods.Items) == 0 {
-		return nil, fmt.Errorf("No gadget pods found")
+		return nil, errors.New("no gadget pods found")
 	}
 
 	out = map[string][]tracemeta.TraceMeta{}
@@ -162,7 +161,7 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 	}
 
 	if validGadgetCount == 0 {
-		err = fmt.Errorf("Traceloop is not running on any node. Please start it with 'kubectl gadget traceloop start'.")
+		err = errors.New("traceloop is not running on any node. Please start it with 'kubectl gadget traceloop start'")
 	}
 
 	return
@@ -178,19 +177,14 @@ func capDecode(caps uint64) (out string) {
 	return
 }
 
-func runTraceloopStart(cmd *cobra.Command, args []string) {
-	contextLogger := log.WithFields(log.Fields{
-		"command": "kubectl-gadget traceloop start",
-		"args":    args,
-	})
-
+func runTraceloopStart(cmd *cobra.Command, args []string) error {
 	traces, err := utils.ListTracesByGadgetName("traceloop")
 	if err != nil {
-		contextLogger.Fatalf("Error checking traces: %v", err)
+		return fmt.Errorf("failed to get traces: %w", err)
 	}
 
 	if len(traces) != 0 {
-		contextLogger.Fatalf("traceloop already running. Run 'kubectl gadget traceloop stop' before.")
+		return errors.New("traceloop already running. Run 'kubectl gadget traceloop stop' before")
 	}
 
 	// Create traceloop trace
@@ -201,35 +195,30 @@ func runTraceloopStart(cmd *cobra.Command, args []string) {
 		CommonFlags:     &params,
 	})
 	if err != nil {
-		contextLogger.Fatalf("Error creating trace: %v\n", err)
+		return utils.WrapInErrRunGadget(err)
 	}
+
+	return nil
 }
 
-func runTraceloopStop(cmd *cobra.Command, args []string) {
-	contextLogger := log.WithFields(log.Fields{
-		"command": "kubectl-gadget traceloop stop",
-		"args":    args,
-	})
+func runTraceloopStop(cmd *cobra.Command, args []string) error {
 	err := utils.DeleteTracesByGadgetName("traceloop")
 	if err != nil {
-		contextLogger.Fatalf("Error removing traces: %v\n", err)
+		return utils.WrapInErrStopGadget(err)
 	}
+
+	return nil
 }
 
-func runTraceloopList(cmd *cobra.Command, args []string) {
-	contextLogger := log.WithFields(log.Fields{
-		"command": "kubectl-gadget traceloop list",
-		"args":    args,
-	})
-
+func runTraceloopList(cmd *cobra.Command, args []string) error {
 	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
+		return utils.WrapInErrSetupK8sClient(err)
 	}
 
 	tracesPerNode, err := getTracesListPerNode(client)
 	if err != nil {
-		contextLogger.Fatalf("Error in getting traces: %q", err)
+		return fmt.Errorf("failed to get the running traces: %w", err)
 	}
 
 	var traces []tracemeta.TraceMeta
@@ -320,26 +309,23 @@ func runTraceloopList(cmd *cobra.Command, args []string) {
 		}
 	}
 	w.Flush()
+
+	return nil
 }
 
-func runTraceloopShow(cmd *cobra.Command, args []string) {
-	contextLogger := log.WithFields(log.Fields{
-		"command": "kubectl-gadget traceloop show",
-		"args":    args,
-	})
-
+func runTraceloopShow(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		contextLogger.Fatalf("Missing parameter: trace name")
+		return utils.WrapInErrMissingArgs("<trace-name>")
 	}
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
+		return utils.WrapInErrSetupK8sClient(err)
 	}
 
 	tracesPerNode, err := getTracesListPerNode(client)
 	if err != nil {
-		contextLogger.Fatalf("Error in getting traces: %q", err)
+		return fmt.Errorf("failed to get traces: %w", err)
 	}
 
 	for node, tm := range tracesPerNode {
@@ -350,60 +336,49 @@ func runTraceloopShow(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
+
+	return nil
 }
 
-func runTraceloopPod(cmd *cobra.Command, args []string) {
-	contextLogger := log.WithFields(log.Fields{
-		"command": "kubectl-gadget traceloop pod namespace podname idx",
-		"args":    args,
-	})
-
-	if len(args) < 3 {
-		contextLogger.Fatalf("Missing parameter: namespace or podname or idx")
-	} else if len(args) > 3 {
-		contextLogger.Fatalf("Too many parameters")
-	}
+func runTraceloopPod(cmd *cobra.Command, args []string) error {
 	namespace := args[0]
 	podname := args[1]
 	idx := args[2]
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
+		return utils.WrapInErrSetupK8sClient(err)
 	}
 
 	pod, err := client.CoreV1().Pods(namespace).Get(context.TODO(), podname, metav1.GetOptions{})
 	if err != nil {
-		contextLogger.Fatalf("Cannot get pod %s: %q", podname, err)
+		return fmt.Errorf("failed to get pod %s: %w", podname, err)
 	}
 
 	if pod.Spec.NodeName == "" {
-		contextLogger.Fatalf("Pod %s not scheduled yet", podname)
+		return fmt.Errorf("pod %s not scheduled yet", podname)
 	}
 
 	fmt.Printf("%s", utils.ExecPodSimple(client, pod.Spec.NodeName,
 		fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/dump-pod?namespace=%s&podname=%s&idx=%s' ; echo`,
 			namespace, podname, idx)))
+
+	return nil
 }
 
-func runTraceloopClose(cmd *cobra.Command, args []string) {
-	contextLogger := log.WithFields(log.Fields{
-		"command": "kubectl-gadget traceloop close",
-		"args":    args,
-	})
-
+func runTraceloopClose(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		contextLogger.Fatalf("Missing parameter: trace name")
+		return utils.WrapInErrMissingArgs("<trace-name>")
 	}
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		contextLogger.Fatalf("Error in creating setting up Kubernetes client: %q", err)
+		return utils.WrapInErrSetupK8sClient(err)
 	}
 
 	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		contextLogger.Fatalf("Error in listing nodes: %q", err)
+		return utils.WrapInErrListNodes(err)
 	}
 
 	for _, node := range nodes.Items {
@@ -413,4 +388,6 @@ func runTraceloopClose(cmd *cobra.Command, args []string) {
 		fmt.Printf("%s", utils.ExecPodSimple(client, node.Name,
 			fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/close-by-name?name=%s' ; echo`, args[0])))
 	}
+
+	return nil
 }

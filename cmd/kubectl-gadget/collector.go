@@ -32,13 +32,13 @@ import (
 var processCollectorCmd = &cobra.Command{
 	Use:   "process-collector",
 	Short: "Gather information about running processes",
-	Run:   processCollectorCmdRun,
+	RunE:  processCollectorCmdRun,
 }
 
 var socketCollectorCmd = &cobra.Command{
 	Use:   "socket-collector",
 	Short: "Gather information about network sockets",
-	Run:   socketCollectorCmdRun,
+	RunE:  socketCollectorCmdRun,
 }
 
 var (
@@ -89,7 +89,7 @@ func init() {
 	)
 }
 
-func processCollectorCmdRun(cmd *cobra.Command, args []string) {
+func processCollectorCmdRun(cmd *cobra.Command, args []string) error {
 	callback := func(results []gadgetv1alpha1.Trace) error {
 		// Display results
 		type Process struct {
@@ -105,7 +105,9 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 
 		for _, i := range results {
 			processes := []Process{}
-			json.Unmarshal([]byte(i.Status.Output), &processes)
+			if err := json.Unmarshal([]byte(i.Status.Output), &processes); err != nil {
+				return utils.WrapInErrUnmarshalOutput(err)
+			}
 			allProcesses = append(allProcesses, processes...)
 		}
 		if !processCollectorParamThreads {
@@ -143,7 +145,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 		case utils.OutputModeJson:
 			b, err := json.MarshalIndent(allProcesses, "", "  ")
 			if err != nil {
-				return fmt.Errorf("error marshalling results: %w", err)
+				return utils.WrapInErrMarshalOutput(err)
 			}
 			fmt.Printf("%s\n", b)
 		case utils.OutputModeCustomColumns:
@@ -154,7 +156,7 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 			for _, p := range allProcesses {
 				b, err := json.Marshal(p)
 				if err != nil {
-					return fmt.Errorf("error marshalling results: %w", err)
+					return utils.WrapInErrMarshalOutput(err)
 				}
 
 				fmt.Println(transform(string(b)))
@@ -203,19 +205,21 @@ func processCollectorCmdRun(cmd *cobra.Command, args []string) {
 
 	err := utils.RunTraceAndPrintStatusOutput(config, callback)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-
-		os.Exit(1)
+		return utils.WrapInErrRunGadget(err)
 	}
+
+	return nil
 }
 
-func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
+func socketCollectorCmdRun(cmd *cobra.Command, args []string) error {
 	callback := func(results []gadgetv1alpha1.Trace) error {
 		allSockets := []socketcollectortypes.Event{}
 
 		for _, i := range results {
 			var sockets []socketcollectortypes.Event
-			json.Unmarshal([]byte(i.Status.Output), &sockets)
+			if err := json.Unmarshal([]byte(i.Status.Output), &sockets); err != nil {
+				return utils.WrapInErrUnmarshalOutput(err)
+			}
 			allSockets = append(allSockets, sockets...)
 		}
 
@@ -249,7 +253,7 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 		case utils.OutputModeJson:
 			b, err := json.MarshalIndent(allSockets, "", "  ")
 			if err != nil {
-				return fmt.Errorf("error marshalling results: %w", err)
+				return utils.WrapInErrMarshalOutput(err)
 			}
 			fmt.Printf("%s\n", b)
 		case utils.OutputModeCustomColumns:
@@ -260,7 +264,7 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 			for _, p := range allSockets {
 				b, err := json.Marshal(p)
 				if err != nil {
-					return fmt.Errorf("error marshalling results: %w", err)
+					return utils.WrapInErrMarshalOutput(err)
 				}
 
 				fmt.Println(transform(string(b)))
@@ -301,8 +305,7 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 	}
 
 	if _, err := socketcollectortypes.ParseProtocol(socketCollectorProtocol); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		os.Exit(1)
+		return utils.WrapInErrInvalidArg("--proto", err)
 	}
 
 	config := &utils.TraceConfig{
@@ -318,8 +321,8 @@ func socketCollectorCmdRun(cmd *cobra.Command, args []string) {
 
 	err := utils.RunTraceAndPrintStatusOutput(config, callback)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-
-		os.Exit(1)
+		return utils.WrapInErrRunGadget(err)
 	}
+
+	return nil
 }

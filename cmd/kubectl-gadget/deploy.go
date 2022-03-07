@@ -361,7 +361,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
 	if err != nil {
-		return fmt.Errorf("failed to parse template %w", err)
+		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
 	p := parameters{
@@ -377,7 +377,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s\n---\n", resources.TracesCustomResource)
 	err = t.Execute(os.Stdout, p)
 	if err != nil {
-		return fmt.Errorf("failed to generate deploy template %w", err)
+		return fmt.Errorf("failed to generate deploy template: %w", err)
 	}
 
 	return nil

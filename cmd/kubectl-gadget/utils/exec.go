@@ -17,7 +17,6 @@ package utils
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -27,11 +26,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
-)
-
-var (
-	ErrGadgetPodNotFound      = errors.New("Gadget pod not found")
-	ErrMultipleGadgetPodFound = errors.New("Multiple gadget pods found")
 )
 
 func ExecPodSimple(client *kubernetes.Clientset, node string, podCmd string) string {
