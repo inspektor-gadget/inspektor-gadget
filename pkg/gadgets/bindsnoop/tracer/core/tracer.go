@@ -177,7 +177,7 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("error opening ipv6 kprobe: %w", err)
 	}
 
-	t.reader, err = perf.NewReader(t.objs.bindsnoopMaps.Events, os.Getpagesize())
+	t.reader, err = perf.NewReader(t.objs.bindsnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}

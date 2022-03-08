@@ -24,6 +24,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"unsafe"
 
@@ -140,7 +141,7 @@ func (t *Tracer) start() error {
 	}
 	t.openAtExitLink = openAtExit
 
-	reader, err := perf.NewReader(t.objs.opensnoopMaps.Events, 4096)
+	reader, err := perf.NewReader(t.objs.opensnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}

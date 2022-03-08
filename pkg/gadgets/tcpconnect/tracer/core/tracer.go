@@ -73,8 +73,6 @@ import (
 
 //go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang tcpconnect ./bpf/tcpconnect.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
 
-const PerfBufferPages = 64
-
 type Tracer struct {
 	config        *tracer.Config
 	resolver      containercollection.ContainerResolver
@@ -168,7 +166,7 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
-	reader, err := perf.NewReader(t.objs.tcpconnectMaps.Events, PerfBufferPages*os.Getpagesize())
+	reader, err := perf.NewReader(t.objs.tcpconnectMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}

@@ -30,6 +30,8 @@ const (
 
 	// The Trace custom resource is preferably in the "gadget" namespace
 	TraceDefaultNamespace = "gadget"
+
+	PerfBufferPages = 64
 )
 
 func TraceName(namespace, name string) string {

@@ -24,6 +24,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"unsafe"
 
@@ -215,7 +216,7 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
-	t.reader, err = perf.NewReader(t.objs.fsslowerMaps.Events, 4096)
+	t.reader, err = perf.NewReader(t.objs.fsslowerMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
