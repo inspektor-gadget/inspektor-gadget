@@ -18,15 +18,5 @@ package gadgettracermanager
 import "C"
 
 const (
-	NameMaxLength        = C.NAME_MAX_LENGTH
-	NameMaxCharacters    = NameMaxLength - 1
 	MaxContainersPerNode = C.MAX_CONTAINERS_PER_NODE
 )
-
-type container = C.struct_container
-
-func copyToC(dest *[NameMaxLength]C.char, source string) {
-	for i := 0; i < len(source) && i < NameMaxCharacters; i++ {
-		dest[i] = C.char(source[i])
-	}
-}
