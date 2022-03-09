@@ -21,7 +21,7 @@ NODE             NAMESPACE        POD              CONTAINER        PID    COMM 
 ```
 
 Indeed, it is waiting for signals to be sent.
-So, in *an other terminal*, `exec` the container and send one signal:
+So, in *another terminal*, `exec` the container and send one signal:
 
 ```bash
 $ kubectl exec -ti debian -- sh -c 'sleep 3 & kill -kill $!'

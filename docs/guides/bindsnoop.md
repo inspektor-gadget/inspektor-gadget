@@ -21,7 +21,7 @@ NODE             NAMESPACE        POD              CONTAINER        PID    COMM 
 ```
 
 Indeed, it is waiting for socket binding to occur.
-So, in *an other terminal*, `exec` the container and use `nc`:
+So, in *another terminal*, `exec` the container and use `nc`:
 
 ```bash
 $ kubectl exec -ti test-pod -- nc -l -p 4242 -w 1
