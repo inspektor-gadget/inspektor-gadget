@@ -7,6 +7,7 @@
 struct ip_key_t {
 	unsigned __int128 saddr;
 	unsigned __int128 daddr;
+	__u64 mntnsid;
 	__u32 pid;
 	char name[TASK_COMM_LEN];
 	__u16 lport;

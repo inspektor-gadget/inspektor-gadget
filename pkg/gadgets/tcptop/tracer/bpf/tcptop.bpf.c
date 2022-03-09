@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2022 Francis Laniel <flaniel@linux.microsoft.com>
-#include <vmlinux.h>
+#include <vmlinux/vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
@@ -12,16 +12,9 @@
 #define AF_INET		2	/* Internet IP Protocol 	*/
 #define AF_INET6	10	/* IP version 6			*/
 
-const volatile bool filter_cg = false;
 const volatile pid_t target_pid = -1;
 const volatile int target_family = -1;
-
-struct {
-	__uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);
-	__type(key, u32);
-	__type(value, u32);
-	__uint(max_entries, 1);
-} cgroup_map SEC(".maps");
+const volatile bool filter_by_mnt_ns = false;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -30,15 +23,21 @@ struct {
 	__type(value, struct traffic_t);
 } ip_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1024);
+	__uint(key_size, sizeof(u64));
+	__uint(value_size, sizeof(u32));
+} mount_ns_set SEC(".maps");
+
 static int probe_ip(bool receiving, struct sock *sk, size_t size)
 {
 	struct ip_key_t ip_key = {};
 	struct traffic_t *trafficp;
+	struct task_struct *task;
+	u64 mntns_id;
 	u16 family;
 	u32 pid;
-
-	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
-		return 0;
 
 	pid = bpf_get_current_pid_tgid() >> 32;
 	if (target_pid != -1 && target_pid != pid)
@@ -52,11 +51,18 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 	if (family != AF_INET && family != AF_INET6)
 		return 0;
 
+	task = (struct task_struct*) bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+		return 0;
+
 	ip_key.pid = pid;
 	bpf_get_current_comm(&ip_key.name, sizeof(ip_key.name));
 	ip_key.lport = BPF_CORE_READ(sk, __sk_common.skc_num);
 	ip_key.dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
 	ip_key.family = family;
+	ip_key.mntnsid = mntns_id;
 
 	if (family == AF_INET) {
 		bpf_probe_read_kernel(&ip_key.saddr,
