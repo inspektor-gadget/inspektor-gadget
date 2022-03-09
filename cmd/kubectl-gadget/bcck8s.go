@@ -43,12 +43,6 @@ var profileCmd = &cobra.Command{
 	RunE:  bccCmd("profile", "/usr/share/bcc/tools/profile"),
 }
 
-var tcptopCmd = &cobra.Command{
-	Use:   "tcptop",
-	Short: "Show the TCP traffic in a pod",
-	RunE:  bccCmd("tcptop", "/usr/share/bcc/tools/tcptop"),
-}
-
 var (
 	stackFlag  bool
 	uniqueFlag bool
@@ -61,7 +55,6 @@ func init() {
 	commands := []*cobra.Command{
 		biotopCmd,
 		profileCmd,
-		tcptopCmd,
 	}
 
 	// Add flags for all BCC gadgets
