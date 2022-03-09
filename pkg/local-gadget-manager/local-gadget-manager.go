@@ -24,6 +24,8 @@ import (
 	gadgetcollection "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	containersmap "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containers-map"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
 
 	"github.com/cilium/ebpf"
@@ -37,6 +39,10 @@ type LocalGadgetManager struct {
 
 	// tracers by name
 	tracers map[string]tracer
+
+	// containersMap is the global map at /sys/fs/bpf/gadget/containers
+	// exposing container details for each mount namespace.
+	containersMap *containersmap.ContainersMap
 }
 
 type tracer struct {
@@ -280,12 +286,20 @@ func NewManager() (*LocalGadgetManager, error) {
 		return nil, err
 	}
 
+	containersMap, err := containersmap.NewContainersMap(gadgets.PinPath)
+	if err != nil {
+		return nil, fmt.Errorf("error creating containers map: %w", err)
+	}
+	containerEventFuncs := []pubsub.FuncNotify{}
+	containerEventFuncs = append(containerEventFuncs, containersMap.ContainersMapUpdater())
+
 	l := &LocalGadgetManager{
 		traceFactories: gadgetcollection.TraceFactoriesForLocalGadget(),
 		tracers:        make(map[string]tracer),
+		containersMap:  containersMap,
 	}
-	err := l.ContainerCollection.ContainerCollectionInitialize(
-		containercollection.WithPubSub(),
+	err = l.ContainerCollection.ContainerCollectionInitialize(
+		containercollection.WithPubSub(containerEventFuncs...),
 		containercollection.WithCgroupEnrichment(),
 		containercollection.WithLinuxNamespaceEnrichment(),
 		containercollection.WithDockerEnrichment(),
