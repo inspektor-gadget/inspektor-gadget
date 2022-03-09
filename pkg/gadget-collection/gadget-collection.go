@@ -33,6 +33,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snisnoop"
 	socketcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptop"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/traceloop"
 )
@@ -56,6 +57,7 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 		"snisnoop":               snisnoop.NewFactory(),
 		"socket-collector":       socketcollector.NewFactory(),
 		"tcpconnect":             tcpconnect.NewFactory(),
+		"tcptop":                 tcptop.NewFactory(),
 		"tcptracer":              tcptracer.NewFactory(),
 		"traceloop":              traceloop.NewFactory(),
 	}
