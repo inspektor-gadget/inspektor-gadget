@@ -126,7 +126,7 @@ func (t *Tracer) start() error {
 	}
 	t.oomLink = kprobe
 
-	reader, err := perf.NewReader(t.objs.oomkillMaps.Events, os.Getpagesize())
+	reader, err := perf.NewReader(t.objs.oomkillMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}

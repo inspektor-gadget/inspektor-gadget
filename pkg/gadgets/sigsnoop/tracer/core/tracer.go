@@ -192,7 +192,7 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.reader, err = perf.NewReader(t.objs.sigsnoopMaps.Events, 64*os.Getpagesize())
+	t.reader, err = perf.NewReader(t.objs.sigsnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}

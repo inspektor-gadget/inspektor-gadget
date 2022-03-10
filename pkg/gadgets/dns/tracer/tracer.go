@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"golang.org/x/sys/unix"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/rawsock"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -93,7 +94,7 @@ func (t *Tracer) Attach(
 		return fmt.Errorf("failed to create BPF collection: %w", err)
 	}
 
-	rd, err := perf.NewReader(coll.Maps[BPFMapName], os.Getpagesize())
+	rd, err := perf.NewReader(coll.Maps[BPFMapName], gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("failed to get a perf reader: %w", err)
 	}
