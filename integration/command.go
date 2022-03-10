@@ -18,9 +18,9 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
-	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -133,72 +133,112 @@ var cleanupSPO *command = &command{
 	cleanup: true,
 }
 
-// run runs the command on the given as parameter test.
-func (c *command) run(t *testing.T) {
-	if c.startAndStop {
-		if !c.started {
-			c.start(t)
-
-			c.started = true
-		} else {
-			c.stop(t)
-		}
-
-		return
-	}
-
-	t.Logf("command: %s\n", c.cmd)
+// createExecCmd creates an exec.Cmd for the command c.cmd and stores it in
+// command.command. The exec.Cmd is configured to store the stdout and stderr in
+// command.stdout and command.stderr so that we can use them on
+// command.verifyOutput().
+func (c *command) createExecCmd() {
 	cmd := exec.Command("/bin/sh", "-c", c.cmd)
-	output, err := cmd.CombinedOutput()
-	actual := string(output)
-	t.Logf("command returned:\n%s\n", actual)
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	if c.expectedRegexp != "" {
-		r := regexp.MustCompile(c.expectedRegexp)
-		if !r.MatchString(actual) {
-			t.Fatalf("regexp didn't match: %s\n%s\n", c.expectedRegexp, actual)
-		}
-	}
-	if c.expectedString != "" && actual != c.expectedString {
-		t.Fatalf("diff: %v", pretty.Diff(c.expectedString, actual))
-	}
+	cmd.Stdout = &c.stdout
+	cmd.Stderr = &c.stderr
+
+	c.command = cmd
 }
 
-// runWithoutTest runs the command, this is thought to be used in TestMain().
-func (c *command) runWithoutTest() error {
-	fmt.Printf("command: %s\n", c.cmd)
-	cmd := exec.Command("/bin/sh", "-c", c.cmd)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Fprint(os.Stderr, string(output))
-		return err
+// getInspektorGadgetLogs returns a string with the logs of the gadget pods
+func getInspektorGadgetLogs() string {
+	var sb strings.Builder
+
+	logCommands := []string{
+		"kubectl get pods -n gadget -o wide",
+		`for pod in $(kubectl get pods -n gadget -o name); do
+			kubectl logs -n gadget $pod;
+		done`,
 	}
 
-	actual := string(output)
-	fmt.Printf("command returned:\n%s\n", actual)
+	for _, c := range logCommands {
+		cmd := exec.Command("/bin/sh", "-xc", c)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			sb.WriteString(fmt.Sprintf("Error: failed to run log command: %s\n", cmd.String()))
+			continue
+		}
+		sb.WriteString(string(output))
+	}
+
+	return sb.String()
+}
+
+// verifyOutput verifies if the stdout match with the expected regular
+// expression and the expected string. If it doesn't, verifyOutput returns and
+// error and the gadget pod logs.
+func (c *command) verifyOutput() error {
+	output := c.stdout.String()
 
 	if c.expectedRegexp != "" {
 		r := regexp.MustCompile(c.expectedRegexp)
-		if !r.MatchString(actual) {
-			return fmt.Errorf("regexp didn't match: %s\n%s", c.expectedRegexp, actual)
+		if !r.MatchString(output) {
+			return fmt.Errorf("output didn't match the expected regexp: %s\n%s",
+				c.expectedRegexp, getInspektorGadgetLogs())
 		}
 	}
 
-	if c.expectedString != "" && actual != c.expectedString {
-		return fmt.Errorf("diff: %v", pretty.Diff(c.expectedString, actual))
+	if c.expectedString != "" && output != c.expectedString {
+		return fmt.Errorf("output didn't match the expected string: %s\n%v\n%s",
+			c.expectedString, pretty.Diff(c.expectedString, output), getInspektorGadgetLogs())
 	}
 
 	return nil
 }
 
+// run runs the command on the given as parameter test.
+func (c *command) run(t *testing.T) {
+	c.createExecCmd()
+
+	if c.startAndStop {
+		c.start(t)
+		return
+	}
+
+	t.Logf("Run command: %s\n", c.cmd)
+	err := c.command.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("Command returned:\n%s\n%s\n", c.stderr.String(), c.stdout.String())
+
+	err = c.verifyOutput()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// runWithoutTest runs the command, this is thought to be used in TestMain().
+func (c *command) runWithoutTest() error {
+	fmt.Printf("Run command: %s\n", c.cmd)
+
+	c.createExecCmd()
+	err := c.command.Run()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Command returned:\n%s\n%s\n", c.stderr.String(), c.stdout.String())
+
+	return c.verifyOutput()
+}
+
 // start starts the command on the given as parameter test, you need to
 // wait it using stop().
 func (c *command) start(t *testing.T) {
+	if c.started {
+		t.Logf("Warn: trying to start command but it was already started: %s\n", c.cmd)
+		return
+	}
+
 	t.Logf("Start command: %s\n", c.cmd)
-	cmd := exec.Command("/bin/sh", "-c", c.cmd)
 
 	// To be able to kill the process of /bin/sh and its child (the process of
 	// c.cmd), we need to send the termination signal to their process group ID
@@ -208,17 +248,14 @@ func (c *command) start(t *testing.T) {
 	// executing /bin/sh. Doing so, the PGID of /bin/sh (and its children)
 	// will be set to its process ID, see:
 	// https://cs.opensource.google/go/go/+/refs/tags/go1.17.8:src/syscall/exec_linux.go;l=32-34.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
+	c.command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
 
-	cmd.Stdout = &c.stdout
-	cmd.Stderr = &c.stderr
-
-	err := cmd.Start()
+	err := c.command.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	c.command = cmd
+	c.started = true
 }
 
 // stop stops a command previously started with start().
@@ -226,6 +263,11 @@ func (c *command) start(t *testing.T) {
 // its termination.
 // Cmd output is then checked with regard to expectedString and expectedRegexp
 func (c *command) stop(t *testing.T) {
+	if !c.started {
+		t.Logf("Warn: trying to stop command but it was not started: %s\n", c.cmd)
+		return
+	}
+
 	t.Logf("Stop command: %s\n", c.cmd)
 
 	// Here, we just need to send the PID of /bin/sh (which is the same PGID) as
@@ -237,20 +279,14 @@ func (c *command) stop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stdout := c.stdout.String()
-	stderr := c.stderr.String()
+	t.Logf("Command returned:\n%s\n%s\n", c.stderr.String(), c.stdout.String())
 
-	if c.expectedRegexp != "" {
-		r := regexp.MustCompile(c.expectedRegexp)
-		if !r.MatchString(stdout) {
-			fmt.Fprintf(os.Stderr, "%s\n", stderr)
-			t.Fatalf("regexp didn't match: %s\n%s\n", c.expectedRegexp, stdout)
-		}
+	err = c.verifyOutput()
+	if err != nil {
+		t.Fatal(err)
 	}
-	if c.expectedString != "" && stdout != c.expectedString {
-		fmt.Fprintf(os.Stderr, "%s\n", stderr)
-		t.Fatalf("diff: %v", pretty.Diff(c.expectedString, stdout))
-	}
+
+	c.started = false
 }
 
 // busyboxPodCommand returns a string which can be used as command to run a
