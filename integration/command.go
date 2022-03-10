@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"syscall"
 	"testing"
 
 	"github.com/kr/pretty"
@@ -158,6 +159,17 @@ func (c *command) runWithoutTest() error {
 func (c *command) start(t *testing.T) {
 	t.Logf("Start command: %s\n", c.cmd)
 	cmd := exec.Command("/bin/sh", "-c", c.cmd)
+
+	// To be able to kill the process of /bin/sh and its child (the process of
+	// c.cmd), we need to send the termination signal to their process group ID
+	// (PGID). However, child processes get the same PGID as their parents by
+	// default, so in order to avoid killing also the integration tests process,
+	// we set the fields Setpgid and Pgid of syscall.SysProcAttr before
+	// executing /bin/sh. Doing so, the PGID of /bin/sh (and its children)
+	// will be set to its process ID, see:
+	// https://cs.opensource.google/go/go/+/refs/tags/go1.17.8:src/syscall/exec_linux.go;l=32-34.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
+
 	cmd.Stdout = &c.stdout
 	cmd.Stderr = &c.stderr
 
@@ -175,7 +187,12 @@ func (c *command) start(t *testing.T) {
 // Cmd output is then checked with regard to expectedString and expectedRegexp
 func (c *command) stop(t *testing.T) {
 	t.Logf("Stop command: %s\n", c.cmd)
-	err := c.command.Process.Kill()
+
+	// Here, we just need to send the PID of /bin/sh (which is the same PGID) as
+	// a negative number to syscall.Kill(). As a result, the signal will be
+	// received by all the processes with such PGID, in our case, the process of
+	// /bin/sh and c.cmd.
+	err := syscall.Kill(-c.command.Process.Pid, syscall.SIGTERM)
 	if err != nil {
 		t.Fatal(err)
 	}
