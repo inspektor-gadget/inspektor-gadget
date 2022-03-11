@@ -97,6 +97,7 @@ func TestMain(m *testing.M) {
 	cleanup := func() {
 		fmt.Printf("Clean inspektor-gadget:\n")
 		cleanupInspektorGadget.runWithoutTest()
+
 		fmt.Printf("Clean SPO:\n")
 		cleanupSPO.runWithoutTest()
 	}
@@ -110,7 +111,7 @@ func TestMain(m *testing.M) {
 		for _, cmd := range initCommands {
 			err := cmd.runWithoutTest()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
+				fmt.Fprintln(os.Stderr, err)
 				cleanup()
 				os.Exit(-1)
 			}
@@ -160,7 +161,7 @@ func TestBiolatency(t *testing.T) {
 	commands := []*command{
 		{
 			name:           "Run biolatency gadget",
-			cmd:            "id=$($KUBECTL_GADGET biolatency start --node $(kubectl get node --no-headers | cut -d' ' -f1)); sleep 15; $KUBECTL_GADGET biolatency stop $id",
+			cmd:            "id=$($KUBECTL_GADGET biolatency start --node $(kubectl get node --no-headers | cut -d' ' -f1 | head -1)); sleep 15; $KUBECTL_GADGET biolatency stop $id",
 			expectedRegexp: `usecs\s+:\s+count\s+distribution`,
 		},
 	}
@@ -733,7 +734,7 @@ func TestTcptop(t *testing.T) {
 
 	tcptopCmd := &command{
 		name:           "Start tcptop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET tcptop --node $(kubectl get node --no-headers | cut -d' ' -f1) -n %s -p test-pod", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET tcptop -n %s", ns),
 		expectedRegexp: `wget`,
 		startAndStop:   true,
 	}
