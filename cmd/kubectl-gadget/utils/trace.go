@@ -47,7 +47,7 @@ const (
 	// We name it "global" as if one trace is created on several nodes, then each
 	// copy of the trace on each node will share the same id.
 	GlobalTraceID = "global-trace-id"
-	TraceTimeout  = 2 * time.Second
+	TraceTimeout  = 5 * time.Second
 )
 
 // TraceConfig is used to contain information used to manage a trace.
