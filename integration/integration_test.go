@@ -48,7 +48,7 @@ func runCommands(cmds []*command, t *testing.T) {
 		for _, cmd := range cmds {
 			if cmd.startAndStop && cmd.started {
 				// Wait a bit before stopping the command.
-				time.Sleep(10 * time.Second)
+				time.Sleep(15 * time.Second)
 				cmd.stop(t)
 			}
 		}
