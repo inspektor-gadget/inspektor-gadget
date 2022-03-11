@@ -129,6 +129,9 @@ func TestBindsnoop(t *testing.T) {
 
 	t.Parallel()
 
+	t.Logf("foobar")
+	fmt.Fprintf(os.Stderr, "barfoo")
+
 	bindsnoopCmd := &command{
 		name:           "Start bindsnoop gadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET bindsnoop -n %s", ns),
