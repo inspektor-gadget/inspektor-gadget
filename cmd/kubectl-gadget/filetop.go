@@ -101,7 +101,7 @@ var filetopCmd = &cobra.Command{
 
 func init() {
 	filetopCmd.Flags().IntVarP(&maxRows, "maxrows", "r", 20, "Maximum rows to print")
-	filetopCmd.Flags().StringVarP(&sortByStr, "sort", "", "rbytes", "Sort column")
+	filetopCmd.Flags().StringVarP(&sortByStr, "sort", "", "rbytes", fmt.Sprintf("Sort column (%s)", strings.Join(types.SortBySlice, ", ")))
 	filetopCmd.Flags().BoolVarP(&allFiles, "all-files", "a", false, "Include non-regular file types (sockets, FIFOs, etc)")
 
 	rootCmd.AddCommand(filetopCmd)
