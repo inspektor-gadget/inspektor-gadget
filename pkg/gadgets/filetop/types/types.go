@@ -29,6 +29,13 @@ const (
 	WBYTES
 )
 
+const (
+	IntervalParam = "interval"
+	MaxRowsParam  = "max_rows"
+	SortByParam   = "sort_by"
+	AllFilesParam = "pid"
+)
+
 var SortBySlice = []string{
 	"all",
 	"reads",
