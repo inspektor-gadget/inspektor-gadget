@@ -187,6 +187,7 @@ spec:
       hostNetwork: true
       containers:
       - name: gadget
+        terminationMessagePolicy: FallbackToLogsOnError
         image: {{.Image}}
         imagePullPolicy: {{.ImagePullPolicy}}
         command: [ "/entrypoint.sh" ]
@@ -197,7 +198,7 @@ spec:
                 - "/cleanup.sh"
 {{if .LivenessProbe}}
         livenessProbe:
-          initialDelaySeconds: 10
+          initialDelaySeconds: 60
           periodSeconds: 5
           exec:
             command:

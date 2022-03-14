@@ -98,7 +98,10 @@ if [ "$ID" = "rhcos" ] && [ ! -d "/usr/src/kernels/$KERNEL" ]; then
     RPM=kernel-devel-$KERNEL.rpm
 
     mkdir -p $RPMDIR/usr/src/kernels/
-    curl -fsSLo $RPMDIR/$RPM $REPO/$RPM || true
+    # Ensure the whole operation does not take more than 40 seconds. This value
+    # needs to be lower than the liveness-probe initial delay. Otherwise, there
+    # is the risk the gadget pod gets restarted while downloading this package.
+    curl --max-time 40 -fsSLo $RPMDIR/$RPM $REPO/$RPM || rm -f $RPMDIR/$RPM
 
     if test -f $RPMDIR/$RPM; then
       cd $RPMDIR && rpm2cpio $RPM | cpio --quiet -i
