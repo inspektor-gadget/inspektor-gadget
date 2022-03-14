@@ -70,10 +70,10 @@ var filetopCmd = &cobra.Command{
 			TraceOutputState: "Started",
 			CommonFlags:      &params,
 			Parameters: map[string]string{
-				"max_rows":  strconv.Itoa(maxRows),
-				"interval":  strconv.Itoa(interval),
-				"sort_by":   sortByStr,
-				"all_files": strconv.FormatBool(allFiles),
+				types.MaxRowsParam:  strconv.Itoa(maxRows),
+				types.IntervalParam: strconv.Itoa(interval),
+				types.SortByParam:   sortByStr,
+				types.AllFilesParam: strconv.FormatBool(allFiles),
 			},
 		}
 
@@ -101,7 +101,7 @@ var filetopCmd = &cobra.Command{
 
 func init() {
 	filetopCmd.Flags().IntVarP(&maxRows, "maxrows", "r", 20, "Maximum rows to print")
-	filetopCmd.Flags().StringVarP(&sortByStr, "sort", "", "rbytes", "Sort column")
+	filetopCmd.Flags().StringVarP(&sortByStr, "sort", "", "rbytes", fmt.Sprintf("Sort column (%s)", strings.Join(types.SortBySlice, ", ")))
 	filetopCmd.Flags().BoolVarP(&allFiles, "all-files", "a", false, "Include non-regular file types (sockets, FIFOs, etc)")
 
 	rootCmd.AddCommand(filetopCmd)
