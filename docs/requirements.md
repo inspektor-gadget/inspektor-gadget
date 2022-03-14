@@ -12,11 +12,28 @@ node, as well as whether or not the kernel has
 [BTF](https://www.kernel.org/doc/html/latest/bpf/btf.html) enabled (via
 `CONFIG_DEBUG_INFO_BTF=y`).
 
-The required BTF information for some well known kernel versions is
-generated with [BTFGen](https://github.com/kinvolk/btfgen) and shipped
-within the gadget container image. If there are not shipped types for
-the running kernel then they are downloaded from
-[BTFhub](https://github.com/aquasecurity/btfhub/).
+Some of the gadgets have two different implementations. The first is
+based on the [traditional BCC
+tools](https://github.com/iovisor/bcc/tree/master/tools), in this case
+they are compiled at runtime on the target machine before loading. These
+tools usually work on older kernels (~4.15) and require to have the
+kernel headers available or the `IKHEADERS` module loaded. The second
+implementation uses the modern Compile Once - Run Everywhere (CO:RE)
+approach. These tools are not compiled at runtime and it's needed to
+have BTF information. This information is collected from three different
+sources, a fallback mechanism is implemented to try another source if the
+previous one was not available.
+1. The kernel already exposes it through `/sys/kernel/btf/vmlinux`: the
+   kernel was compiled with `CONFIG_DEBUG_INFO_BTF`).
+2. It's available in the gadget container image: we ship the BTF
+   information for some well known kernel versions using
+   [BTFGen](https://github.com/kinvolk/btfgen).
+3. It's downloaded from
+   [BTFHub](https://github.com/aquasecurity/btfhub/).
+
+Inspektor Gadget always tries to use the CO:RE implementation of the
+gadget (when available), if it fails then it falls back to the
+traditional BCC-based implementation.
 
 ## Required Kernel Versions
 
@@ -26,28 +43,22 @@ and their shipped kernels, hence it's possible that some gadgets work in older
 kernels than the one mentioned here.
 
 
-| Gadget                 | Tools Mode | Required Kernel                 | BTF Required |
-|------------------------|------------|---------------------------------|--------------|
-| bindsnoop              | standard   | 4.15                            | N            |
-| bindsnoop              | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
-| biolatency             | standard   | 4.15                            | N            |
-| capabilities           |            | 4.15                            | N            |
-| dns                    |            | 5.4                             | N            |
-| execsnoop              | standard   | 4.15                            | N            |
-| execsnoop              | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
-| filetop                |            | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
-| fsslower               | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
-| network policy advisor |            |                                 |              |
-| oomkill                | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
-| opensnoop              | standard   | 4.15                            | N            |
-| opensnoop              | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
-| sigsnoop               | core       | 5.4<sup>[1](#btfhubnote)</sup>  | Y            |
-| socket collector       |            | 5.10                            | Y            |
-| process collector      |            | 5.10                            | Y            |
-| tcpconnect             | standard   | 4.15                            | N            |
-| tcpconnect             | core       | 5.8                             | Y            |
-| tcptop                 | standard   | 4.15                            | N            |
-| tcptracer              | standard   | 4.15                            | N            |
-| traceloop              |            | 4.15                            | N            |
-
-<a name="btfhubnote">1</a>: By using [btfhub](https://github.com/aquasecurity/btfhub/)
+| Gadget                 | Minimum Kernel          |
+|------------------------|-------------------------|
+| bindsnoop              | 4.15 (BCC), 5.4 (CO:RE) |
+| biolatency             | 4.15                    |
+| capabilities           | 4.15                    |
+| dns                    | 5.4                     |
+| execsnoop              | 4.15 (BCC), 5.4 (CO:RE) |
+| filetop                | 5.4                     |
+| fsslower               | 5.4                     |
+| network policy advisor |                         |
+| oomkill                | 5.4                     |
+| opensnoop              | 4.15 (BCC), 5.4 (CO:RE) |
+| sigsnoop               | 5.4                     |
+| socket collector       | 5.10                    |
+| process collector      | 5.10                    |
+| tcpconnect             | 4.15 (BCC), 5.8 (CO:RE) |
+| tcptop                 | 4.15                    |
+| tcptracer              | 4.15                    |
+| traceloop              | 4.15                    |
