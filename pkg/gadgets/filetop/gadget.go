@@ -58,11 +58,14 @@ func (f *TraceFactory) Description() string {
 	t := `filetop shows reads and writes by file, with container details.
 
 The following parameters are supported:
- - interval: Output interval, in seconds. (default %d)
- - max_rows: Maximum rows to print. (default %d)
- - sort: The field to sort the results by (%s). (default %s)`
-	return fmt.Sprintf(t, IntervalDefault, MaxRowsDefault,
-		strings.Join(types.SortBySlice, ","), SortByDefault)
+ - %s: Output interval, in seconds. (default %d)
+ - %s: Maximum rows to print. (default %d)
+ - %s: The field to sort the results by (%s). (default %s)
+ - %s: Show all files. (default %v, i.e. show regular files only)`
+	return fmt.Sprintf(t, types.IntervalParam, IntervalDefault,
+		types.MaxRowsParam, MaxRowsDefault,
+		types.SortByParam, strings.Join(types.SortBySlice, ","), SortByDefault,
+		types.AllFilesParam, AllFilesDefault)
 }
 
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
@@ -118,34 +121,34 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		params := trace.Spec.Parameters
 		var err error
 
-		if val, ok := params["max_rows"]; ok {
+		if val, ok := params[types.MaxRowsParam]; ok {
 			maxRows, err = strconv.Atoi(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for ouput_rows", val)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, types.MaxRowsParam, err)
 				return
 			}
 		}
 
-		if val, ok := params["interval"]; ok {
+		if val, ok := params[types.IntervalParam]; ok {
 			intervalSeconds, err = strconv.Atoi(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for interval", val)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, types.IntervalParam, err)
 				return
 			}
 		}
 
-		if val, ok := params["sortby"]; ok {
+		if val, ok := params[types.SortByParam]; ok {
 			sortBy, err = types.ParseSortBy(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for sortby", val)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, types.SortByParam, err)
 				return
 			}
 		}
 
-		if val, ok := params["all_files"]; ok {
+		if val, ok := params[types.AllFilesParam]; ok {
 			allFiles, err = strconv.ParseBool(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for all_files", val)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, types.AllFilesParam, err)
 				return
 			}
 		}
