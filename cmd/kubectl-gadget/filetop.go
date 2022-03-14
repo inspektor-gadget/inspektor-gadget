@@ -70,10 +70,10 @@ var filetopCmd = &cobra.Command{
 			TraceOutputState: "Started",
 			CommonFlags:      &params,
 			Parameters: map[string]string{
-				"max_rows":  strconv.Itoa(maxRows),
-				"interval":  strconv.Itoa(interval),
-				"sort_by":   sortByStr,
-				"all_files": strconv.FormatBool(allFiles),
+				types.MaxRowsParam:  strconv.Itoa(maxRows),
+				types.IntervalParam: strconv.Itoa(interval),
+				types.SortByParam:   sortByStr,
+				types.AllFilesParam: strconv.FormatBool(allFiles),
 			},
 		}
 
