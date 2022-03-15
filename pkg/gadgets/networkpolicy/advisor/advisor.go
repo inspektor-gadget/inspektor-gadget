@@ -29,7 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	k8syaml "sigs.k8s.io/yaml"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/types"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 var defaultLabelsToIgnore = map[string]struct{}{
@@ -39,7 +40,7 @@ var defaultLabelsToIgnore = map[string]struct{}{
 }
 
 type NetworkPolicyAdvisor struct {
-	Events []types.KubernetesConnectionEvent
+	Events []types.Event
 
 	LabelsToIgnore map[string]struct{}
 
@@ -62,7 +63,7 @@ func (a *NetworkPolicyAdvisor) LoadFile(filename string) error {
 
 func (a *NetworkPolicyAdvisor) LoadBuffer(buf []byte) error {
 	/* Try to read the file as an array */
-	events := []types.KubernetesConnectionEvent{}
+	events := []types.Event{}
 	err := json.Unmarshal(buf, &events)
 	if err == nil {
 		a.Events = events
@@ -74,7 +75,7 @@ func (a *NetworkPolicyAdvisor) LoadBuffer(buf []byte) error {
 	line := 0
 	scanner := bufio.NewScanner(bytes.NewReader(buf))
 	for scanner.Scan() {
-		event := types.KubernetesConnectionEvent{}
+		event := types.Event{}
 		text := strings.TrimSpace(scanner.Text())
 		if len(text) == 0 {
 			continue
@@ -142,11 +143,11 @@ func (a *NetworkPolicyAdvisor) labelKeyString(labels map[string]string) (ret str
 /* localPodKey returns a key that can be used to group pods together:
  * namespace:label1=value1,label2=value2
  */
-func (a *NetworkPolicyAdvisor) localPodKey(e types.KubernetesConnectionEvent) (ret string) {
-	return e.LocalPodNamespace + ":" + a.labelKeyString(e.LocalPodLabels)
+func (a *NetworkPolicyAdvisor) localPodKey(e types.Event) (ret string) {
+	return e.Namespace + ":" + a.labelKeyString(e.PodLabels)
 }
 
-func (a *NetworkPolicyAdvisor) networkPeerKey(e types.KubernetesConnectionEvent) (ret string) {
+func (a *NetworkPolicyAdvisor) networkPeerKey(e types.Event) (ret string) {
 	if e.RemoteKind == "pod" {
 		ret = e.RemoteKind + ":" + e.RemotePodNamespace + ":" + a.labelKeyString(e.RemotePodLabels)
 	} else if e.RemoteKind == "svc" {
@@ -157,9 +158,9 @@ func (a *NetworkPolicyAdvisor) networkPeerKey(e types.KubernetesConnectionEvent)
 	return fmt.Sprintf("%s:%d", ret, e.Port)
 }
 
-func (a *NetworkPolicyAdvisor) eventToRule(e types.KubernetesConnectionEvent) (ports []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) {
+func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.NetworkPolicyPort, peers []networkingv1.NetworkPolicyPeer) {
 	port := intstr.FromInt(int(e.Port))
-	protocol := v1.Protocol("TCP")
+	protocol := v1.Protocol(strings.ToUpper(e.Proto))
 	ports = []networkingv1.NetworkPolicyPort{
 		{
 			Port:     &port,
@@ -172,11 +173,14 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.KubernetesConnectionEvent) (p
 				PodSelector: &metav1.LabelSelector{MatchLabels: a.labelFilter(e.RemotePodLabels)},
 			},
 		}
-		if e.LocalPodNamespace != e.RemotePodNamespace {
+		if e.Namespace != e.RemotePodNamespace {
 			peers[0].NamespaceSelector = &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					// TODO: the namespace might not have this "name" label
-					"name": e.RemotePodNamespace,
+					// Kubernetes 1.22 is guaranteed to add the following label on namespaces:
+					// kubernetes.io/metadata.name=obj.Name
+					// See:
+					// https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/2161-apiserver-default-labels#proposal
+					"kubernetes.io/metadata.name": e.RemotePodNamespace,
 				},
 			}
 		}
@@ -186,21 +190,29 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.KubernetesConnectionEvent) (p
 				PodSelector: &metav1.LabelSelector{MatchLabels: e.RemoteSvcLabelSelector},
 			},
 		}
-		if e.LocalPodNamespace != e.RemoteSvcNamespace {
+		if e.Namespace != e.RemoteSvcNamespace {
 			peers[0].NamespaceSelector = &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					// TODO: the namespace might not have this "name" label
-					"name": e.RemoteSvcNamespace,
+					// Kubernetes 1.22 is guaranteed to add the following label on namespaces:
+					// kubernetes.io/metadata.name=obj.Name
+					// See:
+					// https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/2161-apiserver-default-labels#proposal
+					"kubernetes.io/metadata.name": e.RemoteSvcNamespace,
 				},
 			}
 		}
 	} else if e.RemoteKind == "other" {
-		peers = []networkingv1.NetworkPolicyPeer{
-			{
-				IPBlock: &networkingv1.IPBlock{
-					CIDR: e.RemoteOther + "/32",
+		if e.RemoteOther == "127.0.0.1" {
+			// No need to generate a network policy for localhost
+			peers = []networkingv1.NetworkPolicyPeer{}
+		} else {
+			peers = []networkingv1.NetworkPolicyPeer{
+				{
+					IPBlock: &networkingv1.IPBlock{
+						CIDR: e.RemoteOther + "/32",
+					},
 				},
-			},
+			}
 		}
 	} else {
 		panic("unknown event")
@@ -208,32 +220,97 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.KubernetesConnectionEvent) (p
 	return
 }
 
+func sortIngressRules(rules []networkingv1.NetworkPolicyIngressRule) []networkingv1.NetworkPolicyIngressRule {
+	sort.Slice(rules, func(i, j int) bool {
+		ri, rj := rules[i], rules[j]
+
+		// No need to support all network policies, but only the ones
+		// generated by eventToRule()
+		if len(ri.Ports) != 1 || len(rj.Ports) != 1 {
+			panic("rules with multiple ports")
+		}
+		if ri.Ports[0].Protocol == nil || rj.Ports[0].Protocol == nil {
+			panic("rules without protocol")
+		}
+
+		switch {
+		case *ri.Ports[0].Protocol != *rj.Ports[0].Protocol:
+			return *ri.Ports[0].Protocol < *rj.Ports[0].Protocol
+		case ri.Ports[0].Port.IntVal != rj.Ports[0].Port.IntVal:
+			return ri.Ports[0].Port.IntVal < rj.Ports[0].Port.IntVal
+		default:
+			yamlOutput1, _ := k8syaml.Marshal(ri)
+			yamlOutput2, _ := k8syaml.Marshal(rj)
+			return string(yamlOutput1) < string(yamlOutput2)
+		}
+	})
+	return rules
+}
+
+func sortEgressRules(rules []networkingv1.NetworkPolicyEgressRule) []networkingv1.NetworkPolicyEgressRule {
+	sort.Slice(rules, func(i, j int) bool {
+		ri, rj := rules[i], rules[j]
+
+		// No need to support all network policies, but only the ones
+		// generated by eventToRule()
+		if len(ri.Ports) != 1 || len(rj.Ports) != 1 {
+			panic("rules with multiple ports")
+		}
+		if ri.Ports[0].Protocol == nil || rj.Ports[0].Protocol == nil {
+			panic("rules without protocol")
+		}
+
+		switch {
+		case *ri.Ports[0].Protocol != *rj.Ports[0].Protocol:
+			return *ri.Ports[0].Protocol < *rj.Ports[0].Protocol
+		case ri.Ports[0].Port.IntVal != rj.Ports[0].Port.IntVal:
+			return ri.Ports[0].Port.IntVal < rj.Ports[0].Port.IntVal
+		default:
+			yamlOutput1, _ := k8syaml.Marshal(ri)
+			yamlOutput2, _ := k8syaml.Marshal(rj)
+			return string(yamlOutput1) < string(yamlOutput2)
+		}
+	})
+	return rules
+}
+
 func (a *NetworkPolicyAdvisor) GeneratePolicies() {
-	eventsBySource := map[string][]types.KubernetesConnectionEvent{}
+	eventsBySource := map[string][]types.Event{}
 	for _, e := range a.Events {
-		if e.Type != "connect" && e.Type != "accept" {
+		if e.Type != eventtypes.NORMAL {
 			continue
 		}
+		if e.PktType != "HOST" && e.PktType != "OUTGOING" {
+			continue
+		}
+
+		// Kubernetes Network Policies can't block traffic from a pod's
+		// own resident node. Therefore we must not generate a network
+		// policy in that case.
+		if e.PktType == "HOST" && e.PodHostIP == e.IP {
+			continue
+		}
+
 		key := a.localPodKey(e)
 		if _, ok := eventsBySource[key]; ok {
 			eventsBySource[key] = append(eventsBySource[key], e)
 		} else {
-			eventsBySource[key] = []types.KubernetesConnectionEvent{e}
+			eventsBySource[key] = []types.Event{e}
 		}
 	}
 
 	for _, events := range eventsBySource {
-		egressNetworkPeer := map[string]types.KubernetesConnectionEvent{}
-		ingressNetworkPeer := map[string]types.KubernetesConnectionEvent{}
+		egressNetworkPeer := map[string]types.Event{}
+		ingressNetworkPeer := map[string]types.Event{}
 		for _, e := range events {
 			key := a.networkPeerKey(e)
-			if e.Type == "connect" {
+			if e.PktType == "OUTGOING" {
 				if _, ok := egressNetworkPeer[key]; ok {
 					continue
 				}
 
 				egressNetworkPeer[key] = e
-			} else if e.Type == "accept" {
+			} else if e.PktType == "HOST" {
 				if _, ok := ingressNetworkPeer[key]; ok {
 					continue
 				}
@@ -244,25 +321,29 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 		egressPolicies := []networkingv1.NetworkPolicyEgressRule{}
 		for _, p := range egressNetworkPeer {
 			ports, peers := a.eventToRule(p)
-			rule := networkingv1.NetworkPolicyEgressRule{
-				Ports: ports,
-				To:    peers,
+			if len(peers) > 0 {
+				rule := networkingv1.NetworkPolicyEgressRule{
+					Ports: ports,
+					To:    peers,
+				}
+				egressPolicies = append(egressPolicies, rule)
 			}
-			egressPolicies = append(egressPolicies, rule)
 		}
 		ingressPolicies := []networkingv1.NetworkPolicyIngressRule{}
 		for _, p := range ingressNetworkPeer {
 			ports, peers := a.eventToRule(p)
-			rule := networkingv1.NetworkPolicyIngressRule{
-				Ports: ports,
-				From:  peers,
+			if len(peers) > 0 {
+				rule := networkingv1.NetworkPolicyIngressRule{
+					Ports: ports,
+					From:  peers,
+				}
+				ingressPolicies = append(ingressPolicies, rule)
 			}
-			ingressPolicies = append(ingressPolicies, rule)
 		}
 
-		name := events[0].LocalPodName
-		if events[0].LocalPodOwner != "" {
-			name = events[0].LocalPodOwner
+		name := events[0].Pod
+		if events[0].PodOwner != "" {
+			name = events[0].PodOwner
 		}
 		name += "-network"
 		policy := networkingv1.NetworkPolicy{
@@ -272,14 +353,14 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
-				Namespace: events[0].LocalPodNamespace,
+				Namespace: events[0].Namespace,
 				Labels:    map[string]string{},
 			},
 			Spec: networkingv1.NetworkPolicySpec{
-				PodSelector: metav1.LabelSelector{MatchLabels: a.labelFilter(events[0].LocalPodLabels)},
+				PodSelector: metav1.LabelSelector{MatchLabels: a.labelFilter(events[0].PodLabels)},
 				PolicyTypes: []networkingv1.PolicyType{"Ingress", "Egress"},
-				Ingress:     ingressPolicies,
-				Egress:      egressPolicies,
+				Ingress:     sortIngressRules(ingressPolicies),
+				Egress:      sortEgressRules(egressPolicies),
 			},
 		}
 		a.Policies = append(a.Policies, policy)

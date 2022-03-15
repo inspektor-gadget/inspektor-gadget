@@ -78,8 +78,6 @@ COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
 
 COPY --from=builder /gadget/gadget-container/bin/gadgettracermanager /bin/
 
-COPY gadget-container/gadgets/bcck8s /opt/bcck8s/
-
 COPY --from=traceloop /bin/traceloop /bin/
 
 ## Hooks Begins

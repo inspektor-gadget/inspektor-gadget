@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -35,6 +36,7 @@ import (
 
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
+	networktypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
@@ -407,6 +409,125 @@ func TestDNS(t *testing.T) {
 		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
 	}
 
+	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
+}
+
+func TestNetworkGraph(t *testing.T) {
+	if !*rootTest {
+		t.Skip("skipping test requiring root.")
+	}
+	localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
+	if err != nil {
+		t.Fatalf("Failed to start local gadget manager: %s", err)
+	}
+	defer localGadgetManager.Close()
+
+	initialFdList := currentFdList(t)
+
+	containerName := "test-local-gadget-network-graph001"
+	err = localGadgetManager.AddTracer("network-graph", "my-tracer", containerName, "Stream")
+	if err != nil {
+		t.Fatalf("Failed to create tracer: %s", err)
+	}
+	err = localGadgetManager.Operation("my-tracer", "start")
+	if err != nil {
+		t.Fatalf("Failed to start the tracer: %s", err)
+	}
+
+	runTestContainer(t, containerName, "docker.io/library/alpine", "wget https://1.1.1.1", "")
+
+	stop := make(chan struct{})
+
+	ch, err := localGadgetManager.Stream("my-tracer", stop)
+	if err != nil {
+		t.Fatalf("Failed to get stream: %s", err)
+	}
+
+	var event networktypes.Event
+	var expectedEvent networktypes.Event
+	var result string
+
+	// check that attached message is sent
+	result = <-ch
+	event = networktypes.Event{}
+	if err := json.Unmarshal([]byte(result), &event); err != nil {
+		t.Fatalf("failed to unmarshal json: %s", err)
+	}
+
+	expectedEvent = networktypes.Event{
+		Event: eventtypes.Event{
+			Type:      eventtypes.DEBUG,
+			Message:   "tracer attached",
+			Node:      "local",
+			Namespace: "default",
+			Pod:       "test-local-gadget-network-graph001",
+		},
+	}
+
+	if !reflect.DeepEqual(event, expectedEvent) {
+		t.Fatalf("Received: %+v, Expected: %+v", event, expectedEvent)
+	}
+
+	// check network-graph event
+	result = <-ch
+	event = networktypes.Event{}
+	if err := json.Unmarshal([]byte(result), &event); err != nil {
+		t.Fatalf("failed to unmarshal json: %s", err)
+	}
+
+	expectedEvent = networktypes.Event{
+		Event: eventtypes.Event{
+			Type:      eventtypes.NORMAL,
+			Node:      "local",
+			Namespace: "default",
+			Pod:       "test-local-gadget-network-graph001",
+		},
+		PktType: "OUTGOING",
+		Proto:   "tcp",
+		IP:      "1.1.1.1",
+		Port:    443,
+	}
+
+	if !reflect.DeepEqual(event, expectedEvent) {
+		t.Fatalf("Received: %+v, Expected: %+v", event, expectedEvent)
+	}
+
+	// check that detached message is sent
+	result = <-ch
+	event = networktypes.Event{}
+	if err := json.Unmarshal([]byte(result), &event); err != nil {
+		t.Fatalf("failed to unmarshal json: %s", err)
+	}
+
+	expectedEvent = networktypes.Event{
+		Event: eventtypes.Event{
+			Type:      eventtypes.DEBUG,
+			Message:   "tracer detached",
+			Node:      "local",
+			Namespace: "default",
+			Pod:       "test-local-gadget-network-graph001",
+		},
+	}
+
+	if !reflect.DeepEqual(event, expectedEvent) {
+		t.Fatalf("Received: %+v, Expected: %+v", event, expectedEvent)
+	}
+
+	close(stop)
+
+	err = localGadgetManager.Delete("my-tracer")
+	if err != nil {
+		t.Fatalf("Failed to delete tracer: %s", err)
+	}
+
+	s := stacks()
+	keyword := "pkg/gadgets/network-graph/"
+	if strings.Contains(s, keyword) {
+		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
+	}
+
+	// Workaround to https://github.com/cilium/ebpf/pull/724
+	runtime.GC()
 	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
 }
 

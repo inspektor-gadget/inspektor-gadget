@@ -155,6 +155,7 @@ Available Commands:
   exec         Trace new processes
   fsslower     Trace open, read, write and fsync operations slower than a threshold
   mount        Trace mount and umount system calls
+  network      Trace network streams
   oomkill      Trace when OOM killer is triggered and kills a process
   open         Trace open system calls
   signal       Trace signals received by processes

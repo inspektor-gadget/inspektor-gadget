@@ -558,20 +558,112 @@ func TestMountsnoop(t *testing.T) {
 }
 
 func TestNetworkpolicy(t *testing.T) {
-	ns := generateTestNamespaceName("test-networkpolicy")
+	nsServer := generateTestNamespaceName("test-networkpolicy-server")
+	nsClient := generateTestNamespaceName("test-networkpolicy-client")
 
 	t.Parallel()
 
 	commands := []*command{
-		createTestNamespaceCommand(ns),
-		busyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://kinvolk.io"),
-		waitUntilTestPodReadyCommand(ns),
+		createTestNamespaceCommand(nsServer),
+		busyboxPodRepeatCommand(nsServer, "nc -lk -p 9090 -e /bin/cat"),
 		{
-			name:           "RunNetworkPolicyGadget",
-			cmd:            fmt.Sprintf("$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace.log & sleep 15; kill $!; head networktrace.log", ns),
-			expectedRegexp: fmt.Sprintf(`"type":"connect".*"%s".*"test-pod"`, ns),
+			name:           "CreateService",
+			cmd:            fmt.Sprintf("kubectl expose -n %s pod test-pod --port 9090", nsServer),
+			expectedRegexp: "service/test-pod exposed",
 		},
-		deleteTestNamespaceCommand(ns),
+		waitUntilTestPodReadyCommand(nsServer),
+		createTestNamespaceCommand(nsClient),
+		busyboxPodRepeatCommand(nsClient, fmt.Sprintf("echo ok | nc -w 1 test-pod.%s.svc.cluster.local 9090 || true", nsServer)),
+		waitUntilTestPodReadyCommand(nsClient),
+		{
+			name: "RunNetworkPolicyMonitorClient",
+			cmd: fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace-client.log &
+					sleep 10
+					kill $!
+					head networktrace-client.log | sort | uniq`, nsClient),
+			expectedRegexp: fmt.Sprintf(`{"type":"normal","node":".*","namespace":"%s","pod":"test-pod","pkt_type":"OUTGOING","proto":"tcp","ip":".*","port":9090,"remote_kind":"svc","pod_host_ip":".*","pod_ip":".*","pod_labels":{"run":"test-pod"},"remote_svc_namespace":"%s","remote_svc_name":"test-pod","remote_svc_label_selector":{"run":"test-pod"}}`, nsClient, nsServer),
+		},
+		{
+			// Docker bridge does not preserve source IP :-(
+			// https://github.com/kubernetes/minikube/issues/11211
+			// Skip this command with SKIP_TEST if docker is detected
+			name: "RunNetworkPolicyMonitorServer",
+			cmd: fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace-server.log &
+					sleep 10
+					kill $!
+					head networktrace-server.log | sort | uniq
+					kubectl get node -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}'|grep -q docker && echo SKIP_TEST || true`, nsServer),
+			expectedRegexp: fmt.Sprintf(`SKIP_TEST|{"type":"normal","node":".*","namespace":"%s","pod":"test-pod","pkt_type":"HOST","proto":"tcp","ip":".*","port":9090,"remote_kind":"pod","pod_host_ip":".*","pod_ip":".*","pod_labels":{"run":"test-pod"},"remote_pod_namespace":"%s","remote_pod_name":"test-pod","remote_pod_labels":{"run":"test-pod"}}`, nsServer, nsClient),
+		},
+		{
+			name: "RunNetworkPolicyReportClient",
+			cmd:  "$KUBECTL_GADGET advise network-policy report --input ./networktrace-client.log",
+			expectedRegexp: fmt.Sprintf(`apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: test-pod-network
+  namespace: %s
+spec:
+  egress:
+  - ports:
+    - port: 9090
+      protocol: TCP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: %s
+      podSelector:
+        matchLabels:
+          run: test-pod
+  - ports:
+    - port: 53
+      protocol: UDP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: (kube-system|openshift-dns)
+      podSelector:
+        matchLabels:
+          (k8s-app: kube-dns|dns.operator.openshift.io/daemonset-dns: default)
+  podSelector:
+    matchLabels:
+      run: test-pod
+  policyTypes:
+  - Ingress
+  - Egress`, nsClient, nsServer),
+		},
+		{
+			name: "RunNetworkPolicyReportServer",
+			cmd: `$KUBECTL_GADGET advise network-policy report --input ./networktrace-server.log
+				kubectl get node -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}'|grep -q docker && echo SKIP_TEST || true`,
+			expectedRegexp: fmt.Sprintf(`SKIP_TEST|apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: test-pod-network
+  namespace: %s
+spec:
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: %s
+      podSelector:
+        matchLabels:
+          run: test-pod
+    ports:
+    - port: 9090
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      run: test-pod
+  policyTypes:
+  - Ingress
+  - Egress`, nsServer, nsClient),
+		},
+		deleteTestNamespaceCommand(nsClient),
+		deleteTestNamespaceCommand(nsServer),
 	}
 
 	runCommands(commands, t)

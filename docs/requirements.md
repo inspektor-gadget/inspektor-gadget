@@ -51,7 +51,7 @@ listed in the following table:
 
 | Gadget                   | Minimum Kernel          | Additional `CONFIG_*`   |
 |--------------------------|-------------------------| ----------------------- |
-| `advise network-policy`  | U.U                     | `KPROBES`, `KRETPROBES` |
+| `advise network-policy`  | U.U                     |                         |
 | `advise seccomp-profile` | (CO-RE only)            |                         |
 | `audit seccomp`          | 5.4 (CO-RE only)        | `KPROBES`               |
 | `profile block-io`       | 4.15 (BCC), U.U (CO-RE) |                         |

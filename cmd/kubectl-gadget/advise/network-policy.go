@@ -16,9 +16,9 @@ package advise
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -46,15 +46,14 @@ var networkPolicyReportCmd = &cobra.Command{
 var (
 	inputFileName  string
 	outputFileName string
-	namespaces     string
 )
 
 func init() {
 	AdviseCmd.AddCommand(networkPolicyCmd)
+	utils.AddCommonFlags(networkPolicyCmd, &params)
 
 	networkPolicyCmd.AddCommand(networkPolicyMonitorCmd)
 	networkPolicyMonitorCmd.PersistentFlags().StringVarP(&outputFileName, "output", "", "-", "File name output")
-	networkPolicyMonitorCmd.PersistentFlags().StringVarP(&namespaces, "namespaces", "", "", "Comma-separated list of namespaces to monitor")
 
 	networkPolicyCmd.AddCommand(networkPolicyReportCmd)
 	networkPolicyReportCmd.PersistentFlags().StringVarP(&inputFileName, "input", "", "", "File with recorded network activity")
@@ -80,7 +79,37 @@ func newWriter(file string) (*bufio.Writer, func(), error) {
 }
 
 func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) error {
-	return errors.New("Not implemented")
+	w, closure, err := newWriter(outputFileName)
+	if err != nil {
+		return fmt.Errorf("failed to create file %q: %w", outputFileName, err)
+	}
+	defer closure()
+
+	config := &utils.TraceConfig{
+		GadgetName:       "network-graph",
+		Operation:        "start",
+		TraceOutputMode:  "Stream",
+		TraceOutputState: "Started",
+		CommonFlags:      &params,
+	}
+	count := 0
+	transform := func(line string) string {
+		line = strings.Replace(line, "\r", "\n", -1)
+		w.Write([]byte(line))
+		w.Flush()
+		count += 1
+		if outputFileName != "-" {
+			fmt.Printf("\033[2K\rRecording %d events into file %q...", count, outputFileName)
+		}
+		return ""
+	}
+
+	fmt.Printf("\033[2K\rRecording events into file %q...", outputFileName)
+	err = utils.RunTraceAndPrintStream(config, transform)
+	if err != nil {
+		return utils.WrapInErrRunGadget(err)
+	}
+	return nil
 }
 
 func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
