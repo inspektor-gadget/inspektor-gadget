@@ -564,12 +564,46 @@ func TestNetworkpolicy(t *testing.T) {
 
 	commands := []*command{
 		createTestNamespaceCommand(ns),
-		busyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://kinvolk.io"),
+		busyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://kubernetes.default.svc.cluster.local || true"),
 		waitUntilTestPodReadyCommand(ns),
 		{
-			name:           "RunNetworkPolicyGadget",
+			name:           "RunNetworkPolicyMonitor",
 			cmd:            fmt.Sprintf("$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace.log & sleep 15; kill $!; head networktrace.log", ns),
-			expectedRegexp: fmt.Sprintf(`"type":"connect".*"%s".*"test-pod"`, ns),
+			expectedRegexp: fmt.Sprintf(`{"type":"normal","node":".*","namespace":"%s","pod":"test-pod","pkt_type":"OUTGOING","proto":"tcp","ip":".*","port":443,"remote_kind":"svc",.*"remote_svc_namespace":"default","remote_svc_name":"kubernetes"}`, ns),
+		},
+		{
+			name: "RunNetworkPolicyReport",
+			cmd:  "$KUBECTL_GADGET advise network-policy report --input ./networktrace.log",
+			expectedRegexp: fmt.Sprintf(`apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: test-pod-network
+  namespace: %s
+spec:
+  egress:
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+      podSelector: {}
+  - ports:
+    - port: 53
+      protocol: UDP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: (kube-system|openshift-dns)
+      podSelector:
+        matchLabels:
+          (k8s-app: kube-dns|dns.operator.openshift.io/daemonset-dns: default)
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress`, ns),
 		},
 		deleteTestNamespaceCommand(ns),
 	}
