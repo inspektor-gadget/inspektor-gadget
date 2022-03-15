@@ -110,7 +110,7 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 }
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
-	t.cmd = exec.Command("/bin/sh", "-c", `
+	t.cmd = exec.Command("/bin/bash", "-c", `
 		# gobpf currently uses global kprobes via debugfs/tracefs and not the Perf
 		# Event file descriptor based kprobe (Linux >=4.17). So unfortunately, kprobes
 		# can remain from previous executions. Ideally, gobpf should implement Perf
@@ -126,7 +126,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		# Indeed, traceloop creates a lof of tracers which each has maps and events:
 		# https://github.com/kinvolk/traceloop/blob/6f4efc6fca46d92c75f4ec4e6c6e1d829bdeaddf/bpf/straceback-guess-bpf.h#L27-L28
 		# So, this can generate a lof ot opened files.
-		ulimit -n unlimited
+		ulimit -n hard
 
 		rm -f /run/traceloop.socket
 		exec /bin/traceloop k8s
