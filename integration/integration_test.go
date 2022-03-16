@@ -236,7 +236,7 @@ func TestDns(t *testing.T) {
 		dnsCmd,
 		{
 			name:           "Run pod which interacts with dns",
-			cmd:            fmt.Sprintf("kubectl run --restart=Never --image=praqma/network-multitool -n %s test-pod -- sh -c 'while true; do nslookup microsoft.com; done'", ns),
+			cmd:            fmt.Sprintf("kubectl run --restart=Never --image=wbitt/network-multitool -n %s test-pod -- sh -c 'while true; do nslookup microsoft.com; done'", ns),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
