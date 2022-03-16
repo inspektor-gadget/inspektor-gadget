@@ -23,7 +23,7 @@ POD                            TYPE      QTYPE     NAME
 Run a pod on a different terminal and perform some DNS requests:
 
 ```bash
-$ kubectl -n demo run mypod -it --image=praqma/network-multitool -- /bin/sh
+$ kubectl -n demo run mypod -it --image=wbitt/network-multitool -- /bin/sh
 # nslookup www.microsoft.com
 # nslookup www.google.com
 # nslookup www.amazon.com
