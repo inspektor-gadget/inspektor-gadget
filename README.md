@@ -8,6 +8,7 @@ Inspektor Gadget tools are known as gadgets. You can deploy one, two or many gad
 
 Exploring the following documentation will best help you learn which tools can help you in your investigations.
 
+- [audit-seccomp](docs/guides/audit-seccomp.md)
 - [bindsnoop](docs/guides/bindsnoop.md)
 - [biolatency](docs/guides/biolatency.md)
 - [biotop](docs/guides/biotop.md)
@@ -55,31 +56,35 @@ flags.
 
 ```bash
 $ kubectl gadget --help
+Collection of gadgets for Kubernetes developers
+
 Usage:
   kubectl-gadget [command]
 
 Available Commands:
-  bindsnoop         Trace IPv4 and IPv6 bind() system calls
+  audit-seccomp     Trace syscalls that seccomp sent to the audit log
+  bindsnoop         Trace the kernel functions performing socket binding
   biolatency        Generate a histogram with the distribution of block device I/O latency
   biotop            Trace block device I/O
-  capabilities      Suggest Security Capabilities for securityContext
+  capabilities      Trace security capability checks
   completion        generate the autocompletion script for the specified shell
   deploy            Deploy Inspektor Gadget on the cluster
   dns               Trace DNS requests
   execsnoop         Trace new processes
   filetop           Trace reads and writes by file, with container details
-  fsslower          Trace I/O operations slower than a threshold
+  fsslower          Trace open, read, write and fsync operations slower than a threshold
   help              Help about any command
-  mountsnoop        Trace mount and umount syscalls
+  mountsnoop        Trace open() system calls
   network-policy    Generate network policies based on recorded network activity
-  oomkill           Trace the Linux out-of-memory (OOM) killer
+  oomkill           Trace when OOM killer is triggered and kills a process
   opensnoop         Trace open() system calls
   process-collector Gather information about running processes
   profile           Profile CPU usage by sampling stack traces
   seccomp-advisor   Generate seccomp policies based on recorded syscalls activity
-  sigsnoop          Trace signals issued by syscalls system-wide
+  sigsnoop          Trace signals received by processes
+  snisnoop          Trace SNI requests
   socket-collector  Gather information about network sockets
-  tcpconnect        Trace TCP connect() system calls
+  tcpconnect        Trace connect() system calls
   tcptop            Show the TCP traffic in a pod
   tcptracer         Trace tcp connect, accept and close
   traceloop         Get strace-like logs of a pod from the past

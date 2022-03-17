@@ -1,4 +1,7 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+//go:build docs
+// +build docs
+
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +15,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gadgettracermanager
+package tracer
 
-// #include "common.h"
-import "C"
+func syscallToName(syscall int) string {
+	panic("Not implemented")
+	return ""
+}
 
-const (
-	MaxContainersPerNode = C.MAX_CONTAINERS_PER_NODE
-)
+func codeToName(code uint) string {
+	panic("Not implemented")
+	return ""
+}

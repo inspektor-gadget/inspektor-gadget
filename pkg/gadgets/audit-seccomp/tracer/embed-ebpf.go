@@ -1,3 +1,6 @@
+//go:build withebpf
+// +build withebpf
+
 // Copyright 2019-2021 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +15,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gadgettracermanager
+package tracer
 
-// #include "common.h"
-import "C"
-
-const (
-	MaxContainersPerNode = C.MAX_CONTAINERS_PER_NODE
+import (
+	_ "embed"
 )
+
+//go:embed bpf/audit-seccomp.o
+var ebpfProg []byte

@@ -16,6 +16,7 @@ package gadgetcollection
 
 import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	auditseccomp "github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit-seccomp"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities"
@@ -40,6 +41,7 @@ import (
 
 func TraceFactories() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
+		"audit-seccomp":          auditseccomp.NewFactory(),
 		"bindsnoop":              bindsnoop.NewFactory(),
 		"biolatency":             biolatency.NewFactory(),
 		"capabilities":           capabilities.NewFactory(),
@@ -65,6 +67,7 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 
 func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
+		"audit-seccomp":    auditseccomp.NewFactory(),
 		"dns":              dns.NewFactory(),
 		"socket-collector": socketcollector.NewFactory(),
 		"seccomp":          seccomp.NewFactory(),

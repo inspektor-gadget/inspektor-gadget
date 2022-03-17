@@ -12,11 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gadgettracermanager
+package types
 
-// #include "common.h"
-import "C"
-
-const (
-	MaxContainersPerNode = C.MAX_CONTAINERS_PER_NODE
+import (
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
+
+type Event struct {
+	eventtypes.Event
+
+	Syscall   string `json:"syscall,omitempty"`
+	Code      string `json:"code,omitempty"`
+	Pid       uint32 `json:"pid,omitempty"`
+	MountNsID uint64 `json:"mountnsid,omitempty"`
+	Comm      string `json:"pcomm,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event {
+	return Event{
+		Event: ev,
+	}
+}

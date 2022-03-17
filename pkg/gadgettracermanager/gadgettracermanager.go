@@ -17,7 +17,6 @@ package gadgettracermanager
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,7 +25,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
@@ -59,7 +57,7 @@ type GadgetTracerManager struct {
 
 	// containersMap is the global map at /sys/fs/bpf/gadget/containers
 	// exposing container details for each mount namespace.
-	containersMap *ebpf.Map
+	containersMap *containersmap.ContainersMap
 }
 
 type tracer struct {
@@ -288,52 +286,6 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 	return &pb.Dump{State: out}, nil
 }
 
-// createContainersMap creates a global map /sys/fs/bpf/gadget/containers
-// exposing container details for each mount namespace.
-//
-// This makes it possible for gadgets to access that information and
-// display it directly from the BPF code. Example of such code:
-//
-//     struct container *container_entry;
-//     container_entry = bpf_map_lookup_elem(&containers, &mntns_id);
-//
-// See usage in gadget-container/gadgets/.../bpf/*.c
-//
-// External tools such as tracee or bpftrace could also benefit from this just
-// by using this "containers" map (other interaction with Inspektor Gadget is
-// not necessary for this).
-func (g *GadgetTracerManager) createContainersMap() error {
-	var err error
-	g.containersMap, err = containersmap.CreateContainersMap(gadgets.PinPath)
-	if err != nil {
-		return fmt.Errorf("error creating containers map: %w", err)
-	}
-	return nil
-}
-
-func (g *GadgetTracerManager) addContainerInMap(c *pb.ContainerDefinition) {
-	if g.containersMap == nil || c.Mntns == 0 {
-		return
-	}
-	mntnsC := uint64(c.Mntns)
-
-	val := container{}
-
-	copyToC(&val.container_id, c.Id)
-	copyToC(&val.namespace, c.Namespace)
-	copyToC(&val.pod, c.Podname)
-	copyToC(&val.container, c.Name)
-
-	g.containersMap.Put(mntnsC, val)
-}
-
-func (g *GadgetTracerManager) deleteContainerFromMap(c *pb.ContainerDefinition) {
-	if g.containersMap == nil || c.Mntns == 0 {
-		return
-	}
-	g.containersMap.Delete(uint64(c.Mntns))
-}
-
 func newServer(conf *Conf) (*GadgetTracerManager, error) {
 	g := &GadgetTracerManager{
 		nodeName: conf.NodeName,
@@ -348,13 +300,12 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 			return nil, err
 		}
 
-		if err := os.Mkdir(gadgets.PinPath, 0o700); err != nil && !errors.Is(err, unix.EEXIST) {
-			return nil, fmt.Errorf("failed to create folder for pinning bpf maps: %w", err)
+		var err error
+		if g.containersMap, err = containersmap.NewContainersMap(gadgets.PinPath); err != nil {
+			return nil, fmt.Errorf("error creating containers map: %w", err)
 		}
 
-		if err := g.createContainersMap(); err != nil {
-			return nil, err
-		}
+		containerEventFuncs = append(containerEventFuncs, g.containersMap.ContainersMapUpdater())
 
 		containerEventFuncs = append(containerEventFuncs, func(event pubsub.PubSubEvent) {
 			switch event.Type {
@@ -365,8 +316,6 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 				}
 
 				log.Infof("pubsub: ADD_CONTAINER: %s/%s/%s", event.Container.Namespace, event.Container.Podname, event.Container.Name)
-
-				g.addContainerInMap(&event.Container)
 
 				for _, t := range g.tracers {
 					if containercollection.ContainerSelectorMatches(&t.containerSelector, &event.Container) {
@@ -386,8 +335,6 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 
 			case pubsub.EventTypeRemoveContainer:
 				log.Infof("pubsub: REMOVE_CONTAINER: %s/%s/%s", event.Container.Namespace, event.Container.Podname, event.Container.Name)
-
-				g.deleteContainerFromMap(&event.Container)
 
 				for _, t := range g.tracers {
 					if containercollection.ContainerSelectorMatches(&t.containerSelector, &event.Container) {
@@ -465,7 +412,5 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 // Close releases any resource that could be in use by the tracer manager, like
 // ebpf maps.
 func (m *GadgetTracerManager) Close() {
-	if m.containersMap != nil {
-		os.Remove(filepath.Join(gadgets.PinPath, "containers"))
-	}
+	m.containersMap.Close()
 }

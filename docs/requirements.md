@@ -45,6 +45,7 @@ kernels than the one mentioned here.
 
 | Gadget                 | Minimum Kernel          |
 |------------------------|-------------------------|
+| audit-seccomp          | 5.4                     |
 | bindsnoop              | 4.15 (BCC), 5.4 (CO:RE) |
 | biolatency             | 4.15                    |
 | capabilities           | 4.15                    |
