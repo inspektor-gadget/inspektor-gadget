@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -103,10 +103,9 @@ func NewTracer(config *Config, eventCallback func(types.Event), node string) (*T
 		config:        config,
 		eventCallback: eventCallback,
 		node:          node,
-
-		collection: coll,
-		eventMap:   coll.Maps[BPFMapName],
-		reader:     rd,
+		collection:    coll,
+		eventMap:      coll.Maps[BPFMapName],
+		reader:        rd,
 	}
 
 	kprobeProg, ok := coll.Programs[BPFProgName]
