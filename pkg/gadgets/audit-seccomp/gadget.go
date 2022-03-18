@@ -107,10 +107,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	var err error
 	config := &auditseccomptracer.Config{
-		// TODO: implement filtering. See:
-		// https://github.com/kinvolk/inspektor-gadget/issues/579
-		// // MountnsMap: gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
-
+		MountnsMap:    gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
 		ContainersMap: filepath.Join(gadgets.PinPath, "containers"),
 	}
 	t.tracer, err = auditseccomptracer.NewTracer(config, eventCallback, trace.Spec.Node)

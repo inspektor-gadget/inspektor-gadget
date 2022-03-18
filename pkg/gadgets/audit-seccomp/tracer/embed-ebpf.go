@@ -23,3 +23,6 @@ import (
 
 //go:embed bpf/audit-seccomp.o
 var ebpfProg []byte
+
+//go:embed bpf/audit-seccomp-with-filter.o
+var ebpfProgWithFilter []byte

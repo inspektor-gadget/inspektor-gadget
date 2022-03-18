@@ -18,3 +18,4 @@
 package tracer
 
 var ebpfProg []byte
+var ebpfProgWithFilter []byte
