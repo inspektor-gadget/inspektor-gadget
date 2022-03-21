@@ -3,7 +3,7 @@
 title: Gadget audit-seccomp
 ---
 
- The Audit Seccomp gadget provides a stream of events with syscalls that had
+The Audit Seccomp gadget provides a stream of events with syscalls that had
 their seccomp filters generating an audit log. An audit log can be generated in
 one of those two conditions:
 

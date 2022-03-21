@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ func transformAuditSeccompLine(line string) string {
 	var e types.Event
 
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "error unmarshalling json: %s", err)
+		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err))
 		return ""
 	}
 

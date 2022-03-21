@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ func NewFactory() gadgets.TraceFactory {
 }
 
 func (f *TraceFactory) Description() string {
-	return ` The Audit Seccomp gadget provides a stream of events with syscalls that had
+	return `The Audit Seccomp gadget provides a stream of events with syscalls that had
 their seccomp filters generating an audit log. An audit log can be generated in
 one of those two conditions:
 
@@ -107,7 +107,10 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	var err error
 	config := &auditseccomptracer.Config{
-		// MountnsMap: gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
+		// TODO: implement filtering. See:
+		// https://github.com/kinvolk/inspektor-gadget/issues/579
+		// // MountnsMap: gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
+
 		ContainersMap: filepath.Join(gadgets.PinPath, "containers"),
 	}
 	t.tracer, err = auditseccomptracer.NewTracer(config, eventCallback, trace.Spec.Node)

@@ -108,6 +108,7 @@ default          mypod            unshare          kill_thread
 ```
 $ sudo ./local-gadget
 » create audit-seccomp trace1
+State: Started
 » stream trace1 -f
 ```
 
@@ -121,5 +122,5 @@ Bad system call (core dumped)
 
 * Observe the syscalls logged by seccomp in the first terminal.
 ```
-{"type":"normal","node":"local","namespace":"default","pod":"beautiful_grothendieck","container":"beautiful_grothendieck","pid":1251030,"mountnsid":4026532542,"pcomm":"unshare"}
+{"type":"normal","node":"local","namespace":"default","pod":"laughing_tharp","container":"laughing_tharp","syscall":"unshare","code":"log","pid":949262,"mountnsid":4026532756,"pcomm":"unshare"}
 ```
