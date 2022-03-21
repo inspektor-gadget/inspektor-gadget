@@ -15,15 +15,22 @@
 package advisor
 
 import (
+	"errors"
 	"io/ioutil"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestLoad(t *testing.T) {
-	match, err := filepath.Glob("testdata/*.input")
+	_, filename, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(filename)
+	match, err := filepath.Glob(filepath.Join(dir, "testdata/*.input"))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(match) == 0 {
+		t.Fatal(errors.New("no files found in testdata"))
 	}
 
 	for _, inputFile := range match {
