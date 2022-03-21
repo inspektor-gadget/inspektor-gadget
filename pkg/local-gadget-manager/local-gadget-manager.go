@@ -26,7 +26,7 @@ import (
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	containersmap "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
+	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
 
 	"github.com/cilium/ebpf"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,20 +37,13 @@ type LocalGadgetManager struct {
 
 	traceFactories map[string]gadgets.TraceFactory
 
-	// tracers by name
-	tracers map[string]tracer
+	// tracers
+	tracerCollection *tracercollection.TracerCollection
+	traceResources   map[string]*gadgetv1alpha1.Trace
 
 	// containersMap is the global map at /sys/fs/bpf/gadget/containers
 	// exposing container details for each mount namespace.
 	containersMap *containersmap.ContainersMap
-}
-
-type tracer struct {
-	gadget        string
-	name          string
-	factory       gadgets.TraceFactory
-	traceResource *gadgetv1alpha1.Trace
-	gadgetStream  *stream.GadgetStream
 }
 
 func (l *LocalGadgetManager) ListGadgets() []string {
@@ -78,12 +71,17 @@ func (l *LocalGadgetManager) GadgetOutputModesSupported(gadget string) (ret []st
 func (l *LocalGadgetManager) ListOperations(name string) []string {
 	operations := []string{}
 
-	tracer, ok := l.tracers[name]
+	traceResource, ok := l.traceResources[name]
 	if !ok {
 		return operations
 	}
 
-	for opname := range tracer.factory.Operations() {
+	factory, ok := l.traceFactories[traceResource.Spec.Gadget]
+	if !ok {
+		return operations
+	}
+
+	for opname := range factory.Operations() {
 		operations = append(operations, opname)
 	}
 
@@ -93,7 +91,7 @@ func (l *LocalGadgetManager) ListOperations(name string) []string {
 
 func (l *LocalGadgetManager) ListTraces() []string {
 	traces := []string{}
-	for name := range l.tracers {
+	for name := range l.traceResources {
 		traces = append(traces, name)
 	}
 	sort.Strings(traces)
@@ -109,13 +107,16 @@ func (l *LocalGadgetManager) ListContainers() []string {
 	return containers
 }
 
+func traceName(name string) string {
+	return gadgets.TraceName("gadget", name)
+}
+
 func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter, outputMode string) error {
 	factory, ok := l.traceFactories[gadget]
 	if !ok {
 		return fmt.Errorf("unknown gadget %q", gadget)
 	}
-	_, ok = l.tracers[name]
-	if ok {
+	if l.tracerCollection.TracerExists(traceName(name)) {
 		return fmt.Errorf("trace %q already exists", name)
 	}
 
@@ -161,84 +162,89 @@ func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter, outputMode
 		}
 	}
 
-	l.tracers[name] = tracer{
-		gadget:        gadget,
-		name:          name,
-		factory:       factory,
-		traceResource: traceResource,
-		gadgetStream:  stream.NewGadgetStream(),
-	}
+	l.tracerCollection.AddTracer(traceName(name), *gadgets.ContainerSelectorFromContainerFilter(traceResource.Spec.Filter))
+	l.traceResources[name] = traceResource
 	return nil
 }
 
 func (l *LocalGadgetManager) Operation(name, opname string) error {
-	tracer, ok := l.tracers[name]
+	traceResource, ok := l.traceResources[name]
 	if !ok {
 		return fmt.Errorf("cannot find trace %q", name)
 	}
 
+	factory, ok := l.traceFactories[traceResource.Spec.Gadget]
+	if !ok {
+		return fmt.Errorf("cannot find factory for %q", traceResource.Spec.Gadget)
+	}
+
 	if opname != "" {
-		gadgetOperation, ok := tracer.factory.Operations()[opname]
+		gadgetOperation, ok := factory.Operations()[opname]
 		if !ok {
 			return fmt.Errorf("unknown operation %q", opname)
 		}
-		tracerNamespacedName := tracer.traceResource.ObjectMeta.Namespace +
-			"/" + tracer.traceResource.ObjectMeta.Name
-		gadgetOperation.Operation(tracerNamespacedName, tracer.traceResource)
+		tracerNamespacedName := traceResource.ObjectMeta.Namespace +
+			"/" + traceResource.ObjectMeta.Name
+		gadgetOperation.Operation(tracerNamespacedName, traceResource)
 	}
 
 	return nil
 }
 
 func (l *LocalGadgetManager) Show(name string) (ret string, err error) {
-	tracer, ok := l.tracers[name]
+	traceResource, ok := l.traceResources[name]
 	if !ok {
 		return "", fmt.Errorf("cannot find trace %q", name)
 	}
-	if tracer.traceResource.Status.State != "" {
-		ret += fmt.Sprintf("State: %s\n", tracer.traceResource.Status.State)
+	if traceResource.Status.State != "" {
+		ret += fmt.Sprintf("State: %s\n", traceResource.Status.State)
 	}
-	if tracer.traceResource.Status.OperationError != "" {
-		ret += fmt.Sprintf("Error: %s\n", tracer.traceResource.Status.OperationError)
+	if traceResource.Status.OperationError != "" {
+		ret += fmt.Sprintf("Error: %s\n", traceResource.Status.OperationError)
 	}
-	if tracer.traceResource.Status.Output != "" {
-		ret += fmt.Sprintln(tracer.traceResource.Status.Output)
+	if traceResource.Status.Output != "" {
+		ret += fmt.Sprintln(traceResource.Status.Output)
 	}
 
 	return ret, nil
 }
 
 func (l *LocalGadgetManager) Delete(name string) error {
-	tracer, ok := l.tracers[name]
+	traceResource, ok := l.traceResources[name]
 	if !ok {
 		return fmt.Errorf("cannot find trace %q", name)
 	}
 
-	tracer.factory.Delete("gadget/" + name)
-	delete(l.tracers, name)
+	factory, ok := l.traceFactories[traceResource.Spec.Gadget]
+	if !ok {
+		return fmt.Errorf("cannot find factory for %q", traceResource.Spec.Gadget)
+	}
+
+	factory.Delete("gadget/" + name)
+	delete(l.traceResources, name)
+	l.tracerCollection.RemoveTracer(traceName(name))
 	return nil
 }
 
 func (l *LocalGadgetManager) PublishEvent(tracerID string, line string) error {
-	name := strings.TrimPrefix(tracerID, "trace_gadget_")
-	t, ok := l.tracers[name]
-	if !ok {
-		return fmt.Errorf("cannot find trace %q", name)
+	gadgetStream, err := l.tracerCollection.Stream(tracerID)
+	if err != nil {
+		return fmt.Errorf("cannot find stream for tracer %q", tracerID)
 	}
 
-	t.gadgetStream.Publish(line)
+	gadgetStream.Publish(line)
 	return nil
 }
 
 func (l *LocalGadgetManager) Stream(name string, stop chan struct{}) (chan string, error) {
-	t, ok := l.tracers[name]
-	if !ok {
-		return nil, fmt.Errorf("cannot find trace %q", name)
+	gadgetStream, err := l.tracerCollection.Stream(traceName(name))
+	if err != nil {
+		return nil, fmt.Errorf("cannot find stream for %q", name)
 	}
 
 	out := make(chan string)
 
-	ch := t.gadgetStream.Subscribe()
+	ch := gadgetStream.Subscribe()
 
 	go func() {
 		if stop == nil {
@@ -246,13 +252,13 @@ func (l *LocalGadgetManager) Stream(name string, stop chan struct{}) (chan strin
 				line := <-ch
 				out <- line.Line
 			}
-			t.gadgetStream.Unsubscribe(ch)
+			gadgetStream.Unsubscribe(ch)
 			close(out)
 		} else {
 			for {
 				select {
 				case <-stop:
-					t.gadgetStream.Unsubscribe(ch)
+					gadgetStream.Unsubscribe(ch)
 					close(out)
 					return
 				case line := <-ch:
@@ -270,34 +276,40 @@ func (l *LocalGadgetManager) Dump() string {
 		out += fmt.Sprintf("%+v\n", c)
 	})
 	out += "List of tracers:\n"
-	for i, t := range l.tracers {
-		out += fmt.Sprintf("%v -> %q %q\n",
+	for i, traceResource := range l.traceResources {
+		out += fmt.Sprintf("%v -> %q\n",
 			i,
-			t.gadget,
-			t.name)
-		out += fmt.Sprintf("    %+v\n", t.traceResource)
-		out += fmt.Sprintf("    %+v\n", t.traceResource.Spec.Filter)
+			traceResource.Spec.Gadget)
+		out += fmt.Sprintf("    %+v\n", traceResource)
+		out += fmt.Sprintf("    %+v\n", traceResource.Spec.Filter)
 	}
 	return out
 }
 
 func NewManager() (*LocalGadgetManager, error) {
+	l := &LocalGadgetManager{
+		traceFactories: gadgetcollection.TraceFactoriesForLocalGadget(),
+		traceResources: make(map[string]*gadgetv1alpha1.Trace),
+	}
+
+	var err error
+	l.tracerCollection, err = tracercollection.NewTracerCollection(gadgets.PinPath, gadgets.MountMapPrefix, true, &l.ContainerCollection)
+	if err != nil {
+		return nil, err
+	}
+
 	if _, err := ebpf.RemoveMemlockRlimit(); err != nil {
 		return nil, err
 	}
 
-	containersMap, err := containersmap.NewContainersMap(gadgets.PinPath)
+	l.containersMap, err = containersmap.NewContainersMap(gadgets.PinPath)
 	if err != nil {
 		return nil, fmt.Errorf("error creating containers map: %w", err)
 	}
 	containerEventFuncs := []pubsub.FuncNotify{}
-	containerEventFuncs = append(containerEventFuncs, containersMap.ContainersMapUpdater())
+	containerEventFuncs = append(containerEventFuncs, l.containersMap.ContainersMapUpdater())
+	containerEventFuncs = append(containerEventFuncs, l.tracerCollection.TracerMapsUpdater())
 
-	l := &LocalGadgetManager{
-		traceFactories: gadgetcollection.TraceFactoriesForLocalGadget(),
-		tracers:        make(map[string]tracer),
-		containersMap:  containersMap,
-	}
 	err = l.ContainerCollection.ContainerCollectionInitialize(
 		containercollection.WithPubSub(containerEventFuncs...),
 		containercollection.WithCgroupEnrichment(),

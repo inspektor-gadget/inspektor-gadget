@@ -47,8 +47,8 @@ func TestTracer(t *testing.T) {
 		}
 	}
 
-	if len(g.tracers) != 3 {
-		t.Fatalf("Error while checking tracers: len %d", len(g.tracers))
+	if g.tracerCollection.TracerCount() != 3 {
+		t.Fatalf("Error while checking tracers: len %d", g.tracerCollection.TracerCount())
 	}
 
 	// Check error on duplicate tracer
@@ -85,15 +85,13 @@ func TestTracer(t *testing.T) {
 	}
 
 	// Check content
-	if len(g.tracers) != 2 {
-		t.Fatalf("Error while checking tracers: len %d", len(g.tracers))
+	if g.tracerCollection.TracerCount() != 2 {
+		t.Fatalf("Error while checking tracers: len %d", g.tracerCollection.TracerCount())
 	}
-	_, ok := g.tracers["my_tracer_id0"]
-	if !ok {
+	if !g.tracerCollection.TracerExists("my_tracer_id0") {
 		t.Fatalf("Error while checking tracer %s: not found", "my_tracer_id0")
 	}
-	_, ok = g.tracers["my_tracer_id2"]
-	if !ok {
+	if !g.tracerCollection.TracerExists("my_tracer_id2") {
 		t.Fatalf("Error while checking tracer %s: not found", "my_tracer_id2")
 	}
 }
