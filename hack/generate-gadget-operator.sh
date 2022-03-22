@@ -14,6 +14,7 @@ cd gadget-operator
 operator-sdk init --domain kinvolk.io --repo github.com/kinvolk/inspektor-gadget
 cp ../hack/boilerplate.go.txt hack/boilerplate.go.txt
 operator-sdk create api --group gadget --version v1alpha1 --kind Trace --resource --controller
+operator-sdk create api --group gadget --version v1alpha1 --kind GlobalTrace --resource --controller
 make manifests
 
 if [ "$1" = "gen" ] ; then
@@ -27,6 +28,7 @@ if [ "$1" = "gen" ] ; then
 
   mkdir -p ../pkg/resources/crd/bases
   cp -a config/crd/bases/gadget.kinvolk.io_traces.yaml ../pkg/resources/crd/bases/
+  cp -a config/crd/bases/gadget.kinvolk.io_globaltraces.yaml ../pkg/resources/crd/bases/
 
   mkdir -p ../pkg/resources/rbac
   cp -a config/rbac/role.yaml ../pkg/resources/rbac/

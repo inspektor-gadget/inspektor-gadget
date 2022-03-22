@@ -43,6 +43,9 @@ type TraceFactory interface {
 	// OutputModesSupported returns the set of OutputMode supported by the
 	// gadget.
 	OutputModesSupported() map[string]struct{}
+
+	// MergeStatuses
+	MergeStatuses(statuses map[string]gadgetv1alpha1.TraceStatus) string
 }
 
 type TraceFactoryWithScheme interface {
@@ -92,6 +95,10 @@ type BaseFactory struct {
 	// }
 	DeleteTrace func(name string, trace interface{})
 
+	// MergeStatusesFunc is optionally set by gadgets if they need to merged
+	// several output from different nodes into one.
+	MergeStatusesFunc func(statuses map[string]gadgetv1alpha1.TraceStatus) string
+
 	mu     sync.Mutex
 	traces map[string]interface{}
 }
@@ -136,6 +143,13 @@ func (f *BaseFactory) Delete(name string) {
 		f.DeleteTrace(name, trace)
 	}
 	delete(f.traces, name)
+}
+
+func (f *BaseFactory) MergeStatuses(statuses map[string]gadgetv1alpha1.TraceStatus) string {
+	if f.MergeStatusesFunc != nil {
+		return f.MergeStatusesFunc(statuses)
+	}
+	return ""
 }
 
 func (f *BaseFactory) Operations() map[string]TraceOperation {

@@ -119,7 +119,7 @@ rules:
   # list services is needed by network-policy gadget.
   verbs: ["list"]
 - apiGroups: ["gadget.kinvolk.io"]
-  resources: ["traces", "traces/status"]
+  resources: ["traces", "traces/status", "globaltraces", "globaltraces/status"]
   # For traces, we need all rights on them as we define this resource.
   verbs: ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"]
 - apiGroups: ["*"]
@@ -362,7 +362,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		fallbackPodInformer,
 	}
 
-	fmt.Printf("%s\n---\n", resources.TracesCustomResource)
+	fmt.Printf("%s\n---\n%s\n---\n", resources.TracesCustomResource, resources.GlobalTracesCustomResource)
 	err = t.Execute(os.Stdout, p)
 	if err != nil {
 		return fmt.Errorf("failed to generate deploy template: %w", err)

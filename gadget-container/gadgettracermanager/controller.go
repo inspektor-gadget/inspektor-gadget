@@ -73,7 +73,15 @@ func startController(node string, tracerManager *gadgettracermanager.GadgetTrace
 		TraceFactories: traceFactories,
 		TracerManager:  tracerManager,
 	}).SetupWithManager(mgr); err != nil {
-		log.Errorf("unable to create trace controller: %s", err)
+		log.Errorf("unable to create Trace controller: %s", err)
+		os.Exit(1)
+	}
+	if err = (&controllers.GlobalTraceReconciler{
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		TraceFactories: traceFactories,
+	}).SetupWithManager(mgr); err != nil {
+		log.Errorf("unable to create GlobalTrace controller: %s", err)
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

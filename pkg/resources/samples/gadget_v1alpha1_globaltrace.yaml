@@ -1,0 +1,19 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: GlobalTrace
+metadata:
+  name: globaltrace-sample
+  namespace: gadget
+spec:
+  nodeSelector: {}
+  traceTemplate:
+    metadata:
+      annotations:
+        annotation-foo: bar
+      labels:
+        role: demo
+    spec:
+      gadget: network-graph
+      filter:
+        namespace: demo
+      runMode: Auto
+      outputMode: Status

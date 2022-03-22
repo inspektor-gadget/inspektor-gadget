@@ -17,6 +17,8 @@ controller-gen: ## Download controller-gen locally if necessary.
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
+# FIXME: Add generateEmbeddedObjectMeta=true once we migrate to controller-gen >= v0.6.0
+#        See https://github.com/kubernetes-sigs/controller-tools/commit/adfbf775195bf1c2366286684cc77a97b04a8cb9
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
 ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
