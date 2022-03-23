@@ -86,6 +86,9 @@ type CommonFlags struct {
 
 	// List of columns to print (only meaningful when OutputMode is "columns=...")
 	CustomColumns []string
+
+	// Number of seconds that the gadget will run for
+	Timeout int
 }
 
 // GetNamespace returns the namespace specified by '-n' or the default
@@ -233,5 +236,13 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		"",
 		false,
 		"Print additional information",
+	)
+
+	command.PersistentFlags().IntVarP(
+		&params.Timeout,
+		"timeout",
+		"",
+		0,
+		"Number of seconds that the gadget will run for",
 	)
 }
