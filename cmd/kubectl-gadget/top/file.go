@@ -69,11 +69,25 @@ var fileCmd = &cobra.Command{
 			},
 		}
 
-		fileStartOutput()
+		// when params.Timeout == interval it means the user
+		// only wants to run for a given amount of time and print
+		// that result.
+		singleShot := params.Timeout == outputInterval
+
+		// start print loop if this is not a "single shoot" operation
+		if singleShot {
+			filePrintHeader()
+		} else {
+			fileStartOutputLoop()
+		}
 
 		err = utils.RunTraceStreamCallback(config, fileCallback)
 		if err != nil {
 			return utils.WrapInErrRunGadget(err)
+		}
+
+		if singleShot {
+			filePrintEvents()
 		}
 
 		return nil
@@ -116,18 +130,40 @@ func fileCallback(line string, node string) {
 	fileNodeStats[node] = event.Stats
 }
 
-func fileStartOutput() {
-	ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
-
+func fileStartOutputLoop() {
 	go func() {
+		ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
+		filePrintHeader()
 		for {
-			filePrintOutput()
 			_ = <-ticker.C
+			filePrintHeader()
+			filePrintEvents()
 		}
 	}()
 }
 
-func filePrintOutput() {
+func filePrintHeader() {
+	switch params.OutputMode {
+	case utils.OutputModeColumns:
+		if term.IsTerminal(int(os.Stdout.Fd())) {
+			utils.ClearScreen()
+		} else {
+			fmt.Println("")
+		}
+		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-6s %-6s %-7s %-7s %1s %s\n",
+			"NODE", "NAMESPACE", "POD", "CONTAINER",
+			"PID", "COMM", "READS", "WRITES", "R_Kb", "W_Kb", "T", "FILE")
+	case utils.OutputModeCustomColumns:
+		if term.IsTerminal(int(os.Stdout.Fd())) {
+			utils.ClearScreen()
+		} else {
+			fmt.Println("")
+		}
+		fmt.Println(fileGetCustomColsHeader(params.CustomColumns))
+	}
+}
+
+func filePrintEvents() {
 	// sort and print events
 	mutex.Lock()
 
@@ -143,14 +179,6 @@ func filePrintOutput() {
 
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-6s %-6s %-7s %-7s %1s %s\n",
-			"NODE", "NAMESPACE", "POD", "CONTAINER",
-			"PID", "COMM", "READS", "WRITES", "R_Kb", "W_Kb", "T", "FILE")
 		for idx, event := range stats {
 			if idx == maxRows {
 				break
@@ -168,12 +196,6 @@ func filePrintOutput() {
 		}
 		fmt.Println(string(b))
 	case utils.OutputModeCustomColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Println(fileGetCustomColsHeader(params.CustomColumns))
 		for idx, stat := range stats {
 			if idx == maxRows {
 				break

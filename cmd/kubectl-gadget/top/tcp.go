@@ -79,10 +79,23 @@ var tcpCmd = &cobra.Command{
 			Parameters:       parameters,
 		}
 
-		tcpStartOutput()
+		// only wants to run for a given amount of time and print
+		// that result.
+		singleShot := params.Timeout == outputInterval
+
+		// start print loop if this is not a "single shoot" operation
+		if singleShot {
+			tcpPrintHeader()
+		} else {
+			tcpStartPrintLoop()
+		}
 
 		if err := utils.RunTraceStreamCallback(config, tcpCallback); err != nil {
 			return fmt.Errorf("error running trace: %w", err)
+		}
+
+		if singleShot {
+			tcpPrintEvents()
 		}
 
 		return nil
@@ -138,18 +151,40 @@ func tcpCallback(line string, node string) {
 	nodeTCPStats[node] = event.Stats
 }
 
-func tcpStartOutput() {
-	ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
-
+func tcpStartPrintLoop() {
 	go func() {
+		ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
+		tcpPrintHeader()
 		for {
-			tcpPrintOutput()
-			<-ticker.C
+			_ = <-ticker.C
+			tcpPrintHeader()
+			tcpPrintEvents()
 		}
 	}()
 }
 
-func tcpPrintOutput() {
+func tcpPrintHeader() {
+	switch params.OutputMode {
+	case utils.OutputModeColumns:
+		if term.IsTerminal(int(os.Stdout.Fd())) {
+			utils.ClearScreen()
+		} else {
+			fmt.Println("")
+		}
+		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-3s %-51s %-51s %-7s %s\n",
+			"NODE", "NAMESPACE", "POD", "CONTAINER",
+			"PID", "COMM", "IPv", "LADDR", "RADDR", "RX_KB", "TX_KB")
+	case utils.OutputModeCustomColumns:
+		if term.IsTerminal(int(os.Stdout.Fd())) {
+			utils.ClearScreen()
+		} else {
+			fmt.Println("")
+		}
+		fmt.Println(tcpGetCustomColsHeaders(params.CustomColumns))
+	}
+}
+
+func tcpPrintEvents() {
 	// sort and print events
 	mutex.Lock()
 
@@ -165,15 +200,6 @@ func tcpPrintOutput() {
 
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-
-		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-3s %-51s %-51s %-7s %s\n",
-			"NODE", "NAMESPACE", "POD", "CONTAINER",
-			"PID", "COMM", "IPv", "LADDR", "RADDR", "RX_KB", "TX_KB")
 		for idx, event := range stats {
 			if idx == maxRows {
 				break
@@ -199,12 +225,6 @@ func tcpPrintOutput() {
 		}
 		fmt.Println(string(b))
 	case utils.OutputModeCustomColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Println(tcpGetCustomColsHeaders(params.CustomColumns))
 		for idx, stat := range stats {
 			if idx == maxRows {
 				break
