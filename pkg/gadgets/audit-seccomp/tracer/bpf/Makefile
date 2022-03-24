@@ -1,5 +1,5 @@
 .PHONY: all
-all: audit-seccomp.o
+all: audit-seccomp.o audit-seccomp-with-filter.o
 
 PKG_DIR=../../../..
 
@@ -11,5 +11,9 @@ audit-seccomp.o: audit-seccomp.c
 	clang -Werror -I$(PKG_DIR) -target bpf -O2 -g -c -x c $< -o $@ \
 		-D__KERNEL__ -D__TARGET_ARCH_$(SRCARCH)
 
+audit-seccomp-with-filter.o: audit-seccomp.c
+	clang -Werror -I$(PKG_DIR) -target bpf -O2 -g -c -x c $< -o $@ \
+		-D__KERNEL__ -D__TARGET_ARCH_$(SRCARCH) -DWITH_FILTER=1
+
 clean:
-	rm -f audit-seccomp.o
+	rm -f audit-seccomp.o audit-seccomp-with-filter.o

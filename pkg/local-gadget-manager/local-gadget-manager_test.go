@@ -53,7 +53,7 @@ func TestBasic(t *testing.T) {
 	}
 }
 
-func runTestContainer(t *testing.T, name, image, command string) {
+func runTestContainer(t *testing.T, name, image, command, seccompProfile string) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		t.Fatalf("Failed to connect to Docker: %s", err)
@@ -68,11 +68,16 @@ func runTestContainer(t *testing.T, name, image, command string) {
 	}
 	io.Copy(ioutil.Discard, reader)
 
+	hostConfig := &container.HostConfig{}
+	if seccompProfile != "" {
+		hostConfig.SecurityOpt = []string{fmt.Sprintf("seccomp=%s", seccompProfile)}
+	}
+
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: image,
 		Cmd:   []string{"/bin/sh", "-c", command},
 		Tty:   false,
-	}, nil, nil, nil, name)
+	}, hostConfig, nil, nil, name)
 	if err != nil {
 		t.Fatalf("Failed to create container: %s", err)
 	}
@@ -174,7 +179,7 @@ func TestSeccomp(t *testing.T) {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
 
-	runTestContainer(t, containerName, "docker.io/library/alpine", "mkdir /foo ; echo OK")
+	runTestContainer(t, containerName, "docker.io/library/alpine", "mkdir /foo ; echo OK", "")
 
 	ch, err := localGadgetManager.Stream("my-tracer", nil)
 	if err != nil {
@@ -192,6 +197,53 @@ func TestSeccomp(t *testing.T) {
 
 	s := stacks()
 	keyword := "seccomp"
+	if strings.Contains(s, keyword) {
+		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
+	}
+
+	checkFdList(t, initialFdList, 5, 100*time.Millisecond)
+}
+
+func TestAuditSeccomp(t *testing.T) {
+	if !*rootTest {
+		t.Skip("skipping test requiring root.")
+	}
+	localGadgetManager, err := NewManager()
+	if err != nil {
+		t.Fatalf("Failed to start local gadget manager: %s", err)
+	}
+
+	initialFdList := currentFdList(t)
+
+	containerName := "test-local-gadget-auditseccomp001"
+	err = localGadgetManager.AddTracer("audit-seccomp", "my-tracer", containerName, "Stream")
+	if err != nil {
+		t.Fatalf("Failed to create tracer: %s", err)
+	}
+	err = localGadgetManager.Operation("my-tracer", "start")
+	if err != nil {
+		t.Fatalf("Failed to start the tracer: %s", err)
+	}
+
+	seccompProfile := `{"defaultAction":"SCMP_ACT_ALLOW","architectures":["SCMP_ARCH_X86_64"],"syscalls":[{"action":"SCMP_ACT_LOG","names":["unshare"]}]}`
+	runTestContainer(t, containerName, "docker.io/library/alpine", "unshare -i ; echo OK", seccompProfile)
+
+	ch, err := localGadgetManager.Stream("my-tracer", nil)
+	if err != nil {
+		t.Fatalf("Failed to get stream: %s", err)
+	}
+	results := <-ch
+	if !strings.Contains(results, `"container":"test-local-gadget-auditseccomp001","syscall":"unshare","code":"log"`) {
+		t.Fatalf("Failed to get correct Seccomp Audit: %s", results)
+	}
+
+	err = localGadgetManager.Delete("my-tracer")
+	if err != nil {
+		t.Fatalf("Failed to delete tracer: %s", err)
+	}
+
+	s := stacks()
+	keyword := "audit-seccomp"
 	if strings.Contains(s, keyword) {
 		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
 	}
@@ -220,7 +272,7 @@ func TestDNS(t *testing.T) {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
 
-	runTestContainer(t, containerName, "docker.io/tutum/dnsutils", "dig microsoft.com")
+	runTestContainer(t, containerName, "docker.io/tutum/dnsutils", "dig microsoft.com", "")
 
 	ch, err := localGadgetManager.Stream("my-tracer", nil)
 	if err != nil {

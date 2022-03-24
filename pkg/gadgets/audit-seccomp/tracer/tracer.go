@@ -64,15 +64,21 @@ type Config struct {
 }
 
 func NewTracer(config *Config, eventCallback func(types.Event), node string) (*Tracer, error) {
-	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(ebpfProg))
+	var prog []byte
+	if config.MountnsMap == "" {
+		prog = ebpfProg
+	} else {
+		if filepath.Dir(config.MountnsMap) != gadgets.PinPath {
+			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PinPath)
+		}
+		prog = ebpfProgWithFilter
+	}
+	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(prog))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
 
 	if config.MountnsMap != "" {
-		if filepath.Dir(config.MountnsMap) != gadgets.PinPath {
-			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PinPath)
-		}
 		spec.Maps["filter"].Name = filepath.Base(config.MountnsMap)
 		spec.Maps["filter"].Pinning = ebpf.PinByName
 	}
