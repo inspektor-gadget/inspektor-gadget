@@ -19,9 +19,17 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
+
+const (
+	K8sDistroARO        = "aro"
+	K8sDistroMinikubeGH = "minikube-github"
+)
+
+var supportedK8sDistros = []string{K8sDistroARO, K8sDistroMinikubeGH}
 
 var (
 	integration = flag.Bool("integration", false, "run integration tests")
@@ -30,6 +38,8 @@ var (
 	image = flag.String("image", "", "gadget container image")
 
 	doNotDeploy = flag.Bool("no-deploy", false, "don't deploy Inspektor Gadget")
+
+	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
 )
 
 func runCommands(cmds []*command, t *testing.T) {
@@ -83,15 +93,41 @@ func TestMain(m *testing.M) {
 		os.Setenv("GADGET_IMAGE_FLAG", "--image "+*image)
 	}
 
+	if *k8sDistro != "" {
+		found := false
+		for _, val := range supportedK8sDistros {
+			if *k8sDistro == val {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			fmt.Fprintf(os.Stderr, "Error: invalid argument '-k8s-distro': %q. Valid values: %s\n",
+				*k8sDistro, strings.Join(supportedK8sDistros, ", "))
+
+			os.Exit(-1)
+		}
+	}
+
 	seed := time.Now().UTC().UnixNano()
 	rand.Seed(seed)
 	fmt.Printf("using random seed: %d\n", seed)
+
+	initialDelay := 15
+	if *k8sDistro == K8sDistroARO {
+		// ARO and any other Kubernetes distribution that uses Red Hat
+		// Enterprise Linux CoreOS (RHCOS) requires more time to initialise
+		// because we automatically download the kernel headers for it. See
+		// gadget-container/entrypoint.sh.
+		initialDelay = 60
+	}
 
 	initCommands := []*command{
 		deployInspektorGadget,
 		deploySPO,
 		waitUntilInspektorGadgetPodsDeployed,
-		waitUntilInspektorGadgetPodsInitialized,
+		waitUntilInspektorGadgetPodsInitialized(initialDelay),
 	}
 
 	cleanup := func() {
@@ -156,6 +192,10 @@ func TestBindsnoop(t *testing.T) {
 }
 
 func TestBiolatency(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running biolatency gadget on ARO: it fails to compile eBPF program, see issue #572")
+	}
+
 	t.Parallel()
 
 	commands := []*command{
@@ -170,6 +210,10 @@ func TestBiolatency(t *testing.T) {
 }
 
 func TestBiotop(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running biotop gadget on ARO: it runs but does not provide output, see issue #589")
+	}
+
 	ns := generateTestNamespaceName("test-biotop")
 
 	t.Parallel()
@@ -197,6 +241,10 @@ func TestBiotop(t *testing.T) {
 }
 
 func TestCapabilities(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running capabilities gadget on ARO: it runs but does not provide output, see issue #570")
+	}
+
 	ns := generateTestNamespaceName("test-capabilities")
 
 	t.Parallel()
@@ -224,6 +272,10 @@ func TestCapabilities(t *testing.T) {
 }
 
 func TestDns(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running dns gadget on ARO: fails with 'operation not permitted' error, see issue #569")
+	}
+
 	ns := generateTestNamespaceName("test-dns")
 
 	t.Parallel()
@@ -305,6 +357,10 @@ func TestFiletop(t *testing.T) {
 }
 
 func TestFsslower(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running fsslower gadget on ARO: it runs but does not provide output, see issue #571")
+	}
+
 	ns := generateTestNamespaceName("test-fsslower")
 
 	t.Parallel()
@@ -455,6 +511,10 @@ func TestOpensnoop(t *testing.T) {
 }
 
 func TestProcessCollector(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running process-collector gadget on ARO: iterators are not supported on kernel 4.18.0-305.19.1.el8_4.x86_64")
+	}
+
 	ns := generateTestNamespaceName("test-process-collector")
 
 	t.Parallel()
@@ -623,6 +683,10 @@ func TestSigsnoop(t *testing.T) {
 }
 
 func TestSnisnoop(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running snisnoop gadget on ARO: fails with 'operation not permitted' error, see issue #569")
+	}
+
 	ns := generateTestNamespaceName("test-snisnoop")
 
 	t.Parallel()
@@ -650,6 +714,10 @@ func TestSnisnoop(t *testing.T) {
 }
 
 func TestSocketCollector(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running socket-collector gadget on ARO: iterators are not supported on kernel 4.18.0-305.19.1.el8_4.x86_64")
+	}
+
 	ns := generateTestNamespaceName("test-socket-collector")
 
 	t.Parallel()
@@ -701,6 +769,10 @@ func TestTcpconnect(t *testing.T) {
 }
 
 func TestTcptracer(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running tcptracer gadget on ARO: it runs but does not provide output, see issue #568")
+	}
+
 	ns := generateTestNamespaceName("test-tcptracer")
 
 	t.Parallel()

@@ -112,9 +112,11 @@ var deploySPO *command = &command{
 	expectedRegexp: "pod/security-profiles-operator-.*-.* condition met",
 }
 
-var waitUntilInspektorGadgetPodsInitialized *command = &command{
-	name: "Wait until Inspektor Gadget is initialised",
-	cmd:  "sleep 15",
+func waitUntilInspektorGadgetPodsInitialized(initialDelay int) *command {
+	return &command{
+		name: "Wait until Inspektor Gadget is initialised",
+		cmd:  fmt.Sprintf("sleep %d", initialDelay),
+	}
 }
 
 var cleanupInspektorGadget *command = &command{

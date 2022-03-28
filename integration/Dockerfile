@@ -14,6 +14,10 @@ RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s
 RUN chmod +x ./kubectl
 RUN mv ./kubectl /usr/local/bin
 
+# Specify the -k8s-distro flag only if KUBERNETES_DISTRIBUTION was set through --build-arg
+ARG KUBERNETES_DISTRIBUTION
+ENV ARG_KUBERNETES_DISTRIBUTION=${KUBERNETES_DISTRIBUTION:+-k8s-distro\ $KUBERNETES_DISTRIBUTION}
+
 COPY bin/kubectl-gadget /bin/kubectl-gadget
 COPY --from=build_base /build/gadget-integration.test /bin/gadget-integration.test
-CMD ["/bin/sh", "-c", "gadget-integration.test -integration -test.timeout 20m"]
+CMD ["/bin/sh", "-c", "gadget-integration.test -integration -test.timeout 20m $ARG_KUBERNETES_DISTRIBUTION"]

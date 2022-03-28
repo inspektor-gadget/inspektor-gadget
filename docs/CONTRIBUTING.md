@@ -62,19 +62,10 @@ section for a faster development cycle.
 
 ## Workflows
 
-### Github Actions
+### Continuous Integration
 
-This repo uses Github actions as CI. It compiles and uploads the Inspektor Gadget
-executable and gadget container image. It also runs unit and some integration tests.
-A fork of this project should enable them in the repo settings page and add the
-following
-[secrets](https://help.github.com/en/actions/configuring-and-managing-workflows/creating-and-storing-encrypted-secrets#creating-encrypted-secrets-for-a-repository)
-to be able to use them:
-
-
-- `CONTAINER_REPO`: The container repository to use. Example: docker.io/kinvolk/gadget
-- `CONTAINER_REGISTRY`: The registry containing the repo above. Leave empty for Docker Hub. Example: ghcr.io, foo.azurecr.io, gcr.io
-- `CONTAINER_REGISTRY_USERNAME` & `CONTAINER_REGISTRY_PASSWORD`: Authentication information for the the repo above.
+This repo uses GitHub Actions as CI. Please check dedicated [CI
+documentation](ci.md) for details.
 
 ### Development environment on minikube
 

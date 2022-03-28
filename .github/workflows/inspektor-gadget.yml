@@ -359,67 +359,92 @@ jobs:
 
         make local-gadget-tests
 
+  check-secrets:
+    name: Check repo secrets
+    # level: 0
+    runs-on: ubuntu-latest
+    outputs:
+      aro: ${{ steps.set_output.outputs.aro }}
+    steps:
+      # Secrets cannot be used as if condition, use job output as workaround.
+      # https://github.com/actions/runner/issues/520
+      - id: set_output
+        run: |
+          if [[ "${{ secrets.OPENSHIFT_SERVER }}" != "" && \
+                "${{ secrets.OPENSHIFT_USER }}" != "" && \
+                "${{ secrets.OPENSHIFT_PASSWORD }}" != "" ]]; \
+          then
+            echo "Secrets to use an ARO cluster were configured in the repo"
+            echo "::set-output name=aro::true"
+          else
+            echo "Secrets to use an ARO cluster were not configured in the repo"
+            echo "::set-output name=aro::false"
+          fi
+
+  # Integration tests for ARO are separated from others distributions because it
+  # is a pre-created cluster. It implies that we need to use a concurrency group
+  # to ensure that only one test-integration-aro job runs at a time so that we
+  # never try to use IG on that unique ARO cluster from different workflow runs.
+  test-integration-aro:
+    name: Integration tests on ARO
+    # level: 1
+    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-docker-image]
+    # Run this job only if an ARO cluster is available on repo secrets. See
+    # docs/ci.md for further details.
+    if: needs.check-secrets.outputs.aro == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: no-simultaneous-test-integration-aro
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v1
+    - name: Authenticate and set ARO cluster context
+      # NOTE: This action generates the Kubernetes config file in the current
+      # directory. Therefore, it must be run after checking out code otherwise
+      # the file will be cleaned up.
+      uses: redhat-actions/oc-login@v1
+      with:
+        # API Server URL
+        openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
+        # Credentials (TODO: Use a functional Service Account, see issue #574)
+        openshift_username: ${{ secrets.OPENSHIFT_USER }}
+        openshift_password: ${{ secrets.OPENSHIFT_PASSWORD }}
+    - name: Run integration tests
+      uses: ./.github/actions/run-integration-tests
+      env:
+        KUBERNETES_DISTRIBUTION: "aro"
+      with:
+        registry: ${{ secrets.CONTAINER_REGISTRY }}
+        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+
   test-integration:
     name: Integration tests
     # level: 1
     needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-docker-image]
     runs-on: ubuntu-latest
     steps:
+    - name: Check out code
+      uses: actions/checkout@v1
     - name: Setup Minikube
       uses: manusa/actions-setup-minikube@v2.4.3
       with:
         minikube version: 'v1.25.2'
         kubernetes version: 'v1.23.0'
         github token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Set IMAGE_TAG
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-    - name: Check out code
-      uses: actions/checkout@v1
-    - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
-      uses: actions/download-artifact@v2
-      with:
-        name: kubectl-gadget-linux-amd64-tar-gz
-        path: /home/runner/work/inspektor-gadget/
-    - name: Integration tests
-      run: |
-        echo "Using IMAGE_TAG=$IMAGE_TAG"
-
-        tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
-        mv kubectl-gadget kubectl-gadget-linux-amd64
-
-        TESTS_DOCKER_ARGS="-e KUBECONFIG=/root/.kube/config -v /home/runner/.kube:/root/.kube -v /home/runner/work/_temp/.minikube:/home/runner/work/_temp/.minikube" \
-            make -C integration build test
-
-        sed -i "s/latest/$IMAGE_TAG/g" integration/gadget-integration-tests-job.yaml
-    - name: Add integration asset as artifact.
-      if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/upload-artifact@master
-      with:
-        name: integration-asset
-        path: /home/runner/work/inspektor-gadget/inspektor-gadget/integration/gadget-integration-tests-job.yaml
-    - name: Login to Container Registry
-      if: startsWith(github.ref, 'refs/tags/v')
-      uses: docker/login-action@v1
+    - name: Run integration tests
+      uses: ./.github/actions/run-integration-tests
+      env:
+        KUBERNETES_DISTRIBUTION: "minikube-github"
       with:
         registry: ${{ secrets.CONTAINER_REGISTRY }}
         username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
         password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
-    - name: Push Integration Test Image
-      if: startsWith(github.ref, 'refs/tags/v')
-      run: |
-        make -C integration push
 
   release:
     name: Release
     # level: 2
-    needs: [documentation-checks, lint, test-integration, test-local-gadget]
+    needs: [documentation-checks, lint, test-integration, test-integration-aro, test-local-gadget]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
