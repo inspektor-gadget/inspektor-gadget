@@ -21,7 +21,6 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: 1.17
-      id: go
     - name: Cache go 1.17
       uses: actions/cache@v2
       with:
@@ -47,7 +46,6 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: 1.17
-      id: go
     - name: Cache go 1.17
       uses: actions/cache@v2
       with:
@@ -99,7 +97,6 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: 1.17
-      id: go
     - name: Cache go 1.17
       uses: actions/cache@v2
       with:
@@ -174,7 +171,6 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: 1.17
-      id: go
     - name: Cache go 1.17
       uses: actions/cache@v2
       with:
@@ -215,53 +211,6 @@ jobs:
         name: ${{ matrix.local-gadget-target }}-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.local-gadget-target }}.tar.gz
 
-  build-docker-image:
-    name: Build gadget container image
-    # level: 0
-    runs-on: ubuntu-latest
-    steps:
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v1
-    - name: Cache Docker layers
-      uses: actions/cache@v2
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-single-buildx-${{ hashFiles('gadget.Dockerfile') }}
-        restore-keys: |
-          ${{ runner.os }}-single-buildx
-    - name: Login to Container Registry
-      uses: docker/login-action@v1
-      with:
-        registry: ${{ secrets.CONTAINER_REGISTRY }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
-    - name: Check out code
-      uses: actions/checkout@v1
-    - name: Set IMAGE_TAG
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-    - name: Build gadget container
-      uses: docker/build-push-action@v2
-      with:
-        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
-        file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget.Dockerfile
-        build-args: |
-          ENABLE_BTFGEN=true
-        # TODO: how to avoid pushing a container before running integration tests
-        # Answer: push to runner registry first, if integration tests are OK
-        # push to final registry
-        push: true
-        tags: ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
-        cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache-new
-
   test-unit:
     name: Unit tests
     # level: 0
@@ -271,7 +220,6 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: 1.17
-      id: go
     - name: Cache go 1.17
       uses: actions/cache@v2
       with:
@@ -309,7 +257,6 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: 1.17
-      id: go
     - name: Cache go 1.17
       uses: actions/cache@v2
       with:
@@ -364,11 +311,12 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     outputs:
-      aro: ${{ steps.set_output.outputs.aro }}
+      aro: ${{ steps.set_aro.outputs.aro }}
+      container_registry: ${{ steps.set_container_registry.outputs.container_registry }}
     steps:
       # Secrets cannot be used as if condition, use job output as workaround.
       # https://github.com/actions/runner/issues/520
-      - id: set_output
+      - id: set_aro
         run: |
           if [[ "${{ secrets.OPENSHIFT_SERVER }}" != "" && \
                 "${{ secrets.OPENSHIFT_USER }}" != "" && \
@@ -380,6 +328,72 @@ jobs:
             echo "Secrets to use an ARO cluster were not configured in the repo"
             echo "::set-output name=aro::false"
           fi
+      - id: set_container_registry
+        run: |
+          # This check does not consider CONTAINER_REGISTRY because it is empty
+          # if DockerHub is used.
+          if [[ "${{ secrets.CONTAINER_REPO }}" != "" && \
+                "${{ secrets.CONTAINER_REGISTRY_USERNAME }}" != "" && \
+                "${{ secrets.CONTAINER_REGISTRY_PASSWORD }}" != "" ]]; \
+          then
+            echo "Secrets to use a container registry were configured in the repo"
+            echo "::set-output name=container_registry::true"
+          else
+            echo "Secrets to use a container registry were not configured in the repo"
+            echo "::set-output name=container_registry::false"
+          fi
+
+  build-container-image:
+    name: Build and push gadget container image
+    # level: 1
+    runs-on: ubuntu-latest
+    needs: [check-secrets]
+    steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+    - name: Cache Docker layers
+      uses: actions/cache@v2
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-single-buildx-${{ hashFiles('gadget.Dockerfile') }}
+        restore-keys: |
+          ${{ runner.os }}-single-buildx
+    - name: Check out code
+      uses: actions/checkout@v1
+    - name: Set IMAGE_TAG
+      run: |
+        TMP1=${GITHUB_REF#*/}
+        TMP2=${TMP1#*/}
+        IMAGE_TAG=${TMP2//\//-}
+        if [ "$IMAGE_TAG" = "main" ]; then
+            IMAGE_TAG="latest"
+        fi
+        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
+    - name: Build and push gadget container image
+      uses: docker/build-push-action@v2
+      with:
+        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget.Dockerfile
+        build-args: |
+          ENABLE_BTFGEN=true
+        load: true
+        tags: gadget:${{ env.IMAGE_TAG }}
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new
+    - name: Login to Container Registry
+      if: needs.check-secrets.outputs.container_registry == 'true'
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ secrets.CONTAINER_REGISTRY }}
+        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+    - name: Push gadget container image
+      if: needs.check-secrets.outputs.container_registry == 'true'
+      # TODO: how to avoid pushing the container image before running the
+      # integration tests.
+      run: |
+        docker tag gadget:${{ env.IMAGE_TAG }} ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
+        docker push ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
 
   # Integration tests for ARO are separated from others distributions because it
   # is a pre-created cluster. It implies that we need to use a concurrency group
@@ -387,11 +401,11 @@ jobs:
   # never try to use IG on that unique ARO cluster from different workflow runs.
   test-integration-aro:
     name: Integration tests on ARO
-    # level: 1
-    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-docker-image]
-    # Run this job only if an ARO cluster is available on repo secrets. See
-    # docs/ci.md for further details.
-    if: needs.check-secrets.outputs.aro == 'true'
+    # level: 2
+    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-container-image]
+    # Run this job only if the gadget container image was pushed and an ARO
+    # cluster is available on repo secrets. See docs/ci.md for further details.
+    if: needs.check-secrets.outputs.aro == 'true' && needs.check-secrets.outputs.container_registry == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: no-simultaneous-test-integration-aro
@@ -414,15 +428,19 @@ jobs:
       env:
         KUBERNETES_DISTRIBUTION: "aro"
       with:
+        push: ${{ startsWith(github.ref, 'refs/tags/v') && needs.check-secrets.outputs.container_registry == 'true' }}
         registry: ${{ secrets.CONTAINER_REGISTRY }}
         username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
         password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
   test-integration:
     name: Integration tests
-    # level: 1
-    needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-docker-image]
+    # level: 2
+    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-container-image]
     runs-on: ubuntu-latest
+    # It is useless to run the integration tests if the container image was not
+    # pushed to a container registry. They will indeed fail.
+    if: needs.check-secrets.outputs.container_registry == 'true'
     steps:
     - name: Check out code
       uses: actions/checkout@v1
@@ -437,13 +455,14 @@ jobs:
       env:
         KUBERNETES_DISTRIBUTION: "minikube-github"
       with:
+        push: ${{ startsWith(github.ref, 'refs/tags/v') && needs.check-secrets.outputs.container_registry == 'true' }}
         registry: ${{ secrets.CONTAINER_REGISTRY }}
         username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
         password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
 
   release:
     name: Release
-    # level: 2
+    # level: 3
     needs: [documentation-checks, lint, test-integration, test-integration-aro, test-local-gadget]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
@@ -467,7 +486,6 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload Testing Asset
-      id: upload-release-asset-testing
       uses: actions/upload-release-asset@v1.0.1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

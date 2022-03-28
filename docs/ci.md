@@ -37,6 +37,57 @@ Notice that either the provided container repository allows anonymous pull or
 the cluster used to run the integration tests is properly configured to be able
 to pull images from it.
 
+### Using an Azure Container Registry
+
+The following instructions describe how to create and configure an Azure
+Container Registry that can be used by the Inspektor Gadget workflow:
+
+```bash
+$ export SUBSCRIPTION=<mySubscription>
+$ export RESOURCEGROUP=<myResourceName>
+$ export REGISTRY=<myRegisty>
+$ export SERVICEPRINCIPAL=<myServicePrincipalName>
+
+# Set subscription so that we don't need to specify it at every command
+$ az account set --subscription $SUBSCRIPTION
+
+# Create Azure Container Registry
+$ az acr create --resource-group $RESOURCEGROUP --name $REGISTRY --sku Standard
+
+# Create service principal with permissions to push to the registry
+$ az ad sp create-for-rbac --name $SERVICEPRINCIPAL --role AcrPush --scopes $(az acr show --name $REGISTRY --query id --output tsv) --sdk-auth
+{
+  "clientId": "myclientID",
+  "clientSecret": "myClientSecret",
+  "subscriptionId": "mySubscription",
+  ...
+}
+```
+
+Now, we need to add the following actions secrets to the repo:
+
+- `CONTAINER_REPO`: The Azure container repository to use:
+  `$REGISTRY.azurecr.io/gadget`.
+- `CONTAINER_REGISTRY`: The Azure container registry containing the repo
+  above: `$REGISTRY.azurecr.io`.
+- `CONTAINER_REGISTRY_USERNAME`: The `clientId` from the JSON output from the
+  service principal creation.
+- `CONTAINER_REGISTRY_PASSWORD`: The `clientSecret` from the JSON output from the
+  service principal creation.
+
+Finally, let's configure the registry to allow anonymous pulls so that users do
+not require any kind of authentication during the Inspektor Gadget deployment:
+
+```bash
+$ az acr update --name $REGISTRY --anonymous-pull-enabled
+```
+
+If we need to delete our registry, it is enough to execute:
+
+```bash
+$ az acr delete --resource-group $RESOURCEGROUP --name $REGISTRY
+```
+
 ## Run integration tests on an ARO cluster
 
 Optionally, we can add the secrets described in this section so that the
