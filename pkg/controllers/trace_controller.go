@@ -161,7 +161,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 		return ctrl.Result{}, nil
 	}
-	if trace.Spec.RunMode != "Manual" {
+	if trace.Spec.RunMode != "Manual" && trace.Spec.RunMode != "Auto" {
 		setTraceOpError(ctx, r.Client, req.NamespacedName.String(),
 			trace, fmt.Sprintf("Unsupported RunMode %q for gadget %q",
 				trace.Spec.RunMode, trace.Spec.Gadget))
@@ -198,43 +198,55 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 	}
 
-	// Lookup annotations
-	if trace.ObjectMeta.Annotations == nil {
-		log.Info("No annotations. Nothing to do.")
-		return ctrl.Result{}, nil
-	}
-
-	// For now, only support control via the GADGET_OPERATION
 	var op string
-	if op, ok = trace.ObjectMeta.Annotations[GadgetOperation]; !ok {
-		log.Info("No operation annotation. Nothing to do.")
-		return ctrl.Result{}, nil
-	}
-
 	params := make(map[string]string)
-	for k, v := range trace.ObjectMeta.Annotations {
-		if !strings.HasPrefix(k, GadgetOperation+"-") {
-			continue
+
+	switch trace.Spec.RunMode {
+	case "Manual":
+		// Lookup annotations
+		if trace.ObjectMeta.Annotations == nil {
+			log.Info("No annotations. Nothing to do.")
+			return ctrl.Result{}, nil
 		}
-		params[strings.TrimPrefix(k, GadgetOperation+"-")] = v
+
+		// control via the annotation
+		if op, ok = trace.ObjectMeta.Annotations[GadgetOperation]; !ok {
+			log.Info("No operation annotation. Nothing to do.")
+			return ctrl.Result{}, nil
+		}
+
+		for k, v := range trace.ObjectMeta.Annotations {
+			if !strings.HasPrefix(k, GadgetOperation+"-") {
+				continue
+			}
+			params[strings.TrimPrefix(k, GadgetOperation+"-")] = v
+		}
+
+		// Remove annotations first to avoid another execution in the next
+		// reconciliation loop.
+		withAnnotation := trace.DeepCopy()
+		annotations := trace.GetAnnotations()
+		delete(annotations, GadgetOperation)
+		for k := range params {
+			delete(annotations, GadgetOperation+"-"+k)
+		}
+		trace.SetAnnotations(annotations)
+		err = r.Client.Patch(ctx, trace, client.MergeFrom(withAnnotation))
+		if err != nil {
+			log.Errorf("Failed to update trace: %s", err)
+			return ctrl.Result{}, err
+		}
+
+	case "Auto":
+		if trace.Status.State == "" {
+			op = "start"
+		} else {
+			log.Info("Already started. Nothing to do.")
+			return ctrl.Result{}, nil
+		}
 	}
 
 	log.Infof("Gadget %s operation %q on %s", trace.Spec.Gadget, op, req.NamespacedName)
-
-	// Remove annotations first to avoid another execution in the next
-	// reconciliation loop.
-	withAnnotation := trace.DeepCopy()
-	annotations := trace.GetAnnotations()
-	delete(annotations, GadgetOperation)
-	for k := range params {
-		delete(annotations, GadgetOperation+"-"+k)
-	}
-	trace.SetAnnotations(annotations)
-	err = r.Client.Patch(ctx, trace, client.MergeFrom(withAnnotation))
-	if err != nil {
-		log.Errorf("Failed to update trace: %s", err)
-		return ctrl.Result{}, err
-	}
 
 	// Check operation is supported for this specific gadget
 	gadgetOperation, ok := factory.Operations()[op]
