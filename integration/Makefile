@@ -3,11 +3,14 @@ IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
 TESTS_DOCKER_ARGS ?= "-e KUBECONFIG=/opt/kubeconfig/config -v $(HOME)/.kube:/opt/kubeconfig"
 
+KUBERNETES_DISTRIBUTION ?= ""
+
 .PHONY: build
 build:
 	mkdir -p bin
 	cp ../kubectl-gadget-linux-amd64 bin/kubectl-gadget
-	docker build -t $(CONTAINER_REPO)test:$(IMAGE_TAG) -f Dockerfile .
+	docker build -t $(CONTAINER_REPO)test:$(IMAGE_TAG) -f Dockerfile \
+		--build-arg KUBERNETES_DISTRIBUTION=$(KUBERNETES_DISTRIBUTION) .
 	rm -f bin/kubectl-gadget
 
 .PHONY: push
