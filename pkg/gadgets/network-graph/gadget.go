@@ -25,6 +25,7 @@ import (
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/advisor"
 	nettracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/types"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
@@ -54,8 +55,11 @@ type TraceFactory struct {
 func NewFactory() gadgets.TraceFactory {
 	netnsHost, _ := containerutils.GetNetNs(os.Getpid())
 	return &TraceFactory{
-		BaseFactory: gadgets.BaseFactory{DeleteTrace: deleteTrace},
-		netnsHost:   netnsHost,
+		BaseFactory: gadgets.BaseFactory{
+			DeleteTrace:       deleteTrace,
+			MergeStatusesFunc: mergeStatuses,
+		},
+		netnsHost: netnsHost,
 	}
 }
 
@@ -67,6 +71,15 @@ func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 	return map[string]struct{}{
 		"Status": {},
 	}
+}
+
+func mergeStatuses(statuses map[string]gadgetv1alpha1.TraceStatus) (out string) {
+	a := advisor.NewAdvisor()
+	for _, status := range statuses {
+		_ = a.LoadBuffer(status.Output)
+	}
+	a.GeneratePolicies()
+	return a.FormatPolicies()
 }
 
 func deleteTrace(name string, t interface{}) {
