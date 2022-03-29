@@ -20,7 +20,7 @@ clusterrolebinding.rbac.authorization.k8s.io/disable-psp-demo created
 In one terminal, start the network-policy gadget:
 
 ```bash
-$ kubectl gadget network-policy monitor --namespaces demo --output ./networktrace.log
+$ kubectl gadget network-policy monitor -n demo --output ./networktrace.log
 ```
 
 In another terminal, deploy [GoogleCloudPlatform/microservices-demo](https://github.com/GoogleCloudPlatform/microservices-demo/blob/master/release/kubernetes-manifests.yaml) in the demo namespace:
