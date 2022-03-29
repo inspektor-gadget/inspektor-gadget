@@ -1,4 +1,4 @@
-CONTAINER_REPO ?= docker.io/kinvolk/gadget
+CONTAINER_REPO ?= ghcr.io/kinvolk/gadget
 IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
 TESTS_DOCKER_ARGS ?= "-e KUBECONFIG=/opt/kubeconfig/config -v $(HOME)/.kube:/opt/kubeconfig"
@@ -12,7 +12,7 @@ build:
 
 .PHONY: push
 push:
-	docker push $(CONTAINER_REPO)test:$(IMAGE_TAG)
+	docker push $(CONTAINER_REPO)-test:$(IMAGE_TAG)
 
 .PHONY: test
 test:
