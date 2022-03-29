@@ -254,9 +254,8 @@ jobs:
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget.Dockerfile
         build-args: |
           ENABLE_BTFGEN=true
-        # TODO: how to avoid pushing a container before running integration tests
-        # Answer: push to runner registry first, if integration tests are OK
-        # push to final registry
+        # We push this container to registry.
+        # If the integration tests fail, we will remove it from registry.
         push: true
         tags: ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
         cache-from: type=local,src=/tmp/.buildx-cache
@@ -398,6 +397,32 @@ jobs:
             make -C integration build test
 
         sed -i "s/latest/$IMAGE_TAG/g" integration/gadget-integration-tests-job.yaml
+      id: integration-tests
+    - name: Remove image from docker hub if integration tests failed.
+      if: failure()
+      run: |
+        # Heavily inspired from:
+        # https://github.com/byrnedo/docker-reg-tool/blob/23292d234289b1fd114b53786c9e4f9fece3674b/docker_reg_tool#L108
+        registry=${{ secrets.CONTAINER_REGISTRY }}
+        repo=${{ secrets.CONTAINER_REPO }}
+        tag=$IMAGE_TAG
+        creds="Authorization: Basic $(echo -n "${{ secrets.CONTAINER_REGISTRY_USERNAME }}:${{ secrets.CONTAINER_REGISTRY_PASSWORD }}" | base64)"
+
+        response=$(curl --header $creds -v -s -H "Accept:application/vnd.docker.distribution.manifest.v2+json" "${registry}/v2/${repo}/manifests/${tag}" 2>&1)
+        digest=$(echo "${response}" | grep -i "< Docker-Content-Digest:" |awk '{print $3}' || echo "")
+        [ -z "$digest" ] &&
+          response=$(curl --header $creds -v -s -H "Accept:application/vnd.oci.image.manifest.v1+json" "${registry}/v2/$repo/manifests/${tag}" 2>&1) &&
+          digest=$(echo "$response" | grep -i "< Docker-Content-Digest:" | awk '{print $3}')
+
+        digest=${digest//[$'\t\r\n']}
+        result=$(curlCmd -s -o /dev/null -w "%{http_code}" -H "Accept:application/vnd.docker.distribution.manifest.v2+json" -X DELETE "${registry}/v2/${repo}/manifests/${digest}")
+        if [ "$result" -eq 202 ]; then
+            echo "Successfully deleted"
+            exit 0
+        else
+            echo "Failed to delete: ${result}"
+            exit 3
+        fi
     - name: Add integration asset as artifact.
       if: startsWith(github.ref, 'refs/tags/v')
       uses: actions/upload-artifact@master
