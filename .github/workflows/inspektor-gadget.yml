@@ -1,6 +1,8 @@
 name: Inspektor Gadget CI
 env:
-  CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
+  REGISTRY: ghcr.io
+  CONTAINER_IMAGE: ${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && format('{0}', github.repository) || format('{0}-ci', github.repository) }}
+  IMAGE_TAG: ${{ github.ref == 'refs/heads/main' && 'latest' || github.ref }}
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
@@ -121,15 +123,14 @@ jobs:
       uses: ./.github/actions/install-debian-packages
       with:
         cache-hit: ${{steps.cache-debs.outputs.cache-hit}}
-    - name: Set IMAGE_TAG
+    - name: Set IMAGE_TAG for branch or tag.
+      if: ${{ startsWith(env.IMAGE_TAG, 'refs/heads/') }}
       run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
+        # Remove ref/*/.
+        tag=${IMAGE_TAG#refs/*/}
+        # Replace / by - to avoid docker push crying.
+        tag=${tag/\//-}
+        echo IMAGE_TAG=${tag} >> $GITHUB_ENV
     - name: Build kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
       run: |
         git checkout
@@ -144,7 +145,7 @@ jobs:
 
         kubectl_gadget=kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
 
-        make $kubectl_gadget
+        CONTAINER_REPO="${{ env.REGISTRY }}/${{ env.CONTAINER_IMAGE }}" make $kubectl_gadget
 
         # Prepare assets for release and actions artifacts
         platform=$(echo ${kubectl_gadget} | cut -d- -f3-4)
@@ -220,6 +221,14 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
+    - name: Set IMAGE_TAG for branch or tag
+      if: ${{ startsWith(env.IMAGE_TAG, 'refs/heads/') }}
+      run: |
+        # Remove ref/*/.
+        tag=${IMAGE_TAG#refs/*/}
+        # Replace / by - to avoid docker push crying.
+        tag=${tag/\//-}
+        echo IMAGE_TAG=${tag} >> $GITHUB_ENV
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
@@ -233,20 +242,11 @@ jobs:
     - name: Login to Container Registry
       uses: docker/login-action@v1
       with:
-        registry: ${{ secrets.CONTAINER_REGISTRY }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN}}
     - name: Check out code
       uses: actions/checkout@v1
-    - name: Set IMAGE_TAG
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
     - name: Build gadget container
       uses: docker/build-push-action@v2
       with:
@@ -258,7 +258,7 @@ jobs:
         # Answer: push to runner registry first, if integration tests are OK
         # push to final registry
         push: true
-        tags: ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
+        tags: ${{ env.REGISTRY }}/${{ env.CONTAINER_IMAGE }}:${{ env.IMAGE_TAG }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
 
@@ -371,15 +371,14 @@ jobs:
         minikube version: 'v1.25.2'
         kubernetes version: 'v1.23.0'
         github token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Set IMAGE_TAG
+    - name: Set IMAGE_TAG for branch or tag
+      if: ${{ startsWith(env.IMAGE_TAG, 'refs/heads/') }}
       run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
+        # Remove ref/*/.
+        tag=${IMAGE_TAG#refs/*/}
+        # Replace / by - to avoid docker push crying.
+        tag=${tag/\//-}
+        echo IMAGE_TAG=${tag} >> $GITHUB_ENV
     - name: Check out code
       uses: actions/checkout@v1
     - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
@@ -408,13 +407,13 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       uses: docker/login-action@v1
       with:
-        registry: ${{ secrets.CONTAINER_REGISTRY }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN}}
     - name: Push Integration Test Image
       if: startsWith(github.ref, 'refs/tags/v')
       run: |
-        make -C integration push
+        CONTAINER_REPO="${{ env.REGISTRY }}/${{ env.CONTAINER_IMAGE }}" make -C integration push
 
   release:
     name: Release

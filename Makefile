@@ -1,7 +1,7 @@
 TAG := `git describe --tags --always`
 VERSION :=
 
-CONTAINER_REPO ?= docker.io/kinvolk/gadget
+CONTAINER_REPO ?= ghcr.io/kinvolk/gadget
 IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
 MINIKUBE ?= minikube
