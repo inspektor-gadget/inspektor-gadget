@@ -65,7 +65,7 @@ type command struct {
 
 var deployInspektorGadget *command = &command{
 	name:           "Deploy Inspektor Gadget",
-	cmd:            "$KUBECTL_GADGET deploy $GADGET_IMAGE_FLAG | kubectl apply -f -",
+	cmd:            "$KUBECTL_GADGET deplo $GADGET_IMAGE_FLAG | kubectl apply -f -",
 	expectedRegexp: "gadget created",
 }
 
