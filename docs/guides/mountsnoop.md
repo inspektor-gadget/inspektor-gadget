@@ -23,7 +23,7 @@ NODE             NAMESPACE        POD              CONTAINER        COMM        
 ```
 
 Indeed, it is waiting for `mount` and `umount` to be called.
-So, in *an other terminal*, `exec` a container and try to `mount` something:
+So, in *another terminal*, `exec` a container and try to `mount` something:
 
 ```bash
 $ kubectl get pods

@@ -22,7 +22,7 @@ NODE             NAMESPACE        POD              CONTAINER        KPID   KCOMM
 ```
 
 Indeed, it is waiting for TCP connection to be established in the `default` namespace (you can use `-A` to monitor all namespaces and then be sure to not miss any event).
-So, in *an other terminal*, `exec` a container and run this `wget`:
+So, in *another terminal*, `exec` a container and run this `wget`:
 
 ```bash
 $ kubectl exec -ti busybox -- wget https://www.kinvolk.io
