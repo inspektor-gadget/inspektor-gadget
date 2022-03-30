@@ -1,0 +1,47 @@
+name: Inspektor Gadget CI
+env:
+  REGISTRY: ghcr.io
+  CONTAINER_IMAGE: ${{ format('{0}-ci', github.repository) }}
+
+on:
+  delete
+  pull_request:
+    types: [closed]
+
+jobs:
+  remove-tag-from-ci-registry:
+    name: Remove tag for ${{ env.REGISTRY}}/${{ env.CONTAINER_IMAGE }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Remove tag for ${{ env.REGISTRY}}/${{ env.CONTAINER_IMAGE }}
+      run: |
+        # Heavily inspired from:
+        # https://github.com/byrnedo/docker-reg-tool/blob/23292d234289b1fd114b53786c9e4f9fece3674b/docker_reg_tool#L108
+        # which is permitted by (for v2 registries only):
+        # https://github.com/distribution/distribution/blob/main/docs/spec/api.md#deleting-an-image
+        registry=${{ env.REGISTRY }}
+        image=${{ env.CONTAINER_IMAGE }}
+        # Taken from:
+        # https://github.community/t/how-to-get-pr-branch-name-in-github-actions/16598/7
+        tag=${{ github.event.ref }}
+
+        echo "registry: ${registry}"
+        echo "image: ${image}"
+        echo "tag: ${tag}"
+
+        creds="Authorization: Basic $(echo -n "${{ ${{ github.actor }} }}:${{ secrets.GITHUB_TOKEN }}" | base64)"
+
+        response=$(curl --header $creds -v -s -H "Accept:application/vnd.docker.distribution.manifest.v2+json" "${registry}/v2/${image}/manifests/${tag}" 2>&1)
+        digest=$(echo "${response}" | grep -i "< Docker-Content-Digest:" |awk '{ print $3 }' || echo "")
+        [ -z "$digest" ] &&
+          response=$(curl --header $creds -v -s -H "Accept:application/vnd.oci.image.manifest.v1+json" "${registry}/v2/${image}/manifests/${tag}" 2>&1) &&
+          digest=$(echo "$response" | grep -i "< Docker-Content-Digest:" | awk '{ print $3 }')
+
+        digest=${digest//[$'\t\r\n']}
+        echo "digest: ${digest}"
+        result=$(curl --header $creds -s -o /dev/null -w "%{http_code}" -H "Accept:application/vnd.docker.distribution.manifest.v2+json" -X DELETE "${registry}/v2/${image}/manifests/${digest}")
+
+        if [ "${result}" -ne 202 ]; then
+          echo "Failed to delete: ${result}"
+          exit 3
+        fi
