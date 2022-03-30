@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package audit
 
 import (
 	"encoding/json"
@@ -28,7 +28,7 @@ import (
 )
 
 var auditSeccompCmd = &cobra.Command{
-	Use:   "audit-seccomp",
+	Use:   "seccomp",
 	Short: "Trace syscalls that seccomp sent to the audit log",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// print header
@@ -59,7 +59,7 @@ var auditSeccompCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(auditSeccompCmd)
+	AuditCmd.AddCommand(auditSeccompCmd)
 	utils.AddCommonFlags(auditSeccompCmd, &params)
 }
 

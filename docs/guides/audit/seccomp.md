@@ -1,5 +1,5 @@
 ---
-title: 'The "audit-seccomp" gadget'
+title: 'The "audit seccomp" gadget'
 weight: 10
 ---
 
@@ -62,7 +62,7 @@ spec:
 * Start the audit-seccomp gadget.
 
 ```
-$ kubectl gadget audit-seccomp -o custom-columns=namespace,pod,syscall,code
+$ kubectl gadget audit seccomp -o custom-columns=namespace,pod,syscall,code
 NAMESPACE        POD              SYSCALL          CODE
 ```
 

@@ -11,7 +11,8 @@ Exploring the following documentation will best help you learn which tools can h
 - `advise`:
 	- [`network-policy`](docs/guides/advise/network-policy.md)
 	- [`seccomp-profile`](docs/guides/advise/seccomp-profile.md)
-- [audit-seccomp](docs/guides/audit-seccomp.md)
+- `audit`:
+	- [`seccomp`](docs/guides/audit/seccomp.md)
 - `profile`:
 	- [`block-io`](docs/guides/profile/block-io.md)
 	- [`cpu`](docs/guides/profile/cpu.md)
@@ -34,7 +35,7 @@ Exploring the following documentation will best help you learn which tools can h
 	- [`signal`](docs/guides/trace/signal.md)
 	- [`tcp`](docs/guides/trace/tcp.md)
 	- [`tcpconnect`](docs/guides/trace/tcpconnect.md)
-- [traceloop](docs/guides/traceloop.md)
+- [`traceloop`](docs/guides/traceloop.md)
 
 ## Installation
 
@@ -67,18 +68,18 @@ Usage:
   kubectl-gadget [command]
 
 Available Commands:
-  advise        Recommend system configurations based on collected information
-  audit-seccomp Trace syscalls that seccomp sent to the audit log
-  completion    generate the autocompletion script for the specified shell
-  deploy        Deploy Inspektor Gadget on the cluster
-  help          Help about any command
-  profile       Profile different subsystems
-  snapshot      Take a snapshot of a subsystem and print it
-  top           Gather, sort and print events according to a given criteria
-  trace         Trace and print system events
-  traceloop     Get strace-like logs of a pod from the past
-  undeploy      Undeploy Inspektor Gadget from cluster
-  version       Show version
+  advise      Recommend system configurations based on collected information
+  audit       Audit a subsystem
+  completion  generate the autocompletion script for the specified shell
+  deploy      Deploy Inspektor Gadget on the cluster
+  help        Help about any command
+  profile     Profile different subsystems
+  snapshot    Take a snapshot of a subsystem and print it
+  top         Gather, sort and print events according to a given criteria
+  trace       Trace and print system events
+  traceloop   Get strace-like logs of a pod from the past
+  undeploy    Undeploy Inspektor Gadget from cluster
+  version     Show version
 
 ...
 ```
@@ -95,6 +96,16 @@ Usage:
 Available Commands:
   network-policy  Generate network policies based on recorded network activity
   seccomp-profile Generate seccomp profiles based on recorded syscalls activity
+
+...
+$ kubectl gadget audit --help
+Audit a subsystem
+
+Usage:
+  kubectl-gadget audit [command]
+
+Available Commands:
+  seccomp     Trace syscalls that seccomp sent to the audit log
 
 ...
 $ kubectl gadget profile --help

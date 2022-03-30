@@ -127,6 +127,75 @@ func TestMain(m *testing.M) {
 	os.Exit(ret)
 }
 
+func TestAuditSeccomp(t *testing.T) {
+	ns := generateTestNamespaceName("test-audit-seccomp")
+
+	t.Parallel()
+
+	commands := []*command{
+		createTestNamespaceCommand(ns),
+		{
+			name: "Create SeccompProfile",
+			cmd: fmt.Sprintf(`
+				kubectl apply -f - <<EOF
+apiVersion: security-profiles-operator.x-k8s.io/v1beta1
+kind: SeccompProfile
+metadata:
+  name: log
+  namespace: %s
+  annotations:
+    description: "Log some syscalls"
+spec:
+  defaultAction: SCMP_ACT_ALLOW
+  architectures:
+  - SCMP_ARCH_X86_64
+  syscalls:
+  - action: SCMP_ACT_KILL
+    names:
+    - unshare
+  - action: SCMP_ACT_LOG
+    names:
+    - mkdir
+EOF
+			`, ns),
+			expectedRegexp: "seccompprofile.security-profiles-operator.x-k8s.io/log created",
+		},
+		{
+			name: "Run test pod",
+			cmd: fmt.Sprintf(`
+				kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: %s
+spec:
+  securityContext:
+    seccompProfile:
+      type: Localhost
+      localhostProfile: operator/%s/log.json
+  restartPolicy: Never
+  containers:
+  - name: container1
+    image: busybox
+    command: ["sh"]
+    args: ["-c", "while true; do unshare -i; sleep 1; done"]
+EOF
+			`, ns, ns),
+			expectedRegexp: "pod/test-pod created",
+		},
+		waitUntilTestPodReadyCommand(ns),
+		{
+			name:           "Run audit-seccomp gadget",
+			cmd:            fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s & sleep 5; kill $!", ns),
+			expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+container1\s+unshare\s+\d+\s+unshare\s+kill_thread`, ns),
+		},
+		deleteTestNamespaceCommand(ns),
+	}
+
+	runCommands(commands, t)
+}
+
 func TestBindsnoop(t *testing.T) {
 	ns := generateTestNamespaceName("test-bindsnoop")
 
@@ -518,75 +587,6 @@ func TestSeccompadvisor(t *testing.T) {
 			name:           "Run seccomp-advisor gadget",
 			cmd:            fmt.Sprintf("id=$($KUBECTL_GADGET advise seccomp-profile start -n %s -p test-pod); sleep 30; $KUBECTL_GADGET advise seccomp-profile stop $id", ns),
 			expectedRegexp: `write`,
-		},
-		deleteTestNamespaceCommand(ns),
-	}
-
-	runCommands(commands, t)
-}
-
-func TestAuditSeccomp(t *testing.T) {
-	ns := generateTestNamespaceName("test-audit-seccomp")
-
-	t.Parallel()
-
-	commands := []*command{
-		createTestNamespaceCommand(ns),
-		{
-			name: "Create SeccompProfile",
-			cmd: fmt.Sprintf(`
-				kubectl apply -f - <<EOF
-apiVersion: security-profiles-operator.x-k8s.io/v1beta1
-kind: SeccompProfile
-metadata:
-  name: log
-  namespace: %s
-  annotations:
-    description: "Log some syscalls"
-spec:
-  defaultAction: SCMP_ACT_ALLOW
-  architectures:
-  - SCMP_ARCH_X86_64
-  syscalls:
-  - action: SCMP_ACT_KILL
-    names:
-    - unshare
-  - action: SCMP_ACT_LOG
-    names:
-    - mkdir
-EOF
-			`, ns),
-			expectedRegexp: "seccompprofile.security-profiles-operator.x-k8s.io/log created",
-		},
-		{
-			name: "Run test pod",
-			cmd: fmt.Sprintf(`
-				kubectl apply -f - <<EOF
-apiVersion: v1
-kind: Pod
-metadata:
-  name: test-pod
-  namespace: %s
-spec:
-  securityContext:
-    seccompProfile:
-      type: Localhost
-      localhostProfile: operator/%s/log.json
-  restartPolicy: Never
-  containers:
-  - name: container1
-    image: busybox
-    command: ["sh"]
-    args: ["-c", "while true; do unshare -i; sleep 1; done"]
-EOF
-			`, ns, ns),
-			expectedRegexp: "pod/test-pod created",
-		},
-		waitUntilTestPodReadyCommand(ns),
-		{
-			name:           "Run audit-seccomp gadget",
-			cmd:            fmt.Sprintf("$KUBECTL_GADGET audit-seccomp -n %s & sleep 5; kill $!", ns),
-			expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+container1\s+unshare\s+\d+\s+unshare\s+kill_thread`, ns),
 		},
 		deleteTestNamespaceCommand(ns),
 	}
