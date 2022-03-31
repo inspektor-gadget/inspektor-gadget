@@ -1,0 +1,22 @@
+name: "Set IMAGE_TAG to environment"
+description: "IMAGE_TAG will be latest if current branch is main.
+  Otherwise it will be the name of the branch (with '/' replaced by '-') or the tag."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set IMAGE_TAG
+      shell: bash
+      run: |
+        tag=${{ github.ref }}
+
+        if [ ${tag} == 'refs/heads/main' ]; then
+          tag='latest'
+        else
+          # Remove refs/*/.
+          tag=${tag#refs/*/}
+          # Replace / by - to avoid docker push crying.
+          tag=${tag/\//-}
+        fi
+
+        echo IMAGE_TAG=${tag} >> $GITHUB_ENV
