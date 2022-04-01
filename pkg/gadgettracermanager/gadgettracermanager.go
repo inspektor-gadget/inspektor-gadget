@@ -101,6 +101,7 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 
 	gadgetStream, err := g.tracerCollection.Stream(tracerID.Id)
 	if err != nil {
+		g.mu.Unlock()
 		return fmt.Errorf("cannot find stream for tracer %q", tracerID.Id)
 	}
 
