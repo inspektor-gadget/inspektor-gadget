@@ -64,7 +64,7 @@ import (
 // }
 import "C"
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang tcptop ./bpf/tcptop.bpf.c -- -I./bpf/ -I../../.. -target bpf -D__TARGET_ARCH_x86"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang tcptop ./bpf/tcptop.bpf.c -- -I./bpf/ -I../../.. -target bpf -D__TARGET_ARCH_x86"
 
 type Config struct {
 	TargetPid    int32
@@ -153,12 +153,12 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	t.tcpSendmsgLink, err = link.Kprobe("tcp_sendmsg", t.objs.TcpSendmsg)
+	t.tcpSendmsgLink, err = link.Kprobe("tcp_sendmsg", t.objs.TcpSendmsg, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.tcpCleanupRbufLink, err = link.Kprobe("tcp_cleanup_rbuf", t.objs.TcpCleanupRbuf)
+	t.tcpCleanupRbufLink, err = link.Kprobe("tcp_cleanup_rbuf", t.objs.TcpCleanupRbuf, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}

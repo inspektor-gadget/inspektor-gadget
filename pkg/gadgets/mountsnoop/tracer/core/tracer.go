@@ -38,7 +38,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang mountsnoop ./bpf/mountsnoop.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang mountsnoop ./bpf/mountsnoop.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
 
 type Tracer struct {
 	config        *tracer.Config
@@ -118,22 +118,22 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	t.mountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_mount", t.objs.MountEntry)
+	t.mountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_mount", t.objs.MountEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.mountExitLink, err = link.Tracepoint("syscalls", "sys_exit_mount", t.objs.MountExit)
+	t.mountExitLink, err = link.Tracepoint("syscalls", "sys_exit_mount", t.objs.MountExit, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.umountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_umount", t.objs.UmountEntry)
+	t.umountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_umount", t.objs.UmountEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.umountExitLink, err = link.Tracepoint("syscalls", "sys_exit_umount", t.objs.UmountExit)
+	t.umountExitLink, err = link.Tracepoint("syscalls", "sys_exit_umount", t.objs.UmountExit, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}

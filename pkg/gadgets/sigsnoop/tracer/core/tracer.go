@@ -157,37 +157,37 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	t.enterKillLink, err = link.Tracepoint("syscalls", "sys_enter_kill", t.objs.KillEntry)
+	t.enterKillLink, err = link.Tracepoint("syscalls", "sys_enter_kill", t.objs.KillEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.exitKillLink, err = link.Tracepoint("syscalls", "sys_exit_kill", t.objs.KillExit)
+	t.exitKillLink, err = link.Tracepoint("syscalls", "sys_exit_kill", t.objs.KillExit, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.enterTkillLink, err = link.Tracepoint("syscalls", "sys_enter_tkill", t.objs.TkillEntry)
+	t.enterTkillLink, err = link.Tracepoint("syscalls", "sys_enter_tkill", t.objs.TkillEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.exitTkillLink, err = link.Tracepoint("syscalls", "sys_exit_tkill", t.objs.TkillExit)
+	t.exitTkillLink, err = link.Tracepoint("syscalls", "sys_exit_tkill", t.objs.TkillExit, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.enterTgkillLink, err = link.Tracepoint("syscalls", "sys_enter_tgkill", t.objs.TgkillEntry)
+	t.enterTgkillLink, err = link.Tracepoint("syscalls", "sys_enter_tgkill", t.objs.TgkillEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.exitTgkillLink, err = link.Tracepoint("syscalls", "sys_exit_tgkill", t.objs.TgkillExit)
+	t.exitTgkillLink, err = link.Tracepoint("syscalls", "sys_exit_tgkill", t.objs.TgkillExit, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.signalGenerateLink, err = link.Tracepoint("signal", "signal_generate", t.objs.SigTrace)
+	t.signalGenerateLink, err = link.Tracepoint("signal", "signal_generate", t.objs.SigTrace, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}

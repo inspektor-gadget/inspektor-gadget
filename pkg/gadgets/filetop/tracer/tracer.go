@@ -124,13 +124,13 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	kpread, err := link.Kprobe("vfs_read", t.objs.VfsReadEntry)
+	kpread, err := link.Kprobe("vfs_read", t.objs.VfsReadEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 	t.readLink = kpread
 
-	kpwrite, err := link.Kprobe("vfs_write", t.objs.VfsWriteEntry)
+	kpwrite, err := link.Kprobe("vfs_write", t.objs.VfsWriteEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}

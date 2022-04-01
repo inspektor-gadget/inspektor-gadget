@@ -59,18 +59,10 @@ jobs:
           ${{ runner.os }}-go-
     - name: Check out code
       uses: actions/checkout@v1
-    - name: Cache debian packages
-      uses: actions/cache@v2
-      id: cache-debs
-      with:
-        path: "~/cache-debs"
-        key: cache-debs-libbpf-1:0.4.0-1ubuntu1-libseccomp-2.5.1-1ubuntu1~20.04.1
     - name: Install debian packages
       # ALERT This action must be run after code was checkout otherwise it will
       # not find this file.
       uses: ./.github/actions/install-debian-packages
-      with:
-        cache-hit: ${{steps.cache-debs.outputs.cache-hit}}
     - name: Build eBPF objects
       run: |
         make -C gadget-container ebpf-objects
@@ -111,16 +103,8 @@ jobs:
           ${{ runner.os }}-go-
     - name: Check out code
       uses: actions/checkout@v1
-    - name: Cache debian packages
-      uses: actions/cache@v2
-      id: cache-debs
-      with:
-        path: "~/cache-debs"
-        key: cache-debs-libbpf-1:0.4.0-1ubuntu1-libseccomp-2.5.1-1ubuntu1~20.04.1
     - name: Install debian packages
       uses: ./.github/actions/install-debian-packages
-      with:
-        cache-hit: ${{steps.cache-debs.outputs.cache-hit}}
     - name: Set IMAGE_TAG
       run: |
         TMP1=${GITHUB_REF#*/}
@@ -186,12 +170,6 @@ jobs:
           ${{ runner.os }}-go-
     - name: Check out code
       uses: actions/checkout@v1
-    - name: Cache debian packages
-      uses: actions/cache@v2
-      id: cache-debs
-      with:
-        path: "~/cache-debs"
-        key: cache-debs-libbpf-1:0.4.0-1ubuntu1-libseccomp-2.5.1-1ubuntu1~20.04.1
     - name: Install debian packages
       # ALERT This action must be run after code was checkout otherwise it will
       # not find this file.
@@ -283,16 +261,8 @@ jobs:
           ${{ runner.os }}-go-
     - name: Check out code
       uses: actions/checkout@v1
-    - name: Cache debian packages
-      uses: actions/cache@v2
-      id: cache-debs
-      with:
-        path: "~/cache-debs"
-        key: cache-debs-libbpf-1:0.4.0-1ubuntu1-libseccomp-2.5.1-1ubuntu1~20.04.1
     - name: Install debian packages
       uses: ./.github/actions/install-debian-packages
-      with:
-        cache-hit: ${{steps.cache-debs.outputs.cache-hit}}
     - name: Basic unit tests
       run: |
         make test
@@ -321,16 +291,8 @@ jobs:
           ${{ runner.os }}-go-
     - name: Check out code
       uses: actions/checkout@v1
-    - name: Cache debian packages
-      uses: actions/cache@v2
-      id: cache-debs
-      with:
-        path: "~/cache-debs"
-        key: cache-debs-libbpf-1:0.4.0-1ubuntu1-libseccomp-2.5.1-1ubuntu1~20.04.1
     - name: Install debian packages
       uses: ./.github/actions/install-debian-packages
-      with:
-        cache-hit: ${{steps.cache-debs.outputs.cache-hit}}
     - name: Unit tests for local-gadget (as root)
       run: |
         KERNEL=$(uname -r)

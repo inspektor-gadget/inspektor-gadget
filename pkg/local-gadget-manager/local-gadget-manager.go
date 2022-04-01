@@ -28,7 +28,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
 
-	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/rlimit"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -298,7 +298,7 @@ func NewManager() (*LocalGadgetManager, error) {
 		return nil, err
 	}
 
-	if _, err := ebpf.RemoveMemlockRlimit(); err != nil {
+	if err := rlimit.RemoveMemlock(); err != nil {
 		return nil, err
 	}
 
