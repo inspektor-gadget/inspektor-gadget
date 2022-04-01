@@ -69,7 +69,6 @@ import "C"
 type Config struct {
 	TargetPid    int32
 	TargetFamily int32
-	AllFiles     bool
 	MaxRows      int
 	Interval     time.Duration
 	SortBy       types.SortBy
