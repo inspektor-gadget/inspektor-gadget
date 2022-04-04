@@ -56,6 +56,6 @@ jobs:
 
           if '${tag}' in tags:
             id = v['id']
-            r = requests.delete(f'https://api.github.com/users/${user}/packages/container/${image}/versions/{id}', auth=auth)
+            r = requests.delete(f'https://api.github.com/user/packages/container/${image}/versions/{id}', auth=auth)
             r.raise_for_status()
         EOF
