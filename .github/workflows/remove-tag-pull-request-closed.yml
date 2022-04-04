@@ -8,6 +8,8 @@ jobs:
   remove-tag-from-ci-registry:
     name: Remove tag for CI image
     runs-on: ubuntu-latest
+    permissions:
+      packages: read | delete
     steps:
     - name: Set IMAGE_TAG.
       run: |
@@ -30,8 +32,6 @@ jobs:
 
         echo IMAGE_TAG=${tag} >> $GITHUB_ENV
     - name: Remove tag for CI image
-      permissions:
-        packages: read | delete
       run: |
         user=${{ github.repository_owner }}
         image=${{ format('{0}-ci', github.repository) }}
