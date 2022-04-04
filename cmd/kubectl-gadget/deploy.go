@@ -291,6 +291,13 @@ spec:
               # Needed for gadgets that don't dumb the memory rlimit.
               # (Currently only applies to BCC python-based gadgets)
               - IPC_LOCK
+
+              # Needed by BCC python-based gadgets to load the kheaders module:
+              # https://github.com/iovisor/bcc/blob/v0.24.0/src/cc/frontends/clang/kbuild_helper.cc#L158
+              - SYS_MODULE
+
+              # Needed by gadgets that open a raw sock like dns and snisnoop
+              - NET_RAW
         volumeMounts:
         - name: host
           mountPath: /host
