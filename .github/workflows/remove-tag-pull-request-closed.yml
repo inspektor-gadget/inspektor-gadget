@@ -9,7 +9,7 @@ jobs:
     name: Remove tag for CI image
     runs-on: ubuntu-latest
     permissions:
-      packages: read | delete
+      packages: read|delete
     steps:
     - name: Set IMAGE_TAG.
       run: |
