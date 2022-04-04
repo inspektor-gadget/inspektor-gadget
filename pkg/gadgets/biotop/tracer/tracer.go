@@ -43,7 +43,6 @@ import "C"
 
 type Config struct {
 	TargetPid int
-	AllFiles  bool
 	MaxRows   int
 	Interval  time.Duration
 	SortBy    types.SortBy
@@ -113,7 +112,7 @@ func readKernelSymbols() (map[string]int, error) {
 
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
-			continue;
+			continue
 		}
 
 		// The kernel function is the third field in /proc/kallsyms line:
@@ -169,7 +168,7 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	kernelSymbols, err := readKernelSymbols();
+	kernelSymbols, err := readKernelSymbols()
 	if err != nil {
 		return fmt.Errorf("failed to load kernel symbols: %w", err)
 	}
@@ -250,15 +249,15 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 		}
 
 		stat := types.Stats{
-			Write:     key.rwflag != 0,
-			Major:     int(key.major),
-			Minor:     int(key.minor),
-			MountNsID: uint64(key.mntnsid),
-			Pid:       int32(key.pid),
-			Comm:      C.GoString(&key.name[0]),
-			Bytes:     uint64(val.bytes),
-			MicroSecs: uint64(val.us),
-			Operations:       uint32(val.io),
+			Write:      key.rwflag != 0,
+			Major:      int(key.major),
+			Minor:      int(key.minor),
+			MountNsID:  uint64(key.mntnsid),
+			Pid:        int32(key.pid),
+			Comm:       C.GoString(&key.name[0]),
+			Bytes:      uint64(val.bytes),
+			MicroSecs:  uint64(val.us),
+			Operations: uint32(val.io),
 		}
 
 		container := t.resolver.LookupContainerByMntns(stat.MountNsID)
@@ -289,7 +288,7 @@ func (t *Tracer) run() {
 	ticker := time.NewTicker(t.config.Interval)
 
 	go func() {
-loop:
+	loop:
 		for {
 			select {
 			case <-t.done:
