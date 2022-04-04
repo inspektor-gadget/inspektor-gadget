@@ -3,8 +3,10 @@ module github.com/kinvolk/inspektor-gadget
 require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/cilium/ebpf v0.6.3-0.20210910140648-4d5607ee1690
+	github.com/containerd/containerd v1.5.11 // indirect
 	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
 	github.com/containers/common v0.46.0
+	github.com/docker/distribution v2.8.0+incompatible // indirect
 	github.com/docker/docker v20.10.8+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/giantswarm/crd-docs-generator v0.7.1
@@ -20,7 +22,7 @@ require (
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
-	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852 // indirect
+	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20200114145059-84a08fc667c0
 	golang.org/x/sys v0.0.0-20220307203707-22a9840ba4d7
@@ -40,3 +42,11 @@ require (
 )
 
 go 1.16
+
+// avoid reports on CVE-2021-3121
+replace (
+	github.com/gogo/protobuf v1.1.1 => github.com/gogo/protobuf v1.3.2
+	github.com/gogo/protobuf v1.2.1 => github.com/gogo/protobuf v1.3.2
+	github.com/gogo/protobuf v1.3.0 => github.com/gogo/protobuf v1.3.2
+	github.com/gogo/protobuf v1.3.1 => github.com/gogo/protobuf v1.3.2
+)
