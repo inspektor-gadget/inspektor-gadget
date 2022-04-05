@@ -33,10 +33,10 @@ jobs:
         echo IMAGE_TAG=${tag} >> $GITHUB_ENV
     - name: Remove tag for CI image
       run: |
-        user=${{ github.repository_owner }}
+        repo_owner=${{ github.repository_owner }}
         image=${{ format('{0}-ci', github.repository) }}
         # Remove owner/ from repository name to get "image" name.
-        image=${image#$user/}
+        image=${image#$repo_owner/}
         tag=${{ env.IMAGE_TAG }}
 
         echo "image: ${image}"
@@ -48,16 +48,34 @@ jobs:
         import requests
         from requests.auth import HTTPBasicAuth
 
-        auth = HTTPBasicAuth('${{ github.actor }}', '${{ secrets.GITHUB_TOKEN }}')
-
-        r = requests.get('https://api.github.com/user/packages/container/${image}/versions', auth = auth)
+        r = requests.get('https://api.github.com/users/${repo_owner})
         r.raise_for_status()
+
+        type = r.json()['type']
+        if type != 'Organization' and type != 'User':
+          print(f'This should not happen, type is: {type}')
+          exit(1)
+
+        auth = HTTPBasicAuth('${{ github.actor }}', '${{ secrets.PAT_REPO }}')
+        r = requests.get('https://api.github.com/users/${repo_owner}/packages/container/${image}/versions', auth = auth)
+        r.raise_for_status()
+
         versions = r.json()
         for v in versions:
           tags = v['metadata']['container']['tags']
 
           if '${tag}' in tags:
             id = v['id']
-            r = requests.delete(f'https://api.github.com/user/packages/container/${image}/versions/{id}', auth = auth)
+
+            if type == 'Organization':
+              url = f'https://api.github.com/org/${repo_owner}/packages/container/${image}/versions/{id}'
+            else: # simple User
+              url = f'https://api.github.com/users/${repo_owner}/packages/container/${image}/versions/{id}'
+
+            r = requests.delete(url, auth = auth)
             r.raise_for_status()
+
+        # If no image matched the given tag, it was either never pushed or
+        # already deleted.
+        # So, we do not consider this as an error.
         EOF
