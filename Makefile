@@ -115,6 +115,12 @@ gadget-container:
 	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget.Dockerfile \
 		--build-arg ENABLE_BTFGEN=$(ENABLE_BTFGEN) .
 
+# gadget container core
+.PHONY: gadget-container-core
+gadget-container-core:
+	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget.core.Dockerfile \
+		--build-arg ENABLE_BTFGEN=$(ENABLE_BTFGEN) .
+
 .PHONY: push-gadget-container
 push-gadget-container:
 	docker push $(CONTAINER_REPO):$(IMAGE_TAG)

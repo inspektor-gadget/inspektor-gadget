@@ -47,7 +47,7 @@ echo $INSPEKTOR_GADGET_VERSION
 # mounted, passing /sys/fs/bpf from the pseudo-host does not work.
 # See also:
 # https://github.com/kubernetes/minikube/blob/99a0c91459f17ad8c83c80fc37a9ded41e34370c/deploy/kicbase/entrypoint#L76-L81
-BPF_MOUNTPOINT_TYPE="`stat -f --format=%T /sys/fs/bpf`"
+BPF_MOUNTPOINT_TYPE="`stat -f -c %T /sys/fs/bpf`"
 if [ "$BPF_MOUNTPOINT_TYPE" != "bpf_fs" ] ; then
   echo "/sys/fs/bpf is of type $BPF_MOUNTPOINT_TYPE. Remounting."
   mount -t bpf bpf /sys/fs/bpf/
