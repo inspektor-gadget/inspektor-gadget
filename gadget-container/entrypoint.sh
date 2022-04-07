@@ -104,7 +104,9 @@ if [ "$ID" = "rhcos" ] && [ ! -d "/usr/src/kernels/$KERNEL" ]; then
     curl --max-time 40 -fsSLo $RPMDIR/$RPM $REPO/$RPM || rm -f $RPMDIR/$RPM
 
     if test -f $RPMDIR/$RPM; then
-      cd $RPMDIR && rpm2cpio $RPM | cpio --quiet -i
+      pushd $RPMDIR
+      rpm2cpio $RPM | cpio --quiet -i
+      popd
 
       # In the gadget image, /usr/src is a symlink to /host/usr/src (see gadget.Dockerfile).
       # But in the case of RHCOS, remove the symlink and install files in the container.
@@ -219,6 +221,8 @@ else
 fi
 
 echo "Starting the Gadget Tracer Manager..."
+# change directory before running gadgettracermanager
+cd /
 rm -f /run/gadgettracermanager.socket
 exec /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE \
     -controller -fallback-podinformer=$INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
