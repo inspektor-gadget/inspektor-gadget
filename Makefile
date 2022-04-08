@@ -122,6 +122,12 @@ gadget-container:
 push-gadget-container:
 	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
 
+# kubectl-gadget container image
+.PHONY: kubectl-gadget-container
+kubectl-gadget-container:
+	docker build -t kubectl-gadget -f kubectl-gadget.Dockerfile \
+	--build-arg IMAGE_TAG=$(IMAGE_TAG) .
+
 # tests
 .PHONY: test
 test:
