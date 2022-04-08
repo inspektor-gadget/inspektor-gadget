@@ -1,5 +1,5 @@
 # Dockerfile for Inspektor Gadget container image.
-# This image contains CO-RE and BCC-based gadgets. It uses as base the
+# This image contains CO-RE and BCC-based gadgets. Its base image is the
 # BCC image. It's the default image that is deployed in Inspektor Gadget.
 
 ARG BUILDER_IMAGE=ubuntu:20.04
@@ -98,4 +98,4 @@ COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
 COPY --from=builder /tmp/btfs /btfs/
 
 # Mitigate https://github.com/kubernetes/kubernetes/issues/106962.
-RUN rm /var/run
+RUN rm -f /var/run
