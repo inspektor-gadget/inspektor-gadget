@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,19 +27,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	containerutils "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils"
+	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/runtime-client"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/containerd"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/crio"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/docker"
+	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 type K8sClient struct {
 	clientset     *kubernetes.Clientset
 	nodeName      string
 	fieldSelector string
-	criClient     containerutils.CRIClient
+	runtimeClient runtimeclient.ContainerRuntimeClient
 }
 
 func NewK8sClient(nodeName string) (*K8sClient, error) {
@@ -59,9 +57,10 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 		return nil, fmt.Errorf("failed to get node %w", err)
 	}
 
-	// get a CRI client to talk to the CRI handling pods in this node
-	// TODO: when to close it?
-	criClient, err := newCRIClient(node)
+	// Get a runtime client to talk to the container runtime handling pods in
+	// this node. TODO: when to close it?
+	list := strings.SplitN(node.Status.NodeInfo.ContainerRuntimeVersion, "://", 2)
+	runtimeClient, err := containerutils.NewContainerRuntimeClient(list[0])
 	if err != nil {
 		return nil, err
 	}
@@ -70,33 +69,12 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 		clientset:     clientset,
 		nodeName:      nodeName,
 		fieldSelector: fieldSelector,
-		criClient:     criClient,
+		runtimeClient: runtimeClient,
 	}, nil
 }
 
-func newCRIClient(node *v1.Node) (containerutils.CRIClient, error) {
-	criVersion := node.Status.NodeInfo.ContainerRuntimeVersion
-	list := strings.Split(criVersion, "://")
-	if len(list) < 1 {
-		return nil, fmt.Errorf("impossible to get CRI type from %s", criVersion)
-	}
-
-	criType := list[0]
-
-	switch criType {
-	case "docker":
-		return docker.NewDockerClient(docker.DefaultSocketPath)
-	case "containerd":
-		return containerd.NewContainerdClient(containerd.DefaultSocketPath)
-	case "cri-o":
-		return crio.NewCrioClient(crio.DefaultSocketPath)
-	default:
-		return nil, fmt.Errorf("unknown '%s' cri", criType)
-	}
-}
-
-func (k *K8sClient) CloseCRI() {
-	k.criClient.Close()
+func (k *K8sClient) CloseRuntimeClient() {
+	k.runtimeClient.Close()
 }
 
 // GetNonRunningContainers returns the list of containers IDs that are not running.
@@ -133,7 +111,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 			continue
 		}
 
-		pid, err := k.criClient.PidFromContainerID(s.ContainerID)
+		pid, err := k.runtimeClient.PidFromContainerID(s.ContainerID)
 		if err != nil {
 			log.Warnf("Skip pod %s/%s: cannot find pid: %v", pod.GetNamespace(), pod.GetName(), err)
 			continue

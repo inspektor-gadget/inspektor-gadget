@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package crio
+package runtimeclient
 
 import (
 	"testing"
@@ -35,35 +35,40 @@ func TestParseExtraInfo(t *testing.T) {
 			info:        nil,
 			expectedPid: -1,
 		},
-		// Format < v1.18.0
+		// Former format
 		{
-			description: "Format < v1.18.0: No pid entry",
+			description: "Former format: No pid entry",
 			info:        map[string]string{"sandboxID": "myID"},
 			expectedPid: -1,
 		},
 		{
-			description: "Format < v1.18.0: Invalid PID",
+			description: "Former format: Invalid PID",
 			info:        map[string]string{"sandboxID": "myID", "pid": "abc"},
 			expectedPid: -1,
 		},
 		{
-			description: "Format < v1.18.0: Pid 1234",
+			description: "Former format: Pid 1234",
 			info:        map[string]string{"sandboxID": "myID", "pid": "1234"},
 			expectedPid: 1234,
 		},
-		// Format > v1.18.0
+		// New format
 		{
-			description: "Format > v1.18.0: No pid entry",
-			info:        map[string]string{"info": "{\"sandboxID\":\"myID\"}"},
+			description: "New format: Invalid format",
+			info:        map[string]string{"info": "{\"InvalidFormat\"}"},
 			expectedPid: -1,
 		},
 		{
-			description: "Format > v1.18.0: Invalid PID",
+			description: "New format: No pid entry",
+			info:        map[string]string{"info": "{\"sandboxID\":\"myID\"}"},
+			expectedPid: 0,
+		},
+		{
+			description: "New format: Invalid PID",
 			info:        map[string]string{"info": "{\"sandboxID\":\"myID\",\"pid\":1.2"},
 			expectedPid: -1,
 		},
 		{
-			description: "Format > v1.18.0: Pid 1234",
+			description: "New format: Pid 1234",
 			info:        map[string]string{"info": "{\"sandboxID\":\"myID\",\"pid\":1234}"},
 			expectedPid: 1234,
 		},
