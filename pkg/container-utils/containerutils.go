@@ -26,10 +26,11 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/containerd"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/crio"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/docker"
-	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/runtime-client"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/containerd"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/crio"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/docker"
+	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
+
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 )
 

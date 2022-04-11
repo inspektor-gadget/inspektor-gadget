@@ -24,11 +24,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	snitracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snisnoop/tracer"
 	types "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snisnoop/types"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )

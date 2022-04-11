@@ -27,8 +27,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	containerutils "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils"
-	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils/runtime-client"
+	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
+	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )

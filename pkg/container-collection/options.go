@@ -33,11 +33,12 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
+	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
+
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containerutils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
-	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 )
 
 // WithDockerEnrichment automatically adds container metadata with Docker
