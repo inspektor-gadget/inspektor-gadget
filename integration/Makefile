@@ -7,7 +7,9 @@ TESTS_DOCKER_ARGS ?= "-e KUBECONFIG=/opt/kubeconfig/config -v $(HOME)/.kube:/opt
 build:
 	mkdir -p bin
 	cp ../kubectl-gadget-linux-amd64 bin/kubectl-gadget
-	docker build -t $(CONTAINER_REPO)-test:$(IMAGE_TAG) -f Dockerfile .
+	docker build -t $(CONTAINER_REPO)-test:$(IMAGE_TAG) \
+		--build-arg ARG_GADGET_IMAGE=$(CONTAINER_REPO):$(IMAGE_TAG) \
+		-f Dockerfile .
 	rm -f bin/kubectl-gadget
 
 .PHONY: push

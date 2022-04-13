@@ -10,10 +10,16 @@ FROM alpine:3.11
 RUN apk add ca-certificates curl
 ENV KUBECTL_GADGET /bin/kubectl-gadget
 
+# GADGET_IMAGE will only be set if $ARG_GADGET_IMAGE was set with
+# docker --build-arg
+# This is mainly used for CI integration tests.
+ARG ARG_GADGET_IMAGE
+ENV GADGET_IMAGE=${ARG_GADGET_IMAGE:+-image\ $ARG_GADGET_IMAGE}
+
 RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
 RUN chmod +x ./kubectl
 RUN mv ./kubectl /usr/local/bin
 
 COPY bin/kubectl-gadget /bin/kubectl-gadget
 COPY --from=build_base /build/gadget-integration.test /bin/gadget-integration.test
-CMD ["/bin/sh", "-c", "gadget-integration.test -integration -test.timeout 20m"]
+CMD ["/bin/sh", "-c", "gadget-integration.test -integration -test.timeout 20m $GADGET_IMAGE"]

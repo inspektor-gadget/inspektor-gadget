@@ -390,7 +390,7 @@ jobs:
         tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
         mv kubectl-gadget kubectl-gadget-linux-amd64
 
-        TESTS_DOCKER_ARGS="-e GADGET_IMAGE_FLAG="--image ${CONTAINER_REPO}:${IMAGE_TAG}" -e KUBECONFIG=/root/.kube/config -v /home/runner/.kube:/root/.kube -v /home/runner/work/_temp/.minikube:/home/runner/work/_temp/.minikube" \
+        TESTS_DOCKER_ARGS="-e KUBECONFIG=/root/.kube/config -v /home/runner/.kube:/root/.kube -v /home/runner/work/_temp/.minikube:/home/runner/work/_temp/.minikube" \
             make -C integration build test
     - name: Update CONTAINER_REPO
       if: startsWith(github.ref, 'refs/tags/v')
