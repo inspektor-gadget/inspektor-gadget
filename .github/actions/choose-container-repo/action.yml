@@ -1,0 +1,47 @@
+name: "Output the container repository to be used"
+description: "Output is set as inputs.registry/inputs.container-image-release, if current branch is main or tag.
+  Otherwise, it will be set to inputs.registry/inputs.container-image-dev"
+
+inputs:
+  registry:
+    description: "Registry where to push container image"
+    required: true
+  container-image-release:
+    description: "The name of the container image used for release"
+    required: true
+  container-image-dev:
+    description: "The name of the container image used for development"
+    required: true
+
+outputs:
+  container-repo:
+    description: "Container repository to be used."
+    value: ${{ steps.choose-repo.outputs.container-repo }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Output container repository
+      id: choose-repo
+      shell: bash
+      run: |
+        if [ -z '${{ inputs.registry }}' ]; then
+          echo 'inputs.registry should not be empty! Set it before calling this action' 1>&2
+
+          exit 1
+        fi
+
+        if [[ -z '${{ inputs.container-image-release}}' || -z '${inputs.container-image-dev}' ]]; then
+          echo 'inputs.container-image-release("${{ inputs.container-image-release}}") and inputs.container-image-dev ("${{ inputs.container-image-dev }}") should not be empty! Set them before calling this action' 1>&2
+
+          exit 1
+        fi
+
+        if [[ ${{ github.ref }} == 'refs/heads/main' || ${{ github.ref }} == 'refs/tags/v'* ]]; then
+          container_image='${{ inputs.container-image-release}}'
+        else
+          container_image='${{ inputs.container-image-dev }}'
+        fi
+
+        container_repo=${{ inputs.registry }}/${container_image}
+        echo "::set-output name=container-repo::${container_repo}"
