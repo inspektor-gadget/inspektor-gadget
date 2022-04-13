@@ -1,0 +1,40 @@
+name: "Set CONTAINER_REPO to environment"
+description: "CONTAINER_REPO will be set as inputs.registry/inputs.container-image, if current branch is main or tag.
+  Otherwise, it will be set to inputs.registry/inputs.container-image-ci"
+
+inputs:
+  registry:
+    description: "Registry where to push container image"
+    required: true
+  container-image:
+    description: "The name of the container image"
+    required: true
+  container-image-ci:
+    description: "The name of the container image used for CI"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set CONTAINER_REPO
+      shell: bash
+      run: |
+        if [ -z '${{ inputs.registry }}' ]; then
+          echo 'inputs.registry should not be empty! Set it before calling this action'
+
+          exit 1
+        fi
+
+        if [[ -z '${{ inputs.container-image }}' || -z '${inputs.container-image-ci}' ]]; then
+          echo 'inputs.container-image ("${{ inputs.container-image }}") and inputs.container-image-ci ("${{ inputs.container-image-ci }}") should not be empty! Set them before calling this action'
+
+          exit 1
+        fi
+
+        if [[ ${{ github.ref }} == 'refs/heads/main' || ${{ github.ref }} == 'refs/tags/v'* ]]; then
+          container_image='${{ inputs.container-image }}'
+        else
+          container_image='${{ inputs.container-image-ci }}'
+        fi
+
+        echo CONTAINER_REPO="${{ inputs.registry }}/${container_image}" >> $GITHUB_ENV
