@@ -1,6 +1,8 @@
 name: Inspektor Gadget CI
 env:
-  CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
+  REGISTRY: ghcr.io
+  CONTAINER_IMAGE_CI: ${{ format('{0}-ci', github.repository) }}
+  CONTAINER_IMAGE: ${{ format('{0}', github.repository) }}
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
@@ -121,15 +123,16 @@ jobs:
       uses: ./.github/actions/install-debian-packages
       with:
         cache-hit: ${{steps.cache-debs.outputs.cache-hit}}
-    - name: Set IMAGE_TAG
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
+    - name: Set environment variables.
+      uses: ./.github/actions/set-env
+      with:
+        # If we are releasing or pushing to main, we will inspektor-gadget.
+        # Otherwise, we will use inspektor-gadget-ci.
+        # Note that, integration tests will always use inspektor-gadget-ci due
+        # to GADGET_IMAGE_FLAG being set.
+        container-image: ${{ ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
+          && env.CONTAINER_IMAGE)
+          || env.CONTAINER_IMAGE_CI}}
     - name: Build kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
       run: |
         git checkout
@@ -233,20 +236,19 @@ jobs:
     - name: Login to Container Registry
       uses: docker/login-action@v1
       with:
-        registry: ${{ secrets.CONTAINER_REGISTRY }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Check out code
       uses: actions/checkout@v1
-    - name: Set IMAGE_TAG
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
+    - name: Set environment variables.
+      uses: ./.github/actions/set-env
+      with:
+        # We will push the image to inspektor-gadget-ci before integration
+        # tests.
+        # If the tests are OK, the image will be pushed to inspektor-gadget
+        # below.
+        container-image: ${{ env.CONTAINER_IMAGE_CI }}
     - name: Build gadget container
       uses: docker/build-push-action@v2
       with:
@@ -254,11 +256,8 @@ jobs:
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget.Dockerfile
         build-args: |
           ENABLE_BTFGEN=true
-        # TODO: how to avoid pushing a container before running integration tests
-        # Answer: push to runner registry first, if integration tests are OK
-        # push to final registry
         push: true
-        tags: ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
+        tags: ${{ env.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
 
@@ -371,17 +370,13 @@ jobs:
         minikube version: 'v1.25.2'
         kubernetes version: 'v1.23.0'
         github token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Set IMAGE_TAG
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
     - name: Check out code
       uses: actions/checkout@v1
+    - name: Set environment variables.
+      uses: ./.github/actions/set-env
+      with:
+        # The integration tests will test the inspektor-gadget-ci image.
+        container-image: ${{ env.CONTAINER_IMAGE_CI }}
     - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
       uses: actions/download-artifact@v2
       with:
@@ -394,9 +389,10 @@ jobs:
         tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
         mv kubectl-gadget kubectl-gadget-linux-amd64
 
-        TESTS_DOCKER_ARGS="-e KUBECONFIG=/root/.kube/config -v /home/runner/.kube:/root/.kube -v /home/runner/work/_temp/.minikube:/home/runner/work/_temp/.minikube" \
+        TESTS_DOCKER_ARGS="-e GADGET_IMAGE_FLAG="--image ${CONTAINER_REPO}:${IMAGE_TAG}" -e KUBECONFIG=/root/.kube/config -v /home/runner/.kube:/root/.kube -v /home/runner/work/_temp/.minikube:/home/runner/work/_temp/.minikube" \
             make -C integration build test
 
+        sed -i "s@ghcr.io/kinvolk/inspektor-gadget@${CONTAINER_REPO}@g" integration/gadget-integration-tests-job.yaml
         sed -i "s/latest/$IMAGE_TAG/g" integration/gadget-integration-tests-job.yaml
     - name: Add integration asset as artifact.
       if: startsWith(github.ref, 'refs/tags/v')
@@ -408,13 +404,44 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       uses: docker/login-action@v1
       with:
-        registry: ${{ secrets.CONTAINER_REGISTRY }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Push Integration Test Image
       if: startsWith(github.ref, 'refs/tags/v')
       run: |
-        make -C integration push
+        # Docker should have cache the image layers and should just perform a
+        # renaming.
+        CONTAINER_REPO=${{ env.REGISTRY }}/${{ env.CONTAINER_IMAGE }} make -C integration build push
+
+  push-container-image:
+    name: Push container image
+    # level: 2
+    needs: [documentation-checks, lint, test-integration, test-local-gadget]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+    steps:
+    - name: Login to Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Check out code
+      uses: actions/checkout@v1
+    - name: Set environment variables.
+      uses: ./.github/actions/set-env
+      with:
+        # CONTAINER_REPO is not used below, so any value is fine here.
+        container-image: 42
+    - name: Pull the image from the CI repository and push it to the release repository
+      run : |
+        ci_image=${{ env.REGISTRY }}/${{ env.CONTAINER_IMAGE_CI }}:${{ env.IMAGE_TAG }}
+        image=${{ env.REGISTRY }}/${{ env.CONTAINER_IMAGE }}:${{ env.IMAGE_TAG }}
+
+        docker pull ${ci_image}
+        docker tag ${ci_image} ${image}
+        docker push ${image}
 
   release:
     name: Release

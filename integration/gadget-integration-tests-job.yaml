@@ -35,7 +35,7 @@ spec:
       serviceAccount: gadget-test
       containers:
       - name: gadget-test
-        image: docker.io/kinvolk/gadgettest:latest
+        image: ghcr.io/kinvolk/inspektor-gadget-test:latest
         imagePullPolicy: Always
       restartPolicy: Never
   backoffLimit: 0
