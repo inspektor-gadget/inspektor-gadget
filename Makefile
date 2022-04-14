@@ -35,7 +35,10 @@ LDFLAGS := "-X main.version=$(VERSION) \
 
 .DEFAULT_GOAL := build
 .PHONY: build
-build: manifests generate local-gadget kubectl-gadget gadget-container
+build: manifests generate kubectl-gadget gadget-container
+
+.PHONY: all
+all: build local-gadget
 
 # make does not allow implicit rules (with '%') to be phony so let's use
 # the 'phony_explicit' dependency to make implicit rules inherit the phony
