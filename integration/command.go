@@ -203,11 +203,12 @@ func (c *command) run(t *testing.T) {
 
 	t.Logf("Run command: %s\n", c.cmd)
 	err := c.command.Run()
+
+	t.Logf("Command returned:\n%s\n%s\n", c.stderr.String(), c.stdout.String())
+
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Logf("Command returned:\n%s\n%s\n", c.stderr.String(), c.stdout.String())
 
 	err = c.verifyOutput()
 	if err != nil {
@@ -221,11 +222,12 @@ func (c *command) runWithoutTest() error {
 
 	c.createExecCmd()
 	err := c.command.Run()
+
+	fmt.Printf("Command returned:\n%s\n%s\n", c.stderr.String(), c.stdout.String())
+
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Command returned:\n%s\n%s\n", c.stderr.String(), c.stdout.String())
 
 	return c.verifyOutput()
 }
@@ -275,11 +277,12 @@ func (c *command) stop(t *testing.T) {
 	// received by all the processes with such PGID, in our case, the process of
 	// /bin/sh and c.cmd.
 	err := syscall.Kill(-c.command.Process.Pid, syscall.SIGTERM)
+
+	t.Logf("Command returned:\n%s\n%s\n", c.stderr.String(), c.stdout.String())
+
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Logf("Command returned:\n%s\n%s\n", c.stderr.String(), c.stdout.String())
 
 	err = c.verifyOutput()
 	if err != nil {
