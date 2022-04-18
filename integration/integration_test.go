@@ -185,7 +185,7 @@ func TestBiotop(t *testing.T) {
 		biotopCmd,
 		{
 			name:           "Run pod which generates I/O",
-			cmd:            busyboxPodCommand(ns, "while true; do dd if=/dev/zero of=/tmp/test count=4096; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do dd if=/dev/zero of=/tmp/test count=4096 && sleep 0.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -212,7 +212,7 @@ func TestCapabilities(t *testing.T) {
 		capabilitiesCmd,
 		{
 			name:           "Run pod which fails to run nice",
-			cmd:            busyboxPodCommand(ns, "while true; do nice -n -20 echo; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do nice -n -20 echo && sleep 0.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -239,7 +239,7 @@ func TestDns(t *testing.T) {
 		dnsCmd,
 		{
 			name:           "Run pod which interacts with dns",
-			cmd:            fmt.Sprintf("kubectl run --restart=Never --image=wbitt/network-multitool -n %s test-pod -- sh -c 'while true; do nslookup microsoft.com; done'", ns),
+			cmd:            fmt.Sprintf("kubectl run --restart=Never --image=wbitt/network-multitool -n %s test-pod -- sh -c 'while true; do nslookup microsoft.com && sleep 0.1; done'", ns),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -293,7 +293,7 @@ func TestFiletop(t *testing.T) {
 		filetopCmd,
 		{
 			name:           "Run pod which does IO",
-			cmd:            busyboxPodCommand(ns, "while true; do echo date >> /tmp/date.txt; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do echo date >> /tmp/date.txt && sleep 0.1; done"),
 			expectedString: "pod/test-pod created\n",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -347,7 +347,7 @@ func TestMountsnoop(t *testing.T) {
 		mountsnoopCmd,
 		{
 			name:           "Run pod which tries to mount a directory",
-			cmd:            busyboxPodCommand(ns, "while true; do mount /mnt /mnt; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do mount /mnt /mnt && sleep 0.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -366,7 +366,7 @@ func TestNetworkpolicy(t *testing.T) {
 		createTestNamespaceCommand(ns),
 		{
 			name:           "Run test pod",
-			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null https://kinvolk.io; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null https://kinvolk.io && sleep 0.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -443,7 +443,7 @@ func TestOpensnoop(t *testing.T) {
 		opensnoopCmd,
 		{
 			name:           "Run pod which calls open()",
-			cmd:            busyboxPodCommand(ns, "while true; do whoami; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do whoami && sleep 0.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -510,7 +510,7 @@ func TestSeccompadvisor(t *testing.T) {
 		createTestNamespaceCommand(ns),
 		{
 			name:           "Run test pod",
-			cmd:            busyboxPodCommand(ns, "while true; do echo foo; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do echo foo && sleep 0.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -638,7 +638,7 @@ func TestSnisnoop(t *testing.T) {
 		snisnoopCmd,
 		{
 			name:           "Run pod which interacts with snisnoop",
-			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null https://kinvolk.io; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null https://kinvolk.io && sleep 0.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -689,7 +689,7 @@ func TestTcpconnect(t *testing.T) {
 		tcpconnectCmd,
 		{
 			name:           "Run pod which opens TCP socket",
-			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null -T 3 http://1.1.1.1; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null -T 3 http://1.1.1.1 && sleep 0.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -716,7 +716,7 @@ func TestTcptracer(t *testing.T) {
 		tcptracerCmd,
 		{
 			name:           "Run pod which opens TCP socket",
-			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null -T 3 http://1.1.1.1; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null -T 3 http://1.1.1.1 && sleep 0.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
@@ -743,7 +743,7 @@ func TestTcptop(t *testing.T) {
 		tcptopCmd,
 		{
 			name:           "Run pod which opens TCP socket",
-			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null https://kinvolk.io; done"),
+			cmd:            busyboxPodCommand(ns, "while true; do wget -q -O /dev/null https://kinvolk.io && sleep 0.1; done"),
 			expectedRegexp: "pod/test-pod created",
 		},
 		waitUntilTestPodReadyCommand(ns),
