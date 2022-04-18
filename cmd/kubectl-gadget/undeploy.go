@@ -24,8 +24,14 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/spf13/cobra"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
+	watchtools "k8s.io/client-go/tools/watch"
 
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
@@ -37,8 +43,21 @@ var undeployCmd = &cobra.Command{
 	SilenceUsage: true,
 }
 
+var undeployWait bool
+
+const (
+	gadgetNamespace string = "gadget"
+	timeout         int    = 30
+)
+
 func init() {
 	rootCmd.AddCommand(undeployCmd)
+	undeployCmd.PersistentFlags().BoolVarP(
+		&undeployWait,
+		"wait", "",
+		true,
+		"wait for all resources to be deleted before returning",
+	)
 }
 
 func runUndeploy(cmd *cobra.Command, args []string) error {
@@ -77,16 +96,17 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 	n := 7
 
 again:
-	err = traceClient.GadgetV1alpha1().Traces("gadget").DeleteCollection(
+	fmt.Println("Removing traces...")
+	err = traceClient.GadgetV1alpha1().Traces(gadgetNamespace).DeleteCollection(
 		context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{},
 	)
-	if err != nil {
+	if err != nil && !errors.IsNotFound(err) {
 		errs = append(errs, fmt.Sprintf("failed to remove the traces: %s", err))
 	}
 
 	time.Sleep(time.Duration(delay) * time.Millisecond)
 
-	traces, err := traceClient.GadgetV1alpha1().Traces("gadget").List(
+	traces, err := traceClient.GadgetV1alpha1().Traces(gadgetNamespace).List(
 		context.TODO(), metav1.ListOptions{},
 	)
 	if err == nil && len(traces.Items) != 0 {
@@ -100,7 +120,7 @@ again:
 		// finalizers and let k8s remove them immediately.
 		for _, trace := range traces.Items {
 			data := []byte("{\"metadata\":{\"finalizers\":[]}}")
-			_, err := traceClient.GadgetV1alpha1().Traces("gadget").Patch(
+			_, err := traceClient.GadgetV1alpha1().Traces(gadgetNamespace).Patch(
 				context.TODO(), trace.Name, types.MergePatchType, data, metav1.PatchOptions{},
 			)
 			if err != nil {
@@ -112,30 +132,33 @@ again:
 	}
 
 	// 2. remove crd
+	fmt.Println("Removing CRD...")
 	err = crdClient.ApiextensionsV1().CustomResourceDefinitions().Delete(
 		context.TODO(), "traces.gadget.kinvolk.io", metav1.DeleteOptions{},
 	)
-	if err != nil {
+	if err != nil && !errors.IsNotFound(err) {
 		errs = append(
 			errs, fmt.Sprintf("failed to remove \"traces.gadget.kinvolk.io\" CRD: %s", err),
 		)
 	}
 
 	// 3. gadget cluster role binding
+	fmt.Println("Removing cluster role binding...")
 	err = k8sClient.RbacV1().ClusterRoleBindings().Delete(
 		context.TODO(), "gadget-cluster-role-binding", metav1.DeleteOptions{},
 	)
-	if err != nil {
+	if err != nil && !errors.IsNotFound(err) {
 		errs = append(
 			errs, fmt.Sprintf("failed to remove \"gadget\" cluster role bindings: %s", err),
 		)
 	}
 
 	// 4. gadget cluster role
+	fmt.Println("Removing cluster role...")
 	err = k8sClient.RbacV1().ClusterRoles().Delete(
 		context.TODO(), "gadget-cluster-role", metav1.DeleteOptions{},
 	)
-	if err != nil {
+	if err != nil && !errors.IsNotFound(err) {
 		errs = append(
 			errs, fmt.Sprintf("failed to remove \"gadget\" cluster role: %s", err),
 		)
@@ -143,15 +166,65 @@ again:
 
 	// 5. gadget namespace (it also removes daemonset, serviceaccount, rolebinding
 	// and role since they live in this namespace).
-	err = k8sClient.CoreV1().Namespaces().Delete(
-		context.TODO(), "gadget", metav1.DeleteOptions{},
-	)
-	if err != nil {
-		errs = append(errs, fmt.Sprintf("failed to remove \"gadget\" namespace: %s", err))
+	var list *v1.NamespaceList
+	if undeployWait {
+		list, err = k8sClient.CoreV1().Namespaces().List(
+			context.TODO(), metav1.ListOptions{
+				FieldSelector: "metadata.name=" + gadgetNamespace,
+			},
+		)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("failed to list %q namespace: %s", gadgetNamespace, err))
+			goto out
+		}
+
+		// nothing to do, namespace doesn't exist
+		if list == nil || len(list.Items) == 0 {
+			goto out
+		}
 	}
 
+	fmt.Println("Removing namespace...")
+	err = k8sClient.CoreV1().Namespaces().Delete(
+		context.TODO(), gadgetNamespace, metav1.DeleteOptions{},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Sprintf("failed to remove %q namespace: %s", gadgetNamespace, err))
+		goto out
+	}
+
+	if undeployWait {
+		watcher := cache.NewListWatchFromClient(
+			k8sClient.CoreV1().RESTClient(), "namespaces", "", fields.OneTermEqualSelector("metadata.name", gadgetNamespace),
+		)
+
+		conditionFunc := func(event watch.Event) (bool, error) {
+			switch event.Type {
+			case watch.Deleted:
+				return true, nil
+			case watch.Error:
+				return false, fmt.Errorf("watch error: %v", event)
+			default:
+				return false, nil
+			}
+		}
+
+		fmt.Println("Waiting for namespace to be removed...")
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+		defer cancel()
+		watchtools.Until(ctx, list.ResourceVersion, watcher, conditionFunc)
+	}
+
+out:
 	if len(errs) > 0 {
-		return fmt.Errorf("error undeploying IG:\n%s", strings.Join(errs, "\n"))
+		return fmt.Errorf("error removing IG:\n%s", strings.Join(errs, "\n"))
+	}
+
+	if undeployWait {
+		fmt.Println("Inspektor Gadget successfully removed")
+	} else {
+		fmt.Println("Inspektor Gadget is being removed")
 	}
 
 	return nil
