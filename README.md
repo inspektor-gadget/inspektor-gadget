@@ -158,7 +158,7 @@ Available Commands:
   oomkill      Trace when OOM killer is triggered and kills a process
   open         Trace open system calls
   signal       Trace signals received by processes
-  sni          Trace Server Name Indicator requests
+  sni          Trace Server Name Indication (SNI) from TLS requests
   tcp          Trace tcp connect, accept and close
   tcpconnect   Trace connect system calls
 
