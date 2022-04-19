@@ -58,13 +58,19 @@ uint64_t get_cgroupid(char *path) {
 
   h->handle_bytes = 8;
   err = name_to_handle_at(AT_FDCWD, path, (struct file_handle *)h, &mount_id, 0);
-  if (err != 0)
-    return 0;
+  if (err != 0) {
+    ret = 0;
+    goto out;
+  }
 
-  if (h->handle_bytes != 8)
-    return 0;
+  if (h->handle_bytes != 8) {
+    ret = 0;
+    goto out;
+  }
 
   ret = h->cgid;
+
+out:
   free(h);
 
   return ret;
