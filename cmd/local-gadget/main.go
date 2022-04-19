@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 
 	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
+	log "github.com/sirupsen/logrus"
 )
 
 // This variable is used by the "version" command and is set during build.
@@ -272,18 +273,17 @@ func newRootCmd() *cobra.Command {
 	return rootCmd
 }
 
-func main() {
+func runLocalGadget(cmd *cobra.Command, args []string) error {
 	var err error
+
 	localGadgetManager, err = localgadgetmanager.NewManager()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return fmt.Errorf("failed to initialize manager: %w", err)
 	}
 
 	homedir, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return fmt.Errorf("failed to get user's home directory: %w", err)
 	}
 
 	completer := readline.NewPrefixCompleter(
@@ -367,8 +367,7 @@ func main() {
 		EOFPrompt:       "exit",
 	})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return fmt.Errorf("failed to initialize reader: %w", err)
 	}
 	defer l.Close()
 
@@ -391,6 +390,37 @@ func main() {
 		if err = execInput(input); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
+	}
+
+	return nil
+}
+
+func main() {
+	var verbose bool
+
+	inlineCmd := &cobra.Command{
+		Use:          "local-gadget",
+		Short:        "Collection of gadgets for containers",
+		SilenceUsage: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if verbose {
+				log.StandardLogger().SetLevel(log.DebugLevel)
+			}
+
+			return nil
+		},
+		RunE: runLocalGadget,
+	}
+
+	inlineCmd.PersistentFlags().BoolVarP(
+		&verbose,
+		"verbose", "v",
+		false,
+		"Print debug information",
+	)
+
+	if err := inlineCmd.Execute(); err != nil {
+		os.Exit(1)
 	}
 }
 
