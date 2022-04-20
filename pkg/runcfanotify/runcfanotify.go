@@ -87,6 +87,13 @@ var runcPaths = []string{
 	"/host/run/torcx/unpack/docker/bin/runc",
 }
 
+// initFanotify initializes the fanotify API with the flags we need
+func initFanotify() (*fanotify.NotifyFD, error) {
+	fanotifyFlags := uint(unix.FAN_CLOEXEC | unix.FAN_CLASS_CONTENT | unix.FAN_UNLIMITED_QUEUE | unix.FAN_UNLIMITED_MARKS)
+	openFlags := os.O_RDONLY | unix.O_LARGEFILE | unix.O_CLOEXEC
+	return fanotify.Initialize(fanotifyFlags, openFlags)
+}
+
 // Supported detects if RuncNotifier is supported in the current environment
 func Supported() bool {
 	// Test that runc is available
@@ -100,6 +107,12 @@ func Supported() bool {
 	if !runcFound {
 		return false
 	}
+	// Test that it's possible to run fanotify
+	notifyFD, err := initFanotify()
+	if err != nil {
+		return false
+	}
+	notifyFD.File.Close()
 	return true
 }
 
@@ -114,10 +127,7 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 		containers: make(map[string]struct{}),
 	}
 
-	fanotifyFlags := uint(unix.FAN_CLOEXEC | unix.FAN_CLASS_CONTENT | unix.FAN_UNLIMITED_QUEUE | unix.FAN_UNLIMITED_MARKS)
-	openFlags := os.O_RDONLY | unix.O_LARGEFILE | unix.O_CLOEXEC
-
-	runcBinaryNotify, err := fanotify.Initialize(fanotifyFlags, openFlags)
+	runcBinaryNotify, err := initFanotify()
 	if err != nil {
 		return nil, err
 	}

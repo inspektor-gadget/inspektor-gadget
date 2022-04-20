@@ -261,7 +261,7 @@ func main() {
 		})
 
 		if err != nil {
-			log.Fatalf("failed to create server %v", err)
+			log.Fatalf("failed to create Gadget Tracer Manager server: %v", err)
 		}
 
 		pb.RegisterGadgetTracerManagerServer(grpcServer, tracerManager)

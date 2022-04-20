@@ -230,6 +230,7 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 		opts = append(opts, containercollection.WithKubernetesEnrichment(g.nodeName))
 	}
 
+	podInformerUsed := false
 	switch conf.HookMode {
 	case "none":
 		// Nothing to do: grpc calls will be enough
@@ -246,10 +247,12 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 		} else {
 			log.Infof("GadgetTracerManager: hook mode: podinformer (auto)")
 			opts = append(opts, containercollection.WithPodInformer(g.nodeName))
+			podInformerUsed = true
 		}
 	case "podinformer":
 		log.Infof("GadgetTracerManager: hook mode: podinformer")
 		opts = append(opts, containercollection.WithPodInformer(g.nodeName))
+		podInformerUsed = true
 	case "fanotify":
 		log.Infof("GadgetTracerManager: hook mode: fanotify")
 		opts = append(opts, containercollection.WithRuncFanotify())
@@ -258,7 +261,7 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 		return nil, fmt.Errorf("invalid hook mode: %s", conf.HookMode)
 	}
 
-	if conf.FallbackPodInformer && conf.HookMode != "podinformer" {
+	if conf.FallbackPodInformer && !podInformerUsed {
 		log.Infof("GadgetTracerManager: enabling fallback podinformer")
 		opts = append(opts, containercollection.WithFallbackPodInformer(g.nodeName))
 	}
