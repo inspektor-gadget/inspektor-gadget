@@ -30,13 +30,6 @@ import (
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
-const (
-	MaxRowsDefault  = 20
-	IntervalDefault = 1
-	SortByDefault   = types.RBYTES
-	AllFilesDefault = false
-)
-
 type Trace struct {
 	resolver gadgets.Resolver
 
@@ -62,10 +55,10 @@ The following parameters are supported:
  - %s: Maximum rows to print. (default %d)
  - %s: The field to sort the results by (%s). (default %s)
  - %s: Show all files. (default %v, i.e. show regular files only)`
-	return fmt.Sprintf(t, types.IntervalParam, IntervalDefault,
-		types.MaxRowsParam, MaxRowsDefault,
-		types.SortByParam, strings.Join(types.SortBySlice, ","), SortByDefault,
-		types.AllFilesParam, AllFilesDefault)
+	return fmt.Sprintf(t, types.IntervalParam, types.IntervalDefault,
+		types.MaxRowsParam, types.MaxRowsDefault,
+		types.SortByParam, strings.Join(types.SortBySlice, ","), types.SortByDefault,
+		types.AllFilesParam, types.AllFilesDefault)
 }
 
 func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
@@ -112,10 +105,10 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
-	maxRows := MaxRowsDefault
-	intervalSeconds := IntervalDefault
-	sortBy := SortByDefault
-	allFiles := AllFilesDefault
+	maxRows := types.MaxRowsDefault
+	intervalSeconds := types.IntervalDefault
+	sortBy := types.SortByDefault
+	allFiles := types.AllFilesDefault
 
 	if trace.Spec.Parameters != nil {
 		params := trace.Spec.Parameters

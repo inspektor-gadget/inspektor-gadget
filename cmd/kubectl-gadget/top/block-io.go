@@ -20,7 +20,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -30,35 +29,26 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biotop/types"
 )
 
-var (
-	nodeBioStats map[string][]types.Stats
-	mutex        sync.Mutex
-	finished     bool = false
-)
+var blockIONodeStats map[string][]types.Stats
 
-var (
-	// arguments
-	printInterval int = types.IntervalDefault
+// flags
+var blockIOSortBy types.SortBy
 
-	// flags
-	biotopMaximumRows int
-	biotopSortTypeStr string
-	biotopSortType    types.SortBy
-)
-
-var biotopCmd = &cobra.Command{
+var blockIOCmd = &cobra.Command{
 	Use:   fmt.Sprintf("block-io [interval=%d]", types.IntervalDefault),
 	Short: "Trace block devices I/O",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 
-		nodeBioStats = make(map[string][]types.Stats)
+		blockIONodeStats = make(map[string][]types.Stats)
 
 		if len(args) == 1 {
-			printInterval, err = strconv.Atoi(args[0])
+			outputInterval, err = strconv.Atoi(args[0])
 			if err != nil {
 				return utils.WrapInErrInvalidArg("<interval>", fmt.Errorf("%q is not a valid value", args[0]))
 			}
+		} else {
+			outputInterval = types.IntervalDefault
 		}
 
 		config := &utils.TraceConfig{
@@ -68,15 +58,15 @@ var biotopCmd = &cobra.Command{
 			TraceOutputState: "Started",
 			CommonFlags:      &params,
 			Parameters: map[string]string{
-				types.IntervalParam: strconv.Itoa(printInterval),
-				types.MaxRowsParam:  strconv.Itoa(biotopMaximumRows),
-				types.SortByParam:   biotopSortTypeStr,
+				types.IntervalParam: strconv.Itoa(outputInterval),
+				types.MaxRowsParam:  strconv.Itoa(maxRows),
+				types.SortByParam:   sortBy,
 			},
 		}
 
-		biotopStartOutput()
+		blockIOStartOutput()
 
-		if err := utils.RunTraceStreamCallback(config, biotopHook); err != nil {
+		if err := utils.RunTraceStreamCallback(config, blockIOCallback); err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
 
@@ -85,7 +75,7 @@ var biotopCmd = &cobra.Command{
 	SilenceUsage: true,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		var err error
-		biotopSortType, err = types.ParseSortBy(biotopSortTypeStr)
+		blockIOSortBy, err = types.ParseSortBy(sortBy)
 		if err != nil {
 			return utils.WrapInErrInvalidArg("--sort", err)
 		}
@@ -96,14 +86,10 @@ var biotopCmd = &cobra.Command{
 }
 
 func init() {
-	biotopCmd.Flags().IntVarP(&biotopMaximumRows, "maximum-rows", "r", types.MaxRowsDefault, "Maximum rows to print")
-	biotopCmd.Flags().StringVarP(&biotopSortTypeStr, "sort", "", types.SortBySlice[0], fmt.Sprintf("Sort column, possible values are: %s (default to %s)", strings.Join(types.SortBySlice, ", "), types.SortBySlice[0]))
-
-	TopCmd.AddCommand(biotopCmd)
-	utils.AddCommonFlags(biotopCmd, &params)
+	addTopCommand(blockIOCmd, types.MaxRowsDefault, types.SortBySlice)
 }
 
-func biotopHook(line string, node string) {
+func blockIOCallback(line string, node string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -119,33 +105,33 @@ func biotopHook(line string, node string) {
 		return
 	}
 
-	nodeBioStats[node] = event.Stats
+	blockIONodeStats[node] = event.Stats
 }
 
-func biotopStartOutput() {
-	ticker := time.NewTicker(time.Duration(printInterval) * time.Second)
+func blockIOStartOutput() {
+	ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
 
 	go func() {
 		for {
-			biotopOutput()
+			blockIOPrintOutput()
 			<-ticker.C
 		}
 	}()
 }
 
-func biotopOutput() {
+func blockIOPrintOutput() {
 	// sort and print events
 	mutex.Lock()
 
 	stats := []types.Stats{}
-	for _, stat := range nodeBioStats {
+	for _, stat := range blockIONodeStats {
 		stats = append(stats, stat...)
 	}
-	nodeBioStats = make(map[string][]types.Stats)
+	blockIONodeStats = make(map[string][]types.Stats)
 
 	mutex.Unlock()
 
-	types.SortStats(stats, biotopSortType)
+	types.SortStats(stats, blockIOSortBy)
 
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
@@ -159,7 +145,7 @@ func biotopOutput() {
 			"NODE", "NAMESPACE", "POD", "CONTAINER",
 			"PID", "COMM", "R/W", "MAJOR", "MINOR", "BYTES", "TIME(µs)", "IOs")
 		for idx, event := range stats {
-			if idx == biotopMaximumRows {
+			if idx == maxRows {
 				break
 			}
 
@@ -186,17 +172,17 @@ func biotopOutput() {
 		} else {
 			fmt.Println("")
 		}
-		fmt.Println(getCustomColumnsHeader(params.CustomColumns))
+		fmt.Println(blockIOGetCustomColsHeader(params.CustomColumns))
 		for idx, stat := range stats {
-			if idx == biotopMaximumRows {
+			if idx == maxRows {
 				break
 			}
-			fmt.Println(formatEventCustomCols(&stat, params.CustomColumns))
+			fmt.Println(blockIOFormatEventCustomCols(&stat, params.CustomColumns))
 		}
 	}
 }
 
-func getCustomColumnsHeader(cols []string) string {
+func blockIOGetCustomColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -232,7 +218,7 @@ func getCustomColumnsHeader(cols []string) string {
 	return sb.String()
 }
 
-func formatEventCustomCols(stats *types.Stats, cols []string) string {
+func blockIOFormatEventCustomCols(stats *types.Stats, cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {

@@ -8,7 +8,7 @@ filetop shows reads and writes by file, with container details.
 The following parameters are supported:
  - interval: Output interval, in seconds. (default 1)
  - max_rows: Maximum rows to print. (default 20)
- - sort_by: The field to sort the results by (all,reads,writes,rbytes,wbytes). (default rbytes)
+ - sort_by: The field to sort the results by (all,reads,writes,rbytes,wbytes). (default all)
  - pid: Show all files. (default false, i.e. show regular files only)
 
 ### Example CR

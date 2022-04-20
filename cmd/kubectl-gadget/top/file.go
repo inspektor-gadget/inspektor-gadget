@@ -20,7 +20,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -30,37 +29,30 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/filetop/types"
 )
 
-var (
-	nodeStats map[string][]types.Stats
-	mu        sync.Mutex
-	done      bool = false
-)
+var fileNodeStats map[string][]types.Stats
 
 var (
-	// arguments
-	interval int = 1
-
 	// flags
-	maxRows   int
-	sortByStr string
-	sortBy    types.SortBy
-	allFiles  bool
+	fileSortBy   types.SortBy
+	fileAllFiles bool
 )
 
-var filetopCmd = &cobra.Command{
+var fileCmd = &cobra.Command{
 	Use:   "file [interval]",
 	Short: "Trace reads and writes by file",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 
-		nodeStats = make(map[string][]types.Stats)
+		fileNodeStats = make(map[string][]types.Stats)
 
 		if len(args) == 1 {
-			interval, err = strconv.Atoi(args[0])
+			outputInterval, err = strconv.Atoi(args[0])
 			if err != nil {
 				return utils.WrapInErrInvalidArg("<interval>",
 					fmt.Errorf("%q is not a valid value", args[0]))
 			}
+		} else {
+			outputInterval = types.IntervalDefault
 		}
 
 		config := &utils.TraceConfig{
@@ -71,15 +63,15 @@ var filetopCmd = &cobra.Command{
 			CommonFlags:      &params,
 			Parameters: map[string]string{
 				types.MaxRowsParam:  strconv.Itoa(maxRows),
-				types.IntervalParam: strconv.Itoa(interval),
-				types.SortByParam:   sortByStr,
-				types.AllFilesParam: strconv.FormatBool(allFiles),
+				types.IntervalParam: strconv.Itoa(outputInterval),
+				types.SortByParam:   sortBy,
+				types.AllFilesParam: strconv.FormatBool(fileAllFiles),
 			},
 		}
 
-		startprint()
+		fileStartOutput()
 
-		err = utils.RunTraceStreamCallback(config, callback)
+		err = utils.RunTraceStreamCallback(config, fileCallback)
 		if err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
@@ -89,7 +81,7 @@ var filetopCmd = &cobra.Command{
 	SilenceUsage: true,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		var err error
-		sortBy, err = types.ParseSortBy(sortByStr)
+		fileSortBy, err = types.ParseSortBy(sortBy)
 		if err != nil {
 			return utils.WrapInErrInvalidArg("--sort", err)
 		}
@@ -100,17 +92,14 @@ var filetopCmd = &cobra.Command{
 }
 
 func init() {
-	filetopCmd.Flags().IntVarP(&maxRows, "maxrows", "r", 20, "Maximum rows to print")
-	filetopCmd.Flags().StringVarP(&sortByStr, "sort", "", "rbytes", fmt.Sprintf("Sort column (%s)", strings.Join(types.SortBySlice, ", ")))
-	filetopCmd.Flags().BoolVarP(&allFiles, "all-files", "a", false, "Include non-regular file types (sockets, FIFOs, etc)")
+	fileCmd.Flags().BoolVarP(&fileAllFiles, "all-files", "a", types.AllFilesDefault, "Include non-regular file types (sockets, FIFOs, etc)")
 
-	TopCmd.AddCommand(filetopCmd)
-	utils.AddCommonFlags(filetopCmd, &params)
+	addTopCommand(fileCmd, types.MaxRowsDefault, types.SortBySlice)
 }
 
-func callback(line string, node string) {
-	mu.Lock()
-	defer mu.Unlock()
+func fileCallback(line string, node string) {
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	var event types.Event
 
@@ -124,33 +113,33 @@ func callback(line string, node string) {
 		return
 	}
 
-	nodeStats[node] = event.Stats
+	fileNodeStats[node] = event.Stats
 }
 
-func startprint() {
-	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+func fileStartOutput() {
+	ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
 
 	go func() {
 		for {
-			print()
+			filePrintOutput()
 			_ = <-ticker.C
 		}
 	}()
 }
 
-func print() {
+func filePrintOutput() {
 	// sort and print events
-	mu.Lock()
+	mutex.Lock()
 
 	stats := []types.Stats{}
-	for _, stat := range nodeStats {
+	for _, stat := range fileNodeStats {
 		stats = append(stats, stat...)
 	}
-	nodeStats = make(map[string][]types.Stats)
+	fileNodeStats = make(map[string][]types.Stats)
 
-	mu.Unlock()
+	mutex.Unlock()
 
-	types.SortStats(stats, sortBy)
+	types.SortStats(stats, fileSortBy)
 
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
@@ -184,17 +173,17 @@ func print() {
 		} else {
 			fmt.Println("")
 		}
-		fmt.Println(getCustomColsHeader(params.CustomColumns))
+		fmt.Println(fileGetCustomColsHeader(params.CustomColumns))
 		for idx, stat := range stats {
 			if idx == maxRows {
 				break
 			}
-			fmt.Println(formatEventCostumCols(&stat, params.CustomColumns))
+			fmt.Println(fileFormatEventCostumCols(&stat, params.CustomColumns))
 		}
 	}
 }
 
-func getCustomColsHeader(cols []string) string {
+func fileGetCustomColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -232,7 +221,7 @@ func getCustomColsHeader(cols []string) string {
 	return sb.String()
 }
 
-func formatEventCostumCols(stats *types.Stats, cols []string) string {
+func fileFormatEventCostumCols(stats *types.Stats, cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
