@@ -164,6 +164,26 @@ again:
 		)
 	}
 
+	// Let's try to remove components of IG versions before v0.5.0,
+	// just in case somebody has a newer CLI but is trying to remove
+	// an old version of Inspektor Gadget from the cluster. Given
+	// that this is a best effort work, we don't track any error.
+
+	// kube-system/gadget daemon set
+	k8sClient.AppsV1().DaemonSets("kube-system").Delete(
+		context.TODO(), "gadget", metav1.DeleteOptions{},
+	)
+
+	// gadget cluster role binding
+	k8sClient.RbacV1().ClusterRoleBindings().Delete(
+		context.TODO(), "gadget", metav1.DeleteOptions{},
+	)
+
+	// kube-system/gadget service account
+	k8sClient.CoreV1().ServiceAccounts("kube-system").Delete(
+		context.TODO(), "gadget", metav1.DeleteOptions{},
+	)
+
 	// 5. gadget namespace (it also removes daemonset, serviceaccount, rolebinding
 	// and role since they live in this namespace).
 	var list *v1.NamespaceList
