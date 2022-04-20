@@ -37,7 +37,7 @@ var colSnisnoopLens = map[string]int{
 
 var snisnoopCmd = &cobra.Command{
 	Use:   "sni",
-	Short: "Trace Server Name Indicator requests",
+	Short: "Trace Server Name Indication (SNI) from TLS requests",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		transform := snisnoopTransformLine
 
