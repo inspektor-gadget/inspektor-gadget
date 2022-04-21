@@ -17,8 +17,14 @@ package docker
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
+	dockertypes "github.com/docker/docker/api/types"
+	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 )
@@ -79,6 +85,69 @@ func (c *DockerClient) PidFromContainerID(containerID string) (int, error) {
 	}
 
 	return containerJSON.State.Pid, nil
+}
+
+func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]dockertypes.Container, error) {
+	opts := dockertypes.ContainerListOptions{
+		// We need to request for all containers (also non-running) because
+		// when we are enriching a container that is being created, it is
+		// not in "running" state yet.
+		All: true,
+	}
+	if filter != nil {
+		opts.Filters = *filter
+	}
+
+	containers, err := c.client.ContainerList(context.Background(), opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list containers with options %+v: %w",
+			opts, err)
+	}
+
+	return containers, nil
+}
+
+func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
+	containers, err := listContainers(c, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make([]*runtimeclient.ContainerData, len(containers))
+
+	for i, container := range containers {
+		ret[i] = &runtimeclient.ContainerData{
+			ID:      container.ID,
+			Name:    strings.TrimPrefix(containers[0].Names[0], "/"),
+			Running: container.State == "running",
+		}
+	}
+
+	return ret, nil
+}
+
+func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.ContainerData, error) {
+	filter := dockerfilters.NewArgs()
+	filter.Add("id", containerID)
+
+	containers, err := listContainers(c, &filter)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(containers) == 0 {
+		return nil, fmt.Errorf("container %q not found", containerID)
+	}
+	if len(containers) > 1 {
+		log.Warnf("DockerClient: multiple containers (%d) with ID %q. Taking the first one: %+v",
+			len(containers), containerID, containers)
+	}
+
+	return &runtimeclient.ContainerData{
+		ID:      containers[0].ID,
+		Name:    strings.TrimPrefix(containers[0].Names[0], "/"),
+		Running: containers[0].State == "running",
+	}, nil
 }
 
 func (c *DockerClient) Close() error {
