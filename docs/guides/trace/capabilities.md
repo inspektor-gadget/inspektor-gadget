@@ -1,5 +1,5 @@
 ---
-title: 'The "capabilities" gadget'
+title: 'Using `trace capabilities`'
 weight: 10
 ---
 

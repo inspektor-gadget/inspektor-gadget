@@ -1,5 +1,5 @@
 ---
-title: 'The "trace exec" gadget'
+title: 'Using `trace exec`'
 weight: 10
 ---
 

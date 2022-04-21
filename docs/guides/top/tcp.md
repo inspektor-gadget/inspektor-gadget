@@ -1,5 +1,5 @@
 ---
-title: 'The "top tcp" gadget'
+title: 'Using `top tcp`'
 weight: 10
 ---
 

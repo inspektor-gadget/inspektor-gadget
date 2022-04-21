@@ -1,5 +1,5 @@
 ---
-title: 'The "profile" gadget'
+title: 'Using `profile cpu`'
 weight: 10
 ---
 

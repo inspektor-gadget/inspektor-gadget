@@ -1,5 +1,5 @@
 ---
-title: 'The "audit seccomp" gadget'
+title: 'Using `audit seccomp`'
 weight: 10
 ---
 

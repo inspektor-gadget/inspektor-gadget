@@ -1,5 +1,5 @@
 ---
-title: 'The "fsslower" gadget'
+title: 'Using `trace fsslower`'
 weight: 10
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: 'The "socket-collector" gadget'
+title: 'Using `snapshot socket`'
 weight: 10
 ---
 

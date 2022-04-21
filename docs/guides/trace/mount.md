@@ -1,5 +1,5 @@
 ---
-title: 'The "trace mount" gadget'
+title: 'Using `trace mount`'
 weight: 10
 ---
 

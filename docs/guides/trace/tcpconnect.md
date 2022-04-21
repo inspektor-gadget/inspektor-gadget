@@ -1,5 +1,5 @@
 ---
-title: 'The "tcpconnect" gadget'
+title: 'Using `trace tcpconnect`'
 weight: 10
 ---
 

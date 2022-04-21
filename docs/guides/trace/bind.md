@@ -1,5 +1,5 @@
 ---
-title: 'The "trace bind" gadget'
+title: 'Using `trace bind`'
 weight: 10
 ---
 
