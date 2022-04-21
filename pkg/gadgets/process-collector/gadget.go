@@ -73,6 +73,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 
 	if len(events) == 0 {
 		trace.Status.OperationWarning = "No container matches the requested filter"
+		trace.Status.State = "Completed"
 		return
 	}
 
