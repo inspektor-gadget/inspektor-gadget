@@ -6,7 +6,7 @@ Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kube
 
 Inspektor Gadget tools are known as gadgets. You can deploy one, two or many gadgets.
 
-Exploring the following documentation will best help you learn which tools can help you in your investigations.
+Explore the following documentation to find out which tools can help you in your investigations.
 
 - `advise`:
 	- [`network-policy`](docs/guides/advise/network-policy.md)

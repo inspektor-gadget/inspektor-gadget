@@ -1,6 +1,6 @@
 ---
-title: Gadget specs
+title: CR Usage Reference
 description: >
-  Reference documentation for the existing gadgets.
+  Syntax reference for using the Trace custom resource with each gadget.
 weight: 30
 ---
