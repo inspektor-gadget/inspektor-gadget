@@ -17,7 +17,6 @@ package docker
 import (
 	"context"
 	"errors"
-	"net"
 	"time"
 
 	"github.com/docker/docker/client"
@@ -47,9 +46,8 @@ func NewDockerClient(apiSocket string) (runtimeclient.ContainerRuntimeClient, er
 
 	cli, err := client.NewClientWithOpts(
 		client.WithAPIVersionNegotiation(),
-		client.WithDialContext(func(ctx context.Context, network, addr string) (net.Conn, error) {
-			return net.DialTimeout("unix", apiSocket, DefaultTimeout)
-		}),
+		client.WithHost("unix://"+apiSocket),
+		client.WithTimeout(DefaultTimeout),
 	)
 	if err != nil {
 		return nil, err
