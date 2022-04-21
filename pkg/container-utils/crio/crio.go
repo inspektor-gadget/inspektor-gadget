@@ -31,6 +31,10 @@ type CrioClient struct {
 }
 
 func NewCrioClient(endpoint string) (runtimeclient.ContainerRuntimeClient, error) {
+	if endpoint == "" {
+		endpoint = DefaultRuntimeEndpoint
+	}
+
 	criClient, err := runtimeclient.NewCRIClient(Name, endpoint, DefaultTimeout)
 	if err != nil {
 		return nil, err

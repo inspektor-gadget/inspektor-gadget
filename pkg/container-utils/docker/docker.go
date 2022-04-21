@@ -41,6 +41,10 @@ type DockerClient struct {
 }
 
 func NewDockerClient(apiSocket string) (runtimeclient.ContainerRuntimeClient, error) {
+	if apiSocket == "" {
+		apiSocket = DefaultEngineAPISocket
+	}
+
 	cli, err := client.NewClientWithOpts(
 		client.WithAPIVersionNegotiation(),
 		client.WithDialContext(func(ctx context.Context, network, addr string) (net.Conn, error) {

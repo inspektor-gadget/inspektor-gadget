@@ -83,23 +83,28 @@ out:
 */
 import "C"
 
-var ContainerRuntimes = []string{
+var AvailableRuntimes = []string{
 	docker.Name,
 	containerd.Name,
 	crio.Name,
 }
 
-func NewContainerRuntimeClient(runtime string) (runtimeclient.ContainerRuntimeClient, error) {
-	switch runtime {
+type RuntimeConfig struct {
+	Name       string
+	SocketPath string
+}
+
+func NewContainerRuntimeClient(runtime *RuntimeConfig) (runtimeclient.ContainerRuntimeClient, error) {
+	switch runtime.Name {
 	case docker.Name:
-		return docker.NewDockerClient(docker.DefaultEngineAPISocket)
+		return docker.NewDockerClient(runtime.SocketPath)
 	case containerd.Name:
-		return containerd.NewContainerdClient(containerd.DefaultRuntimeEndpoint)
+		return containerd.NewContainerdClient(runtime.SocketPath)
 	case crio.Name:
-		return crio.NewCrioClient(crio.DefaultRuntimeEndpoint)
+		return crio.NewCrioClient(runtime.SocketPath)
 	default:
 		return nil, fmt.Errorf("unknown container runtime: %s (available %s)",
-			runtime, strings.Join(ContainerRuntimes, ", "))
+			runtime, strings.Join(AvailableRuntimes, ", "))
 	}
 }
 
