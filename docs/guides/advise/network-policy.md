@@ -1,5 +1,5 @@
 ---
-title: 'The "network-policy" gadget'
+title: 'Using `advise network-policy`'
 weight: 10
 ---
 

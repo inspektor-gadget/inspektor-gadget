@@ -5,7 +5,7 @@ description: >
   How to use the local-gadget tool.
 ---
 
-Inspektor Gadget can also be used without Kubernetes to trace containers with the local-gadget tool.
+Inspektor Gadget can also be used without Kubernetes to trace containers with the `local-gadget` tool.
 
 ## Examples
 

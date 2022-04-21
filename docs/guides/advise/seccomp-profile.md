@@ -1,5 +1,5 @@
 ---
-title: 'The "seccomp" gadget'
+title: 'Using `advise seccomp-profile`'
 weight: 10
 ---
 

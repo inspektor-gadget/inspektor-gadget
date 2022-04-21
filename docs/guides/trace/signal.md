@@ -1,5 +1,5 @@
 ---
-title: 'The "trace signal" gadget'
+title: 'Using `trace signal`'
 weight: 10
 ---
 

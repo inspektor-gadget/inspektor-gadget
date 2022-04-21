@@ -1,5 +1,5 @@
 ---
-title: 'The "process-collector" gadget'
+title: 'Using `snapshot process`'
 weight: 10
 ---
 

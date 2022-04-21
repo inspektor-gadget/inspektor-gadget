@@ -2,7 +2,7 @@
 title: Installation
 weight: 10
 description: >
-  How to install.
+  How to install Inspektor Gadget
 ---
 
 <!-- toc -->
@@ -18,7 +18,7 @@ description: >
     + [Minikube](#minikube)
 <!-- /toc -->
 
-Inspektor Gadget is composed by a `kubectl` plugin executed in the user's
+Inspektor Gadget is composed of a `kubectl` plugin executed in the user's
 system and a DaemonSet deployed in the cluster.
 
 ## Installing kubectl gadget
@@ -49,7 +49,10 @@ $ curl -sL https://github.com/kinvolk/inspektor-gadget/releases/download/v0.2.0/
 $ kubectl gadget version
 ```
 
-### Compile from the sources
+### Compile from source
+
+To build Inspektor Gadget from source, you'll need to have a Golang version
+1.16 or higher installed.
 
 ```bash
 $ git clone https://github.com/kinvolk/inspektor-gadget.git

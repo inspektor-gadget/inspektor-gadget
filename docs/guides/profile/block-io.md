@@ -1,5 +1,5 @@
 ---
-title: 'The "biolatency" gadget'
+title: 'Using `profile block-io`'
 weight: 10
 ---
 

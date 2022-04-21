@@ -1,5 +1,5 @@
 ---
-title: 'The "top file" gadget'
+title: 'Using `top file`'
 weight: 10
 ---
 

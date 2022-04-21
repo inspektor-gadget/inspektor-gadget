@@ -1,5 +1,5 @@
 ---
-title: 'The "trace open" gadget'
+title: 'Using `trace open`'
 weight: 10
 ---
 

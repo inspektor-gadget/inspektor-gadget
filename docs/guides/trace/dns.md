@@ -1,5 +1,5 @@
 ---
-title: 'The "dns" gadget'
+title: 'Using `trace dns`'
 weight: 10
 ---
 

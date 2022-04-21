@@ -1,5 +1,5 @@
 ---
-title: 'The "oomkill" gadget'
+title: 'Using `trace oomkill`'
 weight: 10
 ---
 
