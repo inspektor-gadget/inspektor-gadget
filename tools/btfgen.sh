@@ -3,16 +3,10 @@
 set -e
 set -x
 
-LIBBPFTOOLS="${LIBBPFTOOLS:-$(pwd)/../bcc/libbpf-tools/.output/}"
 BTFHUB="${BTFHUB:-$(pwd)/../btfhub/}"
 INSPEKTOR_GADGET=${INSPEKTOR_GADGET:-$(pwd)}
 ARCH=x86_64
 OUTPUT=/tmp/btfs
-
-if [ ! -d "${LIBBPFTOOLS}" ]; then
-    echo "error: libbpftools folder not found"
-    exit 1
-fi
 
 if [ ! -d "${BTFHUB}" ]; then
     echo "error: btfhub folder not found"

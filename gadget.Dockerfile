@@ -2,7 +2,7 @@
 
 # BCC built from the gadget branch in the kinvolk/bcc fork.
 # See BCC section in docs/CONTRIBUTING.md for further details.
-ARG BCC="quay.io/kinvolk/bcc:8b46a61f618fb74ec647250f71be33ce74763d75-focal-release"
+ARG BCC="quay.io/kinvolk/bcc:64a64b4ba0a719fb6b79a4705f29ad5e1fa1e47d-focal-release"
 ARG OS_TAG=20.04
 
 FROM ${BCC} as bcc
@@ -39,11 +39,10 @@ COPY ./ /gadget
 RUN cd /gadget/gadget-container && make gadget-container-deps
 
 # Execute BTFGen
-COPY --from=bcc /objs /objs
 RUN set -ex; \
 	if [ "$ENABLE_BTFGEN" = true ]; then \
 		cd /btf-tools && \
-		LIBBPFTOOLS=/objs BTFHUB=/tmp/btfhub INSPEKTOR_GADGET=/gadget ./btfgen.sh; \
+		BTFHUB=/tmp/btfhub INSPEKTOR_GADGET=/gadget ./btfgen.sh; \
 	fi
 
 # Builder: traceloop
@@ -66,7 +65,7 @@ RUN set -ex; \
 	apt-get install -y --no-install-recommends \
 		ca-certificates curl jq wget xz-utils binutils rpm2cpio cpio && \
 		rmdir /usr/src && ln -sf /host/usr/src /usr/src && \
-		rm /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
+		rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
 
 COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
 
