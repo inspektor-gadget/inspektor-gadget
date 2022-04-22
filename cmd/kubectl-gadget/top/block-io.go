@@ -64,10 +64,23 @@ var blockIOCmd = &cobra.Command{
 			},
 		}
 
-		blockIOStartOutput()
+		// only wants to run for a given amount of time and print
+		// that result.
+		singleShot := params.Timeout == outputInterval
+
+		// start print loop if this is not a "single shoot" operation
+		if singleShot {
+			blockIOPrintHeader()
+		} else {
+			blockIOStartPrintLoop()
+		}
 
 		if err := utils.RunTraceStreamCallback(config, blockIOCallback); err != nil {
 			return utils.WrapInErrRunGadget(err)
+		}
+
+		if singleShot {
+			blockIOPrintEvents()
 		}
 
 		return nil
@@ -108,18 +121,40 @@ func blockIOCallback(line string, node string) {
 	blockIONodeStats[node] = event.Stats
 }
 
-func blockIOStartOutput() {
-	ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
-
+func blockIOStartPrintLoop() {
 	go func() {
+		ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
 		for {
-			blockIOPrintOutput()
-			<-ticker.C
+			_ = <-ticker.C
+			blockIOPrintHeader()
+			blockIOPrintEvents()
 		}
 	}()
 }
 
-func blockIOPrintOutput() {
+func blockIOPrintHeader() {
+	switch params.OutputMode {
+	case utils.OutputModeColumns:
+		if term.IsTerminal(int(os.Stdout.Fd())) {
+			utils.ClearScreen()
+		} else {
+			fmt.Println("")
+		}
+
+		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-3s %-6s %-6s %-7s %-8s %s\n",
+			"NODE", "NAMESPACE", "POD", "CONTAINER",
+			"PID", "COMM", "R/W", "MAJOR", "MINOR", "BYTES", "TIME(µs)", "IOs")
+	case utils.OutputModeCustomColumns:
+		if term.IsTerminal(int(os.Stdout.Fd())) {
+			utils.ClearScreen()
+		} else {
+			fmt.Println("")
+		}
+		fmt.Println(blockIOGetCustomColsHeader(params.CustomColumns))
+	}
+}
+
+func blockIOPrintEvents() {
 	// sort and print events
 	mutex.Lock()
 
@@ -135,15 +170,6 @@ func blockIOPrintOutput() {
 
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-
-		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-3s %-6s %-6s %-7s %-8s %s\n",
-			"NODE", "NAMESPACE", "POD", "CONTAINER",
-			"PID", "COMM", "R/W", "MAJOR", "MINOR", "BYTES", "TIME(µs)", "IOs")
 		for idx, event := range stats {
 			if idx == maxRows {
 				break
@@ -167,12 +193,6 @@ func blockIOPrintOutput() {
 		}
 		fmt.Println(string(b))
 	case utils.OutputModeCustomColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Println(blockIOGetCustomColsHeader(params.CustomColumns))
 		for idx, stat := range stats {
 			if idx == maxRows {
 				break

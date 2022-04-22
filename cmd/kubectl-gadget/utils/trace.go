@@ -966,6 +966,15 @@ func genericStreams(
 		}(i.Spec.Node, i.ObjectMeta.Namespace, i.ObjectMeta.Name, index)
 	}
 
+	exit := make(chan bool)
+
+	if params.Timeout != 0 {
+		go func() {
+			time.Sleep(time.Duration(params.Timeout) * time.Second)
+			exit <- true
+		}()
+	}
+
 	for {
 		select {
 		case <-sigs:
@@ -978,6 +987,8 @@ func genericStreams(
 			if atomic.AddInt32(&streamCount, -1) == 0 {
 				return nil
 			}
+		case <-exit:
+			return nil
 		}
 	}
 }
