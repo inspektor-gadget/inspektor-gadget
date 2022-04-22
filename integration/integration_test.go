@@ -29,7 +29,8 @@ var (
 	// image such as docker.io/kinvolk/gadget:latest
 	image = flag.String("image", "", "gadget container image")
 
-	doNotDeploy = flag.Bool("no-deploy", false, "don't deploy Inspektor Gadget")
+	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
+	doNotDeploySPO = flag.Bool("no-deploy-spo", false, "don't deploy the Security Profiles Operator (SPO)")
 )
 
 func runCommands(cmds []*command, t *testing.T) {
@@ -85,30 +86,35 @@ func testMain(m *testing.M) int {
 	rand.Seed(seed)
 	fmt.Printf("using random seed: %d\n", seed)
 
-	initCommands := []*command{
-		deployInspektorGadget,
-		deploySPO,
-		waitUntilInspektorGadgetPodsDeployed,
-		waitUntilInspektorGadgetPodsInitialized,
+	initCommands := []*command{}
+
+	if !*doNotDeploySPO {
+		initCommands = append(initCommands, deploySPO)
+		defer func() {
+			fmt.Printf("Clean SPO:\n")
+			cleanupSPO.runWithoutTest()
+		}()
 	}
 
-	if !*doNotDeploy {
+	if !*doNotDeployIG {
+		initCommands = append(initCommands, deployInspektorGadget)
+		initCommands = append(initCommands, waitUntilInspektorGadgetPodsDeployed)
+		initCommands = append(initCommands, waitUntilInspektorGadgetPodsInitialized)
+
 		// defer the cleanup to be sure it's called if the test
 		// fails (hence calling runtime.Goexit())
 		defer func() {
 			fmt.Printf("Clean inspektor-gadget:\n")
 			cleanupInspektorGadget.runWithoutTest()
-			fmt.Printf("Clean SPO:\n")
-			cleanupSPO.runWithoutTest()
 		}()
+	}
 
-		fmt.Printf("Setup inspektor-gadget:\n")
-		for _, cmd := range initCommands {
-			err := cmd.runWithoutTest()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
-				return -1
-			}
+	fmt.Printf("Running init commands:\n")
+	for _, cmd := range initCommands {
+		err := cmd.runWithoutTest()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return -1
 		}
 	}
 
