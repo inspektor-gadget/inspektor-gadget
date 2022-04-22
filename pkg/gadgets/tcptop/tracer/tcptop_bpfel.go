@@ -62,7 +62,6 @@ type tcptopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcptopMapSpecs struct {
-	CgroupMap  *ebpf.MapSpec `ebpf:"cgroup_map"`
 	IpMap      *ebpf.MapSpec `ebpf:"ip_map"`
 	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
 }
@@ -86,14 +85,12 @@ func (o *tcptopObjects) Close() error {
 //
 // It can be passed to loadTcptopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcptopMaps struct {
-	CgroupMap  *ebpf.Map `ebpf:"cgroup_map"`
 	IpMap      *ebpf.Map `ebpf:"ip_map"`
 	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
 }
 
 func (m *tcptopMaps) Close() error {
 	return _TcptopClose(
-		m.CgroupMap,
 		m.IpMap,
 		m.MountNsSet,
 	)
