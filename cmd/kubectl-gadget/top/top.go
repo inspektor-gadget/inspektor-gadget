@@ -15,16 +15,33 @@
 package top
 
 import (
+	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 
 	"github.com/spf13/cobra"
 )
 
-// All the gadgets within this package use this global variable, so let's
-// declare it here.
-var params utils.CommonFlags
+var (
+	params utils.CommonFlags
+	mutex  sync.Mutex
+
+	outputInterval int
+	maxRows        int
+	sortBy         string
+)
 
 var TopCmd = &cobra.Command{
 	Use:   "top",
 	Short: "Gather, sort and print events according to a given criteria",
+}
+
+func addTopCommand(command *cobra.Command, defaultMaxRows int, sortBySlice []string) {
+	command.Flags().IntVarP(&maxRows, "maxRows", "r", defaultMaxRows, "Maximum rows to print")
+	command.Flags().StringVarP(&sortBy, "sort", "", sortBySlice[0], fmt.Sprintf("Sort column, possible values are: %s", strings.Join(sortBySlice, ", ")))
+
+	utils.AddCommonFlags(command, &params)
+	TopCmd.AddCommand(command)
 }

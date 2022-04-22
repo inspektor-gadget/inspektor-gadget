@@ -30,6 +30,13 @@ const (
 )
 
 const (
+	MaxRowsDefault  = 20
+	IntervalDefault = 1
+	SortByDefault   = ALL
+	AllFilesDefault = false
+)
+
+const (
 	IntervalParam = "interval"
 	MaxRowsParam  = "max_rows"
 	SortByParam   = "sort_by"
