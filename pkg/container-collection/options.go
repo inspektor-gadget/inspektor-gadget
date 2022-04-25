@@ -16,6 +16,7 @@ package containercollection
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -477,6 +478,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 			// Fill Kubernetes fields
 			namespace := ""
 			podname := ""
+			podUID := ""
 			containerName := ""
 			labels := []*pb.Label{}
 			var podOwnerRef []metav1.OwnerReference
@@ -494,6 +496,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 
 				namespace = pod.ObjectMeta.Namespace
 				podname = pod.ObjectMeta.Name
+				podUID = uid
 
 				for k, v := range pod.ObjectMeta.Labels {
 					labels = append(labels, &pb.Label{Key: k, Value: v})
@@ -518,6 +521,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 
 			containerDefinition.Namespace = namespace
 			containerDefinition.Podname = podname
+			containerDefinition.PodUid = podUID
 			containerDefinition.Name = containerName
 			containerDefinition.Labels = labels
 
@@ -552,10 +556,12 @@ func WithRuncFanotify() ContainerCollectionOption {
 				for _, m := range notif.ContainerConfig.Mounts {
 					mountSources = append(mountSources, m.Source)
 				}
+				ociConfig, _ := json.Marshal(notif.ContainerConfig)
 				containerDefinition := &pb.ContainerDefinition{
 					Id:           notif.ContainerID,
 					Pid:          notif.ContainerPID,
 					MountSources: mountSources,
+					OciConfig:    string(ociConfig),
 				}
 
 				cc.AddContainer(containerDefinition)

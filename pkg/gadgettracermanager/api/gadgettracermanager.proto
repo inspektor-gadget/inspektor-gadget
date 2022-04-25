@@ -106,6 +106,9 @@ message ContainerDefinition {
   // The owner reference information is added to the seccomp profile as
   // annotations to help users to identify the workflow of the profile.
   OwnerReference owner_reference = 14;
+
+  string oci_config = 15;
+  string pod_uid = 16;
 }
 
 message DumpStateRequest {
