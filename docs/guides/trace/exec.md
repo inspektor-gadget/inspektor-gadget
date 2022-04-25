@@ -1,5 +1,5 @@
 ---
-title: 'Using `trace exec`'
+title: 'Using trace exec'
 weight: 10
 ---
 

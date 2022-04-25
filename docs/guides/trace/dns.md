@@ -1,5 +1,5 @@
 ---
-title: 'Using `trace dns`'
+title: 'Using trace dns'
 weight: 10
 ---
 

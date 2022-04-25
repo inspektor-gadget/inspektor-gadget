@@ -1,5 +1,5 @@
 ---
-title: 'Using `advise network-policy`'
+title: 'Using advise network-policy'
 weight: 10
 ---
 

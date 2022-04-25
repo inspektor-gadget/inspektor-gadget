@@ -1,5 +1,5 @@
 ---
-title: 'Using `trace tcp`'
+title: 'Using trace tcp'
 weight: 10
 ---
 

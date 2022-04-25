@@ -1,5 +1,5 @@
 ---
-title: 'Using `trace bind`'
+title: 'Using trace bind'
 weight: 10
 ---
 

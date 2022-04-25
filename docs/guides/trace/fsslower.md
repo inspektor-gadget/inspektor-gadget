@@ -1,5 +1,5 @@
 ---
-title: 'Using `trace fsslower`'
+title: 'Using trace fsslower'
 weight: 10
 ---
 

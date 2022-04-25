@@ -1,5 +1,5 @@
----
-title: 'Using `profile block-io`'
+--
+title: 'Using profile block-io'
 weight: 10
 ---
 

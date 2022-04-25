@@ -1,5 +1,5 @@
 ---
-title: 'Using `trace capabilities`'
+title: 'Using trace capabilities'
 weight: 10
 ---
 

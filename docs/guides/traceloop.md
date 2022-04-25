@@ -1,5 +1,5 @@
 ---
-title: 'The "traceloop" gadget'
+title: 'Using traceloop'
 weight: 10
 ---
 

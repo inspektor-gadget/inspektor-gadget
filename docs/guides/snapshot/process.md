@@ -1,5 +1,5 @@
 ---
-title: 'Using `snapshot process`'
+title: 'Using snapshot process'
 weight: 10
 ---
 
