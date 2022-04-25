@@ -1,5 +1,5 @@
 ---
-title: 'Using `top block-io`'
+title: 'Using top block-io'
 weight: 10
 ---
 

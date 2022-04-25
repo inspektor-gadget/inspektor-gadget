@@ -1,5 +1,5 @@
 ---
-title: 'Using `trace oomkill`'
+title: 'Using trace oomkill'
 weight: 10
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: 'Using `top file`'
+title: 'Using top file'
 weight: 10
 ---
 

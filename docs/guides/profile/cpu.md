@@ -1,5 +1,5 @@
 ---
-title: 'Using `profile cpu`'
+title: 'Using profile cpu'
 weight: 10
 ---
 

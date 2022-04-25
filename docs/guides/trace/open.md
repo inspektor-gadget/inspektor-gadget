@@ -1,5 +1,5 @@
 ---
-title: 'Using `trace open`'
+title: 'Using trace open'
 weight: 10
 ---
 

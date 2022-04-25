@@ -1,5 +1,5 @@
 ---
-title: 'Using `snapshot socket`'
+title: 'Using snapshot socket'
 weight: 10
 ---
 

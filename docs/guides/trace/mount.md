@@ -1,5 +1,5 @@
 ---
-title: 'Using `trace mount`'
+title: 'Using trace mount'
 weight: 10
 ---
 

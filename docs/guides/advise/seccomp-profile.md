@@ -1,5 +1,5 @@
 ---
-title: 'Using `advise seccomp-profile`'
+title: 'Using advise seccomp-profile'
 weight: 10
 ---
 

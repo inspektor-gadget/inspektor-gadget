@@ -1,5 +1,5 @@
 ---
-title: 'Using `audit seccomp`'
+title: 'Using audit seccomp'
 weight: 10
 ---
 

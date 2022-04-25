@@ -1,5 +1,5 @@
 ---
-title: 'Using `trace signal`'
+title: 'Using trace signal'
 weight: 10
 ---
 
