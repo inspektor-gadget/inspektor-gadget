@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gadget-container-collection
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gadget-container-collection
+  namespace: gadget-container-collection
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gadget-container-collection-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["list", "watch", "create"]
+- apiGroups: ["security.openshift.io"]
+  # It is necessary to use the 'privileged' security context constraints to be
+  # able mount host directories as volumes, use the host networking, among others.
+  # This will be used only when running on OpenShift:
+  # https://docs.openshift.com/container-platform/4.9/authentication/managing-security-context-constraints.html#default-sccs_configuring-internal-oauth
+  resources: ["securitycontextconstraints"]
+  resourceNames: ["privileged"]
+  verbs: ["use"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: gadget-container-collection-cluster-role-binding
+subjects:
+- kind: ServiceAccount
+  name: gadget-container-collection
+  namespace: gadget-container-collection
+roleRef:
+  kind: ClusterRole
+  name: gadget-container-collection-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gadget-container-collection
+  namespace: gadget-container-collection
+  labels:
+    k8s-app: gadget-container-collection
+spec:
+  selector:
+    matchLabels:
+      k8s-app: gadget-container-collection
+  template:
+    metadata:
+      labels:
+        k8s-app: gadget-container-collection
+    spec:
+      serviceAccount: gadget-container-collection
+      hostPID: true
+      hostNetwork: true
+      containers:
+      - name: gadget
+        terminationMessagePolicy: FallbackToLogsOnError
+        image: gadget-kube-container-collection:latest
+        imagePullPolicy: Always
+        env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        securityContext:
+          capabilities:
+            add:
+              # fanotify requires CAP_SYS_ADMIN
+              - SYS_ADMIN
+        volumeMounts:
+        - name: host
+          mountPath: /host
+        - name: run
+          mountPath: /run
+        - name: modules
+          mountPath: /lib/modules
+        - name: debugfs
+          mountPath: /sys/kernel/debug
+        - name: cgroup
+          mountPath: /sys/fs/cgroup
+        - name: bpffs
+          mountPath: /sys/fs/bpf
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+      volumes:
+      - name: host
+        hostPath:
+          path: /
+      - name: run
+        hostPath:
+          path: /run
+      - name: cgroup
+        hostPath:
+          path: /sys/fs/cgroup
+      - name: modules
+        hostPath:
+          path: /lib/modules
+      - name: bpffs
+        hostPath:
+          path: /sys/fs/bpf
+      - name: debugfs
+        hostPath:
+          path: /sys/kernel/debug
