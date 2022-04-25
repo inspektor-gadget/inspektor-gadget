@@ -99,7 +99,7 @@ func (t *TableFormater) GetTransformFunc() func(string) string {
 
 		err := json.Unmarshal([]byte(line), &event)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", WrapInErrUnmarshalOutput(err))
+			fmt.Fprintf(os.Stderr, "Error: %s", WrapInErrUnmarshalOutput(err, line))
 			return ""
 		}
 
