@@ -33,7 +33,7 @@ Go back to *the first terminal* and see:
 
 ```
 NODE             NAMESPACE        POD              CONTAINER        PID    COMM             PROTO  ADDR             PORT   OPTS   IF
-minikube         default          test-pod         test-pod         58208  nc               IP     ::               4242   .....  0
+minikube         default          test-pod         test-pod         58208  nc               IP     ::               4242   .R...  0
 ```
 
 This line correspond to the socket binding operation initiated by `nc`.
@@ -68,7 +68,7 @@ The following command is the same as default printing:
 ```bash
 $ kubectl gadget trace bind -o custom-columns=node,namespace,container,pod,pid,proto,addr,port,opts,if
 NODE             NAMESPACE        CONTAINER        POD              PID    PROTO  ADDR             PORT   OPTS   IF
-minikube         default          test-pod         test-pod         61985  IP     ::               4242   .....  0
+minikube         default          test-pod         test-pod         61985  IP     ::               4242   .R...  0
 ```
 
 ## Use JSON output
@@ -77,7 +77,7 @@ This gadget supports JSON output, for this simply use `-o json`:
 
 ```bash
 $ kubectl gadget trace bind -o json
-{"type":"normal","node":"minikube","namespace":"default","pod":"test-pod","container":"test-pod","pid":62232,"comm":"nc","proto":"IP","addr":"::","port":4343,"opts":".....","if":"0","mountnsid":4026532579}
+{"type":"normal","node":"minikube","namespace":"default","pod":"test-pod","container":"test-pod","pid":62232,"comm":"nc","proto":"IP","addr":"::","port":4343,"opts":".R...","if":"0","mountnsid":4026532579}
 # You can use jq to make the output easier to read:
 $ kubectl gadget trace bind -o json | jq
 {
@@ -91,7 +91,7 @@ $ kubectl gadget trace bind -o json | jq
   "proto": "IP",
   "addr": "::",
   "port": 4343,
-  "opts": ".....",
+  "opts": ".R...",
   "if": "0",
   "mountnsid": 4026532579
 }
