@@ -17,6 +17,7 @@ package gadgettracermanager
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"runtime"
 	"sync"
@@ -31,6 +32,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 import "C"
@@ -112,8 +114,13 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 
 	for l := range ch {
 		if l.EventLost {
-			msg := fmt.Sprintf(`{"err": "events lost", "node": "%s"}\n`, g.nodeName)
-			err := stream.Send(&pb.StreamData{Line: msg})
+			ev := eventtypes.Event{
+				Type:    eventtypes.ERR,
+				Node:    g.nodeName,
+				Message: "events lost in gadget tracer manager",
+			}
+			line, _ := json.Marshal(ev)
+			err := stream.Send(&pb.StreamData{Line: string(line)})
 			return err
 		}
 
