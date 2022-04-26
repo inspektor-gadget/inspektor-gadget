@@ -47,6 +47,11 @@ func TestParseExtraInfo(t *testing.T) {
 			expectedPid: -1,
 		},
 		{
+			description: "Former format: Zero PID",
+			info:        map[string]string{"sandboxID": "myID", "pid": "0"},
+			expectedPid: -1,
+		},
+		{
 			description: "Former format: Pid 1234",
 			info:        map[string]string{"sandboxID": "myID", "pid": "1234"},
 			expectedPid: 1234,
@@ -60,7 +65,12 @@ func TestParseExtraInfo(t *testing.T) {
 		{
 			description: "New format: No pid entry",
 			info:        map[string]string{"info": "{\"sandboxID\":\"myID\"}"},
-			expectedPid: 0,
+			expectedPid: -1,
+		},
+		{
+			description: "New format: Zero pid",
+			info:        map[string]string{"info": "{\"sandboxID\":\"myID\",\"pid\":0"},
+			expectedPid: -1,
 		},
 		{
 			description: "New format: Invalid PID",

@@ -72,6 +72,10 @@ func (c *DockerClient) PidFromContainerID(containerID string) (int, error) {
 		return -1, errors.New("container state is nil")
 	}
 
+	if containerJSON.State.Pid == 0 {
+		return -1, errors.New("got zero pid")
+	}
+
 	return containerJSON.State.Pid, nil
 }
 

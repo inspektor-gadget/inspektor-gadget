@@ -116,10 +116,6 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 			log.Warnf("Skip pod %s/%s: cannot find pid: %v", pod.GetNamespace(), pod.GetName(), err)
 			continue
 		}
-		if pid == 0 {
-			log.Warnf("Skip pod %s/%s: got zero pid", pod.GetNamespace(), pod.GetName())
-			continue
-		}
 
 		idParts := strings.SplitN(s.ContainerID, "//", 2)
 		if len(idParts) != 2 {

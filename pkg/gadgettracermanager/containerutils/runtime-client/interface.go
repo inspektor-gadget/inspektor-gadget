@@ -31,9 +31,8 @@ import (
 // different container runtimes.
 type ContainerRuntimeClient interface {
 	// PidFromContainerID returns the pid1 of the container identified by the
-	// specified ID. In case of errors, it can return -1 if there is any problem
-	// retrieving the container information or parsing the response. Or, 0 if
-	// the pid is not present within the retrieved information.
+	// specified ID. In case of errors, it returns -1 and an error describing
+	// what happened.
 	PidFromContainerID(containerID string) (int, error)
 
 	// Close tears down the connection with the container runtime.
@@ -90,6 +89,9 @@ func parseExtraInfo(extraInfo map[string]string) (int, error) {
 		if err != nil {
 			return -1, fmt.Errorf("failed to parse pid %q: %w", pidStr, err)
 		}
+		if pid == 0 {
+			return -1, fmt.Errorf("got zero pid")
+		}
 
 		return pid, nil
 	}
@@ -102,6 +104,9 @@ func parseExtraInfo(extraInfo map[string]string) (int, error) {
 	err := json.Unmarshal([]byte(info), &infoContent)
 	if err != nil {
 		return -1, fmt.Errorf("failed extracting pid from container status reply: %w", err)
+	}
+	if infoContent.Pid == 0 {
+		return -1, fmt.Errorf("got zero pid")
 	}
 
 	return infoContent.Pid, nil
