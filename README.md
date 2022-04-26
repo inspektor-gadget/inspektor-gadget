@@ -33,6 +33,7 @@ Explore the following documentation to find out which tools can help you in your
 	- [`oomkill`](docs/guides/trace/oomkill.md)
 	- [`open`](docs/guides/trace/open.md)
 	- [`signal`](docs/guides/trace/signal.md)
+	- [`sni`](docs/guides/trace/sni.md)
 	- [`tcp`](docs/guides/trace/tcp.md)
 	- [`tcpconnect`](docs/guides/trace/tcpconnect.md)
 - [`traceloop`](docs/guides/traceloop.md)
