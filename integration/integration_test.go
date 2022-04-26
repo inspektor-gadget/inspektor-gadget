@@ -64,19 +64,17 @@ func runCommands(cmds []*command, t *testing.T) {
 	}
 }
 
-func TestMain(m *testing.M) {
+func testMain(m *testing.M) int {
 	flag.Parse()
 
 	if !*integration {
 		fmt.Println("Skipping integration test.")
-
-		os.Exit(0)
+		return 0
 	}
 
 	if os.Getenv("KUBECTL_GADGET") == "" {
 		fmt.Fprintf(os.Stderr, "please set $KUBECTL_GADGET.")
-
-		os.Exit(-1)
+		return -1
 	}
 
 	if *image != "" {
@@ -94,37 +92,31 @@ func TestMain(m *testing.M) {
 		waitUntilInspektorGadgetPodsInitialized,
 	}
 
-	cleanup := func() {
-		fmt.Printf("Clean inspektor-gadget:\n")
-		cleanupInspektorGadget.runWithoutTest()
-		fmt.Printf("Clean SPO:\n")
-		cleanupSPO.runWithoutTest()
-	}
-
 	if !*doNotDeploy {
 		// defer the cleanup to be sure it's called if the test
 		// fails (hence calling runtime.Goexit())
-		defer cleanup()
+		defer func() {
+			fmt.Printf("Clean inspektor-gadget:\n")
+			cleanupInspektorGadget.runWithoutTest()
+			fmt.Printf("Clean SPO:\n")
+			cleanupSPO.runWithoutTest()
+		}()
 
 		fmt.Printf("Setup inspektor-gadget:\n")
 		for _, cmd := range initCommands {
 			err := cmd.runWithoutTest()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
-				cleanup()
-				os.Exit(-1)
+				return -1
 			}
 		}
 	}
 
-	ret := m.Run()
+	return m.Run()
+}
 
-	if !*doNotDeploy {
-		// os.Exit() doesn't call deferred functions, hence do the cleanup manually.
-		cleanup()
-	}
-
-	os.Exit(ret)
+func TestMain(m *testing.M) {
+	os.Exit(testMain(m))
 }
 
 func TestAuditSeccomp(t *testing.T) {
