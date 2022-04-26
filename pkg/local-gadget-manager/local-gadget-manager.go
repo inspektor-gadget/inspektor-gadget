@@ -27,6 +27,8 @@ import (
 	containersmap "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 
 	"github.com/cilium/ebpf"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -286,6 +288,34 @@ func (l *LocalGadgetManager) Dump() string {
 	return out
 }
 
+// ensureBPFMount ensures /sys/fs/bpf is of type bpf. It is necessary to be able
+// to pin eBPF maps. TODO: Remove the need of using pinning, see issues #619 and
+// #620.
+func ensureBPFMount() error {
+	const bpfPinPath string = "/sys/fs/bpf"
+	var buf unix.Statfs_t
+
+	if err := unix.Statfs(bpfPinPath, &buf); err != nil {
+		return fmt.Errorf("error checking type of %s: %w", bpfPinPath, err)
+	}
+
+	if buf.Type == unix.BPF_FS_MAGIC {
+		// It is already bpf type. Nothing to do.
+		return nil
+	}
+
+	log.Debugf("%s is of type %#x but we were expecting %#x (BPF_FS_MAGIC)",
+		bpfPinPath, buf.Type, unix.BPF_FS_MAGIC)
+
+	log.Infof("Remounting %q as bpf", bpfPinPath)
+
+	if err := unix.Mount("bpf", bpfPinPath, "bpf", 0, ""); err != nil {
+		return fmt.Errorf("error remounting %s as bpf: %w", bpfPinPath, err)
+	}
+
+	return nil
+}
+
 func NewManager() (*LocalGadgetManager, error) {
 	l := &LocalGadgetManager{
 		traceFactories: gadgetcollection.TraceFactoriesForLocalGadget(),
@@ -299,6 +329,10 @@ func NewManager() (*LocalGadgetManager, error) {
 	}
 
 	if _, err := ebpf.RemoveMemlockRlimit(); err != nil {
+		return nil, err
+	}
+
+	if err := ensureBPFMount(); err != nil {
 		return nil, err
 	}
 
