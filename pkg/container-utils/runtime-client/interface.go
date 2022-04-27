@@ -42,20 +42,20 @@ type ContainerRuntimeClient interface {
 // CRIClient implements the ContainerRuntimeClient interface using the CRI
 // plugin interface to communicate with the different container runtimes.
 type CRIClient struct {
-	Name            string
-	RuntimeEndpoint string
-	ConnTimeout     time.Duration
+	Name        string
+	SocketPath  string
+	ConnTimeout time.Duration
 
 	conn   *grpc.ClientConn
 	client pb.RuntimeServiceClient
 }
 
-func NewCRIClient(name, endpoint string, timeout time.Duration) (CRIClient, error) {
+func NewCRIClient(name, socketPath string, timeout time.Duration) (CRIClient, error) {
 	conn, err := grpc.Dial(
-		endpoint,
+		socketPath,
 		grpc.WithInsecure(),
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", endpoint, timeout)
+			return net.DialTimeout("unix", socketPath, timeout)
 		}),
 	)
 	if err != nil {
@@ -63,11 +63,11 @@ func NewCRIClient(name, endpoint string, timeout time.Duration) (CRIClient, erro
 	}
 
 	return CRIClient{
-		Name:            name,
-		RuntimeEndpoint: endpoint,
-		ConnTimeout:     timeout,
-		conn:            conn,
-		client:          pb.NewRuntimeServiceClient(conn),
+		Name:        name,
+		SocketPath:  socketPath,
+		ConnTimeout: timeout,
+		conn:        conn,
+		client:      pb.NewRuntimeServiceClient(conn),
 	}, nil
 }
 

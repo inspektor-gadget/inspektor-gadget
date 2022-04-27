@@ -21,21 +21,21 @@ import (
 )
 
 const (
-	Name                   = "containerd"
-	DefaultRuntimeEndpoint = "/run/containerd/containerd.sock"
-	DefaultTimeout         = 2 * time.Second
+	Name              = "containerd"
+	DefaultSocketPath = "/run/containerd/containerd.sock"
+	DefaultTimeout    = 2 * time.Second
 )
 
 type ContainerdClient struct {
 	runtimeclient.CRIClient
 }
 
-func NewContainerdClient(endpoint string) (runtimeclient.ContainerRuntimeClient, error) {
-	if endpoint == "" {
-		endpoint = DefaultRuntimeEndpoint
+func NewContainerdClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
+	if socketPath == "" {
+		socketPath = DefaultSocketPath
 	}
 
-	criClient, err := runtimeclient.NewCRIClient(Name, endpoint, DefaultTimeout)
+	criClient, err := runtimeclient.NewCRIClient(Name, socketPath, DefaultTimeout)
 	if err != nil {
 		return nil, err
 	}

@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	Name                   = "docker"
-	DefaultEngineAPISocket = "/run/docker.sock"
-	DefaultTimeout         = 2 * time.Second
+	Name              = "docker"
+	DefaultSocketPath = "/run/docker.sock"
+	DefaultTimeout    = 2 * time.Second
 )
 
 // DockerClient implements the ContainerRuntimeClient interface but using the
@@ -35,18 +35,18 @@ const (
 // and Containerd. For instance, Dockershim does not provide the container pid1
 // with the ContainerStatus() call as Containerd and CRI-O do.
 type DockerClient struct {
-	client    *client.Client
-	apiSocket string
+	client     *client.Client
+	socketPath string
 }
 
-func NewDockerClient(apiSocket string) (runtimeclient.ContainerRuntimeClient, error) {
-	if apiSocket == "" {
-		apiSocket = DefaultEngineAPISocket
+func NewDockerClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
+	if socketPath == "" {
+		socketPath = DefaultSocketPath
 	}
 
 	cli, err := client.NewClientWithOpts(
 		client.WithAPIVersionNegotiation(),
-		client.WithHost("unix://"+apiSocket),
+		client.WithHost("unix://"+socketPath),
 		client.WithTimeout(DefaultTimeout),
 	)
 	if err != nil {
@@ -54,8 +54,8 @@ func NewDockerClient(apiSocket string) (runtimeclient.ContainerRuntimeClient, er
 	}
 
 	return &DockerClient{
-		client:    cli,
-		apiSocket: apiSocket,
+		client:     cli,
+		socketPath: socketPath,
 	}, nil
 }
 

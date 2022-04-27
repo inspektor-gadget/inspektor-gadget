@@ -21,21 +21,21 @@ import (
 )
 
 const (
-	Name                   = "cri-o"
-	DefaultRuntimeEndpoint = "/run/crio/crio.sock"
-	DefaultTimeout         = 2 * time.Second
+	Name              = "cri-o"
+	DefaultSocketPath = "/run/crio/crio.sock"
+	DefaultTimeout    = 2 * time.Second
 )
 
 type CrioClient struct {
 	runtimeclient.CRIClient
 }
 
-func NewCrioClient(endpoint string) (runtimeclient.ContainerRuntimeClient, error) {
-	if endpoint == "" {
-		endpoint = DefaultRuntimeEndpoint
+func NewCrioClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
+	if socketPath == "" {
+		socketPath = DefaultSocketPath
 	}
 
-	criClient, err := runtimeclient.NewCRIClient(Name, endpoint, DefaultTimeout)
+	criClient, err := runtimeclient.NewCRIClient(Name, socketPath, DefaultTimeout)
 	if err != nil {
 		return nil, err
 	}
