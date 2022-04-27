@@ -114,13 +114,13 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	enter, err := link.Tracepoint("syscalls", "sys_enter_execve", t.objs.TracepointSyscallsSysEnterExecve)
+	enter, err := link.Tracepoint("syscalls", "sys_enter_execve", t.objs.TracepointSyscallsSysEnterExecve, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.enterLink = enter
 
-	exit, err := link.Tracepoint("syscalls", "sys_exit_execve", t.objs.TracepointSyscallsSysExitExecve)
+	exit, err := link.Tracepoint("syscalls", "sys_exit_execve", t.objs.TracepointSyscallsSysExitExecve, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}

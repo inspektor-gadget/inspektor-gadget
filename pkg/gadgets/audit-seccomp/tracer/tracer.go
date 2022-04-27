@@ -119,7 +119,7 @@ func NewTracer(config *Config, eventCallback func(types.Event), node string) (*T
 		return nil, fmt.Errorf("failed to find BPF program %q", BPFProgName)
 	}
 
-	t.progLink, err = link.Kprobe("audit_seccomp", kprobeProg)
+	t.progLink, err = link.Kprobe("audit_seccomp", kprobeProg, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach kprobe: %w", err)
 	}

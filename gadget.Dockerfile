@@ -15,7 +15,7 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y gcc make ca-certificates git clang \
-		software-properties-common libseccomp-dev && \
+		software-properties-common libseccomp-dev llvm && \
 	add-apt-repository -y ppa:tuxinvader/kernel-build-tools && \
 	apt-add-repository -y ppa:longsleep/golang-backports && \
 	apt-get update && \

@@ -21,7 +21,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/rlimit"
 	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
@@ -208,7 +208,7 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 	containerEventFuncs := []pubsub.FuncNotify{}
 
 	if !conf.TestOnly {
-		if _, err := ebpf.RemoveMemlockRlimit(); err != nil {
+		if err := rlimit.RemoveMemlock(); err != nil {
 			return nil, err
 		}
 

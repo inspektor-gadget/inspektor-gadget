@@ -2,10 +2,6 @@ name: "Install debian packages"
 description: "Install debian packages needed by inspektor-gadget"
 
 inputs:
-  cache-hit:
-    description: "Whether debian packages are already present in cache."
-    required: true
-    default: 'false'
   libbpf-version:
     description: "Version of the libbpf to install."
     default: "1:0.4.0-1ubuntu1"
@@ -16,18 +12,25 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Cache debian packages
+      uses: actions/cache@v2
+      id: cache-debs
+      with:
+        path: "~/cache-debs"
+        # Update cache key if you add or update a package.
+        key: v3
     - name: Install debian packages
       shell: bash
       run: |
-        if [[ "${{inputs.cache-hit}}" == 'true' ]]; then
+        if [[ "${{steps.cache-debs.outputs.cache-hit}}" == 'true' ]]; then
           sudo cp --verbose --force --recursive ~/cache-debs/* /
         else
-          sudo apt install -y software-properties-common
+          sudo apt install -y software-properties-common llvm
           sudo add-apt-repository -y ppa:tuxinvader/kernel-build-tools
           sudo apt-get update
           sudo apt install -y libbpf-dev="${{inputs.libbpf-version}}" libseccomp-dev="${{inputs.libseccomp-version}}"
           mkdir -p ~/cache-debs
-          sudo dpkg -L libbpf-dev libseccomp-dev | \
+          sudo dpkg -L libbpf-dev libseccomp-dev llvm | \
               while IFS= read -r f; do \
                   if test -f $f; then echo $f; fi; \
               done | xargs cp --parents --target-directory ~/cache-debs/

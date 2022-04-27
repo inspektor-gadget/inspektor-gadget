@@ -38,7 +38,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang opensnoop ./bpf/opensnoop.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang opensnoop ./bpf/opensnoop.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
 
 type Tracer struct {
 	config        *tracer.Config
@@ -117,25 +117,25 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	openEnter, err := link.Tracepoint("syscalls", "sys_enter_open", t.objs.TracepointSyscallsSysEnterOpen)
+	openEnter, err := link.Tracepoint("syscalls", "sys_enter_open", t.objs.TracepointSyscallsSysEnterOpen, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.openEnterLink = openEnter
 
-	openAtEnter, err := link.Tracepoint("syscalls", "sys_enter_openat", t.objs.TracepointSyscallsSysEnterOpenat)
+	openAtEnter, err := link.Tracepoint("syscalls", "sys_enter_openat", t.objs.TracepointSyscallsSysEnterOpenat, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.openAtEnterLink = openAtEnter
 
-	openExit, err := link.Tracepoint("syscalls", "sys_exit_open", t.objs.TracepointSyscallsSysExitOpen)
+	openExit, err := link.Tracepoint("syscalls", "sys_exit_open", t.objs.TracepointSyscallsSysExitOpen, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.openExitLink = openExit
 
-	openAtExit, err := link.Tracepoint("syscalls", "sys_exit_openat", t.objs.TracepointSyscallsSysExitOpenat)
+	openAtExit, err := link.Tracepoint("syscalls", "sys_exit_openat", t.objs.TracepointSyscallsSysExitOpenat, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}

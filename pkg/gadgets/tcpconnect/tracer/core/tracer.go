@@ -146,22 +146,22 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	t.v4EnterLink, err = link.Kprobe("tcp_v4_connect", t.objs.TcpV4Connect)
+	t.v4EnterLink, err = link.Kprobe("tcp_v4_connect", t.objs.TcpV4Connect, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
-	t.v4ExitLink, err = link.Kretprobe("tcp_v4_connect", t.objs.TcpV4ConnectRet)
+	t.v4ExitLink, err = link.Kretprobe("tcp_v4_connect", t.objs.TcpV4ConnectRet, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
-	t.v6EnterLink, err = link.Kprobe("tcp_v6_connect", t.objs.TcpV6Connect)
+	t.v6EnterLink, err = link.Kprobe("tcp_v6_connect", t.objs.TcpV6Connect, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
-	t.v6ExitLink, err = link.Kretprobe("tcp_v6_connect", t.objs.TcpV6ConnectRet)
+	t.v6ExitLink, err = link.Kretprobe("tcp_v6_connect", t.objs.TcpV6ConnectRet, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}

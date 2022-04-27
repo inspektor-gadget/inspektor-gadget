@@ -187,17 +187,17 @@ func (t *Tracer) start() error {
 		blkAccountIoDoneFunction = "blk_account_io_done"
 	}
 
-	t.ioStartLink, err = link.Kprobe(blkAccountIoStartFunction, t.objs.BlkAccountIoStart)
+	t.ioStartLink, err = link.Kprobe(blkAccountIoStartFunction, t.objs.BlkAccountIoStart, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.startRequestLink, err = link.Kprobe("blk_mq_start_request", t.objs.BlkMqStartRequest)
+	t.startRequestLink, err = link.Kprobe("blk_mq_start_request", t.objs.BlkMqStartRequest, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.doneLink, err = link.Kprobe(blkAccountIoDoneFunction, t.objs.BlkAccountIoDone)
+	t.doneLink, err = link.Kprobe(blkAccountIoDoneFunction, t.objs.BlkAccountIoDone, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}

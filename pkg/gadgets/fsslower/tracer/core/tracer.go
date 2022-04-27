@@ -38,7 +38,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang fsslower ./bpf/fsslower.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang fsslower ./bpf/fsslower.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
 
 type Tracer struct {
 	config        *tracer.Config
@@ -177,41 +177,41 @@ func (t *Tracer) start() error {
 	}
 
 	// read
-	t.readEnterLink, err = link.Kprobe(fsConf.read, t.objs.FileReadEntry)
+	t.readEnterLink, err = link.Kprobe(fsConf.read, t.objs.FileReadEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
-	t.readExitLink, err = link.Kretprobe(fsConf.read, t.objs.FileReadExit)
+	t.readExitLink, err = link.Kretprobe(fsConf.read, t.objs.FileReadExit, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
 	// write
-	t.writeEnterLink, err = link.Kprobe(fsConf.write, t.objs.FileWriteEntry)
+	t.writeEnterLink, err = link.Kprobe(fsConf.write, t.objs.FileWriteEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
-	t.writeExitLink, err = link.Kretprobe(fsConf.write, t.objs.FileWriteExit)
+	t.writeExitLink, err = link.Kretprobe(fsConf.write, t.objs.FileWriteExit, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
 	// open
-	t.openEnterLink, err = link.Kprobe(fsConf.open, t.objs.FileOpenEntry)
+	t.openEnterLink, err = link.Kprobe(fsConf.open, t.objs.FileOpenEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
-	t.openExitLink, err = link.Kretprobe(fsConf.open, t.objs.FileOpenExit)
+	t.openExitLink, err = link.Kretprobe(fsConf.open, t.objs.FileOpenExit, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
 	// sync
-	t.syncEnterLink, err = link.Kprobe(fsConf.fsync, t.objs.FileSyncEntry)
+	t.syncEnterLink, err = link.Kprobe(fsConf.fsync, t.objs.FileSyncEntry, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
-	t.syncExitLink, err = link.Kretprobe(fsConf.fsync, t.objs.FileSyncExit)
+	t.syncExitLink, err = link.Kretprobe(fsConf.fsync, t.objs.FileSyncExit, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
