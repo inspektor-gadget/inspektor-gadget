@@ -338,10 +338,20 @@ func generateTestNamespaceName(namespace string) string {
 // createTestNamespaceCommand returns a command which creates a namespace whom
 // name is given as parameter.
 func createTestNamespaceCommand(namespace string) *command {
+	cmd := fmt.Sprintf(`
+	kubectl create ns %s && \
+	while true; do
+		kubectl -n %s get serviceaccount default
+		if [ $? -eq 0 ]; then
+			break
+		fi
+		sleep 1
+	done
+	`, namespace, namespace)
+
 	return &command{
-		name:           "Create test namespace",
-		cmd:            fmt.Sprintf("kubectl create ns %s", namespace),
-		expectedString: fmt.Sprintf("namespace/%s created\n", namespace),
+		name: "Create test namespace",
+		cmd:  cmd,
 	}
 }
 
