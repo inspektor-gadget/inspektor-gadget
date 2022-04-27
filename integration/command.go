@@ -295,7 +295,23 @@ func (c *command) stop(t *testing.T) {
 // busyboxPodCommand returns a string which can be used as command to run a
 // busybox pod whom inner command is given as parameter.
 func busyboxPodCommand(namespace, cmd string) string {
-	return fmt.Sprintf("kubectl run --restart=Never --image=busybox -n %s test-pod -- sh -c '%s'", namespace, cmd)
+	return fmt.Sprintf(`kubectl apply -f - <<"EOF"
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: %s
+spec:
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 0
+  containers:
+  - name: test-pod
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - %s
+EOF
+`, namespace, cmd)
 }
 
 // generateTestNamespaceName returns a string which can be used as unique
