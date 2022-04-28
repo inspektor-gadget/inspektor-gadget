@@ -166,7 +166,7 @@ minikube-install: gadget-container kubectl-gadget
 	docker save $(CONTAINER_REPO):$(IMAGE_TAG) $(PV) | (eval $(shell $(MINIKUBE) -p minikube docker-env | grep =) && docker load)
 	# Remove all resources created by Inspektor Gadget.
 	./kubectl-gadget undeploy || true
-	./kubectl-gadget deploy --hook-mode=fanotify \
+	./kubectl-gadget deploy --hook-mode=auto \
 		--image-pull-policy=Never | \
 		sed 's/initialDelaySeconds: 10/initialDelaySeconds: '$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS)'/g' | \
 		kubectl apply -f -
