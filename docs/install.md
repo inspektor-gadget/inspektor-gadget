@@ -45,7 +45,7 @@ Download the asset for a given release and platform from the
 uncompress and move the `kubectl-gadget` executable to your `PATH`.
 
 ```bash
-$ curl -sL https://github.com/kinvolk/inspektor-gadget/releases/download/v0.2.0/inspektor-gadget-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - kubectl-gadget
+$ curl -sL https://github.com/kinvolk/inspektor-gadget/releases/latest/download/kubectl-gadget-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - kubectl-gadget
 $ kubectl gadget version
 ```
 
