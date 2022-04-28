@@ -19,9 +19,17 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
+
+const (
+	K8sDistroARO        = "aro"
+	K8sDistroMinikubeGH = "minikube-github"
+)
+
+var supportedK8sDistros = []string{K8sDistroARO, K8sDistroMinikubeGH}
 
 var (
 	integration = flag.Bool("integration", false, "run integration tests")
@@ -31,6 +39,8 @@ var (
 
 	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
 	doNotDeploySPO = flag.Bool("no-deploy-spo", false, "don't deploy the Security Profiles Operator (SPO)")
+
+	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
 )
 
 func runCommands(cmds []*command, t *testing.T) {
@@ -82,6 +92,22 @@ func testMain(m *testing.M) int {
 		os.Setenv("GADGET_IMAGE_FLAG", "--image "+*image)
 	}
 
+	if *k8sDistro != "" {
+		found := false
+		for _, val := range supportedK8sDistros {
+			if *k8sDistro == val {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			fmt.Fprintf(os.Stderr, "Error: invalid argument '-k8s-distro': %q. Valid values: %s\n",
+				*k8sDistro, strings.Join(supportedK8sDistros, ", "))
+			return -1
+		}
+	}
+
 	seed := time.Now().UTC().UnixNano()
 	rand.Seed(seed)
 	fmt.Printf("using random seed: %d\n", seed)
@@ -97,9 +123,18 @@ func testMain(m *testing.M) int {
 	}
 
 	if !*doNotDeployIG {
+		initialDelay := 15
+		if *k8sDistro == K8sDistroARO {
+			// ARO and any other Kubernetes distribution that uses Red Hat
+			// Enterprise Linux CoreOS (RHCOS) requires more time to initialise
+			// because we automatically download the kernel headers for it. See
+			// gadget-container/entrypoint.sh.
+			initialDelay = 60
+		}
+
 		initCommands = append(initCommands, deployInspektorGadget)
 		initCommands = append(initCommands, waitUntilInspektorGadgetPodsDeployed)
-		initCommands = append(initCommands, waitUntilInspektorGadgetPodsInitialized)
+		initCommands = append(initCommands, waitUntilInspektorGadgetPodsInitialized(initialDelay))
 
 		// defer the cleanup to be sure it's called if the test
 		// fails (hence calling runtime.Goexit())
@@ -126,6 +161,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestAuditSeccomp(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running audit-seccomp gadget on ARO: see issue #631")
+	}
+
 	ns := generateTestNamespaceName("test-audit-seccomp")
 
 	t.Parallel()
@@ -223,7 +262,7 @@ func TestBiolatency(t *testing.T) {
 	commands := []*command{
 		{
 			name:           "Run biolatency gadget",
-			cmd:            "id=$($KUBECTL_GADGET profile block-io start --node $(kubectl get node --no-headers | cut -d' ' -f1)); sleep 15; $KUBECTL_GADGET profile block-io stop $id",
+			cmd:            "id=$($KUBECTL_GADGET profile block-io start --node $(kubectl get node --no-headers | cut -d' ' -f1 | head -1)); sleep 15; $KUBECTL_GADGET profile block-io stop $id",
 			expectedRegexp: `usecs\s+:\s+count\s+distribution`,
 		},
 	}
@@ -232,6 +271,10 @@ func TestBiolatency(t *testing.T) {
 }
 
 func TestBiotop(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running biotop gadget on ARO: see issue #589")
+	}
+
 	ns := generateTestNamespaceName("test-biotop")
 
 	t.Parallel()
@@ -347,13 +390,18 @@ func TestFiletop(t *testing.T) {
 }
 
 func TestFsslower(t *testing.T) {
+	fsType := "ext4"
+	if *k8sDistro == K8sDistroARO {
+		fsType = "xfs"
+	}
+
 	ns := generateTestNamespaceName("test-fsslower")
 
 	t.Parallel()
 
 	fsslowerCmd := &command{
 		name:           "Start fsslower gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace fsslower -n %s -t ext4 -m 0", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace fsslower -n %s -t %s -m 0", ns, fsType),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+cat`, ns),
 		startAndStop:   true,
 	}
@@ -481,6 +529,10 @@ func TestOpensnoop(t *testing.T) {
 }
 
 func TestProcessCollector(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running process-collector gadget on ARO: iterators are not supported on kernel 4.18.0-305.19.1.el8_4.x86_64")
+	}
+
 	ns := generateTestNamespaceName("test-process-collector")
 
 	t.Parallel()
@@ -587,6 +639,10 @@ func TestSnisnoop(t *testing.T) {
 }
 
 func TestSocketCollector(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running socket-collector gadget on ARO: iterators are not supported on kernel 4.18.0-305.19.1.el8_4.x86_64")
+	}
+
 	ns := generateTestNamespaceName("test-socket-collector")
 
 	t.Parallel()
@@ -659,7 +715,7 @@ func TestTcptop(t *testing.T) {
 
 	tcptopCmd := &command{
 		name:           "Start tcptop gadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET top tcp --node $(kubectl get node --no-headers | cut -d' ' -f1) -n %s -p test-pod", ns),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s", ns),
 		expectedRegexp: `wget`,
 		startAndStop:   true,
 	}
