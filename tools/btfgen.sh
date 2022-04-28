@@ -18,6 +18,8 @@ if [ ! -d "${INSPEKTOR_GADGET}" ]; then
     exit 1
 fi
 
+# We do not need to add network eBPF programs like dns or snisnoop here because
+# they do not rely on BTF (i.e., they do not include vmlinux.h).
 ${BTFHUB}/tools/btfgen.sh -a ${ARCH}                                                                \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/audit-seccomp/tracer/auditseccomp_bpfel.o                    \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/audit-seccomp/tracer/auditseccompwithfilters_bpfel.o         \
