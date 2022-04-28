@@ -15,7 +15,6 @@
 package tracer
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/cilium/ebpf"
@@ -23,6 +22,8 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	log "github.com/sirupsen/logrus"
 )
+
+//go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang seccomp ./bpf/seccomp.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../.. -target bpf -D__TARGET_ARCH_x86"
 
 // #include "bpf/seccomp-common.h"
 import "C"
@@ -44,7 +45,7 @@ type Tracer struct {
 }
 
 func NewTracer() (*Tracer, error) {
-	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(ebpfProg))
+	spec, err := loadSeccomp()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
