@@ -29,6 +29,7 @@ bin/
 !pkg/gadgets/opensnoop/tracer/core/*.o
 !pkg/gadgets/process-collector/tracer/*.o
 !pkg/gadgets/sigsnoop/tracer/*.o
+!pkg/gadgets/snisnoop/tracer/*.o
 !pkg/gadgets/socket-collector/tracer/*.o
 !pkg/gadgets/tcpconnect/tracer/core/*.o
 !pkg/gadgets/tcptop/tracer/*.o
