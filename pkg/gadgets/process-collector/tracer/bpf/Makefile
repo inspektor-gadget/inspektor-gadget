@@ -1,10 +1,6 @@
 .PHONY: all
-all: process-collector.o process-collector-with-filter.o
+all:
+	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go generate ../
 
-PKG_DIR=../../../..
-
-process-collector.o: process-collector.c
-	clang -I$(PKG_DIR) -target bpf -O2 -g -c -x c $< -o $@
-
-process-collector-with-filter.o: process-collector.c
-	clang -I$(PKG_DIR) -target bpf -O2 -g -c -x c $< -o $@ -DWITH_FILTER=1
+clean:
+	rm -f ../processcollector_bpfel.go ../processcollector_bpfel.o ../processcollectorwithfilters_bpfel.go ../processcollectorwithfilters_bpfel.o
