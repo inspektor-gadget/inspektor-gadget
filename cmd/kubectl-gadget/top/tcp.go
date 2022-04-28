@@ -41,7 +41,7 @@ var (
 
 var tcpCmd = &cobra.Command{
 	Use:   fmt.Sprintf("tcp [interval=%d]", types.IntervalDefault),
-	Short: "Trace TCP connection",
+	Short: "Periodically report TCP activity",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 

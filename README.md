@@ -76,7 +76,7 @@ Available Commands:
   help        Help about any command
   profile     Profile different subsystems
   snapshot    Take a snapshot of a subsystem and print it
-  top         Gather, sort and print events according to a given criteria
+  top         Gather, sort and periodically report events according to a given criteria
   trace       Trace and print system events
   traceloop   Get strace-like logs of a pod from the past
   undeploy    Undeploy Inspektor Gadget from cluster
@@ -106,7 +106,7 @@ Usage:
   kubectl-gadget audit [command]
 
 Available Commands:
-  seccomp     Trace syscalls that seccomp sent to the audit log
+  seccomp     Audit syscalls according to the seccomp profile
 
 ...
 $ kubectl gadget profile --help
@@ -132,15 +132,15 @@ Available Commands:
 
 ...
 $ kubectl gadget top --help
-Gather, sort and print events according to a given criteria
+Gather, sort and periodically report events according to a given criteria
 
 Usage:
   kubectl-gadget top [command]
 
 Available Commands:
-  block-io    Trace block devices I/O
-  file        Trace reads and writes by file
-  tcp         Trace TCP connection
+  block-io    Periodically report block device I/O activity
+  file        Periodically report read/write activity by file
+  tcp         Periodically report TCP activity
 
 ...
 $ kubectl gadget trace --help

@@ -39,7 +39,7 @@ var (
 
 var fileCmd = &cobra.Command{
 	Use:   "file [interval]",
-	Short: "Trace reads and writes by file",
+	Short: "Periodically report read/write activity by file",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 

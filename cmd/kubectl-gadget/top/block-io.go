@@ -36,7 +36,7 @@ var blockIOSortBy types.SortBy
 
 var blockIOCmd = &cobra.Command{
 	Use:   fmt.Sprintf("block-io [interval=%d]", types.IntervalDefault),
-	Short: "Trace block devices I/O",
+	Short: "Periodically report block device I/O activity",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 
