@@ -29,7 +29,8 @@ var (
 	// image such as docker.io/kinvolk/gadget:latest
 	image = flag.String("image", "", "gadget container image")
 
-	doNotDeploy = flag.Bool("no-deploy", false, "don't deploy Inspektor Gadget")
+	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
+	doNotDeploySPO = flag.Bool("no-deploy-spo", false, "don't deploy the Security Profiles Operator (SPO)")
 )
 
 func runCommands(cmds []*command, t *testing.T) {
@@ -64,19 +65,17 @@ func runCommands(cmds []*command, t *testing.T) {
 	}
 }
 
-func TestMain(m *testing.M) {
+func testMain(m *testing.M) int {
 	flag.Parse()
 
 	if !*integration {
 		fmt.Println("Skipping integration test.")
-
-		os.Exit(0)
+		return 0
 	}
 
 	if os.Getenv("KUBECTL_GADGET") == "" {
 		fmt.Fprintf(os.Stderr, "please set $KUBECTL_GADGET.")
-
-		os.Exit(-1)
+		return -1
 	}
 
 	if *image != "" {
@@ -87,44 +86,43 @@ func TestMain(m *testing.M) {
 	rand.Seed(seed)
 	fmt.Printf("using random seed: %d\n", seed)
 
-	initCommands := []*command{
-		deployInspektorGadget,
-		deploySPO,
-		waitUntilInspektorGadgetPodsDeployed,
-		waitUntilInspektorGadgetPodsInitialized,
+	initCommands := []*command{}
+
+	if !*doNotDeploySPO {
+		initCommands = append(initCommands, deploySPO)
+		defer func() {
+			fmt.Printf("Clean SPO:\n")
+			cleanupSPO.runWithoutTest()
+		}()
 	}
 
-	cleanup := func() {
-		fmt.Printf("Clean inspektor-gadget:\n")
-		cleanupInspektorGadget.runWithoutTest()
-		fmt.Printf("Clean SPO:\n")
-		cleanupSPO.runWithoutTest()
-	}
+	if !*doNotDeployIG {
+		initCommands = append(initCommands, deployInspektorGadget)
+		initCommands = append(initCommands, waitUntilInspektorGadgetPodsDeployed)
+		initCommands = append(initCommands, waitUntilInspektorGadgetPodsInitialized)
 
-	if !*doNotDeploy {
 		// defer the cleanup to be sure it's called if the test
 		// fails (hence calling runtime.Goexit())
-		defer cleanup()
+		defer func() {
+			fmt.Printf("Clean inspektor-gadget:\n")
+			cleanupInspektorGadget.runWithoutTest()
+		}()
+	}
 
-		fmt.Printf("Setup inspektor-gadget:\n")
-		for _, cmd := range initCommands {
-			err := cmd.runWithoutTest()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
-				cleanup()
-				os.Exit(-1)
-			}
+	fmt.Printf("Running init commands:\n")
+	for _, cmd := range initCommands {
+		err := cmd.runWithoutTest()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return -1
 		}
 	}
 
-	ret := m.Run()
+	return m.Run()
+}
 
-	if !*doNotDeploy {
-		// os.Exit() doesn't call deferred functions, hence do the cleanup manually.
-		cleanup()
-	}
-
-	os.Exit(ret)
+func TestMain(m *testing.M) {
+	os.Exit(testMain(m))
 }
 
 func TestAuditSeccomp(t *testing.T) {
