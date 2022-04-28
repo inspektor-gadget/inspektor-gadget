@@ -21,6 +21,7 @@ import (
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	gadgetcollection "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
@@ -316,7 +317,7 @@ func ensureBPFMount() error {
 	return nil
 }
 
-func NewManager() (*LocalGadgetManager, error) {
+func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, error) {
 	l := &LocalGadgetManager{
 		traceFactories: gadgetcollection.TraceFactoriesForLocalGadget(),
 		traceResources: make(map[string]*gadgetv1alpha1.Trace),
@@ -348,7 +349,7 @@ func NewManager() (*LocalGadgetManager, error) {
 		containercollection.WithPubSub(containerEventFuncs...),
 		containercollection.WithCgroupEnrichment(),
 		containercollection.WithLinuxNamespaceEnrichment(),
-		containercollection.WithDockerEnrichment(),
+		containercollection.WithMultipleContainerRuntimesEnrichment(runtimes),
 		containercollection.WithRuncFanotify(),
 	)
 	if err != nil {

@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	dockertypes "github.com/docker/docker/api/types"
-	dockerfilters "github.com/docker/docker/api/types/filters"
-	dockerclient "github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 
 	v1 "k8s.io/api/core/v1"
@@ -34,6 +31,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
+	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
@@ -41,70 +39,114 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 )
 
-// WithDockerEnrichment automatically adds container metadata with Docker
+func containerRuntimeEnricher(
+	runtimeName string,
+	runtimeClient runtimeclient.ContainerRuntimeClient,
+	container *pb.ContainerDefinition,
+) bool {
+	// Is container already enriched? Notice that, at this point, the container
+	// was already enriched with the PID by the hook.
+	if container.Name != "" && container.Namespace != "" && container.Podname != "" {
+		return true
+	}
+
+	c, err := runtimeClient.GetContainer(container.Id)
+	if err != nil {
+		log.Debugf("Runtime enricher (%s): failed to get container: %s",
+			runtimeName, err)
+		return true
+	}
+
+	container.Name = c.Name
+	// Some gadgets require the namespace and pod name to be set
+	container.Namespace = "default"
+	container.Podname = container.Name
+
+	return true
+}
+
+// WithMultipleContainerRuntimesEnrichment is a wrapper for
+// WithContainerRuntimeEnrichment() to allow caller to add multiple runtimes in
+// one single call.
 //
-// ContainerCollection.ContainerCollectionInitialize(WithDockerEnrichment())
-func WithDockerEnrichment() ContainerCollectionOption {
+// ContainerCollection.ContainerCollectionInitialize(WithMultipleContainerRuntimesEnrichment([]*RuntimeConfig)...)
+func WithMultipleContainerRuntimesEnrichment(runtimes []*containerutils.RuntimeConfig) ContainerCollectionOption {
+	var opts []ContainerCollectionOption
+
+	for _, r := range runtimes {
+		opts = append(opts, WithContainerRuntimeEnrichment(r))
+	}
+
 	return func(cc *ContainerCollection) error {
-		dockercli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv)
+		for _, o := range opts {
+			err := o(cc)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// WithContainerRuntimeEnrichment automatically adds the container name using
+// the requested container runtime.
+//
+// Notice that it also sets the container namespace to "default" and the podname
+// equal to the container name. It is done because some gadgets need those two
+// values to be set.
+//
+// ContainerCollection.ContainerCollectionInitialize(WithContainerRuntimeEnrichment(*RuntimeConfig))
+func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		runtimeClient, err := containerutils.NewContainerRuntimeClient(runtime)
 		if err != nil {
+			log.Warnf("Runtime enricher (%s): failed to initialize container runtime",
+				runtime.Name)
 			return err
 		}
 
-		// Already running containers
-		containers, err := dockercli.ContainerList(context.Background(),
-			dockertypes.ContainerListOptions{
-				All: true,
-			})
+		// Add the enricher for future containers even if enriching the current
+		// containers fails. We do it because the runtime could be temporarily
+		// unavailable and once it is up, we will start receiving the
+		// notifications for its containers thus we will be able to enrich them.
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *pb.ContainerDefinition) bool {
+			return containerRuntimeEnricher(runtime.Name, runtimeClient, container)
+		})
+
+		// Enrich already running containers
+		containers, err := runtimeClient.GetContainers()
 		if err != nil {
-			return err
+			log.Warnf("Runtime enricher (%s): failed to get current containers",
+				runtime.Name)
+
+			return nil
 		}
 		for _, container := range containers {
-			res, err := dockercli.ContainerInspect(context.Background(), container.ID)
+			if !container.Running {
+				log.Debugf("Runtime enricher(%s): Skip container %q (ID: %s): not running",
+					runtime.Name, container.Name, container.ID)
+				continue
+			}
+
+			pid, err := runtimeClient.PidFromContainerID(container.ID)
 			if err != nil {
-				log.Errorf("failed to inspect container %s: %s", container.ID, err)
+				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find pid: %s",
+					runtime.Name, container.Name, container.ID, err)
 				continue
 			}
-			if !res.State.Running {
-				continue
-			}
-			if res.State.Pid == 0 {
-				log.Errorf("failed to inspect container %s: container pid is 0", container.ID)
-				continue
-			}
-			pid := res.State.Pid
+
 			cc.initialContainers = append(cc.initialContainers,
 				&pb.ContainerDefinition{
-					Id:  container.ID,
-					Pid: uint32(pid),
+					Id:   container.ID,
+					Pid:  uint32(pid),
+					Name: container.Name,
+
+					// Some gadgets require the namespace and pod name to be set
+					Namespace: "default",
+					Podname:   container.Name,
 				})
 		}
 
-		// Future containers
-		cc.containerEnrichers = append(cc.containerEnrichers, func(container *pb.ContainerDefinition) bool {
-			filter := dockerfilters.NewArgs()
-			filter.Add("id", container.Id)
-			containers, err := dockercli.ContainerList(context.Background(),
-				dockertypes.ContainerListOptions{
-					All:     true,
-					Filters: filter,
-				})
-			if err != nil {
-				log.Errorf("failed to list container %s: %s", container.Id, err)
-				return true
-			}
-			if len(containers) == 1 {
-				if len(containers[0].Names) > 0 {
-					container.Name = strings.TrimPrefix(containers[0].Names[0], "/")
-					// Some gadgets require the namespace and pod name to be set
-					container.Namespace = "default"
-					container.Podname = container.Name
-				}
-			} else {
-				log.Errorf("container %s has %d names", container.Id, len(containers))
-			}
-			return true
-		})
 		return nil
 	}
 }
