@@ -19,7 +19,8 @@ if [ ! -d "${INSPEKTOR_GADGET}" ]; then
 fi
 
 ${BTFHUB}/tools/btfgen.sh -a ${ARCH}                                                                \
-    -o ${INSPEKTOR_GADGET}/pkg/gadgets/audit-seccomp/tracer/bpf/audit-seccomp.o                     \
+    -o ${INSPEKTOR_GADGET}/pkg/gadgets/audit-seccomp/tracer/auditseccomp_bpfel.o                    \
+    -o ${INSPEKTOR_GADGET}/pkg/gadgets/audit-seccomp/tracer/auditseccompwithfilters_bpfel.o         \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/bindsnoop/tracer/core/bindsnoop_bpfel.o                      \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/biotop/tracer/biotop_bpfel.o                                 \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/execsnoop/tracer/core/execsnoop_bpfel.o                      \

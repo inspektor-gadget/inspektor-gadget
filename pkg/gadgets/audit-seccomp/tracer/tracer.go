@@ -15,7 +15,6 @@
 package tracer
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -29,6 +28,10 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit-seccomp/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
+
+
+//go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang auditseccomp ./bpf/audit-seccomp.c -- -I./bpf/ -I../../.. -target bpf -D__KERNEL__ -D__TARGET_ARCH_x86"
+//go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang auditseccompwithfilters ./bpf/audit-seccomp.c -- -DWITH_FILTER=1 -I./bpf/ -I../../.. -target bpf -D__KERNEL__ -D__TARGET_ARCH_x86"
 
 // #include <linux/types.h>
 // #include "./bpf/audit-seccomp.h"
@@ -64,18 +67,19 @@ type Config struct {
 }
 
 func NewTracer(config *Config, eventCallback func(types.Event), node string) (*Tracer, error) {
-	var prog []byte
+	var err error
+	var spec *ebpf.CollectionSpec
+
 	if config.MountnsMap == "" {
-		prog = ebpfProg
+		spec, err = loadAuditseccomp()
 	} else {
 		if filepath.Dir(config.MountnsMap) != gadgets.PinPath {
 			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PinPath)
 		}
-		prog = ebpfProgWithFilter
+		spec, err = loadAuditseccompwithfilters()
 	}
-	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(prog))
 	if err != nil {
-		return nil, fmt.Errorf("failed to load asset: %w", err)
+		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	if config.MountnsMap != "" {

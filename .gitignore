@@ -20,6 +20,7 @@ bin/
 
 # Build artifacts
 *.o
+!pkg/gadgets/audit-seccomp/tracer/*.o
 !pkg/gadgets/bindsnoop/tracer/core/*.o
 !pkg/gadgets/biotop/tracer/*.o
 !pkg/gadgets/execsnoop/tracer/core/*.o
