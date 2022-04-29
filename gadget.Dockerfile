@@ -1,4 +1,6 @@
-# Prepare and build gadget artifacts in a container
+# Dockerfile for Inspektor Gadget container image.
+# This image contains CO-RE and BCC-based gadgets. It uses as base the
+# BCC image. It's the default image that is deployed in Inspektor Gadget.
 
 ARG BUILDER_IMAGE=ubuntu:20.04
 
