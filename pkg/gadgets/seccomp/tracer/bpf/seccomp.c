@@ -59,7 +59,11 @@ struct {
 
 static __always_inline int is_x86_compat(struct task_struct *task)
 {
+#ifdef __TARGET_ARCH_x86
 	return !!(BPF_CORE_READ(task, thread_info.status) & TS_COMPAT);
+#else
+	return 0;
+#endif
 }
 
 SEC("raw_tracepoint/sys_enter")

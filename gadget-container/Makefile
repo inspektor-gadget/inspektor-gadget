@@ -3,11 +3,12 @@ gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor nr
 
 # eBPF objects
 
-BPF_ARCH ?= x86
+# We cannot use uname -m due to cross building, so let's use dpkg --print-architecture.
+BPF_ARCH := $(shell dpkg --print-architecture | sed 's/amd64/x86/' | sed 's/arm64/arm64/')
 
 .PHONY: ebpf-objects
 ebpf-objects:
-	$(foreach dir, $(shell find ../pkg -name bpf -type d), make -C $(dir) && ) true
+	$(foreach dir, $(shell find ../pkg -name bpf -type d), BPF_ARCH=$(BPF_ARCH) make -C $(dir) && ) true
 
 # Gadgets
 
