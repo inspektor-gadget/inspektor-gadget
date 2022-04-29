@@ -71,7 +71,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang tcpconnect ./bpf/tcpconnect.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang tcpconnect ./bpf/tcpconnect.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_${BPF_ARCH}"
 
 type Tracer struct {
 	config        *tracer.Config

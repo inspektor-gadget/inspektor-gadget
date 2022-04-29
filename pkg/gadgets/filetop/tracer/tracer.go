@@ -36,7 +36,7 @@ import (
 // #include "./bpf/filetop.h"
 import "C"
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang filetop ./bpf/filetop.bpf.c -- -I./bpf/ -I../../.. -target bpf -D__TARGET_ARCH_x86"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang filetop ./bpf/filetop.bpf.c -- -I./bpf/ -I../../.. -target bpf -D__TARGET_ARCH_${BPF_ARCH}"
 
 type Config struct {
 	TargetPid int

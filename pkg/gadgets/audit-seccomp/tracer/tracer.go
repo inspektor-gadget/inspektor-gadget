@@ -30,8 +30,8 @@ import (
 )
 
 
-//go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang auditseccomp ./bpf/audit-seccomp.c -- -I./bpf/ -I../../.. -target bpf -D__KERNEL__ -D__TARGET_ARCH_x86"
-//go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang auditseccompwithfilters ./bpf/audit-seccomp.c -- -DWITH_FILTER=1 -I./bpf/ -I../../.. -target bpf -D__KERNEL__ -D__TARGET_ARCH_x86"
+//go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang auditseccomp ./bpf/audit-seccomp.c -- -I./bpf/ -I../../.. -target bpf -D__KERNEL__ -D__TARGET_ARCH_${BPF_ARCH}"
+//go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang auditseccompwithfilters ./bpf/audit-seccomp.c -- -DWITH_FILTER=1 -I./bpf/ -I../../.. -target bpf -D__KERNEL__ -D__TARGET_ARCH_${BPF_ARCH}"
 
 // #include <linux/types.h>
 // #include "./bpf/audit-seccomp.h"

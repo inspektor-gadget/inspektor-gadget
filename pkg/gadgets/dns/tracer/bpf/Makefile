@@ -14,9 +14,11 @@ ifeq ($(shell grep -oP '^NAME="\K\w+(?=")' /etc/os-release), Ubuntu)
 	CLANG_OS_FLAGS="-I/usr/include/$(shell uname -m)-linux-gnu"
 endif
 
+BPF_ARCH ?= x86
+
 .PHONY: all
 all:
-	GO111MODULE=on CGO_ENABLED=1 GOOS=linux CLANG_OS_FLAGS=$(CLANG_OS_FLAGS) go generate ../
+	GO111MODULE=on CGO_ENABLED=1 GOOS=linux CLANG_OS_FLAGS=$(CLANG_OS_FLAGS) BPF_ARCH=$(BPF_ARCH) go generate ../
 
 clean:
 	rm -f ../dns_bpfel.go ../dns_bpfel.o
