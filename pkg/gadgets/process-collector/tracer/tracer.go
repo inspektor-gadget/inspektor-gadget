@@ -27,8 +27,8 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang ProcessCollector ./bpf/process-collector.c -- -I../../.. -Werror -O2 -g -c -x c"
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang ProcessCollectorWithFilters ./bpf/process-collector.c -- -DWITH_FILTER=1 -I../../.. -Werror -O2 -g -c -x c"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang ProcessCollector ./bpf/process-collector.c -- -I../../.. -I../../../${BPF_ARCH} -Werror -O2 -g -c -x c"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang ProcessCollectorWithFilters ./bpf/process-collector.c -- -DWITH_FILTER=1 -I../../.. -I../../../${BPF_ARCH} -Werror -O2 -g -c -x c"
 
 const (
 	BPFIterName = "dump_task"

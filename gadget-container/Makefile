@@ -3,6 +3,8 @@ gadget-container-deps: ocihookgadget gadgettracermanager networkpolicyadvisor nr
 
 # eBPF objects
 
+BPF_ARCH ?= x86
+
 .PHONY: ebpf-objects
 ebpf-objects:
 	$(foreach dir, $(shell find ../pkg -name bpf -type d), make -C $(dir) && ) true

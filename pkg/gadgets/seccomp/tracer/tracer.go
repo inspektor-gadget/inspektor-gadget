@@ -23,7 +23,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang seccomp ./bpf/seccomp.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../.. -target bpf -D__TARGET_ARCH_${BPF_ARCH}"
+//go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang seccomp ./bpf/seccomp.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../${BPF_ARCH} -target bpf -D__TARGET_ARCH_${BPF_ARCH}"
 
 // #include "bpf/seccomp-common.h"
 import "C"

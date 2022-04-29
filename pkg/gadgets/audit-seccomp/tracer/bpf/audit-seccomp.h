@@ -1,8 +1,7 @@
 #ifndef GADGET_AUDIT_SECCOMP_H
 #define GADGET_AUDIT_SECCOMP_H
 
-#include "../../../../vmlinux/vmlinux-cgo.h"
-
+#include "../../../../x86/vmlinux/vmlinux-cgo.h"
 #define TASK_COMM_LEN 16
 
 #include "../../../../gadgettracermanager/common.h"

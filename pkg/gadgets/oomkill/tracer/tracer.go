@@ -37,7 +37,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang oomkill ./bpf/oomkill.bpf.c -- -I./bpf/ -I../../.. -target bpf -D__TARGET_ARCH_${BPF_ARCH}"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang oomkill ./bpf/oomkill.bpf.c -- -I./bpf/ -I../../../${BPF_ARCH} -target bpf -D__TARGET_ARCH_${BPF_ARCH}"
 
 type Config struct {
 	// TODO: Make it a *ebpf.Map once
