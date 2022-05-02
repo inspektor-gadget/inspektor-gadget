@@ -91,7 +91,7 @@ func init() {
 func transformLine(line string) string {
 	event := &dnstypes.Event{}
 	if err := json.Unmarshal([]byte(line), event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err))
+		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
 		return ""
 	}
 

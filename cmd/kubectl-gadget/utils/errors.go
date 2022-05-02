@@ -83,8 +83,8 @@ func WrapInErrInvalidArg(arg string, err error) error {
 
 // JSON parsing
 
-func WrapInErrUnmarshalOutput(err error) error {
-	return fmt.Errorf("failed to unmarshal output: %w", err)
+func WrapInErrUnmarshalOutput(err error, output string) error {
+	return fmt.Errorf("failed to unmarshal output: %w\n%s", err, output)
 }
 
 func WrapInErrMarshalOutput(err error) error {
