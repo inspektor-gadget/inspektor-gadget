@@ -27,6 +27,11 @@ import (
 	"github.com/chzyer/readline"
 	"github.com/spf13/cobra"
 
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/containerd"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/crio"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/docker"
 	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
 	log "github.com/sirupsen/logrus"
 )
@@ -34,7 +39,21 @@ import (
 // This variable is used by the "version" command and is set during build.
 var version = "undefined"
 
-var localGadgetManager *localgadgetmanager.LocalGadgetManager
+var (
+	runtimeConfigs     []*containerutils.RuntimeConfig
+	localGadgetManager *localgadgetmanager.LocalGadgetManager
+)
+
+// Common commands between Inline and Root
+var (
+	versionCmd = &cobra.Command{
+		Use:   "version",
+		Short: "Show version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(version)
+		},
+	}
+)
 
 func newRootCmd() *cobra.Command {
 	var (
@@ -45,14 +64,6 @@ func newRootCmd() *cobra.Command {
 		rootCmd = &cobra.Command{
 			Use:   "",
 			Short: "Collection of gadgets for containers",
-		}
-
-		versionCmd = &cobra.Command{
-			Use:   "version",
-			Short: "Show version",
-			Run: func(cmd *cobra.Command, args []string) {
-				fmt.Println(version)
-			},
 		}
 
 		exitCmd = &cobra.Command{
@@ -276,7 +287,7 @@ func newRootCmd() *cobra.Command {
 func runLocalGadget(cmd *cobra.Command, args []string) error {
 	var err error
 
-	localGadgetManager, err = localgadgetmanager.NewManager()
+	localGadgetManager, err = localgadgetmanager.NewManager(runtimeConfigs)
 	if err != nil {
 		return fmt.Errorf("failed to initialize manager: %w", err)
 	}
@@ -396,9 +407,15 @@ func runLocalGadget(cmd *cobra.Command, args []string) error {
 }
 
 func main() {
-	var verbose bool
+	var (
+		verbose              bool
+		runtimes             string
+		dockerSocketPath     string
+		containerdSocketPath string
+		crioSocketPath       string
+	)
 
-	inlineCmd := &cobra.Command{
+	localGadgetCmd := &cobra.Command{
 		Use:          "local-gadget",
 		Short:        "Collection of gadgets for containers",
 		SilenceUsage: true,
@@ -407,19 +424,85 @@ func main() {
 				log.StandardLogger().SetLevel(log.DebugLevel)
 			}
 
+			parts := strings.Split(runtimes, ",")
+
+		partsLoop:
+			for _, p := range parts {
+				runtimeName := strings.TrimSpace(p)
+				socketPath := ""
+
+				switch runtimeName {
+				case docker.Name:
+					socketPath = dockerSocketPath
+				case containerd.Name:
+					socketPath = containerdSocketPath
+				case crio.Name:
+					socketPath = crioSocketPath
+				default:
+					return utils.WrapInErrInvalidArg("--runtime / -r",
+						fmt.Errorf("runtime %q is not supported", p))
+				}
+
+				for _, r := range runtimeConfigs {
+					if r.Name == runtimeName {
+						log.Infof("Ignoring duplicated runtime %q from %q",
+							runtimeName, runtimes)
+						continue partsLoop
+					}
+				}
+
+				runtimeConfigs = append(runtimeConfigs, &containerutils.RuntimeConfig{
+					Name:       runtimeName,
+					SocketPath: socketPath,
+				})
+			}
+
 			return nil
 		},
 		RunE: runLocalGadget,
 	}
 
-	inlineCmd.PersistentFlags().BoolVarP(
+	localGadgetCmd.PersistentFlags().BoolVarP(
 		&verbose,
 		"verbose", "v",
 		false,
 		"Print debug information",
 	)
 
-	if err := inlineCmd.Execute(); err != nil {
+	localGadgetCmd.Flags().StringVarP(
+		&runtimes,
+		"runtimes", "r",
+		strings.Join(containerutils.AvailableRuntimes, ","),
+		fmt.Sprintf("Container runtimes to be used separated by comma. Supported values are: %s",
+			strings.Join(containerutils.AvailableRuntimes, ", ")),
+	)
+
+	localGadgetCmd.PersistentFlags().StringVarP(
+		&dockerSocketPath,
+		"docker-socketpath", "",
+		docker.DefaultSocketPath,
+		"Docker Engine API Unix socket path",
+	)
+
+	localGadgetCmd.PersistentFlags().StringVarP(
+		&containerdSocketPath,
+		"containerd-socketpath", "",
+		containerd.DefaultSocketPath,
+		"Containerd CRI Unix socket path",
+	)
+
+	localGadgetCmd.PersistentFlags().StringVarP(
+		&crioSocketPath,
+		"crio-socketpath", "",
+		crio.DefaultSocketPath,
+		"CRI-O CRI Unix socket path",
+	)
+
+	localGadgetCmd.AddCommand(
+		versionCmd,
+	)
+
+	if err := localGadgetCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }

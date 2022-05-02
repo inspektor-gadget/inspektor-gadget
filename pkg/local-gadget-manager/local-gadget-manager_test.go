@@ -33,6 +33,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 
+	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
@@ -43,7 +44,7 @@ func TestBasic(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
 	}
-	localGadgetManager, err := NewManager()
+	localGadgetManager, err := NewManager(nil)
 	if err != nil {
 		t.Fatalf("Failed to start local gadget manager: %s", err)
 	}
@@ -162,7 +163,7 @@ func TestSeccomp(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
 	}
-	localGadgetManager, err := NewManager()
+	localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
 	if err != nil {
 		t.Fatalf("Failed to start local gadget manager: %s", err)
 	}
@@ -208,7 +209,7 @@ func TestAuditSeccomp(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
 	}
-	localGadgetManager, err := NewManager()
+	localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
 	if err != nil {
 		t.Fatalf("Failed to start local gadget manager: %s", err)
 	}
@@ -255,7 +256,7 @@ func TestDNS(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
 	}
-	localGadgetManager, err := NewManager()
+	localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
 	if err != nil {
 		t.Fatalf("Failed to start local gadget manager: %s", err)
 	}
@@ -366,7 +367,7 @@ func TestCollector(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
 	}
-	localGadgetManager, err := NewManager()
+	localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
 	if err != nil {
 		t.Fatalf("Failed to start local gadget manager: %s", err)
 	}
