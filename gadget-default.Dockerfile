@@ -17,8 +17,8 @@ ENV ENABLE_BTFGEN=${ENABLE_BTFGEN}
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
-	apt-get install -y gcc make ca-certificates git clang \
-		software-properties-common libelf-dev pkg-config libseccomp-dev llvm && \
+	apt-get install -y gcc make ca-certificates git \
+		software-properties-common libelf-dev pkg-config libseccomp-dev && \
 	apt-add-repository -y ppa:longsleep/golang-backports && \
 	apt-get update && \
 	apt-get install -y golang-1.18 && \
