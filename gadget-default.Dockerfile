@@ -17,12 +17,14 @@ ENV ENABLE_BTFGEN=${ENABLE_BTFGEN}
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
-	apt-get install -y gcc make ca-certificates git clang \
-		software-properties-common libelf-dev pkg-config libseccomp-dev llvm && \
+	apt-get install -y gcc make ca-certificates git clang-12 \
+		software-properties-common libelf-dev pkg-config libseccomp-dev llvm-12 && \
 	apt-add-repository -y ppa:longsleep/golang-backports && \
 	apt-get update && \
 	apt-get install -y golang-1.17 && \
-	ln -s /usr/lib/go-1.17/bin/go /bin/go
+	ln -s /usr/lib/go-1.17/bin/go /bin/go && \
+	update-alternatives --install /usr/local/bin/clang clang /usr/bin/clang-12 100 && \
+	update-alternatives --install /usr/local/bin/llvm-strip llvm-strip /usr/bin/llvm-strip-12 100
 
 # Install libbpf-dev 0.7.0 from source to be cross-platform.
 RUN git clone https://github.com/libbpf/libbpf.git && \
