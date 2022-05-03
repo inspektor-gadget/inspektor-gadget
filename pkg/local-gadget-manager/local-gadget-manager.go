@@ -31,6 +31,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -239,6 +240,18 @@ func (l *LocalGadgetManager) PublishEvent(tracerID string, line string) error {
 	return nil
 }
 
+func (l *LocalGadgetManager) TracerMountNsMap(tracerID string) (*ebpf.Map, error) {
+	return l.tracerCollection.TracerMountNsMap(tracerID)
+}
+
+func (l *LocalGadgetManager) ContainersMap() *ebpf.Map {
+	if l.containersMap == nil {
+		return nil
+	}
+
+	return l.containersMap.ContainersMap()
+}
+
 func (l *LocalGadgetManager) Stream(name string, stop chan struct{}) (chan string, error) {
 	gadgetStream, err := l.tracerCollection.Stream(traceName(name))
 	if err != nil {
@@ -324,7 +337,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 	}
 
 	var err error
-	l.tracerCollection, err = tracercollection.NewTracerCollection(gadgets.PinPath, gadgets.MountMapPrefix, true, &l.ContainerCollection)
+	l.tracerCollection, err = tracercollection.NewTracerCollection(true, &l.ContainerCollection)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +350,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 		return nil, err
 	}
 
-	l.containersMap, err = containersmap.NewContainersMap(gadgets.PinPath)
+	l.containersMap, err = containersmap.NewContainersMap("")
 	if err != nil {
 		return nil, fmt.Errorf("error creating containers map: %w", err)
 	}

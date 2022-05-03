@@ -48,10 +48,9 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 		eventCallback(event)
 	}
 
-	baseTracer, err := gadgets.NewStandardTracer(lineCallback,
+	baseTracer, err := gadgets.NewStandardTracer(lineCallback, config.MountnsMap,
 		"/usr/share/bcc/tools/bindsnoop",
-		"--json", "--mntnsmap", config.MountnsMap,
-		"--containersmap", "/sys/fs/bpf/gadget/containers")
+		"--json", "--containersmap", "/sys/fs/bpf/gadget/containers")
 	if err != nil {
 		return nil, err
 	}

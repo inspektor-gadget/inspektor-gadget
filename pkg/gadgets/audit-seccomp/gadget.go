@@ -16,7 +16,6 @@ package auditseccomp
 
 import (
 	"fmt"
-	"path/filepath"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
@@ -106,9 +105,16 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	var err error
+
+	mountNsMap, err := t.resolver.TracerMountNsMap(traceName)
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
+		return
+	}
+
 	config := &auditseccomptracer.Config{
-		MountnsMap:    gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
-		ContainersMap: filepath.Join(gadgets.PinPath, "containers"),
+		MountnsMap:    mountNsMap,
+		ContainersMap: t.resolver.ContainersMap(),
 	}
 	t.tracer, err = auditseccomptracer.NewTracer(config, eventCallback, trace.Spec.Node)
 	if err != nil {

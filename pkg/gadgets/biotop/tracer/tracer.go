@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 	"unsafe"
@@ -42,14 +41,11 @@ import "C"
 //go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang biotop ./bpf/biotop.bpf.c -- -I./bpf/ -I../../.. -target bpf -D__TARGET_ARCH_x86"
 
 type Config struct {
-	TargetPid int
-	MaxRows   int
-	Interval  time.Duration
-	SortBy    types.SortBy
-	// TODO: Make it a *ebpf.Map once
-	// https://github.com/cilium/ebpf/issues/515 and
-	// https://github.com/cilium/ebpf/issues/517 are fixed
-	MountnsMap string
+	TargetPid  int
+	MaxRows    int
+	Interval   time.Duration
+	SortBy     types.SortBy
+	MountnsMap *ebpf.Map
 	Node       string
 }
 
@@ -141,13 +137,12 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
+	mapReplacements := map[string]*ebpf.Map{}
 	filterByMntNs := false
 
-	if t.config.MountnsMap != "" {
+	if t.config.MountnsMap != nil {
 		filterByMntNs = true
-		m := spec.Maps["mount_ns_set"]
-		m.Pinning = ebpf.PinByName
-		m.Name = filepath.Base(t.config.MountnsMap)
+		mapReplacements["mount_ns_set"] = t.config.MountnsMap
 	}
 
 	consts := map[string]interface{}{
@@ -159,9 +154,7 @@ func (t *Tracer) start() error {
 	}
 
 	opts := ebpf.CollectionOptions{
-		Maps: ebpf.MapOptions{
-			PinPath: filepath.Dir(t.config.MountnsMap),
-		},
+		MapReplacements: mapReplacements,
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {

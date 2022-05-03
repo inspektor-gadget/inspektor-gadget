@@ -20,8 +20,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/cilium/ebpf"
+	"github.com/google/uuid"
 )
 
 // StandardTracerBase is a type used by gadgets that have a BCC
@@ -29,12 +33,14 @@ import (
 // BCC script and calls lineCallback each time the scripts produces a
 // new line.
 type StandardTracerBase struct {
-	lineCallback func(string)
-	done         chan bool
-	cmd          *exec.Cmd
+	lineCallback      func(string)
+	done              chan bool
+	cmd               *exec.Cmd
+	mountNsMapPinPath string
 }
 
-func NewStandardTracer(lineCallback func(string), name string, args ...string) (*StandardTracerBase, error) {
+func NewStandardTracer(lineCallback func(string), mntnsmap *ebpf.Map, name string,
+	args ...string) (*StandardTracerBase, error) {
 	t := &StandardTracerBase{
 		lineCallback: lineCallback,
 		done:         make(chan bool),
@@ -43,6 +49,16 @@ func NewStandardTracer(lineCallback func(string), name string, args ...string) (
 
 	// Force the stdout and stderr streams to be unbuffered.
 	t.cmd.Env = append(os.Environ(), "PYTHONUNBUFFERED=TRUE")
+
+	if mntnsmap != nil {
+		t.mountNsMapPinPath = filepath.Join(PinPath, uuid.New().String())
+		if err := mntnsmap.Pin(t.mountNsMapPinPath); err != nil {
+			return nil, err
+		}
+
+		t.cmd.Args = append(t.cmd.Args, "--mntnsmap")
+		t.cmd.Args = append(t.cmd.Args, t.mountNsMapPinPath)
+	}
 
 	pipe, err := t.cmd.StdoutPipe()
 	if err != nil {
@@ -73,6 +89,10 @@ func (t *StandardTracerBase) Stop() error {
 
 	if err := t.cmd.Wait(); err != nil {
 		return fmt.Errorf("failed to wait for gadget process: %w", err)
+	}
+
+	if t.mountNsMapPinPath != "" {
+		os.Remove(t.mountNsMapPinPath)
 	}
 
 	return nil

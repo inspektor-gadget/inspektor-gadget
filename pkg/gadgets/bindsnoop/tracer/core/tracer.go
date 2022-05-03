@@ -49,7 +49,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -117,13 +116,12 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
+	mapReplacements := map[string]*ebpf.Map{}
 	filterByMntNs := false
 
-	if t.config.MountnsMap != "" {
+	if t.config.MountnsMap != nil {
 		filterByMntNs = true
-		m := spec.Maps["mount_ns_set"]
-		m.Pinning = ebpf.PinByName
-		m.Name = filepath.Base(t.config.MountnsMap)
+		mapReplacements["mount_ns_set"] = t.config.MountnsMap
 	}
 
 	filterByPort := false
@@ -148,9 +146,7 @@ func (t *Tracer) start() error {
 	}
 
 	opts := ebpf.CollectionOptions{
-		Maps: ebpf.MapOptions{
-			PinPath: filepath.Dir(t.config.MountnsMap),
-		},
+		MapReplacements: mapReplacements,
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
