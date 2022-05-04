@@ -20,14 +20,4 @@ bin/
 
 # Build artifacts
 *.o
-!pkg/gadgets/bindsnoop/tracer/core/*.o
-!pkg/gadgets/biotop/tracer/*.o
-!pkg/gadgets/execsnoop/tracer/core/*.o
-!pkg/gadgets/fsslower/tracer/core/*.o
-!pkg/gadgets/mountsnoop/tracer/core/*.o
-!pkg/gadgets/oomkill/tracer/*.o
-!pkg/gadgets/opensnoop/tracer/core/*.o
-!pkg/gadgets/sigsnoop/tracer/*.o
-!pkg/gadgets/socket-collector/tracer/*.o
-!pkg/gadgets/tcpconnect/tracer/core/*.o
-!pkg/gadgets/tcptop/tracer/*.o
+!pkg/gadgets/*/tracer/*.o

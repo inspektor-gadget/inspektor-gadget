@@ -1,10 +1,3 @@
-.PHONY: all
-all: snisnoop.o
-
-# See Linux' Makefile: when ARCH is i386 or x86_64, then SRCARCH is x86
-# It needs to match tests in bpf/bpf_tracing.h
-SRCARCH ?= x86
-
 # We need <asm/types.h> and depending on Linux distributions, it is installed
 # at different paths:
 #
@@ -21,9 +14,9 @@ ifeq ($(shell grep -oP '^NAME="\K\w+(?=")' /etc/os-release), Ubuntu)
 	CLANG_OS_FLAGS="-I/usr/include/$(shell uname -m)-linux-gnu"
 endif
 
-snisnoop.o: snisnoop.c
-	clang -Werror $(CLANG_OS_FLAGS) -target bpf -O2 -g -c -x c $< -o $@ \
-		-D__KERNEL__ -D__TARGET_ARCH_$(SRCARCH)
+.PHONY: all
+all:
+	GO111MODULE=on CGO_ENABLED=1 GOOS=linux CLANG_OS_FLAGS=$(CLANG_OS_FLAGS) go generate ../
 
 clean:
-	rm -f snisnoop.o
+	rm -f ../snisnoop_bpfel.go ../snisnoop_bpfel.o

@@ -1,12 +1,6 @@
 .PHONY: all
-all: seccomp.o
+all:
+	GO111MODULE=on CGO_ENABLED=1 GOOS=linux go generate ../
 
-PKG_DIR=../../../..
-
-# See Linux' Makefile: when ARCH is i386 or x86_64, then SRCARCH is x86
-# It needs to match tests in bpf/bpf_tracing.h
-SRCARCH ?= x86
-
-seccomp.o: seccomp.c
-	clang -Werror -I$(PKG_DIR) -target bpf -O2 -g -c -x c $< -o $@ \
-		-D__KERNEL__ -D__TARGET_ARCH_$(SRCARCH)
+clean:
+	rm -f ../seccomp_bpfel.go ../seccomp_bpfel.o

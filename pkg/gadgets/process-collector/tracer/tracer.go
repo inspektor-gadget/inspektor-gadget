@@ -16,7 +16,6 @@ package tracer
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"path/filepath"
 
@@ -28,24 +27,28 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang ProcessCollector ./bpf/process-collector.c -- -I../../.. -Werror -O2 -g -c -x c"
+//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang ProcessCollectorWithFilters ./bpf/process-collector.c -- -DWITH_FILTER=1 -I../../.. -Werror -O2 -g -c -x c"
+
 const (
 	BPFIterName = "dump_task"
 )
 
 func RunCollector(resolver gadgets.Resolver, node, mntnsmap string) ([]processcollectortypes.Event, error) {
-	var prog []byte
+	var err error
+	var spec *ebpf.CollectionSpec
+
 	if mntnsmap == "" {
-		prog = ebpfProg
+		spec, err = LoadProcessCollector()
 	} else {
 		if filepath.Dir(mntnsmap) != gadgets.PinPath {
 			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PinPath)
 		}
 
-		prog = ebpfProgWithFilter
+		spec, err = LoadProcessCollectorWithFilters()
 	}
-	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(prog))
 	if err != nil {
-		return nil, fmt.Errorf("failed to load asset: %w", err)
+		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	if mntnsmap != "" {
