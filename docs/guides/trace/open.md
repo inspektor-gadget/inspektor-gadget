@@ -1,6 +1,8 @@
 ---
 title: 'Using trace open'
-weight: 10
+weight: 20
+description: >
+  Trace open system calls.
 ---
 
 The trace open gadget watches files that programs in pods open.

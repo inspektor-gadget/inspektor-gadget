@@ -36,7 +36,7 @@ var (
 
 var socketCollectorCmd = &cobra.Command{
 	Use:   "socket",
-	Short: "Gather information about network sockets",
+	Short: "Gather information about TCP and UDP sockets",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		callback := func(results []gadgetv1alpha1.Trace) error {
 			allSockets := []socketcollectortypes.Event{}

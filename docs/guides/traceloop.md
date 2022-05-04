@@ -1,6 +1,8 @@
 ---
 title: 'Using traceloop'
-weight: 10
+weight: 30
+description: >
+  Get strace-like logs of a pod from the past.
 ---
 
 ## Start traceloop

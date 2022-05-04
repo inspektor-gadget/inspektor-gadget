@@ -1,6 +1,8 @@
 ---
 title: 'Using trace signal'
-weight: 10
+weight: 20
+description: >
+  Trace signals received by processes.
 ---
 
 The `trace signal` gadget is used to trace signal sent system-wide.

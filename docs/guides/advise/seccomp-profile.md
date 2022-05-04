@@ -1,6 +1,8 @@
 ---
 title: 'Using advise seccomp-profile'
-weight: 10
+weight: 20
+description: >
+  Generate seccomp profiles based on recorded syscalls activity.
 ---
 
 The Seccomp Policy Advisor gadget records syscalls that are issued in a

@@ -116,8 +116,8 @@ Usage:
   kubectl-gadget profile [command]
 
 Available Commands:
-  block-io    Generate a histogram with the distribution of block device I/O latency
-  cpu         Profile CPU usage by sampling stack traces
+  block-io    Analyze block I/O performance through a latency distribution
+  cpu         Analyze CPU performance by sampling stack traces
 
 ...
 $ kubectl gadget snapshot --help
@@ -128,7 +128,7 @@ Usage:
 
 Available Commands:
   process     Gather information about running processes
-  socket      Gather information about network sockets
+  socket      Gather information about TCP and UDP sockets
 
 ...
 $ kubectl gadget top --help

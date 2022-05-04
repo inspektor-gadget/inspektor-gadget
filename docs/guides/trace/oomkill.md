@@ -1,6 +1,8 @@
 ---
 title: 'Using trace oomkill'
-weight: 10
+weight: 20
+description: >
+  Trace when OOM killer is triggered and kills a process.
 ---
 
 The `oomkill` gadget is used to monitor when OOM killer actually kills a process.

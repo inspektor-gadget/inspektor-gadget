@@ -27,7 +27,7 @@ var (
 
 var profileCmd = &cobra.Command{
 	Use:   "cpu",
-	Short: "Profile CPU usage by sampling stack traces",
+	Short: "Analyze CPU performance by sampling stack traces",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		specificFlag := "-f -d "
 

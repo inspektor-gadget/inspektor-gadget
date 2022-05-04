@@ -1,6 +1,8 @@
 ---
 title: 'Using trace bind'
-weight: 10
+weight: 20
+description: >
+  Trace the kernel functions performing socket binding.
 ---
 
 The `bind` gadget is used to trace the kernel functions performing socket binding.

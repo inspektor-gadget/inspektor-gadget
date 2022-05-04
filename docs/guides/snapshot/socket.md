@@ -1,6 +1,8 @@
 ---
 title: 'Using snapshot socket'
-weight: 10
+weight: 20
+description: >
+  Gather information about TCP and UDP sockets.
 ---
 
 socket-collector gathers information about TCP and UDP sockets.

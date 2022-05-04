@@ -1,6 +1,8 @@
 ---
 title: 'Using profile cpu'
-weight: 10
+weight: 20
+description: >
+  Analyze CPU performance by sampling stack traces.
 ---
 
 The profile gadget takes samples of the stack traces.

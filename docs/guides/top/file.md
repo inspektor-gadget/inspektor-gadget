@@ -1,6 +1,8 @@
 ---
 title: 'Using top file'
-weight: 10
+weight: 20
+description: >
+  Periodically report read/write activity by file.
 ---
 
 `top file` shows reads and writes by file, with container details.

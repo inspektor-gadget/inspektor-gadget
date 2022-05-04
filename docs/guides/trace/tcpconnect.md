@@ -1,6 +1,8 @@
 ---
 title: 'Using trace tcpconnect'
-weight: 10
+weight: 20
+description: >
+  Trace connect system calls.
 ---
 
 The tcpconnect gadget traces TCP connect calls.

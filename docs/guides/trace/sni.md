@@ -1,6 +1,8 @@
 ---
 title: 'Using trace sni'
-weight: 10
+weight: 20
+description: >
+  Trace Server Name Indication (SNI) from TLS requests.
 ---
 
 The `trace sni` gadget is used to trace the [Server Name Indication (SNI)](https://en.wikipedia.org/wiki/Server_Name_Indication) requests sent as part of TLS handshakes.

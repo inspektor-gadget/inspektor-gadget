@@ -1,6 +1,8 @@
 ---
 title: 'Using advise network-policy'
-weight: 10
+weight: 20
+description: >
+  Generate network policies based on recorded network activity.
 ---
 
 network-policy monitors the network activity in the specified namespaces and

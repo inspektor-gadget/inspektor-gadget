@@ -1,6 +1,8 @@
 ---
 title: 'Using top block-io'
-weight: 10
+weight: 20
+description: >
+  Periodically report block device I/O activity.
 ---
 
 The `top block-io` gadget is used to trace block devices I/O.

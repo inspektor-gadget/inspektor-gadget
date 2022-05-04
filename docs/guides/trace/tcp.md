@@ -1,6 +1,8 @@
 ---
 title: 'Using trace tcp'
-weight: 10
+weight: 20
+description: >
+  Trace tcp connect, accept and close.
 ---
 
 The `tcp` gadget is used to monitor tcp connections.

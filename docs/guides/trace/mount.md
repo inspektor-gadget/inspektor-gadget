@@ -1,6 +1,8 @@
 ---
 title: 'Using trace mount'
-weight: 10
+weight: 20
+description: >
+  Trace mount and umount system calls.
 ---
 
 The `trace mount` gadget is used to monitor `mount` and `umount` syscalls.

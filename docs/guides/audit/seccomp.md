@@ -1,6 +1,8 @@
 ---
 title: 'Using audit seccomp'
-weight: 10
+weight: 20
+description: >
+  Trace syscalls that seccomp sent to the audit log.
 ---
 
 The Audit Seccomp gadget provides a stream of events with syscalls that had

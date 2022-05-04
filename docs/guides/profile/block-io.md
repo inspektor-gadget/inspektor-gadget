@@ -1,6 +1,8 @@
 ---
 title: 'Using profile block-io'
-weight: 10
+weight: 20
+description: >
+  Analyze block I/O performance through a latency distribution.
 ---
 
 The biolatency gadget traces the block device I/O (disk I/O), and records the

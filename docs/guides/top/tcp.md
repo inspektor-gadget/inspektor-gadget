@@ -1,6 +1,8 @@
 ---
 title: 'Using top tcp'
-weight: 10
+weight: 20
+description: >
+  Periodically report TCP activity.
 ---
 
 The `top tcp` gadget is used to monitor TCP connections.
