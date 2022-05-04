@@ -5,7 +5,7 @@ description: >
   Trace open system calls.
 ---
 
-The trace open gadget watches files that programs in pods open.
+The trace open gadget streams events related to files opened inside pods.
 
 Here we deploy a small demo pod "mypod":
 
@@ -15,7 +15,7 @@ $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'while /bin/tru
 
 Using the trace open gadget, we can see which processes open what files.
 We can simply filter for the pod "mypod" and omit specifying the node,
-thus traceing on all nodes for pod "mypod":
+thus tracing on all nodes for a pod called "mypod":
 
 ```bash
 $ kubectl gadget trace open --podname mypod

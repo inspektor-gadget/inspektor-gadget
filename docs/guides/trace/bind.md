@@ -5,7 +5,7 @@ description: >
   Trace the kernel functions performing socket binding.
 ---
 
-The `bind` gadget is used to trace the kernel functions performing socket binding.
+The trace bind gadget is used to stream socket binding syscalls.
 
 ## How to use it?
 
@@ -38,17 +38,17 @@ NODE             NAMESPACE        POD              CONTAINER        PID    COMM 
 minikube         default          test-pod         test-pod         58208  nc               IP     ::               4242   .R...  0
 ```
 
-This line correspond to the socket binding operation initiated by `nc`.
+This line corresponds to the socket binding operation initiated by `nc`.
 
 ## Restricting output to certain PID, ports or succeeded and failed port bindings
 
-With the following option, you can restrain the output:
+With the following options, you can restrict the output:
 
 * `--pid` only prints events where socket binding is done by the given PID.
 * `-P/--ports` only prints events where these ports are used for socket bindings.
 * `-i/--ignore-errors` only prints events where the bind succeeded.
 
-So, this command will print all (*i.e.* succeeded and failed) attempt to bind a socket on port 4242 or 4343 by PID 42:
+So, this command will print all (*i.e.* succeeded and failed) attempts to bind a socket on port 4242 or 4343 by PID 42:
 
 ```bash
 $ kubectl gadget trace bind -i=false --pid 42 -P=4242,4343

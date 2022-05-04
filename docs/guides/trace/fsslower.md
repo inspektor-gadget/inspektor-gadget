@@ -5,7 +5,8 @@ description: >
   Trace open, read, write and fsync operations slower than a threshold.
 ---
 
-fsslower traces open, read, write and fsync operations slower than a threshold.
+The trace fsslower gadget streams file operations (open, read, write and
+fsync) that are slower than a threshold.
 
 In this guide you'll deploy an example workload that performs some
 open(), read() write() and sync() calls and will trace which ones are

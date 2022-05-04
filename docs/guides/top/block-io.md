@@ -5,7 +5,8 @@ description: >
   Periodically report block device I/O activity.
 ---
 
-The `top block-io` gadget is used to trace block devices I/O.
+The top block-io gadget is used to visualize the containers generating
+the most block device input/output.
 
 ## How to use it?
 

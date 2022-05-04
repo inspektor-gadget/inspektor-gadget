@@ -5,12 +5,12 @@ description: >
   Periodically report read/write activity by file.
 ---
 
-`top file` shows reads and writes by file, with container details.
+The top file gadget is used to visualize reads and writes by file, with container details.
 
-This guide will deploy an example workload that perform some disk I/O
-activity to show how to use filetop.
+This guide will deploy an example workload that performs some disk I/O
+activity to show how to use `top file`.
 
-Before starting our workload, let's start filetop to be sure it captures
+Before starting our workload, let's start our top file gadget to be sure it captures
 all the events from the beginning:
 
 ```bash
@@ -30,9 +30,9 @@ clone the linux source code.
 $ kubectl run -it mypod --image ubuntu -- /bin/sh -c "apt-get update && apt-get install -y git && git clone https://github.com/torvalds/linux"
 ```
 
-We can see how the filetop terminal shows the files that are read and
+We can see how the `top file` terminal shows the files that are read and
 written by the pod. For instace, apt-get is reading a lot of files in
-this case.
+when updating the packages list and installing packages.
 
 ```bash
 NODE             NAMESPACE        POD              CONTAINER        PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
@@ -62,13 +62,13 @@ them remove it:
 $ kubectl delete pod mypod
 ```
 
-By default filetop prints a summary each second. It accepts a numeric argument to indicate the interval to use:
+By default the top file gadget prints a summary each second. It accepts a numeric argument to indicate the interval to use:
 
 ```bash
 $ kubectl gadget top file 5 # will print a summary each 5 seconds
 ```
 
-filetop supports the following flags to customize the output:
+This gadget also supports the following flags to customize the output:
 
 ```bash
 $ kubectl gadget top file --help

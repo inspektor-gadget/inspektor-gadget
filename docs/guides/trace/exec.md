@@ -5,7 +5,7 @@ description: >
   Trace new processes.
 ---
 
-trace exec traces new processes creation.
+The trace exec gadget streams new processes creation events.
 
 Let's deploy an example application that will spawn few new processes:
 

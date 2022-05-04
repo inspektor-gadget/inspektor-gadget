@@ -5,7 +5,8 @@ description: >
   Trace tcp connect, accept and close.
 ---
 
-The `tcp` gadget is used to monitor tcp connections.
+The trace tcp gadget can be used to monitor tcp connections, as it shows
+connect, accept and close events related to TCP connections.
 
 ## How to use it?
 
@@ -42,7 +43,7 @@ NODE             NAMESPACE        POD              CONTAINER        T PID    COM
 minikube         <>               <>               <>               C 16266  wget             4   172.17.0.3       188.114.97.3     34878   443
 ```
 
-The printed lined correspond to TCP connection established with the socket.
+The printed lines correspond to TCP connection established with the socket.
 Here is the full legend of all the fields:
 
 * `T`: How the TCP connection was established, it can be one of the following values:
@@ -58,13 +59,13 @@ Here is the full legend of all the fields:
 * `SPORT`: The source port.
 * `DPORT`: The destination port.
 
-So, the above line should be read like this: "Command `wget`, which has PID 19981, established a TCP connection through IP version 4, using the `connect()` system call, from address 172.17.0.3 and port 16266 towards address 188.114.97.3 and port 433"
+So, the above line should be read like this: "Command `wget`, with PID 19981, established a TCP connection through IP version 4, using the `connect()` system call, from address 172.17.0.3 and port 16266 towards address 188.114.97.3 and port 433"
 
 Note that, IP 188.114.97.3 corresponds to `kinvolk.io` while port 443 is the port generally used for HTTPS.
 
 ## Only print some information
 
-You can restrain the information printed using `-o custom-columns=column0,...,columnN`.
+You can restrict the information printed using `-o custom-columns=column0,...,columnN`.
 This command will only show the PID and command:
 
 ```bash

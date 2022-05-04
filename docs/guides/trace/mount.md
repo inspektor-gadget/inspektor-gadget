@@ -5,8 +5,8 @@ description: >
   Trace mount and umount system calls.
 ---
 
-The `trace mount` gadget is used to monitor `mount` and `umount` syscalls.
-In this guide, we will learn how to use it by running a small `kubernetes` cluster inside `minikube`.
+The trace mount gadget is used to monitor `mount` and `umount` syscalls.
+In this guide, we will learn how to use it by running a small Kubernetes cluster inside `minikube`.
 
 ## How to use it?
 
@@ -53,11 +53,11 @@ minikube         default          busybox-0        busybox-0        mount       
 
 All these lines correspond to the error we get from `mount` inside the pod.
 
-## Restrain output to certain pods
+## Restrict output to certain pods
 
-It can be useful to restrain the output to certains pods.
-For this, you can use `--selector` option.
-In a first terminal, run the following:
+It can be useful to restrict the output to certains pods. There are many
+flags that we can use for this. For example, we can use `--selector` option
+to select by label.  In a first terminal, run the following:
 
 ```bash
 $ kubectl get pods --show-labels
@@ -69,7 +69,7 @@ NODE             NAMESPACE        POD              CONTAINER        COMM        
 ```
 
 As you can see, the `--selector` option, and its `-l` shorthand awaits for pods labels as argument.
-In an *other terminal*, run these commands:
+In *another terminal*, run these commands:
 
 ```bash
 # Exec the first pod:
@@ -82,7 +82,7 @@ mount: mounting /quux on /quuz failed: No such file or directory
 command terminated with exit code 255
 ```
 
-Go back to the first terminal, you should only output related to `mount /foo /bar` as a result of using `--selector` options filtering the pods:
+Go back to the first terminal, you should only see output related to `mount /foo /bar` as a result of using `--selector` options filtering the pods:
 
 ```bash
 NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL

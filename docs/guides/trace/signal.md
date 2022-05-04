@@ -5,7 +5,8 @@ description: >
   Trace signals received by processes.
 ---
 
-The `trace signal` gadget is used to trace signal sent system-wide.
+The trace signal gadget is used to trace system signals received by the
+pods.
 
 ## How to use it?
 
@@ -59,13 +60,13 @@ minikube         default          debian           debian           142244 pytho
 
 ## Restricting output to certain PID, signals or failed to send the signals
 
-With the following option, you can restrain the output:
+With the following option, you can restrict the output:
 
 * `--pid` only prints events where a signal is sent by the given PID.
 * `--signal` only prints events where the given signal is sent.
 * `-f/--failed-only` only prints events where signal failed to be delivered.
 
-So, this command will only print failed attempts to send `SIGKILL` by PID `42`:
+For example, this command will only print failed attempts to send `SIGKILL` by PID `42`:
 
 ```bash
 $ kubectl gadget -f --pid 42 --signal SIGKILL
