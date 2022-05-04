@@ -27,8 +27,7 @@ Node numbers: 0 = ip-10-0-23-61 1 = ip-10-0-3-62^C
 After a while press with Ctrl-C to stop trace collection
 
 ```bash
-^C
-Terminating...
+Capturing stack traces... Hit Ctrl-C to end.^C
 [ 0] cat;entry_SYSCALL_64_after_hwframe;do_syscall_64;ksys_read;vfs_read;urandom_read;_copy_to_user;copy_user_enhanced_fast_string;copy_user_enhanced_fast_string 4
 [ 0] cat 8
 [ 0] cat;entry_SYSCALL_64_after_hwframe;do_syscall_64;ksys_read;vfs_read;urandom_read;_raw_spin_unlock_irqrestore;_raw_spin_unlock_irqrestore 136
