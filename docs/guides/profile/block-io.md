@@ -31,15 +31,12 @@ Firstly, let's use the profile block-io gadget to see the I/O latency in our
 testing node with its normal load work:
 
 ```bash
-# Start the gadget on the worker-node node
-$ kubectl gadget profile block-io start --node worker-node
-4b5501BrEjiw2GxG
+# Run the gadget on the worker-node node
+$ kubectl gadget profile block-io --node worker-node
+Tracing block device I/O... Hit Ctrl-C to end
 
-# Wait for around 1 minute
-
-# Stop the gadget to generate the histogram
-$ kubectl gadget profile block-io stop 4b5501BrEjiw2GxG
-Tracing block device I/O... Hit Ctrl-C to end.
+# Wait for around 1 minute and hit Ctrl+C to stop the gadget and see the results
+^C
 
      usecs               : count     distribution
          0 -> 1          : 0        |                                        |
@@ -84,14 +81,12 @@ Using the profile block-io gadget, we can generate another histogram to analyse 
 disk I/O with this load:
 
 ```bash
-# Start the gadget again
-$ kubectl gadget profile block-io start --node worker-node
-pCkmJ3jDtDz9yVyc
+# Run the gadget again
+$ kubectl gadget profile block-io --node worker-node
+Tracing block device I/O... Hit Ctrl-C to end
 
-# Wait again for 1 minute
-
-$ kubectl-gadget profile block-io stop pCkmJ3jDtDz9yVyc
-Tracing block device I/O... Hit Ctrl-C to end.
+# Wait again for 1 minute and hit Ctrl+C to stop the gadget and see the results
+^C
 
      usecs               : count     distribution
          0 -> 1          : 0        |                                        |

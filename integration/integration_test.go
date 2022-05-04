@@ -268,7 +268,7 @@ func TestBiolatency(t *testing.T) {
 	commands := []*command{
 		{
 			name:           "Run biolatency gadget",
-			cmd:            "id=$($KUBECTL_GADGET profile block-io start --node $(kubectl get node --no-headers | cut -d' ' -f1 | head -1)); sleep 15; $KUBECTL_GADGET profile block-io stop $id",
+			cmd:            "$KUBECTL_GADGET profile block-io --node $(kubectl get node --no-headers | cut -d' ' -f1 | head -1) & sleep 15; kill -s INT $!",
 			expectedRegexp: `usecs\s+:\s+count\s+distribution`,
 		},
 	}
