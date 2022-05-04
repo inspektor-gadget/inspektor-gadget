@@ -29,7 +29,7 @@ import (
 
 var auditSeccompCmd = &cobra.Command{
 	Use:   "seccomp",
-	Short: "Trace syscalls that seccomp sent to the audit log",
+	Short: "Audit syscalls according to the seccomp profile",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// print header
 		switch params.OutputMode {

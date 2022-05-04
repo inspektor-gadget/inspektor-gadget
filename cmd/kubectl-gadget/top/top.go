@@ -35,7 +35,7 @@ var (
 
 var TopCmd = &cobra.Command{
 	Use:   "top",
-	Short: "Gather, sort and print events according to a given criteria",
+	Short: "Gather, sort and periodically report events according to a given criteria",
 }
 
 func addTopCommand(command *cobra.Command, defaultMaxRows int, sortBySlice []string) {
