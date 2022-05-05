@@ -97,10 +97,10 @@ static inline int parse_sni(struct __sk_buff *skb, int data_offset, char *out)
 
   // Read the server name field.
   int counter = 0;
-  for (int i = 0; i < server_name_len; i++) {
+  for (int i = 0; i < TLS_MAX_SERVER_NAME_LEN; i++) {
     if (!out)
       break;
-    if (i >= TLS_MAX_SERVER_NAME_LEN)
+    if (i >= server_name_len)
       break;
     char b;
     bpf_skb_load_bytes(skb, server_name_off + i, &b, 1);
