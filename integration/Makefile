@@ -1,7 +1,7 @@
 CONTAINER_REPO ?= docker.io/kinvolk/gadget
 IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
-TESTS_DOCKER_ARGS ?= "-e KUBECONFIG=/opt/kubeconfig/config -v $(HOME)/.kube:/opt/kubeconfig"
+TESTS_DOCKER_ARGS ?= -e KUBECONFIG=/opt/kubeconfig/config -v $(HOME)/.kube:/opt/kubeconfig
 
 KUBERNETES_DISTRIBUTION ?= ""
 
