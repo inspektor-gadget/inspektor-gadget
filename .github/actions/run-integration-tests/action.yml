@@ -33,13 +33,40 @@ runs:
     - name: Integration tests
       shell: bash
       run: |
-        echo "Using IMAGE_TAG=$IMAGE_TAG"
+        echo "IntegrationTestsJob: Using IMAGE_TAG=$IMAGE_TAG"
 
         tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
         mv kubectl-gadget kubectl-gadget-linux-amd64
 
+        cleanup() { \
+            echo "IntegrationTestsJob: Workflow run is being cancelled: $1 was received"; \
+            trap - $1; \
+            if [[ $1 == "SIGINT" ]]; then \
+              echo "IntegrationTestsJob: Start the clean-up..."; \
+            else \
+              echo "IntegrationTestsJob: Just wait until the clean-up finishes..."; \
+              return; \
+            fi; \
+            echo "IntegrationTestsJob: Notifying the integration tests container about the cancellation"; \
+            docker kill --signal="SIGINT" ig-integration-tests > /dev/null; \
+            echo "IntegrationTestsJob: Waiting for the integration tests container to finish"; \
+            docker wait ig-integration-tests & wait $!; \
+            echo "IntegrationTestsJob: We are done with the clean-up. Let the job exit"; \
+            exit 0; \
+        }
+
+        # Capture the SIGINT to start the clean-up. Then, capture also the
+        # SIGTERM to have those 2.5 extra seconds before the runner kills the
+        # process tree:
+        # https://docs.github.com/en/actions/managing-workflow-runs/canceling-a-workflow#steps-github-takes-to-cancel-a-workflow-run
+        trap 'cleanup SIGINT' SIGINT
+        trap 'cleanup SIGTERM' SIGTERM
+
+        echo "IntegrationTestsJob: Start"
         TESTS_DOCKER_ARGS="-e KUBECONFIG=/root/.kube/config -v /home/runner/.kube:/root/.kube -v /home/runner/work/_temp/.minikube:/home/runner/work/_temp/.minikube" \
-            make -C integration build test
+            make -C integration build test &
+        wait $!
+        echo "IntegrationTestsJob: Done"
 
         sed -i "s/latest/$IMAGE_TAG/g" integration/gadget-integration-tests-job.yaml
     - name: Add integration asset as artifact.
