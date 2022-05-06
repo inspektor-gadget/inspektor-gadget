@@ -118,7 +118,7 @@ func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
 	for i, container := range containers {
 		ret[i] = &runtimeclient.ContainerData{
 			ID:      container.ID,
-			Name:    strings.TrimPrefix(containers[0].Names[0], "/"),
+			Name:    strings.TrimPrefix(containers[i].Names[0], "/"),
 			Running: container.State == "running",
 		}
 	}
