@@ -29,7 +29,6 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-
 //go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang auditseccomp ./bpf/audit-seccomp.c -- -I./bpf/ -I../../.. -target bpf -D__KERNEL__ -D__TARGET_ARCH_x86"
 //go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang auditseccompwithfilters ./bpf/audit-seccomp.c -- -DWITH_FILTER=1 -I./bpf/ -I../../.. -target bpf -D__KERNEL__ -D__TARGET_ARCH_x86"
 
@@ -59,11 +58,11 @@ type Tracer struct {
 }
 
 type Config struct {
+	ContainersMap *ebpf.Map
 	// TODO: Make it a *ebpf.Map once
 	// https://github.com/cilium/ebpf/issues/515 and
 	// https://github.com/cilium/ebpf/issues/517 are fixed
-	ContainersMap string
-	MountnsMap    string
+	MountnsMap string
 }
 
 func NewTracer(config *Config, eventCallback func(types.Event), node string) (*Tracer, error) {
@@ -82,24 +81,17 @@ func NewTracer(config *Config, eventCallback func(types.Event), node string) (*T
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
+	opts := ebpf.CollectionOptions{
+		MapReplacements: make(map[string]*ebpf.Map),
+	}
 	if config.MountnsMap != "" {
 		spec.Maps["filter"].Name = filepath.Base(config.MountnsMap)
 		spec.Maps["filter"].Pinning = ebpf.PinByName
 	}
-	if config.ContainersMap != "" {
-		if filepath.Dir(config.ContainersMap) != gadgets.PinPath {
-			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PinPath)
-		}
-		spec.Maps["containers"].Name = filepath.Base(config.ContainersMap)
-		spec.Maps["containers"].Pinning = ebpf.PinByName
+	if config.ContainersMap != nil {
+		opts.MapReplacements["containers"] = config.ContainersMap
 	}
-	coll, err := ebpf.NewCollectionWithOptions(spec,
-		ebpf.CollectionOptions{
-			Maps: ebpf.MapOptions{
-				PinPath: gadgets.PinPath,
-			},
-		},
-	)
+	coll, err := ebpf.NewCollectionWithOptions(spec, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}

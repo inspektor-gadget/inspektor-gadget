@@ -15,9 +15,12 @@
 package tracercollection
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
@@ -103,6 +106,11 @@ func (tc *TracerCollection) AddTracer(id string, containerSelector pb.ContainerS
 	}
 	var mntnsSetMap *ebpf.Map
 	if tc.withEbpf {
+		if tc.pinPath != "" {
+			if err := os.Mkdir(tc.pinPath, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
+				return fmt.Errorf("failed to create folder for pinning bpf maps: %w", err)
+			}
+		}
 		mntnsSpec := &ebpf.MapSpec{
 			Name:       tc.mapPrefix + id,
 			Type:       ebpf.Hash,

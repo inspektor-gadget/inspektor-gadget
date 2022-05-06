@@ -12,7 +12,7 @@ struct {
 	__type(key, __u64);
 	__type(value, struct container);
 	__uint(max_entries, MAX_CONTAINERS_PER_NODE);
-	__uint(pinning, LIBBPF_PIN_BY_NAME);
+	__uint(pinning, LIBBPF_PIN_NONE);
 } containers SEC(".maps");
 
 char _license[] SEC("license") = "GPL";

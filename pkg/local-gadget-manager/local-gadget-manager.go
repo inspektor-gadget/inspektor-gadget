@@ -337,7 +337,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 		return nil, err
 	}
 
-	l.containersMap, err = containersmap.NewContainersMap(gadgets.PinPath)
+	l.containersMap, err = containersmap.NewContainersMap("")
 	if err != nil {
 		return nil, fmt.Errorf("error creating containers map: %w", err)
 	}

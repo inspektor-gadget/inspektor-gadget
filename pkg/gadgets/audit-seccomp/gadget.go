@@ -108,7 +108,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	var err error
 	config := &auditseccomptracer.Config{
 		MountnsMap:    gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
-		ContainersMap: filepath.Join(gadgets.PinPath, "containers"),
+		ContainersMap: containersmap.XXX,
 	}
 	t.tracer, err = auditseccomptracer.NewTracer(config, eventCallback, trace.Spec.Node)
 	if err != nil {

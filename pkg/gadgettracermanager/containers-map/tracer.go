@@ -66,20 +66,23 @@ type ContainersMap struct {
 }
 
 func NewContainersMap(pinPath string) (*ContainersMap, error) {
-	if err := os.Mkdir(pinPath, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
-		return nil, fmt.Errorf("failed to create folder for pinning bpf maps: %w", err)
-	}
-
 	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(ebpfProg))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
 
-	coll, err := ebpf.NewCollectionWithOptions(spec,
-		ebpf.CollectionOptions{
-			Maps: ebpf.MapOptions{PinPath: pinPath},
-		},
-	)
+	opts := ebpf.CollectionOptions{}
+	if pinPath != "" {
+		if err := os.Mkdir(pinPath, 0700); err != nil && !errors.Is(err, unix.EEXIST) {
+			return nil, fmt.Errorf("failed to create folder for pinning bpf maps: %w", err)
+		}
+
+		spec.Maps["containers"].Pinning = ebpf.PinByName
+		opts.Maps.PinPath = pinPath
+
+	}
+
+	coll, err := ebpf.NewCollectionWithOptions(spec, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}
@@ -138,5 +141,7 @@ func (cm *ContainersMap) Close() {
 	if cm == nil {
 		return
 	}
-	os.Remove(filepath.Join(cm.pinPath, BPFMapName))
+	if cm.pinPath != "" {
+		os.Remove(filepath.Join(cm.pinPath, BPFMapName))
+	}
 }
