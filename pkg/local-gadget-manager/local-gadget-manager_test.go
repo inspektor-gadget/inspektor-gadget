@@ -48,6 +48,8 @@ func TestBasic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start local gadget manager: %s", err)
 	}
+	defer localGadgetManager.Close()
+
 	gadgets := localGadgetManager.ListGadgets()
 	if len(gadgets) == 0 {
 		t.Fatalf("Failed to get any gadgets")
@@ -159,6 +161,24 @@ func checkFdList(t *testing.T, initialFdList string, attempts int, sleep time.Du
 	}
 }
 
+// TestClose tests that resources aren't leaked after calling Close()
+func TestClose(t *testing.T) {
+	if !*rootTest {
+		t.Skip("skipping test requiring root.")
+	}
+
+	initialFdList := currentFdList(t)
+
+	localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
+	if err != nil {
+		t.Fatalf("Failed to start local gadget manager: %s", err)
+	}
+
+	localGadgetManager.Close()
+
+	checkFdList(t, initialFdList, 5, 100*time.Millisecond)
+}
+
 func TestSeccomp(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
@@ -167,6 +187,7 @@ func TestSeccomp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start local gadget manager: %s", err)
 	}
+	defer localGadgetManager.Close()
 
 	initialFdList := currentFdList(t)
 
@@ -182,7 +203,9 @@ func TestSeccomp(t *testing.T) {
 
 	runTestContainer(t, containerName, "docker.io/library/alpine", "mkdir /foo ; echo OK", "")
 
-	ch, err := localGadgetManager.Stream("my-tracer", nil)
+	stop := make(chan struct{})
+
+	ch, err := localGadgetManager.Stream("my-tracer", stop)
 	if err != nil {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
@@ -190,6 +213,8 @@ func TestSeccomp(t *testing.T) {
 	if !strings.Contains(results, "- mkdir") {
 		t.Fatalf("Failed to get correct Seccomp Policy: %s", results)
 	}
+
+	close(stop)
 
 	err = localGadgetManager.Delete("my-tracer")
 	if err != nil {
@@ -213,6 +238,7 @@ func TestAuditSeccomp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start local gadget manager: %s", err)
 	}
+	defer localGadgetManager.Close()
 
 	initialFdList := currentFdList(t)
 
@@ -229,7 +255,9 @@ func TestAuditSeccomp(t *testing.T) {
 	seccompProfile := `{"defaultAction":"SCMP_ACT_ALLOW","architectures":["SCMP_ARCH_X86_64"],"syscalls":[{"action":"SCMP_ACT_LOG","names":["unshare"]}]}`
 	runTestContainer(t, containerName, "docker.io/library/alpine", "unshare -i ; echo OK", seccompProfile)
 
-	ch, err := localGadgetManager.Stream("my-tracer", nil)
+	stop := make(chan struct{})
+
+	ch, err := localGadgetManager.Stream("my-tracer", stop)
 	if err != nil {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
@@ -237,6 +265,8 @@ func TestAuditSeccomp(t *testing.T) {
 	if !strings.Contains(results, `"container":"test-local-gadget-auditseccomp001","syscall":"unshare","code":"log"`) {
 		t.Fatalf("Failed to get correct Seccomp Audit: %s", results)
 	}
+
+	close(stop)
 
 	err = localGadgetManager.Delete("my-tracer")
 	if err != nil {
@@ -260,6 +290,7 @@ func TestDNS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start local gadget manager: %s", err)
 	}
+	defer localGadgetManager.Close()
 
 	initialFdList := currentFdList(t)
 
@@ -275,7 +306,9 @@ func TestDNS(t *testing.T) {
 
 	runTestContainer(t, containerName, "docker.io/tutum/dnsutils", "dig microsoft.com", "")
 
-	ch, err := localGadgetManager.Stream("my-tracer", nil)
+	stop := make(chan struct{})
+
+	ch, err := localGadgetManager.Stream("my-tracer", stop)
 	if err != nil {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
@@ -349,6 +382,8 @@ func TestDNS(t *testing.T) {
 		t.Fatalf("Received: %v, Expected: %v", event, expectedEvent)
 	}
 
+	close(stop)
+
 	err = localGadgetManager.Delete("my-tracer")
 	if err != nil {
 		t.Fatalf("Failed to delete tracer: %s", err)
@@ -371,6 +406,7 @@ func TestCollector(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start local gadget manager: %s", err)
 	}
+	defer localGadgetManager.Close()
 
 	err = localGadgetManager.AddTracer("socket-collector", "my-tracer1", "my-container", "Status")
 	if err != nil {

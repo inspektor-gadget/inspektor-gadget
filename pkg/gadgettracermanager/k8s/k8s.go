@@ -58,7 +58,7 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 	}
 
 	// Get a runtime client to talk to the container runtime handling pods in
-	// this node. TODO: when to close it?
+	// this node.
 	list := strings.SplitN(node.Status.NodeInfo.ContainerRuntimeVersion, "://", 2)
 	runtimeClient, err := containerutils.NewContainerRuntimeClient(
 		&containerutils.RuntimeConfig{
@@ -76,7 +76,7 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 	}, nil
 }
 
-func (k *K8sClient) CloseRuntimeClient() {
+func (k *K8sClient) Close() {
 	k.runtimeClient.Close()
 }
 

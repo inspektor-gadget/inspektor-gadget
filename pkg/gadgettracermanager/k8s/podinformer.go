@@ -21,6 +21,7 @@ package k8s
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -45,9 +46,10 @@ type PodInformer struct {
 	stop           chan struct{}
 	createdPodChan chan *v1.Pod
 	deletedPodChan chan string
+	wg             sync.WaitGroup
 }
 
-func NewPodInformer(node string, createdPodChan chan *v1.Pod, deletedPodChan chan string) (*PodInformer, error) {
+func NewPodInformer(node string) (*PodInformer, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -90,8 +92,8 @@ func NewPodInformer(node string, createdPodChan chan *v1.Pod, deletedPodChan cha
 		queue:          queue,
 		informer:       informer,
 		stop:           make(chan struct{}),
-		createdPodChan: createdPodChan,
-		deletedPodChan: deletedPodChan,
+		createdPodChan: make(chan *v1.Pod),
+		deletedPodChan: make(chan string),
 	}
 
 	// Now let's start the controller
@@ -101,7 +103,23 @@ func NewPodInformer(node string, createdPodChan chan *v1.Pod, deletedPodChan cha
 }
 
 func (p *PodInformer) Stop() {
+	// tell all workers to end
 	close(p.stop)
+
+	// wait for workers to end before closing channels to avoid
+	// writing to closed channels
+	p.wg.Wait()
+
+	close(p.createdPodChan)
+	close(p.deletedPodChan)
+}
+
+func (p *PodInformer) CreatedChan() <-chan *v1.Pod {
+	return p.createdPodChan
+}
+
+func (p *PodInformer) DeletedChan() <-chan string {
+	return p.deletedPodChan
 }
 
 func (p *PodInformer) processNextItem() bool {
@@ -151,6 +169,7 @@ func (p *PodInformer) Run(threadiness int, stopCh chan struct{}) {
 	}
 
 	for i := 0; i < threadiness; i++ {
+		p.wg.Add(1)
 		go wait.Until(p.runWorker, time.Second, stopCh)
 	}
 
@@ -159,6 +178,8 @@ func (p *PodInformer) Run(threadiness int, stopCh chan struct{}) {
 }
 
 func (p *PodInformer) runWorker() {
+	defer p.wg.Done()
+
 	for p.processNextItem() {
 	}
 }
