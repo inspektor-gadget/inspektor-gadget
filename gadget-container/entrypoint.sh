@@ -61,63 +61,67 @@ fi
 
 # In the gadget image, /usr/src is a symlink to /host/usr/src (see gadget-*.Dockerfile).
 # If the kernel headers are already available on the gadget pod via the symlink,
-# no need to download them.
+# or the kheaders module is available no need to download them.
 if [ "$ID" = "rhcos" ] && [ ! -d "/usr/src/kernels/$KERNEL" ]; then
-  # Using Centos RPMs because RHCOS ones are not publicly available (they are the same).
-  echo "Fetching kernel-devel from CentOS Vault Mirror..."
+  if grep -q '^kheaders ' /proc/modules || (modprobe kheaders && rmmod kheaders); then
+    echo "kheaders module available, kernel headers won't be downloaded"
+  else
+    # Using Centos RPMs because RHCOS ones are not publicly available (they are the same).
+    echo "Fetching kernel-devel from CentOS Vault Mirror..."
 
-  # CentOS version is composed by <RHEL_VERSION>.<RELEASE_YEAR><RELEASE_MONTH>
-  # https://access.redhat.com/articles/3078#RHEL8
-  case $RHEL_VERSION in
-    "8")
-      CENTOS_VERSION="8.0.1905"
-      ;;
-    "8.1")
-      CENTOS_VERSION="8.1.1911"
-      ;;
-    "8.2")
-      CENTOS_VERSION="8.2.2004"
-      ;;
-    "8.3")
-      CENTOS_VERSION="8.3.2011"
-      ;;
-    "8.4")
-      CENTOS_VERSION="8.4.2105"
-      ;;
-    "8.5")
-      CENTOS_VERSION="8.5.2111"
-      ;;
-    *)
-      echo "Couldn't retrieve CentOS repository from RHEL version $RHEL_VERSION" >&2
-      ;;
-  esac
+    # CentOS version is composed by <RHEL_VERSION>.<RELEASE_YEAR><RELEASE_MONTH>
+    # https://access.redhat.com/articles/3078#RHEL8
+    case $RHEL_VERSION in
+      "8")
+        CENTOS_VERSION="8.0.1905"
+        ;;
+      "8.1")
+        CENTOS_VERSION="8.1.1911"
+        ;;
+      "8.2")
+        CENTOS_VERSION="8.2.2004"
+        ;;
+      "8.3")
+        CENTOS_VERSION="8.3.2011"
+        ;;
+      "8.4")
+        CENTOS_VERSION="8.4.2105"
+        ;;
+      "8.5")
+        CENTOS_VERSION="8.5.2111"
+        ;;
+      *)
+        echo "Couldn't retrieve CentOS repository from RHEL version $RHEL_VERSION" >&2
+        ;;
+    esac
 
-  if [ ! -z $CENTOS_VERSION ]; then
-    REPO=http://vault.centos.org/$CENTOS_VERSION/BaseOS/x86_64/os/Packages
-    RPMDIR=/tmp/gadget-kernel/$KERNEL
-    RPM=kernel-devel-$KERNEL.rpm
+    if [ ! -z $CENTOS_VERSION ]; then
+      REPO=http://vault.centos.org/$CENTOS_VERSION/BaseOS/x86_64/os/Packages
+      RPMDIR=/tmp/gadget-kernel/$KERNEL
+      RPM=kernel-devel-$KERNEL.rpm
 
-    mkdir -p $RPMDIR/usr/src/kernels/
-    # Ensure the whole operation does not take more than 40 seconds. This value
-    # needs to be lower than the liveness-probe initial delay. Otherwise, there
-    # is the risk the gadget pod gets restarted while downloading this package.
-    curl --max-time 40 -fsSLo $RPMDIR/$RPM $REPO/$RPM || rm -f $RPMDIR/$RPM
+      mkdir -p $RPMDIR/usr/src/kernels/
+      # Ensure the whole operation does not take more than 40 seconds. This value
+      # needs to be lower than the liveness-probe initial delay. Otherwise, there
+      # is the risk the gadget pod gets restarted while downloading this package.
+      curl --max-time 40 -fsSLo $RPMDIR/$RPM $REPO/$RPM || rm -f $RPMDIR/$RPM
 
-    if test -f $RPMDIR/$RPM; then
-      pushd $RPMDIR
-      rpm2cpio $RPM | cpio --quiet -i
-      popd
+      if test -f $RPMDIR/$RPM; then
+        pushd $RPMDIR
+        rpm2cpio $RPM | cpio --quiet -i
+        popd
 
-      # In the gadget image, /usr/src is a symlink to /host/usr/src (see gadget-*.Dockerfile).
-      # But in the case of RHCOS, remove the symlink and install files in the container.
-      test ! -L /usr/src || rm -f /usr/src
-      mkdir -p /usr/src/kernels/
-      mv $RPMDIR/usr/src/kernels/$KERNEL /usr/src/kernels/$KERNEL
-    else
-      echo "Failed to fetch kernel-devel package $REPO/$RPM" >&2
+        # In the gadget image, /usr/src is a symlink to /host/usr/src (see gadget.Dockerfile).
+        # But in the case of RHCOS, remove the symlink and install files in the container.
+        test ! -L /usr/src || rm -f /usr/src
+        mkdir -p /usr/src/kernels/
+        mv $RPMDIR/usr/src/kernels/$KERNEL /usr/src/kernels/$KERNEL
+      else
+        echo "Failed to fetch kernel-devel package $REPO/$RPM" >&2
+      fi
+
+      rm -rf $RPMDIR
     fi
-
-    rm -rf $RPMDIR
   fi
 fi
 
