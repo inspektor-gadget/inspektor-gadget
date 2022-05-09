@@ -41,6 +41,8 @@ var (
 	doNotDeploySPO = flag.Bool("no-deploy-spo", false, "don't deploy the Security Profiles Operator (SPO)")
 
 	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
+
+	skipNoCORE = flag.Bool("skip-no-co-re", false, "skip tests which do not have a CO-RE version")
 )
 
 func runCommands(cmds []*command, t *testing.T) {
@@ -257,6 +259,10 @@ func TestBindsnoop(t *testing.T) {
 }
 
 func TestBiolatency(t *testing.T) {
+	if *skipNoCORE {
+		t.Skip("'profile block-io' does not have a CO-RE version")
+	}
+
 	t.Parallel()
 
 	commands := []*command{
@@ -298,6 +304,10 @@ func TestBiotop(t *testing.T) {
 }
 
 func TestCapabilities(t *testing.T) {
+	if *skipNoCORE {
+		t.Skip("'trace capabilities' does not have a CO-RE version")
+	}
+
 	ns := generateTestNamespaceName("test-capabilities")
 
 	t.Parallel()
@@ -553,6 +563,10 @@ func TestProcessCollector(t *testing.T) {
 }
 
 func TestProfile(t *testing.T) {
+	if *skipNoCORE {
+		t.Skip("'profile cpu' does not have a CO-RE version")
+	}
+
 	ns := generateTestNamespaceName("test-profile")
 
 	t.Parallel()
@@ -686,6 +700,10 @@ func TestTcpconnect(t *testing.T) {
 }
 
 func TestTcptracer(t *testing.T) {
+	if *skipNoCORE {
+		t.Skip("'trace tcp' does not have a CO-RE version")
+	}
+
 	ns := generateTestNamespaceName("test-tcptracer")
 
 	t.Parallel()
