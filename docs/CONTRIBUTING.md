@@ -35,10 +35,19 @@ kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
 
 ### Building the gadget container image
 
+Inspektor Gadget provides two different container images:
+- gadget-default: Contains CO-RE and BCC gadgets
+- gadget-core: Containes only CO-RE gadgets that are integrated with the gadget tracer manager
+  * traceloop and the network policy advisor gadgets aren't included,
+    they will be included once
+    [#371](https://github.com/kinvolk/inspektor-gadget/issues/371) and
+    [#172](https://github.com/kinvolk/inspektor-gadget/issues/172) are
+    fixed.
+
 You can build and push the container gadget image by running the following commands:
 
 ```bash
-$ make gadget-container
+$ make gadget-default-container # or make gadget-core-container
 $ make push-gadget-container
 ```
 
@@ -46,13 +55,14 @@ The BPF code is built using a Docker container, so you don't have to worry
 installing the compilers to build it.
 
 ### Building notes
+
 - The compilation uses `tools/image-tag` to choose the tag of the container
 image to use according to the branch that you are compiling.
 - The container repository is set with the `CONTAINER_REPO` env variable.
 - You can push the container images to another registry and use the `--image`
 argument when deploying to the Kuberentes cluster.
 - If you wish to make changes to traceloop program, update
-`gadget.Dockerfile` to pick your own image of traceloop.
+`gadget-default.Dockerfile` to pick your own image of traceloop.
 - As for traceloop, it is also possible to change the BCC to be used as
 described in [BCC](#Updating-BCC-from-upstream) section.
 - See the [minikube](#Development-environment-on-minikube)
@@ -121,6 +131,7 @@ it's highly recommended to open an issue first to discuss it with the team.
 ## BCC
 
 ### Porting BCC gadgets
+
 This project uses some gadgets from [BCC](https://github.com/iovisor/bcc/).
 Instead of keeping our patched versions, we prefer to make those gadgets
 suitable to be used with Inspektor Gadget by contributing to the upstream project.
@@ -143,7 +154,8 @@ The [adding new BCC-based gadgets in Inspektor Gadget](https://kinvolk.io/blog/2
 blogpost presents some more details about this process.
 
 ### Updating BCC from upstream
-As you can see in `gadget.Dockerfile`, the gadget container image
+
+As you can see in `gadget-default.Dockerfile`, the gadget container image
 uses the BCC container image as its parent image.
 Given that there is not an official container repository to get that BCC image,
 we keep a synchronised [Kinvolk BCC fork](https://github.com/kinvolk/bcc)
@@ -158,7 +170,7 @@ it is necessary to first update the
 [Kinvolk BCC fork](https://github.com/kinvolk/bcc)
 so that the Github actions are triggered, and a new image is published.
 Once the image is available in registries, you have to update
-`gadget.Dockerfile` so that it uses the just created image, same goes for local
+`gadget-default.Dockerfile` so that it uses the just created image, same goes for local
 compilation with `gadget-local.Dockerfile`. The
 [Update BCC container image](https://github.com/kinvolk/inspektor-gadget/pull/190)
 PR is an example of it.

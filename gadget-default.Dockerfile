@@ -1,12 +1,15 @@
-# Prepare and build gadget artifacts in a container
+# Dockerfile for Inspektor Gadget container image.
+# This image contains CO-RE and BCC-based gadgets. Its base image is the
+# BCC image. It's the default image that is deployed in Inspektor Gadget.
+
+ARG BUILDER_IMAGE=ubuntu:20.04
 
 # BCC built from the gadget branch in the kinvolk/bcc fork.
 # See BCC section in docs/CONTRIBUTING.md for further details.
 ARG BCC="quay.io/kinvolk/bcc:64a64b4ba0a719fb6b79a4705f29ad5e1fa1e47d-focal-release"
-ARG OS_TAG=20.04
 
 FROM ${BCC} as bcc
-FROM ubuntu:${OS_TAG} as builder
+FROM ${BUILDER_IMAGE} as builder
 
 ARG ENABLE_BTFGEN=false
 ENV ENABLE_BTFGEN=${ENABLE_BTFGEN}
@@ -95,4 +98,4 @@ COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
 COPY --from=builder /tmp/btfs /btfs/
 
 # Mitigate https://github.com/kubernetes/kubernetes/issues/106962.
-RUN rm /var/run
+RUN rm -f /var/run

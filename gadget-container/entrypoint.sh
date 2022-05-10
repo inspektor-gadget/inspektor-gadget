@@ -47,7 +47,7 @@ echo $INSPEKTOR_GADGET_VERSION
 # mounted, passing /sys/fs/bpf from the pseudo-host does not work.
 # See also:
 # https://github.com/kubernetes/minikube/blob/99a0c91459f17ad8c83c80fc37a9ded41e34370c/deploy/kicbase/entrypoint#L76-L81
-BPF_MOUNTPOINT_TYPE="`stat -f --format=%T /sys/fs/bpf`"
+BPF_MOUNTPOINT_TYPE="`stat -f -c %T /sys/fs/bpf`"
 if [ "$BPF_MOUNTPOINT_TYPE" != "bpf_fs" ] ; then
   echo "/sys/fs/bpf is of type $BPF_MOUNTPOINT_TYPE. Remounting."
   mount -t bpf bpf /sys/fs/bpf/
@@ -59,7 +59,7 @@ if grep -q '^1:name=systemd:.*/crio-[0-9a-f]*\.scope$' /proc/self/cgroup > /dev/
     CRIO=1
 fi
 
-# In the gadget image, /usr/src is a symlink to /host/usr/src (see gadget.Dockerfile).
+# In the gadget image, /usr/src is a symlink to /host/usr/src (see gadget-*.Dockerfile).
 # If the kernel headers are already available on the gadget pod via the symlink,
 # no need to download them.
 if [ "$ID" = "rhcos" ] && [ ! -d "/usr/src/kernels/$KERNEL" ]; then
@@ -108,7 +108,7 @@ if [ "$ID" = "rhcos" ] && [ ! -d "/usr/src/kernels/$KERNEL" ]; then
       rpm2cpio $RPM | cpio --quiet -i
       popd
 
-      # In the gadget image, /usr/src is a symlink to /host/usr/src (see gadget.Dockerfile).
+      # In the gadget image, /usr/src is a symlink to /host/usr/src (see gadget-*.Dockerfile).
       # But in the case of RHCOS, remove the symlink and install files in the container.
       test ! -L /usr/src || rm -f /usr/src
       mkdir -p /usr/src/kernels/

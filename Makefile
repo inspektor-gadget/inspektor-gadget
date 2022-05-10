@@ -35,7 +35,7 @@ LDFLAGS := "-X main.version=$(VERSION) \
 
 .DEFAULT_GOAL := build
 .PHONY: build
-build: manifests generate kubectl-gadget gadget-container
+build: manifests generate kubectl-gadget gadget-default-container
 
 .PHONY: all
 all: build local-gadget
@@ -112,15 +112,27 @@ install/kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
 	mkdir -p ~/.local/bin/
 	cp kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) ~/.local/bin/kubectl-gadget
 
-# gadget container
-.PHONY: gadget-container
-gadget-container:
-	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget.Dockerfile \
+# gadget BCC container image
+.PHONY: gadget-default-container
+gadget-default-container:
+	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget-default.Dockerfile \
+		--build-arg ENABLE_BTFGEN=$(ENABLE_BTFGEN) .
+
+# gadget CO-RE container image
+.PHONY: gadget-core-container
+gadget-core-container:
+	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f gadget-core.Dockerfile \
 		--build-arg ENABLE_BTFGEN=$(ENABLE_BTFGEN) .
 
 .PHONY: push-gadget-container
 push-gadget-container:
 	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
+
+# kubectl-gadget container image
+.PHONY: kubectl-gadget-container
+kubectl-gadget-container:
+	docker build -t kubectl-gadget -f kubectl-gadget.Dockerfile \
+	--build-arg IMAGE_TAG=$(IMAGE_TAG) .
 
 # tests
 .PHONY: test
