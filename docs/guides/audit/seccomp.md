@@ -19,7 +19,7 @@ one of those two conditions:
 
 * Install a SeccompProfile that log the `mkdir` and `unshare` syscalls.
 
-```
+```yaml
 apiVersion: security-profiles-operator.x-k8s.io/v1beta1
 kind: SeccompProfile
 metadata:
@@ -41,7 +41,7 @@ spec:
 
 * Start a pod with that SeccompProfile.
 
-```
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -61,14 +61,14 @@ spec:
 
 * Start the audit-seccomp gadget.
 
-```
+```bash
 $ kubectl gadget audit seccomp -o custom-columns=namespace,pod,syscall,code
 NAMESPACE        POD              SYSCALL          CODE
 ```
 
 * In another terminal, execute the aforementioned syscalls in the pod.
 
-```
+```bash
 $ kubectl exec -ti  mypod -- /bin/sh
 / # mkdir /tmp/dir42 ; unshare -i
 Bad system call (core dumped)
@@ -105,7 +105,7 @@ default          mypod            unshare          kill_thread
 
 * Start the audit-seccomp gadget.
 
-```
+```bash
 $ sudo ./local-gadget
 » create audit-seccomp trace1
 State: Started
@@ -114,13 +114,14 @@ State: Started
 
 * In another terminal, start a container and run unshare:
 
-```
+```bash
 $ docker run -ti --rm --security-opt seccomp=profile.json ubuntu
 # unshare -i
 Bad system call (core dumped)
 ```
 
 * Observe the syscalls logged by seccomp in the first terminal.
-```
+
+```json
 {"type":"normal","node":"local","namespace":"default","pod":"laughing_tharp","container":"laughing_tharp","syscall":"unshare","code":"log","pid":949262,"mountnsid":4026532756,"pcomm":"unshare"}
 ```
