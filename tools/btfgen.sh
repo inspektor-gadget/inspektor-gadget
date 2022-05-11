@@ -5,7 +5,8 @@ set -x
 
 BTFHUB="${BTFHUB:-$(pwd)/../btfhub/}"
 INSPEKTOR_GADGET=${INSPEKTOR_GADGET:-$(pwd)}
-ARCH=x86_64
+# We cannot use uname -m due to cross building, so let's use dpkg --print-architecture.
+ARCH=$(dpkg --print-architecture | sed 's/amd64/x86_64/' | sed 's/arm64/arm64/')
 OUTPUT=/tmp/btfs
 
 if [ ! -d "${BTFHUB}" ]; then
