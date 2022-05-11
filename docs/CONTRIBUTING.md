@@ -7,27 +7,27 @@ description: >
 
 Here you can learn how you can contribute to Inspektor Gadget.
 
-## Architecture
+## Getting started
 
-It's highly recommended to read the [architecture](architecture.md) documentation before starting
-to play with Inspektor Gadget.
+To better understand how the pieces fit together, we recommend reading the
+[architecture](architecture.md) documentation before starting to play with
+Inspektor Gadget.
 
-## Setup developer environment
+### Setup developer environment
 
-- [Fork](https://github.com/kinvolk/inspektor-gadget/fork) and clone this repo.
+- [Fork](https://github.com/kinvolk/inspektor-gadget/fork) and clone this repo:
     - `git clone git@github.com:your_account/inspektor-gadget.git`.
 - Install [Docker](https://docs.docker.com/get-docker/) and [Golang](https://golang.org/doc/install).
 
 ## Building the code
 
-Inspektor Gadget is composed by a client executable and a container image.
-A container repository is needed to push the image. The following commands
-use the value of the `CONTAINER_REPO` env variable, it defaults to
-`docker.io/kinvolk/gadget` if not defined.
+Inspektor Gadget is composed of a client executable that runs on the
+operator's machine, and a container image that runs in the Kubernetes
+cluster. They can be built together or independently.
 
 ### Building the client executable
 
-You can compile for your platform by running `make kubectl-gadget`.
+You can compile the client executable for your platform by running `make kubectl-gadget`.
 
 To cross compile for all supported platforms, you can run `make
 kubectl-gadget-all` or select a specific one with `make
@@ -44,6 +44,11 @@ Inspektor Gadget provides two different container images:
     [#172](https://github.com/kinvolk/inspektor-gadget/issues/172) are
     fixed.
 
+**Note**: Using a locally built container image requires pushing it to a container
+repository, either local or remote. The default repository can be
+overridden by changing the value of the `CONTAINER_REPO` env variable,
+which defaults to `docker.io/kinvolk/gadget` if not defined.
+
 You can build and push the container gadget image by running the following commands:
 
 ```bash
@@ -54,36 +59,31 @@ $ make push-gadget-container
 The BPF code is built using a Docker container, so you don't have to worry
 installing the compilers to build it.
 
+If you push the container images to another registry, you can use the `--image`
+argument when deploying to the Kubernetes cluster.
+
 ### Building notes
 
 - The compilation uses `tools/image-tag` to choose the tag of the container
 image to use according to the branch that you are compiling.
-- The container repository is set with the `CONTAINER_REPO` env variable.
-- You can push the container images to another registry and use the `--image`
-argument when deploying to the Kuberentes cluster.
 - If you wish to make changes to traceloop program, update
 `gadget-default.Dockerfile` to pick your own image of traceloop.
 - As for traceloop, it is also possible to change the BCC to be used as
 described in [BCC](#Updating-BCC-from-upstream) section.
-- See the [minikube](#Development-environment-on-minikube)
-section for a faster development cycle.
 - You can generate the required BTF information for some well known
   kernel versions by setting `ENABLE_BTFGEN=true`
 
-## Workflows
-
-### Continuous Integration
-
-This repo uses GitHub Actions as CI. Please check dedicated [CI
-documentation](ci.md) for details.
+## Testing
 
 ### Development environment on minikube
 
-It's possible to make changes to Inspektor Gadget and test them on minikube locally without pushing container images to any registry.
+For faster iteration, it's possible to make changes to Inspektor Gadget and
+test them on minikube locally without pushing container images to any
+registry.
 
 * Follow the specific [installation instructions](install.md#minikube) for minikube.
-
-## Testing
+* Deploy the locally modified version of Inspektor Gadget to an already
+  running minikube cluster with `make minikube-install`.
 
 ### Unit tests
 
@@ -102,31 +102,48 @@ Be sure that you have a valid kubeconfig and run:
 $ export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
 $ make integration-tests
 ```
+### Continuous Integration
 
-## Code of Conduct
+Inspektor Gadget uses GitHub Actions as CI. Please check dedicated [CI
+documentation](ci.md) for details.
+
+## Contribution Guidelines
+
+### Code of Conduct
 
 Please refer to the Kinvolk
 [Code of Conduct](https://github.com/kinvolk/contribution/blob/master/CODE_OF_CONDUCT.md).
 
-## Authoring PRs
+### Authoring PRs
 
 For making PRs/commits consistent and easier to review, please check out
 Kinvolk's [contribution guidelines on git](https://github.com/kinvolk/contribution/blob/master/topics/git.md).
 
-## Good first issues
+### Good first issues
 
 If you're looking where to start, you can check the issues with the
 `good first issue` label on
 [Inspektor Gadget](https://github.com/kinvolk/inspektor-gadget/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or
 [traceloop](https://github.com/kinvolk/traceloop/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
 Don't hesitate to
-[talk with us](https://github.com/kinvolk/inspektor-gadget#discussions)
+[talk to us](https://github.com/kinvolk/inspektor-gadget#discussions)
 if you need further help.
 
-## Proposing new features
+### Proposing new features
 
 If you want to propose a new feature or do a big change in the architecture
 it's highly recommended to open an issue first to discuss it with the team.
+
+## Planning
+
+Our planning is published through two different project boards:
+
+ * [Inspektor Gadget Roadmap](https://github.com/orgs/kinvolk/projects/22/views/1)
+   has the high level view of the big issues that we are planning to tackle
+   in the upcoming months.
+ * [Inspektor Gadget Sprint Planning](https://github.com/orgs/kinvolk/projects/29/views/2)
+   has the week-to-week plans of which bugs we are currently working on,
+   and the different priorities of the issues involved.
 
 ## BCC
 
