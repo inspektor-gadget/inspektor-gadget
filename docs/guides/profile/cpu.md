@@ -1,9 +1,11 @@
 ---
 title: 'Using profile cpu'
-weight: 10
+weight: 20
+description: >
+  Analyze CPU performance by sampling stack traces.
 ---
 
-The profile gadget takes samples of the stack traces.
+The profile cpu gadget takes samples of the stack traces.
 
 Here we deploy a small demo pod "random":
 
@@ -12,7 +14,7 @@ $ kubectl run --restart=Never --image=busybox random -- sh -c 'cat /dev/urandom 
 pod/random created
 ```
 
-Using the profile gadget, we can see the list of stack traces.
+Using the profile cpu gadget, we can see the list of stack traces.
 The following command filters only for pods named "random", execute the command
 and interrupt it after ~30 seconds. The `-K` option is passed to show only the
 kernel stack traces.

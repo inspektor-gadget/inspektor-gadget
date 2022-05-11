@@ -1,9 +1,11 @@
 ---
 title: 'Using trace capabilities'
-weight: 10
+weight: 20
+description: >
+  Trace security capability checks.
 ---
 
-The capabilities gadget allows us to see what capability security checks
+The trace capabilities gadget allows us to see what capability security checks
 are triggered by applications running in Kubernetes Pods.
 
 Linux [capabilities](https://linux.die.net/man/7/capabilities) allow for a finer

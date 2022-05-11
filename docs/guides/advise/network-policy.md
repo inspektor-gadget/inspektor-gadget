@@ -1,9 +1,11 @@
 ---
 title: 'Using advise network-policy'
-weight: 10
+weight: 20
+description: >
+  Generate network policies based on recorded network activity.
 ---
 
-network-policy monitors the network activity in the specified namespaces and
+The network-policy advisor monitors the network activity in the specified namespaces and
 records the list of new TCP connections in a file. This file can then be used to
 generate Kubernetes network policies.
 

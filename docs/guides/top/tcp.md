@@ -1,9 +1,11 @@
 ---
 title: 'Using top tcp'
-weight: 10
+weight: 20
+description: >
+  Periodically report TCP activity.
 ---
 
-The `top tcp` gadget is used to monitor TCP connections.
+The top tcp gadget is used to visualize active TCP connections.
 
 ## How to use it?
 
@@ -22,7 +24,7 @@ NODE             NAMESPACE        POD              CONTAINER        PID     COMM
 ```
 
 Indeed, it is waiting for TCP connection to occur.
-So, open *an other terminal* and keep and eye on the first one, `exec` the container and use `wget`:
+So, open *another terminal* and keep and eye on the first one, `exec` the container and use `wget`:
 
 ```bash
 $ kubectl exec -ti test-pod -- wget kinvolk.io
@@ -37,7 +39,7 @@ minikube         default          test-pod         test-pod         49447   wget
     188.114.97.3:443                                    10      0
 ```
 
-This line correspond to the TCP connection initiated by `wget`.
+This line corresponds to the TCP connection initiated by `wget`.
 
 ## Only print some information
 

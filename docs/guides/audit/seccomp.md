@@ -1,11 +1,13 @@
 ---
 title: 'Using audit seccomp'
-weight: 10
+weight: 20
+description: >
+  Trace syscalls that seccomp sent to the audit log.
 ---
 
-The Audit Seccomp gadget provides a stream of events with syscalls that had
+The audit seccomp gadget provides a stream of events with syscalls that had
 their seccomp filters generating an audit log. An audit log can be generated in
-one of those two conditions:
+one of these two conditions:
 
 * The Seccomp profile has the flag `SECCOMP_FILTER_FLAG_LOG` (currently
   [unsupported by runc](https://github.com/opencontainers/runc/pull/3390)) and

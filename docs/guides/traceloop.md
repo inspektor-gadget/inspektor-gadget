@@ -1,6 +1,8 @@
 ---
 title: 'Using traceloop'
-weight: 10
+weight: 30
+description: >
+  Get strace-like logs of a pod from the past.
 ---
 
 ## Start traceloop
@@ -50,7 +52,7 @@ $ kubectl gadget traceloop show 10.0.30.247_default_mypod | grep -E 'write|/tmp/
 00:00.071566973 cpu#1 pid 14276 [cat] write(fd=2, buf=140723923036928 "cat: can't open '/tmp/file-3240': No such file or directory\n", count=60) = 60
 ```
 
-Thanks to the `traceloop` gadget, we can recover the result of the
+Thanks to the traceloop gadget, we can recover the result of the
 multiplication: 42. And we can understand the mistake in the shell script: the
 result was saved in `/tmp/file-1889` but we attempted to open
 `/tmp/file-3240`.

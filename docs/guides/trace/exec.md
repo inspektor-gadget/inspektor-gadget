@@ -1,9 +1,11 @@
 ---
 title: 'Using trace exec'
-weight: 10
+weight: 20
+description: >
+  Trace new processes.
 ---
 
-trace exec traces new processes creation.
+The trace exec gadget streams new processes creation events.
 
 Let's deploy an example application that will spawn few new processes:
 

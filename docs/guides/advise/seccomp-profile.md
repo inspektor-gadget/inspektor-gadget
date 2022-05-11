@@ -1,11 +1,13 @@
 ---
 title: 'Using advise seccomp-profile'
-weight: 10
+weight: 20
+description: >
+  Generate seccomp profiles based on recorded syscalls activity.
 ---
 
-The Seccomp Policy Advisor gadget records syscalls that are issued in a
+The seccomp profile advisor gadget records syscalls that are issued in a
 specified pod, and then uses this information to generate the corresponding
-seccomp policy. It can integrate with the [Kubernetes Security Profile
+seccomp profile. It can integrate with the [Kubernetes Security Profile
 Operator](https://github.com/kubernetes-sigs/security-profiles-operator),
 directly generating the necessary `seccompprofile` resource.
 
@@ -32,7 +34,10 @@ $ kubectl gadget advise seccomp-profile start -n seccomp-demo -p hello-python
 jMzhur2dQjZJxDCI
 ```
 
-After that, we need to interact with the workload, to get it to generate
+The string we receive is the identifier that we will use to refer to the
+running operation when we want to stop it.
+
+While the advisor is running, we need to interact with the workload, to get it to generate
 system calls. In our example, it's a simple webservice, and we can interact
 with it by forwarding the service port and then querying the service
 
@@ -51,7 +56,8 @@ $ kill %1
 ```
 
 Once we have captured the syscalls, we can ask the gadget to generate the
-corresponding profile:
+corresponding profile, by stopping the operation with the identifier we had
+received before.
 
 ```bash
 $ kubectl gadget advise seccomp-profile stop jMzhur2dQjZJxDCI

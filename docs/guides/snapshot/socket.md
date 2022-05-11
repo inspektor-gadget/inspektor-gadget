@@ -1,9 +1,11 @@
 ---
 title: 'Using snapshot socket'
-weight: 10
+weight: 20
+description: >
+  Gather information about TCP and UDP sockets.
 ---
 
-socket-collector gathers information about TCP and UDP sockets.
+The snapshot socket gadget gathers information about TCP and UDP sockets.
 
 We will start this demo by using nginx to create a web server on port 80:
 
@@ -23,7 +25,7 @@ NAME        READY   STATUS    RESTARTS   AGE
 nginx-app   1/1     Running   0          46s
 ```
 
-We will now use Inspektor Gadget to retrieve the TCP/UDP sockets information
+We will now use the snapshot socket gadget to retrieve the TCP/UDP sockets information
 of the nginx-app pod. Notice we are filtering by namespace but we could have
 done it also using the podname or labels:
 
@@ -45,7 +47,7 @@ $ kubectl exec -n test-socketcollector nginx-app -- /bin/bash -c "sed -i 's/list
 [...] signal process started
 ```
 
-Check with Inspektor Gadget what are the sockets now:
+Now, we can check again with the snapshot socket gadget what the active socket is:
 
 ```bash
 $ kubectl gadget snapshot socket -n test-socketcollector

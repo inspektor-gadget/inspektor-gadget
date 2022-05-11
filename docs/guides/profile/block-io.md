@@ -1,14 +1,19 @@
 ---
 title: 'Using profile block-io'
-weight: 10
+weight: 20
+description: >
+  Analyze block I/O performance through a latency distribution.
 ---
 
-The biolatency gadget traces the block device I/O (disk I/O), and records the
-distribution of I/O latency (time), to then print this as a histogram when
-the gadget is stopped. Notice that the latency of the disk I/O is measured
-from the issue to the device to its completion, so it does not include
-time queued in the kernel. It means that the histogram reflects only the
-performance of the device and not the latency suffered by an application.
+The profile block-io gadget gathers information about the usage of the
+block device I/O (disk I/O), generating a histogram distribution of I/O
+latency (time), when the gadget is stopped.
+
+Notice that the latency of the disk I/O is measured from when the call is
+issued to the device until its completion, it does not include time spent
+in the kernel queue. This means that the histogram reflects only the
+performance of the device and not the effective latency suffered by the
+applications.
 
 The histogram shows the number of I/O operations (`count` column) that lie in
 the latency range `interval-start` -> `interval-end` (`usecs` column), which,
@@ -22,7 +27,7 @@ the `--io` flag that will generate a given number of workers to spin on the
 way, we will generate disk I/O that we will analyse using the biolatency
 gadget.
 
-Firstly, let's use the biolatency gadget to see the I/O latency in our
+Firstly, let's use the profile block-io gadget to see the I/O latency in our
 testing node with its normal load work:
 
 ```bash
@@ -75,7 +80,7 @@ NAME        READY   STATUS    RESTARTS   AGE   IP           NODE          NOMINA
 stress-io   1/1     Running   0          2s    10.244.1.7   worker-node   <none>           <none>
 ```
 
-Using the biolatency gadget, we can generate another histogram to analyse the
+Using the profile block-io gadget, we can generate another histogram to analyse the
 disk I/O with this load:
 
 ```bash

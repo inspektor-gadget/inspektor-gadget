@@ -1,14 +1,16 @@
 ---
 title: 'Using trace tcpconnect'
-weight: 10
+weight: 20
+description: >
+  Trace connect system calls.
 ---
 
-The tcpconnect gadget traces TCP connect calls.
-This will help us to define a restrictive policy for outgoing connections.
+The trace tcpconnect gadget traces TCP connect calls.
+
+In this guide, we will use this gadget to define a restrictive policy for outgoing connections.
 
 Before we start a demo pod that connects to a public HTTP server, we already begin to trace
 the outgoing connections of our future pod (don't terminate it with Ctrl-C for now).
-
 
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod
@@ -21,7 +23,7 @@ $ kubectl run --restart=Never -ti --image=busybox mypod -- sh -c 'wget -q -O /de
 ok
 ```
 
-In our Inspektor Gadget terminal we can now see the logged connection:
+In our trace tcpconnect gadget terminal we can now see the logged connection:
 
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod
@@ -31,11 +33,11 @@ ip-10-0-30-247   default          mypod            mypod           9386   wget  
 ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          443
 ```
 
-(If the pod was started as part of a deployment, the name of the pod is not known
+If the pod was started as part of a deployment, the name of the pod is not known
 in advance since random characters will be added as suffix.
 In that case, it is still possible to trace the connections. We would just
 use `kubectl gadget trace tcpconnect --selector key=value` to filter the pods by
-labels instead of names.)
+labels instead of names.
 
 There was a HTTP redirect to HTTPS, so we need to allow both ports for our pod.
 Don't terminate it yet, we will have another look later.
@@ -84,7 +86,7 @@ ok
 
 ```
 
-Switching to the Inspektor Gadget terminal, we see the same connections again
+Switching to the gadget trace tcpconnnect terminal, we see the same connections again
 (but now with a new PID since it's a new pod):
 
 ```bash
@@ -106,7 +108,7 @@ wget: download timed out
 failed
 ```
 
-Indeed the network policy was applied and we can also see in Inspektor Gadget which
+Indeed the network policy was applied and we can also see in the gadget output which
 connection the pod wanted to make in the last line. Since connecting to port 80 failed
 there is no redirect visible to port 443:
 

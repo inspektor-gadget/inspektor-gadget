@@ -34,7 +34,7 @@ var biolatencyTraceConfig = &utils.TraceConfig{
 
 var biolatencyCmd = &cobra.Command{
 	Use:   "block-io",
-	Short: "Generate a histogram with the distribution of block device I/O latency",
+	Short: "Analyze block I/O performance through a latency distribution",
 }
 
 var biolatencyStartCmd = &cobra.Command{

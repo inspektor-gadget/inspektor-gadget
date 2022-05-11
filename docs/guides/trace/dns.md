@@ -1,9 +1,11 @@
 ---
 title: 'Using trace dns'
-weight: 10
+weight: 20
+description: >
+  Trace DNS requests.
 ---
 
-The dns gadget prints information about DNS requests performed by the different
+The trace dns gadget prints information about DNS requests performed by the different
 pods.
 
 Create a `demo` namespace:

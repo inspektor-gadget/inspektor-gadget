@@ -1,9 +1,11 @@
 ---
 title: 'Using snapshot process'
-weight: 10
+weight: 20
+description: >
+  Gather information about running processes.
 ---
 
-The process-collector gadget gathers information about running processes.
+The snapshot process gadget gathers information about running processes.
 
 Let's start this demo by creating a namespace:
 
