@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -102,6 +103,11 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 }
 
 func (f *Trace) Start(trace *gadgetv1alpha1.Trace) {
+	if runtime.GOARCH == "arm64" {
+		trace.Status.OperationError = "This gadget is not supported on arm64 because it comes prebundled with eBPF object file compiled for amd64 (https://github.com/weaveworks/tcptracer-bpf/blob/d329ae7fb6fa90e4389075347f0754de2127336f/ebpf.mk#L18)"
+		return
+	}
+
 	trace.Status.Output = ""
 	if f.started {
 		trace.Status.State = "Started"
