@@ -43,23 +43,28 @@ and their shipped kernels, hence it's possible that some gadgets work in older
 kernels than the one mentioned here.
 
 
-| Gadget                 | Minimum Kernel          |
-|------------------------|-------------------------|
-| audit-seccomp          | 5.4                     |
-| bindsnoop              | 4.15 (BCC), 5.4 (CO:RE) |
-| biolatency             | 4.15                    |
-| capabilities           | 4.15                    |
-| dns                    | 5.4                     |
-| execsnoop              | 4.15 (BCC), 5.4 (CO:RE) |
-| filetop                | 5.4                     |
-| fsslower               | 5.4                     |
-| network policy advisor |                         |
-| oomkill                | 5.4                     |
-| opensnoop              | 4.15 (BCC), 5.4 (CO:RE) |
-| sigsnoop               | 5.4                     |
-| socket collector       | 5.10                    |
-| process collector      | 5.10                    |
-| tcpconnect             | 4.15 (BCC), 5.8 (CO:RE) |
-| tcptop                 | 4.15                    |
-| tcptracer              | 4.15                    |
-| traceloop              | 4.15                    |
+| Gadget                   | Minimum Kernel          |
+|--------------------------|-------------------------|
+| `advise network-policy`  |                         |
+| `advise seccomp-profile` |                         |
+| `audit seccomp`          | 5.4                     |
+| `profile block-io`       | 4.15                    |
+| `profile cpu`            |                         |
+| `snapshot process`       | 5.10                    |
+| `snapshot socket`        | 5.10                    |
+| `top block-io`           |                         |
+| `top file`               | 5.4                     |
+| `top tcp`                | 4.15                    |
+| `trace bind`             | 4.15 (BCC), 5.4 (CO:RE) |
+| `trace capabilities`     | 4.15                    |
+| `trace dns`              | 5.4                     |
+| `trace exec`             | 4.15 (BCC), 5.4 (CO:RE) |
+| `trace fsslower`         | 5.4                     |
+| `trace mount`            |                         |
+| `trace oomkill`          | 5.4                     |
+| `trace open`             | 4.15 (BCC), 5.4 (CO:RE) |
+| `trace signal`           | 5.4                     |
+| `trace sni`              |                         |
+| `trace tcp`              | 4.15                    |
+| `tracep tcpconnect`      | 4.15 (BCC), 5.8 (CO:RE) |
+| `traceloop`              | 4.15                    |
