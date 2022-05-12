@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -110,6 +111,11 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 }
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
+	if runtime.GOARCH == "arm64" {
+		trace.Status.OperationError = "This gadget is not supported on arm64 for various reasons (https://github.com/kinvolk/traceloop/issues/28)"
+		return
+	}
+
 	t.cmd = exec.Command("/bin/bash", "-c", `
 		# gobpf currently uses global kprobes via debugfs/tracefs and not the Perf
 		# Event file descriptor based kprobe (Linux >=4.17). So unfortunately, kprobes
