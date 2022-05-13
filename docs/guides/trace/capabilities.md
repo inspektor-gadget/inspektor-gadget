@@ -5,6 +5,8 @@ description: >
   Trace security capability checks.
 ---
 
+![Screencast of the trace capabilities gadget](capabilities.gif)
+
 The trace capabilities gadget allows us to see what capability security checks
 are triggered by applications running in Kubernetes Pods.
 
@@ -70,7 +72,7 @@ Terminating...
 We can leave the gadget with Ctrl-C.
 In the output we see that the `SYS_NICE` capability got checked when `nice` was run.
 We should probably add it to our pod template for `nice` to work. We can also drop
-all other capabilites from the default list (see link above) since `nice`
+all other capabilities from the default list (see link above) since `nice`
 did not use them:
 
 The meaning of the columns is:

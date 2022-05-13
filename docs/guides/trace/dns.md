@@ -5,6 +5,8 @@ description: >
   Trace DNS requests.
 ---
 
+![Screencast of the trace dns gadget](dns.gif)
+
 The trace dns gadget prints information about DNS requests performed by the different
 pods.
 

@@ -72,6 +72,8 @@ $ kubectl gadget deploy
 
 This will deploy the gadget DaemonSet along with its RBAC rules.
 
+![Screencast of the deploy command](install.gif)
+
 ### Choosing the gadget image
 
 If you wish to install an alternative gadget image, you could use the following commands:

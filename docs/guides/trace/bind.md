@@ -5,6 +5,8 @@ description: >
   Trace the kernel functions performing socket binding.
 ---
 
+![Screencast of the trace bind gadget](bind.gif)
+
 The trace bind gadget is used to stream socket binding syscalls.
 
 ## How to use it?
