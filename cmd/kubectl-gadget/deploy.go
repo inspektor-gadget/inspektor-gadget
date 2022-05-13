@@ -15,13 +15,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"text/template"
 
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
+	"github.com/kinvolk/inspektor-gadget/pkg/resources"
 	"github.com/spf13/cobra"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/resources"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 var deployCmd = &cobra.Command{
@@ -71,11 +77,6 @@ func init() {
 }
 
 const deployYamlTmpl string = `
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: gadget
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -346,6 +347,16 @@ type parameters struct {
 	FallbackPodInformer bool
 }
 
+func createGadgetNamespace(k8sClient *kubernetes.Clientset, namespace string) error {
+	nsSpec := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: gadgetNamespace,
+		},
+	}
+	_, err := k8sClient.CoreV1().Namespaces().Create(context.TODO(), nsSpec, metav1.CreateOptions{})
+	return err
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	if hookMode != "auto" &&
 		hookMode != "crio" &&
@@ -353,6 +364,17 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		hookMode != "nri" &&
 		hookMode != "fanotify" {
 		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,podinformer,nri,fanotify]", hookMode)
+	}
+
+	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
+	if err != nil {
+		return utils.WrapInErrSetupK8sClient(err)
+	}
+
+	// 1. Create gadget namespace.
+	err = createGadgetNamespace(k8sClient, gadgetNamespace)
+	if err != nil {
+		return fmt.Errorf("failed to create namespace %s: %w", gadgetNamespace, err)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
