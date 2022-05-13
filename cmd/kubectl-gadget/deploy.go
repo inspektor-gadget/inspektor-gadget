@@ -76,13 +76,9 @@ func init() {
 	rootCmd.AddCommand(deployCmd)
 }
 
+const gadgetServiceAccountName = "gadget"
+
 const deployYamlTmpl string = `
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: gadget
-  namespace: gadget
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -357,6 +353,16 @@ func createGadgetNamespace(k8sClient *kubernetes.Clientset, namespace string) er
 	return err
 }
 
+func createGadgetServiceAccount(k8sClient *kubernetes.Clientset, namespaceName, serviceAccountName string) error {
+	serviceAccountSpec := &v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: serviceAccountName,
+		},
+	}
+	_, err := k8sClient.CoreV1().ServiceAccounts(namespaceName).Create(context.TODO(), serviceAccountSpec, metav1.CreateOptions{})
+	return err
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	if hookMode != "auto" &&
 		hookMode != "crio" &&
@@ -375,6 +381,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	err = createGadgetNamespace(k8sClient, gadgetNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", gadgetNamespace, err)
+	}
+
+	// 2. Create gadget serviceAccount.
+	err = createGadgetServiceAccount(k8sClient, gadgetNamespace, gadgetServiceAccountName)
+	if err != nil {
+		return fmt.Errorf("failed to create service account %s: %w", gadgetServiceAccountName, err)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
