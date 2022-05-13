@@ -17,14 +17,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"text/template"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/kinvolk/inspektor-gadget/pkg/resources"
 	"github.com/spf13/cobra"
 
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/api/core/v1"
@@ -58,7 +57,7 @@ func init() {
 		&imagePullPolicy,
 		"image-pull-policy", "",
 		"Always",
-		"pull policy for the container image")
+		"pull policy for the container image (Always, Never, IfNotPresent)")
 	deployCmd.PersistentFlags().StringVarP(
 		&hookMode,
 		"hook-mode", "",
@@ -80,196 +79,11 @@ func init() {
 const (
 	gadgetClusterRoleBindingName = "gadget-cluster-role-binding"
 	gadgetClusterRoleName        = "gadget-cluster-role"
+	gadgetDaemonSetName          = "gadget"
 	gadgetRoleBindingName        = "gadget-role-binding"
 	gadgetRoleName               = "gadget-role"
 	gadgetServiceAccountName     = "gadget"
 )
-
-const deployYamlTmpl string = `
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: gadget
-  namespace: gadget
-  labels:
-    k8s-app: gadget
-spec:
-  selector:
-    matchLabels:
-      k8s-app: gadget
-  template:
-    metadata:
-      labels:
-        k8s-app: gadget
-      annotations:
-        # We need to set gadget container as unconfined so it is able to write
-        # /sys/fs/bpf as well as /sys/kernel/debug/tracing.
-        # Otherwise, we can have error like:
-        # "failed to create server failed to create folder for pinning bpf maps: mkdir /sys/fs/bpf/gadget: permission denied"
-        # (For reference, see: https://github.com/kinvolk/inspektor-gadget/runs/3966318270?check_suite_focus=true#step:20:221)
-        container.apparmor.security.beta.kubernetes.io/gadget: "unconfined"
-        inspektor-gadget.kinvolk.io/option-hook-mode: "{{.HookMode}}"
-    spec:
-      serviceAccount: gadget
-      hostPID: true
-      hostNetwork: true
-      containers:
-      - name: gadget
-        terminationMessagePolicy: FallbackToLogsOnError
-        image: {{.Image}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        command: [ "/entrypoint.sh" ]
-        lifecycle:
-          preStop:
-            exec:
-              command:
-                - "/cleanup.sh"
-{{if .LivenessProbe}}
-        livenessProbe:
-          initialDelaySeconds: 60
-          periodSeconds: 5
-          exec:
-            command:
-              - /bin/gadgettracermanager
-              - -liveness
-{{end}}
-        env:
-          - name: NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: GADGET_POD_UID
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.uid
-          - name: TRACELOOP_NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: TRACELOOP_POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-          - name: TRACELOOP_POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: GADGET_IMAGE
-            value: {{.Image}}
-          - name: INSPEKTOR_GADGET_VERSION
-            value: {{.Version}}
-          - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE
-            value: "{{.HookMode}}"
-          - name: INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
-            value: "{{.FallbackPodInformer}}"
-        securityContext:
-          capabilities:
-            add:
-              # We need CAP_NET_ADMIN to be able to create BPF link.
-              # Indeed, link_create is called with prog->type which equals
-              # BPF_PROG_TYPE_CGROUP_SKB.
-              # This value is then checked in
-              # bpf_prog_attach_check_attach_type() which also checks if we have
-              # CAP_NET_ADMIN:
-              # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/bpf/syscall.c#L4099
-              # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/bpf/syscall.c#L2967
-              - NET_ADMIN
-
-              # We need CAP_SYS_ADMIN to use Python-BCC gadgets because bcc
-              # internally calls bpf_get_map_fd_by_id() which contains the
-              # following snippet:
-              # if (!capable(CAP_SYS_ADMIN))
-              # 	return -EPERM;
-              # (https://elixir.bootlin.com/linux/v5.10.73/source/kernel/bpf/syscall.c#L3254)
-              #
-              # Details about this are given in:
-              # > The important design decision is to allow ID->FD transition for
-              # CAP_SYS_ADMIN only. What it means that user processes can run
-              # with CAP_BPF and CAP_NET_ADMIN and they will not be able to affect each
-              # other unless they pass FDs via scm_rights or via pinning in bpffs.
-              # ID->FD is a mechanism for human override and introspection.
-              # An admin can do 'sudo bpftool prog ...'. It's possible to enforce via LSM that
-              # only bpftool binary does bpf syscall with CAP_SYS_ADMIN and the rest of user
-              # space processes do bpf syscall with CAP_BPF isolating bpf objects (progs, maps,
-              # links) that are owned by such processes from each other.
-              # (https://lwn.net/Articles/820560/)
-              #
-              # Note that even with a kernel providing CAP_BPF, the above
-              # statement is still true.
-              - SYS_ADMIN
-
-              # We need this capability to get addresses from /proc/kallsyms.
-              # Without it, addresses displayed when reading this file will be
-              # 0.
-              # Thus, bcc_procutils_each_ksym will never call callback, so KSyms
-              # syms_ vector will be empty and it will return false.
-              # As a consequence, no prefix will be found in
-              # get_syscall_prefix(), so a default prefix (_sys) will be
-              # returned.
-              # Sadly, this default prefix is not used by the running kernel,
-              # which instead uses: __x64_sys_
-              - SYSLOG
-
-              # traceloop gadget uses strace which in turns use ptrace()
-              # syscall.
-              # Within kernel code, ptrace() calls ptrace_attach() which in
-              # turns calls __ptrace_may_access() which calls ptrace_has_cap()
-              # where CAP_SYS_PTRACE is finally checked:
-              # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/ptrace.c#L284
-              - SYS_PTRACE
-
-              # Needed by setrlimit in gadgettracermanager and by the traceloop
-              # gadget.
-              - SYS_RESOURCE
-
-              # Needed for gadgets that don't dumb the memory rlimit.
-              # (Currently only applies to BCC python-based gadgets)
-              - IPC_LOCK
-
-              # Needed by BCC python-based gadgets to load the kheaders module:
-              # https://github.com/iovisor/bcc/blob/v0.24.0/src/cc/frontends/clang/kbuild_helper.cc#L158
-              - SYS_MODULE
-
-              # Needed by gadgets that open a raw sock like dns and snisnoop
-              - NET_RAW
-        volumeMounts:
-        - name: host
-          mountPath: /host
-        - name: run
-          mountPath: /run
-        - name: modules
-          mountPath: /lib/modules
-        - name: debugfs
-          mountPath: /sys/kernel/debug
-        - name: cgroup
-          mountPath: /sys/fs/cgroup
-        - name: bpffs
-          mountPath: /sys/fs/bpf
-      tolerations:
-      - effect: NoSchedule
-        operator: Exists
-      - effect: NoExecute
-        operator: Exists
-      volumes:
-      - name: host
-        hostPath:
-          path: /
-      - name: run
-        hostPath:
-          path: /run
-      - name: cgroup
-        hostPath:
-          path: /sys/fs/cgroup
-      - name: modules
-        hostPath:
-          path: /lib/modules
-      - name: bpffs
-        hostPath:
-          path: /sys/fs/bpf
-      - name: debugfs
-        hostPath:
-          path: /sys/kernel/debug
-`
 
 type parameters struct {
 	Image               string
@@ -411,6 +225,296 @@ func createGadgetClusterRoleBinding(k8sClient *kubernetes.Clientset, clusterRole
 	return err
 }
 
+func createGadgetDaemonSet(k8sClient *kubernetes.Clientset, daemonSetName, namespaceName, hookMode, image string, pullPolicy v1.PullPolicy, livenessProbe, fallbackPodInformer bool) error {
+	var probe *v1.Probe = nil
+	if livenessProbe {
+		probe = &v1.Probe{
+			// Handler in v0.22.3, ProbeHandler v0.24.0.
+			Handler: v1.Handler{
+				Exec: &v1.ExecAction{
+					Command: []string{
+						"/bin/gadgettracermanager",
+						"-liveness",
+					},
+				},
+			},
+			InitialDelaySeconds: 60,
+			PeriodSeconds:       5,
+		}
+	}
+
+	envFallbackPodInformer := ""
+	if fallbackPodInformer {
+		envFallbackPodInformer = "true"
+	}
+
+	daemonSetSpec := &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      daemonSetName,
+			Namespace: namespaceName,
+			Labels:    map[string]string{"k8s-app": "gadget"},
+		},
+		Spec: appsv1.DaemonSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"k8s-app": "gadget"},
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      map[string]string{"k8s-app": "gadget"},
+					Annotations: map[string]string{
+						// We need to set gadget container as unconfined so it is able to
+						// write /sys/fs/bpf as well as /sys/kernel/debug/tracing.
+						// Otherwise, we can have error like:
+						// "failed to create server failed to create folder for pinning bpf maps: mkdir /sys/fs/bpf/gadget: permission denied"
+						// (For reference, see: https://github.com/kinvolk/inspektor-gadget/runs/3966318270?check_suite_focus=true#step:20:221)
+						"container.apparmor.security.beta.kubernetes.io/gadget": "unconfined",
+						"inspektor-gadget.kinvolk.io/option-hook-mode":          hookMode,
+					},
+				},
+				Spec: v1.PodSpec{
+					ServiceAccountName: "gadget",
+					HostPID:            true,
+					HostNetwork:        true,
+					Containers:         []v1.Container{
+						v1.Container{
+							Name:                     "gadget",
+							TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+							Image:                    image,
+							ImagePullPolicy:          pullPolicy,
+							Command:                  []string{"/entrypoint.sh"},
+							Lifecycle:                &v1.Lifecycle{
+								// Handler in v0.22.3, LifecycleHandler in v0.24.0.
+								PreStop: &v1.Handler{
+									Exec: &v1.ExecAction{
+										Command: []string{"/cleanup.sh"},
+									},
+								},
+							},
+							LivenessProbe: probe,
+							Env:           []v1.EnvVar{
+								v1.EnvVar{
+									Name:      "NODE_NAME",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "spec.nodeName",
+										},
+									},
+								},
+								v1.EnvVar{
+									Name:      "GADGET_POD_UID",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "metadata.uid",
+										},
+									},
+								},
+								v1.EnvVar{
+									Name:      "TRACELOOP_NODE_NAME",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "spec.nodeName",
+										},
+									},
+								},
+								v1.EnvVar{
+									Name:      "TRACELOOP_POD_NAME",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+								v1.EnvVar{
+									Name:      "TRACELOOP_POD_NAMESPACE",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+								v1.EnvVar{
+									Name:  "GADGET_IMAGE",
+									Value: image,
+								},
+								v1.EnvVar{
+									Name:  "INSPEKTOR_GADGET_VERSION",
+									Value: version,
+								},
+								v1.EnvVar{
+									Name:  "INSPEKTOR_GADGET_OPTION_HOOK_MODE",
+									Value: hookMode,
+								},
+								v1.EnvVar{
+									Name:  "INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER",
+									Value: envFallbackPodInformer,
+								},
+							},
+							SecurityContext: &v1.SecurityContext{
+								Capabilities: &v1.Capabilities{
+									Add: []v1.Capability{
+										// We need CAP_NET_ADMIN to be able to create BPF link.
+										// Indeed, link_create is called with prog->type which equals
+										// BPF_PROG_TYPE_CGROUP_SKB.
+										// This value is then checked in
+										// bpf_prog_attach_check_attach_type() which also checks if we
+										// have CAP_NET_ADMIN:
+										// https://elixir.bootlin.com/linux/v5.14.14/source/kernel/bpf/syscall.c#L4099
+										// https://elixir.bootlin.com/linux/v5.14.14/source/kernel/bpf/syscall.c#L2967
+										"NET_ADMIN",
+										// We need CAP_SYS_ADMIN to use Python-BCC gadgets because bcc
+										// internally calls bpf_get_map_fd_by_id() which contains the
+										// following snippet:
+										// if (!capable(CAP_SYS_ADMIN))
+										// 	return -EPERM;
+										// (https://elixir.bootlin.com/linux/v5.10.73/source/kernel/bpf/syscall.c#L3254)
+										//
+										// Details about this are given in:
+										// > The important design decision is to allow ID->FD transition
+										// for CAP_SYS_ADMIN only. What it means that user processes can
+										// run with CAP_BPF and CAP_NET_ADMIN and they will not be able
+										// to affect each other unless they pass FDs via scm_rights or
+										// via pinning in bpffs.
+										// ID->FD is a mechanism for human override and introspection.
+										// An admin can do 'sudo bpftool prog ...'. It's possible to
+										// enforce via LSM that only bpftool binary does bpf syscall
+										// with CAP_SYS_ADMIN and the rest of user space processes do
+										// bpf syscall with CAP_BPF isolating bpf objects (progs, maps,
+										// links) that are owned by such processes from each other.
+										// (https://lwn.net/Articles/820560/)
+										//
+										// Note that even with a kernel providing CAP_BPF, the above
+										// statement is still true.
+										"SYS_ADMIN",
+										// We need this capability to get addresses from /proc/kallsyms.
+										// Without it, addresses displayed when reading this file will
+										// be 0.
+										// Thus, bcc_procutils_each_ksym will never call callback, so
+										// KSyms syms_ vector will be empty and it will return false.
+										// As a consequence, no prefix will be found in
+										// get_syscall_prefix(), so a default prefix (_sys) will be
+										// returned.
+										// Sadly, this default prefix is not used by the running kernel,
+										// which instead uses: __x64_sys_
+										"SYSLOG",
+										// traceloop gadget uses strace which in turns use ptrace()
+										// syscall.
+										// Within kernel code, ptrace() calls ptrace_attach() which in
+										// turns calls __ptrace_may_access() which calls
+										// ptrace_has_cap() where CAP_SYS_PTRACE is finally checked:
+										// https://elixir.bootlin.com/linux/v5.14.14/source/kernel/ptrace.c#L284
+										"SYS_PTRACE",
+										// Needed by setrlimit in gadgettracermanager and by the
+										// traceloop gadget.
+										"SYS_RESOURCE",
+										// Needed for gadgets that don't dumb the memory rlimit.
+										// (Currently only applies to BCC python-based gadgets)
+										"IPC_LOCK",
+										// Needed by BCC python-based gadgets to load the kheaders module:
+										// https://github.com/iovisor/bcc/blob/v0.24.0/src/cc/frontends/clang/kbuild_helper.cc#L158
+										"SYS_MODULE",
+										// Needed by gadgets that open a raw sock like dns and snisnoop.
+										"NET_RAW",
+									},
+								},
+							},
+							VolumeMounts: []v1.VolumeMount{
+								v1.VolumeMount{
+									Name:      "host",
+									MountPath: "/host",
+								},
+								v1.VolumeMount{
+									Name:      "run",
+									MountPath: "/run",
+								},
+								v1.VolumeMount{
+									Name:      "modules",
+									MountPath: "/lib/modules",
+								},
+								v1.VolumeMount{
+									Name:      "debugfs",
+									MountPath: "/sys/kernel/debug",
+								},
+								v1.VolumeMount{
+									Name:      "cgroup",
+									MountPath: "/sys/fs/cgroup",
+								},
+								v1.VolumeMount{
+									Name:      "bpffs",
+									MountPath: "/sys/fs/bpf",
+								},
+							},
+						},
+					},
+					Tolerations: []v1.Toleration{
+						v1.Toleration{
+							Effect:   v1.TaintEffectNoSchedule,
+							Operator: v1.TolerationOpExists,
+						},
+						v1.Toleration{
+							Effect:   v1.TaintEffectNoExecute,
+							Operator: v1.TolerationOpExists,
+						},
+					},
+					Volumes: []v1.Volume{
+						v1.Volume{
+							Name:         "host",
+							VolumeSource: v1.VolumeSource{
+								HostPath: &v1.HostPathVolumeSource{
+									Path: "/",
+								},
+							},
+						},
+						v1.Volume{
+							Name:         "run",
+							VolumeSource: v1.VolumeSource{
+								HostPath: &v1.HostPathVolumeSource{
+									Path: "/run",
+								},
+							},
+						},
+						v1.Volume{
+							Name:         "cgroup",
+							VolumeSource: v1.VolumeSource{
+								HostPath: &v1.HostPathVolumeSource{
+									Path: "/sys/fs/cgroup",
+								},
+							},
+						},
+						v1.Volume{
+							Name:         "modules",
+							VolumeSource: v1.VolumeSource{
+								HostPath: &v1.HostPathVolumeSource{
+									Path: "/lib/modules",
+								},
+							},
+						},
+						v1.Volume{
+							Name:         "bpffs",
+							VolumeSource: v1.VolumeSource{
+								HostPath: &v1.HostPathVolumeSource{
+									Path: "/sys/fs/bpf",
+								},
+							},
+						},
+						v1.Volume{
+							Name:         "debugfs",
+							VolumeSource: v1.VolumeSource{
+								HostPath: &v1.HostPathVolumeSource{
+									Path: "/sys/kernel/debug",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := k8sClient.AppsV1().DaemonSets(namespaceName).Create(context.TODO(), daemonSetSpec, metav1.CreateOptions{})
+
+	return err
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	if hookMode != "auto" &&
 		hookMode != "crio" &&
@@ -418,6 +522,18 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		hookMode != "nri" &&
 		hookMode != "fanotify" {
 		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,podinformer,nri,fanotify]", hookMode)
+	}
+
+	var pullPolicy v1.PullPolicy
+	switch imagePullPolicy{
+		case "Always":
+			pullPolicy = v1.PullAlways
+		case "Never":
+			pullPolicy = v1.PullNever
+		case "IfNotPresent":
+			pullPolicy = v1.PullIfNotPresent
+		default:
+			return fmt.Errorf("invalid argument %q for --image-pull-policy=[Always,Never,IfNotPresent]", imagePullPolicy)
 	}
 
 	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
@@ -461,24 +577,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create cluster role binding %s: %w", gadgetClusterRoleBindingName, err)
 	}
 
-	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
-	if err != nil {
-		return fmt.Errorf("failed to parse template: %w", err)
-	}
-
-	p := parameters{
-		image,
-		imagePullPolicy,
-		version,
-		hookMode,
-		livenessProbe,
-		fallbackPodInformer,
-	}
-
 	fmt.Printf("%s\n---\n", resources.TracesCustomResource)
-	err = t.Execute(os.Stdout, p)
+
+	// 7. Create gadget daemonset.
+	err = createGadgetDaemonSet(k8sClient, gadgetDaemonSetName, gadgetNamespace, hookMode, image, pullPolicy, livenessProbe, fallbackPodInformer)
 	if err != nil {
-		return fmt.Errorf("failed to generate deploy template: %w", err)
+		return fmt.Errorf("failed to create daemon set %s: %w", gadgetDaemonSetName, err)
 	}
 
 	return nil
