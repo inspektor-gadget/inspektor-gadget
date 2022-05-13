@@ -78,24 +78,12 @@ func init() {
 }
 
 const (
+	gadgetRoleBindingName    = "gadget-role-binding"
 	gadgetRoleName           = "gadget-role"
 	gadgetServiceAccountName = "gadget"
 )
 
 const deployYamlTmpl string = `
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: gadget-role-binding
-  namespace: gadget
-subjects:
-- kind: ServiceAccount
-  name: gadget
-roleRef:
-  kind: Role
-  name: gadget-role
-  apiGroup: rbac.authorization.k8s.io
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -374,6 +362,27 @@ func createGadgetRole(k8sClient *kubernetes.Clientset, namespaceName, roleName s
 	return err
 }
 
+func createGadgetRoleBinding(k8sClient *kubernetes.Clientset, namespaceName, roleBindingName string) error {
+	roleBindingSpec := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: roleBindingName,
+		},
+		Subjects: []rbacv1.Subject{
+			rbacv1.Subject{
+				Kind: "ServiceAccount",
+				Name: "gadget",
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     gadgetRoleName,
+		},
+	}
+	_, err := k8sClient.RbacV1().RoleBindings(namespaceName).Create(context.TODO(), roleBindingSpec, metav1.CreateOptions{})
+	return err
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	if hookMode != "auto" &&
 		hookMode != "crio" &&
@@ -404,6 +413,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	err = createGadgetRole(k8sClient, gadgetNamespace, gadgetRoleName)
 	if err != nil {
 		return fmt.Errorf("failed to create role %s: %w", gadgetRoleName, err)
+	}
+
+	// 4. Create gadget role binding.
+	err = createGadgetRoleBinding(k8sClient, gadgetNamespace, gadgetRoleBindingName)
+	if err != nil {
+		return fmt.Errorf("failed to create role binding %s: %w", gadgetRoleBindingName, err)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
