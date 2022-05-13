@@ -172,7 +172,6 @@ lint:
 	docker run --rm --env XDG_CACHE_HOME=/tmp/xdg_home_cache --env GOLANGCI_LINT_CACHE=/tmp/golangci_lint_cache --user $(shell id -u):$(shell id -g) -v $(shell pwd):/app -w /app golangci/golangci-lint:v1.46.2 golangci-lint run --fix
 
 # minikube
-LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 60
 LIVENESS_PROBE ?= true
 .PHONY: minikube-install
 minikube-install: gadget-default-container kubectl-gadget
@@ -195,9 +194,7 @@ minikube-install: gadget-default-container kubectl-gadget
 	./kubectl-gadget undeploy || true
 	./kubectl-gadget deploy --hook-mode=auto \
 		--liveness-probe=$(LIVENESS_PROBE) \
-		--image-pull-policy=Never | \
-		sed 's/initialDelaySeconds: [0-9]*/initialDelaySeconds: '$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS)'/g' | \
-		kubectl apply -f -
+		--image-pull-policy=Never
 	kubectl rollout status daemonset -n gadget gadget --timeout 30s
 	@echo "Image used by the gadget pod:"
 	kubectl get pod -n gadget -o yaml|grep imageID:

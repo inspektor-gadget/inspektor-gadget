@@ -20,12 +20,13 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
-	"github.com/kinvolk/inspektor-gadget/pkg/resources"
 	"github.com/spf13/cobra"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -228,6 +229,171 @@ func createGadgetClusterRoleBinding(k8sClient *kubernetes.Clientset, clusterRole
 		},
 	}
 	_, err := k8sClient.RbacV1().ClusterRoleBindings().Create(context.TODO(), clusterRoleBindingSpec, metav1.CreateOptions{})
+	return err
+}
+
+func createTraceCustomResource() error {
+	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
+	if err != nil {
+		return fmt.Errorf("failed to create RESTConfig: %w", err)
+	}
+
+	crdClient, err := clientset.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to set up CRD client: %w", err)
+	}
+
+	traceSpec := &apiv1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "traces.gadget.kinvolk.io",
+			Annotations: map[string]string{
+				"controller-gen.kubebuilder.io/version": "v0.4.1",
+			},
+		},
+		Spec: apiv1.CustomResourceDefinitionSpec{
+			Group: "gadget.kinvolk.io",
+			Names: apiv1.CustomResourceDefinitionNames{
+				Kind:     "Trace",
+				ListKind: "TraceList",
+				Plural:   "traces",
+				Singular: "trace",
+			},
+			Scope: apiv1.NamespaceScoped,
+			Versions: []apiv1.CustomResourceDefinitionVersion{
+				{
+					Name: "v1alpha1",
+					Schema: &apiv1.CustomResourceValidation{
+						OpenAPIV3Schema: &apiv1.JSONSchemaProps{
+							Description: "Trace is the Schema for the traces API",
+							Properties: map[string]apiv1.JSONSchemaProps{
+								"apiVersion": {
+									Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+									Type:        "string",
+								},
+								"kind": {
+									Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+									Type:        "string",
+								},
+								"metadata": {
+									Type: "object",
+								},
+								"spec": {
+									Description: "TraceSpec defines the desired state of Trace",
+									Properties: map[string]apiv1.JSONSchemaProps{
+										"filter": {
+											Description: "Filter is to tell the gadget to filter events based on namespace, pod name, labels or container name",
+											Properties: map[string]apiv1.JSONSchemaProps{
+												"containerName": {
+													Description: "ContainerName selects events from containers with this name",
+													Type:        "string",
+												},
+												"labels": {
+													Description: "Labels selects events from pods with these labels",
+													AdditionalProperties: &apiv1.JSONSchemaPropsOrBool{
+														Schema: &apiv1.JSONSchemaProps{
+															Type: "string",
+														},
+													},
+													Type: "object",
+												},
+												"namespace": {
+													Description: "Namespace selects events from this pod namespace",
+													Type:        "string",
+												},
+												"podname": {
+													Description: "Podname selects events from this pod name",
+													Type:        "string",
+												},
+											},
+											Type: "object",
+										},
+										"gadget": {
+											Description: "Gadget is the name of the gadget such as \"seccomp\"",
+											Type:        "string",
+										},
+										"node": {
+											Description: "Node is the name of the node on which this trace should run",
+											Type:        "string",
+										},
+										"output": {
+											Description: "Output allows a gadget to output the results in the specified location. * With OutputMode=Status|Stream, Output is unused * With OutputMode=File, Output specifies the file path * With OutputMode=ExternalResource, Output specifies the external   resource (such as   seccompprofiles.security-profiles-operator.x-k8s.io for the seccomp gadget)",
+											Type:        "string",
+										},
+										"outputMode": {
+											Description: "OutputMode is \"Status\", \"Stream\", \"File\" or \"ExternalResource\"",
+											Enum: []apiv1.JSON{
+												{[]byte("\"Status\"")},
+												{[]byte("\"Stream\"")},
+												{[]byte("\"File\"")},
+												{[]byte("\"ExternalResource\"")},
+											},
+											Type: "string",
+										},
+										"parameters": {
+											Description: "Parameters contains gadget specific configurations.",
+											AdditionalProperties: &apiv1.JSONSchemaPropsOrBool{
+												Schema: &apiv1.JSONSchemaProps{
+													Type: "string",
+												},
+											},
+											Type: "object",
+										},
+										"runMode": {
+											Description: "RunMode is \"Auto\" to automatically start the trace as soon as the resource is created, or \"Manual\" to be controlled by the \"gadget.kinvolk.io/operation\" annotation",
+											Type:        "string",
+										},
+									},
+									Type: "object",
+								},
+								"status": {
+									Description: "TraceStatus defines the observed state of Trace",
+									Properties: map[string]apiv1.JSONSchemaProps{
+										"operationError": {
+											Description: "OperationError is the error returned by the gadget when applying the annotation gadget.kinvolk.io/operation=",
+											Type:        "string",
+										},
+										"operationWarning": {
+											Description: "OperationWarning is returned by the gadget to notify about a malfunction when applying the annotation gadget.kinvolk.io/operation=. Unlike the OperationError that represents a fatal error, the OperationWarning could be ignored according to the context.",
+											Type:        "string",
+										},
+										"output": {
+											Description: "Output is the output of the gadget",
+											Type:        "string",
+										},
+										"state": {
+											Description: "State is \"Started\", \"Stopped\" or \"Completed\"",
+											Enum: []apiv1.JSON{
+												{[]byte("\"Started\"")},
+												{[]byte("\"Stopped\"")},
+												{[]byte("\"Completed\"")},
+											},
+											Type: "string",
+										},
+									},
+									Type: "object",
+								},
+							},
+							Type: "object",
+						},
+					},
+					Served:  true,
+					Storage: true,
+					Subresources: &apiv1.CustomResourceSubresources{
+						Status: &apiv1.CustomResourceSubresourceStatus{},
+					},
+				},
+			},
+		},
+		Status: apiv1.CustomResourceDefinitionStatus{
+			AcceptedNames: apiv1.CustomResourceDefinitionNames{
+				Kind:   "",
+				Plural: "",
+			},
+			Conditions:     []apiv1.CustomResourceDefinitionCondition{},
+			StoredVersions: []string{},
+		},
+	}
+	_, err = crdClient.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), traceSpec, metav1.CreateOptions{})
 	return err
 }
 
@@ -583,9 +749,13 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create cluster role binding %s: %w", gadgetClusterRoleBindingName, err)
 	}
 
-	fmt.Printf("%s\n---\n", resources.TracesCustomResource)
+	// 7. Create trace custom resource.
+	err = createTraceCustomResource()
+	if err != nil {
+		return fmt.Errorf("failed to create trace custom resource: %w", err)
+	}
 
-	// 7. Create gadget daemonset.
+	// 8. Create gadget daemonset.
 	err = createGadgetDaemonSet(k8sClient, gadgetDaemonSetName, gadgetNamespace, hookMode, image, pullPolicy, livenessProbe, fallbackPodInformer)
 	if err != nil {
 		return fmt.Errorf("failed to create daemon set %s: %w", gadgetDaemonSetName, err)

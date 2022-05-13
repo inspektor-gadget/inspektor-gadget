@@ -67,7 +67,7 @@ $ kubectl gadget version
 ### Quick installation
 
 ```bash
-$ kubectl gadget deploy | kubectl apply -f -
+$ kubectl gadget deploy
 ```
 
 This will deploy the gadget DaemonSet along with its RBAC rules.
@@ -77,7 +77,7 @@ This will deploy the gadget DaemonSet along with its RBAC rules.
 If you wish to install an alternative gadget image, you could use the following commands:
 
 ```bash
-$ kubectl gadget deploy --image=docker.io/myfork/gadget:tag | kubectl apply -f -
+$ kubectl gadget deploy --image=docker.io/myfork/gadget:tag
 ```
 
 ### Hook Mode
