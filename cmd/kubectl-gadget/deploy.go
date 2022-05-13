@@ -78,26 +78,14 @@ func init() {
 }
 
 const (
-	gadgetClusterRoleName    = "gadget-cluster-role"
-	gadgetRoleBindingName    = "gadget-role-binding"
-	gadgetRoleName           = "gadget-role"
-	gadgetServiceAccountName = "gadget"
+	gadgetClusterRoleBindingName = "gadget-cluster-role-binding"
+	gadgetClusterRoleName        = "gadget-cluster-role"
+	gadgetRoleBindingName        = "gadget-role-binding"
+	gadgetRoleName               = "gadget-role"
+	gadgetServiceAccountName     = "gadget"
 )
 
 const deployYamlTmpl string = `
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: gadget-cluster-role-binding
-subjects:
-- kind: ServiceAccount
-  name: gadget
-  namespace: gadget
-roleRef:
-  kind: ClusterRole
-  name: gadget-cluster-role
-  apiGroup: rbac.authorization.k8s.io
----
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -403,6 +391,26 @@ func createGadgetClusterRole(k8sClient *kubernetes.Clientset, clusterRoleName st
 	return err
 }
 
+func createGadgetClusterRoleBinding(k8sClient *kubernetes.Clientset, clusterRoleBindingName string) error {
+	clusterRoleBindingSpec := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: clusterRoleBindingName},
+		Subjects: []rbacv1.Subject{
+			rbacv1.Subject{
+				Kind:      "ServiceAccount",
+				Name:      "gadget",
+				Namespace: gadgetNamespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     gadgetClusterRoleName,
+		},
+	}
+	_, err := k8sClient.RbacV1().ClusterRoleBindings().Create(context.TODO(), clusterRoleBindingSpec, metav1.CreateOptions{})
+	return err
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	if hookMode != "auto" &&
 		hookMode != "crio" &&
@@ -445,6 +453,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	err = createGadgetClusterRole(k8sClient, gadgetClusterRoleName)
 	if err != nil {
 		return fmt.Errorf("failed to create cluster role %s: %w", gadgetClusterRoleName, err)
+	}
+
+	// 6. Create gadget cluster role binding.
+	err = createGadgetClusterRoleBinding(k8sClient, gadgetClusterRoleBindingName)
+	if err != nil {
+		return fmt.Errorf("failed to create cluster role binding %s: %w", gadgetClusterRoleBindingName, err)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
