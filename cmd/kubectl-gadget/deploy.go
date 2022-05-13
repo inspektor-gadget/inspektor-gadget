@@ -78,45 +78,13 @@ func init() {
 }
 
 const (
+	gadgetClusterRoleName    = "gadget-cluster-role"
 	gadgetRoleBindingName    = "gadget-role-binding"
 	gadgetRoleName           = "gadget-role"
 	gadgetServiceAccountName = "gadget"
 )
 
 const deployYamlTmpl string = `
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: gadget-cluster-role
-rules:
-- apiGroups: [""]
-  resources: ["namespaces", "nodes", "pods"]
-  verbs: ["get", "watch", "list"]
-- apiGroups: [""]
-  resources: ["services"]
-  # list services is needed by network-policy gadget.
-  verbs: ["list"]
-- apiGroups: ["gadget.kinvolk.io"]
-  resources: ["traces", "traces/status"]
-  # For traces, we need all rights on them as we define this resource.
-  verbs: ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"]
-- apiGroups: ["*"]
-  resources: ["deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers"]
-  # Required to retrieve the owner references used by the seccomp gadget.
-  verbs: ["get"]
-- apiGroups: ["security-profiles-operator.x-k8s.io"]
-  resources: ["seccompprofiles"]
-  # Required for integration with the Kubernetes Security Profiles Operator
-  verbs: ["list", "watch", "create"]
-- apiGroups: ["security.openshift.io"]
-  # It is necessary to use the 'privileged' security context constraints to be
-  # able mount host directories as volumes, use the host networking, among others.
-  # This will be used only when running on OpenShift:
-  # https://docs.openshift.com/container-platform/4.9/authentication/managing-security-context-constraints.html#default-sccs_configuring-internal-oauth
-  resources: ["securitycontextconstraints"]
-  resourceNames: ["privileged"]
-  verbs: ["use"]
----
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -383,6 +351,58 @@ func createGadgetRoleBinding(k8sClient *kubernetes.Clientset, namespaceName, rol
 	return err
 }
 
+func createGadgetClusterRole(k8sClient *kubernetes.Clientset, clusterRoleName string) error {
+	clusterRoleSpec := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: clusterRoleName,
+		},
+		Rules: []rbacv1.PolicyRule{
+			rbacv1.PolicyRule{
+				Verbs:     []string{"get", "watch", "list"},
+				APIGroups: []string{""},
+				Resources: []string{"namespaces", "nodes", "pods"},
+			},
+			rbacv1.PolicyRule{
+				// list services is needed by network-policy gadget.
+				Verbs:     []string{"list"},
+				APIGroups: []string{""},
+				Resources: []string{"services"},
+			},
+			rbacv1.PolicyRule{
+				// For traces, we need all rights on them as we define this resource.
+				Verbs:     []string{"delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"},
+				APIGroups: []string{"gadget.kinvolk.io"},
+				Resources: []string{"traces", "traces/status"},
+			},
+			rbacv1.PolicyRule{
+				// Required to retrieve the owner references used by the seccomp gadget.
+				Verbs:     []string{"get"},
+				APIGroups: []string{"*"},
+				Resources: []string{"deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers"},
+			},
+			rbacv1.PolicyRule{
+				// Required for integration with the Kubernetes SPO.
+				Verbs:     []string{"list", "watch", "create"},
+				APIGroups: []string{"security-profiles-operator.x-k8s.io"},
+				Resources: []string{"seccompprofiles"},
+			},
+			rbacv1.PolicyRule{
+				// It is necessary to use the 'privileged' security context constraints
+				// to be able mount host directories as volumes, use the host
+				// networking, among others.
+				// This will be used only when running on OpenShift:
+				// https://docs.openshift.com/container-platform/4.9/authentication/managing-security-context-constraints.html#default-sccs_configuring-internal-oauth
+				Verbs:         []string{"use"},
+				APIGroups:     []string{"security.openshift.io"},
+				Resources:     []string{"securitycontextconstraints"},
+				ResourceNames: []string{"privileged"},
+			},
+		},
+	}
+	_, err := k8sClient.RbacV1().ClusterRoles().Create(context.TODO(), clusterRoleSpec, metav1.CreateOptions{})
+	return err
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	if hookMode != "auto" &&
 		hookMode != "crio" &&
@@ -419,6 +439,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	err = createGadgetRoleBinding(k8sClient, gadgetNamespace, gadgetRoleBindingName)
 	if err != nil {
 		return fmt.Errorf("failed to create role binding %s: %w", gadgetRoleBindingName, err)
+	}
+
+	// 5. Create gadget cluster role.
+	err = createGadgetClusterRole(k8sClient, gadgetClusterRoleName)
+	if err != nil {
+		return fmt.Errorf("failed to create cluster role %s: %w", gadgetClusterRoleName, err)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
