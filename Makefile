@@ -171,7 +171,7 @@ generate-documentation:
 # minikube
 LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 10
 .PHONY: minikube-install
-minikube-install: gadget-container kubectl-gadget
+minikube-install: gadget-default-container kubectl-gadget
 	# Unfortunately, minikube-cache and minikube-image have bugs in older
 	# versions. And new versions of minikube don't support all eBPF
 	# features. So we have to keep "docker-save|docker-load" for now.
