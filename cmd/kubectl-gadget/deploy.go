@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -76,20 +77,12 @@ func init() {
 	rootCmd.AddCommand(deployCmd)
 }
 
-const gadgetServiceAccountName = "gadget"
+const (
+	gadgetRoleName           = "gadget-role"
+	gadgetServiceAccountName = "gadget"
+)
 
 const deployYamlTmpl string = `
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  namespace: gadget
-  name: gadget-role
-rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  # update is needed by traceloop gadget.
-  verbs: ["update"]
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -363,6 +356,24 @@ func createGadgetServiceAccount(k8sClient *kubernetes.Clientset, namespaceName, 
 	return err
 }
 
+func createGadgetRole(k8sClient *kubernetes.Clientset, namespaceName, roleName string) error {
+	roleSpec := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: roleName,
+		},
+		Rules: []rbacv1.PolicyRule{
+			rbacv1.PolicyRule{
+				// update is needed by traceloop gadget
+				Verbs:     []string{"update"},
+				APIGroups: []string{""},
+				Resources: []string{"pods"},
+			},
+		},
+	}
+	_, err := k8sClient.RbacV1().Roles(namespaceName).Create(context.TODO(), roleSpec, metav1.CreateOptions{})
+	return err
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	if hookMode != "auto" &&
 		hookMode != "crio" &&
@@ -387,6 +398,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	err = createGadgetServiceAccount(k8sClient, gadgetNamespace, gadgetServiceAccountName)
 	if err != nil {
 		return fmt.Errorf("failed to create service account %s: %w", gadgetServiceAccountName, err)
+	}
+
+	// 3. Create gadget role.
+	err = createGadgetRole(k8sClient, gadgetNamespace, gadgetRoleName)
+	if err != nil {
+		return fmt.Errorf("failed to create role %s: %w", gadgetRoleName, err)
 	}
 
 	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
