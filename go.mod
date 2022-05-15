@@ -10,12 +10,14 @@ require (
 	github.com/docker/docker v20.10.8+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/giantswarm/crd-docs-generator v0.7.1
+	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/iovisor/gobpf v0.2.0 // indirect
 	github.com/kinvolk/traceloop v0.0.0-20210623155108-6f4efc6fca46
 	github.com/kr/pretty v0.3.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.16.0
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
+	github.com/prometheus/client_golang v1.11.0
 	github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20210917134616-9c00a300bb7a
 	github.com/seccomp/libseccomp-golang v0.9.2-0.20200616122406-847368b35ebf
 	github.com/sirupsen/logrus v1.8.1
