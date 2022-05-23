@@ -1,0 +1,5 @@
+*
+!go.mod
+!go.sum
+!examples
+!pkg

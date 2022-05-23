@@ -1,0 +1,122 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: runc-hook
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: runc-hook
+  namespace: runc-hook
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: runc-hook-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["list", "watch", "create"]
+- apiGroups: ["security.openshift.io"]
+  # It is necessary to use the 'privileged' security context constraints to be
+  # able mount host directories as volumes, use the host networking, among others.
+  # This will be used only when running on OpenShift:
+  # https://docs.openshift.com/container-platform/4.9/authentication/managing-security-context-constraints.html#default-sccs_configuring-internal-oauth
+  resources: ["securitycontextconstraints"]
+  resourceNames: ["privileged"]
+  verbs: ["use"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: runc-hook-cluster-role-binding
+subjects:
+- kind: ServiceAccount
+  name: runc-hook
+  namespace: runc-hook
+roleRef:
+  kind: ClusterRole
+  name: runc-hook-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: runc-hook
+  namespace: runc-hook
+  labels:
+    k8s-app: runc-hook
+spec:
+  selector:
+    matchLabels:
+      k8s-app: runc-hook
+  template:
+    metadata:
+      labels:
+        k8s-app: runc-hook
+    spec:
+      serviceAccount: runc-hook
+      hostPID: true
+      hostNetwork: true
+      containers:
+      - name: gadget
+        terminationMessagePolicy: FallbackToLogsOnError
+        image: gadget-runc-hook:latest
+        imagePullPolicy: Always
+        command: ["runc-hook"]
+        args:
+          - "-publish-kubernetes-event=true"
+          - "-output=add,remove,config"
+          - "-prestart=echo OCI State in prestart hook: ; cat ; echo"
+          - "-poststop=echo OCI State in poststop hook: ; cat ; echo"
+        env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        securityContext:
+          capabilities:
+            add:
+              # fanotify requires CAP_SYS_ADMIN
+              - SYS_ADMIN
+        volumeMounts:
+        - name: host
+          mountPath: /host
+        - name: run
+          mountPath: /run
+        - name: modules
+          mountPath: /lib/modules
+        - name: debugfs
+          mountPath: /sys/kernel/debug
+        - name: cgroup
+          mountPath: /sys/fs/cgroup
+        - name: bpffs
+          mountPath: /sys/fs/bpf
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+      volumes:
+      - name: host
+        hostPath:
+          path: /
+      - name: run
+        hostPath:
+          path: /run
+      - name: cgroup
+        hostPath:
+          path: /sys/fs/cgroup
+      - name: modules
+        hostPath:
+          path: /lib/modules
+      - name: bpffs
+        hostPath:
+          path: /sys/fs/bpf
+      - name: debugfs
+        hostPath:
+          path: /sys/kernel/debug

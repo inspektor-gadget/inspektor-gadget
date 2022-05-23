@@ -16,6 +16,7 @@ package containercollection
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -338,18 +339,6 @@ func getExpectedOwnerReference(ownerReferences []metav1.OwnerReference) *metav1.
 	return ownerRef
 }
 
-func getKubeClientDynamic() (dynamic.Interface, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get Kubernetes config: %w", err)
-	}
-	dynamicClient, err := dynamic.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create dynamic Kubernetes client: %w", err)
-	}
-	return dynamicClient, nil
-}
-
 func getOwnerReferences(dynamicClient dynamic.Interface,
 	resNamespace, resKind, resGroupVersion, resName string,
 ) ([]metav1.OwnerReference, error) {
@@ -378,17 +367,13 @@ func getOwnerReferences(dynamicClient dynamic.Interface,
 }
 
 func ownerReferenceEnrichment(
+	dynamicClient dynamic.Interface,
 	containerDefinition *pb.ContainerDefinition,
 	ownerReferences []metav1.OwnerReference,
 ) error {
 	if containerDefinition.OwnerReference != nil {
 		// Already set. Do nothing
 		return nil
-	}
-
-	dynamicClient, err := getKubeClientDynamic()
-	if err != nil {
-		return fmt.Errorf("failed to get dynamic Kubernetes client: %w", err)
 	}
 
 	resGroupVersion := "v1"
@@ -403,6 +388,7 @@ func ownerReferenceEnrichment(
 	// the gadget cluster role needs to be updated accordingly.
 	for {
 		if len(ownerReferences) == 0 {
+			var err error
 			ownerReferences, err = getOwnerReferences(dynamicClient,
 				resNamespace, resKind, resGroupVersion, resName)
 			if err != nil {
@@ -446,22 +432,29 @@ func ownerReferenceEnrichment(
 // WithKubernetesEnrichment automatically adds pod metadata
 //
 // ContainerCollection.ContainerCollectionInitialize(WithKubernetesEnrichment())
-func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
+func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
-		config, err := rest.InClusterConfig()
-		if err != nil {
-			return fmt.Errorf("cannot start Kubernetes client: %w", err)
+		if kubeconfig == nil {
+			var err error
+			kubeconfig, err = rest.InClusterConfig()
+			if err != nil {
+				return fmt.Errorf("couldn't get Kubernetes config: %w", err)
+			}
 		}
-		clientset, err := kubernetes.NewForConfig(config)
+		clientset, err := kubernetes.NewForConfig(kubeconfig)
 		if err != nil {
-			return fmt.Errorf("cannot start Kubernetes client: %w", err)
+			return fmt.Errorf("couldn't get Kubernetes client: %w", err)
+		}
+		dynamicClient, err := dynamic.NewForConfig(kubeconfig)
+		if err != nil {
+			return fmt.Errorf("couldn't get dynamic Kubernetes client: %w", err)
 		}
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(containerDefinition *pb.ContainerDefinition) bool {
 			// Enrich only with owner reference if the data is already there
 			if containerDefinition.Podname != "" {
-				err := ownerReferenceEnrichment(containerDefinition, nil)
+				err := ownerReferenceEnrichment(dynamicClient, containerDefinition, nil)
 				if err != nil {
 					log.Errorf("kubernetes enricher: Failed to enrich with owner reference: %s", err)
 				}
@@ -485,6 +478,7 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 			// Fill Kubernetes fields
 			namespace := ""
 			podname := ""
+			podUID := ""
 			containerName := ""
 			labels := []*pb.Label{}
 			var podOwnerRef []metav1.OwnerReference
@@ -502,6 +496,7 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 
 				namespace = pod.ObjectMeta.Namespace
 				podname = pod.ObjectMeta.Name
+				podUID = uid
 
 				for k, v := range pod.ObjectMeta.Labels {
 					labels = append(labels, &pb.Label{Key: k, Value: v})
@@ -526,6 +521,7 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 
 			containerDefinition.Namespace = namespace
 			containerDefinition.Podname = podname
+			containerDefinition.PodUid = podUID
 			containerDefinition.Name = containerName
 			containerDefinition.Labels = labels
 
@@ -535,7 +531,7 @@ func WithKubernetesEnrichment(nodeName string) ContainerCollectionOption {
 			}
 
 			if len(podOwnerRef) != 0 {
-				err := ownerReferenceEnrichment(containerDefinition, podOwnerRef)
+				err := ownerReferenceEnrichment(dynamicClient, containerDefinition, podOwnerRef)
 				if err != nil {
 					log.Errorf("kubernetes enricher: Failed to enrich with owner reference: %s", err)
 				}
@@ -560,10 +556,12 @@ func WithRuncFanotify() ContainerCollectionOption {
 				for _, m := range notif.ContainerConfig.Mounts {
 					mountSources = append(mountSources, m.Source)
 				}
+				ociConfig, _ := json.Marshal(notif.ContainerConfig)
 				containerDefinition := &pb.ContainerDefinition{
 					Id:           notif.ContainerID,
 					Pid:          notif.ContainerPID,
 					MountSources: mountSources,
+					OciConfig:    string(ociConfig),
 				}
 
 				cc.AddContainer(containerDefinition)

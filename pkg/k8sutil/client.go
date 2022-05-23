@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-func NewClientset(kubeconfigPath string) (*kubernetes.Clientset, error) {
+func NewKubeConfig(kubeconfigPath string) (*rest.Config, error) {
 	var config *rest.Config
 	var err error
 	if kubeconfigPath != "" {
@@ -42,7 +42,11 @@ func NewClientset(kubeconfigPath string) (*kubernetes.Clientset, error) {
 			}
 		}
 	}
+	return config, err
+}
 
+func NewClientset(kubeconfigPath string) (*kubernetes.Clientset, error) {
+	config, err := NewKubeConfig(kubeconfigPath)
 	if err != nil {
 		return nil, err
 	}

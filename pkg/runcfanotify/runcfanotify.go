@@ -53,6 +53,11 @@ type ContainerEvent struct {
 	// Container's configuration is the config.json from the OCI runtime
 	// spec
 	ContainerConfig *ocispec.Spec
+
+	// Bundle is the directory containing the config.json from the OCI
+	// runtime spec
+	// See https://github.com/opencontainers/runtime-spec/blob/main/bundle.md
+	Bundle string
 }
 
 type RuncNotifyFunc func(notif ContainerEvent)
@@ -334,6 +339,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		ContainerID:     containerID,
 		ContainerPID:    uint32(containerPID),
 		ContainerConfig: containerConfig,
+		Bundle:          bundleDir,
 	})
 	return true, nil
 }
