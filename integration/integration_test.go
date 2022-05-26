@@ -117,7 +117,12 @@ func testMain(m *testing.M) int {
 	initCommands := []*command{}
 
 	if !*doNotDeploySPO {
-		initCommands = append(initCommands, deploySPO)
+		limitReplicas := false
+		if *k8sDistro == K8sDistroMinikubeGH {
+			limitReplicas = true
+		}
+
+		initCommands = append(initCommands, deploySPO(limitReplicas))
 		defer func() {
 			fmt.Printf("Clean SPO:\n")
 			cleanupSPO.runWithoutTest()
