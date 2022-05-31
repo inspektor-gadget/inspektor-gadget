@@ -15,8 +15,15 @@
 package profile
 
 import (
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/bcck8s"
+	"fmt"
+	"os"
+	"os/signal"
+	"time"
+
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
+
 	"github.com/spf13/cobra"
 )
 
@@ -25,26 +32,19 @@ var (
 	profileUser   bool
 )
 
+var cpuTraceConfig = &utils.TraceConfig{
+	GadgetName:        "profile",
+	TraceOutputMode:   "Status",
+	TraceOutputState:  "Completed",
+	TraceInitialState: "Started",
+	CommonFlags:       &params,
+}
+
 var profileCmd = &cobra.Command{
-	Use:   "cpu",
-	Short: "Analyze CPU performance by sampling stack traces",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		specificFlag := "-f -d "
-
-		if profileUser && profileKernel {
-			return utils.WrapInErrArgsNotSupported("you cannot use -U and -K at the same time")
-		}
-
-		if profileUser {
-			specificFlag += "-U "
-		}
-
-		if profileKernel {
-			specificFlag += "-K "
-		}
-
-		return bcck8s.BccCmd("profile", "/usr/share/bcc/tools/profile", &params, specificFlag)(cmd, args)
-	},
+	Use:          "cpu",
+	Short:        "Analyze CPU performance by sampling stack traces",
+	RunE:         runProfileCPU,
+	SilenceUsage: true,
 }
 
 func init() {
@@ -65,4 +65,65 @@ func init() {
 		false,
 		"Show stacks from kernel space only (no user space stacks)",
 	)
+}
+
+func runProfileCPU(cmd *cobra.Command, args []string) error {
+	if profileUser && profileKernel {
+		return utils.WrapInErrArgsNotSupported("-U and -K can't be used at the same time")
+	}
+
+	cpuTraceConfig.Parameters = map[string]string{}
+
+	if profileUser {
+		cpuTraceConfig.Parameters[types.ProfileUserParam] = ""
+	}
+
+	if profileKernel {
+		cpuTraceConfig.Parameters[types.ProfileKernelParam] = ""
+	}
+
+	cpuTraceConfig.Operation = "start"
+	traceID, err := utils.CreateTrace(cpuTraceConfig)
+	if err != nil {
+		return utils.WrapInErrRunGadget(err)
+	}
+
+	defer utils.DeleteTrace(traceID)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	if params.Timeout != 0 {
+		go func() {
+			time.Sleep(time.Duration(params.Timeout) * time.Second)
+			c <- os.Interrupt
+		}()
+		fmt.Printf("Capturing stack traces...")
+	} else {
+		fmt.Printf("Capturing stack traces... Hit Ctrl-C to end.")
+	}
+
+	<-c
+
+	fmt.Println()
+	err = utils.SetTraceOperation(traceID, "stop")
+	if err != nil {
+		return utils.WrapInErrStopGadget(err)
+	}
+
+	displayResultsCallback := func(traces []gadgetv1alpha1.Trace) error {
+		for _, trace := range traces {
+			fmt.Printf("%v\n", trace.Status.Output)
+		}
+
+		return nil
+	}
+
+	err = utils.PrintTraceOutputFromStatus(traceID,
+		cpuTraceConfig.TraceOutputState, displayResultsCallback)
+	if err != nil {
+		return utils.WrapInErrGetGadgetOutput(err)
+	}
+
+	return nil
 }
