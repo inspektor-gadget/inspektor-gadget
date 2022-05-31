@@ -82,34 +82,38 @@ var waitUntilInspektorGadgetPodsDeployed *command = &command{
 	done`,
 }
 
-var deploySPO *command = &command{
-	name: "Deploy Security Profiles Operator (SPO)",
-	// The security-profiles-operator-webhook deployment is not part of the
-	// yaml but created by SPO. We cannot use kubectl-wait before it is
-	// created, see also:
-	// https://github.com/kubernetes/kubernetes/issues/83242
+func deploySPO(limitReplicas bool) *command {
+	// The security-profiles-operator-webhook deployment is not part of the yaml
+	// but created by SPO. We cannot use kubectl-wait before it is created, see
+	// also: https://github.com/kubernetes/kubernetes/issues/83242
 	// Unfortunately, it takes quite a while for
-	// security-profiles-operator-webhook to be started, hence the long
-	// timeout
-	cmd: `
-	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.7.1/cert-manager.yaml
-	kubectl --namespace cert-manager wait --for condition=ready pod -l app.kubernetes.io/instance=cert-manager
-	curl https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/main/deploy/operator.yaml | \
-		sed 's/replicas: 3/replicas: 1/'|grep -v cpu: | \
-		kubectl apply -f -
-	for i in $(seq 1 120); do
-		if [ "$(kubectl get pod -n security-profiles-operator -l app=security-profiles-operator,name=security-profiles-operator-webhook -o go-template='{{len .items}}')" -ge 1 ] ; then
-			break
-		fi
-		sleep 1
-	done
-	kubectl patch deploy -n security-profiles-operator security-profiles-operator-webhook --type=json \
-		-p='[{"op": "remove", "path": "/spec/template/spec/containers/0/resources"}]'
-	kubectl patch ds -n security-profiles-operator spod --type=json \
-		-p='[{"op": "remove", "path": "/spec/template/spec/containers/0/resources"}, {"op": "remove", "path": "/spec/template/spec/containers/1/resources"}, {"op": "remove", "path": "/spec/template/spec/initContainers/0/resources"}]'
-	kubectl --namespace security-profiles-operator wait --for condition=ready pod -l app=security-profiles-operator || (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
-	`,
-	expectedRegexp: "pod/security-profiles-operator-.*-.* condition met",
+	// security-profiles-operator-webhook to be started, hence the long timeout
+	cmdStr := fmt.Sprintf(`
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.7.2/cert-manager.yaml
+kubectl --namespace cert-manager wait --for condition=ready pod -l app.kubernetes.io/instance=cert-manager
+curl https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.2/deploy/operator.yaml | \
+  if [ %v = true ] ; then
+    sed 's/replicas: 3/replicas: 1/' | grep -v cpu:
+  else
+    cat
+  fi | \
+  kubectl apply -f -
+for i in $(seq 1 120); do
+  if [ "$(kubectl get pod -n security-profiles-operator -l app=security-profiles-operator,name=security-profiles-operator-webhook -o go-template='{{len .items}}')" -ge 1 ] ; then
+    break
+  fi
+  sleep 1
+done
+kubectl patch ds -n security-profiles-operator spod --type=json \
+  -p='[{"op": "remove", "path": "/spec/template/spec/containers/0/resources"}, {"op": "remove", "path": "/spec/template/spec/containers/1/resources"}, {"op": "remove", "path": "/spec/template/spec/initContainers/0/resources"}]'
+kubectl --namespace security-profiles-operator wait --for condition=ready pod -l app=security-profiles-operator || (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
+`, limitReplicas)
+
+	return &command{
+		name:           "DeploySecurityProfilesOperator",
+		cmd:            cmdStr,
+		expectedRegexp: "pod/security-profiles-operator-.*-.* condition met",
+	}
 }
 
 func waitUntilInspektorGadgetPodsInitialized(initialDelay int) *command {
@@ -129,8 +133,8 @@ var cleanupSPO *command = &command{
 	name: "Remove Security Profiles Operator (SPO)",
 	cmd: `
 	kubectl delete seccompprofile -n security-profiles-operator --all
-	kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/main/deploy/operator.yaml
-	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.7.1/cert-manager.yaml
+	kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.2/deploy/operator.yaml
+	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.7.2/cert-manager.yaml
 	`,
 	cleanup: true,
 }
