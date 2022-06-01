@@ -169,11 +169,13 @@ func testMain(m *testing.M) int {
 
 	if !*doNotDeploySPO {
 		limitReplicas := false
+		bestEffortResourceMgmt := false
 		if *k8sDistro == K8sDistroMinikubeGH {
 			limitReplicas = true
+			bestEffortResourceMgmt = true
 		}
 
-		initCommands = append(initCommands, deploySPO(limitReplicas))
+		initCommands = append(initCommands, deploySPO(limitReplicas, bestEffortResourceMgmt))
 		cleanupCommands = append(cleanupCommands, cleanupSPO)
 	}
 

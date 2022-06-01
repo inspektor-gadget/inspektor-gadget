@@ -88,12 +88,7 @@ var waitUntilInspektorGadgetPodsDeployed *command = &command{
 	done`,
 }
 
-func deploySPO(limitReplicas bool) *command {
-	// The security-profiles-operator-webhook deployment is not part of the yaml
-	// but created by SPO. We cannot use kubectl-wait before it is created, see
-	// also: https://github.com/kubernetes/kubernetes/issues/83242
-	// Unfortunately, it takes quite a while for
-	// security-profiles-operator-webhook to be started, hence the long timeout
+func deploySPO(limitReplicas, bestEffortResourceMgmt bool) *command {
 	cmdStr := fmt.Sprintf(`
 kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.7.2/cert-manager.yaml
 kubectl --namespace cert-manager wait --for condition=ready pod -l app.kubernetes.io/instance=cert-manager
@@ -104,21 +99,53 @@ curl https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operato
     cat
   fi | \
   kubectl apply -f -
+
+# Wait for the SPO which will create the rest of the resources.
+# Unfortunately, it takes quite a while, hence the long timeouts.
+kubectl -n security-profiles-operator wait deploy security-profiles-operator --for condition=available
+kubectl -n security-profiles-operator wait pod -l app=security-profiles-operator --for condition=ready
+
+# The SPO-webhook and SPO-daemon are not part of the YAML but created by the SPO.
+# We cannot use kubectl-wait before they are created, see also: https://github.com/kubernetes/kubernetes/issues/83242
+webhook=false
+daemon=false
 for i in $(seq 1 120); do
   if [ "$(kubectl get pod -n security-profiles-operator -l app=security-profiles-operator,name=security-profiles-operator-webhook -o go-template='{{len .items}}')" -ge 1 ] ; then
+    webhook=true
+  fi
+  if [ "$(kubectl get pod -n security-profiles-operator -l app=security-profiles-operator,name=spod -o go-template='{{len .items}}')" -ge 1 ] ; then
+    daemon=true
+  fi
+
+  if [ $webhook = true ] && [ $daemon = true ] ; then
     break
   fi
+
   sleep 1
 done
-kubectl patch ds -n security-profiles-operator spod --type=json \
-  -p='[{"op": "remove", "path": "/spec/template/spec/containers/0/resources"}, {"op": "remove", "path": "/spec/template/spec/containers/1/resources"}, {"op": "remove", "path": "/spec/template/spec/initContainers/0/resources"}]'
-kubectl --namespace security-profiles-operator wait --for condition=ready pod -l app=security-profiles-operator || (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
-`, limitReplicas)
 
+# If requested, remove the resource management and let Kubernetes use the best-effort
+# QoS approach. It is useful on system with limited resources as Minikube on a GH runner.
+if [ %v = true ] ; then
+  kubectl patch deploy -n security-profiles-operator security-profiles-operator-webhook --type=json \
+    -p='[{"op": "remove", "path": "/spec/template/spec/containers/0/resources"}]'
+  kubectl patch ds -n security-profiles-operator spod --type=json \
+    -p='[{"op": "remove", "path": "/spec/template/spec/containers/0/resources"}, {"op": "remove", "path": "/spec/template/spec/containers/1/resources"}, {"op": "remove", "path": "/spec/template/spec/initContainers/0/resources"}]'
+
+  # Give some time to the pods to be restarted
+  sleep 3
+fi
+
+# At this point, the webhook and daemon were created, wait til they are ready.
+kubectl -n security-profiles-operator wait deploy security-profiles-operator-webhook --for condition=available || \
+  (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
+kubectl rollout status -n security-profiles-operator ds spod --timeout=120s || \
+  (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
+`, limitReplicas, bestEffortResourceMgmt)
 	return &command{
 		name:           "DeploySecurityProfilesOperator",
 		cmd:            cmdStr,
-		expectedRegexp: "pod/security-profiles-operator-.*-.* condition met",
+		expectedRegexp: `daemon set "spod" successfully rolled out`,
 	}
 }
 
