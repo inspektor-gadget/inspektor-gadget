@@ -5,21 +5,18 @@
 //
 // Copyright 2022 Sony Group Corporation
 
-#include <vmlinux.h>
+#include <vmlinux/vmlinux.h>
+#include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include "capable.h"
 
 #define MAX_ENTRIES	10240
 
-extern int LINUX_KERNEL_VERSION __kconfig;
-
 const volatile pid_t my_pid = -1;
 const volatile enum uniqueness unique_type = UNQ_OFF;
-const volatile bool kernel_stack = false;
-const volatile bool user_stack = false;
-const volatile bool filter_cg = false;
 const volatile pid_t targ_pid = -1;
+const volatile bool filter_by_mnt_ns = false;
 
 struct unique_key {
 	int cap;
@@ -28,22 +25,10 @@ struct unique_key {
 };
 
 struct {
-	__uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);
-	__type(key, u32);
-	__type(value, u32);
-	__uint(max_entries, 1);
-} cgroup_map SEC(".maps");
-
-struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(__u32));
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
-	__uint(key_size, sizeof(u32));
-} stackmap SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -59,14 +44,26 @@ struct {
 	__type(value, u64);
 } seen SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1024);
+	__uint(key_size, sizeof(u64));
+	__uint(value_size, sizeof(u32));
+} mount_ns_set SEC(".maps");
+
 SEC("kprobe/cap_capable")
 int BPF_KPROBE(kprobe__cap_capable, const struct cred *cred, struct user_namespace *targ_ns, int cap, int cap_opt)
 {
 	__u32 pid;
+	u64 mntns_id;
 	__u64 pid_tgid;
 	struct key_t i_key;
+	struct task_struct *task;
 
-	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
+	task = (struct task_struct*) bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
 		return 0;
 
 	pid_tgid = bpf_get_current_pid_tgid();
@@ -83,16 +80,9 @@ int BPF_KPROBE(kprobe__cap_capable, const struct cred *cred, struct user_namespa
 	event.tgid = pid_tgid;
 	event.cap = cap;
 	event.uid = bpf_get_current_uid_gid();
+	event.mntnsid = mntns_id;
+	event.cap_opt = cap_opt;
 	bpf_get_current_comm(&event.task, sizeof(event.task));
-
-	if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(5, 1, 0)) {
-		/* @opts: Bitmask of options defined in include/linux/security.h */
-		event.audit = (cap_opt & 0b10) == 0;
-		event.insetid = (cap_opt & 0b100) != 0;
-	} else {
-		event.audit = cap_opt;
-		event.insetid = -1;
-	}
 
 	if (unique_type) {
 		struct unique_key key = {.cap = cap};
@@ -109,23 +99,6 @@ int BPF_KPROBE(kprobe__cap_capable, const struct cred *cred, struct user_namespa
 		bpf_map_update_elem(&seen, &key, &zero, 0);
 	}
 
-	if (kernel_stack || user_stack) {
-		i_key.pid = pid;
-		i_key.tgid = pid_tgid;
-
-		if (kernel_stack && user_stack) {
-			i_key.user_stack_id = bpf_get_stackid(ctx, &stackmap, BPF_F_USER_STACK);
-			i_key.kern_stack_id = bpf_get_stackid(ctx, &stackmap, 0);
-		} else if (user_stack) {
-			i_key.user_stack_id = bpf_get_stackid(ctx, &stackmap, BPF_F_USER_STACK);
-			i_key.kern_stack_id = -1;
-		} else if (kernel_stack) {
-			i_key.kern_stack_id = bpf_get_stackid(ctx, &stackmap, 0);
-			i_key.user_stack_id = -1;
-		}
-
-		bpf_map_update_elem(&info, &i_key, &event, BPF_NOEXIST);
-	}
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
 	return 0;

@@ -8,12 +8,12 @@
 #define TASK_COMM_LEN	16
 
 struct cap_event {
+	__u64	mntnsid;
 	__u32	pid;
-	__u32	cap;
-	gid_t	tgid;
-	uid_t	uid;
-	int	audit;
-	int	insetid;
+	int	cap;
+	__u32	tgid;
+	__u32	uid;
+	int	cap_opt;
 	char	task[TASK_COMM_LEN];
 };
 
