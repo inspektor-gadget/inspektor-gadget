@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"text/template"
 
@@ -39,6 +40,7 @@ var (
 	hookMode            string
 	livenessProbe       bool
 	fallbackPodInformer bool
+	file                string
 )
 
 func init() {
@@ -67,6 +69,11 @@ func init() {
 		"fallback-podinformer", "",
 		true,
 		"Use pod informer as a fallback for the main hook")
+	deployCmd.PersistentFlags().StringVarP(
+		&file,
+		"file", "",
+		"",
+		"file to save the generated yaml template")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -369,8 +376,19 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		fallbackPodInformer,
 	}
 
-	fmt.Printf("%s\n---\n", resources.TracesCustomResource)
-	err = t.Execute(os.Stdout, p)
+	var w io.Writer = os.Stdout
+
+	if file != "" {
+		f, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			return fmt.Errorf("failed to create file: %w", err)
+		}
+		defer f.Close()
+		w = f
+	}
+
+	fmt.Fprintf(w, "%s\n---\n", resources.TracesCustomResource)
+	err = t.Execute(w, p)
 	if err != nil {
 		return fmt.Errorf("failed to generate deploy template: %w", err)
 	}
