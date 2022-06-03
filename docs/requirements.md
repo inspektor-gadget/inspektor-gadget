@@ -54,7 +54,7 @@ listed in the following table:
 | `advise network-policy`  | U.U                     | `KPROBES`, `KRETPROBES` |
 | `advise seccomp-profile` | (CO-RE only)            |                         |
 | `audit seccomp`          | 5.4 (CO-RE only)        | `KPROBES`               |
-| `profile block-io`       | 4.15 (BCC only)         |                         |
+| `profile block-io`       | 4.15 (BCC), U.U (CO-RE) |                         |
 | `profile cpu`            | (BCC only)              |                         |
 | `snapshot process`       | 5.10 (CO-RE only)       |                         |
 | `snapshot socket`        | 5.10 (CO-RE only)       |                         |
