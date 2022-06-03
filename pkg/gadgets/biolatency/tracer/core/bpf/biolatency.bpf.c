@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2020 Wenbo Zhang
-#include <vmlinux.h>
+#include <vmlinux/vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
@@ -8,8 +8,6 @@
 #include "bits.bpf.h"
 
 #define MAX_ENTRIES	10240
-
-extern int LINUX_KERNEL_VERSION __kconfig;
 
 const volatile bool filter_cg = false;
 const volatile bool targ_per_disk = false;
@@ -81,15 +79,11 @@ int block_rq_insert(u64 *ctx)
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
 		return 0;
 
-	/**
-	 * commit a54895fa (v5.11-rc1) changed tracepoint argument list
-	 * from TP_PROTO(struct request_queue *q, struct request *rq)
-	 * to TP_PROTO(struct request *rq)
-	 */
-	if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0))
-		return trace_rq_start((void *)ctx[1], false);
-	else
-		return trace_rq_start((void *)ctx[0], false);
+#ifdef KERNEL_BEFORE_5_11
+	return trace_rq_start((void *)ctx[1], false);
+#else /* !KERNEL_BEFORE_5_11 */
+	return trace_rq_start((void *)ctx[0], false);
+#endif /* !KERNEL_BEFORE_5_11 */
 }
 
 SEC("tp_btf/block_rq_issue")
@@ -98,15 +92,11 @@ int block_rq_issue(u64 *ctx)
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
 		return 0;
 
-	/**
-	 * commit a54895fa (v5.11-rc1) changed tracepoint argument list
-	 * from TP_PROTO(struct request_queue *q, struct request *rq)
-	 * to TP_PROTO(struct request *rq)
-	 */
-	if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0))
-		return trace_rq_start((void *)ctx[1], true);
-	else
-		return trace_rq_start((void *)ctx[0], true);
+#ifdef KERNEL_BEFORE_5_11
+	return trace_rq_start((void *)ctx[1], true);
+#else /* !KERNEL_BEFORE_5_11 */
+	return trace_rq_start((void *)ctx[0], true);
+#endif /* !KERNEL_BEFORE_5_11 */
 }
 
 SEC("tp_btf/block_rq_complete")
