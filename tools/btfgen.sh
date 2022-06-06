@@ -42,6 +42,7 @@ ${BTFHUB}/tools/btfgen.sh -a ${ARCH}                                            
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/sigsnoop/tracer/core/sigsnoop_bpfel.o                        \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/snisnoop/tracer/snisnoop_bpfel.o                             \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/tcpconnect/tracer/core/tcpconnect_bpfel_x86.o                \
+    -o ${INSPEKTOR_GADGET}/pkg/gadgets/tcptracer/tracer/core/tcptracer_bpfel_x86.o                  \
     -o ${INSPEKTOR_GADGET}/pkg/gadgets/tcptop/tracer/tcptop_bpfel_x86.o                             \
     #
 
