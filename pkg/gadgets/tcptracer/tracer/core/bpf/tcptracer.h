@@ -28,6 +28,7 @@ struct event {
 		unsigned __int128 daddr_v6;
 	};
 	char task[TASK_COMM_LEN];
+	__u64 mntns_id;
 	__u64 ts_us;
 	__u32 af; // AF_INET or AF_INET6
 	__u32 pid;

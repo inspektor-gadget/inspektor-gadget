@@ -3,7 +3,7 @@
 //
 // Based on tcptracer(8) from BCC by Kinvolk GmbH and
 // tcpconnect(8) by Anton Protopopov
-#include <vmlinux.h>
+#include <vmlinux/vmlinux.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
@@ -13,6 +13,7 @@
 
 const volatile uid_t filter_uid = -1;
 const volatile pid_t filter_pid = 0;
+const volatile bool filter_by_mnt_ns = false;
 
 /* Define here, because there are conflicts with include files */
 #define AF_INET		2
@@ -40,6 +41,7 @@ struct tuple_key_t {
 struct pid_comm_t {
 	u64 pid;
 	char comm[TASK_COMM_LEN];
+	u64 mntns_id;
 	u32 uid;
 };
 
@@ -63,6 +65,12 @@ struct {
 	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1024);
+	__uint(key_size, sizeof(u64));
+	__uint(value_size, sizeof(u32));
+} mount_ns_set SEC(".maps");
 
 static __always_inline bool
 fill_tuple(struct tuple_key_t *tuple, struct sock *sk, int family)
@@ -111,7 +119,7 @@ fill_tuple(struct tuple_key_t *tuple, struct sock *sk, int family)
 
 static __always_inline void
 fill_event(struct tuple_key_t *tuple, struct event *event, __u32 pid,
-	   __u32 uid, __u16 family, __u8 type)
+	   __u32 uid, __u16 family, __u8 type, __u64 mntns_id)
 {
 	event->ts_us = bpf_ktime_get_ns() / 1000;
 	event->type = type;
@@ -119,6 +127,7 @@ fill_event(struct tuple_key_t *tuple, struct event *event, __u32 pid,
 	event->uid = uid;
 	event->af = family;
 	event->netns = tuple->netns;
+	event->mntns_id = mntns_id;
 	if (family == AF_INET) {
 		event->saddr_v4 = tuple->saddr_v4;
 		event->daddr_v4 = tuple->daddr_v4;
@@ -132,11 +141,15 @@ fill_event(struct tuple_key_t *tuple, struct event *event, __u32 pid,
 
 /* returns true if the event should be skipped */
 static __always_inline bool
-filter_event(struct sock *sk, __u32 uid, __u32 pid)
+filter_event(struct sock *sk, __u32 uid, __u32 pid, __u64 mntns_id)
 {
-	u16 family = BPF_CORE_READ(sk, __sk_common.skc_family);
+	u16 family;
 
+	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	if (family != AF_INET && family != AF_INET6)
+		return true;
+
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
 		return true;
 
 	if (filter_pid && pid != filter_pid)
@@ -156,8 +169,13 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 	__u32 tid = pid_tgid;
 	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 uid = uid_gid;
+	struct task_struct *task;
+	__u64 mntns_id;
 
-	if (filter_event(sk, uid, pid))
+	task = (struct task_struct*)bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+	if (filter_event(sk, uid, pid, mntns_id))
 		return 0;
 
 	bpf_map_update_elem(&sockets, &tid, &sk, 0);
@@ -176,6 +194,7 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, __u16 family)
 	struct pid_comm_t pid_comm = {};
 	struct sock **skpp;
 	struct sock *sk;
+	struct task_struct *task;
 
 	skpp = bpf_map_lookup_elem(&sockets, &tid);
 	if (!skpp)
@@ -189,8 +208,11 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, __u16 family)
 	if (!fill_tuple(&tuple, sk, family))
 		goto end;
 
+	task = (struct task_struct*)bpf_get_current_task();
+
 	pid_comm.pid = pid;
 	pid_comm.uid = uid;
+	pid_comm.mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	bpf_get_current_comm(&pid_comm.comm, sizeof(pid_comm.comm));
 
 	bpf_map_update_elem(&tuplepid, &tuple, &pid_comm, 0);
@@ -233,9 +255,14 @@ int BPF_KPROBE(entry_trace_close, struct sock *sk)
 	__u32 uid = uid_gid;
 	struct tuple_key_t tuple = {};
 	struct event event = {};
+	struct task_struct *task;
 	u16 family;
+	__u64 mntns_id;
 
-	if (filter_event(sk, uid, pid))
+	task = (struct task_struct*)bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+	if (filter_event(sk, uid, pid, mntns_id))
 		return 0;
 
 	/*
@@ -252,7 +279,7 @@ int BPF_KPROBE(entry_trace_close, struct sock *sk)
 	if (!fill_tuple(&tuple, sk, family))
 		return 0;
 
-	fill_event(&tuple, &event, pid, uid, family, TCP_EVENT_TYPE_CLOSE);
+	fill_event(&tuple, &event, pid, uid, family, TCP_EVENT_TYPE_CLOSE, mntns_id);
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
@@ -284,7 +311,7 @@ int BPF_KPROBE(enter_tcp_set_state, struct sock *sk, int state)
 	if (!p)
 		return 0; /* missed entry */
 
-	fill_event(&tuple, &event, p->pid, p->uid, family, TCP_EVENT_TYPE_CONNECT);
+	fill_event(&tuple, &event, p->pid, p->uid, family, TCP_EVENT_TYPE_CONNECT, p->mntns_id);
 	__builtin_memcpy(&event.task, p->comm, sizeof(event.task));
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
@@ -303,28 +330,34 @@ int BPF_KRETPROBE(exit_inet_csk_accept, struct sock *sk)
 	__u32 pid = pid_tgid >> 32;
 	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 uid = uid_gid;
+	struct task_struct *task;
 	__u16 sport, family;
 	struct event event = {};
+	struct tuple_key_t t = {};
+	u64 mntns_id;
+
+	task = (struct task_struct*)bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
 	if (!sk)
 		return 0;
 
-	if (filter_event(sk, uid, pid))
+	if (filter_event(sk, uid, pid, mntns_id))
 		return 0;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	sport = BPF_CORE_READ(sk, __sk_common.skc_num);
 
-	struct tuple_key_t t = {};
 	fill_tuple(&t, sk, family);
 	t.sport = bpf_ntohs(sport);
 	/* do not send event if IP address is 0.0.0.0 or port is 0 */
 	if (t.saddr_v6 == 0 || t.daddr_v6 == 0 || t.dport == 0 || t.sport == 0)
 		return 0;
 
-	fill_event(&t, &event, pid, uid, family, TCP_EVENT_TYPE_ACCEPT);
+	fill_event(&t, &event, pid, uid, family, TCP_EVENT_TYPE_ACCEPT, mntns_id);
 
 	bpf_get_current_comm(&event.task, sizeof(event.task));
+
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
 			      &event, sizeof(event));
 
