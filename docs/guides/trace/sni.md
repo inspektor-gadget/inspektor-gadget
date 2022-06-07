@@ -14,7 +14,7 @@ we can run:
 
 ```bash
 $ kubectl gadget trace sni
-POD                            NAME
+NODE             NAMESPACE        POD              NAME
 ```
 
 To generate some output for this example, let's create a demo pod in *another terminal*:
@@ -36,11 +36,11 @@ Location: https://github.com/ [following]
 Go back to *the first terminal* and see:
 
 ```
-POD                            NAME
-ubuntu                         wikimedia.org
-ubuntu                         www.wikimedia.org
-ubuntu                         www.github.com
-ubuntu                         github.com
+NODE             NAMESPACE        POD              NAME
+minikube         default          ubuntu           wikimedia.org
+minikube         default          ubuntu           www.wikimedia.org
+minikube         default          ubuntu           www.github.com
+minikube         default          ubuntu           github.com
 ```
 
 We can see that each time our `wget` client connected to a different

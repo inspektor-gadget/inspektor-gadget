@@ -744,7 +744,7 @@ func TestSnisnoop(t *testing.T) {
 	snisnoopCmd := &command{
 		name:           "StartSnisnoopGadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace sni -n %s", ns),
-		expectedRegexp: `test-pod\s+kinvolk.io`,
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+kinvolk.io`, ns),
 		startAndStop:   true,
 	}
 

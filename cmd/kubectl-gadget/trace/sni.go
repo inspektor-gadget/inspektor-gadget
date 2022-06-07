@@ -18,47 +18,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-
-	"github.com/spf13/cobra"
+	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	snitypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snisnoop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snisnoop/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
-)
 
-const (
-	FmtAllSnisnoop   = "%-16.16s %-16.16s %-30.30s %s"
-	FmtShortSniSnoop = "%-30.30s %s"
+	"github.com/spf13/cobra"
 )
-
-var colSnisnoopLens = map[string]int{
-	"name": 30,
-}
 
 var snisnoopCmd = &cobra.Command{
 	Use:   "sni",
 	Short: "Trace Server Name Indication (SNI) from TLS requests",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		transform := snisnoopTransformLine
-
-		switch {
-		case params.OutputMode == utils.OutputModeJSON: // don't print any header
-		case params.OutputMode == utils.OutputModeCustomColumns:
-			table := utils.NewTableFormater(params.CustomColumns, colSnisnoopLens)
-			fmt.Println(table.GetHeader())
-			transform = table.GetTransformFunc()
-		case params.AllNamespaces:
-			fmt.Printf(FmtAllSnisnoop+"\n",
-				"NODE",
-				"NAMESPACE",
-				"POD",
-				"NAME",
-			)
-		default:
-			fmt.Printf(FmtShortSniSnoop+"\n",
-				"POD",
-				"NAME",
-			)
+		// print header
+		switch params.OutputMode {
+		case utils.OutputModeCustomColumns:
+			fmt.Println(getCustomSnisnoopColsHeader(params.CustomColumns))
+		case utils.OutputModeColumns:
+			fmt.Printf("%-16s %-16s %-16s %s\n",
+				"NODE", "NAMESPACE", "POD", "NAME")
 		}
 
 		config := &utils.TraceConfig{
@@ -69,7 +48,7 @@ var snisnoopCmd = &cobra.Command{
 			CommonFlags:      &params,
 		}
 
-		err := utils.RunTraceAndPrintStream(config, transform)
+		err := utils.RunTraceAndPrintStream(config, snisnoopTransformLine)
 		if err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
@@ -83,29 +62,73 @@ func init() {
 	utils.AddCommonFlags(snisnoopCmd, &params)
 }
 
+// snisnoopTransformLine is called to transform an event to columns
+// format according to the parameters
 func snisnoopTransformLine(line string) string {
-	event := &snitypes.Event{}
-	if err := json.Unmarshal([]byte(line), event); err != nil {
+	var sb strings.Builder
+	var e types.Event
+
+	if err := json.Unmarshal([]byte(line), &e); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+		return ""
 	}
 
 	podMsgSuffix := ""
-	if event.Namespace != "" && event.Pod != "" {
-		podMsgSuffix = ", pod " + event.Namespace + "/" + event.Pod
+	if e.Namespace != "" && e.Pod != "" {
+		podMsgSuffix = ", pod " + e.Namespace + "/" + e.Pod
 	}
 
-	if event.Type == eventtypes.ERR {
-		return fmt.Sprintf("Error on node %s%s: %s", event.Node, podMsgSuffix, event.Message)
-	}
-	if event.Type == eventtypes.DEBUG {
-		if !params.Verbose {
+	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
+		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
+		if e.Type == eventtypes.DEBUG && !params.Verbose {
 			return ""
 		}
-		return fmt.Sprintf("Debug on node %s%s: %s", event.Node, podMsgSuffix, event.Message)
+		fmt.Fprintf(os.Stderr, "%s: node %s%s: %s\n", e.Type, e.Node, podMsgSuffix, e.Message)
+		return ""
 	}
-	if params.AllNamespaces {
-		return fmt.Sprintf(FmtAllSnisnoop, event.Node, event.Namespace, event.Pod, event.Name)
-	} else {
-		return fmt.Sprintf(FmtShortSniSnoop, event.Pod, event.Name)
+	if e.Type != eventtypes.NORMAL {
+		return ""
 	}
+
+	switch params.OutputMode {
+	case utils.OutputModeColumns:
+		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %s",
+			e.Node, e.Namespace, e.Pod, e.Name))
+	case utils.OutputModeCustomColumns:
+		for _, col := range params.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
+			case "name":
+				sb.WriteString(fmt.Sprintf("%-24s", e.Name))
+			}
+			sb.WriteRune(' ')
+		}
+	}
+
+	return sb.String()
+}
+
+func getCustomSnisnoopColsHeader(cols []string) string {
+	var sb strings.Builder
+
+	for _, col := range cols {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+		case "pod":
+			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+		case "name":
+			sb.WriteString(fmt.Sprintf("%-24s", "NAME"))
+		}
+		sb.WriteRune(' ')
+	}
+
+	return sb.String()
 }
