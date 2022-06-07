@@ -33,7 +33,7 @@ var capabilitiesCmd = &cobra.Command{
 		// print header
 		switch params.OutputMode {
 		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomOpensnoopColsHeader(params.CustomColumns))
+			fmt.Println(getCustomCapabilitiesColsHeader(params.CustomColumns))
 		case utils.OutputModeColumns:
 			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-6s %-16s %-4s %-16s %-6s\n",
 				"NODE", "NAMESPACE", "POD", "CONTAINER",
