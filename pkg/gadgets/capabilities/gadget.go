@@ -23,6 +23,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/tracer"
 
+	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/tracer/core"
 	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/tracer/standard"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/types"
 
@@ -109,10 +110,19 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		MountnsMap: gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
 	}
 
-	t.tracer, err = standardtracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
+	t.tracer, err = coretracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
 	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
-		return
+		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
+
+		// fallback to standard tracer
+		log.Infof("Gadget %s: falling back to standard tracer. CO-RE tracer failed: %s",
+			trace.Spec.Gadget, err)
+
+		t.tracer, err = standardtracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
+		if err != nil {
+			trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
+			return
+		}
 	}
 
 	t.started = true
