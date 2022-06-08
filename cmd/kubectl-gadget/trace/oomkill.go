@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,13 +73,8 @@ func oomkillTransformLine(line string) string {
 		return ""
 	}
 
-	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
-		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
-		fmt.Fprintf(os.Stderr, "%s: node %q: %s", e.Type, e.Node, e.Message)
-		return ""
-	}
-
 	if e.Type != eventtypes.NORMAL {
+		utils.ManageSpecialEvent(e.Event, params.Verbose)
 		return ""
 	}
 

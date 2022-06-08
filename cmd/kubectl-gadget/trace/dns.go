@@ -74,20 +74,8 @@ func dnsTransformLine(line string) string {
 		return ""
 	}
 
-	podMsgSuffix := ""
-	if e.Namespace != "" && e.Pod != "" {
-		podMsgSuffix = ", pod " + e.Namespace + "/" + e.Pod
-	}
-
-	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
-		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
-		if e.Type == eventtypes.DEBUG && !params.Verbose {
-			return ""
-		}
-		fmt.Fprintf(os.Stderr, "%s: node %s%s: %s\n", e.Type, e.Node, podMsgSuffix, e.Message)
-		return ""
-	}
 	if e.Type != eventtypes.NORMAL {
+		utils.ManageSpecialEvent(e.Event, params.Verbose)
 		return ""
 	}
 

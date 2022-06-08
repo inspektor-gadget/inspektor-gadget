@@ -112,15 +112,11 @@ func bindsnoopTransformLine(line string) string {
 		return ""
 	}
 
-	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
-		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
-		fmt.Fprintf(os.Stderr, "%s: node %s: %s", e.Type, e.Node, e.Message)
+	if e.Type != eventtypes.NORMAL {
+		utils.ManageSpecialEvent(e.Event, params.Verbose)
 		return ""
 	}
 
-	if e.Type != eventtypes.NORMAL {
-		return ""
-	}
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
 		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-16s %-6s %-16s %-6d %-6s %s",
