@@ -107,6 +107,7 @@ func RunCollector(resolver gadgets.Resolver, node, mntnsmap string) ([]processco
 
 		events = append(events, processcollectortypes.Event{
 			Event: eventtypes.Event{
+				Type:      eventtypes.NORMAL,
 				Node:      node,
 				Namespace: container.Namespace,
 				Pod:       container.Podname,

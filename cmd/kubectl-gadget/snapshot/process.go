@@ -19,12 +19,15 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/types"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 var processCollectorParamThreads bool
@@ -34,106 +37,22 @@ var processCollectorCmd = &cobra.Command{
 	Short: "Gather information about running processes",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		callback := func(results []gadgetv1alpha1.Trace) error {
-			// Display results
-			type Process struct {
-				Tgid                int    `json:"tgid,omitempty"`
-				Pid                 int    `json:"pid,omitempty"`
-				Comm                string `json:"comm,omitempty"`
-				KubernetesNamespace string `json:"namespace,omitempty"`
-				KubernetesPod       string `json:"pod,omitempty"`
-				KubernetesContainer string `json:"container,omitempty"`
-				KubernetesNode      string `json:"node,omitempty"`
-			}
-			allProcesses := []Process{}
+			allProcesses := []types.Event{}
 
 			for _, i := range results {
-				processes := []Process{}
-				json.Unmarshal([]byte(i.Status.Output), &processes)
+				if len(i.Status.Output) == 0 {
+					continue
+				}
+
+				var processes []types.Event
+				if err := json.Unmarshal([]byte(i.Status.Output), &processes); err != nil {
+					return utils.WrapInErrUnmarshalOutput(err, i.Status.Output)
+				}
+
 				allProcesses = append(allProcesses, processes...)
 			}
-			if !processCollectorParamThreads {
-				allProcessesTrimmed := []Process{}
-				for _, i := range allProcesses {
-					if i.Tgid == i.Pid {
-						allProcessesTrimmed = append(allProcessesTrimmed, i)
-					}
-				}
-				allProcesses = allProcessesTrimmed
-			}
 
-			sort.Slice(allProcesses, func(i, j int) bool {
-				pi, pj := allProcesses[i], allProcesses[j]
-				switch {
-				case pi.KubernetesNode != pj.KubernetesNode:
-					return pi.KubernetesNode < pj.KubernetesNode
-				case pi.KubernetesNamespace != pj.KubernetesNamespace:
-					return pi.KubernetesNamespace < pj.KubernetesNamespace
-				case pi.KubernetesPod != pj.KubernetesPod:
-					return pi.KubernetesPod < pj.KubernetesPod
-				case pi.KubernetesContainer != pj.KubernetesContainer:
-					return pi.KubernetesContainer < pj.KubernetesContainer
-				case pi.Comm != pj.Comm:
-					return pi.Comm < pj.Comm
-				case pi.Tgid != pj.Tgid:
-					return pi.Tgid < pj.Tgid
-				default:
-					return pi.Pid < pj.Pid
-
-				}
-			})
-
-			switch params.OutputMode {
-			case utils.OutputModeJSON:
-				b, err := json.MarshalIndent(allProcesses, "", "  ")
-				if err != nil {
-					return fmt.Errorf("error marshalling results: %w", err)
-				}
-				fmt.Printf("%s\n", b)
-			case utils.OutputModeCustomColumns:
-				table := utils.NewTableFormater(params.CustomColumns, map[string]int{})
-				fmt.Println(table.GetHeader())
-				transform := table.GetTransformFunc()
-
-				for _, p := range allProcesses {
-					b, err := json.Marshal(p)
-					if err != nil {
-						return fmt.Errorf("error marshalling results: %w", err)
-					}
-
-					fmt.Println(transform(string(b)))
-				}
-			default:
-				w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-				if processCollectorParamThreads {
-					fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tCONTAINER\tCOMM\tTGID\tPID\t")
-					for _, p := range allProcesses {
-						fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%d\t\n",
-							p.KubernetesNode,
-							p.KubernetesNamespace,
-							p.KubernetesPod,
-							p.KubernetesContainer,
-							p.Comm,
-							p.Tgid,
-							p.Pid,
-						)
-					}
-				} else {
-					fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tCONTAINER\tCOMM\tPID\t")
-					for _, p := range allProcesses {
-						fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t\n",
-							p.KubernetesNode,
-							p.KubernetesNamespace,
-							p.KubernetesPod,
-							p.KubernetesContainer,
-							p.Comm,
-							p.Pid,
-						)
-					}
-				}
-				w.Flush()
-			}
-
-			return nil
+			return printProcesses(allProcesses)
 		}
 
 		config := &utils.TraceConfig{
@@ -159,4 +78,157 @@ func init() {
 		false,
 		"Show all threads",
 	)
+}
+
+func getCustomProcessColsHeader(cols []string) string {
+	var sb strings.Builder
+
+	for _, col := range cols {
+		switch col {
+		case "node":
+			sb.WriteString("NODE\t")
+		case "namespace":
+			sb.WriteString("NAMESPACE\t")
+		case "pod":
+			sb.WriteString("POD\t")
+		case "container":
+			sb.WriteString("CONTAINER\t")
+		case "comm":
+			sb.WriteString("COMM\t")
+		case "tgid":
+			sb.WriteString("TGID\t")
+		case "pid":
+			sb.WriteString("PID\t")
+		}
+		sb.WriteRune(' ')
+	}
+
+	return sb.String()
+}
+
+// processTransformEvent is called to transform an event to columns
+// format according to the parameters
+func processTransformEvent(e types.Event) string {
+	var sb strings.Builder
+
+	podMsgSuffix := ""
+	if e.Namespace != "" && e.Pod != "" {
+		podMsgSuffix = ", pod " + e.Namespace + "/" + e.Pod
+	}
+
+	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
+		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
+		if e.Type == eventtypes.DEBUG && !params.Verbose {
+			return ""
+		}
+		fmt.Fprintf(os.Stderr, "%s: node %s%s: %s\n", e.Type, e.Node, podMsgSuffix, e.Message)
+		return ""
+	}
+	if e.Type != eventtypes.NORMAL {
+		return ""
+	}
+
+	switch params.OutputMode {
+	case utils.OutputModeColumns:
+		if processCollectorParamThreads {
+			sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%d\t%d",
+				e.Node, e.Namespace, e.Pod, e.Container,
+				e.Command, e.Tgid, e.Pid))
+		} else {
+			sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%d",
+				e.Node, e.Namespace, e.Pod, e.Container,
+				e.Command, e.Pid))
+		}
+	case utils.OutputModeCustomColumns:
+		for _, col := range params.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%s\t", e.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%s\t", e.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%s\t", e.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%s\t", e.Container))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%s\t", e.Command))
+			case "tgid":
+				sb.WriteString(fmt.Sprintf("%d\t", e.Tgid))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%d\t", e.Pid))
+			}
+			sb.WriteRune(' ')
+		}
+	}
+
+	return sb.String()
+}
+
+func printProcesses(allProcesses []types.Event) error {
+	if !processCollectorParamThreads {
+		allProcessesTrimmed := []types.Event{}
+		for _, i := range allProcesses {
+			if i.Tgid == i.Pid {
+				allProcessesTrimmed = append(allProcessesTrimmed, i)
+			}
+		}
+		allProcesses = allProcessesTrimmed
+	}
+
+	sort.Slice(allProcesses, func(i, j int) bool {
+		pi, pj := allProcesses[i], allProcesses[j]
+		switch {
+		case pi.Node != pj.Node:
+			return pi.Node < pj.Node
+		case pi.Namespace != pj.Namespace:
+			return pi.Namespace < pj.Namespace
+		case pi.Pod != pj.Pod:
+			return pi.Pod < pj.Pod
+		case pi.Container != pj.Container:
+			return pi.Container < pj.Container
+		case pi.Command != pj.Command:
+			return pi.Command < pj.Command
+		case pi.Tgid != pj.Tgid:
+			return pi.Tgid < pj.Tgid
+		default:
+			return pi.Pid < pj.Pid
+		}
+	})
+
+	// JSON output mode does not need any additional parsing
+	if params.OutputMode == utils.OutputModeJSON {
+		b, err := json.MarshalIndent(allProcesses, "", "  ")
+		if err != nil {
+			return utils.WrapInErrMarshalOutput(err)
+		}
+		fmt.Printf("%s\n", b)
+		return nil
+	}
+
+	// In the snapshot gadgets it's possible to use a tabwriter because we have
+	// the full list of events to print available, hence the tablewriter is able
+	// to determine the columns width. In other gadgets we don't know the size
+	// of all columns "a priori", hence we have to do a best effort printing
+	// fixed-width columns.
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+
+	// Print all or requested columns
+	switch params.OutputMode {
+	case utils.OutputModeCustomColumns:
+		fmt.Fprintln(w, getCustomProcessColsHeader(params.CustomColumns))
+	case utils.OutputModeColumns:
+		if processCollectorParamThreads {
+			fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tCONTAINER\tCOMM\tTGID\tPID")
+		} else {
+			fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tCONTAINER\tCOMM\tPID")
+		}
+	}
+
+	for _, p := range allProcesses {
+		fmt.Fprintln(w, processTransformEvent(p))
+	}
+
+	w.Flush()
+
+	return nil
 }
