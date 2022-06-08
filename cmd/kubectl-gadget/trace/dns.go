@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,52 +18,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-
-	"github.com/spf13/cobra"
+	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
-)
 
-const (
-	FmtShortDNS = "%-30.30s %-9.9s %-10.10s %s"
-	FmtAllDNS   = "%-16.16s %-16.16s " + FmtShortDNS
+	"github.com/spf13/cobra"
 )
-
-var colLens = map[string]int{
-	"pkt_type": 10,
-	"name":     30,
-}
 
 var dnsCmd = &cobra.Command{
 	Use:   "dns",
 	Short: "Trace DNS requests",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		transform := transformLine
-
-		switch {
-		case params.OutputMode == utils.OutputModeJSON: // don't print any header
-		case params.OutputMode == utils.OutputModeCustomColumns:
-			table := utils.NewTableFormater(params.CustomColumns, colLens)
-			fmt.Println(table.GetHeader())
-			transform = table.GetTransformFunc()
-		case params.AllNamespaces:
-			fmt.Printf(FmtAllDNS+"\n",
-				"NODE",
-				"NAMESPACE",
-				"POD",
-				"TYPE",
-				"QTYPE",
-				"NAME",
-			)
-		default:
-			fmt.Printf(FmtShortDNS+"\n",
-				"POD",
-				"TYPE",
-				"QTYPE",
-				"NAME",
-			)
+		// print header
+		switch params.OutputMode {
+		case utils.OutputModeCustomColumns:
+			fmt.Println(getCustomDNSColsHeader(params.CustomColumns))
+		case utils.OutputModeColumns:
+			fmt.Printf("%-16s %-16s %-16s %-9s %-10s %s\n",
+				"NODE", "NAMESPACE", "POD",
+				"TYPE", "QTYPE", "NAME")
 		}
 
 		config := &utils.TraceConfig{
@@ -74,7 +49,7 @@ var dnsCmd = &cobra.Command{
 			CommonFlags:      &params,
 		}
 
-		err := utils.RunTraceAndPrintStream(config, transform)
+		err := utils.RunTraceAndPrintStream(config, dnsTransformLine)
 		if err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
@@ -88,30 +63,81 @@ func init() {
 	utils.AddCommonFlags(dnsCmd, &params)
 }
 
-func transformLine(line string) string {
-	event := &dnstypes.Event{}
-	if err := json.Unmarshal([]byte(line), event); err != nil {
+// dnsTransformLine is called to transform an event to columns
+// format according to the parameters
+func dnsTransformLine(line string) string {
+	var sb strings.Builder
+	var e types.Event
+
+	if err := json.Unmarshal([]byte(line), &e); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
 		return ""
 	}
 
 	podMsgSuffix := ""
-	if event.Namespace != "" && event.Pod != "" {
-		podMsgSuffix = ", pod " + event.Namespace + "/" + event.Pod
+	if e.Namespace != "" && e.Pod != "" {
+		podMsgSuffix = ", pod " + e.Namespace + "/" + e.Pod
 	}
 
-	if event.Type == eventtypes.ERR {
-		return fmt.Sprintf("Error on node %s%s: %s", event.Node, podMsgSuffix, event.Message)
-	}
-	if event.Type == eventtypes.DEBUG {
-		if !params.Verbose {
+	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
+		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
+		if e.Type == eventtypes.DEBUG && !params.Verbose {
 			return ""
 		}
-		return fmt.Sprintf("Debug on node %s%s: %s", event.Node, podMsgSuffix, event.Message)
+		fmt.Fprintf(os.Stderr, "%s: node %s%s: %s\n", e.Type, e.Node, podMsgSuffix, e.Message)
+		return ""
 	}
-	if params.AllNamespaces {
-		return fmt.Sprintf(FmtAllDNS, event.Node, event.Namespace, event.Pod, event.PktType, event.QType, event.DNSName)
-	} else {
-		return fmt.Sprintf(FmtShortDNS, event.Pod, event.PktType, event.QType, event.DNSName)
+	if e.Type != eventtypes.NORMAL {
+		return ""
 	}
+
+	switch params.OutputMode {
+	case utils.OutputModeColumns:
+		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-9s %-10s %s",
+			e.Node, e.Namespace, e.Pod, e.PktType, e.QType, e.DNSName))
+	case utils.OutputModeCustomColumns:
+		for _, col := range params.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
+			case "type":
+				sb.WriteString(fmt.Sprintf("%-9s", e.PktType))
+			case "qtype":
+				sb.WriteString(fmt.Sprintf("%-10s", e.QType))
+			case "name":
+				sb.WriteString(fmt.Sprintf("%-24s", e.DNSName))
+			}
+			sb.WriteRune(' ')
+		}
+	}
+
+	return sb.String()
+}
+
+func getCustomDNSColsHeader(cols []string) string {
+	var sb strings.Builder
+
+	for _, col := range cols {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+		case "pod":
+			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+		case "type":
+			sb.WriteString(fmt.Sprintf("%-9s", "TYPE"))
+		case "qtype":
+			sb.WriteString(fmt.Sprintf("%-10s", "QTYPE"))
+		case "name":
+			sb.WriteString(fmt.Sprintf("%-24s", "NAME"))
+		}
+		sb.WriteRune(' ')
+	}
+
+	return sb.String()
 }

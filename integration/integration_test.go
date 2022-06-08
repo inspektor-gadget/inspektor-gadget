@@ -445,7 +445,7 @@ func TestDns(t *testing.T) {
 	dnsCmd := &command{
 		name:           "StartDnsGadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace dns -n %s", ns),
-		expectedRegexp: `test-pod\s+OUTGOING\s+A\s+microsoft.com`,
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+OUTGOING\s+A\s+microsoft.com`, ns),
 		startAndStop:   true,
 	}
 
