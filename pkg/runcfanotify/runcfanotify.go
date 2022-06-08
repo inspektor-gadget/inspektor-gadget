@@ -16,6 +16,7 @@ package runcfanotify
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -62,6 +63,12 @@ type ContainerEvent struct {
 
 type RuncNotifyFunc func(notif ContainerEvent)
 
+type runcContainer struct {
+	id    string
+	pid   int
+	pidfd int
+}
+
 type RuncNotifier struct {
 	runcBinaryNotify *fanotify.NotifyFD
 	callback         RuncNotifyFunc
@@ -71,9 +78,13 @@ type RuncNotifier struct {
 	// AddWatchContainerTermination.
 	//
 	// Keys: Container ID
-	// Value: dummy struct
-	containers map[string]struct{}
+	containers map[string]*runcContainer
 	mu         sync.Mutex
+
+	// set to true when RuncNotifier is closed
+	closed bool
+
+	wg sync.WaitGroup
 }
 
 // runcPaths is the list of paths where runc could be installed. Depending on
@@ -92,9 +103,33 @@ var runcPaths = []string{
 	"/host/run/torcx/unpack/docker/bin/runc",
 }
 
+// true if the SYS_PIDFD_OPEN syscall is available
+var pidfdOpenAvailable bool
+
+func init() {
+	pid := uintptr(os.Getpid())
+	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, pid, 0, 0)
+	if errno == unix.ENOSYS {
+		log.Debug("SYS_PIDFD_OPEN is not available")
+		pidfdOpenAvailable = false
+		return
+	}
+
+	if errno != 0 {
+		pidfdOpenAvailable = false
+		log.Debugf("probing SYS_PIDFD_OPEN failed with: %s", errno)
+		return
+	}
+
+	unix.Close(int(pidfd))
+
+	log.Debug("SYS_PIDFD_OPEN is available")
+	pidfdOpenAvailable = true
+}
+
 // initFanotify initializes the fanotify API with the flags we need
 func initFanotify() (*fanotify.NotifyFD, error) {
-	fanotifyFlags := uint(unix.FAN_CLOEXEC | unix.FAN_CLASS_CONTENT | unix.FAN_UNLIMITED_QUEUE | unix.FAN_UNLIMITED_MARKS)
+	fanotifyFlags := uint(unix.FAN_CLOEXEC | unix.FAN_CLASS_CONTENT | unix.FAN_UNLIMITED_QUEUE | unix.FAN_UNLIMITED_MARKS | unix.FAN_NONBLOCK)
 	openFlags := os.O_RDONLY | unix.O_LARGEFILE | unix.O_CLOEXEC
 	return fanotify.Initialize(fanotifyFlags, openFlags)
 }
@@ -129,7 +164,7 @@ func Supported() bool {
 func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	n := &RuncNotifier{
 		callback:   callback,
-		containers: make(map[string]struct{}),
+		containers: make(map[string]*runcContainer),
 	}
 
 	runcBinaryNotify, err := initFanotify()
@@ -147,7 +182,13 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 		}
 	}
 
+	n.wg.Add(2)
 	go n.watchRunc()
+	if pidfdOpenAvailable {
+		go n.watchContainersTermination()
+	} else {
+		go n.watchContainersTerminationFallback()
+	}
 
 	return n, nil
 }
@@ -174,80 +215,119 @@ func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containe
 		// This container is already being watched for termination
 		return nil
 	}
-	n.containers[containerID] = struct{}{}
 
-	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, uintptr(containerPID), 0, 0)
-	if errno == unix.ENOSYS {
-		// pidfd_open not available. As a fallback, check if the
-		// process exists every second
-		go n.watchContainerTerminationFallback(containerID, containerPID)
+	n.containers[containerID] = &runcContainer{
+		id:  containerID,
+		pid: containerPID,
+	}
+
+	if !pidfdOpenAvailable {
 		return nil
 	}
+
+	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, uintptr(containerPID), 0, 0)
 	if errno != 0 {
 		return fmt.Errorf("pidfd_open returned %w", errno)
 	}
 
-	// watch for container termination with pidfd_open
-	go n.watchContainerTermination(containerID, containerPID, int(pidfd))
+	n.containers[containerID].pidfd = int(pidfd)
+
 	return nil
 }
 
 // watchContainerTermination waits until the container terminates using
 // pidfd_open (Linux >= 5.3), then sends a notification.
-func (n *RuncNotifier) watchContainerTermination(containerID string, containerPID int, pidfd int) {
-	defer func() {
-		n.mu.Lock()
-		defer n.mu.Unlock()
-		delete(n.containers, containerID)
-	}()
-
-	defer unix.Close(pidfd)
+func (n *RuncNotifier) watchContainersTermination() {
+	defer n.wg.Done()
 
 	for {
-		fds := []unix.PollFd{
-			{
-				Fd:      int32(pidfd),
-				Events:  unix.POLLIN,
-				Revents: 0,
-			},
+		if n.closed {
+			// close all pidfds
+			for _, c := range n.containers {
+				unix.Close(c.pidfd)
+			}
+			return
 		}
-		count, err := unix.Poll(fds, -1)
-		if err == nil && count == 1 {
+
+		n.mu.Lock()
+
+		fds := make([]unix.PollFd, len(n.containers))
+		// array to create a relation between the fd position and the container
+		containersByIndex := make([]*runcContainer, len(n.containers))
+
+		i := 0
+
+		for _, c := range n.containers {
+			fds[i].Fd = int32(c.pidfd)
+			fds[i].Events = unix.POLLIN
+
+			containersByIndex[i] = c
+			i++
+		}
+		n.mu.Unlock()
+
+		count, err := unix.Poll(fds, 1000)
+		if err != nil && !errors.Is(err, unix.EINTR) {
+			log.Errorf("error polling pidfds: %s", err)
+			return
+		}
+
+		if count == 0 {
+			continue
+		}
+
+		for i, fd := range fds {
+			if fd.Revents == 0 {
+				continue
+			}
+
+			c := containersByIndex[i]
+
 			n.callback(ContainerEvent{
 				Type:         EventTypeRemoveContainer,
-				ContainerID:  containerID,
-				ContainerPID: uint32(containerPID),
+				ContainerID:  c.id,
+				ContainerPID: uint32(c.pid),
 			})
-			return
+
+			unix.Close(c.pidfd)
+
+			n.mu.Lock()
+			delete(n.containers, c.id)
+			n.mu.Unlock()
 		}
 	}
 }
 
 // watchContainerTerminationFallback waits until the container terminates
 // *without* using pidfd_open so it works on older kernels, then sends a notification.
-func (n *RuncNotifier) watchContainerTerminationFallback(containerID string, containerPID int) {
-	defer func() {
-		n.mu.Lock()
-		defer n.mu.Unlock()
-		delete(n.containers, containerID)
-	}()
+func (n *RuncNotifier) watchContainersTerminationFallback() {
+	defer n.wg.Done()
 
 	for {
-		time.Sleep(time.Second)
-		process, err := os.FindProcess(containerPID)
-		if err == nil {
-			// no signal is sent: signal 0 just check for the
-			// existence of the process
-			err = process.Signal(syscall.Signal(0))
-		}
-
-		if err != nil {
-			n.callback(ContainerEvent{
-				Type:         EventTypeRemoveContainer,
-				ContainerID:  containerID,
-				ContainerPID: uint32(containerPID),
-			})
+		if n.closed {
 			return
+		}
+		time.Sleep(1 * time.Second)
+
+		for _, c := range n.containers {
+			process, err := os.FindProcess(c.pid)
+			if err == nil {
+				// no signal is sent: signal 0 just check for the
+				// existence of the process
+				err = process.Signal(syscall.Signal(0))
+			}
+
+			if err != nil {
+				n.callback(ContainerEvent{
+					Type:         EventTypeRemoveContainer,
+					ContainerID:  c.id,
+					ContainerPID: uint32(c.pid),
+				})
+
+				n.mu.Lock()
+				delete(n.containers, c.id)
+				n.mu.Unlock()
+			}
 		}
 	}
 }
@@ -377,11 +457,18 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 		return fmt.Errorf("cannot ignore %s: %w", configJSONPath, err)
 	}
 
+	n.wg.Add(1)
 	go func() {
+		defer n.wg.Done()
+
 		for {
 			stop, err := n.watchPidFileIterate(pidFileDirNotify, bundleDir, pidFile, pidFileDir)
+			if n.closed {
+				pidFileDirNotify.File.Close()
+				return
+			}
 			if err != nil {
-				log.Errorf("error: %v\n", err)
+				log.Errorf("error watching pid: %v\n", err)
 			}
 			if stop {
 				pidFileDirNotify.File.Close()
@@ -394,10 +481,16 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 }
 
 func (n *RuncNotifier) watchRunc() {
+	defer n.wg.Done()
+
 	for {
 		stop, err := n.watchRuncIterate()
+		if n.closed {
+			n.runcBinaryNotify.File.Close()
+			return
+		}
 		if err != nil {
-			log.Errorf("error: %v\n", err)
+			log.Errorf("error watching runc: %v\n", err)
 		}
 		if stop {
 			n.runcBinaryNotify.File.Close()
@@ -473,9 +566,15 @@ func (n *RuncNotifier) watchRuncIterate() (bool, error) {
 	if createFound && bundleDir != "" && pidFile != "" {
 		err := n.monitorRuncInstance(bundleDir, pidFile)
 		if err != nil {
-			log.Errorf("error: %v\n", err)
+			log.Errorf("error monitoring runc instance: %v\n", err)
 		}
 	}
 
 	return false, nil
+}
+
+func (n *RuncNotifier) Close() {
+	n.closed = true
+	n.runcBinaryNotify.File.Close()
+	n.wg.Wait()
 }

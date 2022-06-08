@@ -51,6 +51,12 @@ type ContainerCollection struct {
 
 	// initialized tells if ContainerCollectionInitialize has been called.
 	initialized bool
+
+	// closed tells if ContainerCollectionClose has been called.
+	closed bool
+
+	// functions to be called on ContainerCollectionClose()
+	cleanUpFuncs []func()
 }
 
 // ContainerCollectionOption are options to pass to
@@ -310,4 +316,18 @@ func (cc *ContainerCollection) Unsubscribe(key interface{}) {
 		panic("ContainerCollection's pubsub uninitialized")
 	}
 	cc.pubsub.Unsubscribe(key)
+}
+
+func (cc *ContainerCollection) ContainerCollectionClose() {
+	if !cc.initialized || cc.closed {
+		panic("ContainerCollection is not initialized or has been closed")
+	}
+
+	for _, f := range cc.cleanUpFuncs {
+		f()
+	}
+
+	// TODO: it's not clear if we want/can allow to re-initialize
+	// this instance yet, so we don't set cc.initialized = false.
+	cc.closed = true
 }

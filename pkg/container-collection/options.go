@@ -114,6 +114,12 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 			return containerRuntimeEnricher(runtime.Name, runtimeClient, container)
 		})
 
+		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
+			if err := runtimeClient.Close(); err != nil {
+				log.Warnf("failed to close container runtime %s: %s", runtime.Name, err)
+			}
+		})
+
 		// Enrich already running containers
 		containers, err := runtimeClient.GetContainers()
 		if err != nil {
@@ -177,13 +183,15 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 			return fmt.Errorf("failed to create Kubernetes client: %w", err)
 		}
 
-		createdChan := make(chan *v1.Pod)
-		deletedChan := make(chan string)
-
-		_, err = k8s.NewPodInformer(nodeName, createdChan, deletedChan)
+		podInformer, err := k8s.NewPodInformer(nodeName)
 		if err != nil {
 			return fmt.Errorf("failed to create pod informer: %w", err)
 		}
+
+		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
+			k8sClient.Close()
+			podInformer.Stop()
+		})
 
 		go func() {
 			// containerIDsByKey keeps track of container ids for each key. This is
@@ -196,13 +204,19 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 
 			for {
 				select {
-				case d := <-deletedChan:
+				case d, ok := <-podInformer.DeletedChan():
+					if !ok {
+						return
+					}
 					if containerIDs, ok := containerIDsByKey[d]; ok {
 						for containerID := range containerIDs {
 							cc.RemoveContainer(containerID)
 						}
 					}
-				case c := <-createdChan:
+				case c, ok := <-podInformer.CreatedChan():
+					if !ok {
+						return
+					}
 					key, _ := cache.MetaNamespaceKeyFunc(c)
 					containerIDs, ok := containerIDsByKey[key]
 					if !ok {
@@ -247,8 +261,6 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 					}
 				}
 			}
-			// TODO: ContainerCollection does not have a Stop() method
-			// podInformer.Stop()
 		}()
 
 		return nil
@@ -266,6 +278,7 @@ func WithInitialKubernetesContainers(nodeName string) ContainerCollectionOption 
 		if err != nil {
 			return fmt.Errorf("failed to create Kubernetes client: %w", err)
 		}
+		defer k8sClient.Close()
 
 		containers, err := k8sClient.ListContainers()
 		if err != nil {
@@ -572,6 +585,10 @@ func WithRuncFanotify() ContainerCollectionOption {
 		if err != nil {
 			return fmt.Errorf("cannot start runc fanotify: %w", err)
 		}
+
+		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
+			runcNotifier.Close()
+		})
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *pb.ContainerDefinition) bool {

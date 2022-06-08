@@ -312,4 +312,5 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 // ebpf maps.
 func (m *GadgetTracerManager) Close() {
 	m.containersMap.Close()
+	m.ContainerCollectionClose()
 }
