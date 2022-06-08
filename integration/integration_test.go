@@ -169,11 +169,13 @@ func testMain(m *testing.M) int {
 
 	if !*doNotDeploySPO {
 		limitReplicas := false
+		bestEffortResourceMgmt := false
 		if *k8sDistro == K8sDistroMinikubeGH {
 			limitReplicas = true
+			bestEffortResourceMgmt = true
 		}
 
-		initCommands = append(initCommands, deploySPO(limitReplicas))
+		initCommands = append(initCommands, deploySPO(limitReplicas, bestEffortResourceMgmt))
 		cleanupCommands = append(cleanupCommands, cleanupSPO)
 	}
 
@@ -267,11 +269,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestAuditSeccomp(t *testing.T) {
-	if *k8sDistro == K8sDistroARO {
-		t.Skip("Skip running audit-seccomp gadget on ARO: see issue #631")
-	}
-
 	ns := generateTestNamespaceName("test-audit-seccomp")
+	spName := "log"
 
 	t.Parallel()
 
@@ -284,7 +283,7 @@ func TestAuditSeccomp(t *testing.T) {
 apiVersion: security-profiles-operator.x-k8s.io/v1beta1
 kind: SeccompProfile
 metadata:
-  name: log
+  name: %s
   namespace: %s
   annotations:
     description: "Log some syscalls"
@@ -300,8 +299,12 @@ spec:
     names:
     - mkdir
 EOF
-			`, ns),
-			expectedRegexp: "seccompprofile.security-profiles-operator.x-k8s.io/log created",
+			`, spName, ns),
+			expectedRegexp: fmt.Sprintf("seccompprofile.security-profiles-operator.x-k8s.io/%s created", spName),
+		},
+		{
+			name: "WaitForSeccompProfile",
+			cmd:  fmt.Sprintf("kubectl wait sp --for condition=ready -n %s %s", ns, spName),
 		},
 		{
 			name: "RunSeccompAuditTestPod",
@@ -330,7 +333,7 @@ EOF
 		waitUntilTestPodReadyCommand(ns),
 		{
 			name:           "RunAuditSeccompGadget",
-			cmd:            fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s & sleep 5; kill $!", ns),
+			cmd:            fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15", ns),
 			expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+container1\s+unshare\s+\d+\s+unshare\s+kill_thread`, ns),
 		},
 		deleteTestNamespaceCommand(ns),
