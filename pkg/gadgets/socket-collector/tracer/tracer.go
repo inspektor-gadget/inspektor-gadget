@@ -157,6 +157,7 @@ func RunCollector(pid uint32, podname, namespace, node string, proto socketcolle
 
 				sockets = append(sockets, socketcollectortypes.Event{
 					Event: eventtypes.Event{
+						Type:      eventtypes.NORMAL,
 						Node:      node,
 						Namespace: namespace,
 						Pod:       podname,
