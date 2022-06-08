@@ -14,16 +14,14 @@
 
 package tracer
 
+import "github.com/cilium/ebpf"
+
 type Tracer interface {
 	Stop()
 }
 
 type Config struct {
-	// TODO: Make it a *ebpf.Map once
-	// https://github.com/cilium/ebpf/issues/515 and
-	// https://github.com/cilium/ebpf/issues/517 are fixed
-	MountnsMap string
-
+	MountnsMap   *ebpf.Map
 	TargetSignal string
 	TargetPid    int32
 	FailedOnly   bool

@@ -136,11 +136,16 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		}
 	}
 
+	mountNsMap, err := t.resolver.TracerMountNsMap(traceName)
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
+		return
+	}
 	config := &biotoptracer.Config{
 		MaxRows:    maxRows,
 		Interval:   time.Second * time.Duration(intervalSeconds),
 		SortBy:     sortBy,
-		MountnsMap: gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
+		MountnsMap: mountNsMap,
 		Node:       trace.Spec.Node,
 	}
 

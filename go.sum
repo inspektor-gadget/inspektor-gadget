@@ -191,6 +191,8 @@ github.com/cilium/ebpf v0.4.0/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJ
 github.com/cilium/ebpf v0.6.2/go.mod h1:4tRaxcgiL706VnOzHOdBlY8IEAIdxINsQBcU4xJJXRs=
 github.com/cilium/ebpf v0.8.2-0.20220329140945-23f447c3cb0c h1:eA5PLaUAWdnThvVxM4ix0GuMHotHTQ3XdOmPzvGyEpo=
 github.com/cilium/ebpf v0.8.2-0.20220329140945-23f447c3cb0c/go.mod h1:f5zLIM0FSNuAkSyLAN7X+Hy6yznlF1mNiWUMfxMtrgk=
+github.com/cilium/ebpf v0.8.2-0.20220502122259-96aa1a7a929f h1:6s/s6X7MyRPonDp/GFzpmUzwL7vY1yeAr7eajLDxwA4=
+github.com/cilium/ebpf v0.8.2-0.20220502122259-96aa1a7a929f/go.mod h1:+OhNOIXx/Fnu1IE8bJz2dzOA+VSfyTfdNUVdlQnxUFY=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/cncf/udpa/go v0.0.0-20200629203442-efcf912fb354/go.mod h1:WmhPx2Nbnhtbo57+VJT5O0JRkEi1Wbu0z5j0R8u5Hbk=

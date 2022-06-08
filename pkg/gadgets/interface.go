@@ -17,6 +17,7 @@ package gadgets
 import (
 	"sync"
 
+	"github.com/cilium/ebpf"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 
@@ -76,6 +77,8 @@ type Resolver interface {
 	containercollection.ContainerResolver
 
 	PublishEvent(tracerID string, line string) error
+	TracerMountNsMap(tracerID string) (*ebpf.Map, error)
+	ContainersMap() *ebpf.Map
 }
 
 type BaseFactory struct {

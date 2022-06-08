@@ -17,19 +17,25 @@ package profile
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 
+	"github.com/google/uuid"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
 )
 
 type Trace struct {
-	started bool
-	cmd     *exec.Cmd
-	stdout  bytes.Buffer
-	stderr  bytes.Buffer
+	resolver gadgets.Resolver
+
+	started           bool
+	cmd               *exec.Cmd
+	stdout            bytes.Buffer
+	stderr            bytes.Buffer
+	mountNsMapPinPath string
 }
 
 type TraceFactory struct {
@@ -62,7 +68,9 @@ func deleteTrace(name string, t interface{}) {
 
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
-		return &Trace{}
+		return &Trace{
+			resolver: f.Resolver,
+		}
 	}
 
 	return map[string]gadgets.TraceOperation{
@@ -87,10 +95,22 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	mountNsMap := gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+
+	mountNsMap, err := t.resolver.TracerMountNsMap(traceName)
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
+		return
+	}
+
+	t.mountNsMapPinPath = filepath.Join(gadgets.PinPath, uuid.New().String())
+	if err := mountNsMap.Pin(t.mountNsMapPinPath); err != nil {
+		trace.Status.OperationError = fmt.Sprintf("failed to pin tracer's mount ns map: %s", err)
+		return
+	}
 
 	t.cmd = exec.Command("/usr/share/bcc/tools/profile", "-f", "-d",
-		"--mntnsmap", mountNsMap)
+		"--mntnsmap", t.mountNsMapPinPath)
 
 	if _, ok := trace.Spec.Parameters[types.ProfileUserParam]; ok {
 		t.cmd.Args = append(t.cmd.Args, "-U")
@@ -142,6 +162,8 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	}
 	t.cmd = nil
 	t.started = false
+
+	os.Remove(t.mountNsMapPinPath)
 
 	output := t.stdout.String()
 

@@ -17,7 +17,6 @@ package tracercollection
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
@@ -30,15 +29,14 @@ import (
 
 const (
 	MaxContainersPerNode = 1024
+	MountMapPrefix       = "mntnsset_"
 )
 
 type TracerCollection struct {
 	tracers             map[string]tracer
 	containerCollection *containercollection.ContainerCollection
 
-	withEbpf  bool
-	pinPath   string
-	mapPrefix string
+	withEbpf bool
 }
 
 type tracer struct {
@@ -51,13 +49,11 @@ type tracer struct {
 	gadgetStream *stream.GadgetStream
 }
 
-func NewTracerCollection(pinPath, mapPrefix string, withEbpf bool, cc *containercollection.ContainerCollection) (*TracerCollection, error) {
+func NewTracerCollection(withEbpf bool, cc *containercollection.ContainerCollection) (*TracerCollection, error) {
 	return &TracerCollection{
 		tracers:             make(map[string]tracer),
 		containerCollection: cc,
 		withEbpf:            withEbpf,
-		pinPath:             pinPath,
-		mapPrefix:           mapPrefix,
 	}, nil
 }
 
@@ -104,18 +100,18 @@ func (tc *TracerCollection) AddTracer(id string, containerSelector pb.ContainerS
 	var mntnsSetMap *ebpf.Map
 	if tc.withEbpf {
 		mntnsSpec := &ebpf.MapSpec{
-			Name:       tc.mapPrefix + id,
+			Name:       MountMapPrefix + id,
 			Type:       ebpf.Hash,
 			KeySize:    8,
 			ValueSize:  4,
 			MaxEntries: MaxContainersPerNode,
-			Pinning:    ebpf.PinByName,
 		}
 		var err error
-		mntnsSetMap, err = ebpf.NewMapWithOptions(mntnsSpec, ebpf.MapOptions{PinPath: tc.pinPath})
+		mntnsSetMap, err = ebpf.NewMap(mntnsSpec)
 		if err != nil {
 			return fmt.Errorf("error creating mntnsset map: %w", err)
 		}
+
 		tc.containerCollection.ContainerRangeWithSelector(&containerSelector, func(c *pb.ContainerDefinition) {
 			one := uint32(1)
 			mntnsC := uint64(c.Mntns)
@@ -148,10 +144,6 @@ func (tc *TracerCollection) RemoveTracer(id string) error {
 	}
 
 	t.gadgetStream.Close()
-
-	if tc.withEbpf {
-		os.Remove(filepath.Join(tc.pinPath, tc.mapPrefix+id))
-	}
 
 	delete(tc.tracers, id)
 	return nil
@@ -193,4 +185,13 @@ func (tc *TracerCollection) TracerExists(id string) bool {
 }
 
 func (tc *TracerCollection) Close() {
+}
+
+func (tc *TracerCollection) TracerMountNsMap(id string) (*ebpf.Map, error) {
+	t, ok := tc.tracers[id]
+	if !ok {
+		return nil, fmt.Errorf("unknown tracer %q", id)
+	}
+
+	return t.mntnsSetMap, nil
 }

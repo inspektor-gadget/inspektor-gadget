@@ -2,7 +2,7 @@ module github.com/kinvolk/inspektor-gadget
 
 require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
-	github.com/cilium/ebpf v0.8.2-0.20220329140945-23f447c3cb0c
+	github.com/cilium/ebpf v0.8.2-0.20220502122259-96aa1a7a929f
 	github.com/containerd/containerd v1.5.11 // indirect
 	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
 	github.com/containers/common v0.46.0
@@ -10,6 +10,7 @@ require (
 	github.com/docker/docker v20.10.8+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/giantswarm/crd-docs-generator v0.7.1
+	github.com/google/uuid v1.2.0 // indirect
 	github.com/iovisor/gobpf v0.2.0 // indirect
 	github.com/kinvolk/traceloop v0.0.0-20210623155108-6f4efc6fca46
 	github.com/kr/pretty v0.3.0

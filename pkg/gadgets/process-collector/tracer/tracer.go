@@ -17,7 +17,6 @@ package tracer
 import (
 	"bufio"
 	"fmt"
-	"path/filepath"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -34,35 +33,29 @@ const (
 	BPFIterName = "dump_task"
 )
 
-func RunCollector(resolver gadgets.Resolver, node, mntnsmap string) ([]processcollectortypes.Event, error) {
+func RunCollector(resolver gadgets.Resolver, node string, mntnsmap *ebpf.Map) ([]processcollectortypes.Event, error) {
 	var err error
 	var spec *ebpf.CollectionSpec
 
-	if mntnsmap == "" {
+	if mntnsmap == nil {
 		spec, err = LoadProcessCollector()
 	} else {
-		if filepath.Dir(mntnsmap) != gadgets.PinPath {
-			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PinPath)
-		}
-
 		spec, err = LoadProcessCollectorWithFilters()
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	if mntnsmap != "" {
-		spec.Maps["filter"].Name = filepath.Base(mntnsmap)
-		spec.Maps["filter"].Pinning = ebpf.PinByName
+	mapReplacements := map[string]*ebpf.Map{}
+
+	if mntnsmap != nil {
+		mapReplacements["filter"] = mntnsmap
 	}
 
 	coll, err := ebpf.NewCollectionWithOptions(spec,
 		ebpf.CollectionOptions{
-			Maps: ebpf.MapOptions{
-				PinPath: gadgets.PinPath,
-			},
-		},
-	)
+			MapReplacements: mapReplacements,
+		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}

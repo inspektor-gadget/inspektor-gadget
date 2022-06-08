@@ -106,8 +106,13 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	var err error
 
+	mountNsMap, err := t.resolver.TracerMountNsMap(traceName)
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
+		return
+	}
 	config := &tracer.Config{
-		MountnsMap: gadgets.TracePinPath(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
+		MountnsMap: mountNsMap,
 	}
 	t.tracer, err = coretracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
 	if err != nil {

@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -28,7 +27,6 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit-seccomp/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
-
 
 //go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang auditseccomp ./bpf/audit-seccomp.c -- -I./bpf/ -I../../.. -target bpf -D__KERNEL__ -D__TARGET_ARCH_x86"
 //go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang auditseccompwithfilters ./bpf/audit-seccomp.c -- -DWITH_FILTER=1 -I./bpf/ -I../../.. -target bpf -D__KERNEL__ -D__TARGET_ARCH_x86"
@@ -59,47 +57,34 @@ type Tracer struct {
 }
 
 type Config struct {
-	// TODO: Make it a *ebpf.Map once
-	// https://github.com/cilium/ebpf/issues/515 and
-	// https://github.com/cilium/ebpf/issues/517 are fixed
-	ContainersMap string
-	MountnsMap    string
+	ContainersMap *ebpf.Map
+	MountnsMap    *ebpf.Map
 }
 
 func NewTracer(config *Config, eventCallback func(types.Event), node string) (*Tracer, error) {
 	var err error
 	var spec *ebpf.CollectionSpec
 
-	if config.MountnsMap == "" {
+	if config.MountnsMap == nil {
 		spec, err = loadAuditseccomp()
 	} else {
-		if filepath.Dir(config.MountnsMap) != gadgets.PinPath {
-			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PinPath)
-		}
 		spec, err = loadAuditseccompwithfilters()
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	if config.MountnsMap != "" {
-		spec.Maps["filter"].Name = filepath.Base(config.MountnsMap)
-		spec.Maps["filter"].Pinning = ebpf.PinByName
+	mapReplacements := map[string]*ebpf.Map{}
+
+	if config.MountnsMap != nil {
+		mapReplacements["filter"] = config.MountnsMap
 	}
-	if config.ContainersMap != "" {
-		if filepath.Dir(config.ContainersMap) != gadgets.PinPath {
-			return nil, fmt.Errorf("error while checking pin path: only paths in %s are supported", gadgets.PinPath)
-		}
-		spec.Maps["containers"].Name = filepath.Base(config.ContainersMap)
-		spec.Maps["containers"].Pinning = ebpf.PinByName
+	if config.ContainersMap != nil {
+		mapReplacements["containers"] = config.ContainersMap
 	}
-	coll, err := ebpf.NewCollectionWithOptions(spec,
-		ebpf.CollectionOptions{
-			Maps: ebpf.MapOptions{
-				PinPath: gadgets.PinPath,
-			},
-		},
-	)
+	coll, err := ebpf.NewCollectionWithOptions(spec, ebpf.CollectionOptions{
+		MapReplacements: mapReplacements,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}
@@ -182,7 +167,6 @@ func (t *Tracer) run() {
 
 		t.eventCallback(event)
 	}
-
 }
 
 func (t *Tracer) Close() {
