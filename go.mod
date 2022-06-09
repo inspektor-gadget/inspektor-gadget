@@ -4,13 +4,15 @@ go 1.18
 
 require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
-	github.com/cilium/ebpf v0.8.2-0.20220502122259-96aa1a7a929f
+	github.com/cilium/ebpf v0.9.0
+	github.com/containerd/containerd v1.5.11 // indirect
 	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
 	github.com/containers/common v0.46.0
 	github.com/docker/docker v20.10.8+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/giantswarm/crd-docs-generator v0.7.1
 	github.com/google/uuid v1.2.0
+	github.com/iovisor/gobpf v0.2.0 // indirect
 	github.com/kinvolk/traceloop v0.0.0-20210623155108-6f4efc6fca46
 	github.com/kr/pretty v0.3.0
 	github.com/onsi/ginkgo v1.16.4
@@ -26,7 +28,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20200114145059-84a08fc667c0
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
-	golang.org/x/sys v0.0.0-20220307203707-22a9840ba4d7
+	golang.org/x/sys v0.0.0-20220608164250-635b8c9b7f68
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.27.1
