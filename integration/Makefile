@@ -23,12 +23,14 @@ test:
 		echo "Running tests without KUBECONFIG variable" ; \
 		docker run --rm -i \
 			--net=host \
+			--name ig-integration-tests \
 			$(TESTS_DOCKER_ARGS) \
 			$(CONTAINER_REPO)test:$(IMAGE_TAG) ; \
 	else \
 		echo "Running tests with KUBECONFIG = $(KUBECONFIG)" ; \
 		docker run --rm -i \
 			--net=host \
+			--name ig-integration-tests \
 			-e KUBECONFIG=/opt/kubeconfig/$(shell basename "$(KUBECONFIG)") \
 			-v $(shell dirname "$(KUBECONFIG)"):/opt/kubeconfig \
 			$(CONTAINER_REPO)test:$(IMAGE_TAG) ; \
