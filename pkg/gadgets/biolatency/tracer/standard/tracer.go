@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"strings"
 	"syscall"
 )
 
@@ -29,7 +30,7 @@ type Tracer struct {
 }
 
 func NewTracer(node string) (*Tracer, error) {
-	cmd := exec.Command("/usr/share/bcc/tools/biolatency")
+	cmd := exec.Command("/usr/share/bcc/tools/biolatency", "--json")
 
 	stdout := bytes.NewBuffer([]byte{})
 	stderr := bytes.NewBuffer([]byte{})
@@ -71,5 +72,5 @@ func (t *Tracer) Stop() (string, error) {
 		)
 	}
 
-	return t.stdout.String(), nil
+	return strings.ReplaceAll(t.stdout.String(), "'", `"`), nil
 }
