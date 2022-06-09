@@ -122,7 +122,11 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 			}
 			line, _ := json.Marshal(ev)
 			err := stream.Send(&pb.StreamData{Line: string(line)})
-			return err
+			if err != nil {
+				return err
+			}
+
+			continue
 		}
 
 		line := &pb.StreamData{Line: l.Line}
