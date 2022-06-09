@@ -45,7 +45,8 @@ var blockIOCmd = &cobra.Command{
 		if len(args) == 1 {
 			outputInterval, err = strconv.Atoi(args[0])
 			if err != nil {
-				return utils.WrapInErrInvalidArg("<interval>", fmt.Errorf("%q is not a valid value", args[0]))
+				return utils.WrapInErrInvalidArg("<interval>",
+					fmt.Errorf("%q is not a valid value", args[0]))
 			}
 		} else {
 			outputInterval = types.IntervalDefault
@@ -64,6 +65,7 @@ var blockIOCmd = &cobra.Command{
 			},
 		}
 
+		// when params.Timeout == interval it means the user
 		// only wants to run for a given amount of time and print
 		// that result.
 		singleShot := params.Timeout == outputInterval
@@ -124,6 +126,7 @@ func blockIOCallback(line string, node string) {
 func blockIOStartPrintLoop() {
 	go func() {
 		ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
+		blockIOPrintHeader()
 		for {
 			_ = <-ticker.C
 			blockIOPrintHeader()
