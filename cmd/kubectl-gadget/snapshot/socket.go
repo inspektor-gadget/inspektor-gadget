@@ -26,7 +26,8 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 var (
@@ -39,96 +40,25 @@ var socketCollectorCmd = &cobra.Command{
 	Short: "Gather information about TCP and UDP sockets",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		callback := func(results []gadgetv1alpha1.Trace) error {
-			allSockets := []socketcollectortypes.Event{}
+			allSockets := []types.Event{}
 
 			for _, i := range results {
-				var sockets []socketcollectortypes.Event
-				json.Unmarshal([]byte(i.Status.Output), &sockets)
+				if len(i.Status.Output) == 0 {
+					continue
+				}
+
+				var sockets []types.Event
+				if err := json.Unmarshal([]byte(i.Status.Output), &sockets); err != nil {
+					return utils.WrapInErrUnmarshalOutput(err, i.Status.Output)
+				}
+
 				allSockets = append(allSockets, sockets...)
 			}
 
-			sort.Slice(allSockets, func(i, j int) bool {
-				si, sj := allSockets[i], allSockets[j]
-				switch {
-				case si.Event.Node != sj.Event.Node:
-					return si.Event.Node < sj.Event.Node
-				case si.Event.Namespace != sj.Event.Namespace:
-					return si.Event.Namespace < sj.Event.Namespace
-				case si.Event.Pod != sj.Event.Pod:
-					return si.Event.Pod < sj.Event.Pod
-				case si.Protocol != sj.Protocol:
-					return si.Protocol < sj.Protocol
-				case si.Status != sj.Status:
-					return si.Status < sj.Status
-				case si.LocalAddress != sj.LocalAddress:
-					return si.LocalAddress < sj.LocalAddress
-				case si.RemoteAddress != sj.RemoteAddress:
-					return si.RemoteAddress < sj.RemoteAddress
-				case si.LocalPort != sj.LocalPort:
-					return si.LocalPort < sj.LocalPort
-				case si.RemotePort != sj.RemotePort:
-					return si.RemotePort < sj.RemotePort
-				default:
-					return si.InodeNumber < sj.InodeNumber
-				}
-			})
-
-			switch params.OutputMode {
-			case utils.OutputModeJSON:
-				b, err := json.MarshalIndent(allSockets, "", "  ")
-				if err != nil {
-					return fmt.Errorf("error marshalling results: %w", err)
-				}
-				fmt.Printf("%s\n", b)
-			case utils.OutputModeCustomColumns:
-				table := utils.NewTableFormater(params.CustomColumns, map[string]int{})
-				fmt.Println(table.GetHeader())
-				transform := table.GetTransformFunc()
-
-				for _, p := range allSockets {
-					b, err := json.Marshal(p)
-					if err != nil {
-						return fmt.Errorf("error marshalling results: %w", err)
-					}
-
-					fmt.Println(transform(string(b)))
-				}
-			default:
-				w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-				extendedHeader := "\n"
-				if socketCollectorParamExtended {
-					extendedHeader = "\tINODE\n"
-				}
-
-				fmt.Fprintf(w, "NODE\tNAMESPACE\tPOD\tPROTOCOL\tLOCAL\tREMOTE\tSTATUS%s", extendedHeader)
-
-				for _, s := range allSockets {
-					extendedInformation := "\n"
-					if socketCollectorParamExtended {
-						extendedInformation = fmt.Sprintf("\t%d\n", s.InodeNumber)
-					}
-
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s:%d\t%s:%d\t%s%s",
-						s.Event.Node,
-						s.Event.Namespace,
-						s.Event.Pod,
-						s.Protocol,
-						s.LocalAddress,
-						s.LocalPort,
-						s.RemoteAddress,
-						s.RemotePort,
-						s.Status,
-						extendedInformation,
-					)
-				}
-				w.Flush()
-			}
-
-			return nil
+			return printSockets(allSockets)
 		}
 
-		if _, err := socketcollectortypes.ParseProtocol(socketCollectorProtocol); err != nil {
+		if _, err := types.ParseProtocol(socketCollectorProtocol); err != nil {
 			return err
 		}
 
@@ -152,7 +82,7 @@ func init() {
 	utils.AddCommonFlags(socketCollectorCmd, &params)
 
 	var protocols []string
-	for protocol := range socketcollectortypes.ProtocolsMap {
+	for protocol := range types.ProtocolsMap {
 		protocols = append(protocols, protocol)
 	}
 
@@ -170,4 +100,145 @@ func init() {
 		false,
 		"Display other/more information (like socket inode)",
 	)
+}
+
+func getCustomSocketColsHeader(cols []string) string {
+	var sb strings.Builder
+
+	for _, col := range cols {
+		switch col {
+		case "node":
+			sb.WriteString("NODE\t")
+		case "namespace":
+			sb.WriteString("NAMESPACE\t")
+		case "pod":
+			sb.WriteString("POD\t")
+		case "protocol":
+			sb.WriteString("PROTOCOL\t")
+		case "local":
+			sb.WriteString("LOCAL\t")
+		case "remote":
+			sb.WriteString("REMOTE\t")
+		case "status":
+			sb.WriteString("STATUS\t")
+		case "inode":
+			sb.WriteString("INODE\t")
+		}
+		sb.WriteRune(' ')
+	}
+
+	return sb.String()
+}
+
+// socketTransformEvent is called to transform an event to columns
+// format according to the parameters
+func socketTransformEvent(e types.Event) string {
+	var sb strings.Builder
+
+	if e.Type != eventtypes.NORMAL {
+		utils.ManageSpecialEvent(e.Event, params.Verbose)
+		return ""
+	}
+
+	switch params.OutputMode {
+	case utils.OutputModeColumns:
+		extendedInformation := ""
+		if socketCollectorParamExtended {
+			extendedInformation = fmt.Sprintf("\t%d", e.InodeNumber)
+		}
+
+		sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s:%d\t%s:%d\t%s%s",
+			e.Node, e.Namespace, e.Pod, e.Protocol,
+			e.LocalAddress, e.LocalPort, e.RemoteAddress, e.RemotePort,
+			e.Status, extendedInformation))
+	case utils.OutputModeCustomColumns:
+		for _, col := range params.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%s\t", e.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%s\t", e.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%s\t", e.Pod))
+			case "protocol":
+				sb.WriteString(fmt.Sprintf("%s\t", e.Protocol))
+			case "local":
+				sb.WriteString(fmt.Sprintf("%s:%d\t", e.LocalAddress, e.LocalPort))
+			case "remote":
+				sb.WriteString(fmt.Sprintf("%s:%d\t", e.RemoteAddress, e.RemotePort))
+			case "status":
+				sb.WriteString(fmt.Sprintf("%s\t", e.Status))
+			case "inode":
+				sb.WriteString(fmt.Sprintf("%d\t", e.InodeNumber))
+			}
+			sb.WriteRune(' ')
+		}
+	}
+
+	return sb.String()
+}
+
+func printSockets(allSockets []types.Event) error {
+	sort.Slice(allSockets, func(i, j int) bool {
+		si, sj := allSockets[i], allSockets[j]
+		switch {
+		case si.Node != sj.Node:
+			return si.Node < sj.Node
+		case si.Namespace != sj.Namespace:
+			return si.Namespace < sj.Namespace
+		case si.Pod != sj.Pod:
+			return si.Pod < sj.Pod
+		case si.Protocol != sj.Protocol:
+			return si.Protocol < sj.Protocol
+		case si.Status != sj.Status:
+			return si.Status < sj.Status
+		case si.LocalAddress != sj.LocalAddress:
+			return si.LocalAddress < sj.LocalAddress
+		case si.RemoteAddress != sj.RemoteAddress:
+			return si.RemoteAddress < sj.RemoteAddress
+		case si.LocalPort != sj.LocalPort:
+			return si.LocalPort < sj.LocalPort
+		case si.RemotePort != sj.RemotePort:
+			return si.RemotePort < sj.RemotePort
+		default:
+			return si.InodeNumber < sj.InodeNumber
+		}
+	})
+
+	// JSON output mode does not need any additional parsing
+	if params.OutputMode == utils.OutputModeJSON {
+		b, err := json.MarshalIndent(allSockets, "", "  ")
+		if err != nil {
+			return utils.WrapInErrMarshalOutput(err)
+		}
+		fmt.Printf("%s\n", b)
+		return nil
+	}
+
+	// In the snapshot gadgets it's possible to use a tabwriter because we have
+	// the full list of events to print available, hence the tablewriter is able
+	// to determine the columns width. In other gadgets we don't know the size
+	// of all columns "a priori", hence we have to do a best effort printing
+	// fixed-width columns.
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+
+	// Print all or requested columns
+	switch params.OutputMode {
+	case utils.OutputModeCustomColumns:
+		fmt.Fprintln(w, getCustomSocketColsHeader(params.CustomColumns))
+	case utils.OutputModeColumns:
+		extendedHeader := ""
+		if socketCollectorParamExtended {
+			extendedHeader = "\tINODE"
+		}
+		fmt.Fprintf(w, "NODE\tNAMESPACE\tPOD\tPROTOCOL\tLOCAL\tREMOTE\tSTATUS%s\n", extendedHeader)
+	}
+
+	for _, s := range allSockets {
+		fmt.Fprintln(w, socketTransformEvent(s))
+	}
+
+	w.Flush()
+
+	return nil
 }

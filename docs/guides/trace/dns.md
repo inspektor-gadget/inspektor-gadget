@@ -19,7 +19,7 @@ Start the dns gadget:
 
 ```bash
 $ kubectl gadget trace dns -n demo
-POD                            TYPE      QTYPE     NAME
+NODE             NAMESPACE        POD              TYPE      QTYPE      NAME
 ```
 
 Run a pod on a different terminal and perform some DNS requests:
@@ -34,22 +34,22 @@ $ kubectl -n demo run mypod -it --image=wbitt/network-multitool -- /bin/sh
 The requests will be logged by the DNS gadget:
 
 ```bash
-POD                            TYPE      QTYPE     NAME
-mypod                          OUTGOING  A         microsoft.com.demo.svc.cluster.local.
-mypod                          OUTGOING  A         microsoft.com.svc.cluster.local.
-mypod                          OUTGOING  A         microsoft.com.cluster.local.
-mypod                          OUTGOING  A         microsoft.com.
-mypod                          OUTGOING  AAAA      microsoft.com.
-mypod                          OUTGOING  A         www.google.com.demo.svc.cluster.local.
-mypod                          OUTGOING  A         www.google.com.svc.cluster.local.
-mypod                          OUTGOING  A         www.google.com.cluster.local.
-mypod                          OUTGOING  A         www.google.com.
-mypod                          OUTGOING  AAAA      www.google.com.
-mypod                          OUTGOING  A         www.amazon.com.demo.svc.cluster.local.
-mypod                          OUTGOING  A         www.amazon.com.svc.cluster.local.
-mypod                          OUTGOING  A         www.amazon.com.cluster.local.
-mypod                          OUTGOING  A         www.amazon.com.
-mypod                          OUTGOING  AAAA      e15316.a.akamaiedge.net.
+NODE             NAMESPACE        POD              TYPE      QTYPE      NAME
+minikube         demo             mypod            OUTGOING  A          www.microsoft.com.demo.svc.cluster.local.
+minikube         demo             mypod            OUTGOING  A          www.microsoft.com.svc.cluster.local.
+minikube         demo             mypod            OUTGOING  A          www.microsoft.com.cluster.local.
+minikube         demo             mypod            OUTGOING  A          www.microsoft.com.
+minikube         demo             mypod            OUTGOING  AAAA       e13678.dscb.akamaiedge.net.
+minikube         demo             mypod            OUTGOING  A          www.google.com.demo.svc.cluster.local.
+minikube         demo             mypod            OUTGOING  A          www.google.com.svc.cluster.local.
+minikube         demo             mypod            OUTGOING  A          www.google.com.cluster.local.
+minikube         demo             mypod            OUTGOING  A          www.google.com.
+minikube         demo             mypod            OUTGOING  AAAA       www.google.com.
+minikube         demo             mypod            OUTGOING  A          www.amazon.com.demo.svc.cluster.local.
+minikube         demo             mypod            OUTGOING  A          www.amazon.com.svc.cluster.local.
+minikube         demo             mypod            OUTGOING  A          www.amazon.com.cluster.local.
+minikube         demo             mypod            OUTGOING  A          www.amazon.com.
+minikube         demo             mypod            OUTGOING  AAAA       e15316.a.akamaiedge.net.
 ```
 
 Delete the demo test namespace:

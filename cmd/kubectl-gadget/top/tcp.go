@@ -30,7 +30,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptop/types"
 )
 
-var nodeTCPStats map[string][]types.Stats
+var tcpNodeStats map[string][]types.Stats
 
 var (
 	// flags
@@ -45,12 +45,13 @@ var tcpCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 
-		nodeTCPStats = make(map[string][]types.Stats)
+		tcpNodeStats = make(map[string][]types.Stats)
 
 		if len(args) == 1 {
 			outputInterval, err = strconv.Atoi(args[0])
 			if err != nil {
-				return utils.WrapInErrInvalidArg("interval", fmt.Errorf("%q is not a valid value", args[0]))
+				return utils.WrapInErrInvalidArg("<interval>",
+					fmt.Errorf("%q is not a valid value", args[0]))
 			}
 		} else {
 			outputInterval = types.IntervalDefault
@@ -79,6 +80,7 @@ var tcpCmd = &cobra.Command{
 			Parameters:       parameters,
 		}
 
+		// when params.Timeout == interval it means the user
 		// only wants to run for a given amount of time and print
 		// that result.
 		singleShot := params.Timeout == outputInterval
@@ -91,7 +93,7 @@ var tcpCmd = &cobra.Command{
 		}
 
 		if err := utils.RunTraceStreamCallback(config, tcpCallback); err != nil {
-			return fmt.Errorf("error running trace: %w", err)
+			return utils.WrapInErrRunGadget(err)
 		}
 
 		if singleShot {
@@ -105,7 +107,7 @@ var tcpCmd = &cobra.Command{
 		var err error
 		tcpSortBy, err = types.ParseSortBy(sortBy)
 		if err != nil {
-			return err
+			return utils.WrapInErrInvalidArg("--sort", err)
 		}
 
 		return nil
@@ -148,7 +150,7 @@ func tcpCallback(line string, node string) {
 		return
 	}
 
-	nodeTCPStats[node] = event.Stats
+	tcpNodeStats[node] = event.Stats
 }
 
 func tcpStartPrintLoop() {
@@ -180,7 +182,7 @@ func tcpPrintHeader() {
 		} else {
 			fmt.Println("")
 		}
-		fmt.Println(tcpGetCustomColsHeaders(params.CustomColumns))
+		fmt.Println(tcpGetCustomColsHeader(params.CustomColumns))
 	}
 }
 
@@ -189,10 +191,10 @@ func tcpPrintEvents() {
 	mutex.Lock()
 
 	stats := []types.Stats{}
-	for _, stat := range nodeTCPStats {
+	for _, stat := range tcpNodeStats {
 		stats = append(stats, stat...)
 	}
-	nodeTCPStats = make(map[string][]types.Stats)
+	tcpNodeStats = make(map[string][]types.Stats)
 
 	mutex.Unlock()
 
@@ -220,7 +222,7 @@ func tcpPrintEvents() {
 	case utils.OutputModeJSON:
 		b, err := json.Marshal(stats)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error marshalling json: %v", err)
+			fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrMarshalOutput(err))
 			return
 		}
 		fmt.Println(string(b))
@@ -234,7 +236,7 @@ func tcpPrintEvents() {
 	}
 }
 
-func tcpGetCustomColsHeaders(cols []string) string {
+func tcpGetCustomColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {

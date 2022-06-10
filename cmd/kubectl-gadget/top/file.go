@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ var (
 )
 
 var fileCmd = &cobra.Command{
-	Use:   "file [interval]",
+	Use:   fmt.Sprintf("file [interval=%d]", types.IntervalDefault),
 	Short: "Periodically report read/write activity by file",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
@@ -200,7 +200,7 @@ func filePrintEvents() {
 			if idx == maxRows {
 				break
 			}
-			fmt.Println(fileFormatEventCostumCols(&stat, params.CustomColumns))
+			fmt.Println(fileFormatEventCustomCols(&stat, params.CustomColumns))
 		}
 	}
 }
@@ -243,7 +243,7 @@ func fileGetCustomColsHeader(cols []string) string {
 	return sb.String()
 }
 
-func fileFormatEventCostumCols(stats *types.Stats, cols []string) string {
+func fileFormatEventCustomCols(stats *types.Stats, cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {

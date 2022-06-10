@@ -20,11 +20,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/spf13/cobra"
-
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	types "github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit-seccomp/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit-seccomp/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+
+	"github.com/spf13/cobra"
 )
 
 var auditSeccompCmd = &cobra.Command{
@@ -49,7 +49,7 @@ var auditSeccompCmd = &cobra.Command{
 			CommonFlags:      &params,
 		}
 
-		err := utils.RunTraceAndPrintStream(config, transformAuditSeccompLine)
+		err := utils.RunTraceAndPrintStream(config, auditSeccompTransformLine)
 		if err != nil {
 			return utils.WrapInErrRunGadget(err)
 		}
@@ -63,7 +63,9 @@ func init() {
 	utils.AddCommonFlags(auditSeccompCmd, &params)
 }
 
-func transformAuditSeccompLine(line string) string {
+// auditSeccompTransformLine is called to transform an event to columns
+// format according to the parameters
+func auditSeccompTransformLine(line string) string {
 	var sb strings.Builder
 	var e types.Event
 
@@ -72,15 +74,11 @@ func transformAuditSeccompLine(line string) string {
 		return ""
 	}
 
-	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
-		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
-		fmt.Fprintf(os.Stderr, "%s: node %s: %s", e.Type, e.Node, e.Message)
+	if e.Type != eventtypes.NORMAL {
+		utils.ManageSpecialEvent(e.Event, params.Verbose)
 		return ""
 	}
 
-	if e.Type != eventtypes.NORMAL {
-		return ""
-	}
 	switch params.OutputMode {
 	case utils.OutputModeColumns:
 		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-16s %-16s",

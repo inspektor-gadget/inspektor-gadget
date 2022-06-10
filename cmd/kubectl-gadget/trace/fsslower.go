@@ -25,6 +25,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/fsslower/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+
 	"github.com/spf13/cobra"
 )
 
@@ -106,6 +107,8 @@ func init() {
 	utils.AddCommonFlags(fsslowerCmd, &params)
 }
 
+// fsslowerTransformLine is called to transform an event to columns
+// format according to the parameters
 func fsslowerTransformLine(line string) string {
 	var sb strings.Builder
 	var e types.Event
@@ -115,13 +118,8 @@ func fsslowerTransformLine(line string) string {
 		return ""
 	}
 
-	if e.Type == eventtypes.ERR || e.Type == eventtypes.WARN ||
-		e.Type == eventtypes.DEBUG || e.Type == eventtypes.INFO {
-		fmt.Fprintf(os.Stderr, "%s: node %q: %s", e.Type, e.Node, e.Message)
-		return ""
-	}
-
 	if e.Type != eventtypes.NORMAL {
+		utils.ManageSpecialEvent(e.Event, params.Verbose)
 		return ""
 	}
 

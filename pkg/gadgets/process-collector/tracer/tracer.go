@@ -100,6 +100,7 @@ func RunCollector(resolver gadgets.Resolver, node string, mntnsmap *ebpf.Map) ([
 
 		events = append(events, processcollectortypes.Event{
 			Event: eventtypes.Event{
+				Type:      eventtypes.NORMAL,
 				Node:      node,
 				Namespace: container.Namespace,
 				Pod:       container.Podname,

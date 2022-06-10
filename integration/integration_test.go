@@ -445,7 +445,7 @@ func TestDns(t *testing.T) {
 	dnsCmd := &command{
 		name:           "StartDnsGadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace dns -n %s", ns),
-		expectedRegexp: `test-pod\s+OUTGOING\s+A\s+microsoft.com`,
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+OUTGOING\s+A\s+microsoft.com`, ns),
 		startAndStop:   true,
 	}
 
@@ -744,7 +744,7 @@ func TestSnisnoop(t *testing.T) {
 	snisnoopCmd := &command{
 		name:           "StartSnisnoopGadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace sni -n %s", ns),
-		expectedRegexp: `test-pod\s+kinvolk.io`,
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+kinvolk.io`, ns),
 		startAndStop:   true,
 	}
 

@@ -60,7 +60,7 @@ To get extended information, like the socket inode number, just the `-e` or `--e
 ```bash
 $ kubectl gadget snapshot socket -n test-socketcollector -e
 NODE       NAMESPACE               POD          PROTOCOL    LOCAL           REMOTE       STATUS         INODE
-my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:8080    0.0.0.0:0    LISTEN         22866
+my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:8080    0.0.0.0:0    LISTEN         716174
 ```
 
 We can also get the information in JSON format, by passing the `-o json` flag.
@@ -70,6 +70,7 @@ Just take into account that IP address and port are displayed separated with thi
 $ kubectl gadget snapshot socket -n test-socketcollector -o json
 [
   {
+    "type": "normal",
     "node": "my-node",
     "namespace": "test-socketcollector",
     "pod": "nginx-app",
@@ -78,7 +79,8 @@ $ kubectl gadget snapshot socket -n test-socketcollector -o json
     "local_port": 8080,
     "remote_address": "0.0.0.0",
     "remote_port": 0,
-    "status": "LISTEN"
+    "status": "LISTEN",
+    "inode_number": 716174
   }
 ]
 ```
