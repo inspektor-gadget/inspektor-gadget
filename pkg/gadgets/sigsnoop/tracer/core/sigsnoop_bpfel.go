@@ -13,6 +13,15 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type sigsnoopEvent struct {
+	Pid     uint32
+	Tpid    uint32
+	MntnsId uint64
+	Sig     int32
+	Ret     int32
+	Comm    [16]int8
+}
+
 // loadSigsnoop returns the embedded CollectionSpec for sigsnoop.
 func loadSigsnoop() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_SigsnoopBytes)
