@@ -40,6 +40,18 @@ import (
 
 var rootTest = flag.Bool("root-test", false, "enable tests requiring root")
 
+const (
+	// The product of these to contansts defines the maximum wait
+	// time before failing the checkFdList condition. These should
+	// be large enough to allow all resources to be freeded. There
+	// is a poll interval of 1 second in the runcfanotify package,
+	// so let's double that here. These only affect the duration of
+	// the failing tests, hence it's not a big problem to have big
+	// delays here.
+	checkFdListInterval = 100 * time.Millisecond
+	checkFdListAttempts = 20
+)
+
 func TestBasic(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
@@ -176,7 +188,7 @@ func TestClose(t *testing.T) {
 
 	localGadgetManager.Close()
 
-	checkFdList(t, initialFdList, 5, 100*time.Millisecond)
+	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
 }
 
 func TestSeccomp(t *testing.T) {
@@ -227,7 +239,7 @@ func TestSeccomp(t *testing.T) {
 		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
 	}
 
-	checkFdList(t, initialFdList, 5, 100*time.Millisecond)
+	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
 }
 
 func TestAuditSeccomp(t *testing.T) {
@@ -279,7 +291,7 @@ func TestAuditSeccomp(t *testing.T) {
 		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
 	}
 
-	checkFdList(t, initialFdList, 5, 100*time.Millisecond)
+	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
 }
 
 func TestDNS(t *testing.T) {
@@ -395,7 +407,7 @@ func TestDNS(t *testing.T) {
 		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
 	}
 
-	checkFdList(t, initialFdList, 5, 100*time.Millisecond)
+	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
 }
 
 func TestCollector(t *testing.T) {
