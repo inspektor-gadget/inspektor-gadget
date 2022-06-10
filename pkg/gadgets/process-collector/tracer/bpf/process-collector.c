@@ -12,11 +12,6 @@
 #include <vmlinux/vmlinux.h>
 
 #include <bpf/bpf_helpers.h>
-/* libbpf v0.4.0 introduced BPF_SEQ_PRINTF in bpf_tracing.h.
- * In future versions, it will be in bpf_helpers.h.
- */
-#include <bpf/bpf_tracing.h>
-
 #include <gadgettracermanager/bpf-maps.h>
 
 SEC("iter/task")

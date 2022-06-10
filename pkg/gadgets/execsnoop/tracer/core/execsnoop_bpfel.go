@@ -13,6 +13,20 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type execsnoopEvent struct {
+	Pid       uint32
+	Ppid      uint32
+	Uid       uint32
+	_         [4]byte
+	MntnsId   uint64
+	Retval    int32
+	ArgsCount int32
+	ArgsSize  uint32
+	Comm      [16]int8
+	Args      [7680]int8
+	_         [4]byte
+}
+
 // loadExecsnoop returns the embedded CollectionSpec for execsnoop.
 func loadExecsnoop() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_ExecsnoopBytes)

@@ -15,7 +15,6 @@
 package containersmap
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -27,6 +26,8 @@ import (
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 )
+
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang containersmap ./bpf/containers-map.c -- -I./bpf/ -I../../
 
 // #include "../common.h"
 import "C"
@@ -76,7 +77,7 @@ func NewContainersMap(pinPath string) (*ContainersMap, error) {
 		os.Remove(filepath.Join(pinPath, BPFMapName))
 	}
 
-	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(ebpfProg))
+	spec, err := loadContainersmap()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}

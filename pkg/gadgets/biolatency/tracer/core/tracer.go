@@ -33,8 +33,8 @@ import (
 	"github.com/moby/moby/pkg/parsers/kernel"
 )
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang biolatency ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang biolatencyBefore ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86 -DKERNEL_BEFORE_5_11"
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang biolatency ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang biolatencyBefore ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../ -DKERNEL_BEFORE_5_11
 
 type Tracer struct {
 	node                string
@@ -129,7 +129,7 @@ func (t *Tracer) start() error {
 		return err
 	}
 
-	if kernel.CompareKernelVersion(*version, kernel.VersionInfo{ Kernel: 5, Major: 11, Minor: 0 }) == -1 {
+	if kernel.CompareKernelVersion(*version, kernel.VersionInfo{Kernel: 5, Major: 11, Minor: 0}) == -1 {
 		spec, err = loadBiolatencyBefore()
 	} else {
 		spec, err = loadBiolatency()

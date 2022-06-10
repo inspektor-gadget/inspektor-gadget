@@ -45,9 +45,6 @@ jobs:
       # ALERT This action must be run after code was checkout otherwise it will
       # not find this file.
       uses: ./.github/actions/install-debian-packages
-    - name: Build eBPF objects
-      run: |
-        make -C gadget-container ebpf-objects
     - name: Lint
       uses: golangci/golangci-lint-action@v3.2.0
       with:
