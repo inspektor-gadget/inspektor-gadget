@@ -685,7 +685,7 @@ func TestProfile(t *testing.T) {
 		{
 			name:           "RunProfileGadget",
 			cmd:            fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -K --timeout 15", ns),
-			expectedRegexp: `sh;\w+;\w+;\w+open`, // echo is builtin.
+			expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+sh\s+\d+\s+\d`, ns), // echo is builtin.
 		},
 		deleteTestNamespaceCommand(ns),
 	}

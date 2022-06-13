@@ -15,9 +15,11 @@
 package profile
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
@@ -67,6 +69,41 @@ func init() {
 	)
 }
 
+// reverseStringSlice reverse the slice of strings given as parameter.
+func reverseStringSlice(strings []string) {
+	size := len(strings) - 1
+
+	for i := 0; i < size/2; i++ {
+		strings[i], strings[size-i] = strings[size-i], strings[i]
+	}
+}
+
+func getCustomProfileColsHeader(cols []string) string {
+	var sb strings.Builder
+
+	for _, col := range cols {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+		case "pod":
+			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+		case "container":
+			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
+		case "comm":
+			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
+		case "pid":
+			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+		case "count":
+			sb.WriteString(fmt.Sprintf("%-6s", "COUNT"))
+		}
+		sb.WriteRune(' ')
+	}
+
+	return sb.String()
+}
+
 func runProfileCPU(cmd *cobra.Command, args []string) error {
 	if profileUser && profileKernel {
 		return utils.WrapInErrArgsNotSupported("-U and -K can't be used at the same time")
@@ -98,9 +135,14 @@ func runProfileCPU(cmd *cobra.Command, args []string) error {
 			time.Sleep(time.Duration(params.Timeout) * time.Second)
 			c <- os.Interrupt
 		}()
-		fmt.Printf("Capturing stack traces...")
-	} else {
-		fmt.Printf("Capturing stack traces... Hit Ctrl-C to end.")
+	}
+
+	if params.OutputMode != utils.OutputModeJSON {
+		if params.Timeout != 0 {
+			fmt.Printf("Capturing stack traces...")
+		} else {
+			fmt.Printf("Capturing stack traces... Hit Ctrl-C to end.")
+		}
 	}
 
 	<-c
@@ -112,8 +154,83 @@ func runProfileCPU(cmd *cobra.Command, args []string) error {
 	}
 
 	displayResultsCallback := func(traces []gadgetv1alpha1.Trace) error {
+		// print header
+		switch params.OutputMode {
+		case utils.OutputModeCustomColumns:
+			fmt.Println(getCustomProfileColsHeader(params.CustomColumns))
+		case utils.OutputModeColumns:
+			fmt.Printf("%-16s %-16s %-16s %-16s %-16s %-6s %-6s\n",
+				"NODE", "NAMESPACE", "POD", "CONTAINER", "COMM", "PID", "COUNT")
+		}
+
 		for _, trace := range traces {
-			fmt.Printf("%v\n", trace.Status.Output)
+			var reports []types.Report
+			if err := json.Unmarshal([]byte(trace.Status.Output), &reports); err != nil {
+				return utils.WrapInErrUnmarshalOutput(err, trace.Status.Output)
+			}
+
+			for _, report := range reports {
+				switch params.OutputMode {
+				case utils.OutputModeColumns:
+					var sb strings.Builder
+
+					fmt.Fprintf(&sb, "%-16s %-16s %-16s %-16s %-16s %-7d %-6d\n",
+						report.Node, report.Namespace, report.Pod, report.Container,
+						report.Comm, report.Pid, report.Count)
+
+					if profileUser {
+						reverseStringSlice(report.UserStack)
+
+						fmt.Fprintf(&sb, "\t%s", strings.Join(report.UserStack, "\n\t"))
+					} else if profileKernel {
+						reverseStringSlice(report.KernelStack)
+
+						fmt.Fprintf(&sb, "\t%s", strings.Join(report.KernelStack, "\n\t"))
+					} else {
+						reverseStringSlice(report.KernelStack)
+						reverseStringSlice(report.UserStack)
+
+						fmt.Fprintf(&sb, "\t%s\n\t%s", strings.Join(report.KernelStack, "\n\t"), strings.Join(report.UserStack, "\n\t"))
+					}
+
+					fmt.Println(sb.String())
+				case utils.OutputModeJSON:
+					b, err := json.Marshal(report)
+					if err != nil {
+						return utils.WrapInErrMarshalOutput(err)
+					}
+					fmt.Println(string(b))
+				case utils.OutputModeCustomColumns:
+					var sb strings.Builder
+
+					for _, col := range params.CustomColumns {
+						switch col {
+						case "node":
+							sb.WriteString(fmt.Sprintf("%-16s", report.Node))
+						case "namespace":
+							sb.WriteString(fmt.Sprintf("%-16s", report.Namespace))
+						case "pod":
+							sb.WriteString(fmt.Sprintf("%-16s", report.Pod))
+						case "container":
+							sb.WriteString(fmt.Sprintf("%-16s", report.Container))
+						case "comm":
+							sb.WriteString(fmt.Sprintf("%-16s", report.Comm))
+						case "pid":
+							sb.WriteString(fmt.Sprintf("%-6d", report.Pid))
+						case "count":
+							sb.WriteString(fmt.Sprintf("%-6d", report.Count))
+						case "stack":
+							reverseStringSlice(report.KernelStack)
+							reverseStringSlice(report.UserStack)
+
+							fmt.Fprintf(&sb, "\n\t%s\n\t%s", strings.Join(report.KernelStack, "\n\t"), strings.Join(report.UserStack, "\n\t"))
+						}
+						sb.WriteRune(' ')
+					}
+
+					fmt.Println(sb.String())
+				}
+			}
 		}
 
 		return nil

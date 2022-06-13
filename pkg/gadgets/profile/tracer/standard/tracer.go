@@ -42,8 +42,9 @@ func NewTracer(config *tracer.Config, node string) (*Tracer, error) {
 		return nil, fmt.Errorf("failed to pin tracer's mount ns map: %w", err)
 	}
 
-	cmd := exec.Command("/usr/share/bcc/tools/profile", "-f", "-d", "--mntnsmap",
-		mountNsMapPinPath)
+	cmd := exec.Command("/usr/share/bcc/tools/profile", "--json",
+		"--containersmap", "/sys/fs/bpf/gadget/containers",
+		"--mntnsmap", mountNsMapPinPath)
 
 	if config.UserStackOnly {
 		cmd.Args = append(cmd.Args, "-U")
