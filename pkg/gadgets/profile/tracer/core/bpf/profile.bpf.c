@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 /* Copyright (c) 2022 LG Electronics */
-#include <vmlinux.h>
+#include <vmlinux/vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
@@ -8,14 +8,18 @@
 #include "maps.bpf.h"
 
 const volatile bool kernel_stacks_only = false;
+const volatile bool filter_by_mnt_ns = false;
 const volatile bool user_stacks_only = false;
 const volatile bool include_idle = false;
 const volatile pid_t targ_pid = -1;
 const volatile pid_t targ_tid = -1;
 
+#define MAX_STACK_DEPTH 50
 struct {
 	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
 	__type(key, u32);
+	__uint(max_entries, 256);
+	__uint(value_size, MAX_STACK_DEPTH * sizeof(u64));
 } stackmap SEC(".maps");
 
 struct {
@@ -24,6 +28,13 @@ struct {
 	__type(value, sizeof(u64));
 	__uint(max_entries, MAX_ENTRIES);
 } counts SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1024);
+	__uint(key_size, sizeof(u64));
+	__uint(value_size, sizeof(u32));
+} mount_ns_set SEC(".maps");
 
 /*
  * If PAGE_OFFSET macro is not available in vmlinux.h, determine ip whose MSB
@@ -55,6 +66,8 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
 	u64 *valp;
 	static const u64 zero;
 	struct key_t key = {};
+	struct task_struct *task;
+	u64 mntns_id;
 
 	if (!include_idle && tid == 0)
 		return 0;
@@ -64,7 +77,14 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
 	if (targ_tid != -1 && targ_tid != tid)
 		return 0;
 
+	task = (struct task_struct*) bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+		return 0;
+
 	key.pid = pid;
+	key.mntns_id = mntns_id;
 	bpf_get_current_comm(&key.name, sizeof(key.name));
 
 	if (user_stacks_only)
@@ -82,7 +102,7 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
 		u64 ip = PT_REGS_IP(&ctx->regs);
 
 		if (is_kernel_addr(ip)) {
-		    key.kernel_ip = ip;
+			key.kernel_ip = ip;
 		}
 	}
 
