@@ -21,7 +21,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget trace tcp
-NODE             NAMESPACE        POD              CONTAINER        KPID   KCOMM            PAGES  TPID             TCOMM
+NODE             NAMESPACE        POD              CONTAINER        T PID    COMM             IP  SADDR            DADDR            SPORT   DPORT
 ```
 
 Indeed, it is waiting for TCP connection to be established in the `default` namespace (you can use `-A` to monitor all namespaces and then be sure to not miss any event).
