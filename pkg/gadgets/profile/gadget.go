@@ -17,11 +17,14 @@ package profile
 import (
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
+
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer"
+	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer/core"
 	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer/standard"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
 )
 
 type Trace struct {
@@ -103,10 +106,19 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		KernelStackOnly: kernelStackOnly,
 	}
 
-	t.tracer, err = standardtracer.NewTracer(config, trace.Spec.Node)
+	t.tracer, err = coretracer.NewTracer(t.resolver, config, trace.Spec.Node)
 	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
-		return
+		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
+
+		// fallback to standard tracer
+		log.Infof("Gadget %s: falling back to standard tracer. CO-RE tracer failed: %s",
+			trace.Spec.Gadget, err)
+
+		t.tracer, err = standardtracer.NewTracer(config, trace.Spec.Node)
+		if err != nil {
+			trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
+			return
+		}
 	}
 	t.started = true
 
