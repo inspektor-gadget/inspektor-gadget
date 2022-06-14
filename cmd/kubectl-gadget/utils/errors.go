@@ -67,7 +67,9 @@ func WrapInErrListGadgetTraces(err error) error {
 
 // Arguments
 
-var ErrJSONNotSupported = errors.New("JSON output format is not supported")
+func WrapInErrOutputModeNotSupported(mode string) error {
+	return fmt.Errorf("%q output mode is not supported", mode)
+}
 
 func WrapInErrArgsNotSupported(args string) error {
 	return fmt.Errorf("arguments not supported: %s", args)
