@@ -77,7 +77,6 @@ RUN set -ex; \
 COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
 
 COPY --from=builder /gadget/gadget-container/bin/gadgettracermanager /bin/
-COPY --from=builder /gadget/gadget-container/bin/networkpolicyadvisor /bin/
 
 COPY gadget-container/gadgets/bcck8s /opt/bcck8s/
 
