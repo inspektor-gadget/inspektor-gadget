@@ -17,7 +17,6 @@
 set -e
 
 MANAGER=true
-PROBECLEANUP=false
 
 while [[ $# -gt 0 ]]
 do
@@ -31,14 +30,6 @@ case $key in
         ;;
     --stop)
         STOP=true
-        shift
-        ;;
-    --nomanager)
-        MANAGER=false
-        shift
-        ;;
-    --probecleanup)
-        PROBECLEANUP=true
         shift
         ;;
     --gadget)
@@ -92,31 +83,6 @@ if [ "$STOP" = "true" ] ; then
     rm -f "$PIDFILE"
   fi
   exit 0
-fi
-
-if [ "$PROBECLEANUP" = "true" ] ; then
-  if [ -e "$PIDFILE" ] ; then
-    kill -9 "$(cat $PIDFILE)" 2>/dev/null || true
-    rm -f "$PIDFILE"
-    sleep 0.5
-  fi
-
-  # gobpf currently uses global kprobes via debugfs/tracefs and not the Perf
-  # Event file descriptor based kprobe (Linux >=4.17). So unfortunately, kprobes
-  # can remain from previous executions. Ideally, gobpf should implement Perf
-  # Event based kprobe and fallback to debugfs/tracefs, like bcc:
-  # https://github.com/iovisor/bcc/blob/6e9b4509fc7a063302b574520bac6d49b01ca97e/src/cc/libbpf.c#L1021-L1027
-  # Meanwhile, as a workaround, delete probes manually.
-  # See: https://github.com/iovisor/gobpf/issues/223
-  echo "-:ptcp_set_state" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-  echo "-:ptcp_v4_connect" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-  echo "-:rtcp_v4_connect" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-  echo "-:ptcp_v6_connect" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-  echo "-:rtcp_v6_connect" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-  echo "-:rinet_csk_accept" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-  echo "-:ptcp_close" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-  echo "-:pfd_install" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-  echo "-:rfd_install" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
 fi
 
 echo $$ > $PIDFILE
