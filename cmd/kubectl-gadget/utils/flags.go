@@ -47,8 +47,23 @@ const (
 
 var supportedOutputModes = []string{OutputModeColumns, OutputModeJSON, OutputModeCustomColumns}
 
+// OutputConfig contains the flags that describes how to print the gadget's output
+type OutputConfig struct {
+	// OutputMode specifies the format output should be printed
+	OutputMode string
+
+	// List of columns to print (only meaningful when OutputMode is "columns=...")
+	CustomColumns []string
+
+	// Verbose prints additional information
+	Verbose bool
+}
+
 // CommonFlags contains CLI flags common to several gadgets
 type CommonFlags struct {
+	// OutputConfig describes the way output should be printed
+	OutputConfig
+
 	// LabelsRaw allows to filter containers with a label selector in the
 	// following format: key1=value1,key2=value2.
 	// It's the raw representation as passed by the user.
@@ -77,15 +92,6 @@ type CommonFlags struct {
 
 	// Containername allows to filter containers by name
 	Containername string
-
-	// OutputMode specifies the way output should be printed
-	OutputMode string
-
-	// Verbose prints additional information
-	Verbose bool
-
-	// List of columns to print (only meaningful when OutputMode is "columns=...")
-	CustomColumns []string
 
 	// Number of seconds that the gadget will run for
 	Timeout int
