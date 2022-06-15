@@ -15,31 +15,28 @@
 package snapshot
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type ProcessFlags struct {
 	showThreads bool
 }
 
-func init() {
-	processCmd := initProcessCmd()
-	SnapshotCmd.AddCommand(processCmd)
+type ProcessParser struct {
+	BaseSnapshotParser
+
+	outputConfig *utils.OutputConfig
+	processFlags *ProcessFlags
 }
 
-func initProcessCmd() *cobra.Command {
+func newProcessCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 	var processFlags ProcessFlags
 
@@ -47,69 +44,14 @@ func initProcessCmd() *cobra.Command {
 		Use:   "process",
 		Short: "Gather information about running processes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			config := &utils.TraceConfig{
-				GadgetName:       "process-collector",
-				Operation:        "collect",
-				TraceOutputMode:  "Status",
-				TraceOutputState: "Completed",
-				CommonFlags:      &commonFlags,
+			processGadget := &SnapshotGadget[types.Event]{
+				name:        "process-collector",
+				commonFlags: &commonFlags,
+				parser:      NewProcessParser(&commonFlags.OutputConfig, &processFlags),
+				params:      nil,
 			}
 
-			callback := func(results []gadgetv1alpha1.Trace) error {
-				allEvents := []types.Event{}
-
-				for _, i := range results {
-					if len(i.Status.Output) == 0 {
-						continue
-					}
-
-					var events []types.Event
-					if err := json.Unmarshal([]byte(i.Status.Output), &events); err != nil {
-						return utils.WrapInErrUnmarshalOutput(err, i.Status.Output)
-					}
-					allEvents = append(allEvents, events...)
-				}
-
-				allEvents = sortProcessEvents(allEvents, &processFlags)
-
-				switch commonFlags.OutputMode {
-				case utils.OutputModeJSON:
-					b, err := json.MarshalIndent(allEvents, "", "  ")
-					if err != nil {
-						return utils.WrapInErrMarshalOutput(err)
-					}
-
-					fmt.Printf("%s\n", b)
-					return nil
-				case utils.OutputModeColumns:
-					fallthrough
-				case utils.OutputModeCustomColumns:
-					// In the snapshot gadgets it's possible to use a tabwriter because
-					// we have the full list of events to print available, hence the
-					// tablewriter is able to determine the columns width. In other
-					// gadgets we don't know the size of all columns "a priori", hence
-					// we have to do a best effort printing fixed-width columns.
-					w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-					fmt.Fprintln(w, getProcessColsHeader(&processFlags, commonFlags.CustomColumns))
-					for _, e := range allEvents {
-						if e.Type != eventtypes.NORMAL {
-							utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
-							continue
-						}
-
-						fmt.Fprintln(w, transformProcessEvent(&e, &processFlags, &commonFlags.OutputConfig))
-					}
-
-					w.Flush()
-				default:
-					return utils.WrapInErrOutputModeNotSupported(commonFlags.OutputMode)
-				}
-
-				return nil
-			}
-
-			return utils.RunTraceAndPrintStatusOutput(config, callback)
+			return processGadget.Run()
 		},
 	}
 
@@ -126,9 +68,7 @@ func initProcessCmd() *cobra.Command {
 	return cmd
 }
 
-// getProcessColsHeader returns a header with the default list of columns
-// when it is not requested to use a subset of custom columns.
-func getProcessColsHeader(processFlags *ProcessFlags, requestedCols []string) string {
+func NewProcessParser(outputConfig *utils.OutputConfig, processFlags *ProcessFlags) SnapshotParser[types.Event] {
 	availableCols := map[string]struct{}{
 		"node":      {},
 		"namespace": {},
@@ -139,24 +79,33 @@ func getProcessColsHeader(processFlags *ProcessFlags, requestedCols []string) st
 		"pid":       {},
 	}
 
+	return &ProcessParser{
+		BaseSnapshotParser: BaseSnapshotParser{
+			availableCols: availableCols,
+		},
+		outputConfig: outputConfig,
+		processFlags: processFlags,
+	}
+}
+
+func (p *ProcessParser) GetColumnsHeader() string {
+	requestedCols := p.outputConfig.CustomColumns
 	if len(requestedCols) == 0 {
 		requestedCols = []string{"node", "namespace", "pod", "container", "comm", "pid"}
-		if processFlags.showThreads {
+		if p.processFlags.showThreads {
 			requestedCols = []string{"node", "namespace", "pod", "container", "comm", "tgid", "pid"}
 		}
 	}
 
-	return buildSnapshotColsHeader(availableCols, requestedCols)
+	return p.BuildSnapshotColsHeader(requestedCols)
 }
 
-// transformProcessEvent is called to transform an event to columns
-// format according to the parameters.
-func transformProcessEvent(e *types.Event, processFlags *ProcessFlags, outputConf *utils.OutputConfig) string {
+func (p *ProcessParser) TransformEvent(e *types.Event) string {
 	var sb strings.Builder
 
-	switch outputConf.OutputMode {
+	switch p.outputConfig.OutputMode {
 	case utils.OutputModeColumns:
-		if processFlags.showThreads {
+		if p.processFlags.showThreads {
 			sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%d\t%d",
 				e.Node, e.Namespace, e.Pod, e.Container,
 				e.Command, e.Tgid, e.Pid))
@@ -166,7 +115,7 @@ func transformProcessEvent(e *types.Event, processFlags *ProcessFlags, outputCon
 				e.Command, e.Pid))
 		}
 	case utils.OutputModeCustomColumns:
-		for _, col := range outputConf.CustomColumns {
+		for _, col := range p.outputConfig.CustomColumns {
 			switch col {
 			case "node":
 				sb.WriteString(fmt.Sprintf("%s", e.Node))
@@ -192,19 +141,19 @@ func transformProcessEvent(e *types.Event, processFlags *ProcessFlags, outputCon
 	return sb.String()
 }
 
-func sortProcessEvents(allProcesses []types.Event, processFlags *ProcessFlags) []types.Event {
-	if !processFlags.showThreads {
+func (p *ProcessParser) SortEvents(allProcesses *[]types.Event) {
+	if !p.processFlags.showThreads {
 		allProcessesTrimmed := []types.Event{}
-		for _, i := range allProcesses {
+		for _, i := range *allProcesses {
 			if i.Tgid == i.Pid {
 				allProcessesTrimmed = append(allProcessesTrimmed, i)
 			}
 		}
-		allProcesses = allProcessesTrimmed
+		*allProcesses = allProcessesTrimmed
 	}
 
-	sort.Slice(allProcesses, func(i, j int) bool {
-		pi, pj := allProcesses[i], allProcesses[j]
+	sort.Slice(*allProcesses, func(i, j int) bool {
+		pi, pj := (*allProcesses)[i], (*allProcesses)[j]
 		switch {
 		case pi.Node != pj.Node:
 			return pi.Node < pj.Node
@@ -222,6 +171,4 @@ func sortProcessEvents(allProcesses []types.Event, processFlags *ProcessFlags) [
 			return pi.Pid < pj.Pid
 		}
 	})
-
-	return allProcesses
 }

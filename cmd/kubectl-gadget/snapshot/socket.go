@@ -15,19 +15,14 @@
 package snapshot
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type SocketFlags struct {
@@ -35,12 +30,14 @@ type SocketFlags struct {
 	extended bool
 }
 
-func init() {
-	socketCmd := initSocketCmd()
-	SnapshotCmd.AddCommand(socketCmd)
+type SocketParser struct {
+	BaseSnapshotParser
+
+	outputConfig *utils.OutputConfig
+	socketFlags  *SocketFlags
 }
 
-func initSocketCmd() *cobra.Command {
+func newSocketCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 	var socketFlags SocketFlags
 
@@ -55,73 +52,16 @@ func initSocketCmd() *cobra.Command {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			config := &utils.TraceConfig{
-				GadgetName:       "socket-collector",
-				Operation:        "collect",
-				TraceOutputMode:  "Status",
-				TraceOutputState: "Completed",
-				CommonFlags:      &commonFlags,
-				Parameters: map[string]string{
+			socketGadget := &SnapshotGadget[types.Event]{
+				name:        "socket-collector",
+				commonFlags: &commonFlags,
+				parser:      NewSocketParser(&commonFlags.OutputConfig, &socketFlags),
+				params: map[string]string{
 					"protocol": socketFlags.protocol,
 				},
 			}
 
-			callback := func(results []gadgetv1alpha1.Trace) error {
-				allEvents := []types.Event{}
-
-				for _, i := range results {
-					if len(i.Status.Output) == 0 {
-						continue
-					}
-
-					var events []types.Event
-					if err := json.Unmarshal([]byte(i.Status.Output), &events); err != nil {
-						return utils.WrapInErrUnmarshalOutput(err, i.Status.Output)
-					}
-					allEvents = append(allEvents, events...)
-				}
-
-				sortSocketEvents(allEvents)
-
-				switch commonFlags.OutputMode {
-				case utils.OutputModeJSON:
-					b, err := json.MarshalIndent(allEvents, "", "  ")
-					if err != nil {
-						return utils.WrapInErrMarshalOutput(err)
-					}
-
-					fmt.Printf("%s\n", b)
-					return nil
-				case utils.OutputModeColumns:
-					fallthrough
-				case utils.OutputModeCustomColumns:
-					// In the snapshot gadgets it's possible to use a tabwriter because
-					// we have the full list of events to print available, hence the
-					// tablewriter is able to determine the columns width. In other
-					// gadgets we don't know the size of all columns "a priori", hence
-					// we have to do a best effort printing fixed-width columns.
-					w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-					fmt.Fprintln(w, getSocketColsHeader(&socketFlags, commonFlags.CustomColumns))
-
-					for _, e := range allEvents {
-						if e.Type != eventtypes.NORMAL {
-							utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
-							continue
-						}
-
-						fmt.Fprintln(w, transformSocketEvent(&e, &socketFlags, &commonFlags.OutputConfig))
-					}
-
-					w.Flush()
-				default:
-					return utils.WrapInErrOutputModeNotSupported(commonFlags.OutputMode)
-				}
-
-				return nil
-			}
-
-			return utils.RunTraceAndPrintStatusOutput(config, callback)
+			return socketGadget.Run()
 		},
 	}
 
@@ -150,9 +90,7 @@ func initSocketCmd() *cobra.Command {
 	return cmd
 }
 
-// getSocketColsHeader returns a header with the default list of columns
-// when it is not requested to use a subset of custom columns.
-func getSocketColsHeader(socketFlags *SocketFlags, requestedCols []string) string {
+func NewSocketParser(outputConfig *utils.OutputConfig, socketFlags *SocketFlags) SnapshotParser[types.Event] {
 	availableCols := map[string]struct{}{
 		"node":      {},
 		"namespace": {},
@@ -164,25 +102,34 @@ func getSocketColsHeader(socketFlags *SocketFlags, requestedCols []string) strin
 		"inode":     {},
 	}
 
+	return &SocketParser{
+		BaseSnapshotParser: BaseSnapshotParser{
+			availableCols: availableCols,
+		},
+		outputConfig: outputConfig,
+		socketFlags:  socketFlags,
+	}
+}
+
+func (s *SocketParser) GetColumnsHeader() string {
+	requestedCols := s.outputConfig.CustomColumns
 	if len(requestedCols) == 0 {
 		requestedCols = []string{"node", "namespace", "pod", "protocol", "local", "remote", "status"}
-		if socketFlags.extended {
+		if s.socketFlags.extended {
 			requestedCols = append(requestedCols, "inode")
 		}
 	}
 
-	return buildSnapshotColsHeader(availableCols, requestedCols)
+	return s.BuildSnapshotColsHeader(requestedCols)
 }
 
-// transformSocketEvent is called to transform an event to columns
-// format according to the parameters.
-func transformSocketEvent(e *types.Event, socketFlags *SocketFlags, outputConf *utils.OutputConfig) string {
+func (s *SocketParser) TransformEvent(e *types.Event) string {
 	var sb strings.Builder
 
-	switch outputConf.OutputMode {
+	switch s.outputConfig.OutputMode {
 	case utils.OutputModeColumns:
 		extendedInformation := ""
-		if socketFlags.extended {
+		if s.socketFlags.extended {
 			extendedInformation = fmt.Sprintf("\t%d", e.InodeNumber)
 		}
 
@@ -191,7 +138,7 @@ func transformSocketEvent(e *types.Event, socketFlags *SocketFlags, outputConf *
 			e.LocalAddress, e.LocalPort, e.RemoteAddress, e.RemotePort,
 			e.Status, extendedInformation))
 	case utils.OutputModeCustomColumns:
-		for _, col := range outputConf.CustomColumns {
+		for _, col := range s.outputConfig.CustomColumns {
 			switch col {
 			case "node":
 				sb.WriteString(fmt.Sprintf("%s", e.Node))
@@ -219,9 +166,9 @@ func transformSocketEvent(e *types.Event, socketFlags *SocketFlags, outputConf *
 	return sb.String()
 }
 
-func sortSocketEvents(allSockets []types.Event) {
-	sort.Slice(allSockets, func(i, j int) bool {
-		si, sj := allSockets[i], allSockets[j]
+func (s *SocketParser) SortEvents(allSockets *[]types.Event) {
+	sort.Slice(*allSockets, func(i, j int) bool {
+		si, sj := (*allSockets)[i], (*allSockets)[j]
 		switch {
 		case si.Node != sj.Node:
 			return si.Node < sj.Node
