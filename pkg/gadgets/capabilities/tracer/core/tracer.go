@@ -96,7 +96,8 @@ var capabilitiesNames = map[uint32]string{
 }
 
 func NewTracer(c *tracer.Config, resolver containercollection.ContainerResolver,
-	eventCallback func(types.Event), node string) (*Tracer, error) {
+	eventCallback func(types.Event), node string,
+) (*Tracer, error) {
 	t := &Tracer{
 		config:        c,
 		resolver:      resolver,

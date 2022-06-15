@@ -40,7 +40,8 @@ type StandardTracerBase struct {
 }
 
 func NewStandardTracer(lineCallback func(string), mntnsmap *ebpf.Map, name string,
-	args ...string) (*StandardTracerBase, error) {
+	args ...string,
+) (*StandardTracerBase, error) {
 	t := &StandardTracerBase{
 		lineCallback: lineCallback,
 		done:         make(chan bool),

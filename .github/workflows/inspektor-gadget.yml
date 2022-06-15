@@ -17,22 +17,13 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - name: Setup go 1.17
-      uses: actions/setup-go@v1
+    - uses: actions/checkout@v3
+    - name: Setup go
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.18.3
+        cache: true
       id: go
-    - name: Cache go 1.17
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Check out code
-      uses: actions/checkout@v1
     - name: Check if generated files are updated
       run: |
         make manifests generate generate-documentation
@@ -43,22 +34,13 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - name: Setup go 1.17
-      uses: actions/setup-go@v1
+    - uses: actions/checkout@v3
+    - name: Setup go
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.18.3
+        cache: true
       id: go
-    - name: Cache go 1.17
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Check out code
-      uses: actions/checkout@v1
     - name: Install debian packages
       # ALERT This action must be run after code was checkout otherwise it will
       # not find this file.
@@ -67,9 +49,9 @@ jobs:
       run: |
         make -C gadget-container ebpf-objects
     - name: Lint
-      uses: golangci/golangci-lint-action@v3.1.0
+      uses: golangci/golangci-lint-action@v3.2.0
       with:
-        version: v1.44.2
+        version: v1.46.2
         working-directory: /home/runner/work/inspektor-gadget/inspektor-gadget
         # Workaround to display the output:
         # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648
@@ -87,22 +69,13 @@ jobs:
           - os: windows
             arch: arm64
     steps:
-    - name: Setup go 1.17
-      uses: actions/setup-go@v1
+    - uses: actions/checkout@v3
+    - name: Setup go
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.18.3
+        cache: true
       id: go
-    - name: Cache go 1.17
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Check out code
-      uses: actions/checkout@v1
     - name: Install debian packages
       uses: ./.github/actions/install-debian-packages
     - name: Set IMAGE_TAG
@@ -154,22 +127,13 @@ jobs:
         # TODO add local-gadget-linux-arm64
         local-gadget-target: [local-gadget-linux-amd64]
     steps:
-    - name: Setup go 1.17
-      uses: actions/setup-go@v1
+    - uses: actions/checkout@v3
+    - name: Setup go
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.18.3
+        cache: true
       id: go
-    - name: Cache go 1.17
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Check out code
-      uses: actions/checkout@v1
     - name: Install debian packages
       # ALERT This action must be run after code was checkout otherwise it will
       # not find this file.
@@ -198,6 +162,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v3
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
@@ -214,8 +179,6 @@ jobs:
         registry: ${{ secrets.CONTAINER_REGISTRY }}
         username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
         password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
-    - name: Check out code
-      uses: actions/checkout@v1
     - name: Set IMAGE_TAG
       run: |
         TMP1=${GITHUB_REF#*/}
@@ -245,6 +208,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v3
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
@@ -261,8 +225,6 @@ jobs:
         registry: ${{ secrets.CONTAINER_REGISTRY }}
         username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
         password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
-    - name: Check out code
-      uses: actions/checkout@v1
     - name: Set IMAGE_TAG
       run: |
         TMP1=${GITHUB_REF#*/}
@@ -295,6 +257,7 @@ jobs:
       matrix:
         example: [runc-hook, kube-container-collection]
     steps:
+    - uses: actions/checkout@v3
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
@@ -304,8 +267,6 @@ jobs:
         registry: ${{ secrets.CONTAINER_REGISTRY }}
         username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
         password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
-    - name: Check out code
-      uses: actions/checkout@v1
     - name: Set IMAGE_TAG
       run: |
         TMP1=${GITHUB_REF#*/}
@@ -328,22 +289,13 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - name: Setup go 1.17
-      uses: actions/setup-go@v1
+    - uses: actions/checkout@v3
+    - name: Setup go
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.18.3
+        cache: true
       id: go
-    - name: Cache go 1.17
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Check out code
-      uses: actions/checkout@v1
     - name: Install debian packages
       uses: ./.github/actions/install-debian-packages
     - name: Basic unit tests
@@ -358,22 +310,13 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     steps:
-    - name: Setup go 1.17
-      uses: actions/setup-go@v1
+    - uses: actions/checkout@v3
+    - name: Setup go
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.18.3
+        cache: true
       id: go
-    - name: Cache go 1.17
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Check out code
-      uses: actions/checkout@v1
     - name: Install debian packages
       uses: ./.github/actions/install-debian-packages
     - name: Unit tests for local-gadget (as root)
@@ -441,8 +384,7 @@ jobs:
     concurrency:
       group: no-simultaneous-test-integration-aro
     steps:
-    - name: Check out code
-      uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - name: Authenticate and set ARO cluster context
       # NOTE: This action generates the Kubernetes config file in the current
       # directory. Therefore, it must be run after checking out code otherwise
@@ -469,8 +411,7 @@ jobs:
     needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-default-container-image]
     runs-on: ubuntu-latest
     steps:
-    - name: Check out code
-      uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - name: Setup Minikube
       uses: manusa/actions-setup-minikube@v2.4.3
       with:
@@ -493,6 +434,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
+    - uses: actions/checkout@v3
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1.0.0
@@ -521,8 +463,6 @@ jobs:
         asset_path: integration-asset/gadget-integration-tests-job.yaml
         asset_name: gadget-integration-tests-job.yaml
         asset_content_type: application/x-yaml
-    - name: Check out code
-      uses: actions/checkout@v1
     - name: Update new version in krew-index
       if: github.repository == 'kinvolk/inspektor-gadget'
       uses: rajatjindal/krew-release-bot@v0.0.40
