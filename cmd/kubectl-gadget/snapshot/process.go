@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,95 +30,133 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-var processCollectorParamThreads bool
-
-var processCollectorCmd = &cobra.Command{
-	Use:   "process",
-	Short: "Gather information about running processes",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		callback := func(results []gadgetv1alpha1.Trace) error {
-			allProcesses := []types.Event{}
-
-			for _, i := range results {
-				if len(i.Status.Output) == 0 {
-					continue
-				}
-
-				var processes []types.Event
-				if err := json.Unmarshal([]byte(i.Status.Output), &processes); err != nil {
-					return utils.WrapInErrUnmarshalOutput(err, i.Status.Output)
-				}
-
-				allProcesses = append(allProcesses, processes...)
-			}
-
-			return printProcesses(allProcesses)
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "process-collector",
-			Operation:        "collect",
-			TraceOutputMode:  "Status",
-			TraceOutputState: "Completed",
-			CommonFlags:      &params,
-		}
-
-		return utils.RunTraceAndPrintStatusOutput(config, callback)
-	},
+type ProcessFlags struct {
+	showThreads bool
 }
 
 func init() {
-	SnapshotCmd.AddCommand(processCollectorCmd)
-	utils.AddCommonFlags(processCollectorCmd, &params)
+	processCmd := initProcessCmd()
+	SnapshotCmd.AddCommand(processCmd)
+}
 
-	processCollectorCmd.PersistentFlags().BoolVarP(
-		&processCollectorParamThreads,
+func initProcessCmd() *cobra.Command {
+	var commonFlags utils.CommonFlags
+	var processFlags ProcessFlags
+
+	cmd := &cobra.Command{
+		Use:   "process",
+		Short: "Gather information about running processes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := &utils.TraceConfig{
+				GadgetName:       "process-collector",
+				Operation:        "collect",
+				TraceOutputMode:  "Status",
+				TraceOutputState: "Completed",
+				CommonFlags:      &commonFlags,
+			}
+
+			callback := func(results []gadgetv1alpha1.Trace) error {
+				allEvents := []types.Event{}
+
+				for _, i := range results {
+					if len(i.Status.Output) == 0 {
+						continue
+					}
+
+					var events []types.Event
+					if err := json.Unmarshal([]byte(i.Status.Output), &events); err != nil {
+						return utils.WrapInErrUnmarshalOutput(err, i.Status.Output)
+					}
+					allEvents = append(allEvents, events...)
+				}
+
+				allEvents = sortProcessEvents(allEvents, &processFlags)
+
+				switch commonFlags.OutputMode {
+				case utils.OutputModeJSON:
+					b, err := json.MarshalIndent(allEvents, "", "  ")
+					if err != nil {
+						return utils.WrapInErrMarshalOutput(err)
+					}
+
+					fmt.Printf("%s\n", b)
+					return nil
+				case utils.OutputModeColumns:
+					fallthrough
+				case utils.OutputModeCustomColumns:
+					// In the snapshot gadgets it's possible to use a tabwriter because
+					// we have the full list of events to print available, hence the
+					// tablewriter is able to determine the columns width. In other
+					// gadgets we don't know the size of all columns "a priori", hence
+					// we have to do a best effort printing fixed-width columns.
+					w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+
+					fmt.Fprintln(w, getProcessColsHeader(&processFlags, commonFlags.CustomColumns))
+					for _, e := range allEvents {
+						if e.Type != eventtypes.NORMAL {
+							utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
+							continue
+						}
+
+						fmt.Fprintln(w, transformProcessEvent(&e, &processFlags, &commonFlags.OutputConfig))
+					}
+
+					w.Flush()
+				default:
+					return utils.WrapInErrOutputModeNotSupported(commonFlags.OutputMode)
+				}
+
+				return nil
+			}
+
+			return utils.RunTraceAndPrintStatusOutput(config, callback)
+		},
+	}
+
+	cmd.PersistentFlags().BoolVarP(
+		&processFlags.showThreads,
 		"threads",
 		"t",
 		false,
 		"Show all threads",
 	)
+
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
 
-func getCustomProcessColsHeader(cols []string) string {
-	var sb strings.Builder
+// getProcessColsHeader returns a header with the default list of columns
+// when it is not requested to use a subset of custom columns.
+func getProcessColsHeader(processFlags *ProcessFlags, requestedCols []string) string {
+	availableCols := map[string]struct{}{
+		"node":      {},
+		"namespace": {},
+		"pod":       {},
+		"container": {},
+		"comm":      {},
+		"tgid":      {},
+		"pid":       {},
+	}
 
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString("NODE\t")
-		case "namespace":
-			sb.WriteString("NAMESPACE\t")
-		case "pod":
-			sb.WriteString("POD\t")
-		case "container":
-			sb.WriteString("CONTAINER\t")
-		case "comm":
-			sb.WriteString("COMM\t")
-		case "tgid":
-			sb.WriteString("TGID\t")
-		case "pid":
-			sb.WriteString("PID\t")
+	if len(requestedCols) == 0 {
+		requestedCols = []string{"node", "namespace", "pod", "container", "comm", "pid"}
+		if processFlags.showThreads {
+			requestedCols = []string{"node", "namespace", "pod", "container", "comm", "tgid", "pid"}
 		}
-		sb.WriteRune(' ')
 	}
 
-	return sb.String()
+	return buildSnapshotColsHeader(availableCols, requestedCols)
 }
 
-// processTransformEvent is called to transform an event to columns
-// format according to the parameters
-func processTransformEvent(e types.Event) string {
+// transformProcessEvent is called to transform an event to columns
+// format according to the parameters.
+func transformProcessEvent(e *types.Event, processFlags *ProcessFlags, outputConf *utils.OutputConfig) string {
 	var sb strings.Builder
 
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
+	switch outputConf.OutputMode {
 	case utils.OutputModeColumns:
-		if processCollectorParamThreads {
+		if processFlags.showThreads {
 			sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%d\t%d",
 				e.Node, e.Namespace, e.Pod, e.Container,
 				e.Command, e.Tgid, e.Pid))
@@ -128,32 +166,34 @@ func processTransformEvent(e types.Event) string {
 				e.Command, e.Pid))
 		}
 	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
+		for _, col := range outputConf.CustomColumns {
 			switch col {
 			case "node":
-				sb.WriteString(fmt.Sprintf("%s\t", e.Node))
+				sb.WriteString(fmt.Sprintf("%s", e.Node))
 			case "namespace":
-				sb.WriteString(fmt.Sprintf("%s\t", e.Namespace))
+				sb.WriteString(fmt.Sprintf("%s", e.Namespace))
 			case "pod":
-				sb.WriteString(fmt.Sprintf("%s\t", e.Pod))
+				sb.WriteString(fmt.Sprintf("%s", e.Pod))
 			case "container":
-				sb.WriteString(fmt.Sprintf("%s\t", e.Container))
+				sb.WriteString(fmt.Sprintf("%s", e.Container))
 			case "comm":
-				sb.WriteString(fmt.Sprintf("%s\t", e.Command))
+				sb.WriteString(fmt.Sprintf("%s", e.Command))
 			case "tgid":
-				sb.WriteString(fmt.Sprintf("%d\t", e.Tgid))
+				sb.WriteString(fmt.Sprintf("%d", e.Tgid))
 			case "pid":
-				sb.WriteString(fmt.Sprintf("%d\t", e.Pid))
+				sb.WriteString(fmt.Sprintf("%d", e.Pid))
+			default:
+				continue
 			}
-			sb.WriteRune(' ')
+			sb.WriteRune('\t')
 		}
 	}
 
 	return sb.String()
 }
 
-func printProcesses(allProcesses []types.Event) error {
-	if !processCollectorParamThreads {
+func sortProcessEvents(allProcesses []types.Event, processFlags *ProcessFlags) []types.Event {
+	if !processFlags.showThreads {
 		allProcessesTrimmed := []types.Event{}
 		for _, i := range allProcesses {
 			if i.Tgid == i.Pid {
@@ -183,40 +223,5 @@ func printProcesses(allProcesses []types.Event) error {
 		}
 	})
 
-	// JSON output mode does not need any additional parsing
-	if params.OutputMode == utils.OutputModeJSON {
-		b, err := json.MarshalIndent(allProcesses, "", "  ")
-		if err != nil {
-			return utils.WrapInErrMarshalOutput(err)
-		}
-		fmt.Printf("%s\n", b)
-		return nil
-	}
-
-	// In the snapshot gadgets it's possible to use a tabwriter because we have
-	// the full list of events to print available, hence the tablewriter is able
-	// to determine the columns width. In other gadgets we don't know the size
-	// of all columns "a priori", hence we have to do a best effort printing
-	// fixed-width columns.
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-	// Print all or requested columns
-	switch params.OutputMode {
-	case utils.OutputModeCustomColumns:
-		fmt.Fprintln(w, getCustomProcessColsHeader(params.CustomColumns))
-	case utils.OutputModeColumns:
-		if processCollectorParamThreads {
-			fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tCONTAINER\tCOMM\tTGID\tPID")
-		} else {
-			fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tCONTAINER\tCOMM\tPID")
-		}
-	}
-
-	for _, p := range allProcesses {
-		fmt.Fprintln(w, processTransformEvent(p))
-	}
-
-	w.Flush()
-
-	return nil
+	return allProcesses
 }

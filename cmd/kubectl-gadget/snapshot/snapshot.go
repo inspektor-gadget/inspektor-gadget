@@ -15,16 +15,26 @@
 package snapshot
 
 import (
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-// All the gadgets within this package use this global variable, so let's
-// declare it here.
-var params utils.CommonFlags
-
 var SnapshotCmd = &cobra.Command{
 	Use:   "snapshot",
 	Short: "Take a snapshot of a subsystem and print it",
+}
+
+// buildSnapshotColsHeader returns a header with the requested custom columns
+// that exist in the availableCols. The columns are separated by taps.
+func buildSnapshotColsHeader(availableCols map[string]struct{}, requestedCols []string) string {
+	var sb strings.Builder
+
+	for _, col := range requestedCols {
+		if _, ok := availableCols[col]; ok {
+			sb.WriteString(strings.ToUpper(col) + "\t")
+		}
+	}
+
+	return sb.String()
 }

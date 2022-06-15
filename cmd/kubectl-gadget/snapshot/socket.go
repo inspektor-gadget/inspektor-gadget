@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,120 +30,159 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-var (
-	socketCollectorProtocol      string
-	socketCollectorParamExtended bool
-)
-
-var socketCollectorCmd = &cobra.Command{
-	Use:   "socket",
-	Short: "Gather information about TCP and UDP sockets",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		callback := func(results []gadgetv1alpha1.Trace) error {
-			allSockets := []types.Event{}
-
-			for _, i := range results {
-				if len(i.Status.Output) == 0 {
-					continue
-				}
-
-				var sockets []types.Event
-				if err := json.Unmarshal([]byte(i.Status.Output), &sockets); err != nil {
-					return utils.WrapInErrUnmarshalOutput(err, i.Status.Output)
-				}
-
-				allSockets = append(allSockets, sockets...)
-			}
-
-			return printSockets(allSockets)
-		}
-
-		if _, err := types.ParseProtocol(socketCollectorProtocol); err != nil {
-			return err
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "socket-collector",
-			Operation:        "collect",
-			TraceOutputMode:  "Status",
-			TraceOutputState: "Completed",
-			CommonFlags:      &params,
-			Parameters: map[string]string{
-				"protocol": socketCollectorProtocol,
-			},
-		}
-
-		return utils.RunTraceAndPrintStatusOutput(config, callback)
-	},
+type SocketFlags struct {
+	protocol string
+	extended bool
 }
 
 func init() {
-	SnapshotCmd.AddCommand(socketCollectorCmd)
-	utils.AddCommonFlags(socketCollectorCmd, &params)
+	socketCmd := initSocketCmd()
+	SnapshotCmd.AddCommand(socketCmd)
+}
+
+func initSocketCmd() *cobra.Command {
+	var commonFlags utils.CommonFlags
+	var socketFlags SocketFlags
+
+	cmd := &cobra.Command{
+		Use:   "socket",
+		Short: "Gather information about TCP and UDP sockets",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if _, err := types.ParseProtocol(socketFlags.protocol); err != nil {
+				return err
+			}
+
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := &utils.TraceConfig{
+				GadgetName:       "socket-collector",
+				Operation:        "collect",
+				TraceOutputMode:  "Status",
+				TraceOutputState: "Completed",
+				CommonFlags:      &commonFlags,
+				Parameters: map[string]string{
+					"protocol": socketFlags.protocol,
+				},
+			}
+
+			callback := func(results []gadgetv1alpha1.Trace) error {
+				allEvents := []types.Event{}
+
+				for _, i := range results {
+					if len(i.Status.Output) == 0 {
+						continue
+					}
+
+					var events []types.Event
+					if err := json.Unmarshal([]byte(i.Status.Output), &events); err != nil {
+						return utils.WrapInErrUnmarshalOutput(err, i.Status.Output)
+					}
+					allEvents = append(allEvents, events...)
+				}
+
+				sortSocketEvents(allEvents)
+
+				switch commonFlags.OutputMode {
+				case utils.OutputModeJSON:
+					b, err := json.MarshalIndent(allEvents, "", "  ")
+					if err != nil {
+						return utils.WrapInErrMarshalOutput(err)
+					}
+
+					fmt.Printf("%s\n", b)
+					return nil
+				case utils.OutputModeColumns:
+					fallthrough
+				case utils.OutputModeCustomColumns:
+					// In the snapshot gadgets it's possible to use a tabwriter because
+					// we have the full list of events to print available, hence the
+					// tablewriter is able to determine the columns width. In other
+					// gadgets we don't know the size of all columns "a priori", hence
+					// we have to do a best effort printing fixed-width columns.
+					w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+
+					fmt.Fprintln(w, getSocketColsHeader(&socketFlags, commonFlags.CustomColumns))
+
+					for _, e := range allEvents {
+						if e.Type != eventtypes.NORMAL {
+							utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
+							continue
+						}
+
+						fmt.Fprintln(w, transformSocketEvent(&e, &socketFlags, &commonFlags.OutputConfig))
+					}
+
+					w.Flush()
+				default:
+					return utils.WrapInErrOutputModeNotSupported(commonFlags.OutputMode)
+				}
+
+				return nil
+			}
+
+			return utils.RunTraceAndPrintStatusOutput(config, callback)
+		},
+	}
 
 	var protocols []string
 	for protocol := range types.ProtocolsMap {
 		protocols = append(protocols, protocol)
 	}
 
-	socketCollectorCmd.PersistentFlags().StringVarP(
-		&socketCollectorProtocol,
+	cmd.PersistentFlags().StringVarP(
+		&socketFlags.protocol,
 		"proto",
 		"",
 		"all",
 		fmt.Sprintf("Show only sockets using this protocol (%s)", strings.Join(protocols, ", ")),
 	)
-	socketCollectorCmd.PersistentFlags().BoolVarP(
-		&socketCollectorParamExtended,
+	cmd.PersistentFlags().BoolVarP(
+		&socketFlags.extended,
 		"extend",
 		"e",
 		false,
 		"Display other/more information (like socket inode)",
 	)
+
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
 
-func getCustomSocketColsHeader(cols []string) string {
-	var sb strings.Builder
+// getSocketColsHeader returns a header with the default list of columns
+// when it is not requested to use a subset of custom columns.
+func getSocketColsHeader(socketFlags *SocketFlags, requestedCols []string) string {
+	availableCols := map[string]struct{}{
+		"node":      {},
+		"namespace": {},
+		"pod":       {},
+		"protocol":  {},
+		"local":     {},
+		"remote":    {},
+		"status":    {},
+		"inode":     {},
+	}
 
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString("NODE\t")
-		case "namespace":
-			sb.WriteString("NAMESPACE\t")
-		case "pod":
-			sb.WriteString("POD\t")
-		case "protocol":
-			sb.WriteString("PROTOCOL\t")
-		case "local":
-			sb.WriteString("LOCAL\t")
-		case "remote":
-			sb.WriteString("REMOTE\t")
-		case "status":
-			sb.WriteString("STATUS\t")
-		case "inode":
-			sb.WriteString("INODE\t")
+	if len(requestedCols) == 0 {
+		requestedCols = []string{"node", "namespace", "pod", "protocol", "local", "remote", "status"}
+		if socketFlags.extended {
+			requestedCols = append(requestedCols, "inode")
 		}
-		sb.WriteRune(' ')
 	}
 
-	return sb.String()
+	return buildSnapshotColsHeader(availableCols, requestedCols)
 }
 
-// socketTransformEvent is called to transform an event to columns
-// format according to the parameters
-func socketTransformEvent(e types.Event) string {
+// transformSocketEvent is called to transform an event to columns
+// format according to the parameters.
+func transformSocketEvent(e *types.Event, socketFlags *SocketFlags, outputConf *utils.OutputConfig) string {
 	var sb strings.Builder
 
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
+	switch outputConf.OutputMode {
 	case utils.OutputModeColumns:
 		extendedInformation := ""
-		if socketCollectorParamExtended {
+		if socketFlags.extended {
 			extendedInformation = fmt.Sprintf("\t%d", e.InodeNumber)
 		}
 
@@ -152,33 +191,35 @@ func socketTransformEvent(e types.Event) string {
 			e.LocalAddress, e.LocalPort, e.RemoteAddress, e.RemotePort,
 			e.Status, extendedInformation))
 	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
+		for _, col := range outputConf.CustomColumns {
 			switch col {
 			case "node":
-				sb.WriteString(fmt.Sprintf("%s\t", e.Node))
+				sb.WriteString(fmt.Sprintf("%s", e.Node))
 			case "namespace":
-				sb.WriteString(fmt.Sprintf("%s\t", e.Namespace))
+				sb.WriteString(fmt.Sprintf("%s", e.Namespace))
 			case "pod":
-				sb.WriteString(fmt.Sprintf("%s\t", e.Pod))
+				sb.WriteString(fmt.Sprintf("%s", e.Pod))
 			case "protocol":
-				sb.WriteString(fmt.Sprintf("%s\t", e.Protocol))
+				sb.WriteString(fmt.Sprintf("%s", e.Protocol))
 			case "local":
-				sb.WriteString(fmt.Sprintf("%s:%d\t", e.LocalAddress, e.LocalPort))
+				sb.WriteString(fmt.Sprintf("%s:%d", e.LocalAddress, e.LocalPort))
 			case "remote":
-				sb.WriteString(fmt.Sprintf("%s:%d\t", e.RemoteAddress, e.RemotePort))
+				sb.WriteString(fmt.Sprintf("%s:%d", e.RemoteAddress, e.RemotePort))
 			case "status":
-				sb.WriteString(fmt.Sprintf("%s\t", e.Status))
+				sb.WriteString(fmt.Sprintf("%s", e.Status))
 			case "inode":
-				sb.WriteString(fmt.Sprintf("%d\t", e.InodeNumber))
+				sb.WriteString(fmt.Sprintf("%d", e.InodeNumber))
+			default:
+				continue
 			}
-			sb.WriteRune(' ')
+			sb.WriteRune('\t')
 		}
 	}
 
 	return sb.String()
 }
 
-func printSockets(allSockets []types.Event) error {
+func sortSocketEvents(allSockets []types.Event) {
 	sort.Slice(allSockets, func(i, j int) bool {
 		si, sj := allSockets[i], allSockets[j]
 		switch {
@@ -204,41 +245,4 @@ func printSockets(allSockets []types.Event) error {
 			return si.InodeNumber < sj.InodeNumber
 		}
 	})
-
-	// JSON output mode does not need any additional parsing
-	if params.OutputMode == utils.OutputModeJSON {
-		b, err := json.MarshalIndent(allSockets, "", "  ")
-		if err != nil {
-			return utils.WrapInErrMarshalOutput(err)
-		}
-		fmt.Printf("%s\n", b)
-		return nil
-	}
-
-	// In the snapshot gadgets it's possible to use a tabwriter because we have
-	// the full list of events to print available, hence the tablewriter is able
-	// to determine the columns width. In other gadgets we don't know the size
-	// of all columns "a priori", hence we have to do a best effort printing
-	// fixed-width columns.
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-	// Print all or requested columns
-	switch params.OutputMode {
-	case utils.OutputModeCustomColumns:
-		fmt.Fprintln(w, getCustomSocketColsHeader(params.CustomColumns))
-	case utils.OutputModeColumns:
-		extendedHeader := ""
-		if socketCollectorParamExtended {
-			extendedHeader = "\tINODE"
-		}
-		fmt.Fprintf(w, "NODE\tNAMESPACE\tPOD\tPROTOCOL\tLOCAL\tREMOTE\tSTATUS%s\n", extendedHeader)
-	}
-
-	for _, s := range allSockets {
-		fmt.Fprintln(w, socketTransformEvent(s))
-	}
-
-	w.Flush()
-
-	return nil
 }
