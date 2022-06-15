@@ -92,7 +92,8 @@ var fsConfMap = map[string]fsConf{
 }
 
 func NewTracer(config *tracer.Config, resolver containercollection.ContainerResolver,
-	eventCallback func(types.Event), node string) (*Tracer, error) {
+	eventCallback func(types.Event), node string,
+) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
 		resolver:      resolver,

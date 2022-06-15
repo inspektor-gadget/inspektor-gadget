@@ -59,7 +59,8 @@ type Tracer struct {
 }
 
 func NewTracer(config *Config, resolver containercollection.ContainerResolver,
-	statsCallback func([]types.Stats), errorCallback func(error)) (*Tracer, error) {
+	statsCallback func([]types.Stats), errorCallback func(error),
+) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
 		resolver:      resolver,
