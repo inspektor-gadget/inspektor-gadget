@@ -29,6 +29,7 @@ go mod init tmp
 
 echo "require k8s.io/code-generator v0.21.2" >> go.mod
 
+go get tmp/hack
 go mod vendor
 
 popd
