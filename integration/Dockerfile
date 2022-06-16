@@ -1,4 +1,4 @@
-FROM golang:1.14-alpine AS build_base
+FROM golang:1.18-alpine AS build_base
 RUN apk add --no-cache git
 WORKDIR /build
 RUN go get -d -v github.com/kr/pretty
