@@ -22,8 +22,8 @@ RUN set -ex; \
 	add-apt-repository -y ppa:tuxinvader/kernel-build-tools && \
 	apt-add-repository -y ppa:longsleep/golang-backports && \
 	apt-get update && \
-	apt-get install -y libbpf-dev golang-1.17 && \
-	ln -s /usr/lib/go-1.17/bin/go /bin/go
+	apt-get install -y libbpf-dev golang-1.18 && \
+	ln -s /usr/lib/go-1.18/bin/go /bin/go
 
 # Download BTFHub files
 COPY ./tools /btf-tools

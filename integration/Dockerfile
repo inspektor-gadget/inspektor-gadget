@@ -1,8 +1,11 @@
-FROM golang:1.14-alpine AS build_base
+FROM golang:1.18-alpine AS build_base
 RUN apk add --no-cache git
 WORKDIR /build
-RUN go get -d -v github.com/kr/pretty
-RUN go install -v github.com/kr/pretty
+
+# Cache go modules so they won't be downloaded at each build
+COPY go.mod go.sum /build/
+RUN cd /build && go mod download
+
 COPY . .
 RUN go test -c -o gadget-integration.test ./...
 
