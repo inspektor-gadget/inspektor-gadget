@@ -260,25 +260,15 @@ operations need to take place to bring up the pod.
 
 ### Integration with Kubernetes Security Profiles Operator
 
-We can use the output stored in the trace to create the seccomp policy for
-our pod. But instead of copying it manually, we can also use the
-integration with the [Kubernetes Security Profiles
-Operator](https://github.com/kubernetes-sigs/security-profiles-operator).
-
-To install the operator, use the following commands:
-
-<!--
-In our code, we include seccompprofile/v1beta1, thus we apply from v0.4.0 to
-ensure operator.yaml applies on our code.
--->
-```bash
-$ kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.6.0/cert-manager.yaml
-$ kubectl --namespace cert-manager wait --for condition=ready pod -l app.kubernetes.io/instance=cert-manager
-$ kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.0/deploy/operator.yaml
-```
-
-Once installed, the seccomp gadget can generate `seccompprofile` resources
-that can be used directly by our pods.
+We can use the output stored in the trace to create the seccomp policy for our
+pod. But instead of copying it manually, we can also use the integration with
+the [Kubernetes Security Profiles Operator
+(SPO)](https://github.com/kubernetes-sigs/security-profiles-operator). Notice
+the seccomp gadget uses the seccomp profile API `v1beta1`, so at least SPO
+v0.4.0 is required. Check the [SPO
+documentation](https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/installation-usage.md#install-operator)
+for details about installation. Once the SPO is installed, the seccomp gadget
+can generate `seccompprofile` resources that can be used directly by our pods.
 
 We need to use the `--output-mode` (or simply `-m`) option to create the
 `SeccompProfile` resource instead of printing the policy in the terminal

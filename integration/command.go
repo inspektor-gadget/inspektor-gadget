@@ -90,9 +90,9 @@ var waitUntilInspektorGadgetPodsDeployed *command = &command{
 
 func deploySPO(limitReplicas, bestEffortResourceMgmt bool) *command {
 	cmdStr := fmt.Sprintf(`
-kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.7.2/cert-manager.yaml
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml
 kubectl --namespace cert-manager wait --for condition=ready pod -l app.kubernetes.io/instance=cert-manager
-curl https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.2/deploy/operator.yaml | \
+curl https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.3/deploy/operator.yaml | \
   if [ %v = true ] ; then
     sed 's/replicas: 3/replicas: 1/' | grep -v cpu:
   else
@@ -139,7 +139,7 @@ fi
 # At this point, the webhook and daemon were created, wait til they are ready.
 kubectl -n security-profiles-operator wait deploy security-profiles-operator-webhook --for condition=available || \
   (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
-kubectl rollout status -n security-profiles-operator ds spod --timeout=120s || \
+kubectl rollout status -n security-profiles-operator ds spod --timeout=180s || \
   (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
 `, limitReplicas, bestEffortResourceMgmt)
 	return &command{
@@ -166,8 +166,8 @@ var cleanupSPO *command = &command{
 	name: "RemoveSecurityProfilesOperator",
 	cmd: `
 	kubectl delete seccompprofile -n security-profiles-operator --all
-	kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.2/deploy/operator.yaml
-	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.7.2/cert-manager.yaml
+	kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.3/deploy/operator.yaml
+	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml
 	`,
 	cleanup: true,
 }
