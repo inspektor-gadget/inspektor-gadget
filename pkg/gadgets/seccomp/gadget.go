@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -60,6 +59,9 @@ type TraceSingleton struct {
 }
 
 var traceSingleton TraceSingleton
+
+// Must be equal to C.SYSCALLS_COUNT
+const syscallsCount = 500
 
 func NewFactory() gadgets.TraceFactory {
 	return &TraceFactory{
@@ -420,6 +422,31 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	trace.Status.State = "Started"
 }
 
+// mergeSyscallArrays merge two syscalls array into first argument.
+// After this function, the first argument will be the union of present
+// syscalls of each arrays.
+// For example, the merge result of:
+// syscalls: [syscallA] = 0, [syscallB] = 1, [syscallC] = 0, [syscallD] = 0
+// b:        [syscallA] = 1, [syscallB] = 0, [syscallC] = 1, [syscallD] = 0
+// result:   [syscallA] = 1, [syscallB] = 1, [syscallC] = 1, [syscallD] = 0
+func mergeSyscallArrays(syscalls []byte, b []byte) error {
+	if len(b) != len(syscalls) {
+		return fmt.Errorf("syscalls array lenghts mistmatch (%d != %d), it should be %d",
+			len(b), len(syscalls), syscallsCount,
+		)
+	}
+
+	for syscallNumber, isPresent := range b {
+		if isPresent != 1 {
+			continue
+		}
+
+		syscalls[syscallNumber] = isPresent
+	}
+
+	return nil
+}
+
 func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	if traceSingleton.tracer == nil {
 		log.Errorf("Seccomp tracer is nil")
@@ -440,6 +467,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	}
 
 	var mntns uint64
+	syscalls := make([]byte, syscallsCount)
 	var containerName string
 	if trace.Spec.Filter.ContainerName != "" {
 		mntns = t.resolver.LookupMntnsByContainer(
@@ -459,6 +487,9 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 			return
 		}
 		containerName = trace.Spec.Filter.ContainerName
+
+		// Get the list of syscalls from the BPF hash map
+		syscalls = traceSingleton.tracer.Peek(mntns)
 	} else {
 		mntnsMap := t.resolver.LookupMntnsByPod(
 			trace.Spec.Filter.Namespace,
@@ -475,37 +506,35 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 			return
 		}
 
-		containerList := []string{}
 		for k, v := range mntnsMap {
 			containerName = k
 			mntns = v
-			containerList = append(containerList, k)
-		}
-		sort.Strings(containerList)
 
-		if len(mntnsMap) > 1 {
-			trace.Status.OperationError = fmt.Sprintf("Pod %s/%s has several containers: %v",
-				trace.Spec.Filter.Namespace,
-				trace.Spec.Filter.Podname,
-				containerList,
-			)
-			return
-		}
-		if mntns == 0 {
-			trace.Status.OperationError = fmt.Sprintf("Pod %s/%s has unknown mntns",
-				trace.Spec.Filter.Namespace,
-				trace.Spec.Filter.Podname,
-			)
-			return
+			if mntns == 0 {
+				trace.Status.OperationError = fmt.Sprintf("Pod %s/%s has unknown mntns",
+					trace.Spec.Filter.Namespace,
+					trace.Spec.Filter.Podname,
+				)
+				return
+			}
+
+			// Get the list of syscalls from the BPF hash map
+			b := traceSingleton.tracer.Peek(mntns)
+			err := mergeSyscallArrays(syscalls, b)
+			if err != nil {
+				trace.Status.OperationError = fmt.Sprintf("Pod %s/%s: %v",
+					trace.Spec.Filter.Namespace,
+					trace.Spec.Filter.Podname,
+					err,
+				)
+				return
+			}
 		}
 	}
 
-	// Get the list of syscalls from the BPF hash map
-	b := traceSingleton.tracer.Peek(mntns)
-
 	switch trace.Spec.OutputMode {
 	case "Status":
-		policy := syscallArrToLinuxSeccomp(b)
+		policy := syscallArrToLinuxSeccomp(syscalls)
 		output, err := json.MarshalIndent(policy, "", "  ")
 		if err != nil {
 			trace.Status.OperationError = fmt.Sprintf("Failed to marshal seccomp policy: %s", err)
@@ -518,7 +547,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 
 		ownerReference := t.resolver.LookupOwnerReferenceByMntns(mntns)
 
-		r, err := generateSeccompPolicy(t.client, trace, b, trace.Spec.Filter.Podname, containerName, podName, ownerReference)
+		r, err := generateSeccompPolicy(t.client, trace, syscalls, trace.Spec.Filter.Podname, containerName, podName, ownerReference)
 		if err != nil {
 			trace.Status.OperationError = err.Error()
 			return
