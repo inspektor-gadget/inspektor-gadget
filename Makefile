@@ -168,6 +168,10 @@ integration-tests: kubectl-gadget
 generate-documentation:
 	go run -tags docs cmd/gen-doc/gen-doc.go -repo $(shell pwd)
 
+lint:
+	# This version number must be kept in sync with CI workflow lint one.
+	docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v1.46.2 golangci-lint run --fix
+
 # minikube
 LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 10
 .PHONY: minikube-install
