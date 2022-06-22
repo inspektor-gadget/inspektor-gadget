@@ -449,6 +449,8 @@ kind: Pod
 metadata:
   name: test-pod
   namespace: %s
+  labels:
+    run: test-pod
 spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0

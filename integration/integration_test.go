@@ -558,22 +558,38 @@ func TestMountsnoop(t *testing.T) {
 }
 
 func TestNetworkpolicy(t *testing.T) {
-	ns := generateTestNamespaceName("test-networkpolicy")
+	nsServer := generateTestNamespaceName("test-networkpolicy-server")
+	nsClient := generateTestNamespaceName("test-networkpolicy-client")
 
 	t.Parallel()
 
 	commands := []*command{
-		createTestNamespaceCommand(ns),
-		busyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://kubernetes.default.svc.cluster.local || true"),
-		waitUntilTestPodReadyCommand(ns),
+		createTestNamespaceCommand(nsServer),
+		busyboxPodRepeatCommand(nsServer, "nc -lk -p 9090 -e /bin/cat"),
 		{
-			name:           "RunNetworkPolicyMonitor",
-			cmd:            fmt.Sprintf("$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace.log & sleep 15; kill $!; head networktrace.log", ns),
-			expectedRegexp: fmt.Sprintf(`{"type":"normal","node":".*","namespace":"%s","pod":"test-pod","pkt_type":"OUTGOING","proto":"tcp","ip":".*","port":443,"remote_kind":"svc",.*"remote_svc_namespace":"default","remote_svc_name":"kubernetes"}`, ns),
+			name:           "CreateService",
+			cmd:            fmt.Sprintf("kubectl expose -n %s pod test-pod --port 9090", nsServer),
+			expectedRegexp: "service/test-pod exposed",
+		},
+		waitUntilTestPodReadyCommand(nsServer),
+		createTestNamespaceCommand(nsClient),
+		busyboxPodRepeatCommand(nsClient, fmt.Sprintf("echo ok | nc -w 1 test-pod.%s.svc.cluster.local 9090 || true", nsServer)),
+		waitUntilTestPodReadyCommand(nsClient),
+		{
+			name:           "RunNetworkPolicyMonitorClient",
+			cmd:            fmt.Sprintf("$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace-client.log & sleep 10; kill $!; head networktrace-client.log", nsClient),
+			expectedRegexp: fmt.Sprintf(`{"type":"normal","node":".*","namespace":"%s","pod":"test-pod","pkt_type":"OUTGOING","proto":"tcp","ip":".*","port":9090,"remote_kind":"svc",.*"remote_svc_namespace":"%s","remote_svc_name":"test-pod","remote_svc_label_selector":{"run":"test-pod"}}`, nsClient, nsServer),
 		},
 		{
-			name: "RunNetworkPolicyReport",
-			cmd:  "$KUBECTL_GADGET advise network-policy report --input ./networktrace.log",
+			name: "RunNetworkPolicyMonitorServer",
+			cmd:  fmt.Sprintf("$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace-server.log & sleep 10; kill $!; head networktrace-server.log", nsServer),
+			// Docker CNI does not preserve source IP :-(
+			// https://github.com/kubernetes/minikube/issues/11211
+			expectedRegexp: fmt.Sprintf(`{"type":"normal","node":".*","namespace":"%s","pod":"test-pod","pkt_type":"HOST","proto":"tcp","ip":".*","port":9090,"remote_kind":"svc",.*"remote_svc_namespace":"%s","remote_svc_name":"test-pod","remote_svc_label_selector":{"run":"test-pod"}}`, nsClient, nsServer),
+		},
+		{
+			name: "RunNetworkPolicyReportClient",
+			cmd:  "$KUBECTL_GADGET advise network-policy report --input ./networktrace-client.log",
 			expectedRegexp: fmt.Sprintf(`apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -583,13 +599,15 @@ metadata:
 spec:
   egress:
   - ports:
-    - port: 443
+    - port: 9090
       protocol: TCP
     to:
     - namespaceSelector:
         matchLabels:
-          kubernetes.io/metadata.name: default
-      podSelector: {}
+          kubernetes.io/metadata.name: %s
+      podSelector:
+        matchLabels:
+          run: test-pod
   - ports:
     - port: 53
       protocol: UDP
@@ -600,12 +618,43 @@ spec:
       podSelector:
         matchLabels:
           (k8s-app: kube-dns|dns.operator.openshift.io/daemonset-dns: default)
-  podSelector: {}
+  podSelector:
+    matchLabels:
+      run: test-pod
   policyTypes:
   - Ingress
-  - Egress`, ns),
+  - Egress`, nsClient, nsServer),
 		},
-		deleteTestNamespaceCommand(ns),
+		{
+			name: "RunNetworkPolicyReportServer",
+			cmd:  "$KUBECTL_GADGET advise network-policy report --input ./networktrace-server.log",
+			expectedRegexp: fmt.Sprintf(`apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: test-pod-network
+  namespace: %s
+spec:
+  ingress:
+  - ports:
+    - port: 9090
+      protocol: TCP
+    from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: %s
+      podSelector:
+        matchLabels:
+          run: test-pod
+  podSelector:
+    matchLabels:
+      run: test-pod
+  policyTypes:
+  - Ingress
+  - Egress`, nsServer, nsClient),
+		},
+		deleteTestNamespaceCommand(nsClient),
+		deleteTestNamespaceCommand(nsServer),
 	}
 
 	runCommands(commands, t)
