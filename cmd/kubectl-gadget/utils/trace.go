@@ -293,9 +293,11 @@ func CreateTrace(config *TraceConfig) (string, error) {
 				GlobalTraceID: traceID,
 				// Add all this information here to be able to find the trace thanks
 				// to them when calling getTraceListFromParameters().
-				"gadgetName":    config.GadgetName,
-				"nodeName":      config.CommonFlags.Node,
-				"namespace":     config.CommonFlags.Namespace,
+				"gadgetName": config.GadgetName,
+				"nodeName":   config.CommonFlags.Node,
+				// Kubernetes labels cannot contain ',' but can contain '_'
+				// Kubernetes names cannot contain either, so no need for more complicated escaping
+				"namespace":     strings.Replace(config.CommonFlags.Namespace, ",", "_", -1),
 				"podName":       config.CommonFlags.Podname,
 				"containerName": config.CommonFlags.Containername,
 				"outputMode":    config.TraceOutputMode,
@@ -741,7 +743,7 @@ func getTraceListFromParameters(config *TraceConfig) ([]gadgetv1alpha1.Trace, er
 	filter := map[string]string{
 		"gadgetName":    config.GadgetName,
 		"nodeName":      config.CommonFlags.Node,
-		"namespace":     config.CommonFlags.Namespace,
+		"namespace":     strings.Replace(config.CommonFlags.Namespace, ",", "_", -1),
 		"podName":       config.CommonFlags.Podname,
 		"containerName": config.CommonFlags.Containername,
 		"outputMode":    config.TraceOutputMode,
