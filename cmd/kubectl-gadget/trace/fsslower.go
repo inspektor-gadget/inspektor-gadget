@@ -29,171 +29,165 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	// flags
-	fsslowerMinLatency uint
-	fsslowerFilesystem string
-)
+func newFsSlowerCmd() *cobra.Command {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -16,
+		"container": -16,
+		"pid":       -7,
+		"comm":      -16,
+		"t":         -1,
+		"bytes":     -6,
+		"offset":    -7,
+		"lat":       -8,
+		"file":      -24,
+	}
 
-var validFsSlowerFilesystems = []string{"btrfs", "ext4", "nfs", "xfs"}
+	defaultColumns := []string{
+		"node",
+		"namespace",
+		"pod",
+		"container",
+		"pid",
+		"comm",
+		"t",
+		"bytes",
+		"offset",
+		"lat",
+		"file",
+	}
 
-var fsslowerCmd = &cobra.Command{
-	Use:   "fsslower",
-	Short: "Trace open, read, write and fsync operations slower than a threshold",
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if fsslowerFilesystem == "" {
-			return utils.WrapInErrMissingArgs("--filesystem / -f")
-		}
+	var (
+		// flags
+		fsslowerMinLatency uint
+		fsslowerFilesystem string
+	)
 
-		found := false
+	validFsSlowerFilesystems := []string{"btrfs", "ext4", "nfs", "xfs"}
 
-		for _, val := range validFsSlowerFilesystems {
-			if fsslowerFilesystem == val {
-				found = true
-				break
+	cmd := &cobra.Command{
+		Use:   "fsslower",
+		Short: "Trace open, read, write and fsync operations slower than a threshold",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if fsslowerFilesystem == "" {
+				return utils.WrapInErrMissingArgs("--filesystem / -f")
 			}
-		}
 
-		if !found {
-			return utils.WrapInErrInvalidArg("--filesystem / -f",
-				fmt.Errorf("%q is not a valid filesystem", fsslowerFilesystem))
-		}
+			found := false
+			for _, val := range validFsSlowerFilesystems {
+				if fsslowerFilesystem == val {
+					found = true
+					break
+				}
+			}
 
-		return nil
-	},
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomFsslowerColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-16s %-6s %1s %-6s %-7s %-8s %s\n",
-				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"COMM", "PID", "T", "BYTES", "OFFSET", "LAT(ms)", "FILE")
-		}
+			if !found {
+				return utils.WrapInErrInvalidArg("--filesystem / -f",
+					fmt.Errorf("%q is not a valid filesystem", fsslowerFilesystem))
+			}
 
-		config := &utils.TraceConfig{
-			GadgetName:       "fsslower",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-			Parameters: map[string]string{
-				"filesystem": fsslowerFilesystem,
-				"minlatency": strconv.FormatUint(uint64(fsslowerMinLatency), 10),
-			},
-		}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := &utils.TraceConfig{
+				GadgetName:       "fsslower",
+				Operation:        "start",
+				TraceOutputMode:  "Stream",
+				TraceOutputState: "Started",
+				CommonFlags:      &commonFlags,
+				Parameters: map[string]string{
+					"filesystem": fsslowerFilesystem,
+					"minlatency": strconv.FormatUint(uint64(fsslowerMinLatency), 10),
+				},
+			}
 
-		err := utils.RunTraceAndPrintStream(config, fsslowerTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
+			// print header
+			var requestedColumns []string
+			switch commonFlags.OutputMode {
+			case utils.OutputModeJSON:
+				// Nothing to print
+			case utils.OutputModeColumns:
+				requestedColumns = defaultColumns
+			case utils.OutputModeCustomColumns:
+				requestedColumns = commonFlags.CustomColumns
+			}
+			printColumnsHeader(columnsWidth, requestedColumns)
 
-		return nil
-	},
-}
+			transformEvent := func(line string) string {
+				var e types.Event
 
-func init() {
-	fsslowerCmd.Flags().UintVarP(
+				if err := json.Unmarshal([]byte(line), &e); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+					return ""
+				}
+
+				if e.Type != eventtypes.NORMAL {
+					utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
+					return ""
+				}
+
+				return fsslowerTransformLine(e, columnsWidth, requestedColumns)
+			}
+
+			if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {
+				return utils.WrapInErrRunGadget(err)
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().UintVarP(
 		&fsslowerMinLatency, "min", "m", types.MinLatencyDefault,
 		"Min latency to trace, in ms",
 	)
-	fsslowerCmd.Flags().StringVarP(
+	cmd.Flags().StringVarP(
 		&fsslowerFilesystem, "filesystem", "f", "",
 		fmt.Sprintf("Which filesystem to trace: [%s]", strings.Join(validFsSlowerFilesystems, ", ")),
 	)
 
-	TraceCmd.AddCommand(fsslowerCmd)
-	utils.AddCommonFlags(fsslowerCmd, &params)
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
 
-// fsslowerTransformLine is called to transform an event to columns
-// format according to the parameters
-func fsslowerTransformLine(line string) string {
+// fsslowerTransformLine is called to transform an event to columns format.
+func fsslowerTransformLine(event types.Event, columnsWidth map[string]int, requestedColumns []string) string {
 	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
-	}
-
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
 
 	// TODO: what to print in this case?
-	if e.Bytes == math.MaxInt64 {
-		e.Bytes = 0
+	if event.Bytes == math.MaxInt64 {
+		event.Bytes = 0
 	}
 
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %1s %-6d %-7d %-8.2f %s",
-			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Comm, e.Pid, e.Op, e.Bytes, e.Offset, float64(e.Latency)/1000.0, e.File))
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "t":
-				sb.WriteString(fmt.Sprintf("%1s", e.Op))
-			case "bytes":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Bytes))
-			case "offset":
-				sb.WriteString(fmt.Sprintf("%-7d", e.Offset))
-			case "lat":
-				sb.WriteString(fmt.Sprintf("%-8.2f", float64(e.Latency)/1000.0))
-			case "file":
-				sb.WriteString(fmt.Sprintf("%24s", e.File))
-			}
-			sb.WriteRune(' ')
-		}
-	}
-
-	return sb.String()
-}
-
-func getCustomFsslowerColsHeader(cols []string) string {
-	var sb strings.Builder
-
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Pid))
+		case "comm":
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Comm))
 		case "t":
-			sb.WriteString(fmt.Sprintf("%1s", "T"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Op))
 		case "bytes":
-			sb.WriteString(fmt.Sprintf("%-6s", "BYTES"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Bytes))
 		case "offset":
-			sb.WriteString(fmt.Sprintf("%-7s", "OFFSET"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Offset))
 		case "lat":
-			sb.WriteString(fmt.Sprintf("%-8s", "LAT(ms)"))
+			sb.WriteString(fmt.Sprintf("%*.2f", columnsWidth[col], float64(event.Latency)/1000.0))
 		case "file":
-			sb.WriteString(fmt.Sprintf("%24s", "FILE"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.File))
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 

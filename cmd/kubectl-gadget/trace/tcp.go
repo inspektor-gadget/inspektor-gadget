@@ -27,50 +27,98 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var tcptracerCmd = &cobra.Command{
-	Use:   "tcp",
-	Short: "Trace tcp connect, accept and close",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomTcptracerColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %s %-6s %-16s %-3s %-16s %-16s %-7s %-7s\n",
-				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"T", "PID", "COMM", "IP", "SADDR", "DADDR", "SPORT", "DPORT")
-		}
+func newTCPCmd() *cobra.Command {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -16,
+		"container": -16,
+		"t":         0,
+		"pid":       -7,
+		"comm":      -16,
+		"ip":        -3,
+		"saddr":     -16,
+		"daddr":     -16,
+		"sport":     -7,
+		"dport":     -7,
+	}
 
-		config := &utils.TraceConfig{
-			GadgetName:       "tcptracer",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
+	defaultColumns := []string{
+		"node",
+		"namespace",
+		"pod",
+		"container",
+		"t",
+		"pid",
+		"comm",
+		"ip",
+		"saddr",
+		"daddr",
+		"sport",
+		"dport",
+	}
 
-		err := utils.RunTraceAndPrintStream(config, tcptracerTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
+	cmd := &cobra.Command{
+		Use:   "tcp",
+		Short: "Trace tcp connect, accept and close",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := &utils.TraceConfig{
+				GadgetName:       "tcptracer",
+				Operation:        "start",
+				TraceOutputMode:  "Stream",
+				TraceOutputState: "Started",
+				CommonFlags:      &commonFlags,
+			}
 
-		return nil
-	},
-}
+			// print header
+			var requestedColumns []string
+			switch commonFlags.OutputMode {
+			case utils.OutputModeJSON:
+				// Nothing to print
+			case utils.OutputModeColumns:
+				requestedColumns = defaultColumns
+			case utils.OutputModeCustomColumns:
+				requestedColumns = commonFlags.CustomColumns
+			}
+			printColumnsHeader(columnsWidth, requestedColumns)
 
-func init() {
-	TraceCmd.AddCommand(tcptracerCmd)
-	utils.AddCommonFlags(tcptracerCmd, &params)
-}
+			transformEvent := func(line string) string {
+				var e types.Event
 
-var operations = map[string]string{
-	"accept":  "A",
-	"connect": "C",
-	"close":   "X",
-	"unknown": "U",
+				if err := json.Unmarshal([]byte(line), &e); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+					return ""
+				}
+
+				if e.Type != eventtypes.NORMAL {
+					utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
+					return ""
+				}
+
+				return tcpTransformEvent(e, columnsWidth, requestedColumns)
+			}
+
+			if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {
+				return utils.WrapInErrRunGadget(err)
+			}
+
+			return nil
+		},
+	}
+
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
 
 func getOperationShort(operation string) string {
+	operations := map[string]string{
+		"accept":  "A",
+		"connect": "C",
+		"close":   "X",
+		"unknown": "U",
+	}
+
 	if op, ok := operations[operation]; ok {
 		return op
 	}
@@ -78,93 +126,39 @@ func getOperationShort(operation string) string {
 	return "U"
 }
 
-// tcptracerTransformLine is called to transform an event to columns
-// format according to the parameters
-func tcptracerTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
-	}
-
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %s %-6d %-16s %-3d %-16s %-16s %-7d %-7d",
-			e.Node, e.Namespace, e.Pod, e.Container,
-			getOperationShort(e.Operation), e.Pid, e.Comm, e.IPVersion,
-			e.Saddr, e.Daddr, e.Sport, e.Dport))
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "t":
-				sb.WriteString(fmt.Sprintf("%s", getOperationShort(e.Operation)))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "ip":
-				sb.WriteString(fmt.Sprintf("%-3d", e.IPVersion))
-			case "saddr":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Saddr))
-			case "daddr":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Daddr))
-			case "sport":
-				sb.WriteString(fmt.Sprintf("%-7d", e.Sport))
-			case "dport":
-				sb.WriteString(fmt.Sprintf("%-7d", e.Dport))
-			}
-			sb.WriteRune(' ')
-		}
-	}
-
-	return sb.String()
-}
-
-func getCustomTcptracerColsHeader(cols []string) string {
+// tcpTransformEvent is called to transform an event to columns format.
+func tcpTransformEvent(event types.Event, columnsWidth map[string]int, requestedColumns []string) string {
 	var sb strings.Builder
 
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Container))
 		case "t":
-			sb.WriteString(fmt.Sprintf("%s", "T"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], getOperationShort(event.Operation)))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Pid))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Comm))
 		case "ip":
-			sb.WriteString(fmt.Sprintf("%-3s", "IP"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.IPVersion))
 		case "saddr":
-			sb.WriteString(fmt.Sprintf("%-16s", "SADDR"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Saddr))
 		case "daddr":
-			sb.WriteString(fmt.Sprintf("%-16s", "DADDR"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Daddr))
 		case "sport":
-			sb.WriteString(fmt.Sprintf("%-7s", "SPORT"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Sport))
 		case "dport":
-			sb.WriteString(fmt.Sprintf("%-7s", "DPORT"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Dport))
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 

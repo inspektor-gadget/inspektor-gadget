@@ -27,40 +27,98 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var mountsnoopCmd = &cobra.Command{
-	Use:   "mount",
-	Short: "Trace mount and umount system calls",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomMountsnoopColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-16s %-6s %-6s %-10s %s\n",
-				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"COMM", "PID", "TID", "MNT_NS", "CALL")
-		}
+func newMountCmd() *cobra.Command {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -16,
+		"container": -16,
+		"pid":       -7,
+		"tid":       -7,
+		"mnt_ns":    -11,
+		"comm":      -16,
+		"op":        -6,
+		"ret":       -4,
+		"lat":       -8,
+		"fs":        -16,
+		"src":       -16,
+		"target":    -16,
+		"data":      -16,
+		"call":      -16,
+		"flags":     0,
+	}
 
-		config := &utils.TraceConfig{
-			GadgetName:       "mountsnoop",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
+	defaultColumns := []string{
+		"node",
+		"namespace",
+		"pod",
+		"container",
+		"pid",
+		"tid",
+		"mnt_ns",
+		"comm",
+		"op",
+		"ret",
+		"lat",
+		"fs",
+		"src",
+		"target",
+		"data",
+		"call",
+		"flags",
+	}
 
-		err := utils.RunTraceAndPrintStream(config, mountsnoopTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
+	cmd := &cobra.Command{
+		Use:   "mount",
+		Short: "Trace mount and umount system calls",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := &utils.TraceConfig{
+				GadgetName:       "mountsnoop",
+				Operation:        "start",
+				TraceOutputMode:  "Stream",
+				TraceOutputState: "Started",
+				CommonFlags:      &commonFlags,
+			}
 
-		return nil
-	},
-}
+			// print header
+			var requestedColumns []string
+			switch commonFlags.OutputMode {
+			case utils.OutputModeJSON:
+				// Nothing to print
+			case utils.OutputModeColumns:
+				requestedColumns = defaultColumns
+			case utils.OutputModeCustomColumns:
+				requestedColumns = commonFlags.CustomColumns
+			}
+			printColumnsHeader(columnsWidth, requestedColumns)
 
-func init() {
-	TraceCmd.AddCommand(mountsnoopCmd)
-	utils.AddCommonFlags(mountsnoopCmd, &params)
+			transformEvent := func(line string) string {
+				var e types.Event
+
+				if err := json.Unmarshal([]byte(line), &e); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+					return ""
+				}
+
+				if e.Type != eventtypes.NORMAL {
+					utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
+					return ""
+				}
+
+				return mountsnoopTransformLine(e, columnsWidth, requestedColumns)
+			}
+
+			if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {
+				return utils.WrapInErrRunGadget(err)
+			}
+
+			return nil
+		},
+	}
+
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
 
 func getCall(e *types.Event) string {
@@ -77,112 +135,49 @@ func getCall(e *types.Event) string {
 	return ""
 }
 
-// mountsnoopTransformLine is called to transform an event to columns
-// format according to the parameters
-func mountsnoopTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
-	}
-
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-6d %-10d %s",
-			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Comm, e.Pid, e.Tid, e.MountNsID, getCall(&e)))
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "tid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Tid))
-			case "mnt_ns":
-				sb.WriteString(fmt.Sprintf("%-10d", e.MountNsID))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "op":
-				sb.WriteString(fmt.Sprintf("%-6s", e.Operation))
-			case "ret":
-				sb.WriteString(fmt.Sprintf("%-4d", e.Retval))
-			case "lat":
-				sb.WriteString(fmt.Sprintf("%-8d", e.Latency/1000))
-			case "fs":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Fs))
-			case "src":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Source))
-			case "target":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Target))
-			case "data":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Data))
-			case "flags":
-				sb.WriteString(fmt.Sprintf("%-16s", strings.Join(e.Flags, " | ")))
-			case "call":
-				sb.WriteString(fmt.Sprintf("%-16s", getCall(&e)))
-			}
-			sb.WriteRune(' ')
-		}
-	}
-
-	return sb.String()
-}
-
-func getCustomMountsnoopColsHeader(cols []string) string {
+// mountsnoopTransformLine is called to transform an event to columns format.
+func mountsnoopTransformLine(event types.Event, columnsWidth map[string]int, requestedColumns []string) string {
 	var sb strings.Builder
 
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Pid))
 		case "tid":
-			sb.WriteString(fmt.Sprintf("%-6s", "TID"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Tid))
 		case "mnt_ns":
-			sb.WriteString(fmt.Sprintf("%-10s", "MNT_NS"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.MountNsID))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Comm))
 		case "op":
-			sb.WriteString(fmt.Sprintf("%-6s", "OP"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Operation))
 		case "ret":
-			sb.WriteString(fmt.Sprintf("%-4s", "RET"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Retval))
 		case "lat":
-			sb.WriteString(fmt.Sprintf("%-8s", "LAT(us)"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Latency/1000))
 		case "fs":
-			sb.WriteString(fmt.Sprintf("%-16s", "FS"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Fs))
 		case "src":
-			sb.WriteString(fmt.Sprintf("%-16s", "SRC"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Source))
 		case "target":
-			sb.WriteString(fmt.Sprintf("%-16s", "TARGET"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Target))
 		case "data":
-			sb.WriteString(fmt.Sprintf("%-16s", "DATA"))
-		case "flags":
-			sb.WriteString(fmt.Sprintf("%-16s", "FLAGS"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Data))
 		case "call":
-			sb.WriteString(fmt.Sprintf("%-16s", "CALL"))
+			sb.WriteString(fmt.Sprintf("%-*s", columnsWidth[col], getCall(&event)))
+		case "flags":
+			sb.WriteString(fmt.Sprintf("%s", strings.Join(event.Flags, " | ")))
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 

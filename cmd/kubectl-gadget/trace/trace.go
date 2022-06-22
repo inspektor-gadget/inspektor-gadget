@@ -15,6 +15,9 @@
 package trace
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 
 	"github.com/spf13/cobra"
@@ -22,9 +25,43 @@ import (
 
 // All the gadgets within this package use this global variable, so let's
 // declare it here.
-var params utils.CommonFlags
+var commonFlags utils.CommonFlags
 
-var TraceCmd = &cobra.Command{
-	Use:   "trace",
-	Short: "Trace and print system events",
+func NewTraceCmd() *cobra.Command {
+	TraceCmd := &cobra.Command{
+		Use:   "trace",
+		Short: "Trace and print system events",
+	}
+
+	TraceCmd.AddCommand(newBindCmd())
+	TraceCmd.AddCommand(newCapabilitiesCmd())
+	TraceCmd.AddCommand(newDNSCmd())
+	TraceCmd.AddCommand(newExecCmd())
+	TraceCmd.AddCommand(newFsSlowerCmd())
+	TraceCmd.AddCommand(newMountCmd())
+	TraceCmd.AddCommand(newOOMKillCmd())
+	TraceCmd.AddCommand(newOpenCmd())
+	TraceCmd.AddCommand(newSignalCmd())
+	TraceCmd.AddCommand(newSNICmd())
+	TraceCmd.AddCommand(newTCPCmd())
+	TraceCmd.AddCommand(newTcpconnectCmd())
+
+	return TraceCmd
+}
+
+func printColumnsHeader(columnsWidth map[string]int, requestedCols []string) {
+	var sb strings.Builder
+
+	if len(requestedCols) == 0 {
+		return
+	}
+
+	for _, col := range requestedCols {
+		if width, ok := columnsWidth[col]; ok {
+			sb.WriteString(fmt.Sprintf("%*s", width, strings.ToUpper(col)))
+		}
+		sb.WriteRune(' ')
+	}
+
+	fmt.Println(sb.String())
 }

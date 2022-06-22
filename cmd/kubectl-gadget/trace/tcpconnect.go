@@ -27,120 +27,115 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var tcpconnectCmd = &cobra.Command{
-	Use:   "tcpconnect",
-	Short: "Trace connect system calls",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomTcpconnectColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-16s %-3s %-16s %-16s %-7s\n",
-				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"PID", "COMM", "IP", "SADDR", "DADDR", "DPORT")
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "tcpconnect",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
-
-		err := utils.RunTraceAndPrintStream(config, tcpconnectTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
-
-		return nil
-	},
-}
-
-func init() {
-	TraceCmd.AddCommand(tcpconnectCmd)
-	utils.AddCommonFlags(tcpconnectCmd, &params)
-}
-
-// tcpconnectTransformLine is called to transform an event to columns
-// format according to the parameters
-func tcpconnectTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
+func newTcpconnectCmd() *cobra.Command {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -16,
+		"container": -16,
+		"pid":       -7,
+		"comm":      -16,
+		"ip":        -3,
+		"saddr":     -16,
+		"daddr":     -16,
+		"dport":     -7,
 	}
 
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
+	defaultColumns := []string{
+		"node",
+		"namespace",
+		"pod",
+		"container",
+		"pid",
+		"comm",
+		"ip",
+		"saddr",
+		"daddr",
+		"dport",
 	}
 
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-16s %-3d %-16s %-16s %-7d",
-			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Pid, e.Comm, e.IPVersion, e.Saddr, e.Daddr, e.Dport))
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "ip":
-				sb.WriteString(fmt.Sprintf("%-3d", e.IPVersion))
-			case "saddr":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Saddr))
-			case "daddr":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Daddr))
-			case "dport":
-				sb.WriteString(fmt.Sprintf("%-7d", e.Dport))
+	cmd := &cobra.Command{
+		Use:   "tcpconnect",
+		Short: "Trace connect system calls",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := &utils.TraceConfig{
+				GadgetName:       "tcpconnect",
+				Operation:        "start",
+				TraceOutputMode:  "Stream",
+				TraceOutputState: "Started",
+				CommonFlags:      &commonFlags,
 			}
-			sb.WriteRune(' ')
-		}
+
+			// print header
+			var requestedColumns []string
+			switch commonFlags.OutputMode {
+			case utils.OutputModeJSON:
+				// Nothing to print
+			case utils.OutputModeColumns:
+				requestedColumns = defaultColumns
+			case utils.OutputModeCustomColumns:
+				requestedColumns = commonFlags.CustomColumns
+			}
+			printColumnsHeader(columnsWidth, requestedColumns)
+
+			transformEvent := func(line string) string {
+				var e types.Event
+
+				if err := json.Unmarshal([]byte(line), &e); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+					return ""
+				}
+
+				if e.Type != eventtypes.NORMAL {
+					utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
+					return ""
+				}
+
+				return tcpconnectTransformEvent(e, columnsWidth, requestedColumns)
+			}
+
+			if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {
+				return utils.WrapInErrRunGadget(err)
+			}
+
+			return nil
+		},
 	}
 
-	return sb.String()
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
 
-func getCustomTcpconnectColsHeader(cols []string) string {
+// tcpconnectTransformEvent is called to transform an event to columns format.
+func tcpconnectTransformEvent(event types.Event, columnsWidth map[string]int, requestedColumns []string) string {
 	var sb strings.Builder
 
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Pid))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Comm))
 		case "ip":
-			sb.WriteString(fmt.Sprintf("%-3s", "IP"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.IPVersion))
 		case "saddr":
-			sb.WriteString(fmt.Sprintf("%-16s", "SADDR"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Saddr))
 		case "daddr":
-			sb.WriteString(fmt.Sprintf("%-16s", "DADDR"))
+			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Daddr))
 		case "dport":
-			sb.WriteString(fmt.Sprintf("%-7s", "DPORT"))
+			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Dport))
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 
