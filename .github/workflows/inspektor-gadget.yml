@@ -415,8 +415,10 @@ jobs:
     - name: Setup Minikube
       uses: manusa/actions-setup-minikube@v2.4.3
       with:
-        minikube version: 'v1.25.2'
-        kubernetes version: 'v1.23.0'
+        minikube-version: 'v1.25.2'
+        kubernetes-version: 'v1.23.0'
+        container-runtime: containerd
+        cni: calico
         github token: ${{ secrets.GITHUB_TOKEN }}
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
