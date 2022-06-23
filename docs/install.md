@@ -9,7 +9,7 @@ description: >
 - [Installing kubectl gadget](#installing-kubectl-gadget)
   * [Using krew](#using-krew)
   * [Install a specific release](#install-a-specific-release)
-  * [Compile from the sources](#compile-from-the-sources)
+  * [Compile from source](#compile-from-source)
 - [Installing in the cluster](#installing-in-the-cluster)
   * [Quick installation](#quick-installation)
   * [Choosing the gadget image](#choosing-the-gadget-image)
