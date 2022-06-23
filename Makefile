@@ -176,16 +176,30 @@ lint:
 LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 10
 .PHONY: minikube-install
 minikube-install: gadget-default-container kubectl-gadget
+	@echo "Image on the host:"
+	docker image list --format "table {{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.Size}}" |grep $(CONTAINER_REPO):$(IMAGE_TAG)
+	@echo
 	# Unfortunately, minikube-cache and minikube-image have bugs in older
 	# versions. And new versions of minikube don't support all eBPF
-	# features. So we have to keep "docker-save|docker-load" for now.
-	docker save $(CONTAINER_REPO):$(IMAGE_TAG) $(PV) | (eval $(shell $(MINIKUBE) -p minikube docker-env | grep =) && docker load)
+	# features. So we have to keep "docker-save|docker-load" when
+	# available.
+	if $(MINIKUBE) docker-env >/dev/null 2>&1 ; then \
+		docker save $(CONTAINER_REPO):$(IMAGE_TAG) $(PV) | (eval $$($(MINIKUBE) -p minikube docker-env | grep =) && docker load) ; \
+	else \
+		$(MINIKUBE) image load $(CONTAINER_REPO):$(IMAGE_TAG) ; \
+	fi
+	@echo "Image in Minikube:"
+	$(MINIKUBE) image ls --format=table | grep "$(CONTAINER_REPO)\s*|\s*$(IMAGE_TAG)" || true
+	@echo
 	# Remove all resources created by Inspektor Gadget.
 	./kubectl-gadget undeploy || true
 	./kubectl-gadget deploy --hook-mode=auto \
 		--image-pull-policy=Never | \
 		sed 's/initialDelaySeconds: 10/initialDelaySeconds: '$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS)'/g' | \
 		kubectl apply -f -
+	kubectl rollout status daemonset -n gadget gadget --timeout 30s
+	@echo "Image used by the gadget pod:"
+	kubectl get pod -n gadget -o yaml|grep imageID:
 
 .PHONY: btfgen
 btfgen:
