@@ -95,6 +95,32 @@ func TestSelector(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "Several namespaces without match",
+			match:       false,
+			selector: &pb.ContainerSelector{
+				Namespace: "ns1,ns2,ns3",
+				Podname:   "this-pod",
+			},
+			container: &pb.ContainerDefinition{
+				Namespace: "this-namespace",
+				Podname:   "this-pod",
+				Name:      "this-container",
+			},
+		},
+		{
+			description: "Several namespaces with match",
+			match:       true,
+			selector: &pb.ContainerSelector{
+				Namespace: "ns1,ns2,ns3",
+				Podname:   "this-pod",
+			},
+			container: &pb.ContainerDefinition{
+				Namespace: "ns2",
+				Podname:   "this-pod",
+				Name:      "this-container",
+			},
+		},
 	}
 
 	for i, entry := range table {

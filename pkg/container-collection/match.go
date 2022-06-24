@@ -15,13 +15,17 @@
 package containercollection
 
 import (
+	"strings"
+
+	"golang.org/x/exp/slices"
+
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 // ContainerSelectorMatches tells if a container matches the criteria in a
 // container selector.
 func ContainerSelectorMatches(s *pb.ContainerSelector, c *pb.ContainerDefinition) bool {
-	if s.Namespace != "" && s.Namespace != c.Namespace {
+	if s.Namespace != "" && !slices.Contains(strings.Split(s.Namespace, ","), c.Namespace) {
 		return false
 	}
 	if s.Podname != "" && s.Podname != c.Podname {
