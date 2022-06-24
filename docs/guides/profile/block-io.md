@@ -122,6 +122,28 @@ was still lower than 1023us, we can observe that there were several I/O
 operations that suffered a high latency due to the load, one of them,
 even more than 1 sec.
 
+You can also use JSON as output for this gadget:
+
+```bash
+$ kubectl gadget profile block-io --node worker-node -o json > /tmp/output.json; jq < /tmp/output.json
+{
+  "val_type": "usecs",
+  "data": [
+    {
+      "count": 0,
+      "interval-start": 1,
+      "interval-end": 1
+    },
+    ...
+    {
+      "count": 0,
+      "interval-start": 4096,
+      "interval-end": 8191
+    }
+  ]
+}
+```
+
 Delete the demo test namespace:
 ```bash
 $ kubectl delete ns test-biolatency
