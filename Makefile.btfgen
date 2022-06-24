@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
+
+# disable builtin rules (avoid trying to run cc for .o files)
+MAKEFLAGS += --no-builtin-rules
+
+ifndef BTFHUB_ARCHIVE
+$(error BTFHUB_ARCHIVE is undefined)
+endif
+
+ifndef ARCH
+$(error ARCH is undefined)
+endif
+
+SOURCE_BTF_FILES = $(shell find $(BTFHUB_ARCHIVE)/ -iregex ".*$(subst x86,x86_64,$(ARCH)).*" -type f -name '*.btf.tar.xz')
+MIN_CORE_BTF_FILES = $(patsubst $(BTFHUB_ARCHIVE)/%.btf.tar.xz, $(OUTPUT)/%.btf, $(SOURCE_BTF_FILES))
+# TODO (filter by architecture too when implemented)
+BPF_O_FILES = $(shell find pkg/gadgets -type f -name '*.o')
+
+.PHONY: all
+all: $(MIN_CORE_BTF_FILES)
+
+ifeq ($(V),1)
+Q =
+msg =
+else
+Q = @
+msg = @printf '  %-8s %s%s\n' "$(1)" "$(notdir $(2))" "$(if $(3), $(3))";
+MAKEFLAGS += --no-print-directory
+endif
+
+$(BTFHUB_ARCHIVE)/%.btf: $(BTFHUB_ARCHIVE)/%.btf.tar.xz
+	$(call msg,UNTAR,$@)
+	$(Q)tar xvfJ $< -C "$(@D)" --touch > /dev/null
+
+$(MIN_CORE_BTF_FILES): $(BPF_O_FILES)
+
+$(OUTPUT)/%.btf: $(BTFHUB_ARCHIVE)/%.btf
+	$(call msg,BTFGEN,$@)
+	$(Q)mkdir -p "$(@D)"
+	$(Q)$(BPFTOOL) gen min_core_btf $< $@ $(BPF_O_FILES)
+
+# delete failed targets
+.DELETE_ON_ERROR:
+
+# keep intermediate (.skel.h, .bpf.o, etc) targets
+.SECONDARY:

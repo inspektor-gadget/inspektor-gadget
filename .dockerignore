@@ -5,5 +5,5 @@
 !gadget-container
 !pkg
 !tools
-!Makefile
+!Makefile*
 !*.mk
