@@ -213,7 +213,7 @@ func main() {
 	fmt.Printf(`{"type":"ready"}` + "\n")
 
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, os.Kill)
+	signal.Notify(sig, os.Interrupt)
 
 	<-sig
 
