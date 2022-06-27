@@ -36,3 +36,7 @@ func Base(ev eventtypes.Event) Event {
 		Event: ev,
 	}
 }
+
+func (e Event) GetBaseEvent() eventtypes.Event {
+	return e.Event
+}

@@ -15,108 +15,89 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
 
-func newDNSCmd() *cobra.Command {
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -16,
-		"type":      -9,
-		"qtype":     -10,
-		"name":      -24,
-	}
+type DNSParser struct {
+	BaseTraceParser
+}
 
-	defaultColumns := []string{
-		"node",
-		"namespace",
-		"pod",
-		"type",
-		"qtype",
-		"name",
+func newDNSCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"type",
+				"qtype",
+				"name",
+			},
+		},
 	}
 
 	cmd := &cobra.Command{
 		Use:   "dns",
 		Short: "Trace DNS requests",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			config := &utils.TraceConfig{
-				GadgetName:       "dns",
-				Operation:        "start",
-				TraceOutputMode:  "Stream",
-				TraceOutputState: "Started",
-				CommonFlags:      &commonFlags,
+			dnsGadget := &TraceGadget[types.Event]{
+				name:        "dns",
+				commonFlags: commonFlags,
+				parser:      NewDNSParser(&commonFlags.OutputConfig),
 			}
 
-			// print header
-			var requestedColumns []string
-			switch commonFlags.OutputMode {
-			case utils.OutputModeJSON:
-				// Nothing to print
-			case utils.OutputModeColumns:
-				requestedColumns = defaultColumns
-			case utils.OutputModeCustomColumns:
-				requestedColumns = commonFlags.CustomColumns
-			}
-			printColumnsHeader(columnsWidth, requestedColumns)
-
-			transformEvent := func(line string) string {
-				var e types.Event
-
-				if err := json.Unmarshal([]byte(line), &e); err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-					return ""
-				}
-
-				if e.Type != eventtypes.NORMAL {
-					utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
-					return ""
-				}
-
-				return dnsTransformEvent(e, columnsWidth, requestedColumns)
-			}
-
-			if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {
-				return utils.WrapInErrRunGadget(err)
-			}
-
-			return nil
+			return dnsGadget.Run()
 		},
 	}
 
-	utils.AddCommonFlags(cmd, &commonFlags)
+	utils.AddCommonFlags(cmd, commonFlags)
 
 	return cmd
 }
 
-// dnsTransformEvent is called to transform an event to columns format.
-func dnsTransformEvent(event types.Event, columnsWidth map[string]int, requestedColumns []string) string {
+func NewDNSParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"type":      -9,
+		"qtype":     -10,
+		"name":      -24,
+	}
+
+	return &DNSParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
+	}
+}
+
+func (p *DNSParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "type":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.PktType))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.PktType))
 		case "qtype":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.QType))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.QType))
 		case "name":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.DNSName))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.DNSName))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

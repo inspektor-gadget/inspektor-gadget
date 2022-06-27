@@ -15,47 +15,40 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/fsslower/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
 
-func newFsSlowerCmd() *cobra.Command {
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -16,
-		"container": -16,
-		"pid":       -7,
-		"comm":      -16,
-		"t":         -1,
-		"bytes":     -6,
-		"offset":    -7,
-		"lat":       -8,
-		"file":      -24,
-	}
+type FsslowerParser struct {
+	BaseTraceParser
+}
 
-	defaultColumns := []string{
-		"node",
-		"namespace",
-		"pod",
-		"container",
-		"pid",
-		"comm",
-		"t",
-		"bytes",
-		"offset",
-		"lat",
-		"file",
+func newFsSlowerCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"t",
+				"bytes",
+				"offset",
+				"lat",
+				"file",
+			},
+		},
 	}
 
 	var (
@@ -90,51 +83,17 @@ func newFsSlowerCmd() *cobra.Command {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			config := &utils.TraceConfig{
-				GadgetName:       "fsslower",
-				Operation:        "start",
-				TraceOutputMode:  "Stream",
-				TraceOutputState: "Started",
-				CommonFlags:      &commonFlags,
-				Parameters: map[string]string{
+			fsslowerGadget := &TraceGadget[types.Event]{
+				name:        "fsslower",
+				commonFlags: commonFlags,
+				parser:      NewFsslowerParser(&commonFlags.OutputConfig),
+				params: map[string]string{
 					"filesystem": fsslowerFilesystem,
 					"minlatency": strconv.FormatUint(uint64(fsslowerMinLatency), 10),
 				},
 			}
 
-			// print header
-			var requestedColumns []string
-			switch commonFlags.OutputMode {
-			case utils.OutputModeJSON:
-				// Nothing to print
-			case utils.OutputModeColumns:
-				requestedColumns = defaultColumns
-			case utils.OutputModeCustomColumns:
-				requestedColumns = commonFlags.CustomColumns
-			}
-			printColumnsHeader(columnsWidth, requestedColumns)
-
-			transformEvent := func(line string) string {
-				var e types.Event
-
-				if err := json.Unmarshal([]byte(line), &e); err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-					return ""
-				}
-
-				if e.Type != eventtypes.NORMAL {
-					utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
-					return ""
-				}
-
-				return fsslowerTransformLine(e, columnsWidth, requestedColumns)
-			}
-
-			if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {
-				return utils.WrapInErrRunGadget(err)
-			}
-
-			return nil
+			return fsslowerGadget.Run()
 		},
 	}
 
@@ -147,13 +106,35 @@ func newFsSlowerCmd() *cobra.Command {
 		fmt.Sprintf("Which filesystem to trace: [%s]", strings.Join(validFsSlowerFilesystems, ", ")),
 	)
 
-	utils.AddCommonFlags(cmd, &commonFlags)
+	utils.AddCommonFlags(cmd, commonFlags)
 
 	return cmd
 }
 
-// fsslowerTransformLine is called to transform an event to columns format.
-func fsslowerTransformLine(event types.Event, columnsWidth map[string]int, requestedColumns []string) string {
+func NewFsslowerParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"comm":      -16,
+		"t":         -1,
+		"bytes":     -6,
+		"offset":    -7,
+		"lat":       -8,
+		"file":      -24,
+	}
+
+	return &FsslowerParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
+	}
+}
+
+func (p *FsslowerParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
 	// TODO: what to print in this case?
@@ -164,27 +145,27 @@ func fsslowerTransformLine(event types.Event, columnsWidth map[string]int, reque
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Pid))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Comm))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
 		case "t":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Op))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Op))
 		case "bytes":
-			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Bytes))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Bytes))
 		case "offset":
-			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Offset))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Offset))
 		case "lat":
-			sb.WriteString(fmt.Sprintf("%*.2f", columnsWidth[col], float64(event.Latency)/1000.0))
+			sb.WriteString(fmt.Sprintf("%*.2f", p.columnsWidth[col], float64(event.Latency)/1000.0))
 		case "file":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.File))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.File))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

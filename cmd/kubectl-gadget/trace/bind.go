@@ -15,48 +15,42 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	"github.com/spf13/cobra"
 )
 
-func newBindCmd() *cobra.Command {
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -16,
-		"container": -16,
-		"pid":       -7,
-		"comm":      -16,
-		"proto":     -6,
-		"addr":      -16,
-		"port":      -7,
-		"opts":      -7,
-		"if":        7,
-	}
+type BindParser struct {
+	BaseTraceParser
+}
 
-	defaultColumns := []string{
-		"node",
-		"namespace",
-		"pod",
-		"container",
-		"pid",
-		"comm",
-		"proto",
-		"addr",
-		"port",
-		"opts",
-		"if",
+func newBindCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"proto",
+				"addr",
+				"port",
+				"opts",
+				"if",
+			},
+		},
 	}
 
 	var (
+		// flags
 		targetPid    uint
 		targetPorts  []uint
 		ignoreErrors bool
@@ -71,52 +65,18 @@ func newBindCmd() *cobra.Command {
 				portsStringSlice = append(portsStringSlice, strconv.FormatUint(uint64(port), 10))
 			}
 
-			config := &utils.TraceConfig{
-				GadgetName:       "bindsnoop",
-				Operation:        "start",
-				TraceOutputMode:  "Stream",
-				TraceOutputState: "Started",
-				CommonFlags:      &commonFlags,
-				Parameters: map[string]string{
+			bindGadget := &TraceGadget[types.Event]{
+				name:        "bindsnoop",
+				commonFlags: commonFlags,
+				parser:      NewBindParser(&commonFlags.OutputConfig),
+				params: map[string]string{
 					"pid":           strconv.FormatUint(uint64(targetPid), 10),
 					"ports":         strings.Join(portsStringSlice, ","),
 					"ignore_errors": strconv.FormatBool(ignoreErrors),
 				},
 			}
 
-			// print header
-			var requestedColumns []string
-			switch commonFlags.OutputMode {
-			case utils.OutputModeJSON:
-				// Nothing to print
-			case utils.OutputModeColumns:
-				requestedColumns = defaultColumns
-			case utils.OutputModeCustomColumns:
-				requestedColumns = commonFlags.CustomColumns
-			}
-			printColumnsHeader(columnsWidth, requestedColumns)
-
-			transformEvent := func(line string) string {
-				var e types.Event
-
-				if err := json.Unmarshal([]byte(line), &e); err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-					return ""
-				}
-
-				if e.Type != eventtypes.NORMAL {
-					utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
-					return ""
-				}
-
-				return bindsnoopTransformEvent(e, columnsWidth, requestedColumns)
-			}
-
-			if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {
-				return utils.WrapInErrRunGadget(err)
-			}
-
-			return nil
+			return bindGadget.Run()
 		},
 	}
 
@@ -142,39 +102,61 @@ func newBindCmd() *cobra.Command {
 		"Show only events where the bind succeeded",
 	)
 
-	utils.AddCommonFlags(cmd, &commonFlags)
+	utils.AddCommonFlags(cmd, commonFlags)
 
 	return cmd
 }
 
-// tcpconnectTransformEvent is called to transform an event to columns format.
-func bindsnoopTransformEvent(event types.Event, columnsWidth map[string]int, requestedColumns []string) string {
+func NewBindParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"comm":      -16,
+		"proto":     -6,
+		"addr":      -16,
+		"port":      -7,
+		"opts":      -7,
+		"if":        -7,
+	}
+
+	return &BindParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
+	}
+}
+
+func (p *BindParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Pid))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Comm))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
 		case "proto":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Protocol))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Protocol))
 		case "addr":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Addr))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Addr))
 		case "port":
-			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Port))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Port))
 		case "opts":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Options))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Options))
 		case "if":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Interface))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Interface))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

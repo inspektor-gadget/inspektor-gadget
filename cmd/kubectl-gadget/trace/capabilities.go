@@ -15,23 +15,63 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
 
+type CapabilitiesParser struct {
+	BaseTraceParser
+}
+
 func newCapabilitiesCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"uid",
+				"cap",
+				"name",
+				"audit",
+			},
+		},
+	}
+
+	cmd := &cobra.Command{
+		Use:   "capabilities",
+		Short: "Trace security capability checks",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			capabilitiesGadget := &TraceGadget[types.Event]{
+				name:        "capabilities",
+				commonFlags: commonFlags,
+				parser:      NewCapabilitiesParser(&commonFlags.OutputConfig),
+			}
+
+			return capabilitiesGadget.Run()
+		},
+	}
+
+	utils.AddCommonFlags(cmd, commonFlags)
+
+	return cmd
+}
+
+func NewCapabilitiesParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
 	columnsWidth := map[string]int{
 		"node":      -16,
 		"namespace": -16,
-		"pod":       -16,
+		"pod":       -30,
 		"container": -16,
 		"pid":       -7,
 		"uid":       -7,
@@ -41,98 +81,39 @@ func newCapabilitiesCmd() *cobra.Command {
 		"audit":     -6,
 	}
 
-	defaultColumns := []string{
-		"node",
-		"namespace",
-		"pod",
-		"container",
-		"pid",
-		"uid",
-		"comm",
-		"cap",
-		"name",
-		"audit",
-	}
-
-	cmd := &cobra.Command{
-		Use:   "capabilities",
-		Short: "Trace security capability checks",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			config := &utils.TraceConfig{
-				GadgetName:       "capabilities",
-				Operation:        "start",
-				TraceOutputMode:  "Stream",
-				TraceOutputState: "Started",
-				CommonFlags:      &commonFlags,
-			}
-
-			// print header
-			var requestedColumns []string
-			switch commonFlags.OutputMode {
-			case utils.OutputModeJSON:
-				// Nothing to print
-			case utils.OutputModeColumns:
-				requestedColumns = defaultColumns
-			case utils.OutputModeCustomColumns:
-				requestedColumns = commonFlags.CustomColumns
-			}
-			printColumnsHeader(columnsWidth, requestedColumns)
-
-			transformEvent := func(line string) string {
-				var e types.Event
-
-				if err := json.Unmarshal([]byte(line), &e); err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-					return ""
-				}
-
-				if e.Type != eventtypes.NORMAL {
-					utils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
-					return ""
-				}
-
-				return capabilitiesTransformEvent(e, columnsWidth, requestedColumns)
-			}
-
-			if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {
-				return utils.WrapInErrRunGadget(err)
-			}
-
-			return nil
+	return &CapabilitiesParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
 		},
 	}
-
-	utils.AddCommonFlags(cmd, &commonFlags)
-
-	return cmd
 }
 
-// capabilitiesTransformEvent is called to transform an event to columns format.
-func capabilitiesTransformEvent(event types.Event, columnsWidth map[string]int, requestedColumns []string) string {
+func (p *CapabilitiesParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Pid))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
 		case "uid":
-			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.UID))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.UID))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.Comm))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
 		case "cap":
-			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Cap))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Cap))
 		case "name":
-			sb.WriteString(fmt.Sprintf("%*s", columnsWidth[col], event.CapName))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.CapName))
 		case "audit":
-			sb.WriteString(fmt.Sprintf("%*d", columnsWidth[col], event.Audit))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Audit))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.
