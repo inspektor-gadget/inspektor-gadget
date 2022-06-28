@@ -189,8 +189,8 @@ spec:
       containers:
       - name: gadget
         terminationMessagePolicy: FallbackToLogsOnError
-        image: {{.Image}}
-        imagePullPolicy: {{.ImagePullPolicy}}
+        image: "{{.Image}}"
+        imagePullPolicy: "{{.ImagePullPolicy}}"
         command: [ "/entrypoint.sh" ]
         lifecycle:
           preStop:
@@ -228,9 +228,9 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: GADGET_IMAGE
-            value: {{.Image}}
+            value: "{{.Image}}"
           - name: INSPEKTOR_GADGET_VERSION
-            value: {{.Version}}
+            value: "{{.Version}}"
           - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE
             value: "{{.HookMode}}"
           - name: INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
