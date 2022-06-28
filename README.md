@@ -46,7 +46,6 @@ Use [krew](https://sigs.k8s.io/krew) plugin manager to install:
 
 ```bash
 $ kubectl krew install gadget
-$ kubectl gadget --help
 ```
 
 Install Inspektor Gadget on Kubernetes:

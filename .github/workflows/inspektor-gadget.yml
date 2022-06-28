@@ -370,6 +370,25 @@ jobs:
             echo "::set-output name=aro::false"
           fi
 
+  check-readme-up-to-date:
+    name: Check that README is up to date
+    # level: 1
+    needs: build-kubectl-gadget
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
+      uses: actions/download-artifact@v2
+      with:
+        name: kubectl-gadget-linux-amd64-tar-gz
+        path: /home/runner/work/inspektor-gadget/
+    - name: Check that README is up to date
+      shell: bash
+      run: |
+        tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
+
+        perl tools/check-readme.pl ./kubectl-gadget README.md
+
   # Integration tests for ARO are separated from others distributions because it
   # is a pre-created cluster. It implies that we need to use a concurrency group
   # to ensure that only one test-integration-aro job runs at a time so that we
@@ -431,7 +450,7 @@ jobs:
   release:
     name: Release
     # level: 2
-    needs: [documentation-checks, lint, test-integration, test-integration-aro, test-local-gadget]
+    needs: [documentation-checks, lint, test-integration, test-integration-aro, test-local-gadget, check-readme-up-to-date]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
