@@ -22,7 +22,7 @@ package tracer
 // #include <arpa/inet.h>
 // #include <stdlib.h>
 //
-//char *addr_str(const void *addr, __u32 af) {
+//static char *addr_str(const void *addr, __u32 af) {
 //	size_t size = af == AF_INET ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN;
 //	char *str;
 //
@@ -35,7 +35,7 @@ package tracer
 //	return str;
 //}
 //
-//char *get_src_addr(const struct event *ev) {
+//static char *get_src_addr(const struct event *ev) {
 //	if (ev->af == AF_INET)
 //		return addr_str(&ev->saddr_v4, ev->af);
 //	else if (ev->af == AF_INET6)
@@ -44,7 +44,7 @@ package tracer
 //		return NULL;
 //}
 //
-//char *get_dst_addr(const struct event *ev) {
+//static char *get_dst_addr(const struct event *ev) {
 //	if (ev->af == AF_INET)
 //		return addr_str(&ev->daddr_v4, ev->af);
 //	else if (ev->af == AF_INET6)
