@@ -113,14 +113,6 @@ func (t *Tracer) Stop() (string, error) {
 	return string(output), err
 }
 
-// isKernelVersionHigherOrEqualTo check than version a is higher or equal to b.
-func isKernelVersionHigherOrEqualTo(a, b *kernel.VersionInfo) bool {
-	return (a.Kernel > b.Kernel) ||
-		(a.Kernel == b.Kernel && a.Major > b.Major) ||
-		(a.Kernel == b.Kernel && a.Major == b.Major && a.Minor > b.Minor) ||
-		(a.Kernel == b.Kernel && a.Major == b.Major && a.Minor == b.Minor)
-}
-
 func (t *Tracer) start() error {
 	var spec *ebpf.CollectionSpec
 
@@ -129,7 +121,7 @@ func (t *Tracer) start() error {
 		return err
 	}
 
-	if kernel.CompareKernelVersion(*version, kernel.VersionInfo{ Kernel: 5, Major: 11, Minor: 0 }) == -1 {
+	if kernel.CompareKernelVersion(*version, kernel.VersionInfo{Kernel: 5, Major: 11, Minor: 0}) == -1 {
 		spec, err = loadBiolatencyBefore()
 	} else {
 		spec, err = loadBiolatency()
