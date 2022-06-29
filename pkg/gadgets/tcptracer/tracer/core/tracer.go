@@ -1,7 +1,7 @@
 //go:build linux
 // +build linux
 
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 package tracer
 
 // #include <linux/types.h>
-// #include "./bpf/tcpconnect.h"
+// #include "./bpf/tcptracer.h"
 // #include <arpa/inet.h>
 // #include <stdlib.h>
 //
@@ -65,12 +65,12 @@ import (
 	"github.com/cilium/ebpf/perf"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang tcpconnect ./bpf/tcpconnect.bpf.c -- -I./bpf/ -I../../../../
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang -no-global-types tcptracer ./bpf/tcptracer.bpf.c -- -I./bpf/ -I../../../../
 
 type Tracer struct {
 	config        *tracer.Config
@@ -78,22 +78,27 @@ type Tracer struct {
 	eventCallback func(types.Event)
 	node          string
 
-	objs        tcpconnectObjects
-	v4EnterLink link.Link
-	v4ExitLink  link.Link
-	v6EnterLink link.Link
-	v6ExitLink  link.Link
-	reader      *perf.Reader
+	objs tcptracerObjects
+
+	tcpv4connectEnterLink link.Link
+	tcpv4connectExitLink  link.Link
+	tcpv6connectEnterLink link.Link
+	tcpv6connectExitLink  link.Link
+	tcpCloseEnterLink     link.Link
+	tcpSetStateEnterLink  link.Link
+	inetCskAcceptExitLink link.Link
+
+	reader *perf.Reader
 }
 
 func NewTracer(config *tracer.Config, resolver containercollection.ContainerResolver,
-	eventCallback func(types.Event), node string,
-) (*Tracer, error) {
-	t := &Tracer{config: config}
-
-	t.resolver = resolver
-	t.eventCallback = eventCallback
-	t.node = node
+	eventCallback func(types.Event), node string) (*Tracer, error) {
+	t := &Tracer{
+		config:        config,
+		resolver:      resolver,
+		eventCallback: eventCallback,
+		node:          node,
+	}
 
 	if err := t.start(); err != nil {
 		t.Stop()
@@ -104,17 +109,24 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 }
 
 func (t *Tracer) Stop() {
-	t.v4EnterLink = gadgets.CloseLink(t.v4EnterLink)
-	t.v4ExitLink = gadgets.CloseLink(t.v4ExitLink)
-	t.v6EnterLink = gadgets.CloseLink(t.v6EnterLink)
-	t.v6ExitLink = gadgets.CloseLink(t.v6ExitLink)
+	t.tcpv4connectEnterLink = gadgets.CloseLink(t.tcpv4connectEnterLink)
+	t.tcpv4connectExitLink = gadgets.CloseLink(t.tcpv4connectExitLink)
+	t.tcpv6connectEnterLink = gadgets.CloseLink(t.tcpv6connectEnterLink)
+	t.tcpv6connectExitLink = gadgets.CloseLink(t.tcpv6connectExitLink)
+	t.tcpCloseEnterLink = gadgets.CloseLink(t.tcpCloseEnterLink)
+	t.tcpSetStateEnterLink = gadgets.CloseLink(t.tcpSetStateEnterLink)
+	t.inetCskAcceptExitLink = gadgets.CloseLink(t.inetCskAcceptExitLink)
+
+	if t.reader != nil {
+		t.reader.Close()
+		t.reader = nil
+	}
 
 	t.objs.Close()
 }
 
 func (t *Tracer) start() error {
-	var err error
-	spec, err := loadTcpconnect()
+	spec, err := loadTcptracer()
 	if err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
@@ -143,27 +155,43 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	t.v4EnterLink, err = link.Kprobe("tcp_v4_connect", t.objs.TcpV4Connect, nil)
+	t.tcpv4connectEnterLink, err = link.Kprobe("tcp_v4_connect", t.objs.TcpV4Connect, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.v4ExitLink, err = link.Kretprobe("tcp_v4_connect", t.objs.TcpV4ConnectRet, nil)
+	t.tcpv4connectExitLink, err = link.Kretprobe("tcp_v4_connect", t.objs.TcpV4ConnectRet, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.v6EnterLink, err = link.Kprobe("tcp_v6_connect", t.objs.TcpV6Connect, nil)
+	t.tcpv6connectEnterLink, err = link.Kprobe("tcp_v6_connect", t.objs.TcpV6Connect, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.v6ExitLink, err = link.Kretprobe("tcp_v6_connect", t.objs.TcpV6ConnectRet, nil)
+	t.tcpv6connectExitLink, err = link.Kretprobe("tcp_v6_connect", t.objs.TcpV6ConnectRet, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	reader, err := perf.NewReader(t.objs.tcpconnectMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
+	// TODO: rename function in ebpf program
+	t.tcpCloseEnterLink, err = link.Kprobe("tcp_close", t.objs.EntryTraceClose, nil)
+	if err != nil {
+		return fmt.Errorf("error opening kprobe: %w", err)
+	}
+
+	t.tcpSetStateEnterLink, err = link.Kprobe("tcp_set_state", t.objs.EnterTcpSetState, nil)
+	if err != nil {
+		return fmt.Errorf("error opening kprobe: %w", err)
+	}
+
+	t.inetCskAcceptExitLink, err = link.Kretprobe("inet_csk_accept", t.objs.ExitInetCskAccept, nil)
+	if err != nil {
+		return fmt.Errorf("error opening kprobe: %w", err)
+	}
+
+	reader, err := perf.NewReader(t.objs.tcptracerMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
@@ -203,15 +231,23 @@ func (t *Tracer) run() {
 			},
 			MountNsID: uint64(eventC.mntns_id),
 			Pid:       uint32(eventC.pid),
-			UID:       uint32(eventC.uid),
 			Comm:      C.GoString(&eventC.task[0]),
 			Dport:     uint16(C.htons(eventC.dport)),
+			Sport:     uint16(C.htons(eventC.sport)),
 		}
 
 		if eventC.af == C.AF_INET {
 			event.IPVersion = 4
 		} else if eventC.af == C.AF_INET6 {
 			event.IPVersion = 6
+		}
+
+		if eventC._type == C.TCP_EVENT_TYPE_CONNECT {
+			event.Operation = "connect"
+		} else if eventC._type == C.TCP_EVENT_TYPE_ACCEPT {
+			event.Operation = "accept"
+		} else if eventC._type == C.TCP_EVENT_TYPE_CLOSE {
+			event.Operation = "close"
 		}
 
 		srcAddr := C.get_src_addr(eventC)
