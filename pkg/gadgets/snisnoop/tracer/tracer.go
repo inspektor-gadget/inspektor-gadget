@@ -32,7 +32,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate sh -c "echo $CLANG_OS_FLAGS; GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/ -target bpf -D__TARGET_ARCH_x86"
+//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/"
 
 // #include "bpf/snisnoop.h"
 import "C"

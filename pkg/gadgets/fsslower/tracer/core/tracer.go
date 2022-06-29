@@ -37,7 +37,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang fsslower ./bpf/fsslower.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target amd64 -cc clang fsslower ./bpf/fsslower.bpf.c -- -I./bpf/ -I../../../../
 
 type Tracer struct {
 	config        *tracer.Config

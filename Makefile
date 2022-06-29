@@ -68,7 +68,6 @@ local-gadget-%: phony_explicit
 	if [ "$(shell go env GOOS)" = "$${GOOS}" -a "$(shell go env GOARCH)" = "$${GOARCH}" ] ; then \
 		export CGO_ENABLED=1 && \
 		export GO111MODULE=on && \
-		make -C gadget-container ebpf-objects && \
 		go build \
 			-tags withebpf \
 			-ldflags "-X main.version=$(VERSION)" \
@@ -149,7 +148,6 @@ controller-tests: kube-apiserver etcd kubectl
 
 .PHONY: local-gadget-tests
 local-gadget-tests:
-	make -C gadget-container ebpf-objects
 	# Compile and execute in separate commands because Go might not be
 	# available in the root environment
 	go test -c ./pkg/local-gadget-manager \
