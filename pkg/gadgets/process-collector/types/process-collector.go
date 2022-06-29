@@ -25,3 +25,7 @@ type Event struct {
 	Command   string `json:"comm"`
 	MountNsID uint64 `json:"mntns"`
 }
+
+func (e Event) GetBaseEvent() eventtypes.Event {
+	return e.Event
+}
