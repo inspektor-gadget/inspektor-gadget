@@ -42,7 +42,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:generate sh -c "GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH) go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang profile ./bpf/profile.bpf.c -- -I./bpf/ -I../../../../ -target bpf -D__TARGET_ARCH_x86"
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang profile ./bpf/profile.bpf.c -- -I./bpf/ -I../../../../
 
 type Tracer struct {
 	resolver gadgets.Resolver
