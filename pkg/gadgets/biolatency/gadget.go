@@ -15,20 +15,22 @@
 package biolatency
 
 import (
-	"bytes"
 	"fmt"
-	"os/exec"
-	"syscall"
+
+	log "github.com/sirupsen/logrus"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/tracer"
+	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/tracer/core"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/tracer/standard"
 )
 
 type Trace struct {
+	resolver gadgets.Resolver
+
 	started bool
-	cmd     *exec.Cmd
-	stdout  bytes.Buffer
-	stderr  bytes.Buffer
+	tracer  tracer.Tracer
 }
 
 type TraceFactory struct {
@@ -55,9 +57,8 @@ func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 
 func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
-	if trace.started {
-		trace.cmd.Process.Kill()
-		trace.cmd.Wait()
+	if trace.tracer != nil && trace.started {
+		trace.tracer.Stop()
 	}
 }
 
@@ -93,15 +94,20 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	t.cmd = exec.Command("/usr/share/bcc/tools/biolatency")
-	t.stdout.Reset()
-	t.stderr.Reset()
-	t.cmd.Stdout = &t.stdout
-	t.cmd.Stderr = &t.stderr
-	err := t.cmd.Start()
+	var err error
+	t.tracer, err = coretracer.NewTracer(trace.Spec.Node)
 	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf("Failed to start: %s", err)
-		return
+		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
+
+		// fallback to standard tracer
+		log.Infof("Gadget %s: falling back to standard tracer. CO-RE tracer failed: %s",
+			trace.Spec.Gadget, err)
+
+		t.tracer, err = standardtracer.NewTracer(trace.Spec.Node)
+		if err != nil {
+			trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
+			return
+		}
 	}
 	t.started = true
 
@@ -115,31 +121,15 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		trace.Status.OperationError = "Not started"
 		return
 	}
-	err := t.cmd.Process.Signal(syscall.SIGINT)
+
+	output, err := t.tracer.Stop()
 	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf(
-			"Failed to send SIGINT to process: %s (stdout: %q stderr: %q)",
-			err,
-			t.stdout.String(),
-			t.stderr.String(),
-		)
+		trace.Status.OperationError = err.Error()
 		return
 	}
 
-	err = t.cmd.Wait()
-	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf(
-			"Failed to wait for process: %s (stdout: %q stderr: %q)",
-			err,
-			t.stdout.String(),
-			t.stderr.String(),
-		)
-		return
-	}
-	t.cmd = nil
+	t.tracer = nil
 	t.started = false
-
-	output := t.stdout.String()
 
 	trace.Status.Output = output
 	trace.Status.State = "Completed"

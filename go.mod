@@ -4,15 +4,16 @@ go 1.18
 
 require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
-	github.com/cilium/ebpf v0.8.2-0.20220502122259-96aa1a7a929f
+	github.com/cilium/ebpf v0.9.0
+	github.com/containerd/containerd v1.5.11 // indirect
 	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
 	github.com/containers/common v0.46.0
 	github.com/docker/docker v20.10.8+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/giantswarm/crd-docs-generator v0.7.1
 	github.com/google/uuid v1.2.0
+	github.com/iovisor/gobpf v0.2.0 // indirect
 	github.com/kinvolk/traceloop v0.0.0-20210623155108-6f4efc6fca46
-	github.com/kr/pretty v0.3.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.16.0
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
@@ -26,7 +27,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	github.com/weaveworks/tcptracer-bpf v0.0.0-20200114145059-84a08fc667c0
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
-	golang.org/x/sys v0.0.0-20220307203707-22a9840ba4d7
+	golang.org/x/sys v0.0.0-20220608164250-635b8c9b7f68
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.27.1
@@ -41,6 +42,8 @@ require (
 	sigs.k8s.io/security-profiles-operator v0.3.1-0.20211122222133-6e12fe5f2daa
 	sigs.k8s.io/yaml v1.2.0
 )
+
+require github.com/moby/moby v20.10.17+incompatible
 
 require (
 	cloud.google.com/go v0.81.0 // indirect
@@ -58,7 +61,6 @@ require (
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
-	github.com/containerd/containerd v1.5.11 // indirect
 	github.com/crossplane/crossplane-runtime v0.14.1-0.20210713194031-85b19c28ea88 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/distribution v2.8.0+incompatible // indirect
@@ -89,10 +91,8 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/iovisor/gobpf v0.2.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.11 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
@@ -116,7 +116,6 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
-	github.com/rogpeppe/go-internal v1.6.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
