@@ -30,8 +30,8 @@ import (
 )
 
 var (
-	profileKernel bool
-	profileUser   bool
+	profileKernelOnly bool
+	profileUserOnly   bool
 )
 
 var cpuTraceConfig = &utils.TraceConfig{
@@ -54,14 +54,14 @@ func init() {
 	utils.AddCommonFlags(profileCmd, &params)
 
 	profileCmd.PersistentFlags().BoolVarP(
-		&profileUser,
+		&profileUserOnly,
 		"user",
 		"U",
 		false,
 		"Show stacks from user space only (no kernel space stacks)",
 	)
 	profileCmd.PersistentFlags().BoolVarP(
-		&profileKernel,
+		&profileKernelOnly,
 		"kernel",
 		"K",
 		false,
@@ -105,17 +105,17 @@ func getCustomProfileColsHeader(cols []string) string {
 }
 
 func runProfileCPU(cmd *cobra.Command, args []string) error {
-	if profileUser && profileKernel {
+	if profileUserOnly && profileKernelOnly {
 		return utils.WrapInErrArgsNotSupported("-U and -K can't be used at the same time")
 	}
 
 	cpuTraceConfig.Parameters = map[string]string{}
 
-	if profileUser {
+	if profileUserOnly {
 		cpuTraceConfig.Parameters[types.ProfileUserParam] = ""
 	}
 
-	if profileKernel {
+	if profileKernelOnly {
 		cpuTraceConfig.Parameters[types.ProfileKernelParam] = ""
 	}
 
@@ -178,11 +178,11 @@ func runProfileCPU(cmd *cobra.Command, args []string) error {
 						report.Node, report.Namespace, report.Pod, report.Container,
 						report.Comm, report.Pid, report.Count)
 
-					if profileUser {
+					if profileUserOnly {
 						reverseStringSlice(report.UserStack)
 
 						fmt.Fprintf(&sb, "\t%s", strings.Join(report.UserStack, "\n\t"))
-					} else if profileKernel {
+					} else if profileKernelOnly {
 						reverseStringSlice(report.KernelStack)
 
 						fmt.Fprintf(&sb, "\t%s", strings.Join(report.KernelStack, "\n\t"))
