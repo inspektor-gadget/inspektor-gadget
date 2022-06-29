@@ -45,7 +45,7 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 		line = strings.ReplaceAll(line, `"ip"`, `"ipversion"`)
 
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			msg := fmt.Sprintf("failed to unmarshal event: %s", err)
+			msg := fmt.Sprintf("failed to unmarshal event '%s': %s", line, err)
 			eventCallback(types.Base(eventtypes.Warn(msg, node)))
 			return
 		}
