@@ -15,27 +15,23 @@
 package profile
 
 import (
-	"bytes"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"syscall"
 
-	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
+
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer"
+	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer/core"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer/standard"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
 )
 
 type Trace struct {
 	resolver gadgets.Resolver
 
-	started           bool
-	cmd               *exec.Cmd
-	stdout            bytes.Buffer
-	stderr            bytes.Buffer
-	mountNsMapPinPath string
+	started bool
+	tracer  tracer.Tracer
 }
 
 type TraceFactory struct {
@@ -60,9 +56,8 @@ func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 
 func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
-	if trace.started {
-		trace.cmd.Process.Kill()
-		trace.cmd.Wait()
+	if trace.tracer != nil && trace.started {
+		trace.tracer.Stop()
 	}
 }
 
@@ -103,30 +98,27 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	t.mountNsMapPinPath = filepath.Join(gadgets.PinPath, uuid.New().String())
-	if err := mountNsMap.Pin(t.mountNsMapPinPath); err != nil {
-		trace.Status.OperationError = fmt.Sprintf("failed to pin tracer's mount ns map: %s", err)
-		return
+	_, userStackOnly := trace.Spec.Parameters[types.ProfileUserParam]
+	_, kernelStackOnly := trace.Spec.Parameters[types.ProfileKernelParam]
+	config := &tracer.Config{
+		MountnsMap:      mountNsMap,
+		UserStackOnly:   userStackOnly,
+		KernelStackOnly: kernelStackOnly,
 	}
 
-	t.cmd = exec.Command("/usr/share/bcc/tools/profile", "-f", "-d",
-		"--mntnsmap", t.mountNsMapPinPath)
+	t.tracer, err = coretracer.NewTracer(t.resolver, config, trace.Spec.Node)
+	if err != nil {
+		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
 
-	if _, ok := trace.Spec.Parameters[types.ProfileUserParam]; ok {
-		t.cmd.Args = append(t.cmd.Args, "-U")
-	}
+		// fallback to standard tracer
+		log.Infof("Gadget %s: falling back to standard tracer. CO-RE tracer failed: %s",
+			trace.Spec.Gadget, err)
 
-	if _, ok := trace.Spec.Parameters[types.ProfileKernelParam]; ok {
-		t.cmd.Args = append(t.cmd.Args, "-K")
-	}
-
-	t.stdout.Reset()
-	t.stderr.Reset()
-	t.cmd.Stdout = &t.stdout
-	t.cmd.Stderr = &t.stderr
-	if err := t.cmd.Start(); err != nil {
-		trace.Status.OperationError = fmt.Sprintf("Failed to start: %s", err)
-		return
+		t.tracer, err = standardtracer.NewTracer(config, trace.Spec.Node)
+		if err != nil {
+			trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
+			return
+		}
 	}
 	t.started = true
 
@@ -139,33 +131,15 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		trace.Status.OperationError = "Not started"
 		return
 	}
-	err := t.cmd.Process.Signal(syscall.SIGINT)
+
+	output, err := t.tracer.Stop()
 	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf(
-			"Failed to send SIGINT to process: %s (stdout: %q stderr: %q)",
-			err,
-			t.stdout.String(),
-			t.stderr.String(),
-		)
+		trace.Status.OperationError = err.Error()
 		return
 	}
 
-	err = t.cmd.Wait()
-	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf(
-			"Failed to wait for process: %s (stdout: %q stderr: %q)",
-			err,
-			t.stdout.String(),
-			t.stderr.String(),
-		)
-		return
-	}
-	t.cmd = nil
+	t.tracer = nil
 	t.started = false
-
-	os.Remove(t.mountNsMapPinPath)
-
-	output := t.stdout.String()
 
 	trace.Status.Output = output
 	trace.Status.State = "Completed"
