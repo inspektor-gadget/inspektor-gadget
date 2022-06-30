@@ -113,14 +113,6 @@ func (t *Tracer) Stop() (string, error) {
 	return string(output), err
 }
 
-// isKernelVersionHigherOrEqualTo check than version a is higher or equal to b.
-func isKernelVersionHigherOrEqualTo(a, b *kernel.VersionInfo) bool {
-	return (a.Kernel > b.Kernel) ||
-		(a.Kernel == b.Kernel && a.Major > b.Major) ||
-		(a.Kernel == b.Kernel && a.Major == b.Major && a.Minor > b.Minor) ||
-		(a.Kernel == b.Kernel && a.Major == b.Major && a.Minor == b.Minor)
-}
-
 func (t *Tracer) start() error {
 	var spec *ebpf.CollectionSpec
 
