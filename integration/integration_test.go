@@ -468,7 +468,7 @@ func TestExecsnoop(t *testing.T) {
 	execsnoopCmd := &command{
 		name:           "StartExecsnoopGadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s", ns),
-		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+date`, ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+\d+\s+date`, ns),
 		startAndStop:   true,
 	}
 
@@ -519,7 +519,7 @@ func TestFsslower(t *testing.T) {
 	fsslowerCmd := &command{
 		name:           "StartFsslowerGadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace fsslower -n %s -f %s -m 0", ns, fsType),
-		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+cat`, ns),
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+cat`, ns),
 		startAndStop:   true,
 	}
 
@@ -542,7 +542,7 @@ func TestMountsnoop(t *testing.T) {
 	mountsnoopCmd := &command{
 		name:           "StartMountsnoopGadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace mount -n %s", ns),
-		expectedRegexp: `test-pod\s+test-pod\s+mount.*mount\("/mnt", "/mnt", .*\) = -2`,
+		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod+\s+mount\s+\d+\s+\d+\s+\d+\s+mount\("/mnt", "/mnt", .*\) = -2`, ns),
 		startAndStop:   true,
 	}
 

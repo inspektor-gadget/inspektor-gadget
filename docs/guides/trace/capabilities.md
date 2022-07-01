@@ -57,16 +57,12 @@ Let's use Inspektor Gadget to watch the capability checks:
 
 ```bash
 $ kubectl gadget trace capabilities --selector name=set-priority
-NODE             NAMESPACE        POD                           CONTAINER       TIME      UID    PID    COMM             CAP  NAME                 AUDIT
-ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:13:54  0      146786 nice             23   CAP_SYS_NICE         1
-ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:13:59  0      146937 nice             23   CAP_SYS_NICE         1
-ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:04  0      147056 nice             23   CAP_SYS_NICE         1
-ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:09  0      147201 nice             23   CAP_SYS_NICE         1
-ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:14  0      147303 nice             23   CAP_SYS_NICE         1
-ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:19  0      147447 nice             23   CAP_SYS_NICE         1
-ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:24  0      147579 nice             23   CAP_SYS_NICE         1
-ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:29  0      147725 nice             23   CAP_SYS_NICE         1
-ip-10-0-30-247   default          set-priority-5646554d9d-n588b set-priority    14:14:34  0      147838 nice             23   CAP_SYS_NICE         1
+NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             UID     CAP  NAME             AUDIT
+minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110385  nice             0       23   CAP_SYS_NICE     1
+minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110592  nice             0       23   CAP_SYS_NICE     1
+minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110764  nice             0       23   CAP_SYS_NICE     1
+minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110965  nice             0       23   CAP_SYS_NICE     1
+minikube         default          set-priority-5646554d9d-pk4gg  set-priority     111134  nice             0       23   CAP_SYS_NICE     1
 ^C
 Terminating...
 ```

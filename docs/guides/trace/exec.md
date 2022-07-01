@@ -28,26 +28,26 @@ ip-10-0-30-247 where myapp1-pod-2gs5r and myapp2-pod-mqfxv are running:
 
 ```bash
 $ kubectl gadget trace exec --selector role=demo --node ip-10-0-30-247
-NODE                NAMESPACE        POD              CONTAINER       PCOMM            PID    PPID   RET ARGS
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      date             728770 728166   0 /bin/date
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      cat              728771 728166   0 /bin/cat /proc/version
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      sleep            728772 728166   0 /bin/sleep 1
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      true             728802 728166   0 /bin/true
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      date             728803 728166   0 /bin/date
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      cat              728804 728166   0 /bin/cat /proc/version
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      sleep            728805 728166   0 /bin/sleep 1
-ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      true             728832 728052   0 /bin/true
-ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      date             728833 728052   0 /bin/date
-ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      echo             728834 728052   0 /bin/echo sleep-10
-ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      sleep            728835 728052   0 /bin/sleep 10
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      true             728836 728166   0 /bin/true
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      date             728837 728166   0 /bin/date
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      cat              728838 728166   0 /bin/cat /proc/version
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      sleep            728839 728166   0 /bin/sleep 1
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      true             728880 728166   0 /bin/true
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      date             728881 728166   0 /bin/date
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      cat              728882 728166   0 /bin/cat /proc/version
-ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      sleep            728883 728166   0 /bin/sleep 1
+NODE                NAMESPACE        POD              CONTAINER       PID     PPID    PCOMM            RET ARGS
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728770  728166  date               0 /bin/date
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728771  728166  cat                0 /bin/cat /proc/version
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728772  728166  sleep              0 /bin/sleep 1
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728802  728166  true               0 /bin/true
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728803  728166  date               0 /bin/date
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728804  728166  cat                0 /bin/cat /proc/version
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728805  728166  sleep              0 /bin/sleep 1
+ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      728832  728052  true               0 /bin/true
+ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      728833  728052  date               0 /bin/date
+ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      728834  728052  echo               0 /bin/echo sleep-10
+ip-10-0-30-247      default          myapp2-pod-mqfxv myapp2-pod      728835  728052  sleep              0 /bin/sleep 10
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728836  728166  true               0 /bin/true
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728837  728166  date               0 /bin/date
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728838  728166  cat                0 /bin/cat /proc/version
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728839  728166  sleep              0 /bin/sleep 1
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728880  728166  true               0 /bin/true
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728881  728166  date               0 /bin/date
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728882  728166  cat                0 /bin/cat /proc/version
+ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728883  728166  sleep              0 /bin/sleep 1
 ^C
 Terminating...
 ```
