@@ -518,7 +518,7 @@ func TestFsslower(t *testing.T) {
 
 	fsslowerCmd := &command{
 		name:           "StartFsslowerGadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace fsslower -n %s -t %s -m 0", ns, fsType),
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace fsslower -n %s -f %s -m 0", ns, fsType),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+cat`, ns),
 		startAndStop:   true,
 	}

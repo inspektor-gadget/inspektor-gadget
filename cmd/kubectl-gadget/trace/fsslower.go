@@ -42,7 +42,7 @@ var fsslowerCmd = &cobra.Command{
 	Short: "Trace open, read, write and fsync operations slower than a threshold",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if fsslowerFilesystem == "" {
-			return utils.WrapInErrMissingArgs("--filesystem")
+			return utils.WrapInErrMissingArgs("--filesystem / -f")
 		}
 
 		found := false
@@ -55,7 +55,7 @@ var fsslowerCmd = &cobra.Command{
 		}
 
 		if !found {
-			return utils.WrapInErrInvalidArg("--type / -t",
+			return utils.WrapInErrInvalidArg("--filesystem / -f",
 				fmt.Errorf("%q is not a valid filesystem", fsslowerFilesystem))
 		}
 
@@ -99,7 +99,7 @@ func init() {
 		"Min latency to trace, in ms",
 	)
 	fsslowerCmd.Flags().StringVarP(
-		&fsslowerFilesystem, "type", "t", "",
+		&fsslowerFilesystem, "filesystem", "f", "",
 		fmt.Sprintf("Which filesystem to trace: [%s]", strings.Join(validFsSlowerFilesystems, ", ")),
 	)
 
