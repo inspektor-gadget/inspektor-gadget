@@ -36,19 +36,25 @@ type SocketFlags struct {
 type SocketParser struct {
 	BaseSnapshotParser
 
-	outputConfig *utils.OutputConfig
-	socketFlags  *SocketFlags
+	socketFlags *SocketFlags
 }
 
 func NewSocketCmd(
 	socketFlags *SocketFlags,
+	availableColumns map[string]struct{},
 	outputConfig *utils.OutputConfig,
 	customRun func(callback func(traceOutputMode string, results []string) error) error,
 ) *cobra.Command {
 	socketGadget := &SnapshotGadget[types.Event]{
 		outputConfig: outputConfig,
-		parser:       NewSocketParser(outputConfig, socketFlags),
-		customRun:    customRun,
+		parser: &SocketParser{
+			BaseSnapshotParser: BaseSnapshotParser{
+				AvailableColumns: availableColumns,
+				OutputConfig:     outputConfig,
+			},
+			socketFlags: socketFlags,
+		},
+		customRun: customRun,
 	}
 
 	cmd := &cobra.Command{
@@ -57,6 +63,10 @@ func NewSocketCmd(
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if _, err := types.ParseProtocol(socketFlags.Protocol); err != nil {
 				return err
+			}
+
+			if outputConfig.OutputMode == utils.OutputModeColumns && socketFlags.Extended {
+				outputConfig.CustomColumns = append(outputConfig.CustomColumns, "inode")
 			}
 
 			return nil
@@ -89,77 +99,31 @@ func NewSocketCmd(
 	return cmd
 }
 
-func NewSocketParser(outputConfig *utils.OutputConfig, socketFlags *SocketFlags) SnapshotParser[types.Event] {
-	availableCols := map[string]struct{}{
-		"node":      {},
-		"namespace": {},
-		"pod":       {},
-		"protocol":  {},
-		"local":     {},
-		"remote":    {},
-		"status":    {},
-		"inode":     {},
-	}
-
-	return &SocketParser{
-		BaseSnapshotParser: BaseSnapshotParser{
-			availableCols: availableCols,
-		},
-		outputConfig: outputConfig,
-		socketFlags:  socketFlags,
-	}
-}
-
-func (s *SocketParser) GetColumnsHeader() string {
-	requestedCols := s.outputConfig.CustomColumns
-	if len(requestedCols) == 0 {
-		requestedCols = []string{"node", "namespace", "pod", "protocol", "local", "remote", "status"}
-		if s.socketFlags.Extended {
-			requestedCols = append(requestedCols, "inode")
-		}
-	}
-
-	return s.BuildSnapshotColsHeader(requestedCols)
-}
-
 func (s *SocketParser) TransformEvent(e *types.Event) string {
 	var sb strings.Builder
 
-	switch s.outputConfig.OutputMode {
-	case utils.OutputModeColumns:
-		extendedInformation := ""
-		if s.socketFlags.Extended {
-			extendedInformation = fmt.Sprintf("\t%d", e.InodeNumber)
+	for _, col := range s.OutputConfig.CustomColumns {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%s", e.Node))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%s", e.Namespace))
+		case "pod":
+			sb.WriteString(fmt.Sprintf("%s", e.Pod))
+		case "protocol":
+			sb.WriteString(fmt.Sprintf("%s", e.Protocol))
+		case "local":
+			sb.WriteString(fmt.Sprintf("%s:%d", e.LocalAddress, e.LocalPort))
+		case "remote":
+			sb.WriteString(fmt.Sprintf("%s:%d", e.RemoteAddress, e.RemotePort))
+		case "status":
+			sb.WriteString(fmt.Sprintf("%s", e.Status))
+		case "inode":
+			sb.WriteString(fmt.Sprintf("%d", e.InodeNumber))
+		default:
+			continue
 		}
-
-		sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s:%d\t%s:%d\t%s%s",
-			e.Node, e.Namespace, e.Pod, e.Protocol,
-			e.LocalAddress, e.LocalPort, e.RemoteAddress, e.RemotePort,
-			e.Status, extendedInformation))
-	case utils.OutputModeCustomColumns:
-		for _, col := range s.outputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%s", e.Pod))
-			case "protocol":
-				sb.WriteString(fmt.Sprintf("%s", e.Protocol))
-			case "local":
-				sb.WriteString(fmt.Sprintf("%s:%d", e.LocalAddress, e.LocalPort))
-			case "remote":
-				sb.WriteString(fmt.Sprintf("%s:%d", e.RemoteAddress, e.RemotePort))
-			case "status":
-				sb.WriteString(fmt.Sprintf("%s", e.Status))
-			case "inode":
-				sb.WriteString(fmt.Sprintf("%d", e.InodeNumber))
-			default:
-				continue
-			}
-			sb.WriteRune('\t')
-		}
+		sb.WriteRune('\t')
 	}
 
 	return sb.String()

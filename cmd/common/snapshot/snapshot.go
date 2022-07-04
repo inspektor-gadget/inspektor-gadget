@@ -31,14 +31,17 @@ import (
 // BaseSnapshotParser is a base for a SnapshotParser to reuse the shared
 // fields and methods.
 type BaseSnapshotParser struct {
-	availableCols map[string]struct{}
+	// AvailableColumns are the columns that can be configured to be printed.
+	AvailableColumns map[string]struct{}
+
+	OutputConfig *utils.OutputConfig
 }
 
-func (p *BaseSnapshotParser) BuildSnapshotColsHeader(requestedCols []string) string {
+func (p *BaseSnapshotParser) BuildSnapshotColsHeader() string {
 	var sb strings.Builder
 
-	for _, col := range requestedCols {
-		if _, ok := p.availableCols[col]; ok {
+	for _, col := range p.OutputConfig.CustomColumns {
+		if _, ok := p.AvailableColumns[col]; ok {
 			sb.WriteString(strings.ToUpper(col) + "\t")
 		}
 	}
@@ -62,9 +65,6 @@ type SnapshotParser[Event SnapshotEvent] interface {
 	// SortEvents sorts a slice of events based on a predefined prioritization.
 	SortEvents(*[]Event)
 
-	// GetColumnsHeader returns a header based on the requested output format.
-	GetColumnsHeader() string
-
 	// TransformEvent is called to transform an event to columns
 	// format according to the parameters.
 	TransformEvent(*Event) string
@@ -72,11 +72,13 @@ type SnapshotParser[Event SnapshotEvent] interface {
 	// BuildSnapshotColsHeader returns a header with the requested custom
 	// columns that exist in the availableCols. The columns are separated by
 	// taps.
-	BuildSnapshotColsHeader([]string) string
+	BuildSnapshotColsHeader() string
 }
 
 // SnapshotGadget represents a gadget belonging to the snapshot category.
 type SnapshotGadget[Event SnapshotEvent] struct {
+	// SnapshotParser already has outputConfig but we cannot access it directly.
+	// Same limitation of SnapshotEvent.GetBaseEvent().
 	outputConfig *utils.OutputConfig
 	parser       SnapshotParser[Event]
 	customRun    func(callback func(traceOutputMode string, results []string) error) error
@@ -124,7 +126,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 			// we have to do a best effort printing fixed-width columns.
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 
-			fmt.Fprintln(w, g.parser.GetColumnsHeader())
+			fmt.Fprintln(w, g.parser.BuildSnapshotColsHeader())
 
 			for _, e := range allEvents {
 				baseEvent := e.GetBaseEvent()

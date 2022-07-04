@@ -22,16 +22,43 @@ import (
 )
 
 func newProcessCmd() *cobra.Command {
-	var commonFlags utils.CommonFlags
 	var processFlags commonsnapshot.ProcessFlags
+
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print. Notice they may be
+			// extended based on flags.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"comm",
+				"pid",
+			},
+		},
+	}
+
+	availableColumns := map[string]struct{}{
+		"node":      {},
+		"namespace": {},
+		"pod":       {},
+		"container": {},
+		"comm":      {},
+		"tgid":      {},
+		"pid":       {},
+	}
 
 	customRun := func(callback func(traceOutputMode string, results []string) error) error {
 		config := NewSnapshotTraceConfig(commonsnapshot.ProcessGadgetName, commonFlags, nil)
 		return utils.RunTraceAndPrintStatusOutput(config, callback)
 	}
 
-	cmd := commonsnapshot.NewCommonProcessCmd(&processFlags, &commonFlags.OutputConfig, customRun)
-	utils.AddCommonFlags(cmd, &commonFlags)
+	// It is not currently useful to pass processFlags here but it keeps
+	// uniformity with other gadgets.
+	cmd := commonsnapshot.NewCommonProcessCmd(&processFlags, availableColumns, &commonFlags.OutputConfig, customRun)
+	utils.AddCommonFlags(cmd, commonFlags)
 
 	return cmd
 }

@@ -22,8 +22,35 @@ import (
 )
 
 func newSocketCmd() *cobra.Command {
-	var commonFlags utils.CommonFlags
 	var socketFlags commonsnapshot.SocketFlags
+
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print. Notice they may be
+			// extended based on flags.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"protocol",
+				"local",
+				"remote",
+				"status",
+			},
+		},
+	}
+
+	availableColumns := map[string]struct{}{
+		"node":      {},
+		"namespace": {},
+		"pod":       {},
+		"protocol":  {},
+		"local":     {},
+		"remote":    {},
+		"status":    {},
+		"inode":     {},
+	}
 
 	customRun := func(callback func(traceOutputMode string, results []string) error) error {
 		config := NewSnapshotTraceConfig(
@@ -37,8 +64,8 @@ func newSocketCmd() *cobra.Command {
 		return utils.RunTraceAndPrintStatusOutput(config, callback)
 	}
 
-	cmd := commonsnapshot.NewSocketCmd(&socketFlags, &commonFlags.OutputConfig, customRun)
-	utils.AddCommonFlags(cmd, &commonFlags)
+	cmd := commonsnapshot.NewSocketCmd(&socketFlags, availableColumns, &commonFlags.OutputConfig, customRun)
+	utils.AddCommonFlags(cmd, commonFlags)
 
 	return cmd
 }

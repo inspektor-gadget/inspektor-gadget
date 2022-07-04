@@ -35,24 +35,46 @@ type ProcessFlags struct {
 type ProcessParser struct {
 	BaseSnapshotParser
 
-	outputConfig *utils.OutputConfig
 	processFlags *ProcessFlags
 }
 
 func NewCommonProcessCmd(
 	processFlags *ProcessFlags,
+	availableColumns map[string]struct{},
 	outputConfig *utils.OutputConfig,
 	customRun func(callback func(traceOutputMode string, results []string) error) error,
 ) *cobra.Command {
 	processGadget := &SnapshotGadget[types.Event]{
 		outputConfig: outputConfig,
-		parser:       NewProcessParser(outputConfig, processFlags),
-		customRun:    customRun,
+		parser: &ProcessParser{
+			BaseSnapshotParser: BaseSnapshotParser{
+				AvailableColumns: availableColumns,
+				OutputConfig:     outputConfig,
+			},
+			processFlags: processFlags,
+		},
+		customRun: customRun,
 	}
 
 	cmd := &cobra.Command{
 		Use:   "process",
 		Short: "Gather information about running processes",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if outputConfig.OutputMode == utils.OutputModeColumns && processFlags.showThreads {
+				for index, col := range outputConfig.CustomColumns {
+					if col != "pid" {
+						continue
+					}
+
+					outputConfig.CustomColumns = append(outputConfig.CustomColumns[:index],
+						append([]string{"tgid"}, outputConfig.CustomColumns[index:]...)...)
+
+					break
+				}
+			}
+
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return processGadget.Run()
 		},
@@ -69,74 +91,29 @@ func NewCommonProcessCmd(
 	return cmd
 }
 
-func NewProcessParser(outputConfig *utils.OutputConfig, processFlags *ProcessFlags) SnapshotParser[types.Event] {
-	availableCols := map[string]struct{}{
-		"node":      {},
-		"namespace": {},
-		"pod":       {},
-		"container": {},
-		"comm":      {},
-		"tgid":      {},
-		"pid":       {},
-	}
-
-	return &ProcessParser{
-		BaseSnapshotParser: BaseSnapshotParser{
-			availableCols: availableCols,
-		},
-		outputConfig: outputConfig,
-		processFlags: processFlags,
-	}
-}
-
-func (p *ProcessParser) GetColumnsHeader() string {
-	requestedCols := p.outputConfig.CustomColumns
-	if len(requestedCols) == 0 {
-		requestedCols = []string{"node", "namespace", "pod", "container", "comm", "pid"}
-		if p.processFlags.showThreads {
-			requestedCols = []string{"node", "namespace", "pod", "container", "comm", "tgid", "pid"}
-		}
-	}
-
-	return p.BuildSnapshotColsHeader(requestedCols)
-}
-
 func (p *ProcessParser) TransformEvent(e *types.Event) string {
 	var sb strings.Builder
 
-	switch p.outputConfig.OutputMode {
-	case utils.OutputModeColumns:
-		if p.processFlags.showThreads {
-			sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%d\t%d",
-				e.Node, e.Namespace, e.Pod, e.Container,
-				e.Command, e.Tgid, e.Pid))
-		} else {
-			sb.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%d",
-				e.Node, e.Namespace, e.Pod, e.Container,
-				e.Command, e.Pid))
+	for _, col := range p.OutputConfig.CustomColumns {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%s", e.Node))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%s", e.Namespace))
+		case "pod":
+			sb.WriteString(fmt.Sprintf("%s", e.Pod))
+		case "container":
+			sb.WriteString(fmt.Sprintf("%s", e.Container))
+		case "comm":
+			sb.WriteString(fmt.Sprintf("%s", e.Command))
+		case "tgid":
+			sb.WriteString(fmt.Sprintf("%d", e.Tgid))
+		case "pid":
+			sb.WriteString(fmt.Sprintf("%d", e.Pid))
+		default:
+			continue
 		}
-	case utils.OutputModeCustomColumns:
-		for _, col := range p.outputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%s", e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%s", e.Container))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%s", e.Command))
-			case "tgid":
-				sb.WriteString(fmt.Sprintf("%d", e.Tgid))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%d", e.Pid))
-			default:
-				continue
-			}
-			sb.WriteRune('\t')
-		}
+		sb.WriteRune('\t')
 	}
 
 	return sb.String()
