@@ -31,7 +31,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang sigsnoop ./bpf/sigsnoop.bpf.c -- -I../../../..
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang sigsnoop ./bpf/sigsnoop.bpf.c -- -I../../../../${TARGET}
 
 type Tracer struct {
 	config *tracer.Config

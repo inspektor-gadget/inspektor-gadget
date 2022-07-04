@@ -62,7 +62,7 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang bindsnoop ./bpf/bindsnoop.bpf.c -- -I./bpf/ -I../../../../
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang bindsnoop ./bpf/bindsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Tracer struct {
 	config        *tracer.Config

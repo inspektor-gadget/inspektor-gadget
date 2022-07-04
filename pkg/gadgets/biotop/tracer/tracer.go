@@ -38,7 +38,7 @@ import (
 // #include "./bpf/biotop.h"
 import "C"
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang biotop ./bpf/biotop.bpf.c -- -I./bpf/ -I../../..
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang biotop ./bpf/biotop.bpf.c -- -I./bpf/ -I../../../${TARGET}
 
 type Config struct {
 	TargetPid  int

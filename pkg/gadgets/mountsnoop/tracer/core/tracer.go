@@ -37,7 +37,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang mountsnoop ./bpf/mountsnoop.bpf.c -- -I./bpf/ -I../../../../
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang mountsnoop ./bpf/mountsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Tracer struct {
 	config        *tracer.Config

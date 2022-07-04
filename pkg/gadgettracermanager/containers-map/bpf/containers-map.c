@@ -5,7 +5,7 @@
 
 #include <bpf/bpf_helpers.h>
 
-#include "gadgettracermanager/common.h"
+#include <gadgettracermanager/common.h>
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);

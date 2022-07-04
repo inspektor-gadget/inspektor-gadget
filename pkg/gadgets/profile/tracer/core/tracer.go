@@ -42,7 +42,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang profile ./bpf/profile.bpf.c -- -I./bpf/ -I../../../../
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang profile ./bpf/profile.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Tracer struct {
 	resolver gadgets.Resolver
