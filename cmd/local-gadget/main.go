@@ -27,7 +27,7 @@ import (
 	"github.com/chzyer/readline"
 	"github.com/spf13/cobra"
 
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/containerd"
 	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/crio"
@@ -439,7 +439,7 @@ func main() {
 				case crio.Name:
 					socketPath = crioSocketPath
 				default:
-					return utils.WrapInErrInvalidArg("--runtime / -r",
+					return commonutils.WrapInErrInvalidArg("--runtime / -r",
 						fmt.Errorf("runtime %q is not supported", p))
 				}
 

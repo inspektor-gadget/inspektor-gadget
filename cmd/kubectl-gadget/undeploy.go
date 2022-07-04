@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/spf13/cobra"
@@ -68,7 +69,7 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 
 	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		return utils.WrapInErrSetupK8sClient(err)
+		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()

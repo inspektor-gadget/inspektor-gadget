@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/fsslower/types"
 
@@ -64,7 +65,7 @@ func newFsSlowerCmd() *cobra.Command {
 		Short: "Trace open, read, write and fsync operations slower than a threshold",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if fsslowerFilesystem == "" {
-				return utils.WrapInErrMissingArgs("--filesystem / -f")
+				return commonutils.WrapInErrMissingArgs("--filesystem / -f")
 			}
 
 			found := false
@@ -76,7 +77,7 @@ func newFsSlowerCmd() *cobra.Command {
 			}
 
 			if !found {
-				return utils.WrapInErrInvalidArg("--filesystem / -f",
+				return commonutils.WrapInErrInvalidArg("--filesystem / -f",
 					fmt.Errorf("%q is not a valid filesystem", fsslowerFilesystem))
 			}
 

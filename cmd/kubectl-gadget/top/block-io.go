@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biotop/types"
 )
@@ -45,7 +46,7 @@ var blockIOCmd = &cobra.Command{
 		if len(args) == 1 {
 			outputInterval, err = strconv.Atoi(args[0])
 			if err != nil {
-				return utils.WrapInErrInvalidArg("<interval>",
+				return commonutils.WrapInErrInvalidArg("<interval>",
 					fmt.Errorf("%q is not a valid value", args[0]))
 			}
 		} else {
@@ -78,7 +79,7 @@ var blockIOCmd = &cobra.Command{
 		}
 
 		if err := utils.RunTraceStreamCallback(config, blockIOCallback); err != nil {
-			return utils.WrapInErrRunGadget(err)
+			return commonutils.WrapInErrRunGadget(err)
 		}
 
 		if singleShot {
@@ -92,7 +93,7 @@ var blockIOCmd = &cobra.Command{
 		var err error
 		blockIOSortBy, err = types.ParseSortBy(sortBy)
 		if err != nil {
-			return utils.WrapInErrInvalidArg("--sort", err)
+			return commonutils.WrapInErrInvalidArg("--sort", err)
 		}
 
 		return nil
@@ -111,7 +112,7 @@ func blockIOCallback(line string, node string) {
 	var event types.Event
 
 	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
 		return
 	}
 
@@ -191,7 +192,7 @@ func blockIOPrintEvents() {
 	case utils.OutputModeJSON:
 		b, err := json.Marshal(stats)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrMarshalOutput(err))
+			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrMarshalOutput(err))
 			return
 		}
 		fmt.Println(string(b))

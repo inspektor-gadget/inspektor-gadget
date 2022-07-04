@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
 )
@@ -74,7 +75,7 @@ func newCPUCmd() *cobra.Command {
 		SilenceUsage: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if cpuFlags.profileUserOnly && cpuFlags.profileKernelOnly {
-				return utils.WrapInErrArgsNotSupported("-U and -K can't be used at the same time")
+				return commonutils.WrapInErrArgsNotSupported("-U and -K can't be used at the same time")
 			}
 
 			return nil
@@ -159,7 +160,7 @@ func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []str
 	for _, r := range results {
 		var reports []types.Report
 		if err := json.Unmarshal([]byte(r), &reports); err != nil {
-			return utils.WrapInErrUnmarshalOutput(err, r)
+			return commonutils.WrapInErrUnmarshalOutput(err, r)
 		}
 
 		for _, report := range reports {
@@ -167,7 +168,7 @@ func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []str
 			case utils.OutputModeJSON:
 				b, err := json.Marshal(report)
 				if err != nil {
-					return utils.WrapInErrMarshalOutput(err)
+					return commonutils.WrapInErrMarshalOutput(err)
 				}
 				fmt.Println(string(b))
 			case utils.OutputModeColumns:
@@ -175,7 +176,7 @@ func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []str
 			case utils.OutputModeCustomColumns:
 				fmt.Println(p.TransformEvent(&report))
 			default:
-				return utils.WrapInErrOutputModeNotSupported(p.OutputConfig.OutputMode)
+				return commonutils.WrapInErrOutputModeNotSupported(p.OutputConfig.OutputMode)
 			}
 		}
 	}

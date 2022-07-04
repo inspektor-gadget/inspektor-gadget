@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit-seccomp/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -51,7 +52,7 @@ var auditSeccompCmd = &cobra.Command{
 
 		err := utils.RunTraceAndPrintStream(config, auditSeccompTransformLine)
 		if err != nil {
-			return utils.WrapInErrRunGadget(err)
+			return commonutils.WrapInErrRunGadget(err)
 		}
 
 		return nil
@@ -70,7 +71,7 @@ func auditSeccompTransformLine(line string) string {
 	var e types.Event
 
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
 		return ""
 	}
 

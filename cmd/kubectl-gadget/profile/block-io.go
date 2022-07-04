@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/types"
 )
@@ -46,7 +47,7 @@ func newBlockIOCmd() *cobra.Command {
 			}
 
 			if commonFlags.Node == "" {
-				return utils.WrapInErrMissingArgs("--node")
+				return commonutils.WrapInErrMissingArgs("--node")
 			}
 
 			return nil
@@ -140,7 +141,7 @@ func (p *BlockIOParser) DisplayResultsCallback(traceOutputMode string, results [
 	} else {
 		var report types.Report
 		if err := json.Unmarshal([]byte(results[0]), &report); err != nil {
-			return utils.WrapInErrUnmarshalOutput(err, results[0])
+			return commonutils.WrapInErrUnmarshalOutput(err, results[0])
 		}
 
 		output = reportToString(report)

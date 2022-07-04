@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/filetop/types"
 )
@@ -48,7 +49,7 @@ var fileCmd = &cobra.Command{
 		if len(args) == 1 {
 			outputInterval, err = strconv.Atoi(args[0])
 			if err != nil {
-				return utils.WrapInErrInvalidArg("<interval>",
+				return commonutils.WrapInErrInvalidArg("<interval>",
 					fmt.Errorf("%q is not a valid value", args[0]))
 			}
 		} else {
@@ -83,7 +84,7 @@ var fileCmd = &cobra.Command{
 
 		err = utils.RunTraceStreamCallback(config, fileCallback)
 		if err != nil {
-			return utils.WrapInErrRunGadget(err)
+			return commonutils.WrapInErrRunGadget(err)
 		}
 
 		if singleShot {
@@ -97,7 +98,7 @@ var fileCmd = &cobra.Command{
 		var err error
 		fileSortBy, err = types.ParseSortBy(sortBy)
 		if err != nil {
-			return utils.WrapInErrInvalidArg("--sort", err)
+			return commonutils.WrapInErrInvalidArg("--sort", err)
 		}
 
 		return nil
@@ -118,7 +119,7 @@ func fileCallback(line string, node string) {
 	var event types.Event
 
 	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
 		return
 	}
 
@@ -191,7 +192,7 @@ func filePrintEvents() {
 	case utils.OutputModeJSON:
 		b, err := json.Marshal(stats)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrMarshalOutput(err))
+			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrMarshalOutput(err))
 			return
 		}
 		fmt.Println(string(b))

@@ -25,6 +25,8 @@ import (
 	"github.com/spf13/viper"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 )
 
 var KubernetesConfigFlags = genericclioptions.NewConfigFlags(false)
@@ -119,7 +121,7 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 			for _, pair := range pairs {
 				kv := strings.Split(pair, "=")
 				if len(kv) != 2 {
-					return WrapInErrInvalidArg("--selector / -l",
+					return commonutils.WrapInErrInvalidArg("--selector / -l",
 						fmt.Errorf("should be a comma-separated list of key-value pairs (key=value[,key=value,...])"))
 				}
 				params.Labels[kv[0]] = kv[1]
@@ -131,12 +133,12 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		if params.Node != "" {
 			client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 			if err != nil {
-				return WrapInErrSetupK8sClient(err)
+				return commonutils.WrapInErrSetupK8sClient(err)
 			}
 
 			nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
 			if err != nil {
-				return WrapInErrListNodes(err)
+				return commonutils.WrapInErrListNodes(err)
 			}
 
 			nodeFound := false
@@ -148,7 +150,7 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 			}
 
 			if !nodeFound {
-				return WrapInErrInvalidArg("--node",
+				return commonutils.WrapInErrInvalidArg("--node",
 					fmt.Errorf("node %q does not exist", params.Node))
 			}
 		}
@@ -162,14 +164,14 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		case strings.HasPrefix(params.OutputMode, OutputModeCustomColumns):
 			parts := strings.Split(params.OutputMode, "=")
 			if len(parts) != 2 {
-				return WrapInErrInvalidArg(OutputModeCustomColumns,
+				return commonutils.WrapInErrInvalidArg(OutputModeCustomColumns,
 					errors.New("expects a comma separated list of columns to use"))
 			}
 
 			cols := strings.Split(strings.ToLower(parts[1]), ",")
 			for _, col := range cols {
 				if len(col) == 0 {
-					return WrapInErrInvalidArg(OutputModeCustomColumns,
+					return commonutils.WrapInErrInvalidArg(OutputModeCustomColumns,
 						errors.New("column can't be empty"))
 				}
 			}
@@ -177,7 +179,7 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 			params.CustomColumns = cols
 			params.OutputMode = OutputModeCustomColumns
 		default:
-			return WrapInErrInvalidArg("--output / -o",
+			return commonutils.WrapInErrInvalidArg("--output / -o",
 				fmt.Errorf("%q is not a valid output format", params.OutputMode))
 		}
 		return nil

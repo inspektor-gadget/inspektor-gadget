@@ -20,8 +20,8 @@ import (
 	"os/signal"
 	"time"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-
 	"github.com/spf13/cobra"
 )
 
@@ -55,7 +55,7 @@ func (g *ProfileGadget) Run() error {
 
 	traceID, err := utils.CreateTrace(traceConfig)
 	if err != nil {
-		return utils.WrapInErrRunGadget(err)
+		return commonutils.WrapInErrRunGadget(err)
 	}
 	defer utils.DeleteTrace(traceID)
 
@@ -86,13 +86,13 @@ func (g *ProfileGadget) Run() error {
 
 	err = utils.SetTraceOperation(traceID, "stop")
 	if err != nil {
-		return utils.WrapInErrStopGadget(err)
+		return commonutils.WrapInErrStopGadget(err)
 	}
 
 	err = utils.PrintTraceOutputFromStatus(traceID,
 		traceConfig.TraceOutputState, g.parser.DisplayResultsCallback)
 	if err != nil {
-		return utils.WrapInErrGetGadgetOutput(err)
+		return commonutils.WrapInErrGetGadgetOutput(err)
 	}
 
 	return nil

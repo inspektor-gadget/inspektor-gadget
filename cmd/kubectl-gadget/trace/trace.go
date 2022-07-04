@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"os"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
@@ -81,7 +81,7 @@ func (g *TraceGadget[Event]) Run() error {
 		var e Event
 
 		if err := json.Unmarshal([]byte(line), &e); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
 			return ""
 		}
 
@@ -95,7 +95,7 @@ func (g *TraceGadget[Event]) Run() error {
 	}
 
 	if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {
-		return utils.WrapInErrRunGadget(err)
+		return commonutils.WrapInErrRunGadget(err)
 	}
 
 	return nil

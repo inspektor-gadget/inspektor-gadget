@@ -21,6 +21,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	processcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/types"
 	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
@@ -100,7 +101,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 
 			var events []Event
 			if err := json.Unmarshal([]byte(r), &events); err != nil {
-				return utils.WrapInErrUnmarshalOutput(err, r)
+				return commonutils.WrapInErrUnmarshalOutput(err, r)
 			}
 			allEvents = append(allEvents, events...)
 		}
@@ -111,7 +112,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 		case utils.OutputModeJSON:
 			b, err := json.MarshalIndent(allEvents, "", "  ")
 			if err != nil {
-				return utils.WrapInErrMarshalOutput(err)
+				return commonutils.WrapInErrMarshalOutput(err)
 			}
 
 			fmt.Printf("%s\n", b)
@@ -140,7 +141,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 
 			w.Flush()
 		default:
-			return utils.WrapInErrOutputModeNotSupported(g.outputConfig.OutputMode)
+			return commonutils.WrapInErrOutputModeNotSupported(g.outputConfig.OutputMode)
 		}
 
 		return nil
