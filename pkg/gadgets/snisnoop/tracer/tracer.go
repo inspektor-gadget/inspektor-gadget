@@ -84,52 +84,57 @@ func (t *Tracer) Attach(
 	pid uint32,
 	eventCallback func(types.Event),
 	node string,
-) error {
+) (err error) {
 	if l, ok := t.attachments[key]; ok {
 		l.users++
 		return nil
 	}
 
-	coll, err := ebpf.NewCollectionWithOptions(
-		t.spec,
-		ebpf.CollectionOptions{
-			Programs: ebpf.ProgramOptions{
-				LogSize: ebpf.DefaultVerifierLogSize * 100,
-			},
-		},
-	)
+	l := &link{
+		users:  1,
+		sockFd: -1,
+	}
+	defer func() {
+		if err != nil {
+			if l.perfRd != nil {
+				l.perfRd.Close()
+			}
+			if l.sockFd != -1 {
+				unix.Close(l.sockFd)
+			}
+			if l.collection != nil {
+				l.collection.Close()
+			}
+		}
+	}()
+
+	l.collection, err = ebpf.NewCollection(t.spec)
 	if err != nil {
 		return fmt.Errorf("failed to create BPF collection: %w", err)
 	}
 
-	rd, err := perf.NewReader(coll.Maps[BPFMapName], gadgets.PerfBufferPages*os.Getpagesize())
+	l.perfRd, err = perf.NewReader(l.collection.Maps[BPFMapName], gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
 		return fmt.Errorf("failed to get a perf reader: %w", err)
 	}
 
-	prog, ok := coll.Programs[BPFProgName]
+	prog, ok := l.collection.Programs[BPFProgName]
 	if !ok {
 		return fmt.Errorf("failed to find BPF program %q", BPFProgName)
 	}
 
-	sockFd, err := rawsock.OpenRawSock(pid)
+	l.sockFd, err = rawsock.OpenRawSock(pid)
 	if err != nil {
 		return fmt.Errorf("failed to open raw socket: %w", err)
 	}
 
-	if err := syscall.SetsockoptInt(sockFd, syscall.SOL_SOCKET, BPFSocketAttach, prog.FD()); err != nil {
+	if err := syscall.SetsockoptInt(l.sockFd, syscall.SOL_SOCKET, BPFSocketAttach, prog.FD()); err != nil {
 		return fmt.Errorf("failed to attach BPF program: %w", err)
 	}
 
-	l := &link{
-		collection: coll,
-		sockFd:     sockFd,
-		perfRd:     rd,
-		users:      1,
-	}
 	t.attachments[key] = l
 
-	go t.listen(key, rd, eventCallback, node)
+	go t.listen(key, l.perfRd, eventCallback, node)
 
 	return nil
 }
