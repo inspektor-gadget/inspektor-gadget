@@ -168,7 +168,7 @@ func tcpStartPrintLoop() {
 
 func tcpPrintHeader() {
 	switch params.OutputMode {
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
 		} else {
@@ -177,7 +177,7 @@ func tcpPrintHeader() {
 		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-3s %-51s %-51s %-7s %s\n",
 			"NODE", "NAMESPACE", "POD", "CONTAINER",
 			"PID", "COMM", "IPv", "LADDR", "RADDR", "RX_KB", "TX_KB")
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
 		} else {
@@ -202,7 +202,7 @@ func tcpPrintEvents() {
 	types.SortStats(stats, tcpSortBy)
 
 	switch params.OutputMode {
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		for idx, event := range stats {
 			if idx == maxRows {
 				break
@@ -220,14 +220,14 @@ func tcpPrintEvents() {
 				fmt.Sprintf("%s:%d", event.Daddr, event.Dport),
 				event.Received/1048, event.Sent/1048)
 		}
-	case utils.OutputModeJSON:
+	case commonutils.OutputModeJSON:
 		b, err := json.Marshal(stats)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrMarshalOutput(err))
 			return
 		}
 		fmt.Println(string(b))
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		for idx, stat := range stats {
 			if idx == maxRows {
 				break

@@ -69,11 +69,11 @@ func (g *TraceGadget[Event]) Run() error {
 
 	// Print header
 	switch g.commonFlags.OutputMode {
-	case utils.OutputModeJSON:
+	case commonutils.OutputModeJSON:
 		// Nothing to print
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		fallthrough
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		g.parser.PrintColumnsHeader()
 	}
 

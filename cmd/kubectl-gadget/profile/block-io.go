@@ -28,7 +28,7 @@ import (
 )
 
 type BlockIOParser struct {
-	outputConfig *utils.OutputConfig
+	outputConfig *commonutils.OutputConfig
 }
 
 func newBlockIOCmd() *cobra.Command {
@@ -136,7 +136,7 @@ func (p *BlockIOParser) DisplayResultsCallback(traceOutputMode string, results [
 	}
 
 	var output string
-	if p.outputConfig.OutputMode == utils.OutputModeJSON {
+	if p.outputConfig.OutputMode == commonutils.OutputModeJSON {
 		output = results[0] + "\n"
 	} else {
 		var report types.Report

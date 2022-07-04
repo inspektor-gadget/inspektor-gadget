@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/types"
 	"github.com/spf13/cobra"
 )
@@ -41,11 +41,10 @@ type ProcessParser struct {
 func NewCommonProcessCmd(
 	processFlags *ProcessFlags,
 	availableColumns map[string]struct{},
-	outputConfig *utils.OutputConfig,
+	outputConfig *commonutils.OutputConfig,
 	customRun func(callback func(traceOutputMode string, results []string) error) error,
 ) *cobra.Command {
 	processGadget := &SnapshotGadget[types.Event]{
-		outputConfig: outputConfig,
 		parser: &ProcessParser{
 			BaseSnapshotParser: BaseSnapshotParser{
 				AvailableColumns: availableColumns,
@@ -60,7 +59,7 @@ func NewCommonProcessCmd(
 		Use:   "process",
 		Short: "Gather information about running processes",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if outputConfig.OutputMode == utils.OutputModeColumns && processFlags.showThreads {
+			if outputConfig.OutputMode == commonutils.OutputModeColumns && processFlags.showThreads {
 				for index, col := range outputConfig.CustomColumns {
 					if col != "pid" {
 						continue

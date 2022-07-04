@@ -33,7 +33,7 @@ type FsslowerParser struct {
 
 func newFsSlowerCmd() *cobra.Command {
 	commonFlags := &utils.CommonFlags{
-		OutputConfig: utils.OutputConfig{
+		OutputConfig: commonutils.OutputConfig{
 			// The columns that will be used in case the user does not specify
 			// which specific columns they want to print.
 			CustomColumns: []string{
@@ -112,7 +112,7 @@ func newFsSlowerCmd() *cobra.Command {
 	return cmd
 }
 
-func NewFsslowerParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+func NewFsslowerParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Event] {
 	columnsWidth := map[string]int{
 		"node":      -16,
 		"namespace": -16,

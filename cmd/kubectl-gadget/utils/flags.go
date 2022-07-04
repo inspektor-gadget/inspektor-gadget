@@ -16,17 +16,15 @@ package utils
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 )
 
 var KubernetesConfigFlags = genericclioptions.NewConfigFlags(false)
@@ -41,30 +39,10 @@ func cobraInit() {
 	viper.AutomaticEnv()
 }
 
-const (
-	OutputModeColumns       = "columns"
-	OutputModeJSON          = "json"
-	OutputModeCustomColumns = "custom-columns"
-)
-
-var supportedOutputModes = []string{OutputModeColumns, OutputModeJSON, OutputModeCustomColumns}
-
-// OutputConfig contains the flags that describes how to print the gadget's output
-type OutputConfig struct {
-	// OutputMode specifies the format output should be printed
-	OutputMode string
-
-	// List of columns to print (only meaningful when OutputMode is "columns=...")
-	CustomColumns []string
-
-	// Verbose prints additional information
-	Verbose bool
-}
-
 // CommonFlags contains CLI flags common to several gadgets
 type CommonFlags struct {
 	// OutputConfig describes the way output should be printed
-	OutputConfig
+	commonutils.OutputConfig
 
 	// LabelsRaw allows to filter containers with a label selector in the
 	// following format: key1=value1,key2=value2.
@@ -156,32 +134,10 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		}
 
 		// Output Mode
-		switch {
-		case params.OutputMode == OutputModeColumns:
-			fallthrough
-		case params.OutputMode == OutputModeJSON:
-			return nil
-		case strings.HasPrefix(params.OutputMode, OutputModeCustomColumns):
-			parts := strings.Split(params.OutputMode, "=")
-			if len(parts) != 2 {
-				return commonutils.WrapInErrInvalidArg(OutputModeCustomColumns,
-					errors.New("expects a comma separated list of columns to use"))
-			}
-
-			cols := strings.Split(strings.ToLower(parts[1]), ",")
-			for _, col := range cols {
-				if len(col) == 0 {
-					return commonutils.WrapInErrInvalidArg(OutputModeCustomColumns,
-						errors.New("column can't be empty"))
-				}
-			}
-
-			params.CustomColumns = cols
-			params.OutputMode = OutputModeCustomColumns
-		default:
-			return commonutils.WrapInErrInvalidArg("--output / -o",
-				fmt.Errorf("%q is not a valid output format", params.OutputMode))
+		if err := params.ParseOutputConfig(); err != nil {
+			return err
 		}
+
 		return nil
 	}
 
@@ -234,8 +190,8 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		&params.OutputMode,
 		"output",
 		"o",
-		OutputModeColumns,
-		fmt.Sprintf("Output format (%s).", strings.Join(supportedOutputModes, ", ")),
+		commonutils.OutputModeColumns,
+		fmt.Sprintf("Output format (%s).", strings.Join(commonutils.SupportedOutputModes, ", ")),
 	)
 
 	command.PersistentFlags().BoolVarP(

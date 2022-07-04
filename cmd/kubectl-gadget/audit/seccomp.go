@@ -34,9 +34,9 @@ var auditSeccompCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// print header
 		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
+		case commonutils.OutputModeCustomColumns:
 			fmt.Println(getCustomAuditSeccompColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
+		case commonutils.OutputModeColumns:
 			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-6s %-16s %-16s\n",
 				"NODE", "NAMESPACE", "POD", "CONTAINER",
 				"PCOMM", "PID", "SYSCALL", "CODE")
@@ -81,12 +81,12 @@ func auditSeccompTransformLine(line string) string {
 	}
 
 	switch params.OutputMode {
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-16s %-16s",
 			e.Node, e.Namespace, e.Pod, e.Container,
 			e.Comm, e.Pid, e.Syscall, e.Code))
 
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		for _, col := range params.CustomColumns {
 			switch col {
 			case "node":

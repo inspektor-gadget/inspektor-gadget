@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
@@ -25,7 +26,7 @@ func newProcessCmd() *cobra.Command {
 	var processFlags commonsnapshot.ProcessFlags
 
 	commonFlags := &utils.CommonFlags{
-		OutputConfig: utils.OutputConfig{
+		OutputConfig: commonutils.OutputConfig{
 			// The columns that will be used in case the user does not specify
 			// which specific columns they want to print. Notice they may be
 			// extended based on flags.

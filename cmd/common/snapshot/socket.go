@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
 	"github.com/spf13/cobra"
 )
@@ -42,11 +42,10 @@ type SocketParser struct {
 func NewSocketCmd(
 	socketFlags *SocketFlags,
 	availableColumns map[string]struct{},
-	outputConfig *utils.OutputConfig,
+	outputConfig *commonutils.OutputConfig,
 	customRun func(callback func(traceOutputMode string, results []string) error) error,
 ) *cobra.Command {
 	socketGadget := &SnapshotGadget[types.Event]{
-		outputConfig: outputConfig,
 		parser: &SocketParser{
 			BaseSnapshotParser: BaseSnapshotParser{
 				AvailableColumns: availableColumns,
@@ -65,7 +64,7 @@ func NewSocketCmd(
 				return err
 			}
 
-			if outputConfig.OutputMode == utils.OutputModeColumns && socketFlags.Extended {
+			if outputConfig.OutputMode == commonutils.OutputModeColumns && socketFlags.Extended {
 				outputConfig.CustomColumns = append(outputConfig.CustomColumns, "inode")
 			}
 

@@ -68,7 +68,7 @@ func (g *ProfileGadget) Run() error {
 		}()
 	}
 
-	if g.commonFlags.OutputMode != utils.OutputModeJSON {
+	if g.commonFlags.OutputMode != commonutils.OutputModeJSON {
 		if g.commonFlags.Timeout != 0 {
 			fmt.Printf(g.inProgressMsg + "...")
 		} else {
@@ -78,7 +78,7 @@ func (g *ProfileGadget) Run() error {
 
 	<-c
 
-	if g.commonFlags.OutputMode != utils.OutputModeJSON {
+	if g.commonFlags.OutputMode != commonutils.OutputModeJSON {
 		// Trick to have ^C on the same line than above message, so the gadget
 		// output begins on a "clean" line.
 		fmt.Println()

@@ -35,7 +35,7 @@ type BaseSnapshotParser struct {
 	// AvailableColumns are the columns that can be configured to be printed.
 	AvailableColumns map[string]struct{}
 
-	OutputConfig *utils.OutputConfig
+	OutputConfig *commonutils.OutputConfig
 }
 
 func (p *BaseSnapshotParser) BuildSnapshotColsHeader() string {
@@ -50,12 +50,16 @@ func (p *BaseSnapshotParser) BuildSnapshotColsHeader() string {
 	return sb.String()
 }
 
+func (p *BaseSnapshotParser) GetOutputConfig() *commonutils.OutputConfig {
+	return p.OutputConfig
+}
+
 type SnapshotEvent interface {
 	socketcollectortypes.Event | processcollectortypes.Event
 
-	// The Go compiler does not support accessing a struct field x.f where x is
-	// of type parameter type even if all types in the type parameter's type set
-	// have a field f. We may remove this restriction in Go 1.19. See
+	// TODO: The Go compiler does not support accessing a struct field x.f where
+	// x is of type parameter type even if all types in the type parameter's
+	// type set have a field f. We may remove this restriction in Go 1.19. See
 	// https://tip.golang.org/doc/go1.18#generics.
 	GetBaseEvent() eventtypes.Event
 }
@@ -74,15 +78,17 @@ type SnapshotParser[Event SnapshotEvent] interface {
 	// columns that exist in the availableCols. The columns are separated by
 	// taps.
 	BuildSnapshotColsHeader() string
+
+	// GetOutputConfig returns the output configuration. TODO: This method is
+	// required because of the same limitation of SnapshotEvent.GetBaseEvent().
+	// The Go compiler does not support accessing SnapshotParser.OutputConfig.
+	GetOutputConfig() *commonutils.OutputConfig
 }
 
 // SnapshotGadget represents a gadget belonging to the snapshot category.
 type SnapshotGadget[Event SnapshotEvent] struct {
-	// SnapshotParser already has outputConfig but we cannot access it directly.
-	// Same limitation of SnapshotEvent.GetBaseEvent().
-	outputConfig *utils.OutputConfig
-	parser       SnapshotParser[Event]
-	customRun    func(callback func(traceOutputMode string, results []string) error) error
+	parser    SnapshotParser[Event]
+	customRun func(callback func(traceOutputMode string, results []string) error) error
 }
 
 // Run runs a SnapshotGadget and prints the output after parsing it using the
@@ -108,8 +114,9 @@ func (g *SnapshotGadget[Event]) Run() error {
 
 		g.parser.SortEvents(&allEvents)
 
-		switch g.outputConfig.OutputMode {
-		case utils.OutputModeJSON:
+		outputConfig := g.parser.GetOutputConfig()
+		switch outputConfig.OutputMode {
+		case commonutils.OutputModeJSON:
 			b, err := json.MarshalIndent(allEvents, "", "  ")
 			if err != nil {
 				return commonutils.WrapInErrMarshalOutput(err)
@@ -117,9 +124,9 @@ func (g *SnapshotGadget[Event]) Run() error {
 
 			fmt.Printf("%s\n", b)
 			return nil
-		case utils.OutputModeColumns:
+		case commonutils.OutputModeColumns:
 			fallthrough
-		case utils.OutputModeCustomColumns:
+		case commonutils.OutputModeCustomColumns:
 			// In the snapshot gadgets it's possible to use a tabwriter because
 			// we have the full list of events to print available, hence the
 			// tablewriter is able to determine the columns width. In other
@@ -132,7 +139,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 			for _, e := range allEvents {
 				baseEvent := e.GetBaseEvent()
 				if baseEvent.Type != eventtypes.NORMAL {
-					utils.ManageSpecialEvent(baseEvent, g.outputConfig.Verbose)
+					utils.ManageSpecialEvent(baseEvent, outputConfig.Verbose)
 					continue
 				}
 
@@ -141,7 +148,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 
 			w.Flush()
 		default:
-			return commonutils.WrapInErrOutputModeNotSupported(g.outputConfig.OutputMode)
+			return commonutils.WrapInErrOutputModeNotSupported(outputConfig.OutputMode)
 		}
 
 		return nil

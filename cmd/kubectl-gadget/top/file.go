@@ -145,7 +145,7 @@ func fileStartOutputLoop() {
 
 func filePrintHeader() {
 	switch params.OutputMode {
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
 		} else {
@@ -154,7 +154,7 @@ func filePrintHeader() {
 		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-6s %-6s %-7s %-7s %1s %s\n",
 			"NODE", "NAMESPACE", "POD", "CONTAINER",
 			"PID", "COMM", "READS", "WRITES", "R_Kb", "W_Kb", "T", "FILE")
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
 		} else {
@@ -179,7 +179,7 @@ func filePrintEvents() {
 	types.SortStats(stats, fileSortBy)
 
 	switch params.OutputMode {
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		for idx, event := range stats {
 			if idx == maxRows {
 				break
@@ -189,14 +189,14 @@ func filePrintEvents() {
 				event.Pid, event.Comm, event.Reads, event.Writes, event.ReadBytes/1024,
 				event.WriteBytes/1024, event.FileType, event.Filename)
 		}
-	case utils.OutputModeJSON:
+	case commonutils.OutputModeJSON:
 		b, err := json.Marshal(stats)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrMarshalOutput(err))
 			return
 		}
 		fmt.Println(string(b))
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		for idx, stat := range stats {
 			if idx == maxRows {
 				break

@@ -17,13 +17,15 @@ package utils
 import (
 	"fmt"
 	"strings"
+
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 )
 
 // BaseParser is a base for a TraceParser to reuse the shared fields and
 // methods.
 type BaseParser struct {
 	ColumnsWidth map[string]int
-	OutputConfig *OutputConfig
+	OutputConfig *commonutils.OutputConfig
 }
 
 func (p *BaseParser) PrintColumnsHeader() {

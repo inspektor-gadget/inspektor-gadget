@@ -41,7 +41,7 @@ func newCPUCmd() *cobra.Command {
 	var cpuFlags CPUFlags
 
 	commonFlags := &utils.CommonFlags{
-		OutputConfig: utils.OutputConfig{
+		OutputConfig: commonutils.OutputConfig{
 			// The columns that will be used in case the user does not specify
 			// which specific columns they want to print.
 			CustomColumns: []string{
@@ -130,11 +130,11 @@ func newCPUCmd() *cobra.Command {
 func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []string) error {
 	// Print header
 	switch p.OutputConfig.OutputMode {
-	case utils.OutputModeJSON:
+	case commonutils.OutputModeJSON:
 		// Nothing to print
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		fallthrough
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		// Do not print the "stack" column header, it is not actually a column.
 		var i int
 		var col string
@@ -165,15 +165,15 @@ func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []str
 
 		for _, report := range reports {
 			switch p.OutputConfig.OutputMode {
-			case utils.OutputModeJSON:
+			case commonutils.OutputModeJSON:
 				b, err := json.Marshal(report)
 				if err != nil {
 					return commonutils.WrapInErrMarshalOutput(err)
 				}
 				fmt.Println(string(b))
-			case utils.OutputModeColumns:
+			case commonutils.OutputModeColumns:
 				fallthrough
-			case utils.OutputModeCustomColumns:
+			case commonutils.OutputModeCustomColumns:
 				fmt.Println(p.TransformEvent(&report))
 			default:
 				return commonutils.WrapInErrOutputModeNotSupported(p.OutputConfig.OutputMode)
