@@ -35,7 +35,7 @@ import (
 // #include "./bpf/filetop.h"
 import "C"
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang filetop ./bpf/filetop.bpf.c -- -I./bpf/ -I../../..
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang filetop ./bpf/filetop.bpf.c -- -I./bpf/ -I../../..
 
 type Config struct {
 	MountnsMap *ebpf.Map

@@ -63,7 +63,7 @@ import (
 // }
 import "C"
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target amd64 -cc clang tcptop ./bpf/tcptop.bpf.c -- -I./bpf/ -I../../..
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target $TARGET -cc clang tcptop ./bpf/tcptop.bpf.c -- -I./bpf/ -I../../..
 
 type Config struct {
 	MountnsMap   *ebpf.Map

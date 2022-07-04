@@ -23,7 +23,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang seccomp ./bpf/seccomp.c -- -I./bpf/ -I../../..
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang seccomp ./bpf/seccomp.c -- -I./bpf/ -I../../..
 
 // #include "bpf/seccomp-common.h"
 import "C"

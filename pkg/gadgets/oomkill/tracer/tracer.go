@@ -36,7 +36,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang oomkill ./bpf/oomkill.bpf.c -- -I./bpf/ -I../../..
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang oomkill ./bpf/oomkill.bpf.c -- -I./bpf/ -I../../..
 
 type Config struct {
 	MountnsMap *ebpf.Map
