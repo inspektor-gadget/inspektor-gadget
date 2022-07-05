@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,25 +15,20 @@
 package main
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/interactive"
 )
 
-func main() {
-	rootCmd := &cobra.Command{
-		Use:   "local-gadget",
-		Short: "Collection of gadgets for containers",
-	}
+// This variable is used by the "version" command and is set during build.
+var version = "undefined"
 
-	rootCmd.AddCommand(
-		interactive.NewInteractiveCmd(),
-		newVersionCmd(),
-	)
-
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+func newVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Show version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(version)
+		},
 	}
 }
