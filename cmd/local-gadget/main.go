@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/containers"
 	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/interactive"
 )
 
@@ -30,6 +31,7 @@ func main() {
 
 	rootCmd.AddCommand(
 		interactive.NewInteractiveCmd(),
+		containers.NewListContainersCmd(),
 		newVersionCmd(),
 	)
 
