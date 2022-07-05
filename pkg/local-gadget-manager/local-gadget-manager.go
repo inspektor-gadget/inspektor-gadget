@@ -15,6 +15,7 @@
 package localgadgetmanager
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -210,6 +211,36 @@ func (l *LocalGadgetManager) Show(name string) (ret string, err error) {
 	}
 
 	return ret, nil
+}
+
+func (l *LocalGadgetManager) CheckStatus(name, state string) error {
+	traceResource, ok := l.traceResources[name]
+	if !ok {
+		return fmt.Errorf("cannot find trace %q", name)
+	}
+
+	if traceResource.Status.OperationError != "" {
+		return errors.New(traceResource.Status.OperationError)
+	}
+
+	if traceResource.Status.State != state {
+		return fmt.Errorf("trace %q is not in the expected state %q: %s",
+			name, state, traceResource.Status.State)
+	}
+
+	return nil
+}
+
+func (l *LocalGadgetManager) DisplayOutput(
+	name string,
+	customResultsDisplay func(string, []string) error,
+) error {
+	traceResource, ok := l.traceResources[name]
+	if !ok {
+		return fmt.Errorf("cannot find trace %q", name)
+	}
+
+	return customResultsDisplay(traceResource.Spec.OutputMode, []string{traceResource.Status.Output})
 }
 
 func (l *LocalGadgetManager) Delete(name string) error {

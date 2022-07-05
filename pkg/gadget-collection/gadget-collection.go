@@ -71,11 +71,12 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 
 func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
-		"audit-seccomp":    auditseccomp.NewFactory(),
-		"dns":              dns.NewFactory(),
-		"network-graph":    networkgraph.NewFactory(),
-		"socket-collector": socketcollector.NewFactory(),
-		"seccomp":          seccomp.NewFactory(),
-		"snisnoop":         snisnoop.NewFactory(),
+		"audit-seccomp":     auditseccomp.NewFactory(),
+		"dns":               dns.NewFactory(),
+		"network-graph":     networkgraph.NewFactory(),
+		"process-collector": processcollector.NewFactory(),
+		"socket-collector":  socketcollector.NewFactory(),
+		"seccomp":           seccomp.NewFactory(),
+		"snisnoop":          snisnoop.NewFactory(),
 	}
 }

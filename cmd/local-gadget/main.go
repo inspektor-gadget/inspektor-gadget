@@ -21,6 +21,7 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/containers"
 	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/interactive"
+	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/snapshot"
 )
 
 func main() {
@@ -32,6 +33,7 @@ func main() {
 	rootCmd.AddCommand(
 		interactive.NewInteractiveCmd(),
 		containers.NewListContainersCmd(),
+		snapshot.NewSnapshotCmd(),
 		newVersionCmd(),
 	)
 
