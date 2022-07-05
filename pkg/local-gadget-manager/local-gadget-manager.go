@@ -113,7 +113,7 @@ func traceName(name string) string {
 	return gadgets.TraceName("gadget", name)
 }
 
-func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter, outputMode string) error {
+func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter, outputMode string, params map[string]string) error {
 	factory, ok := l.traceFactories[gadget]
 	if !ok {
 		return fmt.Errorf("unknown gadget %q", gadget)
@@ -154,6 +154,7 @@ func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter, outputMode
 			Gadget:     gadget,
 			RunMode:    "Manual",
 			OutputMode: outputMode,
+			Parameters: params,
 		},
 	}
 	if containerFilter != "" {

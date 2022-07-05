@@ -206,7 +206,7 @@ func TestSeccomp(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-seccomp001"
-	err = localGadgetManager.AddTracer("seccomp", "my-tracer", containerName, "Stream")
+	err = localGadgetManager.AddTracer("seccomp", "my-tracer", containerName, "Stream", nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
@@ -257,7 +257,7 @@ func TestAuditSeccomp(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-auditseccomp001"
-	err = localGadgetManager.AddTracer("audit-seccomp", "my-tracer", containerName, "Stream")
+	err = localGadgetManager.AddTracer("audit-seccomp", "my-tracer", containerName, "Stream", nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
@@ -309,7 +309,7 @@ func TestDNS(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-dns001"
-	err = localGadgetManager.AddTracer("dns", "my-tracer", containerName, "Stream")
+	err = localGadgetManager.AddTracer("dns", "my-tracer", containerName, "Stream", nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
@@ -425,7 +425,7 @@ func TestNetworkGraph(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-network-graph001"
-	err = localGadgetManager.AddTracer("network-graph", "my-tracer", containerName, "Stream")
+	err = localGadgetManager.AddTracer("network-graph", "my-tracer", containerName, "Stream", nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
@@ -541,7 +541,7 @@ func TestCollector(t *testing.T) {
 	}
 	defer localGadgetManager.Close()
 
-	err = localGadgetManager.AddTracer("socket-collector", "my-tracer1", "my-container", "Status")
+	err = localGadgetManager.AddTracer("socket-collector", "my-tracer1", "my-container", "Status", nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}

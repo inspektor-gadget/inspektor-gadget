@@ -88,7 +88,7 @@ func newRootCmd(localGadgetManager *localgadgetmanager.LocalGadgetManager) *cobr
 					return
 				}
 				gadget, name := args[0], args[1]
-				err := localGadgetManager.AddTracer(gadget, name, optionContainerSelector, optionOutputMode)
+				err := localGadgetManager.AddTracer(gadget, name, optionContainerSelector, optionOutputMode, nil)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
