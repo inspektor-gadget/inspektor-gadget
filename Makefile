@@ -11,6 +11,9 @@ GOHOSTARCH ?= $(shell go env GOHOSTARCH)
 
 ENABLE_BTFGEN ?= false
 
+BPFTOOL ?= bpftool
+ARCH ?= $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's/ppc64le/powerpc/' | sed 's/mips.*/mips/')
+
 # Adds a '-dirty' suffix to version string if there are uncommitted changes
 changes := $(shell git status --porcelain)
 ifeq ($(changes),)
@@ -25,6 +28,9 @@ ifeq ($(pvpath),)
 else
 	PV := | $(pvpath)
 endif
+
+# export variables that are used in Makefile.btfgen as well.
+export BPFTOOL ARCH
 
 include crd.mk
 include tests.mk
@@ -203,4 +209,4 @@ minikube-install: gadget-default-container kubectl-gadget
 
 .PHONY: btfgen
 btfgen:
-	./tools/btfgen.sh
+	+make -f Makefile.btfgen

@@ -44,8 +44,9 @@ RUN cd /gadget/gadget-container && make gadget-container-deps
 # Execute BTFGen
 RUN set -ex; \
 	if [ "$ENABLE_BTFGEN" = true ]; then \
-		cd /btf-tools && \
-		BTFHUB=/tmp/btfhub INSPEKTOR_GADGET=/gadget ./btfgen.sh; \
+		cd /gadget && \
+		make btfgen BPFTOOL=/tmp/btfhub/tools/bin/bpftool.x86_64 \
+			BTFHUB_ARCHIVE=/tmp/btfhub-archive/ OUTPUT=/tmp/btfs/ -j$(nproc); \
 	fi
 
 # Main gadget image
