@@ -26,7 +26,7 @@ $kubectl_gadget_path = shift or die "Usage: $0 relative_path_to_kubectl_gadget p
 $readme_path = shift or die "Usage: $0 path_to_kubectl_gadget path_to_README";
 
 if (substr($kubectl_gadget_path, 0, 1) ne '.') {
-	die "kubectl-gadget must be absolute path: ${kubectl_gadget_path}";
+	die "kubectl-gadget must be relative path: ${kubectl_gadget_path}";
 }
 
 open $fd, '<', $readme_path or die "Can not open ${readme_path}: $!";
