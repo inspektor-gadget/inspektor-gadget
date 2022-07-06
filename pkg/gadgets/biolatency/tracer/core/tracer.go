@@ -33,8 +33,8 @@ import (
 	"github.com/moby/moby/pkg/parsers/kernel"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang biolatency ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang biolatencyBefore ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../ -DKERNEL_BEFORE_5_11
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang biolatency ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang biolatencyBefore ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../${TARGET} -DKERNEL_BEFORE_5_11
 
 type Tracer struct {
 	node                string

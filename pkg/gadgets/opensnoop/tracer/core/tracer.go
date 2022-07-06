@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -37,7 +38,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang opensnoop ./bpf/opensnoop.bpf.c -- -I./bpf/ -I../../../../
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang opensnoop ./bpf/opensnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Tracer struct {
 	config        *tracer.Config
@@ -114,11 +115,14 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	openEnter, err := link.Tracepoint("syscalls", "sys_enter_open", t.objs.TracepointSyscallsSysEnterOpen, nil)
-	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
+	// arm64 does not defined an open() syscall, only openat().
+	if runtime.GOARCH != "arm64" {
+		openEnter, err := link.Tracepoint("syscalls", "sys_enter_open", t.objs.TracepointSyscallsSysEnterOpen, nil)
+		if err != nil {
+			return fmt.Errorf("error opening tracepoint: %w", err)
+		}
+		t.openEnterLink = openEnter
 	}
-	t.openEnterLink = openEnter
 
 	openAtEnter, err := link.Tracepoint("syscalls", "sys_enter_openat", t.objs.TracepointSyscallsSysEnterOpenat, nil)
 	if err != nil {
@@ -126,11 +130,13 @@ func (t *Tracer) start() error {
 	}
 	t.openAtEnterLink = openAtEnter
 
-	openExit, err := link.Tracepoint("syscalls", "sys_exit_open", t.objs.TracepointSyscallsSysExitOpen, nil)
-	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
+	if runtime.GOARCH != "arm64" {
+		openExit, err := link.Tracepoint("syscalls", "sys_exit_open", t.objs.TracepointSyscallsSysExitOpen, nil)
+		if err != nil {
+			return fmt.Errorf("error opening tracepoint: %w", err)
+		}
+		t.openExitLink = openExit
 	}
-	t.openExitLink = openExit
 
 	openAtExit, err := link.Tracepoint("syscalls", "sys_exit_openat", t.objs.TracepointSyscallsSysExitOpenat, nil)
 	if err != nil {

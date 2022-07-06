@@ -52,6 +52,9 @@ all: build local-gadget
 .PHONY: phony_explicit
 phony_explicit:
 
+ebpf-objects:
+	TARGET=$(GOHOSTARCH) go generate ./...
+
 # local-gadget
 
 LOCAL_GADGET_TARGETS = \

@@ -27,8 +27,8 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang IterTCPv4 ./bpf/tcp4-collector.c -- -I../../.. -Werror -O2 -g -c -x c
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang IterUDPv4 ./bpf/udp4-collector.c -- -I../../.. -Werror -O2 -g -c -x c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang IterTCPv4 ./bpf/tcp4-collector.c -- -I../../../${TARGET} -Werror -O2 -g -c -x c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang IterUDPv4 ./bpf/udp4-collector.c -- -I../../../${TARGET} -Werror -O2 -g -c -x c
 
 func parseIPv4(ipU32 uint32) string {
 	ipBytes := make([]byte, 4)

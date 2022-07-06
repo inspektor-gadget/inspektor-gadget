@@ -48,7 +48,7 @@ struct pid_comm_t {
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);
-	__type(key, struct tuple_t);
+	__type(key, struct tuple_key_t);
 	__type(value, struct pid_comm_t);
 } tuplepid SEC(".maps");
 

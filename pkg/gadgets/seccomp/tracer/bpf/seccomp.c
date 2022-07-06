@@ -57,10 +57,12 @@ struct {
 	__uint(max_entries, 1024);
 } syscalls_per_mntns SEC(".maps");
 
+#ifdef __TARGET_ARCH_x86
 static __always_inline int is_x86_compat(struct task_struct *task)
 {
 	return !!(BPF_CORE_READ(task, thread_info.status) & TS_COMPAT);
 }
+#endif
 
 SEC("raw_tracepoint/sys_enter")
 int tracepoint__raw_syscalls__sys_enter(struct bpf_raw_tracepoint_args *ctx)
@@ -72,9 +74,11 @@ int tracepoint__raw_syscalls__sys_enter(struct bpf_raw_tracepoint_args *ctx)
 	bpf_probe_read(&regs, sizeof(struct pt_regs), (void*)ctx->args[0]);
 	id = ctx->args[1];
 
+#ifdef __TARGET_ARCH_x86
 	if (is_x86_compat(task)) {
 		return 0;
 	}
+#endif
 
 	if (id < 0 || id >= SYSCALLS_COUNT)
 		return 0;

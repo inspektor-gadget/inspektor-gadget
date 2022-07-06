@@ -37,7 +37,7 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/ -I../../../../
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Tracer struct {
 	config        *tracer.Config
@@ -111,17 +111,10 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	enter, err := link.Tracepoint("syscalls", "sys_enter_execve", t.objs.TracepointSyscallsSysEnterExecve, nil)
+	t.enterLink, t.exitLink, err = loadExecsnoopLinks(t.objs)
 	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
+		return err
 	}
-	t.enterLink = enter
-
-	exit, err := link.Tracepoint("syscalls", "sys_exit_execve", t.objs.TracepointSyscallsSysExitExecve, nil)
-	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
-	}
-	t.exitLink = exit
 
 	reader, err := perf.NewReader(t.objs.execsnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {

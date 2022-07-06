@@ -28,8 +28,8 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang auditseccomp ./bpf/audit-seccomp.c -- -I./bpf/ -I../../.. -target bpf -D__KERNEL__
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 -cc clang auditseccompwithfilters ./bpf/audit-seccomp.c -- -DWITH_FILTER=1 -I./bpf/ -I../../.. -target bpf -D__KERNEL__
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang auditseccomp ./bpf/audit-seccomp.c -- -I./bpf/ -I../../../ -I../../../${TARGET} -D__KERNEL__
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang auditseccompwithfilters ./bpf/audit-seccomp.c -- -DWITH_FILTER=1 -I./bpf/ -I../../../ -I../../../${TARGET} -D__KERNEL__
 
 // #include <linux/types.h>
 // #include "./bpf/audit-seccomp.h"
