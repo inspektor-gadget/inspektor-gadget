@@ -17,6 +17,7 @@ package tracer
 import (
 	"bufio"
 	"fmt"
+	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -85,13 +86,19 @@ func RunCollector(resolver gadgets.Resolver, node string, mntnsmap *ebpf.Map) ([
 		var tgid, pid int
 		var mntnsid uint64
 
-		matchedElems, err := fmt.Sscanf(scanner.Text(), "%d %d %s %d", &tgid, &pid, &command, &mntnsid)
+		text := scanner.Text()
+		matchedElems, err := fmt.Sscanf(text, "%d %d %d", &tgid, &pid, &mntnsid)
 		if err != nil {
 			return nil, err
 		}
-		if matchedElems != 4 {
-			return nil, fmt.Errorf("failed to parse process information, expected 4 matched elements had %d", matchedElems)
+		if matchedElems != 3 {
+			return nil, fmt.Errorf("failed to parse process information, expected 3 integers had %d", matchedElems)
 		}
+		textSplit := strings.SplitN(text, " ", 4)
+		if len(textSplit) != 4 {
+			return nil, fmt.Errorf("failed to parse process information, expected 4 matched elements had %d", len(textSplit))
+		}
+		command = textSplit[3]
 
 		container := resolver.LookupContainerByMntns(mntnsid)
 		if container == nil {

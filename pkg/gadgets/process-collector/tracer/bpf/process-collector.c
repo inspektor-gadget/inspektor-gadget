@@ -34,7 +34,7 @@ int dump_task(struct bpf_iter__task *ctx)
 		return 0;
 #endif
 
-	BPF_SEQ_PRINTF(seq, "%d %d %s %llu\n", task->tgid, task->pid, task->comm, mntns_id);
+	BPF_SEQ_PRINTF(seq, "%d %d %llu %s\n", task->tgid, task->pid, mntns_id, task->comm);
 
 	return 0;
 }
