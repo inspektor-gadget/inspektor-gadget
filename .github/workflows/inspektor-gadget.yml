@@ -1,6 +1,6 @@
 name: Inspektor Gadget CI
 env:
-  CONTAINER_REPO: ${{ secrets.CONTAINER_REPO }}
+  CONTAINER_REPO: ghcr.io/${{ github.repository }}
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
@@ -180,9 +180,9 @@ jobs:
     - name: Login to Container Registry
       uses: docker/login-action@v1
       with:
-        registry: ${{ secrets.CONTAINER_REGISTRY }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Set IMAGE_TAG
       run: |
         TMP1=${GITHUB_REF#*/}
@@ -204,7 +204,7 @@ jobs:
         # push to final registry
         # At the moment, we only build core image and do not publish them.
         push: ${{ matrix.type != 'core' }}
-        tags: ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
+        tags: ${{ env.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
         # For the moment, we only support these two platforms.
@@ -226,9 +226,9 @@ jobs:
     - name: Login to Container Registry
       uses: docker/login-action@v1
       with:
-        registry: ${{ secrets.CONTAINER_REGISTRY }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Set IMAGE_TAG
       run: |
         TMP1=${GITHUB_REF#*/}
@@ -244,7 +244,7 @@ jobs:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/examples/${{ matrix.example }}/Dockerfile
         push: ${{ secrets.PUSH_EXAMPLES == 'ENABLE_PUSH_EXAMPLES' }}
-        tags: ${{ secrets.CONTAINER_REPO }}-${{ matrix.example }}:${{ env.IMAGE_TAG }}
+        tags: ${{ env.CONTAINER_REPO }}-${{ matrix.example }}:${{ env.IMAGE_TAG }}
 
   test-unit:
     name: Unit tests
@@ -382,9 +382,9 @@ jobs:
       env:
         KUBERNETES_DISTRIBUTION: "aro"
       with:
-        registry: ${{ secrets.CONTAINER_REGISTRY }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
   test-integration:
     name: Integration tests
@@ -404,9 +404,9 @@ jobs:
       env:
         KUBERNETES_DISTRIBUTION: "minikube-github"
       with:
-        registry: ${{ secrets.CONTAINER_REGISTRY }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
   release:
     name: Release

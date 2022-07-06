@@ -40,7 +40,7 @@ var (
 var (
 	integration = flag.Bool("integration", false, "run integration tests")
 
-	// image such as docker.io/kinvolk/gadget:latest
+	// image such as ghcr.io/kinvolk/inspektor-gadget:latest
 	image = flag.String("image", "", "gadget container image")
 
 	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")

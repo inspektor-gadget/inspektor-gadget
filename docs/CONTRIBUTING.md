@@ -45,7 +45,7 @@ Inspektor Gadget provides two different container images:
 **Note**: Using a locally built container image requires pushing it to a container
 repository, either local or remote. The default repository can be
 overridden by changing the value of the `CONTAINER_REPO` env variable,
-which defaults to `docker.io/kinvolk/gadget` if not defined.
+which defaults to `ghcr.io/kinvolk/inspektor-gadget` if not defined.
 
 You can build and push the container gadget image by running the following commands:
 

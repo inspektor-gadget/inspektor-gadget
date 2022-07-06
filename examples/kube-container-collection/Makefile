@@ -1,4 +1,4 @@
-CONTAINER_REPO ?= docker.io/kinvolk/gadget
+CONTAINER_REPO ?= ghcr.io/kinvolk/inspektor-gadget
 IMAGE_TAG ?= $(shell ../../tools/image-tag branch)
 
 kube-container-collection: main.go
