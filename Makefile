@@ -74,22 +74,10 @@ local-gadget: local-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
 local-gadget-%: phony_explicit
 	echo Building local-gadget-$* && \
 	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
-	if [ "$(shell go env GOOS)" = "$${GOOS}" -a "$(shell go env GOARCH)" = "$${GOARCH}" ] ; then \
-		export CGO_ENABLED=1 && \
-		export GO111MODULE=on && \
-		go build \
-			-tags withebpf \
-			-ldflags "-X main.version=$(VERSION)" \
-			-o local-gadget-$${GOOS}-$${GOARCH} \
-			github.com/kinvolk/inspektor-gadget/cmd/local-gadget ; \
-	elif [ -f "local-gadget-$*.Dockerfile" ] ; then \
-		docker build -t local-gadget-$*-builder -f local-gadget-$*.Dockerfile . && \
-		docker run --rm --entrypoint cat local-gadget-$*-builder local-gadget-$* > local-gadget-$* && \
-		chmod +x local-gadget-$* ; \
-	else \
-		echo "Cross compiling for $${GOOS}-$${GOARCH} not supported" && \
-		exit 1 ; \
-	fi
+	docker build -t local-gadget-$*-builder -f local-gadget.Dockerfile \
+		--build-arg GOOS=$${GOOS} --build-arg GOARCH=$${GOARCH} --build-arg VERSION=$(VERSION) . && \
+	docker run --rm --entrypoint cat local-gadget-$*-builder local-gadget-$* > local-gadget-$* && \
+	chmod +x local-gadget-$*
 
 KUBECTL_GADGET_TARGETS = \
 	kubectl-gadget-linux-amd64 \
