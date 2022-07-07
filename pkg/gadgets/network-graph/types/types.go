@@ -53,6 +53,10 @@ type Event struct {
 	Debug string `json:"debug,omitempty"`
 }
 
+func (e Event) GetBaseEvent() eventtypes.Event {
+	return e.Event
+}
+
 func Unique(edges []Event) []Event {
 	keys := make(map[string]bool)
 	list := []Event{}
