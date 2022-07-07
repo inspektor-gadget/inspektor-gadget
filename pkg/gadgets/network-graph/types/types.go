@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,28 @@
 
 package types
 
-type KubernetesConnectionEvent struct {
-	/* "ready", or "connect" or "accept" */
-	Type string `json:"type"`
+import (
+	"encoding/json"
+	"fmt"
+
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+)
+
+type Event struct {
+	eventtypes.Event
+
+	PktType string `json:"pkt_type,omitempty"`
+	Proto   string `json:"proto,omitempty"`
+	IP      string `json:"ip,omitempty"`
+	Port    int    `json:"port,omitempty"`
 
 	/* pod, svc or other */
-	RemoteKind string `json:"remote_kind"`
+	RemoteKind string `json:"remote_kind,omitempty"`
 
-	/* Port */
-	Port uint16 `json:"port"`
-
-	LocalPodNamespace string            `json:"local_pod_namespace"`
-	LocalPodName      string            `json:"local_pod_name"`
-	LocalPodOwner     string            `json:"local_pod_owner,omitempty"`
-	LocalPodLabels    map[string]string `json:"local_pod_labels"`
+	PodHostIP string            `json:"pod_host_ip,omitempty"`
+	PodIP     string            `json:"pod_ip,omitempty"`
+	PodOwner  string            `json:"pod_owner,omitempty"`
+	PodLabels map[string]string `json:"pod_labels,omitempty"`
 
 	/* if RemoteKind = svc */
 	RemoteSvcNamespace     string            `json:"remote_svc_namespace,omitempty"`
@@ -43,4 +51,35 @@ type KubernetesConnectionEvent struct {
 	RemoteOther string `json:"remote_other,omitempty"`
 
 	Debug string `json:"debug,omitempty"`
+}
+
+func Unique(edges []Event) []Event {
+	keys := make(map[string]bool)
+	list := []Event{}
+	for _, e := range edges {
+		key := e.Key()
+		if _, value := keys[key]; !value {
+			keys[key] = true
+			list = append(list, e)
+		}
+	}
+	return list
+}
+
+func (e *Event) Key() string {
+	return fmt.Sprintf("%s/%s/%s/%s/%s/%d",
+		e.Namespace,
+		e.Pod,
+		e.PktType,
+		e.Proto,
+		e.IP,
+		e.Port)
+}
+
+func EventsString(edges []Event) string {
+	b, err := json.Marshal(edges)
+	if err != nil {
+		return fmt.Sprintf("error marshalling event: %s\n", err)
+	}
+	return string(b)
 }

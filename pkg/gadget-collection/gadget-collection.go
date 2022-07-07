@@ -26,7 +26,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/filetop"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/fsslower"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/mountsnoop"
-	networkpolicyadvisor "github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy"
+	networkgraph "github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/oomkill"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop"
 	processcollector "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector"
@@ -43,29 +43,29 @@ import (
 
 func TraceFactories() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
-		"audit-seccomp":          auditseccomp.NewFactory(),
-		"bindsnoop":              bindsnoop.NewFactory(),
-		"biolatency":             biolatency.NewFactory(),
-		"biotop":                 biotop.NewFactory(),
-		"capabilities":           capabilities.NewFactory(),
-		"dns":                    dns.NewFactory(),
-		"execsnoop":              execsnoop.NewFactory(),
-		"filetop":                filetop.NewFactory(),
-		"fsslower":               fsslower.NewFactory(),
-		"opensnoop":              opensnoop.NewFactory(),
-		"mountsnoop":             mountsnoop.NewFactory(),
-		"network-policy-advisor": networkpolicyadvisor.NewFactory(),
-		"oomkill":                oomkill.NewFactory(),
-		"process-collector":      processcollector.NewFactory(),
-		"profile":                profile.NewFactory(),
-		"seccomp":                seccomp.NewFactory(),
-		"sigsnoop":               sigsnoop.NewFactory(),
-		"snisnoop":               snisnoop.NewFactory(),
-		"socket-collector":       socketcollector.NewFactory(),
-		"tcpconnect":             tcpconnect.NewFactory(),
-		"tcptop":                 tcptop.NewFactory(),
-		"tcptracer":              tcptracer.NewFactory(),
-		"traceloop":              traceloop.NewFactory(),
+		"audit-seccomp":     auditseccomp.NewFactory(),
+		"bindsnoop":         bindsnoop.NewFactory(),
+		"biolatency":        biolatency.NewFactory(),
+		"biotop":            biotop.NewFactory(),
+		"capabilities":      capabilities.NewFactory(),
+		"dns":               dns.NewFactory(),
+		"execsnoop":         execsnoop.NewFactory(),
+		"filetop":           filetop.NewFactory(),
+		"fsslower":          fsslower.NewFactory(),
+		"opensnoop":         opensnoop.NewFactory(),
+		"mountsnoop":        mountsnoop.NewFactory(),
+		"network-graph":     networkgraph.NewFactory(),
+		"oomkill":           oomkill.NewFactory(),
+		"process-collector": processcollector.NewFactory(),
+		"profile":           profile.NewFactory(),
+		"seccomp":           seccomp.NewFactory(),
+		"sigsnoop":          sigsnoop.NewFactory(),
+		"snisnoop":          snisnoop.NewFactory(),
+		"socket-collector":  socketcollector.NewFactory(),
+		"tcpconnect":        tcpconnect.NewFactory(),
+		"tcptop":            tcptop.NewFactory(),
+		"tcptracer":         tcptracer.NewFactory(),
+		"traceloop":         traceloop.NewFactory(),
 	}
 }
 
@@ -73,6 +73,7 @@ func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
 		"audit-seccomp":    auditseccomp.NewFactory(),
 		"dns":              dns.NewFactory(),
+		"network-graph":    networkgraph.NewFactory(),
 		"socket-collector": socketcollector.NewFactory(),
 		"seccomp":          seccomp.NewFactory(),
 		"snisnoop":         snisnoop.NewFactory(),

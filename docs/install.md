@@ -112,8 +112,8 @@ Gadget in some platforms.
 #### Minikube
 
 You should create the minikube cluster in different ways according to the gadget
-you want to use. If you want to use traceloop or the network policy advisor you
-should use the VM driver. Otherwise the docker driver is the recommented option.
+you want to use. If you want to use traceloop you should use the VM driver.
+Otherwise the docker driver is the recommented option.
 
 
 ##### Using a VM driver

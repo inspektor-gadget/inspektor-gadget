@@ -38,10 +38,8 @@ kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
 Inspektor Gadget provides two different container images:
 - gadget-default: Contains CO-RE and BCC gadgets
 - gadget-core: Containes only CO-RE gadgets that are integrated with the gadget tracer manager
-  * traceloop and the network policy advisor gadgets aren't included,
-    they will be included once
-    [#371](https://github.com/kinvolk/inspektor-gadget/issues/371) and
-    [#172](https://github.com/kinvolk/inspektor-gadget/issues/172) are
+  * traceloop gadget is not included, it will be included once
+    [#371](https://github.com/kinvolk/inspektor-gadget/issues/371) is
     fixed.
 
 **Note**: Using a locally built container image requires pushing it to a container

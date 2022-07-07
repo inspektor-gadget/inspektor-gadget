@@ -1,0 +1,12 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: network-graph
+  namespace: gadget
+spec:
+  node: albantyphoon-worker000003
+  gadget: network-graph
+  filter:
+    namespace: demo
+  runMode: Manual
+  outputMode: Stream
