@@ -24,10 +24,6 @@ RUN set -ex; \
 	apt-get install -y golang-1.18 && \
 	ln -s /usr/lib/go-1.18/bin/go /bin/go
 
-# Install libbpf-dev 0.7.0 from source to be cross-platform.
-RUN git clone --branch v0.7.0 --depth 1 https://github.com/libbpf/libbpf.git && \
-	make -j$(nproc) -C libbpf/src install
-
 # Download BTFHub files
 COPY ./tools /btf-tools
 RUN set -ex; mkdir -p /tmp/btfs && \
