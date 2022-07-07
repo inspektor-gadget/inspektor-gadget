@@ -5,7 +5,7 @@
 # and is designed to be used on systems that support BTF
 # (CONFIG_DEBUG_INFO_BTF).
 
-ARG BUILDER_IMAGE=ubuntu:20.04
+ARG BUILDER_IMAGE=debian:bullseye
 ARG BASE_IMAGE=alpine:3.14
 
 # Prepare and build gadget artifacts in a container
@@ -18,8 +18,8 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y gcc make ca-certificates git \
-		software-properties-common libelf-dev pkg-config libseccomp-dev && \
-	apt-add-repository -y ppa:longsleep/golang-backports && \
+		libelf-dev pkg-config libseccomp-dev && \
+	echo 'deb http://deb.debian.org/debian bullseye-backports main' >> /etc/apt/sources.list && \
 	apt-get update && \
 	apt-get install -y golang-1.18 && \
 	ln -s /usr/lib/go-1.18/bin/go /bin/go
