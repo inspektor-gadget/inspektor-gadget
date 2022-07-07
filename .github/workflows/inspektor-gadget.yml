@@ -155,10 +155,13 @@ jobs:
         name: ${{ matrix.local-gadget-target }}-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.local-gadget-target }}.tar.gz
 
-  build-gadget-default-container-image:
-    name: Build gadget default container image
+  build-gadget-container-images:
+    name: Build gadget container images
     # level: 0
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        type: [default, core]
     steps:
     - uses: actions/checkout@v3
     - name: Set up QEMU
@@ -171,9 +174,9 @@ jobs:
       uses: actions/cache@v2
       with:
         path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-docker-default-${{ hashFiles('gadget-default.Dockerfile') }}
+        key: ${{ runner.os }}-docker-${{ matrix.type }}-${{ hashFiles('gadget-${{ matrix.type }}.Dockerfile') }}
         restore-keys: |
-          ${{ runner.os }}-docker-default-
+          ${{ runner.os }}-docker-${{ matrix.type }}-
     - name: Login to Container Registry
       uses: docker/login-action@v1
       with:
@@ -189,69 +192,18 @@ jobs:
             IMAGE_TAG="latest"
         fi
         echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-    - name: Build gadget default container
+    - name: Build gadget ${{ matrix.type }} container
       uses: docker/build-push-action@v2
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
-        file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget-default.Dockerfile
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget-${{ matrix.type }}.Dockerfile
         build-args: |
           ENABLE_BTFGEN=true
         # TODO: how to avoid pushing a container before running integration tests
         # Answer: push to runner registry first, if integration tests are OK
         # push to final registry
-        push: true
-        tags: ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
-        cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache-new
-        # For the moment, we only support these two platforms.
-        # Cross building for arm64 only happens on main branch.
-        platforms: ${{ fromJSON('["linux/amd64", "linux/amd64,linux/arm64"]')[github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')] }}
-
-  build-gadget-core-container-image:
-    name: Build gadget CO-RE container image
-    # level: 0
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v1
-      if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v1
-    - name: Cache Docker layers
-      uses: actions/cache@v2
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-docker-core-${{ hashFiles('gadget-core.Dockerfile') }}
-        restore-keys: |
-          ${{ runner.os }}-docker-core-
-    - name: Login to Container Registry
-      uses: docker/login-action@v1
-      with:
-        registry: ${{ secrets.CONTAINER_REGISTRY }}
-        username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
-        password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
-    - name: Set IMAGE_TAG
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-    - name: Build gadget CO-RE container
-      uses: docker/build-push-action@v2
-      with:
-        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
-        file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget-core.Dockerfile
-        build-args: |
-          ENABLE_BTFGEN=true
-        # TODO: how to avoid pushing a container before running integration tests
-        # Answer: push to runner registry first, if integration tests are OK
-        # push to final registry
-        push: false # TODO: just build the image for the time being
+        # At the moment, we only build core image and do not publish them.
+        push: ${{ matrix.type != 'core' }}
         tags: ${{ secrets.CONTAINER_REPO }}:${{ env.IMAGE_TAG }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
@@ -405,7 +357,7 @@ jobs:
   test-integration-aro:
     name: Integration tests on ARO
     # level: 1
-    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-default-container-image]
+    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images]
     # Run this job only if an ARO cluster is available on repo secrets. See
     # docs/ci.md for further details.
     if: needs.check-secrets.outputs.aro == 'true'
@@ -437,7 +389,7 @@ jobs:
   test-integration:
     name: Integration tests
     # level: 1
-    needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-default-container-image]
+    needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
