@@ -166,7 +166,6 @@ jobs:
     - uses: actions/checkout@v3
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v1
-      if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
@@ -208,8 +207,7 @@ jobs:
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
         # For the moment, we only support these two platforms.
-        # Cross building for arm64 only happens on main branch.
-        platforms: ${{ fromJSON('["linux/amd64", "linux/amd64,linux/arm64"]')[github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')] }}
+        platforms: linux/amd64,linux/arm64
 
   build-examples:
     name: Build examples
