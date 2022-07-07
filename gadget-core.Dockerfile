@@ -9,20 +9,26 @@ ARG BUILDER_IMAGE=debian:bullseye
 ARG BASE_IMAGE=alpine:3.14
 
 # Prepare and build gadget artifacts in a container
-FROM ${BUILDER_IMAGE} as builder
+FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
 
 ARG ENABLE_BTFGEN=false
 ENV ENABLE_BTFGEN=${ENABLE_BTFGEN}
 
+ARG TARGETARCH
+# We need a cross compiler and libraries for TARGETARCH due to CGO.
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
-	apt-get install -y gcc make ca-certificates git \
-		libelf-dev pkg-config libseccomp-dev && \
+	apt-get install -y gcc make ca-certificates git && \
 	echo 'deb http://deb.debian.org/debian bullseye-backports main' >> /etc/apt/sources.list && \
+	dpkg --add-architecture ${TARGETARCH} && \
 	apt-get update && \
-	apt-get install -y golang-1.18 && \
-	ln -s /usr/lib/go-1.18/bin/go /bin/go
+	apt-get install -y golang-1.18 libelf-dev:${TARGETARCH} \
+		pkg-config:${TARGETARCH} libseccomp-dev:${TARGETARCH} && \
+	ln -s /usr/lib/go-1.18/bin/go /bin/go && \
+	if [ ${TARGETARCH} = 'arm64' ]; then \
+		apt-get install -y gcc-aarch64-linux-gnu; \
+	fi
 
 # Download BTFHub files
 COPY ./tools /btf-tools
@@ -38,7 +44,11 @@ RUN cd /gadget && go mod download
 
 # This COPY is limited by .dockerignore
 COPY ./ /gadget
-RUN cd /gadget/gadget-container && make gadget-container-deps
+RUN cd /gadget/gadget-container && \
+	if [ ${TARGETARCH} = 'arm64' ]; then \
+		export CC=aarch64-linux-gnu-gcc; \
+	fi; \
+	make -j$(nproc) TARGET_ARCH=${TARGETARCH} gadget-container-deps
 
 # Execute BTFGen
 RUN set -ex; \
