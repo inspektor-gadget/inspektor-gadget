@@ -16,7 +16,7 @@ Let's start the gadget before running our workload:
 
 ```bash
 $ kubectl gadget trace fsslower -t ext4 -m 1 -p mypod
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID    T BYTES  OFFSET  LAT(ms)  FILE
+NODE             NAMESPACE        POD              CONTAINER        PID     COMM             T BYTES  OFFSET  LAT      FILE
 ```
 
 With `-t` we're indicating the type of filesystem we want to trace,
@@ -39,24 +39,24 @@ We can see how fsslower shows the operations that are taking longer than 1ms:
 
 ```bash
 $ kubectl gadget trace fsslower -t ext4 -m 1 -p mypod
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID    T BYTES  OFFSET  LAT(ms)  FILE
-ubuntu-hirsute   default          mypod            mypod            dpkg             579778 F 0      0       2.66     perl-modules-5.30.list-new
-ubuntu-hirsute   default          mypod            mypod            dpkg             579778 F 0      0       1.49     libperl5.30:amd64.list-new
-ubuntu-hirsute   default          mypod            mypod            dpkg             579778 F 0      0       1.45     control
-ubuntu-hirsute   default          mypod            mypod            dpkg             579778 F 0      0       1.01     less.list-new
-ubuntu-hirsute   default          mypod            mypod            dpkg             579778 F 0      0       1.05     symbols
-ubuntu-hirsute   default          mypod            mypod            dpkg             579778 F 0      0       1.05     md5sums
-ubuntu-hirsute   default          mypod            mypod            dpkg             579778 F 0      0       1.16     control
-ubuntu-hirsute   default          mypod            mypod            dpkg             579778 F 0      0       1.09     git.list-new
-ubuntu-hirsute   default          mypod            mypod            dpkg             580362 F 0      0       1.16     tmp.i
-ubuntu-hirsute   default          mypod            mypod            frontend         580363 F 0      0       1.50     templates.dat-new
-ubuntu-hirsute   default          mypod            mypod            dpkg-trigger     582040 F 0      0       1.10     triggers
-ubuntu-hirsute   default          mypod            mypod            frontend         580382 F 0      0       1.22     templates.dat-new
-ubuntu-hirsute   default          mypod            mypod            dpkg             583411 F 0      0       2.25     perl-modules-5.30.list-new
-ubuntu-hirsute   default          mypod            mypod            dpkg             583411 F 0      0       2.05     libperl5.30:amd64.list-new
-ubuntu-hirsute   default          mypod            mypod            dpkg             583411 F 0      0       1.13     tmp.i
-ubuntu-hirsute   default          mypod            mypod            dpkg             583411 F 0      0       1.26     updates
-ubuntu-hirsute   default          mypod            mypod            dpkg             583411 F 0      0       1.22     md5sums
+NODE             NAMESPACE        POD              CONTAINER        PID     COMM             T BYTES  OFFSET  LAT      FILE
+ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       2.66     perl-modules-5.30.list-new
+ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       1.49     libperl5.30:amd64.list-new
+ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       1.45     control
+ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       1.01     less.list-new
+ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       1.05     symbols
+ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       1.05     md5sums
+ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       1.16     control
+ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       1.09     git.list-new
+ubuntu-hirsute   default          mypod            mypod            580362  dpkg             F 0      0       1.16     tmp.i
+ubuntu-hirsute   default          mypod            mypod            580363  frontend         F 0      0       1.50     templates.dat-new
+ubuntu-hirsute   default          mypod            mypod            582040  dpkg-trigger     F 0      0       1.10     triggers
+ubuntu-hirsute   default          mypod            mypod            580382  frontend         F 0      0       1.22     templates.dat-new
+ubuntu-hirsute   default          mypod            mypod            583411  dpkg             F 0      0       2.25     perl-modules-5.30.list-new
+ubuntu-hirsute   default          mypod            mypod            583411  dpkg             F 0      0       2.05     libperl5.30:amd64.list-new
+ubuntu-hirsute   default          mypod            mypod            583411  dpkg             F 0      0       1.13     tmp.i
+ubuntu-hirsute   default          mypod            mypod            583411  dpkg             F 0      0       1.26     updates
+ubuntu-hirsute   default          mypod            mypod            583411  dpkg             F 0      0       1.22     md5sums
 ```
 
 That's all, let's delete our example pod

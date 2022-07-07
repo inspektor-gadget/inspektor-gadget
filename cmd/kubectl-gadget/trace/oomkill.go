@@ -15,127 +15,103 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/oomkill/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	"github.com/spf13/cobra"
 )
 
-var oomkillCmd = &cobra.Command{
-	Use:   "oomkill",
-	Short: "Trace when OOM killer is triggered and kills a process",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomOomkillColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-16s %-6s %-6s %-16s\n",
-				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"KPID", "KCOMM", "PAGES", "TPID", "TCOMM")
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "oomkill",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
-
-		err := utils.RunTraceAndPrintStream(config, oomkillTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
-
-		return nil
-	},
+type OOMKillParser struct {
+	BaseTraceParser
 }
 
-func init() {
-	TraceCmd.AddCommand(oomkillCmd)
-	utils.AddCommonFlags(oomkillCmd, &params)
-}
-
-// oomkillTransformLine is called to transform an event to columns
-// format according to the parameters
-func oomkillTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
+func newOOMKillCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"kpid",
+				"kcomm",
+				"pages",
+				"tpid",
+				"tcomm",
+			},
+		},
 	}
 
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-16s %-6d %-6d %-16s",
-			e.Node, e.Namespace, e.Pod, e.Container,
-			e.KilledPid, e.KilledComm, e.Pages, e.TriggeredPid, e.TriggeredComm))
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "kpid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.KilledPid))
-			case "kcomm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.KilledComm))
-			case "tpid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.TriggeredPid))
-			case "tcomm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.TriggeredComm))
-			case "pages":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pages))
+	cmd := &cobra.Command{
+		Use:   "oomkill",
+		Short: "Trace when OOM killer is triggered and kills a process",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			oomkillGadget := &TraceGadget[types.Event]{
+				name:        "oomkill",
+				commonFlags: commonFlags,
+				parser:      NewOOMKillParser(&commonFlags.OutputConfig),
 			}
-			sb.WriteRune(' ')
-		}
+
+			return oomkillGadget.Run()
+		},
 	}
 
-	return sb.String()
+	utils.AddCommonFlags(cmd, commonFlags)
+
+	return cmd
 }
 
-func getCustomOomkillColsHeader(cols []string) string {
+func NewOOMKillParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"kpid":      -7,
+		"kcomm":     -16,
+		"pages":     -6,
+		"tpid":      -7,
+		"tcomm":     -16,
+	}
+
+	return &OOMKillParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
+	}
+}
+
+func (p *OOMKillParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
 		case "kpid":
-			sb.WriteString(fmt.Sprintf("%-6s", "KPID"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.KilledPid))
 		case "kcomm":
-			sb.WriteString(fmt.Sprintf("%-16s", "KCOMM"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.KilledComm))
 		case "pages":
-			sb.WriteString(fmt.Sprintf("%-6s", "PAGES"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pages))
 		case "tpid":
-			sb.WriteString(fmt.Sprintf("%-6s", "TPID"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.TriggeredPid))
 		case "tcomm":
-			sb.WriteString(fmt.Sprintf("%-16s", "TCOMM"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.TriggeredComm))
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 

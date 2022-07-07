@@ -15,106 +15,84 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snisnoop/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
 
-var snisnoopCmd = &cobra.Command{
-	Use:   "sni",
-	Short: "Trace Server Name Indication (SNI) from TLS requests",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomSnisnoopColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %s\n",
-				"NODE", "NAMESPACE", "POD", "NAME")
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "snisnoop",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
-
-		err := utils.RunTraceAndPrintStream(config, snisnoopTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
-
-		return nil
-	},
+type SNIParser struct {
+	BaseTraceParser
 }
 
-func init() {
-	TraceCmd.AddCommand(snisnoopCmd)
-	utils.AddCommonFlags(snisnoopCmd, &params)
-}
-
-// snisnoopTransformLine is called to transform an event to columns
-// format according to the parameters
-func snisnoopTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
+func newSNICmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"name",
+			},
+		},
 	}
 
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %s",
-			e.Node, e.Namespace, e.Pod, e.Name))
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "name":
-				sb.WriteString(fmt.Sprintf("%-24s", e.Name))
+	cmd := &cobra.Command{
+		Use:   "sni",
+		Short: "Trace Server Name Indication (SNI) from TLS requests",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			sniGadget := &TraceGadget[types.Event]{
+				name:        "snisnoop",
+				commonFlags: commonFlags,
+				parser:      NewSNIParser(&commonFlags.OutputConfig),
 			}
-			sb.WriteRune(' ')
-		}
+
+			return sniGadget.Run()
+		},
 	}
 
-	return sb.String()
+	utils.AddCommonFlags(cmd, commonFlags)
+
+	return cmd
 }
 
-func getCustomSnisnoopColsHeader(cols []string) string {
+func NewSNIParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"name":      -24,
+	}
+
+	return &SNIParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
+	}
+}
+
+func (p *SNIParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "name":
-			sb.WriteString(fmt.Sprintf("%-24s", "NAME"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Name))
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 

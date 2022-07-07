@@ -45,7 +45,7 @@ func init() {
 	rootCmd.AddCommand(profile.ProfilerCmd)
 	rootCmd.AddCommand(snapshot.NewSnapshotCmd())
 	rootCmd.AddCommand(top.TopCmd)
-	rootCmd.AddCommand(trace.TraceCmd)
+	rootCmd.AddCommand(trace.NewTraceCmd())
 }
 
 func main() {

@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,86 +15,76 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-
-	"github.com/spf13/cobra"
+	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	networktypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/types"
+
+	"github.com/spf13/cobra"
 )
 
-const (
-	FmtShortNetwork = "%-30.30s %-9.9s %-5.5s %-4.4s %s"
-	FmtAllNetwork   = "%-16.16s %-16.16s " + FmtShortNetwork
-)
-
-var colNetworkLens = map[string]int{
-	"event": 30,
+type NetworkParser struct {
+	BaseTraceParser
 }
 
-var networkCmd = &cobra.Command{
-	Use:   "network",
-	Short: "Trace network streams",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		switch {
-		case params.OutputMode == utils.OutputModeJSON: // don't print any header
-		case params.OutputMode == utils.OutputModeCustomColumns:
-		case params.AllNamespaces:
-			fmt.Printf(FmtAllNetwork+"\n",
-				"NODE",
-				"NAMESPACE",
-				"POD",
-				"TYPE",
-				"PROTO",
-				"PORT",
-				"REMOTE",
-			)
-		default:
-			fmt.Printf(FmtShortNetwork+"\n",
-				"POD",
-				"TYPE",
-				"PROTO",
-				"PORT",
-				"REMOTE",
-			)
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "network-graph",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
-
-		err := utils.RunTraceAndPrintStream(config, transformNetworkLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
-
-		return nil
-	},
-}
-
-func init() {
-	TraceCmd.AddCommand(networkCmd)
-	utils.AddCommonFlags(networkCmd, &params)
-}
-
-func transformNetworkLine(line string) string {
-	event := &networktypes.Event{}
-	if err := json.Unmarshal([]byte(line), event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
+func newNetworkCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"type",
+				"proto",
+				"port",
+				"remote",
+			},
+		},
 	}
 
-	if event.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(event.Event, params.Verbose)
-		return ""
+	cmd := &cobra.Command{
+		Use:   "network",
+		Short: "Trace network streams",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			networkGadget := &TraceGadget[types.Event]{
+				name:        "network-graph",
+				commonFlags: commonFlags,
+				parser:      NewNetworkParser(&commonFlags.OutputConfig),
+			}
+
+			return networkGadget.Run()
+		},
 	}
+
+	utils.AddCommonFlags(cmd, commonFlags)
+
+	return cmd
+}
+
+func NewNetworkParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"type":      -9,
+		"proto":     -6,
+		"port":      -7,
+		"remote":    -30,
+	}
+
+	return &NetworkParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
+	}
+}
+
+func (p *NetworkParser) TransformEvent(event *types.Event, requestedColumns []string) string {
+	var sb strings.Builder
 
 	if event.Pod == "" {
 		// ignore events on host netns for now
@@ -113,14 +103,27 @@ func transformNetworkLine(line string) string {
 		remote = fmt.Sprintf("? %s", event.Debug)
 	}
 
-	if params.AllNamespaces {
-		return fmt.Sprintf(FmtAllNetwork,
-			event.Node, event.Namespace, event.Pod,
-			event.PktType, event.Proto, fmt.Sprint(event.Port),
-			remote)
-	} else {
-		return fmt.Sprintf(FmtShortNetwork, event.Pod,
-			event.PktType, event.Proto, fmt.Sprint(event.Port),
-			remote)
+	for _, col := range requestedColumns {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+		case "pod":
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+		case "type":
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.PktType))
+		case "proto":
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Proto))
+		case "port":
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Port))
+		case "remote":
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], remote))
+		}
+
+		// Needed when field is larger than the predefined columnsWidth.
+		sb.WriteRune(' ')
 	}
+
+	return sb.String()
 }

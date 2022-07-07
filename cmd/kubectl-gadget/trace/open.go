@@ -15,128 +15,104 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
 
-var opensnoopCmd = &cobra.Command{
-	Use:   "open",
-	Short: "Trace open system calls",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomOpensnoopColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-16s %-3s %3s %s\n",
-				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"PID", "COMM", "FD", "ERR", "PATH")
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "opensnoop",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
-
-		err := utils.RunTraceAndPrintStream(config, opensnoopTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
-
-		return nil
-	},
+type OpenParser struct {
+	BaseTraceParser
 }
 
-func init() {
-	TraceCmd.AddCommand(opensnoopCmd)
-	utils.AddCommonFlags(opensnoopCmd, &params)
-}
-
-// opensnoopTransformLine is called to transform an event to columns
-// format according to the parameters
-func opensnoopTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
+func newOpenCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"fd",
+				"err",
+				"path",
+			},
+		},
 	}
 
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-16s %-3d %3d %s",
-			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Pid, e.Comm, e.Fd, e.Err, e.Path))
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "fd":
-				sb.WriteString(fmt.Sprintf("%-2d", e.Fd))
-			case "err":
-				sb.WriteString(fmt.Sprintf("%-3d", e.Err))
-			case "path":
-				sb.WriteString(fmt.Sprintf("%-24s", e.Path))
+	cmd := &cobra.Command{
+		Use:   "open",
+		Short: "Trace open system calls",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			openGadget := &TraceGadget[types.Event]{
+				name:        "opensnoop",
+				commonFlags: commonFlags,
+				parser:      NewOpenParser(&commonFlags.OutputConfig),
 			}
-			sb.WriteRune(' ')
-		}
+
+			return openGadget.Run()
+		},
 	}
 
-	return sb.String()
+	utils.AddCommonFlags(cmd, commonFlags)
+
+	return cmd
 }
 
-func getCustomOpensnoopColsHeader(cols []string) string {
+func NewOpenParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"comm":      -16,
+		"fd":        -3,
+		"err":       -3,
+		"path":      -24,
+	}
+
+	return &OpenParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
+	}
+}
+
+func (p *OpenParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
 		case "fd":
-			sb.WriteString(fmt.Sprintf("%-3s", "FD"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Fd))
 		case "err":
-			sb.WriteString(fmt.Sprintf("%-3s", "ERR"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Err))
 		case "path":
-			sb.WriteString(fmt.Sprintf("%-24s", "PATH"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Path))
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 

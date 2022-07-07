@@ -15,115 +15,92 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
 
-var dnsCmd = &cobra.Command{
-	Use:   "dns",
-	Short: "Trace DNS requests",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomDNSColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-9s %-10s %s\n",
-				"NODE", "NAMESPACE", "POD",
-				"TYPE", "QTYPE", "NAME")
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "dns",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
-
-		err := utils.RunTraceAndPrintStream(config, dnsTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
-
-		return nil
-	},
+type DNSParser struct {
+	BaseTraceParser
 }
 
-func init() {
-	TraceCmd.AddCommand(dnsCmd)
-	utils.AddCommonFlags(dnsCmd, &params)
-}
-
-// dnsTransformLine is called to transform an event to columns
-// format according to the parameters
-func dnsTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
+func newDNSCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"type",
+				"qtype",
+				"name",
+			},
+		},
 	}
 
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-9s %-10s %s",
-			e.Node, e.Namespace, e.Pod, e.PktType, e.QType, e.DNSName))
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "type":
-				sb.WriteString(fmt.Sprintf("%-9s", e.PktType))
-			case "qtype":
-				sb.WriteString(fmt.Sprintf("%-10s", e.QType))
-			case "name":
-				sb.WriteString(fmt.Sprintf("%-24s", e.DNSName))
+	cmd := &cobra.Command{
+		Use:   "dns",
+		Short: "Trace DNS requests",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dnsGadget := &TraceGadget[types.Event]{
+				name:        "dns",
+				commonFlags: commonFlags,
+				parser:      NewDNSParser(&commonFlags.OutputConfig),
 			}
-			sb.WriteRune(' ')
-		}
+
+			return dnsGadget.Run()
+		},
 	}
 
-	return sb.String()
+	utils.AddCommonFlags(cmd, commonFlags)
+
+	return cmd
 }
 
-func getCustomDNSColsHeader(cols []string) string {
+func NewDNSParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"type":      -9,
+		"qtype":     -10,
+		"name":      -24,
+	}
+
+	return &DNSParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
+	}
+}
+
+func (p *DNSParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "type":
-			sb.WriteString(fmt.Sprintf("%-9s", "TYPE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.PktType))
 		case "qtype":
-			sb.WriteString(fmt.Sprintf("%-10s", "QTYPE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.QType))
 		case "name":
-			sb.WriteString(fmt.Sprintf("%-24s", "NAME"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.DNSName))
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 

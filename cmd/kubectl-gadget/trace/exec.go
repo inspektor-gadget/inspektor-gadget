@@ -15,134 +15,106 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
 
-var execsnoopCmd = &cobra.Command{
-	Use:   "exec",
-	Short: "Trace new processes",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomExecsnoopColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-16s %-6s %-6s %3s %s\n",
-				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"PCOMM", "PID", "PPID", "RET", "ARGS")
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "execsnoop",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
-
-		err := utils.RunTraceAndPrintStream(config, execsnoopTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
-
-		return nil
-	},
+type ExecParser struct {
+	BaseTraceParser
 }
 
-func init() {
-	TraceCmd.AddCommand(execsnoopCmd)
-	utils.AddCommonFlags(execsnoopCmd, &params)
-}
-
-// execsnoopTransformLine is called to transform an event to columns
-// format according to the parameters
-func execsnoopTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
+func newExecCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"ppid",
+				"pcomm",
+				"ret",
+				"args",
+			},
+		},
 	}
 
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-6d %3d",
-			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Comm, e.Pid, e.Ppid, e.Retval))
-
-		for _, arg := range e.Args {
-			sb.WriteString(" " + arg)
-		}
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "pcomm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "ppid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Ppid))
-			case "ret":
-				sb.WriteString(fmt.Sprintf("%-3d", e.Retval))
-			case "args":
-				for _, arg := range e.Args {
-					sb.WriteString(fmt.Sprintf("%s ", arg))
-				}
+	cmd := &cobra.Command{
+		Use:   "exec",
+		Short: "Trace new processes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			execGadget := &TraceGadget[types.Event]{
+				name:        "execsnoop",
+				commonFlags: commonFlags,
+				parser:      NewExecParser(&commonFlags.OutputConfig),
 			}
-			sb.WriteRune(' ')
-		}
+
+			return execGadget.Run()
+		},
 	}
 
-	return sb.String()
+	utils.AddCommonFlags(cmd, commonFlags)
+
+	return cmd
 }
 
-func getCustomExecsnoopColsHeader(cols []string) string {
+func NewExecParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"ppid":      -7,
+		"pcomm":     -16,
+		"ret":       -4,
+		"args":      -24,
+	}
+
+	return &ExecParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
+	}
+}
+
+func (p *ExecParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
-		case "pcomm":
-			sb.WriteString(fmt.Sprintf("%-16s", "PCOMM"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
 		case "ppid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PPID"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Ppid))
+		case "pcomm":
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
 		case "ret":
-			sb.WriteString(fmt.Sprintf("%-3s", "RET"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Retval))
 		case "args":
-			sb.WriteString(fmt.Sprintf("%-24s", "ARGS"))
+			for _, arg := range event.Args {
+				sb.WriteString(fmt.Sprintf("%s ", arg))
+			}
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 

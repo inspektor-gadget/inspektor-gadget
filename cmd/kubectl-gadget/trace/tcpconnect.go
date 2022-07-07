@@ -15,132 +15,108 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
 
-var tcpconnectCmd = &cobra.Command{
-	Use:   "tcpconnect",
-	Short: "Trace connect system calls",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomTcpconnectColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-16s %-3s %-16s %-16s %-7s\n",
-				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"PID", "COMM", "IP", "SADDR", "DADDR", "DPORT")
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "tcpconnect",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
-
-		err := utils.RunTraceAndPrintStream(config, tcpconnectTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
-
-		return nil
-	},
+type TcpconnectParser struct {
+	BaseTraceParser
 }
 
-func init() {
-	TraceCmd.AddCommand(tcpconnectCmd)
-	utils.AddCommonFlags(tcpconnectCmd, &params)
-}
-
-// tcpconnectTransformLine is called to transform an event to columns
-// format according to the parameters
-func tcpconnectTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
+func newTcpconnectCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"ip",
+				"saddr",
+				"daddr",
+				"dport",
+			},
+		},
 	}
 
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-16s %-3d %-16s %-16s %-7d",
-			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Pid, e.Comm, e.IPVersion, e.Saddr, e.Daddr, e.Dport))
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "ip":
-				sb.WriteString(fmt.Sprintf("%-3d", e.IPVersion))
-			case "saddr":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Saddr))
-			case "daddr":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Daddr))
-			case "dport":
-				sb.WriteString(fmt.Sprintf("%-7d", e.Dport))
+	cmd := &cobra.Command{
+		Use:   "tcpconnect",
+		Short: "Trace connect system calls",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			tcpconnectGadget := &TraceGadget[types.Event]{
+				name:        "tcpconnect",
+				commonFlags: commonFlags,
+				parser:      NewTcpconnectParser(&commonFlags.OutputConfig),
 			}
-			sb.WriteRune(' ')
-		}
+
+			return tcpconnectGadget.Run()
+		},
 	}
 
-	return sb.String()
+	utils.AddCommonFlags(cmd, commonFlags)
+
+	return cmd
 }
 
-func getCustomTcpconnectColsHeader(cols []string) string {
+func NewTcpconnectParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"comm":      -16,
+		"ip":        -3,
+		"saddr":     -16,
+		"daddr":     -16,
+		"dport":     -7,
+	}
+
+	return &TcpconnectParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
+	}
+}
+
+func (p *TcpconnectParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
 		case "ip":
-			sb.WriteString(fmt.Sprintf("%-3s", "IP"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.IPVersion))
 		case "saddr":
-			sb.WriteString(fmt.Sprintf("%-16s", "SADDR"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Saddr))
 		case "daddr":
-			sb.WriteString(fmt.Sprintf("%-16s", "DADDR"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Daddr))
 		case "dport":
-			sb.WriteString(fmt.Sprintf("%-7s", "DPORT"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Dport))
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 

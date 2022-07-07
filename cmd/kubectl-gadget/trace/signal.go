@@ -15,161 +15,139 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/sigsnoop/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
 
-var (
-	pid    uint
-	sig    string
-	failed bool
-)
-
-var sigsnoopCmd = &cobra.Command{
-	Use:   "signal",
-	Short: "Trace signals received by processes",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
-			fmt.Println(getCustomSigsnoopColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-16s %-9s %-6s %-6s\n",
-				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"PID", "COMM", "SIGNAL", "TPID", "RET")
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "sigsnoop",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-			Parameters: map[string]string{
-				"signal": sig,
-				"pid":    strconv.FormatUint(uint64(pid), 10),
-				"failed": strconv.FormatBool(failed),
-			},
-		}
-
-		err := utils.RunTraceAndPrintStream(config, sigsnoopTransformLine)
-		if err != nil {
-			return utils.WrapInErrRunGadget(err)
-		}
-
-		return nil
-	},
+type SignalParser struct {
+	BaseTraceParser
 }
 
-func init() {
-	TraceCmd.AddCommand(sigsnoopCmd)
-	utils.AddCommonFlags(sigsnoopCmd, &params)
+func newSignalCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: utils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"signal",
+				"tpid",
+				"ret",
+			},
+		},
+	}
 
-	sigsnoopCmd.PersistentFlags().UintVarP(
+	var (
+		// flags
+		pid    uint
+		sig    string
+		failed bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "signal",
+		Short: "Trace signals received by processes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			signalGadget := &TraceGadget[types.Event]{
+				name:        "sigsnoop",
+				commonFlags: commonFlags,
+				parser:      NewSignalParser(&commonFlags.OutputConfig),
+				params: map[string]string{
+					"signal": sig,
+					"pid":    strconv.FormatUint(uint64(pid), 10),
+					"failed": strconv.FormatBool(failed),
+				},
+			}
+
+			return signalGadget.Run()
+		},
+	}
+
+	utils.AddCommonFlags(cmd, commonFlags)
+
+	cmd.PersistentFlags().UintVarP(
 		&pid,
 		"pid",
 		"",
 		0,
 		"Show only signal sent by this particular PID",
 	)
-	sigsnoopCmd.PersistentFlags().StringVarP(
+	cmd.PersistentFlags().StringVarP(
 		&sig,
 		"signal",
 		"",
 		"",
 		`Trace only this signal (it can be an int like 9 or string beginning with "SIG" like "SIGKILL")`,
 	)
-	sigsnoopCmd.PersistentFlags().BoolVarP(
+	cmd.PersistentFlags().BoolVarP(
 		&failed,
 		"failed-only",
 		"f",
 		false,
 		`Show only events where the syscall sending a signal failed`,
 	)
+
+	return cmd
 }
 
-// sigsnoopTransformLine is called to transform an event to columns
-// format according to the parameters
-func sigsnoopTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
-
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
-		return ""
+func NewSignalParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"comm":      -16,
+		"signal":    -16,
+		"tpid":      -6,
+		"ret":       -6,
 	}
 
-	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
+	return &SignalParser{
+		BaseTraceParser: BaseTraceParser{
+			columnsWidth: columnsWidth,
+			outputConfig: outputConfig,
+		},
 	}
-
-	switch params.OutputMode {
-	case utils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-6d %-16s %-9s %-6d %-6d",
-			e.Node, e.Namespace, e.Pod, e.Container, e.Pid, e.Comm,
-			e.Signal, e.TargetPid, e.Retval))
-	case utils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
-			case "signal":
-				sb.WriteString(fmt.Sprintf("%-9s", e.Signal))
-			case "tpid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.TargetPid))
-			case "ret":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Retval))
-			}
-			sb.WriteRune(' ')
-		}
-	}
-
-	return sb.String()
 }
 
-func getCustomSigsnoopColsHeader(cols []string) string {
+func (p *SignalParser) TransformEvent(event *types.Event, requestedColumns []string) string {
 	var sb strings.Builder
 
-	for _, col := range cols {
+	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
 		case "signal":
-			sb.WriteString(fmt.Sprintf("%-9s", "SIGNAL"))
+			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Signal))
 		case "tpid":
-			sb.WriteString(fmt.Sprintf("%-6s", "TPID"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.TargetPid))
 		case "ret":
-			sb.WriteString(fmt.Sprintf("%-6s", "RET"))
+			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Retval))
 		}
+
+		// Needed when field is larger than the predefined columnsWidth.
 		sb.WriteRune(' ')
 	}
 
