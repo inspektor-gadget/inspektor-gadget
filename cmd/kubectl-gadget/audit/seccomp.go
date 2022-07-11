@@ -76,7 +76,7 @@ func auditSeccompTransformLine(line string) string {
 	}
 
 	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
+		commonutils.ManageSpecialEvent(e.Event, params.Verbose)
 		return ""
 	}
 

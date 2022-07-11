@@ -22,7 +22,6 @@ import (
 	"text/tabwriter"
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	processcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/types"
 	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -139,7 +138,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 			for _, e := range allEvents {
 				baseEvent := e.GetBaseEvent()
 				if baseEvent.Type != eventtypes.NORMAL {
-					utils.ManageSpecialEvent(baseEvent, outputConfig.Verbose)
+					commonutils.ManageSpecialEvent(baseEvent, outputConfig.Verbose)
 					continue
 				}
 
