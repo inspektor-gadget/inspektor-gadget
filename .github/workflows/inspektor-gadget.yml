@@ -122,8 +122,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # TODO add local-gadget-linux-arm64
-        local-gadget-target: [local-gadget-linux-amd64]
+        local-gadget-target: [local-gadget-linux-amd64, local-gadget-linux-arm64]
     steps:
     - uses: actions/checkout@v3
     - name: Setup go
