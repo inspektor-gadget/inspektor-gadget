@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -180,9 +179,9 @@ func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 
 	traceID := args[0]
 
-	callback := func(results []gadgetv1alpha1.Trace) error {
-		for _, i := range results {
-			if i.Spec.OutputMode == "ExternalResource" {
+	callback := func(traceOutputMode string, results []string) error {
+		for _, r := range results {
+			if traceOutputMode == "ExternalResource" {
 				profilesName, err := getSeccompProfilesName(traceID)
 				if err != nil {
 					return err
@@ -198,8 +197,8 @@ func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 				return nil
 			}
 
-			if i.Status.Output != "" {
-				fmt.Printf("%v\n", i.Status.Output)
+			if r != "" {
+				fmt.Printf("%v\n", r)
 			}
 		}
 

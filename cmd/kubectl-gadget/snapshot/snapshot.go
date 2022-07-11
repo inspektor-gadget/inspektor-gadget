@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	processcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/types"
 	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/socket-collector/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -100,17 +99,17 @@ func (g *SnapshotGadget[Event]) Run() error {
 	// This callback function be called when a snapshot gadget finishes without
 	// errors and generates a list of results per node. It merges, sorts and
 	// print all of them in the requested mode.
-	callback := func(results []gadgetv1alpha1.Trace) error {
+	callback := func(traceOutputMode string, results []string) error {
 		allEvents := []Event{}
 
-		for _, i := range results {
-			if len(i.Status.Output) == 0 {
+		for _, r := range results {
+			if len(r) == 0 {
 				continue
 			}
 
 			var events []Event
-			if err := json.Unmarshal([]byte(i.Status.Output), &events); err != nil {
-				return utils.WrapInErrUnmarshalOutput(err, i.Status.Output)
+			if err := json.Unmarshal([]byte(r), &events); err != nil {
+				return utils.WrapInErrUnmarshalOutput(err, r)
 			}
 			allEvents = append(allEvents, events...)
 		}

@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
 
 	"github.com/spf13/cobra"
@@ -153,7 +152,7 @@ func runProfileCPU(cmd *cobra.Command, args []string) error {
 		return utils.WrapInErrStopGadget(err)
 	}
 
-	displayResultsCallback := func(traces []gadgetv1alpha1.Trace) error {
+	displayResultsCallback := func(traceOutputMode string, results []string) error {
 		// print header
 		switch params.OutputMode {
 		case utils.OutputModeCustomColumns:
@@ -163,10 +162,10 @@ func runProfileCPU(cmd *cobra.Command, args []string) error {
 				"NODE", "NAMESPACE", "POD", "CONTAINER", "COMM", "PID", "COUNT")
 		}
 
-		for _, trace := range traces {
+		for _, r := range results {
 			var reports []types.Report
-			if err := json.Unmarshal([]byte(trace.Status.Output), &reports); err != nil {
-				return utils.WrapInErrUnmarshalOutput(err, trace.Status.Output)
+			if err := json.Unmarshal([]byte(r), &reports); err != nil {
+				return utils.WrapInErrUnmarshalOutput(err, r)
 			}
 
 			for _, report := range reports {
