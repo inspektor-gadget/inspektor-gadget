@@ -16,7 +16,7 @@ COPY go.mod go.sum /gadget/
 RUN cd /gadget && go mod download
 
 # default image that will be used in the deploy command
-ARG CONTAINER_REPO="docker.io/kinvolk/gadget"
+ARG CONTAINER_REPO="ghcr.io/kinvolk/inspektor-gadget"
 ENV CONTAINER_REPO=${CONTAINER_REPO}
 
 ARG IMAGE_TAG

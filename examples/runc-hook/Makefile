@@ -1,4 +1,4 @@
-CONTAINER_REPO ?= docker.io/kinvolk/gadget
+CONTAINER_REPO ?= ghcr/kinvolk/inspektor-gadget
 IMAGE_TAG ?= $(shell ../../tools/image-tag branch)
 
 runc-hook: main.go

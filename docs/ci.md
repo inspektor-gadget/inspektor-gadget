@@ -23,19 +23,9 @@ To run the integration tests, it is necessary to have the gadget container image
 available on a container repository so that it can be installed in the
 Kubernetes cluster where the tests will run.
 
-After adding the following secrets, the workflow is already configured to use
-them to login to the container registry and push the generated images:
-
-- `CONTAINER_REPO`: The container repository to use. Example:
-  docker.io/kinvolk/gadget
-- `CONTAINER_REGISTRY`: The registry containing the repo above. Leave empty for
-  Docker Hub. Example: ghcr.io, foo.azurecr.io, gcr.io
-- `CONTAINER_REGISTRY_USERNAME` & `CONTAINER_REGISTRY_PASSWORD`: Authentication
-  information for the the registry above.
-
-Notice that either the provided container repository allows anonymous pull or
-the cluster used to run the integration tests is properly configured to be able
-to pull images from it.
+As a default, `ghcr.io/${{ github.repository }}` is used to store images created
+in the CI pipeline.
+Note that, you need to [set repository packages as public](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility#configuring-visibility-of-container-images-for-your-personal-account) to allow anonymous pull.
 
 ## Run integration tests on an ARO cluster
 
