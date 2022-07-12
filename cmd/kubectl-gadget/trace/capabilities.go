@@ -25,7 +25,7 @@ import (
 )
 
 type CapabilitiesParser struct {
-	BaseTraceParser
+	utils.BaseParser
 }
 
 func newCapabilitiesCmd() *cobra.Command {
@@ -82,9 +82,9 @@ func NewCapabilitiesParser(outputConfig *utils.OutputConfig) TraceParser[types.E
 	}
 
 	return &CapabilitiesParser{
-		BaseTraceParser: BaseTraceParser{
-			columnsWidth: columnsWidth,
-			outputConfig: outputConfig,
+		BaseParser: utils.BaseParser{
+			ColumnsWidth: columnsWidth,
+			OutputConfig: outputConfig,
 		},
 	}
 }
@@ -95,25 +95,25 @@ func (p *CapabilitiesParser) TransformEvent(event *types.Event, requestedColumns
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
 		case "uid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.UID))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.UID))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
 		case "cap":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Cap))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Cap))
 		case "name":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.CapName))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.CapName))
 		case "audit":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Audit))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Audit))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

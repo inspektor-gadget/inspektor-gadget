@@ -25,7 +25,7 @@ import (
 )
 
 type NetworkParser struct {
-	BaseTraceParser
+	utils.BaseParser
 }
 
 func newNetworkCmd() *cobra.Command {
@@ -76,9 +76,9 @@ func NewNetworkParser(outputConfig *utils.OutputConfig) TraceParser[types.Event]
 	}
 
 	return &NetworkParser{
-		BaseTraceParser: BaseTraceParser{
-			columnsWidth: columnsWidth,
-			outputConfig: outputConfig,
+		BaseParser: utils.BaseParser{
+			ColumnsWidth: columnsWidth,
+			OutputConfig: outputConfig,
 		},
 	}
 }
@@ -106,19 +106,19 @@ func (p *NetworkParser) TransformEvent(event *types.Event, requestedColumns []st
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 		case "type":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.PktType))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.PktType))
 		case "proto":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Proto))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Proto))
 		case "port":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Port))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Port))
 		case "remote":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], remote))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], remote))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

@@ -25,7 +25,7 @@ import (
 )
 
 type BindParser struct {
-	BaseTraceParser
+	utils.BaseParser
 }
 
 func newBindCmd() *cobra.Command {
@@ -123,9 +123,9 @@ func NewBindParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
 	}
 
 	return &BindParser{
-		BaseTraceParser: BaseTraceParser{
-			columnsWidth: columnsWidth,
-			outputConfig: outputConfig,
+		BaseParser: utils.BaseParser{
+			ColumnsWidth: columnsWidth,
+			OutputConfig: outputConfig,
 		},
 	}
 }
@@ -136,27 +136,27 @@ func (p *BindParser) TransformEvent(event *types.Event, requestedColumns []strin
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
 		case "proto":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Protocol))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Protocol))
 		case "addr":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Addr))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Addr))
 		case "port":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Port))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Port))
 		case "opts":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Options))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Options))
 		case "if":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Interface))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Interface))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

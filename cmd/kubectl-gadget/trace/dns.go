@@ -25,7 +25,7 @@ import (
 )
 
 type DNSParser struct {
-	BaseTraceParser
+	utils.BaseParser
 }
 
 func newDNSCmd() *cobra.Command {
@@ -74,9 +74,9 @@ func NewDNSParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
 	}
 
 	return &DNSParser{
-		BaseTraceParser: BaseTraceParser{
-			columnsWidth: columnsWidth,
-			outputConfig: outputConfig,
+		BaseParser: utils.BaseParser{
+			ColumnsWidth: columnsWidth,
+			OutputConfig: outputConfig,
 		},
 	}
 }
@@ -87,17 +87,17 @@ func (p *DNSParser) TransformEvent(event *types.Event, requestedColumns []string
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 		case "type":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.PktType))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.PktType))
 		case "qtype":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.QType))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.QType))
 		case "name":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.DNSName))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.DNSName))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

@@ -25,7 +25,7 @@ import (
 )
 
 type OpenParser struct {
-	BaseTraceParser
+	utils.BaseParser
 }
 
 func newOpenCmd() *cobra.Command {
@@ -80,9 +80,9 @@ func NewOpenParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
 	}
 
 	return &OpenParser{
-		BaseTraceParser: BaseTraceParser{
-			columnsWidth: columnsWidth,
-			outputConfig: outputConfig,
+		BaseParser: utils.BaseParser{
+			ColumnsWidth: columnsWidth,
+			OutputConfig: outputConfig,
 		},
 	}
 }
@@ -93,23 +93,23 @@ func (p *OpenParser) TransformEvent(event *types.Event, requestedColumns []strin
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
 		case "fd":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Fd))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Fd))
 		case "err":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Err))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Err))
 		case "path":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Path))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Path))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

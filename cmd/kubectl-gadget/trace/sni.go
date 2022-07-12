@@ -25,7 +25,7 @@ import (
 )
 
 type SNIParser struct {
-	BaseTraceParser
+	utils.BaseParser
 }
 
 func newSNICmd() *cobra.Command {
@@ -70,9 +70,9 @@ func NewSNIParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
 	}
 
 	return &SNIParser{
-		BaseTraceParser: BaseTraceParser{
-			columnsWidth: columnsWidth,
-			outputConfig: outputConfig,
+		BaseParser: utils.BaseParser{
+			ColumnsWidth: columnsWidth,
+			OutputConfig: outputConfig,
 		},
 	}
 }
@@ -83,13 +83,13 @@ func (p *SNIParser) TransformEvent(event *types.Event, requestedColumns []string
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 		case "name":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Name))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Name))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

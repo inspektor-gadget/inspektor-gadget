@@ -25,7 +25,7 @@ import (
 )
 
 type MountParser struct {
-	BaseTraceParser
+	utils.BaseParser
 }
 
 func newMountCmd() *cobra.Command {
@@ -88,9 +88,9 @@ func NewMountParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
 	}
 
 	return &MountParser{
-		BaseTraceParser: BaseTraceParser{
-			columnsWidth: columnsWidth,
-			outputConfig: outputConfig,
+		BaseParser: utils.BaseParser{
+			ColumnsWidth: columnsWidth,
+			OutputConfig: outputConfig,
 		},
 	}
 }
@@ -115,37 +115,37 @@ func (p *MountParser) TransformEvent(event *types.Event, requestedColumns []stri
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
 		case "tid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Tid))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Tid))
 		case "mnt_ns":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.MountNsID))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.MountNsID))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
 		case "op":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Operation))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Operation))
 		case "ret":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Retval))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Retval))
 		case "lat":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Latency/1000))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Latency/1000))
 		case "fs":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Fs))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Fs))
 		case "src":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Source))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Source))
 		case "target":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Target))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Target))
 		case "data":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Data))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Data))
 		case "call":
-			sb.WriteString(fmt.Sprintf("%-*s", p.columnsWidth[col], getCall(event)))
+			sb.WriteString(fmt.Sprintf("%-*s", p.ColumnsWidth[col], getCall(event)))
 		case "flags":
 			sb.WriteString(fmt.Sprintf("%s", strings.Join(event.Flags, " | ")))
 		}

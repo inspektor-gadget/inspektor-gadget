@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 
@@ -26,28 +25,6 @@ import (
 
 	"github.com/spf13/cobra"
 )
-
-// BaseTraceParser is a base for a TraceParser to reuse the shared fields and
-// methods.
-type BaseTraceParser struct {
-	columnsWidth map[string]int
-	outputConfig *utils.OutputConfig
-}
-
-func (p *BaseTraceParser) PrintColumnsHeader(requestedCols []string) {
-	var sb strings.Builder
-
-	for _, col := range requestedCols {
-		if width, ok := p.columnsWidth[col]; ok {
-			sb.WriteString(fmt.Sprintf("%*s", width, strings.ToUpper(col)))
-		}
-
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
-	}
-
-	fmt.Println(sb.String())
-}
 
 type TraceEvent interface {
 	any
@@ -67,7 +44,7 @@ type TraceParser[Event TraceEvent] interface {
 
 	// PrintColumnsHeader prints the header with the requested custom columns
 	// that exist in the columnsWidth struct.
-	PrintColumnsHeader([]string)
+	PrintColumnsHeader()
 }
 
 // TraceGadget represents a gadget belonging to the trace category.
@@ -97,7 +74,7 @@ func (g *TraceGadget[Event]) Run() error {
 	case utils.OutputModeColumns:
 		fallthrough
 	case utils.OutputModeCustomColumns:
-		g.parser.PrintColumnsHeader(g.commonFlags.CustomColumns)
+		g.parser.PrintColumnsHeader()
 	}
 
 	transformEvent := func(line string) string {
