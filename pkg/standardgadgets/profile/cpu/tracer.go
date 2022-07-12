@@ -25,7 +25,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/cpu/tracer"
 )
 
 type Tracer struct {

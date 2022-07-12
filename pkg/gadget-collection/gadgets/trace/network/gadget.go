@@ -29,8 +29,8 @@ import (
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	nettracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/types"
+	nettracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 

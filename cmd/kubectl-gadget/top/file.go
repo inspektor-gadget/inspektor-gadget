@@ -27,7 +27,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/filetop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/types"
 )
 
 var fileNodeStats map[string][]types.Stats

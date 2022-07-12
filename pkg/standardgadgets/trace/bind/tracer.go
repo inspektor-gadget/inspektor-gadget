@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )

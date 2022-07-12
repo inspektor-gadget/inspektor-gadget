@@ -21,7 +21,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/sigsnoop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
 
 	"github.com/spf13/cobra"
 )

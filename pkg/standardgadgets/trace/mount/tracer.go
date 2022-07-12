@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/mountsnoop/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/mountsnoop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/mount/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/mount/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )

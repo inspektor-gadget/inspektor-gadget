@@ -23,7 +23,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 )
 
 type CPUFlags struct {

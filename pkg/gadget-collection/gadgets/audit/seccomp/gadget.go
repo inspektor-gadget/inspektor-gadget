@@ -19,8 +19,8 @@ import (
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	auditseccomptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit-seccomp/tracer"
-	types "github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit-seccomp/types"
+	auditseccomptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit/seccomp/tracer"
+	types "github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 

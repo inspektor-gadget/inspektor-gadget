@@ -20,10 +20,10 @@ import (
 	"strconv"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/sigsnoop/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
 
-	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/sigsnoop/tracer/core"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/sigsnoop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 
@@ -34,7 +34,7 @@ type Trace struct {
 	resolver gadgets.Resolver
 
 	started bool
-	tracer  tracer.Tracer
+	tracer  trace.Tracer
 }
 
 type TraceFactory struct {
@@ -152,7 +152,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		TargetSignal: targetSignal,
 		FailedOnly:   failedOnly,
 	}
-	t.tracer, err = coretracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
+	t.tracer, err = tracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 		return

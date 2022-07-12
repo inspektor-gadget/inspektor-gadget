@@ -35,8 +35,8 @@ import (
 	"github.com/docker/docker/client"
 
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
-	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
-	networktypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/types"
+	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	networktypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
@@ -404,7 +404,7 @@ func TestDNS(t *testing.T) {
 	}
 
 	s := stacks()
-	keyword := "pkg/gadgets/dns/"
+	keyword := "pkg/gadgets/trace/dns/"
 	if strings.Contains(s, keyword) {
 		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
 	}
@@ -521,7 +521,7 @@ func TestNetworkGraph(t *testing.T) {
 	}
 
 	s := stacks()
-	keyword := "pkg/gadgets/network-graph/"
+	keyword := "pkg/gadgets/trace/network/"
 	if strings.Contains(s, keyword) {
 		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
 	}

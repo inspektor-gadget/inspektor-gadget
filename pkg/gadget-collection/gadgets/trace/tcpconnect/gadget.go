@@ -21,10 +21,10 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
 
-	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/tracer/core"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
 	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace/tcpconnect"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
@@ -34,7 +34,7 @@ type Trace struct {
 	resolver gadgets.Resolver
 
 	started bool
-	tracer  tracer.Tracer
+	tracer  trace.Tracer
 }
 
 type TraceFactory struct {
@@ -114,7 +114,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	config := &tracer.Config{
 		MountnsMap: mountNsMap,
 	}
-	t.tracer, err = coretracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
+	t.tracer, err = tracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
 	if err != nil {
 		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
 

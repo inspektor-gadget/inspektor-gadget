@@ -20,7 +20,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 
 	"github.com/spf13/cobra"
 )

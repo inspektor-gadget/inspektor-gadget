@@ -27,8 +27,8 @@ import (
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	snitracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snisnoop/tracer"
-	types "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snisnoop/types"
+	snitracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/sni/tracer"
+	types "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/sni/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 

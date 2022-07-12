@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
