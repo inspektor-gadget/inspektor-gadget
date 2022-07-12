@@ -24,8 +24,8 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/tracer"
 
 	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/tracer/standard"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/types"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace/capabilities"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )

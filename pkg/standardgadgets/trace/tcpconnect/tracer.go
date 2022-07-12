@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,16 +17,17 @@ package standard
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/capabilities/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type Tracer struct {
-	gadgets.StandardTracerBase
+	trace.StandardTracerBase
 
 	resolver      containercollection.ContainerResolver
 	eventCallback func(types.Event)
@@ -40,6 +41,9 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 		event := types.Event{}
 		event.Type = eventtypes.NORMAL
 
+		// "Hack" to avoid changing the BCC tool implementation
+		line = strings.ReplaceAll(line, `"ip"`, `"ipversion"`)
+
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			msg := fmt.Sprintf("failed to unmarshal event '%s': %s", line, err)
 			eventCallback(types.Base(eventtypes.Warn(msg, node)))
@@ -49,8 +53,8 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 		eventCallback(event)
 	}
 
-	baseTracer, err := gadgets.NewStandardTracer(lineCallback, config.MountnsMap,
-		"/usr/share/bcc/tools/capable",
+	baseTracer, err := trace.NewStandardTracer(lineCallback, config.MountnsMap,
+		"/usr/share/bcc/tools/tcpconnect",
 		"--json", "--containersmap", "/sys/fs/bpf/gadget/containers")
 	if err != nil {
 		return nil, err

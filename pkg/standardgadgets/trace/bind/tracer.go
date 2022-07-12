@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,34 +17,26 @@ package standard
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type Tracer struct {
-	gadgets.StandardTracerBase
+	trace.StandardTracerBase
 
 	resolver      containercollection.ContainerResolver
 	eventCallback func(types.Event)
 	node          string
 }
 
-func NewTracer(config *tracer.Config, resolver containercollection.ContainerResolver,
-	eventCallback func(types.Event), node string) (*Tracer, error,
-) {
+func NewTracer(config *tracer.Config, resolver containercollection.ContainerResolver, eventCallback func(types.Event), node string) (*Tracer, error) {
 	lineCallback := func(line string) {
 		event := types.Event{}
 		event.Type = eventtypes.NORMAL
-
-		// "Hack" to avoid changing the BCC tool implementation
-		line = strings.ReplaceAll(line, `"ip"`, `"ipversion"`)
-		line = strings.ReplaceAll(line, `"type"`, `"operation"`)
 
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			msg := fmt.Sprintf("failed to unmarshal event '%s': %s", line, err)
@@ -55,8 +47,8 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 		eventCallback(event)
 	}
 
-	baseTracer, err := gadgets.NewStandardTracer(lineCallback, config.MountnsMap,
-		"/usr/share/bcc/tools/tcptracer",
+	baseTracer, err := trace.NewStandardTracer(lineCallback, config.MountnsMap,
+		"/usr/share/bcc/tools/bindsnoop",
 		"--json", "--containersmap", "/sys/fs/bpf/gadget/containers")
 	if err != nil {
 		return nil, err

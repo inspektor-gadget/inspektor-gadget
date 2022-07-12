@@ -19,22 +19,24 @@ import (
 	"fmt"
 
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/execsnoop/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
 )
 
 type Tracer struct {
-	gadgets.StandardTracerBase
+	trace.StandardTracerBase
 
 	resolver      containercollection.ContainerResolver
 	eventCallback func(types.Event)
 	node          string
 }
 
-func NewTracer(config *tracer.Config, resolver containercollection.ContainerResolver, eventCallback func(types.Event), node string) (*Tracer, error) {
+func NewTracer(config *tracer.Config, resolver containercollection.ContainerResolver,
+	eventCallback func(types.Event), node string) (*Tracer, error,
+) {
 	lineCallback := func(line string) {
 		event := types.Event{}
 		event.Type = eventtypes.NORMAL
@@ -48,8 +50,8 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 		eventCallback(event)
 	}
 
-	baseTracer, err := gadgets.NewStandardTracer(lineCallback, config.MountnsMap,
-		"/usr/share/bcc/tools/bindsnoop",
+	baseTracer, err := trace.NewStandardTracer(lineCallback, config.MountnsMap,
+		"/usr/share/bcc/tools/execsnoop",
 		"--json", "--containersmap", "/sys/fs/bpf/gadget/containers")
 	if err != nil {
 		return nil, err

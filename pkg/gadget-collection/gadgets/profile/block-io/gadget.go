@@ -23,7 +23,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/tracer"
 	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/tracer/standard"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/profile/block-io"
 )
 
 type Trace struct {

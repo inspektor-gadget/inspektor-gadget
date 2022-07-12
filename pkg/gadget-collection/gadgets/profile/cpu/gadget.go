@@ -23,8 +23,8 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer"
 	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer/standard"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/profile/cpu"
 )
 
 type Trace struct {

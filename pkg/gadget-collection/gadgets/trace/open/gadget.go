@@ -24,8 +24,8 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer"
 
 	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/tracer/standard"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/types"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace/open"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )

@@ -26,8 +26,8 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/tracer"
 
 	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/tracer/standard"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/types"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace/bind"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )

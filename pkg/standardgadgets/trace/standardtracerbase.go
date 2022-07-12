@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gadgets
+package trace
 
 import (
 	"bufio"
@@ -26,6 +26,8 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/google/uuid"
+
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 )
 
 // StandardTracerBase is a type used by gadgets that have a BCC
@@ -52,7 +54,7 @@ func NewStandardTracer(lineCallback func(string), mntnsmap *ebpf.Map, name strin
 	t.cmd.Env = append(os.Environ(), "PYTHONUNBUFFERED=TRUE")
 
 	if mntnsmap != nil {
-		t.mountNsMapPinPath = filepath.Join(PinPath, uuid.New().String())
+		t.mountNsMapPinPath = filepath.Join(gadgets.PinPath, uuid.New().String())
 		if err := mntnsmap.Pin(t.mountNsMapPinPath); err != nil {
 			return nil, err
 		}

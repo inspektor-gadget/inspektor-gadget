@@ -23,7 +23,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/mountsnoop/tracer"
 	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/mountsnoop/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/mountsnoop/tracer/standard"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace/mount"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/mountsnoop/types"
 

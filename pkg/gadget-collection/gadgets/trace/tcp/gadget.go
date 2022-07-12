@@ -24,8 +24,8 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/tracer"
 
 	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/tracer/standard"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptracer/types"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace/tcp"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
