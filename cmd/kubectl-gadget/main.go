@@ -42,7 +42,7 @@ func init() {
 
 	rootCmd.AddCommand(advise.AdviseCmd)
 	rootCmd.AddCommand(audit.AuditCmd)
-	rootCmd.AddCommand(profile.ProfilerCmd)
+	rootCmd.AddCommand(profile.NewProfileCmd())
 	rootCmd.AddCommand(snapshot.NewSnapshotCmd())
 	rootCmd.AddCommand(top.TopCmd)
 	rootCmd.AddCommand(trace.NewTraceCmd())
