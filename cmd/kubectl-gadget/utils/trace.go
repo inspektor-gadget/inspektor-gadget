@@ -696,13 +696,27 @@ func PrintTraceOutputFromStream(traceID string, expectedState string, params *Co
 // PrintTraceOutputFromStatus is used to print trace output using function
 // pointer provided by caller.
 // It will parse trace.Spec.Output and print it calling the function pointer.
-func PrintTraceOutputFromStatus(traceID string, expectedState string, customResultsDisplay func(results []gadgetv1alpha1.Trace) error) error {
+func PrintTraceOutputFromStatus(
+	traceID string,
+	expectedState string,
+	customResultsDisplay func(traceOutputMode string, results []string) error,
+) error {
 	traces, err := waitForTraceState(traceID, expectedState)
 	if err != nil {
 		return err
 	}
 
-	return customResultsDisplay(traces.Items)
+	results := make([]string, len(traces.Items))
+	traceOutputMode := "Status"
+	for i, trace := range traces.Items {
+		results[i] = trace.Status.Output
+		traceOutputMode = trace.Spec.OutputMode
+	}
+
+	// When some multi-round gadgets, like the advise-seccomp, call this
+	// function, they don't know the TraceOutputMode used when the gadget was
+	// started. Therefore, they need such information together with the output.
+	return customResultsDisplay(traceOutputMode, results)
 }
 
 // DeleteTrace deletes the traces for the given trace ID using RESTClient.
@@ -882,7 +896,10 @@ func RunTraceStreamCallback(config *TraceConfig, callback func(line string, node
 // and DeleteTrace().
 // This function is thought to be used with "one-run" gadget, i.e. gadget
 // which runs a trace when it is created.
-func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func(results []gadgetv1alpha1.Trace) error) error {
+func RunTraceAndPrintStatusOutput(
+	config *TraceConfig,
+	customResultsDisplay func(traceOutputMode string, results []string) error,
+) error {
 	var traceID string
 
 	sigHandler(&traceID)

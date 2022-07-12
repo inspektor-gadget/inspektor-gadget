@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/types"
 )
 
@@ -159,18 +158,18 @@ func runBiolatency(cmd *cobra.Command, args []string) error {
 		return utils.WrapInErrStopGadget(err)
 	}
 
-	displayResultsCallback := func(results []gadgetv1alpha1.Trace) error {
-		if len(results) != 1 {
+	displayResultsCallback := func(traceOutputMode string, results []string) error {
+		if len(results) > 1 {
 			return errors.New("there should be only one result because biolatency runs on one node at a time")
 		}
 
 		var output string
 		if params.OutputMode == utils.OutputModeJSON {
-			output = results[0].Status.Output
+			output = results[0]
 		} else {
 			var report types.Report
-			if err := json.Unmarshal([]byte(results[0].Status.Output), &report); err != nil {
-				return utils.WrapInErrUnmarshalOutput(err, results[0].Status.Output)
+			if err := json.Unmarshal([]byte(results[0]), &report); err != nil {
+				return utils.WrapInErrUnmarshalOutput(err, results[0])
 			}
 
 			output = reportToString(report)
