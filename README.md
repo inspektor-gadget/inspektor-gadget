@@ -21,6 +21,7 @@ Explore the following documentation to find out which tools can help you in your
 	- [`socket`](docs/guides/snapshot/socket.md)
 - `top`:
 	- [`block-io`](docs/guides/top/block-io.md)
+	- [`ebpf`](docs/guides/top/ebpf.md)
 	- [`file`](docs/guides/top/file.md)
 	- [`tcp`](docs/guides/top/tcp.md)
 - `trace`:
@@ -138,6 +139,7 @@ Usage:
 
 Available Commands:
   block-io    Periodically report block device I/O activity
+  ebpf        Periodically report ebpf runtime stats
   file        Periodically report read/write activity by file
   tcp         Periodically report TCP activity
 

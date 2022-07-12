@@ -35,6 +35,7 @@ import (
 	"github.com/docker/docker/client"
 
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
+	ebpftoptypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	networktypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -294,6 +295,83 @@ func TestAuditSeccomp(t *testing.T) {
 	}
 
 	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
+}
+
+func TestEbpftop(t *testing.T) {
+	if !*rootTest {
+		t.Skip("skipping test requiring root.")
+	}
+	localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
+	if err != nil {
+		t.Fatalf("Failed to start local gadget manager: %s", err)
+	}
+	defer localGadgetManager.Close()
+
+	containerName := "test-local-gadget-dns001"
+	err = localGadgetManager.AddTracer("ebpftop", "my-tracer", containerName, "Stream", nil)
+	if err != nil {
+		t.Fatalf("Failed to create tracer: %s", err)
+	}
+	err = localGadgetManager.Operation("my-tracer", "start")
+	if err != nil {
+		t.Fatalf("Failed to start the tracer: %s", err)
+	}
+
+	stop := make(chan struct{})
+
+	ch, err := localGadgetManager.Stream("my-tracer", stop)
+	if err != nil {
+		t.Fatalf("Failed to get stream: %s", err)
+	}
+
+	timeout := time.NewTimer(time.Second * 10)
+
+	ctr := 0
+
+	found := false
+
+ebpfeventloop:
+	for {
+		select {
+		case <-timeout.C:
+			t.Fatalf("Timeout while waiting for stream events")
+			break ebpfeventloop
+		case result := <-ch:
+			event := ebpftoptypes.Event{}
+			if err := json.Unmarshal([]byte(result), &event); err != nil {
+				t.Fatalf("failed to unmarshal json: %s", err)
+			}
+
+			for _, s := range event.Stats {
+				if s.Type == "Tracing" && s.Name == "gadget_ebpftop" {
+					found = true
+					break ebpfeventloop
+				}
+			}
+
+			if ctr > 5 {
+				break ebpfeventloop
+			}
+			ctr++
+		}
+	}
+
+	close(stop)
+
+	err = localGadgetManager.Delete("my-tracer")
+	if err != nil {
+		t.Fatalf("Failed to delete tracer: %s", err)
+	}
+
+	s := stacks()
+	keyword := "ebpftop"
+	if strings.Contains(s, keyword) {
+		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
+	}
+
+	if !found {
+		t.Fatalf("Expected ebpf program not found in ebpftop")
+	}
 }
 
 func TestDNS(t *testing.T) {

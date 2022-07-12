@@ -1,0 +1,14 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: ebpftop
+  namespace: gadget
+spec:
+  node: ubuntu-hirsute
+  gadget: ebpftop
+  runMode: Manual
+  outputMode: Stream
+  parameters:
+    interval: "1"
+    max_rows: "50"
+    sort_by: all # all, runtime, runcount, progid, totalruntime and totalruncount are allowed
