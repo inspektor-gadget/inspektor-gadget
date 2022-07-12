@@ -16,9 +16,6 @@ package gadgets
 
 import (
 	"github.com/cilium/ebpf/link"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -29,30 +26,6 @@ const (
 
 	PerfBufferPages = 64
 )
-
-func TraceName(namespace, name string) string {
-	return "trace_" + namespace + "_" + name
-}
-
-func TraceNameFromNamespacedName(n types.NamespacedName) string {
-	return TraceName(n.Namespace, n.Name)
-}
-
-func ContainerSelectorFromContainerFilter(f *gadgetv1alpha1.ContainerFilter) *containercollection.ContainerSelector {
-	if f == nil {
-		return &containercollection.ContainerSelector{}
-	}
-	labels := map[string]string{}
-	for k, v := range f.Labels {
-		labels[k] = v
-	}
-	return &containercollection.ContainerSelector{
-		Namespace: f.Namespace,
-		Podname:   f.Podname,
-		Labels:    labels,
-		Name:      f.ContainerName,
-	}
-}
 
 // CloseLink closes l if it's not nil and returns nil
 func CloseLink(l link.Link) link.Link {

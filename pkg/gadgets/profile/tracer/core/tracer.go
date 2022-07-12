@@ -36,7 +36,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/cilium/ebpf"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
 	"golang.org/x/sys/unix"
@@ -45,7 +45,7 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang profile ./bpf/profile.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Tracer struct {
-	resolver gadgets.Resolver
+	resolver containercollection.ContainerResolver
 	node     string
 	objs     profileObjects
 	perfFds  []int
@@ -63,7 +63,7 @@ const (
 	frequencyBit = 1 << 10
 )
 
-func NewTracer(resolver gadgets.Resolver, config *tracer.Config, node string) (*Tracer, error) {
+func NewTracer(resolver containercollection.ContainerResolver, config *tracer.Config, node string) (*Tracer, error) {
 	t := &Tracer{
 		resolver: resolver,
 		node:     node,
