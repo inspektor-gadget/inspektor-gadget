@@ -16,7 +16,6 @@ package containercollection
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -34,16 +33,12 @@ import (
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
-
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/k8s"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 )
 
 func containerRuntimeEnricher(
 	runtimeName string,
 	runtimeClient runtimeclient.ContainerRuntimeClient,
-	container *pb.ContainerDefinition,
+	container *Container,
 ) bool {
 	// Is container already enriched? Notice that, at this point, the container
 	// was already enriched with the PID by the hook.
@@ -51,7 +46,7 @@ func containerRuntimeEnricher(
 		return true
 	}
 
-	c, err := runtimeClient.GetContainer(container.Id)
+	c, err := runtimeClient.GetContainer(container.ID)
 	if err != nil {
 		log.Debugf("Runtime enricher (%s): failed to get container: %s",
 			runtimeName, err)
@@ -110,7 +105,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		// containers fails. We do it because the runtime could be temporarily
 		// unavailable and once it is up, we will start receiving the
 		// notifications for its containers thus we will be able to enrich them.
-		cc.containerEnrichers = append(cc.containerEnrichers, func(container *pb.ContainerDefinition) bool {
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			return containerRuntimeEnricher(runtime.Name, runtimeClient, container)
 		})
 
@@ -143,8 +138,8 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 			}
 
 			cc.initialContainers = append(cc.initialContainers,
-				&pb.ContainerDefinition{
-					Id:   container.ID,
+				&Container{
+					ID:   container.ID,
 					Pid:  uint32(pid),
 					Name: container.Name,
 
@@ -178,12 +173,12 @@ func WithFallbackPodInformer(nodeName string) ContainerCollectionOption {
 
 func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
-		k8sClient, err := k8s.NewK8sClient(nodeName)
+		k8sClient, err := NewK8sClient(nodeName)
 		if err != nil {
 			return fmt.Errorf("failed to create Kubernetes client: %w", err)
 		}
 
-		podInformer, err := k8s.NewPodInformer(nodeName)
+		podInformer, err := NewPodInformer(nodeName)
 		if err != nil {
 			return fmt.Errorf("failed to create pod informer: %w", err)
 		}
@@ -240,16 +235,16 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 					for _, container := range containers {
 						// The container is already registered, there is not any chance the
 						// PID will change, so ignore it.
-						if _, ok := containerIDs[container.Id]; ok {
+						if _, ok := containerIDs[container.ID]; ok {
 							continue
 						}
 
 						// Make a copy instead of passing the same pointer at
 						// each iteration of the loop
-						newContainer := pb.ContainerDefinition{}
+						newContainer := Container{}
 						newContainer = container
 						if fallbackMode {
-							if cc.GetContainer(container.Id) != nil {
+							if cc.GetContainer(container.ID) != nil {
 								continue // container is already there. All good!
 							}
 							log.Warnf("container %s/%s/%s wasn't detected by the main hook! The fallback pod informer will add it.",
@@ -257,7 +252,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 						}
 						cc.AddContainer(&newContainer)
 
-						containerIDs[container.Id] = struct{}{}
+						containerIDs[container.ID] = struct{}{}
 					}
 				}
 			}
@@ -274,7 +269,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 // already gets initial containers.
 func WithInitialKubernetesContainers(nodeName string) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
-		k8sClient, err := k8s.NewK8sClient(nodeName)
+		k8sClient, err := NewK8sClient(nodeName)
 		if err != nil {
 			return fmt.Errorf("failed to create Kubernetes client: %w", err)
 		}
@@ -288,7 +283,7 @@ func WithInitialKubernetesContainers(nodeName string) ContainerCollectionOption 
 		for _, container := range containers {
 			// Make a copy instead of passing the same pointer at
 			// each iteration of the loop
-			newContainer := pb.ContainerDefinition{}
+			newContainer := Container{}
 			newContainer = container
 			cc.initialContainers = append(cc.initialContainers,
 				&newContainer)
@@ -300,10 +295,10 @@ func WithInitialKubernetesContainers(nodeName string) ContainerCollectionOption 
 // WithPubSub enables subscription with container events with Subscribe().
 // Optionally, a list of callbacks can be registered from the beginning, so
 // they would get called for initial containers too.
-func WithPubSub(funcs ...pubsub.FuncNotify) ContainerCollectionOption {
+func WithPubSub(funcs ...FuncNotify) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		if cc.pubsub == nil {
-			cc.pubsub = pubsub.NewGadgetPubSub()
+			cc.pubsub = NewGadgetPubSub()
 		}
 		for i, f := range funcs {
 			cc.pubsub.Subscribe(fmt.Sprintf("WithPubSub/%d", i), f, nil)
@@ -381,18 +376,18 @@ func getOwnerReferences(dynamicClient dynamic.Interface,
 
 func ownerReferenceEnrichment(
 	dynamicClient dynamic.Interface,
-	containerDefinition *pb.ContainerDefinition,
+	container *Container,
 	ownerReferences []metav1.OwnerReference,
 ) error {
-	if containerDefinition.OwnerReference != nil {
+	if container.OwnerReference != nil {
 		// Already set. Do nothing
 		return nil
 	}
 
 	resGroupVersion := "v1"
 	resKind := "pods"
-	resName := containerDefinition.Podname
-	resNamespace := containerDefinition.Namespace
+	resName := container.Podname
+	resNamespace := container.Namespace
 
 	var highestOwnerRef *metav1.OwnerReference
 
@@ -431,11 +426,11 @@ func ownerReferenceEnrichment(
 
 	// Update container's owner reference (If any)
 	if highestOwnerRef != nil {
-		containerDefinition.OwnerReference = &pb.OwnerReference{
+		container.OwnerReference = &OwnerReference{
 			Apiversion: highestOwnerRef.APIVersion,
 			Kind:       highestOwnerRef.Kind,
 			Name:       highestOwnerRef.Name,
-			Uid:        string(highestOwnerRef.UID),
+			UID:        string(highestOwnerRef.UID),
 		}
 	}
 
@@ -464,17 +459,17 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 		}
 
 		// Future containers
-		cc.containerEnrichers = append(cc.containerEnrichers, func(containerDefinition *pb.ContainerDefinition) bool {
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			// Enrich only with owner reference if the data is already there
-			if containerDefinition.Podname != "" {
-				err := ownerReferenceEnrichment(dynamicClient, containerDefinition, nil)
+			if container.Podname != "" {
+				err := ownerReferenceEnrichment(dynamicClient, container, nil)
 				if err != nil {
 					log.Errorf("kubernetes enricher: Failed to enrich with owner reference: %s", err)
 				}
 				return true
 			}
 
-			if containerDefinition.CgroupV1 == "" && containerDefinition.CgroupV2 == "" {
+			if container.CgroupV1 == "" && container.CgroupV2 == "" {
 				log.Errorf("kubernetes enricher: cannot work without cgroup paths")
 				return true
 			}
@@ -493,17 +488,17 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 			podname := ""
 			podUID := ""
 			containerName := ""
-			labels := []*pb.Label{}
+			labels := make(map[string]string)
 			var podOwnerRef []metav1.OwnerReference
 			for _, pod := range pods.Items {
 				uid := string(pod.ObjectMeta.UID)
 				// check if this container is associated to this pod
 				uidWithUnderscores := strings.ReplaceAll(uid, "-", "_")
 
-				if !strings.Contains(containerDefinition.CgroupV2, uidWithUnderscores) &&
-					!strings.Contains(containerDefinition.CgroupV2, uid) &&
-					!strings.Contains(containerDefinition.CgroupV1, uidWithUnderscores) &&
-					!strings.Contains(containerDefinition.CgroupV1, uid) {
+				if !strings.Contains(container.CgroupV2, uidWithUnderscores) &&
+					!strings.Contains(container.CgroupV2, uid) &&
+					!strings.Contains(container.CgroupV1, uidWithUnderscores) &&
+					!strings.Contains(container.CgroupV1, uid) {
 					continue
 				}
 
@@ -512,17 +507,17 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 				podUID = uid
 
 				for k, v := range pod.ObjectMeta.Labels {
-					labels = append(labels, &pb.Label{Key: k, Value: v})
+					labels[k] = v
 				}
 
 				containers := append([]v1.Container{}, pod.Spec.InitContainers...)
 				containers = append(containers, pod.Spec.Containers...)
 
-				for _, container := range containers {
-					for _, mountSource := range containerDefinition.MountSources {
-						pattern := fmt.Sprintf("pods/%s/containers/%s/", uid, container.Name)
-						if strings.Contains(mountSource, pattern) {
-							containerName = container.Name
+				for _, c := range containers {
+					for _, m := range container.OciConfig.Mounts {
+						pattern := fmt.Sprintf("pods/%s/containers/%s/", uid, c.Name)
+						if strings.Contains(m.Source, pattern) {
+							containerName = c.Name
 
 							// Keep track of the pod owner reference
 							podOwnerRef = pod.GetOwnerReferences()
@@ -532,19 +527,19 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 				}
 			}
 
-			containerDefinition.Namespace = namespace
-			containerDefinition.Podname = podname
-			containerDefinition.PodUid = podUID
-			containerDefinition.Name = containerName
-			containerDefinition.Labels = labels
+			container.Namespace = namespace
+			container.Podname = podname
+			container.PodUID = podUID
+			container.Name = containerName
+			container.Labels = labels
 
 			// drop pause containers
-			if containerDefinition.Podname != "" && containerName == "" {
+			if container.Podname != "" && containerName == "" {
 				return false
 			}
 
 			if len(podOwnerRef) != 0 {
-				err := ownerReferenceEnrichment(dynamicClient, containerDefinition, podOwnerRef)
+				err := ownerReferenceEnrichment(dynamicClient, container, podOwnerRef)
 				if err != nil {
 					log.Errorf("kubernetes enricher: Failed to enrich with owner reference: %s", err)
 				}
@@ -565,19 +560,13 @@ func WithRuncFanotify() ContainerCollectionOption {
 		runcNotifier, err := runcfanotify.NewRuncNotifier(func(notif runcfanotify.ContainerEvent) {
 			switch notif.Type {
 			case runcfanotify.EventTypeAddContainer:
-				mountSources := []string{}
-				for _, m := range notif.ContainerConfig.Mounts {
-					mountSources = append(mountSources, m.Source)
-				}
-				ociConfig, _ := json.Marshal(notif.ContainerConfig)
-				containerDefinition := &pb.ContainerDefinition{
-					Id:           notif.ContainerID,
-					Pid:          notif.ContainerPID,
-					MountSources: mountSources,
-					OciConfig:    string(ociConfig),
+				container := &Container{
+					ID:        notif.ContainerID,
+					Pid:       notif.ContainerPID,
+					OciConfig: notif.ContainerConfig,
 				}
 
-				cc.AddContainer(containerDefinition)
+				cc.AddContainer(container)
 			case runcfanotify.EventTypeRemoveContainer:
 				cc.RemoveContainer(notif.ContainerID)
 			}
@@ -591,10 +580,10 @@ func WithRuncFanotify() ContainerCollectionOption {
 		})
 
 		// Future containers
-		cc.containerEnrichers = append(cc.containerEnrichers, func(container *pb.ContainerDefinition) bool {
-			err := runcNotifier.AddWatchContainerTermination(container.Id, int(container.Pid))
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
+			err := runcNotifier.AddWatchContainerTermination(container.ID, int(container.Pid))
 			if err != nil {
-				log.Errorf("runc fanotify enricher: failed to watch container %s: %s", container.Id, err)
+				log.Errorf("runc fanotify enricher: failed to watch container %s: %s", container.ID, err)
 				return false
 			}
 			return true
@@ -606,23 +595,23 @@ func WithRuncFanotify() ContainerCollectionOption {
 // WithCgroupEnrichment enables an enricher to add the cgroup metadata
 func WithCgroupEnrichment() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
-		cc.containerEnrichers = append(cc.containerEnrichers, func(container *pb.ContainerDefinition) bool {
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			pid := int(container.Pid)
 			if pid == 0 {
-				log.Errorf("cgroup enricher: failed to enrich container %s with pid zero", container.Id)
+				log.Errorf("cgroup enricher: failed to enrich container %s with pid zero", container.ID)
 				return true
 			}
 
 			cgroupPathV1, cgroupPathV2, err := containerutils.GetCgroupPaths(pid)
 			if err != nil {
-				log.Errorf("cgroup enricher: failed to get cgroup paths on container %s: %s", container.Id, err)
+				log.Errorf("cgroup enricher: failed to get cgroup paths on container %s: %s", container.ID, err)
 				return true
 			}
 			cgroupPathV2WithMountpoint, _ := containerutils.CgroupPathV2AddMountpoint(cgroupPathV2)
 			cgroupID, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
 
 			container.CgroupPath = cgroupPathV2WithMountpoint
-			container.CgroupId = cgroupID
+			container.CgroupID = cgroupID
 			container.CgroupV1 = cgroupPathV1
 			container.CgroupV2 = cgroupPathV2
 			return true
@@ -634,23 +623,23 @@ func WithCgroupEnrichment() ContainerCollectionOption {
 // WithLinuxNamespaceEnrichment enables an enricher to add the namespaces metadata
 func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
-		cc.containerEnrichers = append(cc.containerEnrichers, func(container *pb.ContainerDefinition) bool {
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			pid := int(container.Pid)
 			if pid == 0 {
-				log.Errorf("namespace enricher: failed to enrich container %s with pid zero", container.Id)
+				log.Errorf("namespace enricher: failed to enrich container %s with pid zero", container.ID)
 				return true
 			}
 
 			mntns, err := containerutils.GetMntNs(pid)
 			if err != nil {
-				log.Errorf("namespace enricher: failed to get mnt namespace on container %s: %s", container.Id, err)
+				log.Errorf("namespace enricher: failed to get mnt namespace on container %s: %s", container.ID, err)
 				return true
 			}
 			container.Mntns = mntns
 
 			netns, err := containerutils.GetNetNs(pid)
 			if err != nil {
-				log.Errorf("namespace enricher: failed to get net namespace on container %s: %s", container.Id, err)
+				log.Errorf("namespace enricher: failed to get net namespace on container %s: %s", container.ID, err)
 				return true
 			}
 			container.Netns = netns

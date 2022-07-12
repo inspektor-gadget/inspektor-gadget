@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,9 +23,6 @@ package containercollection
 
 import (
 	"sync"
-
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 )
 
 // ContainerCollection holds a set of containers. It can be embedded as an
@@ -34,20 +31,20 @@ import (
 // make this clear.
 type ContainerCollection struct {
 	// Keys:   containerID string
-	// Values: container   *pb.ContainerDefinition
+	// Values: container   Container
 	containers sync.Map
 
 	// subs contains a list of subscribers of container events
-	pubsub *pubsub.GadgetPubSub
+	pubsub *GadgetPubSub
 
 	// containerEnrichers are functions that automatically add metadata
 	// upon AddContainer. The functions return true on success or false if
 	// the container is meant to be dropped.
-	containerEnrichers []func(container *pb.ContainerDefinition) (ok bool)
+	containerEnrichers []func(container *Container) (ok bool)
 
 	// initialContainers is used during the initialization process to
 	// gather initial containers and then call the enrichers
-	initialContainers []*pb.ContainerDefinition
+	initialContainers []*Container
 
 	// initialized tells if ContainerCollectionInitialize has been called.
 	initialized bool
@@ -92,9 +89,9 @@ initialContainersLoop:
 			}
 		}
 
-		cc.containers.Store(container.Id, container)
+		cc.containers.Store(container.ID, container)
 		if cc.pubsub != nil {
-			cc.pubsub.Publish(pubsub.EventTypeAddContainer, *container)
+			cc.pubsub.Publish(EventTypeAddContainer, *container)
 		}
 	}
 	cc.initialContainers = nil
@@ -105,13 +102,13 @@ initialContainersLoop:
 
 // GetContainer looks up a container by the container id and return it if
 // found, or return nil if not found.
-func (cc *ContainerCollection) GetContainer(id string) *pb.ContainerDefinition {
+func (cc *ContainerCollection) GetContainer(id string) *Container {
 	v, ok := cc.containers.Load(id)
 	if !ok {
 		return nil
 	}
-	containerDefinition := v.(*pb.ContainerDefinition)
-	return containerDefinition
+	container := v.(*Container)
+	return container
 }
 
 // RemoveContainer removes a container from the collection.
@@ -121,11 +118,13 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 		return
 	}
 
-	cc.pubsub.Publish(pubsub.EventTypeRemoveContainer, *v.(*pb.ContainerDefinition))
+	if cc.pubsub != nil {
+		cc.pubsub.Publish(EventTypeRemoveContainer, *v.(*Container))
+	}
 }
 
 // AddContainer adds a container to the collection.
-func (cc *ContainerCollection) AddContainer(container *pb.ContainerDefinition) {
+func (cc *ContainerCollection) AddContainer(container *Container) {
 	for _, enricher := range cc.containerEnrichers {
 		ok := enricher(container)
 
@@ -135,12 +134,12 @@ func (cc *ContainerCollection) AddContainer(container *pb.ContainerDefinition) {
 		}
 	}
 
-	_, loaded := cc.containers.LoadOrStore(container.Id, container)
+	_, loaded := cc.containers.LoadOrStore(container.ID, container)
 	if loaded {
 		return
 	}
 	if cc.pubsub != nil {
-		cc.pubsub.Publish(pubsub.EventTypeAddContainer, *container)
+		cc.pubsub.Publish(EventTypeAddContainer, *container)
 	}
 }
 
@@ -148,7 +147,7 @@ func (cc *ContainerCollection) AddContainer(container *pb.ContainerDefinition) {
 // specified in arguments or zero if not found
 func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container string) (mntns uint64) {
 	cc.containers.Range(func(key, value interface{}) bool {
-		c := value.(*pb.ContainerDefinition)
+		c := value.(*Container)
 		if namespace == c.Namespace && pod == c.Podname && container == c.Name {
 			mntns = c.Mntns
 			// container found, stop iterating
@@ -161,11 +160,11 @@ func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container 
 
 // LookupContainerByMntns returns a container by its mount namespace
 // inode id. If not found nil is returned.
-func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *pb.ContainerDefinition {
-	var container *pb.ContainerDefinition
+func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container {
+	var container *Container
 
 	cc.containers.Range(func(key, value interface{}) bool {
-		c := value.(*pb.ContainerDefinition)
+		c := value.(*Container)
 		if c.Mntns == mntnsid {
 			container = c
 			// container found, stop iterating
@@ -182,7 +181,7 @@ func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *pb.Contai
 func (cc *ContainerCollection) LookupMntnsByPod(namespace, pod string) map[string]uint64 {
 	ret := make(map[string]uint64)
 	cc.containers.Range(func(key, value interface{}) bool {
-		c := value.(*pb.ContainerDefinition)
+		c := value.(*Container)
 		if namespace == c.Namespace && pod == c.Podname {
 			ret[c.Name] = c.Mntns
 		}
@@ -195,7 +194,7 @@ func (cc *ContainerCollection) LookupMntnsByPod(namespace, pod string) map[strin
 // specified in arguments or zero if not found
 func (cc *ContainerCollection) LookupPIDByContainer(namespace, pod, container string) (pid uint32) {
 	cc.containers.Range(func(key, value interface{}) bool {
-		c := value.(*pb.ContainerDefinition)
+		c := value.(*Container)
 		if namespace == c.Namespace && pod == c.Podname && container == c.Name {
 			pid = c.Pid
 			// container found, stop iterating
@@ -212,7 +211,7 @@ func (cc *ContainerCollection) LookupPIDByContainer(namespace, pod, container st
 func (cc *ContainerCollection) LookupPIDByPod(namespace, pod string) map[string]uint32 {
 	ret := make(map[string]uint32)
 	cc.containers.Range(func(key, value interface{}) bool {
-		c := value.(*pb.ContainerDefinition)
+		c := value.(*Container)
 		if namespace == c.Namespace && pod == c.Podname {
 			ret[c.Name] = c.Pid
 		}
@@ -223,10 +222,10 @@ func (cc *ContainerCollection) LookupPIDByPod(namespace, pod string) map[string]
 
 // LookupOwnerReferenceByMntns returns a pointer to the owner reference of the
 // container identified by the mount namespace, or nil if not found
-func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *pb.OwnerReference {
-	var ownerRef *pb.OwnerReference
+func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *OwnerReference {
+	var ownerRef *OwnerReference
 	cc.containers.Range(func(key, value interface{}) bool {
-		c := value.(*pb.ContainerDefinition)
+		c := value.(*Container)
 		if mntns == c.Mntns {
 			ownerRef = c.OwnerReference
 			// container found, stop iterating
@@ -240,11 +239,11 @@ func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *pb.Own
 // GetContainersBySelector returns a slice of containers that match
 // the selector or an empty slice if there are not matches
 func (cc *ContainerCollection) GetContainersBySelector(
-	containerSelector *pb.ContainerSelector,
-) []*pb.ContainerDefinition {
-	selectedContainers := []*pb.ContainerDefinition{}
+	containerSelector *ContainerSelector,
+) []*Container {
+	selectedContainers := []*Container{}
 	cc.containers.Range(func(key, value interface{}) bool {
-		c := value.(*pb.ContainerDefinition)
+		c := value.(*Container)
 		if ContainerSelectorMatches(containerSelector, c) {
 			selectedContainers = append(selectedContainers, c)
 		}
@@ -264,9 +263,9 @@ func (cc *ContainerCollection) ContainerLen() (count int) {
 
 // ContainerRange iterates over the containers of the collection and calls the
 // callback function for each of them.
-func (cc *ContainerCollection) ContainerRange(f func(*pb.ContainerDefinition)) {
+func (cc *ContainerCollection) ContainerRange(f func(*Container)) {
 	cc.containers.Range(func(key, value interface{}) bool {
-		c := value.(*pb.ContainerDefinition)
+		c := value.(*Container)
 		f(c)
 		return true
 	})
@@ -276,11 +275,11 @@ func (cc *ContainerCollection) ContainerRange(f func(*pb.ContainerDefinition)) {
 // and calls the callback function for each of those that matches the container
 // selector.
 func (cc *ContainerCollection) ContainerRangeWithSelector(
-	containerSelector *pb.ContainerSelector,
-	f func(*pb.ContainerDefinition),
+	containerSelector *ContainerSelector,
+	f func(*Container),
 ) {
 	cc.containers.Range(func(key, value interface{}) bool {
-		c := value.(*pb.ContainerDefinition)
+		c := value.(*Container)
 		if ContainerSelectorMatches(containerSelector, c) {
 			f(c)
 		}
@@ -290,12 +289,12 @@ func (cc *ContainerCollection) ContainerRangeWithSelector(
 
 // Subscribe returns the list of existing containers and registers a callback
 // for notifications about additions and deletions of containers
-func (cc *ContainerCollection) Subscribe(key interface{}, selector pb.ContainerSelector, f pubsub.FuncNotify) []*pb.ContainerDefinition {
+func (cc *ContainerCollection) Subscribe(key interface{}, selector ContainerSelector, f FuncNotify) []*Container {
 	if cc.pubsub == nil {
 		panic("ContainerCollection's pubsub uninitialized")
 	}
-	ret := []*pb.ContainerDefinition{}
-	cc.pubsub.Subscribe(key, func(event pubsub.PubSubEvent) {
+	ret := []*Container{}
+	cc.pubsub.Subscribe(key, func(event PubSubEvent) {
 		if ContainerSelectorMatches(&selector, &event.Container) {
 			f(event)
 		}
@@ -303,7 +302,7 @@ func (cc *ContainerCollection) Subscribe(key interface{}, selector pb.ContainerS
 		// Fetch the list of containers inside pubsub.Subscribe() to
 		// guarantee that no new container event will be published at
 		// the same time.
-		cc.ContainerRangeWithSelector(&selector, func(c *pb.ContainerDefinition) {
+		cc.ContainerRangeWithSelector(&selector, func(c *Container) {
 			ret = append(ret, c)
 		})
 	})

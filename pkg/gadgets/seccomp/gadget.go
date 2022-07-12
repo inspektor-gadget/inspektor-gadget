@@ -31,10 +31,9 @@ import (
 	k8syaml "sigs.k8s.io/yaml"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	seccomptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/seccomp/tracer"
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 )
 
 type Trace struct {
@@ -182,7 +181,7 @@ func seccompProfileAddLabelsAndAnnotations(
 	trace *gadgetv1alpha1.Trace,
 	podName string,
 	containerName string,
-	ownerReference *pb.OwnerReference,
+	ownerReference *containercollection.OwnerReference,
 ) {
 	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/trace"] = traceName
@@ -193,7 +192,7 @@ func seccompProfileAddLabelsAndAnnotations(
 		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-ApiVersion"] = ownerReference.Apiversion
 		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-Kind"] = ownerReference.Kind
 		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-Name"] = ownerReference.Name
-		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-UID"] = ownerReference.Uid
+		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-UID"] = ownerReference.UID
 	}
 
 	// Copy labels from the trace into the SeccompProfile. This will allow
@@ -304,7 +303,7 @@ func getSeccompProfileNsName(
 
 // generateSeccompPolicy generates a seccomp policy which is ready to be
 // created.
-func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, syscalls []byte, podname, containername, fullPodName string, ownerReference *pb.OwnerReference) (*seccompprofile.SeccompProfile, error) {
+func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, syscalls []byte, podname, containername, fullPodName string, ownerReference *containercollection.OwnerReference) (*seccompprofile.SeccompProfile, error) {
 	profileName, err := getSeccompProfileNsName(
 		client,
 		trace.ObjectMeta.Namespace,
@@ -324,7 +323,7 @@ func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, sy
 // containerTerminated is a callback called every time a container is
 // terminated on the node. It is used to generate a SeccompProfile when a
 // container terminates.
-func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event pubsub.PubSubEvent) {
+func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event containercollection.PubSubEvent) {
 	if traceSingleton.tracer == nil {
 		log.Errorf("Seccomp tracer is nil")
 		return
@@ -404,9 +403,9 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		_ = t.resolver.Subscribe(
 			genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
 			*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
-			func(event pubsub.PubSubEvent) {
+			func(event containercollection.PubSubEvent) {
 				// Ignore container creation events.
-				if event.Type != pubsub.EventTypeRemoveContainer {
+				if event.Type != containercollection.EventTypeRemoveContainer {
 					return
 				}
 				t.containerTerminated(traceCopy, event)

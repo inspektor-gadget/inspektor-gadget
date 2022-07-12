@@ -16,7 +16,6 @@ package gadgettracermanager
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"runtime"
@@ -30,10 +29,10 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	containersmap "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containers-map"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 import "C"
@@ -61,38 +60,18 @@ type GadgetTracerManager struct {
 	containersMap *containersmap.ContainersMap
 }
 
-func (g *GadgetTracerManager) AddTracer(_ context.Context, req *pb.AddTracerRequest) (*pb.TracerID, error) {
+func (g *GadgetTracerManager) AddTracer(tracerID string, containerSelector containercollection.ContainerSelector) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	tracerID := ""
-	if req.Id == "" {
-		b := make([]byte, 6)
-		_, err := rand.Read(b)
-		if err != nil {
-			return nil, fmt.Errorf("cannot generate random number: %w", err)
-		}
-		tracerID = fmt.Sprintf("%x", b)
-	} else {
-		tracerID = req.Id
-	}
-
-	if err := g.tracerCollection.AddTracer(tracerID, *req.Selector); err != nil {
-		return nil, err
-	}
-
-	return &pb.TracerID{Id: tracerID}, nil
+	return g.tracerCollection.AddTracer(tracerID, containerSelector)
 }
 
-func (g *GadgetTracerManager) RemoveTracer(_ context.Context, tracerID *pb.TracerID) (*pb.RemoveTracerResponse, error) {
+func (g *GadgetTracerManager) RemoveTracer(tracerID string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if err := g.tracerCollection.RemoveTracer(tracerID.Id); err != nil {
-		return nil, err
-	}
-
-	return &pb.RemoveTracerResponse{}, nil
+	return g.tracerCollection.RemoveTracer(tracerID)
 }
 
 func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.GadgetTracerManager_ReceiveStreamServer) error {
@@ -178,7 +157,27 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 		return nil, fmt.Errorf("container with id %s already exists", containerDefinition.Id)
 	}
 
-	g.ContainerCollection.AddContainer(containerDefinition)
+	container := containercollection.Container{
+		ID:        containerDefinition.Id,
+		Pid:       containerDefinition.Pid,
+		Namespace: containerDefinition.Namespace,
+		Podname:   containerDefinition.Podname,
+		Name:      containerDefinition.Name,
+		Labels:    map[string]string{},
+	}
+	for _, l := range containerDefinition.Labels {
+		container.Labels[l.Key] = l.Value
+	}
+	if containerDefinition.OciConfig != "" {
+		containerConfig := &ocispec.Spec{}
+		err := json.Unmarshal([]byte(containerDefinition.OciConfig), containerConfig)
+		if err != nil {
+			return nil, fmt.Errorf("cannot unmarshal container config: %w", err)
+		}
+		container.OciConfig = containerConfig
+	}
+
+	g.ContainerCollection.AddContainer(&container)
 
 	return &pb.AddContainerResponse{}, nil
 }
@@ -205,7 +204,7 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 	defer g.mu.Unlock()
 
 	out := "List of containers:\n"
-	g.ContainerRange(func(c *pb.ContainerDefinition) {
+	g.ContainerRange(func(c *containercollection.Container) {
 		out += fmt.Sprintf("%+v\n", c)
 	})
 
@@ -232,7 +231,7 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 	}
 	g.tracerCollection = tracerCollection
 
-	containerEventFuncs := []pubsub.FuncNotify{}
+	containerEventFuncs := []containercollection.FuncNotify{}
 
 	if !conf.TestOnly {
 		if err := rlimit.RemoveMemlock(); err != nil {

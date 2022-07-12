@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pubsub
+package containercollection
 
 import (
 	"testing"
-
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 func TestPubSub(t *testing.T) {
@@ -38,7 +36,7 @@ func TestPubSub(t *testing.T) {
 
 	p.Subscribe(key, callback, nil)
 
-	p.Publish(EventTypeRemoveContainer, pb.ContainerDefinition{Id: "container1"})
+	p.Publish(EventTypeRemoveContainer, Container{ID: "container1"})
 	_, ok := <-done
 	if !ok {
 		t.Fatalf("Failed to receive event from callback")
@@ -47,12 +45,12 @@ func TestPubSub(t *testing.T) {
 	if event.Type != EventTypeRemoveContainer {
 		t.Fatalf("Failed to receive correct event of type EVENT_TYPE_REMOVE_CONTAINER")
 	}
-	if event.Container.Id != "container1" {
+	if event.Container.ID != "container1" {
 		t.Fatalf("Failed to receive correct event")
 	}
 
 	p.Unsubscribe(key)
-	p.Publish(EventTypeRemoveContainer, pb.ContainerDefinition{Id: "container2"})
+	p.Publish(EventTypeRemoveContainer, Container{ID: "container2"})
 	if counter != 1 {
 		t.Fatalf("Callback called too many times")
 	}

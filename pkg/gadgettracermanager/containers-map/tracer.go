@@ -23,8 +23,7 @@ import (
 	"github.com/cilium/ebpf"
 	"golang.org/x/sys/unix"
 
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang containersmap ./bpf/containers-map.c -- -I./bpf/ -I../../ -I../../${TARGET}
@@ -104,7 +103,7 @@ func NewContainersMap(pinPath string) (*ContainersMap, error) {
 	}, nil
 }
 
-func (cm *ContainersMap) addContainerInMap(c *pb.ContainerDefinition) {
+func (cm *ContainersMap) addContainerInMap(c *containercollection.Container) {
 	if cm.containersMap == nil || c.Mntns == 0 {
 		return
 	}
@@ -112,7 +111,7 @@ func (cm *ContainersMap) addContainerInMap(c *pb.ContainerDefinition) {
 
 	val := Container{}
 
-	copyToC(&val.container_id, c.Id)
+	copyToC(&val.container_id, c.ID)
 	copyToC(&val.namespace, c.Namespace)
 	copyToC(&val.pod, c.Podname)
 	copyToC(&val.container, c.Name)
@@ -120,17 +119,17 @@ func (cm *ContainersMap) addContainerInMap(c *pb.ContainerDefinition) {
 	cm.containersMap.Put(mntnsC, val)
 }
 
-func (cm *ContainersMap) deleteContainerFromMap(c *pb.ContainerDefinition) {
+func (cm *ContainersMap) deleteContainerFromMap(c *containercollection.Container) {
 	if cm.containersMap == nil || c.Mntns == 0 {
 		return
 	}
 	cm.containersMap.Delete(uint64(c.Mntns))
 }
 
-func (cm *ContainersMap) ContainersMapUpdater() pubsub.FuncNotify {
-	return func(event pubsub.PubSubEvent) {
+func (cm *ContainersMap) ContainersMapUpdater() containercollection.FuncNotify {
+	return func(event containercollection.PubSubEvent) {
 		switch event.Type {
-		case pubsub.EventTypeAddContainer:
+		case containercollection.EventTypeAddContainer:
 			// Skip the pause container
 			if event.Container.Name == "" {
 				return
@@ -138,7 +137,7 @@ func (cm *ContainersMap) ContainersMapUpdater() pubsub.FuncNotify {
 
 			cm.addContainerInMap(&event.Container)
 
-		case pubsub.EventTypeRemoveContainer:
+		case containercollection.EventTypeRemoveContainer:
 			cm.deleteContainerFromMap(&event.Container)
 		}
 	}

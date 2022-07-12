@@ -24,9 +24,7 @@ import (
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	gadgetcollection "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 	containersmap "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containers-map"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
 
 	"github.com/cilium/ebpf"
@@ -102,7 +100,7 @@ func (l *LocalGadgetManager) ListTraces() []string {
 
 func (l *LocalGadgetManager) ListContainers() []string {
 	containers := []string{}
-	l.ContainerCollection.ContainerRange(func(c *pb.ContainerDefinition) {
+	l.ContainerCollection.ContainerRange(func(c *containercollection.Container) {
 		containers = append(containers, c.Name)
 	})
 	sort.Strings(containers)
@@ -286,7 +284,7 @@ func (l *LocalGadgetManager) Stream(name string, stop chan struct{}) (chan strin
 
 func (l *LocalGadgetManager) Dump() string {
 	out := "List of containers:\n"
-	l.ContainerCollection.ContainerRange(func(c *pb.ContainerDefinition) {
+	l.ContainerCollection.ContainerRange(func(c *containercollection.Container) {
 		out += fmt.Sprintf("%+v\n", c)
 	})
 	out += "List of tracers:\n"
@@ -320,7 +318,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 	if err != nil {
 		return nil, fmt.Errorf("error creating containers map: %w", err)
 	}
-	containerEventFuncs := []pubsub.FuncNotify{}
+	containerEventFuncs := []containercollection.FuncNotify{}
 	containerEventFuncs = append(containerEventFuncs, l.containersMap.ContainersMapUpdater())
 	containerEventFuncs = append(containerEventFuncs, l.tracerCollection.TracerMapsUpdater())
 

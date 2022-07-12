@@ -51,8 +51,6 @@ var (
 	label               string
 	tracerid            string
 	containerID         string
-	cgroupPath          string
-	cgroupID            uint64
 	namespace           string
 	podname             string
 	containername       string
@@ -72,10 +70,8 @@ func init() {
 
 	flag.StringVar(&method, "call", "", "Call a method (add-tracer, remove-tracer, receive-stream, add-container, remove-container)")
 	flag.StringVar(&label, "label", "", "key=value,key=value labels to use in add-tracer")
-	flag.StringVar(&tracerid, "tracerid", "", "tracerid to use in remove-tracer")
+	flag.StringVar(&tracerid, "tracerid", "", "tracerid to use in receive-stream")
 	flag.StringVar(&containerID, "containerid", "", "container id to use in add-container or remove-container")
-	flag.StringVar(&cgroupPath, "cgrouppath", "", "cgroup path to use in add-container")
-	flag.Uint64Var(&cgroupID, "cgroupid", 0, "cgroup id to use in add-container")
 	flag.StringVar(&namespace, "namespace", "", "namespace to use in add-container")
 	flag.StringVar(&podname, "podname", "", "podname to use in add-container")
 	flag.StringVar(&containername, "containername", "", "container name to use in add-container")
@@ -130,31 +126,6 @@ func main() {
 	case "":
 		// break
 
-	case "add-tracer":
-		out, err := client.AddTracer(ctx, &pb.AddTracerRequest{
-			Id: tracerid,
-			Selector: &pb.ContainerSelector{
-				Namespace: namespace,
-				Podname:   podname,
-				Labels:    labels,
-				Name:      containername,
-			},
-		})
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-		fmt.Printf("%+v\n", out.Id)
-		os.Exit(0)
-
-	case "remove-tracer":
-		_, err := client.RemoveTracer(ctx, &pb.TracerID{
-			Id: tracerid,
-		})
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-		os.Exit(0)
-
 	case "receive-stream":
 		stream, err := client.ReceiveStream(context.Background(), &pb.TracerID{
 			Id: tracerid,
@@ -177,14 +148,13 @@ func main() {
 
 	case "add-container":
 		_, err := client.AddContainer(ctx, &pb.ContainerDefinition{
-			Id:         containerID,
-			CgroupPath: cgroupPath,
-			CgroupId:   cgroupID,
-			Namespace:  namespace,
-			Podname:    podname,
-			Name:       containername,
-			Labels:     labels,
-			Pid:        uint32(containerPid),
+			Id:        containerID,
+			Pid:       uint32(containerPid),
+			OciConfig: "",
+			Namespace: namespace,
+			Podname:   podname,
+			Name:      containername,
+			Labels:    labels,
 		})
 		if err != nil {
 			log.Fatalf("%v", err)

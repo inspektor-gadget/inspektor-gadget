@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,11 +14,6 @@
 
 package containercollection
 
-import (
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
-)
-
 // ContainerResolver offers primitives to look up running containers with
 // various criteria, and to subscribe to container creation and termination.
 type ContainerResolver interface {
@@ -28,7 +23,7 @@ type ContainerResolver interface {
 
 	// LookupContainerByMntns returns a container by its mount namespace
 	// inode id. If not found nil is returned.
-	LookupContainerByMntns(mntnsid uint64) *pb.ContainerDefinition
+	LookupContainerByMntns(mntnsid uint64) *Container
 
 	// LookupMntnsByPod returns the mount namespace inodes of all containers
 	// belonging to the pod specified in arguments, indexed by the name of the
@@ -46,16 +41,16 @@ type ContainerResolver interface {
 
 	// LookupOwnerReferenceByMntns returns a pointer to the owner reference of the
 	// container identified by the mount namespace, or nil if not found
-	LookupOwnerReferenceByMntns(mntns uint64) *pb.OwnerReference
+	LookupOwnerReferenceByMntns(mntns uint64) *OwnerReference
 
 	// GetContainersBySelector returns a slice of containers that match
 	// the selector or an empty slice if there are not matches
-	GetContainersBySelector(containerSelector *pb.ContainerSelector) []*pb.ContainerDefinition
+	GetContainersBySelector(containerSelector *ContainerSelector) []*Container
 
 	// Subscribe returns the list of existing containers and registers a
 	// callback for notifications about additions and deletions of
 	// containers
-	Subscribe(key interface{}, s pb.ContainerSelector, f pubsub.FuncNotify) []*pb.ContainerDefinition
+	Subscribe(key interface{}, s ContainerSelector, f FuncNotify) []*Container
 
 	// Unsubscribe undoes a previous call to Subscribe
 	Unsubscribe(key interface{})

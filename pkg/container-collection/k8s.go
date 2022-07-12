@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package k8s
+package containercollection
 
 import (
 	"context"
@@ -29,8 +29,6 @@ import (
 
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
-
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 type K8sClient struct {
@@ -98,12 +96,12 @@ func (k *K8sClient) GetNonRunningContainers(pod *v1.Pod) []string {
 
 // PodToContainers returns a list of the containers of a given Pod.
 // Containers that are not running or don't have an ID are not considered.
-func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
-	containers := []pb.ContainerDefinition{}
+func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
+	containers := []Container{}
 
-	labels := []*pb.Label{}
+	labels := map[string]string{}
 	for k, v := range pod.ObjectMeta.Labels {
-		labels = append(labels, &pb.Label{Key: k, Value: v})
+		labels[k] = v
 	}
 
 	containerStatuses := append([]v1.ContainerStatus{}, pod.Status.InitContainerStatuses...)
@@ -125,8 +123,8 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 			continue
 		}
 
-		containerDef := pb.ContainerDefinition{
-			Id:        idParts[1],
+		containerDef := Container{
+			ID:        idParts[1],
 			Namespace: pod.GetNamespace(),
 			Podname:   pod.GetName(),
 			Name:      s.Name,
@@ -141,7 +139,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []pb.ContainerDefinition {
 
 // ListContainers return a list of the current containers that are
 // running in the node.
-func (k *K8sClient) ListContainers() (arr []pb.ContainerDefinition, err error) {
+func (k *K8sClient) ListContainers() (arr []Container, err error) {
 	// List pods
 	pods, err := k.clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
 		FieldSelector: k.fieldSelector,

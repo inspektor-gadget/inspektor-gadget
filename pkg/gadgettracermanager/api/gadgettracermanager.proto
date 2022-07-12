@@ -19,20 +19,14 @@ option go_package = "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager
 package gadgettracermanager;
 
 service GadgetTracerManager {
-  // Methods called by bcc scripts
-
-  rpc AddTracer(AddTracerRequest) returns (TracerID) {}
-  rpc RemoveTracer(TracerID) returns (RemoveTracerResponse) {}
-
+  // Methods called via kubectl-exec
   rpc ReceiveStream(TracerID) returns (stream StreamData) {}
 
   // Methods called by OCI Hooks
-
   rpc AddContainer(ContainerDefinition) returns (AddContainerResponse) {}
   rpc RemoveContainer(ContainerDefinition) returns (RemoveContainerResponse) {}
 
   // Methods called for debugging
-
   rpc DumpState(DumpStateRequest) returns (Dump) {}
 }
 
@@ -41,28 +35,12 @@ message Label {
   string value = 2;
 }
 
-message AddTracerRequest {
-  string id = 1;
-  ContainerSelector selector = 2;
-}
-
-message RemoveTracerResponse {
-  string debug = 1;
-}
-
 message AddContainerResponse {
   string debug = 1;
 }
 
 message RemoveContainerResponse {
   string debug = 1;
-}
-
-message ContainerSelector {
-  string namespace = 1;
-  string podname = 2;
-  repeated Label labels = 3;
-  string name = 4;
 }
 
 message TracerID {
@@ -82,33 +60,14 @@ message OwnerReference {
 
 message ContainerDefinition {
   string id = 1;
-  string cgroup_path = 2;
-  uint64 cgroup_id = 3;
-  uint64 mntns = 4;
+  uint32 pid = 2;
+  string oci_config = 3;
 
-  string namespace = 5;
-  string podname = 6;
-  string name = 7;
-  repeated Label labels = 8;
-
-  // Data required to find the container to Pod association in the
-  // gadgettracermanager.
-  string cgroup_v1 = 9;
-  string cgroup_v2 = 10;
-  repeated string mount_sources = 11;
-
-  // Pid is useful to find container namespaces, such as
-  // the network namespace in /proc/$pid/ns/net
-  uint32 pid = 12;
-
-  uint64 netns = 13;
-
-  // The owner reference information is added to the seccomp profile as
-  // annotations to help users to identify the workflow of the profile.
-  OwnerReference owner_reference = 14;
-
-  string oci_config = 15;
-  string pod_uid = 16;
+  // NRI and OCI hooks don't give the OCI config but give pod details
+  string namespace = 4;
+  string podname = 5;
+  string name = 6;
+  repeated Label labels = 7;
 }
 
 message DumpStateRequest {
