@@ -4,7 +4,15 @@
 #ifndef GADGET_NETWORK_GRAPH_H
 #define GADGET_NETWORK_GRAPH_H
 
-#include "../../../../vmlinux/vmlinux-cgo.h"
+#ifdef __TARGET_ARCH_arm64
+#include "../../../../arm64/vmlinux/vmlinux-cgo.h"
+#else
+// In several case (e.g. make test), we compile this file without having set
+// BPF_ARCH, so we default to include amd64 vmlinux.h.
+// For other architecture, like arm64, we use __TARGET_ARCH_arch to
+// differentiate.
+#include "../../../../amd64/vmlinux/vmlinux-cgo.h"
+#endif
 
 #define MAX_ENTRIES	10240
 
