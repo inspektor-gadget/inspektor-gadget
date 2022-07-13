@@ -23,8 +23,15 @@ To run the integration tests, it is necessary to have the gadget container image
 available on a container repository so that it can be installed in the
 Kubernetes cluster where the tests will run.
 
-As a default, `ghcr.io/${{ github.repository }}` is used to store images created
-in the CI pipeline.
+As a default, `ghcr.io/${{ github.repository }}-dev` is used to store images
+created in the CI pipeline for all branches except main and tags.
+When the target branch correspond to the main or the push refers to a tag, the
+default repository is `ghcr.io/${{ github.repository }}`.
+This permits a clear separation between "in development" images and production
+ones.
+During a release, integration test container image will be pushed to
+`ghcr.io/${{ github.repository }}-test`.
+
 Note that, you need to [set repository packages as public](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility#configuring-visibility-of-container-images-for-your-personal-account) to allow anonymous pull.
 
 ## Run integration tests on an ARO cluster
