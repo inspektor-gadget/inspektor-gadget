@@ -25,7 +25,7 @@ import (
 )
 
 type ExecParser struct {
-	BaseTraceParser
+	utils.BaseParser
 }
 
 func newExecCmd() *cobra.Command {
@@ -80,9 +80,9 @@ func NewExecParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
 	}
 
 	return &ExecParser{
-		BaseTraceParser: BaseTraceParser{
-			columnsWidth: columnsWidth,
-			outputConfig: outputConfig,
+		BaseParser: utils.BaseParser{
+			ColumnsWidth: columnsWidth,
+			OutputConfig: outputConfig,
 		},
 	}
 }
@@ -93,21 +93,21 @@ func (p *ExecParser) TransformEvent(event *types.Event, requestedColumns []strin
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
 		case "ppid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Ppid))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Ppid))
 		case "pcomm":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
 		case "ret":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Retval))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Retval))
 		case "args":
 			for _, arg := range event.Args {
 				sb.WriteString(fmt.Sprintf("%s ", arg))

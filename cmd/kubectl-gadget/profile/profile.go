@@ -15,16 +15,97 @@
 package profile
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+	"time"
+
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 
 	"github.com/spf13/cobra"
 )
 
-// All the gadgets within this package use this global variable, so let's
-// declare it here.
-var params utils.CommonFlags
+// ProfileParser defines the interface that every profile-gadget parser has to
+// implement.
+type ProfileParser interface {
+	DisplayResultsCallback(string, []string) error
+}
 
-var ProfilerCmd = &cobra.Command{
-	Use:   "profile",
-	Short: "Profile different subsystems",
+// ProfileGadget represents a gadget belonging to the profile category.
+type ProfileGadget struct {
+	gadgetName    string
+	commonFlags   *utils.CommonFlags
+	params        map[string]string
+	inProgressMsg string
+	parser        ProfileParser
+}
+
+// Run runs a ProfileGadget and prints the output after parsing it using the
+// ProfileParser's methods.
+func (g *ProfileGadget) Run() error {
+	traceConfig := &utils.TraceConfig{
+		GadgetName:        g.gadgetName,
+		Operation:         "start",
+		TraceOutputMode:   "Status",
+		TraceOutputState:  "Completed",
+		TraceInitialState: "Started",
+		Parameters:        g.params,
+		CommonFlags:       g.commonFlags,
+	}
+
+	traceID, err := utils.CreateTrace(traceConfig)
+	if err != nil {
+		return utils.WrapInErrRunGadget(err)
+	}
+	defer utils.DeleteTrace(traceID)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	if g.commonFlags.Timeout != 0 {
+		go func() {
+			time.Sleep(time.Duration(g.commonFlags.Timeout) * time.Second)
+			c <- os.Interrupt
+		}()
+	}
+
+	if g.commonFlags.OutputMode != utils.OutputModeJSON {
+		if g.commonFlags.Timeout != 0 {
+			fmt.Printf(g.inProgressMsg + "...")
+		} else {
+			fmt.Printf("%s... Hit Ctrl-C to end.", g.inProgressMsg)
+		}
+	}
+
+	<-c
+
+	if g.commonFlags.OutputMode != utils.OutputModeJSON {
+		// Trick to have ^C on the same line than above message, so the gadget
+		// output begins on a "clean" line.
+		fmt.Println()
+	}
+
+	err = utils.SetTraceOperation(traceID, "stop")
+	if err != nil {
+		return utils.WrapInErrStopGadget(err)
+	}
+
+	err = utils.PrintTraceOutputFromStatus(traceID,
+		traceConfig.TraceOutputState, g.parser.DisplayResultsCallback)
+	if err != nil {
+		return utils.WrapInErrGetGadgetOutput(err)
+	}
+
+	return nil
+}
+
+func NewProfileCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "profile",
+		Short: "Profile different subsystems",
+	}
+
+	cmd.AddCommand(newBlockIOCmd())
+	cmd.AddCommand(newCPUCmd())
+
+	return cmd
 }

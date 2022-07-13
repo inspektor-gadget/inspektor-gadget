@@ -24,7 +24,7 @@ import (
 )
 
 type OOMKillParser struct {
-	BaseTraceParser
+	utils.BaseParser
 }
 
 func newOOMKillCmd() *cobra.Command {
@@ -79,9 +79,9 @@ func NewOOMKillParser(outputConfig *utils.OutputConfig) TraceParser[types.Event]
 	}
 
 	return &OOMKillParser{
-		BaseTraceParser: BaseTraceParser{
-			columnsWidth: columnsWidth,
-			outputConfig: outputConfig,
+		BaseParser: utils.BaseParser{
+			ColumnsWidth: columnsWidth,
+			OutputConfig: outputConfig,
 		},
 	}
 }
@@ -92,23 +92,23 @@ func (p *OOMKillParser) TransformEvent(event *types.Event, requestedColumns []st
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
 		case "kpid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.KilledPid))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.KilledPid))
 		case "kcomm":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.KilledComm))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.KilledComm))
 		case "pages":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pages))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pages))
 		case "tpid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.TriggeredPid))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.TriggeredPid))
 		case "tcomm":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.TriggeredComm))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.TriggeredComm))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

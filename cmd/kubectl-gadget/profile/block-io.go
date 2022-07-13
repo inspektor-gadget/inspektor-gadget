@@ -18,10 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"os/signal"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -29,26 +26,48 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/types"
 )
 
-var biolatencyTraceConfig = &utils.TraceConfig{
-	GadgetName:        "biolatency",
-	TraceOutputMode:   "Status",
-	TraceOutputState:  "Completed",
-	TraceInitialState: "Started",
-	CommonFlags:       &params,
+type BlockIOParser struct {
+	outputConfig *utils.OutputConfig
 }
 
-var biolatencyCmd = &cobra.Command{
-	Use:          "block-io",
-	Short:        "Analyze block I/O performance through a latency distribution",
-	Args:         cobra.NoArgs,
-	SilenceUsage: true,
-	RunE:         runBiolatency,
-}
+func newBlockIOCmd() *cobra.Command {
+	var commonFlags utils.CommonFlags
 
-func init() {
-	ProfilerCmd.AddCommand(biolatencyCmd)
+	cmd := &cobra.Command{
+		Use:          "block-io",
+		Short:        "Analyze block I/O performance through a latency distribution",
+		Args:         cobra.NoArgs,
+		SilenceUsage: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			// Biolatency does not support filtering so we need to avoid adding
+			// the default namespace configured in the kubeconfig file.
+			if commonFlags.Namespace != "" && !commonFlags.NamespaceOverridden {
+				commonFlags.Namespace = ""
+			}
 
-	utils.AddCommonFlags(biolatencyCmd, &params)
+			if commonFlags.Node == "" {
+				return utils.WrapInErrMissingArgs("--node")
+			}
+
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			blockIOGadget := &ProfileGadget{
+				gadgetName:    "biolatency",
+				commonFlags:   &commonFlags,
+				inProgressMsg: "Tracing block device I/O",
+				parser: &BlockIOParser{
+					outputConfig: &commonFlags.OutputConfig,
+				},
+			}
+
+			return blockIOGadget.Run()
+		},
+	}
+
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
 
 // starsToString prints a line of the histogram.
@@ -110,80 +129,24 @@ func reportToString(report types.Report) string {
 	return sb.String()
 }
 
-func runBiolatency(cmd *cobra.Command, args []string) error {
-	// Biolatency does not support filtering so we need to avoid adding
-	// the default namespace configured in the kubeconfig file.
-	if params.Namespace != "" && !params.NamespaceOverridden {
-		params.Namespace = ""
+func (p *BlockIOParser) DisplayResultsCallback(traceOutputMode string, results []string) error {
+	if len(results) > 1 {
+		return errors.New("there should be only one result because biolatency runs on one node at a time")
 	}
 
-	if params.Node == "" {
-		return utils.WrapInErrMissingArgs("--node")
-	}
-
-	biolatencyTraceConfig.Operation = "start"
-	traceID, err := utils.CreateTrace(biolatencyTraceConfig)
-	if err != nil {
-		return utils.WrapInErrRunGadget(err)
-	}
-
-	defer utils.DeleteTrace(traceID)
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	if params.Timeout != 0 {
-		go func() {
-			time.Sleep(time.Duration(params.Timeout) * time.Second)
-			c <- os.Interrupt
-		}()
-	}
-
-	if params.OutputMode != utils.OutputModeJSON {
-		if params.Timeout != 0 {
-			fmt.Printf("Tracing block device I/O...\n")
-		} else {
-			fmt.Printf("Tracing block device I/O... Hit Ctrl-C to end.")
-		}
-	}
-
-	<-c
-
-	if params.Timeout == 0 {
-		// Trick to have ^C on the same line than above "Tracing block...", so the
-		// gadget output begins on a "clean" line.
-		fmt.Println()
-	}
-	err = utils.SetTraceOperation(traceID, "stop")
-	if err != nil {
-		return utils.WrapInErrStopGadget(err)
-	}
-
-	displayResultsCallback := func(traceOutputMode string, results []string) error {
-		if len(results) > 1 {
-			return errors.New("there should be only one result because biolatency runs on one node at a time")
+	var output string
+	if p.outputConfig.OutputMode == utils.OutputModeJSON {
+		output = results[0] + "\n"
+	} else {
+		var report types.Report
+		if err := json.Unmarshal([]byte(results[0]), &report); err != nil {
+			return utils.WrapInErrUnmarshalOutput(err, results[0])
 		}
 
-		var output string
-		if params.OutputMode == utils.OutputModeJSON {
-			output = results[0]
-		} else {
-			var report types.Report
-			if err := json.Unmarshal([]byte(results[0]), &report); err != nil {
-				return utils.WrapInErrUnmarshalOutput(err, results[0])
-			}
-
-			output = reportToString(report)
-		}
-		fmt.Printf("%s", output)
-
-		return nil
+		output = reportToString(report)
 	}
 
-	err = utils.PrintTraceOutputFromStatus(traceID,
-		biolatencyTraceConfig.TraceOutputState, displayResultsCallback)
-	if err != nil {
-		return utils.WrapInErrGetGadgetOutput(err)
-	}
+	fmt.Printf("%s", output)
 
 	return nil
 }

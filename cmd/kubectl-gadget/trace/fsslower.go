@@ -27,7 +27,7 @@ import (
 )
 
 type FsslowerParser struct {
-	BaseTraceParser
+	utils.BaseParser
 }
 
 func newFsSlowerCmd() *cobra.Command {
@@ -127,9 +127,9 @@ func NewFsslowerParser(outputConfig *utils.OutputConfig) TraceParser[types.Event
 	}
 
 	return &FsslowerParser{
-		BaseTraceParser: BaseTraceParser{
-			columnsWidth: columnsWidth,
-			outputConfig: outputConfig,
+		BaseParser: utils.BaseParser{
+			ColumnsWidth: columnsWidth,
+			OutputConfig: outputConfig,
 		},
 	}
 }
@@ -145,27 +145,27 @@ func (p *FsslowerParser) TransformEvent(event *types.Event, requestedColumns []s
 	for _, col := range requestedColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
 		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Pid))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
 		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Comm))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
 		case "t":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.Op))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Op))
 		case "bytes":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Bytes))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Bytes))
 		case "offset":
-			sb.WriteString(fmt.Sprintf("%*d", p.columnsWidth[col], event.Offset))
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Offset))
 		case "lat":
-			sb.WriteString(fmt.Sprintf("%*.2f", p.columnsWidth[col], float64(event.Latency)/1000.0))
+			sb.WriteString(fmt.Sprintf("%*.2f", p.ColumnsWidth[col], float64(event.Latency)/1000.0))
 		case "file":
-			sb.WriteString(fmt.Sprintf("%*s", p.columnsWidth[col], event.File))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.File))
 		}
 
 		// Needed when field is larger than the predefined columnsWidth.

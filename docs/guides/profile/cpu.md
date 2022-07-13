@@ -27,22 +27,27 @@ Capturing stack traces... Hit Ctrl-C to end.^C
 After a while press with Ctrl-C to stop trace collection
 
 ```
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID    COUNT
-minikube         default          random           random           cat              17680   1
+NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             COUNT
+minikube         default          random                         random           340800  cat              1
         entry_SYSCALL_64_after_hwframe
         do_syscall_64
-        vfs_read
+        __x64_sys_read
         ksys_read
+        vfs_read
+        urandom_read
         urandom_read_nowarn.isra.0
+        extract_crng
         _extract_crng
 ...
-minikube         default          random           random           cat              17680   1
+minikube         default          random                         random           340800  cat              9
         entry_SYSCALL_64_after_hwframe
         do_syscall_64
+        __x64_sys_read
         vfs_read
         ksys_read
+        urandom_read
         urandom_read_nowarn.isra.0
-        _extract_crng
+        copy_user_generic_string
 ```
 
 From the traces above, you can see that the pod is spending CPU time in the
@@ -53,23 +58,27 @@ Instead of waiting, you can use the `--timeout` argument:
 ```bash
 $ kubectl gadget profile cpu --timeout 5 --podname random -K
 Capturing stack traces...
-Capturing stack traces... Hit Ctrl-C to end.^C
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID    COUNT
-minikube         default          random           random           cat              17680   1
+NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             COUNT
+minikube         default          random                         random           340800  cat              1
         entry_SYSCALL_64_after_hwframe
         do_syscall_64
-        vfs_read
+        __x64_sys_read
         ksys_read
+        vfs_read
+        urandom_read
         urandom_read_nowarn.isra.0
+        extract_crng
         _extract_crng
 ...
-minikube         default          random           random           cat              17680   1
+minikube         default          random                         random           340800  cat              9
         entry_SYSCALL_64_after_hwframe
         do_syscall_64
+        __x64_sys_read
         vfs_read
         ksys_read
+        urandom_read
         urandom_read_nowarn.isra.0
-        _extract_crng
+        copy_user_generic_string
 ```
 
 This gadget also supports custom column outputting, for example:
@@ -86,25 +95,33 @@ minikube         random
 The following command is the same as default printing:
 
 ```bash
-$ kubectl gadget profile cpu --timeout 1 --podname random -o custom-columns=node,namespace,pod,container,comm,pid,count,stack
+$ kubectl gadget profile cpu --timeout 1 --podname random -o custom-columns=node,namespace,pod,container,pid,comm,count,stack
 Capturing stack traces...
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID    COUNT
-minikube         default          random           random           cat              17680  1
+NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             COUNT
+minikube         default          random                         random           340800  cat              1
         entry_SYSCALL_64_after_hwframe
         do_syscall_64
-        vfs_read
+        __x64_sys_read
         ksys_read
+        urandom_read
+        vfs_read
         urandom_read_nowarn.isra.0
+        extract_crng
+        _extract_crng
         __lock_text_start
         [unknown]
         [unknown]
 ...
-minikube         default          random           random           cat              17680  1
+minikube         default          random                         random           340800  cat              1
         entry_SYSCALL_64_after_hwframe
         do_syscall_64
-        vfs_read
+        __x64_sys_read
         ksys_read
+        urandom_read
+        vfs_read
         urandom_read_nowarn.isra.0
+        extract_crng
+        _extract_crng
         __lock_text_start
         [unknown]
         [unknown]
