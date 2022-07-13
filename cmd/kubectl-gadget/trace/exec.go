@@ -26,7 +26,7 @@ import (
 )
 
 type ExecParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newExecCmd() *cobra.Command {
@@ -81,7 +81,7 @@ func NewExecParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Eve
 	}
 
 	return &ExecParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

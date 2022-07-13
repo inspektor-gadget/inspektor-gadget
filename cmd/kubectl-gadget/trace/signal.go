@@ -27,7 +27,7 @@ import (
 )
 
 type SignalParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newSignalCmd() *cobra.Command {
@@ -116,7 +116,7 @@ func NewSignalParser(outputConfig *commonutils.OutputConfig) TraceParser[types.E
 	}
 
 	return &SignalParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

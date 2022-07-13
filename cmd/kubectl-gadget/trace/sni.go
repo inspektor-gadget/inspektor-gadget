@@ -26,7 +26,7 @@ import (
 )
 
 type SNIParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newSNICmd() *cobra.Command {
@@ -71,7 +71,7 @@ func NewSNIParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Even
 	}
 
 	return &SNIParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

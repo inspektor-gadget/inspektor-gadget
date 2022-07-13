@@ -26,7 +26,7 @@ import (
 )
 
 type DNSParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newDNSCmd() *cobra.Command {
@@ -75,7 +75,7 @@ func NewDNSParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Even
 	}
 
 	return &DNSParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

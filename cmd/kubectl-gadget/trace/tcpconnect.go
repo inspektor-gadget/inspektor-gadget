@@ -26,7 +26,7 @@ import (
 )
 
 type TcpconnectParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newTcpconnectCmd() *cobra.Command {
@@ -83,7 +83,7 @@ func NewTcpconnectParser(outputConfig *commonutils.OutputConfig) TraceParser[typ
 	}
 
 	return &TcpconnectParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

@@ -26,7 +26,7 @@ import (
 )
 
 type BindParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newBindCmd() *cobra.Command {
@@ -124,7 +124,7 @@ func NewBindParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Eve
 	}
 
 	return &BindParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

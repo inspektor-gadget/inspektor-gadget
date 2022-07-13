@@ -28,7 +28,7 @@ import (
 )
 
 type FsslowerParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newFsSlowerCmd() *cobra.Command {
@@ -128,7 +128,7 @@ func NewFsslowerParser(outputConfig *commonutils.OutputConfig) TraceParser[types
 	}
 
 	return &FsslowerParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

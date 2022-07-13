@@ -32,7 +32,7 @@ type CPUFlags struct {
 }
 
 type CPUParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 
 	cpuFlags *CPUFlags
 }
@@ -95,7 +95,7 @@ func newCPUCmd() *cobra.Command {
 				commonFlags:   commonFlags,
 				inProgressMsg: "Capturing stack traces",
 				parser: &CPUParser{
-					BaseParser: utils.BaseParser{
+					BaseParser: commonutils.BaseParser{
 						ColumnsWidth: columnsWidth,
 						OutputConfig: &commonFlags.OutputConfig,
 					},
