@@ -23,12 +23,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	dnstracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
@@ -164,14 +163,14 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		}
 	}
 
-	genKey := func(container *pb.ContainerDefinition) string {
+	genKey := func(container *containercollection.Container) string {
 		if container.Netns == t.netnsHost {
 			return "host"
 		}
 		return container.Namespace + "/" + container.Podname
 	}
 
-	attachContainerFunc := func(container *pb.ContainerDefinition) error {
+	attachContainerFunc := func(container *containercollection.Container) error {
 		key := genKey(container)
 
 		err = t.tracer.Attach(key, container.Pid, eventCallback(key), trace.Spec.Node)
@@ -183,7 +182,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return nil
 	}
 
-	detachContainerFunc := func(container *pb.ContainerDefinition) {
+	detachContainerFunc := func(container *containercollection.Container) {
 		key := genKey(container)
 
 		err := t.tracer.Detach(key)
@@ -194,11 +193,11 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		t.publishMessage(trace, eventtypes.DEBUG, key, "tracer detached")
 	}
 
-	containerEventCallback := func(event pubsub.PubSubEvent) {
+	containerEventCallback := func(event containercollection.PubSubEvent) {
 		switch event.Type {
-		case pubsub.EventTypeAddContainer:
+		case containercollection.EventTypeAddContainer:
 			attachContainerFunc(&event.Container)
-		case pubsub.EventTypeRemoveContainer:
+		case containercollection.EventTypeRemoveContainer:
 			detachContainerFunc(&event.Container)
 		}
 	}

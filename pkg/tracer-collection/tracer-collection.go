@@ -22,8 +22,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
 )
 
@@ -42,7 +40,7 @@ type TracerCollection struct {
 type tracer struct {
 	tracerID string
 
-	containerSelector pb.ContainerSelector
+	containerSelector containercollection.ContainerSelector
 
 	mntnsSetMap *ebpf.Map
 
@@ -57,14 +55,14 @@ func NewTracerCollection(withEbpf bool, cc *containercollection.ContainerCollect
 	}, nil
 }
 
-func (tc *TracerCollection) TracerMapsUpdater() pubsub.FuncNotify {
+func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 	if !tc.withEbpf {
-		return func(event pubsub.PubSubEvent) {}
+		return func(event containercollection.PubSubEvent) {}
 	}
 
-	return func(event pubsub.PubSubEvent) {
+	return func(event containercollection.PubSubEvent) {
 		switch event.Type {
-		case pubsub.EventTypeAddContainer:
+		case containercollection.EventTypeAddContainer:
 			// Skip the pause container
 			if event.Container.Name == "" {
 				return
@@ -82,7 +80,7 @@ func (tc *TracerCollection) TracerMapsUpdater() pubsub.FuncNotify {
 				}
 			}
 
-		case pubsub.EventTypeRemoveContainer:
+		case containercollection.EventTypeRemoveContainer:
 			for _, t := range tc.tracers {
 				if containercollection.ContainerSelectorMatches(&t.containerSelector, &event.Container) {
 					mntnsC := uint64(event.Container.Mntns)
@@ -93,7 +91,7 @@ func (tc *TracerCollection) TracerMapsUpdater() pubsub.FuncNotify {
 	}
 }
 
-func (tc *TracerCollection) AddTracer(id string, containerSelector pb.ContainerSelector) error {
+func (tc *TracerCollection) AddTracer(id string, containerSelector containercollection.ContainerSelector) error {
 	if _, ok := tc.tracers[id]; ok {
 		return fmt.Errorf("tracer id %q: %w", id, os.ErrExist)
 	}
@@ -112,7 +110,7 @@ func (tc *TracerCollection) AddTracer(id string, containerSelector pb.ContainerS
 			return fmt.Errorf("error creating mntnsset map: %w", err)
 		}
 
-		tc.containerCollection.ContainerRangeWithSelector(&containerSelector, func(c *pb.ContainerDefinition) {
+		tc.containerCollection.ContainerRangeWithSelector(&containerSelector, func(c *containercollection.Container) {
 			one := uint32(1)
 			mntnsC := uint64(c.Mntns)
 			if mntnsC != 0 {
@@ -168,12 +166,12 @@ func (tc *TracerCollection) TracerDump() (out string) {
 			t.containerSelector.Namespace,
 			t.containerSelector.Podname,
 			t.containerSelector.Name)
-		for _, l := range t.containerSelector.Labels {
-			out += fmt.Sprintf("                  %v: %v\n", l.Key, l.Value)
+		for k, v := range t.containerSelector.Labels {
+			out += fmt.Sprintf("                  %v: %v\n", k, v)
 		}
 		out += "        Matches:\n"
-		tc.containerCollection.ContainerRangeWithSelector(&t.containerSelector, func(c *pb.ContainerDefinition) {
-			out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupId=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupId)
+		tc.containerCollection.ContainerRangeWithSelector(&t.containerSelector, func(c *containercollection.Container) {
+			out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupID=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupID)
 		})
 	}
 	return

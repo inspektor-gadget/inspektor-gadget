@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -30,8 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/pubsub"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 )
 
@@ -43,7 +42,7 @@ var (
 	cc     *containercollection.ContainerCollection
 )
 
-func publishEvent(c *pb.ContainerDefinition, reason, message string) {
+func publishEvent(c *containercollection.Container, reason, message string) {
 	eventTime := metav1.NewTime(time.Now())
 	event := &api.Event{
 		ObjectMeta: metav1.ObjectMeta{
@@ -63,7 +62,7 @@ func publishEvent(c *pb.ContainerDefinition, reason, message string) {
 			Kind:      "Pod",
 			Namespace: c.Namespace,
 			Name:      c.Podname,
-			UID:       types.UID(c.PodUid),
+			UID:       types.UID(c.PodUID),
 		},
 		Type:    api.EventTypeNormal,
 		Reason:  reason,
@@ -78,17 +77,22 @@ func publishEvent(c *pb.ContainerDefinition, reason, message string) {
 	}
 }
 
-func callback(notif pubsub.PubSubEvent) {
+func callback(notif containercollection.PubSubEvent) {
 	switch notif.Type {
-	case pubsub.EventTypeAddContainer:
-		fmt.Printf("Container added: %v pid %d\n", notif.Container.Id, notif.Container.Pid)
-		if notif.Container.OciConfig != "" {
-			publishEvent(&notif.Container, "NewContainerConfig", notif.Container.OciConfig)
+	case containercollection.EventTypeAddContainer:
+		fmt.Printf("Container added: %v pid %d\n", notif.Container.ID, notif.Container.Pid)
+		if notif.Container.OciConfig != nil {
+			config, err := json.Marshal(notif.Container.OciConfig)
+			if err != nil {
+				publishEvent(&notif.Container, "CannotMarshalContainerConfig", err.Error())
+			} else {
+				publishEvent(&notif.Container, "NewContainerConfig", string(config))
+			}
 		} else {
 			publishEvent(&notif.Container, "ContainerConfigNotFound", "")
 		}
-	case pubsub.EventTypeRemoveContainer:
-		fmt.Printf("Container removed: %v pid %d\n", notif.Container.Id, notif.Container.Pid)
+	case containercollection.EventTypeRemoveContainer:
+		fmt.Printf("Container removed: %v pid %d\n", notif.Container.ID, notif.Container.Pid)
 	default:
 		return
 	}
@@ -117,7 +121,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	containerEventFuncs := []pubsub.FuncNotify{callback}
+	containerEventFuncs := []containercollection.FuncNotify{callback}
 	opts := []containercollection.ContainerCollectionOption{
 		containercollection.WithPubSub(containerEventFuncs...),
 		containercollection.WithCgroupEnrichment(),
@@ -134,7 +138,7 @@ func main() {
 
 	fmt.Printf("Ready\n")
 
-	cc.ContainerRange(func(c *pb.ContainerDefinition) {
+	cc.ContainerRange(func(c *containercollection.Container) {
 		fmt.Printf("%+v\n", c)
 	})
 

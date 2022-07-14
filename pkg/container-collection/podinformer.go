@@ -1,5 +1,5 @@
 // Copyright 2017 The Kubernetes Authors.
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
  * https://github.com/kubernetes/client-go/blob/master/examples/workqueue/main.go
  */
 
-package k8s
+package containercollection
 
 import (
 	"errors"

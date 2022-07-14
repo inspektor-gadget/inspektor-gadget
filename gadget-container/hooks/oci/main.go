@@ -144,15 +144,10 @@ func main() {
 		panic(fmt.Errorf("cannot parse config.json: %w\n%s", err, string(bundleConfig)))
 	}
 
-	mountSources := []string{}
-	for _, m := range ociSpec.Mounts {
-		mountSources = append(mountSources, m.Source)
-	}
-
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{
-		Id:           ociStateID,
-		MountSources: mountSources,
-		Pid:          uint32(ociStatePid),
+		Id:        ociStateID,
+		Pid:       uint32(ociStatePid),
+		OciConfig: string(bundleConfig),
 	})
 	if err != nil {
 		panic(err)

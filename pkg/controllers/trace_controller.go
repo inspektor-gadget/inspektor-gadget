@@ -32,7 +32,6 @@ import (
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 const (
@@ -131,8 +130,9 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 
 			if r.TracerManager != nil {
-				_, err = r.TracerManager.RemoveTracer(ctx,
-					&pb.TracerID{Id: gadgets.TraceNameFromNamespacedName(req.NamespacedName)})
+				err = r.TracerManager.RemoveTracer(
+					gadgets.TraceNameFromNamespacedName(req.NamespacedName),
+				)
 				if err != nil {
 					// Print error message but don't try again later
 					log.Errorf("Failed to delete tracer BPF map: %s", err)
@@ -187,11 +187,10 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// Register tracer
 	if r.TracerManager != nil {
-		_, err = r.TracerManager.AddTracer(ctx,
-			&pb.AddTracerRequest{
-				Id:       gadgets.TraceNameFromNamespacedName(req.NamespacedName),
-				Selector: gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
-			})
+		err = r.TracerManager.AddTracer(
+			gadgets.TraceNameFromNamespacedName(req.NamespacedName),
+			*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
+		)
 		if err != nil && !errors.Is(err, os.ErrExist) {
 			log.Errorf("Failed to add tracer BPF map: %s", err)
 			return ctrl.Result{}, err

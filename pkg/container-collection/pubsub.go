@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pubsub
+package containercollection
 
 import (
 	"sync"
-
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 type EventType int
@@ -31,7 +29,7 @@ const (
 
 type PubSubEvent struct {
 	Type      EventType
-	Container pb.ContainerDefinition
+	Container Container
 }
 
 // GadgetPubSub provides a synchronous publish subscribe mechanism for gadgets
@@ -73,7 +71,7 @@ func (g *GadgetPubSub) Unsubscribe(key interface{}) {
 	delete(g.subs, key)
 }
 
-func (g *GadgetPubSub) Publish(eventType EventType, container pb.ContainerDefinition) {
+func (g *GadgetPubSub) Publish(eventType EventType, container Container) {
 	// Make a copy so we don't keep the lock while actually publishing
 	g.mu.RLock()
 	copiedSubs := []FuncNotify{}

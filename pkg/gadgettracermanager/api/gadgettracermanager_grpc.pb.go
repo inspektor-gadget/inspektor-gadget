@@ -18,11 +18,12 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GadgetTracerManagerClient interface {
-	AddTracer(ctx context.Context, in *AddTracerRequest, opts ...grpc.CallOption) (*TracerID, error)
-	RemoveTracer(ctx context.Context, in *TracerID, opts ...grpc.CallOption) (*RemoveTracerResponse, error)
+	// Methods called via kubectl-exec
 	ReceiveStream(ctx context.Context, in *TracerID, opts ...grpc.CallOption) (GadgetTracerManager_ReceiveStreamClient, error)
+	// Methods called by OCI Hooks
 	AddContainer(ctx context.Context, in *ContainerDefinition, opts ...grpc.CallOption) (*AddContainerResponse, error)
 	RemoveContainer(ctx context.Context, in *ContainerDefinition, opts ...grpc.CallOption) (*RemoveContainerResponse, error)
+	// Methods called for debugging
 	DumpState(ctx context.Context, in *DumpStateRequest, opts ...grpc.CallOption) (*Dump, error)
 }
 
@@ -32,24 +33,6 @@ type gadgetTracerManagerClient struct {
 
 func NewGadgetTracerManagerClient(cc grpc.ClientConnInterface) GadgetTracerManagerClient {
 	return &gadgetTracerManagerClient{cc}
-}
-
-func (c *gadgetTracerManagerClient) AddTracer(ctx context.Context, in *AddTracerRequest, opts ...grpc.CallOption) (*TracerID, error) {
-	out := new(TracerID)
-	err := c.cc.Invoke(ctx, "/gadgettracermanager.GadgetTracerManager/AddTracer", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *gadgetTracerManagerClient) RemoveTracer(ctx context.Context, in *TracerID, opts ...grpc.CallOption) (*RemoveTracerResponse, error) {
-	out := new(RemoveTracerResponse)
-	err := c.cc.Invoke(ctx, "/gadgettracermanager.GadgetTracerManager/RemoveTracer", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *gadgetTracerManagerClient) ReceiveStream(ctx context.Context, in *TracerID, opts ...grpc.CallOption) (GadgetTracerManager_ReceiveStreamClient, error) {
@@ -115,11 +98,12 @@ func (c *gadgetTracerManagerClient) DumpState(ctx context.Context, in *DumpState
 // All implementations must embed UnimplementedGadgetTracerManagerServer
 // for forward compatibility
 type GadgetTracerManagerServer interface {
-	AddTracer(context.Context, *AddTracerRequest) (*TracerID, error)
-	RemoveTracer(context.Context, *TracerID) (*RemoveTracerResponse, error)
+	// Methods called via kubectl-exec
 	ReceiveStream(*TracerID, GadgetTracerManager_ReceiveStreamServer) error
+	// Methods called by OCI Hooks
 	AddContainer(context.Context, *ContainerDefinition) (*AddContainerResponse, error)
 	RemoveContainer(context.Context, *ContainerDefinition) (*RemoveContainerResponse, error)
+	// Methods called for debugging
 	DumpState(context.Context, *DumpStateRequest) (*Dump, error)
 	mustEmbedUnimplementedGadgetTracerManagerServer()
 }
@@ -128,12 +112,6 @@ type GadgetTracerManagerServer interface {
 type UnimplementedGadgetTracerManagerServer struct {
 }
 
-func (UnimplementedGadgetTracerManagerServer) AddTracer(context.Context, *AddTracerRequest) (*TracerID, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddTracer not implemented")
-}
-func (UnimplementedGadgetTracerManagerServer) RemoveTracer(context.Context, *TracerID) (*RemoveTracerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveTracer not implemented")
-}
 func (UnimplementedGadgetTracerManagerServer) ReceiveStream(*TracerID, GadgetTracerManager_ReceiveStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReceiveStream not implemented")
 }
@@ -157,42 +135,6 @@ type UnsafeGadgetTracerManagerServer interface {
 
 func RegisterGadgetTracerManagerServer(s grpc.ServiceRegistrar, srv GadgetTracerManagerServer) {
 	s.RegisterService(&GadgetTracerManager_ServiceDesc, srv)
-}
-
-func _GadgetTracerManager_AddTracer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddTracerRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GadgetTracerManagerServer).AddTracer(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/gadgettracermanager.GadgetTracerManager/AddTracer",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GadgetTracerManagerServer).AddTracer(ctx, req.(*AddTracerRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _GadgetTracerManager_RemoveTracer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TracerID)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GadgetTracerManagerServer).RemoveTracer(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/gadgettracermanager.GadgetTracerManager/RemoveTracer",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GadgetTracerManagerServer).RemoveTracer(ctx, req.(*TracerID))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _GadgetTracerManager_ReceiveStream_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -277,14 +219,6 @@ var GadgetTracerManager_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "gadgettracermanager.GadgetTracerManager",
 	HandlerType: (*GadgetTracerManagerServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "AddTracer",
-			Handler:    _GadgetTracerManager_AddTracer_Handler,
-		},
-		{
-			MethodName: "RemoveTracer",
-			Handler:    _GadgetTracerManager_RemoveTracer_Handler,
-		},
 		{
 			MethodName: "AddContainer",
 			Handler:    _GadgetTracerManager_AddContainer_Handler,
