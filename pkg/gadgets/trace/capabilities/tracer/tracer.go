@@ -32,7 +32,6 @@ import (
 	"github.com/cilium/ebpf/features"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -49,7 +48,7 @@ type Tracer struct {
 	objs             capabilitiesObjects
 	capabilitiesLink link.Link
 	reader           *perf.Reader
-	resolver         containercollection.ContainerResolver
+	enricher         gadgets.DataEnricher
 	eventCallback    func(types.Event)
 	node             string
 }
@@ -98,12 +97,12 @@ var capabilitiesNames = map[uint32]string{
 	40: "CAP_CHECKPOINT_RESTORE",
 }
 
-func NewTracer(c *Config, resolver containercollection.ContainerResolver,
+func NewTracer(c *Config, enricher gadgets.DataEnricher,
 	eventCallback func(types.Event), node string,
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        c,
-		resolver:      resolver,
+		enricher:      enricher,
 		eventCallback: eventCallback,
 		node:          node,
 	}
@@ -242,7 +241,6 @@ func (t *Tracer) run() {
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
-				Node: t.node,
 			},
 			MountNsID: uint64(eventC.mntnsid),
 			Pid:       uint32(eventC.pid),
@@ -254,11 +252,8 @@ func (t *Tracer) run() {
 			CapName:   capabilityName,
 		}
 
-		container := t.resolver.LookupContainerByMntns(event.MountNsID)
-		if container != nil {
-			event.Container = container.Name
-			event.Pod = container.Podname
-			event.Namespace = container.Namespace
+		if t.enricher != nil {
+			t.enricher.Enrich(&event.CommonData, event.MountNsID)
 		}
 
 		t.eventCallback(event)

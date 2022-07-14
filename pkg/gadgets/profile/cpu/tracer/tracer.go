@@ -36,7 +36,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/cilium/ebpf"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	"golang.org/x/sys/unix"
 )
@@ -50,7 +50,7 @@ type Config struct {
 }
 
 type Tracer struct {
-	resolver containercollection.ContainerResolver
+	enricher gadgets.DataEnricher
 	node     string
 	objs     profileObjects
 	perfFds  []int
@@ -68,9 +68,9 @@ const (
 	frequencyBit = 1 << 10
 )
 
-func NewTracer(resolver containercollection.ContainerResolver, config *Config, node string) (*Tracer, error) {
+func NewTracer(enricher gadgets.DataEnricher, config *Config, node string) (*Tracer, error) {
 	t := &Tracer{
-		resolver: resolver,
+		enricher: enricher,
 		node:     node,
 		config:   config,
 	}
@@ -254,7 +254,6 @@ func getReport(t *Tracer, kAllSyms []kernelSymbol, stack *ebpf.Map, keyCount key
 	}
 
 	report := types.Report{
-		Node:        t.node,
 		Comm:        C.GoString(&k.name[0]),
 		Pid:         uint32(k.pid),
 		UserStack:   userSymbols,
@@ -262,11 +261,8 @@ func getReport(t *Tracer, kAllSyms []kernelSymbol, stack *ebpf.Map, keyCount key
 		Count:       v,
 	}
 
-	container := t.resolver.LookupContainerByMntns(uint64(k.mntns_id))
-	if container != nil {
-		report.Container = container.Name
-		report.Pod = container.Podname
-		report.Namespace = container.Namespace
+	if t.enricher != nil {
+		t.enricher.Enrich(&report.CommonData, uint64(k.mntns_id))
 	}
 
 	return report, nil

@@ -114,8 +114,10 @@ func (t *Trace) publishMessage(
 ) {
 	event := &types.Event{
 		Event: eventtypes.Event{
-			Type:    eventType,
-			Node:    trace.Spec.Node,
+			Type: eventType,
+			CommonData: eventtypes.CommonData{
+				Node: trace.Spec.Node,
+			},
 			Message: msg,
 		},
 	}

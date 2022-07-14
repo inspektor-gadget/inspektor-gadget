@@ -180,7 +180,9 @@ func (t *Tracer) listen(
 			event := types.Event{
 				Event: eventtypes.Event{
 					Type: eventtypes.NORMAL,
-					Node: node,
+					CommonData: eventtypes.CommonData{
+						Node: node,
+					},
 				},
 				Name: name,
 			}

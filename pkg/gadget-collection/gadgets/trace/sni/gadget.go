@@ -133,8 +133,10 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	printMessage := func(key string, t eventtypes.EventType, message string) string {
 		event := &types.Event{
 			Event: eventtypes.Event{
-				Type:    t,
-				Node:    trace.Spec.Node,
+				Type: t,
+				CommonData: eventtypes.CommonData{
+					Node: trace.Spec.Node,
+				},
 				Message: message,
 			},
 		}
@@ -151,7 +153,9 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		event := &types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
-				Node: trace.Spec.Node,
+				CommonData: eventtypes.CommonData{
+					Node: trace.Spec.Node,
+				},
 			},
 			Name: name,
 		}

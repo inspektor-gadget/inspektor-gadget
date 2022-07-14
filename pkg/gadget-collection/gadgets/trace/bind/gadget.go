@@ -166,7 +166,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		log.Infof("Gadget %s: falling back to standard tracer. CO-RE tracer failed: %s",
 			trace.Spec.Gadget, err)
 
-		t.tracer, err = standardtracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
+		t.tracer, err = standardtracer.NewTracer(config, eventCallback, trace.Spec.Node)
 		if err != nil {
 			trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 			return

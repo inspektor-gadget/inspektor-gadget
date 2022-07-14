@@ -68,11 +68,13 @@ func (e *Enricher) convertEvent(
 
 	out := types.Event{
 		Event: eventtypes.Event{
-			Type:      eventtypes.NORMAL,
-			Node:      e.node,
-			Message:   "",
-			Namespace: namespace,
-			Pod:       name,
+			Type: eventtypes.NORMAL,
+			CommonData: eventtypes.CommonData{
+				Node:      e.node,
+				Namespace: namespace,
+				Pod:       name,
+			},
+			Message: "",
 		},
 
 		PktType: edge.PktType,
