@@ -296,13 +296,13 @@ func (t *Tracer) listen(
 			}
 
 			msg := fmt.Sprintf("Error reading perf ring buffer (%s): %s", key, err)
-			eventCallback(types.Base(eventtypes.Err(msg, node)))
+			eventCallback(types.Base(eventtypes.Err(msg)))
 			return
 		}
 
 		if record.LostSamples != 0 {
 			msg := fmt.Sprintf("lost %d samples (%s)", record.LostSamples, key)
-			eventCallback(types.Base(eventtypes.Warn(msg, node)))
+			eventCallback(types.Base(eventtypes.Warn(msg)))
 			continue
 		}
 

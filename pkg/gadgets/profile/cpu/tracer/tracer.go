@@ -51,7 +51,6 @@ type Config struct {
 
 type Tracer struct {
 	enricher gadgets.DataEnricher
-	node     string
 	objs     profileObjects
 	perfFds  []int
 	config   *Config
@@ -68,10 +67,9 @@ const (
 	frequencyBit = 1 << 10
 )
 
-func NewTracer(enricher gadgets.DataEnricher, config *Config, node string) (*Tracer, error) {
+func NewTracer(enricher gadgets.DataEnricher, config *Config) (*Tracer, error) {
 	t := &Tracer{
 		enricher: enricher,
-		node:     node,
 		config:   config,
 	}
 

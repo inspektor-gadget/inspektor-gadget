@@ -37,17 +37,14 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang biolatencyBefore ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../${TARGET} -DKERNEL_BEFORE_5_11
 
 type Tracer struct {
-	node                string
 	objs                biolatencyObjects
 	blockRqCompleteLink link.Link
 	blockRqInsertLink   link.Link
 	blockRqIssueLink    link.Link
 }
 
-func NewTracer(node string) (*Tracer, error) {
-	t := &Tracer{
-		node: node,
-	}
+func NewTracer() (*Tracer, error) {
+	t := &Tracer{}
 
 	if err := t.start(); err != nil {
 		t.Stop()

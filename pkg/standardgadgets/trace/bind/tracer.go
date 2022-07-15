@@ -28,17 +28,16 @@ type Tracer struct {
 	trace.StandardTracerBase
 
 	eventCallback func(types.Event)
-	node          string
 }
 
-func NewTracer(config *tracer.Config, eventCallback func(types.Event), node string) (*Tracer, error) {
+func NewTracer(config *tracer.Config, eventCallback func(types.Event)) (*Tracer, error) {
 	lineCallback := func(line string) {
 		event := types.Event{}
 		event.Type = eventtypes.NORMAL
 
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			msg := fmt.Sprintf("failed to unmarshal event '%s': %s", line, err)
-			eventCallback(types.Base(eventtypes.Warn(msg, node)))
+			eventCallback(types.Base(eventtypes.Warn(msg)))
 			return
 		}
 
@@ -55,12 +54,11 @@ func NewTracer(config *tracer.Config, eventCallback func(types.Event), node stri
 	return &Tracer{
 		StandardTracerBase: *baseTracer,
 		eventCallback:      eventCallback,
-		node:               node,
 	}, nil
 }
 
 func (t *Tracer) Stop() {
 	if err := t.StandardTracerBase.Stop(); err != nil {
-		t.eventCallback(types.Base(eventtypes.Warn(err.Error(), t.node)))
+		t.eventCallback(types.Base(eventtypes.Warn(err.Error())))
 	}
 }

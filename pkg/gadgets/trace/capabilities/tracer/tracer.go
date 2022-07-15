@@ -50,7 +50,6 @@ type Tracer struct {
 	reader           *perf.Reader
 	enricher         gadgets.DataEnricher
 	eventCallback    func(types.Event)
-	node             string
 }
 
 var capabilitiesNames = map[uint32]string{
@@ -98,13 +97,12 @@ var capabilitiesNames = map[uint32]string{
 }
 
 func NewTracer(c *Config, enricher gadgets.DataEnricher,
-	eventCallback func(types.Event), node string,
+	eventCallback func(types.Event),
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        c,
 		enricher:      enricher,
 		eventCallback: eventCallback,
-		node:          node,
 	}
 
 	if err := t.start(); err != nil {
@@ -193,7 +191,7 @@ func (t *Tracer) run() {
 			}
 
 			msg := fmt.Sprintf("Error reading perf ring buffer: %s", err)
-			t.eventCallback(types.Base(eventtypes.Err(msg, t.node)))
+			t.eventCallback(types.Base(eventtypes.Err(msg)))
 			return
 		}
 
@@ -210,7 +208,7 @@ func (t *Tracer) run() {
 		runningKernelVersion, err := features.LinuxVersionCode()
 		if err != nil {
 			msg := fmt.Sprintf("Error getting kernel version: %s", err)
-			t.eventCallback(types.Base(eventtypes.Err(msg, t.node)))
+			t.eventCallback(types.Base(eventtypes.Err(msg)))
 		}
 
 		capOpt := int(eventC.cap_opt)

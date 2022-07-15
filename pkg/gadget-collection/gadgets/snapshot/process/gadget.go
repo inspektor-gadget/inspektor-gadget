@@ -71,7 +71,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
 		return
 	}
-	events, err := tracer.RunCollector(t.helpers, trace.Spec.Node, mountNsMap)
+	events, err := tracer.RunCollector(t.helpers, mountNsMap)
 	if err != nil {
 		trace.Status.OperationError = err.Error()
 		return

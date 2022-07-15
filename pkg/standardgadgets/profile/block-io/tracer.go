@@ -26,10 +26,9 @@ type Tracer struct {
 	cmd    *exec.Cmd
 	stdout *bytes.Buffer
 	stderr *bytes.Buffer
-	node   string
 }
 
-func NewTracer(node string) (*Tracer, error) {
+func NewTracer() (*Tracer, error) {
 	cmd := exec.Command("/usr/share/bcc/tools/biolatency", "--json")
 
 	stdout := bytes.NewBuffer([]byte{})
@@ -47,7 +46,6 @@ func NewTracer(node string) (*Tracer, error) {
 		cmd:    cmd,
 		stdout: stdout,
 		stderr: stderr,
-		node:   node,
 	}, nil
 }
 

@@ -115,7 +115,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		MountnsMap: mountNsMap,
 	}
 
-	t.tracer, err = tracer.NewTracer(config, t.helpers, eventCallback, trace.Spec.Node)
+	t.tracer, err = tracer.NewTracer(config, t.helpers, eventCallback)
 	if err != nil {
 		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
 
@@ -123,7 +123,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		log.Infof("Gadget %s: falling back to standard tracer. CO-RE tracer failed: %s",
 			trace.Spec.Gadget, err)
 
-		t.tracer, err = standardtracer.NewTracer(config, eventCallback, trace.Spec.Node)
+		t.tracer, err = standardtracer.NewTracer(config, eventCallback)
 		if err != nil {
 			trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 			return
