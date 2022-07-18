@@ -85,7 +85,7 @@ type Stats struct {
 
 	Write      bool   `json:"write,omitempty"`
 	Major      int    `json:"major,omitempty"`
-	Minor      int    `json:"major,omitempty"`
+	Minor      int    `json:"minor,omitempty"`
 	Bytes      uint64 `json:"bytes,omitempty"`
 	MicroSecs  uint64 `json:"us,omitempty"`
 	Operations uint32 `json:"io,omitempty"`
