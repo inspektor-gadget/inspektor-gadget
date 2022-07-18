@@ -15,32 +15,49 @@
 package main
 
 import (
+	"context"
+	_ "embed"
 	"fmt"
-	"io"
-	"os"
-	"text/template"
+	"strconv"
+	"strings"
 
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/resources"
 	"github.com/spf13/cobra"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/resources"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/api/core/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/restmapper"
 )
 
 var deployCmd = &cobra.Command{
-	Use:   "deploy",
-	Short: "Deploy Inspektor Gadget on the cluster",
-	RunE:  runDeploy,
+	Use:          "deploy",
+	Short:        "Deploy Inspektor Gadget on the cluster",
+	SilenceUsage: true,
+	RunE:         runDeploy,
 }
 
 // This is set during build.
 var gadgetimage = "undefined"
 
 var (
-	image               string
-	imagePullPolicy     string
-	hookMode            string
-	livenessProbe       bool
-	fallbackPodInformer bool
-	file                string
+	image                     string
+	imagePullPolicy           string
+	hookMode                  string
+	livenessProbe             bool
+	livenessProbeInitialDelay int32
+	fallbackPodInformer       bool
+	file                      string
 )
 
 func init() {
@@ -64,11 +81,16 @@ func init() {
 		"liveness-probe", "",
 		true,
 		"enable liveness probes")
+	deployCmd.PersistentFlags().Int32VarP(
+		&livenessProbeInitialDelay,
+		"liveness-probe-initial-delay", "",
+		60,
+		"liveness probes initial delay")
 	deployCmd.PersistentFlags().BoolVarP(
 		&fallbackPodInformer,
 		"fallback-podinformer", "",
 		true,
-		"Use pod informer as a fallback for the main hook")
+		"use pod informer as a fallback for the main hook")
 	deployCmd.PersistentFlags().StringVarP(
 		&file,
 		"file", "",
@@ -77,280 +99,87 @@ func init() {
 	rootCmd.AddCommand(deployCmd)
 }
 
-const deployYamlTmpl string = `
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: gadget
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: gadget
-  namespace: gadget
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  namespace: gadget
-  name: gadget-role
-rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  # update is needed by traceloop gadget.
-  verbs: ["update"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: gadget-role-binding
-  namespace: gadget
-subjects:
-- kind: ServiceAccount
-  name: gadget
-roleRef:
-  kind: Role
-  name: gadget-role
-  apiGroup: rbac.authorization.k8s.io
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: gadget-cluster-role
-rules:
-- apiGroups: [""]
-  resources: ["namespaces", "nodes", "pods"]
-  verbs: ["get", "watch", "list"]
-- apiGroups: [""]
-  resources: ["services"]
-  # list services is needed by network-policy gadget.
-  verbs: ["list"]
-- apiGroups: ["gadget.kinvolk.io"]
-  resources: ["traces", "traces/status"]
-  # For traces, we need all rights on them as we define this resource.
-  verbs: ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"]
-- apiGroups: ["*"]
-  resources: ["deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers"]
-  # Required to retrieve the owner references used by the seccomp gadget.
-  verbs: ["get"]
-- apiGroups: ["security-profiles-operator.x-k8s.io"]
-  resources: ["seccompprofiles"]
-  # Required for integration with the Kubernetes Security Profiles Operator
-  verbs: ["list", "watch", "create"]
-- apiGroups: ["security.openshift.io"]
-  # It is necessary to use the 'privileged' security context constraints to be
-  # able mount host directories as volumes, use the host networking, among others.
-  # This will be used only when running on OpenShift:
-  # https://docs.openshift.com/container-platform/4.9/authentication/managing-security-context-constraints.html#default-sccs_configuring-internal-oauth
-  resources: ["securitycontextconstraints"]
-  resourceNames: ["privileged"]
-  verbs: ["use"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: gadget-cluster-role-binding
-subjects:
-- kind: ServiceAccount
-  name: gadget
-  namespace: gadget
-roleRef:
-  kind: ClusterRole
-  name: gadget-cluster-role
-  apiGroup: rbac.authorization.k8s.io
----
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: gadget
-  namespace: gadget
-  labels:
-    k8s-app: gadget
-spec:
-  selector:
-    matchLabels:
-      k8s-app: gadget
-  template:
-    metadata:
-      labels:
-        k8s-app: gadget
-      annotations:
-        # We need to set gadget container as unconfined so it is able to write
-        # /sys/fs/bpf as well as /sys/kernel/debug/tracing.
-        # Otherwise, we can have error like:
-        # "failed to create server failed to create folder for pinning bpf maps: mkdir /sys/fs/bpf/gadget: permission denied"
-        # (For reference, see: https://github.com/kinvolk/inspektor-gadget/runs/3966318270?check_suite_focus=true#step:20:221)
-        container.apparmor.security.beta.kubernetes.io/gadget: "unconfined"
-        inspektor-gadget.kinvolk.io/option-hook-mode: "{{.HookMode}}"
-    spec:
-      serviceAccount: gadget
-      hostPID: true
-      hostNetwork: true
-      containers:
-      - name: gadget
-        terminationMessagePolicy: FallbackToLogsOnError
-        image: "{{.Image}}"
-        imagePullPolicy: "{{.ImagePullPolicy}}"
-        command: [ "/entrypoint.sh" ]
-        lifecycle:
-          preStop:
-            exec:
-              command:
-                - "/cleanup.sh"
-{{if .LivenessProbe}}
-        livenessProbe:
-          initialDelaySeconds: 60
-          periodSeconds: 5
-          exec:
-            command:
-              - /bin/gadgettracermanager
-              - -liveness
-{{end}}
-        env:
-          - name: NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: GADGET_POD_UID
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.uid
-          - name: TRACELOOP_NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: TRACELOOP_POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-          - name: TRACELOOP_POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: GADGET_IMAGE
-            value: "{{.Image}}"
-          - name: INSPEKTOR_GADGET_VERSION
-            value: "{{.Version}}"
-          - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE
-            value: "{{.HookMode}}"
-          - name: INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
-            value: "{{.FallbackPodInformer}}"
-        securityContext:
-          capabilities:
-            add:
-              # We need CAP_NET_ADMIN to be able to create BPF link.
-              # Indeed, link_create is called with prog->type which equals
-              # BPF_PROG_TYPE_CGROUP_SKB.
-              # This value is then checked in
-              # bpf_prog_attach_check_attach_type() which also checks if we have
-              # CAP_NET_ADMIN:
-              # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/bpf/syscall.c#L4099
-              # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/bpf/syscall.c#L2967
-              - NET_ADMIN
+// parseK8sYaml parses a k8s YAML deployment file content and returns the
+// corresponding objects.
+// It was adapted from:
+// https://github.com/kubernetes/client-go/issues/193#issuecomment-363318588
+func parseK8sYaml(content string) ([]runtime.Object, error) {
+	sepYamlfiles := strings.Split(content, "---")
+	retVal := make([]runtime.Object, 0, len(sepYamlfiles))
 
-              # We need CAP_SYS_ADMIN to use Python-BCC gadgets because bcc
-              # internally calls bpf_get_map_fd_by_id() which contains the
-              # following snippet:
-              # if (!capable(CAP_SYS_ADMIN))
-              # 	return -EPERM;
-              # (https://elixir.bootlin.com/linux/v5.10.73/source/kernel/bpf/syscall.c#L3254)
-              #
-              # Details about this are given in:
-              # > The important design decision is to allow ID->FD transition for
-              # CAP_SYS_ADMIN only. What it means that user processes can run
-              # with CAP_BPF and CAP_NET_ADMIN and they will not be able to affect each
-              # other unless they pass FDs via scm_rights or via pinning in bpffs.
-              # ID->FD is a mechanism for human override and introspection.
-              # An admin can do 'sudo bpftool prog ...'. It's possible to enforce via LSM that
-              # only bpftool binary does bpf syscall with CAP_SYS_ADMIN and the rest of user
-              # space processes do bpf syscall with CAP_BPF isolating bpf objects (progs, maps,
-              # links) that are owned by such processes from each other.
-              # (https://lwn.net/Articles/820560/)
-              #
-              # Note that even with a kernel providing CAP_BPF, the above
-              # statement is still true.
-              - SYS_ADMIN
+	sch := runtime.NewScheme()
 
-              # We need this capability to get addresses from /proc/kallsyms.
-              # Without it, addresses displayed when reading this file will be
-              # 0.
-              # Thus, bcc_procutils_each_ksym will never call callback, so KSyms
-              # syms_ vector will be empty and it will return false.
-              # As a consequence, no prefix will be found in
-              # get_syscall_prefix(), so a default prefix (_sys) will be
-              # returned.
-              # Sadly, this default prefix is not used by the running kernel,
-              # which instead uses: __x64_sys_
-              - SYSLOG
+	// For CustomResourceDefinition kind.
+	apiextv1.AddToScheme(sch)
+	// For all the other kinds (e.g. Namespace).
+	scheme.AddToScheme(sch)
 
-              # traceloop gadget uses strace which in turns use ptrace()
-              # syscall.
-              # Within kernel code, ptrace() calls ptrace_attach() which in
-              # turns calls __ptrace_may_access() which calls ptrace_has_cap()
-              # where CAP_SYS_PTRACE is finally checked:
-              # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/ptrace.c#L284
-              - SYS_PTRACE
+	for _, f := range sepYamlfiles {
+		if f == "\n" || f == "" {
+			// ignore empty cases
+			continue
+		}
 
-              # Needed by setrlimit in gadgettracermanager and by the traceloop
-              # gadget.
-              - SYS_RESOURCE
+		decode := serializer.NewCodecFactory(sch).UniversalDeserializer().Decode
+		obj, _, err := decode([]byte(f), nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error while decoding YAML object: %w", err)
+		}
 
-              # Needed for gadgets that don't dumb the memory rlimit.
-              # (Currently only applies to BCC python-based gadgets)
-              - IPC_LOCK
+		retVal = append(retVal, obj)
+	}
 
-              # Needed by BCC python-based gadgets to load the kheaders module:
-              # https://github.com/iovisor/bcc/blob/v0.24.0/src/cc/frontends/clang/kbuild_helper.cc#L158
-              - SYS_MODULE
+	return retVal, nil
+}
 
-              # Needed by gadgets that open a raw sock like dns and snisnoop
-              - NET_RAW
-        volumeMounts:
-        - name: host
-          mountPath: /host
-        - name: run
-          mountPath: /run
-        - name: modules
-          mountPath: /lib/modules
-        - name: debugfs
-          mountPath: /sys/kernel/debug
-        - name: cgroup
-          mountPath: /sys/fs/cgroup
-        - name: bpffs
-          mountPath: /sys/fs/bpf
-      tolerations:
-      - effect: NoSchedule
-        operator: Exists
-      - effect: NoExecute
-        operator: Exists
-      volumes:
-      - name: host
-        hostPath:
-          path: /
-      - name: run
-        hostPath:
-          path: /run
-      - name: cgroup
-        hostPath:
-          path: /sys/fs/cgroup
-      - name: modules
-        hostPath:
-          path: /lib/modules
-      - name: bpffs
-        hostPath:
-          path: /sys/fs/bpf
-      - name: debugfs
-        hostPath:
-          path: /sys/kernel/debug
-`
+// stringToPullPolicy returns the PullPolicy corresponding to the given string
+// or an error if there is no corresponding policy.
+func stringToPullPolicy(imagePullPolicy string) (v1.PullPolicy, error) {
+	switch imagePullPolicy {
+	case "Always":
+		return v1.PullAlways, nil
+	case "Never":
+		return v1.PullNever, nil
+	case "IfNotPresent":
+		return v1.PullIfNotPresent, nil
+	default:
+		return "", fmt.Errorf("invalid pull policy: %s. Possible values are [Always, Never, IfNotPresent]",
+			imagePullPolicy)
+	}
+}
 
-type parameters struct {
-	Image               string
-	ImagePullPolicy     string
-	Version             string
-	HookMode            string
-	LivenessProbe       bool
-	FallbackPodInformer bool
+// createResource creates the resource corresponding to the object given as
+// parameter using a dynamic client an RESTMapper to get the corresponding
+// resource.
+// It is inspired from:
+// https://ymmt2005.hatenablog.com/entry/2020/04/14/An_example_of_using_dynamic_client_of_k8s.io/client-go#Dynamic-client
+func createResource(client dynamic.Interface, mapper meta.RESTMapper, object runtime.Object) error {
+	groupVersionKind := object.GetObjectKind().GroupVersionKind()
+	mapping, err := mapper.RESTMapping(groupVersionKind.GroupKind(), groupVersionKind.Version)
+	if err != nil {
+		return err
+	}
+
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
+	if err != nil {
+		return fmt.Errorf("failed to convert object to untrusctured: %w", err)
+	}
+
+	unstruct := &unstructured.Unstructured{Object: unstructuredObj}
+
+	var dynamicInterface dynamic.ResourceInterface
+	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+		dynamicInterface = client.Resource(mapping.Resource).Namespace(unstruct.GetNamespace())
+	} else {
+		dynamicInterface = client.Resource(mapping.Resource)
+	}
+
+	_, err = dynamicInterface.Create(context.TODO(), unstruct, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create %q: %w", groupVersionKind.Kind, err)
+	}
+
+	return nil
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
@@ -362,35 +191,72 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,podinformer,nri,fanotify]", hookMode)
 	}
 
-	t, err := template.New("deploy.yaml").Parse(deployYamlTmpl)
+	objects, err := parseK8sYaml(resources.GadgetDeployment)
 	if err != nil {
-		return fmt.Errorf("failed to parse template: %w", err)
+		return err
 	}
 
-	p := parameters{
-		image,
-		imagePullPolicy,
-		version,
-		hookMode,
-		livenessProbe,
-		fallbackPodInformer,
+	traceObjects, err := parseK8sYaml(resources.TracesCustomResource)
+	if err != nil {
+		return err
 	}
 
-	var w io.Writer = os.Stdout
+	objects = append(objects, traceObjects...)
 
-	if file != "" {
-		f, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY, 0o644)
-		if err != nil {
-			return fmt.Errorf("failed to create file: %w", err)
+	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
+	if err != nil {
+		return fmt.Errorf("failed to create RESTConfig: %w", err)
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
+	if err != nil {
+		return err
+	}
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
+
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return fmt.Errorf("failed to create dynamic client: %w", err)
+	}
+
+	for _, object := range objects {
+		if daemonSet, ok := object.(*appsv1.DaemonSet); ok {
+			daemonSet.Spec.Template.Annotations["inspektor-gadget.kinvolk.io/option-hook-mode"] = hookMode
+
+			gadgetContainer := &daemonSet.Spec.Template.Spec.Containers[0]
+
+			gadgetContainer.Image = image
+
+			policy, err := stringToPullPolicy(imagePullPolicy)
+			if err != nil {
+				return err
+			}
+			gadgetContainer.ImagePullPolicy = policy
+
+			if !livenessProbe {
+				gadgetContainer.LivenessProbe = nil
+			} else {
+				gadgetContainer.LivenessProbe.InitialDelaySeconds = livenessProbeInitialDelay
+			}
+
+			for i := range gadgetContainer.Env {
+				switch gadgetContainer.Env[i].Name {
+				case "GADGET_IMAGE":
+					gadgetContainer.Env[i].Value = image
+				case "INSPEKTOR_GADGET_VERSION":
+					gadgetContainer.Env[i].Value = version
+				case "INSPEKTOR_GADGET_OPTION_HOOK_MODE":
+					gadgetContainer.Env[i].Value = hookMode
+				case "INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER":
+					gadgetContainer.Env[i].Value = strconv.FormatBool(fallbackPodInformer)
+				}
+			}
 		}
-		defer f.Close()
-		w = f
-	}
 
-	fmt.Fprintf(w, "%s\n---\n", resources.TracesCustomResource)
-	err = t.Execute(w, p)
-	if err != nil {
-		return fmt.Errorf("failed to generate deploy template: %w", err)
+		err := createResource(dynamicClient, mapper, object)
+		if err != nil {
+			return fmt.Errorf("problem while creating resource: %w", err)
+		}
 	}
 
 	return nil
