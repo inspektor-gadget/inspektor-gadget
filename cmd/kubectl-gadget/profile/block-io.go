@@ -130,8 +130,12 @@ func reportToString(report types.Report) string {
 }
 
 func (p *BlockIOParser) DisplayResultsCallback(traceOutputMode string, results []string) error {
-	if len(results) > 1 {
+	l := len(results)
+	if l > 1 {
 		return errors.New("there should be only one result because biolatency runs on one node at a time")
+	} else if l == 0 {
+		// Nothing to print, errors/warnings were already printed
+		return nil
 	}
 
 	var output string
