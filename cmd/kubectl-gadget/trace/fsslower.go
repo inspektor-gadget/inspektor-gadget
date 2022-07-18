@@ -128,10 +128,7 @@ func NewFsslowerParser(outputConfig *commonutils.OutputConfig) TraceParser[types
 	}
 
 	return &FsslowerParser{
-		BaseParser: commonutils.BaseParser{
-			ColumnsWidth: columnsWidth,
-			OutputConfig: outputConfig,
-		},
+		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
 	}
 }
 

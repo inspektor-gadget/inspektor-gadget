@@ -34,23 +34,20 @@ type SocketFlags struct {
 }
 
 type SocketParser struct {
-	BaseSnapshotParser
+	commonutils.BaseParser
 
 	socketFlags *SocketFlags
 }
 
 func NewSocketCmd(
 	socketFlags *SocketFlags,
-	availableColumns map[string]struct{},
+	availableColumns []string,
 	outputConfig *commonutils.OutputConfig,
 	customRun func(callback func(traceOutputMode string, results []string) error) error,
 ) *cobra.Command {
 	socketGadget := &SnapshotGadget[types.Event]{
 		parser: &SocketParser{
-			BaseSnapshotParser: BaseSnapshotParser{
-				AvailableColumns: availableColumns,
-				OutputConfig:     outputConfig,
-			},
+			BaseParser:  commonutils.NewBaseTabParser(availableColumns, outputConfig),
 			socketFlags: socketFlags,
 		},
 		customRun: customRun,

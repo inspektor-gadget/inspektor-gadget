@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"text/tabwriter"
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
@@ -27,31 +26,6 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	"github.com/spf13/cobra"
 )
-
-// BaseSnapshotParser is a base for a SnapshotParser to reuse the shared
-// fields and methods.
-type BaseSnapshotParser struct {
-	// AvailableColumns are the columns that can be configured to be printed.
-	AvailableColumns map[string]struct{}
-
-	OutputConfig *commonutils.OutputConfig
-}
-
-func (p *BaseSnapshotParser) BuildSnapshotColsHeader() string {
-	var sb strings.Builder
-
-	for _, col := range p.OutputConfig.CustomColumns {
-		if _, ok := p.AvailableColumns[col]; ok {
-			sb.WriteString(strings.ToUpper(col) + "\t")
-		}
-	}
-
-	return sb.String()
-}
-
-func (p *BaseSnapshotParser) GetOutputConfig() *commonutils.OutputConfig {
-	return p.OutputConfig
-}
 
 type SnapshotEvent interface {
 	socketcollectortypes.Event | processcollectortypes.Event
@@ -73,10 +47,10 @@ type SnapshotParser[Event SnapshotEvent] interface {
 	// format according to the parameters.
 	TransformEvent(*Event) string
 
-	// BuildSnapshotColsHeader returns a header with the requested custom
-	// columns that exist in the availableCols. The columns are separated by
-	// taps.
-	BuildSnapshotColsHeader() string
+	// BuildColumnsHeader returns a header with the requested custom columns
+	// that exist in the predefined columns list. The columns are separated by
+	// tabs.
+	BuildColumnsHeader() string
 
 	// GetOutputConfig returns the output configuration. TODO: This method is
 	// required because of the same limitation of SnapshotEvent.GetBaseEvent().
@@ -133,7 +107,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 			// we have to do a best effort printing fixed-width columns.
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
 
-			fmt.Fprintln(w, g.parser.BuildSnapshotColsHeader())
+			fmt.Fprintln(w, g.parser.BuildColumnsHeader())
 
 			for _, e := range allEvents {
 				baseEvent := e.GetBaseEvent()

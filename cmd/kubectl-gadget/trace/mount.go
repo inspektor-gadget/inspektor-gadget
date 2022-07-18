@@ -89,10 +89,7 @@ func NewMountParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Ev
 	}
 
 	return &MountParser{
-		BaseParser: commonutils.BaseParser{
-			ColumnsWidth: columnsWidth,
-			OutputConfig: outputConfig,
-		},
+		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
 	}
 }
 

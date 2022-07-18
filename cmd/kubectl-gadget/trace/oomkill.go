@@ -81,10 +81,7 @@ func NewOOMKillParser(outputConfig *commonutils.OutputConfig) TraceParser[types.
 	}
 
 	return &OOMKillParser{
-		BaseParser: commonutils.BaseParser{
-			ColumnsWidth: columnsWidth,
-			OutputConfig: outputConfig,
-		},
+		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
 	}
 }
 

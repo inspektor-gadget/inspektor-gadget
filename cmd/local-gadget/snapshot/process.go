@@ -38,11 +38,11 @@ func newProcessCmd() *cobra.Command {
 		},
 	}
 
-	availableColumns := map[string]struct{}{
-		"container": {},
-		"comm":      {},
-		"tgid":      {},
-		"pid":       {},
+	availableColumns := []string{
+		"container",
+		"comm",
+		"tgid",
+		"pid",
 	}
 
 	customRun := func(callback func(string, []string) error) error {

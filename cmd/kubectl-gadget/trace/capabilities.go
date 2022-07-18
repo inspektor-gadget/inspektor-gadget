@@ -83,10 +83,7 @@ func NewCapabilitiesParser(outputConfig *commonutils.OutputConfig) TraceParser[t
 	}
 
 	return &CapabilitiesParser{
-		BaseParser: commonutils.BaseParser{
-			ColumnsWidth: columnsWidth,
-			OutputConfig: outputConfig,
-		},
+		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
 	}
 }
 

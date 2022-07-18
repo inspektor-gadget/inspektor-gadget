@@ -71,10 +71,7 @@ func NewSNIParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Even
 	}
 
 	return &SNIParser{
-		BaseParser: commonutils.BaseParser{
-			ColumnsWidth: columnsWidth,
-			OutputConfig: outputConfig,
-		},
+		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
 	}
 }
 

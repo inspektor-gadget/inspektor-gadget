@@ -40,13 +40,13 @@ func newSocketCmd() *cobra.Command {
 		},
 	}
 
-	availableColumns := map[string]struct{}{
-		"pod":      {},
-		"protocol": {},
-		"local":    {},
-		"remote":   {},
-		"status":   {},
-		"inode":    {},
+	availableColumns := []string{
+		"pod",
+		"protocol",
+		"local",
+		"remote",
+		"status",
+		"inode",
 	}
 
 	customRun := func(callback func(string, []string) error) error {
