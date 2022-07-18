@@ -13,8 +13,7 @@ endif
 
 SOURCE_BTF_FILES = $(shell find $(BTFHUB_ARCHIVE)/ -iregex ".*$(subst x86,x86_64,$(ARCH)).*" -type f -name '*.btf.tar.xz')
 MIN_CORE_BTF_FILES = $(patsubst $(BTFHUB_ARCHIVE)/%.btf.tar.xz, $(OUTPUT)/%.btf, $(SOURCE_BTF_FILES))
-# TODO (filter by architecture too when implemented)
-BPF_ALL_O_FILES = $(shell find pkg/gadgets -type f -name '*.o')
+BPF_ALL_O_FILES = $(shell find pkg/gadgets -type f -regex ".*\($(ARCH)\|bpfel\).o")
 # Filter out BPF objects that only contain BPF maps without BPF programs
 BPF_PROGS_O_FILES = $(filter-out pkg/gadgets/network-graph/tracer/graphmap_bpfel%,$(BPF_ALL_O_FILES))
 
