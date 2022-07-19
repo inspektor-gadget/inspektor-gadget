@@ -22,7 +22,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	processcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
@@ -34,7 +34,7 @@ const (
 	BPFIterName = "dump_task"
 )
 
-func RunCollector(resolver gadgets.Resolver, node string, mntnsmap *ebpf.Map) ([]processcollectortypes.Event, error) {
+func RunCollector(resolver containercollection.ContainerResolver, node string, mntnsmap *ebpf.Map) ([]processcollectortypes.Event, error) {
 	var err error
 	var spec *ebpf.CollectionSpec
 

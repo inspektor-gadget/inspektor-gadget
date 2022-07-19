@@ -23,7 +23,7 @@ import (
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	gadgetcollection "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
 	containersmap "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
 

@@ -32,7 +32,7 @@ import (
 	gadgetkinvolkiov1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/controllers"
 	gadgetcollection "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
 	//+kubebuilder:scaffold:imports
 )

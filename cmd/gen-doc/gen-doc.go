@@ -29,7 +29,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 
 	gadgetcollection "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
 )
 
 var repo string
