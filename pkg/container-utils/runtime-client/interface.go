@@ -39,6 +39,11 @@ type ContainerData struct {
 
 	// Running defines whether or not the container is in the running state
 	Running bool
+
+	// Runtime is the name of the runtime (e.g. docker, cri-o, containerd). It
+	// is useful to distinguish who is the "owner" of each container in a list
+	// of containers collected from multiples runtimes.
+	Runtime string
 }
 
 // ContainerRuntimeClient defines the interface to communicate with the
@@ -190,11 +195,7 @@ func (c *CRIClient) GetContainers() ([]*ContainerData, error) {
 	ret := make([]*ContainerData, len(containers))
 
 	for i, container := range containers {
-		ret[i] = &ContainerData{
-			ID:      container.Id,
-			Name:    strings.TrimPrefix(container.GetMetadata().Name, "/"),
-			Running: container.GetState() == pb.ContainerState_CONTAINER_RUNNING,
-		}
+		ret[i] = CRIContainerToContainerData(c.Name, container)
 	}
 
 	return ret, nil
@@ -216,11 +217,16 @@ func (c *CRIClient) GetContainer(containerID string) (*ContainerData, error) {
 			len(containers), containerID, containers)
 	}
 
+	return CRIContainerToContainerData(c.Name, containers[0]), nil
+}
+
+func CRIContainerToContainerData(runtimeName string, container *pb.Container) *ContainerData {
 	return &ContainerData{
-		ID:      containers[0].Id,
-		Name:    strings.TrimPrefix(containers[0].GetMetadata().Name, "/"),
-		Running: containers[0].GetState() == pb.ContainerState_CONTAINER_RUNNING,
-	}, nil
+		ID:      container.Id,
+		Name:    strings.TrimPrefix(container.GetMetadata().Name, "/"),
+		Running: container.GetState() == pb.ContainerState_CONTAINER_RUNNING,
+		Runtime: runtimeName,
+	}
 }
 
 func (c *CRIClient) Close() error {

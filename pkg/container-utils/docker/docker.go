@@ -116,11 +116,7 @@ func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
 	ret := make([]*runtimeclient.ContainerData, len(containers))
 
 	for i, container := range containers {
-		ret[i] = &runtimeclient.ContainerData{
-			ID:      container.ID,
-			Name:    strings.TrimPrefix(containers[i].Names[0], "/"),
-			Running: container.State == "running",
-		}
+		ret[i] = DockerContainerToContainerData(&container)
 	}
 
 	return ret, nil
@@ -143,11 +139,16 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 			len(containers), containerID, containers)
 	}
 
+	return DockerContainerToContainerData(&containers[0]), nil
+}
+
+func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {
 	return &runtimeclient.ContainerData{
-		ID:      containers[0].ID,
-		Name:    strings.TrimPrefix(containers[0].Names[0], "/"),
-		Running: containers[0].State == "running",
-	}, nil
+		ID:      container.ID,
+		Name:    strings.TrimPrefix(container.Names[0], "/"),
+		Running: container.State == "running",
+		Runtime: Name,
+	}
 }
 
 func (c *DockerClient) Close() error {
