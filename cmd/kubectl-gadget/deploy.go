@@ -38,6 +38,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/restmapper"
+	"sigs.k8s.io/yaml"
 )
 
 var deployCmd = &cobra.Command{
@@ -57,7 +58,7 @@ var (
 	livenessProbe             bool
 	livenessProbeInitialDelay int32
 	fallbackPodInformer       bool
-	file                      string
+	printOnly                 bool
 )
 
 func init() {
@@ -91,11 +92,11 @@ func init() {
 		"fallback-podinformer", "",
 		true,
 		"use pod informer as a fallback for the main hook")
-	deployCmd.PersistentFlags().StringVarP(
-		&file,
-		"file", "",
-		"",
-		"file to save the generated yaml template")
+	deployCmd.PersistentFlags().BoolVarP(
+		&printOnly,
+		"print-only", "",
+		false,
+		"only print YAML of resources")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -253,9 +254,17 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		err := createResource(dynamicClient, mapper, object)
-		if err != nil {
-			return fmt.Errorf("problem while creating resource: %w", err)
+		if printOnly {
+			bytes, err := yaml.Marshal(object)
+			if err != nil {
+				return fmt.Errorf("problem while marshaling object: %w", err)
+			}
+			fmt.Printf("%s---\n", bytes)
+		} else {
+			err := createResource(dynamicClient, mapper, object)
+			if err != nil {
+				return fmt.Errorf("problem while creating resource: %w", err)
+			}
 		}
 	}
 
