@@ -87,10 +87,10 @@ func NewOpenParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
 	}
 }
 
-func (p *OpenParser) TransformEvent(event *types.Event, requestedColumns []string) string {
+func (p *OpenParser) TransformEvent(event *types.Event) string {
 	var sb strings.Builder
 
-	for _, col := range requestedColumns {
+	for _, col := range p.OutputConfig.CustomColumns {
 		switch col {
 		case "node":
 			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
