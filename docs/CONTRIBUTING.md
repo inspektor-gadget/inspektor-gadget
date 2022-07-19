@@ -17,7 +17,7 @@ Inspektor Gadget.
 
 - [Fork](https://github.com/kinvolk/inspektor-gadget/fork) and clone this repo:
     - `git clone git@github.com:your_account/inspektor-gadget.git`.
-- Install [Docker](https://docs.docker.com/get-docker/) and [Golang](https://golang.org/doc/install).
+- Install [Docker](https://docs.docker.com/get-docker/), [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx) and [Golang](https://golang.org/doc/install).
 
 ## Building the code
 
