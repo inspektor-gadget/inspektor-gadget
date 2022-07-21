@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
-	github.com/cilium/ebpf v0.9.0
+	github.com/cilium/ebpf v0.9.1
 	github.com/containerd/containerd v1.5.11 // indirect
 	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
 	github.com/containers/common v0.46.0
