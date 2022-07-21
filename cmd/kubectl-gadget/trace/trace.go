@@ -40,7 +40,7 @@ type TraceEvent interface {
 // implement.
 type TraceParser[Event TraceEvent] interface {
 	// TransformEvent is called to transform an event to columns format.
-	TransformEvent(event *Event, requestedColumns []string) string
+	TransformEvent(event *Event) string
 
 	// PrintColumnsHeader prints the header with the requested custom columns
 	// that exist in the columnsWidth struct.
@@ -91,7 +91,7 @@ func (g *TraceGadget[Event]) Run() error {
 			return ""
 		}
 
-		return g.parser.TransformEvent(&e, g.commonFlags.CustomColumns)
+		return g.parser.TransformEvent(&e)
 	}
 
 	if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {

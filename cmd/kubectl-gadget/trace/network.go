@@ -84,7 +84,7 @@ func NewNetworkParser(outputConfig *commonutils.OutputConfig) TraceParser[types.
 	}
 }
 
-func (p *NetworkParser) TransformEvent(event *types.Event, requestedColumns []string) string {
+func (p *NetworkParser) TransformEvent(event *types.Event) string {
 	var sb strings.Builder
 
 	if event.Pod == "" {
@@ -104,7 +104,7 @@ func (p *NetworkParser) TransformEvent(event *types.Event, requestedColumns []st
 		remote = fmt.Sprintf("? %s", event.Debug)
 	}
 
-	for _, col := range requestedColumns {
+	for _, col := range p.OutputConfig.CustomColumns {
 		switch col {
 		case "node":
 			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
