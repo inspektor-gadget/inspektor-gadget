@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -94,7 +95,7 @@ func outputModeToTraceOutputMode(outputMode string) (string, error) {
 // parameters.
 func runSeccompAdvisorStart(cmd *cobra.Command, args []string) error {
 	if params.Podname == "" {
-		return utils.WrapInErrMissingArgs("--podname")
+		return commonutils.WrapInErrMissingArgs("--podname")
 	}
 
 	traceOutputMode, err := outputModeToTraceOutputMode(outputMode)
@@ -117,7 +118,7 @@ func runSeccompAdvisorStart(cmd *cobra.Command, args []string) error {
 
 	traceID, err := utils.CreateTrace(config)
 	if err != nil {
-		return utils.WrapInErrRunGadget(err)
+		return commonutils.WrapInErrRunGadget(err)
 	}
 
 	fmt.Printf("%s\n", traceID)
@@ -174,7 +175,7 @@ func getSeccompProfilesName(traceID string) ([]string, error) {
 // as parameter.
 func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return utils.WrapInErrMissingArgs("<trace-id>")
+		return commonutils.WrapInErrMissingArgs("<trace-id>")
 	}
 
 	traceID := args[0]
@@ -212,19 +213,19 @@ func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 
 	err := utils.SetTraceOperation(traceID, "generate")
 	if err != nil {
-		return utils.WrapInErrGenGadgetOutput(err)
+		return commonutils.WrapInErrGenGadgetOutput(err)
 	}
 
 	// We stop the trace so its Status.State become Stopped.
 	// Indeed, generate operation does not change value of Status.State.
 	err = utils.SetTraceOperation(traceID, "stop")
 	if err != nil {
-		return utils.WrapInErrStopGadget(err)
+		return commonutils.WrapInErrStopGadget(err)
 	}
 
 	err = utils.PrintTraceOutputFromStatus(traceID, "Stopped", callback)
 	if err != nil {
-		return utils.WrapInErrGetGadgetOutput(err)
+		return commonutils.WrapInErrGetGadgetOutput(err)
 	}
 
 	return nil
@@ -240,7 +241,7 @@ func runSeccompAdvisorList(cmd *cobra.Command, args []string) error {
 
 	err := utils.PrintAllTraces(config)
 	if err != nil {
-		return utils.WrapInErrListGadgetTraces(err)
+		return commonutils.WrapInErrListGadgetTraces(err)
 	}
 
 	return nil

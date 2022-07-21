@@ -18,18 +18,20 @@ import (
 	"fmt"
 	"strings"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/oomkill/types"
+
 	"github.com/spf13/cobra"
 )
 
 type OOMKillParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newOOMKillCmd() *cobra.Command {
 	commonFlags := &utils.CommonFlags{
-		OutputConfig: utils.OutputConfig{
+		OutputConfig: commonutils.OutputConfig{
 			// The columns that will be used in case the user does not specify
 			// which specific columns they want to print.
 			CustomColumns: []string{
@@ -65,7 +67,7 @@ func newOOMKillCmd() *cobra.Command {
 	return cmd
 }
 
-func NewOOMKillParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+func NewOOMKillParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Event] {
 	columnsWidth := map[string]int{
 		"node":      -16,
 		"namespace": -16,
@@ -79,7 +81,7 @@ func NewOOMKillParser(outputConfig *utils.OutputConfig) TraceParser[types.Event]
 	}
 
 	return &OOMKillParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

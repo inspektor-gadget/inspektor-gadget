@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	watchtools "k8s.io/client-go/tools/watch"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	clientset "github.com/kinvolk/inspektor-gadget/pkg/client/clientset/versioned"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
@@ -129,14 +130,14 @@ func printTraceFeedback(prefix string, m map[string]string, totalNodes int) {
 		value := getIdenticalValue(m)
 		if value != "" {
 			fmt.Fprintf(os.Stderr, "%s: %s\n",
-				prefix, WrapInErrRunGadgetOnAllNode(errors.New(value)))
+				prefix, commonutils.WrapInErrRunGadgetOnAllNode(errors.New(value)))
 			return
 		}
 	}
 
 	for node, msg := range m {
 		fmt.Fprintf(os.Stderr, "%s: %s\n",
-			prefix, WrapInErrRunGadgetOnNode(node, errors.New(msg)))
+			prefix, commonutils.WrapInErrRunGadgetOnNode(node, errors.New(msg)))
 	}
 }
 
@@ -177,7 +178,7 @@ func getTraceClient() (*clientset.Clientset, error) {
 func createTraces(trace *gadgetv1alpha1.Trace) error {
 	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
-		return WrapInErrSetupK8sClient(err)
+		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
 	traceClient, err := getTraceClient()
@@ -187,7 +188,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 
 	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return WrapInErrListNodes(err)
+		return commonutils.WrapInErrListNodes(err)
 	}
 
 	traceNode := trace.Spec.Node
@@ -924,7 +925,7 @@ func genericStreamsDisplay(
 	transformLine func(string) string,
 ) error {
 	transform := func(line string) string {
-		if params.OutputMode == OutputModeJSON {
+		if params.OutputMode == commonutils.OutputModeJSON {
 			return line
 		}
 		return transformLine(line)
@@ -945,12 +946,12 @@ func genericStreams(
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
-		return WrapInErrSetupK8sClient(err)
+		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
 	verbose := false
 	// verbose only when not json is used
-	if params.Verbose && params.OutputMode != OutputModeJSON {
+	if params.Verbose && params.OutputMode != commonutils.OutputModeJSON {
 		verbose = true
 	}
 
@@ -997,7 +998,7 @@ func genericStreams(
 	for {
 		select {
 		case <-sigs:
-			if params.OutputMode != OutputModeJSON {
+			if params.OutputMode != commonutils.OutputModeJSON {
 				fmt.Println("\nTerminating...")
 			}
 			return nil

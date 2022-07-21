@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptop/types"
 )
@@ -50,7 +51,7 @@ var tcpCmd = &cobra.Command{
 		if len(args) == 1 {
 			outputInterval, err = strconv.Atoi(args[0])
 			if err != nil {
-				return utils.WrapInErrInvalidArg("<interval>",
+				return commonutils.WrapInErrInvalidArg("<interval>",
 					fmt.Errorf("%q is not a valid value", args[0]))
 			}
 		} else {
@@ -93,7 +94,7 @@ var tcpCmd = &cobra.Command{
 		}
 
 		if err := utils.RunTraceStreamCallback(config, tcpCallback); err != nil {
-			return utils.WrapInErrRunGadget(err)
+			return commonutils.WrapInErrRunGadget(err)
 		}
 
 		if singleShot {
@@ -107,7 +108,7 @@ var tcpCmd = &cobra.Command{
 		var err error
 		tcpSortBy, err = types.ParseSortBy(sortBy)
 		if err != nil {
-			return utils.WrapInErrInvalidArg("--sort", err)
+			return commonutils.WrapInErrInvalidArg("--sort", err)
 		}
 
 		return nil
@@ -141,7 +142,7 @@ func tcpCallback(line string, node string) {
 	var event types.Event
 
 	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
 		return
 	}
 
@@ -167,7 +168,7 @@ func tcpStartPrintLoop() {
 
 func tcpPrintHeader() {
 	switch params.OutputMode {
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
 		} else {
@@ -176,7 +177,7 @@ func tcpPrintHeader() {
 		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-3s %-51s %-51s %-7s %s\n",
 			"NODE", "NAMESPACE", "POD", "CONTAINER",
 			"PID", "COMM", "IPv", "LADDR", "RADDR", "RX_KB", "TX_KB")
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
 		} else {
@@ -201,7 +202,7 @@ func tcpPrintEvents() {
 	types.SortStats(stats, tcpSortBy)
 
 	switch params.OutputMode {
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		for idx, event := range stats {
 			if idx == maxRows {
 				break
@@ -219,14 +220,14 @@ func tcpPrintEvents() {
 				fmt.Sprintf("%s:%d", event.Daddr, event.Dport),
 				event.Received/1048, event.Sent/1048)
 		}
-	case utils.OutputModeJSON:
+	case commonutils.OutputModeJSON:
 		b, err := json.Marshal(stats)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrMarshalOutput(err))
+			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrMarshalOutput(err))
 			return
 		}
 		fmt.Println(string(b))
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		for idx, stat := range stats {
 			if idx == maxRows {
 				break

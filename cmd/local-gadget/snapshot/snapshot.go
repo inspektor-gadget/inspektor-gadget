@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,15 +16,13 @@ package snapshot
 
 import (
 	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
 	"github.com/spf13/cobra"
 )
 
 func NewSnapshotTraceConfig(gadgetName string, commonFlags *utils.CommonFlags, params map[string]string) *utils.TraceConfig {
 	return &utils.TraceConfig{
 		GadgetName:       gadgetName,
-		Operation:        "collect",
-		TraceOutputMode:  "Status",
 		TraceOutputState: "Completed",
 		Parameters:       params,
 		CommonFlags:      commonFlags,
@@ -35,7 +33,9 @@ func NewSnapshotCmd() *cobra.Command {
 	cmd := commonsnapshot.NewCommonSnapshotCmd()
 
 	cmd.AddCommand(newProcessCmd())
-	cmd.AddCommand(newSocketCmd())
+
+	// Do not support socket command until it contains container information
+	// cmd.AddCommand(newSocketCmd())
 
 	return cmd
 }

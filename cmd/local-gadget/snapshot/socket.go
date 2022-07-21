@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import (
 
 	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
 )
 
 func newSocketCmd() *cobra.Command {
@@ -31,8 +31,6 @@ func newSocketCmd() *cobra.Command {
 			// which specific columns they want to print. Notice they may be
 			// extended based on flags.
 			CustomColumns: []string{
-				"node",
-				"namespace",
 				"pod",
 				"protocol",
 				"local",
@@ -43,17 +41,15 @@ func newSocketCmd() *cobra.Command {
 	}
 
 	availableColumns := map[string]struct{}{
-		"node":      {},
-		"namespace": {},
-		"pod":       {},
-		"protocol":  {},
-		"local":     {},
-		"remote":    {},
-		"status":    {},
-		"inode":     {},
+		"pod":      {},
+		"protocol": {},
+		"local":    {},
+		"remote":   {},
+		"status":   {},
+		"inode":    {},
 	}
 
-	customRun := func(callback func(traceOutputMode string, results []string) error) error {
+	customRun := func(callback func(string, []string) error) error {
 		config := NewSnapshotTraceConfig(
 			commonsnapshot.SocketGadgetName,
 			commonFlags,

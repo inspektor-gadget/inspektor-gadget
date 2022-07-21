@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biotop/types"
 )
@@ -45,7 +46,7 @@ var blockIOCmd = &cobra.Command{
 		if len(args) == 1 {
 			outputInterval, err = strconv.Atoi(args[0])
 			if err != nil {
-				return utils.WrapInErrInvalidArg("<interval>",
+				return commonutils.WrapInErrInvalidArg("<interval>",
 					fmt.Errorf("%q is not a valid value", args[0]))
 			}
 		} else {
@@ -78,7 +79,7 @@ var blockIOCmd = &cobra.Command{
 		}
 
 		if err := utils.RunTraceStreamCallback(config, blockIOCallback); err != nil {
-			return utils.WrapInErrRunGadget(err)
+			return commonutils.WrapInErrRunGadget(err)
 		}
 
 		if singleShot {
@@ -92,7 +93,7 @@ var blockIOCmd = &cobra.Command{
 		var err error
 		blockIOSortBy, err = types.ParseSortBy(sortBy)
 		if err != nil {
-			return utils.WrapInErrInvalidArg("--sort", err)
+			return commonutils.WrapInErrInvalidArg("--sort", err)
 		}
 
 		return nil
@@ -111,7 +112,7 @@ func blockIOCallback(line string, node string) {
 	var event types.Event
 
 	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
 		return
 	}
 
@@ -137,7 +138,7 @@ func blockIOStartPrintLoop() {
 
 func blockIOPrintHeader() {
 	switch params.OutputMode {
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
 		} else {
@@ -147,7 +148,7 @@ func blockIOPrintHeader() {
 		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-3s %-6s %-6s %-7s %-8s %s\n",
 			"NODE", "NAMESPACE", "POD", "CONTAINER",
 			"PID", "COMM", "R/W", "MAJOR", "MINOR", "BYTES", "TIME(µs)", "IOs")
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
 		} else {
@@ -172,7 +173,7 @@ func blockIOPrintEvents() {
 	types.SortStats(stats, blockIOSortBy)
 
 	switch params.OutputMode {
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		for idx, event := range stats {
 			if idx == maxRows {
 				break
@@ -188,14 +189,14 @@ func blockIOPrintEvents() {
 				event.Pid, event.Comm, rw, event.Major, event.Minor, event.Bytes,
 				event.MicroSecs, event.Operations)
 		}
-	case utils.OutputModeJSON:
+	case commonutils.OutputModeJSON:
 		b, err := json.Marshal(stats)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrMarshalOutput(err))
+			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrMarshalOutput(err))
 			return
 		}
 		fmt.Println(string(b))
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		for idx, stat := range stats {
 			if idx == maxRows {
 				break

@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/kinvolk/traceloop/pkg/tracemeta"
@@ -73,7 +74,7 @@ var traceloopPodCmd = &cobra.Command{
 	Short: "show the traces in one pod",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 3 {
-			return utils.WrapInErrMissingArgs("<namespace>, <podname> and <idx>")
+			return commonutils.WrapInErrMissingArgs("<namespace>, <podname> and <idx>")
 		}
 		return nil
 	},
@@ -195,7 +196,7 @@ func runTraceloopStart(cmd *cobra.Command, args []string) error {
 		CommonFlags:     &params,
 	})
 	if err != nil {
-		return utils.WrapInErrRunGadget(err)
+		return commonutils.WrapInErrRunGadget(err)
 	}
 
 	return nil
@@ -204,7 +205,7 @@ func runTraceloopStart(cmd *cobra.Command, args []string) error {
 func runTraceloopStop(cmd *cobra.Command, args []string) error {
 	err := utils.DeleteTracesByGadgetName("traceloop")
 	if err != nil {
-		return utils.WrapInErrStopGadget(err)
+		return commonutils.WrapInErrStopGadget(err)
 	}
 
 	return nil
@@ -213,7 +214,7 @@ func runTraceloopStop(cmd *cobra.Command, args []string) error {
 func runTraceloopList(cmd *cobra.Command, args []string) error {
 	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		return utils.WrapInErrSetupK8sClient(err)
+		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
 	tracesPerNode, err := getTracesListPerNode(client)
@@ -315,12 +316,12 @@ func runTraceloopList(cmd *cobra.Command, args []string) error {
 
 func runTraceloopShow(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		return utils.WrapInErrMissingArgs("<trace-name>")
+		return commonutils.WrapInErrMissingArgs("<trace-name>")
 	}
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		return utils.WrapInErrSetupK8sClient(err)
+		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
 	tracesPerNode, err := getTracesListPerNode(client)
@@ -347,7 +348,7 @@ func runTraceloopPod(cmd *cobra.Command, args []string) error {
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		return utils.WrapInErrSetupK8sClient(err)
+		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
 	pod, err := client.CoreV1().Pods(namespace).Get(context.TODO(), podname, metav1.GetOptions{})
@@ -368,17 +369,17 @@ func runTraceloopPod(cmd *cobra.Command, args []string) error {
 
 func runTraceloopClose(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		return utils.WrapInErrMissingArgs("<trace-name>")
+		return commonutils.WrapInErrMissingArgs("<trace-name>")
 	}
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		return utils.WrapInErrSetupK8sClient(err)
+		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
 	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		return utils.WrapInErrListNodes(err)
+		return commonutils.WrapInErrListNodes(err)
 	}
 
 	for _, node := range nodes.Items {

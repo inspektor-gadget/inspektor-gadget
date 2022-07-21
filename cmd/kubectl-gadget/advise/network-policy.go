@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/networkpolicy/advisor"
 )
@@ -107,14 +108,14 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) error {
 	fmt.Printf("\033[2K\rRecording events into file %q...", outputFileName)
 	err = utils.RunTraceAndPrintStream(config, transform)
 	if err != nil {
-		return utils.WrapInErrRunGadget(err)
+		return commonutils.WrapInErrRunGadget(err)
 	}
 	return nil
 }
 
 func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
 	if inputFileName == "" {
-		return utils.WrapInErrMissingArgs("--input")
+		return commonutils.WrapInErrMissingArgs("--input")
 	}
 
 	adv := advisor.NewAdvisor()

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcpconnect/types"
 
@@ -25,12 +26,12 @@ import (
 )
 
 type TcpconnectParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newTcpconnectCmd() *cobra.Command {
 	commonFlags := &utils.CommonFlags{
-		OutputConfig: utils.OutputConfig{
+		OutputConfig: commonutils.OutputConfig{
 			// The columns that will be used in case the user does not specify
 			// which specific columns they want to print.
 			CustomColumns: []string{
@@ -67,7 +68,7 @@ func newTcpconnectCmd() *cobra.Command {
 	return cmd
 }
 
-func NewTcpconnectParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+func NewTcpconnectParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Event] {
 	columnsWidth := map[string]int{
 		"node":      -16,
 		"namespace": -16,
@@ -82,7 +83,7 @@ func NewTcpconnectParser(outputConfig *utils.OutputConfig) TraceParser[types.Eve
 	}
 
 	return &TcpconnectParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

@@ -19,18 +19,19 @@ import (
 	"strconv"
 	"strings"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/bindsnoop/types"
 	"github.com/spf13/cobra"
 )
 
 type BindParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newBindCmd() *cobra.Command {
 	commonFlags := &utils.CommonFlags{
-		OutputConfig: utils.OutputConfig{
+		OutputConfig: commonutils.OutputConfig{
 			// The columns that will be used in case the user does not specify
 			// which specific columns they want to print.
 			CustomColumns: []string{
@@ -107,7 +108,7 @@ func newBindCmd() *cobra.Command {
 	return cmd
 }
 
-func NewBindParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+func NewBindParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Event] {
 	columnsWidth := map[string]int{
 		"node":      -16,
 		"namespace": -16,
@@ -123,7 +124,7 @@ func NewBindParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
 	}
 
 	return &BindParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

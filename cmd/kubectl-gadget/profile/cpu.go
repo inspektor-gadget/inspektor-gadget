@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
 )
@@ -31,7 +32,7 @@ type CPUFlags struct {
 }
 
 type CPUParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 
 	cpuFlags *CPUFlags
 }
@@ -40,7 +41,7 @@ func newCPUCmd() *cobra.Command {
 	var cpuFlags CPUFlags
 
 	commonFlags := &utils.CommonFlags{
-		OutputConfig: utils.OutputConfig{
+		OutputConfig: commonutils.OutputConfig{
 			// The columns that will be used in case the user does not specify
 			// which specific columns they want to print.
 			CustomColumns: []string{
@@ -74,7 +75,7 @@ func newCPUCmd() *cobra.Command {
 		SilenceUsage: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if cpuFlags.profileUserOnly && cpuFlags.profileKernelOnly {
-				return utils.WrapInErrArgsNotSupported("-U and -K can't be used at the same time")
+				return commonutils.WrapInErrArgsNotSupported("-U and -K can't be used at the same time")
 			}
 
 			return nil
@@ -94,7 +95,7 @@ func newCPUCmd() *cobra.Command {
 				commonFlags:   commonFlags,
 				inProgressMsg: "Capturing stack traces",
 				parser: &CPUParser{
-					BaseParser: utils.BaseParser{
+					BaseParser: commonutils.BaseParser{
 						ColumnsWidth: columnsWidth,
 						OutputConfig: &commonFlags.OutputConfig,
 					},
@@ -129,11 +130,11 @@ func newCPUCmd() *cobra.Command {
 func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []string) error {
 	// Print header
 	switch p.OutputConfig.OutputMode {
-	case utils.OutputModeJSON:
+	case commonutils.OutputModeJSON:
 		// Nothing to print
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		fallthrough
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		// Do not print the "stack" column header, it is not actually a column.
 		var i int
 		var col string
@@ -159,23 +160,23 @@ func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []str
 	for _, r := range results {
 		var reports []types.Report
 		if err := json.Unmarshal([]byte(r), &reports); err != nil {
-			return utils.WrapInErrUnmarshalOutput(err, r)
+			return commonutils.WrapInErrUnmarshalOutput(err, r)
 		}
 
 		for _, report := range reports {
 			switch p.OutputConfig.OutputMode {
-			case utils.OutputModeJSON:
+			case commonutils.OutputModeJSON:
 				b, err := json.Marshal(report)
 				if err != nil {
-					return utils.WrapInErrMarshalOutput(err)
+					return commonutils.WrapInErrMarshalOutput(err)
 				}
 				fmt.Println(string(b))
-			case utils.OutputModeColumns:
+			case commonutils.OutputModeColumns:
 				fallthrough
-			case utils.OutputModeCustomColumns:
+			case commonutils.OutputModeCustomColumns:
 				fmt.Println(p.TransformEvent(&report))
 			default:
-				return utils.WrapInErrOutputModeNotSupported(p.OutputConfig.OutputMode)
+				return commonutils.WrapInErrOutputModeNotSupported(p.OutputConfig.OutputMode)
 			}
 		}
 	}

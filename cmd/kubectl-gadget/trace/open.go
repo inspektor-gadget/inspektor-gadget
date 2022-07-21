@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/opensnoop/types"
 
@@ -25,12 +26,12 @@ import (
 )
 
 type OpenParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newOpenCmd() *cobra.Command {
 	commonFlags := &utils.CommonFlags{
-		OutputConfig: utils.OutputConfig{
+		OutputConfig: commonutils.OutputConfig{
 			// The columns that will be used in case the user does not specify
 			// which specific columns they want to print.
 			CustomColumns: []string{
@@ -66,7 +67,7 @@ func newOpenCmd() *cobra.Command {
 	return cmd
 }
 
-func NewOpenParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+func NewOpenParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Event] {
 	columnsWidth := map[string]int{
 		"node":      -16,
 		"namespace": -16,
@@ -80,7 +81,7 @@ func NewOpenParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
 	}
 
 	return &OpenParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

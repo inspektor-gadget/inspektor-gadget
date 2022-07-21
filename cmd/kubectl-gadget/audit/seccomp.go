@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit-seccomp/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -33,9 +34,9 @@ var auditSeccompCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// print header
 		switch params.OutputMode {
-		case utils.OutputModeCustomColumns:
+		case commonutils.OutputModeCustomColumns:
 			fmt.Println(getCustomAuditSeccompColsHeader(params.CustomColumns))
-		case utils.OutputModeColumns:
+		case commonutils.OutputModeColumns:
 			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-6s %-16s %-16s\n",
 				"NODE", "NAMESPACE", "POD", "CONTAINER",
 				"PCOMM", "PID", "SYSCALL", "CODE")
@@ -51,7 +52,7 @@ var auditSeccompCmd = &cobra.Command{
 
 		err := utils.RunTraceAndPrintStream(config, auditSeccompTransformLine)
 		if err != nil {
-			return utils.WrapInErrRunGadget(err)
+			return commonutils.WrapInErrRunGadget(err)
 		}
 
 		return nil
@@ -70,22 +71,22 @@ func auditSeccompTransformLine(line string) string {
 	var e types.Event
 
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", utils.WrapInErrUnmarshalOutput(err, line))
+		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
 		return ""
 	}
 
 	if e.Type != eventtypes.NORMAL {
-		utils.ManageSpecialEvent(e.Event, params.Verbose)
+		commonutils.ManageSpecialEvent(e.Event, params.Verbose)
 		return ""
 	}
 
 	switch params.OutputMode {
-	case utils.OutputModeColumns:
+	case commonutils.OutputModeColumns:
 		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-16s %-16s",
 			e.Node, e.Namespace, e.Pod, e.Container,
 			e.Comm, e.Pid, e.Syscall, e.Code))
 
-	case utils.OutputModeCustomColumns:
+	case commonutils.OutputModeCustomColumns:
 		for _, col := range params.CustomColumns {
 			switch col {
 			case "node":

@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@ import (
 
 	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
 )
 
-func newSocketCmd() *cobra.Command {
-	var socketFlags commonsnapshot.SocketFlags
+func newProcessCmd() *cobra.Command {
+	var processFlags commonsnapshot.ProcessFlags
 
 	commonFlags := &utils.CommonFlags{
 		OutputConfig: commonutils.OutputConfig{
@@ -31,41 +31,28 @@ func newSocketCmd() *cobra.Command {
 			// which specific columns they want to print. Notice they may be
 			// extended based on flags.
 			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"protocol",
-				"local",
-				"remote",
-				"status",
+				"container",
+				"comm",
+				"pid",
 			},
 		},
 	}
 
 	availableColumns := map[string]struct{}{
-		"node":      {},
-		"namespace": {},
-		"pod":       {},
-		"protocol":  {},
-		"local":     {},
-		"remote":    {},
-		"status":    {},
-		"inode":     {},
+		"container": {},
+		"comm":      {},
+		"tgid":      {},
+		"pid":       {},
 	}
 
-	customRun := func(callback func(traceOutputMode string, results []string) error) error {
-		config := NewSnapshotTraceConfig(
-			commonsnapshot.SocketGadgetName,
-			commonFlags,
-			map[string]string{
-				"protocol": socketFlags.Protocol,
-			},
-		)
-
+	customRun := func(callback func(string, []string) error) error {
+		config := NewSnapshotTraceConfig(commonsnapshot.ProcessGadgetName, commonFlags, nil)
 		return utils.RunTraceAndPrintStatusOutput(config, callback)
 	}
 
-	cmd := commonsnapshot.NewSocketCmd(&socketFlags, availableColumns, &commonFlags.OutputConfig, customRun)
+	// It is not currently useful to pass processFlags here but it keeps
+	// uniformity with other gadgets.
+	cmd := commonsnapshot.NewCommonProcessCmd(&processFlags, availableColumns, &commonFlags.OutputConfig, customRun)
 	utils.AddCommonFlags(cmd, commonFlags)
 
 	return cmd

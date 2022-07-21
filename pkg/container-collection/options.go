@@ -118,7 +118,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		// Enrich already running containers
 		containers, err := runtimeClient.GetContainers()
 		if err != nil {
-			log.Warnf("Runtime enricher (%s): failed to get current containers",
+			log.Warnf("Runtime enricher (%s): couldn't get current containers",
 				runtime.Name)
 
 			return nil

@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/fsslower/types"
 
@@ -27,12 +28,12 @@ import (
 )
 
 type FsslowerParser struct {
-	utils.BaseParser
+	commonutils.BaseParser
 }
 
 func newFsSlowerCmd() *cobra.Command {
 	commonFlags := &utils.CommonFlags{
-		OutputConfig: utils.OutputConfig{
+		OutputConfig: commonutils.OutputConfig{
 			// The columns that will be used in case the user does not specify
 			// which specific columns they want to print.
 			CustomColumns: []string{
@@ -64,7 +65,7 @@ func newFsSlowerCmd() *cobra.Command {
 		Short: "Trace open, read, write and fsync operations slower than a threshold",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if fsslowerFilesystem == "" {
-				return utils.WrapInErrMissingArgs("--filesystem / -f")
+				return commonutils.WrapInErrMissingArgs("--filesystem / -f")
 			}
 
 			found := false
@@ -76,7 +77,7 @@ func newFsSlowerCmd() *cobra.Command {
 			}
 
 			if !found {
-				return utils.WrapInErrInvalidArg("--filesystem / -f",
+				return commonutils.WrapInErrInvalidArg("--filesystem / -f",
 					fmt.Errorf("%q is not a valid filesystem", fsslowerFilesystem))
 			}
 
@@ -111,7 +112,7 @@ func newFsSlowerCmd() *cobra.Command {
 	return cmd
 }
 
-func NewFsslowerParser(outputConfig *utils.OutputConfig) TraceParser[types.Event] {
+func NewFsslowerParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Event] {
 	columnsWidth := map[string]int{
 		"node":      -16,
 		"namespace": -16,
@@ -127,7 +128,7 @@ func NewFsslowerParser(outputConfig *utils.OutputConfig) TraceParser[types.Event
 	}
 
 	return &FsslowerParser{
-		BaseParser: utils.BaseParser{
+		BaseParser: commonutils.BaseParser{
 			ColumnsWidth: columnsWidth,
 			OutputConfig: outputConfig,
 		},

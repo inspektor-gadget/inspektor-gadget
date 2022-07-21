@@ -26,6 +26,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 )
 
 func ExecPodSimple(client *kubernetes.Clientset, node string, podCmd string) string {
@@ -53,10 +55,10 @@ func ExecPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		return err
 	}
 	if len(pods.Items) == 0 {
-		return ErrGadgetPodNotFound
+		return commonutils.ErrGadgetPodNotFound
 	}
 	if len(pods.Items) != 1 {
-		return ErrMultipleGadgetPodFound
+		return commonutils.ErrMultipleGadgetPodFound
 	}
 	podName := pods.Items[0].Name
 
