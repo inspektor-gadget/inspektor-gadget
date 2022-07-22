@@ -526,8 +526,6 @@ func TestNetworkGraph(t *testing.T) {
 		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
 	}
 
-	// Workaround to https://github.com/cilium/ebpf/pull/724
-	runtime.GC()
 	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
 }
 
