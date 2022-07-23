@@ -161,20 +161,7 @@ func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []str
 		}
 
 		for _, report := range reports {
-			switch p.OutputConfig.OutputMode {
-			case commonutils.OutputModeJSON:
-				b, err := json.Marshal(report)
-				if err != nil {
-					return commonutils.WrapInErrMarshalOutput(err)
-				}
-				fmt.Println(string(b))
-			case commonutils.OutputModeColumns:
-				fallthrough
-			case commonutils.OutputModeCustomColumns:
-				fmt.Println(p.TransformEvent(&report))
-			default:
-				return commonutils.WrapInErrOutputModeNotSupported(p.OutputConfig.OutputMode)
-			}
+			fmt.Println(p.TransformReport(&report))
 		}
 	}
 
@@ -196,38 +183,40 @@ func getReverseStringSlice(toReverse []string) string {
 	return fmt.Sprintf("\n\t%s", strings.Join(toReverse, "\n\t"))
 }
 
-func (p *CPUParser) TransformEvent(report *types.Report) string {
-	var sb strings.Builder
+func (p *CPUParser) TransformReport(report *types.Report) string {
+	return p.Transform(report, func(e *types.Report) string {
+		var sb strings.Builder
 
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Container))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], report.Pid))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Comm))
-		case "count":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], report.Count))
-		case "stack":
-			if p.cpuFlags.profileUserOnly {
-				fmt.Fprint(&sb, getReverseStringSlice(report.UserStack))
-			} else if p.cpuFlags.profileKernelOnly {
-				fmt.Fprint(&sb, getReverseStringSlice(report.KernelStack))
-			} else {
-				fmt.Fprint(&sb, getReverseStringSlice(report.KernelStack), getReverseStringSlice(report.UserStack))
+		for _, col := range p.OutputConfig.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Container))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], report.Pid))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Comm))
+			case "count":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], report.Count))
+			case "stack":
+				if p.cpuFlags.profileUserOnly {
+					fmt.Fprint(&sb, getReverseStringSlice(report.UserStack))
+				} else if p.cpuFlags.profileKernelOnly {
+					fmt.Fprint(&sb, getReverseStringSlice(report.KernelStack))
+				} else {
+					fmt.Fprint(&sb, getReverseStringSlice(report.KernelStack), getReverseStringSlice(report.UserStack))
+				}
 			}
+
+			// Needed when field is larger than the predefined columnsWidth.
+			sb.WriteRune(' ')
 		}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
-	}
-
-	return sb.String()
+		return sb.String()
+	})
 }
