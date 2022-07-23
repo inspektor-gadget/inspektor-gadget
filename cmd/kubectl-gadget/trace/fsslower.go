@@ -30,7 +30,7 @@ import (
 )
 
 type FsslowerParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newFsSlowerCmd() *cobra.Command {
@@ -130,7 +130,7 @@ func NewFsslowerParser(outputConfig *commonutils.OutputConfig) TraceParser[types
 	}
 
 	return &FsslowerParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 

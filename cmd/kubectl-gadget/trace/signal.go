@@ -29,7 +29,7 @@ import (
 )
 
 type SignalParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newSignalCmd() *cobra.Command {
@@ -118,7 +118,7 @@ func NewSignalParser(outputConfig *commonutils.OutputConfig) TraceParser[types.E
 	}
 
 	return &SignalParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 

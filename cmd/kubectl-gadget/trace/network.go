@@ -28,7 +28,7 @@ import (
 )
 
 type NetworkParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newNetworkCmd() *cobra.Command {
@@ -79,7 +79,7 @@ func NewNetworkParser(outputConfig *commonutils.OutputConfig) TraceParser[types.
 	}
 
 	return &NetworkParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 

@@ -33,7 +33,7 @@ type ProcessFlags struct {
 }
 
 type ProcessParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 
 	processFlags *ProcessFlags
 }
@@ -46,7 +46,7 @@ func NewCommonProcessCmd(
 ) *cobra.Command {
 	processGadget := &SnapshotGadget[types.Event]{
 		parser: &ProcessParser{
-			BaseParser:   commonutils.NewBaseTabParser(availableColumns, outputConfig),
+			BaseParser:   commonutils.NewBaseTabParser[types.Event](availableColumns, outputConfig),
 			processFlags: processFlags,
 		},
 		customRun: customRun,

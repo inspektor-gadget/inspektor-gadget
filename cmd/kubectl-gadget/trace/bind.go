@@ -28,7 +28,7 @@ import (
 )
 
 type BindParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newBindCmd() *cobra.Command {
@@ -126,7 +126,7 @@ func NewBindParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Eve
 	}
 
 	return &BindParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 

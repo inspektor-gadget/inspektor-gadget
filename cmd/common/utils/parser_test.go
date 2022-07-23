@@ -19,89 +19,104 @@ import (
 	"testing"
 )
 
-func TestBaseParser(t *testing.T) {
+type MyElement struct {
+	Pid  uint32 `json:"pid,omitempty"`
+	Comm string `json:"pcomm,omitempty"`
+}
+
+func TestBaseParserBuildColumnsHeader(t *testing.T) {
 	table := []struct {
 		description    string
 		columnsWidth   map[string]int
-		useTabs        bool
+		useTaps        bool
 		outputConfig   *OutputConfig
 		expectedResult string
 	}{
 		{
-			description:  "empty CustomColumns",
-			outputConfig: &OutputConfig{},
+			description: "JSON output mode",
+			outputConfig: &OutputConfig{
+				OutputMode: OutputModeJSON,
+			},
 		},
 		{
 			description: "none valid column",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"abc"},
+				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
 				"xyz": 0,
 			},
+			expectedResult: "",
 		},
 		{
 			description: "ignore invalid column using width",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"abc", "xyz"},
+				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
 				"xyz": -10,
 			},
-			useTabs:        false,
+			useTaps:        false,
 			expectedResult: fmt.Sprintf("%-10s ", "XYZ"),
 		},
 		{
-			description: "ignore invalid column using tabs",
+			description: "ignore invalid column using taps",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"abc", "xyz"},
+				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
 				"xyz": 0,
 			},
-			useTabs:        true,
+			useTaps:        true,
 			expectedResult: fmt.Sprintf("%s\t", "XYZ"),
 		},
 		{
 			description: "ignore multiple invalid columns using width",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"abc", "dfe", "rst", "xyz"},
+				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
 				"xyz": -10,
 				"dfe": -5,
 			},
-			useTabs:        false,
+			useTaps:        false,
 			expectedResult: fmt.Sprintf("%-5s %-10s ", "DFE", "XYZ"),
 		},
 		{
-			description: "ignore multiple invalid column using tabs",
+			description: "ignore multiple invalid column using taps",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"abc", "dfe", "rst", "xyz"},
+				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
 				"xyz": 0,
 				"dfe": 0,
 			},
-			useTabs:        true,
+			useTaps:        true,
 			expectedResult: fmt.Sprintf("%s\t%s\t", "DFE", "XYZ"),
 		},
 		{
-			description: "ignore columnWidth when using tabs",
+			description: "ignore columnWidth when using taps",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"dfe", "xyz"},
+				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
 				"xyz": -5,
 				"dfe": -10,
 			},
-			useTabs:        true,
+			useTaps:        true,
 			expectedResult: fmt.Sprintf("%s\t%s\t", "DFE", "XYZ"),
 		},
 		{
 			description: "normal case using width",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"abc", "dfe", "rst", "xyz"},
+				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
 				"abc": -7,
@@ -109,13 +124,14 @@ func TestBaseParser(t *testing.T) {
 				"rst": -1,
 				"xyz": -10,
 			},
-			useTabs:        false,
+			useTaps:        false,
 			expectedResult: fmt.Sprintf("%-7s %-5s %-1s %-10s ", "ABC", "DFE", "RST", "XYZ"),
 		},
 		{
-			description: "normal case using tabs",
+			description: "normal case using taps",
 			outputConfig: &OutputConfig{
 				CustomColumns: []string{"abc", "dfe", "rst", "xyz"},
+				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
 				"abc": 0,
@@ -123,13 +139,13 @@ func TestBaseParser(t *testing.T) {
 				"rst": 0,
 				"xyz": 0,
 			},
-			useTabs:        true,
+			useTaps:        true,
 			expectedResult: fmt.Sprintf("%s\t%s\t%s\t%s\t", "ABC", "DFE", "RST", "XYZ"),
 		},
 	}
 
 	for i, entry := range table {
-		p := NewBaseParser(entry.columnsWidth, entry.useTabs, entry.outputConfig)
+		p := newBaseParser[MyElement](entry.columnsWidth, entry.useTaps, entry.outputConfig)
 		result := p.BuildColumnsHeader()
 		if result != entry.expectedResult {
 			t.Fatalf("Failed test %q (index %d): result %q expected %q",

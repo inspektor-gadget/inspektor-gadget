@@ -28,7 +28,7 @@ import (
 )
 
 type MountParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newMountCmd() *cobra.Command {
@@ -91,7 +91,7 @@ func NewMountParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Ev
 	}
 
 	return &MountParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 

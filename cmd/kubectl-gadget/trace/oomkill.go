@@ -28,7 +28,7 @@ import (
 )
 
 type OOMKillParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newOOMKillCmd() *cobra.Command {
@@ -83,7 +83,7 @@ func NewOOMKillParser(outputConfig *commonutils.OutputConfig) TraceParser[types.
 	}
 
 	return &OOMKillParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 

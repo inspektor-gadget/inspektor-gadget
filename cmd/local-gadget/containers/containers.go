@@ -35,7 +35,7 @@ type ContainerFlags struct {
 }
 
 type ContainerParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[containercollection.Container]
 
 	containerFlags *ContainerFlags
 }
@@ -82,7 +82,7 @@ func NewListContainersCmd() *cobra.Command {
 			defer localGadgetManager.Close()
 
 			parser := &ContainerParser{
-				BaseParser:     commonutils.NewBaseTabParser(availableColumns, &commonFlags.OutputConfig),
+				BaseParser:     commonutils.NewBaseTabParser[containercollection.Container](availableColumns, &commonFlags.OutputConfig),
 				containerFlags: &containerFlags,
 			}
 

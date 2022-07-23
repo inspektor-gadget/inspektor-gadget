@@ -28,7 +28,7 @@ import (
 )
 
 type TCPParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newTCPCmd() *cobra.Command {
@@ -89,7 +89,7 @@ func NewTCPParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Even
 	}
 
 	return &TCPParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 

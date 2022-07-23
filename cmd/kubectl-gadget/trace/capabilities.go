@@ -28,7 +28,7 @@ import (
 )
 
 type CapabilitiesParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newCapabilitiesCmd() *cobra.Command {
@@ -85,7 +85,7 @@ func NewCapabilitiesParser(outputConfig *commonutils.OutputConfig) TraceParser[t
 	}
 
 	return &CapabilitiesParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 

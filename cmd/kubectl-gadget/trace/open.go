@@ -28,7 +28,7 @@ import (
 )
 
 type OpenParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newOpenCmd() *cobra.Command {
@@ -83,7 +83,7 @@ func NewOpenParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Eve
 	}
 
 	return &OpenParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 
