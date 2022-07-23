@@ -15,7 +15,9 @@
 package trace
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
@@ -78,20 +80,32 @@ func NewSNIParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Even
 func (p *SNIParser) TransformEvent(event *types.Event) string {
 	var sb strings.Builder
 
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-		case "name":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Name))
+	switch p.OutputConfig.OutputMode {
+	case commonutils.OutputModeJSON:
+		b, err := json.Marshal(event)
+		if err != nil {
+			fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
+			return ""
 		}
+		sb.WriteString(string(b))
+	case commonutils.OutputModeColumns:
+		fallthrough
+	case commonutils.OutputModeCustomColumns:
+		for _, col := range p.OutputConfig.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+			case "name":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Name))
+			}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
+			// Needed when field is larger than the predefined columnsWidth.
+			sb.WriteRune(' ')
+		}
 	}
 
 	return sb.String()

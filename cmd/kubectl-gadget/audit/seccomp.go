@@ -81,11 +81,17 @@ func auditSeccompTransformLine(line string) string {
 	}
 
 	switch params.OutputMode {
+	case commonutils.OutputModeJSON:
+		b, err := json.Marshal(e)
+		if err != nil {
+			fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
+			return ""
+		}
+		sb.WriteString(string(b))
 	case commonutils.OutputModeColumns:
 		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-16s %-16s",
 			e.Node, e.Namespace, e.Pod, e.Container,
 			e.Comm, e.Pid, e.Syscall, e.Code))
-
 	case commonutils.OutputModeCustomColumns:
 		for _, col := range params.CustomColumns {
 			switch col {

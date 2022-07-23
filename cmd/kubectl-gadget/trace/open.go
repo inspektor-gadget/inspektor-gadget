@@ -15,7 +15,9 @@
 package trace
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
@@ -88,30 +90,42 @@ func NewOpenParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Eve
 func (p *OpenParser) TransformEvent(event *types.Event) string {
 	var sb strings.Builder
 
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
-		case "fd":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Fd))
-		case "err":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Err))
-		case "path":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Path))
+	switch p.OutputConfig.OutputMode {
+	case commonutils.OutputModeJSON:
+		b, err := json.Marshal(event)
+		if err != nil {
+			fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
+			return ""
 		}
+		sb.WriteString(string(b))
+	case commonutils.OutputModeColumns:
+		fallthrough
+	case commonutils.OutputModeCustomColumns:
+		for _, col := range p.OutputConfig.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
+			case "fd":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Fd))
+			case "err":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Err))
+			case "path":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Path))
+			}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
+			// Needed when field is larger than the predefined columnsWidth.
+			sb.WriteRune(' ')
+		}
 	}
 
 	return sb.String()
