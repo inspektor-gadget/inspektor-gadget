@@ -15,9 +15,7 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
@@ -84,24 +82,14 @@ func NewNetworkParser(outputConfig *commonutils.OutputConfig) TraceParser[types.
 }
 
 func (p *NetworkParser) TransformEvent(event *types.Event) string {
-	var sb strings.Builder
+	return p.Transform(event, func(event *types.Event) string {
+		var sb strings.Builder
 
-	if event.Pod == "" {
-		// ignore events on host netns for now
-		return ""
-	}
-
-	switch p.OutputConfig.OutputMode {
-	case commonutils.OutputModeJSON:
-		b, err := json.Marshal(event)
-		if err != nil {
-			fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
+		if event.Pod == "" {
+			// ignore events on host netns for now
 			return ""
 		}
-		sb.WriteString(string(b))
-	case commonutils.OutputModeColumns:
-		fallthrough
-	case commonutils.OutputModeCustomColumns:
+
 		remote := ""
 		switch event.RemoteKind {
 		case "pod":
@@ -135,7 +123,7 @@ func (p *NetworkParser) TransformEvent(event *types.Event) string {
 			// Needed when field is larger than the predefined columnsWidth.
 			sb.WriteRune(' ')
 		}
-	}
 
-	return sb.String()
+		return sb.String()
+	})
 }

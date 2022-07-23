@@ -15,9 +15,7 @@
 package trace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
@@ -90,19 +88,9 @@ func NewCapabilitiesParser(outputConfig *commonutils.OutputConfig) TraceParser[t
 }
 
 func (p *CapabilitiesParser) TransformEvent(event *types.Event) string {
-	var sb strings.Builder
+	return p.Transform(event, func(event *types.Event) string {
+		var sb strings.Builder
 
-	switch p.OutputConfig.OutputMode {
-	case commonutils.OutputModeJSON:
-		b, err := json.Marshal(event)
-		if err != nil {
-			fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
-			return ""
-		}
-		sb.WriteString(string(b))
-	case commonutils.OutputModeColumns:
-		fallthrough
-	case commonutils.OutputModeCustomColumns:
 		for _, col := range p.OutputConfig.CustomColumns {
 			switch col {
 			case "node":
@@ -130,7 +118,7 @@ func (p *CapabilitiesParser) TransformEvent(event *types.Event) string {
 			// Needed when field is larger than the predefined columnsWidth.
 			sb.WriteRune(' ')
 		}
-	}
 
-	return sb.String()
+		return sb.String()
+	})
 }
