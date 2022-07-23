@@ -38,8 +38,8 @@ const (
 // DockerClient implements the ContainerRuntimeClient interface but using the
 // Docker Engine API instead of the CRI plugin interface (Dockershim). It was
 // necessary because Dockershim does not always use the same approach of CRI-O
-// and Containerd. For instance, Dockershim does not provide the container pid1
-// with the ContainerStatus() call as Containerd and CRI-O do.
+// and containerd. For instance, Dockershim does not provide the container pid1
+// with the ContainerStatus() call as containerd and CRI-O do.
 type DockerClient struct {
 	client     *client.Client
 	socketPath string

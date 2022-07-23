@@ -42,7 +42,7 @@ type CommonFlags struct {
 	// DockerSocketPath is the Docker Engine API Unix socket path.
 	DockerSocketPath string
 
-	// ContainerdSocketPath is the Containerd CRI Unix socket path.
+	// ContainerdSocketPath is the containerd CRI Unix socket path.
 	ContainerdSocketPath string
 
 	// CrioSocketPath is the CRI-O CRI Unix socket path.
@@ -142,7 +142,7 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		&commonFlags.ContainerdSocketPath,
 		"containerd-socketpath", "",
 		containerd.DefaultSocketPath,
-		"Containerd CRI Unix socket path",
+		"containerd CRI Unix socket path",
 	)
 
 	command.PersistentFlags().StringVarP(
