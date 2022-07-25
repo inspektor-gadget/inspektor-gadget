@@ -147,6 +147,8 @@ func (p *MountParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%-*s", p.ColumnsWidth[col], getCall(event)))
 			case "flags":
 				sb.WriteString(fmt.Sprintf("%s", strings.Join(event.Flags, " | ")))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

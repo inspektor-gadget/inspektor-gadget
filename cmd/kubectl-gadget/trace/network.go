@@ -118,6 +118,8 @@ func (p *NetworkParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Port))
 			case "remote":
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], remote))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

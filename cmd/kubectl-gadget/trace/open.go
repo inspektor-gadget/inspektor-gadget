@@ -109,6 +109,8 @@ func (p *OpenParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Err))
 			case "path":
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Path))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

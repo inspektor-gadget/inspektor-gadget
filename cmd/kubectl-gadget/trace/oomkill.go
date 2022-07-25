@@ -109,6 +109,8 @@ func (p *OOMKillParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.TriggeredPid))
 			case "tcomm":
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.TriggeredComm))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

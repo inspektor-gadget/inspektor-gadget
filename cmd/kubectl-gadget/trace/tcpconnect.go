@@ -113,6 +113,8 @@ func (p *TcpconnectParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Daddr))
 			case "dport":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Dport))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

@@ -97,6 +97,8 @@ func (p *DNSParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.QType))
 			case "name":
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.DNSName))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

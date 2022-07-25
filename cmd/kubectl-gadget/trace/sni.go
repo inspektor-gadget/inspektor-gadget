@@ -89,6 +89,8 @@ func (p *SNIParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
 			case "name":
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Name))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

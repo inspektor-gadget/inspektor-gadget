@@ -111,6 +111,8 @@ func (p *ExecParser) TransformEvent(event *types.Event) string {
 				for _, arg := range event.Args {
 					sb.WriteString(fmt.Sprintf("%s ", arg))
 				}
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

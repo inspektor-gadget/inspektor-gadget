@@ -113,6 +113,8 @@ func (p *CapabilitiesParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.CapName))
 			case "audit":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Audit))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

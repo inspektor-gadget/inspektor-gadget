@@ -165,6 +165,8 @@ func (p *FsslowerParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*.2f", p.ColumnsWidth[col], float64(event.Latency)/1000.0))
 			case "file":
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.File))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

@@ -136,6 +136,8 @@ func (p *TCPParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Sport))
 			case "dport":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Dport))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

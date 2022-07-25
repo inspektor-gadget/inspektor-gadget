@@ -211,6 +211,8 @@ func (p *CPUParser) TransformReport(report *types.Report) string {
 				} else {
 					fmt.Fprint(&sb, getReverseStringSlice(report.KernelStack), getReverseStringSlice(report.UserStack))
 				}
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

@@ -156,6 +156,8 @@ func (p *BindParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Options))
 			case "if":
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Interface))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.

@@ -144,6 +144,8 @@ func (p *SignalParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.TargetPid))
 			case "ret":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Retval))
+			default:
+				continue
 			}
 
 			// Needed when field is larger than the predefined columnsWidth.
