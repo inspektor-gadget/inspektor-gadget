@@ -62,6 +62,7 @@ var (
 	hookMode                  string
 	livenessProbe             bool
 	livenessProbeInitialDelay int32
+	deployTimeout             time.Duration
 	fallbackPodInformer       bool
 	printOnly                 bool
 	wait                      bool
@@ -108,6 +109,11 @@ func init() {
 		"wait", "",
 		true,
 		"wait for gadget pod to be ready")
+	deployCmd.PersistentFlags().DurationVarP(
+		&deployTimeout,
+		"timeout", "",
+		120*time.Second,
+		"timeout for deployment")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -306,7 +312,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.TODO(), time.Duration(timeout)*time.Second)
+	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.TODO(), deployTimeout)
 	defer cancel()
 
 	_, err = watchtools.UntilWithSync(ctx, lw, &appsv1.DaemonSet{}, nil, func(event watch.Event) (bool, error) {
