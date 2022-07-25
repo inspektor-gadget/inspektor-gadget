@@ -37,8 +37,8 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
-	client   client.Client
+	helpers gadgets.GadgetHelpers
+	client  client.Client
 
 	started bool
 
@@ -130,7 +130,7 @@ func deleteTrace(name string, t interface{}) {
 		defer traceSingleton.mu.Unlock()
 		traceSingleton.users--
 		if traceSingleton.users == 0 {
-			trace.resolver.Unsubscribe(genPubSubKey(name))
+			trace.helpers.Unsubscribe(genPubSubKey(name))
 			traceSingleton.tracer.Close()
 			traceSingleton.tracer = nil
 		}
@@ -140,8 +140,8 @@ func deleteTrace(name string, t interface{}) {
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
-			client:   f.Client,
-			resolver: f.Resolver,
+			client:  f.Client,
+			helpers: f.Helpers,
 		}
 	}
 	return map[string]gadgets.TraceOperation{
@@ -366,7 +366,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 			log.Errorf("Failed to convert Seccomp Profile to yaml: %s", err)
 			return
 		}
-		t.resolver.PublishEvent(
+		t.helpers.PublishEvent(
 			gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name),
 			fmt.Sprintf("%s\n---\n", string(yamlOutput)),
 		)
@@ -400,7 +400,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		// generate a SeccompProfile when a container terminates. We
 		// don't need the list of existing containers, so the return
 		// value is ignored.
-		_ = t.resolver.Subscribe(
+		_ = t.helpers.Subscribe(
 			genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
 			*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 			func(event containercollection.PubSubEvent) {
@@ -441,7 +441,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	var mntns uint64
 	var containerName string
 	if trace.Spec.Filter.ContainerName != "" {
-		mntns = t.resolver.LookupMntnsByContainer(
+		mntns = t.helpers.LookupMntnsByContainer(
 			trace.Spec.Filter.Namespace,
 			trace.Spec.Filter.Podname,
 			trace.Spec.Filter.ContainerName,
@@ -459,7 +459,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 		}
 		containerName = trace.Spec.Filter.ContainerName
 	} else {
-		mntnsMap := t.resolver.LookupMntnsByPod(
+		mntnsMap := t.helpers.LookupMntnsByPod(
 			trace.Spec.Filter.Namespace,
 			trace.Spec.Filter.Podname,
 		)
@@ -515,7 +515,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	case "ExternalResource":
 		podName := fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
 
-		ownerReference := t.resolver.LookupOwnerReferenceByMntns(mntns)
+		ownerReference := t.helpers.LookupOwnerReferenceByMntns(mntns)
 
 		r, err := generateSeccompPolicy(t.client, trace, b, trace.Spec.Filter.Podname, containerName, podName, ownerReference)
 		if err != nil {
@@ -545,7 +545,7 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	defer traceSingleton.mu.Unlock()
 	traceSingleton.users--
 	if traceSingleton.users == 0 {
-		t.resolver.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
+		t.helpers.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
 		traceSingleton.tracer.Close()
 		traceSingleton.tracer = nil
 	}

@@ -25,8 +25,8 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
-	tracer   *auditseccomptracer.Tracer
+	helpers gadgets.GadgetHelpers
+	tracer  *auditseccomptracer.Tracer
 
 	started bool
 }
@@ -71,7 +71,7 @@ func deleteTrace(name string, t interface{}) {
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
-			resolver: f.Resolver,
+			helpers: f.Helpers,
 		}
 	}
 	return map[string]gadgets.TraceOperation{
@@ -98,7 +98,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 	eventCallback := func(event types.Event) {
-		t.resolver.PublishEvent(
+		t.helpers.PublishEvent(
 			traceName,
 			eventtypes.EventString(event),
 		)
@@ -106,7 +106,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	var err error
 
-	mountNsMap, err := t.resolver.TracerMountNsMap(traceName)
+	mountNsMap, err := t.helpers.TracerMountNsMap(traceName)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
 		return
@@ -114,7 +114,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	config := &auditseccomptracer.Config{
 		MountnsMap:    mountNsMap,
-		ContainersMap: t.resolver.ContainersMap(),
+		ContainersMap: t.helpers.ContainersMap(),
 	}
 	t.tracer, err = auditseccomptracer.NewTracer(config, eventCallback, trace.Spec.Node)
 	if err != nil {

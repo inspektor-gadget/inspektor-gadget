@@ -33,7 +33,7 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
+	helpers gadgets.GadgetHelpers
 
 	started bool
 	tracer  trace.Tracer
@@ -69,7 +69,7 @@ func deleteTrace(name string, t interface{}) {
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
-			resolver: f.Resolver,
+			helpers: f.Helpers,
 		}
 	}
 
@@ -103,7 +103,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			log.Warnf("Gadget %s: error marshalling event: %s", trace.Spec.Gadget, err)
 			return
 		}
-		t.resolver.PublishEvent(traceName, string(r))
+		t.helpers.PublishEvent(traceName, string(r))
 	}
 
 	params := trace.Spec.Parameters
@@ -147,7 +147,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	var err error
 
-	mountNsMap, err := t.resolver.TracerMountNsMap(traceName)
+	mountNsMap, err := t.helpers.TracerMountNsMap(traceName)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
 		return
@@ -158,7 +158,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		TargetPorts:  targetPorts,
 		IgnoreErrors: ignoreErrors,
 	}
-	t.tracer, err = tracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
+	t.tracer, err = tracer.NewTracer(config, t.helpers, eventCallback, trace.Spec.Node)
 	if err != nil {
 		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
 

@@ -31,7 +31,7 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
+	helpers gadgets.GadgetHelpers
 
 	started bool
 	tracer  *biotoptracer.Tracer
@@ -75,7 +75,7 @@ func deleteTrace(name string, t interface{}) {
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
-			resolver: f.Resolver,
+			helpers: f.Helpers,
 		}
 	}
 
@@ -136,7 +136,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		}
 	}
 
-	mountNsMap, err := t.resolver.TracerMountNsMap(traceName)
+	mountNsMap, err := t.helpers.TracerMountNsMap(traceName)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
 		return
@@ -160,7 +160,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			log.Warnf("Gadget %s: Failed to marshall event: %s", trace.Spec.Gadget, err)
 			return
 		}
-		t.resolver.PublishEvent(traceName, string(r))
+		t.helpers.PublishEvent(traceName, string(r))
 	}
 
 	errorCallback := func(err error) {
@@ -173,10 +173,10 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			log.Warnf("Gadget %s: Failed to marshall event: %s", trace.Spec.Gadget, err)
 			return
 		}
-		t.resolver.PublishEvent(traceName, string(r))
+		t.helpers.PublishEvent(traceName, string(r))
 	}
 
-	tracer, err := biotoptracer.NewTracer(config, t.resolver, statsCallback, errorCallback)
+	tracer, err := biotoptracer.NewTracer(config, t.helpers, statsCallback, errorCallback)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 		return

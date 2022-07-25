@@ -37,8 +37,8 @@ import (
 type pubSubKey string
 
 type Trace struct {
-	resolver gadgets.Resolver
-	client   client.Client
+	helpers gadgets.GadgetHelpers
+	client  client.Client
 
 	started bool
 	done    chan bool
@@ -87,7 +87,7 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
 			client:    f.Client,
-			resolver:  f.Resolver,
+			helpers:   f.Helpers,
 			netnsHost: f.netnsHost,
 		}
 	}
@@ -145,7 +145,7 @@ func (t *Trace) publishEvent(
 	event *types.Event,
 ) {
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
-	t.resolver.PublishEvent(
+	t.helpers.PublishEvent(
 		traceName,
 		eventtypes.EventString(event),
 	)
@@ -210,7 +210,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	t.pubSubKey = pubSubKey(fmt.Sprintf("gadget/network-graph/%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name))
-	existingContainers := t.resolver.Subscribe(
+	existingContainers := t.helpers.Subscribe(
 		t.pubSubKey,
 		*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 		containerEventCallback,
@@ -287,7 +287,7 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 }
 
 func (t *Trace) stop() {
-	t.resolver.Unsubscribe(t.pubSubKey)
+	t.helpers.Unsubscribe(t.pubSubKey)
 
 	// tell run() to stop using t.tracer
 	t.done <- true

@@ -27,7 +27,7 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
+	helpers gadgets.GadgetHelpers
 }
 
 type TraceFactory struct {
@@ -51,7 +51,7 @@ func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
-			resolver: f.Resolver,
+			helpers: f.Helpers,
 		}
 	}
 
@@ -74,7 +74,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 	}
 
 	selector := gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter)
-	filteredContainers := t.resolver.GetContainersBySelector(selector)
+	filteredContainers := t.helpers.GetContainersBySelector(selector)
 	if len(filteredContainers) == 0 {
 		trace.Status.OperationWarning = "No container matches the requested filter"
 		trace.Status.State = "Completed"
