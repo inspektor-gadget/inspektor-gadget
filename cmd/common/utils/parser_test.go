@@ -16,140 +16,214 @@ package utils
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
 type MyElement struct {
 	Pid  uint32 `json:"pid,omitempty"`
-	Comm string `json:"pcomm,omitempty"`
+	Comm string `json:"comm,omitempty"`
 }
 
-func TestBaseParserBuildColumnsHeader(t *testing.T) {
+var elem = &MyElement{
+	Pid:  1234,
+	Comm: "cat",
+}
+
+// TODO: Test default columns (OutputModeColumns)
+func TestBaseParser(t *testing.T) {
 	table := []struct {
-		description    string
-		columnsWidth   map[string]int
-		useTaps        bool
-		outputConfig   *OutputConfig
-		expectedResult string
+		description      string
+		columnsWidth     map[string]int
+		availableColumns []string
+		useTabs          bool
+		outputConfig     *OutputConfig
+		element          *MyElement
+		expectedHeader   string
+		expectedValues   string
 	}{
 		{
 			description: "JSON output mode",
 			outputConfig: &OutputConfig{
 				OutputMode: OutputModeJSON,
 			},
+			element:        elem,
+			expectedValues: "{\"pid\":1234,\"comm\":\"cat\"}",
 		},
 		{
-			description: "none valid column",
+			description: "none valid column using width",
 			outputConfig: &OutputConfig{
-				CustomColumns: []string{"abc"},
+				CustomColumns: []string{"invalid-col"},
 				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
-				"xyz": 0,
+				"pid":  0,
+				"comm": 0,
 			},
-			expectedResult: "",
+			element: elem,
+		},
+		{
+			description: "none valid column using tabs",
+			outputConfig: &OutputConfig{
+				CustomColumns: []string{"invalid-col"},
+				OutputMode:    OutputModeCustomColumns,
+			},
+			availableColumns: []string{
+				"pid",
+				"comm",
+			},
+			useTabs: true,
+			element: elem,
 		},
 		{
 			description: "ignore invalid column using width",
 			outputConfig: &OutputConfig{
-				CustomColumns: []string{"abc", "xyz"},
+				CustomColumns: []string{"pid", "invalid-col"},
 				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
-				"xyz": -10,
+				"pid":  -7,
+				"comm": -16,
 			},
-			useTaps:        false,
-			expectedResult: fmt.Sprintf("%-10s ", "XYZ"),
+			useTabs:        false,
+			expectedHeader: fmt.Sprintf("%-7s ", "PID"),
+			element:        elem,
+			expectedValues: fmt.Sprintf("%-7d ", elem.Pid),
 		},
 		{
-			description: "ignore invalid column using taps",
+			description: "ignore invalid column using tabs",
 			outputConfig: &OutputConfig{
-				CustomColumns: []string{"abc", "xyz"},
+				CustomColumns: []string{"pid", "invalid-col"},
 				OutputMode:    OutputModeCustomColumns,
 			},
-			columnsWidth: map[string]int{
-				"xyz": 0,
+			availableColumns: []string{
+				"pid",
+				"comm",
 			},
-			useTaps:        true,
-			expectedResult: fmt.Sprintf("%s\t", "XYZ"),
+			useTabs:        true,
+			expectedHeader: fmt.Sprintf("%s\t", "PID"),
+			element:        elem,
+			expectedValues: fmt.Sprintf("%d\t", elem.Pid),
 		},
 		{
 			description: "ignore multiple invalid columns using width",
 			outputConfig: &OutputConfig{
-				CustomColumns: []string{"abc", "dfe", "rst", "xyz"},
+				CustomColumns: []string{"pid", "invalid-col", "comm", "another-invalid-col"},
 				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
-				"xyz": -10,
-				"dfe": -5,
+				"pid":  -7,
+				"comm": -16,
 			},
-			useTaps:        false,
-			expectedResult: fmt.Sprintf("%-5s %-10s ", "DFE", "XYZ"),
+			useTabs:        false,
+			expectedHeader: fmt.Sprintf("%-7s %-16s ", "PID", "COMM"),
+			element:        elem,
+			expectedValues: fmt.Sprintf("%-7d %-16s ", elem.Pid, elem.Comm),
 		},
 		{
-			description: "ignore multiple invalid column using taps",
+			description: "ignore multiple invalid column using tabs",
 			outputConfig: &OutputConfig{
-				CustomColumns: []string{"abc", "dfe", "rst", "xyz"},
+				CustomColumns: []string{"pid", "invalid-col", "comm", "another-invalid-col"},
 				OutputMode:    OutputModeCustomColumns,
 			},
-			columnsWidth: map[string]int{
-				"xyz": 0,
-				"dfe": 0,
+			availableColumns: []string{
+				"pid",
+				"comm",
 			},
-			useTaps:        true,
-			expectedResult: fmt.Sprintf("%s\t%s\t", "DFE", "XYZ"),
-		},
-		{
-			description: "ignore columnWidth when using taps",
-			outputConfig: &OutputConfig{
-				CustomColumns: []string{"dfe", "xyz"},
-				OutputMode:    OutputModeCustomColumns,
-			},
-			columnsWidth: map[string]int{
-				"xyz": -5,
-				"dfe": -10,
-			},
-			useTaps:        true,
-			expectedResult: fmt.Sprintf("%s\t%s\t", "DFE", "XYZ"),
+			useTabs:        true,
+			expectedHeader: fmt.Sprintf("%s\t%s\t", "PID", "COMM"),
+			element:        elem,
+			expectedValues: fmt.Sprintf("%d\t%s\t", elem.Pid, elem.Comm),
 		},
 		{
 			description: "normal case using width",
 			outputConfig: &OutputConfig{
-				CustomColumns: []string{"abc", "dfe", "rst", "xyz"},
+				CustomColumns: []string{"pid", "comm"},
 				OutputMode:    OutputModeCustomColumns,
 			},
 			columnsWidth: map[string]int{
-				"abc": -7,
-				"dfe": -5,
-				"rst": -1,
-				"xyz": -10,
+				"pid":  -7,
+				"comm": -16,
 			},
-			useTaps:        false,
-			expectedResult: fmt.Sprintf("%-7s %-5s %-1s %-10s ", "ABC", "DFE", "RST", "XYZ"),
+			useTabs:        false,
+			expectedHeader: fmt.Sprintf("%-7s %-16s ", "PID", "COMM"),
+			element:        elem,
+			expectedValues: fmt.Sprintf("%-7d %-16s ", elem.Pid, elem.Comm),
 		},
 		{
-			description: "normal case using taps",
+			description: "normal case using tabs",
 			outputConfig: &OutputConfig{
-				CustomColumns: []string{"abc", "dfe", "rst", "xyz"},
+				CustomColumns: []string{"pid", "comm"},
 				OutputMode:    OutputModeCustomColumns,
 			},
-			columnsWidth: map[string]int{
-				"abc": 0,
-				"dfe": 0,
-				"rst": 0,
-				"xyz": 0,
+			availableColumns: []string{
+				"pid",
+				"comm",
 			},
-			useTaps:        true,
-			expectedResult: fmt.Sprintf("%s\t%s\t%s\t%s\t", "ABC", "DFE", "RST", "XYZ"),
+			useTabs:        true,
+			expectedHeader: fmt.Sprintf("%s\t%s\t", "PID", "COMM"),
+			element:        elem,
+			expectedValues: fmt.Sprintf("%d\t%s\t", elem.Pid, elem.Comm),
 		},
 	}
 
 	for i, entry := range table {
-		p := newBaseParser[MyElement](entry.columnsWidth, entry.useTaps, entry.outputConfig)
-		result := p.BuildColumnsHeader()
-		if result != entry.expectedResult {
-			t.Fatalf("Failed test %q (index %d): result %q expected %q",
-				entry.description, i, result, entry.expectedResult)
+		var p BaseParser[MyElement]
+		if entry.useTabs {
+			p = NewBaseTabParser[MyElement](entry.availableColumns, entry.outputConfig)
+		} else {
+			p = NewBaseWidthParser[MyElement](entry.columnsWidth, entry.outputConfig)
+		}
+
+		header := p.BuildColumnsHeader()
+		if header != entry.expectedHeader {
+			t.Fatalf("Failed BuildColumnsHeader test %q (index %d): result %q expected %q",
+				entry.description, i, header, entry.expectedHeader)
+		}
+
+		var toColumns func(e *MyElement) string
+		if entry.useTabs {
+			toColumns = func(e *MyElement) string {
+				var sb strings.Builder
+
+				for _, col := range p.OutputConfig.CustomColumns {
+					switch col {
+					case "pid":
+						sb.WriteString(fmt.Sprintf("%d", e.Pid))
+					case "comm":
+						sb.WriteString(fmt.Sprintf("%s", e.Comm))
+					default:
+						continue
+					}
+					sb.WriteRune('\t')
+				}
+
+				return sb.String()
+			}
+		} else {
+			toColumns = func(e *MyElement) string {
+				var sb strings.Builder
+
+				for _, col := range p.OutputConfig.CustomColumns {
+					switch col {
+					case "pid":
+						sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], e.Pid))
+					case "comm":
+						sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Comm))
+					default:
+						continue
+					}
+					sb.WriteRune(' ')
+				}
+
+				return sb.String()
+			}
+		}
+
+		values := p.Transform(entry.element, toColumns)
+		if values != entry.expectedValues {
+			t.Fatalf("Failed Transform test %q (index %d): result %q expected %q",
+				entry.description, i, values, entry.expectedValues)
 		}
 	}
 }
