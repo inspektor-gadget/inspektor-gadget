@@ -23,8 +23,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	nettracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/network-graph/types"
+	nettracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )

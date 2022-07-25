@@ -27,7 +27,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biotop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
 
 var blockIONodeStats map[string][]types.Stats

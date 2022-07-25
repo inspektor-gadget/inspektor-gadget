@@ -24,8 +24,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	biotoptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/biotop/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biotop/types"
+	biotoptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/block-io/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/block-io/types"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )

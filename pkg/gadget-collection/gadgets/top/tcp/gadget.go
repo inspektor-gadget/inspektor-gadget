@@ -24,8 +24,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	tcptoptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptop/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptop/types"
+	tcptoptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/tcp/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/tcp/types"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )

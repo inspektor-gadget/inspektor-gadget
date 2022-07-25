@@ -26,8 +26,8 @@ import (
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	dnstracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/dns/types"
+	dnstracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 

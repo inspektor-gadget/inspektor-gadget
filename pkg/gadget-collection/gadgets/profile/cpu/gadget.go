@@ -19,19 +19,21 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer"
-	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/tracer/standard"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/profile"
+
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/cpu/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/cpu/types"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/profile/cpu"
+
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
 type Trace struct {
 	resolver gadgets.Resolver
 
 	started bool
-	tracer  tracer.Tracer
+	tracer  profile.Tracer
 }
 
 type TraceFactory struct {
@@ -106,7 +108,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		KernelStackOnly: kernelStackOnly,
 	}
 
-	t.tracer, err = coretracer.NewTracer(t.resolver, config, trace.Spec.Node)
+	t.tracer, err = tracer.NewTracer(t.resolver, config, trace.Spec.Node)
 	if err != nil {
 		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
 

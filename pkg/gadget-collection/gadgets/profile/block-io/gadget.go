@@ -19,18 +19,20 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/tracer"
-	coretracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/tracer/core"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/biolatency/tracer/standard"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/profile"
+
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/block-io/tracer"
+	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/profile/block-io"
+
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
 type Trace struct {
 	resolver gadgets.Resolver
 
 	started bool
-	tracer  tracer.Tracer
+	tracer  profile.Tracer
 }
 
 type TraceFactory struct {
@@ -95,7 +97,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	var err error
-	t.tracer, err = coretracer.NewTracer(trace.Spec.Node)
+	t.tracer, err = tracer.NewTracer(trace.Spec.Node)
 	if err != nil {
 		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
 

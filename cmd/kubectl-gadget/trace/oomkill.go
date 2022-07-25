@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/oomkill/types"
-
-	"github.com/spf13/cobra"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
 )
 
 type OOMKillParser struct {

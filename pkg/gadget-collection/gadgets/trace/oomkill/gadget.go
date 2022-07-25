@@ -20,8 +20,8 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/oomkill/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/oomkill/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/oomkill/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
 
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )

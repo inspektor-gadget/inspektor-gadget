@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/process-collector/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	"github.com/spf13/cobra"
 )
 

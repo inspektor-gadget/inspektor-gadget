@@ -33,7 +33,7 @@ import (
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	seccomptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/seccomp/tracer"
+	seccomptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/advise/seccomp/tracer"
 )
 
 type Trace struct {

@@ -28,7 +28,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/tcptop/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/tcp/types"
 )
 
 var tcpNodeStats map[string][]types.Stats
