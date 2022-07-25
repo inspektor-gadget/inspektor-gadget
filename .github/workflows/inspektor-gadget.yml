@@ -685,6 +685,21 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
     - uses: actions/checkout@v3
+    - id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      with:
+        registry: ${{ env.REGISTRY }}
+        container-image: ${{ env.CONTAINER_REPO }}
+        co-re: false
+    - name: Build release YAML
+      run: |
+        export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        export IMAGE="${{ env.REGISTRY }}/${{ env.RELEASE_CONTAINER_REPO }}:${IMAGE_TAG}"
+
+        # Use echo of cat to avoid printing a new line between files.
+        echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml) > inspektor-gadget.yaml
+
+        perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${GITHUB_REF_NAME}.yaml
     - name: Create Release
       id: create_release
       uses: softprops/action-gh-release@v1
@@ -703,6 +718,12 @@ jobs:
       uses: csexton/release-asset-action@v2
       with:
         pattern: "*-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
+    - name: Upload YAML
+      uses: csexton/release-asset-action@v2
+      with:
+        file: inspektor-gadget-${GITHUB_REF_NAME}.yaml
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Update new version in krew-index
