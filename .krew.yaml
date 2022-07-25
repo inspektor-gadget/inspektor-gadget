@@ -21,7 +21,7 @@ spec:
   caveats: |
     Inspektor Gadget needs to be deployed to each node:
 
-    $ kubectl gadget deploy | kubectl apply -f -
+    $ kubectl gadget deploy
 
     Read the documentation available at https://github.com/kinvolk/inspektor-gadget
     to get more information about the server side installation process.

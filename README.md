@@ -51,7 +51,7 @@ $ kubectl krew install gadget
 Install Inspektor Gadget on Kubernetes:
 
 ```bash
-$ kubectl gadget deploy | kubectl apply -f -
+$ kubectl gadget deploy
 ```
 
 Read the detailed [install instructions](docs/install.md) to find more information.
