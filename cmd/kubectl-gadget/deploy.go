@@ -65,6 +65,7 @@ var (
 	deployTimeout             time.Duration
 	fallbackPodInformer       bool
 	printOnly                 bool
+	quiet                     bool
 	wait                      bool
 )
 
@@ -114,7 +115,19 @@ func init() {
 		"timeout", "",
 		120*time.Second,
 		"timeout for deployment")
+	deployCmd.PersistentFlags().BoolVarP(
+		&quiet,
+		"quiet", "q",
+		false,
+		"supress information messages")
 	rootCmd.AddCommand(deployCmd)
+}
+
+func info(format string, args ...any) {
+	if quiet {
+		return
+	}
+	fmt.Printf(format, args...)
 }
 
 // parseK8sYaml parses a k8s YAML deployment file content and returns the
@@ -192,6 +205,7 @@ func createResource(client dynamic.Interface, mapper meta.RESTMapper, object run
 		dynamicInterface = client.Resource(mapping.Resource)
 	}
 
+	info("Creating %s/%s...\n", unstruct.GetKind(), unstruct.GetName())
 	_, err = dynamicInterface.Create(context.TODO(), unstruct, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create %q: %w", groupVersionKind.Kind, err)
@@ -289,7 +303,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Println("Waiting for gadget pod(s) to be ready...")
+	info("Waiting for gadget pod(s) to be ready...\n")
 	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
 		return utils.WrapInErrSetupK8sClient(err)
@@ -323,7 +337,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			daemonSet, _ := event.Object.(*appsv1.DaemonSet)
 			status := daemonSet.Status
 
-			fmt.Printf("%d/%d gadget pod(s) ready\n", status.NumberReady, status.DesiredNumberScheduled)
+			info("%d/%d gadget pod(s) ready\n", status.NumberReady, status.DesiredNumberScheduled)
 
 			return status.DesiredNumberScheduled == status.NumberReady, nil
 		case watch.Error:
