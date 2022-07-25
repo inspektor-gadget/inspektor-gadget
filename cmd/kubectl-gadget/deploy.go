@@ -22,13 +22,14 @@ import (
 	"strings"
 	"time"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/kinvolk/inspektor-gadget/pkg/resources"
 	"github.com/spf13/cobra"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -306,7 +307,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	info("Waiting for gadget pod(s) to be ready...\n")
 	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 	if err != nil {
-		return utils.WrapInErrSetupK8sClient(err)
+		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
 	// The below code (particularly how to use UntilWithSync) is highly
