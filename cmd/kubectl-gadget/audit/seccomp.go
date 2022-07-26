@@ -28,121 +28,121 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var auditSeccompCmd = &cobra.Command{
-	Use:   "seccomp",
-	Short: "Audit syscalls according to the seccomp profile",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// print header
-		switch params.OutputMode {
-		case commonutils.OutputModeCustomColumns:
-			fmt.Println(getCustomAuditSeccompColsHeader(params.CustomColumns))
-		case commonutils.OutputModeColumns:
-			fmt.Printf("%-16s %-16s %-16s %-16s %-6s %-6s %-16s %-16s\n",
-				"NODE", "NAMESPACE", "POD", "CONTAINER",
-				"PCOMM", "PID", "SYSCALL", "CODE")
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "audit-seccomp",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-		}
-
-		err := utils.RunTraceAndPrintStream(config, auditSeccompTransformLine)
-		if err != nil {
-			return commonutils.WrapInErrRunGadget(err)
-		}
-
-		return nil
-	},
+type SeccompParser struct {
+	commonutils.BaseParser[types.Event]
 }
 
-func init() {
-	AuditCmd.AddCommand(auditSeccompCmd)
-	utils.AddCommonFlags(auditSeccompCmd, &params)
+func newSeccompCmd() *cobra.Command {
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: commonutils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"syscall",
+				"code",
+			},
+		},
+	}
+
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"comm":      -16,
+		"syscall":   -16,
+		"code":      -16,
+	}
+
+	cmd := &cobra.Command{
+		Use:          "seccomp",
+		Short:        "Audit syscalls according to the seccomp profile",
+		Args:         cobra.NoArgs,
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			parser := &SeccompParser{
+				BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, &commonFlags.OutputConfig),
+			}
+
+			if commonFlags.OutputMode != commonutils.OutputModeJSON {
+				fmt.Println(parser.BuildColumnsHeader())
+			}
+
+			config := &utils.TraceConfig{
+				GadgetName:       "audit-seccomp",
+				Operation:        "start",
+				TraceOutputMode:  "Stream",
+				TraceOutputState: "Started",
+				CommonFlags:      commonFlags,
+			}
+
+			transformEvent := func(line string) string {
+				var e types.Event
+
+				if err := json.Unmarshal([]byte(line), &e); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
+					return ""
+				}
+
+				if e.Type != eventtypes.NORMAL {
+					commonutils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
+					return ""
+				}
+
+				return parser.TransformEvent(&e)
+			}
+
+			err := utils.RunTraceAndPrintStream(config, transformEvent)
+			if err != nil {
+				return commonutils.WrapInErrRunGadget(err)
+			}
+
+			return nil
+		},
+	}
+
+	utils.AddCommonFlags(cmd, commonFlags)
+
+	return cmd
 }
 
-// auditSeccompTransformLine is called to transform an event to columns
-// format according to the parameters
-func auditSeccompTransformLine(line string) string {
-	var sb strings.Builder
-	var e types.Event
+func (p *SeccompParser) TransformEvent(e *types.Event) string {
+	return p.Transform(e, func(e *types.Event) string {
+		var sb strings.Builder
 
-	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
-		return ""
-	}
-
-	if e.Type != eventtypes.NORMAL {
-		commonutils.ManageSpecialEvent(e.Event, params.Verbose)
-		return ""
-	}
-
-	switch params.OutputMode {
-	case commonutils.OutputModeJSON:
-		b, err := json.Marshal(e)
-		if err != nil {
-			fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
-			return ""
-		}
-		sb.WriteString(string(b))
-	case commonutils.OutputModeColumns:
-		sb.WriteString(fmt.Sprintf("%-16s %-16s %-16s %-16s %-16s %-6d %-16s %-16s",
-			e.Node, e.Namespace, e.Pod, e.Container,
-			e.Comm, e.Pid, e.Syscall, e.Code))
-	case commonutils.OutputModeCustomColumns:
-		for _, col := range params.CustomColumns {
+		for _, col := range p.OutputConfig.CustomColumns {
 			switch col {
 			case "node":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Node))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Node))
 			case "namespace":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Namespace))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Namespace))
 			case "pod":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Pod))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Pod))
 			case "container":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Container))
-			case "pcomm":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Comm))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Container))
 			case "pid":
-				sb.WriteString(fmt.Sprintf("%-6d", e.Pid))
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], e.Pid))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Comm))
 			case "syscall":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Syscall))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Syscall))
 			case "code":
-				sb.WriteString(fmt.Sprintf("%-16s", e.Code))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Code))
+			default:
+				continue
 			}
+
+			// Needed when field is larger than the predefined columnsWidth.
 			sb.WriteRune(' ')
 		}
-	}
 
-	return sb.String()
-}
-
-func getCustomAuditSeccompColsHeader(cols []string) string {
-	var sb strings.Builder
-
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
-		case "pcomm":
-			sb.WriteString(fmt.Sprintf("%-16s", "PCOMM"))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-6s", "PID"))
-		case "syscall":
-			sb.WriteString(fmt.Sprintf("%-16s", "SYSCALL"))
-		case "code":
-			sb.WriteString(fmt.Sprintf("%-16s", "CODE"))
-		}
-		sb.WriteRune(' ')
-	}
-
-	return sb.String()
+		return sb.String()
+	})
 }
