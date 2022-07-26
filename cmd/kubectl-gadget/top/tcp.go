@@ -62,7 +62,7 @@ func newTCPCmd() *cobra.Command {
 				"container",
 				"pid",
 				"comm",
-				"family",
+				"ip",
 				"saddr",
 				"daddr",
 				"sent",
@@ -78,7 +78,7 @@ func newTCPCmd() *cobra.Command {
 		"container": -16,
 		"pid":       -7,
 		"comm":      -16,
-		"family":    -3,
+		"ip":        -3,
 		"saddr":     -51,
 		"daddr":     -51,
 		"sent":      -7,
@@ -269,7 +269,7 @@ func (p *TCPParser) FormatEventCustomCols(stats *types.Stats) string {
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Pid))
 			case "comm":
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Comm))
-			case "family":
+			case "ip":
 				tcpFamily := 4
 				if stats.Family == syscall.AF_INET6 {
 					tcpFamily = 6
