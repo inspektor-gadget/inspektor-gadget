@@ -1,6 +1,7 @@
-name: "Output the container repository to be used"
-description: "Output is set as inputs.registry/inputs.container-image-release, if current branch is main or tag.
-  Otherwise, it will be set to inputs.registry/inputs.container-image-dev"
+name: "Output the container repository and image tag to be used"
+description: "Container repository is inputs.registry/inputs.container-image-release, if current branch is main or tag.
+  Otherwise, it will be inputs.registry/inputs.container-image-dev.
+  Image tag is latest if branch is main, otherwise it is the tag or branch name with slashes replaced by hyphens."
 
 inputs:
   registry:
@@ -17,6 +18,9 @@ outputs:
   container-repo:
     description: "Container repository to be used."
     value: ${{ steps.choose-repo.outputs.container-repo }}
+  image-tag:
+    description: "Image tag to be used."
+    value: ${{ steps.craft-image-tag.outputs.image-tag }}
 
 runs:
   using: "composite"
@@ -45,3 +49,15 @@ runs:
 
         container_repo=${{ inputs.registry }}/${container_image}
         echo "::set-output name=container-repo::${container_repo}"
+    - name: Output image tag
+      id: craft-image-tag
+      shell: bash
+      run: |
+        # If GITHUB_REF_NAME is 'foo/bar', image_tag will be 'foo-bar', we need
+        # this because it is not possible to have slash in image tag.
+        image_tag=${GITHUB_REF_NAME/\//-}
+        if [ "$image_tag" = "main" ]; then
+            image_tag="latest"
+        fi
+
+        echo "::set-output name=image-tag::${image_tag}"
