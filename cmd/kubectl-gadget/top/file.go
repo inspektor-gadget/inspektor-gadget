@@ -196,24 +196,17 @@ func (p *FileParser) StartPrintLoop() {
 }
 
 func (p *FileParser) PrintHeader() {
-	switch p.OutputConfig.OutputMode {
-	case commonutils.OutputModeColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-6s %-6s %-7s %-7s %1s %s\n",
-			"NODE", "NAMESPACE", "POD", "CONTAINER",
-			"PID", "COMM", "READS", "WRITES", "R_Kb", "W_Kb", "T", "FILE")
-	case commonutils.OutputModeCustomColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Println(p.GetCustomColsHeader(p.OutputConfig.CustomColumns))
+	if p.OutputConfig.OutputMode == commonutils.OutputModeJSON {
+		return
 	}
+
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		utils.ClearScreen()
+	} else {
+		fmt.Println("")
+	}
+
+	fmt.Println(p.BuildColumnsHeader())
 }
 
 func (p *FileParser) PrintEvents() {
@@ -256,44 +249,6 @@ func (p *FileParser) PrintEvents() {
 			fmt.Println(p.FormatEventCustomCols(&stat, p.OutputConfig.CustomColumns))
 		}
 	}
-}
-
-func (p *FileParser) GetCustomColsHeader(cols []string) string {
-	var sb strings.Builder
-
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-7s", "PID"))
-		case "tid":
-			sb.WriteString(fmt.Sprintf("%-7s", "TID"))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
-		case "reads":
-			sb.WriteString(fmt.Sprintf("%-6s", "READS"))
-		case "writes":
-			sb.WriteString(fmt.Sprintf("%-6s", "WRITES"))
-		case "r_kb":
-			sb.WriteString(fmt.Sprintf("%-7s", "R_kb"))
-		case "w_kb":
-			sb.WriteString(fmt.Sprintf("%-7s", "W_kb"))
-		case "t":
-			sb.WriteString(fmt.Sprintf("%s", "T"))
-		case "file":
-			sb.WriteString(fmt.Sprintf("%s", "FILE"))
-		}
-		sb.WriteRune(' ')
-	}
-
-	return sb.String()
 }
 
 func (p *FileParser) FormatEventCustomCols(stats *types.Stats, cols []string) string {

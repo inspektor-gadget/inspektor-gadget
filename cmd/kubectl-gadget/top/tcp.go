@@ -216,24 +216,17 @@ func (p *TCPParser) StartPrintLoop() {
 }
 
 func (p *TCPParser) PrintHeader() {
-	switch p.OutputConfig.OutputMode {
-	case commonutils.OutputModeColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-3s %-51s %-51s %-7s %s\n",
-			"NODE", "NAMESPACE", "POD", "CONTAINER",
-			"PID", "COMM", "IPv", "LADDR", "RADDR", "RX_KB", "TX_KB")
-	case commonutils.OutputModeCustomColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Println(p.GetCustomColsHeader(p.OutputConfig.CustomColumns))
+	if p.OutputConfig.OutputMode == commonutils.OutputModeJSON {
+		return
 	}
+
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		utils.ClearScreen()
+	} else {
+		fmt.Println("")
+	}
+
+	fmt.Println(p.BuildColumnsHeader())
 }
 
 func (p *TCPParser) PrintEvents() {
@@ -286,39 +279,6 @@ func (p *TCPParser) PrintEvents() {
 	}
 }
 
-func (p *TCPParser) GetCustomColsHeader(cols []string) string {
-	var sb strings.Builder
-
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-7s", "PID"))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
-		case "family":
-			sb.WriteString(fmt.Sprintf("%-3s", "IPv"))
-		case "saddr":
-			sb.WriteString(fmt.Sprintf("%-51s", "LADDR"))
-		case "daddr":
-			sb.WriteString(fmt.Sprintf("%-51s", "DADDR"))
-		case "sent":
-			sb.WriteString(fmt.Sprintf("%-7s", "TX_KB"))
-		case "received":
-			sb.WriteString(fmt.Sprintf("%-7s", "RX_KB"))
-		}
-		sb.WriteRune(' ')
-	}
-
-	return sb.String()
-}
 
 func (p *TCPParser) FormatEventCustomCols(stats *types.Stats, cols []string) string {
 	var sb strings.Builder

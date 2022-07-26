@@ -191,25 +191,17 @@ func (p *BlockIOParser) StartPrintLoop() {
 }
 
 func (p *BlockIOParser) PrintHeader() {
-	switch p.OutputConfig.OutputMode {
-	case commonutils.OutputModeColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-
-		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-3s %-6s %-6s %-7s %-8s %s\n",
-			"NODE", "NAMESPACE", "POD", "CONTAINER",
-			"PID", "COMM", "R/W", "MAJOR", "MINOR", "BYTES", "TIME(µs)", "IOs")
-	case commonutils.OutputModeCustomColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Println(p.GetCustomColsHeader(p.OutputConfig.CustomColumns))
+	if p.OutputConfig.OutputMode == commonutils.OutputModeJSON {
+		return
 	}
+
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		utils.ClearScreen()
+	} else {
+		fmt.Println("")
+	}
+
+	fmt.Println(p.BuildColumnsHeader())
 }
 
 func (p *BlockIOParser) PrintEvents() {
@@ -260,41 +252,6 @@ func (p *BlockIOParser) PrintEvents() {
 	}
 }
 
-func (p *BlockIOParser) GetCustomColsHeader(cols []string) string {
-	var sb strings.Builder
-
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-7s", "PID"))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
-		case "r/w":
-			sb.WriteString(fmt.Sprintf("%-3s", "R/W"))
-		case "major":
-			sb.WriteString(fmt.Sprintf("%-6s", "MAJOR"))
-		case "minor":
-			sb.WriteString(fmt.Sprintf("%-6s", "MINOR"))
-		case "bytes":
-			sb.WriteString(fmt.Sprintf("%-7s", "BYTES"))
-		case "time":
-			sb.WriteString(fmt.Sprintf("%-8s", "TIME(µs)"))
-		case "ios":
-			sb.WriteString(fmt.Sprintf("%-8s", "IOs"))
-		}
-		sb.WriteRune(' ')
-	}
-
-	return sb.String()
-}
 
 func (p *BlockIOParser) FormatEventCustomCols(stats *types.Stats, cols []string) string {
 	var sb strings.Builder
