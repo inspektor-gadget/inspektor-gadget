@@ -276,7 +276,7 @@ func TestAuditSeccomp(t *testing.T) {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
 	results := <-ch
-	if !strings.Contains(results, `"container":"test-local-gadget-auditseccomp001","syscall":"unshare","code":"log"`) {
+	if !strings.Contains(results, `"container":"test-local-gadget-auditseccomp001","type":"normal","syscall":"unshare","code":"log"`) {
 		t.Fatalf("Failed to get correct Seccomp Audit: %s", results)
 	}
 
@@ -340,11 +340,13 @@ func TestDNS(t *testing.T) {
 
 	expectedEvent = dnstypes.Event{
 		Event: eventtypes.Event{
-			Type:      eventtypes.DEBUG,
-			Message:   "tracer attached",
-			Node:      "local",
-			Namespace: "default",
-			Pod:       "test-local-gadget-dns001",
+			Type: eventtypes.DEBUG,
+			CommonData: eventtypes.CommonData{
+				Node:      "local",
+				Namespace: "default",
+				Pod:       "test-local-gadget-dns001",
+			},
+			Message: "tracer attached",
 		},
 	}
 
@@ -361,10 +363,12 @@ func TestDNS(t *testing.T) {
 
 	expectedEvent = dnstypes.Event{
 		Event: eventtypes.Event{
-			Type:      eventtypes.NORMAL,
-			Node:      "local",
-			Namespace: "default",
-			Pod:       "test-local-gadget-dns001",
+			Type: eventtypes.NORMAL,
+			CommonData: eventtypes.CommonData{
+				Node:      "local",
+				Namespace: "default",
+				Pod:       "test-local-gadget-dns001",
+			},
 		},
 		DNSName: "microsoft.com.",
 		PktType: "OUTGOING",
@@ -384,11 +388,13 @@ func TestDNS(t *testing.T) {
 
 	expectedEvent = dnstypes.Event{
 		Event: eventtypes.Event{
-			Type:      eventtypes.DEBUG,
-			Message:   "tracer detached",
-			Node:      "local",
-			Namespace: "default",
-			Pod:       "test-local-gadget-dns001",
+			Type: eventtypes.DEBUG,
+			CommonData: eventtypes.CommonData{
+				Node:      "local",
+				Namespace: "default",
+				Pod:       "test-local-gadget-dns001",
+			},
+			Message: "tracer detached",
 		},
 	}
 
@@ -456,11 +462,13 @@ func TestNetworkGraph(t *testing.T) {
 
 	expectedEvent = networktypes.Event{
 		Event: eventtypes.Event{
-			Type:      eventtypes.DEBUG,
-			Message:   "tracer attached",
-			Node:      "local",
-			Namespace: "default",
-			Pod:       "test-local-gadget-network-graph001",
+			Type: eventtypes.DEBUG,
+			CommonData: eventtypes.CommonData{
+				Node:      "local",
+				Namespace: "default",
+				Pod:       "test-local-gadget-network-graph001",
+			},
+			Message: "tracer attached",
 		},
 	}
 
@@ -477,10 +485,12 @@ func TestNetworkGraph(t *testing.T) {
 
 	expectedEvent = networktypes.Event{
 		Event: eventtypes.Event{
-			Type:      eventtypes.NORMAL,
-			Node:      "local",
-			Namespace: "default",
-			Pod:       "test-local-gadget-network-graph001",
+			Type: eventtypes.NORMAL,
+			CommonData: eventtypes.CommonData{
+				Node:      "local",
+				Namespace: "default",
+				Pod:       "test-local-gadget-network-graph001",
+			},
 		},
 		PktType: "OUTGOING",
 		Proto:   "tcp",
@@ -501,11 +511,13 @@ func TestNetworkGraph(t *testing.T) {
 
 	expectedEvent = networktypes.Event{
 		Event: eventtypes.Event{
-			Type:      eventtypes.DEBUG,
-			Message:   "tracer detached",
-			Node:      "local",
-			Namespace: "default",
-			Pod:       "test-local-gadget-network-graph001",
+			Type: eventtypes.DEBUG,
+			CommonData: eventtypes.CommonData{
+				Node:      "local",
+				Namespace: "default",
+				Pod:       "test-local-gadget-network-graph001",
+			},
+			Message: "tracer detached",
 		},
 	}
 

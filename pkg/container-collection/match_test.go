@@ -132,7 +132,7 @@ func TestSelector(t *testing.T) {
 	}
 }
 
-func TestResolver(t *testing.T) {
+func TestContainerResolver(t *testing.T) {
 	opts := []ContainerCollectionOption{}
 
 	cc := &ContainerCollection{}

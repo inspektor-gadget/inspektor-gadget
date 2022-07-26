@@ -14,16 +14,17 @@
 
 package types
 
+import (
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+)
+
 const (
 	ProfileUserParam   = "user"
 	ProfileKernelParam = "kernel"
 )
 
 type Report struct {
-	Node      string `json:"node,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
-	Pod       string `json:"pod,omitempty"`
-	Container string `json:"container,omitempty"`
+	eventtypes.CommonData
 
 	Comm        string   `json:"comm,omitempty"`
 	Pid         uint32   `json:"pid,omitempty"`

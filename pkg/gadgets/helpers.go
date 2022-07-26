@@ -16,6 +16,7 @@ package gadgets
 
 import (
 	"github.com/cilium/ebpf/link"
+	"github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -33,4 +34,10 @@ func CloseLink(l link.Link) link.Link {
 		l.Close()
 	}
 	return nil
+}
+
+// DataEnricher is used to enrich events with Kubernetes information,
+// like node, namespace, pod name and container name.
+type DataEnricher interface {
+	Enrich(event *types.CommonData, mountnsid uint64)
 }

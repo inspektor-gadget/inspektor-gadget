@@ -17,6 +17,8 @@ package types
 import (
 	"fmt"
 	"sort"
+
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type SortBy int
@@ -81,10 +83,7 @@ type Event struct {
 
 // Stats represents the operations performed on a single file
 type Stats struct {
-	Node      string `json:"node,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
-	Pod       string `json:"pod,omitempty"`
-	Container string `json:"container,omitempty"`
+	eventtypes.CommonData
 
 	Reads      uint64 `json:"reads,omitempty"`
 	Writes     uint64 `json:"writes,omitempty"`

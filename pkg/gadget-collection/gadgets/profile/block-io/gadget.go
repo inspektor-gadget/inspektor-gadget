@@ -29,7 +29,7 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
+	helpers gadgets.GadgetHelpers
 
 	started bool
 	tracer  profile.Tracer

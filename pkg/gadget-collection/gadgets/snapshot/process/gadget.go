@@ -24,7 +24,7 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
+	helpers gadgets.GadgetHelpers
 }
 
 type TraceFactory struct {
@@ -48,7 +48,7 @@ func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
-			resolver: f.Resolver,
+			helpers: f.Helpers,
 		}
 	}
 
@@ -66,12 +66,12 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 
 func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
-	mountNsMap, err := t.resolver.TracerMountNsMap(traceName)
+	mountNsMap, err := t.helpers.TracerMountNsMap(traceName)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
 		return
 	}
-	events, err := tracer.RunCollector(t.resolver, trace.Spec.Node, mountNsMap)
+	events, err := tracer.RunCollector(t.helpers, trace.Spec.Node, mountNsMap)
 	if err != nil {
 		trace.Status.OperationError = err.Error()
 		return

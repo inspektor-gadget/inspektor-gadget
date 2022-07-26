@@ -143,20 +143,21 @@ func (t *Tracer) run() {
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
-				Node: t.node,
-
-				// Get 'Namespace', 'Pod' and 'Container' from
-				// BPF and not from the resolver because the
-				// container might be terminated immediately
-				// after the BPF kprobe on audit_seccomp() is
-				// executed (e.g. with SCMP_ACT_KILL), so by
-				// the time the event is read from the perf
-				// ring buffer, we might not be able to get the
-				// Kubernetes metadata from the mount namespace
-				// id.
-				Namespace: C.GoString(&eventC.container.namespace[0]),
-				Pod:       C.GoString(&eventC.container.pod[0]),
-				Container: C.GoString(&eventC.container.container[0]),
+				CommonData: eventtypes.CommonData{
+					Node: t.node,
+					// Get 'Namespace', 'Pod' and 'Container' from
+					// BPF and not from the gadget helpers  because the
+					// container might be terminated immediately
+					// after the BPF kprobe on audit_seccomp() is
+					// executed (e.g. with SCMP_ACT_KILL), so by
+					// the time the event is read from the perf
+					// ring buffer, we might not be able to get the
+					// Kubernetes metadata from the mount namespace
+					// id.
+					Namespace: C.GoString(&eventC.container.namespace[0]),
+					Pod:       C.GoString(&eventC.container.pod[0]),
+					Container: C.GoString(&eventC.container.container[0]),
+				},
 			},
 			Pid:       uint32(eventC.pid),
 			MountNsID: uint64(eventC.mntns_id),

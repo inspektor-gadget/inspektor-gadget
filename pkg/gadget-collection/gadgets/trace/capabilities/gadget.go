@@ -31,7 +31,7 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
+	helpers gadgets.GadgetHelpers
 
 	started bool
 	tracer  trace.Tracer
@@ -67,7 +67,7 @@ func deleteTrace(name string, t interface{}) {
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
-			resolver: f.Resolver,
+			helpers: f.Helpers,
 		}
 	}
 
@@ -101,12 +101,12 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			log.Warnf("Gadget %s: error marshalling event: %s", trace.Spec.Gadget, err)
 			return
 		}
-		t.resolver.PublishEvent(traceName, string(r))
+		t.helpers.PublishEvent(traceName, string(r))
 	}
 
 	var err error
 
-	mountNsMap, err := t.resolver.TracerMountNsMap(traceName)
+	mountNsMap, err := t.helpers.TracerMountNsMap(traceName)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
 		return
@@ -115,7 +115,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		MountnsMap: mountNsMap,
 	}
 
-	t.tracer, err = tracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
+	t.tracer, err = tracer.NewTracer(config, t.helpers, eventCallback, trace.Spec.Node)
 	if err != nil {
 		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
 
@@ -123,7 +123,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		log.Infof("Gadget %s: falling back to standard tracer. CO-RE tracer failed: %s",
 			trace.Spec.Gadget, err)
 
-		t.tracer, err = standardtracer.NewTracer(config, t.resolver, eventCallback, trace.Spec.Node)
+		t.tracer, err = standardtracer.NewTracer(config, eventCallback, trace.Spec.Node)
 		if err != nil {
 			trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 			return

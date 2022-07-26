@@ -23,7 +23,6 @@ import (
 	"time"
 	"unsafe"
 
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/types"
 
@@ -52,18 +51,18 @@ type Tracer struct {
 	objs          filetopObjects
 	readLink      link.Link
 	writeLink     link.Link
-	resolver      containercollection.ContainerResolver
+	enricher      gadgets.DataEnricher
 	statsCallback func([]types.Stats)
 	errorCallback func(error)
 	done          chan bool
 }
 
-func NewTracer(config *Config, resolver containercollection.ContainerResolver,
+func NewTracer(config *Config, enricher gadgets.DataEnricher,
 	statsCallback func([]types.Stats), errorCallback func(error),
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
-		resolver:      resolver,
+		enricher:      enricher,
 		statsCallback: statsCallback,
 		errorCallback: errorCallback,
 		done:          make(chan bool),
@@ -189,12 +188,8 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 			MountNsID:  uint64(fileStat.mntns_id),
 		}
 
-		container := t.resolver.LookupContainerByMntns(stat.MountNsID)
-		if container != nil {
-			stat.Container = container.Name
-			stat.Pod = container.Podname
-			stat.Namespace = container.Namespace
-			stat.Node = t.config.Node
+		if t.enricher != nil {
+			t.enricher.Enrich(&stat.CommonData, stat.MountNsID)
 		}
 
 		stats = append(stats, stat)

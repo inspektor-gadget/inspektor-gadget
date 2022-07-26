@@ -32,8 +32,8 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
-	client   client.Client
+	helpers gadgets.GadgetHelpers
+	client  client.Client
 
 	started bool
 
@@ -69,7 +69,7 @@ func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
 	if trace.started {
-		trace.resolver.Unsubscribe(genPubSubKey(name))
+		trace.helpers.Unsubscribe(genPubSubKey(name))
 		trace.tracer.Close()
 		trace.tracer = nil
 	}
@@ -79,7 +79,7 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
 			client:    f.Client,
-			resolver:  f.Resolver,
+			helpers:   f.Helpers,
 			netnsHost: f.netnsHost,
 		}
 	}
@@ -114,8 +114,10 @@ func (t *Trace) publishMessage(
 ) {
 	event := &types.Event{
 		Event: eventtypes.Event{
-			Type:    eventType,
-			Node:    trace.Spec.Node,
+			Type: eventType,
+			CommonData: eventtypes.CommonData{
+				Node: trace.Spec.Node,
+			},
 			Message: msg,
 		},
 	}
@@ -138,7 +140,7 @@ func (t *Trace) publishEvent(
 	}
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
-	t.resolver.PublishEvent(
+	t.helpers.PublishEvent(
 		traceName,
 		eventtypes.EventString(event),
 	)
@@ -202,7 +204,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		}
 	}
 
-	existingContainers := t.resolver.Subscribe(
+	existingContainers := t.helpers.Subscribe(
 		genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
 		*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 		containerEventCallback,
@@ -226,7 +228,7 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	t.resolver.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
+	t.helpers.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
 	t.tracer.Close()
 	t.tracer = nil
 	t.started = false

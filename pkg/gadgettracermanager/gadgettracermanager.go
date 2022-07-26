@@ -95,8 +95,10 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 	for l := range ch {
 		if l.EventLost {
 			ev := eventtypes.Event{
-				Type:    eventtypes.ERR,
-				Node:    g.nodeName,
+				Type: eventtypes.ERR,
+				CommonData: eventtypes.CommonData{
+					Node: g.nodeName,
+				},
 				Message: "events lost in gadget tracer manager",
 			}
 			line, _ := json.Marshal(ev)
@@ -316,4 +318,15 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 func (m *GadgetTracerManager) Close() {
 	m.containersMap.Close()
 	m.ContainerCollectionClose()
+}
+
+func (m *GadgetTracerManager) Enrich(event *eventtypes.CommonData, mountnsid uint64) {
+	event.Node = m.nodeName
+
+	container := m.LookupContainerByMntns(mountnsid)
+	if container != nil {
+		event.Container = container.Name
+		event.Pod = container.Podname
+		event.Namespace = container.Namespace
+	}
 }

@@ -21,6 +21,22 @@ import (
 
 type EventType string
 
+type CommonData struct {
+	// Node where the event comes from
+	Node string `json:"node,omitempty"`
+
+	// Pod namespace where the event comes from, or empty for host-level
+	// event
+	Namespace string `json:"namespace,omitempty"`
+
+	// Pod where the event comes from, or empty for host-level event
+	Pod string `json:"pod,omitempty"`
+
+	// Container where the event comes from, or empty for host-level or
+	// pod-level event
+	Container string `json:"container,omitempty"`
+}
+
 const (
 	// Indicates a generic event produced by a gadget. Gadgets extend
 	// the base event to contain the specific data the gadget provides
@@ -43,55 +59,51 @@ const (
 )
 
 type Event struct {
+	CommonData
+
 	// Type indicates the kind of this event
 	Type EventType `json:"type"`
 
 	// Message when Type is ERR, WARN, DEBUG or INFO
 	Message string `json:"message,omitempty"`
-
-	// Node where the event comes from
-	Node string `json:"node,omitempty"`
-
-	// Pod namespace where the event comes from, or empty for host-level
-	// event
-	Namespace string `json:"namespace,omitempty"`
-
-	// Pod where the event comes from, or empty for host-level event
-	Pod string `json:"pod,omitempty"`
-
-	// Container where the event comes from, or empty for host-level or
-	// pod-level event
-	Container string `json:"container,omitempty"`
 }
 
 func Err(msg, node string) Event {
 	return Event{
+		CommonData: CommonData{
+			Node: node,
+		},
 		Type:    ERR,
-		Node:    node,
 		Message: msg,
 	}
 }
 
 func Warn(msg, node string) Event {
 	return Event{
+		CommonData: CommonData{
+			Node: node,
+		},
 		Type:    WARN,
-		Node:    node,
 		Message: msg,
 	}
 }
 
 func Debug(msg, node string) Event {
 	return Event{
+		CommonData: CommonData{
+			Node: node,
+		},
 		Type:    DEBUG,
-		Node:    node,
 		Message: msg,
 	}
 }
 
 func Info(msg, node string) Event {
 	return Event{
+		CommonData: CommonData{
+			Node: node,
+		},
 		Type:    INFO,
-		Node:    node,
 		Message: msg,
 	}
 }

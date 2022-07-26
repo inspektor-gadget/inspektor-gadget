@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/ebpf"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 
 	log "github.com/sirupsen/logrus"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
@@ -27,10 +28,10 @@ import (
 )
 
 type TraceFactory interface {
-	// Initialize gives the Resolver and the Client to the gadget. Gadgets
+	// Initialize gives the Helpers and the Client to the gadget. Gadgets
 	// don't need to implement this method if they use BaseFactory as an
 	// anonymous field.
-	Initialize(Resolver Resolver, Client client.Client)
+	Initialize(Helpers GadgetHelpers, Client client.Client)
 
 	// Delete request a gadget to release the information it has about a
 	// trace. BaseFactory implements this method, so gadgets who embed
@@ -73,8 +74,11 @@ type TraceOperation struct {
 	Order int
 }
 
-type Resolver interface {
+// GadgetHelpers provides different functions that are used in the
+// gadgets implementation.
+type GadgetHelpers interface {
 	containercollection.ContainerResolver
+	gadgets.DataEnricher
 
 	PublishEvent(tracerID string, line string) error
 	TracerMountNsMap(tracerID string) (*ebpf.Map, error)
@@ -82,8 +86,8 @@ type Resolver interface {
 }
 
 type BaseFactory struct {
-	Resolver Resolver
-	Client   client.Client
+	Helpers GadgetHelpers
+	Client  client.Client
 
 	// DeleteTrace is optionally set by gadgets if they need to do
 	// specialised clean up. Example:
@@ -99,8 +103,8 @@ type BaseFactory struct {
 	traces map[string]interface{}
 }
 
-func (f *BaseFactory) Initialize(r Resolver, c client.Client) {
-	f.Resolver = r
+func (f *BaseFactory) Initialize(r GadgetHelpers, c client.Client) {
+	f.Helpers = r
 	f.Client = c
 }
 

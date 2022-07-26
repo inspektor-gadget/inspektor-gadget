@@ -33,8 +33,8 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
-	client   client.Client
+	helpers gadgets.GadgetHelpers
+	client  client.Client
 
 	started bool
 
@@ -70,7 +70,7 @@ func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
 func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
 	if trace.started {
-		trace.resolver.Unsubscribe(genPubSubKey(name))
+		trace.helpers.Unsubscribe(genPubSubKey(name))
 		trace.tracer.Close()
 		trace.tracer = nil
 	}
@@ -80,7 +80,7 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
 			client:    f.Client,
-			resolver:  f.Resolver,
+			helpers:   f.Helpers,
 			netnsHost: f.netnsHost,
 		}
 	}
@@ -133,8 +133,10 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	printMessage := func(key string, t eventtypes.EventType, message string) string {
 		event := &types.Event{
 			Event: eventtypes.Event{
-				Type:    t,
-				Node:    trace.Spec.Node,
+				Type: t,
+				CommonData: eventtypes.CommonData{
+					Node: trace.Spec.Node,
+				},
 				Message: message,
 			},
 		}
@@ -151,7 +153,9 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		event := &types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
-				Node: trace.Spec.Node,
+				CommonData: eventtypes.CommonData{
+					Node: trace.Spec.Node,
+				},
 			},
 			Name: name,
 		}
@@ -168,7 +172,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	newSNIRequestCallback := func(key string) func(event types.Event) {
 		return func(event types.Event) {
-			t.resolver.PublishEvent(
+			t.helpers.PublishEvent(
 				traceName,
 				printEvent(key, event.Name),
 			)
@@ -187,13 +191,13 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 		err = t.tracer.Attach(key, container.Pid, newSNIRequestCallback(key), trace.Spec.Node)
 		if err != nil {
-			t.resolver.PublishEvent(
+			t.helpers.PublishEvent(
 				traceName,
 				printMessage(key, eventtypes.ERR, fmt.Sprintf("failed to attach tracer: %s", err)),
 			)
 			return err
 		}
-		t.resolver.PublishEvent(
+		t.helpers.PublishEvent(
 			traceName,
 			printMessage(key, eventtypes.DEBUG, "tracer attached"),
 		)
@@ -205,13 +209,13 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 		err := t.tracer.Detach(key)
 		if err != nil {
-			t.resolver.PublishEvent(
+			t.helpers.PublishEvent(
 				traceName,
 				printMessage(key, eventtypes.ERR, fmt.Sprintf("failed to detach tracer: %s", err)),
 			)
 			return
 		}
-		t.resolver.PublishEvent(
+		t.helpers.PublishEvent(
 			traceName,
 			printMessage(key, eventtypes.DEBUG, "tracer detached"),
 		)
@@ -226,7 +230,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		}
 	}
 
-	existingContainers := t.resolver.Subscribe(
+	existingContainers := t.helpers.Subscribe(
 		genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
 		*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 		containerEventCallback,
@@ -250,7 +254,7 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	t.resolver.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
+	t.helpers.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
 	t.tracer.Close()
 	t.tracer = nil
 	t.started = false

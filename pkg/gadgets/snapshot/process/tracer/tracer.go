@@ -22,7 +22,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	processcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
@@ -34,7 +34,7 @@ const (
 	BPFIterName = "dump_task"
 )
 
-func RunCollector(resolver containercollection.ContainerResolver, node string, mntnsmap *ebpf.Map) ([]processcollectortypes.Event, error) {
+func RunCollector(enricher gadgets.DataEnricher, node string, mntnsmap *ebpf.Map) ([]processcollectortypes.Event, error) {
 	var err error
 	var spec *ebpf.CollectionSpec
 
@@ -100,24 +100,21 @@ func RunCollector(resolver containercollection.ContainerResolver, node string, m
 		}
 		command = textSplit[3]
 
-		container := resolver.LookupContainerByMntns(mntnsid)
-		if container == nil {
-			continue
-		}
-
-		events = append(events, processcollectortypes.Event{
+		event := processcollectortypes.Event{
 			Event: eventtypes.Event{
-				Type:      eventtypes.NORMAL,
-				Node:      node,
-				Namespace: container.Namespace,
-				Pod:       container.Podname,
-				Container: container.Name,
+				Type: eventtypes.NORMAL,
 			},
 			Tgid:      tgid,
 			Pid:       pid,
 			Command:   command,
 			MountNsID: mntnsid,
-		})
+		}
+
+		if enricher != nil {
+			enricher.Enrich(&event.CommonData, event.MountNsID)
+		}
+
+		events = append(events, event)
 	}
 
 	return events, nil

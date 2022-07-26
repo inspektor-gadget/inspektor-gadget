@@ -54,7 +54,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -71,7 +70,7 @@ type Config struct {
 
 type Tracer struct {
 	config        *Config
-	resolver      containercollection.ContainerResolver
+	enricher      gadgets.DataEnricher
 	eventCallback func(types.Event)
 	node          string
 
@@ -83,12 +82,12 @@ type Tracer struct {
 	reader    *perf.Reader
 }
 
-func NewTracer(config *Config, resolver containercollection.ContainerResolver,
+func NewTracer(config *Config, enricher gadgets.DataEnricher,
 	eventCallback func(types.Event), node string,
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
-		resolver:      resolver,
+		enricher:      enricher,
 		eventCallback: eventCallback,
 		node:          node,
 	}
@@ -296,7 +295,6 @@ func (t *Tracer) run() {
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
-				Node: t.node,
 			},
 			Pid:       uint32(eventC.pid),
 			Protocol:  protocolToString(uint16(eventC.proto)),
@@ -308,11 +306,8 @@ func (t *Tracer) run() {
 			MountNsID: uint64(eventC.mount_ns_id),
 		}
 
-		container := t.resolver.LookupContainerByMntns(event.MountNsID)
-		if container != nil {
-			event.Container = container.Name
-			event.Pod = container.Podname
-			event.Namespace = container.Namespace
+		if t.enricher != nil {
+			t.enricher.Enrich(&event.CommonData, event.MountNsID)
 		}
 
 		t.eventCallback(event)

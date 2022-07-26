@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/mount/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/mount/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
@@ -29,12 +28,11 @@ import (
 type Tracer struct {
 	trace.StandardTracerBase
 
-	resolver      containercollection.ContainerResolver
 	eventCallback func(types.Event)
 	node          string
 }
 
-func NewTracer(config *tracer.Config, resolver containercollection.ContainerResolver,
+func NewTracer(config *tracer.Config,
 	eventCallback func(types.Event), node string) (*Tracer, error,
 ) {
 	lineCallback := func(line string) {
@@ -67,7 +65,6 @@ func NewTracer(config *tracer.Config, resolver containercollection.ContainerReso
 	return &Tracer{
 		StandardTracerBase: *baseTracer,
 		eventCallback:      eventCallback,
-		resolver:           resolver, // not used right now but could be useful in the future
 		node:               node,
 	}, nil
 }

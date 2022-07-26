@@ -30,7 +30,7 @@ import (
 )
 
 type Trace struct {
-	resolver gadgets.Resolver
+	helpers gadgets.GadgetHelpers
 
 	started bool
 	tracer  profile.Tracer
@@ -66,7 +66,7 @@ func deleteTrace(name string, t interface{}) {
 func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
-			resolver: f.Resolver,
+			helpers: f.Helpers,
 		}
 	}
 
@@ -94,7 +94,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
-	mountNsMap, err := t.resolver.TracerMountNsMap(traceName)
+	mountNsMap, err := t.helpers.TracerMountNsMap(traceName)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
 		return
@@ -108,7 +108,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		KernelStackOnly: kernelStackOnly,
 	}
 
-	t.tracer, err = tracer.NewTracer(t.resolver, config, trace.Spec.Node)
+	t.tracer, err = tracer.NewTracer(t.helpers, config, trace.Spec.Node)
 	if err != nil {
 		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
 
