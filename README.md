@@ -188,6 +188,14 @@ gadgets, you'll need to have at least 5.10 with
 See [requirements](docs/requirements.md) for a detailed list of the
 requirements per gadget.
 
+## Code examples
+
+There are some examples in [this](./examples/) folder showing the usage
+of the Golang packages provided by Inspektor Gadget. These examples are
+designed for developers that want to use the Golang packages exposed by
+Inspektor Gadget directly. End-users do not need this and can use
+`kubectl-gadget` or `local-gadget` directly.
+
 ## Contributing
 
 Contributions are welcome, see [CONTRIBUTING](docs/CONTRIBUTING.md).
