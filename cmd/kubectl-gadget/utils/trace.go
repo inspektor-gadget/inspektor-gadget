@@ -29,6 +29,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -196,6 +197,23 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 		if traceNode != "" && node.Name != traceNode {
 			continue
 		}
+
+		ready := false
+
+		for _, c := range node.Status.Conditions {
+			if c.Type == corev1.NodeReady {
+				ready = c.Status == corev1.ConditionTrue
+				break
+			}
+		}
+
+		if !ready {
+			if traceNode != "" {
+				return fmt.Errorf("node %q is not ready", traceNode)
+			}
+			continue
+		}
+
 		// If no particular node was given, we need to apply this trace on all
 		// available nodes.
 		if traceNode == "" {
