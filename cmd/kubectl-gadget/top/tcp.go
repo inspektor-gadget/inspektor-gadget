@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -31,113 +32,161 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/tcp/types"
 )
 
-var tcpNodeStats map[string][]types.Stats
+type TCPFlags struct {
+	CommonTopFlags
 
-var (
-	// flags
-	tcpSortBy      types.SortBy
-	tcpFilteredPid uint
-	tcpFamily      uint
-)
-
-var tcpCmd = &cobra.Command{
-	Use:   fmt.Sprintf("tcp [interval=%d]", types.IntervalDefault),
-	Short: "Periodically report TCP activity",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-
-		tcpNodeStats = make(map[string][]types.Stats)
-
-		if len(args) == 1 {
-			outputInterval, err = strconv.Atoi(args[0])
-			if err != nil {
-				return commonutils.WrapInErrInvalidArg("<interval>",
-					fmt.Errorf("%q is not a valid value", args[0]))
-			}
-		} else {
-			outputInterval = types.IntervalDefault
-		}
-
-		parameters := map[string]string{
-			types.MaxRowsParam:  strconv.Itoa(maxRows),
-			types.IntervalParam: strconv.Itoa(outputInterval),
-			types.SortByParam:   sortBy,
-		}
-
-		if tcpFamily != 0 {
-			parameters[types.FamilyParam] = strconv.FormatUint(uint64(tcpFamily), 10)
-		}
-
-		if tcpFilteredPid != 0 {
-			parameters[types.PidParam] = strconv.FormatUint(uint64(tcpFilteredPid), 10)
-		}
-
-		config := &utils.TraceConfig{
-			GadgetName:       "tcptop",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-			Parameters:       parameters,
-		}
-
-		// when params.Timeout == interval it means the user
-		// only wants to run for a given amount of time and print
-		// that result.
-		singleShot := params.Timeout == outputInterval
-
-		// start print loop if this is not a "single shoot" operation
-		if singleShot {
-			tcpPrintHeader()
-		} else {
-			tcpStartPrintLoop()
-		}
-
-		if err := utils.RunTraceStreamCallback(config, tcpCallback); err != nil {
-			return commonutils.WrapInErrRunGadget(err)
-		}
-
-		if singleShot {
-			tcpPrintEvents()
-		}
-
-		return nil
-	},
-	SilenceUsage: true,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-		tcpSortBy, err = types.ParseSortBy(sortBy)
-		if err != nil {
-			return commonutils.WrapInErrInvalidArg("--sort", err)
-		}
-
-		return nil
-	},
-	Args: cobra.MaximumNArgs(1),
+	ParsedSortBy types.SortBy
+	FilteredPid  uint
+	Family       uint
 }
 
-func init() {
-	tcpCmd.PersistentFlags().UintVarP(
-		&tcpFilteredPid,
+type TCPParser struct {
+	commonutils.BaseParser[types.Stats]
+	sync.Mutex
+
+	flags     *TCPFlags
+	nodeStats map[string][]types.Stats
+}
+
+func newTCPCmd() *cobra.Command {
+	var flags TCPFlags
+
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: commonutils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"family",
+				"saddr",
+				"daddr",
+				"sent",
+				"received",
+			},
+		},
+	}
+
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"comm":      -16,
+		"family":    -3,
+		"saddr":     -51,
+		"daddr":     -51,
+		"sent":      -7,
+		"received":  -7,
+	}
+
+	cmd := &cobra.Command{
+		Use:   fmt.Sprintf("tcp [interval=%d]", types.IntervalDefault),
+		Short: "Periodically report TCP activity",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+
+			parser := &TCPParser{
+				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonFlags.OutputConfig),
+				flags:      &flags,
+				nodeStats:  make(map[string][]types.Stats),
+			}
+			if len(args) == 1 {
+				flags.OutputInterval, err = strconv.Atoi(args[0])
+				if err != nil {
+					return commonutils.WrapInErrInvalidArg("<interval>",
+						fmt.Errorf("%q is not a valid value", args[0]))
+				}
+			} else {
+				flags.OutputInterval = types.IntervalDefault
+			}
+
+			parameters := map[string]string{
+				types.MaxRowsParam:  strconv.Itoa(flags.MaxRows),
+				types.IntervalParam: strconv.Itoa(flags.OutputInterval),
+				types.SortByParam:   flags.SortBy,
+			}
+
+			if flags.Family != 0 {
+				parameters[types.FamilyParam] = strconv.FormatUint(uint64(flags.Family), 10)
+			}
+
+			if flags.FilteredPid != 0 {
+				parameters[types.PidParam] = strconv.FormatUint(uint64(flags.FilteredPid), 10)
+			}
+
+			config := &utils.TraceConfig{
+				GadgetName:       "tcptop",
+				Operation:        "start",
+				TraceOutputMode:  "Stream",
+				TraceOutputState: "Started",
+				CommonFlags:      commonFlags,
+				Parameters:       parameters,
+			}
+
+			// when params.Timeout == interval it means the user
+			// only wants to run for a given amount of time and print
+			// that result.
+			singleShot := commonFlags.Timeout == flags.OutputInterval
+
+			// start print loop if this is not a "single shot" operation
+			if singleShot {
+				parser.PrintHeader()
+			} else {
+				parser.StartPrintLoop()
+			}
+
+			if err := utils.RunTraceStreamCallback(config, parser.Callback); err != nil {
+				return commonutils.WrapInErrRunGadget(err)
+			}
+
+			if singleShot {
+				parser.PrintEvents()
+			}
+
+			return nil
+		},
+		SilenceUsage: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			flags.ParsedSortBy, err = types.ParseSortBy(flags.SortBy)
+			if err != nil {
+				return commonutils.WrapInErrInvalidArg("--sort", err)
+			}
+
+			return nil
+		},
+		Args: cobra.MaximumNArgs(1),
+	}
+
+	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, types.SortBySlice)
+
+	cmd.PersistentFlags().UintVarP(
+		&flags.FilteredPid,
 		"pid",
 		"",
 		0,
 		"Show only TCP events generated by this particular PID",
 	)
-	tcpCmd.PersistentFlags().UintVarP(
-		&tcpFamily,
+	cmd.PersistentFlags().UintVarP(
+		&flags.Family,
 		"family",
 		"f",
 		0,
 		"Show only TCP events for this IP version: either 4 or 6 (by default all will be printed)",
 	)
 
-	addTopCommand(tcpCmd, types.MaxRowsDefault, types.SortBySlice)
+	return cmd
 }
 
-func tcpCallback(line string, node string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (p *TCPParser) Callback(line string, node string) {
+	p.Lock()
+	defer p.Unlock()
 
 	var event types.Event
 
@@ -151,23 +200,23 @@ func tcpCallback(line string, node string) {
 		return
 	}
 
-	tcpNodeStats[node] = event.Stats
+	p.nodeStats[node] = event.Stats
 }
 
-func tcpStartPrintLoop() {
+func (p *TCPParser) StartPrintLoop() {
 	go func() {
-		ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
-		tcpPrintHeader()
+		ticker := time.NewTicker(time.Duration(p.flags.OutputInterval) * time.Second)
+		p.PrintHeader()
 		for {
 			_ = <-ticker.C
-			tcpPrintHeader()
-			tcpPrintEvents()
+			p.PrintHeader()
+			p.PrintEvents()
 		}
 	}()
 }
 
-func tcpPrintHeader() {
-	switch params.OutputMode {
+func (p *TCPParser) PrintHeader() {
+	switch p.OutputConfig.OutputMode {
 	case commonutils.OutputModeColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
@@ -183,28 +232,28 @@ func tcpPrintHeader() {
 		} else {
 			fmt.Println("")
 		}
-		fmt.Println(tcpGetCustomColsHeader(params.CustomColumns))
+		fmt.Println(p.GetCustomColsHeader(p.OutputConfig.CustomColumns))
 	}
 }
 
-func tcpPrintEvents() {
+func (p *TCPParser) PrintEvents() {
 	// sort and print events
-	mutex.Lock()
+	p.Lock()
 
 	stats := []types.Stats{}
-	for _, stat := range tcpNodeStats {
+	for _, stat := range p.nodeStats {
 		stats = append(stats, stat...)
 	}
-	tcpNodeStats = make(map[string][]types.Stats)
+	p.nodeStats = make(map[string][]types.Stats)
 
-	mutex.Unlock()
+	p.Unlock()
 
-	types.SortStats(stats, tcpSortBy)
+	types.SortStats(stats, p.flags.ParsedSortBy)
 
-	switch params.OutputMode {
+	switch p.OutputConfig.OutputMode {
 	case commonutils.OutputModeColumns:
 		for idx, event := range stats {
-			if idx == maxRows {
+			if idx == p.flags.MaxRows {
 				break
 			}
 
@@ -229,15 +278,15 @@ func tcpPrintEvents() {
 		fmt.Println(string(b))
 	case commonutils.OutputModeCustomColumns:
 		for idx, stat := range stats {
-			if idx == maxRows {
+			if idx == p.flags.MaxRows {
 				break
 			}
-			fmt.Println(tcpFormatEventCustomCols(&stat, params.CustomColumns))
+			fmt.Println(p.FormatEventCustomCols(&stat, p.OutputConfig.CustomColumns))
 		}
 	}
 }
 
-func tcpGetCustomColsHeader(cols []string) string {
+func (p *TCPParser) GetCustomColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -271,7 +320,7 @@ func tcpGetCustomColsHeader(cols []string) string {
 	return sb.String()
 }
 
-func tcpFormatEventCustomCols(stats *types.Stats, cols []string) string {
+func (p *TCPParser) FormatEventCustomCols(stats *types.Stats, cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {

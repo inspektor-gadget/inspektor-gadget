@@ -17,31 +17,40 @@ package top
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 
 	"github.com/spf13/cobra"
 )
 
-var (
-	params utils.CommonFlags
-	mutex  sync.Mutex
-
-	outputInterval int
-	maxRows        int
-	sortBy         string
-)
-
-var TopCmd = &cobra.Command{
-	Use:   "top",
-	Short: "Gather, sort and periodically report events according to a given criteria",
+type CommonTopFlags struct {
+	OutputInterval int
+	MaxRows        int
+	SortBy         string
 }
 
-func addTopCommand(command *cobra.Command, defaultMaxRows int, sortBySlice []string) {
-	command.Flags().IntVarP(&maxRows, "max-rows", "r", defaultMaxRows, "Maximum rows to print")
-	command.Flags().StringVarP(&sortBy, "sort", "", sortBySlice[0], fmt.Sprintf("Sort column, possible values are: %s", strings.Join(sortBySlice, ", ")))
+func NewTopCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "top",
+		Short: "Gather, sort and periodically report events according to a given criteria",
+	}
 
-	utils.AddCommonFlags(command, &params)
-	TopCmd.AddCommand(command)
+	cmd.AddCommand(newBlockIOCmd())
+	cmd.AddCommand(newFileCmd())
+	cmd.AddCommand(newTCPCmd())
+
+	return cmd
+}
+
+func addCommonTopFlags(
+	command *cobra.Command,
+	commonTopFlags *CommonTopFlags,
+	commonFlags *utils.CommonFlags,
+	defaultMaxRows int,
+	sortBySlice []string,
+) {
+	command.Flags().IntVarP(&commonTopFlags.MaxRows, "max-rows", "r", defaultMaxRows, "Maximum rows to print")
+	command.Flags().StringVarP(&commonTopFlags.SortBy, "sort", "", sortBySlice[0], fmt.Sprintf("Sort column, possible values are: %s", strings.Join(sortBySlice, ", ")))
+
+	utils.AddCommonFlags(command, commonFlags)
 }

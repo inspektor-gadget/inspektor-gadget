@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -30,84 +31,137 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
 
-var blockIONodeStats map[string][]types.Stats
+type BlockIOFlags struct {
+	CommonTopFlags
 
-// flags
-var blockIOSortBy types.SortBy
+	ParsedSortBy types.SortBy
+}
 
-var blockIOCmd = &cobra.Command{
-	Use:   fmt.Sprintf("block-io [interval=%d]", types.IntervalDefault),
-	Short: "Periodically report block device I/O activity",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var err error
+type BlockIOParser struct {
+	commonutils.BaseParser[types.Stats]
+	sync.Mutex
 
-		blockIONodeStats = make(map[string][]types.Stats)
+	flags     *BlockIOFlags
+	nodeStats map[string][]types.Stats
+}
 
-		if len(args) == 1 {
-			outputInterval, err = strconv.Atoi(args[0])
-			if err != nil {
-				return commonutils.WrapInErrInvalidArg("<interval>",
-					fmt.Errorf("%q is not a valid value", args[0]))
-			}
-		} else {
-			outputInterval = types.IntervalDefault
-		}
+func newBlockIOCmd() *cobra.Command {
+	var flags BlockIOFlags
 
-		config := &utils.TraceConfig{
-			GadgetName:       "biotop",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-			Parameters: map[string]string{
-				types.IntervalParam: strconv.Itoa(outputInterval),
-				types.MaxRowsParam:  strconv.Itoa(maxRows),
-				types.SortByParam:   sortBy,
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: commonutils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"r/w",
+				"major",
+				"minor",
+				"bytes",
+				"time",
+				"ios",
 			},
-		}
+		},
+	}
 
-		// when params.Timeout == interval it means the user
-		// only wants to run for a given amount of time and print
-		// that result.
-		singleShot := params.Timeout == outputInterval
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"comm":      -16,
+		"r/w":       -3,
+		"major":     -6,
+		"minor":     -6,
+		"bytes":     -7,
+		"time":      -8,
+		"ios":       -8,
+	}
 
-		// start print loop if this is not a "single shoot" operation
-		if singleShot {
-			blockIOPrintHeader()
-		} else {
-			blockIOStartPrintLoop()
-		}
+	cmd := &cobra.Command{
+		Use:   fmt.Sprintf("block-io [interval=%d]", types.IntervalDefault),
+		Short: "Periodically report block device I/O activity",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var err error
 
-		if err := utils.RunTraceStreamCallback(config, blockIOCallback); err != nil {
-			return commonutils.WrapInErrRunGadget(err)
-		}
+			parser := &BlockIOParser{
+				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonFlags.OutputConfig),
+				flags:      &flags,
+				nodeStats:  make(map[string][]types.Stats),
+			}
 
-		if singleShot {
-			blockIOPrintEvents()
-		}
+			if len(args) == 1 {
+				flags.OutputInterval, err = strconv.Atoi(args[0])
+				if err != nil {
+					return commonutils.WrapInErrInvalidArg("<interval>",
+						fmt.Errorf("%q is not a valid value", args[0]))
+				}
+			} else {
+				flags.OutputInterval = types.IntervalDefault
+			}
 
-		return nil
-	},
-	SilenceUsage: true,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-		blockIOSortBy, err = types.ParseSortBy(sortBy)
-		if err != nil {
-			return commonutils.WrapInErrInvalidArg("--sort", err)
-		}
+			config := &utils.TraceConfig{
+				GadgetName:       "biotop",
+				Operation:        "start",
+				TraceOutputMode:  "Stream",
+				TraceOutputState: "Started",
+				CommonFlags:      commonFlags,
+				Parameters: map[string]string{
+					types.IntervalParam: strconv.Itoa(flags.OutputInterval),
+					types.MaxRowsParam:  strconv.Itoa(flags.MaxRows),
+					types.SortByParam:   flags.SortBy,
+				},
+			}
 
-		return nil
-	},
-	Args: cobra.MaximumNArgs(1),
+			// when params.Timeout == interval it means the user
+			// only wants to run for a given amount of time and print
+			// that result.
+			singleShot := commonFlags.Timeout == flags.OutputInterval
+
+			// start print loop if this is not a "single shot" operation
+			if singleShot {
+				parser.PrintHeader()
+			} else {
+				parser.StartPrintLoop()
+			}
+
+			if err := utils.RunTraceStreamCallback(config, parser.Callback); err != nil {
+				return commonutils.WrapInErrRunGadget(err)
+			}
+
+			if singleShot {
+				parser.PrintEvents()
+			}
+
+			return nil
+		},
+		SilenceUsage: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			flags.ParsedSortBy, err = types.ParseSortBy(flags.SortBy)
+			if err != nil {
+				return commonutils.WrapInErrInvalidArg("--sort", err)
+			}
+
+			return nil
+		},
+		Args: cobra.MaximumNArgs(1),
+	}
+
+	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, types.SortBySlice)
+
+	return cmd
 }
 
-func init() {
-	addTopCommand(blockIOCmd, types.MaxRowsDefault, types.SortBySlice)
-}
-
-func blockIOCallback(line string, node string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (p *BlockIOParser) Callback(line string, node string) {
+	p.Lock()
+	defer p.Unlock()
 
 	var event types.Event
 
@@ -121,23 +175,23 @@ func blockIOCallback(line string, node string) {
 		return
 	}
 
-	blockIONodeStats[node] = event.Stats
+	p.nodeStats[node] = event.Stats
 }
 
-func blockIOStartPrintLoop() {
+func (p *BlockIOParser) StartPrintLoop() {
 	go func() {
-		ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
-		blockIOPrintHeader()
+		ticker := time.NewTicker(time.Duration(p.flags.OutputInterval) * time.Second)
+		p.PrintHeader()
 		for {
 			_ = <-ticker.C
-			blockIOPrintHeader()
-			blockIOPrintEvents()
+			p.PrintHeader()
+			p.PrintEvents()
 		}
 	}()
 }
 
-func blockIOPrintHeader() {
-	switch params.OutputMode {
+func (p *BlockIOParser) PrintHeader() {
+	switch p.OutputConfig.OutputMode {
 	case commonutils.OutputModeColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
@@ -154,28 +208,28 @@ func blockIOPrintHeader() {
 		} else {
 			fmt.Println("")
 		}
-		fmt.Println(blockIOGetCustomColsHeader(params.CustomColumns))
+		fmt.Println(p.GetCustomColsHeader(p.OutputConfig.CustomColumns))
 	}
 }
 
-func blockIOPrintEvents() {
+func (p *BlockIOParser) PrintEvents() {
 	// sort and print events
-	mutex.Lock()
+	p.Lock()
 
 	stats := []types.Stats{}
-	for _, stat := range blockIONodeStats {
+	for _, stat := range p.nodeStats {
 		stats = append(stats, stat...)
 	}
-	blockIONodeStats = make(map[string][]types.Stats)
+	p.nodeStats = make(map[string][]types.Stats)
 
-	mutex.Unlock()
+	p.Unlock()
 
-	types.SortStats(stats, blockIOSortBy)
+	types.SortStats(stats, p.flags.ParsedSortBy)
 
-	switch params.OutputMode {
+	switch p.OutputConfig.OutputMode {
 	case commonutils.OutputModeColumns:
 		for idx, event := range stats {
-			if idx == maxRows {
+			if idx == p.flags.MaxRows {
 				break
 			}
 
@@ -198,15 +252,15 @@ func blockIOPrintEvents() {
 		fmt.Println(string(b))
 	case commonutils.OutputModeCustomColumns:
 		for idx, stat := range stats {
-			if idx == maxRows {
+			if idx == p.flags.MaxRows {
 				break
 			}
-			fmt.Println(blockIOFormatEventCustomCols(&stat, params.CustomColumns))
+			fmt.Println(p.FormatEventCustomCols(&stat, p.OutputConfig.CustomColumns))
 		}
 	}
 }
 
-func blockIOGetCustomColsHeader(cols []string) string {
+func (p *BlockIOParser) GetCustomColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -242,7 +296,7 @@ func blockIOGetCustomColsHeader(cols []string) string {
 	return sb.String()
 }
 
-func blockIOFormatEventCustomCols(stats *types.Stats, cols []string) string {
+func (p *BlockIOParser) FormatEventCustomCols(stats *types.Stats, cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {

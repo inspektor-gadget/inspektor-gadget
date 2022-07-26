@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -30,91 +31,142 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/types"
 )
 
-var fileNodeStats map[string][]types.Stats
+type FileFlags struct {
+	CommonTopFlags
 
-var (
-	// flags
-	fileSortBy   types.SortBy
-	fileAllFiles bool
-)
+	ParsedSortBy types.SortBy
+	AllFiles     bool
+}
 
-var fileCmd = &cobra.Command{
-	Use:   fmt.Sprintf("file [interval=%d]", types.IntervalDefault),
-	Short: "Periodically report read/write activity by file",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var err error
+type FileParser struct {
+	commonutils.BaseParser[types.Stats]
+	sync.Mutex
 
-		fileNodeStats = make(map[string][]types.Stats)
+	flags     *FileFlags
+	nodeStats map[string][]types.Stats
+}
 
-		if len(args) == 1 {
-			outputInterval, err = strconv.Atoi(args[0])
-			if err != nil {
-				return commonutils.WrapInErrInvalidArg("<interval>",
-					fmt.Errorf("%q is not a valid value", args[0]))
-			}
-		} else {
-			outputInterval = types.IntervalDefault
-		}
+func newFileCmd() *cobra.Command {
+	var flags FileFlags
 
-		config := &utils.TraceConfig{
-			GadgetName:       "filetop",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-			Parameters: map[string]string{
-				types.MaxRowsParam:  strconv.Itoa(maxRows),
-				types.IntervalParam: strconv.Itoa(outputInterval),
-				types.SortByParam:   sortBy,
-				types.AllFilesParam: strconv.FormatBool(fileAllFiles),
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: commonutils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"reads",
+				"writes",
+				"r_kb",
+				"w_kb",
+				"t",
+				"file",
 			},
-		}
+		},
+	}
 
-		// when params.Timeout == interval it means the user
-		// only wants to run for a given amount of time and print
-		// that result.
-		singleShot := params.Timeout == outputInterval
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"tid":       -7,
+		"comm":      -16,
+		"reads":     -6,
+		"writes":    -6,
+		"r_kb":      -7,
+		"w_kb":      -7,
+		"t":         -1,
+		"file":      -30,
+	}
 
-		// start print loop if this is not a "single shoot" operation
-		if singleShot {
-			filePrintHeader()
-		} else {
-			fileStartOutputLoop()
-		}
+	cmd := &cobra.Command{
+		Use:   fmt.Sprintf("file [interval=%d]", types.IntervalDefault),
+		Short: "Periodically report read/write activity by file",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var err error
 
-		err = utils.RunTraceStreamCallback(config, fileCallback)
-		if err != nil {
-			return commonutils.WrapInErrRunGadget(err)
-		}
+			parser := &FileParser{
+				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonFlags.OutputConfig),
+				flags:      &flags,
+				nodeStats:  make(map[string][]types.Stats),
+			}
 
-		if singleShot {
-			filePrintEvents()
-		}
+			if len(args) == 1 {
+				flags.OutputInterval, err = strconv.Atoi(args[0])
+				if err != nil {
+					return commonutils.WrapInErrInvalidArg("<interval>",
+						fmt.Errorf("%q is not a valid value", args[0]))
+				}
+			} else {
+				flags.OutputInterval = types.IntervalDefault
+			}
 
-		return nil
-	},
-	SilenceUsage: true,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-		fileSortBy, err = types.ParseSortBy(sortBy)
-		if err != nil {
-			return commonutils.WrapInErrInvalidArg("--sort", err)
-		}
+			config := &utils.TraceConfig{
+				GadgetName:       "filetop",
+				Operation:        "start",
+				TraceOutputMode:  "Stream",
+				TraceOutputState: "Started",
+				CommonFlags:      commonFlags,
+				Parameters: map[string]string{
+					types.IntervalParam: strconv.Itoa(flags.OutputInterval),
+					types.MaxRowsParam:  strconv.Itoa(flags.MaxRows),
+					types.SortByParam:   flags.SortBy,
+					types.AllFilesParam: strconv.FormatBool(flags.AllFiles),
+				},
+			}
 
-		return nil
-	},
-	Args: cobra.MaximumNArgs(1),
+			// when params.Timeout == interval it means the user
+			// only wants to run for a given amount of time and print
+			// that result.
+			singleShot := commonFlags.Timeout == flags.OutputInterval
+
+			// start print loop if this is not a "single shot" operation
+			if singleShot {
+				parser.PrintHeader()
+			} else {
+				parser.StartPrintLoop()
+			}
+
+			if err = utils.RunTraceStreamCallback(config, parser.Callback); err != nil {
+				return commonutils.WrapInErrRunGadget(err)
+			}
+
+			if singleShot {
+				parser.PrintEvents()
+			}
+
+			return nil
+		},
+		SilenceUsage: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			flags.ParsedSortBy, err = types.ParseSortBy(flags.SortBy)
+			if err != nil {
+				return commonutils.WrapInErrInvalidArg("--sort", err)
+			}
+
+			return nil
+		},
+		Args: cobra.MaximumNArgs(1),
+	}
+
+	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, types.SortBySlice)
+
+	cmd.Flags().BoolVarP(&flags.AllFiles, "all-files", "a", types.AllFilesDefault, "Include non-regular file types (sockets, FIFOs, etc)")
+
+	return cmd
 }
 
-func init() {
-	fileCmd.Flags().BoolVarP(&fileAllFiles, "all-files", "a", types.AllFilesDefault, "Include non-regular file types (sockets, FIFOs, etc)")
-
-	addTopCommand(fileCmd, types.MaxRowsDefault, types.SortBySlice)
-}
-
-func fileCallback(line string, node string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (p *FileParser) Callback(line string, node string) {
+	p.Lock()
+	defer p.Unlock()
 
 	var event types.Event
 
@@ -128,23 +180,23 @@ func fileCallback(line string, node string) {
 		return
 	}
 
-	fileNodeStats[node] = event.Stats
+	p.nodeStats[node] = event.Stats
 }
 
-func fileStartOutputLoop() {
+func (p *FileParser) StartPrintLoop() {
 	go func() {
-		ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
-		filePrintHeader()
+		ticker := time.NewTicker(time.Duration(p.flags.OutputInterval) * time.Second)
+		p.PrintHeader()
 		for {
 			_ = <-ticker.C
-			filePrintHeader()
-			filePrintEvents()
+			p.PrintHeader()
+			p.PrintEvents()
 		}
 	}()
 }
 
-func filePrintHeader() {
-	switch params.OutputMode {
+func (p *FileParser) PrintHeader() {
+	switch p.OutputConfig.OutputMode {
 	case commonutils.OutputModeColumns:
 		if term.IsTerminal(int(os.Stdout.Fd())) {
 			utils.ClearScreen()
@@ -160,28 +212,28 @@ func filePrintHeader() {
 		} else {
 			fmt.Println("")
 		}
-		fmt.Println(fileGetCustomColsHeader(params.CustomColumns))
+		fmt.Println(p.GetCustomColsHeader(p.OutputConfig.CustomColumns))
 	}
 }
 
-func filePrintEvents() {
+func (p *FileParser) PrintEvents() {
 	// sort and print events
-	mutex.Lock()
+	p.Lock()
 
 	stats := []types.Stats{}
-	for _, stat := range fileNodeStats {
+	for _, stat := range p.nodeStats {
 		stats = append(stats, stat...)
 	}
-	fileNodeStats = make(map[string][]types.Stats)
+	p.nodeStats = make(map[string][]types.Stats)
 
-	mutex.Unlock()
+	p.Unlock()
 
-	types.SortStats(stats, fileSortBy)
+	types.SortStats(stats, p.flags.ParsedSortBy)
 
-	switch params.OutputMode {
+	switch p.OutputConfig.OutputMode {
 	case commonutils.OutputModeColumns:
 		for idx, event := range stats {
-			if idx == maxRows {
+			if idx == p.flags.MaxRows {
 				break
 			}
 			fmt.Printf("%-16s %-16s %-16s %-16s %-7d %-16s %-6d %-6d %-7d %-7d %c %s\n",
@@ -198,15 +250,15 @@ func filePrintEvents() {
 		fmt.Println(string(b))
 	case commonutils.OutputModeCustomColumns:
 		for idx, stat := range stats {
-			if idx == maxRows {
+			if idx == p.flags.MaxRows {
 				break
 			}
-			fmt.Println(fileFormatEventCustomCols(&stat, params.CustomColumns))
+			fmt.Println(p.FormatEventCustomCols(&stat, p.OutputConfig.CustomColumns))
 		}
 	}
 }
 
-func fileGetCustomColsHeader(cols []string) string {
+func (p *FileParser) GetCustomColsHeader(cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
@@ -244,7 +296,7 @@ func fileGetCustomColsHeader(cols []string) string {
 	return sb.String()
 }
 
-func fileFormatEventCustomCols(stats *types.Stats, cols []string) string {
+func (p *FileParser) FormatEventCustomCols(stats *types.Stats, cols []string) string {
 	var sb strings.Builder
 
 	for _, col := range cols {
