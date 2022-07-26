@@ -15,11 +15,11 @@ slower than 1 ms.
 Let's start the gadget before running our workload:
 
 ```bash
-$ kubectl gadget trace fsslower -t ext4 -m 1 -p mypod
+$ kubectl gadget trace fsslower -f ext4 -m 1 -p mypod
 NODE             NAMESPACE        POD              CONTAINER        PID     COMM             T BYTES  OFFSET  LAT      FILE
 ```
 
-With `-t` we're indicating the type of filesystem we want to trace,
+With `-f` we're indicating the type of filesystem we want to trace,
 `ext4` in this case. The `-m` parameter indicates the threshold, in this
 case operations taking more than 1ms will be printed. `-p` indicates
 that we only want to trace events coming from `mypod`.
@@ -38,7 +38,7 @@ $ kubectl run -it mypod --image ubuntu -- /bin/sh -c "apt-get update && apt-get 
 We can see how fsslower shows the operations that are taking longer than 1ms:
 
 ```bash
-$ kubectl gadget trace fsslower -t ext4 -m 1 -p mypod
+$ kubectl gadget trace fsslower -f ext4 -m 1 -p mypod
 NODE             NAMESPACE        POD              CONTAINER        PID     COMM             T BYTES  OFFSET  LAT      FILE
 ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       2.66     perl-modules-5.30.list-new
 ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       1.49     libperl5.30:amd64.list-new
