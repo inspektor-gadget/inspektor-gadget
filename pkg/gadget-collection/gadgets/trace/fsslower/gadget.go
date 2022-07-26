@@ -149,7 +149,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		Filesystem: filesystem,
 		MinLatency: minLatency,
 	}
-	t.tracer, err = tracer.NewTracer(config, t.helpers, eventCallback, trace.Spec.Node)
+	t.tracer, err = tracer.NewTracer(config, t.helpers, eventCallback)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 		return

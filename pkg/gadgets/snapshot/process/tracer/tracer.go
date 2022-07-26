@@ -34,7 +34,7 @@ const (
 	BPFIterName = "dump_task"
 )
 
-func RunCollector(enricher gadgets.DataEnricher, node string, mntnsmap *ebpf.Map) ([]processcollectortypes.Event, error) {
+func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]processcollectortypes.Event, error) {
 	var err error
 	var spec *ebpf.CollectionSpec
 

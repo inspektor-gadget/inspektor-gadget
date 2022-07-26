@@ -48,7 +48,6 @@ type Tracer struct {
 	config        *Config
 	enricher      gadgets.DataEnricher
 	eventCallback func(types.Event)
-	node          string
 
 	objs           fsslowerObjects
 	readEnterLink  link.Link
@@ -97,13 +96,12 @@ var fsConfMap = map[string]fsConf{
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricher,
-	eventCallback func(types.Event), node string,
+	eventCallback func(types.Event),
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
 		enricher:      enricher,
 		eventCallback: eventCallback,
-		node:          node,
 	}
 
 	if err := t.start(); err != nil {
@@ -239,13 +237,13 @@ func (t *Tracer) run() {
 				return
 			}
 			msg := fmt.Sprintf("Error reading perf ring buffer: %s", err)
-			t.eventCallback(types.Base(eventtypes.Err(msg, t.node)))
+			t.eventCallback(types.Base(eventtypes.Err(msg)))
 			return
 		}
 
 		if record.LostSamples > 0 {
 			msg := fmt.Sprintf("lost %d samples", record.LostSamples)
-			t.eventCallback(types.Base(eventtypes.Warn(msg, t.node)))
+			t.eventCallback(types.Base(eventtypes.Warn(msg)))
 			continue
 		}
 

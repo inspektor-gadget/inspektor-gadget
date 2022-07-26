@@ -45,7 +45,6 @@ type Config struct {
 	Interval   time.Duration
 	SortBy     types.SortBy
 	MountnsMap *ebpf.Map
-	Node       string
 }
 
 type Tracer struct {

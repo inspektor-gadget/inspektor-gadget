@@ -159,7 +159,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		Interval:   time.Second * time.Duration(intervalSeconds),
 		SortBy:     sortBy,
 		MountnsMap: mountNsMap,
-		Node:       trace.Spec.Node,
 	}
 
 	statsCallback := func(stats []types.Stats) {

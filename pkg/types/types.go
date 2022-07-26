@@ -21,6 +21,12 @@ import (
 
 type EventType string
 
+var node string
+
+func Init(nodeName string) {
+	node = nodeName
+}
+
 type CommonData struct {
 	// Node where the event comes from
 	Node string `json:"node,omitempty"`
@@ -68,7 +74,7 @@ type Event struct {
 	Message string `json:"message,omitempty"`
 }
 
-func Err(msg, node string) Event {
+func Err(msg string) Event {
 	return Event{
 		CommonData: CommonData{
 			Node: node,
@@ -78,7 +84,7 @@ func Err(msg, node string) Event {
 	}
 }
 
-func Warn(msg, node string) Event {
+func Warn(msg string) Event {
 	return Event{
 		CommonData: CommonData{
 			Node: node,
@@ -88,7 +94,7 @@ func Warn(msg, node string) Event {
 	}
 }
 
-func Debug(msg, node string) Event {
+func Debug(msg string) Event {
 	return Event{
 		CommonData: CommonData{
 			Node: node,
@@ -98,7 +104,7 @@ func Debug(msg, node string) Event {
 	}
 }
 
-func Info(msg, node string) Event {
+func Info(msg string) Event {
 	return Event{
 		CommonData: CommonData{
 			Node: node,

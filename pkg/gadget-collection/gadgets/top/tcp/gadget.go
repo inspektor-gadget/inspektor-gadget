@@ -171,7 +171,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		MountnsMap:   mountNsMap,
 		TargetPid:    targetPid,
 		TargetFamily: targetFamily,
-		Node:         trace.Spec.Node,
 	}
 
 	statsCallback := func(stats []types.Stats) {

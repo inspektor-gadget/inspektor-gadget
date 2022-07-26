@@ -32,11 +32,10 @@ type Tracer struct {
 	cmd               *exec.Cmd
 	stdout            *bytes.Buffer
 	stderr            *bytes.Buffer
-	node              string
 	mountnsMapPinPath string
 }
 
-func NewTracer(config *tracer.Config, node string) (*Tracer, error) {
+func NewTracer(config *tracer.Config) (*Tracer, error) {
 	mountNsMapPinPath := filepath.Join(gadgets.PinPath, uuid.New().String())
 	if err := config.MountnsMap.Pin(mountNsMapPinPath); err != nil {
 		return nil, fmt.Errorf("failed to pin tracer's mount ns map: %w", err)
@@ -69,7 +68,6 @@ func NewTracer(config *tracer.Config, node string) (*Tracer, error) {
 		cmd:               cmd,
 		stdout:            stdout,
 		stderr:            stderr,
-		node:              node,
 		mountnsMapPinPath: mountNsMapPinPath,
 	}, nil
 }

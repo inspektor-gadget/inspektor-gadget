@@ -227,6 +227,8 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 		withBPF:  !conf.TestOnly,
 	}
 
+	eventtypes.Init(conf.NodeName)
+
 	tracerCollection, err := tracercollection.NewTracerCollection(!conf.TestOnly, &g.ContainerCollection)
 	if err != nil {
 		return nil, err

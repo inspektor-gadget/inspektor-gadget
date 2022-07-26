@@ -43,7 +43,6 @@ type Config struct {
 	MaxRows    int
 	Interval   time.Duration
 	SortBy     types.SortBy
-	Node       string
 }
 
 type Tracer struct {
