@@ -243,78 +243,51 @@ func (p *TCPParser) PrintEvents() {
 
 	types.SortStats(stats, p.flags.ParsedSortBy)
 
-	switch p.OutputConfig.OutputMode {
-	case commonutils.OutputModeColumns:
-		for idx, event := range stats {
-			if idx == p.flags.MaxRows {
-				break
-			}
-
-			tcpFamily := 4
-			if event.Family == syscall.AF_INET6 {
-				tcpFamily = 6
-			}
-
-			fmt.Printf("%-16s %-16s %-16s %-16s %-7d %-16s %-3d %-51s %-51s %-7d %d\n",
-				event.Node, event.Namespace, event.Pod, event.Container,
-				event.Pid, event.Comm, tcpFamily,
-				fmt.Sprintf("%s:%d", event.Saddr, event.Sport),
-				fmt.Sprintf("%s:%d", event.Daddr, event.Dport),
-				event.Received/1048, event.Sent/1048)
+	for idx, stat := range stats {
+		if idx == p.flags.MaxRows {
+			break
 		}
-	case commonutils.OutputModeJSON:
-		b, err := json.Marshal(stats)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrMarshalOutput(err))
-			return
-		}
-		fmt.Println(string(b))
-	case commonutils.OutputModeCustomColumns:
-		for idx, stat := range stats {
-			if idx == p.flags.MaxRows {
-				break
-			}
-			fmt.Println(p.FormatEventCustomCols(&stat, p.OutputConfig.CustomColumns))
-		}
+		fmt.Println(p.FormatEventCustomCols(&stat))
 	}
 }
 
+func (p *TCPParser) FormatEventCustomCols(stats *types.Stats) string {
+	return p.Transform(stats, func(stats *types.Stats) string {
+		var sb strings.Builder
 
-func (p *TCPParser) FormatEventCustomCols(stats *types.Stats, cols []string) string {
-	var sb strings.Builder
+		for _, col := range p.OutputConfig.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Container))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Pid))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Comm))
+			case "family":
+				tcpFamily := 4
+				if stats.Family == syscall.AF_INET6 {
+					tcpFamily = 6
+				}
 
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Container))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.Pid))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Comm))
-		case "family":
-			tcpFamily := 4
-			if stats.Family == syscall.AF_INET6 {
-				tcpFamily = 6
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], tcpFamily))
+			case "saddr":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], fmt.Sprintf("%s:%d", stats.Saddr, stats.Sport)))
+			case "daddr":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], fmt.Sprintf("%s:%d", stats.Daddr, stats.Dport)))
+			case "sent":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Sent/1024))
+			case "received":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Received/1024))
 			}
-
-			sb.WriteString(fmt.Sprintf("%-3d", tcpFamily))
-		case "saddr":
-			sb.WriteString(fmt.Sprintf("%-51s", fmt.Sprintf("%s:%d", stats.Saddr, stats.Sport)))
-		case "daddr":
-			sb.WriteString(fmt.Sprintf("%-51s", fmt.Sprintf("%s:%d", stats.Daddr, stats.Dport)))
-		case "sent":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.Sent))
-		case "received":
-			sb.WriteString(fmt.Sprintf("%d", stats.Received))
+			sb.WriteRune(' ')
 		}
-		sb.WriteRune(' ')
-	}
 
-	return sb.String()
+		return sb.String()
+	})
 }

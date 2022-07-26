@@ -218,78 +218,53 @@ func (p *BlockIOParser) PrintEvents() {
 
 	types.SortStats(stats, p.flags.ParsedSortBy)
 
-	switch p.OutputConfig.OutputMode {
-	case commonutils.OutputModeColumns:
-		for idx, event := range stats {
-			if idx == p.flags.MaxRows {
-				break
-			}
-
-			rw := 'R'
-			if event.Write {
-				rw = 'W'
-			}
-
-			fmt.Printf("%-16s %-16s %-16s %-16s %-7d %-16s %-3c %-6d %-6d %-7d %-8d %d\n",
-				event.Node, event.Namespace, event.Pod, event.Container,
-				event.Pid, event.Comm, rw, event.Major, event.Minor, event.Bytes,
-				event.MicroSecs, event.Operations)
+	for idx, stat := range stats {
+		if idx == p.flags.MaxRows {
+			break
 		}
-	case commonutils.OutputModeJSON:
-		b, err := json.Marshal(stats)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrMarshalOutput(err))
-			return
-		}
-		fmt.Println(string(b))
-	case commonutils.OutputModeCustomColumns:
-		for idx, stat := range stats {
-			if idx == p.flags.MaxRows {
-				break
-			}
-			fmt.Println(p.FormatEventCustomCols(&stat, p.OutputConfig.CustomColumns))
-		}
+		fmt.Println(p.FormatEventCustomCols(&stat))
 	}
 }
 
+func (p *BlockIOParser) FormatEventCustomCols(stats *types.Stats) string {
+	return p.Transform(stats, func(stats *types.Stats) string {
+		var sb strings.Builder
 
-func (p *BlockIOParser) FormatEventCustomCols(stats *types.Stats, cols []string) string {
-	var sb strings.Builder
+		for _, col := range p.OutputConfig.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Container))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Pid))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Comm))
+			case "r/w":
+				rw := 'R'
+				if stats.Write {
+					rw = 'W'
+				}
 
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Container))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.Pid))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Comm))
-		case "r/w":
-			rw := 'R'
-			if stats.Write {
-				rw = 'W'
+				sb.WriteString(fmt.Sprintf("%*c", p.ColumnsWidth[col], rw))
+			case "major":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Major))
+			case "minor":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Minor))
+			case "bytes":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Bytes))
+			case "time":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.MicroSecs))
+			case "ios":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Operations))
 			}
-
-			sb.WriteString(fmt.Sprintf("%-3c", rw))
-		case "major":
-			sb.WriteString(fmt.Sprintf("%-6d", stats.Major))
-		case "minor":
-			sb.WriteString(fmt.Sprintf("%-6d", stats.Minor))
-		case "bytes":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.Bytes))
-		case "time":
-			sb.WriteString(fmt.Sprintf("%-8d", stats.MicroSecs))
-		case "ios":
-			sb.WriteString(fmt.Sprintf("%-8d", stats.Operations))
+			sb.WriteRune(' ')
 		}
-		sb.WriteRune(' ')
-	}
 
-	return sb.String()
+		return sb.String()
+	})
 }

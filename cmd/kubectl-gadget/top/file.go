@@ -223,68 +223,50 @@ func (p *FileParser) PrintEvents() {
 
 	types.SortStats(stats, p.flags.ParsedSortBy)
 
-	switch p.OutputConfig.OutputMode {
-	case commonutils.OutputModeColumns:
-		for idx, event := range stats {
-			if idx == p.flags.MaxRows {
-				break
-			}
-			fmt.Printf("%-16s %-16s %-16s %-16s %-7d %-16s %-6d %-6d %-7d %-7d %c %s\n",
-				event.Node, event.Namespace, event.Pod, event.Container,
-				event.Pid, event.Comm, event.Reads, event.Writes, event.ReadBytes/1024,
-				event.WriteBytes/1024, event.FileType, event.Filename)
+	for idx, stat := range stats {
+		if idx == p.flags.MaxRows {
+			break
 		}
-	case commonutils.OutputModeJSON:
-		b, err := json.Marshal(stats)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrMarshalOutput(err))
-			return
-		}
-		fmt.Println(string(b))
-	case commonutils.OutputModeCustomColumns:
-		for idx, stat := range stats {
-			if idx == p.flags.MaxRows {
-				break
-			}
-			fmt.Println(p.FormatEventCustomCols(&stat, p.OutputConfig.CustomColumns))
-		}
+		fmt.Println(p.FormatEventCustomCols(&stat))
 	}
 }
 
-func (p *FileParser) FormatEventCustomCols(stats *types.Stats, cols []string) string {
-	var sb strings.Builder
+func (p *FileParser) FormatEventCustomCols(stats *types.Stats) string {
+	return p.Transform(stats, func(stats *types.Stats) string {
+		var sb strings.Builder
 
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Container))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.Pid))
-		case "tid":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.Tid))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Comm))
-		case "reads":
-			sb.WriteString(fmt.Sprintf("%-6d", stats.Reads))
-		case "writes":
-			sb.WriteString(fmt.Sprintf("%-6d", stats.Writes))
-		case "r_kb":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.ReadBytes))
-		case "w_kb":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.WriteBytes))
-		case "t":
-			sb.WriteString(fmt.Sprintf("%c", stats.FileType))
-		case "file":
-			sb.WriteString(fmt.Sprintf("%s", stats.Filename))
+		for _, col := range p.OutputConfig.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Container))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Pid))
+			case "tid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Tid))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Comm))
+			case "reads":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Reads))
+			case "writes":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Writes))
+			case "r_kb":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.ReadBytes/1024))
+			case "w_kb":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.WriteBytes/1024))
+			case "t":
+				sb.WriteString(fmt.Sprintf("%*c", p.ColumnsWidth[col], stats.FileType))
+			case "file":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Filename))
+			}
+			sb.WriteRune(' ')
 		}
-		sb.WriteRune(' ')
-	}
 
-	return sb.String()
+		return sb.String()
+	})
 }
