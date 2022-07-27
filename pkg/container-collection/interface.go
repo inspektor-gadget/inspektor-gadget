@@ -14,6 +14,8 @@
 
 package containercollection
 
+import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 // ContainerResolver offers primitives to look up running containers with
 // various criteria, and to subscribe to container creation and termination.
 type ContainerResolver interface {
@@ -41,7 +43,7 @@ type ContainerResolver interface {
 
 	// LookupOwnerReferenceByMntns returns a pointer to the owner reference of the
 	// container identified by the mount namespace, or nil if not found
-	LookupOwnerReferenceByMntns(mntns uint64) *OwnerReference
+	LookupOwnerReferenceByMntns(mntns uint64) *metav1.OwnerReference
 
 	// GetContainersBySelector returns a slice of containers that match
 	// the selector or an empty slice if there are not matches

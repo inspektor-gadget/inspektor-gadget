@@ -429,11 +429,11 @@ func ownerReferenceEnrichment(
 
 	// Update container's owner reference (If any)
 	if highestOwnerRef != nil {
-		container.OwnerReference = &OwnerReference{
-			Apiversion: highestOwnerRef.APIVersion,
+		container.OwnerReference = &metav1.OwnerReference{
+			APIVersion: highestOwnerRef.APIVersion,
 			Kind:       highestOwnerRef.Kind,
 			Name:       highestOwnerRef.Name,
-			UID:        string(highestOwnerRef.UID),
+			UID:        highestOwnerRef.UID,
 		}
 	}
 

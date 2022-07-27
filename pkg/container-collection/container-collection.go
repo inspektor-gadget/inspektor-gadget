@@ -23,6 +23,8 @@ package containercollection
 
 import (
 	"sync"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ContainerCollection holds a set of containers. It can be embedded as an
@@ -222,8 +224,8 @@ func (cc *ContainerCollection) LookupPIDByPod(namespace, pod string) map[string]
 
 // LookupOwnerReferenceByMntns returns a pointer to the owner reference of the
 // container identified by the mount namespace, or nil if not found
-func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *OwnerReference {
-	var ownerRef *OwnerReference
+func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *metav1.OwnerReference {
+	var ownerRef *metav1.OwnerReference
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if mntns == c.Mntns {

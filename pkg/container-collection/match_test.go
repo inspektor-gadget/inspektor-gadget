@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestSelector(t *testing.T) {
@@ -152,8 +155,8 @@ func TestContainerResolver(t *testing.T) {
 			Pid:        uint32(100 + i),
 			CgroupPath: "/none",
 			CgroupID:   1,
-			OwnerReference: &OwnerReference{
-				UID: fmt.Sprintf("abcde%d", i),
+			OwnerReference: &metav1.OwnerReference{
+				UID: types.UID(fmt.Sprintf("abcde%d", i)),
 			},
 		})
 	}

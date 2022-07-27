@@ -16,6 +16,7 @@ package containercollection
 
 import (
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Container represents a container with its metadata.
@@ -52,18 +53,11 @@ type Container struct {
 	Labels    map[string]string
 	// The owner reference information is added to the seccomp profile as
 	// annotations to help users to identify the workflow of the profile.
-	OwnerReference *OwnerReference
+	OwnerReference *metav1.OwnerReference
 	PodUID         string
 
 	// Container Runtime metadata
 	Runtime string
-}
-
-type OwnerReference struct {
-	Apiversion string
-	Kind       string
-	Name       string
-	UID        string
 }
 
 type ContainerSelector struct {

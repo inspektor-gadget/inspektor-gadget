@@ -32,8 +32,8 @@ SeccompProfiles will have the following annotations:
   traced
 * seccomp.gadget.kinvolk.io/container: the container name in the pod that was
   traced
-* seccomp.gadget.kinvolk.io/ownerReference-ApiVersion: the ownerReference&#39;s
-  ApiVersion of the pod that was traced
+* seccomp.gadget.kinvolk.io/ownerReference-APIVersion: the ownerReference&#39;s
+  APIVersion of the pod that was traced
 * seccomp.gadget.kinvolk.io/ownerReference-Kind: the ownerReference&#39;s Kind of the
   pod that was traced
 * seccomp.gadget.kinvolk.io/ownerReference-Name: the ownerReference&#39;s Name of the
