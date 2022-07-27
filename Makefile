@@ -149,7 +149,7 @@ local-gadget-tests:
 	# available in the root environment
 	go test -c ./pkg/local-gadget-manager \
 		-tags withebpf
-	sudo ./local-gadget-manager.test -test.v -root-test
+	sudo ./local-gadget-manager.test -test.v -root-test $$LOCAL_GADGET_TESTS_PARAMS
 	rm -f ./local-gadget-manager.test
 
 .PHONY: integration-tests

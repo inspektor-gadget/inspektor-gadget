@@ -43,6 +43,10 @@ type Trace struct {
 	started bool
 	done    chan bool
 
+	// detachContainer is read by the go routine and it detaches the tracer
+	// from the container. The string is the container key as per genKey().
+	detachContainer chan string
+
 	tracer   *nettracer.Tracer
 	enricher *Enricher
 	wg       sync.WaitGroup
@@ -192,12 +196,9 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	detachContainerFunc := func(container *containercollection.Container) {
 		key := genKey(container)
 
-		err := t.tracer.Detach(key)
-		if err != nil {
-			t.publishMessage(trace, eventtypes.ERR, key, fmt.Sprintf("failed to detach tracer: %s", err))
-			return
-		}
-		t.publishMessage(trace, eventtypes.DEBUG, key, "tracer detached")
+		// Don't call t.tracer.Detach here. Make sure that t.tracer.Pop
+		// is called before.
+		t.detachContainer <- key
 	}
 
 	containerEventCallback := func(event containercollection.PubSubEvent) {
@@ -228,6 +229,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	trace.Status.State = "Started"
 
 	t.done = make(chan bool)
+	t.detachContainer = make(chan string)
 	t.wg.Add(1)
 	go t.run(trace)
 }
@@ -243,37 +245,54 @@ func (t *Trace) run(trace *gadgetv1alpha1.Trace) {
 		case <-t.done:
 			ticker.Stop()
 			return
-		case <-ticker.C:
-			if t.tracer == nil {
-				// This should not happen with t.wg
-				log.Errorf("tracer is nil at tick")
-				t.publishMessage(trace, eventtypes.ERR, "host", "tracer is nil at tick")
+		case key := <-t.detachContainer:
+			if !t.update(trace, traceBeforePatch) {
 				return
 			}
-			newEdges, err := t.tracer.Pop()
+			err := t.tracer.Detach(key)
 			if err != nil {
-				log.Errorf("failed to read BPF map: %s", err)
-				t.publishMessage(trace, eventtypes.ERR, "host", fmt.Sprintf("failed to read BPF map: %s", err))
+				t.publishMessage(trace, eventtypes.ERR, key, fmt.Sprintf("failed to detach tracer: %s", err))
 				return
 			}
-			newEvents := t.enricher.Enrich(newEdges)
-
-			if t.client != nil {
-				patch := client.MergeFrom(traceBeforePatch)
-				err = t.client.Status().Patch(context.TODO(), trace, patch)
-				if err != nil {
-					log.Errorf("%s", err)
-				}
-			}
-
-			for _, event := range newEvents {
-				// for now, ignore events on the host netns
-				if event.Pod != "" {
-					t.publishEvent(trace, &event)
-				}
+			t.publishMessage(trace, eventtypes.DEBUG, key, "tracer detached")
+		case <-ticker.C:
+			if !t.update(trace, traceBeforePatch) {
+				return
 			}
 		}
 	}
+}
+
+func (t *Trace) update(trace, traceBeforePatch *gadgetv1alpha1.Trace) bool {
+	if t.tracer == nil {
+		// This should not happen with t.wg
+		log.Errorf("tracer is nil at tick")
+		t.publishMessage(trace, eventtypes.ERR, "host", "tracer is nil at tick")
+		return false
+	}
+	newEdges, err := t.tracer.Pop()
+	if err != nil {
+		log.Errorf("failed to read BPF map: %s", err)
+		t.publishMessage(trace, eventtypes.ERR, "host", fmt.Sprintf("failed to read BPF map: %s", err))
+		return false
+	}
+	newEvents := t.enricher.Enrich(newEdges)
+
+	if t.client != nil {
+		patch := client.MergeFrom(traceBeforePatch)
+		err = t.client.Status().Patch(context.TODO(), trace, patch)
+		if err != nil {
+			log.Errorf("%s", err)
+		}
+	}
+
+	for _, event := range newEvents {
+		// for now, ignore events on the host netns
+		if event.Pod != "" {
+			t.publishEvent(trace, &event)
+		}
+	}
+	return true
 }
 
 func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
