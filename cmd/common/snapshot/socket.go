@@ -95,7 +95,7 @@ func NewSocketCmd(
 	return cmd
 }
 
-func (s *SocketParser) TransformEvent(e *types.Event) string {
+func (s *SocketParser) TransformToColumns(e *types.Event) string {
 	var sb strings.Builder
 
 	for _, col := range s.OutputConfig.CustomColumns {

@@ -108,7 +108,7 @@ func NewListContainersCmd() *cobra.Command {
 				fmt.Fprintln(w, parser.BuildColumnsHeader())
 
 				for _, c := range containers {
-					fmt.Fprintln(w, parser.TransformContainerToColumns(c))
+					fmt.Fprintln(w, parser.TransformToColumns(c))
 				}
 
 				w.Flush()
@@ -146,7 +146,7 @@ func (p *ContainerParser) SortContainers(containers []*containercollection.Conta
 	})
 }
 
-func (p *ContainerParser) TransformContainerToColumns(c *containercollection.Container) string {
+func (p *ContainerParser) TransformToColumns(c *containercollection.Container) string {
 	var sb strings.Builder
 
 	for _, col := range p.OutputConfig.CustomColumns {
