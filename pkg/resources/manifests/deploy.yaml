@@ -109,7 +109,7 @@ spec:
       containers:
       - name: gadget
         terminationMessagePolicy: FallbackToLogsOnError
-        image: "ghcr.io/kinvolk/gadget"
+        image: "ghcr.io/kinvolk/inspektor-gadget:latest"
         imagePullPolicy: "Always"
         command: [ "/entrypoint.sh" ]
         lifecycle:
