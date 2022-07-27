@@ -109,6 +109,12 @@ func RunCollector(pid uint32, podname, namespace, node string, proto socketcolle
 	var it *link.Iter
 	iters := []*link.Iter{}
 
+	defer func() {
+		for _, it := range iters {
+			it.Close()
+		}
+	}()
+
 	if proto == socketcollectortypes.TCP || proto == socketcollectortypes.ALL {
 		it, err = getTCPIter()
 		if err != nil {
