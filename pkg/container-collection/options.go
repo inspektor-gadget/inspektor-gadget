@@ -54,6 +54,8 @@ func containerRuntimeEnricher(
 	}
 
 	container.Name = c.Name
+	container.Runtime = c.Runtime
+	container.ID = c.ID
 	// Some gadgets require the namespace and pod name to be set
 	container.Namespace = "default"
 	container.Podname = container.Name
@@ -139,9 +141,10 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 
 			cc.initialContainers = append(cc.initialContainers,
 				&Container{
-					ID:   container.ID,
-					Pid:  uint32(pid),
-					Name: container.Name,
+					ID:      container.ID,
+					Pid:     uint32(pid),
+					Name:    container.Name,
+					Runtime: container.Runtime,
 
 					// Some gadgets require the namespace and pod name to be set
 					Namespace: "default",

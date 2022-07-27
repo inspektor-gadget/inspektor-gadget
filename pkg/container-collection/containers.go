@@ -54,6 +54,9 @@ type Container struct {
 	// annotations to help users to identify the workflow of the profile.
 	OwnerReference *OwnerReference
 	PodUID         string
+
+	// Container Runtime metadata
+	Runtime string
 }
 
 type OwnerReference struct {
