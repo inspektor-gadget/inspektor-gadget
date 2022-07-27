@@ -42,15 +42,15 @@ func newSocketCmd() *cobra.Command {
 		},
 	}
 
-	availableColumns := map[string]struct{}{
-		"node":      {},
-		"namespace": {},
-		"pod":       {},
-		"protocol":  {},
-		"local":     {},
-		"remote":    {},
-		"status":    {},
-		"inode":     {},
+	availableColumns := []string{
+		"node",
+		"namespace",
+		"pod",
+		"protocol",
+		"local",
+		"remote",
+		"status",
+		"inode",
 	}
 
 	customRun := func(callback func(traceOutputMode string, results []string) error) error {

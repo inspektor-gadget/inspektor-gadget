@@ -83,10 +83,7 @@ func NewTcpconnectParser(outputConfig *commonutils.OutputConfig) TraceParser[typ
 	}
 
 	return &TcpconnectParser{
-		BaseParser: commonutils.BaseParser{
-			ColumnsWidth: columnsWidth,
-			OutputConfig: outputConfig,
-		},
+		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
 	}
 }
 

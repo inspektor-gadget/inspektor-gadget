@@ -41,14 +41,14 @@ func newProcessCmd() *cobra.Command {
 		},
 	}
 
-	availableColumns := map[string]struct{}{
-		"node":      {},
-		"namespace": {},
-		"pod":       {},
-		"container": {},
-		"comm":      {},
-		"tgid":      {},
-		"pid":       {},
+	availableColumns := []string{
+		"node",
+		"namespace",
+		"pod",
+		"container",
+		"comm",
+		"tgid",
+		"pid",
 	}
 
 	customRun := func(callback func(traceOutputMode string, results []string) error) error {

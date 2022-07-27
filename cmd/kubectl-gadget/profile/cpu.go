@@ -95,11 +95,8 @@ func newCPUCmd() *cobra.Command {
 				commonFlags:   commonFlags,
 				inProgressMsg: "Capturing stack traces",
 				parser: &CPUParser{
-					BaseParser: commonutils.BaseParser{
-						ColumnsWidth: columnsWidth,
-						OutputConfig: &commonFlags.OutputConfig,
-					},
-					cpuFlags: &cpuFlags,
+					BaseParser: commonutils.NewBaseWidthParser(columnsWidth, &commonFlags.OutputConfig),
+					cpuFlags:   &cpuFlags,
 				},
 			}
 
@@ -148,7 +145,7 @@ func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []str
 			}
 		}
 
-		p.PrintColumnsHeader()
+		fmt.Println(p.BuildColumnsHeader())
 
 		// Add it back in the same position
 		if col == "stack" {

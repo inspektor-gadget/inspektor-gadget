@@ -75,10 +75,7 @@ func NewDNSParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Even
 	}
 
 	return &DNSParser{
-		BaseParser: commonutils.BaseParser{
-			ColumnsWidth: columnsWidth,
-			OutputConfig: outputConfig,
-		},
+		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
 	}
 }
 

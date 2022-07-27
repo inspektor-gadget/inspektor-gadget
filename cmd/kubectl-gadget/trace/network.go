@@ -77,10 +77,7 @@ func NewNetworkParser(outputConfig *commonutils.OutputConfig) TraceParser[types.
 	}
 
 	return &NetworkParser{
-		BaseParser: commonutils.BaseParser{
-			ColumnsWidth: columnsWidth,
-			OutputConfig: outputConfig,
-		},
+		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
 	}
 }
 

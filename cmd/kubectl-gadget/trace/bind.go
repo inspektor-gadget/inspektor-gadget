@@ -124,10 +124,7 @@ func NewBindParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Eve
 	}
 
 	return &BindParser{
-		BaseParser: commonutils.BaseParser{
-			ColumnsWidth: columnsWidth,
-			OutputConfig: outputConfig,
-		},
+		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
 	}
 }
 
