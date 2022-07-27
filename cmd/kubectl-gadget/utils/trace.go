@@ -34,8 +34,9 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
@@ -417,73 +418,34 @@ func SetTraceOperation(traceID string, operation string) error {
 	return err
 }
 
-// untilWithoutRetry is a simplified version (only one function as argument)
-// version of UntilWithoutRetry, we keep this here because UntilWithoutRetry
-// could be deprecated in the future.
-// As archive, here is UntilWithoutRetry documentation:
-// UntilWithoutRetry reads items from the watch until each provided condition succeeds, and then returns the last watch
-// encountered. The first condition that returns an error terminates the watch (and the event is also returned).
-// If no event has been received, the returned event will be nil.
-// Conditions are satisfied sequentially so as to provide a useful primitive for higher level composition.
-// Waits until context deadline or until context is canceled.
-//
-// Warning: Unless you have a very specific use case (probably a special Watcher) don't use this function!!!
-// Warning: This will fail e.g. on API timeouts and/or 'too old resource version' error.
-// Warning: You are most probably looking for a function *Until* or *UntilWithSync* below,
-// Warning: solving such issues.
-// TODO: Consider making this function private to prevent misuse when the other occurrences in our codebase are gone.
-func untilWithoutRetry(ctx context.Context, watcher watch.Interface, condition func(event watch.Event) (bool, error)) (*watch.Event, error) {
-	ch := watcher.ResultChan()
-	defer watcher.Stop()
-
-	var retEvent *watch.Event
-
-Loop:
-	for {
-		select {
-		case event, ok := <-ch:
-			if !ok {
-				return retEvent, errors.New("watch closed before untilWithoutRetry timeout")
-			}
-			retEvent = &event
-
-			done, err := condition(event)
-			if err != nil {
-				return retEvent, err
-			}
-			if done {
-				break Loop
-			}
-
-		case <-ctx.Done():
-			return retEvent, wait.ErrWaitTimeout
-		}
-	}
-
-	return retEvent, nil
-}
-
-// getTraceWatcher returns a watcher on trace(s) for the received ID.
+// getTraceListerWatcher returns a ListerWatcher on trace(s) for the
+// received ID.
 // If resourceVersion is set, the watcher will watch for traces which have at
 // least the received ResourceVersion, otherwise it will watch all traces.
 // This watcher can then be used to wait until the State.Output is modified.
-func getTraceWatcher(traceID, resourceVersion string) (watch.Interface, error) {
+func getTraceListerWatcher(traceID, resourceVersion string) (*cache.ListWatch, error) {
 	traceClient, err := getTraceClient()
 	if err != nil {
 		return nil, err
 	}
 
-	watchOptions := metav1.ListOptions{
-		LabelSelector:   fmt.Sprintf("%s=%s", GlobalTraceID, traceID),
-		ResourceVersion: resourceVersion,
+	traceInterface := traceClient.GadgetV1alpha1().Traces("gadget")
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			options.LabelSelector = fmt.Sprintf("%s=%s", GlobalTraceID, traceID)
+			options.ResourceVersion = resourceVersion
+
+			return traceInterface.List(context.TODO(), options)
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			options.LabelSelector = fmt.Sprintf("%s=%s", GlobalTraceID, traceID)
+			options.ResourceVersion = resourceVersion
+
+			return traceInterface.Watch(context.TODO(), options)
+		},
 	}
 
-	watcher, err := traceClient.GadgetV1alpha1().Traces("gadget").Watch(context.TODO(), watchOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	return watcher, nil
+	return lw, nil
 }
 
 // waitForCondition waits for the traces with the ID received as parameter to
@@ -526,23 +488,25 @@ func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Tra
 	// We only watch the traces if there are some which did not already satisfy
 	// the conditionFunction.
 	if len(satisfiedTraces)+len(erroredTraces) < tracesNumber {
-		var watcher watch.Interface
+		var traceListerWatcher *cache.ListWatch
 
-		// We will need to watch events on them.
-		// For this, we will get a watcher on all the traces which share the same
-		// ID.
-		// Get a watcher on all the traces which have the same ID.
-		// Indeed, all the traces on different nodes but linked to one gadget share
+		// We will need to list and watch events on them.
+		// For this, we will get a ListerWatcher on all the traces which share the
+		// same ID.
+		// NOTE all the traces on different nodes but linked to one gadget share
 		// the same ID.
 		// We will also begin to monitor events since the above GET of the traces
-		// list.
-		watcher, err = getTraceWatcher(traceID, traceList.ListMeta.ResourceVersion)
+		// list thanks to resource version.
+		traceListerWatcher, err = getTraceListerWatcher(traceID, traceList.ResourceVersion)
 		if err != nil {
 			return nil, err
 		}
 
 		ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), TraceTimeout)
-		_, err = untilWithoutRetry(ctx, watcher, func(event watch.Event) (bool, error) {
+		defer cancel()
+
+		createdTraces := 0
+		_, err = watchtools.UntilWithSync(ctx, traceListerWatcher, &gadgetv1alpha1.Trace{}, nil, func(event watch.Event) (bool, error) {
 			// This function will be executed until:
 			// 1. The number of watched traces equals the number of traces to watch,
 			// i.e. we dealt with the traces which interest us.
@@ -574,11 +538,17 @@ func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Tra
 				// Deal particularly with error.
 				return false, fmt.Errorf("received event is an error one: %v", event)
 			case watch.Added:
-				// createTraces() creates traces synchronously.
-				// So, if a watch.Added event occurs it means there is a problem (e.g.
-				// the user creates a trace by snooping on the traceID of existing
-				// traces).
-				return false, fmt.Errorf("no traces with the given traceID (%s) should be created", traceID)
+				createdTraces++
+
+				// While watching, we will receive watch.Added event for the traces
+				// previously created.
+				// So, if there are more events than already created traces, it means
+				// something wrong happens (e.g. the user creates a trace by snooping on
+				// the traceID of existing traces).
+				if createdTraces > tracesNumber {
+					return false, fmt.Errorf("there must be %d trace(s) and %d were created",
+						tracesNumber, createdTraces)
+				}
 			default:
 				// We are not interested in other event types.
 				return false, nil
@@ -612,7 +582,6 @@ func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Tra
 
 			return len(satisfiedTraces)+len(erroredTraces) == tracesNumber, nil
 		})
-		cancel()
 	}
 
 	for _, trace := range erroredTraces {
