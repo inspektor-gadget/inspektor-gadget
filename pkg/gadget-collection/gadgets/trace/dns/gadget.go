@@ -130,6 +130,7 @@ func (t *Trace) publishEvent(
 	event *types.Event,
 	key string,
 ) {
+	event.Node = trace.Spec.Node
 	keyParts := strings.SplitN(key, "/", 2)
 	if len(keyParts) == 2 {
 		event.Namespace = keyParts[0]
@@ -175,7 +176,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	attachContainerFunc := func(container *containercollection.Container) error {
 		key := genKey(container)
 
-		err = t.tracer.Attach(key, container.Pid, eventCallback(key), trace.Spec.Node)
+		err = t.tracer.Attach(key, container.Pid, eventCallback(key))
 		if err != nil {
 			t.publishMessage(trace, eventtypes.ERR, key, fmt.Sprintf("failed to attach tracer: %s", err))
 			return err
