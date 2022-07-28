@@ -234,12 +234,15 @@ again:
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 		defer cancel()
-		watchtools.Until(ctx, list.ResourceVersion, watcher, conditionFunc)
+		_, err := watchtools.Until(ctx, list.ResourceVersion, watcher, conditionFunc)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("failed waiting for %q namespace to be removed: %s", gadgetNamespace, err))
+		}
 	}
 
 out:
 	if len(errs) > 0 {
-		return fmt.Errorf("error removing IG:\n%s", strings.Join(errs, "\n"))
+		return fmt.Errorf("error removing Inspektor Gadget:\n%s", strings.Join(errs, "\n"))
 	}
 
 	if undeployWait {
