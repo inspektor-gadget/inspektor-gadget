@@ -60,6 +60,7 @@ func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]processc
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}
+	defer coll.Close()
 
 	dumpTask, ok := coll.Programs[BPFIterName]
 	if !ok {
@@ -71,6 +72,7 @@ func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]processc
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach BPF iterator: %w", err)
 	}
+	defer dumpTaskIter.Close()
 
 	file, err := dumpTaskIter.Open()
 	if err != nil {
