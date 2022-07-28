@@ -139,7 +139,7 @@ func newFileCmd() *cobra.Command {
 			}
 
 			if singleShot {
-				parser.PrintEvents()
+				parser.PrintStats()
 			}
 
 			return nil
@@ -190,7 +190,7 @@ func (p *FileParser) StartPrintLoop() {
 		for {
 			_ = <-ticker.C
 			p.PrintHeader()
-			p.PrintEvents()
+			p.PrintStats()
 		}
 	}()
 }
@@ -209,8 +209,8 @@ func (p *FileParser) PrintHeader() {
 	fmt.Println(p.BuildColumnsHeader())
 }
 
-func (p *FileParser) PrintEvents() {
-	// sort and print events
+func (p *FileParser) PrintStats() {
+	// Sort and print stats
 	p.Lock()
 
 	stats := []types.Stats{}
@@ -227,11 +227,11 @@ func (p *FileParser) PrintEvents() {
 		if idx == p.flags.MaxRows {
 			break
 		}
-		fmt.Println(p.FormatEventCustomCols(&stat))
+		fmt.Println(p.TransformStats(&stat))
 	}
 }
 
-func (p *FileParser) FormatEventCustomCols(stats *types.Stats) string {
+func (p *FileParser) TransformStats(stats *types.Stats) string {
 	return p.Transform(stats, func(stats *types.Stats) string {
 		var sb strings.Builder
 

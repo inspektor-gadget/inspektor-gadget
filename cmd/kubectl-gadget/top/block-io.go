@@ -136,7 +136,7 @@ func newBlockIOCmd() *cobra.Command {
 			}
 
 			if singleShot {
-				parser.PrintEvents()
+				parser.PrintStats()
 			}
 
 			return nil
@@ -185,7 +185,7 @@ func (p *BlockIOParser) StartPrintLoop() {
 		for {
 			_ = <-ticker.C
 			p.PrintHeader()
-			p.PrintEvents()
+			p.PrintStats()
 		}
 	}()
 }
@@ -204,8 +204,8 @@ func (p *BlockIOParser) PrintHeader() {
 	fmt.Println(p.BuildColumnsHeader())
 }
 
-func (p *BlockIOParser) PrintEvents() {
-	// sort and print events
+func (p *BlockIOParser) PrintStats() {
+	// Sort and print stats
 	p.Lock()
 
 	stats := []types.Stats{}
@@ -222,11 +222,11 @@ func (p *BlockIOParser) PrintEvents() {
 		if idx == p.flags.MaxRows {
 			break
 		}
-		fmt.Println(p.FormatEventCustomCols(&stat))
+		fmt.Println(p.TransformStats(&stat))
 	}
 }
 
-func (p *BlockIOParser) FormatEventCustomCols(stats *types.Stats) string {
+func (p *BlockIOParser) TransformStats(stats *types.Stats) string {
 	return p.Transform(stats, func(stats *types.Stats) string {
 		var sb strings.Builder
 
