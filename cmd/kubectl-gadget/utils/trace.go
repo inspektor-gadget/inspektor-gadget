@@ -32,6 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -152,7 +153,7 @@ func deleteTraces(traceClient *clientset.Clientset, traceID string) {
 		context.TODO(), metav1.DeleteOptions{}, listTracesOptions,
 	)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error deleting traces: %q", err)
+		fmt.Fprintf(os.Stderr, "Error: deleting traces: %q", err)
 	}
 }
 
@@ -349,7 +350,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 			deleteError := DeleteTrace(traceID)
 
 			if deleteError != nil {
-				fmt.Fprintf(os.Stderr, "%v\n", err)
+				fmt.Fprintf(os.Stderr, "Error: deleting trace: %s\n", err)
 			}
 
 			return "", err
@@ -597,7 +598,25 @@ func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Tra
 	}
 
 	if err != nil {
-		return nil, err
+		if !errors.Is(err, wait.ErrWaitTimeout) {
+			return nil, err
+		}
+
+		// If there is not at least one satisfied trace, return the error.
+		if len(satisfiedTraces) == 0 {
+			return nil, err
+		}
+
+		// Print a message for traces that timed out
+		for _, trace := range traceList.Items {
+			_, satisfied := satisfiedTraces[trace.ObjectMeta.Name]
+			_, errored := erroredTraces[trace.ObjectMeta.Name]
+			if !satisfied && !errored {
+				fmt.Fprintf(os.Stderr,
+					"Error: timeout waiting for condition on node %q\n",
+					trace.Spec.Node)
+			}
+		}
 	}
 
 	for _, trace := range satisfiedTraces {
