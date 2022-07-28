@@ -263,6 +263,18 @@ jobs:
         push: ${{ secrets.PUSH_EXAMPLES == 'ENABLE_PUSH_EXAMPLES' }}
         tags: ${{ steps.choose-repo.outputs.container-repo }}-${{ matrix.example }}:${{ env.IMAGE_TAG }}
 
+  build-gadgets-examples:
+    name: Build Gadgets examples
+    # level: 0
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build example binaries
+      run: |
+        for dir in $(dirname $(find examples/gadgets -name README.md)); do
+          go build ./$dir;
+        done
+
   test-unit:
     name: Unit tests
     # level: 0
@@ -444,7 +456,15 @@ jobs:
   release:
     name: Release
     # level: 2
-    needs: [documentation-checks, lint, test-integration, test-integration-aro, test-local-gadget, check-readme-up-to-date]
+    needs:
+      - documentation-checks
+      - lint
+      - test-integration
+      - test-integration-aro
+      - test-local-gadget
+      - check-readme-up-to-date
+      - build-examples
+      - build-gadgets-examples
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
