@@ -43,7 +43,6 @@ const (
 type Tracer struct {
 	config        *Config
 	eventCallback func(types.Event)
-	node          string
 
 	collection *ebpf.Collection
 	eventMap   *ebpf.Map
@@ -61,7 +60,7 @@ type Config struct {
 	MountnsMap    *ebpf.Map
 }
 
-func NewTracer(config *Config, eventCallback func(types.Event), node string) (*Tracer, error) {
+func NewTracer(config *Config, eventCallback func(types.Event)) (*Tracer, error) {
 	var err error
 	var spec *ebpf.CollectionSpec
 
@@ -97,7 +96,6 @@ func NewTracer(config *Config, eventCallback func(types.Event), node string) (*T
 	t := &Tracer{
 		config:        config,
 		eventCallback: eventCallback,
-		node:          node,
 		collection:    coll,
 		eventMap:      coll.Maps[BPFMapName],
 		reader:        rd,
@@ -144,7 +142,6 @@ func (t *Tracer) run() {
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 				CommonData: eventtypes.CommonData{
-					Node: t.node,
 					// Get 'Namespace', 'Pod' and 'Container' from
 					// BPF and not from the gadget helpers  because the
 					// container might be terminated immediately
