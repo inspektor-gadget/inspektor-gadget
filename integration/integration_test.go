@@ -948,7 +948,10 @@ func TestTcptop(t *testing.T) {
 	runCommands(commands, t)
 }
 
-func TestTraceloop(t *testing.T) {
+// This test is flaky (https://github.com/kinvolk/traceloop/issues/42),
+// let's disable it until we rework this gadget
+// https://github.com/kinvolk/inspektor-gadget/issues/371
+func _TestTraceloop(t *testing.T) {
 	ns := generateTestNamespaceName("test-traceloop")
 
 	t.Parallel()
