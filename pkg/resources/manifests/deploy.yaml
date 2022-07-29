@@ -117,6 +117,12 @@ spec:
             exec:
               command:
                 - "/cleanup.sh"
+        readinessProbe:
+          periodSeconds: 5
+          exec:
+            command:
+              - /bin/gadgettracermanager
+              - -liveness
         livenessProbe:
           initialDelaySeconds: 60
           periodSeconds: 5
