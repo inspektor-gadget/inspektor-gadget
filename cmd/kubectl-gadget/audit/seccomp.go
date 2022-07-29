@@ -18,8 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
+	commonaudit "github.com/kinvolk/inspektor-gadget/cmd/common/audit"
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
@@ -28,38 +28,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type SeccompParser struct {
-	commonutils.BaseParser[types.Event]
-}
-
 func newSeccompCmd() *cobra.Command {
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"container",
-				"pid",
-				"comm",
-				"syscall",
-				"code",
-			},
-		},
-	}
-
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -30,
-		"container": -16,
-		"pid":       -7,
-		"comm":      -16,
-		"syscall":   -16,
-		"code":      -16,
-	}
+	var commonFlags utils.CommonFlags
 
 	cmd := &cobra.Command{
 		Use:          "seccomp",
@@ -67,9 +37,7 @@ func newSeccompCmd() *cobra.Command {
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			parser := &SeccompParser{
-				BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, &commonFlags.OutputConfig),
-			}
+			parser := commonaudit.NewSeccompK8sParser(&commonFlags.OutputConfig)
 
 			if commonFlags.OutputMode != commonutils.OutputModeJSON {
 				fmt.Println(parser.BuildColumnsHeader())
@@ -80,7 +48,7 @@ func newSeccompCmd() *cobra.Command {
 				Operation:        "start",
 				TraceOutputMode:  "Stream",
 				TraceOutputState: "Started",
-				CommonFlags:      commonFlags,
+				CommonFlags:      &commonFlags,
 			}
 
 			transformEvent := func(line string) string {
@@ -108,41 +76,7 @@ func newSeccompCmd() *cobra.Command {
 		},
 	}
 
-	utils.AddCommonFlags(cmd, commonFlags)
+	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
-}
-
-func (p *SeccompParser) TransformEvent(e *types.Event) string {
-	return p.Transform(e, func(e *types.Event) string {
-		var sb strings.Builder
-
-		for _, col := range p.OutputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], e.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Comm))
-			case "syscall":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Syscall))
-			case "code":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Code))
-			default:
-				continue
-			}
-
-			// Needed when field is larger than the predefined columnsWidth.
-			sb.WriteRune(' ')
-		}
-
-		return sb.String()
-	})
 }
