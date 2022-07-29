@@ -15,12 +15,21 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 )
 
+// BaseElement represent any element that needs to be transform into a requested
+// format. For instance, it could be an event (for trace category) or  a report
+// (for the profile/cpu gadget).
+type BaseElement interface {
+	any
+}
+
 // BaseParser is a base for a parser that implements the most common methods.
-type BaseParser struct {
+type BaseParser[E BaseElement] struct {
 	// ColumnsWidth are the columns that can be configured to be printed with
 	// the width to be used.
 	ColumnsWidth map[string]int
@@ -35,8 +44,8 @@ type BaseParser struct {
 	OutputConfig *OutputConfig
 }
 
-func NewBaseParser(columnsWidth map[string]int, useTabs bool, outputConfig *OutputConfig) BaseParser {
-	return BaseParser{
+func newBaseParser[E BaseElement](columnsWidth map[string]int, useTabs bool, outputConfig *OutputConfig) BaseParser[E] {
+	return BaseParser[E]{
 		ColumnsWidth:     columnsWidth,
 		SeparateWithTabs: useTabs,
 		OutputConfig:     outputConfig,
@@ -45,7 +54,7 @@ func NewBaseParser(columnsWidth map[string]int, useTabs bool, outputConfig *Outp
 
 // NewBaseTabParser returns a BaseParser configured to print columns separated
 // by tabs.
-func NewBaseTabParser(availableColumns []string, outputConfig *OutputConfig) BaseParser {
+func NewBaseTabParser[E BaseElement](availableColumns []string, outputConfig *OutputConfig) BaseParser[E] {
 	// Adapt an availableColumns slice to be passed to NewBaseParser. Given that
 	// NewBaseParser will be called with useTabs=true, the columns will be
 	// separated by tabs and the width values will be just ignored. Therefore,
@@ -55,16 +64,16 @@ func NewBaseTabParser(availableColumns []string, outputConfig *OutputConfig) Bas
 		adaptedColumns[v] = 0
 	}
 
-	return NewBaseParser(adaptedColumns, true, outputConfig)
+	return newBaseParser[E](adaptedColumns, true, outputConfig)
 }
 
 // NewBaseWidthParser returns a BaseParser configured to print columns separated
 // by their predefined with.
-func NewBaseWidthParser(columnsWidth map[string]int, outputConfig *OutputConfig) BaseParser {
-	return NewBaseParser(columnsWidth, false, outputConfig)
+func NewBaseWidthParser[E BaseElement](columnsWidth map[string]int, outputConfig *OutputConfig) BaseParser[E] {
+	return newBaseParser[E](columnsWidth, false, outputConfig)
 }
 
-func (p *BaseParser) BuildColumnsHeader() string {
+func (p *BaseParser[E]) BuildColumnsHeader() string {
 	var sb strings.Builder
 
 	for _, col := range p.OutputConfig.CustomColumns {
@@ -89,6 +98,25 @@ func (p *BaseParser) BuildColumnsHeader() string {
 	return sb.String()
 }
 
-func (p *BaseParser) GetOutputConfig() *OutputConfig {
+func (p *BaseParser[E]) Transform(element *E, toColumns func(*E) string) string {
+	switch p.OutputConfig.OutputMode {
+	case OutputModeJSON:
+		b, err := json.Marshal(element)
+		if err != nil {
+			fmt.Fprint(os.Stderr, fmt.Sprint(WrapInErrMarshalOutput(err)))
+			return ""
+		}
+
+		return string(b)
+	case OutputModeColumns:
+		fallthrough
+	case OutputModeCustomColumns:
+		return toColumns(element)
+	}
+
+	return ""
+}
+
+func (p *BaseParser[E]) GetOutputConfig() *OutputConfig {
 	return p.OutputConfig
 }

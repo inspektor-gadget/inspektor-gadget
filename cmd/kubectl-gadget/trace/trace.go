@@ -39,7 +39,8 @@ type TraceEvent interface {
 // TraceParser defines the interface that every trace-gadget parser has to
 // implement.
 type TraceParser[Event TraceEvent] interface {
-	// TransformEvent is called to transform an event to columns format.
+	// TransformEvent is called to transform an event to the requested output
+	// format.
 	TransformEvent(event *Event) string
 
 	// BuildColumnsHeader returns a header with the requested custom columns

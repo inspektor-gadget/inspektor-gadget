@@ -678,7 +678,7 @@ func PrintTraceOutputFromStream(traceID string, expectedState string, params *Co
 		return err
 	}
 
-	return genericStreamsDisplay(params, traces, transformLine)
+	return genericStreams(params, traces, nil, transformLine)
 }
 
 // PrintTraceOutputFromStatus is used to print trace output using function
@@ -904,21 +904,6 @@ func RunTraceAndPrintStatusOutput(
 	defer DeleteTrace(traceID)
 
 	return PrintTraceOutputFromStatus(traceID, config.TraceOutputState, customResultsDisplay)
-}
-
-func genericStreamsDisplay(
-	params *CommonFlags,
-	results *gadgetv1alpha1.TraceList,
-	transformLine func(string) string,
-) error {
-	transform := func(line string) string {
-		if params.OutputMode == commonutils.OutputModeJSON {
-			return line
-		}
-		return transformLine(line)
-	}
-
-	return genericStreams(params, results, nil, transform)
 }
 
 func genericStreams(

@@ -26,7 +26,7 @@ import (
 )
 
 type OOMKillParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newOOMKillCmd() *cobra.Command {
@@ -81,38 +81,42 @@ func NewOOMKillParser(outputConfig *commonutils.OutputConfig) TraceParser[types.
 	}
 
 	return &OOMKillParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 
 func (p *OOMKillParser) TransformEvent(event *types.Event) string {
-	var sb strings.Builder
+	return p.Transform(event, func(event *types.Event) string {
+		var sb strings.Builder
 
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
-		case "kpid":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.KilledPid))
-		case "kcomm":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.KilledComm))
-		case "pages":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pages))
-		case "tpid":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.TriggeredPid))
-		case "tcomm":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.TriggeredComm))
+		for _, col := range p.OutputConfig.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
+			case "kpid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.KilledPid))
+			case "kcomm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.KilledComm))
+			case "pages":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pages))
+			case "tpid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.TriggeredPid))
+			case "tcomm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.TriggeredComm))
+			default:
+				continue
+			}
+
+			// Needed when field is larger than the predefined columnsWidth.
+			sb.WriteRune(' ')
 		}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
-	}
-
-	return sb.String()
+		return sb.String()
+	})
 }

@@ -26,7 +26,7 @@ import (
 )
 
 type TcpconnectParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newTcpconnectCmd() *cobra.Command {
@@ -83,40 +83,44 @@ func NewTcpconnectParser(outputConfig *commonutils.OutputConfig) TraceParser[typ
 	}
 
 	return &TcpconnectParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 
 func (p *TcpconnectParser) TransformEvent(event *types.Event) string {
-	var sb strings.Builder
+	return p.Transform(event, func(event *types.Event) string {
+		var sb strings.Builder
 
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
-		case "ip":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.IPVersion))
-		case "saddr":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Saddr))
-		case "daddr":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Daddr))
-		case "dport":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Dport))
+		for _, col := range p.OutputConfig.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
+			case "ip":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.IPVersion))
+			case "saddr":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Saddr))
+			case "daddr":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Daddr))
+			case "dport":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Dport))
+			default:
+				continue
+			}
+
+			// Needed when field is larger than the predefined columnsWidth.
+			sb.WriteRune(' ')
 		}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
-	}
-
-	return sb.String()
+		return sb.String()
+	})
 }

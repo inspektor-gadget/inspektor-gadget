@@ -43,9 +43,8 @@ type SnapshotParser[Event SnapshotEvent] interface {
 	// SortEvents sorts a slice of events based on a predefined prioritization.
 	SortEvents(*[]Event)
 
-	// TransformEvent is called to transform an event to columns
-	// format according to the parameters.
-	TransformEvent(*Event) string
+	// TransformToColumns is called to transform an event to columns.
+	TransformToColumns(*Event) string
 
 	// BuildColumnsHeader returns a header with the requested custom columns
 	// that exist in the predefined columns list. The columns are separated by
@@ -116,7 +115,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 					continue
 				}
 
-				fmt.Fprintln(w, g.parser.TransformEvent(&e))
+				fmt.Fprintln(w, g.parser.TransformToColumns(&e))
 			}
 
 			w.Flush()

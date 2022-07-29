@@ -34,7 +34,7 @@ type SocketFlags struct {
 }
 
 type SocketParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 
 	socketFlags *SocketFlags
 }
@@ -47,7 +47,7 @@ func NewSocketCmd(
 ) *cobra.Command {
 	socketGadget := &SnapshotGadget[types.Event]{
 		parser: &SocketParser{
-			BaseParser:  commonutils.NewBaseTabParser(availableColumns, outputConfig),
+			BaseParser:  commonutils.NewBaseTabParser[types.Event](availableColumns, outputConfig),
 			socketFlags: socketFlags,
 		},
 		customRun: customRun,
@@ -95,7 +95,7 @@ func NewSocketCmd(
 	return cmd
 }
 
-func (s *SocketParser) TransformEvent(e *types.Event) string {
+func (s *SocketParser) TransformToColumns(e *types.Event) string {
 	var sb strings.Builder
 
 	for _, col := range s.OutputConfig.CustomColumns {

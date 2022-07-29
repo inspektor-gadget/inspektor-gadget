@@ -28,7 +28,7 @@ import (
 )
 
 type FsslowerParser struct {
-	commonutils.BaseParser
+	commonutils.BaseParser[types.Event]
 }
 
 func newFsSlowerCmd() *cobra.Command {
@@ -128,47 +128,51 @@ func NewFsslowerParser(outputConfig *commonutils.OutputConfig) TraceParser[types
 	}
 
 	return &FsslowerParser{
-		BaseParser: commonutils.NewBaseWidthParser(columnsWidth, outputConfig),
+		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
 	}
 }
 
 func (p *FsslowerParser) TransformEvent(event *types.Event) string {
-	var sb strings.Builder
+	return p.Transform(event, func(event *types.Event) string {
+		var sb strings.Builder
 
-	// TODO: what to print in this case?
-	if event.Bytes == math.MaxInt64 {
-		event.Bytes = 0
-	}
-
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
-		case "t":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Op))
-		case "bytes":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Bytes))
-		case "offset":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Offset))
-		case "lat":
-			sb.WriteString(fmt.Sprintf("%*.2f", p.ColumnsWidth[col], float64(event.Latency)/1000.0))
-		case "file":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.File))
+		// TODO: what to print in this case?
+		if event.Bytes == math.MaxInt64 {
+			event.Bytes = 0
 		}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
-	}
+		for _, col := range p.OutputConfig.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
+			case "t":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Op))
+			case "bytes":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Bytes))
+			case "offset":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Offset))
+			case "lat":
+				sb.WriteString(fmt.Sprintf("%*.2f", p.ColumnsWidth[col], float64(event.Latency)/1000.0))
+			case "file":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.File))
+			default:
+				continue
+			}
 
-	return sb.String()
+			// Needed when field is larger than the predefined columnsWidth.
+			sb.WriteRune(' ')
+		}
+
+		return sb.String()
+	})
 }
