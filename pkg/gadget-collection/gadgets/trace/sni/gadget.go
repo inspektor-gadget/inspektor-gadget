@@ -121,6 +121,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	fillEvent := func(event *types.Event, key string) {
+		event.Node = trace.Spec.Node
 		keyParts := strings.SplitN(key, "/", 2)
 		if len(keyParts) == 2 {
 			event.Namespace = keyParts[0]
@@ -189,7 +190,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	attachContainerFunc := func(container *containercollection.Container) error {
 		key := genKey(container)
 
-		err = t.tracer.Attach(key, container.Pid, newSNIRequestCallback(key), trace.Spec.Node)
+		err = t.tracer.Attach(key, container.Pid, newSNIRequestCallback(key))
 		if err != nil {
 			t.helpers.PublishEvent(
 				traceName,

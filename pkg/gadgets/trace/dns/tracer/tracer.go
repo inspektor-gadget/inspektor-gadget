@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sync"
 	"syscall"
 	"unsafe"
 
@@ -56,8 +55,6 @@ type link struct {
 }
 
 type Tracer struct {
-	mu sync.Mutex
-
 	spec *ebpf.CollectionSpec
 
 	// key: namespace/podname
@@ -83,7 +80,6 @@ func (t *Tracer) Attach(
 	key string,
 	pid uint32,
 	eventCallback func(types.Event),
-	node string,
 ) (err error) {
 	if l, ok := t.attachments[key]; ok {
 		l.users++
@@ -134,7 +130,7 @@ func (t *Tracer) Attach(
 
 	t.attachments[key] = l
 
-	go t.listen(key, l.perfRd, eventCallback, node)
+	go t.listen(key, l.perfRd, eventCallback)
 
 	return nil
 }
@@ -286,7 +282,6 @@ func (t *Tracer) listen(
 	key string,
 	rd *perf.Reader,
 	eventCallback func(types.Event),
-	node string,
 ) {
 	for {
 		record, err := rd.Read()
@@ -314,9 +309,6 @@ func (t *Tracer) listen(
 			event := types.Event{
 				Event: eventtypes.Event{
 					Type: eventtypes.NORMAL,
-					CommonData: eventtypes.CommonData{
-						Node: node,
-					},
 				},
 				DNSName: name,
 				PktType: pktType,
