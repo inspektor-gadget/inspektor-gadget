@@ -98,6 +98,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 	eventCallback := func(event types.Event) {
+		event.Node = trace.Spec.Node
+
 		t.helpers.PublishEvent(
 			traceName,
 			eventtypes.EventString(event),
@@ -116,7 +118,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		MountnsMap:    mountNsMap,
 		ContainersMap: t.helpers.ContainersMap(),
 	}
-	t.tracer, err = auditseccomptracer.NewTracer(config, eventCallback, trace.Spec.Node)
+	t.tracer, err = auditseccomptracer.NewTracer(config, eventCallback)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("Failed to start audit seccomp tracer: %s", err)
 		return
