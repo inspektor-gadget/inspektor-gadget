@@ -334,7 +334,7 @@ EOF
 		{
 			name:           "RunAuditSeccompGadget",
 			cmd:            fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15", ns),
-			expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+container1\s+unshare\s+\d+\s+unshare\s+kill_thread`, ns),
+			expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+container1\s+\d+\s+unshare\s+unshare\s+kill_thread`, ns),
 		},
 		deleteTestNamespaceCommand(ns),
 	}

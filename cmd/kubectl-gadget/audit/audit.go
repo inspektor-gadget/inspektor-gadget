@@ -15,16 +15,16 @@
 package audit
 
 import (
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-
 	"github.com/spf13/cobra"
 )
 
-// All the gadgets within this package use this global variable, so let's
-// declare it here.
-var params utils.CommonFlags
+func NewAuditCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "audit",
+		Short: "Audit a subsystem",
+	}
 
-var AuditCmd = &cobra.Command{
-	Use:   "audit",
-	Short: "Audit a subsystem",
+	cmd.AddCommand(newSeccompCmd())
+
+	return cmd
 }
