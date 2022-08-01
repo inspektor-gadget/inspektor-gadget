@@ -300,7 +300,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if printOnly || !wait {
+	if printOnly {
+		return nil
+	}
+	if !wait {
+		info("Inspektor Gadget is being deployed\n")
 		return nil
 	}
 
@@ -350,5 +354,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 	})
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	info("Inspektor Gadget successfully deployed\n")
+
+	return nil
 }
