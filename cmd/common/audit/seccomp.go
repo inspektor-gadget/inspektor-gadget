@@ -41,6 +41,7 @@ func newSeccompParser(outputConfig *commonutils.OutputConfig, prependK8sMetadata
 		"comm":      -16,
 		"syscall":   -16,
 		"code":      -16,
+		"mntns":     -12,
 	}
 
 	if len(outputConfig.CustomColumns) == 0 {
@@ -85,6 +86,8 @@ func (p *SeccompParser) TransformEvent(e *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Syscall))
 			case "code":
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Code))
+			case "mntns":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], e.MountNsID))
 			default:
 				continue
 			}
