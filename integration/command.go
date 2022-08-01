@@ -70,7 +70,7 @@ type command struct {
 }
 
 func deployInspektorGadget(image string, livenessProbe bool) *command {
-	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --liveness-probe=%t", livenessProbe)
+	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --liveness-probe=%t --debug", livenessProbe)
 
 	if image != "" {
 		cmd = cmd + " --image=" + image
