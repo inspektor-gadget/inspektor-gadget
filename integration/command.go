@@ -149,13 +149,6 @@ kubectl rollout status -n security-profiles-operator ds spod --timeout=180s || \
 	}
 }
 
-func waitUntilInspektorGadgetPodsInitialized(initialDelay int) *command {
-	return &command{
-		name: "WaitForInspektorGadgetInit",
-		cmd:  fmt.Sprintf("sleep %d", initialDelay),
-	}
-}
-
 var cleanupInspektorGadget *command = &command{
 	name:    "CleanupInspektorGadget",
 	cmd:     "$KUBECTL_GADGET undeploy",

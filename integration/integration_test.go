@@ -154,16 +154,6 @@ func testMain(m *testing.M) int {
 		initCommands = append(initCommands, deployInspektorGadget)
 		initCommands = append(initCommands, waitUntilInspektorGadgetPodsDeployed)
 
-		initialDelay := 15
-		if *k8sDistro == K8sDistroARO {
-			// ARO and any other Kubernetes distribution that uses Red Hat
-			// Enterprise Linux CoreOS (RHCOS) requires more time to initialise
-			// because we automatically download the kernel headers for it. See
-			// gadget-container/entrypoint.sh.
-			initialDelay = 60
-		}
-		initCommands = append(initCommands, waitUntilInspektorGadgetPodsInitialized(initialDelay))
-
 		cleanupCommands = append(cleanupCommands, cleanupInspektorGadget)
 	}
 
