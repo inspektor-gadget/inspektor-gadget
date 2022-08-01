@@ -75,19 +75,6 @@ var deployInspektorGadget *command = &command{
 	expectedRegexp: `\d\/\d gadget pod\(s\) ready`,
 }
 
-var waitUntilInspektorGadgetPodsDeployed *command = &command{
-	name: "WaitForGadgetPods",
-	cmd: `
-	for POD in $(sleep 5; kubectl get pod -n gadget -l k8s-app=gadget -o name) ; do
-		kubectl wait --timeout=30s -n gadget --for=condition=ready $POD
-		if [ $? -ne 0 ]; then
-			kubectl get pod -n gadget
-			kubectl describe $POD -n gadget
-			exit 1
-		fi
-	done`,
-}
-
 func deploySPO(limitReplicas, bestEffortResourceMgmt bool) *command {
 	cmdStr := fmt.Sprintf(`
 kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml
