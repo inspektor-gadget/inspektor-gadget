@@ -21,7 +21,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func ManageSpecialEvent(e eventtypes.Event, verbose bool) {
+func ManageSpecialEvent(e *eventtypes.Event, verbose bool) {
 	switch e.Type {
 	case eventtypes.READY:
 		// TODO

@@ -90,7 +90,7 @@ func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []Event) error {
 		for _, e := range allEvents {
 			baseEvent := e.GetBaseEvent()
 			if baseEvent.Type != eventtypes.NORMAL {
-				commonutils.ManageSpecialEvent(baseEvent, outputConfig.Verbose)
+				commonutils.ManageSpecialEvent(&baseEvent, outputConfig.Verbose)
 				continue
 			}
 
