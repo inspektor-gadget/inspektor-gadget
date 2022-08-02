@@ -15,6 +15,7 @@
 package containercollection
 
 import (
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 )
 
@@ -71,4 +72,13 @@ type ContainerSelector struct {
 	Podname   string
 	Labels    map[string]string
 	Name      string
+}
+
+// GetBaseEvent is defined to implement the commonutils.BaseElement interface so
+// that we can use the commonutils.BaseParser methods to parse Container. In
+// commonutils.BaseParser.Transform(), we call GetBaseEvent() to check whether
+// the element being parsed is a special event or not. Given that Container is
+// not an event, this method simply returns nil.
+func (e Container) GetBaseEvent() *eventtypes.Event {
+	return nil
 }

@@ -21,19 +21,12 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
 
 type TraceEvent interface {
 	any
-
-	// The Go compiler does not support accessing a struct field x.f where x is
-	// of type parameter type even if all types in the type parameter's type set
-	// have a field f. We may remove this restriction in Go 1.19. See
-	// https://tip.golang.org/doc/go1.18#generics.
-	GetBaseEvent() *eventtypes.Event
 }
 
 // TraceParser defines the interface that every trace-gadget parser has to
@@ -84,12 +77,6 @@ func (g *TraceGadget[Event]) Run() error {
 
 		if err := json.Unmarshal([]byte(line), &e); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
-			return ""
-		}
-
-		baseEvent := e.GetBaseEvent()
-		if baseEvent.Type != eventtypes.NORMAL {
-			commonutils.ManageSpecialEvent(baseEvent, g.commonFlags.Verbose)
 			return ""
 		}
 

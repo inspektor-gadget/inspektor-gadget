@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 // BaseElement represent any element that needs to be transform into a requested
@@ -26,6 +28,12 @@ import (
 // (for the profile/cpu gadget).
 type BaseElement interface {
 	any
+
+	// The Go compiler does not support accessing a struct field x.f where x is
+	// of type parameter type even if all types in the type parameter's type set
+	// have a field f. We may remove this restriction in Go 1.19. See
+	// https://tip.golang.org/doc/go1.18#generics.
+	GetBaseEvent() *eventtypes.Event
 }
 
 // BaseParser is a base for a parser that implements the most common methods.
@@ -99,6 +107,14 @@ func (p *BaseParser[E]) BuildColumnsHeader() string {
 }
 
 func (p *BaseParser[E]) Transform(element *E, toColumns func(*E) string) string {
+	// For non event-based gadgets, or gadgets that want to manage these special
+	// cases by themselves, GetBaseEvent() simply needs to return nil.
+	baseEvent := (*element).GetBaseEvent()
+	if baseEvent != nil && baseEvent.Type != eventtypes.NORMAL {
+		ManageSpecialEvent(baseEvent, p.OutputConfig.Verbose)
+		return ""
+	}
+
 	switch p.OutputConfig.OutputMode {
 	case OutputModeJSON:
 		b, err := json.Marshal(element)

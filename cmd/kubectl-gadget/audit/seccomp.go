@@ -23,7 +23,6 @@ import (
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )
@@ -56,11 +55,6 @@ func newSeccompCmd() *cobra.Command {
 
 				if err := json.Unmarshal([]byte(line), &e); err != nil {
 					fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
-					return ""
-				}
-
-				if e.Type != eventtypes.NORMAL {
-					commonutils.ManageSpecialEvent(&e.Event, commonFlags.Verbose)
 					return ""
 				}
 

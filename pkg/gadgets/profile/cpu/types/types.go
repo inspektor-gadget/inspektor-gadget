@@ -32,3 +32,12 @@ type Report struct {
 	KernelStack []string `json:"kernel_stack,omitempty"`
 	Count       uint64   `json:"count,omitempty"`
 }
+
+// GetBaseEvent is defined to implement the commonutils.BaseElement interface so
+// that we can use the commonutils.BaseParser methods to parse Report. In
+// commonutils.BaseParser.Transform(), we call GetBaseEvent() to check whether
+// the element being parsed is a special event or not. Given that the profile
+// cpu gadget is not event-based, this method simply returns nil.
+func (e Report) GetBaseEvent() *eventtypes.Event {
+	return nil
+}
