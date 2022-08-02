@@ -152,7 +152,6 @@ func testMain(m *testing.M) int {
 
 	if !*doNotDeployIG {
 		initCommands = append(initCommands, deployInspektorGadget)
-		initCommands = append(initCommands, waitUntilInspektorGadgetPodsDeployed)
 
 		cleanupCommands = append(cleanupCommands, cleanupInspektorGadget)
 	}
