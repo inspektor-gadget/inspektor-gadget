@@ -125,5 +125,5 @@ Bad system call (core dumped)
 * Observe the syscalls logged by seccomp in the first terminal.
 
 ```json
-{"type":"normal","node":"local","namespace":"default","pod":"laughing_tharp","container":"laughing_tharp","syscall":"unshare","code":"log","pid":949262,"mountnsid":4026532756,"pcomm":"unshare"}
+{"type":"normal","node":"local","namespace":"default","pod":"laughing_tharp","container":"laughing_tharp","syscall":"unshare","code":"log","pid":949262,"mntns":4026532756,"comm":"unshare"}
 ```

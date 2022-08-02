@@ -24,8 +24,8 @@ type Event struct {
 	Syscall   string `json:"syscall,omitempty"`
 	Code      string `json:"code,omitempty"`
 	Pid       uint32 `json:"pid,omitempty"`
-	MountNsID uint64 `json:"mountnsid,omitempty"`
-	Comm      string `json:"pcomm,omitempty"`
+	MountNsID uint64 `json:"mntns,omitempty"`
+	Comm      string `json:"comm,omitempty"`
 }
 
 func Base(ev eventtypes.Event) Event {
