@@ -78,18 +78,9 @@ jobs:
       id: go
     - name: Install debian packages
       uses: ./.github/actions/install-debian-packages
-    - name: Set IMAGE_TAG
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-    - name: Choose container repository
-      id: choose-repo
-      uses: ./.github/actions/choose-container-repo
+    - name: Choose container repository and determine image tag
+      id: choose-repo-determine-image-tag
+      uses: ./.github/actions/choose-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
         container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
@@ -108,7 +99,9 @@ jobs:
 
         kubectl_gadget=kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
 
-        CONTAINER_REPO=${{ steps.choose-repo.outputs.container-repo }} make $kubectl_gadget
+        CONTAINER_REPO=${{ steps.choose-repo-determine-image-tag.outputs.container-repo }} \
+        IMAGE_TAG=${{ steps.choose-repo-determine-image-tag.outputs.image-tag }} \
+        make $kubectl_gadget
 
         # Prepare assets for release and actions artifacts
         platform=$(echo ${kubectl_gadget} | cut -d- -f3-4)
@@ -190,18 +183,9 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Set IMAGE_TAG
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-    - name: Choose container repository
-      id: choose-repo
-      uses: ./.github/actions/choose-container-repo
+    - name: Choose container repository and determine image tag
+      id: choose-repo-determine-image-tag
+      uses: ./.github/actions/choose-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
         container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
@@ -215,7 +199,7 @@ jobs:
           ENABLE_BTFGEN=true
         # At the moment, we only build core image and do not publish them.
         push: ${{ matrix.type != 'core' }}
-        tags: ${{ steps.choose-repo.outputs.container-repo }}:${{ env.IMAGE_TAG }}
+        tags: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
         # For the moment, we only support these two platforms.
@@ -239,18 +223,9 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Set IMAGE_TAG
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-    - name: Choose container repository
-      id: choose-repo
-      uses: ./.github/actions/choose-container-repo
+    - name: Choose container repository and determine image tag
+      id: choose-repo-determine-image-tag
+      uses: ./.github/actions/choose-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
         container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
@@ -261,7 +236,7 @@ jobs:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/examples/${{ matrix.example }}/Dockerfile
         push: ${{ secrets.PUSH_EXAMPLES == 'ENABLE_PUSH_EXAMPLES' }}
-        tags: ${{ steps.choose-repo.outputs.container-repo }}-${{ matrix.example }}:${{ env.IMAGE_TAG }}
+        tags: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}-${{ matrix.example }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
 
   build-gadgets-examples:
     name: Build Gadgets examples
@@ -406,9 +381,9 @@ jobs:
         # Credentials (TODO: Use a functional Service Account, see issue #574)
         openshift_username: ${{ secrets.OPENSHIFT_USER }}
         openshift_password: ${{ secrets.OPENSHIFT_PASSWORD }}
-    - name: Choose container repository
-      id: choose-repo
-      uses: ./.github/actions/choose-container-repo
+    - name: Choose container repository and determine image tag
+      id: choose-repo-determine-image-tag
+      uses: ./.github/actions/choose-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
         container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
@@ -419,7 +394,8 @@ jobs:
         KUBERNETES_DISTRIBUTION: "aro"
       with:
         registry: ${{ env.REGISTRY }}
-        container_repo: ${{ steps.choose-repo.outputs.container-repo }}
+        container_repo: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}
+        image_tag: ${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -436,9 +412,9 @@ jobs:
         minikube version: 'v1.25.2'
         kubernetes version: 'v1.23.0'
         github token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Choose container repository
-      id: choose-repo
-      uses: ./.github/actions/choose-container-repo
+    - name: Choose container repository and determine image tag
+      id: choose-repo-determine-image-tag
+      uses: ./.github/actions/choose-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
         container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
@@ -449,7 +425,8 @@ jobs:
         KUBERNETES_DISTRIBUTION: "minikube-github"
       with:
         registry: ${{ env.REGISTRY }}
-        container_repo: ${{ steps.choose-repo.outputs.container-repo }}
+        container_repo: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}
+        image_tag: ${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 

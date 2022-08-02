@@ -8,6 +8,9 @@ inputs:
   container_repo:
     description: 'The repository where integration tests container image will be pushed'
     required: true
+  image_tag:
+    description: 'The container image tag which will be used as integration tests container image tag'
+    required: true
   username:
     description: 'Username used to log against the registry'
     required: false
@@ -18,16 +21,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Set IMAGE_TAG
-      shell: bash
-      run: |
-        TMP1=${GITHUB_REF#*/}
-        TMP2=${TMP1#*/}
-        IMAGE_TAG=${TMP2//\//-}
-        if [ "$IMAGE_TAG" = "main" ]; then
-            IMAGE_TAG="latest"
-        fi
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
     - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
       uses: actions/download-artifact@v2
       with:
@@ -36,7 +29,9 @@ runs:
     - name: Integration tests
       shell: bash
       run: |
-        echo "IntegrationTestsJob: Using IMAGE_TAG=$IMAGE_TAG"
+        export CONTAINER_REPO=${{ inputs.container_repo }}
+        export IMAGE_TAG=${{ inputs.image_tag }}
+        echo "IntegrationTestsJob: Using IMAGE_TAG=${IMAGE_TAG}"
 
         tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
         mv kubectl-gadget kubectl-gadget-linux-amd64
@@ -66,13 +61,12 @@ runs:
         trap 'cleanup SIGTERM' SIGTERM
 
         echo "IntegrationTestsJob: Start"
-        CONTAINER_REPO=${{ inputs.container_repo }} \
         TESTS_DOCKER_ARGS="-e KUBECONFIG=/root/.kube/config -v /home/runner/.kube:/root/.kube -v /home/runner/work/_temp/.minikube:/home/runner/work/_temp/.minikube" \
             make -C integration build test &
         wait $!
         echo "IntegrationTestsJob: Done"
 
-        perl  -pi -e 's@(image:) .*@$1: ${{ inputs.container_repo }}-test:$ENV{IMAGE_TAG}@' integration/gadget-integration-tests-job.yaml
+        perl  -pi -e 's@(image:) .*@$1: ${{ inputs.container_repo }}-test:${{ inputs.image_tag }}@' integration/gadget-integration-tests-job.yaml
     - name: Add integration asset as artifact.
       if: startsWith(github.ref, 'refs/tags/v')
       uses: actions/upload-artifact@master
@@ -90,4 +84,6 @@ runs:
       shell: bash
       if: startsWith(github.ref, 'refs/tags/v')
       run: |
-        CONTAINER_REPO=${{ inputs.container_repo }} make -C integration push
+        CONTAINER_REPO=${{ inputs.container_repo }} \
+        IMAGE_TAG=${{ inputs.image_tag }} \
+          make -C integration push
