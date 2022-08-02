@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	log "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -96,8 +97,8 @@ SeccompProfiles will have the following annotations:
   traced
 * seccomp.gadget.kinvolk.io/container: the container name in the pod that was
   traced
-* seccomp.gadget.kinvolk.io/ownerReference-ApiVersion: the ownerReference's
-  ApiVersion of the pod that was traced
+* seccomp.gadget.kinvolk.io/ownerReference-APIVersion: the ownerReference's
+  APIVersion of the pod that was traced
 * seccomp.gadget.kinvolk.io/ownerReference-Kind: the ownerReference's Kind of the
   pod that was traced
 * seccomp.gadget.kinvolk.io/ownerReference-Name: the ownerReference's Name of the
@@ -181,7 +182,7 @@ func seccompProfileAddLabelsAndAnnotations(
 	trace *gadgetv1alpha1.Trace,
 	podName string,
 	containerName string,
-	ownerReference *containercollection.OwnerReference,
+	ownerReference *metav1.OwnerReference,
 ) {
 	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/trace"] = traceName
@@ -189,10 +190,10 @@ func seccompProfileAddLabelsAndAnnotations(
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/pod"] = podName
 	r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/container"] = containerName
 	if ownerReference != nil {
-		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-ApiVersion"] = ownerReference.Apiversion
+		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-APIVersion"] = ownerReference.APIVersion
 		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-Kind"] = ownerReference.Kind
 		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-Name"] = ownerReference.Name
-		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-UID"] = ownerReference.UID
+		r.ObjectMeta.Annotations["seccomp.gadget.kinvolk.io/ownerReference-UID"] = string(ownerReference.UID)
 	}
 
 	// Copy labels from the trace into the SeccompProfile. This will allow
@@ -303,7 +304,7 @@ func getSeccompProfileNsName(
 
 // generateSeccompPolicy generates a seccomp policy which is ready to be
 // created.
-func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, syscalls []byte, podname, containername, fullPodName string, ownerReference *containercollection.OwnerReference) (*seccompprofile.SeccompProfile, error) {
+func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, syscalls []byte, podname, containername, fullPodName string, ownerReference *metav1.OwnerReference) (*seccompprofile.SeccompProfile, error) {
 	profileName, err := getSeccompProfileNsName(
 		client,
 		trace.ObjectMeta.Namespace,

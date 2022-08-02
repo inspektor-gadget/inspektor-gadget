@@ -76,23 +76,18 @@ The `list-containers` command also supports JSON format and filtering:
 $ sudo local-gadget list-containers -o json --containername calico-kube-controllers
 [
   {
-    "ID": "1fd08f8d9fc300a3c312edc1718d31d424744ebbcf70a3ed84a8dc5402a64dc7",
-    "Pid": 4670,
-    "OciConfig": null,
-    "Bundle": "",
-    "Mntns": 4026532515,
-    "Netns": 4026532368,
-    "CgroupPath": "/sys/fs/cgroup/unified/system.slice/containerd.service",
-    "CgroupID": 854,
-    "CgroupV1": "/system.slice/containerd.service/kubepods-besteffort-pod07c58ca4_5b3e_49dd_baa3_af39fd0b5363.slice:cri-containerd:1fd08f8d9fc300a3c312edc1718d31d424744ebbcf70a3ed84a8dc5402a64dc7",
-    "CgroupV2": "/system.slice/containerd.service",
-    "Namespace": "default",
-    "Podname": "calico-kube-controllers",
-    "Name": "calico-kube-controllers",
-    "Labels": null,
-    "OwnerReference": null,
-    "PodUID": "",
-    "Runtime": "containerd"
+    "id": "1fd08f8d9fc300a3c312edc1718d31d424744ebbcf70a3ed84a8dc5402a64dc7",
+    "pid": 2974,
+    "mntns": 4026532290,
+    "netns": 4026531992,
+    "cgroupPath": "/sys/fs/cgroup/unified/system.slice/containerd.service",
+    "cgroupID": 854,
+    "cgroupV1": "/system.slice/containerd.service/kubepods-besteffort-pod3b57919c_9239_4b73_a74c_2bdb9c7c2926.slice:cri-containerd:7e069227538c40f2965b9610018678e93e07fadd04add1aa5d5243337038f336",
+    "cgroupV2": "/system.slice/containerd.service",
+    "namespace": "default",
+    "podname": "kube-proxy",
+    "name": "kube-proxy",
+    "runtime": "containerd"
   }
 ]
 ```
