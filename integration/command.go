@@ -73,7 +73,7 @@ func deployInspektorGadget(image string, livenessProbe bool) *command {
 	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --liveness-probe=%t", livenessProbe)
 
 	if image != "" {
-		cmd = cmd + "--image=" + image
+		cmd = cmd + " --image=" + image
 	}
 
 	return &command{
