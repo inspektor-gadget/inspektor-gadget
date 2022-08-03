@@ -23,6 +23,7 @@ import (
 	processcollector "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/snapshot/process"
 	socketcollector "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/snapshot/socket"
 	biotop "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/top/block-io"
+	ebpftop "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/top/ebpf"
 	filetop "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/top/file"
 	tcptop "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/top/tcp"
 	bindsnoop "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace/bind"
@@ -49,6 +50,7 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 		"biotop":            biotop.NewFactory(),
 		"capabilities":      capabilities.NewFactory(),
 		"dns":               dns.NewFactory(),
+		"ebpftop":           ebpftop.NewFactory(),
 		"execsnoop":         execsnoop.NewFactory(),
 		"filetop":           filetop.NewFactory(),
 		"fsslower":          fsslower.NewFactory(),
@@ -73,6 +75,7 @@ func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
 		"audit-seccomp":     auditseccomp.NewFactory(),
 		"dns":               dns.NewFactory(),
+		"ebpftop":           ebpftop.NewFactory(),
 		"network-graph":     networkgraph.NewFactory(),
 		"process-collector": processcollector.NewFactory(),
 		"socket-collector":  socketcollector.NewFactory(),

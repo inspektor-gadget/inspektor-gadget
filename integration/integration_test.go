@@ -442,6 +442,23 @@ func TestDns(t *testing.T) {
 	runCommands(commands, t)
 }
 
+func TestEbpftop(t *testing.T) {
+	t.Parallel()
+
+	ebpftopCmd := &command{
+		name:           "StartEbpftopGadget",
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET top ebpf"),
+		expectedRegexp: fmt.Sprintf(`\S*\s+\d+\s+Tracing\s+gadget_ebpftop\s+\d+\s+\S*\s+`),
+		startAndStop:   true,
+	}
+
+	commands := []*command{
+		ebpftopCmd,
+	}
+
+	runCommands(commands, t)
+}
+
 func TestExecsnoop(t *testing.T) {
 	ns := generateTestNamespaceName("test-execsnoop")
 
