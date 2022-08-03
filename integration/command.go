@@ -69,10 +69,18 @@ type command struct {
 	started bool
 }
 
-var deployInspektorGadget *command = &command{
-	name:           "DeployInspektorGadget",
-	cmd:            "$KUBECTL_GADGET deploy $GADGET_IMAGE_FLAG",
-	expectedRegexp: `\d\/\d gadget pod\(s\) ready`,
+func deployInspektorGadget(image string, livenessProbe bool) *command {
+	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --liveness-probe=%t", livenessProbe)
+
+	if image != "" {
+		cmd = cmd + "--image=" + image
+	}
+
+	return &command{
+		name:           "DeployInspektorGadget",
+		cmd:            cmd,
+		expectedRegexp: `\d\/\d gadget pod\(s\) ready`,
+	}
 }
 
 func deploySPO(limitReplicas, bestEffortResourceMgmt bool) *command {
