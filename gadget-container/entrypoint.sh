@@ -31,7 +31,7 @@ echo -n "Kernel detected: "
 echo $KERNEL
 
 echo -n "bcc detected: "
-dpkg-query --show libbcc|awk '{print $2}'
+dpkg-query --show libbcc | awk '{print $2}' || true
 
 echo -n "Gadget image: "
 echo $GADGET_IMAGE
