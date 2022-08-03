@@ -121,10 +121,6 @@ func testMain(m *testing.M) int {
 		return -1
 	}
 
-	if *image != "" {
-		os.Setenv("GADGET_IMAGE_FLAG", "--image "+*image)
-	}
-
 	if *k8sDistro != "" {
 		found := false
 		for _, val := range supportedK8sDistros {
@@ -149,7 +145,14 @@ func testMain(m *testing.M) int {
 	cleanupCommands := []*command{deleteRemainingNamespacesCommand()}
 
 	if !*doNotDeployIG {
-		initCommands = append(initCommands, deployInspektorGadget)
+		livenessProbe := true
+		// livenessProbe are causing some issues in the ARO integration cluster,
+		// see: https://github.com/kinvolk/inspektor-gadget/issues/799
+		if *k8sDistro == K8sDistroARO {
+			livenessProbe = false
+		}
+		deployCmd := deployInspektorGadget(*image, livenessProbe)
+		initCommands = append(initCommands, deployCmd)
 
 		cleanupCommands = append(cleanupCommands, cleanupInspektorGadget)
 	}
