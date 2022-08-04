@@ -17,8 +17,10 @@ package main
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/types"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -189,21 +192,21 @@ func stringToPullPolicy(imagePullPolicy string) (v1.PullPolicy, error) {
 	}
 }
 
-// createResource creates the resource corresponding to the object given as
-// parameter using a dynamic client an RESTMapper to get the corresponding
-// resource.
+// createOrUpdateResource creates or updates the resource corresponding
+// to the object given as parameter using a dynamic client a RESTMapper
+// to get the corresponding resource.
 // It is inspired from:
 // https://ymmt2005.hatenablog.com/entry/2020/04/14/An_example_of_using_dynamic_client_of_k8s.io/client-go#Dynamic-client
-func createResource(client dynamic.Interface, mapper meta.RESTMapper, object runtime.Object) error {
+func createOrUpdateResource(client dynamic.Interface, mapper meta.RESTMapper, object runtime.Object) (*unstructured.Unstructured, error) {
 	groupVersionKind := object.GetObjectKind().GroupVersionKind()
 	mapping, err := mapper.RESTMapping(groupVersionKind.GroupKind(), groupVersionKind.Version)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
 	if err != nil {
-		return fmt.Errorf("failed to convert object to untrusctured: %w", err)
+		return nil, fmt.Errorf("failed to convert object to untrusctured: %w", err)
 	}
 
 	unstruct := &unstructured.Unstructured{Object: unstructuredObj}
@@ -216,12 +219,20 @@ func createResource(client dynamic.Interface, mapper meta.RESTMapper, object run
 	}
 
 	info("Creating %s/%s...\n", unstruct.GetKind(), unstruct.GetName())
-	_, err = dynamicInterface.Create(context.TODO(), unstruct, metav1.CreateOptions{})
+
+	data, err := json.Marshal(unstruct)
 	if err != nil {
-		return fmt.Errorf("failed to create %q: %w", groupVersionKind.Kind, err)
+		return nil, err
 	}
 
-	return nil
+	obj, err := dynamicInterface.Patch(context.TODO(), unstruct.GetName(), types.ApplyPatchType, data, metav1.PatchOptions{
+		FieldManager: "kubectl-gadget",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create %q: %w", groupVersionKind.Kind, err)
+	}
+
+	return obj, nil
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
@@ -265,8 +276,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create dynamic client: %w", err)
 	}
 
+	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
+	if err != nil {
+		return commonutils.WrapInErrSetupK8sClient(err)
+	}
+
 	for _, object := range objects {
-		if daemonSet, ok := object.(*appsv1.DaemonSet); ok {
+		var currentGadgetDS *appsv1.DaemonSet
+
+		daemonSet, handlingDaemonSet := object.(*appsv1.DaemonSet)
+		if handlingDaemonSet {
 			daemonSet.Spec.Template.Annotations["inspektor-gadget.kinvolk.io/option-hook-mode"] = hookMode
 
 			gadgetContainer := &daemonSet.Spec.Template.Spec.Containers[0]
@@ -297,6 +316,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					gadgetContainer.Env[i].Value = strconv.FormatBool(fallbackPodInformer)
 				}
 			}
+
+			// Get gadget daemon set (if any) to check if it was modified
+			currentGadgetDS, _ = k8sClient.AppsV1().DaemonSets(gadgetNamespace).Get(
+				context.TODO(), "gadget", metav1.GetOptions{},
+			)
 		}
 
 		if printOnly {
@@ -305,10 +329,25 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("problem while marshaling object: %w", err)
 			}
 			fmt.Printf("%s---\n", bytes)
-		} else {
-			err := createResource(dynamicClient, mapper, object)
+			continue
+		}
+
+		obj, err := createOrUpdateResource(dynamicClient, mapper, object)
+		if err != nil {
+			return fmt.Errorf("problem while creating resource: %w", err)
+		}
+
+		if handlingDaemonSet {
+			var appliedGadgetDS appsv1.DaemonSet
+			err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &appliedGadgetDS)
 			if err != nil {
-				return fmt.Errorf("problem while creating resource: %w", err)
+				return fmt.Errorf("failed to convert data: %w", err)
+			}
+
+			// If the spec of the DaemonSet is the same just return
+			if reflect.DeepEqual(currentGadgetDS.Spec, appliedGadgetDS.Spec) {
+				info("The gadget pod(s) weren't modified!\n")
+				return nil
 			}
 		}
 	}
@@ -322,10 +361,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	info("Waiting for gadget pod(s) to be ready...\n")
-	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
-	if err != nil {
-		return commonutils.WrapInErrSetupK8sClient(err)
-	}
 
 	// The below code (particularly how to use UntilWithSync) is highly
 	// inspired from kubectl wait source code:
@@ -355,9 +390,15 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			daemonSet, _ := event.Object.(*appsv1.DaemonSet)
 			status := daemonSet.Status
 
-			info("%d/%d gadget pod(s) ready\n", status.NumberReady, status.DesiredNumberScheduled)
+			ready := status.NumberReady
+			if status.UpdatedNumberScheduled < ready {
+				ready = status.UpdatedNumberScheduled
+			}
 
-			return status.DesiredNumberScheduled == status.NumberReady, nil
+			info("%d/%d gadget pod(s) ready\n", ready, status.DesiredNumberScheduled)
+
+			return (status.DesiredNumberScheduled == status.NumberReady) &&
+				(status.DesiredNumberScheduled == status.UpdatedNumberScheduled), nil
 		case watch.Error:
 			// Deal particularly with error.
 			return false, fmt.Errorf("received event is an error one: %v", event)
