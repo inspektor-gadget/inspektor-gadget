@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -36,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
@@ -67,6 +69,7 @@ var (
 	fallbackPodInformer       bool
 	printOnly                 bool
 	quiet                     bool
+	debug                     bool
 	wait                      bool
 )
 
@@ -116,11 +119,17 @@ func init() {
 		"timeout", "",
 		120*time.Second,
 		"timeout for deployment")
+	// TODO: Combine --quiet and --debug in --verbose LEVEL?
 	deployCmd.PersistentFlags().BoolVarP(
 		&quiet,
 		"quiet", "q",
 		false,
 		"supress information messages")
+	deployCmd.PersistentFlags().BoolVarP(
+		&debug,
+		"debug", "d",
+		false,
+		"show extra debug information")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -222,6 +231,10 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		hookMode != "nri" &&
 		hookMode != "fanotify" {
 		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,podinformer,nri,fanotify]", hookMode)
+	}
+
+	if quiet && debug {
+		return fmt.Errorf("it's not possible to use --quiet and --debug together")
 	}
 
 	objects, err := parseK8sYaml(resources.GadgetDeployment)
@@ -355,6 +368,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	})
 
 	if err != nil {
+		if errors.Is(err, utilwait.ErrWaitTimeout) && debug {
+			fmt.Println("DUMP PODS:")
+			fmt.Println(getGadgetPodsDebug(k8sClient))
+			fmt.Println("DUMP EVENTS:")
+			fmt.Println(getEvents(k8sClient))
+		}
 		return err
 	}
 

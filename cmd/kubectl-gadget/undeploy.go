@@ -47,8 +47,7 @@ var undeployCmd = &cobra.Command{
 var undeployWait bool
 
 const (
-	gadgetNamespace string = "gadget"
-	timeout         int    = 30
+	timeout int = 30
 )
 
 func init() {
