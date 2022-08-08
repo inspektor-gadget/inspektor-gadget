@@ -11,7 +11,7 @@
 const volatile __u64 min_us = 0;
 const volatile pid_t targ_pid = 0;
 const volatile pid_t targ_tgid = 0;
-const volatile uid_t targ_uid = 0;
+const volatile uid_t targ_uid = INVALID_UID;
 const volatile bool targ_failed = false;
 const volatile bool filter_by_mnt_ns = false;
 
