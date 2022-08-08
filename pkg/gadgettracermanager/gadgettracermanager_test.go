@@ -22,7 +22,7 @@ import (
 )
 
 func TestTracer(t *testing.T) {
-	g, err := newServer(&Conf{NodeName: "fake-node", HookMode: "none", TestOnly: true})
+	g, err := NewServer(&Conf{NodeName: "fake-node", HookMode: "none", TestOnly: true})
 	if err != nil {
 		t.Fatalf("Failed to create new server: %v", err)
 	}

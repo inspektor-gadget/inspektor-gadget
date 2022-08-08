@@ -34,7 +34,7 @@ type TracerCollection struct {
 	tracers             map[string]tracer
 	containerCollection *containercollection.ContainerCollection
 
-	withEbpf bool
+	testOnly bool
 }
 
 type tracer struct {
@@ -47,16 +47,23 @@ type tracer struct {
 	gadgetStream *stream.GadgetStream
 }
 
-func NewTracerCollection(withEbpf bool, cc *containercollection.ContainerCollection) (*TracerCollection, error) {
+func NewTracerCollection(cc *containercollection.ContainerCollection) (*TracerCollection, error) {
 	return &TracerCollection{
 		tracers:             make(map[string]tracer),
 		containerCollection: cc,
-		withEbpf:            withEbpf,
+	}, nil
+}
+
+func NewTracerCollectionTest(cc *containercollection.ContainerCollection) (*TracerCollection, error) {
+	return &TracerCollection{
+		tracers:             make(map[string]tracer),
+		containerCollection: cc,
+		testOnly:            true,
 	}, nil
 }
 
 func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
-	if !tc.withEbpf {
+	if tc.testOnly {
 		return func(event containercollection.PubSubEvent) {}
 	}
 
@@ -96,7 +103,7 @@ func (tc *TracerCollection) AddTracer(id string, containerSelector containercoll
 		return fmt.Errorf("tracer id %q: %w", id, os.ErrExist)
 	}
 	var mntnsSetMap *ebpf.Map
-	if tc.withEbpf {
+	if !tc.testOnly {
 		mntnsSpec := &ebpf.MapSpec{
 			Name:       MountMapPrefix + id,
 			Type:       ebpf.Hash,

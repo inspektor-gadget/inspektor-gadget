@@ -338,7 +338,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 	}
 
 	var err error
-	l.tracerCollection, err = tracercollection.NewTracerCollection(true, &l.ContainerCollection)
+	l.tracerCollection, err = tracercollection.NewTracerCollection(&l.ContainerCollection)
 	if err != nil {
 		return nil, err
 	}
