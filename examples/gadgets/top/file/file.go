@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf/rlimit"
@@ -70,12 +71,10 @@ func main() {
 		fmt.Printf("error creating tracer: %s\n", err)
 		return
 	}
+	defer tracer.Stop()
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-
-	<-c
-
-	// Clean up everything before exiting.
-	tracer.Stop()
+	// Graceful shutdown
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+	<-exit
 }
