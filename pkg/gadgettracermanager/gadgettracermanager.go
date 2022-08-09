@@ -250,6 +250,7 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 
 	opts := []containercollection.ContainerCollectionOption{
 		containercollection.WithPubSub(containerEventFuncs...),
+		containercollection.WithNodeName(conf.NodeName),
 	}
 	if !conf.TestOnly {
 		opts = append(opts, containercollection.WithCgroupEnrichment())
@@ -315,15 +316,4 @@ func (m *GadgetTracerManager) Close() {
 		m.containersMap.Close()
 	}
 	m.ContainerCollection.Close()
-}
-
-func (m *GadgetTracerManager) Enrich(event *eventtypes.CommonData, mountnsid uint64) {
-	event.Node = m.nodeName
-
-	container := m.LookupContainerByMntns(mountnsid)
-	if container != nil {
-		event.Container = container.Name
-		event.Pod = container.Podname
-		event.Namespace = container.Namespace
-	}
 }

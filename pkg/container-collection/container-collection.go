@@ -24,6 +24,7 @@ package containercollection
 import (
 	"sync"
 
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -47,6 +48,9 @@ type ContainerCollection struct {
 	// initialContainers is used during the initialization process to
 	// gather initial containers and then call the enrichers
 	initialContainers []*Container
+
+	// nodeName is used by the Enrich() function
+	nodeName string
 
 	// initialized tells if Initialize() has been called.
 	initialized bool
@@ -287,6 +291,17 @@ func (cc *ContainerCollection) ContainerRangeWithSelector(
 		}
 		return true
 	})
+}
+
+func (cc *ContainerCollection) Enrich(event *eventtypes.CommonData, mountnsid uint64) {
+	event.Node = cc.nodeName
+
+	container := cc.LookupContainerByMntns(mountnsid)
+	if container != nil {
+		event.Container = container.Name
+		event.Pod = container.Podname
+		event.Namespace = container.Namespace
+	}
 }
 
 // Subscribe returns the list of existing containers and registers a callback

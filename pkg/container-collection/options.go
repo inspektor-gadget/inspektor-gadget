@@ -651,3 +651,10 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 		return nil
 	}
 }
+
+func WithNodeName(nodeName string) ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		cc.nodeName = nodeName
+		return nil
+	}
+}

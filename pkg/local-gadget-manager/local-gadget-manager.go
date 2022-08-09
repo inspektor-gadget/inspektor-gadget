@@ -27,7 +27,6 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
 	containersmap "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
@@ -376,13 +375,4 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 func (l *LocalGadgetManager) Close() {
 	l.ContainerCollection.Close()
 	l.containersMap.Close()
-}
-
-func (l *LocalGadgetManager) Enrich(event *eventtypes.CommonData, mountnsid uint64) {
-	container := l.LookupContainerByMntns(mountnsid)
-	if container != nil {
-		event.Container = container.Name
-		event.Pod = container.Podname
-		event.Namespace = container.Namespace
-	}
 }
