@@ -9,6 +9,10 @@ or `local-gadget` directly.
 - [runc-hook](runc-hook/): Use of the runcfanotify package to
   - receive notifications when a container starts or terminates
   - execute PreStart and PostStop hooks
+- [container-collection](container-collection/): Use the
+  container-collection package
+  ("github.com/kinvolk/inspektor-gadget/pkg/container-collection") to
+  print a message when a container is created or removed.
 - [kube-container-collection](kube-container-collection/): Use the
   container-collection package
   ("github.com/kinvolk/inspektor-gadget/pkg/container-collection") in
