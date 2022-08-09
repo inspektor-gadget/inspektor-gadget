@@ -19,13 +19,15 @@ or `local-gadget` directly.
   order to be notified when a new container is started and to attach the
   OCI config.json as a Kubernetes event.
 - gadgets:
-  - [trace/exec](gadgets/trace/exec/): shows how to use
-    [trace/exec](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/trace/exec)
-    package to trace the creation of new processes in the host.
-  - [top/file](gadgets/top/file/): shows how to use
-    [top/file](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/top/file)
-    package to get a list of the files with a higher number of write
-    operations on the host.
-  - [snapshot/process](gadgets/snapshot/process/): shows how to use
-    [snapshot/process](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/snapshot/process)
-    package to get a list the running processes on the host.
+  - [basic](gadgets/basic/): Examples showing how to create a tracer
+    without any filtering capabilities.
+    - [trace/exec](gadgets/basic/trace/exec/): shows how to use
+      [trace/exec](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/trace/exec)
+      package to trace the creation of new processes in the host.
+    - [top/file](gadgets/basic/top/file/): shows how to use
+      [top/file](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/top/file)
+      package to get a list of the files with a higher number of write
+      operations on the host.
+    - [snapshot/basic/process](gadgets/snapshot/process/): shows how to use
+      [snapshot/process](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/snapshot/process)
+      package to get a list the running processes on the host.
