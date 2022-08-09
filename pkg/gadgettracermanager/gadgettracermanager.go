@@ -293,7 +293,7 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 		opts = append(opts, containercollection.WithFallbackPodInformer(g.nodeName))
 	}
 
-	err = g.ContainerCollectionInitialize(opts...)
+	err = g.ContainerCollection.Initialize(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func (m *GadgetTracerManager) Close() {
 	if m.containersMap != nil {
 		m.containersMap.Close()
 	}
-	m.ContainerCollectionClose()
+	m.ContainerCollection.Close()
 }
 
 func (m *GadgetTracerManager) Enrich(event *eventtypes.CommonData, mountnsid uint64) {

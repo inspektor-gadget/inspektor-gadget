@@ -30,7 +30,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 )
 
@@ -130,7 +130,7 @@ func main() {
 	}
 
 	cc = &containercollection.ContainerCollection{}
-	err = cc.ContainerCollectionInitialize(opts...)
+	err = cc.Initialize(opts...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize container collection: %s\n", err)
 		os.Exit(1)
