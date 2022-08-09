@@ -31,3 +31,8 @@ or `local-gadget` directly.
     - [snapshot/basic/process](gadgets/snapshot/process/): shows how to use
       [snapshot/process](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/snapshot/process)
       package to get a list the running processes on the host.
+  - [withfilter](gadgets/withfilter/): Examples showing how to create a
+    tracer that uses the container collection and trace collection
+    packages to filter events by container.
+    - [trace/exec](gadgets/withfilter/trace/exec/): traces creation of
+      new processes inside a particular container.
