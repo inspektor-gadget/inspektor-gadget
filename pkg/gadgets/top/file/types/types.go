@@ -94,7 +94,7 @@ type Stats struct {
 	MountNsID  uint64 `json:"mountnsid,omitempty"`
 	Filename   string `json:"filename,omitempty"`
 	Comm       string `json:"comm,omitempty"`
-	FileType   byte   `json:"file_type,omitempty"`
+	FileType   byte   `json:"fileType,omitempty"`
 }
 
 func SortStats(stats []Stats, sortBy SortBy) {

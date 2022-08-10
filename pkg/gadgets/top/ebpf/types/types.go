@@ -107,10 +107,10 @@ type Stats struct {
 	Pids            []*PidInfo `json:"pids,omitempty"`
 	Name            string     `json:"name,omitempty"`
 	Type            string     `json:"type,omitempty"`
-	CurrentRuntime  int64      `json:"current_runtime,omitempty"`
-	CurrentRunCount uint64     `json:"current_runcount,omitempty"`
-	TotalRuntime    int64      `json:"total_runtime,omitempty"`
-	TotalRunCount   uint64     `json:"total_runcount,omitempty"`
+	CurrentRuntime  int64      `json:"currentRuntime,omitempty"`
+	CurrentRunCount uint64     `json:"currentRuncount,omitempty"`
+	TotalRuntime    int64      `json:"totalRuntime,omitempty"`
+	TotalRunCount   uint64     `json:"totalRuncount,omitempty"`
 }
 
 type PidInfo struct {
