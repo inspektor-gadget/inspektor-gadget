@@ -3,14 +3,10 @@
 registry='francisregistry.azurecr.io'
 image_tag='francis-test-scaling'
 container_repo="${registry}/gadget"
-full_image_name="${registry}/stress_exec:latest"
 
 function prepare {
-	docker build -t $full_image_name -f Dockerfile .
-	docker push $full_image_name
-
-	CONTAINER_REPO=$container_repo make -C .. gadget-default-container
-	CONTAINER_REPO=$container_repo make -C .. push-gadget-container
+	IMAGE_TAG=${image_tag} CONTAINER_REPO=$container_repo make -C .. gadget-default-container
+	IMAGE_TAG=${image_tag} CONTAINER_REPO=$container_repo make -C .. push-gadget-container
 }
 
 function prepare_csv_file {
@@ -59,9 +55,15 @@ spec:
       labels:
         k8s-app: stress-exec
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
       initContainers:
       - name: stress-exec
-        image: $full_image_name
+        image: ghcr.io/colinianking/stress-ng:master
+        workingDir: /tmp
+        command: ["/bin/sh"]
+        args: ["-c", "stress-ng --exec $(nproc) --exec-fork-method clone --exec-method execve --exec-no-pthread --timeout 1s --metrics-brief"]
       containers:
       - name: do-nothing
         image: alpine:latest
