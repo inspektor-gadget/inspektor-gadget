@@ -138,11 +138,11 @@ $ kubectl gadget profile cpu --podname random -o json > /tmp/output.json; jq < /
   "container": "random",
   "comm": "cat",
   "pid": 65969,
-  "user_stack": [
+  "userStack": [
     "[unknown]",
     "[unknown]"
   ],
-  "kernel_stack": [
+  "kernelStack": [
     "__lock_text_start",
     "__lock_text_start",
     "urandom_read_nowarn.isra.0",
@@ -161,11 +161,11 @@ $ kubectl gadget profile cpu --podname random -o json > /tmp/output.json; jq < /
   "container": "random",
   "comm": "cat",
   "pid": 65969,
-  "user_stack": [
+  "userStack": [
     "[unknown]",
     "[unknown]"
   ],
-  "kernel_stack": [
+  "kernelStack": [
     "__lock_text_start",
     "__lock_text_start",
     "_crng_backtrack_protect",
