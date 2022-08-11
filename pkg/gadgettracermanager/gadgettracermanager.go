@@ -50,11 +50,6 @@ type GadgetTracerManager struct {
 	// tracers
 	tracerCollection *tracercollection.TracerCollection
 
-	// withBPF tells whether GadgetTracerManager can run bpf() syscall.
-	// Normally, withBPF=true but it can be disabled so unit tests can run
-	// without being root.
-	withBPF bool
-
 	// containersMap is the global map at /sys/fs/bpf/gadget/containers
 	// exposing container details for each mount namespace.
 	containersMap *containersmap.ContainersMap
@@ -221,19 +216,21 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 	return &pb.Dump{State: out}, nil
 }
 
-func newServer(conf *Conf) (*GadgetTracerManager, error) {
+func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 	g := &GadgetTracerManager{
 		nodeName: conf.NodeName,
-		withBPF:  !conf.TestOnly,
 	}
 
 	eventtypes.Init(conf.NodeName)
-
-	tracerCollection, err := tracercollection.NewTracerCollection(!conf.TestOnly, &g.ContainerCollection)
+	var err error
+	if conf.TestOnly {
+		g.tracerCollection, err = tracercollection.NewTracerCollectionTest(&g.ContainerCollection)
+	} else {
+		g.tracerCollection, err = tracercollection.NewTracerCollection(&g.ContainerCollection)
+	}
 	if err != nil {
 		return nil, err
 	}
-	g.tracerCollection = tracerCollection
 
 	containerEventFuncs := []containercollection.FuncNotify{}
 
@@ -296,7 +293,7 @@ func newServer(conf *Conf) (*GadgetTracerManager, error) {
 		opts = append(opts, containercollection.WithFallbackPodInformer(g.nodeName))
 	}
 
-	err = g.ContainerCollectionInitialize(opts...)
+	err = g.ContainerCollection.Initialize(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -311,15 +308,13 @@ type Conf struct {
 	TestOnly            bool
 }
 
-func NewServer(conf *Conf) (*GadgetTracerManager, error) {
-	return newServer(conf)
-}
-
 // Close releases any resource that could be in use by the tracer manager, like
 // ebpf maps.
 func (m *GadgetTracerManager) Close() {
-	m.containersMap.Close()
-	m.ContainerCollectionClose()
+	if m.containersMap != nil {
+		m.containersMap.Close()
+	}
+	m.ContainerCollection.Close()
 }
 
 func (m *GadgetTracerManager) Enrich(event *eventtypes.CommonData, mountnsid uint64) {

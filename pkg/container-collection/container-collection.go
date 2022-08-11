@@ -48,26 +48,26 @@ type ContainerCollection struct {
 	// gather initial containers and then call the enrichers
 	initialContainers []*Container
 
-	// initialized tells if ContainerCollectionInitialize has been called.
+	// initialized tells if Initialize() has been called.
 	initialized bool
 
-	// closed tells if ContainerCollectionClose has been called.
+	// closed tells if Close() has been called.
 	closed bool
 
-	// functions to be called on ContainerCollectionClose()
+	// functions to be called on Close()
 	cleanUpFuncs []func()
 }
 
 // ContainerCollectionOption are options to pass to
-// ContainerCollectionInitialize using the functional option code pattern.
+// Initialize using the functional option code pattern.
 type ContainerCollectionOption func(*ContainerCollection) error
 
-// ContainerCollectionInitialize initializes a ContainerCollection. It is
+// Initialize initializes a ContainerCollection. It is
 // useful when ContainerCollection is embedded as an anonymous struct because
 // we don't use a contructor in that case.
-func (cc *ContainerCollection) ContainerCollectionInitialize(options ...ContainerCollectionOption) error {
+func (cc *ContainerCollection) Initialize(options ...ContainerCollectionOption) error {
 	if cc.initialized {
-		panic("ContainerCollectionInitialize already called")
+		panic("Initialize already called")
 	}
 
 	// Call functional options. This might fetch initial containers.
@@ -319,7 +319,7 @@ func (cc *ContainerCollection) Unsubscribe(key interface{}) {
 	cc.pubsub.Unsubscribe(key)
 }
 
-func (cc *ContainerCollection) ContainerCollectionClose() {
+func (cc *ContainerCollection) Close() {
 	if !cc.initialized || cc.closed {
 		panic("ContainerCollection is not initialized or has been closed")
 	}

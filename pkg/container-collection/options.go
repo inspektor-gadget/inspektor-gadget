@@ -67,7 +67,7 @@ func containerRuntimeEnricher(
 // WithContainerRuntimeEnrichment() to allow caller to add multiple runtimes in
 // one single call.
 //
-// ContainerCollection.ContainerCollectionInitialize(WithMultipleContainerRuntimesEnrichment([]*RuntimeConfig)...)
+// ContainerCollection.Initialize(WithMultipleContainerRuntimesEnrichment([]*RuntimeConfig)...)
 func WithMultipleContainerRuntimesEnrichment(runtimes []*containerutils.RuntimeConfig) ContainerCollectionOption {
 	var opts []ContainerCollectionOption
 
@@ -93,7 +93,7 @@ func WithMultipleContainerRuntimesEnrichment(runtimes []*containerutils.RuntimeC
 // equal to the container name. It is done because some gadgets need those two
 // values to be set.
 //
-// ContainerCollection.ContainerCollectionInitialize(WithContainerRuntimeEnrichment(*RuntimeConfig))
+// ContainerCollection.Initialize(WithContainerRuntimeEnrichment(*RuntimeConfig))
 func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		runtimeClient, err := containerutils.NewContainerRuntimeClient(runtime)
@@ -442,7 +442,7 @@ func ownerReferenceEnrichment(
 
 // WithKubernetesEnrichment automatically adds pod metadata
 //
-// ContainerCollection.ContainerCollectionInitialize(WithKubernetesEnrichment())
+// ContainerCollection.Initialize(WithKubernetesEnrichment())
 func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		if kubeconfig == nil {
@@ -557,7 +557,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 // WithRuncFanotify uses fanotify to detect when containers are created and add
 // them in the ContainerCollection.
 //
-// ContainerCollection.ContainerCollectionInitialize(WithRuncFanotify())
+// ContainerCollection.Initialize(WithRuncFanotify())
 func WithRuncFanotify() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		runcNotifier, err := runcfanotify.NewRuncNotifier(func(notif runcfanotify.ContainerEvent) {

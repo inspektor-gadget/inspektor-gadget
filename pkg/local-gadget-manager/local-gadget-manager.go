@@ -338,7 +338,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 	}
 
 	var err error
-	l.tracerCollection, err = tracercollection.NewTracerCollection(true, &l.ContainerCollection)
+	l.tracerCollection, err = tracercollection.NewTracerCollection(&l.ContainerCollection)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +355,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 	containerEventFuncs = append(containerEventFuncs, l.containersMap.ContainersMapUpdater())
 	containerEventFuncs = append(containerEventFuncs, l.tracerCollection.TracerMapsUpdater())
 
-	err = l.ContainerCollection.ContainerCollectionInitialize(
+	err = l.ContainerCollection.Initialize(
 		containercollection.WithPubSub(containerEventFuncs...),
 		containercollection.WithCgroupEnrichment(),
 		containercollection.WithLinuxNamespaceEnrichment(),
@@ -374,7 +374,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 }
 
 func (l *LocalGadgetManager) Close() {
-	l.ContainerCollectionClose()
+	l.ContainerCollection.Close()
 	l.containersMap.Close()
 }
 

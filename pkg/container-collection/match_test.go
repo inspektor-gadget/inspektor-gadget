@@ -139,7 +139,7 @@ func TestContainerResolver(t *testing.T) {
 	opts := []ContainerCollectionOption{}
 
 	cc := &ContainerCollection{}
-	err := cc.ContainerCollectionInitialize(opts...)
+	err := cc.Initialize(opts...)
 	if err != nil {
 		t.Fatalf("Failed to initialize container collection: %s", err)
 	}
