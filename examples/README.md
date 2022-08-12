@@ -36,3 +36,7 @@ or `local-gadget` directly.
     packages to filter events by container.
     - [trace/exec](gadgets/withfilter/trace/exec/): traces creation of
       new processes inside a particular container.
+  - [parser](gadgets/parser/): Examples showing how to use a parser to
+    format the events.
+    - [trace/exec](gadgets/parser/trace/exec/): traces creation of
+      new processes inside a particular container.
