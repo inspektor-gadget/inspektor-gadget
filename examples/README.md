@@ -21,6 +21,9 @@ or `local-gadget` directly.
 - gadgets:
   - [basic](gadgets/basic/): Examples showing how to create a tracer
     without any filtering capabilities.
+    - [trace/dns](gadgets/basic/trace/dns/): shows how to use
+      [trace/dns](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/trace/dns)
+      package to trace DNS requests in the host.
     - [trace/exec](gadgets/basic/trace/exec/): shows how to use
       [trace/exec](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/trace/exec)
       package to trace the creation of new processes in the host.
