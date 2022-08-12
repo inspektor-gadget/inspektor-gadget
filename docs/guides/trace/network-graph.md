@@ -47,6 +47,6 @@ State: Started
 
 ```json
 {"type":"debug","message":"tracer attached","node":"local","namespace":"default","pod":"demo"}
-{"type":"normal","namespace":"default","pod":"demo","pkt_type":"OUTGOING","proto":"tcp","ip":"1.1.1.1","port":80}
-{"type":"normal","namespace":"default","pod":"demo","pkt_type":"OUTGOING","proto":"udp","ip":"192.168.0.1","port":53}
+{"type":"normal","namespace":"default","pod":"demo","pktType":"OUTGOING","proto":"tcp","ip":"1.1.1.1","port":80}
+{"type":"normal","namespace":"default","pod":"demo","pktType":"OUTGOING","proto":"udp","ip":"192.168.0.1","port":53}
 ```

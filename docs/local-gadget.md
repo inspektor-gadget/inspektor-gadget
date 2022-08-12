@@ -199,12 +199,12 @@ $ sudo local-gadget interactive --runtimes docker
 » create dns trace1 --container-selector shell01
 » stream trace1 -f
 {"notice":"tracer attached","node":"local","namespace":"default","pod":"shell01"}
-{"node":"local","namespace":"default","pod":"shell01","name":"wikipedia.org.","pkt_type":"OUTGOING"}
-{"node":"local","namespace":"default","pod":"shell01","name":"wikipedia.org.","pkt_type":"OUTGOING"}
-{"node":"local","namespace":"default","pod":"shell01","name":"wikipedia.org.","pkt_type":"OUTGOING"}
-{"node":"local","namespace":"default","pod":"shell01","name":"wikipedia.org.","pkt_type":"OUTGOING"}
-{"node":"local","namespace":"default","pod":"shell01","name":"www.wikipedia.org.","pkt_type":"OUTGOING"}
-{"node":"local","namespace":"default","pod":"shell01","name":"www.wikipedia.org.","pkt_type":"OUTGOING"}
+{"node":"local","namespace":"default","pod":"shell01","name":"wikipedia.org.","pktType":"OUTGOING"}
+{"node":"local","namespace":"default","pod":"shell01","name":"wikipedia.org.","pktType":"OUTGOING"}
+{"node":"local","namespace":"default","pod":"shell01","name":"wikipedia.org.","pktType":"OUTGOING"}
+{"node":"local","namespace":"default","pod":"shell01","name":"wikipedia.org.","pktType":"OUTGOING"}
+{"node":"local","namespace":"default","pod":"shell01","name":"www.wikipedia.org.","pktType":"OUTGOING"}
+{"node":"local","namespace":"default","pod":"shell01","name":"www.wikipedia.org.","pktType":"OUTGOING"}
 {"notice":"tracer detached","node":"local","namespace":"default","pod":"shell01"}
 ```
 

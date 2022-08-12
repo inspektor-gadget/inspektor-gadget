@@ -22,7 +22,7 @@ type Event struct {
 	eventtypes.Event
 
 	DNSName string `json:"name,omitempty"`
-	PktType string `json:"pkt_type,omitempty"`
+	PktType string `json:"pktType,omitempty"`
 	QType   string `json:"qtype,omitempty"`
 }
 

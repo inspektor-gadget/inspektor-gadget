@@ -16,12 +16,12 @@ package types
 
 type Data struct {
 	Count         uint64 `json:"count"`
-	IntervalStart uint64 `json:"interval-start"`
-	IntervalEnd   uint64 `json:"interval-end,omitempty"`
+	IntervalStart uint64 `json:"intervalStart"`
+	IntervalEnd   uint64 `json:"intervalEnd,omitempty"`
 }
 
 type Report struct {
-	ValType string `json:"val_type,omitempty"`
+	ValType string `json:"valType,omitempty"`
 	Data    []Data `json:"data,omitempty"`
 	Time    string `json:"ts,omitempty"`
 }

@@ -28,7 +28,7 @@ type Report struct {
 
 	Comm        string   `json:"comm,omitempty"`
 	Pid         uint32   `json:"pid,omitempty"`
-	UserStack   []string `json:"user_stack,omitempty"`
-	KernelStack []string `json:"kernel_stack,omitempty"`
+	UserStack   []string `json:"userStack,omitempty"`
+	KernelStack []string `json:"kernelStack,omitempty"`
 	Count       uint64   `json:"count,omitempty"`
 }

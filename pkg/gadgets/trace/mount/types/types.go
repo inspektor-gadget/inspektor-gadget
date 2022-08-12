@@ -33,7 +33,7 @@ type Event struct {
 	Target    string   `json:"target,omitempty"`
 	Data      string   `json:"data,omitempty"`
 	Flags     []string `json:"flags,omitempty"`
-	FlagsRaw  uint64   `json:"flags_raw,omitempty"`
+	FlagsRaw  uint64   `json:"flagsRaw,omitempty"`
 }
 
 func Base(ev eventtypes.Event) Event {

@@ -75,12 +75,12 @@ $ kubectl gadget snapshot socket -n test-socketcollector -o json
     "namespace": "test-socketcollector",
     "pod": "nginx-app",
     "protocol": "TCP",
-    "local_address": "0.0.0.0",
-    "local_port": 8080,
-    "remote_address": "0.0.0.0",
-    "remote_port": 0,
+    "localAddress": "0.0.0.0",
+    "localPort": 8080,
+    "remoteAddress": "0.0.0.0",
+    "remotePort": 0,
     "status": "LISTEN",
-    "inode_number": 716174
+    "inodeNumber": 716174
   }
 ]
 ```

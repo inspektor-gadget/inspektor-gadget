@@ -127,18 +127,18 @@ You can also use JSON as output for this gadget:
 ```bash
 $ kubectl gadget profile block-io --node worker-node -o json > /tmp/output.json; jq < /tmp/output.json
 {
-  "val_type": "usecs",
+  "valType": "usecs",
   "data": [
     {
       "count": 0,
-      "interval-start": 1,
-      "interval-end": 1
+      "intervalStart": 1,
+      "intervalEnd": 1
     },
     ...
     {
       "count": 0,
-      "interval-start": 4096,
-      "interval-end": 8191
+      "intervalStart": 4096,
+      "intervalEnd": 8191
     }
   ]
 }

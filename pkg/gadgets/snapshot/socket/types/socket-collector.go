@@ -40,12 +40,12 @@ type Event struct {
 	eventtypes.Event
 
 	Protocol      string `json:"protocol"`
-	LocalAddress  string `json:"local_address"`
-	LocalPort     uint16 `json:"local_port"`
-	RemoteAddress string `json:"remote_address"`
-	RemotePort    uint16 `json:"remote_port"`
+	LocalAddress  string `json:"localAddress"`
+	LocalPort     uint16 `json:"localPort"`
+	RemoteAddress string `json:"remoteAddress"`
+	RemotePort    uint16 `json:"remotePort"`
 	Status        string `json:"status"`
-	InodeNumber   uint64 `json:"inode_number"`
+	InodeNumber   uint64 `json:"inodeNumber"`
 }
 
 func ParseProtocol(protocol string) (Proto, error) {

@@ -24,31 +24,31 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	PktType string `json:"pkt_type,omitempty"`
+	PktType string `json:"pktType,omitempty"`
 	Proto   string `json:"proto,omitempty"`
 	IP      string `json:"ip,omitempty"`
 	Port    int    `json:"port,omitempty"`
 
 	/* pod, svc or other */
-	RemoteKind string `json:"remote_kind,omitempty"`
+	RemoteKind string `json:"remoteKind,omitempty"`
 
-	PodHostIP string            `json:"pod_host_ip,omitempty"`
-	PodIP     string            `json:"pod_ip,omitempty"`
-	PodOwner  string            `json:"pod_owner,omitempty"`
-	PodLabels map[string]string `json:"pod_labels,omitempty"`
+	PodHostIP string            `json:"podHostIP,omitempty"`
+	PodIP     string            `json:"podIP,omitempty"`
+	PodOwner  string            `json:"podOwner,omitempty"`
+	PodLabels map[string]string `json:"podLabels,omitempty"`
 
 	/* if RemoteKind = svc */
-	RemoteSvcNamespace     string            `json:"remote_svc_namespace,omitempty"`
-	RemoteSvcName          string            `json:"remote_svc_name,omitempty"`
-	RemoteSvcLabelSelector map[string]string `json:"remote_svc_label_selector,omitempty"`
+	RemoteSvcNamespace     string            `json:"remoteServiceNamespace,omitempty"`
+	RemoteSvcName          string            `json:"remoteServiceName,omitempty"`
+	RemoteSvcLabelSelector map[string]string `json:"remoteServiceLabelSelector,omitempty"`
 
 	/* if RemoteKind = pod */
-	RemotePodNamespace string            `json:"remote_pod_namespace,omitempty"`
-	RemotePodName      string            `json:"remote_pod_name,omitempty"`
-	RemotePodLabels    map[string]string `json:"remote_pod_labels,omitempty"`
+	RemotePodNamespace string            `json:"remotePodNamespace,omitempty"`
+	RemotePodName      string            `json:"remotePodName,omitempty"`
+	RemotePodLabels    map[string]string `json:"remotePodLabels,omitempty"`
 
 	/* if RemoteKind = other */
-	RemoteOther string `json:"remote_other,omitempty"`
+	RemoteOther string `json:"remoteOther,omitempty"`
 
 	Debug string `json:"debug,omitempty"`
 }

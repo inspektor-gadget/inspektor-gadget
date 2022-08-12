@@ -25,7 +25,7 @@ type Event struct {
 	Pid       uint32 `json:"pid,omitempty"`
 	UID       uint32 `json:"uid,omitempty"`
 	Comm      string `json:"comm,omitempty"`
-	CapName   string `json:"cap_name,omitempty"`
+	CapName   string `json:"capName,omitempty"`
 	Cap       int    `json:"cap,omitempty"`
 	Audit     int    `json:"audit,omitempty"`
 	InsetID   string `json:"insetid,omitempty"`
