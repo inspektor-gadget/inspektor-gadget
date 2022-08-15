@@ -17,6 +17,7 @@ package crio
 import (
 	"time"
 
+	criclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/cri"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 )
 
@@ -27,7 +28,7 @@ const (
 )
 
 type CrioClient struct {
-	runtimeclient.CRIClient
+	criclient.CRIClient
 }
 
 func NewCrioClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
@@ -35,7 +36,7 @@ func NewCrioClient(socketPath string) (runtimeclient.ContainerRuntimeClient, err
 		socketPath = DefaultSocketPath
 	}
 
-	criClient, err := runtimeclient.NewCRIClient(Name, socketPath, DefaultTimeout)
+	criClient, err := criclient.NewCRIClient(Name, socketPath, DefaultTimeout)
 	if err != nil {
 		return nil, err
 	}

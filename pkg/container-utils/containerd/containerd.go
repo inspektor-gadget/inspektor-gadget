@@ -17,6 +17,7 @@ package containerd
 import (
 	"time"
 
+	criclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/cri"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 )
 
@@ -27,7 +28,7 @@ const (
 )
 
 type ContainerdClient struct {
-	runtimeclient.CRIClient
+	criclient.CRIClient
 }
 
 func NewContainerdClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
@@ -35,7 +36,7 @@ func NewContainerdClient(socketPath string) (runtimeclient.ContainerRuntimeClien
 		socketPath = DefaultSocketPath
 	}
 
-	criClient, err := runtimeclient.NewCRIClient(Name, socketPath, DefaultTimeout)
+	criClient, err := criclient.NewCRIClient(Name, socketPath, DefaultTimeout)
 	if err != nil {
 		return nil, err
 	}
