@@ -174,7 +174,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-docker-${{ matrix.type }}-${{ hashFiles('gadget-${{ matrix.type }}.Dockerfile') }}
+        key: ${{ runner.os }}-docker-${{ matrix.type }}-${{ hashFiles('Dockerfiles/gadget-${{ matrix.type }}.Dockerfile') }}
         restore-keys: |
           ${{ runner.os }}-docker-${{ matrix.type }}-
     - name: Login to Container Registry
@@ -194,7 +194,7 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
-        file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget-${{ matrix.type }}.Dockerfile
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
         build-args: |
           ENABLE_BTFGEN=true
         # At the moment, we only build core image and do not publish them.
