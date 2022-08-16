@@ -37,6 +37,47 @@ type ContainerData struct {
 	Runtime string
 }
 
+// Extended information that can be retrieved for a container.
+type ContainerExtendedData struct {
+	// Structure is also a container data structure.
+	ContainerData
+
+	// Process identifier.
+	Pid int
+
+	// Current state of the container.
+	State string
+
+	// Path for the container cgroups.
+	CgroupsPath string
+
+	// List of mounts in the container.
+	Mounts []ContainerMountData
+}
+
+// Mount information in container extra info.
+type ContainerMountData struct {
+	// Source of the mount in the host file-system.
+	Source string
+
+	// Destination of the mount in the container.
+	Destination string
+}
+
+const (
+	// Container was created but has not started running.
+	StateCreated = "created"
+
+	// Container is currently running.
+	StateRunning = "running"
+
+	// Container has stopped or exited.
+	StateExited = "exited"
+
+	// Container has an unknown or unrecognized state.
+	StateUnknown = "unknown"
+)
+
 // ContainerRuntimeClient defines the interface to communicate with the
 // different container runtimes.
 type ContainerRuntimeClient interface {
@@ -51,6 +92,10 @@ type ContainerRuntimeClient interface {
 	// GetContainers returns the information of the container identified by the
 	// provided ID.
 	GetContainer(containerID string) (*ContainerData, error)
+
+	// GetContainerExtended returns the extended information of the container 
+	// identified by the provided ID.
+	GetContainerExtended(containerID string) (*ContainerExtendedData, error)
 
 	// Close tears down the connection with the container runtime.
 	Close() error
