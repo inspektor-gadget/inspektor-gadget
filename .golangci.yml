@@ -16,10 +16,6 @@ issues:
     - text: "ST1000: at least one file in a package should have a package comment"
       linters:
         - stylecheck
-    # FIXME temporarily suppress. See issue #541
-    - text: "SA1019: grpc.WithDialer is deprecated: use WithContextDialer instead."
-      linters:
-        - staticcheck
 
 linters:
   disable-all: true

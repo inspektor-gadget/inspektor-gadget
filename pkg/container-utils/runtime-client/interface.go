@@ -80,8 +80,9 @@ func NewCRIClient(name, socketPath string, timeout time.Duration) (CRIClient, er
 	conn, err := grpc.Dial(
 		socketPath,
 		grpc.WithInsecure(),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", socketPath, timeout)
+		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+			d := net.Dialer{Timeout: timeout}
+			return d.DialContext(ctx, "unix", socketPath)
 		}),
 	)
 	if err != nil {
