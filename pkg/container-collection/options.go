@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/cgroups"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 )
@@ -605,13 +606,13 @@ func WithCgroupEnrichment() ContainerCollectionOption {
 				return true
 			}
 
-			cgroupPathV1, cgroupPathV2, err := containerutils.GetCgroupPaths(pid)
+			cgroupPathV1, cgroupPathV2, err := cgroups.GetCgroupPaths(pid)
 			if err != nil {
 				log.Errorf("cgroup enricher: failed to get cgroup paths on container %s: %s", container.ID, err)
 				return true
 			}
-			cgroupPathV2WithMountpoint, _ := containerutils.CgroupPathV2AddMountpoint(cgroupPathV2)
-			cgroupID, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
+			cgroupPathV2WithMountpoint, _ := cgroups.CgroupPathV2AddMountpoint(cgroupPathV2)
+			cgroupID, _ := cgroups.GetCgroupID(cgroupPathV2WithMountpoint)
 
 			container.CgroupPath = cgroupPathV2WithMountpoint
 			container.CgroupID = cgroupID

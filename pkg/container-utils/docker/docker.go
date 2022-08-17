@@ -26,6 +26,7 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	cgroups "github.com/kinvolk/inspektor-gadget/pkg/container-utils/cgroups"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 )
 
@@ -66,8 +67,8 @@ func NewDockerClient(socketPath string) (runtimeclient.ContainerRuntimeClient, e
 }
 
 func (c *DockerClient) PidFromContainerID(containerID string) (int, error) {
-	// Get the container extended data (containing the PID)
-	containerExtendedData, err := c.GetContainerExtended(containerID)
+	// Get the container extended data (containing the PID). Do not read cgroup if missing (not needed for PID).
+	containerExtendedData, err := c.getContainerExtendedWithCgroup(containerID, false)
 	if err != nil {
 		return -1, err
 	}
@@ -131,6 +132,10 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 }
 
 func (c *DockerClient) GetContainerExtended(containerID string) (*runtimeclient.ContainerExtendedData, error) {
+	return c.getContainerExtendedWithCgroup(containerID, true)
+}
+
+func (c *DockerClient) getContainerExtendedWithCgroup(containerID string, readCgroups bool) (*runtimeclient.ContainerExtendedData, error) {
 
 	containerID, err := runtimeclient.ParseContainerID(Name, containerID)
 	if err != nil {
@@ -170,6 +175,21 @@ func (c *DockerClient) GetContainerExtended(containerID string) (*runtimeclient.
 
 	if containerExtendedData.Pid == 0 {
 		return nil, errors.New("got zero pid")
+	}
+
+	// Check if cgroups path is empty -- if so, it will need to be read from /proc/<pid>/cgroup.
+	if readCgroups && containerExtendedData.CgroupsPath == "" {
+		// Get cgroup paths for V1 and V2.
+		cgroupPathV1, cgroupPathV2, err := cgroups.GetCgroupPaths(containerExtendedData.Pid)
+		if err != nil {
+			return nil, err
+		}
+
+		cgroupsPath := cgroupPathV1
+		if cgroupsPath == "" {
+			cgroupsPath = cgroupPathV2
+		}
+		containerExtendedData.CgroupsPath = cgroupsPath
 	}
 
 	return &containerExtendedData, nil
