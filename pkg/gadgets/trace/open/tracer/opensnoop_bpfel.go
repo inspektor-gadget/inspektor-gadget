@@ -64,9 +64,9 @@ type opensnoopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type opensnoopMapSpecs struct {
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
-	Start      *ebpf.MapSpec `ebpf:"start"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	Start         *ebpf.MapSpec `ebpf:"start"`
 }
 
 // opensnoopObjects contains all objects after they have been loaded into the kernel.
@@ -88,15 +88,15 @@ func (o *opensnoopObjects) Close() error {
 //
 // It can be passed to loadOpensnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type opensnoopMaps struct {
-	Events     *ebpf.Map `ebpf:"events"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
-	Start      *ebpf.Map `ebpf:"start"`
+	Events        *ebpf.Map `ebpf:"events"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	Start         *ebpf.Map `ebpf:"start"`
 }
 
 func (m *opensnoopMaps) Close() error {
 	return _OpensnoopClose(
 		m.Events,
-		m.MountNsSet,
+		m.MountNsFilter,
 		m.Start,
 	)
 }

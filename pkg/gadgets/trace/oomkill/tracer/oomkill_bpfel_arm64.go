@@ -61,8 +61,8 @@ type oomkillProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type oomkillMapSpecs struct {
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
 }
 
 // oomkillObjects contains all objects after they have been loaded into the kernel.
@@ -84,14 +84,14 @@ func (o *oomkillObjects) Close() error {
 //
 // It can be passed to loadOomkillObjects or ebpf.CollectionSpec.LoadAndAssign.
 type oomkillMaps struct {
-	Events     *ebpf.Map `ebpf:"events"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
+	Events        *ebpf.Map `ebpf:"events"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
 }
 
 func (m *oomkillMaps) Close() error {
 	return _OomkillClose(
 		m.Events,
-		m.MountNsSet,
+		m.MountNsFilter,
 	)
 }
 

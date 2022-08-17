@@ -15,6 +15,10 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# editor and IDE paraphernalia
+.idea
+.vscode
+
 # Downloaded binaries
 bin/
 

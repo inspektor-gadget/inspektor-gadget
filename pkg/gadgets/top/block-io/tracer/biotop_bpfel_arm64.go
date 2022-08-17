@@ -91,10 +91,10 @@ type biotopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type biotopMapSpecs struct {
-	Counts     *ebpf.MapSpec `ebpf:"counts"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
-	Start      *ebpf.MapSpec `ebpf:"start"`
-	Whobyreq   *ebpf.MapSpec `ebpf:"whobyreq"`
+	Counts        *ebpf.MapSpec `ebpf:"counts"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	Start         *ebpf.MapSpec `ebpf:"start"`
+	Whobyreq      *ebpf.MapSpec `ebpf:"whobyreq"`
 }
 
 // biotopObjects contains all objects after they have been loaded into the kernel.
@@ -116,16 +116,16 @@ func (o *biotopObjects) Close() error {
 //
 // It can be passed to loadBiotopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type biotopMaps struct {
-	Counts     *ebpf.Map `ebpf:"counts"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
-	Start      *ebpf.Map `ebpf:"start"`
-	Whobyreq   *ebpf.Map `ebpf:"whobyreq"`
+	Counts        *ebpf.Map `ebpf:"counts"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	Start         *ebpf.Map `ebpf:"start"`
+	Whobyreq      *ebpf.Map `ebpf:"whobyreq"`
 }
 
 func (m *biotopMaps) Close() error {
 	return _BiotopClose(
 		m.Counts,
-		m.MountNsSet,
+		m.MountNsFilter,
 		m.Start,
 		m.Whobyreq,
 	)

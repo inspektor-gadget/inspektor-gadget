@@ -37,7 +37,7 @@ struct {
 	__uint(max_entries, 1024);
 	__uint(key_size, sizeof(u64));
 	__uint(value_size, sizeof(u32));
-} mount_ns_set SEC(".maps");
+} mount_ns_filter SEC(".maps");
 
 static int probe_entry(struct file *fp, loff_t start, loff_t end)
 {
@@ -59,7 +59,7 @@ static int probe_entry(struct file *fp, loff_t start, loff_t end)
 	task = (struct task_struct*)bpf_get_current_task();
 	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
 		return 0;
 
 	data.ts = bpf_ktime_get_ns();
@@ -90,7 +90,7 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	task = (struct task_struct*)bpf_get_current_task();
 	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
 		return 0;
 
 	datap = bpf_map_lookup_elem(&starts, &tid);

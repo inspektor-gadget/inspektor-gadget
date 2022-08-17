@@ -68,8 +68,8 @@ type ProcessCollectorWithFiltersProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type ProcessCollectorWithFiltersMapSpecs struct {
-	Containers *ebpf.MapSpec `ebpf:"containers"`
-	Filter     *ebpf.MapSpec `ebpf:"filter"`
+	Containers    *ebpf.MapSpec `ebpf:"containers"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
 }
 
 // ProcessCollectorWithFiltersObjects contains all objects after they have been loaded into the kernel.
@@ -91,14 +91,14 @@ func (o *ProcessCollectorWithFiltersObjects) Close() error {
 //
 // It can be passed to LoadProcessCollectorWithFiltersObjects or ebpf.CollectionSpec.LoadAndAssign.
 type ProcessCollectorWithFiltersMaps struct {
-	Containers *ebpf.Map `ebpf:"containers"`
-	Filter     *ebpf.Map `ebpf:"filter"`
+	Containers    *ebpf.Map `ebpf:"containers"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
 }
 
 func (m *ProcessCollectorWithFiltersMaps) Close() error {
 	return _ProcessCollectorWithFiltersClose(
 		m.Containers,
-		m.Filter,
+		m.MountNsFilter,
 	)
 }
 

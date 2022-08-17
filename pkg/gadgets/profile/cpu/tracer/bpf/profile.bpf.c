@@ -34,7 +34,7 @@ struct {
 	__uint(max_entries, 1024);
 	__uint(key_size, sizeof(u64));
 	__uint(value_size, sizeof(u32));
-} mount_ns_set SEC(".maps");
+} mount_ns_filter SEC(".maps");
 
 /*
  * If PAGE_OFFSET macro is not available in vmlinux.h, determine ip whose MSB
@@ -80,7 +80,7 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
 	task = (struct task_struct*) bpf_get_current_task();
 	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
 		return 0;
 
 	key.pid = pid;

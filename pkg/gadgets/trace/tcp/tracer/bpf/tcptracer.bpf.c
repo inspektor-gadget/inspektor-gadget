@@ -70,7 +70,7 @@ struct {
 	__uint(max_entries, 1024);
 	__uint(key_size, sizeof(u64));
 	__uint(value_size, sizeof(u32));
-} mount_ns_set SEC(".maps");
+} mount_ns_filter SEC(".maps");
 
 static __always_inline bool
 fill_tuple(struct tuple_key_t *tuple, struct sock *sk, int family)
@@ -149,7 +149,7 @@ filter_event(struct sock *sk, __u32 uid, __u32 pid, __u64 mntns_id)
 	if (family != AF_INET && family != AF_INET6)
 		return true;
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
 		return true;
 
 	if (filter_pid && pid != filter_pid)

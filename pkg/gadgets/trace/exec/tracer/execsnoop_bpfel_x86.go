@@ -76,9 +76,9 @@ type execsnoopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execsnoopMapSpecs struct {
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	Execs      *ebpf.MapSpec `ebpf:"execs"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	Execs         *ebpf.MapSpec `ebpf:"execs"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
 }
 
 // execsnoopObjects contains all objects after they have been loaded into the kernel.
@@ -100,16 +100,16 @@ func (o *execsnoopObjects) Close() error {
 //
 // It can be passed to loadExecsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execsnoopMaps struct {
-	Events     *ebpf.Map `ebpf:"events"`
-	Execs      *ebpf.Map `ebpf:"execs"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
+	Events        *ebpf.Map `ebpf:"events"`
+	Execs         *ebpf.Map `ebpf:"execs"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
 }
 
 func (m *execsnoopMaps) Close() error {
 	return _ExecsnoopClose(
 		m.Events,
 		m.Execs,
-		m.MountNsSet,
+		m.MountNsFilter,
 	)
 }
 

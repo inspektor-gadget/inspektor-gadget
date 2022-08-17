@@ -64,10 +64,10 @@ type bindsnoopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bindsnoopMapSpecs struct {
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
-	Ports      *ebpf.MapSpec `ebpf:"ports"`
-	Sockets    *ebpf.MapSpec `ebpf:"sockets"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	Ports         *ebpf.MapSpec `ebpf:"ports"`
+	Sockets       *ebpf.MapSpec `ebpf:"sockets"`
 }
 
 // bindsnoopObjects contains all objects after they have been loaded into the kernel.
@@ -89,16 +89,16 @@ func (o *bindsnoopObjects) Close() error {
 //
 // It can be passed to loadBindsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bindsnoopMaps struct {
-	Events     *ebpf.Map `ebpf:"events"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
-	Ports      *ebpf.Map `ebpf:"ports"`
-	Sockets    *ebpf.Map `ebpf:"sockets"`
+	Events        *ebpf.Map `ebpf:"events"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	Ports         *ebpf.Map `ebpf:"ports"`
+	Sockets       *ebpf.Map `ebpf:"sockets"`
 }
 
 func (m *bindsnoopMaps) Close() error {
 	return _BindsnoopClose(
 		m.Events,
-		m.MountNsSet,
+		m.MountNsFilter,
 		m.Ports,
 		m.Sockets,
 	)

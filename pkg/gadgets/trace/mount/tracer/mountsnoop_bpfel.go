@@ -64,10 +64,10 @@ type mountsnoopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type mountsnoopMapSpecs struct {
-	Args       *ebpf.MapSpec `ebpf:"args"`
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	Heap       *ebpf.MapSpec `ebpf:"heap"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
+	Args          *ebpf.MapSpec `ebpf:"args"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	Heap          *ebpf.MapSpec `ebpf:"heap"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
 }
 
 // mountsnoopObjects contains all objects after they have been loaded into the kernel.
@@ -89,10 +89,10 @@ func (o *mountsnoopObjects) Close() error {
 //
 // It can be passed to loadMountsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type mountsnoopMaps struct {
-	Args       *ebpf.Map `ebpf:"args"`
-	Events     *ebpf.Map `ebpf:"events"`
-	Heap       *ebpf.Map `ebpf:"heap"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
+	Args          *ebpf.Map `ebpf:"args"`
+	Events        *ebpf.Map `ebpf:"events"`
+	Heap          *ebpf.Map `ebpf:"heap"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
 }
 
 func (m *mountsnoopMaps) Close() error {
@@ -100,7 +100,7 @@ func (m *mountsnoopMaps) Close() error {
 		m.Args,
 		m.Events,
 		m.Heap,
-		m.MountNsSet,
+		m.MountNsFilter,
 	)
 }
 
