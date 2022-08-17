@@ -55,7 +55,3 @@ func ParseProtocol(protocol string) (Proto, error) {
 
 	return INVALID, fmt.Errorf("%q is not a valid protocol value", protocol)
 }
-
-func (e Event) GetBaseEvent() eventtypes.Event {
-	return e.Event
-}

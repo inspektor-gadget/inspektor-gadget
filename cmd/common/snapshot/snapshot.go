@@ -34,7 +34,7 @@ type SnapshotEvent interface {
 	// x is of type parameter type even if all types in the type parameter's
 	// type set have a field f. We may remove this restriction in Go 1.19. See
 	// https://tip.golang.org/doc/go1.18#generics.
-	GetBaseEvent() eventtypes.Event
+	GetBaseEvent() *eventtypes.Event
 }
 
 // SnapshotParser defines the interface that every snapshot-gadget parser has to
@@ -111,7 +111,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 			for _, e := range allEvents {
 				baseEvent := e.GetBaseEvent()
 				if baseEvent.Type != eventtypes.NORMAL {
-					commonutils.ManageSpecialEvent(&baseEvent, outputConfig.Verbose)
+					commonutils.ManageSpecialEvent(baseEvent, outputConfig.Verbose)
 					continue
 				}
 

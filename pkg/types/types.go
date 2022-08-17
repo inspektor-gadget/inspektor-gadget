@@ -74,6 +74,12 @@ type Event struct {
 	Message string `json:"message,omitempty"`
 }
 
+// GetBaseEvent is needed to implement commonutils.BaseElement and
+// snapshot.SnapshotEvent interfaces.
+func (e Event) GetBaseEvent() *Event {
+	return &e
+}
+
 func Err(msg string) Event {
 	return Event{
 		CommonData: CommonData{

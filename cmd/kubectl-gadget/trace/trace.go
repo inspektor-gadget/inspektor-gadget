@@ -33,7 +33,7 @@ type TraceEvent interface {
 	// of type parameter type even if all types in the type parameter's type set
 	// have a field f. We may remove this restriction in Go 1.19. See
 	// https://tip.golang.org/doc/go1.18#generics.
-	GetBaseEvent() eventtypes.Event
+	GetBaseEvent() *eventtypes.Event
 }
 
 // TraceParser defines the interface that every trace-gadget parser has to
@@ -89,7 +89,7 @@ func (g *TraceGadget[Event]) Run() error {
 
 		baseEvent := e.GetBaseEvent()
 		if baseEvent.Type != eventtypes.NORMAL {
-			commonutils.ManageSpecialEvent(&baseEvent, g.commonFlags.Verbose)
+			commonutils.ManageSpecialEvent(baseEvent, g.commonFlags.Verbose)
 			return ""
 		}
 
