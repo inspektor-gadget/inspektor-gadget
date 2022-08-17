@@ -277,6 +277,9 @@ jobs:
     - name: Basic unit tests
       run: |
         make test
+    - name: Gadgets unit tests
+      run: |
+        make gadgets-unit-tests
     - name: Controller unit tests
       run: |
         make controller-tests
