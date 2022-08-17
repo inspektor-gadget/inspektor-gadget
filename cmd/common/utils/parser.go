@@ -111,7 +111,7 @@ func (p *BaseParser[E]) Transform(element *E, toColumns func(*E) string) string 
 	// cases by themselves, GetBaseEvent() simply needs to return nil.
 	baseEvent := (*element).GetBaseEvent()
 	if baseEvent != nil && baseEvent.Type != eventtypes.NORMAL {
-		ManageSpecialEvent(baseEvent, p.OutputConfig.Verbose)
+		HandleSpecialEvent(baseEvent, p.OutputConfig.Verbose)
 		return ""
 	}
 

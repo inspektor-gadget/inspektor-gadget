@@ -111,7 +111,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 			for _, e := range allEvents {
 				baseEvent := e.GetBaseEvent()
 				if baseEvent.Type != eventtypes.NORMAL {
-					commonutils.ManageSpecialEvent(baseEvent, outputConfig.Verbose)
+					commonutils.HandleSpecialEvent(baseEvent, outputConfig.Verbose)
 					continue
 				}
 
