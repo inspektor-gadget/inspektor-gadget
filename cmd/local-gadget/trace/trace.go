@@ -71,7 +71,7 @@ func (g *TraceGadget[Event]) Run() error {
 	eventCallback := func(event Event) {
 		baseEvent := event.GetBaseEvent()
 		if baseEvent.Type != eventtypes.NORMAL {
-			commonutils.ManageSpecialEvent(&baseEvent, g.commonFlags.Verbose)
+			commonutils.ManageSpecialEvent(baseEvent, g.commonFlags.Verbose)
 			return
 		}
 

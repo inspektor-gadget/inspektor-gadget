@@ -85,7 +85,3 @@ func GetColumns() *columns.Columns[Event] {
 
 	return cols
 }
-
-func (e Event) GetBaseEvent() eventtypes.Event {
-	return e.Event
-}
