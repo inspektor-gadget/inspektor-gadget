@@ -197,9 +197,8 @@ jobs:
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/gadget-${{ matrix.type }}.Dockerfile
         build-args: |
           ENABLE_BTFGEN=true
-        # At the moment, we only build core image and do not publish them.
-        push: ${{ matrix.type != 'core' }}
-        tags: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
+        push: true
+        tags: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}${{ matrix.type == 'core' && '-core' || ''}}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
         # For the moment, we only support these two platforms.
