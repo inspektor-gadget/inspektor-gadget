@@ -177,15 +177,13 @@ func (c *DockerClient) getContainerExtendedWithCgroup(containerID string, readCg
 	if readCgroups && containerExtendedData.CgroupsPath == "" {
 		// Get cgroup paths for V1 and V2.
 		cgroupPathV1, cgroupPathV2, err := cgroups.GetCgroupPaths(containerExtendedData.Pid)
-		if err != nil {
-			return nil, err
+		if err == nil {
+			cgroupsPath := cgroupPathV1
+			if cgroupsPath == "" {
+				cgroupsPath = cgroupPathV2
+			}
+			containerExtendedData.CgroupsPath = cgroupsPath
 		}
-
-		cgroupsPath := cgroupPathV1
-		if cgroupsPath == "" {
-			cgroupsPath = cgroupPathV2
-		}
-		containerExtendedData.CgroupsPath = cgroupsPath
 	}
 
 	return &containerExtendedData, nil
