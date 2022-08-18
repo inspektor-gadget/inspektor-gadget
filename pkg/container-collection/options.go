@@ -127,7 +127,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 			return nil
 		}
 		for _, container := range containers {
-			if !container.Running {
+			if container.State != runtimeclient.StateRunning {
 				log.Debugf("Runtime enricher(%s): Skip container %q (ID: %s): not running",
 					runtime.Name, container.Name, container.ID)
 				continue

@@ -152,25 +152,24 @@ func CRIContainerToContainerData(runtimeName string, container *pb.Container) *r
 	return &runtimeclient.ContainerData{
 		ID:      container.Id,
 		Name:    strings.TrimPrefix(container.GetMetadata().Name, "/"),
-		Running: container.GetState() == pb.ContainerState_CONTAINER_RUNNING,
+		State:   containerStatusStateToRuntimeClientState(container.GetState()),
 		Runtime: runtimeName,
 	}
 }
 
 // parseContainerExtendedData parses the container status and extra information
-// returned by ContainerStatus() into a ContainerExtraInfo structure. 
-func parseContainerExtendedData(runtimeName string, containerStatus *pb.ContainerStatus, 
-								extraInfo map[string]string) (*runtimeclient.ContainerExtendedData, error) {
-
+// returned by ContainerStatus() into a ContainerExtraInfo structure.
+func parseContainerExtendedData(runtimeName string, containerStatus *pb.ContainerStatus,
+	extraInfo map[string]string,
+) (*runtimeclient.ContainerExtendedData, error) {
 	// Create container extra info structure to be filled.
-	containerExtendedData := runtimeclient.ContainerExtendedData {
-		ContainerData: runtimeclient.ContainerData {
+	containerExtendedData := runtimeclient.ContainerExtendedData{
+		ContainerData: runtimeclient.ContainerData{
 			ID:      containerStatus.Id,
 			Name:    strings.TrimPrefix(containerStatus.GetMetadata().Name, "/"),
-			Running: containerStatus.GetState() == pb.ContainerState_CONTAINER_RUNNING,
+			State:   containerStatusStateToRuntimeClientState(containerStatus.State),
 			Runtime: runtimeName,
 		},
-		State: containerStatusStateToRuntimeClientState(containerStatus.State),
 	}
 
 	// Parse the extra info and fill the extended data.
@@ -182,26 +181,25 @@ func parseContainerExtendedData(runtimeName string, containerStatus *pb.Containe
 	return &containerExtendedData, nil
 }
 
-// parseExtraInfo parses the extra information returned by ContainerStatus() 
+// parseExtraInfo parses the extra information returned by ContainerStatus()
 // into a ContainerExtraInfo structure. It keeps backward compatibility after
 // the ContainerInfo format was modified in:
 // cri-o v1.18.0: https://github.com/cri-o/cri-o/commit/be8e876cdabec4e055820502fed227aa44971ddc
 // containerd v1.6.0-beta.1: https://github.com/containerd/containerd/commit/85b943eb47bc7abe53b9f9e3d953566ed0f65e6c
 // NOTE: CRI-O does not have runtime spec prior to 1.18.0
 func parseExtraInfo(extraInfo map[string]string, containerExtendedData *runtimeclient.ContainerExtendedData) error {
-
 	// Define the info content (only required fields).
 	type RuntimeSpecContent struct {
 		Mounts []struct {
 			Destination string `json:"destination"`
-			Source string `json:"source,omitempty"`
+			Source      string `json:"source,omitempty"`
 		} `json:"mounts,omitempty"`
 		Linux *struct {
 			CgroupsPath string `json:"cgroupsPath,omitempty"`
 		} `json:"linux,omitempty" platform:"linux"`
 	}
 	type InfoContent struct {
-		Pid int `json:"pid"`
+		Pid         int                `json:"pid"`
 		RuntimeSpec RuntimeSpecContent `json:"runtimeSpec"`
 	}
 
@@ -227,7 +225,7 @@ func parseExtraInfo(extraInfo map[string]string, containerExtendedData *runtimec
 		// Set the runtime spec pointer, to be copied below.
 		runtimeSpec = &infoContent.RuntimeSpec
 
-	// Legacy parsing.
+		// Legacy parsing.
 	} else {
 		// Extract the PID.
 		pidStr, ok := extraInfo["pid"]
@@ -269,7 +267,7 @@ func parseExtraInfo(extraInfo map[string]string, containerExtendedData *runtimec
 		for _, specMount := range runtimeSpec.Mounts {
 			containerExtendedData.Mounts = append(containerExtendedData.Mounts, runtimeclient.ContainerMountData{
 				Destination: specMount.Destination,
-				Source: specMount.Source,
+				Source:      specMount.Source,
 			})
 		}
 	}
@@ -280,16 +278,16 @@ func parseExtraInfo(extraInfo map[string]string, containerExtendedData *runtimec
 // Convert the state from container status to state of runtime client.
 func containerStatusStateToRuntimeClientState(containerStatusState pb.ContainerState) (runtimeClientState string) {
 	switch containerStatusState {
-		case pb.ContainerState_CONTAINER_CREATED:
-			runtimeClientState = runtimeclient.StateCreated
-		case pb.ContainerState_CONTAINER_RUNNING:
-			runtimeClientState = runtimeclient.StateRunning
-		case pb.ContainerState_CONTAINER_EXITED:
-			runtimeClientState = runtimeclient.StateExited
-		case pb.ContainerState_CONTAINER_UNKNOWN:
-			runtimeClientState = runtimeclient.StateUnknown
-		default:
-			runtimeClientState = runtimeclient.StateUnknown
+	case pb.ContainerState_CONTAINER_CREATED:
+		runtimeClientState = runtimeclient.StateCreated
+	case pb.ContainerState_CONTAINER_RUNNING:
+		runtimeClientState = runtimeclient.StateRunning
+	case pb.ContainerState_CONTAINER_EXITED:
+		runtimeClientState = runtimeclient.StateExited
+	case pb.ContainerState_CONTAINER_UNKNOWN:
+		runtimeClientState = runtimeclient.StateUnknown
+	default:
+		runtimeClientState = runtimeclient.StateUnknown
 	}
 	return
 }

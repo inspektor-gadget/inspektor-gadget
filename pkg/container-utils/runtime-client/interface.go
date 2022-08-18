@@ -28,8 +28,8 @@ type ContainerData struct {
 	// with multiples, Name contains only the first element.
 	Name string
 
-	// Running defines whether or not the container is in the running state
-	Running bool
+	// Current state of the container.
+	State string
 
 	// Runtime is the name of the runtime (e.g. docker, cri-o, containerd). It
 	// is useful to distinguish who is the "owner" of each container in a list
@@ -37,16 +37,13 @@ type ContainerData struct {
 	Runtime string
 }
 
-// Extended information that can be retrieved for a container.
+// ContainerExtendedData contains extended information that can be retrieved for a container.
 type ContainerExtendedData struct {
 	// Structure is also a container data structure.
 	ContainerData
 
 	// Process identifier.
 	Pid int
-
-	// Current state of the container.
-	State string
 
 	// Path for the container cgroups.
 	CgroupsPath string
@@ -55,7 +52,7 @@ type ContainerExtendedData struct {
 	Mounts []ContainerMountData
 }
 
-// Mount information in container extra info.
+// ContainerMountData contains mount information in ContainerExtendedData.
 type ContainerMountData struct {
 	// Source of the mount in the host file-system.
 	Source string
@@ -93,7 +90,7 @@ type ContainerRuntimeClient interface {
 	// provided ID.
 	GetContainer(containerID string) (*ContainerData, error)
 
-	// GetContainerExtended returns the extended information of the container 
+	// GetContainerExtended returns the extended information of the container
 	// identified by the provided ID.
 	GetContainerExtended(containerID string) (*ContainerExtendedData, error)
 
