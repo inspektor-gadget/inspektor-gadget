@@ -38,7 +38,7 @@ int kprobe__audit_seccomp(struct pt_regs *ctx)
 		return 0;
 
 #ifdef WITH_FILTER
-	__u32 *found = bpf_map_lookup_elem(&filter, &mntns_id);
+	__u32 *found = bpf_map_lookup_elem(&mount_ns_filter, &mntns_id);
 	if (!found)
 		return 0;
 #endif

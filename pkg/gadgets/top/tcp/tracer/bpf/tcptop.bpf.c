@@ -28,7 +28,7 @@ struct {
 	__uint(max_entries, 1024);
 	__uint(key_size, sizeof(u64));
 	__uint(value_size, sizeof(u32));
-} mount_ns_set SEC(".maps");
+} mount_ns_filter SEC(".maps");
 
 static int probe_ip(bool receiving, struct sock *sk, size_t size)
 {
@@ -54,7 +54,7 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 	task = (struct task_struct*) bpf_get_current_task();
 	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
 		return 0;
 
 	ip_key.pid = pid;

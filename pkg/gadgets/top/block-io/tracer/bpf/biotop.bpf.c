@@ -36,7 +36,7 @@ struct {
 	__uint(max_entries, 1024);
 	__uint(key_size, sizeof(u64));
 	__uint(value_size, sizeof(u32));
-} mount_ns_set SEC(".maps");
+} mount_ns_filter SEC(".maps");
 
 SEC("kprobe/blk_account_io_start")
 int BPF_KPROBE(blk_account_io_start, struct request *req)
@@ -47,7 +47,7 @@ int BPF_KPROBE(blk_account_io_start, struct request *req)
 	task = (struct task_struct*) bpf_get_current_task();
 	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
 		return 0;
 
 	struct who_t who = {};
@@ -72,7 +72,7 @@ int BPF_KPROBE(blk_mq_start_request, struct request *req)
 	task = (struct task_struct*) bpf_get_current_task();
 	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_set, &mntns_id))
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
 		return 0;
 
 	start_req.ts = bpf_ktime_get_ns();

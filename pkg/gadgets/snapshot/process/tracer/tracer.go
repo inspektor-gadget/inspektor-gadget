@@ -50,7 +50,7 @@ func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]processc
 	mapReplacements := map[string]*ebpf.Map{}
 
 	if mntnsmap != nil {
-		mapReplacements["filter"] = mntnsmap
+		mapReplacements["mount_ns_filter"] = mntnsmap
 	}
 
 	coll, err := ebpf.NewCollectionWithOptions(spec,

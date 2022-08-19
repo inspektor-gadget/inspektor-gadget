@@ -85,10 +85,10 @@ type capabilitiesProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type capabilitiesMapSpecs struct {
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	Info       *ebpf.MapSpec `ebpf:"info"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
-	Seen       *ebpf.MapSpec `ebpf:"seen"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	Info          *ebpf.MapSpec `ebpf:"info"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	Seen          *ebpf.MapSpec `ebpf:"seen"`
 }
 
 // capabilitiesObjects contains all objects after they have been loaded into the kernel.
@@ -110,17 +110,17 @@ func (o *capabilitiesObjects) Close() error {
 //
 // It can be passed to loadCapabilitiesObjects or ebpf.CollectionSpec.LoadAndAssign.
 type capabilitiesMaps struct {
-	Events     *ebpf.Map `ebpf:"events"`
-	Info       *ebpf.Map `ebpf:"info"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
-	Seen       *ebpf.Map `ebpf:"seen"`
+	Events        *ebpf.Map `ebpf:"events"`
+	Info          *ebpf.Map `ebpf:"info"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	Seen          *ebpf.Map `ebpf:"seen"`
 }
 
 func (m *capabilitiesMaps) Close() error {
 	return _CapabilitiesClose(
 		m.Events,
 		m.Info,
-		m.MountNsSet,
+		m.MountNsFilter,
 		m.Seen,
 	)
 }

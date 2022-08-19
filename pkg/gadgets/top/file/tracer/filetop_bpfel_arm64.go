@@ -84,8 +84,8 @@ type filetopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type filetopMapSpecs struct {
-	Entries    *ebpf.MapSpec `ebpf:"entries"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
+	Entries       *ebpf.MapSpec `ebpf:"entries"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
 }
 
 // filetopObjects contains all objects after they have been loaded into the kernel.
@@ -107,14 +107,14 @@ func (o *filetopObjects) Close() error {
 //
 // It can be passed to loadFiletopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type filetopMaps struct {
-	Entries    *ebpf.Map `ebpf:"entries"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
+	Entries       *ebpf.Map `ebpf:"entries"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
 }
 
 func (m *filetopMaps) Close() error {
 	return _FiletopClose(
 		m.Entries,
-		m.MountNsSet,
+		m.MountNsFilter,
 	)
 }
 

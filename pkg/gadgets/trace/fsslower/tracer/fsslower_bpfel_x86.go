@@ -68,9 +68,9 @@ type fsslowerProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type fsslowerMapSpecs struct {
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
-	Starts     *ebpf.MapSpec `ebpf:"starts"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	Starts        *ebpf.MapSpec `ebpf:"starts"`
 }
 
 // fsslowerObjects contains all objects after they have been loaded into the kernel.
@@ -92,15 +92,15 @@ func (o *fsslowerObjects) Close() error {
 //
 // It can be passed to loadFsslowerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type fsslowerMaps struct {
-	Events     *ebpf.Map `ebpf:"events"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
-	Starts     *ebpf.Map `ebpf:"starts"`
+	Events        *ebpf.Map `ebpf:"events"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	Starts        *ebpf.Map `ebpf:"starts"`
 }
 
 func (m *fsslowerMaps) Close() error {
 	return _FsslowerClose(
 		m.Events,
-		m.MountNsSet,
+		m.MountNsFilter,
 		m.Starts,
 	)
 }

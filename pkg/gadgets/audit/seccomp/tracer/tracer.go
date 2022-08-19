@@ -76,7 +76,7 @@ func NewTracer(config *Config, eventCallback func(types.Event)) (*Tracer, error)
 	mapReplacements := map[string]*ebpf.Map{}
 
 	if config.MountnsMap != nil {
-		mapReplacements["filter"] = config.MountnsMap
+		mapReplacements["mount_ns_filter"] = config.MountnsMap
 	}
 	if config.ContainersMap != nil {
 		mapReplacements["containers"] = config.ContainersMap

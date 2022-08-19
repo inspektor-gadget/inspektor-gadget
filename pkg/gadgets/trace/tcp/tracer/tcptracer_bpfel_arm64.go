@@ -67,10 +67,10 @@ type tcptracerProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcptracerMapSpecs struct {
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
-	Sockets    *ebpf.MapSpec `ebpf:"sockets"`
-	Tuplepid   *ebpf.MapSpec `ebpf:"tuplepid"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	Sockets       *ebpf.MapSpec `ebpf:"sockets"`
+	Tuplepid      *ebpf.MapSpec `ebpf:"tuplepid"`
 }
 
 // tcptracerObjects contains all objects after they have been loaded into the kernel.
@@ -92,16 +92,16 @@ func (o *tcptracerObjects) Close() error {
 //
 // It can be passed to loadTcptracerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcptracerMaps struct {
-	Events     *ebpf.Map `ebpf:"events"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
-	Sockets    *ebpf.Map `ebpf:"sockets"`
-	Tuplepid   *ebpf.Map `ebpf:"tuplepid"`
+	Events        *ebpf.Map `ebpf:"events"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	Sockets       *ebpf.Map `ebpf:"sockets"`
+	Tuplepid      *ebpf.Map `ebpf:"tuplepid"`
 }
 
 func (m *tcptracerMaps) Close() error {
 	return _TcptracerClose(
 		m.Events,
-		m.MountNsSet,
+		m.MountNsFilter,
 		m.Sockets,
 		m.Tuplepid,
 	)

@@ -135,7 +135,7 @@ func (t *Tracer) start() error {
 
 	if t.config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_set"] = t.config.MountnsMap
+		mapReplacements["mount_ns_filter"] = t.config.MountnsMap
 	}
 
 	consts := map[string]interface{}{

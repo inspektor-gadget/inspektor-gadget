@@ -76,9 +76,9 @@ type sigsnoopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type sigsnoopMapSpecs struct {
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
-	Values     *ebpf.MapSpec `ebpf:"values"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	Values        *ebpf.MapSpec `ebpf:"values"`
 }
 
 // sigsnoopObjects contains all objects after they have been loaded into the kernel.
@@ -100,15 +100,15 @@ func (o *sigsnoopObjects) Close() error {
 //
 // It can be passed to loadSigsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type sigsnoopMaps struct {
-	Events     *ebpf.Map `ebpf:"events"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
-	Values     *ebpf.Map `ebpf:"values"`
+	Events        *ebpf.Map `ebpf:"events"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	Values        *ebpf.Map `ebpf:"values"`
 }
 
 func (m *sigsnoopMaps) Close() error {
 	return _SigsnoopClose(
 		m.Events,
-		m.MountNsSet,
+		m.MountNsFilter,
 		m.Values,
 	)
 }

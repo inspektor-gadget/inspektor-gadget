@@ -77,11 +77,11 @@ type tcpconnectProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpconnectMapSpecs struct {
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	Ipv4Count  *ebpf.MapSpec `ebpf:"ipv4_count"`
-	Ipv6Count  *ebpf.MapSpec `ebpf:"ipv6_count"`
-	MountNsSet *ebpf.MapSpec `ebpf:"mount_ns_set"`
-	Sockets    *ebpf.MapSpec `ebpf:"sockets"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	Ipv4Count     *ebpf.MapSpec `ebpf:"ipv4_count"`
+	Ipv6Count     *ebpf.MapSpec `ebpf:"ipv6_count"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	Sockets       *ebpf.MapSpec `ebpf:"sockets"`
 }
 
 // tcpconnectObjects contains all objects after they have been loaded into the kernel.
@@ -103,11 +103,11 @@ func (o *tcpconnectObjects) Close() error {
 //
 // It can be passed to loadTcpconnectObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpconnectMaps struct {
-	Events     *ebpf.Map `ebpf:"events"`
-	Ipv4Count  *ebpf.Map `ebpf:"ipv4_count"`
-	Ipv6Count  *ebpf.Map `ebpf:"ipv6_count"`
-	MountNsSet *ebpf.Map `ebpf:"mount_ns_set"`
-	Sockets    *ebpf.Map `ebpf:"sockets"`
+	Events        *ebpf.Map `ebpf:"events"`
+	Ipv4Count     *ebpf.Map `ebpf:"ipv4_count"`
+	Ipv6Count     *ebpf.Map `ebpf:"ipv6_count"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	Sockets       *ebpf.Map `ebpf:"sockets"`
 }
 
 func (m *tcpconnectMaps) Close() error {
@@ -115,7 +115,7 @@ func (m *tcpconnectMaps) Close() error {
 		m.Events,
 		m.Ipv4Count,
 		m.Ipv6Count,
-		m.MountNsSet,
+		m.MountNsFilter,
 		m.Sockets,
 	)
 }

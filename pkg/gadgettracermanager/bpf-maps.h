@@ -18,7 +18,7 @@ struct {
 	__type(key, __u64);
 	__type(value, __u32);
 	__uint(max_entries, MAX_CONTAINERS_PER_NODE);
-} filter SEC(".maps");
+} mount_ns_filter SEC(".maps");
 #endif
 
 #endif
