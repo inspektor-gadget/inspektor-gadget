@@ -39,7 +39,7 @@ var TopCmd = &cobra.Command{
 }
 
 func addTopCommand(command *cobra.Command, defaultMaxRows int, sortBySlice []string) {
-	command.Flags().IntVarP(&maxRows, "maxRows", "r", defaultMaxRows, "Maximum rows to print")
+	command.Flags().IntVarP(&maxRows, "max-rows", "r", defaultMaxRows, "Maximum rows to print")
 	command.Flags().StringVarP(&sortBy, "sort", "", sortBySlice[0], fmt.Sprintf("Sort column, possible values are: %s", strings.Join(sortBySlice, ", ")))
 
 	utils.AddCommonFlags(command, &params)
