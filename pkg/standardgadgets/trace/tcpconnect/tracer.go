@@ -15,56 +15,28 @@
 package standard
 
 import (
-	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-type Tracer struct {
-	trace.StandardTracerBase
-
-	eventCallback func(types.Event)
-}
-
-func NewTracer(config *tracer.Config,
-	eventCallback func(types.Event)) (*Tracer, error,
-) {
-	lineCallback := func(line string) {
-		event := types.Event{}
-		event.Type = eventtypes.NORMAL
-
+func NewTracer(config *tracer.Config, eventCallback func(types.Event)) (*trace.StandardTracer[types.Event], error) {
+	prepareLine := func(line string) string {
 		// "Hack" to avoid changing the BCC tool implementation
 		line = strings.ReplaceAll(line, `"ip"`, `"ipversion"`)
-
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			msg := fmt.Sprintf("failed to unmarshal event '%s': %s", line, err)
-			eventCallback(types.Base(eventtypes.Warn(msg)))
-			return
-		}
-
-		eventCallback(event)
+		line = strings.ReplaceAll(line, `"type"`, `"operation"`)
+		return line
 	}
 
-	baseTracer, err := trace.NewStandardTracer(lineCallback, config.MountnsMap,
-		"/usr/share/bcc/tools/tcpconnect",
-		"--json", "--containersmap", "/sys/fs/bpf/gadget/containers")
-	if err != nil {
-		return nil, err
+	standardConfig := &trace.StandardTracerConfig[types.Event]{
+		ScriptName:    "tcpconnect",
+		EventCallback: eventCallback,
+		PrepareLine:   prepareLine,
+		BaseEvent:     types.Base,
+		MntnsMap:      config.MountnsMap,
 	}
 
-	return &Tracer{
-		StandardTracerBase: *baseTracer,
-		eventCallback:      eventCallback,
-	}, nil
-}
-
-func (t *Tracer) Stop() {
-	if err := t.StandardTracerBase.Stop(); err != nil {
-		t.eventCallback(types.Base(eventtypes.Warn(err.Error())))
-	}
+	return trace.NewStandardTracer(standardConfig)
 }

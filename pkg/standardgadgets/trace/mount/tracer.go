@@ -15,60 +15,34 @@
 package standard
 
 import (
-	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/mount/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/mount/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-type Tracer struct {
-	trace.StandardTracerBase
+func NewTracer(config *tracer.Config, eventCallback func(types.Event)) (*trace.StandardTracer[types.Event], error) {
+	callback := func(event types.Event) {
+		event.Flags = tracer.DecodeFlags(event.FlagsRaw)
+		eventCallback(event)
+	}
 
-	eventCallback func(types.Event)
-}
-
-func NewTracer(config *tracer.Config,
-	eventCallback func(types.Event)) (*Tracer, error,
-) {
-	lineCallback := func(line string) {
-		event := types.Event{}
-		event.Type = eventtypes.NORMAL
-
+	prepareLine := func(line string) string {
 		// "Hack" to avoid changing the BCC tool implementation
 		line = strings.ReplaceAll(line, `"flags"`, `"flags_raw"`)
 		line = strings.ReplaceAll(line, `"type"`, `"fs"`)
 		line = strings.ReplaceAll(line, `"tgid"`, `"tid"`)
-
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			msg := fmt.Sprintf("failed to unmarshal event '%s': %s", line, err)
-			eventCallback(types.Base(eventtypes.Warn(msg)))
-			return
-		}
-
-		event.Flags = tracer.DecodeFlags(event.FlagsRaw)
-
-		eventCallback(event)
+		return line
 	}
 
-	baseTracer, err := trace.NewStandardTracer(lineCallback, config.MountnsMap,
-		"/usr/share/bcc/tools/mountsnoop",
-		"--json", "--containersmap", "/sys/fs/bpf/gadget/containers")
-	if err != nil {
-		return nil, err
+	standardConfig := &trace.StandardTracerConfig[types.Event]{
+		ScriptName:    "mountsnoop",
+		EventCallback: callback,
+		PrepareLine:   prepareLine,
+		BaseEvent:     types.Base,
+		MntnsMap:      config.MountnsMap,
 	}
 
-	return &Tracer{
-		StandardTracerBase: *baseTracer,
-		eventCallback:      eventCallback,
-	}, nil
-}
-
-func (t *Tracer) Stop() {
-	if err := t.StandardTracerBase.Stop(); err != nil {
-		t.eventCallback(types.Base(eventtypes.Warn(err.Error())))
-	}
+	return trace.NewStandardTracer(standardConfig)
 }
