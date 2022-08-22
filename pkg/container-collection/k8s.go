@@ -112,9 +112,15 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 			continue
 		}
 
-		pid, err := k.runtimeClient.PidFromContainerID(s.ContainerID)
+		containerData, err := k.runtimeClient.GetContainer(s.ContainerID)
 		if err != nil {
-			log.Warnf("Skip pod %s/%s: cannot find pid: %v", pod.GetNamespace(), pod.GetName(), err)
+			log.Warnf("Skip pod %s/%s: cannot find container (ID: %s): %v",
+				pod.GetNamespace(), pod.GetName(), s.ContainerID, err)
+			continue
+		}
+		if containerData.ExtraInfo == nil {
+			log.Warnf("Skip pod %s/%s: cannot get container (ID: %s) PID: extra info is missing",
+				pod.GetNamespace(), pod.GetName(), s.ContainerID)
 			continue
 		}
 
@@ -129,7 +135,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 			Podname:   pod.GetName(),
 			Name:      s.Name,
 			Labels:    labels,
-			Pid:       uint32(pid),
+			Pid:       uint32(containerData.ExtraInfo.Pid),
 		}
 		containers = append(containers, containerDef)
 	}

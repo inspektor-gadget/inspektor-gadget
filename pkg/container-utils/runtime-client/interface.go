@@ -19,6 +19,8 @@ import (
 	"strings"
 )
 
+// ContainerData contains container information returned from the container
+// runtime clients.
 type ContainerData struct {
 	// ID is the container ID without the container runtime prefix. For
 	// instance, "cri-o://" for CRI-O.
@@ -35,13 +37,16 @@ type ContainerData struct {
 	// is useful to distinguish who is the "owner" of each container in a list
 	// of containers collected from multiples runtimes.
 	Runtime string
+
+	// extraInfo contains the extra information that might not be available
+	// when listing the containers.
+	ExtraInfo *ContainerExtraInfo
 }
 
-// ContainerExtendedData contains extended information that can be retrieved for a container.
-type ContainerExtendedData struct {
-	// Structure is also a container data structure.
-	ContainerData
-
+// ContainerExtraInfo contains container extra information returned from the
+// container runtime clients. This information might not be available when
+// listing containers.
+type ContainerExtraInfo struct {
 	// Process identifier.
 	Pid int
 
@@ -52,7 +57,7 @@ type ContainerExtendedData struct {
 	Mounts []ContainerMountData
 }
 
-// ContainerMountData contains mount information in ContainerExtendedData.
+// ContainerMountData contains mount information in ContainerData.
 type ContainerMountData struct {
 	// Source of the mount in the host file-system.
 	Source string
@@ -78,21 +83,13 @@ const (
 // ContainerRuntimeClient defines the interface to communicate with the
 // different container runtimes.
 type ContainerRuntimeClient interface {
-	// PidFromContainerID returns the pid1 of the container identified by the
-	// specified ID. In case of errors, it returns -1 and an error describing
-	// what happened.
-	PidFromContainerID(containerID string) (int, error)
-
 	// GetContainers returns a slice with the information of all the containers.
+	// Container data returned may not include the ContainerExtraInfo data.
 	GetContainers() ([]*ContainerData, error)
 
 	// GetContainers returns the information of the container identified by the
 	// provided ID.
 	GetContainer(containerID string) (*ContainerData, error)
-
-	// GetContainerExtended returns the extended information of the container
-	// identified by the provided ID.
-	GetContainerExtended(containerID string) (*ContainerExtendedData, error)
 
 	// Close tears down the connection with the container runtime.
 	Close() error

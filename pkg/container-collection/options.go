@@ -133,17 +133,22 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 				continue
 			}
 
-			pid, err := runtimeClient.PidFromContainerID(container.ID)
+			containerData, err := runtimeClient.GetContainer(container.ID)
 			if err != nil {
-				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find pid: %s",
+				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find container: %s",
 					runtime.Name, container.Name, container.ID, err)
+				continue
+			}
+			if containerData.ExtraInfo == nil {
+				log.Warnf("Runtime enricher (%s): Skip container %q (ID: %s): extra info is missing",
+					runtime.Name, container.Name, container.ID)
 				continue
 			}
 
 			cc.initialContainers = append(cc.initialContainers,
 				&Container{
 					ID:      container.ID,
-					Pid:     uint32(pid),
+					Pid:     uint32(containerData.ExtraInfo.Pid),
 					Name:    container.Name,
 					Runtime: container.Runtime,
 

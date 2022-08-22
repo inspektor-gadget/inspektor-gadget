@@ -21,8 +21,6 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	dockertypes "github.com/docker/docker/api/types"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -66,16 +64,6 @@ func NewDockerClient(socketPath string) (runtimeclient.ContainerRuntimeClient, e
 	}, nil
 }
 
-func (c *DockerClient) PidFromContainerID(containerID string) (int, error) {
-	// Get the container extended data (containing the PID). Do not read cgroup if missing (not needed for PID).
-	containerExtendedData, err := c.getContainerExtendedWithCgroup(containerID, false)
-	if err != nil {
-		return -1, err
-	}
-
-	return containerExtendedData.Pid, nil
-}
-
 func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]dockertypes.Container, error) {
 	opts := dockertypes.ContainerListOptions{
 		// We need to request for all containers (also non-running) because
@@ -112,30 +100,6 @@ func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
 }
 
 func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.ContainerData, error) {
-	filter := dockerfilters.NewArgs()
-	filter.Add("id", containerID)
-
-	containers, err := listContainers(c, &filter)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(containers) == 0 {
-		return nil, fmt.Errorf("container %q not found", containerID)
-	}
-	if len(containers) > 1 {
-		log.Warnf("DockerClient: multiple containers (%d) with ID %q. Taking the first one: %+v",
-			len(containers), containerID, containers)
-	}
-
-	return DockerContainerToContainerData(&containers[0]), nil
-}
-
-func (c *DockerClient) GetContainerExtended(containerID string) (*runtimeclient.ContainerExtendedData, error) {
-	return c.getContainerExtendedWithCgroup(containerID, true)
-}
-
-func (c *DockerClient) getContainerExtendedWithCgroup(containerID string, readCgroups bool) (*runtimeclient.ContainerExtendedData, error) {
 	containerID, err := runtimeclient.ParseContainerID(Name, containerID)
 	if err != nil {
 		return nil, err
@@ -155,38 +119,42 @@ func (c *DockerClient) getContainerExtendedWithCgroup(containerID string, readCg
 	if containerJSON.HostConfig == nil {
 		return nil, errors.New("container host config is nil")
 	}
-	containerExtendedData := runtimeclient.ContainerExtendedData{
-		ContainerData: runtimeclient.ContainerData{
-			ID:      containerJSON.ID,
-			Name:    strings.TrimPrefix(containerJSON.Name, "/"),
-			State:   containerStatusStateToRuntimeClientState(containerJSON.State.Status),
-			Runtime: Name,
-		},
+	containerData := runtimeclient.ContainerData{
+		ID:      containerJSON.ID,
+		Name:    strings.TrimPrefix(containerJSON.Name, "/"),
+		State:   containerStatusStateToRuntimeClientState(containerJSON.State.Status),
+		Runtime: Name,
+	}
+
+	containerExtraInfo := runtimeclient.ContainerExtraInfo{
 		Pid:         containerJSON.State.Pid,
 		CgroupsPath: string(containerJSON.HostConfig.Cgroup),
 	}
-	containerExtendedData.Mounts = []runtimeclient.ContainerMountData{}
+	containerExtraInfo.Mounts = []runtimeclient.ContainerMountData{}
 	for _, containerMount := range containerJSON.Mounts {
-		containerExtendedData.Mounts = append(containerExtendedData.Mounts, runtimeclient.ContainerMountData{
+		containerExtraInfo.Mounts = append(containerExtraInfo.Mounts, runtimeclient.ContainerMountData{
 			Destination: containerMount.Destination,
 			Source:      containerMount.Source,
 		})
 	}
 
 	// Check if cgroups path is empty -- if so, it will need to be read from /proc/<pid>/cgroup.
-	if readCgroups && containerExtendedData.CgroupsPath == "" {
+	if containerExtraInfo.CgroupsPath == "" {
 		// Get cgroup paths for V1 and V2.
-		cgroupPathV1, cgroupPathV2, err := cgroups.GetCgroupPaths(containerExtendedData.Pid)
+		cgroupPathV1, cgroupPathV2, err := cgroups.GetCgroupPaths(containerExtraInfo.Pid)
 		if err == nil {
 			cgroupsPath := cgroupPathV1
 			if cgroupsPath == "" {
 				cgroupsPath = cgroupPathV2
 			}
-			containerExtendedData.CgroupsPath = cgroupsPath
+			containerExtraInfo.CgroupsPath = cgroupsPath
 		}
 	}
 
-	return &containerExtendedData, nil
+	// Set the extra info of the container.
+	containerData.ExtraInfo = &containerExtraInfo
+
+	return &containerData, nil
 }
 
 func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {

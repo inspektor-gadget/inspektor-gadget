@@ -16,8 +16,6 @@ package cri
 
 import (
 	"testing"
-
-	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 )
 
 func TestParseExtraInfo(t *testing.T) {
@@ -184,15 +182,14 @@ func TestParseExtraInfo(t *testing.T) {
 	// Iterate on all tests.
 	for _, entry := range table {
 		// Parse the extra info.
-		var containerExtendedData runtimeclient.ContainerExtendedData
-		err := parseExtraInfo(entry.info, &containerExtendedData)
+		extraInfo, err := parseExtraInfo(entry.info)
 		// Expected error.
 		if err != nil {
 			if entry.expected != nil {
 				t.Fatalf("Failed test %q: unexpected error: %s", entry.description, err.Error())
 			}
-			if containerExtendedData.Pid != -1 {
-				t.Fatalf("Failed test %q: PID %d when expected -1", entry.description, containerExtendedData.Pid)
+			if extraInfo != nil {
+				t.Fatalf("Failed test %q: extra info exists", entry.description)
 			}
 
 			// An error was returned, no point in checking rest of fields.
@@ -203,47 +200,50 @@ func TestParseExtraInfo(t *testing.T) {
 		if entry.expected == nil {
 			t.Fatalf("Failed test %q: unexpected success (expected error)", entry.description)
 		}
+		if extraInfo == nil {
+			t.Fatalf("Failed test %q: extra info is missing", entry.description)
+		}
 
 		// PID
-		if entry.expected.pid != nil && containerExtendedData.Pid != *entry.expected.pid {
+		if entry.expected.pid != nil && extraInfo.Pid != *entry.expected.pid {
 			t.Fatalf("Failed test %q: PID %d when expected %d", entry.description,
-				containerExtendedData.Pid, *entry.expected.pid)
+				extraInfo.Pid, *entry.expected.pid)
 		}
 
 		// CgroupsPath
 		if entry.expected.cgroupsPath != nil {
-			if containerExtendedData.CgroupsPath != *entry.expected.cgroupsPath {
+			if extraInfo.CgroupsPath != *entry.expected.cgroupsPath {
 				t.Fatalf("Failed test %q: cgroupPath \"%s\" when expected \"%s\"", entry.description,
-					containerExtendedData.CgroupsPath, *entry.expected.cgroupsPath)
+					extraInfo.CgroupsPath, *entry.expected.cgroupsPath)
 			}
 		} else {
-			if containerExtendedData.CgroupsPath != "" {
+			if extraInfo.CgroupsPath != "" {
 				t.Fatalf("Failed test %q: cgroupPath \"%s\" when expected \"\"", entry.description,
-					containerExtendedData.CgroupsPath)
+					extraInfo.CgroupsPath)
 			}
 		}
 
 		// Mounts
 		if entry.expected.mounts != nil {
-			if len(containerExtendedData.Mounts) != len(*entry.expected.mounts) {
+			if len(extraInfo.Mounts) != len(*entry.expected.mounts) {
 				t.Fatalf("Failed test %q: mounts number of elements %d when expected %d", entry.description,
-					len(containerExtendedData.Mounts), len(*entry.expected.mounts))
+					len(extraInfo.Mounts), len(*entry.expected.mounts))
 			}
 
 			for i := range *entry.expected.mounts {
-				if containerExtendedData.Mounts[i].Source != (*entry.expected.mounts)[i].src {
+				if extraInfo.Mounts[i].Source != (*entry.expected.mounts)[i].src {
 					t.Fatalf("Failed test %q: mounts[%d] source \"%s\" when expected \"%s\"", entry.description,
-						i, containerExtendedData.Mounts[i].Source, (*entry.expected.mounts)[i].src)
+						i, extraInfo.Mounts[i].Source, (*entry.expected.mounts)[i].src)
 				}
-				if containerExtendedData.Mounts[i].Destination != (*entry.expected.mounts)[i].dst {
+				if extraInfo.Mounts[i].Destination != (*entry.expected.mounts)[i].dst {
 					t.Fatalf("Failed test %q: mounts[%d] destination \"%s\" when expected \"%s\"", entry.description,
-						i, containerExtendedData.Mounts[i].Destination, (*entry.expected.mounts)[i].dst)
+						i, extraInfo.Mounts[i].Destination, (*entry.expected.mounts)[i].dst)
 				}
 			}
 		} else {
-			if len(containerExtendedData.Mounts) != 0 {
+			if len(extraInfo.Mounts) != 0 {
 				t.Fatalf("Failed test %q: mounts number of elements %d when expected 0", entry.description,
-					len(containerExtendedData.Mounts))
+					len(extraInfo.Mounts))
 			}
 		}
 	}
