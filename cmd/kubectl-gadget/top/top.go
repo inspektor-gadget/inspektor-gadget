@@ -51,7 +51,7 @@ func addCommonTopFlags(
 	sortBySlice []string,
 ) {
 	command.Flags().IntVarP(&commonTopFlags.MaxRows, "max-rows", "r", defaultMaxRows, "Maximum rows to print")
-	command.Flags().StringVarP(&commonTopFlags.SortBy, "sort", "", sortBySlice[0], fmt.Sprintf("Sort column, possible values are: %s", strings.Join(sortBySlice, ", ")))
+	command.Flags().StringVarP(&commonTopFlags.SortBy, "sort", "", sortBySlice[0], fmt.Sprintf("Sort column (%s)", strings.Join(sortBySlice, ", ")))
 
 	utils.AddCommonFlags(command, commonFlags)
 }
