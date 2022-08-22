@@ -60,6 +60,19 @@ installing the compilers to build it.
 If you push the container images to another registry, you can use the `--image`
 argument when deploying to the Kubernetes cluster.
 
+### Building the eBPF object files
+
+If you need to compile the eBPF code of the gadgets, the ebpf-objects target
+will help you in this task:
+
+```bash
+$ make ebpf-objects
+...
+go: downloading github.com/giantswarm/crd-docs-generator v0.7.1
+...
+Wrote /work/pkg/gadgettracermanager/containers-map/containersmap_bpfel.go
+```
+
 ### Building notes
 
 - The compilation uses `tools/image-tag` to choose the tag of the container
