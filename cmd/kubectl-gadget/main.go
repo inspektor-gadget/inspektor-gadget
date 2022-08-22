@@ -44,7 +44,7 @@ func init() {
 	rootCmd.AddCommand(audit.NewAuditCmd())
 	rootCmd.AddCommand(profile.NewProfileCmd())
 	rootCmd.AddCommand(snapshot.NewSnapshotCmd())
-	rootCmd.AddCommand(top.TopCmd)
+	rootCmd.AddCommand(top.NewTopCmd())
 	rootCmd.AddCommand(trace.NewTraceCmd())
 }
 

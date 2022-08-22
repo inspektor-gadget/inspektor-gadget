@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -30,91 +31,142 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/types"
 )
 
-var fileNodeStats map[string][]types.Stats
+type FileFlags struct {
+	CommonTopFlags
 
-var (
-	// flags
-	fileSortBy   types.SortBy
-	fileAllFiles bool
-)
+	ParsedSortBy types.SortBy
+	AllFiles     bool
+}
 
-var fileCmd = &cobra.Command{
-	Use:   fmt.Sprintf("file [interval=%d]", types.IntervalDefault),
-	Short: "Periodically report read/write activity by file",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var err error
+type FileParser struct {
+	commonutils.BaseParser[types.Stats]
+	sync.Mutex
 
-		fileNodeStats = make(map[string][]types.Stats)
+	flags     *FileFlags
+	nodeStats map[string][]types.Stats
+}
 
-		if len(args) == 1 {
-			outputInterval, err = strconv.Atoi(args[0])
-			if err != nil {
-				return commonutils.WrapInErrInvalidArg("<interval>",
-					fmt.Errorf("%q is not a valid value", args[0]))
-			}
-		} else {
-			outputInterval = types.IntervalDefault
-		}
+func newFileCmd() *cobra.Command {
+	var flags FileFlags
 
-		config := &utils.TraceConfig{
-			GadgetName:       "filetop",
-			Operation:        "start",
-			TraceOutputMode:  "Stream",
-			TraceOutputState: "Started",
-			CommonFlags:      &params,
-			Parameters: map[string]string{
-				types.MaxRowsParam:  strconv.Itoa(maxRows),
-				types.IntervalParam: strconv.Itoa(outputInterval),
-				types.SortByParam:   sortBy,
-				types.AllFilesParam: strconv.FormatBool(fileAllFiles),
+	commonFlags := &utils.CommonFlags{
+		OutputConfig: commonutils.OutputConfig{
+			// The columns that will be used in case the user does not specify
+			// which specific columns they want to print.
+			CustomColumns: []string{
+				"node",
+				"namespace",
+				"pod",
+				"container",
+				"pid",
+				"comm",
+				"reads",
+				"writes",
+				"r_kb",
+				"w_kb",
+				"t",
+				"file",
 			},
-		}
+		},
+	}
 
-		// when params.Timeout == interval it means the user
-		// only wants to run for a given amount of time and print
-		// that result.
-		singleShot := params.Timeout == outputInterval
+	columnsWidth := map[string]int{
+		"node":      -16,
+		"namespace": -16,
+		"pod":       -30,
+		"container": -16,
+		"pid":       -7,
+		"tid":       -7,
+		"comm":      -16,
+		"reads":     -6,
+		"writes":    -6,
+		"r_kb":      -7,
+		"w_kb":      -7,
+		"t":         -1,
+		"file":      -30,
+	}
 
-		// start print loop if this is not a "single shoot" operation
-		if singleShot {
-			filePrintHeader()
-		} else {
-			fileStartOutputLoop()
-		}
+	cmd := &cobra.Command{
+		Use:   fmt.Sprintf("file [interval=%d]", types.IntervalDefault),
+		Short: "Periodically report read/write activity by file",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var err error
 
-		err = utils.RunTraceStreamCallback(config, fileCallback)
-		if err != nil {
-			return commonutils.WrapInErrRunGadget(err)
-		}
+			parser := &FileParser{
+				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonFlags.OutputConfig),
+				flags:      &flags,
+				nodeStats:  make(map[string][]types.Stats),
+			}
 
-		if singleShot {
-			filePrintEvents()
-		}
+			if len(args) == 1 {
+				flags.OutputInterval, err = strconv.Atoi(args[0])
+				if err != nil {
+					return commonutils.WrapInErrInvalidArg("<interval>",
+						fmt.Errorf("%q is not a valid value", args[0]))
+				}
+			} else {
+				flags.OutputInterval = types.IntervalDefault
+			}
 
-		return nil
-	},
-	SilenceUsage: true,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		var err error
-		fileSortBy, err = types.ParseSortBy(sortBy)
-		if err != nil {
-			return commonutils.WrapInErrInvalidArg("--sort", err)
-		}
+			config := &utils.TraceConfig{
+				GadgetName:       "filetop",
+				Operation:        "start",
+				TraceOutputMode:  "Stream",
+				TraceOutputState: "Started",
+				CommonFlags:      commonFlags,
+				Parameters: map[string]string{
+					types.IntervalParam: strconv.Itoa(flags.OutputInterval),
+					types.MaxRowsParam:  strconv.Itoa(flags.MaxRows),
+					types.SortByParam:   flags.SortBy,
+					types.AllFilesParam: strconv.FormatBool(flags.AllFiles),
+				},
+			}
 
-		return nil
-	},
-	Args: cobra.MaximumNArgs(1),
+			// when params.Timeout == interval it means the user
+			// only wants to run for a given amount of time and print
+			// that result.
+			singleShot := commonFlags.Timeout == flags.OutputInterval
+
+			// start print loop if this is not a "single shot" operation
+			if singleShot {
+				parser.PrintHeader()
+			} else {
+				parser.StartPrintLoop()
+			}
+
+			if err = utils.RunTraceStreamCallback(config, parser.Callback); err != nil {
+				return commonutils.WrapInErrRunGadget(err)
+			}
+
+			if singleShot {
+				parser.PrintStats()
+			}
+
+			return nil
+		},
+		SilenceUsage: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			flags.ParsedSortBy, err = types.ParseSortBy(flags.SortBy)
+			if err != nil {
+				return commonutils.WrapInErrInvalidArg("--sort", err)
+			}
+
+			return nil
+		},
+		Args: cobra.MaximumNArgs(1),
+	}
+
+	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, types.SortBySlice)
+
+	cmd.Flags().BoolVarP(&flags.AllFiles, "all-files", "a", types.AllFilesDefault, "Include non-regular file types (sockets, FIFOs, etc)")
+
+	return cmd
 }
 
-func init() {
-	fileCmd.Flags().BoolVarP(&fileAllFiles, "all-files", "a", types.AllFilesDefault, "Include non-regular file types (sockets, FIFOs, etc)")
-
-	addTopCommand(fileCmd, types.MaxRowsDefault, types.SortBySlice)
-}
-
-func fileCallback(line string, node string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (p *FileParser) Callback(line string, node string) {
+	p.Lock()
+	defer p.Unlock()
 
 	var event types.Event
 
@@ -128,156 +180,93 @@ func fileCallback(line string, node string) {
 		return
 	}
 
-	fileNodeStats[node] = event.Stats
+	p.nodeStats[node] = event.Stats
 }
 
-func fileStartOutputLoop() {
+func (p *FileParser) StartPrintLoop() {
 	go func() {
-		ticker := time.NewTicker(time.Duration(outputInterval) * time.Second)
-		filePrintHeader()
+		ticker := time.NewTicker(time.Duration(p.flags.OutputInterval) * time.Second)
+		p.PrintHeader()
 		for {
 			_ = <-ticker.C
-			filePrintHeader()
-			filePrintEvents()
+			p.PrintHeader()
+			p.PrintStats()
 		}
 	}()
 }
 
-func filePrintHeader() {
-	switch params.OutputMode {
-	case commonutils.OutputModeColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Printf("%-16s %-16s %-16s %-16s %-7s %-16s %-6s %-6s %-7s %-7s %1s %s\n",
-			"NODE", "NAMESPACE", "POD", "CONTAINER",
-			"PID", "COMM", "READS", "WRITES", "R_Kb", "W_Kb", "T", "FILE")
-	case commonutils.OutputModeCustomColumns:
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			utils.ClearScreen()
-		} else {
-			fmt.Println("")
-		}
-		fmt.Println(fileGetCustomColsHeader(params.CustomColumns))
+func (p *FileParser) PrintHeader() {
+	if p.OutputConfig.OutputMode == commonutils.OutputModeJSON {
+		return
 	}
+
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		utils.ClearScreen()
+	} else {
+		fmt.Println("")
+	}
+
+	fmt.Println(p.BuildColumnsHeader())
 }
 
-func filePrintEvents() {
-	// sort and print events
-	mutex.Lock()
+func (p *FileParser) PrintStats() {
+	// Sort and print stats
+	p.Lock()
 
 	stats := []types.Stats{}
-	for _, stat := range fileNodeStats {
+	for _, stat := range p.nodeStats {
 		stats = append(stats, stat...)
 	}
-	fileNodeStats = make(map[string][]types.Stats)
+	p.nodeStats = make(map[string][]types.Stats)
 
-	mutex.Unlock()
+	p.Unlock()
 
-	types.SortStats(stats, fileSortBy)
+	types.SortStats(stats, p.flags.ParsedSortBy)
 
-	switch params.OutputMode {
-	case commonutils.OutputModeColumns:
-		for idx, event := range stats {
-			if idx == maxRows {
-				break
-			}
-			fmt.Printf("%-16s %-16s %-16s %-16s %-7d %-16s %-6d %-6d %-7d %-7d %c %s\n",
-				event.Node, event.Namespace, event.Pod, event.Container,
-				event.Pid, event.Comm, event.Reads, event.Writes, event.ReadBytes/1024,
-				event.WriteBytes/1024, event.FileType, event.Filename)
+	for idx, stat := range stats {
+		if idx == p.flags.MaxRows {
+			break
 		}
-	case commonutils.OutputModeJSON:
-		b, err := json.Marshal(stats)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrMarshalOutput(err))
-			return
-		}
-		fmt.Println(string(b))
-	case commonutils.OutputModeCustomColumns:
-		for idx, stat := range stats {
-			if idx == maxRows {
-				break
-			}
-			fmt.Println(fileFormatEventCustomCols(&stat, params.CustomColumns))
-		}
+		fmt.Println(p.TransformStats(&stat))
 	}
 }
 
-func fileGetCustomColsHeader(cols []string) string {
-	var sb strings.Builder
+func (p *FileParser) TransformStats(stats *types.Stats) string {
+	return p.Transform(stats, func(stats *types.Stats) string {
+		var sb strings.Builder
 
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", "NODE"))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", "NAMESPACE"))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", "POD"))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", "CONTAINER"))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-7s", "PID"))
-		case "tid":
-			sb.WriteString(fmt.Sprintf("%-7s", "TID"))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", "COMM"))
-		case "reads":
-			sb.WriteString(fmt.Sprintf("%-6s", "READS"))
-		case "writes":
-			sb.WriteString(fmt.Sprintf("%-6s", "WRITES"))
-		case "r_kb":
-			sb.WriteString(fmt.Sprintf("%-7s", "R_kb"))
-		case "w_kb":
-			sb.WriteString(fmt.Sprintf("%-7s", "W_kb"))
-		case "t":
-			sb.WriteString(fmt.Sprintf("%s", "T"))
-		case "file":
-			sb.WriteString(fmt.Sprintf("%s", "FILE"))
+		for _, col := range p.OutputConfig.CustomColumns {
+			switch col {
+			case "node":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Node))
+			case "namespace":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Namespace))
+			case "pod":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Pod))
+			case "container":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Container))
+			case "pid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Pid))
+			case "tid":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Tid))
+			case "comm":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Comm))
+			case "reads":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Reads))
+			case "writes":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Writes))
+			case "r_kb":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.ReadBytes/1024))
+			case "w_kb":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.WriteBytes/1024))
+			case "t":
+				sb.WriteString(fmt.Sprintf("%*c", p.ColumnsWidth[col], stats.FileType))
+			case "file":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Filename))
+			}
+			sb.WriteRune(' ')
 		}
-		sb.WriteRune(' ')
-	}
 
-	return sb.String()
-}
-
-func fileFormatEventCustomCols(stats *types.Stats, cols []string) string {
-	var sb strings.Builder
-
-	for _, col := range cols {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Container))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.Pid))
-		case "tid":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.Tid))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%-16s", stats.Comm))
-		case "reads":
-			sb.WriteString(fmt.Sprintf("%-6d", stats.Reads))
-		case "writes":
-			sb.WriteString(fmt.Sprintf("%-6d", stats.Writes))
-		case "r_kb":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.ReadBytes))
-		case "w_kb":
-			sb.WriteString(fmt.Sprintf("%-7d", stats.WriteBytes))
-		case "t":
-			sb.WriteString(fmt.Sprintf("%c", stats.FileType))
-		case "file":
-			sb.WriteString(fmt.Sprintf("%s", stats.Filename))
-		}
-		sb.WriteRune(' ')
-	}
-
-	return sb.String()
+		return sb.String()
+	})
 }
