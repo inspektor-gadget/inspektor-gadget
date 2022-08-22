@@ -15,52 +15,18 @@
 package standard
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
-type Tracer struct {
-	trace.StandardTracerBase
-
-	eventCallback func(types.Event)
-}
-
-func NewTracer(config *tracer.Config,
-	eventCallback func(types.Event)) (*Tracer, error,
-) {
-	lineCallback := func(line string) {
-		event := types.Event{}
-		event.Type = eventtypes.NORMAL
-
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			msg := fmt.Sprintf("failed to unmarshal event '%s': %s", line, err)
-			eventCallback(types.Base(eventtypes.Warn(msg)))
-			return
-		}
-
-		eventCallback(event)
+func NewTracer(config *tracer.Config, eventCallback func(types.Event)) (*trace.StandardTracer[types.Event], error) {
+	standardConfig := &trace.StandardTracerConfig[types.Event]{
+		ScriptName:    "capable",
+		EventCallback: eventCallback,
+		BaseEvent:     types.Base,
+		MntnsMap:      config.MountnsMap,
 	}
 
-	baseTracer, err := trace.NewStandardTracer(lineCallback, config.MountnsMap,
-		"/usr/share/bcc/tools/capable",
-		"--json", "--containersmap", "/sys/fs/bpf/gadget/containers")
-	if err != nil {
-		return nil, err
-	}
-
-	return &Tracer{
-		StandardTracerBase: *baseTracer,
-		eventCallback:      eventCallback,
-	}, nil
-}
-
-func (t *Tracer) Stop() {
-	if err := t.StandardTracerBase.Stop(); err != nil {
-		t.eventCallback(types.Base(eventtypes.Warn(err.Error())))
-	}
+	return trace.NewStandardTracer(standardConfig)
 }
