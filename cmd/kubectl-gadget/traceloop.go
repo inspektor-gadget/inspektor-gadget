@@ -36,6 +36,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/kinvolk/traceloop/pkg/tracemeta"
 )
@@ -191,8 +192,8 @@ func runTraceloopStart(cmd *cobra.Command, args []string) error {
 	// Create traceloop trace
 	_, err = utils.CreateTrace(&utils.TraceConfig{
 		GadgetName:      "traceloop",
-		Operation:       "start",
-		TraceOutputMode: "ExternalResource",
+		Operation:       gadgetv1alpha1.OperationStart,
+		TraceOutputMode: gadgetv1alpha1.TraceOutputModeExternalResource,
 		CommonFlags:     &params,
 	})
 	if err != nil {

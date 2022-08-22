@@ -21,6 +21,50 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// Operation defines the gadget operation applied to the trace
+type Operation string
+
+const (
+	// OperationStart indicates to start the trace
+	OperationStart Operation = "start"
+	// OperationStop indicates to stop the trace
+	OperationStop Operation = "stop"
+	// OperationGenerate indicates to generate the trace
+	// output e.g seccomp profile
+	OperationGenerate Operation = "generate"
+	// OperationCollect indicates capturing system state
+	// at a specific point in time
+	OperationCollect Operation = "collect"
+)
+
+// RunMode defines running mode for the Trace
+// +kubebuilder:validation:Enum=Auto;Manual
+type RunMode string
+
+const (
+	// RunModeAuto automatically starts the trace as soon
+	// as the resource is created.
+	RunModeAuto RunMode = "Auto"
+	// RunModeManual allows the trace to be controlled by the
+	// "gadget.kinvolk.io/operation" annotation.
+	RunModeManual RunMode = "Manual"
+)
+
+// TraceOutputMode defines output mode for the Trace
+// +kubebuilder:validation:Enum=Status;Stream;File;ExternalResource
+type TraceOutputMode string
+
+const (
+	// TraceOutputModeStatus indicates to store the output in the trace "Status.Output" field
+	TraceOutputModeStatus TraceOutputMode = "Status"
+	// TraceOutputModeStream indicates to stream events. This stream can be accessed through the Stream() api on the gadget tracer manager
+	TraceOutputModeStream TraceOutputMode = "Stream"
+	// TraceOutputModeFile indicates to save output into a file
+	TraceOutputModeFile TraceOutputMode = "File"
+	// TraceOutputModeExternalResource indicates to create an external resource, as a seccomp profile
+	TraceOutputModeExternalResource TraceOutputMode = "ExternalResource"
+)
+
 // ContainerFilter filters events based on different criteria
 type ContainerFilter struct {
 	// Namespace selects events from this pod namespace
@@ -50,15 +94,14 @@ type TraceSpec struct {
 	// RunMode is "Auto" to automatically start the trace as soon as the
 	// resource is created, or "Manual" to be controlled by the
 	// "gadget.kinvolk.io/operation" annotation
-	RunMode string `json:"runMode,omitempty"`
+	RunMode RunMode `json:"runMode,omitempty"`
 
 	// Filter is to tell the gadget to filter events based on namespace,
 	// pod name, labels or container name
 	Filter *ContainerFilter `json:"filter,omitempty"`
 
 	// OutputMode is "Status", "Stream", "File" or "ExternalResource"
-	// +kubebuilder:validation:Enum=Status;Stream;File;ExternalResource
-	OutputMode string `json:"outputMode,omitempty"`
+	OutputMode TraceOutputMode `json:"outputMode,omitempty"`
 
 	// Output allows a gadget to output the results in the specified
 	// location.
@@ -77,14 +120,26 @@ type TraceSpec struct {
 	Parameters map[string]string `json:"parameters,omitempty"`
 }
 
+// TraceState defines state for the trace
+// +kubebuilder:validation:Enum=Started;Stopped;Completed
+type TraceState string
+
+const (
+	// TraceStateStarted indicates trace is in started state
+	TraceStateStarted TraceState = "Started"
+	// TraceStateStopped indicates trace is in stopped state
+	TraceStateStopped TraceState = "Stopped"
+	// TraceStateCompleted indicates trace is in completed state
+	TraceStateCompleted TraceState = "Completed"
+)
+
 // TraceStatus defines the observed state of Trace
 type TraceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// State is "Started", "Stopped" or "Completed"
-	// +kubebuilder:validation:Enum=Started;Stopped;Completed
-	State string `json:"state,omitempty"`
+	State TraceState `json:"state,omitempty"`
 
 	// Output is the output of the gadget
 	Output string `json:"output,omitempty"`

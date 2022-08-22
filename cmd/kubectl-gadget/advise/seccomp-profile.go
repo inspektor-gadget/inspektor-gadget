@@ -24,6 +24,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -80,12 +81,12 @@ func init() {
 	seccompAdvisorCmd.AddCommand(seccompAdvisorListCmd)
 }
 
-func outputModeToTraceOutputMode(outputMode string) (string, error) {
+func outputModeToTraceOutputMode(outputMode string) (gadgetv1alpha1.TraceOutputMode, error) {
 	switch outputMode {
 	case "terminal":
-		return "Status", nil
+		return gadgetv1alpha1.TraceOutputModeStatus, nil
 	case "seccomp-profile":
-		return "ExternalResource", nil
+		return gadgetv1alpha1.TraceOutputModeExternalResource, nil
 	default:
 		return "", fmt.Errorf("%q is not an accepted value for --output-mode, possible values are: terminal (default) and seccomp-profile", outputMode)
 	}
@@ -103,16 +104,16 @@ func runSeccompAdvisorStart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if traceOutputMode != "ExternalResource" && profilePrefix != "" {
+	if traceOutputMode != gadgetv1alpha1.TraceOutputModeExternalResource && profilePrefix != "" {
 		return errors.New("you can only use --profile-prefix with --output seccomp-profile")
 	}
 
 	config := &utils.TraceConfig{
 		GadgetName:        "seccomp",
-		Operation:         "start",
+		Operation:         gadgetv1alpha1.OperationStart,
 		TraceOutputMode:   traceOutputMode,
 		TraceOutput:       profilePrefix,
-		TraceInitialState: "Started",
+		TraceInitialState: gadgetv1alpha1.TraceStateStarted,
 		CommonFlags:       &params,
 	}
 
@@ -182,7 +183,7 @@ func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 
 	callback := func(traceOutputMode string, results []string) error {
 		for _, r := range results {
-			if traceOutputMode == "ExternalResource" {
+			if traceOutputMode == string(gadgetv1alpha1.TraceOutputModeExternalResource) {
 				profilesName, err := getSeccompProfilesName(traceID)
 				if err != nil {
 					return err
@@ -211,19 +212,19 @@ func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 	// leaking a resource.
 	defer utils.DeleteTrace(traceID)
 
-	err := utils.SetTraceOperation(traceID, "generate")
+	err := utils.SetTraceOperation(traceID, string(gadgetv1alpha1.OperationGenerate))
 	if err != nil {
 		return commonutils.WrapInErrGenGadgetOutput(err)
 	}
 
 	// We stop the trace so its Status.State become Stopped.
 	// Indeed, generate operation does not change value of Status.State.
-	err = utils.SetTraceOperation(traceID, "stop")
+	err = utils.SetTraceOperation(traceID, string(gadgetv1alpha1.OperationStop))
 	if err != nil {
 		return commonutils.WrapInErrStopGadget(err)
 	}
 
-	err = utils.PrintTraceOutputFromStatus(traceID, "Stopped", callback)
+	err = utils.PrintTraceOutputFromStatus(traceID, string(gadgetv1alpha1.TraceStateStopped), callback)
 	if err != nil {
 		return commonutils.WrapInErrGetGadgetOutput(err)
 	}

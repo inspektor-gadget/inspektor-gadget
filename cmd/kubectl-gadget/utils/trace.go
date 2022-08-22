@@ -61,7 +61,7 @@ type TraceConfig struct {
 
 	// Operation is the gadget operation to apply to this trace, e.g. start to
 	// start the tracing.
-	Operation string
+	Operation gadgetv1alpha1.Operation
 
 	// TraceOutputMode is the trace output mode, the correct values are:
 	// * "Status": The trace prints information when its status changes.
@@ -69,13 +69,13 @@ type TraceConfig struct {
 	// * "File": The trace prints information into a file.
 	// * "ExternalResource": The trace prints information an external resource,
 	// e.g. a seccomp profile.
-	TraceOutputMode string
+	TraceOutputMode gadgetv1alpha1.TraceOutputMode
 
 	// TraceOutputState is the state in which the trace can output information.
 	// For example, trace for *-collector gadget contains output while in
 	// Completed state.
 	// But other gadgets, like dns, can contain output only in Started state.
-	TraceOutputState string
+	TraceOutputState gadgetv1alpha1.TraceState
 
 	// TraceOutput is either the name of the file when TraceOutputMode is File or
 	// the name of the external resource when TraceOutputMode is ExternalResource.
@@ -85,7 +85,7 @@ type TraceConfig struct {
 	// TraceInitialState is the state in which the trace should be after its
 	// creation.
 	// This field is only used by "multi-rounds gadgets" like biolatency.
-	TraceInitialState string
+	TraceInitialState gadgetv1alpha1.TraceState
 
 	// CommonFlags is used to hold parameters given on the command line interface.
 	CommonFlags *CommonFlags
@@ -308,7 +308,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 			GenerateName: config.GadgetName + "-",
 			Namespace:    "gadget",
 			Annotations: map[string]string{
-				GadgetOperation: config.Operation,
+				GadgetOperation: string(config.Operation),
 			},
 			Labels: map[string]string{
 				GlobalTraceID: traceID,
@@ -321,7 +321,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 				"namespace":     strings.Replace(config.CommonFlags.Namespace, ",", "_", -1),
 				"podName":       config.CommonFlags.Podname,
 				"containerName": config.CommonFlags.Containername,
-				"outputMode":    config.TraceOutputMode,
+				"outputMode":    string(config.TraceOutputMode),
 				// We will not add config.TraceOutput as label because it can contain
 				// "/" which is forbidden in labels.
 			},
@@ -330,7 +330,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 			Node:       config.CommonFlags.Node,
 			Gadget:     config.GadgetName,
 			Filter:     filter,
-			RunMode:    "Manual",
+			RunMode:    gadgetv1alpha1.RunModeManual,
 			OutputMode: config.TraceOutputMode,
 			Output:     config.TraceOutput,
 			Parameters: config.Parameters,
@@ -345,7 +345,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 	if config.TraceInitialState != "" {
 		// Once the traces are created, we wait for them to be in
 		// config.TraceInitialState state, so they are ready to be used by the user.
-		_, err = waitForTraceState(traceID, config.TraceInitialState)
+		_, err = waitForTraceState(traceID, string(config.TraceInitialState))
 		if err != nil {
 			deleteError := DeleteTrace(traceID)
 
@@ -630,7 +630,7 @@ func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Tra
 // be in the expected state.
 func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.TraceList, error) {
 	return waitForCondition(traceID, func(trace *gadgetv1alpha1.Trace) bool {
-		return trace.Status.State == expectedState
+		return trace.Status.State == gadgetv1alpha1.TraceState(expectedState)
 	})
 }
 
@@ -714,10 +714,10 @@ func PrintTraceOutputFromStatus(
 	}
 
 	results := make([]string, len(traces.Items))
-	traceOutputMode := "Status"
+	traceOutputMode := string(gadgetv1alpha1.TraceOutputModeStatus)
 	for i, trace := range traces.Items {
 		results[i] = trace.Status.Output
-		traceOutputMode = trace.Spec.OutputMode
+		traceOutputMode = string(trace.Spec.OutputMode)
 	}
 
 	// When some multi-round gadgets, like the advise-seccomp, call this
@@ -767,7 +767,7 @@ func getTraceListFromParameters(config *TraceConfig) ([]gadgetv1alpha1.Trace, er
 		"namespace":     strings.Replace(config.CommonFlags.Namespace, ",", "_", -1),
 		"podName":       config.CommonFlags.Podname,
 		"containerName": config.CommonFlags.Containername,
-		"outputMode":    config.TraceOutputMode,
+		"outputMode":    string(config.TraceOutputMode),
 	}
 
 	listTracesOptions := metav1.ListOptions{
@@ -857,7 +857,7 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 
 	sigHandler(&traceID)
 
-	if config.TraceOutputMode != "Stream" {
+	if config.TraceOutputMode != gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must be Stream. Otherwise, call RunTraceAndPrintStatusOutput")
 	}
 
@@ -868,7 +868,7 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 
 	defer DeleteTrace(traceID)
 
-	return PrintTraceOutputFromStream(traceID, config.TraceOutputState, config.CommonFlags, transformLine)
+	return PrintTraceOutputFromStream(traceID, string(config.TraceOutputState), config.CommonFlags, transformLine)
 }
 
 // RunTraceStreamCallback creates a stream trace and calls callback each
@@ -878,7 +878,7 @@ func RunTraceStreamCallback(config *TraceConfig, callback func(line string, node
 
 	sigHandler(&traceID)
 
-	if config.TraceOutputMode != "Stream" {
+	if config.TraceOutputMode != gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must be Stream")
 	}
 
@@ -889,7 +889,7 @@ func RunTraceStreamCallback(config *TraceConfig, callback func(line string, node
 
 	defer DeleteTrace(traceID)
 
-	traces, err := waitForTraceState(traceID, config.TraceOutputState)
+	traces, err := waitForTraceState(traceID, string(config.TraceOutputState))
 	if err != nil {
 		return err
 	}
@@ -911,7 +911,7 @@ func RunTraceAndPrintStatusOutput(
 
 	sigHandler(&traceID)
 
-	if config.TraceOutputMode == "Stream" {
+	if config.TraceOutputMode == gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must not be Stream. Otherwise, call RunTraceAndPrintStream")
 	}
 
@@ -922,7 +922,7 @@ func RunTraceAndPrintStatusOutput(
 
 	defer DeleteTrace(traceID)
 
-	return PrintTraceOutputFromStatus(traceID, config.TraceOutputState, customResultsDisplay)
+	return PrintTraceOutputFromStatus(traceID, string(config.TraceOutputState), customResultsDisplay)
 }
 
 func genericStreams(

@@ -34,6 +34,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	ebpftoptypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
@@ -207,11 +208,11 @@ func TestSeccomp(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-seccomp001"
-	err = localGadgetManager.AddTracer("seccomp", "my-tracer", containerName, "Stream", nil)
+	err = localGadgetManager.AddTracer("seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer", "start")
+	err = localGadgetManager.Operation("my-tracer", gadgetv1alpha1.OperationStart)
 	if err != nil {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
@@ -258,11 +259,11 @@ func TestAuditSeccomp(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-auditseccomp001"
-	err = localGadgetManager.AddTracer("audit-seccomp", "my-tracer", containerName, "Stream", nil)
+	err = localGadgetManager.AddTracer("audit-seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer", "start")
+	err = localGadgetManager.Operation("my-tracer", gadgetv1alpha1.OperationStart)
 	if err != nil {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
@@ -308,11 +309,11 @@ func TestEbpftop(t *testing.T) {
 	defer localGadgetManager.Close()
 
 	containerName := "test-local-gadget-dns001"
-	err = localGadgetManager.AddTracer("ebpftop", "my-tracer", containerName, "Stream", nil)
+	err = localGadgetManager.AddTracer("ebpftop", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer", "start")
+	err = localGadgetManager.Operation("my-tracer", gadgetv1alpha1.OperationStart)
 	if err != nil {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
@@ -387,11 +388,11 @@ func TestDNS(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-dns001"
-	err = localGadgetManager.AddTracer("dns", "my-tracer", containerName, "Stream", nil)
+	err = localGadgetManager.AddTracer("dns", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer", "start")
+	err = localGadgetManager.Operation("my-tracer", gadgetv1alpha1.OperationStart)
 	if err != nil {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
@@ -509,11 +510,11 @@ func TestNetworkGraph(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-network-graph001"
-	err = localGadgetManager.AddTracer("network-graph", "my-tracer", containerName, "Stream", nil)
+	err = localGadgetManager.AddTracer("network-graph", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer", "start")
+	err = localGadgetManager.Operation("my-tracer", gadgetv1alpha1.OperationStart)
 	if err != nil {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
@@ -629,11 +630,11 @@ func TestCollector(t *testing.T) {
 	}
 	defer localGadgetManager.Close()
 
-	err = localGadgetManager.AddTracer("socket-collector", "my-tracer1", "my-container", "Status", nil)
+	err = localGadgetManager.AddTracer("socket-collector", "my-tracer1", "my-container", gadgetv1alpha1.TraceOutputModeStatus, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer1", "collect")
+	err = localGadgetManager.Operation("my-tracer1", gadgetv1alpha1.OperationCollect)
 	if err != nil {
 		t.Fatalf("Failed to run the tracer: %s", err)
 	}

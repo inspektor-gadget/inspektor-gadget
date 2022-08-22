@@ -106,13 +106,13 @@ func main() {
 	for _, gadget := range getTraceFactories() {
 		outputModesSet := gadget.Factory.OutputModesSupported()
 		for k := range outputModesSet {
-			gadget.OutputModes = append(gadget.OutputModes, k)
+			gadget.OutputModes = append(gadget.OutputModes, string(k))
 		}
 		sort.Strings(gadget.OutputModes)
 
 		for name, op := range gadget.Factory.Operations() {
 			gadget.Operations = append(gadget.Operations, GadgetOperation{
-				Name:  name,
+				Name:  string(name),
 				Doc:   op.Doc,
 				Order: op.Order,
 			})

@@ -26,6 +26,7 @@ import (
 
 	"github.com/chzyer/readline"
 	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
 	"github.com/spf13/cobra"
 )
@@ -88,7 +89,7 @@ func newRootCmd(localGadgetManager *localgadgetmanager.LocalGadgetManager) *cobr
 					return
 				}
 				gadget, name := args[0], args[1]
-				err := localGadgetManager.AddTracer(gadget, name, optionContainerSelector, optionOutputMode, nil)
+				err := localGadgetManager.AddTracer(gadget, name, optionContainerSelector, gadgetv1alpha1.TraceOutputMode(optionOutputMode), nil)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
@@ -98,7 +99,7 @@ func newRootCmd(localGadgetManager *localgadgetmanager.LocalGadgetManager) *cobr
 				if len(operations) == 1 {
 					err = localGadgetManager.Operation(name, operations[0])
 				} else {
-					err = localGadgetManager.Operation(name, "start")
+					err = localGadgetManager.Operation(name, gadgetv1alpha1.OperationStart)
 				}
 
 				if err != nil {
@@ -123,7 +124,7 @@ func newRootCmd(localGadgetManager *localgadgetmanager.LocalGadgetManager) *cobr
 					return
 				}
 				name, opname := args[0], args[1]
-				err := localGadgetManager.Operation(name, opname)
+				err := localGadgetManager.Operation(name, gadgetv1alpha1.Operation(opname))
 				if err != nil {
 					fmt.Println(err.Error())
 					return
@@ -316,7 +317,12 @@ func RunInteractiveLocalGadget(commonFlags *utils.CommonFlags) error {
 					}
 					// TODO: this might select the wrong field if flags are placed elsewhere
 					traceName := fields[1]
-					return localGadgetManager.ListOperations(traceName)
+					operations := localGadgetManager.ListOperations(traceName)
+					ret := make([]string, len(operations))
+					for i, op := range operations {
+						ret[i] = string(op)
+					}
+					return ret
 				}),
 			),
 		),

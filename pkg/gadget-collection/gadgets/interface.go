@@ -40,11 +40,11 @@ type TraceFactory interface {
 
 	// Operations gives the list of operations on a gadget that users can
 	// call via the gadget.kinvolk.io/operation annotation.
-	Operations() map[string]TraceOperation
+	Operations() map[gadgetv1alpha1.Operation]TraceOperation
 
 	// OutputModesSupported returns the set of OutputMode supported by the
 	// gadget.
-	OutputModesSupported() map[string]struct{}
+	OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode]struct{}
 }
 
 type TraceFactoryWithScheme interface {
@@ -145,10 +145,10 @@ func (f *BaseFactory) Delete(name string) {
 	delete(f.traces, name)
 }
 
-func (f *BaseFactory) Operations() map[string]TraceOperation {
-	return map[string]TraceOperation{}
+func (f *BaseFactory) Operations() map[gadgetv1alpha1.Operation]TraceOperation {
+	return map[gadgetv1alpha1.Operation]TraceOperation{}
 }
 
-func (f *BaseFactory) OutputModesSupported() map[string]struct{} {
-	return map[string]struct{}{}
+func (f *BaseFactory) OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode]struct{} {
+	return map[gadgetv1alpha1.TraceOutputMode]struct{}{}
 }

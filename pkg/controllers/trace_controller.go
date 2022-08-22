@@ -161,7 +161,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 		return ctrl.Result{}, nil
 	}
-	if trace.Spec.RunMode != "Manual" {
+	if trace.Spec.RunMode != gadgetv1alpha1.RunModeManual {
 		setTraceOpError(ctx, r.Client, req.NamespacedName.String(),
 			trace, fmt.Sprintf("Unsupported RunMode %q for gadget %q",
 				trace.Spec.RunMode, trace.Spec.Gadget))
@@ -236,7 +236,7 @@ func (r *TraceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// Check operation is supported for this specific gadget
-	gadgetOperation, ok := factory.Operations()[op]
+	gadgetOperation, ok := factory.Operations()[gadgetv1alpha1.Operation(op)]
 	if !ok {
 		setTraceOpError(ctx, r.Client, req.NamespacedName.String(),
 			trace, fmt.Sprintf("Unsupported operation %q for gadget %q",

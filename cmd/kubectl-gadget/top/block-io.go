@@ -28,6 +28,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
 
@@ -108,9 +109,9 @@ func newBlockIOCmd() *cobra.Command {
 
 			config := &utils.TraceConfig{
 				GadgetName:       "biotop",
-				Operation:        "start",
-				TraceOutputMode:  "Stream",
-				TraceOutputState: "Started",
+				Operation:        gadgetv1alpha1.OperationStart,
+				TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
+				TraceOutputState: gadgetv1alpha1.TraceStateStarted,
 				CommonFlags:      commonFlags,
 				Parameters: map[string]string{
 					types.IntervalParam: strconv.Itoa(flags.OutputInterval),

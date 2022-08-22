@@ -17,6 +17,7 @@ package utils
 import (
 	"fmt"
 
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
 )
 
@@ -29,7 +30,7 @@ type TraceConfig struct {
 	// For example, trace for *-collector gadget contains output while in
 	// Completed state.
 	// But other gadgets, like dns, can contain output only in Started state.
-	TraceOutputState string
+	TraceOutputState gadgetv1alpha1.TraceState
 
 	// Parameters is used to pass specific gadget configurations.
 	Parameters map[string]string
@@ -63,7 +64,7 @@ func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func
 	if len(operations) == 1 {
 		err = localGadgetManager.Operation(traceName, operations[0])
 	} else {
-		err = localGadgetManager.Operation(traceName, "start")
+		err = localGadgetManager.Operation(traceName, gadgetv1alpha1.OperationStart)
 	}
 
 	if err != nil {

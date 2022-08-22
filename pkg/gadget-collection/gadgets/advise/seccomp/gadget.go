@@ -112,11 +112,11 @@ merely copied for convenience.
 `
 }
 
-func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
-	return map[string]struct{}{
-		"Status":           {},
-		"Stream":           {},
-		"ExternalResource": {},
+func (f *TraceFactory) OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode]struct{} {
+	return map[gadgetv1alpha1.TraceOutputMode]struct{}{
+		gadgetv1alpha1.TraceOutputModeStatus:           {},
+		gadgetv1alpha1.TraceOutputModeStream:           {},
+		gadgetv1alpha1.TraceOutputModeExternalResource: {},
 	}
 }
 
@@ -138,22 +138,22 @@ func deleteTrace(name string, t interface{}) {
 	}
 }
 
-func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
+func (f *TraceFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
 			client:  f.Client,
 			helpers: f.Helpers,
 		}
 	}
-	return map[string]gadgets.TraceOperation{
-		"start": {
+	return map[gadgetv1alpha1.Operation]gadgets.TraceOperation{
+		gadgetv1alpha1.OperationStart: {
 			Doc: "Start recording syscalls",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				f.LookupOrCreate(name, n).(*Trace).Start(trace)
 			},
 			Order: 1,
 		},
-		"generate": {
+		gadgetv1alpha1.OperationGenerate: {
 			Doc: `Generate a seccomp profile for the pod specified in Trace.Spec.Filter. The
 namespace and pod name should be specified at the exclusion of other fields.`,
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
@@ -161,7 +161,7 @@ namespace and pod name should be specified at the exclusion of other fields.`,
 			},
 			Order: 2,
 		},
-		"stop": {
+		gadgetv1alpha1.OperationStop: {
 			Doc: "Stop recording syscalls",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				f.LookupOrCreate(name, n).(*Trace).Stop(trace)
@@ -352,7 +352,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 	}
 
 	switch trace.Spec.OutputMode {
-	case "ExternalResource":
+	case gadgetv1alpha1.TraceOutputModeExternalResource:
 		log.Infof("Trace %s: creating SeccompProfile for pod %s", traceName, namespacedName)
 		err := t.client.Create(context.TODO(), r)
 		if err != nil {
@@ -360,7 +360,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 			return
 		}
 		t.policyGenerated = true
-	case "Stream":
+	case gadgetv1alpha1.TraceOutputModeStream:
 		log.Infof("Trace %s: adding SeccompProfile for pod %s in stream", traceName, namespacedName)
 		yamlOutput, err := k8syaml.Marshal(r)
 		if err != nil {
@@ -378,7 +378,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	trace.Status.Output = ""
 	if t.started {
-		trace.Status.State = "Started"
+		trace.Status.State = gadgetv1alpha1.TraceStateStarted
 		t.policyGenerated = false
 		return
 	}
@@ -417,7 +417,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	t.started = true
 	t.policyGenerated = false
 
-	trace.Status.State = "Started"
+	trace.Status.State = gadgetv1alpha1.TraceStateStarted
 }
 
 func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
@@ -504,7 +504,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	b := traceSingleton.tracer.Peek(mntns)
 
 	switch trace.Spec.OutputMode {
-	case "Status":
+	case gadgetv1alpha1.TraceOutputModeStatus:
 		policy := syscallArrToLinuxSeccomp(b)
 		output, err := json.MarshalIndent(policy, "", "  ")
 		if err != nil {
@@ -513,7 +513,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 		}
 
 		trace.Status.Output = string(output)
-	case "ExternalResource":
+	case gadgetv1alpha1.TraceOutputModeExternalResource:
 		podName := fmt.Sprintf("%s/%s", trace.Spec.Filter.Namespace, trace.Spec.Filter.Podname)
 
 		ownerReference := t.helpers.LookupOwnerReferenceByMntns(mntns)
@@ -529,7 +529,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 			trace.Status.OperationError = fmt.Sprintf("Failed to update resource: %s", err)
 			return
 		}
-	case "File":
+	case gadgetv1alpha1.TraceOutputModeFile:
 		fallthrough
 	default:
 		trace.Status.OperationError = fmt.Sprintf("OutputMode not supported: %s", trace.Spec.OutputMode)
@@ -553,5 +553,5 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 
 	t.started = false
 
-	trace.Status.State = "Stopped"
+	trace.Status.State = gadgetv1alpha1.TraceStateStopped
 }

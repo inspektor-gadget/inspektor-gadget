@@ -42,21 +42,21 @@ func (f *TraceFactory) Description() string {
 	return `The socket-collector gadget gathers information about TCP and UDP sockets.`
 }
 
-func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
-	return map[string]struct{}{
-		"Status": {},
+func (f *TraceFactory) OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode]struct{} {
+	return map[gadgetv1alpha1.TraceOutputMode]struct{}{
+		gadgetv1alpha1.TraceOutputModeStatus: {},
 	}
 }
 
-func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
+func (f *TraceFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
 			helpers: f.Helpers,
 		}
 	}
 
-	return map[string]gadgets.TraceOperation{
-		"collect": {
+	return map[gadgetv1alpha1.Operation]gadgets.TraceOperation{
+		gadgetv1alpha1.OperationCollect: {
 			Doc: "Create a snapshot of the currently open TCP and UDP sockets. " +
 				"Once taken, the snapshot is not updated automatically. " +
 				"However one can call the collect operation again at any time to update the snapshot.",
@@ -77,7 +77,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 	filteredContainers := t.helpers.GetContainersBySelector(selector)
 	if len(filteredContainers) == 0 {
 		trace.Status.OperationWarning = "No container matches the requested filter"
-		trace.Status.State = "Completed"
+		trace.Status.State = gadgetv1alpha1.TraceStateCompleted
 		return
 	}
 
@@ -136,5 +136,5 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 	}
 
 	trace.Status.Output = string(output)
-	trace.Status.State = "Completed"
+	trace.Status.State = gadgetv1alpha1.TraceStateCompleted
 }

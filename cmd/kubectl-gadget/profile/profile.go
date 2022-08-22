@@ -22,6 +22,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/spf13/cobra"
 )
 
@@ -45,10 +46,10 @@ type ProfileGadget struct {
 func (g *ProfileGadget) Run() error {
 	traceConfig := &utils.TraceConfig{
 		GadgetName:        g.gadgetName,
-		Operation:         "start",
-		TraceOutputMode:   "Status",
-		TraceOutputState:  "Completed",
-		TraceInitialState: "Started",
+		Operation:         gadgetv1alpha1.OperationStart,
+		TraceOutputMode:   gadgetv1alpha1.TraceOutputModeStatus,
+		TraceOutputState:  gadgetv1alpha1.TraceStateCompleted,
+		TraceInitialState: gadgetv1alpha1.TraceStateStarted,
 		Parameters:        g.params,
 		CommonFlags:       g.commonFlags,
 	}
@@ -84,13 +85,13 @@ func (g *ProfileGadget) Run() error {
 		fmt.Println()
 	}
 
-	err = utils.SetTraceOperation(traceID, "stop")
+	err = utils.SetTraceOperation(traceID, string(gadgetv1alpha1.OperationStop))
 	if err != nil {
 		return commonutils.WrapInErrStopGadget(err)
 	}
 
 	err = utils.PrintTraceOutputFromStatus(traceID,
-		traceConfig.TraceOutputState, g.parser.DisplayResultsCallback)
+		string(traceConfig.TraceOutputState), g.parser.DisplayResultsCallback)
 	if err != nil {
 		return commonutils.WrapInErrGetGadgetOutput(err)
 	}

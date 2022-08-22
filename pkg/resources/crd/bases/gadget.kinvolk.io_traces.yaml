@@ -87,6 +87,9 @@ spec:
                 description: RunMode is "Auto" to automatically start the trace as
                   soon as the resource is created, or "Manual" to be controlled by
                   the "gadget.kinvolk.io/operation" annotation
+                enum:
+                - Auto
+                - Manual
                 type: string
             type: object
           status:

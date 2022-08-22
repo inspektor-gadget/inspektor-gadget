@@ -58,9 +58,9 @@ some differences:
 `
 }
 
-func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
-	return map[string]struct{}{
-		"ExternalResource": {},
+func (f *TraceFactory) OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode]struct{} {
+	return map[gadgetv1alpha1.TraceOutputMode]struct{}{
+		gadgetv1alpha1.TraceOutputModeExternalResource: {},
 	}
 }
 
@@ -69,18 +69,18 @@ func deleteTrace(name string, t interface{}) {
 	trace.stop()
 }
 
-func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
+func (f *TraceFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{}
 	}
 
-	return map[string]gadgets.TraceOperation{
-		"start": {
+	return map[gadgetv1alpha1.Operation]gadgets.TraceOperation{
+		gadgetv1alpha1.OperationStart: {
 			Doc: "Start traceloop",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				t := f.LookupOrCreate(name, n).(*Trace)
 				if t.started {
-					trace.Status.State = "Started"
+					trace.Status.State = gadgetv1alpha1.TraceStateStarted
 					return
 				}
 
@@ -96,7 +96,7 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 				f.started = t.started
 			},
 		},
-		"stop": {
+		gadgetv1alpha1.OperationStop: {
 			Doc: "Stop traceloop",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				f.mu.Lock()
@@ -146,7 +146,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	t.started = true
 
-	trace.Status.State = "Started"
+	trace.Status.State = gadgetv1alpha1.TraceStateStarted
 }
 
 func (t *Trace) stop() error {
@@ -185,5 +185,5 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	trace.Status.State = "Stopped"
+	trace.Status.State = gadgetv1alpha1.TraceStateStopped
 }
