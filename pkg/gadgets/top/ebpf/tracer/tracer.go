@@ -44,8 +44,7 @@ type programStats struct {
 
 type Tracer struct {
 	config        *Config
-	statsCallback func([]types.Stats)
-	errorCallback func(error)
+	eventCallback func(*types.Event)
 	done          chan bool
 
 	iter                *piditer.PidIter
@@ -55,12 +54,11 @@ type Tracer struct {
 	prevStats  map[string]programStats
 }
 
-func NewTracer(config *Config, statsCallback func([]types.Stats), errorCallback func(error),
+func NewTracer(config *Config, eventCallback func(*types.Event),
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
-		statsCallback: statsCallback,
-		errorCallback: errorCallback,
+		eventCallback: eventCallback,
 		done:          make(chan bool),
 		prevStats:     make(map[string]programStats),
 	}
@@ -294,7 +292,9 @@ func (t *Tracer) run() {
 			case <-timer.C:
 				stats, err := t.nextStats()
 				if err != nil {
-					t.errorCallback(fmt.Errorf("could not get next stats: %w", err))
+					t.eventCallback(&types.Event{
+						Error: fmt.Sprintf("could not get next stats: %s", err),
+					})
 					return
 				}
 
@@ -302,7 +302,7 @@ func (t *Tracer) run() {
 				if n > t.config.MaxRows {
 					n = t.config.MaxRows
 				}
-				t.statsCallback(stats[:n])
+				t.eventCallback(&types.Event{Stats: stats[:n]})
 			}
 		}
 	}()

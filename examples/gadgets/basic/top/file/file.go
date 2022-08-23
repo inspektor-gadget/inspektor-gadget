@@ -40,22 +40,22 @@ func main() {
 		return
 	}
 
-	// Define a callback that is called each internal seconds with
+	// Define a callback that is called each interval seconds with
 	// the information collected.
-	statsCallback := func(stats []types.Stats) {
+	callback := func(event *types.Event) {
+		if event.Error != "" {
+			fmt.Fprintf(os.Stderr, "There was an error: %s\n", event.Error)
+			return
+		}
+
 		fmt.Printf("The %d files with more write operations in the last %d seconds were:\n",
 			maxRows, interval)
 
-		for i, stat := range stats {
+		for i, stat := range event.Stats {
 			fmt.Printf("[%d]: %s\n", i+1, stat.Filename)
 		}
 
 		fmt.Println("---")
-	}
-
-	// Callback when there is an error.
-	errorCallback := func(err error) {
-		fmt.Printf("There was an error: %s\n", err)
 	}
 
 	// Create tracer configuration.
@@ -66,7 +66,7 @@ func main() {
 		SortBy: types.WRITES,
 	}
 
-	tracer, err := tracer.NewTracer(tracerConfig, nil, statsCallback, errorCallback)
+	tracer, err := tracer.NewTracer(tracerConfig, nil, callback)
 	if err != nil {
 		fmt.Printf("error creating tracer: %s\n", err)
 		return

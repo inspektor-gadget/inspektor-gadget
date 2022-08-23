@@ -171,7 +171,7 @@ func (p *BlockIOParser) Callback(line string, node string) {
 	}
 
 	if event.Error != "" {
-		fmt.Fprintf(os.Stderr, "Error: failed on node %q: %s", event.Node, event.Error)
+		fmt.Fprintf(os.Stderr, "Error: failed on node %q: %s", node, event.Error)
 		return
 	}
 
