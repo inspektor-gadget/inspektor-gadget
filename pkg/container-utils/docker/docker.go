@@ -24,7 +24,7 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	cgroups "github.com/kinvolk/inspektor-gadget/pkg/container-utils/cgroups"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/cgroups"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 	log "github.com/sirupsen/logrus"
 )
@@ -94,12 +94,7 @@ func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
 	ret := make([]*runtimeclient.ContainerData, len(containers))
 
 	for i, container := range containers {
-		ret[i] = &runtimeclient.ContainerData{
-			ID:      container.ID,
-			Name:    strings.TrimPrefix(container.Names[0], "/"),
-			State:   containerStatusStateToRuntimeClientState(container.State),
-			Runtime: Name,
-		}
+		ret[i] = DockerContainerToContainerData(&container)
 	}
 
 	return ret, nil
@@ -113,7 +108,25 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 
 	containerJSON, err := c.client.ContainerInspect(context.Background(), containerID)
 	if err != nil {
-		return nil, err
+
+		// Inspecting the container may fail if the container is being created.
+		// Try to get the container via listContainers function, as that may succeed.
+		filter := dockerfilters.NewArgs()
+		filter.Add("id", containerID)
+		containers, err := listContainers(c, &filter)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(containers) == 0 {
+			return nil, fmt.Errorf("container %q not found", containerID)
+		}
+		if len(containers) > 1 {
+			log.Warnf("DockerClient: multiple containers (%d) with ID %q. Taking the first one: %+v",
+				len(containers), containerID, containers)
+		}
+
+		return DockerContainerToContainerData(&containers[0]), nil
 	}
 
 	if containerJSON.State == nil {
@@ -125,13 +138,13 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 	if containerJSON.HostConfig == nil {
 		return nil, errors.New("container host config is nil")
 	}
-	containerData := runtimeclient.ContainerData{
+
+	containerData := &runtimeclient.ContainerData{
 		ID:      containerJSON.ID,
 		Name:    strings.TrimPrefix(containerJSON.Name, "/"),
 		State:   containerStatusStateToRuntimeClientState(containerJSON.State.Status),
 		Runtime: Name,
 	}
-
 	containerExtraInfo := runtimeclient.ContainerExtraInfo{
 		Pid:         containerJSON.State.Pid,
 		CgroupsPath: string(containerJSON.HostConfig.Cgroup),
@@ -170,7 +183,7 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 	// Set the extra info of the container.
 	containerData.ExtraInfo = &containerExtraInfo
 
-	return &containerData, nil
+	return containerData, nil
 }
 
 func (c *DockerClient) Close() error {
@@ -179,6 +192,15 @@ func (c *DockerClient) Close() error {
 	}
 
 	return nil
+}
+
+func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {
+	return &runtimeclient.ContainerData{
+		ID:      container.ID,
+		Name:    strings.TrimPrefix(container.Names[0], "/"),
+		State:   containerStatusStateToRuntimeClientState(container.State),
+		Runtime: Name,
+	}
 }
 
 // Convert the state from container status to state of runtime client.
