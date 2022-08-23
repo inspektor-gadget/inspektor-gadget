@@ -159,6 +159,8 @@ spec:
             value: "auto"
           - name: INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
             value: "true"
+          - name: HOST_ROOT
+            value: "/host"
         securityContext:
           capabilities:
             add:
