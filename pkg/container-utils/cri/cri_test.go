@@ -15,23 +15,18 @@
 package cri
 
 import (
+	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 )
 
 func TestParseExtraInfo(t *testing.T) {
-	type Mount struct {
-		src string
-		dst string
-	}
-	type Expected struct {
-		pid         *int
-		cgroupsPath *string
-		mounts      *[]Mount
-	}
 	table := []struct {
 		description string
 		info        map[string]string
-		expected    *Expected
+		expected    *runtimeclient.ContainerExtraInfo
 	}{
 		// Invalid params
 		{
@@ -58,123 +53,125 @@ func TestParseExtraInfo(t *testing.T) {
 		{
 			description: "Former format: Pid 1234",
 			info:        map[string]string{"sandboxID": "myID", "pid": "1234"},
-			expected:    &Expected{pid: expect(1234)},
+			expected:    &runtimeclient.ContainerExtraInfo{Pid: 1234},
 		},
 		{
 			description: "Former format: cgroupPath missing",
 			info: map[string]string{
 				"sandboxID": "myID", "pid": "1234",
-				"runtimeSpec": "{\"linux\":{\"cgroupsPath2\":\"/mypath\"}}",
+				"runtimeSpec": `{"linux":{"cgroupsPath2":"/mypath"}}`,
 			},
-			expected: &Expected{pid: expect(1234)},
+			expected: &runtimeclient.ContainerExtraInfo{Pid: 1234},
 		},
 		{
 			description: "Former format: cgroupPath",
 			info: map[string]string{
 				"sandboxID": "myID", "pid": "1234",
-				"runtimeSpec": "{\"linux\":{\"cgroupsPath\":\"/mypath\"}}",
+				"runtimeSpec": `{"linux":{"cgroupsPath":"/mypath"}}`,
 			},
-			expected: &Expected{pid: expect(1234), cgroupsPath: expect("/mypath")},
+			expected: &runtimeclient.ContainerExtraInfo{Pid: 1234, CgroupsPath: "/mypath"},
 		},
 		{
 			description: "Former format: mounts",
 			info: map[string]string{
 				"sandboxID": "myID", "pid": "1234",
 				"runtimeSpec": `{
-									"linux": { "cgroupsPath": "/mypath" },
-									"mounts": [
-										{
-											"source": "/src/a1",
-											"destination": "/dst/b1"
-										},
-										{
-											"source": "/src/a2",
-											"destination": "/dst/b2"
-										}
-									]
-								}`,
+					"linux": { "cgroupsPath": "/mypath" },
+					"mounts": [
+						{
+							"source": "/src/a1",
+							"destination": "/dst/b1"
+						},
+						{
+							"source": "/src/a2",
+							"destination": "/dst/b2"
+						}
+					]
+				}`,
 			},
-			expected: &Expected{
-				pid: expect(1234), cgroupsPath: expect("/mypath"),
-				mounts: expect([]Mount{
-					{src: "/src/a1", dst: "/dst/b1"},
-					{src: "/src/a2", dst: "/dst/b2"},
-				}),
+			expected: &runtimeclient.ContainerExtraInfo{
+				Pid:         1234,
+				CgroupsPath: "/mypath",
+				Mounts: []runtimeclient.ContainerMountData{
+					{Source: "/src/a1", Destination: "/dst/b1"},
+					{Source: "/src/a2", Destination: "/dst/b2"},
+				},
 			},
 		},
 		// New format
 		{
 			description: "New format: Invalid format",
-			info:        map[string]string{"info": "{\"InvalidFormat\"}"},
+			info:        map[string]string{"info": `{"InvalidFormat"}`},
 		},
 		{
 			description: "New format: No pid entry",
-			info:        map[string]string{"info": "{\"sandboxID\":\"myID\"}"},
+			info:        map[string]string{"info": `{"sandboxID":"myID"}`},
 		},
 		{
 			description: "New format: Zero pid",
-			info:        map[string]string{"info": "{\"sandboxID\":\"myID\",\"pid\":0"},
+			info:        map[string]string{"info": `{"sandboxID":"myID","pid":0}`},
 		},
 		{
 			description: "New format: Invalid PID",
-			info:        map[string]string{"info": "{\"sandboxID\":\"myID\",\"pid\":1.2"},
+			info:        map[string]string{"info": `{"sandboxID":"myID","pid":1.2}`},
 		},
 		{
 			description: "New format: Pid 1234",
-			info:        map[string]string{"info": "{\"sandboxID\":\"myID\",\"pid\":1234}"},
-			expected:    &Expected{pid: expect(1234)},
+			info:        map[string]string{"info": `{"sandboxID":"myID","pid":1234}`},
+			expected:    &runtimeclient.ContainerExtraInfo{Pid: 1234},
 		},
 
 		{
 			description: "New format: cgroupPath missing",
 			info: map[string]string{
 				"info": `{
-							"pid": 1234,
-							"runtimeSpec": {
-								"linux": { "cgroupsPath2": "/mypath" }
-							}
-						}`,
+					"pid": 1234,
+					"runtimeSpec": {
+						"linux": { "cgroupsPath2": "/mypath" }
+					}
+				}`,
 			},
-			expected: &Expected{pid: expect(1234)},
+			expected: &runtimeclient.ContainerExtraInfo{Pid: 1234},
 		},
 		{
 			description: "New format: cgroupPath",
 			info: map[string]string{
 				"info": `{
-							"pid": 1234,
-							"runtimeSpec": {
-								"linux": { "cgroupsPath": "/mypath" }
-							}
-						}`,
+					"pid": 1234,
+					"runtimeSpec": {
+						"linux": { "cgroupsPath": "/mypath" }
+					}
+				}`,
 			},
-			expected: &Expected{pid: expect(1234), cgroupsPath: expect("/mypath")},
+			expected: &runtimeclient.ContainerExtraInfo{Pid: 1234, CgroupsPath: "/mypath"},
 		},
 		{
 			description: "New format: mounts",
 			info: map[string]string{
 				"info": `{
-							"pid": 1234,
-							"runtimeSpec": {
-								"linux": { "cgroupsPath": "/mypath" },
-								"mounts": [
-									{
-										"source": "/src/a1",
-										"destination": "/dst/b1"
-									},
-									{
-										"source": "/src/a2",
-										"destination": "/dst/b2"
-									}
-								]
+					"pid": 1234,
+					"runtimeSpec": {
+						"linux": { "cgroupsPath": "/mypath" },
+						"mounts": [
+							{
+								"source": "/src/a1",
+								"destination": "/dst/b1"
+							},
+							{
+								"source": "/src/a2",
+								"destination": "/dst/b2"
 							}
-						}`,
+						]
+					}
+				}`,
 			},
-			expected: &Expected{
-				pid: expect(1234), cgroupsPath: expect("/mypath"),
-				mounts: expect([]Mount{
-					{src: "/src/a1", dst: "/dst/b1"},
-					{src: "/src/a2", dst: "/dst/b2"},
-				}),
+			expected: &runtimeclient.ContainerExtraInfo{
+				Pid:         1234,
+				CgroupsPath: "/mypath",
+				Mounts: []runtimeclient.ContainerMountData{
+					{Source: "/src/a1", Destination: "/dst/b1"},
+					{Source: "/src/a2", Destination: "/dst/b2"},
+				},
 			},
 		},
 	}
@@ -204,51 +201,9 @@ func TestParseExtraInfo(t *testing.T) {
 			t.Fatalf("Failed test %q: extra info is missing", entry.description)
 		}
 
-		// PID
-		if entry.expected.pid != nil && extraInfo.Pid != *entry.expected.pid {
-			t.Fatalf("Failed test %q: PID %d when expected %d", entry.description,
-				extraInfo.Pid, *entry.expected.pid)
-		}
-
-		// CgroupsPath
-		if entry.expected.cgroupsPath != nil {
-			if extraInfo.CgroupsPath != *entry.expected.cgroupsPath {
-				t.Fatalf("Failed test %q: cgroupPath \"%s\" when expected \"%s\"", entry.description,
-					extraInfo.CgroupsPath, *entry.expected.cgroupsPath)
-			}
-		} else {
-			if extraInfo.CgroupsPath != "" {
-				t.Fatalf("Failed test %q: cgroupPath \"%s\" when expected \"\"", entry.description,
-					extraInfo.CgroupsPath)
-			}
-		}
-
-		// Mounts
-		if entry.expected.mounts != nil {
-			if len(extraInfo.Mounts) != len(*entry.expected.mounts) {
-				t.Fatalf("Failed test %q: mounts number of elements %d when expected %d", entry.description,
-					len(extraInfo.Mounts), len(*entry.expected.mounts))
-			}
-
-			for i := range *entry.expected.mounts {
-				if extraInfo.Mounts[i].Source != (*entry.expected.mounts)[i].src {
-					t.Fatalf("Failed test %q: mounts[%d] source \"%s\" when expected \"%s\"", entry.description,
-						i, extraInfo.Mounts[i].Source, (*entry.expected.mounts)[i].src)
-				}
-				if extraInfo.Mounts[i].Destination != (*entry.expected.mounts)[i].dst {
-					t.Fatalf("Failed test %q: mounts[%d] destination \"%s\" when expected \"%s\"", entry.description,
-						i, extraInfo.Mounts[i].Destination, (*entry.expected.mounts)[i].dst)
-				}
-			}
-		} else {
-			if len(extraInfo.Mounts) != 0 {
-				t.Fatalf("Failed test %q: mounts number of elements %d when expected 0", entry.description,
-					len(extraInfo.Mounts))
-			}
+		if !reflect.DeepEqual(entry.expected, extraInfo) {
+			t.Fatalf("%q: event doesn't match:\n%s", entry.description,
+				cmp.Diff(entry.expected, extraInfo))
 		}
 	}
-}
-
-func expect[T any](v T) *T {
-	return &v
 }

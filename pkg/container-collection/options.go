@@ -140,7 +140,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 				continue
 			}
 			if containerData.ExtraInfo == nil {
-				log.Warnf("Runtime enricher (%s): Skip container %q (ID: %s): extra info is missing",
+				log.Warnf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't get PID: extra info is missing",
 					runtime.Name, container.Name, container.ID)
 				continue
 			}

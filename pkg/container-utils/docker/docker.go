@@ -26,6 +26,7 @@ import (
 	"github.com/docker/docker/client"
 	cgroups "github.com/kinvolk/inspektor-gadget/pkg/container-utils/cgroups"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -93,7 +94,12 @@ func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
 	ret := make([]*runtimeclient.ContainerData, len(containers))
 
 	for i, container := range containers {
-		ret[i] = DockerContainerToContainerData(&container)
+		ret[i] = &runtimeclient.ContainerData{
+			ID:      container.ID,
+			Name:    strings.TrimPrefix(container.Names[0], "/"),
+			State:   containerStatusStateToRuntimeClientState(container.State),
+			Runtime: Name,
+		}
 	}
 
 	return ret, nil
@@ -130,16 +136,23 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 		Pid:         containerJSON.State.Pid,
 		CgroupsPath: string(containerJSON.HostConfig.Cgroup),
 	}
-	containerExtraInfo.Mounts = []runtimeclient.ContainerMountData{}
-	for _, containerMount := range containerJSON.Mounts {
-		containerExtraInfo.Mounts = append(containerExtraInfo.Mounts, runtimeclient.ContainerMountData{
-			Destination: containerMount.Destination,
-			Source:      containerMount.Source,
-		})
+	if len(containerJSON.Mounts) > 0 {
+		containerExtraInfo.Mounts = make([]runtimeclient.ContainerMountData, len(containerJSON.Mounts))
+		for i, containerMount := range containerJSON.Mounts {
+			containerExtraInfo.Mounts[i] = runtimeclient.ContainerMountData{
+				Destination: containerMount.Destination,
+				Source:      containerMount.Source,
+			}
+		}
 	}
 
-	// Check if cgroups path is empty -- if so, it will need to be read from /proc/<pid>/cgroup.
+	// Try to get cgroups information from /proc/<pid>/cgroup as a fallback.
+	// However, don't fail if such a file is not available, as it would prevent the
+	// whole feature to work on systems without this file.
 	if containerExtraInfo.CgroupsPath == "" {
+		log.Debugf("cgroups info not available on Docker for container %s. Trying /proc/%d/cgroup as a fallback",
+			containerID, containerExtraInfo.Pid)
+
 		// Get cgroup paths for V1 and V2.
 		cgroupPathV1, cgroupPathV2, err := cgroups.GetCgroupPaths(containerExtraInfo.Pid)
 		if err == nil {
@@ -148,6 +161,9 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 				cgroupsPath = cgroupPathV2
 			}
 			containerExtraInfo.CgroupsPath = cgroupsPath
+		} else {
+			log.Warnf("failed to get cgroups info of container %s from /proc/%d/cgroup: %s",
+				containerID, containerExtraInfo.Pid, err)
 		}
 	}
 
@@ -155,15 +171,6 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 	containerData.ExtraInfo = &containerExtraInfo
 
 	return &containerData, nil
-}
-
-func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {
-	return &runtimeclient.ContainerData{
-		ID:      container.ID,
-		Name:    strings.TrimPrefix(container.Names[0], "/"),
-		State:   containerStatusStateToRuntimeClientState(container.State),
-		Runtime: Name,
-	}
 }
 
 func (c *DockerClient) Close() error {

@@ -84,11 +84,15 @@ const (
 // different container runtimes.
 type ContainerRuntimeClient interface {
 	// GetContainers returns a slice with the information of all the containers.
-	// Container data returned may not include the ContainerExtraInfo data.
+	// Notice ContainerData.ContainerExtraInfo will not be available because
+	// retrieving such information requires an extra call to the runtime, and
+	// users may not want to do that for every container. Use GetContainer to
+	// get that information only for the containers of interest.
 	GetContainers() ([]*ContainerData, error)
 
-	// GetContainers returns the information of the container identified by the
-	// provided ID.
+	// GetContainer returns a detailed information of the container identified
+	// by the provided ID. Unlike GetContainers, the
+	// ContainerData.ContainerExtraInfo will always be available in this case.
 	GetContainer(containerID string) (*ContainerData, error)
 
 	// Close tears down the connection with the container runtime.

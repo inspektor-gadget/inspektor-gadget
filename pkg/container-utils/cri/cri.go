@@ -85,7 +85,12 @@ func (c *CRIClient) GetContainers() ([]*runtimeclient.ContainerData, error) {
 	ret := make([]*runtimeclient.ContainerData, len(containers))
 
 	for i, container := range containers {
-		ret[i] = CRIContainerToContainerData(c.Name, container)
+		ret[i] = &runtimeclient.ContainerData{
+			ID:      container.Id,
+			Name:    strings.TrimPrefix(container.GetMetadata().Name, "/"),
+			State:   containerStatusStateToRuntimeClientState(container.GetState()),
+			Runtime: c.Name,
+		}
 	}
 
 	return ret, nil
@@ -116,15 +121,6 @@ func (c *CRIClient) Close() error {
 	}
 
 	return nil
-}
-
-func CRIContainerToContainerData(runtimeName string, container *pb.Container) *runtimeclient.ContainerData {
-	return &runtimeclient.ContainerData{
-		ID:      container.Id,
-		Name:    strings.TrimPrefix(container.GetMetadata().Name, "/"),
-		State:   containerStatusStateToRuntimeClientState(container.GetState()),
-		Runtime: runtimeName,
-	}
 }
 
 // parseContainerData parses the container status and extra information
@@ -181,7 +177,6 @@ func parseExtraInfo(extraInfo map[string]string) (*runtimeclient.ContainerExtraI
 	var runtimeSpec *RuntimeSpecContent
 	info, ok := extraInfo["info"]
 	if ok {
-
 		// Unmarshal the JSON to fields.
 		var infoContent InfoContent
 		err := json.Unmarshal([]byte(info), &infoContent)
@@ -233,12 +228,14 @@ func parseExtraInfo(extraInfo map[string]string) (*runtimeclient.ContainerExtraI
 		if runtimeSpec.Linux != nil {
 			containerExtraInfo.CgroupsPath = runtimeSpec.Linux.CgroupsPath
 		}
-		containerExtraInfo.Mounts = []runtimeclient.ContainerMountData{}
-		for _, specMount := range runtimeSpec.Mounts {
-			containerExtraInfo.Mounts = append(containerExtraInfo.Mounts, runtimeclient.ContainerMountData{
-				Destination: specMount.Destination,
-				Source:      specMount.Source,
-			})
+		if len(runtimeSpec.Mounts) > 0 {
+			containerExtraInfo.Mounts = make([]runtimeclient.ContainerMountData, len(runtimeSpec.Mounts))
+			for i, specMount := range runtimeSpec.Mounts {
+				containerExtraInfo.Mounts[i] = runtimeclient.ContainerMountData{
+					Destination: specMount.Destination,
+					Source:      specMount.Source,
+				}
+			}
 		}
 	}
 
