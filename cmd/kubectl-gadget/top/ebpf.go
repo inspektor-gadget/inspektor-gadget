@@ -76,6 +76,8 @@ func newEbpfCmd() *cobra.Command {
 		"runcount":      10,
 		"totalruntime":  12,
 		"totalruncount": 13,
+		"cumulruntime":  12,
+		"cumulruncount": 13,
 	}
 
 	cmd := &cobra.Command{
@@ -274,6 +276,10 @@ func (p *EbpfParser) TransformStats(stats *types.Stats) string {
 				sb.WriteString(fmt.Sprintf("%*v", p.ColumnsWidth[col], time.Duration(stats.TotalRuntime)))
 			case "totalruncount":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.TotalRunCount))
+			case "cumulruntime":
+				sb.WriteString(fmt.Sprintf("%*v", p.ColumnsWidth[col], time.Duration(stats.CumulativeRuntime)))
+			case "cumulruncount":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.CumulativeRunCount))
 			}
 			sb.WriteRune(' ')
 		}

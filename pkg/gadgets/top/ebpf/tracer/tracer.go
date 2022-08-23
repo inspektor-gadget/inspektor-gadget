@@ -37,6 +37,11 @@ type Config struct {
 	SortBy   types.SortBy
 }
 
+type programStats struct {
+	runtime  int64
+	runCount uint64
+}
+
 type Tracer struct {
 	config        *Config
 	statsCallback func([]types.Stats)
@@ -46,8 +51,8 @@ type Tracer struct {
 	iter                *piditer.PidIter
 	useFallbackIterator bool
 
-	prevRuntimes  map[string]int64
-	prevRunCounts map[string]uint64
+	startStats map[string]programStats
+	prevStats  map[string]programStats
 }
 
 func NewTracer(config *Config, statsCallback func([]types.Stats), errorCallback func(error),
@@ -57,8 +62,7 @@ func NewTracer(config *Config, statsCallback func([]types.Stats), errorCallback 
 		statsCallback: statsCallback,
 		errorCallback: errorCallback,
 		done:          make(chan bool),
-		prevRuntimes:  make(map[string]int64),
-		prevRunCounts: make(map[string]uint64),
+		prevStats:     make(map[string]programStats),
 	}
 
 	if err := t.start(); err != nil {
@@ -178,8 +182,7 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 	curID := ebpf.ProgramID(0)
 	nextID := ebpf.ProgramID(0)
 
-	curRuntimes := make(map[string]int64)
-	curRunCounts := make(map[string]uint64)
+	curStats := make(map[string]programStats)
 
 	for {
 		nextID, err = ebpf.ProgramGetNextID(curID)
@@ -208,35 +211,51 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 
 		curRuntime := int64(0)
 		curRunCount := uint64(0)
+		cumulativeRuntime := int64(0)
+		cumulativeRunCount := uint64(0)
 
 		pkey := fmt.Sprintf("%d-%s", curID, pi.Tag)
 
 		// calculate delta, if possible
-		if oldrt, ok := t.prevRuntimes[pkey]; ok {
-			curRuntime = int64(totalRuntime) - oldrt
+		if old, ok := t.prevStats[pkey]; ok {
+			curRuntime = int64(totalRuntime) - old.runtime
+			curRunCount = totalRunCount - old.runCount
 		}
-		if oldctr, ok := t.prevRunCounts[pkey]; ok {
-			curRunCount = totalRunCount - oldctr
+		if t.startStats != nil {
+			if start, ok := t.startStats[pkey]; ok {
+				cumulativeRuntime = int64(totalRuntime) - start.runtime
+				cumulativeRunCount = totalRunCount - start.runCount
+			} else {
+				cumulativeRuntime = int64(totalRuntime)
+				cumulativeRunCount = totalRunCount
+			}
 		}
 
-		curRuntimes[pkey] = int64(totalRuntime)
-		curRunCounts[pkey] = totalRunCount
+		curStats[pkey] = programStats{
+			runtime:  int64(totalRuntime),
+			runCount: totalRunCount,
+		}
 
 		stats = append(stats, types.Stats{
-			ProgramID:       uint32(curID),
-			Name:            pi.Name,
-			Type:            pi.Type.String(),
-			CurrentRuntime:  curRuntime,
-			CurrentRunCount: curRunCount,
-			TotalRuntime:    int64(totalRuntime),
-			TotalRunCount:   totalRunCount,
+			ProgramID:          uint32(curID),
+			Name:               pi.Name,
+			Type:               pi.Type.String(),
+			CurrentRuntime:     curRuntime,
+			CurrentRunCount:    curRunCount,
+			TotalRuntime:       int64(totalRuntime),
+			TotalRunCount:      totalRunCount,
+			CumulativeRuntime:  int64(cumulativeRuntime),
+			CumulativeRunCount: cumulativeRunCount,
 		})
 
 		prog.Close()
 	}
 
-	t.prevRuntimes = curRuntimes
-	t.prevRunCounts = curRunCounts
+	if t.startStats == nil {
+		t.startStats = curStats
+	}
+
+	t.prevStats = curStats
 
 	var pidmap map[uint32][]*types.PidInfo
 

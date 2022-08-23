@@ -11,4 +11,4 @@ spec:
   parameters:
     interval: "1"
     max_rows: "50"
-    sort_by: all # all, runtime, runcount, progid, totalruntime and totalruncount are allowed
+    sort_by: all # all, runtime, runcount, progid, totalruntime, totalruncount, cumulruntime and cumulrouncount are allowed
