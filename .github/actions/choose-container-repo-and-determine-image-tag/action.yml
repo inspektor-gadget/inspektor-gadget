@@ -53,9 +53,17 @@ runs:
       id: craft-image-tag
       shell: bash
       run: |
-        # If GITHUB_REF_NAME is 'foo/bar', image_tag will be 'foo-bar', we need
-        # this because it is not possible to have slash in image tag.
-        image_tag=${GITHUB_REF_NAME/\//-}
+        # GITHUB_HEAD_REF is set only when workflow is related to a PR.
+        # So, in case of push to main or a tag, we need to use GITHUB_REF_NAME.
+        if [ -z "${GITHUB_HEAD_REF}" ]; then
+          ref=$GITHUB_REF_NAME
+        else
+          ref=$GITHUB_HEAD_REF
+        fi
+
+        # If ref is 'foo/bar', image_tag will be 'foo-bar', we need this because
+        # it is forbidden to have slash in image tag.
+        image_tag=${ref/\//-}
         if [ "$image_tag" = "main" ]; then
             image_tag="latest"
         fi
