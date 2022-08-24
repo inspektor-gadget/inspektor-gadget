@@ -186,7 +186,7 @@ jobs:
       uses: docker/login-action@v1
       with:
         registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
+        username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Choose container repository and determine image tag
       id: choose-repo-determine-image-tag
@@ -226,7 +226,7 @@ jobs:
       uses: docker/login-action@v1
       with:
         registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
+        username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Choose container repository and determine image tag
       id: choose-repo-determine-image-tag
@@ -406,7 +406,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container_repo: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
-        username: ${{ github.actor }}
+        username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
   test-integration:
@@ -437,7 +437,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container_repo: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
-        username: ${{ github.actor }}
+        username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
   release:
