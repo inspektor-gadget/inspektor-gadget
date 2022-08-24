@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/cgroups"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 )
@@ -126,15 +127,15 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 			return nil
 		}
 		for _, container := range containers {
-			if !container.Running {
+			if container.State != runtimeclient.StateRunning {
 				log.Debugf("Runtime enricher(%s): Skip container %q (ID: %s): not running",
 					runtime.Name, container.Name, container.ID)
 				continue
 			}
 
-			pid, err := runtimeClient.PidFromContainerID(container.ID)
+			containerData, err := runtimeClient.GetContainerDetails(container.ID)
 			if err != nil {
-				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find pid: %s",
+				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find container: %s",
 					runtime.Name, container.Name, container.ID, err)
 				continue
 			}
@@ -142,7 +143,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 			cc.initialContainers = append(cc.initialContainers,
 				&Container{
 					ID:      container.ID,
-					Pid:     uint32(pid),
+					Pid:     uint32(containerData.Pid),
 					Name:    container.Name,
 					Runtime: container.Runtime,
 
@@ -605,13 +606,13 @@ func WithCgroupEnrichment() ContainerCollectionOption {
 				return true
 			}
 
-			cgroupPathV1, cgroupPathV2, err := containerutils.GetCgroupPaths(pid)
+			cgroupPathV1, cgroupPathV2, err := cgroups.GetCgroupPaths(pid)
 			if err != nil {
 				log.Errorf("cgroup enricher: failed to get cgroup paths on container %s: %s", container.ID, err)
 				return true
 			}
-			cgroupPathV2WithMountpoint, _ := containerutils.CgroupPathV2AddMountpoint(cgroupPathV2)
-			cgroupID, _ := containerutils.GetCgroupID(cgroupPathV2WithMountpoint)
+			cgroupPathV2WithMountpoint, _ := cgroups.CgroupPathV2AddMountpoint(cgroupPathV2)
+			cgroupID, _ := cgroups.GetCgroupID(cgroupPathV2WithMountpoint)
 
 			container.CgroupPath = cgroupPathV2WithMountpoint
 			container.CgroupID = cgroupID
