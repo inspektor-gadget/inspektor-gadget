@@ -20,8 +20,11 @@ import (
 	"html/template"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/giantswarm/crd-docs-generator/pkg/crd"
 	"github.com/giantswarm/crd-docs-generator/pkg/metadata"
@@ -40,6 +43,7 @@ func init() {
 
 type GadgetData struct {
 	Name        string
+	Pkg         string
 	Description string
 	OutputModes []string
 	Operations  []GadgetOperation
@@ -57,8 +61,11 @@ var gadgetTemplate string
 
 func getTraceFactories() (ret []GadgetData) {
 	for name, factory := range gadgetcollection.TraceFactories() {
+		t := reflect.TypeOf(factory).Elem()
+		pkgPath := strings.TrimPrefix(t.PkgPath(), "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/")
 		ret = append(ret, GadgetData{
 			Name:        name,
+			Pkg:         pkgPath,
 			Description: factory.(gadgets.TraceFactoryWithDocumentation).Description(),
 			Factory:     factory,
 		})
@@ -96,6 +103,14 @@ func main() {
 	}
 	funcMap["raw"] = func(input string) template.HTML {
 		return template.HTML(input)
+	}
+	funcMap["godoc"] = func(pkg string) template.HTML {
+		cmd := exec.Command("go", "doc", "-all", pkg)
+		stdoutStderr, err := cmd.CombinedOutput()
+		if err != nil {
+			return template.HTML("None")
+		}
+		return template.HTML(stdoutStderr)
 	}
 
 	tpl, err := template.New("gadget.template").Funcs(funcMap).Parse(gadgetTemplate)

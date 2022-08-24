@@ -27,5 +27,9 @@ $ kubectl annotate -n gadget trace/{{$.Name}} \
 
 {{range $i, $outputMode := .OutputModes -}}
 * {{$outputMode}}
-{{end -}}
+{{- end}}
 
+### Types
+
+```go
+{{ godoc (printf "pkg/gadgets/%s/types" .Pkg) }}```
