@@ -30,6 +30,8 @@ const (
 	PROGRAMID
 	TOTALRUNTIME
 	TOTALRUNCOUNT
+	CUMULRUNTIME
+	CUMULRUNCOUNT
 )
 
 const (
@@ -51,6 +53,8 @@ var SortBySlice = []string{
 	"progid",
 	"totalruntime",
 	"totalruncount",
+	"cumulruntime",
+	"cumulruncount",
 }
 
 func (s SortBy) String() string {
@@ -84,6 +88,10 @@ func SortStats(stats []Stats, sortBy SortBy) {
 			return a.TotalRuntime > b.TotalRuntime
 		case TOTALRUNCOUNT:
 			return a.TotalRunCount > b.TotalRunCount
+		case CUMULRUNTIME:
+			return a.CumulativeRuntime > b.CumulativeRuntime
+		case CUMULRUNCOUNT:
+			return a.CumulativeRunCount > b.CumulativeRunCount
 		case PROGRAMID:
 			return a.ProgramID > b.ProgramID
 		default:
@@ -103,14 +111,16 @@ type Event struct {
 
 type Stats struct {
 	eventtypes.CommonData
-	ProgramID       uint32     `json:"progid"`
-	Pids            []*PidInfo `json:"pids,omitempty"`
-	Name            string     `json:"name,omitempty"`
-	Type            string     `json:"type,omitempty"`
-	CurrentRuntime  int64      `json:"currentRuntime,omitempty"`
-	CurrentRunCount uint64     `json:"currentRuncount,omitempty"`
-	TotalRuntime    int64      `json:"totalRuntime,omitempty"`
-	TotalRunCount   uint64     `json:"totalRuncount,omitempty"`
+	ProgramID          uint32     `json:"progid"`
+	Pids               []*PidInfo `json:"pids,omitempty"`
+	Name               string     `json:"name,omitempty"`
+	Type               string     `json:"type,omitempty"`
+	CurrentRuntime     int64      `json:"currentRuntime,omitempty"`
+	CurrentRunCount    uint64     `json:"currentRunCount,omitempty"`
+	CumulativeRuntime  int64      `json:"cumulRuntime,omitempty"`
+	CumulativeRunCount uint64     `json:"cumulRunCount,omitempty"`
+	TotalRuntime       int64      `json:"totalRuntime,omitempty"`
+	TotalRunCount      uint64     `json:"totalRunCount,omitempty"`
 }
 
 type PidInfo struct {

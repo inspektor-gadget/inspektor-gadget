@@ -52,22 +52,18 @@ minikube         53       CGroupDevice                                          
 
 So in this case for example, in the past second `vfs_write_entry` has been called 378 times, which took 3.948619ms.
 
-If you want to get the total runtime and total run count of the eBPF programs, you can call the gadget with the custom
-columns option:
+If you want to get the cumulative runtime and run count of the eBPF programs starting from the beginning of the trace,
+you can call the gadget with the custom-columns option and specify the cumulruntime and cumulruncount columns.
+Combined with the `--sort cumulruntime` and `--timeout 60` parameters, you can for example measure the time spent
+over a minute:
 
 ```bash
-$ kubectl-gadget top ebpf -o custom-columns=node,progid,type,name,runtime,runcount,totalruncount,totalruntime --sort totalruntime
-NODE             PROGID   TYPE             NAME                  RUNTIME   RUNCOUNT  T-RUNCOUNT    T-RUNTIME
-minikube         26       CGroupDevice                                0s          0        3817   2.692936ms
-minikube         6394     TracePoint       tgkill_entry        105.209µs         17         584   2.442174ms
-minikube         6395     TracePoint       tgkill_exit          60.625µs         17         584   1.166054ms
-minikube         6393     TracePoint       sig_trace            38.085µs         17         653     996.16µs
-minikube         6400     Tracing          gadget_ebpftop       37.202µs       1125        3345    258.998µs
-minikube         103      CGroupDevice                                0s          0         101    151.455µs
-minikube         6068     CGroupDevice                                0s          0          22      9.542µs
+$ kubectl-gadget top ebpf -o custom-columns=node,progid,type,name,pid,comm,cumulruntime,cumulruncount --sort cumulruntime --timeout 60
+NODE             PROGID   TYPE             NAME             PID     COMM                 CUMULRUNTIME CUMULRUNCOUNT
+minikube         2598     Tracing          gadget_ebpftop   2215151 gadgettracerman        5.239255ms         61443
+minikube         24       CGroupDevice                                                      147.327µs           224
+minikube         85       CGroupDevice                                                       12.209µs             4
+minikube         60       CGroupDevice                      1765    systemd                        0s             0
+minikube         48       CGroupDevice                      1765    systemd                        0s             0
 ...
 ```
-
-Please keep in mind that collection of the runtime stats is disabled by default for performance reasons and will only
-be enabled by the `top ebpf` gadget for the time it is running. That means that the "total" runtime and run count
-reflect only the time in which `top ebpf` was running.

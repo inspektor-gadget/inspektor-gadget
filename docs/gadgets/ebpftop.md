@@ -8,7 +8,7 @@ ebpftop shows cpu time used by ebpf programs.
 The following parameters are supported:
  - interval: Output interval, in seconds. (default 1)
  - max_rows: Maximum rows to print. (default 20)
- - sort_by: The field to sort the results by (all,runtime,runcount,progid,totalruntime,totalruncount). (default all)
+ - sort_by: The field to sort the results by (all,runtime,runcount,progid,totalruntime,totalruncount,cumulruntime,cumulruncount). (default all)
 
 ### Example CR
 
@@ -26,7 +26,7 @@ spec:
   parameters:
     interval: "1"
     max_rows: "50"
-    sort_by: all # all, runtime, runcount, progid, totalruntime and totalruncount are allowed
+    sort_by: all # all, runtime, runcount, progid, totalruntime, totalruncount, cumulruntime and cumulrouncount are allowed
 ```
 
 ### Operations
