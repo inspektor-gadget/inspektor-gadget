@@ -46,3 +46,25 @@ $ kubectl annotate -n gadget trace/dns \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
+
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+
+	DNSName string `json:"name,omitempty"`
+	PktType string `json:"pktType,omitempty"`
+	QType   string `json:"qtype,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event
+
+func (e Event) GetBaseEvent() eventtypes.Event
+
+```

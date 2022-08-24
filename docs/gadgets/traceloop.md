@@ -51,3 +51,8 @@ $ kubectl annotate -n gadget trace/traceloop \
 ### Output Modes
 
 * ExternalResource
+
+### Types
+
+```go
+None```

@@ -45,3 +45,29 @@ $ kubectl annotate -n gadget trace/execsnoop \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
+
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+
+	Pid       uint32   `json:"pid,omitempty"`
+	Ppid      uint32   `json:"ppid,omitempty"`
+	UID       uint32   `json:"uid,omitempty"`
+	MountNsID uint64   `json:"mountnsid,omitempty"`
+	Retval    int      `json:"ret,omitempty"`
+	Comm      string   `json:"pcomm,omitempty"`
+	Args      []string `json:"args,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event
+
+func (e Event) GetBaseEvent() eventtypes.Event
+
+```

@@ -45,3 +45,25 @@ $ kubectl annotate -n gadget trace/biolatency \
 ### Output Modes
 
 * Status
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/block-io/types"
+
+
+TYPES
+
+type Data struct {
+	Count         uint64 `json:"count"`
+	IntervalStart uint64 `json:"intervalStart"`
+	IntervalEnd   uint64 `json:"intervalEnd,omitempty"`
+}
+
+type Report struct {
+	ValType string `json:"valType,omitempty"`
+	Data    []Data `json:"data,omitempty"`
+	Time    string `json:"ts,omitempty"`
+}
+
+```

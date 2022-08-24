@@ -45,3 +45,55 @@ $ kubectl annotate -n gadget trace/network-graph \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/types"
+
+
+FUNCTIONS
+
+func EventsString(edges []Event) string
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+
+	PktType string `json:"pktType,omitempty"`
+	Proto   string `json:"proto,omitempty"`
+	IP      string `json:"ip,omitempty"`
+	Port    int    `json:"port,omitempty"`
+
+	/* pod, svc or other */
+	RemoteKind string `json:"remoteKind,omitempty"`
+
+	PodHostIP string            `json:"podHostIP,omitempty"`
+	PodIP     string            `json:"podIP,omitempty"`
+	PodOwner  string            `json:"podOwner,omitempty"`
+	PodLabels map[string]string `json:"podLabels,omitempty"`
+
+	/* if RemoteKind = svc */
+	RemoteSvcNamespace     string            `json:"remoteServiceNamespace,omitempty"`
+	RemoteSvcName          string            `json:"remoteServiceName,omitempty"`
+	RemoteSvcLabelSelector map[string]string `json:"remoteServiceLabelSelector,omitempty"`
+
+	/* if RemoteKind = pod */
+	RemotePodNamespace string            `json:"remotePodNamespace,omitempty"`
+	RemotePodName      string            `json:"remotePodName,omitempty"`
+	RemotePodLabels    map[string]string `json:"remotePodLabels,omitempty"`
+
+	/* if RemoteKind = other */
+	RemoteOther string `json:"remoteOther,omitempty"`
+
+	Debug string `json:"debug,omitempty"`
+}
+
+func Unique(edges []Event) []Event
+
+func (e Event) GetBaseEvent() eventtypes.Event
+
+func (e *Event) Key() string
+
+```

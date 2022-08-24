@@ -45,3 +45,28 @@ $ kubectl annotate -n gadget trace/oomkill \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
+
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+
+	TriggeredPid  uint32 `json:"tpid,omitempty"`
+	TriggeredComm string `json:"tcomm,omitempty"`
+	KilledPid     uint32 `json:"kpid,omitempty"`
+	KilledComm    string `json:"kcomm,omitempty"`
+	Pages         uint64 `json:"pages,omitempty"`
+	MountNsID     uint64 `json:"mountnsid,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event
+
+func (e Event) GetBaseEvent() eventtypes.Event
+
+```

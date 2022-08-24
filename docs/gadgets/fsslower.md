@@ -49,3 +49,36 @@ $ kubectl annotate -n gadget trace/fsslower \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
+
+
+CONSTANTS
+
+const (
+	MinLatencyDefault = uint(10)
+)
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+
+	MountNsID uint64 `json:"mountnsid,omitempty"`
+	Comm      string `json:"comm,omitempty"`
+	Pid       uint32 `json:"pid,omitempty"`
+	Op        string `json:"op,omitempty"`
+	Bytes     uint64 `json:"bytes,omitempty"`
+	Offset    int64  `json:"offset,omitempty"`
+	Latency   uint64 `json:"latency,omitempty"`
+	File      string `json:"file,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event
+
+func (e Event) GetBaseEvent() eventtypes.Event
+
+```

@@ -45,3 +45,23 @@ $ kubectl annotate -n gadget trace/snisnoop \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/sni/types"
+
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+
+	Name string `json:"name,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event
+
+func (e Event) GetBaseEvent() eventtypes.Event
+
+```

@@ -45,3 +45,30 @@ $ kubectl annotate -n gadget trace/opensnoop \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/types"
+
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+
+	MountNsID uint64 `json:"mountnsid,omitempty"`
+	Pid       uint32 `json:"pid,omitempty"`
+	UID       uint32 `json:"uid,omitempty"`
+	Comm      string `json:"pcomm,omitempty"`
+	Fd        int    `json:"fd,omitempty"`
+	Ret       int    `json:"ret,omitempty"`
+	Err       int    `json:"err,omitempty"`
+	Path      string `json:"path,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event
+
+func (e Event) GetBaseEvent() eventtypes.Event
+
+```

@@ -45,3 +45,30 @@ $ kubectl annotate -n gadget trace/capabilities \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
+
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+
+	MountNsID uint64 `json:"mountnsid,omitempty"`
+	Pid       uint32 `json:"pid,omitempty"`
+	UID       uint32 `json:"uid,omitempty"`
+	Comm      string `json:"comm,omitempty"`
+	CapName   string `json:"capName,omitempty"`
+	Cap       int    `json:"cap,omitempty"`
+	Audit     int    `json:"audit,omitempty"`
+	InsetID   string `json:"insetid,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event
+
+func (e Event) GetBaseEvent() eventtypes.Event
+
+```

@@ -52,3 +52,25 @@ $ kubectl annotate -n gadget trace/audit-seccomp \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
+
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+
+	Syscall   string `json:"syscall,omitempty"`
+	Code      string `json:"code,omitempty"`
+	Pid       uint32 `json:"pid,omitempty"`
+	MountNsID uint64 `json:"mntns,omitempty"`
+	Comm      string `json:"comm,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event
+
+```

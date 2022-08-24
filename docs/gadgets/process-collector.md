@@ -39,3 +39,23 @@ $ kubectl annotate -n gadget trace/process-collector \
 ### Output Modes
 
 * Status
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+	Tgid      int    `json:"tgid"`
+	Pid       int    `json:"pid"`
+	Command   string `json:"comm"`
+	MountNsID uint64 `json:"mntns"`
+}
+
+func (e Event) GetBaseEvent() eventtypes.Event
+
+```

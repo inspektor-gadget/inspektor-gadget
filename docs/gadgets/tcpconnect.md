@@ -45,3 +45,30 @@ $ kubectl annotate -n gadget trace/tcpconnect \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
+
+
+TYPES
+
+type Event struct {
+	eventtypes.Event
+
+	MountNsID uint64 `json:"mountnsid,omitempty"`
+	Pid       uint32 `json:"pid,omitempty"`
+	UID       uint32 `json:"uid,omitempty"`
+	Comm      string `json:"comm,omitempty"`
+	IPVersion int    `json:"ipversion,omitempty"`
+	Saddr     string `json:"saddr,omitempty"`
+	Daddr     string `json:"daddr,omitempty"`
+	Dport     uint16 `json:"dport,omitempty"`
+}
+
+func Base(ev eventtypes.Event) Event
+
+func (e Event) GetBaseEvent() eventtypes.Event
+
+```

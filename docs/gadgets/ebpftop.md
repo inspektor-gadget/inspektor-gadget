@@ -52,3 +52,81 @@ $ kubectl annotate -n gadget trace/ebpftop \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+
+
+CONSTANTS
+
+const (
+	MaxRowsDefault  = 20
+	IntervalDefault = 1
+	SortByDefault   = ALL
+)
+const (
+	IntervalParam = "interval"
+	MaxRowsParam  = "max_rows"
+	SortByParam   = "sort_by"
+)
+
+VARIABLES
+
+var SortBySlice = []string{
+	"all",
+	"runtime",
+	"runcount",
+	"progid",
+	"totalruntime",
+	"totalruncount",
+}
+
+FUNCTIONS
+
+func SortStats(stats []Stats, sortBy SortBy)
+
+TYPES
+
+type Event struct {
+	Error string `json:"error,omitempty"`
+
+	// Node where the event comes from.
+	Node string `json:"node,omitempty"`
+
+	Stats []Stats `json:"stats,omitempty"`
+}
+
+type PidInfo struct {
+	Pid  uint32 `json:"pid,omitempty"`
+	Comm string `json:"comm,omitempty"`
+}
+
+type SortBy int
+
+const (
+	ALL SortBy = iota
+	RUNTIME
+	RUNCOUNT
+	PROGRAMID
+	TOTALRUNTIME
+	TOTALRUNCOUNT
+)
+func ParseSortBy(sortby string) (SortBy, error)
+
+func (s SortBy) String() string
+
+type Stats struct {
+	eventtypes.CommonData
+	ProgramID       uint32     `json:"progid"`
+	Pids            []*PidInfo `json:"pids,omitempty"`
+	Name            string     `json:"name,omitempty"`
+	Type            string     `json:"type,omitempty"`
+	CurrentRuntime  int64      `json:"currentRuntime,omitempty"`
+	CurrentRunCount uint64     `json:"currentRuncount,omitempty"`
+	TotalRuntime    int64      `json:"totalRuntime,omitempty"`
+	TotalRunCount   uint64     `json:"totalRuncount,omitempty"`
+}
+
+```

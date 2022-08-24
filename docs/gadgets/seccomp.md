@@ -108,6 +108,9 @@ $ kubectl annotate -n gadget trace/seccomp \
 
 ### Output Modes
 
-* ExternalResource
-* Status
-* Stream
+* ExternalResource* Status* Stream
+
+### Types
+
+```go
+None```

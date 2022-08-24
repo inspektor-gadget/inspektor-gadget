@@ -51,3 +51,82 @@ $ kubectl annotate -n gadget trace/filetop \
 ### Output Modes
 
 * Stream
+
+### Types
+
+```go
+package types // import "github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/types"
+
+
+CONSTANTS
+
+const (
+	MaxRowsDefault  = 20
+	IntervalDefault = 1
+	SortByDefault   = ALL
+	AllFilesDefault = false
+)
+const (
+	IntervalParam = "interval"
+	MaxRowsParam  = "max_rows"
+	SortByParam   = "sort_by"
+	AllFilesParam = "pid"
+)
+
+VARIABLES
+
+var SortBySlice = []string{
+	"all",
+	"reads",
+	"writes",
+	"rbytes",
+	"wbytes",
+}
+
+FUNCTIONS
+
+func SortStats(stats []Stats, sortBy SortBy)
+
+TYPES
+
+type Event struct {
+	Error string `json:"error,omitempty"`
+
+	// Node where the event comes from.
+	Node string `json:"node,omitempty"`
+
+	Stats []Stats `json:"stats,omitempty"`
+}
+    Event is the information the gadget sends to the client each capture
+    interval
+
+type SortBy int
+
+const (
+	ALL SortBy = iota
+	READS
+	WRITES
+	RBYTES
+	WBYTES
+)
+func ParseSortBy(sortby string) (SortBy, error)
+
+func (s SortBy) String() string
+
+type Stats struct {
+	eventtypes.CommonData
+
+	Reads      uint64 `json:"reads,omitempty"`
+	Writes     uint64 `json:"writes,omitempty"`
+	ReadBytes  uint64 `json:"rbytes,omitempty"`
+	WriteBytes uint64 `json:"wbytes,omitempty"`
+	Pid        uint32 `json:"pid,omitempty"`
+	Tid        uint32 `json:"tid,omitempty"`
+	MountNsID  uint64 `json:"mountnsid,omitempty"`
+	Filename   string `json:"filename,omitempty"`
+	Comm       string `json:"comm,omitempty"`
+	FileType   byte   `json:"fileType,omitempty"`
+}
+    Stats represents the operations performed on a single file
+
+```
