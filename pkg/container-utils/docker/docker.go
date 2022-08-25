@@ -214,7 +214,7 @@ func DockerContainerToContainerData(container *dockertypes.Container) *runtimecl
 	return &runtimeclient.ContainerData{
 		ID:      container.ID,
 		Name:    strings.TrimPrefix(container.Names[0], "/"),
-		State:   containerStatusStateToRuntimeClientState(container.Status),
+		State:   containerStatusStateToRuntimeClientState(container.State),
 		Runtime: Name,
 	}
 }
