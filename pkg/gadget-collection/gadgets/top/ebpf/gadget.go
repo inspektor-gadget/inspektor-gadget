@@ -146,12 +146,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		SortBy:   sortBy,
 	}
 
-	statsCallback := func(stats []types.Stats) {
-		ev := types.Event{
-			Stats: stats,
-		}
-		ev.Node = trace.Spec.Node
-
+	eventCallback := func(ev *types.Event) {
 		r, err := json.Marshal(ev)
 		if err != nil {
 			log.Warnf("Gadget %s: Failed to marshal event: %s", trace.Spec.Gadget, err)
@@ -160,21 +155,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		t.helpers.PublishEvent(t.traceName, string(r))
 	}
 
-	errorCallback := func(err error) {
-		ev := types.Event{
-			Error: fmt.Sprintf("Gadget failed with: %v", err),
-		}
-		ev.Node = trace.Spec.Node
-
-		r, err := json.Marshal(&ev)
-		if err != nil {
-			log.Warnf("Gadget %s: Failed to marshall event: %s", trace.Spec.Gadget, err)
-			return
-		}
-		t.helpers.PublishEvent(t.traceName, string(r))
-	}
-
-	tracer, err := ebpftoptracer.NewTracer(config, statsCallback, errorCallback)
+	tracer, err := ebpftoptracer.NewTracer(config, eventCallback)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 		return

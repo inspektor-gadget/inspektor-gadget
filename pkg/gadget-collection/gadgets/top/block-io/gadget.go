@@ -148,12 +148,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		MountnsMap: mountNsMap,
 	}
 
-	statsCallback := func(stats []types.Stats) {
-		ev := types.Event{
-			Node:  trace.Spec.Node,
-			Stats: stats,
-		}
-
+	eventCallback := func(ev *types.Event) {
 		r, err := json.Marshal(ev)
 		if err != nil {
 			log.Warnf("Gadget %s: Failed to marshall event: %s", trace.Spec.Gadget, err)
@@ -162,20 +157,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		t.helpers.PublishEvent(traceName, string(r))
 	}
 
-	errorCallback := func(err error) {
-		ev := types.Event{
-			Error: fmt.Sprintf("Gadget failed with: %v", err),
-			Node:  trace.Spec.Node,
-		}
-		r, err := json.Marshal(&ev)
-		if err != nil {
-			log.Warnf("Gadget %s: Failed to marshall event: %s", trace.Spec.Gadget, err)
-			return
-		}
-		t.helpers.PublishEvent(traceName, string(r))
-	}
-
-	tracer, err := biotoptracer.NewTracer(config, t.helpers, statsCallback, errorCallback)
+	tracer, err := biotoptracer.NewTracer(config, t.helpers, eventCallback)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 		return

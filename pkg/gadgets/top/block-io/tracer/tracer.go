@@ -54,19 +54,17 @@ type Tracer struct {
 	startRequestLink link.Link
 	doneLink         link.Link
 	enricher         gadgets.DataEnricher
-	statsCallback    func([]types.Stats)
-	errorCallback    func(error)
+	eventCallback    func(*types.Event)
 	done             chan bool
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricher,
-	statsCallback func([]types.Stats), errorCallback func(error),
+	eventCallback func(*types.Event),
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
 		enricher:      enricher,
-		statsCallback: statsCallback,
-		errorCallback: errorCallback,
+		eventCallback: eventCallback,
 		done:          make(chan bool),
 	}
 
@@ -282,7 +280,9 @@ func (t *Tracer) run() {
 			case <-ticker.C:
 				stats, err := t.nextStats()
 				if err != nil {
-					t.errorCallback(err)
+					t.eventCallback(&types.Event{
+						Error: err.Error(),
+					})
 					return
 				}
 
@@ -290,7 +290,7 @@ func (t *Tracer) run() {
 				if n > t.config.MaxRows {
 					n = t.config.MaxRows
 				}
-				t.statsCallback(stats[:n])
+				t.eventCallback(&types.Event{Stats: stats[:n]})
 			}
 		}
 	}()
