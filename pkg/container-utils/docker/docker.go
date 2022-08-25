@@ -21,12 +21,12 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	dockertypes "github.com/docker/docker/api/types"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/cgroups"
 	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -63,28 +63,6 @@ func NewDockerClient(socketPath string) (runtimeclient.ContainerRuntimeClient, e
 		client:     cli,
 		socketPath: socketPath,
 	}, nil
-}
-
-func (c *DockerClient) PidFromContainerID(containerID string) (int, error) {
-	containerID, err := runtimeclient.ParseContainerID(Name, containerID)
-	if err != nil {
-		return -1, err
-	}
-
-	containerJSON, err := c.client.ContainerInspect(context.Background(), containerID)
-	if err != nil {
-		return -1, err
-	}
-
-	if containerJSON.State == nil {
-		return -1, errors.New("container state is nil")
-	}
-
-	if containerJSON.State.Pid == 0 {
-		return -1, errors.New("got zero pid")
-	}
-
-	return containerJSON.State.Pid, nil
 }
 
 func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]dockertypes.Container, error) {
@@ -142,13 +120,69 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 	return DockerContainerToContainerData(&containers[0]), nil
 }
 
-func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {
-	return &runtimeclient.ContainerData{
-		ID:      container.ID,
-		Name:    strings.TrimPrefix(container.Names[0], "/"),
-		Running: container.State == "running",
-		Runtime: Name,
+func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.ContainerDetailsData, error) {
+	containerID, err := runtimeclient.ParseContainerID(Name, containerID)
+	if err != nil {
+		return nil, err
 	}
+
+	containerJSON, err := c.client.ContainerInspect(context.Background(), containerID)
+	if err != nil {
+		return nil, err
+	}
+
+	if containerJSON.State == nil {
+		return nil, errors.New("container state is nil")
+	}
+	if containerJSON.State.Pid == 0 {
+		return nil, errors.New("got zero pid")
+	}
+	if containerJSON.HostConfig == nil {
+		return nil, errors.New("container host config is nil")
+	}
+
+	containerDetailsData := runtimeclient.ContainerDetailsData{
+		ContainerData: runtimeclient.ContainerData{
+			ID:      containerJSON.ID,
+			Name:    strings.TrimPrefix(containerJSON.Name, "/"),
+			State:   containerStatusStateToRuntimeClientState(containerJSON.State.Status),
+			Runtime: Name,
+		},
+		Pid:         containerJSON.State.Pid,
+		CgroupsPath: string(containerJSON.HostConfig.Cgroup),
+	}
+	if len(containerJSON.Mounts) > 0 {
+		containerDetailsData.Mounts = make([]runtimeclient.ContainerMountData, len(containerJSON.Mounts))
+		for i, containerMount := range containerJSON.Mounts {
+			containerDetailsData.Mounts[i] = runtimeclient.ContainerMountData{
+				Destination: containerMount.Destination,
+				Source:      containerMount.Source,
+			}
+		}
+	}
+
+	// Try to get cgroups information from /proc/<pid>/cgroup as a fallback.
+	// However, don't fail if such a file is not available, as it would prevent the
+	// whole feature to work on systems without this file.
+	if containerDetailsData.CgroupsPath == "" {
+		log.Debugf("cgroups info not available on Docker for container %s. Trying /proc/%d/cgroup as a fallback",
+			containerID, containerDetailsData.Pid)
+
+		// Get cgroup paths for V1 and V2.
+		cgroupPathV1, cgroupPathV2, err := cgroups.GetCgroupPaths(containerDetailsData.Pid)
+		if err == nil {
+			cgroupsPath := cgroupPathV1
+			if cgroupsPath == "" {
+				cgroupsPath = cgroupPathV2
+			}
+			containerDetailsData.CgroupsPath = cgroupsPath
+		} else {
+			log.Warnf("failed to get cgroups info of container %s from /proc/%d/cgroup: %s",
+				containerID, containerDetailsData.Pid, err)
+		}
+	}
+
+	return &containerDetailsData, nil
 }
 
 func (c *DockerClient) Close() error {
@@ -157,4 +191,30 @@ func (c *DockerClient) Close() error {
 	}
 
 	return nil
+}
+
+// Convert the state from container status to state of runtime client.
+func containerStatusStateToRuntimeClientState(containerState string) (runtimeClientState string) {
+	switch containerState {
+	case "created":
+		runtimeClientState = runtimeclient.StateCreated
+	case "running":
+		runtimeClientState = runtimeclient.StateRunning
+	case "exited":
+		runtimeClientState = runtimeclient.StateExited
+	case "dead":
+		runtimeClientState = runtimeclient.StateExited
+	default:
+		runtimeClientState = runtimeclient.StateUnknown
+	}
+	return
+}
+
+func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {
+	return &runtimeclient.ContainerData{
+		ID:      container.ID,
+		Name:    strings.TrimPrefix(container.Names[0], "/"),
+		State:   containerStatusStateToRuntimeClientState(container.Status),
+		Runtime: Name,
+	}
 }
