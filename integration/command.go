@@ -69,8 +69,9 @@ type command struct {
 	started bool
 }
 
-func deployInspektorGadget(image string, livenessProbe bool) *command {
-	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --liveness-probe=%t --debug", livenessProbe)
+func deployInspektorGadget(image, imagePullPolicy string, livenessProbe bool) *command {
+	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --image-pull-policy=%s --liveness-probe=%t  --debug",
+		imagePullPolicy, livenessProbe)
 
 	if image != "" {
 		cmd = cmd + " --image=" + image
