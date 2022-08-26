@@ -176,11 +176,39 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 
 	var err error
 	var prog *ebpf.Program
+	var mapData *ebpf.Map
 	var pids []*piditer.PidIterEntry
 	curID := ebpf.ProgramID(0)
 	nextID := ebpf.ProgramID(0)
 
+	curMapID := ebpf.MapID(0)
+	nextMapID := ebpf.MapID(0)
+
 	curStats := make(map[string]programStats)
+
+	mapSizes := make(map[ebpf.MapID]uint64)
+
+	// Get memory usage by maps
+	for {
+		nextMapID, err = ebpf.MapGetNextID(curMapID)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				break
+			}
+			return nil, fmt.Errorf("could not get next map ID: %w", err)
+		}
+		if nextMapID <= curMapID {
+			break
+		}
+		curMapID = nextMapID
+		mapData, err = ebpf.NewMapFromID(curMapID)
+		if err != nil {
+			continue
+		}
+		mapSizes[curMapID] = (uint64(mapData.KeySize()) + uint64(mapData.ValueSize())) * uint64(mapData.MaxEntries())
+
+		mapData.Close()
+	}
 
 	for {
 		nextID, err = ebpf.ProgramGetNextID(curID)
@@ -202,6 +230,14 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 		if err != nil {
 			prog.Close()
 			continue
+		}
+
+		totalMapMemory := uint64(0)
+		mapIDs, _ := pi.MapIDs()
+		for _, mapID := range mapIDs {
+			if size, ok := mapSizes[mapID]; ok {
+				totalMapMemory += size
+			}
 		}
 
 		totalRuntime, _ := pi.Runtime()
@@ -242,8 +278,10 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 			CurrentRunCount:    curRunCount,
 			TotalRuntime:       int64(totalRuntime),
 			TotalRunCount:      totalRunCount,
-			CumulativeRuntime:  int64(cumulativeRuntime),
+			CumulativeRuntime:  cumulativeRuntime,
 			CumulativeRunCount: cumulativeRunCount,
+			MapMemory:          totalMapMemory,
+			MapCount:           uint32(len(mapIDs)),
 		})
 
 		prog.Close()
