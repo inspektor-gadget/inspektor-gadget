@@ -33,8 +33,8 @@ container are traced, bash in this case.
 
 ```bash
 $ sudo ./exec --containername foo
-CONTAINER        PCOMM            PID
-foo              bash             758470
-foo              cat              758518
-foo              sleep            758470
+CONTAINER        PID     PPID    PCOMM            RET  ARGS
+foo              135452  135430  bash             0    /usr/bin/bash -c cat /dev/null && sleep 2
+foo              135486  135452  cat              0    /usr/bin/cat /dev/null
+foo              135452  135430  sleep            0    /usr/bin/sleep 2
 ```
