@@ -63,14 +63,14 @@ func (l *LocalGadgetManager) GadgetOutputModesSupported(gadget string) (ret []st
 	}
 	outputModesSupported := factory.OutputModesSupported()
 	for k := range outputModesSupported {
-		ret = append(ret, k)
+		ret = append(ret, string(k))
 	}
 	sort.Strings(ret)
 	return ret, nil
 }
 
-func (l *LocalGadgetManager) ListOperations(name string) []string {
-	operations := []string{}
+func (l *LocalGadgetManager) ListOperations(name string) []gadgetv1alpha1.Operation {
+	operations := []gadgetv1alpha1.Operation{}
 
 	traceResource, ok := l.traceResources[name]
 	if !ok {
@@ -86,7 +86,9 @@ func (l *LocalGadgetManager) ListOperations(name string) []string {
 		operations = append(operations, opname)
 	}
 
-	sort.Strings(operations)
+	sort.Slice(operations, func(i, j int) bool {
+		return operations[i] < operations[j]
+	})
 	return operations
 }
 
@@ -112,7 +114,7 @@ func traceName(name string) string {
 	return gadgets.TraceName("gadget", name)
 }
 
-func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter, outputMode string, params map[string]string) error {
+func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter string, outputMode gadgetv1alpha1.TraceOutputMode, params map[string]string) error {
 	factory, ok := l.traceFactories[gadget]
 	if !ok {
 		return fmt.Errorf("unknown gadget %q", gadget)
@@ -123,10 +125,10 @@ func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter, outputMode
 
 	outputModesSupported := factory.OutputModesSupported()
 	if outputMode == "" {
-		if _, ok := outputModesSupported["Stream"]; ok {
-			outputMode = "Stream"
-		} else if _, ok := outputModesSupported["Status"]; ok {
-			outputMode = "Status"
+		if _, ok := outputModesSupported[gadgetv1alpha1.TraceOutputModeStream]; ok {
+			outputMode = gadgetv1alpha1.TraceOutputModeStream
+		} else if _, ok := outputModesSupported[gadgetv1alpha1.TraceOutputModeStatus]; ok {
+			outputMode = gadgetv1alpha1.TraceOutputModeStatus
 		} else {
 			for k := range outputModesSupported {
 				outputMode = k
@@ -137,7 +139,7 @@ func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter, outputMode
 	if _, ok := outputModesSupported[outputMode]; !ok {
 		outputModesSupportedStr := ""
 		for k := range outputModesSupported {
-			outputModesSupportedStr += k + ", "
+			outputModesSupportedStr += string(k) + ", "
 		}
 		outputModesSupportedStr = strings.TrimSuffix(outputModesSupportedStr, ", ")
 		return fmt.Errorf("unsupported output mode %q for gadget %q (must be one of: %s)", outputMode, gadget, outputModesSupportedStr)
@@ -151,7 +153,7 @@ func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter, outputMode
 		Spec: gadgetv1alpha1.TraceSpec{
 			Node:       "local",
 			Gadget:     gadget,
-			RunMode:    "Manual",
+			RunMode:    gadgetv1alpha1.RunModeManual,
 			OutputMode: outputMode,
 			Parameters: params,
 		},
@@ -169,7 +171,7 @@ func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter, outputMode
 	return nil
 }
 
-func (l *LocalGadgetManager) Operation(name, opname string) error {
+func (l *LocalGadgetManager) Operation(name string, opname gadgetv1alpha1.Operation) error {
 	traceResource, ok := l.traceResources[name]
 	if !ok {
 		return fmt.Errorf("cannot find trace %q", name)
@@ -211,7 +213,7 @@ func (l *LocalGadgetManager) Show(name string) (ret string, err error) {
 	return ret, nil
 }
 
-func (l *LocalGadgetManager) CheckStatus(name, state string) error {
+func (l *LocalGadgetManager) CheckStatus(name string, state gadgetv1alpha1.TraceState) error {
 	traceResource, ok := l.traceResources[name]
 	if !ok {
 		return fmt.Errorf("cannot find trace %q", name)
@@ -238,7 +240,7 @@ func (l *LocalGadgetManager) DisplayOutput(
 		return fmt.Errorf("cannot find trace %q", name)
 	}
 
-	return customResultsDisplay(traceResource.Spec.OutputMode, []string{traceResource.Status.Output})
+	return customResultsDisplay(string(traceResource.Spec.OutputMode), []string{traceResource.Status.Output})
 }
 
 func (l *LocalGadgetManager) Delete(name string) error {

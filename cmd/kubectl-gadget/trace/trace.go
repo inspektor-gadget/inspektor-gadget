@@ -21,6 +21,7 @@ import (
 
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
@@ -62,9 +63,9 @@ type TraceGadget[Event TraceEvent] struct {
 func (g *TraceGadget[Event]) Run() error {
 	config := &utils.TraceConfig{
 		GadgetName:       g.name,
-		Operation:        "start",
-		TraceOutputMode:  "Stream",
-		TraceOutputState: "Started",
+		Operation:        gadgetv1alpha1.OperationStart,
+		TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
+		TraceOutputState: gadgetv1alpha1.TraceStateStarted,
 		CommonFlags:      g.commonFlags,
 		Parameters:       g.params,
 	}

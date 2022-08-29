@@ -58,9 +58,9 @@ The following parameters are supported:
 	return fmt.Sprintf(t, strings.Join(validFilesystems, ", "), types.MinLatencyDefault)
 }
 
-func (f *TraceFactory) OutputModesSupported() map[string]struct{} {
-	return map[string]struct{}{
-		"Stream": {},
+func (f *TraceFactory) OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode]struct{} {
+	return map[gadgetv1alpha1.TraceOutputMode]struct{}{
+		gadgetv1alpha1.TraceOutputModeStream: {},
 	}
 }
 
@@ -71,21 +71,21 @@ func deleteTrace(name string, t interface{}) {
 	}
 }
 
-func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
+func (f *TraceFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
 			helpers: f.Helpers,
 		}
 	}
 
-	return map[string]gadgets.TraceOperation{
-		"start": {
+	return map[gadgetv1alpha1.Operation]gadgets.TraceOperation{
+		gadgetv1alpha1.OperationStart: {
 			Doc: "Start fsslower gadget",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				f.LookupOrCreate(name, n).(*Trace).Start(trace)
 			},
 		},
-		"stop": {
+		gadgetv1alpha1.OperationStop: {
 			Doc: "Stop fsslower gadget",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
 				f.LookupOrCreate(name, n).(*Trace).Stop(trace)
@@ -96,7 +96,7 @@ func (f *TraceFactory) Operations() map[string]gadgets.TraceOperation {
 
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	if t.started {
-		trace.Status.State = "Started"
+		trace.Status.State = gadgetv1alpha1.TraceStateStarted
 		return
 	}
 
@@ -157,7 +157,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	t.started = true
 
-	trace.Status.State = "Started"
+	trace.Status.State = gadgetv1alpha1.TraceStateStarted
 }
 
 func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
@@ -170,5 +170,5 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	t.tracer = nil
 	t.started = false
 
-	trace.Status.State = "Stopped"
+	trace.Status.State = gadgetv1alpha1.TraceStateStopped
 }

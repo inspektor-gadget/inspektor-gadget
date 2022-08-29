@@ -17,13 +17,14 @@ package snapshot
 import (
 	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
 	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
+	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/spf13/cobra"
 )
 
 func NewSnapshotTraceConfig(gadgetName string, commonFlags *utils.CommonFlags, params map[string]string) *utils.TraceConfig {
 	return &utils.TraceConfig{
 		GadgetName:       gadgetName,
-		TraceOutputState: "Completed",
+		TraceOutputState: gadgetv1alpha1.TraceStateCompleted,
 		Parameters:       params,
 		CommonFlags:      commonFlags,
 	}

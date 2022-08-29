@@ -52,17 +52,17 @@ func deleteTrace(name string, trace interface{}) {
 	f.mu.Unlock()
 }
 
-func (f *FakeFactory) OutputModesSupported() map[string]struct{} {
-	return map[string]struct{}{
-		"Status": {},
+func (f *FakeFactory) OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode]struct{} {
+	return map[gadgetv1alpha1.TraceOutputMode]struct{}{
+		gadgetv1alpha1.TraceOutputModeStatus: {},
 	}
 }
 
-func (f *FakeFactory) Operations() map[string]gadgets.TraceOperation {
+func (f *FakeFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOperation {
 	n := func() interface{} {
 		return f
 	}
-	return map[string]gadgets.TraceOperation{
+	return map[gadgetv1alpha1.Operation]gadgets.TraceOperation{
 		"magic": {
 			Doc: "Collect a snapshot of the list of sockets",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
@@ -84,7 +84,7 @@ func (f *FakeFactory) Magic(trace *gadgetv1alpha1.Trace) {
 
 	trace.Status.OperationError = "FakeError"
 	trace.Status.OperationWarning = "FakeWarning"
-	trace.Status.State = "Completed"
+	trace.Status.State = gadgetv1alpha1.TraceStateCompleted
 	trace.Status.Output = "FakeOutput"
 }
 
@@ -138,8 +138,8 @@ func UpdatedTrace(ctx context.Context, key client.ObjectKey) func() *gadgetv1alp
 
 // HaveState returns a GomegaMatcher that checks if the Trace.Status.State has
 // the expected value
-func HaveState(expectedState string) gomegatype.GomegaMatcher {
-	return WithTransform(func(trace *gadgetv1alpha1.Trace) string {
+func HaveState(expectedState gadgetv1alpha1.TraceState) gomegatype.GomegaMatcher {
+	return WithTransform(func(trace *gadgetv1alpha1.Trace) gadgetv1alpha1.TraceState {
 		if trace == nil {
 			return "<trace is nil>"
 		}
@@ -225,8 +225,8 @@ var _ = Context("Controller with a fake gadget", func() {
 				Spec: gadgetv1alpha1.TraceSpec{
 					Node:       "fake-node",
 					Gadget:     "fakegadget",
-					RunMode:    "Manual",
-					OutputMode: "Status",
+					RunMode:    gadgetv1alpha1.RunModeManual,
+					OutputMode: gadgetv1alpha1.TraceOutputModeStatus,
 				},
 			}
 
@@ -238,7 +238,7 @@ var _ = Context("Controller with a fake gadget", func() {
 			Eventually(OperationMethodHasBeenCalled(fakeFactory, traceObjectKey.String(), "magic")).Should(BeTrue())
 
 			Eventually(UpdatedTrace(ctx, traceObjectKey)).Should(SatisfyAll(
-				HaveState("Completed"),
+				HaveState(gadgetv1alpha1.TraceStateCompleted),
 				HaveOperationError("FakeError"),
 				HaveOperationWarning("FakeWarning"),
 				HaveOutput("FakeOutput"),
