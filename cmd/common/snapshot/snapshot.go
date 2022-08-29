@@ -20,11 +20,12 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/spf13/cobra"
+
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	processcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
-	"github.com/spf13/cobra"
 )
 
 type SnapshotEvent interface {
@@ -130,10 +131,8 @@ func (g *SnapshotGadget[Event]) Run() error {
 }
 
 func NewCommonSnapshotCmd() *cobra.Command {
-	snapshotCmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "snapshot",
 		Short: "Take a snapshot of a subsystem and print it",
 	}
-
-	return snapshotCmd
 }

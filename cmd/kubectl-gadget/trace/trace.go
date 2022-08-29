@@ -83,10 +83,7 @@ func (g *TraceGadget[Event]) Run() error {
 }
 
 func NewTraceCmd() *cobra.Command {
-	traceCmd := &cobra.Command{
-		Use:   "trace",
-		Short: "Trace and print system events",
-	}
+	traceCmd := commontrace.NewCommonTraceCmd()
 
 	traceCmd.AddCommand(newBindCmd())
 	traceCmd.AddCommand(newCapabilitiesCmd())

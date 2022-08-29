@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,26 +18,8 @@ import (
 	"github.com/spf13/cobra"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 )
 
-func newExecCmd() *cobra.Command {
-	var commonFlags utils.CommonFlags
-
-	runCmd := func(cmd *cobra.Command, args []string) error {
-		execGadget := &TraceGadget[types.Event]{
-			name:        "execsnoop",
-			commonFlags: &commonFlags,
-			parser:      commontrace.NewExecParserWithK8sInfo(&commonFlags.OutputConfig),
-		}
-
-		return execGadget.Run()
-	}
-
-	cmd := commontrace.NewExecCmd(runCmd)
-
-	utils.AddCommonFlags(cmd, &commonFlags)
-
-	return cmd
+func NewTraceCmd() *cobra.Command {
+	return commontrace.NewCommonTraceCmd()
 }

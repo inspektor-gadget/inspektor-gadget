@@ -15,6 +15,8 @@
 package trace
 
 import (
+	"github.com/spf13/cobra"
+
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
@@ -39,4 +41,11 @@ type TraceParser[Event TraceEvent] interface {
 	// that exist in the predefined columns list. The columns are separated by
 	// the predefined width.
 	BuildColumnsHeader() string
+}
+
+func NewCommonTraceCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "trace",
+		Short: "Trace and print system events",
+	}
 }
