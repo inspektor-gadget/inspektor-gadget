@@ -25,19 +25,17 @@ import (
 func newExecCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
-	cmd := &cobra.Command{
-		Use:   "exec",
-		Short: "Trace new processes",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			execGadget := &TraceGadget[types.Event]{
-				name:        "execsnoop",
-				commonFlags: &commonFlags,
-				parser:      commontrace.NewExecParserWithK8sInfo(&commonFlags.OutputConfig),
-			}
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		execGadget := &TraceGadget[types.Event]{
+			name:        "execsnoop",
+			commonFlags: &commonFlags,
+			parser:      commontrace.NewExecParserWithK8sInfo(&commonFlags.OutputConfig),
+		}
 
-			return execGadget.Run()
-		},
+		return execGadget.Run()
 	}
+
+	cmd := commontrace.NewExecCmd(runCmd)
 
 	utils.AddCommonFlags(cmd, &commonFlags)
 

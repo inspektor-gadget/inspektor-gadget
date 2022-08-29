@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 )
@@ -111,5 +113,13 @@ func GetExecDefaultColumns() []string {
 		"pcomm",
 		"ret",
 		"args",
+	}
+}
+
+func NewExecCmd(runCmd func(*cobra.Command, []string) error) *cobra.Command {
+	return &cobra.Command{
+		Use:   "exec",
+		Short: "Trace new processes",
+		RunE:  runCmd,
 	}
 }
