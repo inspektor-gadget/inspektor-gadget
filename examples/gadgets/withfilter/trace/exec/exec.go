@@ -104,6 +104,7 @@ func main() {
 		fmt.Printf("error adding tracer: %s\n", err)
 		return
 	}
+	defer tracerCollection.RemoveTracer(traceName)
 
 	// Get mount namespace map to filter by containers
 	mountnsmap, err := tracerCollection.TracerMountNsMap(traceName)
