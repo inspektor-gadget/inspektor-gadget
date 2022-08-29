@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/sni/types"
@@ -62,7 +63,7 @@ func newSNICmd() *cobra.Command {
 	return cmd
 }
 
-func NewSNIParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Event] {
+func NewSNIParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParser[types.Event] {
 	columnsWidth := map[string]int{
 		"node":      -16,
 		"namespace": -16,
