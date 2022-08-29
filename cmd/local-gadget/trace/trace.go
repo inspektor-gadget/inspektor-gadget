@@ -15,11 +15,86 @@
 package trace
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/cilium/ebpf"
 	"github.com/spf13/cobra"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
+	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
+// TraceGadget represents a gadget belonging to the trace category.
+type TraceGadget[Event commontrace.TraceEvent] struct {
+	commonFlags        *utils.CommonFlags
+	parser             commontrace.TraceParser[Event]
+	createAndRunTracer func(*ebpf.Map, gadgets.DataEnricher, func(Event)) (trace.Tracer, error)
+}
+
+// Run runs a TraceGadget and prints the output after parsing it using the
+// TraceParser's methods.
+func (g *TraceGadget[Event]) Run() error {
+	localGadgetManager, err := localgadgetmanager.NewManager(g.commonFlags.RuntimeConfigs)
+	if err != nil {
+		return commonutils.WrapInErrManagerInit(err)
+	}
+	defer localGadgetManager.Close()
+
+	// TODO: Improve filtering, see further details in
+	// https://github.com/kinvolk/inspektor-gadget/issues/644.
+	containerSelector := containercollection.ContainerSelector{
+		Name: g.commonFlags.Containername,
+	}
+
+	// Create mount namespace map to filter by containers
+	mountnsmap, err := localGadgetManager.CreateMountNsMap(containerSelector)
+	if err != nil {
+		return commonutils.WrapInErrManagerCreateMountNsMap(err)
+	}
+	defer localGadgetManager.RemoveMountNsMap()
+
+	if g.commonFlags.OutputMode != commonutils.OutputModeJSON {
+		fmt.Println(g.parser.BuildColumnsHeader())
+	}
+
+	// Define a callback to be called each time there is an event.
+	eventCallback := func(event Event) {
+		baseEvent := event.GetBaseEvent()
+		if baseEvent.Type != eventtypes.NORMAL {
+			commonutils.ManageSpecialEvent(baseEvent, g.commonFlags.Verbose)
+			return
+		}
+
+		fmt.Println(g.parser.TransformEvent(&event))
+	}
+
+	gadgetTracer, err := g.createAndRunTracer(mountnsmap, &localGadgetManager.ContainerCollection, eventCallback)
+	if err != nil {
+		return commonutils.WrapInErrGadgetTracerCreateAndRun(err)
+	}
+	defer gadgetTracer.Stop()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+
+	return nil
+}
+
 func NewTraceCmd() *cobra.Command {
-	return commontrace.NewCommonTraceCmd()
+	traceCmd := commontrace.NewCommonTraceCmd()
+
+	traceCmd.AddCommand(newBindCmd())
+	traceCmd.AddCommand(newExecCmd())
+
+	return traceCmd
 }

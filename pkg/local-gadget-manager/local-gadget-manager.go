@@ -332,6 +332,28 @@ func (l *LocalGadgetManager) Dump() string {
 	return out
 }
 
+// We are not running multiple tracers per instance so the tracer ID doesn't
+// need to be unique and we can hide it from caller.
+const localGadgetTracerID = "local_gadget_tracer_id"
+
+func (l *LocalGadgetManager) CreateMountNsMap(containerSelector containercollection.ContainerSelector) (*ebpf.Map, error) {
+	if err := l.tracerCollection.AddTracer(localGadgetTracerID, containerSelector); err != nil {
+		return nil, err
+	}
+
+	mountnsmap, err := l.tracerCollection.TracerMountNsMap(localGadgetTracerID)
+	if err != nil {
+		l.tracerCollection.RemoveTracer(localGadgetTracerID)
+		return nil, err
+	}
+
+	return mountnsmap, nil
+}
+
+func (l *LocalGadgetManager) RemoveMountNsMap() error {
+	return l.tracerCollection.RemoveTracer(localGadgetTracerID)
+}
+
 func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, error) {
 	l := &LocalGadgetManager{
 		traceFactories: gadgetcollection.TraceFactoriesForLocalGadget(),
