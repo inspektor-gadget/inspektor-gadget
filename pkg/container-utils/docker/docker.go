@@ -137,6 +137,9 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 	if containerJSON.State.Pid == 0 {
 		return nil, errors.New("got zero pid")
 	}
+	if containerJSON.Config == nil {
+		return nil, errors.New("container config is nil")
+	}
 	if containerJSON.HostConfig == nil {
 		return nil, errors.New("container host config is nil")
 	}
@@ -160,6 +163,9 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 			}
 		}
 	}
+
+	// Fill K8S information.
+	runtimeclient.EnrichWithK8sMetadata(&containerDetailsData.ContainerData, containerJSON.Config.Labels)
 
 	// Try to get cgroups information from /proc/<pid>/cgroup as a fallback.
 	// However, don't fail if such a file is not available, as it would prevent the
@@ -211,10 +217,15 @@ func containerStatusStateToRuntimeClientState(containerState string) (runtimeCli
 }
 
 func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {
-	return &runtimeclient.ContainerData{
+	containerData := &runtimeclient.ContainerData{
 		ID:      container.ID,
 		Name:    strings.TrimPrefix(container.Names[0], "/"),
 		State:   containerStatusStateToRuntimeClientState(container.State),
 		Runtime: Name,
 	}
+
+	// Fill K8S information.
+	runtimeclient.EnrichWithK8sMetadata(containerData, container.Labels)
+
+	return containerData
 }

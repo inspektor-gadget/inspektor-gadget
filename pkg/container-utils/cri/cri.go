@@ -153,6 +153,9 @@ func parseContainerDetailsData(runtimeName string, containerStatus *pb.Container
 		},
 	}
 
+	// Fill K8S information.
+	runtimeclient.EnrichWithK8sMetadata(&containerDetailsData.ContainerData, containerStatus.Labels)
+
 	// Parse the extra info and fill the data.
 	err := parseExtraInfo(extraInfo, containerDetailsData)
 	if err != nil {
@@ -277,10 +280,15 @@ func containerStatusStateToRuntimeClientState(containerStatusState pb.ContainerS
 }
 
 func CRIContainerToContainerData(runtimeName string, container *pb.Container) *runtimeclient.ContainerData {
-	return &runtimeclient.ContainerData{
+	containerData := &runtimeclient.ContainerData{
 		ID:      container.Id,
 		Name:    strings.TrimPrefix(container.GetMetadata().Name, "/"),
 		State:   containerStatusStateToRuntimeClientState(container.GetState()),
 		Runtime: runtimeName,
 	}
+
+	// Fill K8S information.
+	runtimeclient.EnrichWithK8sMetadata(containerData, container.Labels)
+
+	return containerData
 }
