@@ -36,7 +36,7 @@ import (
 import "C"
 
 const (
-	BPFProgName = "kprobe__audit_seccomp"
+	BPFProgName = "ig_audit_secc"
 	BPFMapName  = "events"
 )
 

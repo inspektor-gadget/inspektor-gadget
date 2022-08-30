@@ -31,7 +31,7 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang ProcessCollectorWithFilters ./bpf/process-collector.c -- -DWITH_FILTER=1 -I../../../../ -I../../../../${TARGET} -Werror -O2 -g -c -x c
 
 const (
-	BPFIterName = "dump_task"
+	BPFIterName = "ig_snap_proc"
 )
 
 func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]processcollectortypes.Event, error) {

@@ -70,7 +70,7 @@ static int dump_req_sock(struct seq_file *seq, struct tcp_request_sock *treq)
 }
 
 SEC("iter/tcp")
-int dump_tcp4(struct bpf_iter__tcp *ctx)
+int ig_snap_tcp4(struct bpf_iter__tcp *ctx)
 {
 	struct sock_common *sk_common = ctx->sk_common;
 	struct seq_file *seq = ctx->meta->seq;

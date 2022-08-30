@@ -65,7 +65,7 @@ static __always_inline int is_x86_compat(struct task_struct *task)
 #endif
 
 SEC("raw_tracepoint/sys_enter")
-int tracepoint__raw_syscalls__sys_enter(struct bpf_raw_tracepoint_args *ctx)
+int ig_seccomp_e(struct bpf_raw_tracepoint_args *ctx)
 {
 	struct pt_regs regs = {};
 	unsigned int id;

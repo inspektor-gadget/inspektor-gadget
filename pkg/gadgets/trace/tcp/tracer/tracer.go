@@ -155,38 +155,38 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	t.tcpv4connectEnterLink, err = link.Kprobe("tcp_v4_connect", t.objs.TcpV4Connect, nil)
+	t.tcpv4connectEnterLink, err = link.Kprobe("tcp_v4_connect", t.objs.IgTcpV4CoE, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.tcpv4connectExitLink, err = link.Kretprobe("tcp_v4_connect", t.objs.TcpV4ConnectRet, nil)
+	t.tcpv4connectExitLink, err = link.Kretprobe("tcp_v4_connect", t.objs.IgTcpV4CoX, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.tcpv6connectEnterLink, err = link.Kprobe("tcp_v6_connect", t.objs.TcpV6Connect, nil)
+	t.tcpv6connectEnterLink, err = link.Kprobe("tcp_v6_connect", t.objs.IgTcpV6CoE, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.tcpv6connectExitLink, err = link.Kretprobe("tcp_v6_connect", t.objs.TcpV6ConnectRet, nil)
+	t.tcpv6connectExitLink, err = link.Kretprobe("tcp_v6_connect", t.objs.IgTcpV6CoX, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
 	// TODO: rename function in ebpf program
-	t.tcpCloseEnterLink, err = link.Kprobe("tcp_close", t.objs.EntryTraceClose, nil)
+	t.tcpCloseEnterLink, err = link.Kprobe("tcp_close", t.objs.IgTcpClose, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.tcpSetStateEnterLink, err = link.Kprobe("tcp_set_state", t.objs.EnterTcpSetState, nil)
+	t.tcpSetStateEnterLink, err = link.Kprobe("tcp_set_state", t.objs.IgTcpState, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.inetCskAcceptExitLink, err = link.Kretprobe("inet_csk_accept", t.objs.ExitInetCskAccept, nil)
+	t.inetCskAcceptExitLink, err = link.Kretprobe("inet_csk_accept", t.objs.IgTcpAccept, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}

@@ -54,7 +54,7 @@ type IterUDPv4Specs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type IterUDPv4ProgramSpecs struct {
-	DumpUdp4 *ebpf.ProgramSpec `ebpf:"dump_udp4"`
+	IgSnapUdp4 *ebpf.ProgramSpec `ebpf:"ig_snap_udp4"`
 }
 
 // IterUDPv4MapSpecs contains maps before they are loaded into the kernel.
@@ -92,12 +92,12 @@ func (m *IterUDPv4Maps) Close() error {
 //
 // It can be passed to LoadIterUDPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
 type IterUDPv4Programs struct {
-	DumpUdp4 *ebpf.Program `ebpf:"dump_udp4"`
+	IgSnapUdp4 *ebpf.Program `ebpf:"ig_snap_udp4"`
 }
 
 func (p *IterUDPv4Programs) Close() error {
 	return _IterUDPv4Close(
-		p.DumpUdp4,
+		p.IgSnapUdp4,
 	)
 }
 

@@ -27,7 +27,7 @@ struct {
 } events SEC(".maps");
 
 SEC("kprobe/audit_seccomp")
-int kprobe__audit_seccomp(struct pt_regs *ctx)
+int ig_audit_secc(struct pt_regs *ctx)
 {
 	unsigned long syscall = PT_REGS_PARM1(ctx);
 	int code = PT_REGS_PARM3(ctx);

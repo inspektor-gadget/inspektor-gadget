@@ -155,22 +155,22 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	t.ipv4Entry, err = link.Kprobe("inet_bind", t.objs.Ipv4BindEntry, nil)
+	t.ipv4Entry, err = link.Kprobe("inet_bind", t.objs.IgBindIpv4E, nil)
 	if err != nil {
 		return fmt.Errorf("error opening ipv4 kprobe: %w", err)
 	}
 
-	t.ipv4Exit, err = link.Kretprobe("inet_bind", t.objs.Ipv4BindExit, nil)
+	t.ipv4Exit, err = link.Kretprobe("inet_bind", t.objs.IgBindIpv4X, nil)
 	if err != nil {
 		return fmt.Errorf("error opening ipv4 kprobe: %w", err)
 	}
 
-	t.ipv6Entry, err = link.Kprobe("inet6_bind", t.objs.Ipv6BindEntry, nil)
+	t.ipv6Entry, err = link.Kprobe("inet6_bind", t.objs.IgBindIpv6E, nil)
 	if err != nil {
 		return fmt.Errorf("error opening ipv6 kprobe: %w", err)
 	}
 
-	t.ipv6Exit, err = link.Kretprobe("inet6_bind", t.objs.Ipv6BindExit, nil)
+	t.ipv6Exit, err = link.Kretprobe("inet6_bind", t.objs.IgBindIpv6X, nil)
 	if err != nil {
 		return fmt.Errorf("error opening ipv6 kprobe: %w", err)
 	}

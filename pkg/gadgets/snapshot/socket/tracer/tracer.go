@@ -78,7 +78,7 @@ func getTCPIter() (*link.Iter, error) {
 	defer objs.Close()
 
 	it, err := link.AttachIter(link.IterOptions{
-		Program: objs.DumpTcp4,
+		Program: objs.IgSnapTcp4,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach TCP BPF iterator: %w", err)
@@ -95,7 +95,7 @@ func getUDPIter() (*link.Iter, error) {
 	defer objs.Close()
 
 	it, err := link.AttachIter(link.IterOptions{
-		Program: objs.DumpUdp4,
+		Program: objs.IgSnapUdp4,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach UDP BPF iterator: %w", err)

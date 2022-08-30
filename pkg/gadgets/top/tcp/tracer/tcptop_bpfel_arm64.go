@@ -54,8 +54,8 @@ type tcptopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcptopProgramSpecs struct {
-	TcpCleanupRbuf *ebpf.ProgramSpec `ebpf:"tcp_cleanup_rbuf"`
-	TcpSendmsg     *ebpf.ProgramSpec `ebpf:"tcp_sendmsg"`
+	IgToptcpClean *ebpf.ProgramSpec `ebpf:"ig_toptcp_clean"`
+	IgToptcpSdmsg *ebpf.ProgramSpec `ebpf:"ig_toptcp_sdmsg"`
 }
 
 // tcptopMapSpecs contains maps before they are loaded into the kernel.
@@ -100,14 +100,14 @@ func (m *tcptopMaps) Close() error {
 //
 // It can be passed to loadTcptopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcptopPrograms struct {
-	TcpCleanupRbuf *ebpf.Program `ebpf:"tcp_cleanup_rbuf"`
-	TcpSendmsg     *ebpf.Program `ebpf:"tcp_sendmsg"`
+	IgToptcpClean *ebpf.Program `ebpf:"ig_toptcp_clean"`
+	IgToptcpSdmsg *ebpf.Program `ebpf:"ig_toptcp_sdmsg"`
 }
 
 func (p *tcptopPrograms) Close() error {
 	return _TcptopClose(
-		p.TcpCleanupRbuf,
-		p.TcpSendmsg,
+		p.IgToptcpClean,
+		p.IgToptcpSdmsg,
 	)
 }
 

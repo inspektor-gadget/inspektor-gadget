@@ -177,41 +177,41 @@ func (t *Tracer) start() error {
 	}
 
 	// read
-	t.readEnterLink, err = link.Kprobe(fsConf.read, t.objs.FileReadEntry, nil)
+	t.readEnterLink, err = link.Kprobe(fsConf.read, t.objs.IgFsslReadE, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
-	t.readExitLink, err = link.Kretprobe(fsConf.read, t.objs.FileReadExit, nil)
+	t.readExitLink, err = link.Kretprobe(fsConf.read, t.objs.IgFsslReadX, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
 	// write
-	t.writeEnterLink, err = link.Kprobe(fsConf.write, t.objs.FileWriteEntry, nil)
+	t.writeEnterLink, err = link.Kprobe(fsConf.write, t.objs.IgFsslWrE, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
-	t.writeExitLink, err = link.Kretprobe(fsConf.write, t.objs.FileWriteExit, nil)
+	t.writeExitLink, err = link.Kretprobe(fsConf.write, t.objs.IgFsslWrX, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
 	// open
-	t.openEnterLink, err = link.Kprobe(fsConf.open, t.objs.FileOpenEntry, nil)
+	t.openEnterLink, err = link.Kprobe(fsConf.open, t.objs.IgFsslOpenE, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
-	t.openExitLink, err = link.Kretprobe(fsConf.open, t.objs.FileOpenExit, nil)
+	t.openExitLink, err = link.Kretprobe(fsConf.open, t.objs.IgFsslOpenX, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
 	// sync
-	t.syncEnterLink, err = link.Kprobe(fsConf.fsync, t.objs.FileSyncEntry, nil)
+	t.syncEnterLink, err = link.Kprobe(fsConf.fsync, t.objs.IgFsslSyncE, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
-	t.syncExitLink, err = link.Kretprobe(fsConf.fsync, t.objs.FileSyncExit, nil)
+	t.syncExitLink, err = link.Kretprobe(fsConf.fsync, t.objs.IgFsslSyncX, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}

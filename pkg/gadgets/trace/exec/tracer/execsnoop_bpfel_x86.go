@@ -68,8 +68,8 @@ type execsnoopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execsnoopProgramSpecs struct {
-	TracepointSyscallsSysEnterExecve *ebpf.ProgramSpec `ebpf:"tracepoint__syscalls__sys_enter_execve"`
-	TracepointSyscallsSysExitExecve  *ebpf.ProgramSpec `ebpf:"tracepoint__syscalls__sys_exit_execve"`
+	IgExecveE *ebpf.ProgramSpec `ebpf:"ig_execve_e"`
+	IgExecveX *ebpf.ProgramSpec `ebpf:"ig_execve_x"`
 }
 
 // execsnoopMapSpecs contains maps before they are loaded into the kernel.
@@ -117,14 +117,14 @@ func (m *execsnoopMaps) Close() error {
 //
 // It can be passed to loadExecsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execsnoopPrograms struct {
-	TracepointSyscallsSysEnterExecve *ebpf.Program `ebpf:"tracepoint__syscalls__sys_enter_execve"`
-	TracepointSyscallsSysExitExecve  *ebpf.Program `ebpf:"tracepoint__syscalls__sys_exit_execve"`
+	IgExecveE *ebpf.Program `ebpf:"ig_execve_e"`
+	IgExecveX *ebpf.Program `ebpf:"ig_execve_x"`
 }
 
 func (p *execsnoopPrograms) Close() error {
 	return _ExecsnoopClose(
-		p.TracepointSyscallsSysEnterExecve,
-		p.TracepointSyscallsSysExitExecve,
+		p.IgExecveE,
+		p.IgExecveX,
 	)
 }
 

@@ -448,7 +448,7 @@ func TestEbpftop(t *testing.T) {
 	ebpftopCmd := &command{
 		name:           "StartEbpftopGadget",
 		cmd:            fmt.Sprintf("$KUBECTL_GADGET top ebpf"),
-		expectedRegexp: fmt.Sprintf(`\S*\s+\d+\s+Tracing\s+gadget_ebpftop\s+\d+\s+\S*\s+`),
+		expectedRegexp: fmt.Sprintf(`\S*\s+\d+\s+Tracing\s+ig_top_ebpf_it\s+\d+\s+\S*\s+`),
 		startAndStop:   true,
 	}
 

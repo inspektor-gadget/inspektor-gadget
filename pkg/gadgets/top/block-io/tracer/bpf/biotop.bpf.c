@@ -39,7 +39,7 @@ struct {
 } mount_ns_filter SEC(".maps");
 
 SEC("kprobe/blk_account_io_start")
-int BPF_KPROBE(blk_account_io_start, struct request *req)
+int BPF_KPROBE(ig_topio_start, struct request *req)
 {
 	struct task_struct *task;
 	u64 mntns_id;
@@ -62,7 +62,7 @@ int BPF_KPROBE(blk_account_io_start, struct request *req)
 }
 
 SEC("kprobe/blk_mq_start_request")
-int BPF_KPROBE(blk_mq_start_request, struct request *req)
+int BPF_KPROBE(ig_topio_req, struct request *req)
 {
 	/* time block I/O */
 	struct start_req_t start_req;
@@ -83,7 +83,7 @@ int BPF_KPROBE(blk_mq_start_request, struct request *req)
 }
 
 SEC("kprobe/blk_account_io_done")
-int BPF_KPROBE(blk_account_io_done, struct request *req, u64 now)
+int BPF_KPROBE(ig_topio_done, struct request *req, u64 now)
 {
 	struct val_t *valp, zero = {};
 	struct info_t info = {};

@@ -64,7 +64,7 @@ type profileSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type profileProgramSpecs struct {
-	DoPerfEvent *ebpf.ProgramSpec `ebpf:"do_perf_event"`
+	IgProfCpu *ebpf.ProgramSpec `ebpf:"ig_prof_cpu"`
 }
 
 // profileMapSpecs contains maps before they are loaded into the kernel.
@@ -112,12 +112,12 @@ func (m *profileMaps) Close() error {
 //
 // It can be passed to loadProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type profilePrograms struct {
-	DoPerfEvent *ebpf.Program `ebpf:"do_perf_event"`
+	IgProfCpu *ebpf.Program `ebpf:"ig_prof_cpu"`
 }
 
 func (p *profilePrograms) Close() error {
 	return _ProfileClose(
-		p.DoPerfEvent,
+		p.IgProfCpu,
 	)
 }
 

@@ -134,7 +134,7 @@ func NewTracer() (iter *PidIter, err error) {
 	}
 
 	p.iter, err = link.AttachIter(link.IterOptions{
-		Program: p.objs.GadgetEbpftop,
+		Program: p.objs.IgTopEbpfIt,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach iter: %w", err)

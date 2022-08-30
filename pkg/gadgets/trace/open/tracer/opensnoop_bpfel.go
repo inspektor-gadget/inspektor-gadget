@@ -54,10 +54,10 @@ type opensnoopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type opensnoopProgramSpecs struct {
-	TracepointSyscallsSysEnterOpen   *ebpf.ProgramSpec `ebpf:"tracepoint__syscalls__sys_enter_open"`
-	TracepointSyscallsSysEnterOpenat *ebpf.ProgramSpec `ebpf:"tracepoint__syscalls__sys_enter_openat"`
-	TracepointSyscallsSysExitOpen    *ebpf.ProgramSpec `ebpf:"tracepoint__syscalls__sys_exit_open"`
-	TracepointSyscallsSysExitOpenat  *ebpf.ProgramSpec `ebpf:"tracepoint__syscalls__sys_exit_openat"`
+	IgOpenE   *ebpf.ProgramSpec `ebpf:"ig_open_e"`
+	IgOpenX   *ebpf.ProgramSpec `ebpf:"ig_open_x"`
+	IgOpenatE *ebpf.ProgramSpec `ebpf:"ig_openat_e"`
+	IgOpenatX *ebpf.ProgramSpec `ebpf:"ig_openat_x"`
 }
 
 // opensnoopMapSpecs contains maps before they are loaded into the kernel.
@@ -105,18 +105,18 @@ func (m *opensnoopMaps) Close() error {
 //
 // It can be passed to loadOpensnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type opensnoopPrograms struct {
-	TracepointSyscallsSysEnterOpen   *ebpf.Program `ebpf:"tracepoint__syscalls__sys_enter_open"`
-	TracepointSyscallsSysEnterOpenat *ebpf.Program `ebpf:"tracepoint__syscalls__sys_enter_openat"`
-	TracepointSyscallsSysExitOpen    *ebpf.Program `ebpf:"tracepoint__syscalls__sys_exit_open"`
-	TracepointSyscallsSysExitOpenat  *ebpf.Program `ebpf:"tracepoint__syscalls__sys_exit_openat"`
+	IgOpenE   *ebpf.Program `ebpf:"ig_open_e"`
+	IgOpenX   *ebpf.Program `ebpf:"ig_open_x"`
+	IgOpenatE *ebpf.Program `ebpf:"ig_openat_e"`
+	IgOpenatX *ebpf.Program `ebpf:"ig_openat_x"`
 }
 
 func (p *opensnoopPrograms) Close() error {
 	return _OpensnoopClose(
-		p.TracepointSyscallsSysEnterOpen,
-		p.TracepointSyscallsSysEnterOpenat,
-		p.TracepointSyscallsSysExitOpen,
-		p.TracepointSyscallsSysExitOpenat,
+		p.IgOpenE,
+		p.IgOpenX,
+		p.IgOpenatE,
+		p.IgOpenatX,
 	)
 }
 

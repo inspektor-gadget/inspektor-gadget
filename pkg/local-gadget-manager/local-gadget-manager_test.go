@@ -344,7 +344,7 @@ ebpfeventloop:
 			}
 
 			for _, s := range event.Stats {
-				if s.Type == "Tracing" && s.Name == "gadget_ebpftop" {
+				if s.Type == "Tracing" && s.Name == "ig_top_ebpf_it" {
 					found = true
 					break ebpfeventloop
 				}

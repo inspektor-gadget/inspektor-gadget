@@ -217,25 +217,25 @@ end:
 }
 
 SEC("kprobe/tcp_v4_connect")
-int BPF_KPROBE(tcp_v4_connect, struct sock *sk)
+int BPF_KPROBE(ig_tcpc_v4_co_e, struct sock *sk)
 {
 	return enter_tcp_connect(ctx, sk);
 }
 
 SEC("kretprobe/tcp_v4_connect")
-int BPF_KRETPROBE(tcp_v4_connect_ret, int ret)
+int BPF_KRETPROBE(ig_tcpc_v4_co_x, int ret)
 {
 	return exit_tcp_connect(ctx, ret, 4);
 }
 
 SEC("kprobe/tcp_v6_connect")
-int BPF_KPROBE(tcp_v6_connect, struct sock *sk)
+int BPF_KPROBE(ig_tcpc_v6_co_e, struct sock *sk)
 {
 	return enter_tcp_connect(ctx, sk);
 }
 
 SEC("kretprobe/tcp_v6_connect")
-int BPF_KRETPROBE(tcp_v6_connect_ret, int ret)
+int BPF_KRETPROBE(ig_tcpc_v6_co_x, int ret)
 {
 	return exit_tcp_connect(ctx, ret, 6);
 }

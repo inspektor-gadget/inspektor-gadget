@@ -223,31 +223,31 @@ end:
 }
 
 SEC("kprobe/tcp_v4_connect")
-int BPF_KPROBE(tcp_v4_connect, struct sock *sk)
+int BPF_KPROBE(ig_tcp_v4_co_e, struct sock *sk)
 {
 	return enter_tcp_connect(ctx, sk);
 }
 
 SEC("kretprobe/tcp_v4_connect")
-int BPF_KRETPROBE(tcp_v4_connect_ret, int ret)
+int BPF_KRETPROBE(ig_tcp_v4_co_x, int ret)
 {
 	return exit_tcp_connect(ctx, ret, AF_INET);
 }
 
 SEC("kprobe/tcp_v6_connect")
-int BPF_KPROBE(tcp_v6_connect, struct sock *sk)
+int BPF_KPROBE(ig_tcp_v6_co_e, struct sock *sk)
 {
 	return enter_tcp_connect(ctx, sk);
 }
 
 SEC("kretprobe/tcp_v6_connect")
-int BPF_KRETPROBE(tcp_v6_connect_ret, int ret)
+int BPF_KRETPROBE(ig_tcp_v6_co_x, int ret)
 {
 	return exit_tcp_connect(ctx, ret, AF_INET6);
 }
 
 SEC("kprobe/tcp_close")
-int BPF_KPROBE(entry_trace_close, struct sock *sk)
+int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
@@ -289,7 +289,7 @@ int BPF_KPROBE(entry_trace_close, struct sock *sk)
 };
 
 SEC("kprobe/tcp_set_state")
-int BPF_KPROBE(enter_tcp_set_state, struct sock *sk, int state)
+int BPF_KPROBE(ig_tcp_state, struct sock *sk, int state)
 {
 	struct tuple_key_t tuple = {};
 	struct event event = {};
@@ -324,7 +324,7 @@ end:
 }
 
 SEC("kretprobe/inet_csk_accept")
-int BPF_KRETPROBE(exit_inet_csk_accept, struct sock *sk)
+int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;

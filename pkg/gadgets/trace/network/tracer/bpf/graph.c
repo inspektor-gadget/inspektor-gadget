@@ -40,7 +40,7 @@
 const volatile u64 container_quark = 0;
 
 SEC("socket1")
-int bpf_prog1(struct __sk_buff *skb)
+int ig_trace_net(struct __sk_buff *skb)
 {
 	// Skip multicast, broadcast, forwarding...
 	if (skb->pkt_type != PACKET_HOST && skb->pkt_type != PACKET_OUTGOING)

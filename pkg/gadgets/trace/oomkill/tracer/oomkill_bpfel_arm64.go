@@ -54,7 +54,7 @@ type oomkillSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type oomkillProgramSpecs struct {
-	OomKillProcess *ebpf.ProgramSpec `ebpf:"oom_kill_process"`
+	IgOomKill *ebpf.ProgramSpec `ebpf:"ig_oom_kill"`
 }
 
 // oomkillMapSpecs contains maps before they are loaded into the kernel.
@@ -99,12 +99,12 @@ func (m *oomkillMaps) Close() error {
 //
 // It can be passed to loadOomkillObjects or ebpf.CollectionSpec.LoadAndAssign.
 type oomkillPrograms struct {
-	OomKillProcess *ebpf.Program `ebpf:"oom_kill_process"`
+	IgOomKill *ebpf.Program `ebpf:"ig_oom_kill"`
 }
 
 func (p *oomkillPrograms) Close() error {
 	return _OomkillClose(
-		p.OomKillProcess,
+		p.IgOomKill,
 	)
 }
 

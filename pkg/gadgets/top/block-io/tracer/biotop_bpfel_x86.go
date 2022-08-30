@@ -82,9 +82,9 @@ type biotopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type biotopProgramSpecs struct {
-	BlkAccountIoDone  *ebpf.ProgramSpec `ebpf:"blk_account_io_done"`
-	BlkAccountIoStart *ebpf.ProgramSpec `ebpf:"blk_account_io_start"`
-	BlkMqStartRequest *ebpf.ProgramSpec `ebpf:"blk_mq_start_request"`
+	IgTopioDone  *ebpf.ProgramSpec `ebpf:"ig_topio_done"`
+	IgTopioReq   *ebpf.ProgramSpec `ebpf:"ig_topio_req"`
+	IgTopioStart *ebpf.ProgramSpec `ebpf:"ig_topio_start"`
 }
 
 // biotopMapSpecs contains maps before they are loaded into the kernel.
@@ -135,16 +135,16 @@ func (m *biotopMaps) Close() error {
 //
 // It can be passed to loadBiotopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type biotopPrograms struct {
-	BlkAccountIoDone  *ebpf.Program `ebpf:"blk_account_io_done"`
-	BlkAccountIoStart *ebpf.Program `ebpf:"blk_account_io_start"`
-	BlkMqStartRequest *ebpf.Program `ebpf:"blk_mq_start_request"`
+	IgTopioDone  *ebpf.Program `ebpf:"ig_topio_done"`
+	IgTopioReq   *ebpf.Program `ebpf:"ig_topio_req"`
+	IgTopioStart *ebpf.Program `ebpf:"ig_topio_start"`
 }
 
 func (p *biotopPrograms) Close() error {
 	return _BiotopClose(
-		p.BlkAccountIoDone,
-		p.BlkAccountIoStart,
-		p.BlkMqStartRequest,
+		p.IgTopioDone,
+		p.IgTopioReq,
+		p.IgTopioStart,
 	)
 }
 

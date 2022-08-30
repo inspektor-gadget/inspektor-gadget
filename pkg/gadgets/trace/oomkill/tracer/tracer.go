@@ -110,7 +110,7 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	kprobe, err := link.Kprobe("oom_kill_process", t.objs.OomKillProcess, nil)
+	kprobe, err := link.Kprobe("oom_kill_process", t.objs.IgOomKill, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}

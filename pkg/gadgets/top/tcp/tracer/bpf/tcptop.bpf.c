@@ -110,7 +110,7 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 }
 
 SEC("kprobe/tcp_sendmsg")
-int BPF_KPROBE(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size)
+int BPF_KPROBE(ig_toptcp_sdmsg, struct sock *sk, struct msghdr *msg, size_t size)
 {
 	return probe_ip(false, sk, size);
 }
@@ -122,7 +122,7 @@ int BPF_KPROBE(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size)
  * we'd much prefer tracepoints once they are available.
  */
 SEC("kprobe/tcp_cleanup_rbuf")
-int BPF_KPROBE(tcp_cleanup_rbuf, struct sock *sk, int copied)
+int BPF_KPROBE(ig_toptcp_clean, struct sock *sk, int copied)
 {
 	if (copied <= 0)
 		return 0;

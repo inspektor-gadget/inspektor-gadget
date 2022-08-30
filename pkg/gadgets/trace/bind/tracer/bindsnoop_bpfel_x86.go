@@ -54,10 +54,10 @@ type bindsnoopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bindsnoopProgramSpecs struct {
-	Ipv4BindEntry *ebpf.ProgramSpec `ebpf:"ipv4_bind_entry"`
-	Ipv4BindExit  *ebpf.ProgramSpec `ebpf:"ipv4_bind_exit"`
-	Ipv6BindEntry *ebpf.ProgramSpec `ebpf:"ipv6_bind_entry"`
-	Ipv6BindExit  *ebpf.ProgramSpec `ebpf:"ipv6_bind_exit"`
+	IgBindIpv4E *ebpf.ProgramSpec `ebpf:"ig_bind_ipv4_e"`
+	IgBindIpv4X *ebpf.ProgramSpec `ebpf:"ig_bind_ipv4_x"`
+	IgBindIpv6E *ebpf.ProgramSpec `ebpf:"ig_bind_ipv6_e"`
+	IgBindIpv6X *ebpf.ProgramSpec `ebpf:"ig_bind_ipv6_x"`
 }
 
 // bindsnoopMapSpecs contains maps before they are loaded into the kernel.
@@ -108,18 +108,18 @@ func (m *bindsnoopMaps) Close() error {
 //
 // It can be passed to loadBindsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bindsnoopPrograms struct {
-	Ipv4BindEntry *ebpf.Program `ebpf:"ipv4_bind_entry"`
-	Ipv4BindExit  *ebpf.Program `ebpf:"ipv4_bind_exit"`
-	Ipv6BindEntry *ebpf.Program `ebpf:"ipv6_bind_entry"`
-	Ipv6BindExit  *ebpf.Program `ebpf:"ipv6_bind_exit"`
+	IgBindIpv4E *ebpf.Program `ebpf:"ig_bind_ipv4_e"`
+	IgBindIpv4X *ebpf.Program `ebpf:"ig_bind_ipv4_x"`
+	IgBindIpv6E *ebpf.Program `ebpf:"ig_bind_ipv6_e"`
+	IgBindIpv6X *ebpf.Program `ebpf:"ig_bind_ipv6_x"`
 }
 
 func (p *bindsnoopPrograms) Close() error {
 	return _BindsnoopClose(
-		p.Ipv4BindEntry,
-		p.Ipv4BindExit,
-		p.Ipv6BindEntry,
-		p.Ipv6BindExit,
+		p.IgBindIpv4E,
+		p.IgBindIpv4X,
+		p.IgBindIpv6E,
+		p.IgBindIpv6X,
 	)
 }
 

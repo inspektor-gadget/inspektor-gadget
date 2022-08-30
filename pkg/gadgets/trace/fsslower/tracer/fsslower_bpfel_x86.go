@@ -54,14 +54,14 @@ type fsslowerSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type fsslowerProgramSpecs struct {
-	FileOpenEntry  *ebpf.ProgramSpec `ebpf:"file_open_entry"`
-	FileOpenExit   *ebpf.ProgramSpec `ebpf:"file_open_exit"`
-	FileReadEntry  *ebpf.ProgramSpec `ebpf:"file_read_entry"`
-	FileReadExit   *ebpf.ProgramSpec `ebpf:"file_read_exit"`
-	FileSyncEntry  *ebpf.ProgramSpec `ebpf:"file_sync_entry"`
-	FileSyncExit   *ebpf.ProgramSpec `ebpf:"file_sync_exit"`
-	FileWriteEntry *ebpf.ProgramSpec `ebpf:"file_write_entry"`
-	FileWriteExit  *ebpf.ProgramSpec `ebpf:"file_write_exit"`
+	IgFsslOpenE *ebpf.ProgramSpec `ebpf:"ig_fssl_open_e"`
+	IgFsslOpenX *ebpf.ProgramSpec `ebpf:"ig_fssl_open_x"`
+	IgFsslReadE *ebpf.ProgramSpec `ebpf:"ig_fssl_read_e"`
+	IgFsslReadX *ebpf.ProgramSpec `ebpf:"ig_fssl_read_x"`
+	IgFsslSyncE *ebpf.ProgramSpec `ebpf:"ig_fssl_sync_e"`
+	IgFsslSyncX *ebpf.ProgramSpec `ebpf:"ig_fssl_sync_x"`
+	IgFsslWrE   *ebpf.ProgramSpec `ebpf:"ig_fssl_wr_e"`
+	IgFsslWrX   *ebpf.ProgramSpec `ebpf:"ig_fssl_wr_x"`
 }
 
 // fsslowerMapSpecs contains maps before they are loaded into the kernel.
@@ -109,26 +109,26 @@ func (m *fsslowerMaps) Close() error {
 //
 // It can be passed to loadFsslowerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type fsslowerPrograms struct {
-	FileOpenEntry  *ebpf.Program `ebpf:"file_open_entry"`
-	FileOpenExit   *ebpf.Program `ebpf:"file_open_exit"`
-	FileReadEntry  *ebpf.Program `ebpf:"file_read_entry"`
-	FileReadExit   *ebpf.Program `ebpf:"file_read_exit"`
-	FileSyncEntry  *ebpf.Program `ebpf:"file_sync_entry"`
-	FileSyncExit   *ebpf.Program `ebpf:"file_sync_exit"`
-	FileWriteEntry *ebpf.Program `ebpf:"file_write_entry"`
-	FileWriteExit  *ebpf.Program `ebpf:"file_write_exit"`
+	IgFsslOpenE *ebpf.Program `ebpf:"ig_fssl_open_e"`
+	IgFsslOpenX *ebpf.Program `ebpf:"ig_fssl_open_x"`
+	IgFsslReadE *ebpf.Program `ebpf:"ig_fssl_read_e"`
+	IgFsslReadX *ebpf.Program `ebpf:"ig_fssl_read_x"`
+	IgFsslSyncE *ebpf.Program `ebpf:"ig_fssl_sync_e"`
+	IgFsslSyncX *ebpf.Program `ebpf:"ig_fssl_sync_x"`
+	IgFsslWrE   *ebpf.Program `ebpf:"ig_fssl_wr_e"`
+	IgFsslWrX   *ebpf.Program `ebpf:"ig_fssl_wr_x"`
 }
 
 func (p *fsslowerPrograms) Close() error {
 	return _FsslowerClose(
-		p.FileOpenEntry,
-		p.FileOpenExit,
-		p.FileReadEntry,
-		p.FileReadExit,
-		p.FileSyncEntry,
-		p.FileSyncExit,
-		p.FileWriteEntry,
-		p.FileWriteExit,
+		p.IgFsslOpenE,
+		p.IgFsslOpenX,
+		p.IgFsslReadE,
+		p.IgFsslReadX,
+		p.IgFsslSyncE,
+		p.IgFsslSyncX,
+		p.IgFsslWrE,
+		p.IgFsslWrX,
 	)
 }
 

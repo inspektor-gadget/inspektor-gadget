@@ -147,7 +147,7 @@ func (t *Tracer) Attach(key string, pid uint32) (err error) {
 	if err := syscall.SetsockoptInt(
 		l.sockFd,
 		syscall.SOL_SOCKET, BPFSocketAttach,
-		l.networkGraphObjects.graphPrograms.BpfProg1.FD(),
+		l.networkGraphObjects.graphPrograms.IgTraceNet.FD(),
 	); err != nil {
 		return fmt.Errorf("failed to attach BPF program: %w", err)
 	}

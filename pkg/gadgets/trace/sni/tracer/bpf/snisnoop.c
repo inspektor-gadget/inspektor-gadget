@@ -114,7 +114,7 @@ static inline int parse_sni(struct __sk_buff *skb, int data_offset, char *out)
 
 
 SEC("socket1")
-int bpf_prog1(struct __sk_buff *skb)
+int ig_trace_sni(struct __sk_buff *skb)
 {
 	// Skip frames with non-IP Ethernet protocol.
 	struct ethhdr ethh;

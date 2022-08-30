@@ -68,7 +68,7 @@ bool trace_allowed(u32 tgid, u32 pid)
 }
 
 SEC("tracepoint/syscalls/sys_enter_open")
-int tracepoint__syscalls__sys_enter_open(struct trace_event_raw_sys_enter* ctx)
+int ig_open_e(struct trace_event_raw_sys_enter* ctx)
 {
 	u64 id = bpf_get_current_pid_tgid();
 	/* use kernel terminology here for tgid/pid: */
@@ -86,7 +86,7 @@ int tracepoint__syscalls__sys_enter_open(struct trace_event_raw_sys_enter* ctx)
 }
 
 SEC("tracepoint/syscalls/sys_enter_openat")
-int tracepoint__syscalls__sys_enter_openat(struct trace_event_raw_sys_enter* ctx)
+int ig_openat_e(struct trace_event_raw_sys_enter* ctx)
 {
 	u64 id = bpf_get_current_pid_tgid();
 	/* use kernel terminology here for tgid/pid: */
@@ -145,13 +145,13 @@ cleanup:
 }
 
 SEC("tracepoint/syscalls/sys_exit_open")
-int tracepoint__syscalls__sys_exit_open(struct trace_event_raw_sys_exit* ctx)
+int ig_open_x(struct trace_event_raw_sys_exit* ctx)
 {
 	return trace_exit(ctx);
 }
 
 SEC("tracepoint/syscalls/sys_exit_openat")
-int tracepoint__syscalls__sys_exit_openat(struct trace_event_raw_sys_exit* ctx)
+int ig_openat_x(struct trace_event_raw_sys_exit* ctx)
 {
 	return trace_exit(ctx);
 }
