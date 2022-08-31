@@ -32,6 +32,8 @@ const (
 	TOTALRUNCOUNT
 	CUMULRUNTIME
 	CUMULRUNCOUNT
+	MAPMEMORY
+	MAPCOUNT
 )
 
 const (
@@ -55,6 +57,8 @@ var SortBySlice = []string{
 	"totalruncount",
 	"cumulruntime",
 	"cumulruncount",
+	"mapmemory",
+	"mapcount",
 }
 
 func (s SortBy) String() string {
@@ -94,6 +98,10 @@ func SortStats(stats []Stats, sortBy SortBy) {
 			return a.CumulativeRunCount > b.CumulativeRunCount
 		case PROGRAMID:
 			return a.ProgramID > b.ProgramID
+		case MAPMEMORY:
+			return a.MapMemory > b.MapMemory
+		case MAPCOUNT:
+			return a.MapCount > b.MapCount
 		default:
 			return a.CurrentRuntime > b.CurrentRuntime && a.CurrentRunCount > b.CurrentRunCount
 		}
@@ -117,6 +125,8 @@ type Stats struct {
 	CumulativeRunCount uint64     `json:"cumulRunCount,omitempty"`
 	TotalRuntime       int64      `json:"totalRuntime,omitempty"`
 	TotalRunCount      uint64     `json:"totalRunCount,omitempty"`
+	MapMemory          uint64     `json:"mapMemory,omitempty"`
+	MapCount           uint32     `json:"mapCount,omitempty"`
 }
 
 type PidInfo struct {

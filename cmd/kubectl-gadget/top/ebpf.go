@@ -28,6 +28,7 @@ import (
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 
+	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -62,6 +63,8 @@ func newEbpfCmd() *cobra.Command {
 				"comm",
 				"runtime",
 				"runcount",
+				"mapmemory",
+				"mapcount",
 			},
 		},
 	}
@@ -79,6 +82,8 @@ func newEbpfCmd() *cobra.Command {
 		"totalruncount": 13,
 		"cumulruntime":  12,
 		"cumulruncount": 13,
+		"mapmemory":     14,
+		"mapcount":      8,
 	}
 
 	cmd := &cobra.Command{
@@ -281,6 +286,10 @@ func (p *EbpfParser) TransformStats(stats *types.Stats) string {
 				sb.WriteString(fmt.Sprintf("%*v", p.ColumnsWidth[col], time.Duration(stats.CumulativeRuntime)))
 			case "cumulruncount":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.CumulativeRunCount))
+			case "mapmemory":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], units.BytesSize(float64(stats.MapMemory))))
+			case "mapcount":
+				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.MapCount))
 			}
 			sb.WriteRune(' ')
 		}
