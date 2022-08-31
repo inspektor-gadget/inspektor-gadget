@@ -63,13 +63,13 @@ type sigsnoopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type sigsnoopProgramSpecs struct {
-	KillEntry   *ebpf.ProgramSpec `ebpf:"kill_entry"`
-	KillExit    *ebpf.ProgramSpec `ebpf:"kill_exit"`
-	SigTrace    *ebpf.ProgramSpec `ebpf:"sig_trace"`
-	TgkillEntry *ebpf.ProgramSpec `ebpf:"tgkill_entry"`
-	TgkillExit  *ebpf.ProgramSpec `ebpf:"tgkill_exit"`
-	TkillEntry  *ebpf.ProgramSpec `ebpf:"tkill_entry"`
-	TkillExit   *ebpf.ProgramSpec `ebpf:"tkill_exit"`
+	IgSigGenerate *ebpf.ProgramSpec `ebpf:"ig_sig_generate"`
+	IgSigKillE    *ebpf.ProgramSpec `ebpf:"ig_sig_kill_e"`
+	IgSigKillX    *ebpf.ProgramSpec `ebpf:"ig_sig_kill_x"`
+	IgSigTgkillE  *ebpf.ProgramSpec `ebpf:"ig_sig_tgkill_e"`
+	IgSigTgkillX  *ebpf.ProgramSpec `ebpf:"ig_sig_tgkill_x"`
+	IgSigTkillE   *ebpf.ProgramSpec `ebpf:"ig_sig_tkill_e"`
+	IgSigTkillX   *ebpf.ProgramSpec `ebpf:"ig_sig_tkill_x"`
 }
 
 // sigsnoopMapSpecs contains maps before they are loaded into the kernel.
@@ -117,24 +117,24 @@ func (m *sigsnoopMaps) Close() error {
 //
 // It can be passed to loadSigsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type sigsnoopPrograms struct {
-	KillEntry   *ebpf.Program `ebpf:"kill_entry"`
-	KillExit    *ebpf.Program `ebpf:"kill_exit"`
-	SigTrace    *ebpf.Program `ebpf:"sig_trace"`
-	TgkillEntry *ebpf.Program `ebpf:"tgkill_entry"`
-	TgkillExit  *ebpf.Program `ebpf:"tgkill_exit"`
-	TkillEntry  *ebpf.Program `ebpf:"tkill_entry"`
-	TkillExit   *ebpf.Program `ebpf:"tkill_exit"`
+	IgSigGenerate *ebpf.Program `ebpf:"ig_sig_generate"`
+	IgSigKillE    *ebpf.Program `ebpf:"ig_sig_kill_e"`
+	IgSigKillX    *ebpf.Program `ebpf:"ig_sig_kill_x"`
+	IgSigTgkillE  *ebpf.Program `ebpf:"ig_sig_tgkill_e"`
+	IgSigTgkillX  *ebpf.Program `ebpf:"ig_sig_tgkill_x"`
+	IgSigTkillE   *ebpf.Program `ebpf:"ig_sig_tkill_e"`
+	IgSigTkillX   *ebpf.Program `ebpf:"ig_sig_tkill_x"`
 }
 
 func (p *sigsnoopPrograms) Close() error {
 	return _SigsnoopClose(
-		p.KillEntry,
-		p.KillExit,
-		p.SigTrace,
-		p.TgkillEntry,
-		p.TgkillExit,
-		p.TkillEntry,
-		p.TkillExit,
+		p.IgSigGenerate,
+		p.IgSigKillE,
+		p.IgSigKillX,
+		p.IgSigTgkillE,
+		p.IgSigTgkillX,
+		p.IgSigTkillE,
+		p.IgSigTkillX,
 	)
 }
 

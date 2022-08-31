@@ -132,19 +132,19 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	blockRqCompleteLink, err := link.AttachTracing(link.TracingOptions{Program: t.objs.BlockRqComplete})
+	blockRqCompleteLink, err := link.AttachTracing(link.TracingOptions{Program: t.objs.IgProfioDone})
 	if err != nil {
 		return fmt.Errorf("error attaching tracing: %w", err)
 	}
 	t.blockRqCompleteLink = blockRqCompleteLink
 
-	blockRqInsertLink, err := link.AttachTracing(link.TracingOptions{Program: t.objs.BlockRqInsert})
+	blockRqInsertLink, err := link.AttachTracing(link.TracingOptions{Program: t.objs.IgProfioIns})
 	if err != nil {
 		return fmt.Errorf("error attaching tracing: %w", err)
 	}
 	t.blockRqInsertLink = blockRqInsertLink
 
-	blockRqIssueLink, err := link.AttachTracing(link.TracingOptions{Program: t.objs.BlockRqIssue})
+	blockRqIssueLink, err := link.AttachTracing(link.TracingOptions{Program: t.objs.IgProfioIss})
 	if err != nil {
 		return fmt.Errorf("error attaching tracing: %w", err)
 	}

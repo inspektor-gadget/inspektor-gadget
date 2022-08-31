@@ -68,8 +68,8 @@ type execsnoopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type execsnoopProgramSpecs struct {
-	ExecveatEntry *ebpf.ProgramSpec `ebpf:"execveat_entry"`
-	ExecveatExit  *ebpf.ProgramSpec `ebpf:"execveat_exit"`
+	IgExecveat  *ebpf.ProgramSpec `ebpf:"ig_execveat_"`
+	IgExecveatE *ebpf.ProgramSpec `ebpf:"ig_execveat_e"`
 }
 
 // execsnoopMapSpecs contains maps before they are loaded into the kernel.
@@ -117,14 +117,14 @@ func (m *execsnoopMaps) Close() error {
 //
 // It can be passed to loadExecsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type execsnoopPrograms struct {
-	ExecveatEntry *ebpf.Program `ebpf:"execveat_entry"`
-	ExecveatExit  *ebpf.Program `ebpf:"execveat_exit"`
+	IgExecveat  *ebpf.Program `ebpf:"ig_execveat_"`
+	IgExecveatE *ebpf.Program `ebpf:"ig_execveat_e"`
 }
 
 func (p *execsnoopPrograms) Close() error {
 	return _ExecsnoopClose(
-		p.ExecveatEntry,
-		p.ExecveatExit,
+		p.IgExecveat,
+		p.IgExecveatE,
 	)
 }
 

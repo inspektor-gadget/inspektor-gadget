@@ -15,7 +15,7 @@
 #include <gadgettracermanager/bpf-maps.h>
 
 SEC("iter/task")
-int dump_task(struct bpf_iter__task *ctx)
+int ig_snap_proc(struct bpf_iter__task *ctx)
 {
 	struct seq_file *seq = ctx->meta->seq;
 	__u32 seq_num = ctx->meta->seq_num;

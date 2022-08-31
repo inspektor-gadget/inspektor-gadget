@@ -60,7 +60,7 @@ type piditerSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type piditerProgramSpecs struct {
-	GadgetEbpftop *ebpf.ProgramSpec `ebpf:"gadget_ebpftop"`
+	IgTopEbpfIt *ebpf.ProgramSpec `ebpf:"ig_top_ebpf_it"`
 }
 
 // piditerMapSpecs contains maps before they are loaded into the kernel.
@@ -98,12 +98,12 @@ func (m *piditerMaps) Close() error {
 //
 // It can be passed to loadPiditerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type piditerPrograms struct {
-	GadgetEbpftop *ebpf.Program `ebpf:"gadget_ebpftop"`
+	IgTopEbpfIt *ebpf.Program `ebpf:"ig_top_ebpf_it"`
 }
 
 func (p *piditerPrograms) Close() error {
 	return _PiditerClose(
-		p.GadgetEbpftop,
+		p.IgTopEbpfIt,
 	)
 }
 

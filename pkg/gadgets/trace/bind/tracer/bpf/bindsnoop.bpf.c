@@ -122,25 +122,25 @@ cleanup:
 }
 
 SEC("kprobe/inet_bind")
-int BPF_KPROBE(ipv4_bind_entry, struct socket *socket)
+int BPF_KPROBE(ig_bind_ipv4_e, struct socket *socket)
 {
 	return probe_entry(ctx, socket);
 }
 
 SEC("kretprobe/inet_bind")
-int BPF_KRETPROBE(ipv4_bind_exit)
+int BPF_KRETPROBE(ig_bind_ipv4_x)
 {
 	return probe_exit(ctx, 4);
 }
 
 SEC("kprobe/inet6_bind")
-int BPF_KPROBE(ipv6_bind_entry, struct socket *socket)
+int BPF_KPROBE(ig_bind_ipv6_e, struct socket *socket)
 {
 	return probe_entry(ctx, socket);
 }
 
 SEC("kretprobe/inet6_bind")
-int BPF_KRETPROBE(ipv6_bind_exit)
+int BPF_KRETPROBE(ig_bind_ipv6_x)
 {
 	return probe_exit(ctx, 6);
 }

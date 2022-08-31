@@ -25,12 +25,12 @@ import (
 )
 
 func loadExecsnoopLinks(objs execsnoopObjects) (link.Link, link.Link, error) {
-	enter, err := link.Tracepoint("syscalls", "sys_enter_execve", objs.TracepointSyscallsSysEnterExecve, nil)
+	enter, err := link.Tracepoint("syscalls", "sys_enter_execve", objs.IgExecveE, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	exit, err := link.Tracepoint("syscalls", "sys_exit_execve", objs.TracepointSyscallsSysExitExecve, nil)
+	exit, err := link.Tracepoint("syscalls", "sys_exit_execve", objs.IgExecveX, nil)
 	if err != nil {
 		gadgets.CloseLink(enter)
 		return nil, nil, fmt.Errorf("error opening tracepoint: %w", err)

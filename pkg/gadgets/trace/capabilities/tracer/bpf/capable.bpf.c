@@ -52,7 +52,7 @@ struct {
 } mount_ns_filter SEC(".maps");
 
 SEC("kprobe/cap_capable")
-int BPF_KPROBE(kprobe__cap_capable, const struct cred *cred, struct user_namespace *targ_ns, int cap, int cap_opt)
+int BPF_KPROBE(ig_trace_cap, const struct cred *cred, struct user_namespace *targ_ns, int cap, int cap_opt)
 {
 	__u32 pid;
 	u64 mntns_id;

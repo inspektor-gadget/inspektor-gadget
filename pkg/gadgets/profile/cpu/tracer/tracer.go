@@ -374,7 +374,7 @@ func (t *Tracer) start() error {
 		t.perfFds = append(t.perfFds, fd)
 
 		// Attach program to perf event.
-		if err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_SET_BPF, t.objs.DoPerfEvent.FD()); err != nil {
+		if err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_SET_BPF, t.objs.IgProfCpu.FD()); err != nil {
 			return fmt.Errorf("failed to attach eBPF program to perf fd: %w", err)
 		}
 

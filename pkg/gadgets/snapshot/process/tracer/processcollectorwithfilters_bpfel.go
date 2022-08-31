@@ -61,7 +61,7 @@ type ProcessCollectorWithFiltersSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type ProcessCollectorWithFiltersProgramSpecs struct {
-	DumpTask *ebpf.ProgramSpec `ebpf:"dump_task"`
+	IgSnapProc *ebpf.ProgramSpec `ebpf:"ig_snap_proc"`
 }
 
 // ProcessCollectorWithFiltersMapSpecs contains maps before they are loaded into the kernel.
@@ -106,12 +106,12 @@ func (m *ProcessCollectorWithFiltersMaps) Close() error {
 //
 // It can be passed to LoadProcessCollectorWithFiltersObjects or ebpf.CollectionSpec.LoadAndAssign.
 type ProcessCollectorWithFiltersPrograms struct {
-	DumpTask *ebpf.Program `ebpf:"dump_task"`
+	IgSnapProc *ebpf.Program `ebpf:"ig_snap_proc"`
 }
 
 func (p *ProcessCollectorWithFiltersPrograms) Close() error {
 	return _ProcessCollectorWithFiltersClose(
-		p.DumpTask,
+		p.IgSnapProc,
 	)
 }
 

@@ -37,7 +37,7 @@ import (
 import "C"
 
 const (
-	BPFProgName     = "bpf_prog1"
+	BPFProgName     = "ig_trace_sni"
 	BPFMapName      = "events"
 	BPFSocketAttach = 50
 )

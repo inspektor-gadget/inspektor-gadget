@@ -70,7 +70,7 @@ type auditseccompSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type auditseccompProgramSpecs struct {
-	KprobeAuditSeccomp *ebpf.ProgramSpec `ebpf:"kprobe__audit_seccomp"`
+	IgAuditSecc *ebpf.ProgramSpec `ebpf:"ig_audit_secc"`
 }
 
 // auditseccompMapSpecs contains maps before they are loaded into the kernel.
@@ -118,12 +118,12 @@ func (m *auditseccompMaps) Close() error {
 //
 // It can be passed to loadAuditseccompObjects or ebpf.CollectionSpec.LoadAndAssign.
 type auditseccompPrograms struct {
-	KprobeAuditSeccomp *ebpf.Program `ebpf:"kprobe__audit_seccomp"`
+	IgAuditSecc *ebpf.Program `ebpf:"ig_audit_secc"`
 }
 
 func (p *auditseccompPrograms) Close() error {
 	return _AuditseccompClose(
-		p.KprobeAuditSeccomp,
+		p.IgAuditSecc,
 	)
 }
 

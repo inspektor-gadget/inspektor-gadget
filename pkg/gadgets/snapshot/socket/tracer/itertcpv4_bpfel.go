@@ -54,7 +54,7 @@ type IterTCPv4Specs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type IterTCPv4ProgramSpecs struct {
-	DumpTcp4 *ebpf.ProgramSpec `ebpf:"dump_tcp4"`
+	IgSnapTcp4 *ebpf.ProgramSpec `ebpf:"ig_snap_tcp4"`
 }
 
 // IterTCPv4MapSpecs contains maps before they are loaded into the kernel.
@@ -92,12 +92,12 @@ func (m *IterTCPv4Maps) Close() error {
 //
 // It can be passed to LoadIterTCPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
 type IterTCPv4Programs struct {
-	DumpTcp4 *ebpf.Program `ebpf:"dump_tcp4"`
+	IgSnapTcp4 *ebpf.Program `ebpf:"ig_snap_tcp4"`
 }
 
 func (p *IterTCPv4Programs) Close() error {
 	return _IterTCPv4Close(
-		p.DumpTcp4,
+		p.IgSnapTcp4,
 	)
 }
 

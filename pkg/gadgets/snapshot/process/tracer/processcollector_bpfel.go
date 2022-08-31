@@ -61,7 +61,7 @@ type ProcessCollectorSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type ProcessCollectorProgramSpecs struct {
-	DumpTask *ebpf.ProgramSpec `ebpf:"dump_task"`
+	IgSnapProc *ebpf.ProgramSpec `ebpf:"ig_snap_proc"`
 }
 
 // ProcessCollectorMapSpecs contains maps before they are loaded into the kernel.
@@ -103,12 +103,12 @@ func (m *ProcessCollectorMaps) Close() error {
 //
 // It can be passed to LoadProcessCollectorObjects or ebpf.CollectionSpec.LoadAndAssign.
 type ProcessCollectorPrograms struct {
-	DumpTask *ebpf.Program `ebpf:"dump_task"`
+	IgSnapProc *ebpf.Program `ebpf:"ig_snap_proc"`
 }
 
 func (p *ProcessCollectorPrograms) Close() error {
 	return _ProcessCollectorClose(
-		p.DumpTask,
+		p.IgSnapProc,
 	)
 }
 

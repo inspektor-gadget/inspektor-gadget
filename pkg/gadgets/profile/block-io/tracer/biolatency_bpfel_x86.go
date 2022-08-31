@@ -61,9 +61,9 @@ type biolatencySpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type biolatencyProgramSpecs struct {
-	BlockRqComplete *ebpf.ProgramSpec `ebpf:"block_rq_complete"`
-	BlockRqInsert   *ebpf.ProgramSpec `ebpf:"block_rq_insert"`
-	BlockRqIssue    *ebpf.ProgramSpec `ebpf:"block_rq_issue"`
+	IgProfioDone *ebpf.ProgramSpec `ebpf:"ig_profio_done"`
+	IgProfioIns  *ebpf.ProgramSpec `ebpf:"ig_profio_ins"`
+	IgProfioIss  *ebpf.ProgramSpec `ebpf:"ig_profio_iss"`
 }
 
 // biolatencyMapSpecs contains maps before they are loaded into the kernel.
@@ -111,16 +111,16 @@ func (m *biolatencyMaps) Close() error {
 //
 // It can be passed to loadBiolatencyObjects or ebpf.CollectionSpec.LoadAndAssign.
 type biolatencyPrograms struct {
-	BlockRqComplete *ebpf.Program `ebpf:"block_rq_complete"`
-	BlockRqInsert   *ebpf.Program `ebpf:"block_rq_insert"`
-	BlockRqIssue    *ebpf.Program `ebpf:"block_rq_issue"`
+	IgProfioDone *ebpf.Program `ebpf:"ig_profio_done"`
+	IgProfioIns  *ebpf.Program `ebpf:"ig_profio_ins"`
+	IgProfioIss  *ebpf.Program `ebpf:"ig_profio_iss"`
 }
 
 func (p *biolatencyPrograms) Close() error {
 	return _BiolatencyClose(
-		p.BlockRqComplete,
-		p.BlockRqInsert,
-		p.BlockRqIssue,
+		p.IgProfioDone,
+		p.IgProfioIns,
+		p.IgProfioIss,
 	)
 }
 

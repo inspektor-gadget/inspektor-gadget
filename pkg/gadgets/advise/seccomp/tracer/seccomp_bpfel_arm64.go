@@ -54,7 +54,7 @@ type seccompSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type seccompProgramSpecs struct {
-	TracepointRawSyscallsSysEnter *ebpf.ProgramSpec `ebpf:"tracepoint__raw_syscalls__sys_enter"`
+	IgSeccompE *ebpf.ProgramSpec `ebpf:"ig_seccomp_e"`
 }
 
 // seccompMapSpecs contains maps before they are loaded into the kernel.
@@ -96,12 +96,12 @@ func (m *seccompMaps) Close() error {
 //
 // It can be passed to loadSeccompObjects or ebpf.CollectionSpec.LoadAndAssign.
 type seccompPrograms struct {
-	TracepointRawSyscallsSysEnter *ebpf.Program `ebpf:"tracepoint__raw_syscalls__sys_enter"`
+	IgSeccompE *ebpf.Program `ebpf:"ig_seccomp_e"`
 }
 
 func (p *seccompPrograms) Close() error {
 	return _SeccompClose(
-		p.TracepointRawSyscallsSysEnter,
+		p.IgSeccompE,
 	)
 }
 

@@ -56,7 +56,7 @@ struct dnshdr {
 };
 
 SEC("socket1")
-int bpf_prog1(struct __sk_buff *skb)
+int ig_trace_dns(struct __sk_buff *skb)
 {
 	// Skip non-IP packets
 	if (load_half(skb, offsetof(struct ethhdr, h_proto)) != ETH_P_IP)

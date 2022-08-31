@@ -24,7 +24,7 @@ struct {
 const volatile bool filter_by_mnt_ns = false;
 
 SEC("kprobe/oom_kill_process")
-int BPF_KPROBE(oom_kill_process, struct oom_control *oc, const char *message)
+int BPF_KPROBE(ig_oom_kill, struct oom_control *oc, const char *message)
 {
 	struct data_t data;
 	u64 mntns_id;

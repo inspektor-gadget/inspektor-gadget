@@ -15,7 +15,7 @@ So first, start `top ebpf` in a terminal. You should see something like:
 ```bash
 $ kubectl gadget top ebpf
 NODE             PROGID   TYPE             NAME             PID     COMM                      RUNTIME   RUNCOUNT
-minikube         6344     Tracing          gadget_ebpftop   540621  gadgettracerman          86.911µs       1071
+minikube         6344     Tracing          ig_top_ebpf_it   540621  gadgettracerman          86.911µs       1071
 minikube         62       CGroupDevice                      2378    systemd                        0s          0
 minikube         48       CGroupSKB                         2378    systemd                        0s          0
 ...
@@ -41,9 +41,9 @@ Some eBPF programs of type `Kprobe` should pop up, including their runtime and r
 ```bash
 $ kubectl gadget top ebpf
 NODE             PROGID   TYPE             NAME             PID     COMM                      RUNTIME   RUNCOUNT
-minikube         6346     Kprobe           vfs_write_entry  540621  gadgettracerman        3.948619ms        378
-minikube         6345     Kprobe           vfs_read_entry   540621  gadgettracerman         677.012µs       1157
-minikube         6347     Tracing          gadget_ebpftop   540621  gadgettracerman          65.069µs       1101
+minikube         6346     Kprobe           ig_topfile_wr_e  540621  gadgettracerman        3.948619ms        378
+minikube         6345     Kprobe           ig_topfile_rd_e  540621  gadgettracerman         677.012µs       1157
+minikube         6347     Tracing          ig_top_ebpf_it   540621  gadgettracerman          65.069µs       1101
 minikube         26       CGroupDevice                                                        3.667µs          2
 minikube         62       CGroupDevice                      2378    systemd                        0s          0
 minikube         53       CGroupDevice                                                             0s          0
@@ -60,7 +60,7 @@ over a minute:
 ```bash
 $ kubectl-gadget top ebpf -o custom-columns=node,progid,type,name,pid,comm,cumulruntime,cumulruncount --sort cumulruntime --timeout 60
 NODE             PROGID   TYPE             NAME             PID     COMM                 CUMULRUNTIME CUMULRUNCOUNT
-minikube         2598     Tracing          gadget_ebpftop   2215151 gadgettracerman        5.239255ms         61443
+minikube         2598     Tracing          ig_top_ebpf_it   2215151 gadgettracerman        5.239255ms         61443
 minikube         24       CGroupDevice                                                      147.327µs           224
 minikube         85       CGroupDevice                                                       12.209µs             4
 minikube         60       CGroupDevice                      1765    systemd                        0s             0

@@ -40,10 +40,10 @@ static __always_inline bool valid_uid(uid_t uid) {
 
 #ifdef __TARGET_ARCH_arm64
 SEC("kprobe/do_execveat_common.isra.0")
-int BPF_KPROBE(execveat_entry)
+int BPF_KPROBE(ig_execveat_e)
 #else /* !__TARGET_ARCH_arm64 */
 SEC("tracepoint/syscalls/sys_enter_execve")
-int tracepoint__syscalls__sys_enter_execve(struct trace_event_raw_sys_enter* ctx)
+int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 #endif /* !__TARGET_ARCH_arm64 */
 {
 	u64 id;
@@ -128,10 +128,10 @@ int tracepoint__syscalls__sys_enter_execve(struct trace_event_raw_sys_enter* ctx
 
 #ifdef __TARGET_ARCH_arm64
 SEC("kretprobe/do_execveat_common.isra.0")
-int BPF_KRETPROBE(execveat_exit)
+int BPF_KRETPROBE(ig_execveat_)
 #else /* !__TARGET_ARCH_arm64 */
 SEC("tracepoint/syscalls/sys_exit_execve")
-int tracepoint__syscalls__sys_exit_execve(struct trace_event_raw_sys_exit* ctx)
+int ig_execve_x(struct trace_event_raw_sys_exit* ctx)
 #endif /* !__TARGET_ARCH_arm64 */
 {
 	u64 id;

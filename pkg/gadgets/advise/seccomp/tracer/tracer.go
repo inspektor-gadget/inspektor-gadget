@@ -29,7 +29,7 @@ import (
 import "C"
 
 const (
-	BPFProgName = "tracepoint__raw_syscalls__sys_enter"
+	BPFProgName = "ig_seccomp_e"
 	BPFMapName  = "syscalls_per_mntns"
 )
 

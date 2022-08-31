@@ -54,13 +54,13 @@ type tcptracerSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcptracerProgramSpecs struct {
-	EnterTcpSetState  *ebpf.ProgramSpec `ebpf:"enter_tcp_set_state"`
-	EntryTraceClose   *ebpf.ProgramSpec `ebpf:"entry_trace_close"`
-	ExitInetCskAccept *ebpf.ProgramSpec `ebpf:"exit_inet_csk_accept"`
-	TcpV4Connect      *ebpf.ProgramSpec `ebpf:"tcp_v4_connect"`
-	TcpV4ConnectRet   *ebpf.ProgramSpec `ebpf:"tcp_v4_connect_ret"`
-	TcpV6Connect      *ebpf.ProgramSpec `ebpf:"tcp_v6_connect"`
-	TcpV6ConnectRet   *ebpf.ProgramSpec `ebpf:"tcp_v6_connect_ret"`
+	IgTcpAccept *ebpf.ProgramSpec `ebpf:"ig_tcp_accept"`
+	IgTcpClose  *ebpf.ProgramSpec `ebpf:"ig_tcp_close"`
+	IgTcpState  *ebpf.ProgramSpec `ebpf:"ig_tcp_state"`
+	IgTcpV4CoE  *ebpf.ProgramSpec `ebpf:"ig_tcp_v4_co_e"`
+	IgTcpV4CoX  *ebpf.ProgramSpec `ebpf:"ig_tcp_v4_co_x"`
+	IgTcpV6CoE  *ebpf.ProgramSpec `ebpf:"ig_tcp_v6_co_e"`
+	IgTcpV6CoX  *ebpf.ProgramSpec `ebpf:"ig_tcp_v6_co_x"`
 }
 
 // tcptracerMapSpecs contains maps before they are loaded into the kernel.
@@ -111,24 +111,24 @@ func (m *tcptracerMaps) Close() error {
 //
 // It can be passed to loadTcptracerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcptracerPrograms struct {
-	EnterTcpSetState  *ebpf.Program `ebpf:"enter_tcp_set_state"`
-	EntryTraceClose   *ebpf.Program `ebpf:"entry_trace_close"`
-	ExitInetCskAccept *ebpf.Program `ebpf:"exit_inet_csk_accept"`
-	TcpV4Connect      *ebpf.Program `ebpf:"tcp_v4_connect"`
-	TcpV4ConnectRet   *ebpf.Program `ebpf:"tcp_v4_connect_ret"`
-	TcpV6Connect      *ebpf.Program `ebpf:"tcp_v6_connect"`
-	TcpV6ConnectRet   *ebpf.Program `ebpf:"tcp_v6_connect_ret"`
+	IgTcpAccept *ebpf.Program `ebpf:"ig_tcp_accept"`
+	IgTcpClose  *ebpf.Program `ebpf:"ig_tcp_close"`
+	IgTcpState  *ebpf.Program `ebpf:"ig_tcp_state"`
+	IgTcpV4CoE  *ebpf.Program `ebpf:"ig_tcp_v4_co_e"`
+	IgTcpV4CoX  *ebpf.Program `ebpf:"ig_tcp_v4_co_x"`
+	IgTcpV6CoE  *ebpf.Program `ebpf:"ig_tcp_v6_co_e"`
+	IgTcpV6CoX  *ebpf.Program `ebpf:"ig_tcp_v6_co_x"`
 }
 
 func (p *tcptracerPrograms) Close() error {
 	return _TcptracerClose(
-		p.EnterTcpSetState,
-		p.EntryTraceClose,
-		p.ExitInetCskAccept,
-		p.TcpV4Connect,
-		p.TcpV4ConnectRet,
-		p.TcpV6Connect,
-		p.TcpV6ConnectRet,
+		p.IgTcpAccept,
+		p.IgTcpClose,
+		p.IgTcpState,
+		p.IgTcpV4CoE,
+		p.IgTcpV4CoX,
+		p.IgTcpV6CoE,
+		p.IgTcpV6CoX,
 	)
 }
 

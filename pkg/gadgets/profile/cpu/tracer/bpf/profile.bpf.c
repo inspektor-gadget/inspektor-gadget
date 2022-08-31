@@ -58,7 +58,7 @@ bool is_kernel_addr(u64 addr)
 #endif /* __TARGET_ARCH_arm64 || __TARGET_ARCH_x86 */
 
 SEC("perf_event")
-int do_perf_event(struct bpf_perf_event_data *ctx)
+int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 {
 	u64 id = bpf_get_current_pid_tgid();
 	u32 pid = id >> 32;

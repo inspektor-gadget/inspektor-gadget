@@ -67,10 +67,10 @@ type tcpconnectSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpconnectProgramSpecs struct {
-	TcpV4Connect    *ebpf.ProgramSpec `ebpf:"tcp_v4_connect"`
-	TcpV4ConnectRet *ebpf.ProgramSpec `ebpf:"tcp_v4_connect_ret"`
-	TcpV6Connect    *ebpf.ProgramSpec `ebpf:"tcp_v6_connect"`
-	TcpV6ConnectRet *ebpf.ProgramSpec `ebpf:"tcp_v6_connect_ret"`
+	IgTcpcV4CoE *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_e"`
+	IgTcpcV4CoX *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_x"`
+	IgTcpcV6CoE *ebpf.ProgramSpec `ebpf:"ig_tcpc_v6_co_e"`
+	IgTcpcV6CoX *ebpf.ProgramSpec `ebpf:"ig_tcpc_v6_co_x"`
 }
 
 // tcpconnectMapSpecs contains maps before they are loaded into the kernel.
@@ -124,18 +124,18 @@ func (m *tcpconnectMaps) Close() error {
 //
 // It can be passed to loadTcpconnectObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpconnectPrograms struct {
-	TcpV4Connect    *ebpf.Program `ebpf:"tcp_v4_connect"`
-	TcpV4ConnectRet *ebpf.Program `ebpf:"tcp_v4_connect_ret"`
-	TcpV6Connect    *ebpf.Program `ebpf:"tcp_v6_connect"`
-	TcpV6ConnectRet *ebpf.Program `ebpf:"tcp_v6_connect_ret"`
+	IgTcpcV4CoE *ebpf.Program `ebpf:"ig_tcpc_v4_co_e"`
+	IgTcpcV4CoX *ebpf.Program `ebpf:"ig_tcpc_v4_co_x"`
+	IgTcpcV6CoE *ebpf.Program `ebpf:"ig_tcpc_v6_co_e"`
+	IgTcpcV6CoX *ebpf.Program `ebpf:"ig_tcpc_v6_co_x"`
 }
 
 func (p *tcpconnectPrograms) Close() error {
 	return _TcpconnectClose(
-		p.TcpV4Connect,
-		p.TcpV4ConnectRet,
-		p.TcpV6Connect,
-		p.TcpV6ConnectRet,
+		p.IgTcpcV4CoE,
+		p.IgTcpcV4CoX,
+		p.IgTcpcV6CoE,
+		p.IgTcpcV6CoX,
 	)
 }
 

@@ -11,7 +11,7 @@ const volatile __u64 bpf_prog_fops_addr = 0;
 struct pid_iter_entry *unused __attribute__((unused));
 
 SEC("iter/task_file")
-int gadget_ebpftop(struct bpf_iter__task_file *ctx)
+int ig_top_ebpf_it(struct bpf_iter__task_file *ctx)
 {
 	struct file *file = ctx->file;
 	struct task_struct *task = ctx->task;

@@ -27,7 +27,7 @@ char _license[] SEC("license") = "GPL";
 static const char proto[] = "UDP";
 
 SEC("iter/udp")
-int dump_udp4(struct bpf_iter__udp *ctx)
+int ig_snap_udp4(struct bpf_iter__udp *ctx)
 {
 	struct seq_file *seq = ctx->meta->seq;
 	struct udp_sock *udp_sk = ctx->udp_sk;

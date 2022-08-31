@@ -142,12 +142,12 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	t.tcpSendmsgLink, err = link.Kprobe("tcp_sendmsg", t.objs.TcpSendmsg, nil)
+	t.tcpSendmsgLink, err = link.Kprobe("tcp_sendmsg", t.objs.IgToptcpSdmsg, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
 
-	t.tcpCleanupRbufLink, err = link.Kprobe("tcp_cleanup_rbuf", t.objs.TcpCleanupRbuf, nil)
+	t.tcpCleanupRbufLink, err = link.Kprobe("tcp_cleanup_rbuf", t.objs.IgToptcpClean, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}

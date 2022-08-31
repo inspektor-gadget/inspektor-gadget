@@ -78,7 +78,7 @@ type capabilitiesSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type capabilitiesProgramSpecs struct {
-	KprobeCapCapable *ebpf.ProgramSpec `ebpf:"kprobe__cap_capable"`
+	IgTraceCap *ebpf.ProgramSpec `ebpf:"ig_trace_cap"`
 }
 
 // capabilitiesMapSpecs contains maps before they are loaded into the kernel.
@@ -129,12 +129,12 @@ func (m *capabilitiesMaps) Close() error {
 //
 // It can be passed to loadCapabilitiesObjects or ebpf.CollectionSpec.LoadAndAssign.
 type capabilitiesPrograms struct {
-	KprobeCapCapable *ebpf.Program `ebpf:"kprobe__cap_capable"`
+	IgTraceCap *ebpf.Program `ebpf:"ig_trace_cap"`
 }
 
 func (p *capabilitiesPrograms) Close() error {
 	return _CapabilitiesClose(
-		p.KprobeCapCapable,
+		p.IgTraceCap,
 	)
 }
 

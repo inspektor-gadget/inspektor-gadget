@@ -54,7 +54,7 @@ type dnsSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type dnsProgramSpecs struct {
-	BpfProg1 *ebpf.ProgramSpec `ebpf:"bpf_prog1"`
+	IgTraceDns *ebpf.ProgramSpec `ebpf:"ig_trace_dns"`
 }
 
 // dnsMapSpecs contains maps before they are loaded into the kernel.
@@ -96,12 +96,12 @@ func (m *dnsMaps) Close() error {
 //
 // It can be passed to loadDnsObjects or ebpf.CollectionSpec.LoadAndAssign.
 type dnsPrograms struct {
-	BpfProg1 *ebpf.Program `ebpf:"bpf_prog1"`
+	IgTraceDns *ebpf.Program `ebpf:"ig_trace_dns"`
 }
 
 func (p *dnsPrograms) Close() error {
 	return _DnsClose(
-		p.BpfProg1,
+		p.IgTraceDns,
 	)
 }
 

@@ -116,22 +116,22 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	t.mountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_mount", t.objs.MountEntry, nil)
+	t.mountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_mount", t.objs.IgMountE, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.mountExitLink, err = link.Tracepoint("syscalls", "sys_exit_mount", t.objs.MountExit, nil)
+	t.mountExitLink, err = link.Tracepoint("syscalls", "sys_exit_mount", t.objs.IgMountX, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.umountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_umount", t.objs.UmountEntry, nil)
+	t.umountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_umount", t.objs.IgUmountE, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 
-	t.umountExitLink, err = link.Tracepoint("syscalls", "sys_exit_umount", t.objs.UmountExit, nil)
+	t.umountExitLink, err = link.Tracepoint("syscalls", "sys_exit_umount", t.objs.IgUmountX, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}

@@ -74,7 +74,7 @@ int trace_rq_start(struct request *rq, int issue)
 }
 
 SEC("tp_btf/block_rq_insert")
-int block_rq_insert(u64 *ctx)
+int ig_profio_ins(u64 *ctx)
 {
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
 		return 0;
@@ -87,7 +87,7 @@ int block_rq_insert(u64 *ctx)
 }
 
 SEC("tp_btf/block_rq_issue")
-int block_rq_issue(u64 *ctx)
+int ig_profio_iss(u64 *ctx)
 {
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
 		return 0;
@@ -100,7 +100,7 @@ int block_rq_issue(u64 *ctx)
 }
 
 SEC("tp_btf/block_rq_complete")
-int BPF_PROG(block_rq_complete, struct request *rq, int error,
+int BPF_PROG(ig_profio_done, struct request *rq, int error,
 	unsigned int nr_bytes)
 {
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))

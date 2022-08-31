@@ -118,28 +118,28 @@ func (t *Tracer) start() error {
 
 	// arm64 does not defined an open() syscall, only openat().
 	if runtime.GOARCH != "arm64" {
-		openEnter, err := link.Tracepoint("syscalls", "sys_enter_open", t.objs.TracepointSyscallsSysEnterOpen, nil)
+		openEnter, err := link.Tracepoint("syscalls", "sys_enter_open", t.objs.IgOpenE, nil)
 		if err != nil {
 			return fmt.Errorf("error opening tracepoint: %w", err)
 		}
 		t.openEnterLink = openEnter
 	}
 
-	openAtEnter, err := link.Tracepoint("syscalls", "sys_enter_openat", t.objs.TracepointSyscallsSysEnterOpenat, nil)
+	openAtEnter, err := link.Tracepoint("syscalls", "sys_enter_openat", t.objs.IgOpenatE, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}
 	t.openAtEnterLink = openAtEnter
 
 	if runtime.GOARCH != "arm64" {
-		openExit, err := link.Tracepoint("syscalls", "sys_exit_open", t.objs.TracepointSyscallsSysExitOpen, nil)
+		openExit, err := link.Tracepoint("syscalls", "sys_exit_open", t.objs.IgOpenX, nil)
 		if err != nil {
 			return fmt.Errorf("error opening tracepoint: %w", err)
 		}
 		t.openExitLink = openExit
 	}
 
-	openAtExit, err := link.Tracepoint("syscalls", "sys_exit_openat", t.objs.TracepointSyscallsSysExitOpenat, nil)
+	openAtExit, err := link.Tracepoint("syscalls", "sys_exit_openat", t.objs.IgOpenatX, nil)
 	if err != nil {
 		return fmt.Errorf("error opening tracepoint: %w", err)
 	}

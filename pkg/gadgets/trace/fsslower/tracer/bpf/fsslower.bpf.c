@@ -124,7 +124,7 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 }
 
 SEC("kprobe/dummy_file_read")
-int BPF_KPROBE(file_read_entry, struct kiocb *iocb)
+int BPF_KPROBE(ig_fssl_read_e, struct kiocb *iocb)
 {
 	struct file *fp = BPF_CORE_READ(iocb, ki_filp);
 	loff_t start = BPF_CORE_READ(iocb, ki_pos);
@@ -133,13 +133,13 @@ int BPF_KPROBE(file_read_entry, struct kiocb *iocb)
 }
 
 SEC("kretprobe/dummy_file_read")
-int BPF_KRETPROBE(file_read_exit, ssize_t ret)
+int BPF_KRETPROBE(ig_fssl_read_x, ssize_t ret)
 {
 	return probe_exit(ctx, READ, ret);
 }
 
 SEC("kprobe/dummy_file_write")
-int BPF_KPROBE(file_write_entry, struct kiocb *iocb)
+int BPF_KPROBE(ig_fssl_wr_e, struct kiocb *iocb)
 {
 	struct file *fp = BPF_CORE_READ(iocb, ki_filp);
 	loff_t start = BPF_CORE_READ(iocb, ki_pos);
@@ -148,31 +148,31 @@ int BPF_KPROBE(file_write_entry, struct kiocb *iocb)
 }
 
 SEC("kretprobe/dummy_file_write")
-int BPF_KRETPROBE(file_write_exit, ssize_t ret)
+int BPF_KRETPROBE(ig_fssl_wr_x, ssize_t ret)
 {
 	return probe_exit(ctx, WRITE, ret);
 }
 
 SEC("kprobe/dummy_file_open")
-int BPF_KPROBE(file_open_entry, struct inode *inode, struct file *file)
+int BPF_KPROBE(ig_fssl_open_e, struct inode *inode, struct file *file)
 {
 	return probe_entry(file, 0, 0);
 }
 
 SEC("kretprobe/dummy_file_open")
-int BPF_KRETPROBE(file_open_exit)
+int BPF_KRETPROBE(ig_fssl_open_x)
 {
 	return probe_exit(ctx, OPEN, 0);
 }
 
 SEC("kprobe/dummy_file_sync")
-int BPF_KPROBE(file_sync_entry, struct file *file, loff_t start, loff_t end)
+int BPF_KPROBE(ig_fssl_sync_e, struct file *file, loff_t start, loff_t end)
 {
 	return probe_entry(file, start, end);
 }
 
 SEC("kretprobe/dummy_file_sync")
-int BPF_KRETPROBE(file_sync_exit)
+int BPF_KRETPROBE(ig_fssl_sync_x)
 {
 	return probe_exit(ctx, FSYNC, 0);
 }

@@ -76,8 +76,8 @@ type filetopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type filetopProgramSpecs struct {
-	VfsReadEntry  *ebpf.ProgramSpec `ebpf:"vfs_read_entry"`
-	VfsWriteEntry *ebpf.ProgramSpec `ebpf:"vfs_write_entry"`
+	IgTopfileRdE *ebpf.ProgramSpec `ebpf:"ig_topfile_rd_e"`
+	IgTopfileWrE *ebpf.ProgramSpec `ebpf:"ig_topfile_wr_e"`
 }
 
 // filetopMapSpecs contains maps before they are loaded into the kernel.
@@ -122,14 +122,14 @@ func (m *filetopMaps) Close() error {
 //
 // It can be passed to loadFiletopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type filetopPrograms struct {
-	VfsReadEntry  *ebpf.Program `ebpf:"vfs_read_entry"`
-	VfsWriteEntry *ebpf.Program `ebpf:"vfs_write_entry"`
+	IgTopfileRdE *ebpf.Program `ebpf:"ig_topfile_rd_e"`
+	IgTopfileWrE *ebpf.Program `ebpf:"ig_topfile_wr_e"`
 }
 
 func (p *filetopPrograms) Close() error {
 	return _FiletopClose(
-		p.VfsReadEntry,
-		p.VfsWriteEntry,
+		p.IgTopfileRdE,
+		p.IgTopfileWrE,
 	)
 }
 

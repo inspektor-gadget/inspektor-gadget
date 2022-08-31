@@ -54,10 +54,10 @@ type mountsnoopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type mountsnoopProgramSpecs struct {
-	MountEntry  *ebpf.ProgramSpec `ebpf:"mount_entry"`
-	MountExit   *ebpf.ProgramSpec `ebpf:"mount_exit"`
-	UmountEntry *ebpf.ProgramSpec `ebpf:"umount_entry"`
-	UmountExit  *ebpf.ProgramSpec `ebpf:"umount_exit"`
+	IgMountE  *ebpf.ProgramSpec `ebpf:"ig_mount_e"`
+	IgMountX  *ebpf.ProgramSpec `ebpf:"ig_mount_x"`
+	IgUmountE *ebpf.ProgramSpec `ebpf:"ig_umount_e"`
+	IgUmountX *ebpf.ProgramSpec `ebpf:"ig_umount_x"`
 }
 
 // mountsnoopMapSpecs contains maps before they are loaded into the kernel.
@@ -108,18 +108,18 @@ func (m *mountsnoopMaps) Close() error {
 //
 // It can be passed to loadMountsnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type mountsnoopPrograms struct {
-	MountEntry  *ebpf.Program `ebpf:"mount_entry"`
-	MountExit   *ebpf.Program `ebpf:"mount_exit"`
-	UmountEntry *ebpf.Program `ebpf:"umount_entry"`
-	UmountExit  *ebpf.Program `ebpf:"umount_exit"`
+	IgMountE  *ebpf.Program `ebpf:"ig_mount_e"`
+	IgMountX  *ebpf.Program `ebpf:"ig_mount_x"`
+	IgUmountE *ebpf.Program `ebpf:"ig_umount_e"`
+	IgUmountX *ebpf.Program `ebpf:"ig_umount_x"`
 }
 
 func (p *mountsnoopPrograms) Close() error {
 	return _MountsnoopClose(
-		p.MountEntry,
-		p.MountExit,
-		p.UmountEntry,
-		p.UmountExit,
+		p.IgMountE,
+		p.IgMountX,
+		p.IgUmountE,
+		p.IgUmountX,
 	)
 }
 

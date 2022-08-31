@@ -54,7 +54,7 @@ type snisnoopSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type snisnoopProgramSpecs struct {
-	BpfProg1 *ebpf.ProgramSpec `ebpf:"bpf_prog1"`
+	IgTraceSni *ebpf.ProgramSpec `ebpf:"ig_trace_sni"`
 }
 
 // snisnoopMapSpecs contains maps before they are loaded into the kernel.
@@ -96,12 +96,12 @@ func (m *snisnoopMaps) Close() error {
 //
 // It can be passed to loadSnisnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type snisnoopPrograms struct {
-	BpfProg1 *ebpf.Program `ebpf:"bpf_prog1"`
+	IgTraceSni *ebpf.Program `ebpf:"ig_trace_sni"`
 }
 
 func (p *snisnoopPrograms) Close() error {
 	return _SnisnoopClose(
-		p.BpfProg1,
+		p.IgTraceSni,
 	)
 }
 

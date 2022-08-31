@@ -63,7 +63,7 @@ type graphSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type graphProgramSpecs struct {
-	BpfProg1 *ebpf.ProgramSpec `ebpf:"bpf_prog1"`
+	IgTraceNet *ebpf.ProgramSpec `ebpf:"ig_trace_net"`
 }
 
 // graphMapSpecs contains maps before they are loaded into the kernel.
@@ -105,12 +105,12 @@ func (m *graphMaps) Close() error {
 //
 // It can be passed to loadGraphObjects or ebpf.CollectionSpec.LoadAndAssign.
 type graphPrograms struct {
-	BpfProg1 *ebpf.Program `ebpf:"bpf_prog1"`
+	IgTraceNet *ebpf.Program `ebpf:"ig_trace_net"`
 }
 
 func (p *graphPrograms) Close() error {
 	return _GraphClose(
-		p.BpfProg1,
+		p.IgTraceNet,
 	)
 }
 
