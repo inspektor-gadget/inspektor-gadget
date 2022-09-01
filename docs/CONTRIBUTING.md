@@ -54,7 +54,7 @@ $ make gadget-default-container # or make gadget-core-container
 $ make push-gadget-container
 ```
 
-The BPF code is built using a Docker container, so you don't have to worry
+The eBPF code is built using a Docker container, so you don't have to worry
 installing the compilers to build it.
 
 If you push the container images to another registry, you can use the `--image`
