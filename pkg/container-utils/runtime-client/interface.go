@@ -37,6 +37,15 @@ type ContainerData struct {
 	// is useful to distinguish who is the "owner" of each container in a list
 	// of containers collected from multiples runtimes.
 	Runtime string
+
+	// Unique identifier of pod running the container.
+	PodUID string
+
+	// Name of the pod running the container.
+	PodName string
+
+	// Namespace of the pod running the container.
+	PodNamespace string
 }
 
 // ContainerDetailsData contains container extra information returned from the
@@ -79,6 +88,12 @@ const (
 	StateUnknown = "unknown"
 )
 
+const (
+	containerLabelK8sPodName      = "io.kubernetes.pod.name"
+	containerLabelK8sPodNamespace = "io.kubernetes.pod.namespace"
+	containerLabelK8sPodUID       = "io.kubernetes.pod.uid"
+)
+
 // ContainerRuntimeClient defines the interface to communicate with the
 // different container runtimes.
 type ContainerRuntimeClient interface {
@@ -111,4 +126,16 @@ func ParseContainerID(expectedRuntime, containerID string) (string, error) {
 	}
 
 	return split[0], nil
+}
+
+func EnrichWithK8sMetadata(container *ContainerData, labels map[string]string) {
+	if podName, ok := labels[containerLabelK8sPodName]; ok {
+		container.PodName = podName
+	}
+	if podNamespace, ok := labels[containerLabelK8sPodNamespace]; ok {
+		container.PodNamespace = podNamespace
+	}
+	if podUID, ok := labels[containerLabelK8sPodUID]; ok {
+		container.PodUID = podUID
+	}
 }
