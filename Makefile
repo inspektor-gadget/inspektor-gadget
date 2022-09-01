@@ -70,10 +70,10 @@ list-local-gadget-targets:
 	@echo $(LOCAL_GADGET_TARGETS)
 
 .PHONY: local-gadget-all
-local-gadget-all: $(LOCAL_GADGET_TARGETS)
+local-gadget-all: $(LOCAL_GADGET_TARGETS) local-gadget
 
 local-gadget: local-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
-	mv local-gadget-$(GOHOSTOS)-$(GOHOSTARCH) local-gadget
+	cp local-gadget-$(GOHOSTOS)-$(GOHOSTARCH) local-gadget
 
 local-gadget-%: phony_explicit
 	echo Building local-gadget-$* && \
@@ -95,10 +95,10 @@ list-kubectl-gadget-targets:
 	@echo $(KUBECTL_GADGET_TARGETS)
 
 .PHONY: kubectl-gadget-all
-kubectl-gadget-all: $(KUBECTL_GADGET_TARGETS)
+kubectl-gadget-all: $(KUBECTL_GADGET_TARGETS) kubectl-gadget
 
 kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
-	mv kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) kubectl-gadget
+	cp kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) kubectl-gadget
 
 kubectl-gadget-%: phony_explicit
 	export GO111MODULE=on CGO_ENABLED=0 && \
