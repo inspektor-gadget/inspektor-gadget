@@ -12,7 +12,7 @@ the kernel and gather the log data. Inspektor Gadget's userspace
 utilities fetch the log data from ring buffers and display it. What BPF
 programs are and how Inspektor Gadget uses them is briefly explained here.
 
-![k8s integration](architecture/k8s.svg)
+![k8s integration](images/architecture/k8s.svg)
 
 The Linux kernel has an inbuilt virtual machine for BPF bytecode, allowing
 userspace to run small scripts in kernel space with limited impact (actually
@@ -44,7 +44,7 @@ time a container is created or destroyed by the OCI PreStart and PostStop hooks.
 It updates the corresponding BPF maps of each gadget if the container satisfies
 the matching criteria.
 
-![Gadget Tracer Manager](architecture/gadget-tracer-manager.svg)
+![Gadget Tracer Manager](images/architecture/gadget-tracer-manager.svg)
 
 The execsnoop, opensnoop, tcptop and tcpconnect subcommands use programs
 from [bcc](https://github.com/iovisor/bcc) with [special_filtering](https://github.com/iovisor/bcc/blob/master/docs/special_filtering.md).
@@ -59,7 +59,7 @@ It uses a service per each node which provides a Unix Domain Socket accepting HT
 requests to list the available traces and to dump them (this stops tracing even if the
 pod did not already crash).
 
-![Debugging with traceloop on Kubernetes](architecture/traceloop.svg)
+![Debugging with traceloop on Kubernetes](images/architecture/traceloop.svg)
 
 ## Previous talks
 
