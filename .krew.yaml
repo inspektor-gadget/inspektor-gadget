@@ -7,8 +7,13 @@ spec:
   homepage: https://github.com/kinvolk/inspektor-gadget
   shortDescription: Gadgets for debugging and introspecting apps
   description: |
-    Inspektor Gadget is a collection of tools (or gadgets) for developers of
-    Kubernetes applications.
+    Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect
+    Kubernetes resources and applications. It manages the packaging, deployment
+    and execution of eBPF programs in a Kubernetes cluster, including many based
+    on BCC tools, as well as some developed specifically for use in Inspektor
+    Gadget. It automatically maps low-level kernel primitives to high-level
+    Kubernetes resources, making it easier and quicker to find the relevant
+    information.
 
     Inspektor Gadget is deployed to each node as a privileged DaemonSet.
     It uses in-kernel BPF helper programs to monitor events mainly related to

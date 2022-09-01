@@ -6,7 +6,13 @@ main_menu: true
 weight: 40
 ---
 
-Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes applications. While it was originally designed for [Lokomotive](https://kinvolk.io/lokomotive-kubernetes/), Kinvolk's open-source Kubernetes distribution, it works just as well on other Kubernetes distributions.
+Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect
+Kubernetes resources and applications. It manages the packaging, deployment and
+execution of [eBPF](https://ebpf.io/) programs in a Kubernetes cluster,
+including many based on [BCC](https://github.com/iovisor/bcc) tools, as well as
+some developed specifically for use in Inspektor Gadget. It automatically maps
+low-level kernel primitives to high-level Kubernetes resources, making it easier
+and quicker to find the relevant information.
 
 ## How does it work?
 
@@ -16,8 +22,6 @@ syscalls from userspace programs in a pod. The BPF programs are run by
 the kernel and gather the log data. Inspektor Gadget's userspace
 utilities fetch the log data from ring buffers and display it. What BPF
 programs are and how Inspektor Gadget uses them is briefly explained here:
-
-## Further Reading
 
 * [Read more about the architecture](architecture.md)
 * [Learn how to install Inspektor Gadget](install.md)
