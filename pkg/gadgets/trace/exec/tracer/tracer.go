@@ -75,7 +75,6 @@ func (t *Tracer) Stop() {
 
 	if t.reader != nil {
 		t.reader.Close()
-		t.reader = nil
 	}
 
 	t.objs.Close()

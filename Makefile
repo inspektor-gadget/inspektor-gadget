@@ -147,6 +147,10 @@ controller-tests: kube-apiserver etcd kubectl
 	TEST_ASSET_KUBECTL=$(KUBECTL_BIN) \
 	go test -test.v ./pkg/controllers/... -controller-test
 
+.PHONY: gadgets-unit-tests
+gadgets-unit-tests:
+	go test -test.v -exec sudo ./pkg/gadgets/...
+
 .PHONY: local-gadget-tests
 local-gadget-tests:
 	# Compile and execute in separate commands because Go might not be
