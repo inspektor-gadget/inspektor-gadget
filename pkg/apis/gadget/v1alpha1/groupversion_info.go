@@ -13,8 +13,8 @@
 // limitations under the License.
 
 // Package v1alpha1 contains API Schema definitions for the gadget v1alpha1 API group
-//+kubebuilder:object:generate=true
-//+groupName=gadget.kinvolk.io
+// +kubebuilder:object:generate=true
+// +groupName=gadget.kinvolk.io
 package v1alpha1
 
 import (

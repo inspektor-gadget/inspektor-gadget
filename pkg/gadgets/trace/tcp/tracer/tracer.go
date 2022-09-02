@@ -93,7 +93,8 @@ type Tracer struct {
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricher,
-	eventCallback func(types.Event)) (*Tracer, error) {
+	eventCallback func(types.Event),
+) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
 		enricher:      enricher,
