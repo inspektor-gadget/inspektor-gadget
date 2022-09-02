@@ -64,7 +64,7 @@ func newRootCmd(localGadgetManager *localgadgetmanager.LocalGadgetManager) *cobr
 			Use:   "list-traces",
 			Short: "List all traces",
 			Run: func(cmd *cobra.Command, args []string) {
-				for _, n := range localGadgetManager.ListTraces() {
+				for _, n := range localGadgetManager.ListTraceResources() {
 					fmt.Println(n)
 				}
 			},
@@ -89,24 +89,24 @@ func newRootCmd(localGadgetManager *localgadgetmanager.LocalGadgetManager) *cobr
 					return
 				}
 				gadget, name := args[0], args[1]
-				err := localGadgetManager.AddTracer(gadget, name, optionContainerSelector, gadgetv1alpha1.TraceOutputMode(optionOutputMode), nil)
+				err := localGadgetManager.AddTraceResource(gadget, name, optionContainerSelector, gadgetv1alpha1.TraceOutputMode(optionOutputMode), nil)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
 				}
 
-				operations := localGadgetManager.ListOperations(name)
+				operations := localGadgetManager.ListTraceResourceOperations(name)
 				if len(operations) == 1 {
-					err = localGadgetManager.Operation(name, operations[0])
+					err = localGadgetManager.ExecTraceResourceOperation(name, operations[0])
 				} else {
-					err = localGadgetManager.Operation(name, gadgetv1alpha1.OperationStart)
+					err = localGadgetManager.ExecTraceResourceOperation(name, gadgetv1alpha1.OperationStart)
 				}
 
 				if err != nil {
 					fmt.Println(err.Error())
 					return
 				}
-				ret, err := localGadgetManager.Show(name)
+				ret, err := localGadgetManager.ShowTraceResourceStatus(name)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
@@ -124,12 +124,12 @@ func newRootCmd(localGadgetManager *localgadgetmanager.LocalGadgetManager) *cobr
 					return
 				}
 				name, opname := args[0], args[1]
-				err := localGadgetManager.Operation(name, gadgetv1alpha1.Operation(opname))
+				err := localGadgetManager.ExecTraceResourceOperation(name, gadgetv1alpha1.Operation(opname))
 				if err != nil {
 					fmt.Println(err.Error())
 					return
 				}
-				ret, err := localGadgetManager.Show(name)
+				ret, err := localGadgetManager.ShowTraceResourceStatus(name)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
@@ -147,7 +147,7 @@ func newRootCmd(localGadgetManager *localgadgetmanager.LocalGadgetManager) *cobr
 					return
 				}
 				name := args[0]
-				ret, err := localGadgetManager.Show(name)
+				ret, err := localGadgetManager.ShowTraceResourceStatus(name)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
@@ -171,7 +171,7 @@ func newRootCmd(localGadgetManager *localgadgetmanager.LocalGadgetManager) *cobr
 					stop = make(chan struct{})
 					signal.Notify(sigs, syscall.SIGINT)
 				}
-				ch, err := localGadgetManager.Stream(name, stop)
+				ch, err := localGadgetManager.StreamTraceResourceOutput(name, stop)
 				if err != nil {
 					fmt.Printf("Error: %s\n", err)
 					return
@@ -202,7 +202,7 @@ func newRootCmd(localGadgetManager *localgadgetmanager.LocalGadgetManager) *cobr
 					return
 				}
 				name := args[0]
-				err := localGadgetManager.Delete(name)
+				err := localGadgetManager.DeleteTraceResource(name)
 				if err != nil {
 					fmt.Println(err.Error())
 				}
@@ -280,7 +280,7 @@ func RunInteractiveLocalGadget(commonFlags *utils.CommonFlags) error {
 				return localGadgetManager.ListGadgets()
 			},
 				readline.PcItemDynamic(func(string) []string {
-					n := len(localGadgetManager.ListTraces())
+					n := len(localGadgetManager.ListTraceResources())
 					return []string{fmt.Sprintf("trace%d", n+1)}
 				},
 					readline.PcItem("--container-selector",
@@ -308,7 +308,7 @@ func RunInteractiveLocalGadget(commonFlags *utils.CommonFlags) error {
 		),
 		readline.PcItem("operation",
 			readline.PcItemDynamic(func(string) []string {
-				return localGadgetManager.ListTraces()
+				return localGadgetManager.ListTraceResources()
 			},
 				readline.PcItemDynamic(func(line string) []string {
 					fields := strings.Fields(line)
@@ -317,7 +317,7 @@ func RunInteractiveLocalGadget(commonFlags *utils.CommonFlags) error {
 					}
 					// TODO: this might select the wrong field if flags are placed elsewhere
 					traceName := fields[1]
-					operations := localGadgetManager.ListOperations(traceName)
+					operations := localGadgetManager.ListTraceResourceOperations(traceName)
 					ret := make([]string, len(operations))
 					for i, op := range operations {
 						ret[i] = string(op)
@@ -328,19 +328,19 @@ func RunInteractiveLocalGadget(commonFlags *utils.CommonFlags) error {
 		),
 		readline.PcItem("show",
 			readline.PcItemDynamic(func(string) []string {
-				return localGadgetManager.ListTraces()
+				return localGadgetManager.ListTraceResources()
 			}),
 		),
 		readline.PcItem("stream",
 			readline.PcItemDynamic(func(string) []string {
-				return localGadgetManager.ListTraces()
+				return localGadgetManager.ListTraceResources()
 			},
 				readline.PcItem("--follow"),
 			),
 		),
 		readline.PcItem("delete",
 			readline.PcItemDynamic(func(string) []string {
-				return localGadgetManager.ListTraces()
+				return localGadgetManager.ListTraceResources()
 			}),
 		),
 		readline.PcItem("dump"),

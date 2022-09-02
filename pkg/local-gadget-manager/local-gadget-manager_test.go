@@ -208,11 +208,11 @@ func TestSeccomp(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-seccomp001"
-	err = localGadgetManager.AddTracer("seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
+	err = localGadgetManager.AddTraceResource("seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer", gadgetv1alpha1.OperationStart)
+	err = localGadgetManager.ExecTraceResourceOperation("my-tracer", gadgetv1alpha1.OperationStart)
 	if err != nil {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
@@ -221,7 +221,7 @@ func TestSeccomp(t *testing.T) {
 
 	stop := make(chan struct{})
 
-	ch, err := localGadgetManager.Stream("my-tracer", stop)
+	ch, err := localGadgetManager.StreamTraceResourceOutput("my-tracer", stop)
 	if err != nil {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
@@ -232,7 +232,7 @@ func TestSeccomp(t *testing.T) {
 
 	close(stop)
 
-	err = localGadgetManager.Delete("my-tracer")
+	err = localGadgetManager.DeleteTraceResource("my-tracer")
 	if err != nil {
 		t.Fatalf("Failed to delete tracer: %s", err)
 	}
@@ -259,11 +259,11 @@ func TestAuditSeccomp(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-auditseccomp001"
-	err = localGadgetManager.AddTracer("audit-seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
+	err = localGadgetManager.AddTraceResource("audit-seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer", gadgetv1alpha1.OperationStart)
+	err = localGadgetManager.ExecTraceResourceOperation("my-tracer", gadgetv1alpha1.OperationStart)
 	if err != nil {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
@@ -273,7 +273,7 @@ func TestAuditSeccomp(t *testing.T) {
 
 	stop := make(chan struct{})
 
-	ch, err := localGadgetManager.Stream("my-tracer", stop)
+	ch, err := localGadgetManager.StreamTraceResourceOutput("my-tracer", stop)
 	if err != nil {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
@@ -284,7 +284,7 @@ func TestAuditSeccomp(t *testing.T) {
 
 	close(stop)
 
-	err = localGadgetManager.Delete("my-tracer")
+	err = localGadgetManager.DeleteTraceResource("my-tracer")
 	if err != nil {
 		t.Fatalf("Failed to delete tracer: %s", err)
 	}
@@ -309,18 +309,18 @@ func TestEbpftop(t *testing.T) {
 	defer localGadgetManager.Close()
 
 	containerName := "test-local-gadget-dns001"
-	err = localGadgetManager.AddTracer("ebpftop", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
+	err = localGadgetManager.AddTraceResource("ebpftop", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer", gadgetv1alpha1.OperationStart)
+	err = localGadgetManager.ExecTraceResourceOperation("my-tracer", gadgetv1alpha1.OperationStart)
 	if err != nil {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
 
 	stop := make(chan struct{})
 
-	ch, err := localGadgetManager.Stream("my-tracer", stop)
+	ch, err := localGadgetManager.StreamTraceResourceOutput("my-tracer", stop)
 	if err != nil {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
@@ -359,7 +359,7 @@ ebpfeventloop:
 
 	close(stop)
 
-	err = localGadgetManager.Delete("my-tracer")
+	err = localGadgetManager.DeleteTraceResource("my-tracer")
 	if err != nil {
 		t.Fatalf("Failed to delete tracer: %s", err)
 	}
@@ -388,11 +388,11 @@ func TestDNS(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-dns001"
-	err = localGadgetManager.AddTracer("dns", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
+	err = localGadgetManager.AddTraceResource("dns", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer", gadgetv1alpha1.OperationStart)
+	err = localGadgetManager.ExecTraceResourceOperation("my-tracer", gadgetv1alpha1.OperationStart)
 	if err != nil {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
@@ -401,7 +401,7 @@ func TestDNS(t *testing.T) {
 
 	stop := make(chan struct{})
 
-	ch, err := localGadgetManager.Stream("my-tracer", stop)
+	ch, err := localGadgetManager.StreamTraceResourceOutput("my-tracer", stop)
 	if err != nil {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
@@ -483,7 +483,7 @@ func TestDNS(t *testing.T) {
 
 	close(stop)
 
-	err = localGadgetManager.Delete("my-tracer")
+	err = localGadgetManager.DeleteTraceResource("my-tracer")
 	if err != nil {
 		t.Fatalf("Failed to delete tracer: %s", err)
 	}
@@ -510,11 +510,11 @@ func TestNetworkGraph(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-network-graph001"
-	err = localGadgetManager.AddTracer("network-graph", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
+	err = localGadgetManager.AddTraceResource("network-graph", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer", gadgetv1alpha1.OperationStart)
+	err = localGadgetManager.ExecTraceResourceOperation("my-tracer", gadgetv1alpha1.OperationStart)
 	if err != nil {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
@@ -523,7 +523,7 @@ func TestNetworkGraph(t *testing.T) {
 
 	stop := make(chan struct{})
 
-	ch, err := localGadgetManager.Stream("my-tracer", stop)
+	ch, err := localGadgetManager.StreamTraceResourceOutput("my-tracer", stop)
 	if err != nil {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
@@ -606,7 +606,7 @@ func TestNetworkGraph(t *testing.T) {
 
 	close(stop)
 
-	err = localGadgetManager.Delete("my-tracer")
+	err = localGadgetManager.DeleteTraceResource("my-tracer")
 	if err != nil {
 		t.Fatalf("Failed to delete tracer: %s", err)
 	}
@@ -630,11 +630,11 @@ func TestCollector(t *testing.T) {
 	}
 	defer localGadgetManager.Close()
 
-	err = localGadgetManager.AddTracer("socket-collector", "my-tracer1", "my-container", gadgetv1alpha1.TraceOutputModeStatus, nil)
+	err = localGadgetManager.AddTraceResource("socket-collector", "my-tracer1", "my-container", gadgetv1alpha1.TraceOutputModeStatus, nil)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
-	err = localGadgetManager.Operation("my-tracer1", gadgetv1alpha1.OperationCollect)
+	err = localGadgetManager.ExecTraceResourceOperation("my-tracer1", gadgetv1alpha1.OperationCollect)
 	if err != nil {
 		t.Fatalf("Failed to run the tracer: %s", err)
 	}

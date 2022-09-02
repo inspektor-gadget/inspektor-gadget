@@ -48,7 +48,7 @@ func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func
 	}
 	defer localGadgetManager.Close()
 
-	err = localGadgetManager.AddTracer(
+	err = localGadgetManager.AddTraceResource(
 		config.GadgetName,
 		traceName,
 		config.CommonFlags.Containername,
@@ -58,22 +58,22 @@ func RunTraceAndPrintStatusOutput(config *TraceConfig, customResultsDisplay func
 	if err != nil {
 		return fmt.Errorf("failed to add trace: %w", err)
 	}
-	defer localGadgetManager.Delete(traceName)
+	defer localGadgetManager.DeleteTraceResource(traceName)
 
-	operations := localGadgetManager.ListOperations(traceName)
+	operations := localGadgetManager.ListTraceResourceOperations(traceName)
 	if len(operations) == 1 {
-		err = localGadgetManager.Operation(traceName, operations[0])
+		err = localGadgetManager.ExecTraceResourceOperation(traceName, operations[0])
 	} else {
-		err = localGadgetManager.Operation(traceName, gadgetv1alpha1.OperationStart)
+		err = localGadgetManager.ExecTraceResourceOperation(traceName, gadgetv1alpha1.OperationStart)
 	}
 
 	if err != nil {
 		return fmt.Errorf("failed to run requested operation: %w", err)
 	}
 
-	if err = localGadgetManager.CheckStatus(traceName, config.TraceOutputState); err != nil {
+	if err = localGadgetManager.CheckTraceResourceStatus(traceName, config.TraceOutputState); err != nil {
 		return err
 	}
 
-	return localGadgetManager.DisplayOutput(traceName, customResultsDisplay)
+	return localGadgetManager.DisplayTraceResourceOutput(traceName, customResultsDisplay)
 }
