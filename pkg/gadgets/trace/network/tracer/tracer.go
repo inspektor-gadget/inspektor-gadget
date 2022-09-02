@@ -161,7 +161,7 @@ func (t *Tracer) Attach(key string, pid uint32) (err error) {
 func pktTypeString(pktType int) string {
 	// pkttype definitions:
 	// https://github.com/torvalds/linux/blob/v5.14-rc7/include/uapi/linux/if_packet.h#L26
-	var pktTypeNames = []string{
+	pktTypeNames := []string{
 		"HOST",
 		"BROADCAST",
 		"MULTICAST",

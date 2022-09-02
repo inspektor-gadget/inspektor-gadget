@@ -51,8 +51,8 @@ func copyToC(dest *[NameMaxLength]C.char, source string) {
 // This makes it possible for gadgets to access that information and
 // display it directly from the BPF code. Example of such code:
 //
-//     struct container *container_entry;
-//     container_entry = bpf_map_lookup_elem(&containers, &mntns_id);
+//	struct container *container_entry;
+//	container_entry = bpf_map_lookup_elem(&containers, &mntns_id);
 //
 // External tools such as tracee or bpftrace could also benefit from this just
 // by using this "containers" map (other interaction with Inspektor Gadget is

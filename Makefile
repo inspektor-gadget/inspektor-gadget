@@ -168,12 +168,15 @@ generate-documentation:
 	go run -tags docs cmd/gen-doc/gen-doc.go -repo $(shell pwd)
 
 lint:
-	# This version number must be kept in sync with CI workflow lint one.
-	# XDG_CACHE_HOME is necessary to avoid this type of errors:
-	# ERRO Running error: context loading failed: failed to load packages: failed to load with go/packages: err: exit status 1: stderr: failed to initialize build cache at /.cache/go-build: mkdir /.cache: permission denied
-	# Process 15167 has exited with status 3
-	# While GOLANGCI_LINT_CACHE is used to store golangci-lint cache.
-	docker run --rm --env XDG_CACHE_HOME=/tmp/xdg_home_cache --env GOLANGCI_LINT_CACHE=/tmp/golangci_lint_cache --user $(shell id -u):$(shell id -g) -v $(shell pwd):/app -w /app golangci/golangci-lint:v1.46.2 golangci-lint run --fix
+# This version number must be kept in sync with CI workflow lint one.
+# XDG_CACHE_HOME is necessary to avoid this type of errors:
+# ERRO Running error: context loading failed: failed to load packages: failed to load with go/packages: err: exit status 1: stderr: failed to initialize build cache at /.cache/go-build: mkdir /.cache: permission denied
+# Process 15167 has exited with status 3
+# While GOLANGCI_LINT_CACHE is used to store golangci-lint cache.
+	docker run --rm --env XDG_CACHE_HOME=/tmp/xdg_home_cache \
+		--env GOLANGCI_LINT_CACHE=/tmp/golangci_lint_cache \
+		--user $(shell id -u):$(shell id -g) -v $(shell pwd):/app -w /app \
+		golangci/golangci-lint:v1.49.0 golangci-lint run --fix
 
 # minikube
 LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 60

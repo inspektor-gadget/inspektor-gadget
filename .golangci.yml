@@ -16,6 +16,9 @@ issues:
     - text: "ST1000: at least one file in a package should have a package comment"
       linters:
         - stylecheck
+    - text: 'SA1019: "io/ioutil" has been deprecated since Go 1.16'
+      linters:
+        - staticcheck
 
 linters:
   disable-all: true
