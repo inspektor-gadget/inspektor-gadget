@@ -18,7 +18,6 @@ import (
 	_ "embed"
 	"flag"
 	"html/template"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -88,7 +87,7 @@ func main() {
 	funcMap := map[string]interface{}{}
 	funcMap["include"] = func(input string) template.HTML {
 		path := filepath.Join(repo, input)
-		b, err := ioutil.ReadFile(path)
+		b, err := os.ReadFile(path)
 		if err != nil {
 			return template.HTML(err.Error())
 		}

@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -194,12 +194,12 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 }
 
 func commFromPid(pid int) string {
-	comm, _ := ioutil.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
+	comm, _ := os.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
 	return strings.TrimSuffix(string(comm), "\n")
 }
 
 func cmdlineFromPid(pid int) []string {
-	cmdline, _ := ioutil.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+	cmdline, _ := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
 	return strings.Split(string(cmdline), "\x00")
 }
 
@@ -375,7 +375,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		return false, nil
 	}
 
-	pidFileContent, err := ioutil.ReadAll(dataFile)
+	pidFileContent, err := io.ReadAll(dataFile)
 	if err != nil {
 		return false, err
 	}
@@ -396,7 +396,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		return false, nil
 	}
 
-	bundleConfigJSON, err := ioutil.ReadFile(filepath.Join(bundleDir, "config.json"))
+	bundleConfigJSON, err := os.ReadFile(filepath.Join(bundleDir, "config.json"))
 	if err != nil {
 		return false, err
 	}

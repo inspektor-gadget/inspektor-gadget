@@ -21,7 +21,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"runtime"
@@ -85,7 +84,7 @@ func runTestContainer(t *testing.T, name, image, command, seccompProfile string)
 	if err != nil {
 		t.Fatalf("Failed to pull image container: %s", err)
 	}
-	io.Copy(ioutil.Discard, reader)
+	io.Copy(io.Discard, reader)
 
 	hostConfig := &container.HostConfig{}
 	if seccompProfile != "" {
@@ -144,7 +143,7 @@ func stacks() string {
 }
 
 func currentFdList(t *testing.T) (ret string) {
-	files, err := ioutil.ReadDir("/proc/self/fd")
+	files, err := os.ReadDir("/proc/self/fd")
 	if err != nil {
 		t.Fatalf("Failed to list fds: %s", err)
 	}

@@ -16,7 +16,7 @@ package utils
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -82,7 +82,7 @@ func TestPrintTraceFeedback(t *testing.T) {
 		os.Stderr = w
 		printTraceFeedback(p, m, n)
 		w.Close()
-		out, _ := ioutil.ReadAll(r)
+		out, _ := io.ReadAll(r)
 		os.Stderr = originalStderr
 
 		return string(out)

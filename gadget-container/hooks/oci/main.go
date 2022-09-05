@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -60,7 +60,7 @@ func main() {
 	}
 
 	// Parse state from stdin
-	stateBuf, err := ioutil.ReadAll(os.Stdin)
+	stateBuf, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		panic(fmt.Errorf("cannot read stdin: %w", err))
 	}
@@ -122,7 +122,7 @@ func main() {
 	} else {
 		panic(fmt.Errorf("cannot parse /proc/PID/status: %w", err))
 	}
-	cmdline, err := ioutil.ReadFile(filepath.Join("/proc", fmt.Sprintf("%d", ppid), "cmdline"))
+	cmdline, err := os.ReadFile(filepath.Join("/proc", fmt.Sprintf("%d", ppid), "cmdline"))
 	if err != nil {
 		panic(fmt.Errorf("cannot read /proc/PID/cmdline: %w", err))
 	}
@@ -133,7 +133,7 @@ func main() {
 		panic(fmt.Errorf("cannot find bundle in %q: matches=%+v", string(cmdline), matches))
 	}
 	bundle := matches[1]
-	bundleConfig, err := ioutil.ReadFile(filepath.Join(bundle, "config.json"))
+	bundleConfig, err := os.ReadFile(filepath.Join(bundle, "config.json"))
 	if err != nil {
 		panic(fmt.Errorf("cannot read config.json from bundle directory %q: %w", bundle, err))
 	}

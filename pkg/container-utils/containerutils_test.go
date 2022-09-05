@@ -15,7 +15,7 @@
 package containerutils
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -28,7 +28,7 @@ func TestParseOCIState(t *testing.T) {
 
 	for _, inputFile := range match {
 		t.Logf("Parsing OCI state from file %s", inputFile)
-		stateBuf, err := ioutil.ReadFile(inputFile)
+		stateBuf, err := os.ReadFile(inputFile)
 		if err != nil {
 			t.Fatal(err)
 		}

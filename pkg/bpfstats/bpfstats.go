@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -65,7 +64,7 @@ func EnableBPFStats() error {
 	s, err := ebpf.EnableStats(unix.BPF_STATS_RUN_TIME)
 	if err != nil {
 		// Use fallback method
-		err = ioutil.WriteFile(filepath.Join(os.Getenv("HOST_ROOT"), "/proc/sys/kernel/bpf_stats_enabled"), []byte("1"), 0o644)
+		err = os.WriteFile(filepath.Join(os.Getenv("HOST_ROOT"), "/proc/sys/kernel/bpf_stats_enabled"), []byte("1"), 0o644)
 		if err != nil {
 			return fmt.Errorf("could not enable stat collection: %w", err)
 		}
@@ -105,7 +104,7 @@ func DisableBPFStats() error {
 			return fmt.Errorf("could not disable stat collection using BPF(): %w", err)
 		}
 	case MethodSysctl:
-		err := ioutil.WriteFile(filepath.Join(os.Getenv("HOST_ROOT"), "/proc/sys/kernel/bpf_stats_enabled"), []byte("0"), 0o644)
+		err := os.WriteFile(filepath.Join(os.Getenv("HOST_ROOT"), "/proc/sys/kernel/bpf_stats_enabled"), []byte("0"), 0o644)
 		if err != nil {
 			return fmt.Errorf("could not disable stat collection using sysctl: %w", err)
 		}
