@@ -13,24 +13,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type capabilitiesCapEvent struct {
-	Mntnsid uint64
-	Pid     uint32
-	Cap     int32
-	Tgid    uint32
-	Uid     uint32
-	CapOpt  int32
-	Task    [16]int8
-	_       [4]byte
-}
-
-type capabilitiesKeyT struct {
-	Pid         uint32
-	Tgid        uint32
-	UserStackId int32
-	KernStackId int32
-}
-
 type capabilitiesUniqueKey struct {
 	Cap      int32
 	Tgid     uint32
@@ -86,7 +68,6 @@ type capabilitiesProgramSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type capabilitiesMapSpecs struct {
 	Events        *ebpf.MapSpec `ebpf:"events"`
-	Info          *ebpf.MapSpec `ebpf:"info"`
 	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
 	Seen          *ebpf.MapSpec `ebpf:"seen"`
 }
@@ -111,7 +92,6 @@ func (o *capabilitiesObjects) Close() error {
 // It can be passed to loadCapabilitiesObjects or ebpf.CollectionSpec.LoadAndAssign.
 type capabilitiesMaps struct {
 	Events        *ebpf.Map `ebpf:"events"`
-	Info          *ebpf.Map `ebpf:"info"`
 	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
 	Seen          *ebpf.Map `ebpf:"seen"`
 }
@@ -119,7 +99,6 @@ type capabilitiesMaps struct {
 func (m *capabilitiesMaps) Close() error {
 	return _CapabilitiesClose(
 		m.Events,
-		m.Info,
 		m.MountNsFilter,
 		m.Seen,
 	)

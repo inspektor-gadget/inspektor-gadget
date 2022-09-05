@@ -17,13 +17,6 @@ struct cap_event {
 	char	task[TASK_COMM_LEN];
 };
 
-struct key_t {
-	__u32	pid;
-	__u32	tgid;
-	int	user_stack_id;
-	int	kern_stack_id;
-};
-
 enum uniqueness {
 	UNQ_OFF, UNQ_PID, UNQ_CGROUP
 };

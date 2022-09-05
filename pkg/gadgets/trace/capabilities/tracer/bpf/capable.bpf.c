@@ -32,13 +32,6 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct key_t);
-	__type(value, struct cap_event);
-	__uint(max_entries, MAX_ENTRIES);
-} info SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 10240);
 	__type(key, struct unique_key);
 	__type(value, u64);
@@ -57,7 +50,6 @@ int BPF_KPROBE(ig_trace_cap, const struct cred *cred, struct user_namespace *tar
 	__u32 pid;
 	u64 mntns_id;
 	__u64 pid_tgid;
-	struct key_t i_key;
 	struct task_struct *task;
 
 	task = (struct task_struct*) bpf_get_current_task();
