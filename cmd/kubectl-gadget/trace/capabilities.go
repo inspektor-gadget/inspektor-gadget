@@ -46,6 +46,7 @@ func newCapabilitiesCmd() *cobra.Command {
 				"cap",
 				"name",
 				"audit",
+				"verdict",
 			},
 		},
 	}
@@ -81,6 +82,7 @@ func NewCapabilitiesParser(outputConfig *commonutils.OutputConfig) commontrace.T
 		"cap":       -4,
 		"name":      -16,
 		"audit":     -6,
+		"verdict":   -6,
 	}
 
 	return &CapabilitiesParser{
@@ -114,6 +116,8 @@ func (p *CapabilitiesParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.CapName))
 			case "audit":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Audit))
+			case "verdict":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Verdict))
 			default:
 				continue
 			}
