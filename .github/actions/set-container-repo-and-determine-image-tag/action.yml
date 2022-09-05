@@ -1,17 +1,13 @@
 name: "Output the container repository and image tag to be used"
-description: "Container repository is inputs.registry/inputs.container-image-release, if current branch is main or tag.
-  Otherwise, it will be inputs.registry/inputs.container-image-dev.
+description: "Container repository is inputs.registry/inputs.container-image.
   Image tag is latest if branch is main, otherwise it is the tag or branch name with slashes replaced by hyphens."
 
 inputs:
   registry:
     description: "Registry where to push container image"
     required: true
-  container-image-release:
-    description: "The name of the container image used for release"
-    required: true
-  container-image-dev:
-    description: "The name of the container image used for development"
+  container-image:
+    description: "The name of the container image"
     required: true
 
 outputs:
@@ -35,19 +31,13 @@ runs:
           exit 1
         fi
 
-        if [[ -z '${{ inputs.container-image-release}}' || -z '${inputs.container-image-dev}' ]]; then
-          echo 'inputs.container-image-release("${{ inputs.container-image-release}}") and inputs.container-image-dev ("${{ inputs.container-image-dev }}") should not be empty! Set them before calling this action' 1>&2
+        if [ -z '${{ inputs.container-image }}' ]; then
+          echo 'inputs.container-image should not be empty! Set it before calling this action' 1>&2
 
           exit 1
         fi
 
-        if [[ ${{ github.ref }} == 'refs/heads/main' || ${{ github.ref }} == 'refs/tags/v'* ]]; then
-          container_image='${{ inputs.container-image-release}}'
-        else
-          container_image='${{ inputs.container-image-dev }}'
-        fi
-
-        container_repo=${{ inputs.registry }}/${container_image}
+        container_repo=${{ inputs.registry }}/${{ inputs.container-image }}
         echo "::set-output name=container-repo::${container_repo}"
     - name: Output image tag
       id: craft-image-tag
