@@ -128,7 +128,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 
 #ifdef __TARGET_ARCH_arm64
 SEC("kretprobe/do_execveat_common.isra.0")
-int BPF_KRETPROBE(ig_execveat_)
+int BPF_KRETPROBE(ig_execveat_x)
 #else /* !__TARGET_ARCH_arm64 */
 SEC("tracepoint/syscalls/sys_exit_execve")
 int ig_execve_x(struct trace_event_raw_sys_exit* ctx)
