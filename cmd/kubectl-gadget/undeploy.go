@@ -97,7 +97,7 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 
 again:
 	fmt.Println("Removing traces...")
-	err = traceClient.GadgetV1alpha1().Traces(gadgetNamespace).DeleteCollection(
+	err = traceClient.GadgetV1alpha1().Traces(utils.GadgetNamespace).DeleteCollection(
 		context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{},
 	)
 	if err != nil && !errors.IsNotFound(err) {
@@ -106,7 +106,7 @@ again:
 
 	time.Sleep(time.Duration(delay) * time.Millisecond)
 
-	traces, err := traceClient.GadgetV1alpha1().Traces(gadgetNamespace).List(
+	traces, err := traceClient.GadgetV1alpha1().Traces(utils.GadgetNamespace).List(
 		context.TODO(), metav1.ListOptions{},
 	)
 	if err == nil && len(traces.Items) != 0 {
@@ -120,7 +120,7 @@ again:
 		// finalizers and let k8s remove them immediately.
 		for _, trace := range traces.Items {
 			data := []byte("{\"metadata\":{\"finalizers\":[]}}")
-			_, err := traceClient.GadgetV1alpha1().Traces(gadgetNamespace).Patch(
+			_, err := traceClient.GadgetV1alpha1().Traces(utils.GadgetNamespace).Patch(
 				context.TODO(), trace.Name, types.MergePatchType, data, metav1.PatchOptions{},
 			)
 			if err != nil {
@@ -190,11 +190,11 @@ again:
 	if undeployWait {
 		list, err = k8sClient.CoreV1().Namespaces().List(
 			context.TODO(), metav1.ListOptions{
-				FieldSelector: "metadata.name=" + gadgetNamespace,
+				FieldSelector: "metadata.name=" + utils.GadgetNamespace,
 			},
 		)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("failed to list %q namespace: %s", gadgetNamespace, err))
+			errs = append(errs, fmt.Sprintf("failed to list %q namespace: %s", utils.GadgetNamespace, err))
 			goto out
 		}
 
@@ -206,16 +206,16 @@ again:
 
 	fmt.Println("Removing namespace...")
 	err = k8sClient.CoreV1().Namespaces().Delete(
-		context.TODO(), gadgetNamespace, metav1.DeleteOptions{},
+		context.TODO(), utils.GadgetNamespace, metav1.DeleteOptions{},
 	)
 	if err != nil {
-		errs = append(errs, fmt.Sprintf("failed to remove %q namespace: %s", gadgetNamespace, err))
+		errs = append(errs, fmt.Sprintf("failed to remove %q namespace: %s", utils.GadgetNamespace, err))
 		goto out
 	}
 
 	if undeployWait {
 		watcher := cache.NewListWatchFromClient(
-			k8sClient.CoreV1().RESTClient(), "namespaces", "", fields.OneTermEqualSelector("metadata.name", gadgetNamespace),
+			k8sClient.CoreV1().RESTClient(), "namespaces", "", fields.OneTermEqualSelector("metadata.name", utils.GadgetNamespace),
 		)
 
 		conditionFunc := func(event watch.Event) (bool, error) {
@@ -235,7 +235,7 @@ again:
 		defer cancel()
 		_, err := watchtools.Until(ctx, list.ResourceVersion, watcher, conditionFunc)
 		if err != nil {
-			errs = append(errs, fmt.Sprintf("failed waiting for %q namespace to be removed: %s", gadgetNamespace, err))
+			errs = append(errs, fmt.Sprintf("failed waiting for %q namespace to be removed: %s", utils.GadgetNamespace, err))
 		}
 	}
 

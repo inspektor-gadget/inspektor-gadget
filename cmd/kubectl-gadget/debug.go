@@ -25,16 +25,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/yaml"
+
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
 func getGadgetPodsDebug(client *kubernetes.Clientset) string {
 	var sb strings.Builder
 
 	listOpts := metav1.ListOptions{
-		LabelSelector: "k8s-app=" + gadgetNamespace,
+		LabelSelector: "k8s-app=" + utils.GadgetNamespace,
 	}
 
-	pods, err := client.CoreV1().Pods(gadgetNamespace).List(context.TODO(), listOpts)
+	pods, err := client.CoreV1().Pods(utils.GadgetNamespace).List(context.TODO(), listOpts)
 	if err != nil {
 		return ""
 	}
@@ -59,7 +61,7 @@ func getGadgetPodsDebug(client *kubernetes.Clientset) string {
 
 func getPodLog(client *kubernetes.Clientset, podname string) string {
 	podLogOpts := corev1.PodLogOptions{}
-	req := client.CoreV1().Pods(gadgetNamespace).GetLogs(podname, &podLogOpts)
+	req := client.CoreV1().Pods(utils.GadgetNamespace).GetLogs(podname, &podLogOpts)
 	if req == nil {
 		return ""
 	}
@@ -95,7 +97,7 @@ func eventTime(event corev1.Event) time.Time {
 func getEvents(client *kubernetes.Clientset) string {
 	var sb strings.Builder
 
-	events, err := client.CoreV1().Events(gadgetNamespace).List(context.TODO(), metav1.ListOptions{})
+	events, err := client.CoreV1().Events(utils.GadgetNamespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return ""
 	}

@@ -189,21 +189,26 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 		return err
 	}
 
-	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	opts := metav1.ListOptions{LabelSelector: "k8s-app=gadget"}
+	pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), opts)
 	if err != nil {
 		return commonutils.WrapInErrListNodes(err)
 	}
 
+	if len(pods.Items) == 0 {
+		return fmt.Errorf("no gadget pods found. Is Inspektor Gadget deployed?")
+	}
+
 	traceNode := trace.Spec.Node
-	for _, node := range nodes.Items {
-		if traceNode != "" && node.Name != traceNode {
+	for _, pod := range pods.Items {
+		if traceNode != "" && pod.Spec.NodeName != traceNode {
 			continue
 		}
 
 		ready := false
 
-		for _, c := range node.Status.Conditions {
-			if c.Type == corev1.NodeReady {
+		for _, c := range pod.Status.Conditions {
+			if c.Type == corev1.PodReady {
 				ready = c.Status == corev1.ConditionTrue
 				break
 			}
@@ -211,15 +216,17 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 
 		if !ready {
 			if traceNode != "" {
-				return fmt.Errorf("node %q is not ready", traceNode)
+				return fmt.Errorf("gadget pod on node %q is not ready", traceNode)
 			}
+
+			fmt.Fprintf(os.Stderr, "gadget pod on node %q is not ready", traceNode)
 			continue
 		}
 
 		// If no particular node was given, we need to apply this trace on all
 		// available nodes.
 		if traceNode == "" {
-			trace.Spec.Node = node.Name
+			trace.Spec.Node = pod.Spec.NodeName
 		}
 
 		_, err := traceClient.GadgetV1alpha1().Traces("gadget").Create(
@@ -232,7 +239,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 				deleteTraces(traceClient, traceID)
 			}
 
-			return fmt.Errorf("failed to create trace on node %q: %w", node.Name, err)
+			return fmt.Errorf("failed to create trace on node %q: %w", pod.Spec.NodeName, err)
 		}
 	}
 
