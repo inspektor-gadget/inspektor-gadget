@@ -318,7 +318,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 
 			// Get gadget daemon set (if any) to check if it was modified
-			currentGadgetDS, _ = k8sClient.AppsV1().DaemonSets(gadgetNamespace).Get(
+			currentGadgetDS, _ = k8sClient.AppsV1().DaemonSets(utils.GadgetNamespace).Get(
 				context.TODO(), "gadget", metav1.GetOptions{},
 			)
 		}
@@ -365,7 +365,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	// The below code (particularly how to use UntilWithSync) is highly
 	// inspired from kubectl wait source code:
 	// https://github.com/kubernetes/kubectl/blob/b5fe0f6e9c65ea95a2118746b7e04822255d76c2/pkg/cmd/wait/wait.go#L364
-	daemonSetInterface := k8sClient.AppsV1().DaemonSets(gadgetNamespace)
+	daemonSetInterface := k8sClient.AppsV1().DaemonSets(utils.GadgetNamespace)
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			options.LabelSelector = "k8s-app=gadget"
@@ -385,7 +385,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	_, err = watchtools.UntilWithSync(ctx, lw, &appsv1.DaemonSet{}, nil, func(event watch.Event) (bool, error) {
 		switch event.Type {
 		case watch.Deleted:
-			return false, fmt.Errorf("DaemonSet from namespace %s should not be deleted", gadgetNamespace)
+			return false, fmt.Errorf("DaemonSet from namespace %s should not be deleted", utils.GadgetNamespace)
 		case watch.Modified:
 			daemonSet, _ := event.Object.(*appsv1.DaemonSet)
 			status := daemonSet.Status
