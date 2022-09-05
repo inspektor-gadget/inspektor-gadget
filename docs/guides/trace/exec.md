@@ -5,6 +5,8 @@ description: >
   Trace new processes.
 ---
 
+![Screencast of the trace exec gadget](exec.gif)
+
 The trace exec gadget streams new processes creation events.
 
 Let's deploy an example application that will spawn few new processes:

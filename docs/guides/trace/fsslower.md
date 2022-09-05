@@ -5,6 +5,8 @@ description: >
   Trace open, read, write and fsync operations slower than a threshold.
 ---
 
+![Screencast of the trace fsslower gadget](fsslower.gif)
+
 The trace fsslower gadget streams file operations (open, read, write and
 fsync) that are slower than a threshold.
 
