@@ -13,6 +13,11 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type capabilitiesArgsT struct {
+	Cap    int32
+	CapOpt int32
+}
+
 type capabilitiesUniqueKey struct {
 	Cap      int32
 	Tgid     uint32
@@ -60,7 +65,8 @@ type capabilitiesSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type capabilitiesProgramSpecs struct {
-	IgTraceCap *ebpf.ProgramSpec `ebpf:"ig_trace_cap"`
+	IgTraceCapE *ebpf.ProgramSpec `ebpf:"ig_trace_cap_e"`
+	IgTraceCapX *ebpf.ProgramSpec `ebpf:"ig_trace_cap_x"`
 }
 
 // capabilitiesMapSpecs contains maps before they are loaded into the kernel.
@@ -70,6 +76,7 @@ type capabilitiesMapSpecs struct {
 	Events        *ebpf.MapSpec `ebpf:"events"`
 	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
 	Seen          *ebpf.MapSpec `ebpf:"seen"`
+	Start         *ebpf.MapSpec `ebpf:"start"`
 }
 
 // capabilitiesObjects contains all objects after they have been loaded into the kernel.
@@ -94,6 +101,7 @@ type capabilitiesMaps struct {
 	Events        *ebpf.Map `ebpf:"events"`
 	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
 	Seen          *ebpf.Map `ebpf:"seen"`
+	Start         *ebpf.Map `ebpf:"start"`
 }
 
 func (m *capabilitiesMaps) Close() error {
@@ -101,6 +109,7 @@ func (m *capabilitiesMaps) Close() error {
 		m.Events,
 		m.MountNsFilter,
 		m.Seen,
+		m.Start,
 	)
 }
 
@@ -108,12 +117,14 @@ func (m *capabilitiesMaps) Close() error {
 //
 // It can be passed to loadCapabilitiesObjects or ebpf.CollectionSpec.LoadAndAssign.
 type capabilitiesPrograms struct {
-	IgTraceCap *ebpf.Program `ebpf:"ig_trace_cap"`
+	IgTraceCapE *ebpf.Program `ebpf:"ig_trace_cap_e"`
+	IgTraceCapX *ebpf.Program `ebpf:"ig_trace_cap_x"`
 }
 
 func (p *capabilitiesPrograms) Close() error {
 	return _CapabilitiesClose(
-		p.IgTraceCap,
+		p.IgTraceCapE,
+		p.IgTraceCapX,
 	)
 }
 

@@ -44,12 +44,13 @@ type Config struct {
 }
 
 type Tracer struct {
-	config           *Config
-	objs             capabilitiesObjects
-	capabilitiesLink link.Link
-	reader           *perf.Reader
-	enricher         gadgets.DataEnricher
-	eventCallback    func(types.Event)
+	config        *Config
+	objs          capabilitiesObjects
+	capEnterLink  link.Link
+	capExitLink   link.Link
+	reader        *perf.Reader
+	enricher      gadgets.DataEnricher
+	eventCallback func(types.Event)
 }
 
 var capabilitiesNames = map[uint32]string{
@@ -114,7 +115,8 @@ func NewTracer(c *Config, enricher gadgets.DataEnricher,
 }
 
 func (t *Tracer) Stop() {
-	t.capabilitiesLink = gadgets.CloseLink(t.capabilitiesLink)
+	t.capEnterLink = gadgets.CloseLink(t.capEnterLink)
+	t.capExitLink = gadgets.CloseLink(t.capExitLink)
 
 	if t.reader != nil {
 		t.reader.Close()
@@ -153,11 +155,17 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	kprobe, err := link.Kprobe("cap_capable", t.objs.IgTraceCap, nil)
+	kprobe, err := link.Kprobe("cap_capable", t.objs.IgTraceCapE, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
-	t.capabilitiesLink = kprobe
+	t.capEnterLink = kprobe
+
+	kretprobe, err := link.Kretprobe("cap_capable", t.objs.IgTraceCapX, nil)
+	if err != nil {
+		return fmt.Errorf("error opening kretprobe: %w", err)
+	}
+	t.capExitLink = kretprobe
 
 	reader, err := perf.NewReader(t.objs.capabilitiesMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
@@ -235,6 +243,11 @@ func (t *Tracer) run() {
 			insetString = strconv.Itoa(insetID)
 		}
 
+		verdict := "Deny"
+		if eventC.ret == 0 {
+			verdict = "Allow"
+		}
+
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
@@ -247,6 +260,7 @@ func (t *Tracer) run() {
 			InsetID:   insetString,
 			Comm:      C.GoString(&eventC.task[0]),
 			CapName:   capabilityName,
+			Verdict:   verdict,
 		}
 
 		if t.enricher != nil {

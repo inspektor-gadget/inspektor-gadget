@@ -18,17 +18,29 @@ const volatile enum uniqueness unique_type = UNQ_OFF;
 const volatile pid_t targ_pid = -1;
 const volatile bool filter_by_mnt_ns = false;
 
-struct unique_key {
+struct args_t {
 	int cap;
-	u32 tgid;
-	u64 cgroupid;
+	int cap_opt;
 };
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, u64);
+	__type(value, struct args_t);
+} start SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(__u32));
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
+
+struct unique_key {
+	int cap;
+	u32 tgid;
+	u64 cgroupid;
+};
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -45,7 +57,7 @@ struct {
 } mount_ns_filter SEC(".maps");
 
 SEC("kprobe/cap_capable")
-int BPF_KPROBE(ig_trace_cap, const struct cred *cred, struct user_namespace *targ_ns, int cap, int cap_opt)
+int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred, struct user_namespace *targ_ns, int cap, int cap_opt)
 {
 	__u32 pid;
 	u64 mntns_id;
@@ -67,17 +79,45 @@ int BPF_KPROBE(ig_trace_cap, const struct cred *cred, struct user_namespace *tar
 	if (targ_pid != -1 && targ_pid != pid)
 		return 0;
 
+	struct args_t args = {};
+	args.cap = cap;
+	args.cap_opt = cap_opt;
+	bpf_map_update_elem(&start, &pid_tgid, &args, 0);
+
+	return 0;
+}
+
+SEC("kretprobe/cap_capable")
+int BPF_KRETPROBE(ig_trace_cap_x)
+{
+	__u64 pid_tgid;
+	struct args_t *ap;
+	u64 mntns_id;
+	struct task_struct *task;
+	int ret;
+
+	pid_tgid = bpf_get_current_pid_tgid();
+	ap = bpf_map_lookup_elem(&start, &pid_tgid);
+	if (!ap)
+		return 0;	/* missed entry */
+
+	bpf_map_delete_elem(&start, &pid_tgid);
+
+	task = (struct task_struct*) bpf_get_current_task();
+	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
 	struct cap_event event = {};
-	event.pid = pid;
+	event.pid = pid_tgid >> 32;
 	event.tgid = pid_tgid;
-	event.cap = cap;
+	event.cap = ap->cap;
 	event.uid = bpf_get_current_uid_gid();
 	event.mntnsid = mntns_id;
-	event.cap_opt = cap_opt;
+	event.cap_opt = ap->cap_opt;
 	bpf_get_current_comm(&event.task, sizeof(event.task));
+	event.ret = PT_REGS_RC(ctx);
 
 	if (unique_type) {
-		struct unique_key key = {.cap = cap};
+		struct unique_key key = {.cap = ap->cap};
 		if (unique_type == UNQ_CGROUP) {
 			key.cgroupid = bpf_get_current_cgroup_id();
 		} else {

@@ -14,6 +14,7 @@ struct cap_event {
 	__u32	tgid;
 	__u32	uid;
 	int	cap_opt;
+	int	ret;
 	char	task[TASK_COMM_LEN];
 };
 

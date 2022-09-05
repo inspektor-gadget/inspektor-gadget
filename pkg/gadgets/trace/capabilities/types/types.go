@@ -29,6 +29,7 @@ type Event struct {
 	Cap       int    `json:"cap,omitempty"`
 	Audit     int    `json:"audit,omitempty"`
 	InsetID   string `json:"insetid,omitempty"`
+	Verdict   string `json:"verdict,omitempty"`
 }
 
 func Base(ev eventtypes.Event) Event {
