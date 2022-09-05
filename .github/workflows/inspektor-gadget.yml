@@ -90,6 +90,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
+        co-re: false
     - name: Build kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
       run: |
         git checkout
@@ -259,7 +260,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        type: [ default ]
+        type: [ default, core ]
     steps:
       - uses: actions/checkout@v3
       - name: Login to Container Registry
@@ -274,11 +275,12 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
+          co-re: ${{ matrix.type == 'core' }}
       - name: Publish the manifest list
         run: |
           if [[ "${{ matrix.type }}" == "core" ]]; then
             docker buildx imagetools create \
-              -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}-core \
+              -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
               ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-amd64 }} \
               ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-arm64 }}
           fi
@@ -319,6 +321,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
+        co-re: false
     - name: Build example container
       uses: docker/build-push-action@v2
       with:
@@ -489,6 +492,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
+        co-re: false
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       env:
@@ -532,6 +536,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
+        co-re: ${{ matrix.type == 'core' }}
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       env:
