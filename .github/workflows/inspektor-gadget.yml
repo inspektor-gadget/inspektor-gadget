@@ -504,11 +504,14 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-  test-integration:
+  test-integration-minikube:
     name: Integration tests
     # level: 1
     needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        type: [default, core]
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -522,14 +525,14 @@ jobs:
         minikube version: 'v1.25.2'
         kubernetes version: 'v1.23.0'
         github token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Get gadget-container-image-default-linux-amd64.tar from artifact.
+    - name: Get gadget-container-image-${{ matrix.type }}-linux-amd64.tar from artifact.
       uses: actions/download-artifact@v2
       with:
-        name: gadget-container-image-default-linux-amd64.tar
+        name: gadget-container-image-${{ matrix.type }}-linux-amd64.tar
         path: /home/runner/work/inspektor-gadget/
-    - name: Prepare minikube by loading gadget-container-image-default-linux-amd64.tar
+    - name: Prepare minikube by loading gadget-container-image-${{ matrix.type }}-linux-amd64.tar
       run: |
-        minikube image load /home/runner/work/inspektor-gadget/gadget-container-image-default-linux-amd64.tar
+        minikube image load /home/runner/work/inspektor-gadget/gadget-container-image-${{ matrix.type }}-linux-amd64.tar
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
@@ -554,7 +557,7 @@ jobs:
     needs:
       - documentation-checks
       - lint
-      - test-integration
+      - test-integration-minikube
       - test-integration-aro
       - test-local-gadget
       - check-readme-up-to-date
