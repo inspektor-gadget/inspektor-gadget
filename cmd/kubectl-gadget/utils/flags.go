@@ -23,7 +23,7 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -106,30 +106,27 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 			}
 		}
 
-		// Verify if the node specified in the filter actually exist. This check
-		// will be removed when we will support the addition/deletion of nodes.
+		// Verify that there is a gadget pod running on the node
+		// specified in the filter.
 		if params.Node != "" {
 			client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 			if err != nil {
 				return commonutils.WrapInErrSetupK8sClient(err)
 			}
 
-			nodes, err := client.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
+			opts := metav1.ListOptions{
+				LabelSelector: "k8s-app=gadget",
+				FieldSelector: "spec.nodeName=" + params.Node,
+			}
+			pods, err := client.CoreV1().Pods(GadgetNamespace).List(context.TODO(), opts)
 			if err != nil {
 				return commonutils.WrapInErrListNodes(err)
 			}
 
-			nodeFound := false
-			for _, node := range nodes.Items {
-				if node.Name == params.Node {
-					nodeFound = true
-					break
-				}
-			}
-
-			if !nodeFound {
+			if len(pods.Items) == 0 {
 				return commonutils.WrapInErrInvalidArg("--node",
-					fmt.Errorf("node %q does not exist", params.Node))
+					fmt.Errorf("there's not a gadget pod in node %q. Does the node exist?",
+						params.Node))
 			}
 		}
 
