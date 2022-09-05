@@ -14,6 +14,8 @@ on:
     tags:
     - 'v*'
 
+permissions: read-all
+
 # Jobs are given a level in a comment.
 # Jobs of the same level run in parallel.
 # Jobs of level N depend of, at least, one job on level N - 1 expect job whom
@@ -165,9 +167,22 @@ jobs:
     name: Build gadget container images
     # level: 0
     runs-on: ubuntu-latest
+    permissions:
+      # allow publishing container image
+      # in case of public fork repo/packages permissions will always be read
+      contents: read
+      packages: write
+    outputs:
+      digest-default-amd64: ${{ steps.published-gadget-container-images.outputs.default-amd64 }}
+      digest-default-arm64: ${{ steps.published-gadget-container-images.outputs.default-arm64 }}
+      digest-core-amd64: ${{ steps.published-gadget-container-images.outputs.core-amd64 }}
+      digest-core-arm64: ${{ steps.published-gadget-container-images.outputs.core-arm64 }}
     strategy:
       matrix:
         type: [default, core]
+        os: [ linux ]
+        # For the moment, we only support these two platforms.
+        platform: [ arm64, amd64 ]
     steps:
     - uses: actions/checkout@v3
     - name: Set up QEMU
@@ -195,25 +210,99 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
         container-image-dev: ${{ env.DEVELOPMENT_CONTAINER_REPO }}
-    - name: Build gadget ${{ matrix.type }} container
+    - name: Build gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: docker/build-push-action@v2
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
         build-args: |
           ENABLE_BTFGEN=true
-        # At the moment, we only build core image and do not publish them.
-        push: ${{ matrix.type != 'core' }}
+        outputs: type=docker,dest=/tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
         tags: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
         cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache-new
-        # For the moment, we only support these two platforms.
-        platforms: linux/amd64,linux/arm64
+        cache-to: type=local,dest=/tmp/.buildx-cache-docker
+        platforms: ${{ matrix.os }}/${{ matrix.platform }}
+    - name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
+      uses: actions/upload-artifact@master
+      with:
+        name: gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+        path: /tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+        retention-days: 1
+    # build time will not be increased with this workflow because of internal cache
+    # buildx is used here since it allows push-by-digest to avoid platform specific tags
+    - name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image to registry
+      id: publish-gadget-container-images
+      if: github.event_name != 'pull_request'
+      uses: docker/build-push-action@v2
+      with:
+        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
+        build-args: |
+          ENABLE_BTFGEN=true
+        outputs: type=registry,name=${{ steps.choose-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
+        cache-from: type=local,src=/tmp/.buildx-cache-docker
+        cache-to: type=local,dest=/tmp/.buildx-cache-registry
+        platforms: ${{ matrix.os }}/${{ matrix.platform }}
+    - name: Save gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image digest output
+      id: published-gadget-container-images
+      if: github.event_name != 'pull_request'
+      run: |
+          echo "::set-output name=${{ matrix.type }}-${{ matrix.platform }}::${{ steps.publish-gadget-container-images.outputs.digest }}"
+
+  publish-gadget-images-manifest:
+    name: Publish gadget container images manifest
+    # level: 1
+    if: github.event_name != 'pull_request'
+    needs: build-gadget-container-images
+    runs-on: ubuntu-latest
+    permissions:
+      # allow publishing container image
+      # in case of public fork repo/packages permissions will always be read
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        type: [ default ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Login to Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Choose container repository and determine image tag
+        id: choose-repo-determine-image-tag
+        uses: ./.github/actions/choose-container-repo-and-determine-image-tag
+        with:
+          registry: ${{ env.REGISTRY }}
+          container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
+          container-image-dev: ${{ env.DEVELOPMENT_CONTAINER_REPO }}
+      - name: Publish the manifest list
+        run: |
+          if [[ "${{ matrix.type }}" == "core" ]]; then
+            docker buildx imagetools create \
+              -t ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}-core \
+              ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-amd64 }} \
+              ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-arm64 }}
+          fi
+
+          if [[ "${{ matrix.type }}" == "default" ]]; then
+            docker buildx imagetools create \
+              -t ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }} \
+              ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-amd64 }} \
+              ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-arm64 }}
+          fi
 
   build-examples:
     name: Build examples
     # level: 0
     runs-on: ubuntu-latest
+    permissions:
+      # allow publishing container image
+      # in case of public fork repo/packages permissions will always be read
+      contents: read
+      packages: write
     strategy:
       matrix:
         example: [runc-hook, kube-container-collection]
@@ -373,8 +462,8 @@ jobs:
   # never try to use IG on that unique ARO cluster from different workflow runs.
   test-integration-aro:
     name: Integration tests on ARO
-    # level: 1
-    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images]
+    # level: 2
+    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images, publish-gadget-images-manifest]
     # Run this job only if an ARO cluster is available on repo secrets. See
     # docs/ci.md for further details.
     if: needs.check-secrets.outputs.aro == 'true'
@@ -417,6 +506,11 @@ jobs:
     # level: 1
     needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images]
     runs-on: ubuntu-latest
+    permissions:
+      # allow publishing container image
+      # in case of public fork repo/packages permissions will always be read
+      contents: read
+      packages: write
     steps:
     - uses: actions/checkout@v3
     - name: Setup Minikube
@@ -425,6 +519,14 @@ jobs:
         minikube version: 'v1.25.2'
         kubernetes version: 'v1.23.0'
         github token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Get gadget-container-image-default-linux-amd64.tar from artifact.
+      uses: actions/download-artifact@v2
+      with:
+        name: gadget-container-image-default-linux-amd64.tar
+        path: /home/runner/work/inspektor-gadget/
+    - name: Prepare minikube by loading gadget-container-image-default-linux-amd64.tar
+      run: |
+        minikube image load /home/runner/work/inspektor-gadget/gadget-container-image-default-linux-amd64.tar
     - name: Choose container repository and determine image tag
       id: choose-repo-determine-image-tag
       uses: ./.github/actions/choose-container-repo-and-determine-image-tag
@@ -445,7 +547,7 @@ jobs:
 
   release:
     name: Release
-    # level: 2
+    # level: 3
     needs:
       - documentation-checks
       - lint
@@ -456,6 +558,8 @@ jobs:
       - build-examples
       - build-gadgets-examples
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
     - uses: actions/checkout@v3
