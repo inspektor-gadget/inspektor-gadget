@@ -106,6 +106,8 @@ spec:
       serviceAccount: gadget
       hostPID: true
       hostNetwork: true
+      nodeSelector:
+        kubernetes.io/os: "linux"
       containers:
       - name: gadget
         terminationMessagePolicy: FallbackToLogsOnError

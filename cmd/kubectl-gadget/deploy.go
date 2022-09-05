@@ -40,6 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
+	k8sversion "k8s.io/apimachinery/pkg/util/version"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -287,6 +288,19 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		daemonSet, handlingDaemonSet := object.(*appsv1.DaemonSet)
 		if handlingDaemonSet {
 			daemonSet.Spec.Template.Annotations["inspektor-gadget.kinvolk.io/option-hook-mode"] = hookMode
+
+			// The "kubernetes.io/os" node label was introduced in v1.14.0
+			// (https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.14.md.)
+			// Remove this if the cluster is older than that to allow Inspektor Gadget to work there.
+			serverInfo, err := discoveryClient.ServerVersion()
+			if err != nil {
+				return fmt.Errorf("getting server version: %w", err)
+			}
+
+			serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
+			if serverVersion.LessThan(k8sversion.MustParseSemantic("v1.14.0")) {
+				delete(daemonSet.Spec.Template.Spec.NodeSelector, "kubernetes.io/os")
+			}
 
 			gadgetContainer := &daemonSet.Spec.Template.Spec.Containers[0]
 
