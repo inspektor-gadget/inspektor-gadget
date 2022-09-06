@@ -77,7 +77,7 @@ func NewListContainersCmd() *cobra.Command {
 		RunE: func(*cobra.Command, []string) error {
 			localGadgetManager, err := localgadgetmanager.NewManager(commonFlags.RuntimeConfigs)
 			if err != nil {
-				return fmt.Errorf("failed to initialize manager: %w", err)
+				return commonutils.WrapInErrManagerInit(err)
 			}
 			defer localGadgetManager.Close()
 

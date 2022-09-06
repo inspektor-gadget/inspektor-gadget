@@ -104,7 +104,17 @@ information cannot be retrieved from the container runtime.
 We can execute the `local-gadget --help` flag to check the supported gadgets,
 following some examples of usage.
 
-### Process
+### Common features
+
+Notice that all the gadgets support the following features even if, for
+simplicity, they are not demonstrated in each gadget's examples.
+
+- JSON format and `custom-columns` output mode are supported through the
+  `--output` flag.
+- It is possible to filter events by container name using the `--containername`
+  flag.
+
+### Snapshot/Process
 
 ```bash
 $ sudo local-gadget snapshot process
@@ -167,8 +177,54 @@ gadget       gadgettracerman    39645    39677
 gadget       gadgettracerman    39645    39678
 ```
 
-Consider that the JSON format and the `custom-columns` output mode are also
-supported using the `--output` flag.
+### Trace/Bind
+
+```bash
+$ sudo local-gadget trace bind
+CONTAINER        PID     COMM             PROTO  ADDR             PORT    OPTS    IF
+foo              380299  nc               TCP    ::               4242    .R...   0
+```
+
+The previous output was trigged using the following test container:
+
+```bash
+$ docker run -it --rm --name foo busybox /bin/sh -c "nc -l -p 4242"
+```
+
+In case of need, we can specify the ports we want to monitor:
+```bash
+$ sudo local-gadget trace bind --ports 4242
+```
+
+Use `local-gadget trace bind --help` to discover the rest of the filtering
+options available for this gadget.
+
+### Trace/Exec
+
+This is the output when executing this gadget on a Kubernetes node:
+
+```bash
+$ sudo local-gadget trace exec
+CONTAINER        PID     PPID    PCOMM            RET  ARGS
+calico-node      416789  416777  calico-node      0    /bin/calico-node -felix-live -bird-live
+calico-node      416804  416789  sv               0    /usr/local/bin/sv status /etc/service/enabled/confd
+calico-node      416805  416789  sv               0    /usr/local/bin/sv status /etc/service/enabled/bird
+gadget           416816  416806  gadgettracerman  0    /bin/gadgettracermanager -liveness
+gadget           416842  416823  gadgettracerman  0    /bin/gadgettracermanager -liveness
+calico-node      416887  416876  calico-node      0    /bin/calico-node -felix-ready -bird-ready
+```
+
+Remember that we can use the `-o custom-columns` flag to show only the columns
+we are interested in:
+
+```bash
+$ sudo local-gadget trace exec -o custom-columns=container,pid,pcomm
+CONTAINER        PID     PCOMM
+calico-node      421023  ipset
+calico-node      421039  calico-node
+calico-node      421056  sv
+gadget           421066  gadgettracerman
+```
 
 ## Interactive Mode
 

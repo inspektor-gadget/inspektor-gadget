@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
@@ -68,7 +69,7 @@ func newCapabilitiesCmd() *cobra.Command {
 	return cmd
 }
 
-func NewCapabilitiesParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Event] {
+func NewCapabilitiesParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParser[types.Event] {
 	columnsWidth := map[string]int{
 		"node":      -16,
 		"namespace": -16,

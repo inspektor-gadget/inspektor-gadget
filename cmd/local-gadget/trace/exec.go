@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,24 +15,30 @@
 package trace
 
 import (
+	"github.com/cilium/ebpf"
 	"github.com/spf13/cobra"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	execTracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
+	execTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 )
 
 func newExecCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
-	runCmd := func(cmd *cobra.Command, args []string) error {
-		execGadget := &TraceGadget[types.Event]{
-			name:        "execsnoop",
+	runCmd := func(*cobra.Command, []string) error {
+		ExecGadget := &TraceGadget[execTypes.Event]{
 			commonFlags: &commonFlags,
-			parser:      commontrace.NewExecParserWithK8sInfo(&commonFlags.OutputConfig),
+			parser:      commontrace.NewExecParserWithRuntimeInfo(&commonFlags.OutputConfig),
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(execTypes.Event)) (trace.Tracer, error) {
+				return execTracer.NewTracer(&execTracer.Config{MountnsMap: mountnsmap}, enricher, eventCallback)
+			},
 		}
 
-		return execGadget.Run()
+		return ExecGadget.Run()
 	}
 
 	cmd := commontrace.NewExecCmd(runCmd)

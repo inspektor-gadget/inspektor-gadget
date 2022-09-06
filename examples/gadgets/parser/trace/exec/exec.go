@@ -31,8 +31,8 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
 
+	"github.com/kinvolk/inspektor-gadget/cmd/common/trace"
 	"github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	cmdtrace "github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/trace"
 )
 
 const traceName = "trace_exec"
@@ -97,12 +97,12 @@ func main() {
 		OutputMode: utils.OutputModeColumns,
 
 		// Define the list of columns we're interested in
-		CustomColumns: []string{"container", "pcomm", "pid"},
+		CustomColumns: append([]string{"container"}, trace.GetExecDefaultColumns()...),
 	}
 
 	// Create a parser. It's the component that converts events to
 	// strings according to the configuration above.
-	execparser := cmdtrace.NewExecParser(config)
+	execparser := trace.NewExecParser(config)
 
 	// Define a callback to be called each time there is an event.
 	eventCallback := func(event types.Event) {
@@ -110,7 +110,9 @@ func main() {
 		fmt.Println(execparser.TransformEvent(&event))
 	}
 
-	fmt.Println(execparser.BuildColumnsHeader())
+	if config.OutputMode != utils.OutputModeJSON {
+		fmt.Println(execparser.BuildColumnsHeader())
+	}
 
 	// Create a tracer instance. This is the glue piece that allows
 	// this example to filter events by containers.

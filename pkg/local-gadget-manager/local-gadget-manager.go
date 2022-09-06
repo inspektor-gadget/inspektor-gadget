@@ -69,7 +69,7 @@ func (l *LocalGadgetManager) GadgetOutputModesSupported(gadget string) (ret []st
 	return ret, nil
 }
 
-func (l *LocalGadgetManager) ListOperations(name string) []gadgetv1alpha1.Operation {
+func (l *LocalGadgetManager) ListTraceResourceOperations(name string) []gadgetv1alpha1.Operation {
 	operations := []gadgetv1alpha1.Operation{}
 
 	traceResource, ok := l.traceResources[name]
@@ -92,7 +92,7 @@ func (l *LocalGadgetManager) ListOperations(name string) []gadgetv1alpha1.Operat
 	return operations
 }
 
-func (l *LocalGadgetManager) ListTraces() []string {
+func (l *LocalGadgetManager) ListTraceResources() []string {
 	traces := []string{}
 	for name := range l.traceResources {
 		traces = append(traces, name)
@@ -114,7 +114,7 @@ func traceName(name string) string {
 	return gadgets.TraceName("gadget", name)
 }
 
-func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter string, outputMode gadgetv1alpha1.TraceOutputMode, params map[string]string) error {
+func (l *LocalGadgetManager) AddTraceResource(gadget, name, containerFilter string, outputMode gadgetv1alpha1.TraceOutputMode, params map[string]string) error {
 	factory, ok := l.traceFactories[gadget]
 	if !ok {
 		return fmt.Errorf("unknown gadget %q", gadget)
@@ -171,7 +171,7 @@ func (l *LocalGadgetManager) AddTracer(gadget, name, containerFilter string, out
 	return nil
 }
 
-func (l *LocalGadgetManager) Operation(name string, opname gadgetv1alpha1.Operation) error {
+func (l *LocalGadgetManager) ExecTraceResourceOperation(name string, opname gadgetv1alpha1.Operation) error {
 	traceResource, ok := l.traceResources[name]
 	if !ok {
 		return fmt.Errorf("cannot find trace %q", name)
@@ -195,7 +195,7 @@ func (l *LocalGadgetManager) Operation(name string, opname gadgetv1alpha1.Operat
 	return nil
 }
 
-func (l *LocalGadgetManager) Show(name string) (ret string, err error) {
+func (l *LocalGadgetManager) ShowTraceResourceStatus(name string) (ret string, err error) {
 	traceResource, ok := l.traceResources[name]
 	if !ok {
 		return "", fmt.Errorf("cannot find trace %q", name)
@@ -213,7 +213,7 @@ func (l *LocalGadgetManager) Show(name string) (ret string, err error) {
 	return ret, nil
 }
 
-func (l *LocalGadgetManager) CheckStatus(name string, state gadgetv1alpha1.TraceState) error {
+func (l *LocalGadgetManager) CheckTraceResourceStatus(name string, state gadgetv1alpha1.TraceState) error {
 	traceResource, ok := l.traceResources[name]
 	if !ok {
 		return fmt.Errorf("cannot find trace %q", name)
@@ -231,7 +231,7 @@ func (l *LocalGadgetManager) CheckStatus(name string, state gadgetv1alpha1.Trace
 	return nil
 }
 
-func (l *LocalGadgetManager) DisplayOutput(
+func (l *LocalGadgetManager) DisplayTraceResourceOutput(
 	name string,
 	customResultsDisplay func(string, []string) error,
 ) error {
@@ -243,7 +243,7 @@ func (l *LocalGadgetManager) DisplayOutput(
 	return customResultsDisplay(string(traceResource.Spec.OutputMode), []string{traceResource.Status.Output})
 }
 
-func (l *LocalGadgetManager) Delete(name string) error {
+func (l *LocalGadgetManager) DeleteTraceResource(name string) error {
 	traceResource, ok := l.traceResources[name]
 	if !ok {
 		return fmt.Errorf("cannot find trace %q", name)
@@ -282,7 +282,7 @@ func (l *LocalGadgetManager) ContainersMap() *ebpf.Map {
 	return l.containersMap.ContainersMap()
 }
 
-func (l *LocalGadgetManager) Stream(name string, stop chan struct{}) (chan string, error) {
+func (l *LocalGadgetManager) StreamTraceResourceOutput(name string, stop chan struct{}) (chan string, error) {
 	gadgetStream, err := l.tracerCollection.Stream(traceName(name))
 	if err != nil {
 		return nil, fmt.Errorf("cannot find stream for %q", name)
@@ -330,6 +330,28 @@ func (l *LocalGadgetManager) Dump() string {
 		out += fmt.Sprintf("    %+v\n", traceResource.Spec.Filter)
 	}
 	return out
+}
+
+// We are not running multiple tracers per instance so the tracer ID doesn't
+// need to be unique and we can hide it from caller.
+const localGadgetTracerID = "local_gadget_tracer_id"
+
+func (l *LocalGadgetManager) CreateMountNsMap(containerSelector containercollection.ContainerSelector) (*ebpf.Map, error) {
+	if err := l.tracerCollection.AddTracer(localGadgetTracerID, containerSelector); err != nil {
+		return nil, err
+	}
+
+	mountnsmap, err := l.tracerCollection.TracerMountNsMap(localGadgetTracerID)
+	if err != nil {
+		l.tracerCollection.RemoveTracer(localGadgetTracerID)
+		return nil, err
+	}
+
+	return mountnsmap, nil
+}
+
+func (l *LocalGadgetManager) RemoveMountNsMap() error {
+	return l.tracerCollection.RemoveTracer(localGadgetTracerID)
 }
 
 func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, error) {

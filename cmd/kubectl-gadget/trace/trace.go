@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
@@ -27,35 +28,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type TraceEvent interface {
-	any
-
-	// The Go compiler does not support accessing a struct field x.f where x is
-	// of type parameter type even if all types in the type parameter's type set
-	// have a field f. We may remove this restriction in Go 1.19. See
-	// https://tip.golang.org/doc/go1.18#generics.
-	GetBaseEvent() eventtypes.Event
-}
-
-// TraceParser defines the interface that every trace-gadget parser has to
-// implement.
-type TraceParser[Event TraceEvent] interface {
-	// TransformEvent is called to transform an event to the requested output
-	// format.
-	TransformEvent(event *Event) string
-
-	// BuildColumnsHeader returns a header with the requested custom columns
-	// that exist in the predefined columns list. The columns are separated by
-	// the predefined width.
-	BuildColumnsHeader() string
-}
-
 // TraceGadget represents a gadget belonging to the trace category.
-type TraceGadget[Event TraceEvent] struct {
+type TraceGadget[Event commontrace.TraceEvent] struct {
 	name        string
 	commonFlags *utils.CommonFlags
 	params      map[string]string
-	parser      TraceParser[Event]
+	parser      commontrace.TraceParser[Event]
 }
 
 // Run runs a TraceGadget and prints the output after parsing it using the
@@ -105,10 +83,7 @@ func (g *TraceGadget[Event]) Run() error {
 }
 
 func NewTraceCmd() *cobra.Command {
-	traceCmd := &cobra.Command{
-		Use:   "trace",
-		Short: "Trace and print system events",
-	}
+	traceCmd := commontrace.NewCommonTraceCmd()
 
 	traceCmd.AddCommand(newBindCmd())
 	traceCmd.AddCommand(newCapabilitiesCmd())

@@ -35,6 +35,22 @@ func WrapInErrListNodes(err error) error {
 	return fmt.Errorf("failed to list nodes: %w", err)
 }
 
+// Manager
+
+func WrapInErrManagerInit(err error) error {
+	return fmt.Errorf("initializing manager: %w", err)
+}
+
+func WrapInErrManagerCreateMountNsMap(err error) error {
+	return fmt.Errorf("creating mountns map: %w", err)
+}
+
+// Gadget Tracers
+
+func WrapInErrGadgetTracerCreateAndRun(err error) error {
+	return fmt.Errorf("creating and running gadget tracer: %w", err)
+}
+
 // Gadget operations
 
 func WrapInErrRunGadget(err error) error {
