@@ -468,6 +468,11 @@ jobs:
     # docs/ci.md for further details.
     if: needs.check-secrets.outputs.aro == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      # allow publishing container image
+      # in case of public fork repo/packages permissions will always be read
+      contents: read
+      packages: write
     concurrency:
       group: no-simultaneous-test-integration-aro
     steps:
