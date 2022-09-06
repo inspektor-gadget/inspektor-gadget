@@ -19,9 +19,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
-	"github.com/spf13/cobra"
 )
 
 type ProcessFlags struct {

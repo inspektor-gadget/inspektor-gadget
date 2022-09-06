@@ -15,8 +15,14 @@
 package snapshot
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"text/tabwriter"
+
 	"github.com/spf13/cobra"
 
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	processcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -45,6 +51,58 @@ type SnapshotParser[Event SnapshotEvent] interface {
 	// that exist in the predefined columns list. The columns are separated by
 	// tabs.
 	BuildColumnsHeader() string
+
+	// GetOutputConfig returns the output configuration.
+	GetOutputConfig() *commonutils.OutputConfig
+}
+
+// SnapshotGadgetPrinter is in charge of printing the event of a snapshot gadget
+// using the parser.
+type SnapshotGadgetPrinter[Event SnapshotEvent] struct {
+	Parser SnapshotParser[Event]
+}
+
+func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []Event) error {
+	g.Parser.SortEvents(&allEvents)
+
+	outputConfig := g.Parser.GetOutputConfig()
+	switch outputConfig.OutputMode {
+	case commonutils.OutputModeJSON:
+		b, err := json.MarshalIndent(allEvents, "", "  ")
+		if err != nil {
+			return commonutils.WrapInErrMarshalOutput(err)
+		}
+
+		fmt.Printf("%s\n", b)
+		return nil
+	case commonutils.OutputModeColumns:
+		fallthrough
+	case commonutils.OutputModeCustomColumns:
+		// In the snapshot gadgets it's possible to use a tabwriter because
+		// we have the full list of events to print available, hence the
+		// tablewriter is able to determine the columns width. In other
+		// gadgets we don't know the size of all columns "a priori", hence
+		// we have to do a best effort printing fixed-width columns.
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+
+		fmt.Fprintln(w, g.Parser.BuildColumnsHeader())
+
+		for _, e := range allEvents {
+			baseEvent := e.GetBaseEvent()
+			if baseEvent.Type != eventtypes.NORMAL {
+				commonutils.ManageSpecialEvent(baseEvent, outputConfig.Verbose)
+				continue
+			}
+
+			fmt.Fprintln(w, g.Parser.TransformToColumns(&e))
+		}
+
+		w.Flush()
+	default:
+		return commonutils.WrapInErrOutputModeNotSupported(outputConfig.OutputMode)
+	}
+
+	return nil
 }
 
 func NewCommonSnapshotCmd() *cobra.Command {

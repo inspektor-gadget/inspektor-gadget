@@ -30,7 +30,9 @@ func newProcessCmd() *cobra.Command {
 		processGadget := &SnapshotGadget[types.Event]{
 			name:        "process-collector",
 			commonFlags: &commonFlags,
-			parser:      commonsnapshot.NewProcessParserWithK8sInfo(&commonFlags.OutputConfig, &flags),
+			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[types.Event]{
+				Parser: commonsnapshot.NewProcessParserWithK8sInfo(&commonFlags.OutputConfig, &flags),
+			},
 		}
 
 		return processGadget.Run()

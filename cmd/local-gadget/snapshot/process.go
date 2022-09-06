@@ -32,8 +32,10 @@ func newProcessCmd() *cobra.Command {
 
 	runCmd := func(*cobra.Command, []string) error {
 		processGadget := &SnapshotGadget[processTypes.Event]{
+			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[processTypes.Event]{
+				Parser: commonsnapshot.NewProcessParserWithRuntimeInfo(&commonFlags.OutputConfig, &flags),
+			},
 			commonFlags: &commonFlags,
-			parser:      commonsnapshot.NewProcessParserWithRuntimeInfo(&commonFlags.OutputConfig, &flags),
 			runTracer: func(localGadgetManager *localgadgetmanager.LocalGadgetManager, containerSelector *containercollection.ContainerSelector) ([]processTypes.Event, error) {
 				// Create mount namespace map to filter by containers
 				mountnsmap, err := localGadgetManager.CreateMountNsMap(*containerSelector)

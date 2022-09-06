@@ -30,7 +30,9 @@ func newSocketCmd() *cobra.Command {
 		socketGadget := &SnapshotGadget[types.Event]{
 			name:        "socket-collector",
 			commonFlags: &commonFlags,
-			parser:      commonsnapshot.NewSocketParserWithK8sInfo(&commonFlags.OutputConfig, &flags),
+			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[types.Event]{
+				Parser: commonsnapshot.NewSocketParserWithK8sInfo(&commonFlags.OutputConfig, &flags),
+			},
 			params: map[string]string{
 				"protocol": flags.Protocol,
 			},

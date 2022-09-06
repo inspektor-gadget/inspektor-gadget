@@ -33,8 +33,10 @@ func newSocketCmd() *cobra.Command {
 
 	runCmd := func(*cobra.Command, []string) error {
 		socketGadget := &SnapshotGadget[socketTypes.Event]{
+			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[socketTypes.Event]{
+				Parser: commonsnapshot.NewSocketParserWithRuntimeInfo(&commonFlags.OutputConfig, &flags),
+			},
 			commonFlags: &commonFlags,
-			parser:      commonsnapshot.NewSocketParserWithRuntimeInfo(&commonFlags.OutputConfig, &flags),
 			runTracer: func(localGadgetManager *localgadgetmanager.LocalGadgetManager, containerSelector *containercollection.ContainerSelector) ([]socketTypes.Event, error) {
 				allSockets := []socketTypes.Event{}
 

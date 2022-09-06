@@ -15,11 +15,6 @@
 package snapshot
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"text/tabwriter"
-
 	"github.com/spf13/cobra"
 
 	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
@@ -27,13 +22,13 @@ import (
 	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 // SnapshotGadget represents a gadget belonging to the snapshot category.
 type SnapshotGadget[Event commonsnapshot.SnapshotEvent] struct {
+	commonsnapshot.SnapshotGadgetPrinter[Event]
+
 	commonFlags *utils.CommonFlags
-	parser      commonsnapshot.SnapshotParser[Event]
 	runTracer   func(*localgadgetmanager.LocalGadgetManager, *containercollection.ContainerSelector) ([]Event, error)
 }
 
@@ -57,45 +52,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 		return commonutils.WrapInErrGadgetTracerCreateAndRun(err)
 	}
 
-	g.parser.SortEvents(&allEvents)
-
-	switch g.commonFlags.OutputMode {
-	case commonutils.OutputModeJSON:
-		b, err := json.MarshalIndent(allEvents, "", "  ")
-		if err != nil {
-			return commonutils.WrapInErrMarshalOutput(err)
-		}
-
-		fmt.Printf("%s\n", b)
-		return nil
-	case commonutils.OutputModeColumns:
-		fallthrough
-	case commonutils.OutputModeCustomColumns:
-		// In the snapshot gadgets it's possible to use a tabwriter because
-		// we have the full list of events to print available, hence the
-		// tablewriter is able to determine the columns width. In other
-		// gadgets we don't know the size of all columns "a priori", hence
-		// we have to do a best effort printing fixed-width columns.
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-		fmt.Fprintln(w, g.parser.BuildColumnsHeader())
-
-		for _, e := range allEvents {
-			baseEvent := e.GetBaseEvent()
-			if baseEvent.Type != eventtypes.NORMAL {
-				commonutils.ManageSpecialEvent(baseEvent, g.commonFlags.Verbose)
-				continue
-			}
-
-			fmt.Fprintln(w, g.parser.TransformToColumns(&e))
-		}
-
-		w.Flush()
-	default:
-		return commonutils.WrapInErrOutputModeNotSupported(g.commonFlags.OutputMode)
-	}
-
-	return nil
+	return g.PrintEvents(allEvents)
 }
 
 func NewSnapshotCmd() *cobra.Command {

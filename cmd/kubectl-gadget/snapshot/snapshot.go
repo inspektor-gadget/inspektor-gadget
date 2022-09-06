@@ -16,9 +16,6 @@ package snapshot
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -26,15 +23,15 @@ import (
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 // SnapshotGadget represents a gadget belonging to the snapshot category.
 type SnapshotGadget[Event commonsnapshot.SnapshotEvent] struct {
+	commonsnapshot.SnapshotGadgetPrinter[Event]
+
 	name        string
 	commonFlags *utils.CommonFlags
 	params      map[string]string
-	parser      commonsnapshot.SnapshotParser[Event]
 }
 
 // Run runs a SnapshotGadget and prints the output after parsing it using the
@@ -67,45 +64,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 			allEvents = append(allEvents, events...)
 		}
 
-		g.parser.SortEvents(&allEvents)
-
-		switch g.commonFlags.OutputMode {
-		case commonutils.OutputModeJSON:
-			b, err := json.MarshalIndent(allEvents, "", "  ")
-			if err != nil {
-				return commonutils.WrapInErrMarshalOutput(err)
-			}
-
-			fmt.Printf("%s\n", b)
-			return nil
-		case commonutils.OutputModeColumns:
-			fallthrough
-		case commonutils.OutputModeCustomColumns:
-			// In the snapshot gadgets it's possible to use a tabwriter because
-			// we have the full list of events to print available, hence the
-			// tablewriter is able to determine the columns width. In other
-			// gadgets we don't know the size of all columns "a priori", hence
-			// we have to do a best effort printing fixed-width columns.
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-			fmt.Fprintln(w, g.parser.BuildColumnsHeader())
-
-			for _, e := range allEvents {
-				baseEvent := e.GetBaseEvent()
-				if baseEvent.Type != eventtypes.NORMAL {
-					commonutils.ManageSpecialEvent(baseEvent, g.commonFlags.Verbose)
-					continue
-				}
-
-				fmt.Fprintln(w, g.parser.TransformToColumns(&e))
-			}
-
-			w.Flush()
-		default:
-			return commonutils.WrapInErrOutputModeNotSupported(g.commonFlags.OutputMode)
-		}
-
-		return nil
+		return g.PrintEvents(allEvents)
 	}
 
 	if err := utils.RunTraceAndPrintStatusOutput(config, callback); err != nil {
