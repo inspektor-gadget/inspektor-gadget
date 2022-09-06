@@ -15,14 +15,8 @@
 package snapshot
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"text/tabwriter"
-
 	"github.com/spf13/cobra"
 
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	processcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
@@ -51,83 +45,6 @@ type SnapshotParser[Event SnapshotEvent] interface {
 	// that exist in the predefined columns list. The columns are separated by
 	// tabs.
 	BuildColumnsHeader() string
-
-	// GetOutputConfig returns the output configuration. TODO: This method is
-	// required because of the same limitation of SnapshotEvent.GetBaseEvent().
-	// The Go compiler does not support accessing SnapshotParser.OutputConfig.
-	GetOutputConfig() *commonutils.OutputConfig
-}
-
-// SnapshotGadget represents a gadget belonging to the snapshot category.
-type SnapshotGadget[Event SnapshotEvent] struct {
-	parser    SnapshotParser[Event]
-	customRun func(callback func(traceOutputMode string, results []string) error) error
-}
-
-// Run runs a SnapshotGadget and prints the output after parsing it using the
-// SnapshotParser's methods.
-func (g *SnapshotGadget[Event]) Run() error {
-	// This function is called when a snapshot gadget finishes without errors and
-	// generates a list of results per node. It merges, sorts and print all of them
-	// in the requested mode.
-	callback := func(traceOutputMode string, results []string) error {
-		allEvents := []Event{}
-
-		for _, r := range results {
-			if len(r) == 0 {
-				continue
-			}
-
-			var events []Event
-			if err := json.Unmarshal([]byte(r), &events); err != nil {
-				return commonutils.WrapInErrUnmarshalOutput(err, r)
-			}
-			allEvents = append(allEvents, events...)
-		}
-
-		g.parser.SortEvents(&allEvents)
-
-		outputConfig := g.parser.GetOutputConfig()
-		switch outputConfig.OutputMode {
-		case commonutils.OutputModeJSON:
-			b, err := json.MarshalIndent(allEvents, "", "  ")
-			if err != nil {
-				return commonutils.WrapInErrMarshalOutput(err)
-			}
-
-			fmt.Printf("%s\n", b)
-			return nil
-		case commonutils.OutputModeColumns:
-			fallthrough
-		case commonutils.OutputModeCustomColumns:
-			// In the snapshot gadgets it's possible to use a tabwriter because
-			// we have the full list of events to print available, hence the
-			// tablewriter is able to determine the columns width. In other
-			// gadgets we don't know the size of all columns "a priori", hence
-			// we have to do a best effort printing fixed-width columns.
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-			fmt.Fprintln(w, g.parser.BuildColumnsHeader())
-
-			for _, e := range allEvents {
-				baseEvent := e.GetBaseEvent()
-				if baseEvent.Type != eventtypes.NORMAL {
-					commonutils.ManageSpecialEvent(baseEvent, outputConfig.Verbose)
-					continue
-				}
-
-				fmt.Fprintln(w, g.parser.TransformToColumns(&e))
-			}
-
-			w.Flush()
-		default:
-			return commonutils.WrapInErrOutputModeNotSupported(outputConfig.OutputMode)
-		}
-
-		return nil
-	}
-
-	return g.customRun(callback)
 }
 
 func NewCommonSnapshotCmd() *cobra.Command {
