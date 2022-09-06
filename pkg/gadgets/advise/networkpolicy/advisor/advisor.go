@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"sort"
 	"strings"
 
@@ -54,7 +54,7 @@ func NewAdvisor() *NetworkPolicyAdvisor {
 }
 
 func (a *NetworkPolicyAdvisor) LoadFile(filename string) error {
-	buf, err := ioutil.ReadFile(filename)
+	buf, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}

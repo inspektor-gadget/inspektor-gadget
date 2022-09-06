@@ -15,7 +15,7 @@
 package advisor
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -38,7 +38,7 @@ func TestLoad(t *testing.T) {
 		generatedOuput := a.FormatPolicies()
 
 		goldenFile := inputFile[:len(inputFile)-len(".input")] + ".golden"
-		goldenOutputBytes, err := ioutil.ReadFile(goldenFile)
+		goldenOutputBytes, err := os.ReadFile(goldenFile)
 		if err != nil {
 			t.Fatal(err)
 		}
