@@ -16,6 +16,7 @@ package trace
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
@@ -51,6 +52,9 @@ func newCapabilitiesCmd() *cobra.Command {
 		},
 	}
 
+	// flags
+	var auditOnly bool
+
 	cmd := &cobra.Command{
 		Use:   "capabilities",
 		Short: "Trace security capability checks",
@@ -59,11 +63,22 @@ func newCapabilitiesCmd() *cobra.Command {
 				name:        "capabilities",
 				commonFlags: commonFlags,
 				parser:      NewCapabilitiesParser(&commonFlags.OutputConfig),
+				params: map[string]string{
+					types.AuditOnlyParam: strconv.FormatBool(auditOnly),
+				},
 			}
 
 			return capabilitiesGadget.Run()
 		},
 	}
+
+	cmd.PersistentFlags().BoolVarP(
+		&auditOnly,
+		"audit-only",
+		"",
+		true,
+		"Only show audit checks",
+	)
 
 	utils.AddCommonFlags(cmd, commonFlags)
 

@@ -18,6 +18,14 @@ import (
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
+const (
+	AuditOnlyDefault = false
+)
+
+const (
+	AuditOnlyParam = "audit-only"
+)
+
 type Event struct {
 	eventtypes.Event
 

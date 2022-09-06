@@ -11,12 +11,20 @@
 #include <bpf/bpf_tracing.h>
 #include "capable.h"
 
+// include/linux/security.h
+#ifndef CAP_OPT_NOAUDIT
+#define CAP_OPT_NOAUDIT 1 << 1
+#endif
+
+
 #define MAX_ENTRIES	10240
 
 const volatile pid_t my_pid = -1;
 const volatile enum uniqueness unique_type = UNQ_OFF;
 const volatile pid_t targ_pid = -1;
 const volatile bool filter_by_mnt_ns = false;
+const volatile u32 linux_version_code = 0;
+const volatile bool audit_only = false;
 
 struct args_t {
 	int cap;
@@ -79,6 +87,32 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred, struct user_namespace *t
 	if (targ_pid != -1 && targ_pid != pid)
 		return 0;
 
+	if (audit_only) {
+		if (linux_version_code >= KERNEL_VERSION(5, 1, 0)) {
+			if (cap_opt & CAP_OPT_NOAUDIT)
+				return 0;
+		} else {
+			if (!cap_opt)
+				return 0;
+		}
+	}
+
+	if (unique_type) {
+		struct unique_key key = {.cap = cap};
+		if (unique_type == UNQ_CGROUP) {
+			key.cgroupid = bpf_get_current_cgroup_id();
+		} else {
+			key.tgid = pid_tgid;
+		}
+
+		if (bpf_map_lookup_elem(&seen, &key) != NULL) {
+			return 0;
+		}
+		u64 zero = 0;
+		bpf_map_update_elem(&seen, &key, &zero, 0);
+	}
+
+
 	struct args_t args = {};
 	args.cap = cap;
 	args.cap_opt = cap_opt;
@@ -115,21 +149,6 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event.cap_opt = ap->cap_opt;
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.ret = PT_REGS_RC(ctx);
-
-	if (unique_type) {
-		struct unique_key key = {.cap = ap->cap};
-		if (unique_type == UNQ_CGROUP) {
-			key.cgroupid = bpf_get_current_cgroup_id();
-		} else {
-			key.tgid = pid_tgid;
-		}
-
-		if (bpf_map_lookup_elem(&seen, &key) != NULL) {
-			return 0;
-		}
-		u64 zero = 0;
-		bpf_map_update_elem(&seen, &key, &zero, 0);
-	}
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
