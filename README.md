@@ -1,6 +1,17 @@
-# Inspektor Gadget
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/images/logo/logo-horizontal.png">
+    <img src="docs/images/logo/logo-horizontal-dark.png" alt="Inspektor Gadget" width="80%">
+  </picture>
+</h1>
 
-Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. It manages the packaging, deployment and execution of custom-built and [BCC](https://github.com/iovisor/bcc)-based BPF programs in a Kubernetes cluster. It automatically maps low-level kernel primitives to high-level Kubernetes resources, making it easier and quicker to find the relevant information.
+Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect
+Kubernetes resources and applications. It manages the packaging, deployment and
+execution of [eBPF](https://ebpf.io/) programs in a Kubernetes cluster,
+including many based on [BCC](https://github.com/iovisor/bcc) tools, as well as
+some developed specifically for use in Inspektor Gadget. It automatically maps
+low-level kernel primitives to high-level Kubernetes resources, making it easier
+and quicker to find the relevant information.
 
 ## The Gadgets
 
@@ -171,10 +182,10 @@ Available Commands:
 ## How does it work?
 
 Inspektor Gadget is deployed to each node as a privileged DaemonSet.
-It uses in-kernel BPF helper programs to monitor events mainly related to
-syscalls from userspace programs in a pod. The BPF programs are run by
+It uses in-kernel eBPF helper programs to monitor events mainly related to
+syscalls from userspace programs in a pod. The eBPF programs are run by
 the kernel and gather the log data. Inspektor Gadget's userspace
-utilities fetch the log data from ring buffers and display it. What BPF
+utilities fetch the log data from ring buffers and display it. What eBPF
 programs are and how Inspektor Gadget uses them is briefly explained here:
 
 You can read further details about the architecture [here](docs/architecture.md).

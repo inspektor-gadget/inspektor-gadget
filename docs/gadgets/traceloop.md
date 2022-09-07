@@ -6,7 +6,7 @@ title: Gadget traceloop
 The traceloop gadget traces system calls in a similar way to strace but with
 some differences:
 
-* traceloop uses BPF instead of ptrace
+* traceloop uses eBPF instead of ptrace
 * traceloop&#39;s tracing granularity is the container instead of a process
 * traceloop&#39;s traces are recorded in a fast, in-memory, overwritable ring
   buffer like a flight recorder. The tracing could be permanently enabled and
