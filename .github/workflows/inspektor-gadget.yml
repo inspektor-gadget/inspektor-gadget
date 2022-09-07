@@ -1,8 +1,7 @@
 name: Inspektor Gadget CI
 env:
   REGISTRY: ghcr.io
-  RELEASE_CONTAINER_REPO: ${{ github.repository }}
-  DEVELOPMENT_CONTAINER_REPO: ${{ github.repository }}-dev
+  CONTAINER_REPO: ${{ github.repository }}
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
@@ -85,13 +84,12 @@ jobs:
       id: go
     - name: Install debian packages
       uses: ./.github/actions/install-debian-packages
-    - name: Choose container repository and determine image tag
-      id: choose-repo-determine-image-tag
-      uses: ./.github/actions/choose-container-repo-and-determine-image-tag
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
-        container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
-        container-image-dev: ${{ env.DEVELOPMENT_CONTAINER_REPO }}
+        container-image: ${{ env.CONTAINER_REPO }}
     - name: Build kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
       run: |
         git checkout
@@ -106,8 +104,8 @@ jobs:
 
         kubectl_gadget=kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
 
-        CONTAINER_REPO=${{ steps.choose-repo-determine-image-tag.outputs.container-repo }} \
-        IMAGE_TAG=${{ steps.choose-repo-determine-image-tag.outputs.image-tag }} \
+        CONTAINER_REPO=${{ steps.set-repo-determine-image-tag.outputs.container-repo }} \
+        IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
         make $kubectl_gadget
 
         # Prepare assets for release and actions artifacts
@@ -203,13 +201,12 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Choose container repository and determine image tag
-      id: choose-repo-determine-image-tag
-      uses: ./.github/actions/choose-container-repo-and-determine-image-tag
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
-        container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
-        container-image-dev: ${{ env.DEVELOPMENT_CONTAINER_REPO }}
+        container-image: ${{ env.CONTAINER_REPO }}
     - name: Build gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: docker/build-push-action@v2
       with:
@@ -218,7 +215,7 @@ jobs:
         build-args: |
           ENABLE_BTFGEN=true
         outputs: type=docker,dest=/tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
-        tags: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
+        tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-docker
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
@@ -271,27 +268,26 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Choose container repository and determine image tag
-        id: choose-repo-determine-image-tag
-        uses: ./.github/actions/choose-container-repo-and-determine-image-tag
+      - name: Set container repository and determine image tag
+        id: set-repo-determine-image-tag
+        uses: ./.github/actions/set-container-repo-and-determine-image-tag
         with:
           registry: ${{ env.REGISTRY }}
-          container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
-          container-image-dev: ${{ env.DEVELOPMENT_CONTAINER_REPO }}
+          container-image: ${{ env.CONTAINER_REPO }}
       - name: Publish the manifest list
         run: |
           if [[ "${{ matrix.type }}" == "core" ]]; then
             docker buildx imagetools create \
-              -t ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}-core \
-              ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-amd64 }} \
-              ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-arm64 }}
+              -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}-core \
+              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-amd64 }} \
+              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-arm64 }}
           fi
 
           if [[ "${{ matrix.type }}" == "default" ]]; then
             docker buildx imagetools create \
-              -t ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }} \
-              ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-amd64 }} \
-              ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-arm64 }}
+              -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
+              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-amd64 }} \
+              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-arm64 }}
           fi
 
   build-examples:
@@ -317,20 +313,19 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Choose container repository and determine image tag
-      id: choose-repo-determine-image-tag
-      uses: ./.github/actions/choose-container-repo-and-determine-image-tag
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
-        container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
-        container-image-dev: ${{ env.DEVELOPMENT_CONTAINER_REPO }}
+        container-image: ${{ env.CONTAINER_REPO }}
     - name: Build example container
       uses: docker/build-push-action@v2
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/examples/${{ matrix.example }}/Dockerfile
         push: ${{ secrets.PUSH_EXAMPLES == 'ENABLE_PUSH_EXAMPLES' }}
-        tags: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}-${{ matrix.example }}:${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
+        tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}-${{ matrix.example }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
 
   build-gadgets-examples:
     name: Build Gadgets examples
@@ -488,21 +483,20 @@ jobs:
         # Credentials (TODO: Use a functional Service Account, see issue #574)
         openshift_username: ${{ secrets.OPENSHIFT_USER }}
         openshift_password: ${{ secrets.OPENSHIFT_PASSWORD }}
-    - name: Choose container repository and determine image tag
-      id: choose-repo-determine-image-tag
-      uses: ./.github/actions/choose-container-repo-and-determine-image-tag
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
-        container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
-        container-image-dev: ${{ env.DEVELOPMENT_CONTAINER_REPO }}
+        container-image: ${{ env.CONTAINER_REPO }}
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       env:
         KUBERNETES_DISTRIBUTION: "aro"
       with:
         registry: ${{ env.REGISTRY }}
-        container_repo: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}
-        image_tag: ${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
+        container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -532,21 +526,20 @@ jobs:
     - name: Prepare minikube by loading gadget-container-image-default-linux-amd64.tar
       run: |
         minikube image load /home/runner/work/inspektor-gadget/gadget-container-image-default-linux-amd64.tar
-    - name: Choose container repository and determine image tag
-      id: choose-repo-determine-image-tag
-      uses: ./.github/actions/choose-container-repo-and-determine-image-tag
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
-        container-image-release: ${{ env.RELEASE_CONTAINER_REPO }}
-        container-image-dev: ${{ env.DEVELOPMENT_CONTAINER_REPO }}
+        container-image: ${{ env.CONTAINER_REPO }}
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       env:
         KUBERNETES_DISTRIBUTION: "minikube-github"
       with:
         registry: ${{ env.REGISTRY }}
-        container_repo: ${{ steps.choose-repo-determine-image-tag.outputs.container-repo }}
-        image_tag: ${{ steps.choose-repo-determine-image-tag.outputs.image-tag }}
+        container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
