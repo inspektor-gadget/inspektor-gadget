@@ -236,7 +236,7 @@ jobs:
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
         build-args: |
           ENABLE_BTFGEN=true
-        outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.image-tag.outputs.container-repo }},push=true,push-by-digest=true
+        outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
         cache-from: type=local,src=/tmp/.buildx-cache-docker
         cache-to: type=local,dest=/tmp/.buildx-cache-registry
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
