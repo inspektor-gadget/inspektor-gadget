@@ -33,12 +33,13 @@ import (
 )
 
 const (
+	K8sDistroAKSUbuntu  = "aks-Ubuntu"
 	K8sDistroARO        = "aro"
 	K8sDistroMinikubeGH = "minikube-github"
 )
 
 var (
-	supportedK8sDistros = []string{K8sDistroARO, K8sDistroMinikubeGH}
+	supportedK8sDistros = []string{K8sDistroAKSUbuntu, K8sDistroARO, K8sDistroMinikubeGH}
 	cleaningUp          = uint32(0)
 )
 
