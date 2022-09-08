@@ -15,8 +15,6 @@
 package utils
 
 import (
-	"github.com/spf13/viper"
-
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -26,8 +24,8 @@ import (
 func kubeRestConfig() (*restclient.Config, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	loadingRules.DefaultClientConfig = &clientcmd.DefaultClientConfig
-	if viper.GetString("kubeconfig") != "" {
-		loadingRules.ExplicitPath = viper.GetString("kubeconfig")
+	if KubernetesConfigFlags.KubeConfig != nil {
+		loadingRules.ExplicitPath = *KubernetesConfigFlags.KubeConfig
 	}
 	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
 	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
