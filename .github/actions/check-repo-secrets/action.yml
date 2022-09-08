@@ -1,0 +1,31 @@
+name: "Check repository secrets"
+description: "Check if the repository has secrets configured to run integration tests on specific platforms"
+
+inputs:
+  aro:
+    description: "Check if secrets to run on ARO are configured"
+
+outputs:
+  aro:
+    description: "Can run integration tests on ARO"
+    value: ${{ steps.set-output-aro.outputs.aro }}
+
+runs:
+  using: "composite"
+  steps:
+    # Secrets cannot be used as if condition, use job output as workaround.
+    # https://github.com/actions/runner/issues/520
+    - id: set-output-aro
+      if: "${{ inputs.aro != '' }}"
+      shell: bash
+      run: |
+        if [[ "${{ secrets.OPENSHIFT_SERVER }}" != "" && \
+              "${{ secrets.OPENSHIFT_USER }}" != "" && \
+              "${{ secrets.OPENSHIFT_PASSWORD }}" != "" ]]; \
+        then
+          echo "Secrets to use an ARO cluster were configured in the repo"
+          echo "::set-output name=aro::true"
+        else
+          echo "Secrets to use an ARO cluster were not configured in the repo"
+          echo "::set-output name=aro::false"
+        fi

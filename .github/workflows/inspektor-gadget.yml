@@ -415,22 +415,13 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     outputs:
-      aro: ${{ steps.set_output.outputs.aro }}
+      aro: ${{ steps.check-repo-secrets.outputs.aro }}
     steps:
-      # Secrets cannot be used as if condition, use job output as workaround.
-      # https://github.com/actions/runner/issues/520
-      - id: set_output
-        run: |
-          if [[ "${{ secrets.OPENSHIFT_SERVER }}" != "" && \
-                "${{ secrets.OPENSHIFT_USER }}" != "" && \
-                "${{ secrets.OPENSHIFT_PASSWORD }}" != "" ]]; \
-          then
-            echo "Secrets to use an ARO cluster were configured in the repo"
-            echo "::set-output name=aro::true"
-          else
-            echo "Secrets to use an ARO cluster were not configured in the repo"
-            echo "::set-output name=aro::false"
-          fi
+    - uses: actions/checkout@v3
+    - id: check-repo-secrets
+      uses: ./.github/actions/check-repo-secrets
+      with:
+        aro: true
 
   check-readme-up-to-date:
     name: Check that README is up to date
