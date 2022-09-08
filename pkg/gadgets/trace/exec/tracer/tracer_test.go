@@ -271,7 +271,7 @@ func TestExecTracerMultipleMntNsIDsFilter(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	if len(events) != n-1 {
-		t.Fatalf("%d events were expected, %d found", n, len(events))
+		t.Fatalf("%d events were expected, %d found", n-1, len(events))
 	}
 
 	// Pop last event since it shouldn't have been captured
