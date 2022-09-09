@@ -3,6 +3,7 @@ env:
   REGISTRY: ghcr.io
   CONTAINER_REPO: ${{ github.repository }}
   GO_VERSION: 1.18.3
+  AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
@@ -421,6 +422,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       aro: ${{ steps.set_output.outputs.aro }}
+      aks: ${{ steps.set_output.outputs.aks }}
     steps:
       # Secrets cannot be used as if condition, use job output as workaround.
       # https://github.com/actions/runner/issues/520
@@ -435,6 +437,16 @@ jobs:
           else
             echo "Secrets to use an ARO cluster were not configured in the repo"
             echo "::set-output name=aro::false"
+          fi
+
+          if [[ "${{ secrets.AZURE_AKS_CREDS }}" != "" && \
+                "${{ secrets.AZURE_AKS_RESOURCE_GROUP }}" != "" ]]; \
+          then
+            echo "Secrets to use an AKS cluster were configured in the repo"
+            echo "::set-output name=aks::true"
+          else
+            echo "Secrets to use an AKS cluster were not configured in the repo"
+            echo "::set-output name=aks::false"
           fi
 
   check-readme-up-to-date:
@@ -455,6 +467,70 @@ jobs:
         tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
 
         perl tools/check-readme.pl ./kubectl-gadget README.md
+
+  test-integration-aks:
+    name: Integration tests on AKS
+    # level: 2
+    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images, publish-gadget-images-manifest]
+    if: needs.check-secrets.outputs.aks == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os-sku: [Ubuntu]
+        arch: [amd64, arm64]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      with:
+        registry: ${{ env.REGISTRY }}
+        container-image: ${{ env.CONTAINER_REPO }}
+        co-re: false
+    - uses: azure/login@v1
+      name: Login to Azure
+      with:
+        creds: ${{ secrets.AZURE_AKS_CREDS }}
+    - name: Craft cluster name
+      shell: bash
+      run: |
+        echo "CLUSTER_NAME=${{ env.AZURE_AKS_CLUSTER_PREFIX }}${{ matrix.arch }}-${{ matrix.os-sku }}" >> $GITHUB_ENV
+    - name: Create AKS cluster ${{ env.CLUSTER_NAME }}
+      shell: bash
+      run: |
+        node_size='Standard_D2s_v5'
+        if [ ${{ matrix.arch }} = 'arm64' ]; then
+          # 'p' means the node size corresponds to arm64 hardware.
+          node_size='Standard_D2ps_v5'
+        fi
+
+        # Let's keep thing in the US to avoid data crossing the Atlantic as
+        # GitHub data centers are in the US:
+        # https://github.blog/2017-10-12-evolution-of-our-data-centers/
+        az aks create -l westcentralus -g ${{ secrets.AZURE_AKS_RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} -s $node_size --os-sku ${{ matrix.os-sku }} --no-ssh-key
+    - uses: azure/aks-set-context@v3
+      name: Set AKS cluster ${{ env.CLUSTER_NAME }} context
+      with:
+        cluster-name: ${{ env.CLUSTER_NAME }}
+        resource-group: ${{ secrets.AZURE_AKS_RESOURCE_GROUP }}
+        admin: false
+    - name: Run integration tests
+      uses: ./.github/actions/run-integration-tests
+      with:
+        kubernetes_distribution: "aks-${{ matrix.os-sku }}"
+        kubernetes_architecture: "${{ matrix.arch }}"
+        container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+    - name: Delete AKS cluster ${{ env.CLUSTER_NAME }}
+      if: always()
+      shell: bash
+      run: |
+        az aks delete -g ${{ secrets.AZURE_AKS_RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --no-wait --yes
 
   # Integration tests for ARO are separated from others distributions because it
   # is a pre-created cluster. It implies that we need to use a concurrency group
