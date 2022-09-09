@@ -472,6 +472,10 @@ func TestDns(t *testing.T) {
 }
 
 func TestEbpftop(t *testing.T) {
+	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "amd64" {
+		t.Skip("Skip running top ebpf gadget on AKS Ubuntu amd64: see issue #931")
+	}
+
 	t.Parallel()
 
 	ebpftopCmd := &command{
