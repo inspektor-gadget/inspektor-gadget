@@ -82,51 +82,49 @@ func NewNetworkParser(outputConfig *commonutils.OutputConfig) commontrace.TraceP
 	}
 }
 
-func (p *NetworkParser) TransformEvent(event *types.Event) string {
-	return p.Transform(event, func(event *types.Event) string {
-		var sb strings.Builder
+func (p *NetworkParser) TransformToColumns(event *types.Event) string {
+	var sb strings.Builder
 
-		if event.Pod == "" {
-			// ignore events on host netns for now
-			return ""
-		}
+	if event.Pod == "" {
+		// ignore events on host netns for now
+		return ""
+	}
 
-		remote := ""
-		switch event.RemoteKind {
+	remote := ""
+	switch event.RemoteKind {
+	case "pod":
+		remote = fmt.Sprintf("pod %s/%s", event.RemotePodNamespace, event.RemotePodName)
+	case "svc":
+		remote = fmt.Sprintf("svc %s/%s", event.RemoteSvcNamespace, event.RemoteSvcName)
+	case "other":
+		remote = fmt.Sprintf("endpoint %s", event.RemoteOther)
+	default:
+		remote = fmt.Sprintf("? %s", event.Debug)
+	}
+
+	for _, col := range p.OutputConfig.CustomColumns {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
 		case "pod":
-			remote = fmt.Sprintf("pod %s/%s", event.RemotePodNamespace, event.RemotePodName)
-		case "svc":
-			remote = fmt.Sprintf("svc %s/%s", event.RemoteSvcNamespace, event.RemoteSvcName)
-		case "other":
-			remote = fmt.Sprintf("endpoint %s", event.RemoteOther)
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+		case "type":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.PktType))
+		case "proto":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Proto))
+		case "port":
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Port))
+		case "remote":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], remote))
 		default:
-			remote = fmt.Sprintf("? %s", event.Debug)
+			continue
 		}
 
-		for _, col := range p.OutputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-			case "type":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.PktType))
-			case "proto":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Proto))
-			case "port":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Port))
-			case "remote":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], remote))
-			default:
-				continue
-			}
+		// Needed when field is larger than the predefined columnsWidth.
+		sb.WriteRune(' ')
+	}
 
-			// Needed when field is larger than the predefined columnsWidth.
-			sb.WriteRune(' ')
-		}
-
-		return sb.String()
-	})
+	return sb.String()
 }

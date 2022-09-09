@@ -121,38 +121,36 @@ func NewSignalParser(outputConfig *commonutils.OutputConfig) commontrace.TracePa
 	}
 }
 
-func (p *SignalParser) TransformEvent(event *types.Event) string {
-	return p.Transform(event, func(event *types.Event) string {
-		var sb strings.Builder
+func (p *SignalParser) TransformToColumns(event *types.Event) string {
+	var sb strings.Builder
 
-		for _, col := range p.OutputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
-			case "signal":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Signal))
-			case "tpid":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.TargetPid))
-			case "ret":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Retval))
-			default:
-				continue
-			}
-
-			// Needed when field is larger than the predefined columnsWidth.
-			sb.WriteRune(' ')
+	for _, col := range p.OutputConfig.CustomColumns {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+		case "pod":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+		case "container":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
+		case "pid":
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
+		case "comm":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
+		case "signal":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Signal))
+		case "tpid":
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.TargetPid))
+		case "ret":
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Retval))
+		default:
+			continue
 		}
 
-		return sb.String()
-	})
+		// Needed when field is larger than the predefined columnsWidth.
+		sb.WriteRune(' ')
+	}
+
+	return sb.String()
 }
