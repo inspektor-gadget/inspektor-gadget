@@ -226,6 +226,26 @@ calico-node      421056  sv
 gadget           421066  gadgettracerman
 ```
 
+### Trace/Tcp
+
+We can also monitor the TCP connections using the tcp trace gadget. For
+instance, with the following container we can see that the gadget shows that a
+TCP connection was established:
+
+```bash
+$ docker run -it --rm --name test-container busybox /bin/sh -c "wget https://www.example.com"
+Connecting to www.kinvolk.io (188.114.96.7:443)
+saving to 'index.html'
+index.html           100% |index.html           100% |**********************************| 36362  0:00:00 ETA
+'index.html' saved
+```
+
+```bash
+$ sudo local-gadget trace tcp
+CONTAINER        T  PID     COMM             IP  SADDR                  DADDR                  SPORT   DPORT
+test-container   C  11039   wget             4   172.17.0.2             188.114.96.7           57560   443
+```
+
 ## Interactive Mode
 
 The interactive mode allows us to create multiple traces at the same time.
