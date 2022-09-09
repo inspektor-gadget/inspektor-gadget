@@ -76,28 +76,26 @@ func NewSNIParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParse
 	}
 }
 
-func (p *SNIParser) TransformEvent(event *types.Event) string {
-	return p.Transform(event, func(event *types.Event) string {
-		var sb strings.Builder
+func (p *SNIParser) TransformToColumns(event *types.Event) string {
+	var sb strings.Builder
 
-		for _, col := range p.OutputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-			case "name":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Name))
-			default:
-				continue
-			}
-
-			// Needed when field is larger than the predefined columnsWidth.
-			sb.WriteRune(' ')
+	for _, col := range p.OutputConfig.CustomColumns {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+		case "pod":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+		case "name":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Name))
+		default:
+			continue
 		}
 
-		return sb.String()
-	})
+		// Needed when field is larger than the predefined columnsWidth.
+		sb.WriteRune(' ')
+	}
+
+	return sb.String()
 }

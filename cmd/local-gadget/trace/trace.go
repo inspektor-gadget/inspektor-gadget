@@ -15,6 +15,7 @@
 package trace
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -74,7 +75,22 @@ func (g *TraceGadget[Event]) Run() error {
 			return
 		}
 
-		fmt.Println(g.parser.TransformEvent(&event))
+		switch g.commonFlags.OutputMode {
+		case commonutils.OutputModeJSON:
+			b, err := json.Marshal(event)
+			if err != nil {
+				fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
+				return
+			}
+
+			fmt.Println(string(b))
+		case commonutils.OutputModeColumns:
+			fallthrough
+		case commonutils.OutputModeCustomColumns:
+			fmt.Println(g.parser.TransformToColumns(&event))
+		default:
+			fmt.Fprint(os.Stderr, commonutils.WrapInErrOutputModeNotSupported(g.commonFlags.OutputMode))
+		}
 	}
 
 	gadgetTracer, err := g.createAndRunTracer(mountnsmap, &localGadgetManager.ContainerCollection, eventCallback)

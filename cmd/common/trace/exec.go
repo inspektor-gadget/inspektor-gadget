@@ -66,42 +66,40 @@ func NewExecParser(outputConfig *commonutils.OutputConfig) TraceParser[types.Eve
 	return newExecParser(outputConfig, nil)
 }
 
-func (p *ExecParser) TransformEvent(event *types.Event) string {
-	return p.Transform(event, func(event *types.Event) string {
-		var sb strings.Builder
+func (p *ExecParser) TransformToColumns(event *types.Event) string {
+	var sb strings.Builder
 
-		for _, col := range p.OutputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
-			case "ppid":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Ppid))
-			case "pcomm":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
-			case "ret":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Retval))
-			case "args":
-				for _, arg := range event.Args {
-					sb.WriteString(fmt.Sprintf("%s ", arg))
-				}
-			default:
-				continue
+	for _, col := range p.OutputConfig.CustomColumns {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+		case "pod":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+		case "container":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
+		case "pid":
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
+		case "ppid":
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Ppid))
+		case "pcomm":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
+		case "ret":
+			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Retval))
+		case "args":
+			for _, arg := range event.Args {
+				sb.WriteString(fmt.Sprintf("%s ", arg))
 			}
-
-			// Needed when field is larger than the predefined columnsWidth.
-			sb.WriteRune(' ')
+		default:
+			continue
 		}
 
-		return sb.String()
-	})
+		// Needed when field is larger than the predefined columnsWidth.
+		sb.WriteRune(' ')
+	}
+
+	return sb.String()
 }
 
 func GetExecDefaultColumns() []string {

@@ -80,32 +80,30 @@ func NewDNSParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParse
 	}
 }
 
-func (p *DNSParser) TransformEvent(event *types.Event) string {
-	return p.Transform(event, func(event *types.Event) string {
-		var sb strings.Builder
+func (p *DNSParser) TransformToColumns(event *types.Event) string {
+	var sb strings.Builder
 
-		for _, col := range p.OutputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-			case "type":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.PktType))
-			case "qtype":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.QType))
-			case "name":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.DNSName))
-			default:
-				continue
-			}
-
-			// Needed when field is larger than the predefined columnsWidth.
-			sb.WriteRune(' ')
+	for _, col := range p.OutputConfig.CustomColumns {
+		switch col {
+		case "node":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+		case "namespace":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+		case "pod":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+		case "type":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.PktType))
+		case "qtype":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.QType))
+		case "name":
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.DNSName))
+		default:
+			continue
 		}
 
-		return sb.String()
-	})
+		// Needed when field is larger than the predefined columnsWidth.
+		sb.WriteRune(' ')
+	}
+
+	return sb.String()
 }
