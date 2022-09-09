@@ -216,10 +216,10 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 
 		if !ready {
 			if traceNode != "" {
-				return fmt.Errorf("gadget pod on node %q is not ready", traceNode)
+				return fmt.Errorf("gadget pod on node %q is not ready", pod.Spec.NodeName)
 			}
 
-			fmt.Fprintf(os.Stderr, "gadget pod on node %q is not ready", traceNode)
+			fmt.Fprintf(os.Stderr, "gadget pod on node %q is not ready", pod.Spec.NodeName)
 			continue
 		}
 
