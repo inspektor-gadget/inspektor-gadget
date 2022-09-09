@@ -41,7 +41,11 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-require github.com/moby/moby v20.10.17+incompatible
+require (
+	github.com/blang/semver v3.5.1+incompatible
+	github.com/google/go-cmp v0.5.8
+	github.com/moby/moby v20.10.17+incompatible
+)
 
 require (
 	cloud.google.com/go v0.81.0 // indirect
@@ -80,7 +84,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.1 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect

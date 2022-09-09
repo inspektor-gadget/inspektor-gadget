@@ -16,6 +16,7 @@ description: >
   * [Hook Mode](#hook-mode)
   * [Specific Information for Different Platforms](#specific-information-for-different-platforms)
     + [Minikube](#minikube)
+  * [Version skew policy](#version-skew-policy)
 <!-- /toc -->
 
 Inspektor Gadget is composed of a `kubectl` plugin executed in the user's
@@ -150,3 +151,11 @@ Gadget from the cluster:
 ```
 $ kubectl gadget undeploy
 ```
+
+## Version skew policy
+
+Inspektor Gadget requires the kubectl-gadget plugin and the DaemonSet
+deployed on the cluster to be the exact same version. Even if this is
+possible that different versions work well together, we don't provide
+any guarantee in those cases. We'll visit this policy again once we
+approach to the v1.0 release.

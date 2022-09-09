@@ -40,6 +40,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 
+	"github.com/blang/semver"
+
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	clientset "github.com/kinvolk/inspektor-gadget/pkg/client/clientset/versioned"
@@ -53,6 +55,8 @@ const (
 	GlobalTraceID = "global-trace-id"
 	TraceTimeout  = 5 * time.Second
 )
+
+var KubectlGadgetVersion *semver.Version
 
 // TraceConfig is used to contain information used to manage a trace.
 type TraceConfig struct {
@@ -175,6 +179,40 @@ func getTraceClient() (*clientset.Clientset, error) {
 	return traceClient, err
 }
 
+func printVersionSkewWarning(pods *corev1.PodList) {
+	// Do not print any warning if this is a prerelease to avoid
+	// annoyting developers.
+	if len(KubectlGadgetVersion.Pre) > 0 {
+		return
+	}
+
+	for _, pod := range pods.Items {
+		image := pod.Spec.Containers[0].Image
+
+		// Verify that version matches
+		parts := strings.Split(image, ":")
+		if len(parts) != 2 {
+			continue
+		}
+
+		versionStr := parts[1]
+
+		// Use 1: to remove the v prefix
+		version, err := semver.Make(versionStr[1:])
+		if err != nil {
+			continue
+		}
+
+		if !KubectlGadgetVersion.Equals(version) {
+			fmt.Fprintf(os.Stderr,
+				"WARNING: version skew detected (gadget pods v%s vs kubectl-gadget v%s), use 'kubectl gadget deploy' to fix it.\n",
+				version, KubectlGadgetVersion,
+			)
+			break
+		}
+	}
+}
+
 // createTraces creates a trace using Kubernetes REST API.
 // Note that, this function will create the trace on all existing node if
 // trace.Spec.Node is empty.
@@ -198,6 +236,8 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 	if len(pods.Items) == 0 {
 		return fmt.Errorf("no gadget pods found. Is Inspektor Gadget deployed?")
 	}
+
+	printVersionSkewWarning(pods)
 
 	traceNode := trace.Spec.Node
 	for _, pod := range pods.Items {
