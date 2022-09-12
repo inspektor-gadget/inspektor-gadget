@@ -15,18 +15,25 @@
 package types
 
 import (
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
 
-	Pid       uint32 `json:"pid,omitempty"`
-	TargetPid uint32 `json:"tpid,omitempty"`
-	Signal    string `json:"signal,omitempty"`
-	Retval    int    `json:"ret,omitempty"`
-	Comm      string `json:"comm,omitempty"`
-	MountNsID uint64 `json:"mountnsid,omitempty"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,width:7"`
+	TargetPid uint32 `json:"tpid,omitempty" column:"tpid,width:7"`
+	Signal    string `json:"signal,omitempty" column:"signal,width:16"`
+	Retval    int    `json:"ret,omitempty" column:"ret,width:6"`
+	Comm      string `json:"comm,omitempty" column:"comm,width:16"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+}
+
+var signalColumns = columns.MustCreateColumns[Event]()
+
+func MustGetColumns() *columns.Columns[Event] {
+	return signalColumns
 }
 
 func Base(ev eventtypes.Event) Event {
