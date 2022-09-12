@@ -38,7 +38,7 @@ $(MIN_CORE_BTF_FILES): $(BPF_PROGS_O_FILES)
 $(OUTPUT)/%.btf: $(BTFHUB_ARCHIVE)/%.btf
 	$(call msg,BTFGEN,$@)
 	$(Q)mkdir -p "$(@D)"
-	$(Q)$(BPFTOOL) gen min_core_btf $< $@ $(BPF_PROGS_O_FILES)
+	$(Q)if [ -f $< ]; then $(BPFTOOL) gen min_core_btf $< $@ $(BPF_PROGS_O_FILES); else echo "$< does not exist!" >&2; fi
 
 # delete failed targets
 .DELETE_ON_ERROR:
