@@ -78,7 +78,7 @@ local-gadget: local-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
 local-gadget-%: phony_explicit
 	echo Building local-gadget-$* && \
 	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
-	docker build -t local-gadget-$*-builder -f Dockerfiles/local-gadget.Dockerfile \
+	docker buildx build -t local-gadget-$*-builder -f Dockerfiles/local-gadget.Dockerfile \
 		--build-arg GOOS=$${GOOS} --build-arg GOARCH=$${GOARCH} --build-arg VERSION=$(VERSION) . && \
 	docker run --rm --entrypoint cat local-gadget-$*-builder local-gadget-$* > local-gadget-$* && \
 	chmod +x local-gadget-$*
@@ -131,7 +131,7 @@ push-gadget-container:
 # kubectl-gadget container image
 .PHONY: kubectl-gadget-container
 kubectl-gadget-container:
-	docker build -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
+	docker buildx build -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
 	--build-arg IMAGE_TAG=$(IMAGE_TAG) .
 
 # tests
