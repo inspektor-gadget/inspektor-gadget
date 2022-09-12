@@ -42,11 +42,6 @@ Inspektor Gadget provides two different container images:
     [#371](https://github.com/kinvolk/inspektor-gadget/issues/371) is
     fixed.
 
-**Note**: Using a locally built container image requires pushing it to a container
-repository, either local or remote. The default repository can be
-overridden by changing the value of the `CONTAINER_REPO` env variable,
-which defaults to `ghcr.io/kinvolk/inspektor-gadget` if not defined.
-
 You can build and push the container gadget image by running the following commands:
 
 ```bash
@@ -59,6 +54,22 @@ installing the compilers to build it.
 
 If you push the container images to another registry, you can use the `--image`
 argument when deploying to the Kubernetes cluster.
+
+#### Notes
+
+- Using a locally built container image requires pushing it to a container
+registry, either local or remote. The default registry can be overridden by
+changing the value of the `CONTAINER_REPO` env variable, which defaults to
+`ghcr.io/kinvolk/inspektor-gadget` if not defined.
+- The compilation uses `tools/image-tag` to choose the tag of the container
+image to use according to the branch that you are compiling.
+- If you wish to make changes to traceloop program, update
+`gadget-default.Dockerfile` to pick your own image of traceloop.
+- As for traceloop, it is also possible to change the BCC to be used as
+described in [BCC](#Updating-BCC-from-upstream) section.
+- You can generate the required BTF information for some well known
+  kernel versions by setting `ENABLE_BTFGEN=true`
+
 
 ### Building the eBPF object files
 
@@ -73,16 +84,16 @@ go: downloading github.com/giantswarm/crd-docs-generator v0.7.1
 Wrote /work/pkg/gadgettracermanager/containers-map/containersmap_bpfel.go
 ```
 
-### Building notes
+### Building Local Gadget
 
-- The compilation uses `tools/image-tag` to choose the tag of the container
-image to use according to the branch that you are compiling.
-- If you wish to make changes to traceloop program, update
-`gadget-default.Dockerfile` to pick your own image of traceloop.
-- As for traceloop, it is also possible to change the BCC to be used as
-described in [BCC](#Updating-BCC-from-upstream) section.
-- You can generate the required BTF information for some well known
-  kernel versions by setting `ENABLE_BTFGEN=true`
+Inspektor Gadget also provides the [`local-gadget`](local-gadget.md) tool to
+trace containers without Kubernetes. It can be built independently from the
+`kubectl-gadget` and the gadget container image. The result is a single binary
+that can be copied to a Kubernetes node or any host to trace its containers.
+
+```bash
+$ make local-gadget
+```
 
 ## Testing
 
