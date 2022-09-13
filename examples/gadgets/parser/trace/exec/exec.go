@@ -31,7 +31,6 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
 
-	"github.com/kinvolk/inspektor-gadget/cmd/common/trace"
 	"github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 )
 
@@ -92,7 +91,11 @@ func main() {
 	defer containerCollection.Close()
 
 	// Create a parser. It's the component that converts events to columns.
-	execParser := trace.NewExecParser(&utils.OutputConfig{})
+	execParser, err := utils.NewGadgetParser(&utils.OutputConfig{}, types.GetColumns())
+	if err != nil {
+		fmt.Printf("failed to create parser: %s\n", err)
+		return
+	}
 
 	// Define a callback to be called each time there is an event.
 	eventCallback := func(event types.Event) {

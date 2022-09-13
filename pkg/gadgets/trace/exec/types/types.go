@@ -15,19 +15,32 @@
 package types
 
 import (
+	"strings"
+
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
 
-	Pid       uint32   `json:"pid,omitempty"`
-	Ppid      uint32   `json:"ppid,omitempty"`
-	UID       uint32   `json:"uid,omitempty"`
-	MountNsID uint64   `json:"mountnsid,omitempty"`
-	Retval    int      `json:"ret,omitempty"`
-	Comm      string   `json:"pcomm,omitempty"`
-	Args      []string `json:"args,omitempty"`
+	Pid       uint32   `json:"pid,omitempty" column:"pid,width:7,fixed"`
+	Ppid      uint32   `json:"ppid,omitempty" column:"ppid,width:7,fixed"`
+	Comm      string   `json:"pcomm,omitempty" column:"comm,width:16,fixed"`
+	Retval    int      `json:"ret,omitempty" column:"ret,width:3,fixed"`
+	Args      []string `json:"args,omitempty" column:"args,width:40"`
+	UID       uint32   `json:"uid,omitempty" column:"uid,width:10,fixed,hide"`
+	MountNsID uint64   `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	execColumns := columns.MustCreateColumns[Event]()
+
+	execColumns.MustSetExtractor("args", func(event *Event) (ret string) {
+		return strings.Join(event.Args, " ")
+	})
+
+	return execColumns
 }
 
 func Base(ev eventtypes.Event) Event {
