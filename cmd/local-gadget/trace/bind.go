@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
@@ -31,9 +32,14 @@ func newBindCmd() *cobra.Command {
 	var flags commontrace.BindFlags
 
 	runCmd := func(*cobra.Command, []string) error {
+		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, bindTypes.GetColumns())
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
+		}
+
 		bindGadget := &TraceGadget[bindTypes.Event]{
 			commonFlags: &commonFlags,
-			parser:      commontrace.NewBindParserWithRuntimeInfo(&commonFlags.OutputConfig),
+			parser:      parser,
 			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(bindTypes.Event)) (trace.Tracer, error) {
 				config := &bindTracer.Config{
 					MountnsMap:   mountnsmap,
