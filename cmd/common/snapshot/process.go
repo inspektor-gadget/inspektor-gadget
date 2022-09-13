@@ -19,13 +19,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
-	"github.com/spf13/cobra"
-)
-
-const (
-	ProcessGadgetName = "process-collector"
 )
 
 type ProcessFlags struct {
@@ -35,56 +32,57 @@ type ProcessFlags struct {
 type ProcessParser struct {
 	commonutils.BaseParser[types.Event]
 
-	processFlags *ProcessFlags
+	flags *ProcessFlags
 }
 
-func NewCommonProcessCmd(
-	processFlags *ProcessFlags,
-	availableColumns []string,
-	outputConfig *commonutils.OutputConfig,
-	customRun func(callback func(traceOutputMode string, results []string) error) error,
-) *cobra.Command {
-	processGadget := &SnapshotGadget[types.Event]{
-		parser: &ProcessParser{
-			BaseParser:   commonutils.NewBaseTabParser[types.Event](availableColumns, outputConfig),
-			processFlags: processFlags,
-		},
-		customRun: customRun,
+func newProcessParser(outputConfig *commonutils.OutputConfig, flags *ProcessFlags, prependColumns []string) SnapshotParser[types.Event] {
+	availableColumns := []string{
+		// TODO: Move Kubernetes metadata columns to common/utils.
+		"node",
+		"namespace",
+		"pod",
+		"container",
+		"comm",
+		"tgid",
+		"pid",
 	}
 
-	cmd := &cobra.Command{
-		Use:   "process",
-		Short: "Gather information about running processes",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if outputConfig.OutputMode == commonutils.OutputModeColumns && processFlags.showThreads {
-				for index, col := range outputConfig.CustomColumns {
-					if col != "pid" {
-						continue
-					}
+	if len(outputConfig.CustomColumns) == 0 {
+		outputConfig.CustomColumns = GetProcessDefaultColumns()
+		if len(prependColumns) != 0 {
+			outputConfig.CustomColumns = append(prependColumns, outputConfig.CustomColumns...)
+		}
+	}
 
-					outputConfig.CustomColumns = append(outputConfig.CustomColumns[:index],
-						append([]string{"tgid"}, outputConfig.CustomColumns[index:]...)...)
-
-					break
-				}
+	if outputConfig.OutputMode == commonutils.OutputModeColumns && flags.showThreads {
+		for index, col := range outputConfig.CustomColumns {
+			if col != "pid" {
+				continue
 			}
 
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return processGadget.Run()
-		},
+			outputConfig.CustomColumns = append(outputConfig.CustomColumns[:index],
+				append([]string{"tgid"}, outputConfig.CustomColumns[index:]...)...)
+
+			break
+		}
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&processFlags.showThreads,
-		"threads",
-		"t",
-		false,
-		"Show all threads",
-	)
+	return &ProcessParser{
+		BaseParser: commonutils.NewBaseTabParser[types.Event](availableColumns, outputConfig),
+		flags:      flags,
+	}
+}
 
-	return cmd
+func NewProcessParserWithK8sInfo(outputConfig *commonutils.OutputConfig, flags *ProcessFlags) SnapshotParser[types.Event] {
+	return newProcessParser(outputConfig, flags, commonutils.GetKubernetesColumns())
+}
+
+func NewProcessParserWithRuntimeInfo(outputConfig *commonutils.OutputConfig, flags *ProcessFlags) SnapshotParser[types.Event] {
+	return newProcessParser(outputConfig, flags, commonutils.GetContainerRuntimeColumns())
+}
+
+func NewProcessParser(outputConfig *commonutils.OutputConfig, flags *ProcessFlags) SnapshotParser[types.Event] {
+	return newProcessParser(outputConfig, flags, nil)
 }
 
 func (p *ProcessParser) TransformToColumns(e *types.Event) string {
@@ -116,7 +114,7 @@ func (p *ProcessParser) TransformToColumns(e *types.Event) string {
 }
 
 func (p *ProcessParser) SortEvents(allProcesses *[]types.Event) {
-	if !p.processFlags.showThreads {
+	if !p.flags.showThreads {
 		allProcessesTrimmed := []types.Event{}
 		for _, i := range *allProcesses {
 			if i.Tgid == i.Pid {
@@ -145,4 +143,31 @@ func (p *ProcessParser) SortEvents(allProcesses *[]types.Event) {
 			return pi.Pid < pj.Pid
 		}
 	})
+}
+
+func GetProcessDefaultColumns() []string {
+	// The columns that will be used in case the user does not specify which
+	// specific columns they want to print through OutputConfig.
+	return []string{
+		"comm",
+		"pid",
+	}
+}
+
+func NewProcessCmd(runCmd func(*cobra.Command, []string) error, flags *ProcessFlags) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "process",
+		Short: "Gather information about running processes",
+		RunE:  runCmd,
+	}
+
+	cmd.PersistentFlags().BoolVarP(
+		&flags.showThreads,
+		"threads",
+		"t",
+		false,
+		"Show all threads",
+	)
+
+	return cmd
 }

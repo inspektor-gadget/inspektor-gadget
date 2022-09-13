@@ -52,82 +52,57 @@ type SnapshotParser[Event SnapshotEvent] interface {
 	// tabs.
 	BuildColumnsHeader() string
 
-	// GetOutputConfig returns the output configuration. TODO: This method is
-	// required because of the same limitation of SnapshotEvent.GetBaseEvent().
-	// The Go compiler does not support accessing SnapshotParser.OutputConfig.
+	// GetOutputConfig returns the output configuration.
 	GetOutputConfig() *commonutils.OutputConfig
 }
 
-// SnapshotGadget represents a gadget belonging to the snapshot category.
-type SnapshotGadget[Event SnapshotEvent] struct {
-	parser    SnapshotParser[Event]
-	customRun func(callback func(traceOutputMode string, results []string) error) error
+// SnapshotGadgetPrinter is in charge of printing the event of a snapshot gadget
+// using the parser.
+type SnapshotGadgetPrinter[Event SnapshotEvent] struct {
+	Parser SnapshotParser[Event]
 }
 
-// Run runs a SnapshotGadget and prints the output after parsing it using the
-// SnapshotParser's methods.
-func (g *SnapshotGadget[Event]) Run() error {
-	// This function is called when a snapshot gadget finishes without errors and
-	// generates a list of results per node. It merges, sorts and print all of them
-	// in the requested mode.
-	callback := func(traceOutputMode string, results []string) error {
-		allEvents := []Event{}
+func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []Event) error {
+	g.Parser.SortEvents(&allEvents)
 
-		for _, r := range results {
-			if len(r) == 0 {
+	outputConfig := g.Parser.GetOutputConfig()
+	switch outputConfig.OutputMode {
+	case commonutils.OutputModeJSON:
+		b, err := json.MarshalIndent(allEvents, "", "  ")
+		if err != nil {
+			return commonutils.WrapInErrMarshalOutput(err)
+		}
+
+		fmt.Printf("%s\n", b)
+		return nil
+	case commonutils.OutputModeColumns:
+		fallthrough
+	case commonutils.OutputModeCustomColumns:
+		// In the snapshot gadgets it's possible to use a tabwriter because
+		// we have the full list of events to print available, hence the
+		// tablewriter is able to determine the columns width. In other
+		// gadgets we don't know the size of all columns "a priori", hence
+		// we have to do a best effort printing fixed-width columns.
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
+
+		fmt.Fprintln(w, g.Parser.BuildColumnsHeader())
+
+		for _, e := range allEvents {
+			baseEvent := e.GetBaseEvent()
+			if baseEvent.Type != eventtypes.NORMAL {
+				commonutils.ManageSpecialEvent(baseEvent, outputConfig.Verbose)
 				continue
 			}
 
-			var events []Event
-			if err := json.Unmarshal([]byte(r), &events); err != nil {
-				return commonutils.WrapInErrUnmarshalOutput(err, r)
-			}
-			allEvents = append(allEvents, events...)
+			fmt.Fprintln(w, g.Parser.TransformToColumns(&e))
 		}
 
-		g.parser.SortEvents(&allEvents)
-
-		outputConfig := g.parser.GetOutputConfig()
-		switch outputConfig.OutputMode {
-		case commonutils.OutputModeJSON:
-			b, err := json.MarshalIndent(allEvents, "", "  ")
-			if err != nil {
-				return commonutils.WrapInErrMarshalOutput(err)
-			}
-
-			fmt.Printf("%s\n", b)
-			return nil
-		case commonutils.OutputModeColumns:
-			fallthrough
-		case commonutils.OutputModeCustomColumns:
-			// In the snapshot gadgets it's possible to use a tabwriter because
-			// we have the full list of events to print available, hence the
-			// tablewriter is able to determine the columns width. In other
-			// gadgets we don't know the size of all columns "a priori", hence
-			// we have to do a best effort printing fixed-width columns.
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-			fmt.Fprintln(w, g.parser.BuildColumnsHeader())
-
-			for _, e := range allEvents {
-				baseEvent := e.GetBaseEvent()
-				if baseEvent.Type != eventtypes.NORMAL {
-					commonutils.ManageSpecialEvent(baseEvent, outputConfig.Verbose)
-					continue
-				}
-
-				fmt.Fprintln(w, g.parser.TransformToColumns(&e))
-			}
-
-			w.Flush()
-		default:
-			return commonutils.WrapInErrOutputModeNotSupported(outputConfig.OutputMode)
-		}
-
-		return nil
+		w.Flush()
+	default:
+		return commonutils.WrapInErrOutputModeNotSupported(outputConfig.OutputMode)
 	}
 
-	return g.customRun(callback)
+	return nil
 }
 
 func NewCommonSnapshotCmd() *cobra.Command {

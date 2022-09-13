@@ -15,54 +15,79 @@
 package snapshot
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer"
+	socketTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
+	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
 )
 
 func newSocketCmd() *cobra.Command {
-	var socketFlags commonsnapshot.SocketFlags
+	var commonFlags utils.CommonFlags
+	var flags commonsnapshot.SocketFlags
 
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print. Notice they may be
-			// extended based on flags.
-			CustomColumns: []string{
-				"pod",
-				"protocol",
-				"local",
-				"remote",
-				"status",
+	runCmd := func(*cobra.Command, []string) error {
+		socketGadget := &SnapshotGadget[socketTypes.Event]{
+			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[socketTypes.Event]{
+				Parser: commonsnapshot.NewSocketParserWithRuntimeInfo(&commonFlags.OutputConfig, &flags),
 			},
-		},
-	}
+			commonFlags: &commonFlags,
+			runTracer: func(localGadgetManager *localgadgetmanager.LocalGadgetManager, containerSelector *containercollection.ContainerSelector) ([]socketTypes.Event, error) {
+				allSockets := []socketTypes.Event{}
 
-	availableColumns := []string{
-		"pod",
-		"protocol",
-		"local",
-		"remote",
-		"status",
-		"inode",
-	}
+				// Given that the tracer works per network namespace, we only
+				// need to run it once per namespace.
+				visitedNetNs := make(map[uint64]struct{})
 
-	customRun := func(callback func(string, []string) error) error {
-		config := NewSnapshotTraceConfig(
-			commonsnapshot.SocketGadgetName,
-			commonFlags,
-			map[string]string{
-				"protocol": socketFlags.Protocol,
+				filteredContainers := localGadgetManager.GetContainersBySelector(containerSelector)
+				if len(filteredContainers) == 0 {
+					return nil, fmt.Errorf("no container matched the requested filter")
+				}
+
+				for _, container := range filteredContainers {
+					// Make the whole gadget fail if there is a container
+					// without PID because it would be an inconsistency that has
+					// to be notified.
+					if container.Pid == 0 {
+						return nil, fmt.Errorf("container %q does not have PID",
+							container.Name)
+					}
+
+					if _, ok := visitedNetNs[container.Netns]; ok {
+						continue
+					}
+
+					visitedNetNs[container.Netns] = struct{}{}
+
+					netNsSockets, err := tracer.RunCollector(
+						container.Pid,
+						container.Podname,
+						container.Namespace,
+						"",
+						flags.ParsedProtocol,
+					)
+					if err != nil {
+						return nil, fmt.Errorf("running collector on pid %d: %w", container.Pid, err)
+					}
+
+					allSockets = append(allSockets, netNsSockets...)
+				}
+
+				return allSockets, nil
 			},
-		)
+		}
 
-		return utils.RunTraceAndPrintStatusOutput(config, callback)
+		return socketGadget.Run()
 	}
 
-	cmd := commonsnapshot.NewSocketCmd(&socketFlags, availableColumns, &commonFlags.OutputConfig, customRun)
-	utils.AddCommonFlags(cmd, commonFlags)
+	cmd := commonsnapshot.NewSocketCmd(runCmd, &flags)
+
+	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
 }

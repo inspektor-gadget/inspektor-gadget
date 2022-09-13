@@ -15,7 +15,6 @@
 package localgadgetmanager
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -114,7 +113,7 @@ func traceName(name string) string {
 	return gadgets.TraceName("gadget", name)
 }
 
-func (l *LocalGadgetManager) AddTraceResource(gadget, name, containerFilter string, outputMode gadgetv1alpha1.TraceOutputMode, params map[string]string) error {
+func (l *LocalGadgetManager) AddTraceResource(gadget, name, containerFilter string, outputMode gadgetv1alpha1.TraceOutputMode) error {
 	factory, ok := l.traceFactories[gadget]
 	if !ok {
 		return fmt.Errorf("unknown gadget %q", gadget)
@@ -155,7 +154,6 @@ func (l *LocalGadgetManager) AddTraceResource(gadget, name, containerFilter stri
 			Gadget:     gadget,
 			RunMode:    gadgetv1alpha1.RunModeManual,
 			OutputMode: outputMode,
-			Parameters: params,
 		},
 	}
 	if containerFilter != "" {
@@ -211,36 +209,6 @@ func (l *LocalGadgetManager) ShowTraceResourceStatus(name string) (ret string, e
 	}
 
 	return ret, nil
-}
-
-func (l *LocalGadgetManager) CheckTraceResourceStatus(name string, state gadgetv1alpha1.TraceState) error {
-	traceResource, ok := l.traceResources[name]
-	if !ok {
-		return fmt.Errorf("cannot find trace %q", name)
-	}
-
-	if traceResource.Status.OperationError != "" {
-		return errors.New(traceResource.Status.OperationError)
-	}
-
-	if traceResource.Status.State != state {
-		return fmt.Errorf("trace %q is not in the expected state %q: %s",
-			name, state, traceResource.Status.State)
-	}
-
-	return nil
-}
-
-func (l *LocalGadgetManager) DisplayTraceResourceOutput(
-	name string,
-	customResultsDisplay func(string, []string) error,
-) error {
-	traceResource, ok := l.traceResources[name]
-	if !ok {
-		return fmt.Errorf("cannot find trace %q", name)
-	}
-
-	return customResultsDisplay(string(traceResource.Spec.OutputMode), []string{traceResource.Status.Output})
 }
 
 func (l *LocalGadgetManager) DeleteTraceResource(name string) error {

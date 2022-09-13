@@ -20,40 +20,40 @@ import (
 	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	processTracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
+	processTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
 )
 
 func newProcessCmd() *cobra.Command {
-	var processFlags commonsnapshot.ProcessFlags
+	var commonFlags utils.CommonFlags
+	var flags commonsnapshot.ProcessFlags
 
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print. Notice they may be
-			// extended based on flags.
-			CustomColumns: []string{
-				"container",
-				"comm",
-				"pid",
+	runCmd := func(*cobra.Command, []string) error {
+		processGadget := &SnapshotGadget[processTypes.Event]{
+			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[processTypes.Event]{
+				Parser: commonsnapshot.NewProcessParserWithRuntimeInfo(&commonFlags.OutputConfig, &flags),
 			},
-		},
+			commonFlags: &commonFlags,
+			runTracer: func(localGadgetManager *localgadgetmanager.LocalGadgetManager, containerSelector *containercollection.ContainerSelector) ([]processTypes.Event, error) {
+				// Create mount namespace map to filter by containers
+				mountnsmap, err := localGadgetManager.CreateMountNsMap(*containerSelector)
+				if err != nil {
+					return nil, commonutils.WrapInErrManagerCreateMountNsMap(err)
+				}
+				defer localGadgetManager.RemoveMountNsMap()
+
+				return processTracer.RunCollector(&localGadgetManager.ContainerCollection, mountnsmap)
+			},
+		}
+
+		return processGadget.Run()
 	}
 
-	availableColumns := []string{
-		"container",
-		"comm",
-		"tgid",
-		"pid",
-	}
+	cmd := commonsnapshot.NewProcessCmd(runCmd, &flags)
 
-	customRun := func(callback func(string, []string) error) error {
-		config := NewSnapshotTraceConfig(commonsnapshot.ProcessGadgetName, commonFlags, nil)
-		return utils.RunTraceAndPrintStatusOutput(config, callback)
-	}
-
-	// It is not currently useful to pass processFlags here but it keeps
-	// uniformity with other gadgets.
-	cmd := commonsnapshot.NewCommonProcessCmd(&processFlags, availableColumns, &commonFlags.OutputConfig, customRun)
-	utils.AddCommonFlags(cmd, commonFlags)
+	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
 }

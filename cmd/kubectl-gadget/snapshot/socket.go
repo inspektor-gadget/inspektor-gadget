@@ -18,55 +18,32 @@ import (
 	"github.com/spf13/cobra"
 
 	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 )
 
 func newSocketCmd() *cobra.Command {
-	var socketFlags commonsnapshot.SocketFlags
+	var commonFlags utils.CommonFlags
+	var flags commonsnapshot.SocketFlags
 
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print. Notice they may be
-			// extended based on flags.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"protocol",
-				"local",
-				"remote",
-				"status",
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		socketGadget := &SnapshotGadget[types.Event]{
+			name:        "socket-collector",
+			commonFlags: &commonFlags,
+			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[types.Event]{
+				Parser: commonsnapshot.NewSocketParserWithK8sInfo(&commonFlags.OutputConfig, &flags),
 			},
-		},
-	}
-
-	availableColumns := []string{
-		"node",
-		"namespace",
-		"pod",
-		"protocol",
-		"local",
-		"remote",
-		"status",
-		"inode",
-	}
-
-	customRun := func(callback func(traceOutputMode string, results []string) error) error {
-		config := NewSnapshotTraceConfig(
-			commonsnapshot.SocketGadgetName,
-			commonFlags,
-			map[string]string{
-				"protocol": socketFlags.Protocol,
+			params: map[string]string{
+				"protocol": flags.Protocol,
 			},
-		)
+		}
 
-		return utils.RunTraceAndPrintStatusOutput(config, callback)
+		return socketGadget.Run()
 	}
 
-	cmd := commonsnapshot.NewSocketCmd(&socketFlags, availableColumns, &commonFlags.OutputConfig, customRun)
-	utils.AddCommonFlags(cmd, commonFlags)
+	cmd := commonsnapshot.NewSocketCmd(runCmd, &flags)
+
+	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
 }

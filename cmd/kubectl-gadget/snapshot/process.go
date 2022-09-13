@@ -18,48 +18,29 @@ import (
 	"github.com/spf13/cobra"
 
 	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 )
 
 func newProcessCmd() *cobra.Command {
-	var processFlags commonsnapshot.ProcessFlags
+	var commonFlags utils.CommonFlags
+	var flags commonsnapshot.ProcessFlags
 
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print. Notice they may be
-			// extended based on flags.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"container",
-				"comm",
-				"pid",
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		processGadget := &SnapshotGadget[types.Event]{
+			name:        "process-collector",
+			commonFlags: &commonFlags,
+			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[types.Event]{
+				Parser: commonsnapshot.NewProcessParserWithK8sInfo(&commonFlags.OutputConfig, &flags),
 			},
-		},
+		}
+
+		return processGadget.Run()
 	}
 
-	availableColumns := []string{
-		"node",
-		"namespace",
-		"pod",
-		"container",
-		"comm",
-		"tgid",
-		"pid",
-	}
+	cmd := commonsnapshot.NewProcessCmd(runCmd, &flags)
 
-	customRun := func(callback func(traceOutputMode string, results []string) error) error {
-		config := NewSnapshotTraceConfig(commonsnapshot.ProcessGadgetName, commonFlags, nil)
-		return utils.RunTraceAndPrintStatusOutput(config, callback)
-	}
-
-	// It is not currently useful to pass processFlags here but it keeps
-	// uniformity with other gadgets.
-	cmd := commonsnapshot.NewCommonProcessCmd(&processFlags, availableColumns, &commonFlags.OutputConfig, customRun)
-	utils.AddCommonFlags(cmd, commonFlags)
+	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
 }

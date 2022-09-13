@@ -15,19 +15,44 @@
 package snapshot
 
 import (
-	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/spf13/cobra"
+
+	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
+	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
+	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
 )
 
-func NewSnapshotTraceConfig(gadgetName string, commonFlags *utils.CommonFlags, params map[string]string) *utils.TraceConfig {
-	return &utils.TraceConfig{
-		GadgetName:       gadgetName,
-		TraceOutputState: gadgetv1alpha1.TraceStateCompleted,
-		Parameters:       params,
-		CommonFlags:      commonFlags,
+// SnapshotGadget represents a gadget belonging to the snapshot category.
+type SnapshotGadget[Event commonsnapshot.SnapshotEvent] struct {
+	commonsnapshot.SnapshotGadgetPrinter[Event]
+
+	commonFlags *utils.CommonFlags
+	runTracer   func(*localgadgetmanager.LocalGadgetManager, *containercollection.ContainerSelector) ([]Event, error)
+}
+
+// Run runs a SnapshotGadget and prints the output after parsing it using the
+// SnapshotParser's methods.
+func (g *SnapshotGadget[Event]) Run() error {
+	localGadgetManager, err := localgadgetmanager.NewManager(g.commonFlags.RuntimeConfigs)
+	if err != nil {
+		return commonutils.WrapInErrManagerInit(err)
 	}
+	defer localGadgetManager.Close()
+
+	// TODO: Improve filtering, see further details in
+	// https://github.com/kinvolk/inspektor-gadget/issues/644.
+	containerSelector := &containercollection.ContainerSelector{
+		Name: g.commonFlags.Containername,
+	}
+
+	allEvents, err := g.runTracer(localGadgetManager, containerSelector)
+	if err != nil {
+		return commonutils.WrapInErrGadgetTracerCreateAndRun(err)
+	}
+
+	return g.PrintEvents(allEvents)
 }
 
 func NewSnapshotCmd() *cobra.Command {
@@ -35,8 +60,10 @@ func NewSnapshotCmd() *cobra.Command {
 
 	cmd.AddCommand(newProcessCmd())
 
-	// Do not support socket command until it contains container information
-	// cmd.AddCommand(newSocketCmd())
+	// Socket gadget is disabled until we will enrich the socket information
+	// with the container that is using the inode. For further details, see
+	// https://github.com/kinvolk/inspektor-gadget/issues/744.
+	// traceCmd.AddCommand(newSocketCmd())
 
 	return cmd
 }

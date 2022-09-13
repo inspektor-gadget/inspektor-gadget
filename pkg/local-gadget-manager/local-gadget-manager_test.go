@@ -207,7 +207,7 @@ func TestSeccomp(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-seccomp001"
-	err = localGadgetManager.AddTraceResource("seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
+	err = localGadgetManager.AddTraceResource("seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
@@ -258,7 +258,7 @@ func TestAuditSeccomp(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-auditseccomp001"
-	err = localGadgetManager.AddTraceResource("audit-seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
+	err = localGadgetManager.AddTraceResource("audit-seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
@@ -308,7 +308,7 @@ func TestEbpftop(t *testing.T) {
 	defer localGadgetManager.Close()
 
 	containerName := "test-local-gadget-dns001"
-	err = localGadgetManager.AddTraceResource("ebpftop", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
+	err = localGadgetManager.AddTraceResource("ebpftop", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
@@ -387,7 +387,7 @@ func TestDNS(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-dns001"
-	err = localGadgetManager.AddTraceResource("dns", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
+	err = localGadgetManager.AddTraceResource("dns", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
@@ -509,7 +509,7 @@ func TestNetworkGraph(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	containerName := "test-local-gadget-network-graph001"
-	err = localGadgetManager.AddTraceResource("network-graph", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream, nil)
+	err = localGadgetManager.AddTraceResource("network-graph", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
@@ -629,7 +629,7 @@ func TestCollector(t *testing.T) {
 	}
 	defer localGadgetManager.Close()
 
-	err = localGadgetManager.AddTraceResource("socket-collector", "my-tracer1", "my-container", gadgetv1alpha1.TraceOutputModeStatus, nil)
+	err = localGadgetManager.AddTraceResource("socket-collector", "my-tracer1", "my-container", gadgetv1alpha1.TraceOutputModeStatus)
 	if err != nil {
 		t.Fatalf("Failed to create tracer: %s", err)
 	}
