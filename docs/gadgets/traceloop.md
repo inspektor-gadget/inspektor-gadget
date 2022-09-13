@@ -8,7 +8,7 @@ some differences:
 
 * traceloop uses eBPF instead of ptrace
 * traceloop&#39;s tracing granularity is the container instead of a process
-* traceloop&#39;s traces are recorded in a fast, in-memory, overwritable ring
+* traceloop&#39;s traces are recorded in a fast, in-memory, over writable ring
   buffer like a flight recorder. The tracing could be permanently enabled and
   inspected in case of crash.
 
@@ -31,6 +31,14 @@ spec:
 ### Operations
 
 
+#### collect
+
+Collect traceloop
+
+```bash
+$ kubectl annotate -n gadget trace/traceloop \
+    gadget.kinvolk.io/operation=collect
+```
 #### start
 
 Start traceloop
@@ -50,4 +58,4 @@ $ kubectl annotate -n gadget trace/traceloop \
 
 ### Output Modes
 
-* ExternalResource
+* Stream
