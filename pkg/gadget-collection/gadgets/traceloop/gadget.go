@@ -15,30 +15,47 @@
 package traceloop
 
 import (
-	"errors"
+	"context"
+	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
-	"runtime"
+	"strings"
 	"sync"
-	"syscall"
-	"time"
+
+	log "github.com/sirupsen/logrus"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
+
+	tracelooptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/tracer"
 
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 )
 
 type Trace struct {
+	client  client.Client
+	helpers gadgets.GadgetHelpers
+
 	started bool
-	cmd     *exec.Cmd
+
+	containerIDs map[string]uint64
+
+	trace *gadgetv1alpha1.Trace
 }
 
 type TraceFactory struct {
 	gadgets.BaseFactory
-	// Indicates if there is any running instance in this node
-	started bool
-	mu      sync.Mutex
 }
+
+type traceSingleton struct {
+	sync.Mutex
+
+	tracer *tracelooptracer.Tracer
+	users  int
+}
+
+var traceUnique traceSingleton
 
 func NewFactory() gadgets.TraceFactory {
 	return &TraceFactory{
@@ -60,130 +77,418 @@ some differences:
 
 func (f *TraceFactory) OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode]struct{} {
 	return map[gadgetv1alpha1.TraceOutputMode]struct{}{
-		gadgetv1alpha1.TraceOutputModeExternalResource: {},
+		gadgetv1alpha1.TraceOutputModeStatus: {},
+		gadgetv1alpha1.TraceOutputModeStream: {},
 	}
 }
 
 func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
-	trace.stop()
+	if trace.started {
+		traceUnique.Lock()
+		defer traceUnique.Unlock()
+
+		traceUnique.users--
+		if traceUnique.users == 0 {
+			trace.helpers.Unsubscribe(genPubSubKey(name))
+
+			traceUnique.tracer.Stop()
+
+			traceUnique.tracer = nil
+		}
+	}
 }
 
 func (f *TraceFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOperation {
 	n := func() interface{} {
-		return &Trace{}
+		return &Trace{
+			client:  f.Client,
+			helpers: f.Helpers,
+		}
 	}
 
 	return map[gadgetv1alpha1.Operation]gadgets.TraceOperation{
 		gadgetv1alpha1.OperationStart: {
 			Doc: "Start traceloop",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
-				t := f.LookupOrCreate(name, n).(*Trace)
-				if t.started {
-					trace.Status.State = gadgetv1alpha1.TraceStateStarted
+				f.LookupOrCreate(name, n).(*Trace).Start(trace)
+			},
+		},
+		gadgetv1alpha1.OperationCollect: {
+			Doc: "Collect traceloop",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				// To overcome Status.Output character limit, we decided to create a
+				// Stream Trace CRD each time we do the collect operation.
+				// Nonetheless, this Trace CRD will use a previously created Trace.
+				// To do so, we use the Parameters["name"] which will contain the name
+				// of the long lived Trace CRD, thus we will be able to get the Trace
+				// and so all the mntNsIDs associated to it.
+				t, err := f.Lookup(trace.Spec.Parameters["name"])
+				if err != nil {
+					trace.Status.OperationError = fmt.Sprintf("no global trace with name %q: %s", name, err)
+
 					return
 				}
+				t.(*Trace).Collect(trace)
+			},
+		},
+		gadgetv1alpha1.OperationDelete: {
+			Doc: "Delete a perf ring buffer owned by traceloop",
+			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
+				// To overcome Status.Output character limit, we decided to create a
+				// Stream Trace CRD each time we do the collect operation.
+				// Nonetheless, this Trace CRD will use a previously created Trace.
+				// To do so, we use the Parameters["name"] which will contain the name
+				// of the long lived Trace CRD, thus we will be able to get the Trace
+				// and so all the mntNsIDs associated to it.
+				t, err := f.Lookup(trace.Spec.Parameters["name"])
+				if err != nil {
+					trace.Status.OperationError = fmt.Sprintf("no global trace with name %q: %s", name, err)
 
-				f.mu.Lock()
-				defer f.mu.Unlock()
-
-				if f.started {
-					trace.Status.OperationError = "There is already one traceloop instance running on this node. Please stop it first."
 					return
 				}
-
-				t.Start(trace)
-				f.started = t.started
+				t.(*Trace).Delete(trace)
 			},
 		},
 		gadgetv1alpha1.OperationStop: {
 			Doc: "Stop traceloop",
 			Operation: func(name string, trace *gadgetv1alpha1.Trace) {
-				f.mu.Lock()
-				defer f.mu.Unlock()
-
-				t := f.LookupOrCreate(name, n).(*Trace)
-				t.Stop(trace)
-				f.started = t.started
+				f.LookupOrCreate(name, n).(*Trace).Stop(trace)
 			},
 		},
 	}
 }
 
+type pubSubKey string
+
+func genPubSubKey(name string) pubSubKey {
+	return pubSubKey(fmt.Sprintf("gadget/traceloop/%s", name))
+}
+
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
-	if runtime.GOARCH != "amd64" {
-		trace.Status.OperationError = "This gadget is only supported on amd64 for various reasons (https://github.com/kinvolk/traceloop/issues/28)"
+	if trace.Spec.OutputMode != gadgetv1alpha1.TraceOutputModeStatus {
+		trace.Status.OperationError = fmt.Sprintf("\"start\" operation can only be used with %q trace while %q was given", gadgetv1alpha1.TraceOutputModeStatus, trace.Spec.OutputMode)
+
 		return
 	}
 
-	t.cmd = exec.Command("/bin/bash", "-c", `
-		# gobpf currently uses global kprobes via debugfs/tracefs and not the Perf
-		# Event file descriptor based kprobe (Linux >=4.17). So unfortunately, kprobes
-		# can remain from previous executions. Ideally, gobpf should implement Perf
-		# Event based kprobe and fallback to debugfs/tracefs, like bcc:
-		# https://github.com/iovisor/bcc/blob/6e9b4509fc7a063302b574520bac6d49b01ca97e/src/cc/libbpf.c#L1021-L1027
-		# Meanwhile, as a workaround, delete probes manually.
-		# See: https://github.com/iovisor/gobpf/issues/223
-		echo "-:pfree_uts_ns" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-		echo "-:pcap_capable" >> /sys/kernel/debug/tracing/kprobe_events 2>/dev/null || true
-
-		# Remove the opened files limit to avoid getting this error:
-		# error while loading "tracepoint/raw_syscalls/sys_enter" (too many open files):
-		# Indeed, traceloop creates a lof of tracers which each has maps and events:
-		# https://github.com/kinvolk/traceloop/blob/6f4efc6fca46d92c75f4ec4e6c6e1d829bdeaddf/bpf/straceback-guess-bpf.h#L27-L28
-		# So, this can generate a lof ot opened files.
-		ulimit -n hard
-
-		rm -f /run/traceloop.socket
-		exec /bin/traceloop k8s
-	`)
-	t.cmd.Stdout = os.Stdout
-	t.cmd.Stderr = os.Stderr
-	err := t.cmd.Start()
-	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf("Failed to start: %s", err)
+	if t.started {
+		trace.Status.State = gadgetv1alpha1.TraceStateStarted
 		return
+	}
+
+	// Having this backlink is mandatory for delete operation.
+	t.trace = trace
+
+	// The output will contain an array of types.TraceloopInfo.
+	// So, to avoid problems, we initialize it to be a JSON array.
+	trace.Status.Output = "[]"
+	t.containerIDs = make(map[string]uint64, 0)
+
+	genKey := func(container *containercollection.Container) string {
+		return container.Namespace + "/" + container.Podname
+	}
+
+	attachContainerFunc := func(container *containercollection.Container) error {
+		containerID := container.ID
+		mntNsID := container.Mntns
+		key := genKey(container)
+
+		traceUnique.Lock()
+		err := traceUnique.tracer.Attach(containerID, mntNsID)
+		traceUnique.Unlock()
+		if err != nil {
+			log.Errorf("failed to attach tracer: %s", err)
+
+			return err
+		}
+
+		t.containerIDs[containerID] = mntNsID
+		log.Debugf("tracer attached for %q (%d)", key, mntNsID)
+
+		// There is no client with local-gadget, so we can quit right now.
+		if t.client == nil {
+			return nil
+		}
+
+		var infos []types.TraceloopInfo
+		err = json.Unmarshal([]byte(trace.Status.Output), &infos)
+		if err != nil {
+			log.Errorf("failed to unmarshal output: %s", err)
+
+			return err
+		}
+
+		infos = append(infos, types.TraceloopInfo{
+			Namespace:     container.Namespace,
+			Podname:       container.Podname,
+			Containername: container.Name,
+			ContainerID:   containerID,
+		})
+
+		output, err := json.Marshal(infos)
+		if err != nil {
+			log.Errorf("failed to marshal infos: %s", err)
+
+			return err
+		}
+
+		traceBeforePatch := trace.DeepCopy()
+		trace.Status.Output = string(output)
+		patch := client.MergeFrom(traceBeforePatch)
+
+		// The surrounding function can be called from any context.
+		// So, we need to manually patch the trace CRD to have our modifications be
+		// taken into account.
+		err = t.client.Status().Patch(context.TODO(), trace, patch)
+		if err != nil {
+			log.Errorf("Failed to patch trace %q output: %s", trace.Name, err)
+
+			return err
+		}
+
+		return nil
+	}
+
+	detachContainerFunc := func(container *containercollection.Container) {
+		mntNsID := container.Mntns
+		key := genKey(container)
+
+		traceUnique.Lock()
+		err := traceUnique.tracer.Detach(mntNsID)
+		traceUnique.Unlock()
+		if err != nil {
+			log.Errorf("failed to detach tracer: %s", err)
+
+			return
+		}
+
+		log.Debugf("tracer detached for %q (%d)", key, mntNsID)
+	}
+
+	containerEventCallback := func(event containercollection.PubSubEvent) {
+		switch event.Type {
+		case containercollection.EventTypeAddContainer:
+			attachContainerFunc(event.Container)
+		case containercollection.EventTypeRemoveContainer:
+			detachContainerFunc(event.Container)
+		}
+	}
+
+	traceUnique.Lock()
+	if traceUnique.tracer == nil {
+		var err error
+
+		traceUnique.tracer, err = tracelooptracer.NewTracer(t.helpers)
+		if err != nil {
+			traceUnique.Unlock()
+
+			trace.Status.OperationError = fmt.Sprintf("Failed to start traceloop tracer: %s", err)
+
+			return
+		}
+	}
+	traceUnique.users++
+	traceUnique.Unlock()
+
+	existingContainers := t.helpers.Subscribe(
+		genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
+		*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
+		containerEventCallback,
+	)
+
+	for _, c := range existingContainers {
+		err := attachContainerFunc(c)
+		if err != nil {
+			log.Warnf("couldn't attach BPF program: %s", err)
+
+			continue
+		}
 	}
 	t.started = true
 
 	trace.Status.State = gadgetv1alpha1.TraceStateStarted
 }
 
-func (t *Trace) stop() error {
-	if !t.started {
-		return errors.New("not started")
+func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
+	if trace.Spec.OutputMode != gadgetv1alpha1.TraceOutputModeStream {
+		trace.Status.OperationError = fmt.Sprintf("\"collect\" operation can only be used with %q trace while %q was given", gadgetv1alpha1.TraceOutputModeStream, trace.Spec.OutputMode)
+
+		return
 	}
 
-	err := t.cmd.Process.Signal(syscall.SIGINT)
+	traceUnique.Lock()
+	if traceUnique.tracer == nil {
+		traceUnique.Unlock()
+
+		trace.Status.OperationError = "Traceloop tracer is nil"
+
+		return
+	}
+	traceUnique.Unlock()
+
+	containerID := trace.Spec.Parameters["containerID"]
+	_, ok := t.containerIDs[containerID]
+	if !ok {
+		ids := make([]string, len(t.containerIDs))
+		i := 0
+		for id := range t.containerIDs {
+			ids[i] = id
+			i++
+		}
+
+		trace.Status.OperationError = fmt.Sprintf("%q is not a valid ID for this trace, valid IDs are: %v", containerID, strings.Join(ids, ","))
+
+		return
+	}
+
+	traceUnique.Lock()
+	events, err := traceUnique.tracer.Read(containerID)
+	traceUnique.Unlock()
 	if err != nil {
-		return fmt.Errorf("failed to send SIGINT to process: %w", err)
+		trace.Status.OperationError = fmt.Sprintf("Failed to read perf buffer: %s", err)
+
+		return
 	}
 
-	timeout := time.After(2 * time.Second)
+	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	r, err := json.Marshal(events)
+	if err != nil {
+		log.Warnf("Gadget %s: error marshalling event: %s", trace.Spec.Gadget, err)
+		return
+	}
+	// HACK Traceloop is really particular as it cannot use Status output because
+	// the size is limited.
+	// Also, if we send each event as a line, we will only be able to get the last
+	// 100 (or 250) events from the CLI due to this code:
+	// https://github.com/inspektor-gadget/inspektor-gadget/blob/9c7b6a126d82b54262ffdc5709d7c92480002830/pkg/gadgettracermanager/stream/stream.go#L24
+	// https://github.com/inspektor-gadget/inspektor-gadget/blob/9c7b6a126d82b54262ffdc5709d7c92480002830/pkg/gadgettracermanager/stream/stream.go#L95-L100
+	// To overcome this limitation, we just send all events as one big line.
+	// Then, the CLI receives this big line, parses it and prints each event.
+	// A proper solution would be to develop a specific "output" (neither status
+	// nor stream) for traceloop, this is let as TODO.
+	t.helpers.PublishEvent(traceName, string(r))
 
-	done := make(chan struct{})
-	go func() {
-		t.cmd.Process.Wait()
-		done <- struct{}{}
-	}()
+	trace.Status.State = gadgetv1alpha1.TraceStateCompleted
+}
 
-	select {
-	case <-timeout:
-		t.cmd.Process.Kill()
-	case <-done:
+func (t *Trace) Delete(trace *gadgetv1alpha1.Trace) {
+	if trace.Spec.OutputMode != gadgetv1alpha1.TraceOutputModeStatus {
+		trace.Status.OperationError = fmt.Sprintf("\"delete\" operation can only be used with %q trace while %q was given", gadgetv1alpha1.TraceOutputModeStatus, trace.Spec.OutputMode)
+
+		return
 	}
 
-	t.started = false
+	containerID := trace.Spec.Parameters["containerID"]
+	mntNsID, ok := t.containerIDs[containerID]
+	if !ok {
+		ids := make([]string, len(t.containerIDs))
+		i := 0
+		for id := range t.containerIDs {
+			ids[i] = id
+			i++
+		}
 
-	return nil
+		trace.Status.OperationError = fmt.Sprintf("%q is not a valid ID for this trace, valid IDs are: %v", containerID, strings.Join(ids, ","))
+
+		return
+	}
+
+	traceUnique.Lock()
+	if traceUnique.tracer == nil {
+		traceUnique.Unlock()
+
+		trace.Status.OperationError = "Traceloop tracer is nil"
+
+		return
+	}
+
+	// First, we need to detach the perf buffer.
+	// We do not check the returned error because if the container was deleted it
+	// was already detached.
+	_ = traceUnique.tracer.Detach(mntNsID)
+
+	// Then we can remove it.
+	err := traceUnique.tracer.Delete(containerID)
+	traceUnique.Unlock()
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("Failed to delete perf buffer: %s", err)
+
+		return
+	}
+
+	// We can now remove containerID from the map.
+	delete(t.containerIDs, containerID)
+
+	// Finally, we need to update the trace output.
+	var infos []types.TraceloopInfo
+	err = json.Unmarshal([]byte(t.trace.Status.Output), &infos)
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("failed to unmarshal output: %s", err)
+
+		return
+	}
+
+	newInfos := make([]types.TraceloopInfo, len(infos)-1)
+	i := 0
+	for _, info := range infos {
+		// We copy all the current information except the one corresponding to the
+		// container we removed.
+		if info.ContainerID == containerID {
+			continue
+		}
+
+		newInfos[i] = info
+		i++
+	}
+
+	output, err := json.Marshal(newInfos)
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("failed to marshal new infos: %s", err)
+
+		return
+	}
+
+	traceBeforePatch := t.trace.DeepCopy()
+	t.trace.Status.Output = string(output)
+	patch := client.MergeFrom(traceBeforePatch)
+
+	// We also need to manually patch the trace CRD to have our modifications be
+	// taken into account.
+	err = t.client.Status().Patch(context.TODO(), t.trace, patch)
+	if err != nil {
+		log.Errorf("failed to patch trace %q output: %s", trace.Name, err)
+
+		return
+	}
+
+	trace.Status.State = gadgetv1alpha1.TraceStateCompleted
 }
 
 func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
-	err := t.stop()
-	if err != nil {
-		trace.Status.OperationError = err.Error()
+	if trace.Spec.OutputMode != gadgetv1alpha1.TraceOutputModeStatus {
+		trace.Status.OperationError = fmt.Sprintf("\"stop\" operation can only be used with %q trace while %q was given", gadgetv1alpha1.TraceOutputModeStatus, trace.Spec.OutputMode)
+
 		return
 	}
+
+	if !t.started {
+		trace.Status.OperationError = "Not started"
+		return
+	}
+
+	t.helpers.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
+
+	traceUnique.Lock()
+	traceUnique.users--
+	if traceUnique.users == 0 {
+		traceUnique.tracer.Stop()
+
+		traceUnique.tracer = nil
+	}
+	traceUnique.Unlock()
+
+	t.started = false
 
 	trace.Status.State = gadgetv1alpha1.TraceStateStopped
 }

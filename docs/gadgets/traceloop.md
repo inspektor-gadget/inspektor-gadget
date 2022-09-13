@@ -31,6 +31,22 @@ spec:
 ### Operations
 
 
+#### collect
+
+Collect traceloop
+
+```bash
+$ kubectl annotate -n gadget trace/traceloop \
+    gadget.kinvolk.io/operation=collect
+```
+#### delete
+
+Delete a perf ring buffer owned by traceloop
+
+```bash
+$ kubectl annotate -n gadget trace/traceloop \
+    gadget.kinvolk.io/operation=delete
+```
 #### start
 
 Start traceloop
@@ -50,4 +66,5 @@ $ kubectl annotate -n gadget trace/traceloop \
 
 ### Output Modes
 
-* ExternalResource
+* Status
+* Stream
