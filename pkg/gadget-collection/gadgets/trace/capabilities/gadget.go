@@ -17,6 +17,7 @@ package capabilities
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	log "github.com/sirupsen/logrus"
 
@@ -93,6 +94,21 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
+	auditOnly := types.AuditOnlyDefault
+
+	if trace.Spec.Parameters != nil {
+		params := trace.Spec.Parameters
+		var err error
+
+		if val, ok := params[types.AuditOnlyParam]; ok {
+			auditOnly, err = strconv.ParseBool(val)
+			if err != nil {
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.AuditOnlyParam)
+				return
+			}
+		}
+	}
+
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
 	eventCallback := func(event types.Event) {
@@ -113,6 +129,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	config := &tracer.Config{
 		MountnsMap: mountNsMap,
+		AuditOnly:  auditOnly,
 	}
 
 	t.tracer, err = tracer.NewTracer(config, t.helpers, eventCallback)

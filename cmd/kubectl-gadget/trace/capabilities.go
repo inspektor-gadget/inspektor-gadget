@@ -16,6 +16,7 @@ package trace
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
@@ -46,9 +47,13 @@ func newCapabilitiesCmd() *cobra.Command {
 				"cap",
 				"name",
 				"audit",
+				"verdict",
 			},
 		},
 	}
+
+	// flags
+	var auditOnly bool
 
 	cmd := &cobra.Command{
 		Use:   "capabilities",
@@ -58,11 +63,22 @@ func newCapabilitiesCmd() *cobra.Command {
 				name:        "capabilities",
 				commonFlags: commonFlags,
 				parser:      NewCapabilitiesParser(&commonFlags.OutputConfig),
+				params: map[string]string{
+					types.AuditOnlyParam: strconv.FormatBool(auditOnly),
+				},
 			}
 
 			return capabilitiesGadget.Run()
 		},
 	}
+
+	cmd.PersistentFlags().BoolVarP(
+		&auditOnly,
+		"audit-only",
+		"",
+		true,
+		"Only show audit checks",
+	)
 
 	utils.AddCommonFlags(cmd, commonFlags)
 
@@ -81,6 +97,7 @@ func NewCapabilitiesParser(outputConfig *commonutils.OutputConfig) commontrace.T
 		"cap":       -4,
 		"name":      -16,
 		"audit":     -6,
+		"verdict":   -6,
 	}
 
 	return &CapabilitiesParser{
@@ -114,6 +131,8 @@ func (p *CapabilitiesParser) TransformEvent(event *types.Event) string {
 				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.CapName))
 			case "audit":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Audit))
+			case "verdict":
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Verdict))
 			default:
 				continue
 			}

@@ -41,15 +41,18 @@ import (
 
 type Config struct {
 	MountnsMap *ebpf.Map
+	AuditOnly  bool
 }
 
 type Tracer struct {
-	config           *Config
-	objs             capabilitiesObjects
-	capabilitiesLink link.Link
-	reader           *perf.Reader
-	enricher         gadgets.DataEnricher
-	eventCallback    func(types.Event)
+	config               *Config
+	objs                 capabilitiesObjects
+	capEnterLink         link.Link
+	capExitLink          link.Link
+	reader               *perf.Reader
+	enricher             gadgets.DataEnricher
+	eventCallback        func(types.Event)
+	runningKernelVersion uint32
 }
 
 var capabilitiesNames = map[uint32]string{
@@ -114,7 +117,8 @@ func NewTracer(c *Config, enricher gadgets.DataEnricher,
 }
 
 func (t *Tracer) Stop() {
-	t.capabilitiesLink = gadgets.CloseLink(t.capabilitiesLink)
+	t.capEnterLink = gadgets.CloseLink(t.capEnterLink)
+	t.capExitLink = gadgets.CloseLink(t.capExitLink)
 
 	if t.reader != nil {
 		t.reader.Close()
@@ -124,6 +128,12 @@ func (t *Tracer) Stop() {
 }
 
 func (t *Tracer) start() error {
+	runningKernelVersion, err := features.LinuxVersionCode()
+	if err != nil {
+		return fmt.Errorf("error getting kernel version: %w", err)
+	}
+	t.runningKernelVersion = runningKernelVersion
+
 	spec, err := loadCapabilities()
 	if err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
@@ -138,7 +148,9 @@ func (t *Tracer) start() error {
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filterByMntNs,
+		"filter_by_mnt_ns":   filterByMntNs,
+		"linux_version_code": runningKernelVersion,
+		"audit_only":         t.config.AuditOnly,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -153,11 +165,17 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	kprobe, err := link.Kprobe("cap_capable", t.objs.IgTraceCap, nil)
+	kprobe, err := link.Kprobe("cap_capable", t.objs.IgTraceCapE, nil)
 	if err != nil {
 		return fmt.Errorf("error opening kprobe: %w", err)
 	}
-	t.capabilitiesLink = kprobe
+	t.capEnterLink = kprobe
+
+	kretprobe, err := link.Kretprobe("cap_capable", t.objs.IgTraceCapX, nil)
+	if err != nil {
+		return fmt.Errorf("error opening kretprobe: %w", err)
+	}
+	t.capExitLink = kretprobe
 
 	reader, err := perf.NewReader(t.objs.capabilitiesMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
@@ -204,18 +222,12 @@ func (t *Tracer) run() {
 			capabilityName = fmt.Sprintf("UNKNOWN (%d)", capability)
 		}
 
-		runningKernelVersion, err := features.LinuxVersionCode()
-		if err != nil {
-			msg := fmt.Sprintf("Error getting kernel version: %s", err)
-			t.eventCallback(types.Base(eventtypes.Err(msg)))
-		}
-
 		capOpt := int(eventC.cap_opt)
 
 		var audit int
 		var insetID int
 
-		if runningKernelVersion >= kernelVersion(5, 1, 0) {
+		if t.runningKernelVersion >= kernelVersion(5, 1, 0) {
 			audit = 0
 			if (capOpt & 0b10) == 0 {
 				audit = 1
@@ -235,6 +247,11 @@ func (t *Tracer) run() {
 			insetString = strconv.Itoa(insetID)
 		}
 
+		verdict := "Deny"
+		if eventC.ret == 0 {
+			verdict = "Allow"
+		}
+
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
@@ -247,6 +264,7 @@ func (t *Tracer) run() {
 			InsetID:   insetString,
 			Comm:      C.GoString(&eventC.task[0]),
 			CapName:   capabilityName,
+			Verdict:   verdict,
 		}
 
 		if t.enricher != nil {
