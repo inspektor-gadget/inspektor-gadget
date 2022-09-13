@@ -17,7 +17,10 @@ package main
 import (
 	"fmt"
 
+	"github.com/blang/semver"
 	"github.com/spf13/cobra"
+
+	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
 // This variable is used by the "version" command and is set during build.
@@ -25,6 +28,8 @@ var version = "undefined"
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+
+	utils.KubectlGadgetVersion, _ = semver.New(version[1:])
 }
 
 var versionCmd = &cobra.Command{
