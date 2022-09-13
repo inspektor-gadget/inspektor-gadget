@@ -15,20 +15,27 @@
 package types
 
 import (
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
 
-	Pid       uint32 `json:"pid,omitempty"`
-	Comm      string `json:"comm,omitempty"`
-	Protocol  string `json:"proto,omitempty"`
-	Addr      string `json:"addr,omitempty"`
-	Port      uint16 `json:"port,omitempty"`
-	Options   string `json:"opts,omitempty"`
-	Interface string `json:"if,omitempty"`
-	MountNsID uint64 `json:"mountnsid,omitempty"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,width:7"`
+	Comm      string `json:"comm,omitempty" column:"comm,width:16"`
+	Protocol  string `json:"proto,omitempty" column:"proto,width:6"`
+	Addr      string `json:"addr,omitempty" column:"addr,width:16"`
+	Port      uint16 `json:"port,omitempty" column:"port,width:7"`
+	Options   string `json:"opts,omitempty" column:"opts,width:7"`
+	Interface string `json:"if,omitempty" column:"if,width:7"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+}
+
+var bindColumns = columns.MustCreateColumns[Event]()
+
+func MustGetColumns() *columns.Columns[Event] {
+	return bindColumns
 }
 
 func Base(ev eventtypes.Event) Event {
