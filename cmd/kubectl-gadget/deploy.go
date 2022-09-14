@@ -64,17 +64,16 @@ var deployCmd = &cobra.Command{
 var gadgetimage = "undefined"
 
 var (
-	image                     string
-	imagePullPolicy           string
-	hookMode                  string
-	livenessProbe             bool
-	livenessProbeInitialDelay int32
-	deployTimeout             time.Duration
-	fallbackPodInformer       bool
-	printOnly                 bool
-	quiet                     bool
-	debug                     bool
-	wait                      bool
+	image               string
+	imagePullPolicy     string
+	hookMode            string
+	livenessProbe       bool
+	deployTimeout       time.Duration
+	fallbackPodInformer bool
+	printOnly           bool
+	quiet               bool
+	debug               bool
+	wait                bool
 )
 
 func init() {
@@ -98,11 +97,6 @@ func init() {
 		"liveness-probe", "",
 		true,
 		"enable liveness probes")
-	deployCmd.PersistentFlags().Int32VarP(
-		&livenessProbeInitialDelay,
-		"liveness-probe-initial-delay", "",
-		60,
-		"liveness probes initial delay")
 	deployCmd.PersistentFlags().BoolVarP(
 		&fallbackPodInformer,
 		"fallback-podinformer", "",
@@ -314,8 +308,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 			if !livenessProbe {
 				gadgetContainer.LivenessProbe = nil
-			} else {
-				gadgetContainer.LivenessProbe.InitialDelaySeconds = livenessProbeInitialDelay
 			}
 
 			for i := range gadgetContainer.Env {
