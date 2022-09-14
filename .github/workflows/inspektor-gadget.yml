@@ -90,6 +90,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
+        co-re: false
     - name: Build kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
       run: |
         git checkout
@@ -259,7 +260,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        type: [ default ]
+        type: [ default, core ]
     steps:
       - uses: actions/checkout@v3
       - name: Login to Container Registry
@@ -274,11 +275,12 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
+          co-re: ${{ matrix.type == 'core' }}
       - name: Publish the manifest list
         run: |
           if [[ "${{ matrix.type }}" == "core" ]]; then
             docker buildx imagetools create \
-              -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}-core \
+              -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
               ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-amd64 }} \
               ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-arm64 }}
           fi
@@ -319,6 +321,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
+        co-re: false
     - name: Build example container
       uses: docker/build-push-action@v2
       with:
@@ -489,6 +492,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
+        co-re: false
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       env:
@@ -500,11 +504,14 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-  test-integration:
+  test-integration-minikube:
     name: Integration tests
     # level: 1
     needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        type: [default, core]
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -518,20 +525,21 @@ jobs:
         minikube version: 'v1.25.2'
         kubernetes version: 'v1.23.0'
         github token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Get gadget-container-image-default-linux-amd64.tar from artifact.
+    - name: Get gadget-container-image-${{ matrix.type }}-linux-amd64.tar from artifact.
       uses: actions/download-artifact@v2
       with:
-        name: gadget-container-image-default-linux-amd64.tar
+        name: gadget-container-image-${{ matrix.type }}-linux-amd64.tar
         path: /home/runner/work/inspektor-gadget/
-    - name: Prepare minikube by loading gadget-container-image-default-linux-amd64.tar
+    - name: Prepare minikube by loading gadget-container-image-${{ matrix.type }}-linux-amd64.tar
       run: |
-        minikube image load /home/runner/work/inspektor-gadget/gadget-container-image-default-linux-amd64.tar
+        minikube image load /home/runner/work/inspektor-gadget/gadget-container-image-${{ matrix.type }}-linux-amd64.tar
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
+        co-re: ${{ matrix.type == 'core' }}
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       env:
@@ -549,7 +557,7 @@ jobs:
     needs:
       - documentation-checks
       - lint
-      - test-integration
+      - test-integration-minikube
       - test-integration-aro
       - test-local-gadget
       - check-readme-up-to-date
