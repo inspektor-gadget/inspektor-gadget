@@ -17,11 +17,12 @@ package trace
 import (
 	"strconv"
 
-	"github.com/spf13/cobra"
-
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	signalTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
+
+	"github.com/spf13/cobra"
 )
 
 func newSignalCmd() *cobra.Command {
@@ -29,10 +30,12 @@ func newSignalCmd() *cobra.Command {
 	var flags commontrace.SignalFlags
 
 	runCmd := func(cmd *cobra.Command, args []string) error {
+		filters, _ := cmd.PersistentFlags().GetStringArray("filter")
+
 		signalGadget := &TraceGadget[signalTypes.Event]{
 			name:        "sigsnoop",
 			commonFlags: &commonFlags,
-			parser:      commontrace.NewSignalParserWithK8sInfo(&commonFlags.OutputConfig),
+			parser:      commontrace.NewParserWithK8sInfo(&commonFlags.OutputConfig, signalTypes.MustGetColumns(), commonutils.WithFilters(filters)),
 			params: map[string]string{
 				"signal": flags.Sig,
 				"pid":    strconv.FormatUint(flags.Pid, 10),

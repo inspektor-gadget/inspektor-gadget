@@ -16,7 +16,8 @@ package trace
 
 import (
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	signalTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
+
 	"github.com/spf13/cobra"
 )
 
@@ -24,22 +25,6 @@ type SignalFlags struct {
 	Pid    uint64
 	Sig    string
 	Failed bool
-}
-
-func newSignalParser(outputConfig *commonutils.OutputConfig, options ...commonutils.Option) TraceParser[signalTypes.Event] {
-	return commonutils.NewGadgetParser(outputConfig, signalTypes.MustGetColumns(), options...)
-}
-
-func NewSignalParserWithK8sInfo(outputConfig *commonutils.OutputConfig) TraceParser[signalTypes.Event] {
-	return newSignalParser(outputConfig, commonutils.WithMetadataTag(commonutils.KubernetesTag))
-}
-
-func NewSignalParserWithRuntimeInfo(outputConfig *commonutils.OutputConfig) TraceParser[signalTypes.Event] {
-	return newSignalParser(outputConfig, commonutils.WithMetadataTag(commonutils.ContainerRuntimeTag))
-}
-
-func NewSignalParser(outputConfig *commonutils.OutputConfig) TraceParser[signalTypes.Event] {
-	return newSignalParser(outputConfig)
 }
 
 func NewSignalCmd(runCmd func(*cobra.Command, []string) error, flags *SignalFlags) *cobra.Command {
@@ -70,6 +55,8 @@ func NewSignalCmd(runCmd func(*cobra.Command, []string) error, flags *SignalFlag
 		false,
 		`Show only events where the syscall sending a signal failed`,
 	)
+
+	commonutils.AddCobraOptions(cmd, types.MustGetColumns())
 
 	return cmd
 }

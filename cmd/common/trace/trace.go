@@ -15,9 +15,11 @@
 package trace
 
 import (
-	"github.com/spf13/cobra"
-
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+
+	"github.com/spf13/cobra"
 )
 
 type TraceEvent interface {
@@ -33,7 +35,7 @@ type TraceEvent interface {
 // TraceParser defines the interface that every trace-gadget parser has to
 // implement.
 type TraceParser[Event TraceEvent] interface {
-	// Transform is called to transform an event to columns.
+	// TransformToColumns is called to transform an event to columns.
 	TransformToColumns(event *Event) string
 
 	// BuildColumnsHeader returns a header with the requested custom columns
@@ -47,4 +49,16 @@ func NewCommonTraceCmd() *cobra.Command {
 		Use:   "trace",
 		Short: "Trace and print system events",
 	}
+}
+
+func NewParser[T TraceEvent](outputConfig *commonutils.OutputConfig, columns *columns.Columns[T], opts ...commonutils.Option) TraceParser[T] {
+	return commonutils.NewGadgetParser[T](outputConfig, columns, opts...)
+}
+
+func NewParserWithK8sInfo[T TraceEvent](outputConfig *commonutils.OutputConfig, columns *columns.Columns[T], opts ...commonutils.Option) TraceParser[T] {
+	return commonutils.NewGadgetParser[T](outputConfig, columns, append([]commonutils.Option{commonutils.WithMetadataTag(commonutils.KubernetesTag)}, opts...)...)
+}
+
+func NewParserWithRuntimeInfo[T TraceEvent](outputConfig *commonutils.OutputConfig, columns *columns.Columns[T], opts ...commonutils.Option) TraceParser[T] {
+	return commonutils.NewGadgetParser[T](outputConfig, columns, append([]commonutils.Option{commonutils.WithMetadataTag(commonutils.ContainerRuntimeTag)}, opts...)...)
 }

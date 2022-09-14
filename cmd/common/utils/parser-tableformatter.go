@@ -19,6 +19,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/columns/filter"
+
 	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	"github.com/kinvolk/inspektor-gadget/pkg/columns/formatter/textcolumns"
 )
@@ -36,14 +38,22 @@ func WithMetadataTag(metadataTag string) Option {
 	}
 }
 
+func WithFilters(filters []string) Option {
+	return func(opts *GadgetParserOptions) {
+		opts.filters = filters
+	}
+}
+
 type GadgetParserOptions struct {
 	metadataTag string
+	filters     []string
 }
 
 // GadgetParser is a parser that helps printing the gadget output in columns
 // using the columns and tableformatter packages.
 type GadgetParser[T any] struct {
 	formatter *textcolumns.TextColumnsFormatter[T]
+	filters   []*filter.FilterSpec[T]
 }
 
 func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T], options ...Option) *GadgetParser[T] {
@@ -56,11 +66,11 @@ func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T]
 	// If no tag is provided, we use only the columns with no specific tag. In
 	// other words, the gadget-specific columns. Otherwise, we also include the
 	// columns with the requested tag.
-	var filter columns.ColumnFilter
+	var columnFilter columns.ColumnFilter
 	if opts.metadataTag == "" {
-		filter = columns.WithNoTags()
+		columnFilter = columns.WithNoTags()
 	} else {
-		filter = columns.Or(columns.WithTag(opts.metadataTag), columns.WithNoTags())
+		columnFilter = columns.Or(columns.WithTag(opts.metadataTag), columns.WithNoTags())
 	}
 
 	var formatter *textcolumns.TextColumnsFormatter[T]
@@ -71,16 +81,28 @@ func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T]
 		}
 
 		formatter = textcolumns.NewFormatter(
-			cols.GetColumnMap(filter),
+			cols.GetColumnMap(columnFilter),
 			textcolumns.WithDefaultColumns(validCols),
 		)
 	} else {
-		formatter = textcolumns.NewFormatter(cols.GetColumnMap(filter))
+		formatter = textcolumns.NewFormatter(cols.GetColumnMap(columnFilter))
 	}
 
-	return &GadgetParser[T]{
+	parser := &GadgetParser[T]{
 		formatter: formatter,
 	}
+
+	// Create filters
+	for _, f := range opts.filters {
+		fspec, err := filter.GetFilterFromString(cols.GetColumnMap(columnFilter), f)
+		if err != nil {
+			// TODO: Error on failure
+			continue
+		}
+		parser.filters = append(parser.filters, fspec)
+	}
+
+	return parser
 }
 
 func (p *GadgetParser[T]) BuildColumnsHeader() string {
@@ -88,5 +110,11 @@ func (p *GadgetParser[T]) BuildColumnsHeader() string {
 }
 
 func (p *GadgetParser[T]) TransformToColumns(entry *T) string {
+	for _, f := range p.filters {
+		if !f.Match(entry) {
+			// TODO: make sure empty results lead to not printing anything at all
+			return ""
+		}
+	}
 	return p.formatter.FormatEntry(entry)
 }

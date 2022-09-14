@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/spf13/cobra"
-
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	bindTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
+
+	"github.com/spf13/cobra"
 )
 
 type BindFlags struct {
@@ -31,22 +31,6 @@ type BindFlags struct {
 
 	// It is necessary because pflag doesn't support []uint16 flags.
 	ValidatedTargetPorts []uint16
-}
-
-func newBindParser(outputConfig *commonutils.OutputConfig, options ...commonutils.Option) TraceParser[bindTypes.Event] {
-	return commonutils.NewGadgetParser(outputConfig, bindTypes.MustGetColumns(), options...)
-}
-
-func NewBindParserWithK8sInfo(outputConfig *commonutils.OutputConfig) TraceParser[bindTypes.Event] {
-	return newBindParser(outputConfig, commonutils.WithMetadataTag(commonutils.KubernetesTag))
-}
-
-func NewBindParserWithRuntimeInfo(outputConfig *commonutils.OutputConfig) TraceParser[bindTypes.Event] {
-	return newBindParser(outputConfig, commonutils.WithMetadataTag(commonutils.ContainerRuntimeTag))
-}
-
-func NewBindParser(outputConfig *commonutils.OutputConfig) TraceParser[bindTypes.Event] {
-	return newBindParser(outputConfig)
 }
 
 func NewBindCmd(runCmd func(*cobra.Command, []string) error, flags *BindFlags) *cobra.Command {
@@ -89,6 +73,8 @@ func NewBindCmd(runCmd func(*cobra.Command, []string) error, flags *BindFlags) *
 		true,
 		"Show only events where the bind succeeded",
 	)
+
+	commonutils.AddCobraOptions(cmd, types.MustGetColumns())
 
 	return cmd
 }

@@ -23,6 +23,8 @@ import (
 
 	"github.com/cilium/ebpf/rlimit"
 
+	"github.com/kinvolk/inspektor-gadget/cmd/common/trace"
+	"github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/containerd"
@@ -30,9 +32,6 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
-
-	"github.com/kinvolk/inspektor-gadget/cmd/common/trace"
-	"github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 )
 
 const traceName = "trace_exec"
@@ -92,7 +91,7 @@ func main() {
 	defer containerCollection.Close()
 
 	// Create a parser. It's the component that converts events to columns.
-	execParser := trace.NewExecParser(&utils.OutputConfig{})
+	execParser := trace.NewParser(&utils.OutputConfig{}, types.MustGetColumns())
 
 	// Define a callback to be called each time there is an event.
 	eventCallback := func(event types.Event) {

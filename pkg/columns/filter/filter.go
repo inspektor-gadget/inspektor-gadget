@@ -37,7 +37,7 @@ const (
 	comparisonTypeGte
 )
 
-type filterSpec[T any] struct {
+type FilterSpec[T any] struct {
 	value          string
 	refValue       interface{}
 	comparisonType comparisonType
@@ -49,7 +49,7 @@ type filterSpec[T any] struct {
 
 // GetFilterFromString prepares a filter that has a Match() function that can be called on
 // entries of type *T
-func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*filterSpec[T], error) {
+func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*FilterSpec[T], error) {
 	filterInfo := strings.SplitN(filter, ":", 2)
 	if len(filterInfo) == 1 {
 		// special case: only a column means we match with an empty string
@@ -62,7 +62,7 @@ func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*filt
 		return nil, fmt.Errorf("could not apply filter: column %q not found", filterInfo[0])
 	}
 
-	fs := &filterSpec[T]{
+	fs := &FilterSpec[T]{
 		cols:   cols,
 		column: column,
 	}
@@ -175,7 +175,7 @@ func compare[T constraints.Ordered](a, b T, ct comparisonType, negate bool) bool
 	}
 }
 
-func (fs *filterSpec[T]) Match(entry *T) bool {
+func (fs *FilterSpec[T]) Match(entry *T) bool {
 	if entry == nil {
 		return fs.negate
 	}

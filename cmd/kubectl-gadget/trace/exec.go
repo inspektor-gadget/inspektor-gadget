@@ -15,21 +15,24 @@
 package trace
 
 import (
-	"github.com/spf13/cobra"
-
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
+
+	"github.com/spf13/cobra"
 )
 
 func newExecCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
 	runCmd := func(cmd *cobra.Command, args []string) error {
+		filters, _ := cmd.PersistentFlags().GetStringArray("filter")
+
 		execGadget := &TraceGadget[types.Event]{
 			name:        "execsnoop",
 			commonFlags: &commonFlags,
-			parser:      commontrace.NewExecParserWithK8sInfo(&commonFlags.OutputConfig),
+			parser:      commontrace.NewParserWithK8sInfo(&commonFlags.OutputConfig, types.MustGetColumns(), commonutils.WithFilters(filters)),
 		}
 
 		return execGadget.Run()

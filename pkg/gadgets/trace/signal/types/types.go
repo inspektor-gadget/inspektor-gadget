@@ -22,11 +22,11 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	Pid       uint32 `json:"pid,omitempty" column:"pid,width:7"`
-	TargetPid uint32 `json:"tpid,omitempty" column:"tpid,width:7"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,width:7" columnDesc:"Process ID"`
+	TargetPid uint32 `json:"tpid,omitempty" column:"tpid,width:7" columnDesc:"Target Process ID"`
 	Signal    string `json:"signal,omitempty" column:"signal,width:16"`
-	Retval    int    `json:"ret,omitempty" column:"ret,width:6"`
-	Comm      string `json:"comm,omitempty" column:"comm,width:16"`
+	Retval    int    `json:"ret,omitempty" column:"ret,width:6" columnDesc:"Return Value"`
+	Comm      string `json:"comm,omitempty" column:"comm,width:16" columnDesc:"Command"`
 	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
 }
 

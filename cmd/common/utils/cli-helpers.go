@@ -12,21 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package trace
+package utils
 
 import (
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	"fmt"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	"github.com/spf13/cobra"
 )
 
-func NewExecCmd(runCmd func(*cobra.Command, []string) error) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "exec",
-		Short: "Trace new processes",
-		RunE:  runCmd,
+func AddCobraOptions[T any](cmd *cobra.Command, columns *columns.Columns[T]) {
+	// Add long description to commands
+	cmd.Long = cmd.Short
+
+	cmd.Long += "\n\nAvailable columns:\n"
+	for _, column := range columns.GetColumnMap() {
+		cmd.Long += fmt.Sprintf("  %-20s %s\n", column.Name, column.Kind().String())
+		if column.Description != "" {
+			cmd.Long += fmt.Sprintf("    %s\n", column.Description)
+		}
 	}
-	commonutils.AddCobraOptions(cmd, types.MustGetColumns())
-	return cmd
+
+	// Add features
+	cmd.PersistentFlags().StringArray("filter", []string{}, "apply a filter to results; TODO: explain filter rules...")
 }

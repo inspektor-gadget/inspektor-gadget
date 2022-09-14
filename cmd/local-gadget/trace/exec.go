@@ -32,7 +32,7 @@ func newExecCmd() *cobra.Command {
 	runCmd := func(*cobra.Command, []string) error {
 		ExecGadget := &TraceGadget[execTypes.Event]{
 			commonFlags: &commonFlags,
-			parser:      commontrace.NewExecParserWithRuntimeInfo(&commonFlags.OutputConfig),
+			parser:      commontrace.NewParserWithRuntimeInfo(&commonFlags.OutputConfig, execTypes.MustGetColumns()),
 			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(execTypes.Event)) (trace.Tracer, error) {
 				return execTracer.NewTracer(&execTracer.Config{MountnsMap: mountnsmap}, enricher, eventCallback)
 			},

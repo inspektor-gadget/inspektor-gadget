@@ -33,7 +33,7 @@ func newBindCmd() *cobra.Command {
 	runCmd := func(*cobra.Command, []string) error {
 		bindGadget := &TraceGadget[bindTypes.Event]{
 			commonFlags: &commonFlags,
-			parser:      commontrace.NewBindParserWithRuntimeInfo(&commonFlags.OutputConfig),
+			parser:      commontrace.NewParserWithRuntimeInfo(&commonFlags.OutputConfig, bindTypes.MustGetColumns()),
 			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(bindTypes.Event)) (trace.Tracer, error) {
 				config := &bindTracer.Config{
 					MountnsMap:   mountnsmap,
