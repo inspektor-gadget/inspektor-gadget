@@ -45,6 +45,12 @@ func WrapInErrManagerCreateMountNsMap(err error) error {
 	return fmt.Errorf("creating mountns map: %w", err)
 }
 
+// Parser
+
+func WrapInErrParserCreate(err error) error {
+	return fmt.Errorf("creating parser: %w", err)
+}
+
 // Gadget Tracers
 
 func WrapInErrGadgetTracerCreateAndRun(err error) error {
