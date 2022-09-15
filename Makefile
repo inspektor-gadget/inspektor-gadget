@@ -183,7 +183,6 @@ lint:
 		golangci/golangci-lint:v1.49.0 golangci-lint run --fix
 
 # minikube
-LIVENESS_PROBE_INITIAL_DELAY_SECONDS ?= 60
 LIVENESS_PROBE ?= true
 .PHONY: minikube-install
 minikube-install: gadget-default-container kubectl-gadget
@@ -205,7 +204,6 @@ minikube-install: gadget-default-container kubectl-gadget
 	# Remove all resources created by Inspektor Gadget.
 	./kubectl-gadget undeploy || true
 	./kubectl-gadget deploy --liveness-probe=$(LIVENESS_PROBE) \
-		--liveness-probe-initial-delay=$(LIVENESS_PROBE_INITIAL_DELAY_SECONDS) \
 		--image-pull-policy=Never
 	kubectl rollout status daemonset -n gadget gadget --timeout 30s
 	@echo "Image used by the gadget pod:"
