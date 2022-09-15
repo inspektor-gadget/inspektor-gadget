@@ -32,7 +32,7 @@ type TraceEvent interface {
 
 // TraceParser defines the interface that every trace-gadget parser has to
 // implement.
-type TraceParser[Event TraceEvent] interface {
+type TraceParser[Event any] interface {
 	// Transform is called to transform an event to columns.
 	TransformToColumns(event *Event) string
 
