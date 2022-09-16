@@ -378,69 +378,6 @@ func getOwnerReferences(dynamicClient dynamic.Interface,
 	return res.GetOwnerReferences(), nil
 }
 
-func ownerReferenceEnrichment(
-	dynamicClient dynamic.Interface,
-	container *Container,
-	ownerReferences []metav1.OwnerReference,
-) error {
-	if container.OwnerReference != nil {
-		// Already set. Do nothing
-		return nil
-	}
-
-	resGroupVersion := "v1"
-	resKind := "pods"
-	resName := container.Podname
-	resNamespace := container.Namespace
-
-	var highestOwnerRef *metav1.OwnerReference
-
-	// Iterate until we reach the highest level of reference with one of the
-	// expected resource kind. Take into account that if this logic is changed,
-	// the gadget cluster role needs to be updated accordingly.
-	for {
-		if len(ownerReferences) == 0 {
-			var err error
-			ownerReferences, err = getOwnerReferences(dynamicClient,
-				resNamespace, resKind, resGroupVersion, resName)
-			if err != nil {
-				return fmt.Errorf("failed to get %s/%s/%s/%s owner reference: %w",
-					resNamespace, resKind, resGroupVersion, resName, err)
-			}
-
-			// No owner reference found
-			if len(ownerReferences) == 0 {
-				break
-			}
-		}
-
-		ownerRef := getExpectedOwnerReference(ownerReferences)
-		if ownerRef == nil {
-			// None expected owner reference found
-			break
-		}
-
-		// Update parameters for next iteration (Namespace does not change)
-		highestOwnerRef = ownerRef
-		resGroupVersion = ownerRef.APIVersion
-		resKind = strings.ToLower(ownerRef.Kind) + "s"
-		resName = ownerRef.Name
-		ownerReferences = nil
-	}
-
-	// Update container's owner reference (If any)
-	if highestOwnerRef != nil {
-		container.OwnerReference = &metav1.OwnerReference{
-			APIVersion: highestOwnerRef.APIVersion,
-			Kind:       highestOwnerRef.Kind,
-			Name:       highestOwnerRef.Name,
-			UID:        highestOwnerRef.UID,
-		}
-	}
-
-	return nil
-}
-
 // WithKubernetesEnrichment automatically adds pod metadata
 //
 // ContainerCollection.Initialize(WithKubernetesEnrichment())
@@ -457,19 +394,10 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 		if err != nil {
 			return fmt.Errorf("couldn't get Kubernetes client: %w", err)
 		}
-		dynamicClient, err := dynamic.NewForConfig(kubeconfig)
-		if err != nil {
-			return fmt.Errorf("couldn't get dynamic Kubernetes client: %w", err)
-		}
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			// Enrich only with owner reference if the data is already there
 			if container.Podname != "" {
-				err := ownerReferenceEnrichment(dynamicClient, container, nil)
-				if err != nil {
-					log.Errorf("kubernetes enricher: Failed to enrich with owner reference: %s", err)
-				}
 				return true
 			}
 
@@ -493,7 +421,6 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 			podUID := ""
 			containerName := ""
 			labels := make(map[string]string)
-			var podOwnerRef []metav1.OwnerReference
 			for _, pod := range pods.Items {
 				uid := string(pod.ObjectMeta.UID)
 				// check if this container is associated to this pod
@@ -522,9 +449,6 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 						pattern := fmt.Sprintf("pods/%s/containers/%s/", uid, c.Name)
 						if strings.Contains(m.Source, pattern) {
 							containerName = c.Name
-
-							// Keep track of the pod owner reference
-							podOwnerRef = pod.GetOwnerReferences()
 							break
 						}
 					}
@@ -540,13 +464,6 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 			// drop pause containers
 			if container.Podname != "" && containerName == "" {
 				return false
-			}
-
-			if len(podOwnerRef) != 0 {
-				err := ownerReferenceEnrichment(dynamicClient, container, podOwnerRef)
-				if err != nil {
-					log.Errorf("kubernetes enricher: Failed to enrich with owner reference: %s", err)
-				}
 			}
 
 			return true

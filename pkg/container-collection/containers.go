@@ -15,8 +15,13 @@
 package containercollection
 
 import (
+	"fmt"
+	"strings"
+
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 )
 
 // Container represents a container with its metadata.
@@ -51,13 +56,12 @@ type Container struct {
 	Podname   string            `json:"podname,omitempty"`
 	Name      string            `json:"name,omitempty"`
 	Labels    map[string]string `json:"labels,omitempty"`
-	// The owner reference information is added to the seccomp profile as
-	// annotations to help users to identify the workflow of the profile.
-	OwnerReference *metav1.OwnerReference `json:"ownerReference,omitempty"`
-	PodUID         string                 `json:"podUID,omitempty"`
+	PodUID    string            `json:"podUID,omitempty"`
 
 	// Container Runtime metadata
 	Runtime string `json:"runtime,omitempty"`
+
+	ownerReference *metav1.OwnerReference
 }
 
 type ContainerSelector struct {
@@ -65,4 +69,90 @@ type ContainerSelector struct {
 	Podname   string
 	Labels    map[string]string
 	Name      string
+}
+
+// GetOwnerReference returns the owner reference information of the
+// container. Currently it's added to the seccomp profile as annotations
+// to help users to identify the workflow of the profile. We "lazily
+// enrich" this information because this operation is expensive and this
+// information is only needed in some cases.
+func (c *Container) GetOwnerReference() (*metav1.OwnerReference, error) {
+	if c.ownerReference != nil {
+		return c.ownerReference, nil
+	}
+
+	kubeconfig, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get Kubernetes config: %w", err)
+	}
+
+	dynamicClient, err := dynamic.NewForConfig(kubeconfig)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get dynamic Kubernetes client: %w", err)
+	}
+
+	err = ownerReferenceEnrichment(dynamicClient, c, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to enrich owner reference: %w", err)
+	}
+
+	return c.ownerReference, nil
+}
+
+func ownerReferenceEnrichment(
+	dynamicClient dynamic.Interface,
+	container *Container,
+	ownerReferences []metav1.OwnerReference,
+) error {
+	resGroupVersion := "v1"
+	resKind := "pods"
+	resName := container.Podname
+	resNamespace := container.Namespace
+
+	var highestOwnerRef *metav1.OwnerReference
+
+	// Iterate until we reach the highest level of reference with one of the
+	// expected resource kind. Take into account that if this logic is changed,
+	// the gadget cluster role needs to be updated accordingly.
+	for {
+		if len(ownerReferences) == 0 {
+			var err error
+			ownerReferences, err = getOwnerReferences(dynamicClient,
+				resNamespace, resKind, resGroupVersion, resName)
+			if err != nil {
+				return fmt.Errorf("failed to get %s/%s/%s/%s owner reference: %w",
+					resNamespace, resKind, resGroupVersion, resName, err)
+			}
+
+			// No owner reference found
+			if len(ownerReferences) == 0 {
+				break
+			}
+		}
+
+		ownerRef := getExpectedOwnerReference(ownerReferences)
+		if ownerRef == nil {
+			// None expected owner reference found
+			break
+		}
+
+		// Update parameters for next iteration (Namespace does not change)
+		highestOwnerRef = ownerRef
+		resGroupVersion = ownerRef.APIVersion
+		resKind = strings.ToLower(ownerRef.Kind) + "s"
+		resName = ownerRef.Name
+		ownerReferences = nil
+	}
+
+	// Update container's owner reference (If any)
+	if highestOwnerRef != nil {
+		container.ownerReference = &metav1.OwnerReference{
+			APIVersion: highestOwnerRef.APIVersion,
+			Kind:       highestOwnerRef.Kind,
+			Name:       highestOwnerRef.Name,
+			UID:        highestOwnerRef.UID,
+		}
+	}
+
+	return nil
 }

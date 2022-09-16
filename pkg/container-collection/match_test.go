@@ -155,7 +155,7 @@ func TestContainerResolver(t *testing.T) {
 			Pid:        uint32(100 + i),
 			CgroupPath: "/none",
 			CgroupID:   1,
-			OwnerReference: &metav1.OwnerReference{
+			ownerReference: &metav1.OwnerReference{
 				UID: types.UID(fmt.Sprintf("abcde%d", i)),
 			},
 		})

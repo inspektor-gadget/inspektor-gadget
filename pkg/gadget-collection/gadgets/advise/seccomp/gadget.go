@@ -17,6 +17,7 @@ package seccomp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -27,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 	k8syaml "sigs.k8s.io/yaml"
@@ -345,7 +347,11 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 
 	namespacedName := fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
 
-	r, err := generateSeccompPolicy(t.client, trace, b, event.Container.Podname, event.Container.Name, namespacedName, event.Container.OwnerReference)
+	// This field was fetched when the container was created
+	ownerReference := getContainerOwnerReference(event.Container)
+
+	r, err := generateSeccompPolicy(t.client, trace, b, event.Container.Podname,
+		event.Container.Name, namespacedName, ownerReference)
 	if err != nil {
 		log.Errorf("Trace %s: %v", traceName, err)
 		return
@@ -375,6 +381,19 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 	}
 }
 
+func getContainerOwnerReference(c *containercollection.Container) *metav1.OwnerReference {
+	ownerRef, err := c.GetOwnerReference()
+	// Owner reference doesn't make any sense for local-gadget, then
+	// do not print any warning message if this is not running in
+	// the cluster.
+	if err != nil && !errors.Is(err, rest.ErrNotInCluster) {
+		log.Warnf("Failed to get owner reference of %s/%s/%s: %s",
+			c.Namespace, c.Podname, c.Name, err)
+	}
+
+	return ownerRef
+}
+
 func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	trace.Status.Output = ""
 	if t.started {
@@ -397,21 +416,28 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		// outside of the gadget control. Make a copy for the callback.
 		traceCopy := trace.DeepCopy()
 
-		// Subscribes to container termination events in order to
-		// generate a SeccompProfile when a container terminates. We
-		// don't need the list of existing containers, so the return
-		// value is ignored.
-		_ = t.helpers.Subscribe(
+		// Subscribe to container creation and termination
+		// events. Termination is used to generate a
+		// SeccompProfile when a container terminates. Creation
+		// is used to fetch the owner reference of the
+		// containers to be sure this field is set when the
+		// container terminates.
+		containers := t.helpers.Subscribe(
 			genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
 			*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
 			func(event containercollection.PubSubEvent) {
-				// Ignore container creation events.
-				if event.Type != containercollection.EventTypeRemoveContainer {
-					return
+				switch event.Type {
+				case containercollection.EventTypeAddContainer:
+					getContainerOwnerReference(event.Container)
+				case containercollection.EventTypeRemoveContainer:
+					t.containerTerminated(traceCopy, event)
 				}
-				t.containerTerminated(traceCopy, event)
 			},
 		)
+
+		for _, container := range containers {
+			getContainerOwnerReference(container)
+		}
 	}
 	traceSingleton.users++
 	t.started = true
