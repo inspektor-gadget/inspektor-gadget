@@ -44,7 +44,7 @@ require (
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/google/go-cmp v0.5.8
-	github.com/moby/moby v20.10.17+incompatible
+	github.com/moby/moby v20.10.18+incompatible
 )
 
 require (
