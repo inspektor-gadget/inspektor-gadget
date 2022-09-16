@@ -15,21 +15,27 @@
 package trace
 
 import (
+	"github.com/cilium/ebpf"
 	"github.com/spf13/cobra"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
+	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
+	tcpTracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/tracer"
+	tcpTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 )
 
 func newTCPCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
-	runCmd := func(cmd *cobra.Command, args []string) error {
-		tcpGadget := &TraceGadget[types.Event]{
-			name:        "tcptracer",
+	runCmd := func(*cobra.Command, []string) error {
+		tcpGadget := &TraceGadget[tcpTypes.Event]{
 			commonFlags: &commonFlags,
-			parser:      commontrace.NewTCPParserWithK8sInfo(&commonFlags.OutputConfig),
+			parser:      commontrace.NewTCPParserWithRuntimeInfo(&commonFlags.OutputConfig),
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(tcpTypes.Event)) (trace.Tracer, error) {
+				return tcpTracer.NewTracer(&tcpTracer.Config{MountnsMap: mountnsmap}, enricher, eventCallback)
+			},
 		}
 
 		return tcpGadget.Run()

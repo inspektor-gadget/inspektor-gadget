@@ -95,6 +95,7 @@ func NewTraceCmd() *cobra.Command {
 
 	traceCmd.AddCommand(newBindCmd())
 	traceCmd.AddCommand(newExecCmd())
+	traceCmd.AddCommand(newTCPCmd())
 
 	return traceCmd
 }
