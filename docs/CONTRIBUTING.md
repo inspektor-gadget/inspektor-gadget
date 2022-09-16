@@ -124,6 +124,28 @@ Be sure that you have a valid kubeconfig and run:
 $ export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
 $ make integration-tests
 ```
+
+### Integration tests for Local Gadget
+
+The integration tests for local gadget uses minikube for testing different container runtimes.
+The minikube should always be configured to use docker `driver`. Currently, supported
+container runtimes are `docker`, `containerd` and `cri-o`. You can set up minikube using:
+
+```bash
+$ make -C integration/local-gadget setup-all
+# for single container runtime e.g containerd
+$ make -C integration/local-gadget CONTAINER_RUNTIME=containerd setup
+```
+
+And run the test using:
+
+```bash
+$ make -C integration/local-gadget test-all
+# for single container runtime e.g containerd
+$ make -C integration/local-gadget CONTAINER_RUNTIME=containerd test
+```
+if no `CONTAINER_RUNTIME` is specified `docker` will be used as a default runtime.
+
 ### Continuous Integration
 
 Inspektor Gadget uses GitHub Actions as CI. Please check dedicated [CI

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package integration
 
 import (
 	"bufio"
@@ -54,9 +54,9 @@ func parseOutput[T any](output string, normalize func(*T)) ([]*T, error) {
 	return ret, nil
 }
 
-// expectAllToMatch verifies that the expectedEntry is matched by all the
+// ExpectAllToMatch verifies that the expectedEntry is matched by all the
 // entries in the output.
-func expectAllToMatch[T any](output string, normalize func(*T), expectedEntry *T) error {
+func ExpectAllToMatch[T any](output string, normalize func(*T), expectedEntry *T) error {
 	entries, err := parseOutput(output, normalize)
 	if err != nil {
 		return err
@@ -72,9 +72,9 @@ func expectAllToMatch[T any](output string, normalize func(*T), expectedEntry *T
 	return nil
 }
 
-// expectEntriesToMatch verifies that all the entries in expectedEntries are
+// ExpectEntriesToMatch verifies that all the entries in expectedEntries are
 // matched by at least one entry in the output.
-func expectEntriesToMatch[T any](output string, normalize func(*T), expectedEntries ...*T) error {
+func ExpectEntriesToMatch[T any](output string, normalize func(*T), expectedEntries ...*T) error {
 	entries, err := parseOutput(output, normalize)
 	if err != nil {
 		return err
@@ -93,12 +93,12 @@ out:
 	return nil
 }
 
-func buildBaseEvent(namespace string) eventtypes.Event {
+func BuildBaseEvent(namespace string) eventtypes.Event {
 	return eventtypes.Event{
 		Type: eventtypes.NORMAL,
 		CommonData: eventtypes.CommonData{
 			Namespace: namespace,
-			// Pod and Container name are defined by busyboxPodCommand.
+			// Pod and Container name are defined by BusyboxPodCommand.
 			Pod:       "test-pod",
 			Container: "test-pod",
 			// TODO: Include the Node
