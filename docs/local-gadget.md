@@ -246,6 +246,24 @@ CONTAINER        T  PID     COMM             IP  SADDR                  DADDR   
 test-container   C  11039   wget             4   172.17.0.2             188.114.96.7           57560   443
 ```
 
+### Trace/TcpConnect
+
+The tcpconnect trace gadget traces IPv4 and IPv6 TCP connections.
+
+```bash
+$ docker run -it --rm --name test-container busybox /bin/sh -c "wget http://www.example.com"
+Connecting to www.example.com (93.184.216.34:80)
+saving to 'index.html'
+index.html           100% |************************************************************************************************|  1256  0:00:00 ETA
+'index.html' saved
+```
+
+```bash
+$ sudo local-gadget trace tcpconnect --containername test-container
+CONTAINER        PID     COMM             IP  SADDR            DADDR            DPORT
+test-container   503650  wget             4   172.17.0.3       93.184.216.34    80
+```
+
 ## Interactive Mode
 
 The interactive mode allows us to create multiple traces at the same time.
