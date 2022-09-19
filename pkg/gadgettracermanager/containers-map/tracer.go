@@ -135,10 +135,10 @@ func (cm *ContainersMap) ContainersMapUpdater() containercollection.FuncNotify {
 				return
 			}
 
-			cm.addContainerInMap(&event.Container)
+			cm.addContainerInMap(event.Container)
 
 		case containercollection.EventTypeRemoveContainer:
-			cm.deleteContainerFromMap(&event.Container)
+			cm.deleteContainerFromMap(event.Container)
 		}
 	}
 }

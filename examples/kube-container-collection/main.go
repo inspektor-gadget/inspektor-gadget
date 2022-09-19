@@ -84,12 +84,12 @@ func callback(notif containercollection.PubSubEvent) {
 		if notif.Container.OciConfig != nil {
 			config, err := json.Marshal(notif.Container.OciConfig)
 			if err != nil {
-				publishEvent(&notif.Container, "CannotMarshalContainerConfig", err.Error())
+				publishEvent(notif.Container, "CannotMarshalContainerConfig", err.Error())
 			} else {
-				publishEvent(&notif.Container, "NewContainerConfig", string(config))
+				publishEvent(notif.Container, "NewContainerConfig", string(config))
 			}
 		} else {
-			publishEvent(&notif.Container, "ContainerConfigNotFound", "")
+			publishEvent(notif.Container, "ContainerConfigNotFound", "")
 		}
 	case containercollection.EventTypeRemoveContainer:
 		fmt.Printf("Container removed: %v pid %d\n", notif.Container.ID, notif.Container.Pid)

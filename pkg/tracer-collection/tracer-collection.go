@@ -76,7 +76,7 @@ func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 			}
 
 			for _, t := range tc.tracers {
-				if containercollection.ContainerSelectorMatches(&t.containerSelector, &event.Container) {
+				if containercollection.ContainerSelectorMatches(&t.containerSelector, event.Container) {
 					mntnsC := uint64(event.Container.Mntns)
 					one := uint32(1)
 					if mntnsC != 0 {
@@ -89,7 +89,7 @@ func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 
 		case containercollection.EventTypeRemoveContainer:
 			for _, t := range tc.tracers {
-				if containercollection.ContainerSelectorMatches(&t.containerSelector, &event.Container) {
+				if containercollection.ContainerSelectorMatches(&t.containerSelector, event.Container) {
 					mntnsC := uint64(event.Container.Mntns)
 					t.mntnsSetMap.Delete(mntnsC)
 				}
