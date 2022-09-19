@@ -5,6 +5,7 @@ CONTAINER_REPO ?= ghcr.io/kinvolk/inspektor-gadget
 IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
 MINIKUBE ?= minikube
+KUBERNETES_DISTRIBUTION ?= ""
 
 GOHOSTOS ?= $(shell go env GOHOSTOS)
 GOHOSTARCH ?= $(shell go env GOHOSTARCH)
@@ -160,12 +161,17 @@ local-gadget-tests:
 	sudo ./local-gadget-manager.test -test.v -root-test $$LOCAL_GADGET_TESTS_PARAMS
 	rm -f ./local-gadget-manager.test
 
+# INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g
+# INTEGRATION_TESTS_PARAMS="-run TestExecsnoop -v -no-deploy-ig -no-deploy-spo" make integration-tests
 .PHONY: integration-tests
 integration-tests: kubectl-gadget
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \
 		go test ./integration/... \
 			-integration \
-			-image $(CONTAINER_REPO):$(IMAGE_TAG)
+			-timeout 20m \
+			-k8s-distro $(KUBERNETES_DISTRIBUTION) \
+			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
+			$$INTEGRATION_TESTS_PARAMS
 
 .PHONY: generate-documentation
 generate-documentation:
