@@ -4,7 +4,7 @@ description: "Install debian packages needed by inspektor-gadget"
 inputs:
   libbpf-version:
     description: "Version of the libbpf to install."
-    default: "1:0.4.0-1ubuntu1"
+    default: "1:0.5.0-1~ubuntu20.04.1"
   libseccomp-version:
     description: "Version of the libseccomp to install."
     default: "2.5.1-1ubuntu1~20.04.2"
