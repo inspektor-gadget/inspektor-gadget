@@ -15,113 +15,29 @@
 package trace
 
 import (
-	"fmt"
-	"strings"
+	"github.com/spf13/cobra"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
-
-	"github.com/spf13/cobra"
 )
 
-type TcpconnectParser struct {
-	commonutils.BaseParser[types.Event]
-}
-
 func newTcpconnectCmd() *cobra.Command {
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"container",
-				"pid",
-				"comm",
-				"ip",
-				"saddr",
-				"daddr",
-				"dport",
-			},
-		},
-	}
+	var commonFlags utils.CommonFlags
 
-	cmd := &cobra.Command{
-		Use:   "tcpconnect",
-		Short: "Trace connect system calls",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			tcpconnectGadget := &TraceGadget[types.Event]{
-				name:        "tcpconnect",
-				commonFlags: commonFlags,
-				parser:      NewTcpconnectParser(&commonFlags.OutputConfig),
-			}
-
-			return tcpconnectGadget.Run()
-		},
-	}
-
-	utils.AddCommonFlags(cmd, commonFlags)
-
-	return cmd
-}
-
-func NewTcpconnectParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParser[types.Event] {
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -30,
-		"container": -16,
-		"pid":       -7,
-		"comm":      -16,
-		"ip":        -3,
-		"saddr":     -16,
-		"daddr":     -16,
-		"dport":     -7,
-	}
-
-	return &TcpconnectParser{
-		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
-	}
-}
-
-func (p *TcpconnectParser) TransformEvent(event *types.Event) string {
-	return p.Transform(event, func(event *types.Event) string {
-		var sb strings.Builder
-
-		for _, col := range p.OutputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
-			case "ip":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.IPVersion))
-			case "saddr":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Saddr))
-			case "daddr":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Daddr))
-			case "dport":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Dport))
-			default:
-				continue
-			}
-
-			// Needed when field is larger than the predefined columnsWidth.
-			sb.WriteRune(' ')
+	runCmd := func(*cobra.Command, []string) error {
+		tcpconnectGadget := &TraceGadget[types.Event]{
+			name:        "tcpconnect",
+			commonFlags: &commonFlags,
+			parser:      commontrace.NewTcpconnectParserWithK8sInfo(&commonFlags.OutputConfig),
 		}
 
-		return sb.String()
-	})
+		return tcpconnectGadget.Run()
+	}
+
+	cmd := commontrace.NewTcpconnectCmd(runCmd)
+
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
