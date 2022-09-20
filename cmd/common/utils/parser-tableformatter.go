@@ -20,6 +20,7 @@ import (
 
 	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	"github.com/kinvolk/inspektor-gadget/pkg/columns/formatter/textcolumns"
+	"github.com/kinvolk/inspektor-gadget/pkg/columns/sort"
 )
 
 const (
@@ -43,6 +44,7 @@ type GadgetParserOptions struct {
 // using the columns and formatter/textcolumns packages.
 type GadgetParser[T any] struct {
 	formatter *textcolumns.TextColumnsFormatter[T]
+	colsMap   columns.ColumnMap[T]
 }
 
 func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T], options ...Option) (*GadgetParser[T], error) {
@@ -55,11 +57,11 @@ func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T]
 	// If no tag is provided, we use only the columns with no specific tag. In
 	// other words, the gadget-specific columns. Otherwise, we also include the
 	// columns with the requested tag.
-	var filter columns.ColumnFilter
+	var colsMap columns.ColumnMap[T]
 	if opts.metadataTag == "" {
-		filter = columns.WithNoTags()
+		colsMap = cols.GetColumnMap(columns.WithNoTags())
 	} else {
-		filter = columns.Or(columns.WithTag(opts.metadataTag), columns.WithNoTags())
+		colsMap = cols.GetColumnMap(columns.Or(columns.WithTag(opts.metadataTag), columns.WithNoTags()))
 	}
 
 	var formatter *textcolumns.TextColumnsFormatter[T]
@@ -70,15 +72,16 @@ func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T]
 		}
 
 		formatter = textcolumns.NewFormatter(
-			cols.GetColumnMap(filter),
+			colsMap,
 			textcolumns.WithDefaultColumns(validCols),
 		)
 	} else {
-		formatter = textcolumns.NewFormatter(cols.GetColumnMap(filter))
+		formatter = textcolumns.NewFormatter(colsMap)
 	}
 
 	return &GadgetParser[T]{
 		formatter: formatter,
+		colsMap:   colsMap,
 	}, nil
 }
 
@@ -96,4 +99,8 @@ func (p *GadgetParser[T]) BuildColumnsHeader() string {
 
 func (p *GadgetParser[T]) TransformIntoColumns(entry *T) string {
 	return p.formatter.FormatEntry(entry)
+}
+
+func (p *GadgetParser[T]) Sort(entries []*T, sortBy []string) {
+	sort.SortEntries(p.colsMap, entries, sortBy)
 }
