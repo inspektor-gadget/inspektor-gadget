@@ -29,7 +29,7 @@ const (
 
 type PubSubEvent struct {
 	Type      EventType
-	Container Container
+	Container *Container
 }
 
 // GadgetPubSub provides a synchronous publish subscribe mechanism for gadgets
@@ -71,7 +71,7 @@ func (g *GadgetPubSub) Unsubscribe(key interface{}) {
 	delete(g.subs, key)
 }
 
-func (g *GadgetPubSub) Publish(eventType EventType, container Container) {
+func (g *GadgetPubSub) Publish(eventType EventType, container *Container) {
 	// Make a copy so we don't keep the lock while actually publishing
 	g.mu.RLock()
 	copiedSubs := []FuncNotify{}

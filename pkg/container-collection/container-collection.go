@@ -24,6 +24,8 @@ package containercollection
 import (
 	"sync"
 
+	log "github.com/sirupsen/logrus"
+
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -97,7 +99,7 @@ initialContainersLoop:
 
 		cc.containers.Store(container.ID, container)
 		if cc.pubsub != nil {
-			cc.pubsub.Publish(EventTypeAddContainer, *container)
+			cc.pubsub.Publish(EventTypeAddContainer, container)
 		}
 	}
 	cc.initialContainers = nil
@@ -125,7 +127,7 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 	}
 
 	if cc.pubsub != nil {
-		cc.pubsub.Publish(EventTypeRemoveContainer, *v.(*Container))
+		cc.pubsub.Publish(EventTypeRemoveContainer, v.(*Container))
 	}
 }
 
@@ -145,7 +147,7 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 		return
 	}
 	if cc.pubsub != nil {
-		cc.pubsub.Publish(EventTypeAddContainer, *container)
+		cc.pubsub.Publish(EventTypeAddContainer, container)
 	}
 }
 
@@ -230,10 +232,15 @@ func (cc *ContainerCollection) LookupPIDByPod(namespace, pod string) map[string]
 // container identified by the mount namespace, or nil if not found
 func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *metav1.OwnerReference {
 	var ownerRef *metav1.OwnerReference
+	var err error
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if mntns == c.Mntns {
-			ownerRef = c.OwnerReference
+			ownerRef, err = c.GetOwnerReference()
+			if err != nil {
+				log.Warnf("Failed to get owner reference of %s/%s/%s: %s",
+					c.Namespace, c.Podname, c.Name, err)
+			}
 			// container found, stop iterating
 			return false
 		}
@@ -312,7 +319,7 @@ func (cc *ContainerCollection) Subscribe(key interface{}, selector ContainerSele
 	}
 	ret := []*Container{}
 	cc.pubsub.Subscribe(key, func(event PubSubEvent) {
-		if ContainerSelectorMatches(&selector, &event.Container) {
+		if ContainerSelectorMatches(&selector, event.Container) {
 			f(event)
 		}
 	}, func() {

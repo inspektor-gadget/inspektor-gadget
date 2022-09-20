@@ -225,9 +225,9 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	containerEventCallback := func(event containercollection.PubSubEvent) {
 		switch event.Type {
 		case containercollection.EventTypeAddContainer:
-			attachContainerFunc(&event.Container)
+			attachContainerFunc(event.Container)
 		case containercollection.EventTypeRemoveContainer:
-			detachContainerFunc(&event.Container)
+			detachContainerFunc(event.Container)
 		}
 	}
 
