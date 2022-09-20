@@ -112,21 +112,18 @@ install/kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
 	mkdir -p ~/.local/bin/
 	cp kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) ~/.local/bin/kubectl-gadget
 
-# gadget BCC container image
-.PHONY: gadget-default-container
-gadget-default-container:
-	docker buildx build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f Dockerfiles/gadget-default.Dockerfile \
+GADGET_CONTAINERS = \
+	gadget-default-container \
+	gadget-core-container
+
+gadget-container-all: $(GADGET_CONTAINERS)
+
+gadget-%-container:
+	docker buildx build -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) -f Dockerfiles/gadget-$*.Dockerfile \
 		--build-arg ENABLE_BTFGEN=$(ENABLE_BTFGEN) .
 
-# gadget CO-RE container image
-.PHONY: gadget-core-container
-gadget-core-container:
-	docker buildx build -t $(CONTAINER_REPO):$(IMAGE_TAG) -f Dockerfiles/gadget-core.Dockerfile \
-		--build-arg ENABLE_BTFGEN=$(ENABLE_BTFGEN) .
-
-.PHONY: push-gadget-container
-push-gadget-container:
-	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
+push-gadget-%-container:
+	docker push $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,)
 
 # kubectl-gadget container image
 .PHONY: kubectl-gadget-container

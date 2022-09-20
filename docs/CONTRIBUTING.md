@@ -46,7 +46,7 @@ You can build and push the container gadget image by running the following comma
 
 ```bash
 $ make gadget-default-container # or make gadget-core-container
-$ make push-gadget-container
+$ make push-gadget-default-container
 ```
 
 The eBPF code is built using a Docker container, so you don't have to worry
