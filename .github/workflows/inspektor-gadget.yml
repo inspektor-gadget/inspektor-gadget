@@ -499,6 +499,7 @@ jobs:
       uses: ./.github/actions/run-integration-tests
       with:
         kubernetes_distribution: "aro"
+        kubernetes_architecture: "amd64"
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
 
@@ -542,6 +543,7 @@ jobs:
       uses: ./.github/actions/run-integration-tests
       with:
         kubernetes_distribution: "minikube-github"
+        kubernetes_architecture: "amd64"
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
 

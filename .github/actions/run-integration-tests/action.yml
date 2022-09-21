@@ -11,6 +11,9 @@ inputs:
   kubernetes_distribution:
     description: 'The kubernetes distribution used to select distro specific config in tests.'
     required: true
+  kubernetes_architecture:
+    description: 'The CPU architecture used to select arch specific config in tests.'
+    required: true
 
 runs:
   using: "composite"
@@ -55,6 +58,7 @@ runs:
         echo "IntegrationTestsJob: Start"
         make \
           KUBERNETES_DISTRIBUTION=${{ inputs.kubernetes_distribution }} \
+          KUBERNETES_ARCHITECTURE=${{ inputs.kubernetes_architecture }} \
           CONTAINER_REPO=${{ inputs.container_repo }} \
           IMAGE_TAG=${{ inputs.image_tag }} \
           -o kubectl-gadget integration-tests & wait $!
