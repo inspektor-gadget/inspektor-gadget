@@ -157,7 +157,7 @@ var cleanupInspektorGadget *command = &command{
 var cleanupSPO *command = &command{
 	name: "RemoveSecurityProfilesOperator",
 	cmd: `
-	kubectl delete seccompprofile -n security-profiles-operator --all
+	kubectl delete seccompprofile --all --all-namespaces
 	kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.3/deploy/operator.yaml
 	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml
 	`,
