@@ -411,34 +411,35 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			trace.Status.OperationError = fmt.Sprintf("Failed to start seccomp tracer: %s", err)
 			return
 		}
-
-		// 'trace' is owned by the controller and could be modified
-		// outside of the gadget control. Make a copy for the callback.
-		traceCopy := trace.DeepCopy()
-
-		// Subscribe to container creation and termination
-		// events. Termination is used to generate a
-		// SeccompProfile when a container terminates. Creation
-		// is used to fetch the owner reference of the
-		// containers to be sure this field is set when the
-		// container terminates.
-		containers := t.helpers.Subscribe(
-			genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
-			*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
-			func(event containercollection.PubSubEvent) {
-				switch event.Type {
-				case containercollection.EventTypeAddContainer:
-					getContainerOwnerReference(event.Container)
-				case containercollection.EventTypeRemoveContainer:
-					t.containerTerminated(traceCopy, event)
-				}
-			},
-		)
-
-		for _, container := range containers {
-			getContainerOwnerReference(container)
-		}
 	}
+
+	// 'trace' is owned by the controller and could be modified
+	// outside of the gadget control. Make a copy for the callback.
+	traceCopy := trace.DeepCopy()
+
+	// Subscribe to container creation and termination
+	// events. Termination is used to generate a
+	// SeccompProfile when a container terminates. Creation
+	// is used to fetch the owner reference of the
+	// containers to be sure this field is set when the
+	// container terminates.
+	containers := t.helpers.Subscribe(
+		genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
+		*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
+		func(event containercollection.PubSubEvent) {
+			switch event.Type {
+			case containercollection.EventTypeAddContainer:
+				getContainerOwnerReference(event.Container)
+			case containercollection.EventTypeRemoveContainer:
+				t.containerTerminated(traceCopy, event)
+			}
+		},
+	)
+
+	for _, container := range containers {
+		getContainerOwnerReference(container)
+	}
+
 	traceSingleton.users++
 	t.started = true
 	t.policyGenerated = false
@@ -570,9 +571,11 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 
 	traceSingleton.mu.Lock()
 	defer traceSingleton.mu.Unlock()
+
+	t.helpers.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
+
 	traceSingleton.users--
 	if traceSingleton.users == 0 {
-		t.helpers.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
 		traceSingleton.tracer.Close()
 		traceSingleton.tracer = nil
 	}
