@@ -208,6 +208,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
+        co-re: ${{ matrix.type == 'core' }}
     - name: Build gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: docker/build-push-action@v2
       with:
@@ -466,11 +467,6 @@ jobs:
     # docs/ci.md for further details.
     if: needs.check-secrets.outputs.aro == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      # allow publishing container image
-      # in case of public fork repo/packages permissions will always be read
-      contents: read
-      packages: write
     concurrency:
       group: no-simultaneous-test-integration-aro
     steps:
@@ -495,14 +491,10 @@ jobs:
         co-re: false
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
-      env:
-        KUBERNETES_DISTRIBUTION: "aro"
       with:
-        registry: ${{ env.REGISTRY }}
+        kubernetes_distribution: "aro"
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
 
   test-integration-minikube:
     name: Integration tests
@@ -512,11 +504,6 @@ jobs:
     strategy:
       matrix:
         type: [default, core]
-    permissions:
-      # allow publishing container image
-      # in case of public fork repo/packages permissions will always be read
-      contents: read
-      packages: write
     steps:
     - uses: actions/checkout@v3
     - name: Setup Minikube
@@ -542,14 +529,10 @@ jobs:
         co-re: ${{ matrix.type == 'core' }}
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
-      env:
-        KUBERNETES_DISTRIBUTION: "minikube-github"
       with:
-        registry: ${{ env.REGISTRY }}
+        kubernetes_distribution: "minikube-github"
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
 
   release:
     name: Release
