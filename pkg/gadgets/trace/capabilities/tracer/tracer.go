@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -225,7 +224,9 @@ func (t *Tracer) run() {
 		capOpt := int(eventC.cap_opt)
 
 		var audit int
-		var insetID int
+		true_ := true
+		false_ := false
+		var insetID *bool
 
 		if t.runningKernelVersion >= kernelVersion(5, 1, 0) {
 			audit = 0
@@ -233,18 +234,12 @@ func (t *Tracer) run() {
 				audit = 1
 			}
 
-			insetID = 0
+			insetID = &false_
 			if (capOpt & 0b100) != 0 {
-				insetID = 1
+				insetID = &true_
 			}
 		} else {
 			audit = capOpt
-			insetID = -1
-		}
-
-		insetString := "N/A"
-		if insetID != -1 {
-			insetString = strconv.Itoa(insetID)
 		}
 
 		verdict := "Deny"
@@ -261,7 +256,7 @@ func (t *Tracer) run() {
 			Cap:       int(eventC.cap),
 			UID:       uint32(eventC.uid),
 			Audit:     audit,
-			InsetID:   insetString,
+			InsetID:   insetID,
 			Comm:      C.GoString(&eventC.task[0]),
 			CapName:   capabilityName,
 			Verdict:   verdict,

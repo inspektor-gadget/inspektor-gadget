@@ -36,7 +36,7 @@ type Event struct {
 	CapName   string `json:"capName,omitempty"`
 	Cap       int    `json:"cap,omitempty"`
 	Audit     int    `json:"audit,omitempty"`
-	InsetID   string `json:"insetid,omitempty"`
+	InsetID   *bool  `json:"insetid,omitempty"`
 	Verdict   string `json:"verdict,omitempty"`
 }
 
