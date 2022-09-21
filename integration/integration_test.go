@@ -25,6 +25,11 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	bindTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	execTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	signalTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
+	tcpTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 )
 
 const (
@@ -342,10 +347,28 @@ func TestBindsnoop(t *testing.T) {
 	t.Parallel()
 
 	bindsnoopCmd := &command{
-		name:           "StartBindsnoopGadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace bind -n %s", ns),
-		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+nc`, ns),
-		startAndStop:   true,
+		name:         "StartBindsnoopGadget",
+		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace bind -n %s -o json", ns),
+		startAndStop: true,
+		expectedOutputFn: func(output string) error {
+			expectedEntry := &bindTypes.Event{
+				Event:     buildBaseEvent(ns),
+				Comm:      "nc",
+				Protocol:  "TCP",
+				Addr:      "::",
+				Port:      9090,
+				Options:   ".R...",
+				Interface: "0",
+			}
+
+			normalize := func(e *bindTypes.Event) {
+				e.Node = ""
+				e.Pid = 0
+				e.MountNsID = 0
+			}
+
+			return expectAllToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	commands := []*command{
@@ -469,10 +492,39 @@ func TestExecsnoop(t *testing.T) {
 	t.Parallel()
 
 	execsnoopCmd := &command{
-		name:           "StartExecsnoopGadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s", ns),
-		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+\d+\s+date`, ns),
-		startAndStop:   true,
+		name:         "StartExecsnoopGadget",
+		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s -o json", ns),
+		startAndStop: true,
+		expectedOutputFn: func(output string) error {
+			expectedEntries := []*execTypes.Event{
+				{
+					Event: buildBaseEvent(ns),
+					Comm:  "sh",
+					Args:  []string{"/bin/sh", "-c", "while true; do date && sleep 0.1; done"},
+				},
+				{
+					Event: buildBaseEvent(ns),
+					Comm:  "date",
+					Args:  []string{"/bin/date"},
+				},
+				{
+					Event: buildBaseEvent(ns),
+					Comm:  "sleep",
+					Args:  []string{"/bin/sleep", "0.1"},
+				},
+			}
+
+			normalize := func(e *execTypes.Event) {
+				e.Node = ""
+				e.Pid = 0
+				e.Ppid = 0
+				e.UID = 0
+				e.Retval = 0
+				e.MountNsID = 0
+			}
+
+			return expectEntriesToMatch(output, normalize, expectedEntries...)
+		},
 	}
 
 	commands := []*command{
@@ -810,10 +862,26 @@ func TestSigsnoop(t *testing.T) {
 	t.Parallel()
 
 	sigsnoopCmd := &command{
-		name:           "StartSigsnoopGadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace signal -n %s", ns),
-		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+sh\s+SIGTERM`, ns),
-		startAndStop:   true,
+		name:         "StartSigsnoopGadget",
+		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace signal -n %s -o json", ns),
+		startAndStop: true,
+		expectedOutputFn: func(output string) error {
+			expectedEntry := &signalTypes.Event{
+				Event:  buildBaseEvent(ns),
+				Comm:   "sh",
+				Signal: "SIGTERM",
+			}
+
+			normalize := func(e *signalTypes.Event) {
+				e.Node = ""
+				e.Pid = 0
+				e.TargetPid = 0
+				e.Retval = 0
+				e.MountNsID = 0
+			}
+
+			return expectEntriesToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	commands := []*command{
@@ -903,10 +971,47 @@ func TestTcptracer(t *testing.T) {
 	t.Parallel()
 
 	tcptracerCmd := &command{
-		name:           "StartTcptracerGadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace tcp -n %s", ns),
-		expectedRegexp: `C\s+\d+\s+wget\s+\d\s+[\w\.:]+\s+1\.1\.1\.1\s+\d+\s+80`,
-		startAndStop:   true,
+		name:         "StartTcptracerGadget",
+		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcp -n %s -o json", ns),
+		startAndStop: true,
+		expectedOutputFn: func(output string) error {
+			expectedEntries := []*tcpTypes.Event{
+				{
+					Event:     buildBaseEvent(ns),
+					Comm:      "wget",
+					IPVersion: 4,
+					Daddr:     "1.1.1.1",
+					Dport:     80,
+					Operation: "connect",
+				},
+				{
+					Event:     buildBaseEvent(ns),
+					Comm:      "wget",
+					IPVersion: 4,
+					Daddr:     "1.1.1.1",
+					Dport:     80,
+					Operation: "close",
+				},
+				{
+					Event:     buildBaseEvent(ns),
+					Comm:      "wget",
+					IPVersion: 4,
+					Daddr:     "1.1.1.1",
+					Dport:     443,
+					Operation: "connect",
+				},
+			}
+
+			normalize := func(e *tcpTypes.Event) {
+				e.Node = ""
+				e.Pid = 0
+				e.Saddr = ""
+				e.Sport = 0
+				e.MountNsID = 0
+			}
+
+			return expectEntriesToMatch(output, normalize, expectedEntries...)
+		},
 	}
 
 	commands := []*command{

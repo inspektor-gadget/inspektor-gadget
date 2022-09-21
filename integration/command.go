@@ -56,6 +56,9 @@ type command struct {
 	// expectedRegexp contains a regex used to match against the command output.
 	expectedRegexp string
 
+	// expectedOutputFn is a function used to verify the output.
+	expectedOutputFn func(output string) error
+
 	// cleanup indicates this command is used to clean resource and should not be
 	// skipped even if previous commands failed.
 	cleanup bool
@@ -225,6 +228,13 @@ func (c *command) verifyOutput() error {
 	if c.expectedString != "" && output != c.expectedString {
 		return fmt.Errorf("output didn't match the expected string: %s\n%v\n%s",
 			c.expectedString, pretty.Diff(c.expectedString, output), getInspektorGadgetLogs())
+	}
+
+	if c.expectedOutputFn != nil {
+		if err := c.expectedOutputFn(output); err != nil {
+			return fmt.Errorf("verifying output with custom function: %w\n%s",
+				err, getInspektorGadgetLogs())
+		}
 	}
 
 	return nil
