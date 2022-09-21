@@ -497,6 +497,17 @@ func TestExecsnoop(t *testing.T) {
 
 	t.Parallel()
 
+	shArgs := []string{"/bin/sh", "-c", "while true; do date && sleep 0.1; done"}
+	dateArgs := []string{"/bin/date"}
+	sleepArgs := []string{"/bin/sleep", "0.1"}
+	// on arm64, trace exec uses kprobe and it cannot trace the arguments:
+	// 243759db6b19 ("pkg/gadgets: Use kprobe for execsnoop on arm64.")
+	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "arm64" {
+		shArgs = nil
+		dateArgs = nil
+		sleepArgs = nil
+	}
+
 	execsnoopCmd := &command{
 		name:         "StartExecsnoopGadget",
 		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s -o json", ns),
@@ -506,17 +517,17 @@ func TestExecsnoop(t *testing.T) {
 				{
 					Event: buildBaseEvent(ns),
 					Comm:  "sh",
-					Args:  []string{"/bin/sh", "-c", "while true; do date && sleep 0.1; done"},
+					Args:  shArgs,
 				},
 				{
 					Event: buildBaseEvent(ns),
 					Comm:  "date",
-					Args:  []string{"/bin/date"},
+					Args:  dateArgs,
 				},
 				{
 					Event: buildBaseEvent(ns),
 					Comm:  "sleep",
-					Args:  []string{"/bin/sleep", "0.1"},
+					Args:  sleepArgs,
 				},
 			}
 
