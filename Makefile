@@ -55,7 +55,7 @@ phony_explicit:
 ebpf-objects:
 	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) -v $(shell pwd):/work ghcr.io/kinvolk/inspektor-gadget-ebpf-builder
 
-epbf-objects-outside-docker:
+ebpf-objects-outside-docker:
 	TARGET=arm64 go generate ./...
 	TARGET=amd64 go generate ./...
 
