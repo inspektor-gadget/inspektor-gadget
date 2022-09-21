@@ -1,0 +1,4 @@
+bases:
+- ../base
+patchesStrategicMerge:
+- override_image.yaml
