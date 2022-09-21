@@ -23,6 +23,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/google/go-cmp/cmp"
+	"github.com/moby/moby/pkg/parsers/kernel"
 	"golang.org/x/sys/unix"
 )
 
@@ -62,6 +63,17 @@ func RequireRoot(t *testing.T) {
 
 	if unix.Getuid() != 0 {
 		t.Skip("Test requires root")
+	}
+}
+
+func RequireKernelVersion(t *testing.T, expectedVersion *kernel.VersionInfo) {
+	version, err := kernel.GetKernelVersion()
+	if err != nil {
+		t.Fatalf("Failed to get kernel version: %s", err)
+	}
+
+	if kernel.CompareKernelVersion(*version, *expectedVersion) < 0 {
+		t.Skipf("Test requires kernel %s", expectedVersion)
 	}
 }
 
