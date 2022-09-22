@@ -167,7 +167,7 @@ integration-tests: kubectl-gadget
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \
 		go test ./integration/... \
 			-integration \
-			-timeout 20m \
+			-timeout 30m \
 			-k8s-distro $(KUBERNETES_DISTRIBUTION) \
 			-k8s-arch $(KUBERNETES_ARCHITECTURE) \
 			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
