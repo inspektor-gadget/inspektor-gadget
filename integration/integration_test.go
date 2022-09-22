@@ -53,7 +53,7 @@ var (
 	doNotDeploySPO = flag.Bool("no-deploy-spo", false, "don't deploy the Security Profiles Operator (SPO)")
 
 	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
-	k8sArch = flag.String("k8s-arch", "amd64", "allows to skip tests that are not supported on a given CPU architectur")
+	k8sArch   = flag.String("k8s-arch", "amd64", "allows to skip tests that are not supported on a given CPU architecture")
 )
 
 func runCommands(cmds []*command, t *testing.T) {
