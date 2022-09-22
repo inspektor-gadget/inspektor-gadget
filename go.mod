@@ -21,11 +21,10 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
-	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
 	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
-	golang.org/x/sys v0.0.0-20220608164250-635b8c9b7f68
+	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.27.1
@@ -166,3 +165,5 @@ replace (
 	github.com/gogo/protobuf v1.3.0 => github.com/gogo/protobuf v1.3.2
 	github.com/gogo/protobuf v1.3.1 => github.com/gogo/protobuf v1.3.2
 )
+
+replace github.com/cilium/ebpf => github.com/eiffel-fl/ebpf v0.8.1-0.20220928140137-c28aaca90217
