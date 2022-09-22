@@ -81,7 +81,7 @@ $ az aro create --resource-group $RESOURCEGROUP --name $CLUSTER --vnet $VNET --m
 Considerations:
 - After executing the `az aro create` command, it normally takes about 35
   minutes to create a cluster.
-- For the sack of simplicity, we are not providing a [Red Hat pull
+- For the sake of simplicity, we are not providing a [Red Hat pull
   secret](https://docs.microsoft.com/en-us/azure/openshift/tutorial-create-cluster#get-a-red-hat-pull-secret-optional)
   during the cluster creation, so our cluster will not include samples or
   operators from Red Hat or certified partners. However, it is not a requirement
@@ -153,3 +153,49 @@ Notice that it configures the kubectl configuration with a new context.
 
 Please take into account that any change done on this cluster could cause issues
 with the integration tests running on GitHub actions at that moment.
+
+
+## Run integration tests on an AKS cluster
+
+When secrets described in the below sections are set, the integration tests
+will also run on
+[AKS clusters](https://docs.microsoft.com/en-us/azure/aks/intro-kubernetes).
+
+### Create the clusters
+
+As Inspektor Gadget support both `amd64` and `arm64`, two clusters will be
+created:
+
+```bash
+$ subscription=<mySubscription>
+$ subscription_id=<mySubscriptionID>
+$ resourcegroup=<myResourceName>
+$ location=<myLocation>
+
+# Set subscription so that we don't need to specify it at every command
+$ az account set --subscription $subscription
+
+# Create resource group
+$ az group create --name $resourcegroup --location $location
+
+# Create the needed secrets to be able to "az login" from the CI.
+$ az ad sp create-for-rbac --name inspektor-gadget-ci --role contributor \
+	--scopes /subscriptions/${subscription_id}/resourceGroups/${resourcegroup} \
+	--sdk-auth
+{
+# The JSON object containing a secret should be stored as CI secret.
+}
+```
+
+After doing this, you will need to create several secrets:
+
+1. `AZURE_AKS_CREDS`: It stores the JSON object outputted by ``.
+1. `AZURE_AKS_RESOURCE_GROUP`: It stores the name of the resource group where
+the clusters will be created.
+
+The workflow will create the `amd64` and `arm64` clusters for you by using the
+above information.
+By default, each of this cluster features
+[3 nodes](https://learn.microsoft.com/en-us/cli/azure/aks?view=azure-cli-latest#az-aks-create).
+Once created, the integration tests will be run on these clusters.
+Finally, the clusters are deleted, whatsoever is the result of the tests.

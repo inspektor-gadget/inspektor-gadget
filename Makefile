@@ -10,6 +10,8 @@ KUBERNETES_DISTRIBUTION ?= ""
 GOHOSTOS ?= $(shell go env GOHOSTOS)
 GOHOSTARCH ?= $(shell go env GOHOSTARCH)
 
+KUBERNETES_ARCHITECTURE ?= $(GOHOSTARCH)
+
 ENABLE_BTFGEN ?= false
 
 BPFTOOL ?= bpftool
@@ -165,8 +167,9 @@ integration-tests: kubectl-gadget
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \
 		go test ./integration/... \
 			-integration \
-			-timeout 20m \
+			-timeout 30m \
 			-k8s-distro $(KUBERNETES_DISTRIBUTION) \
+			-k8s-arch $(KUBERNETES_ARCHITECTURE) \
 			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
 			$$INTEGRATION_TESTS_PARAMS
 

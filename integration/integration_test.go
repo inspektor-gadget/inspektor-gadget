@@ -33,12 +33,13 @@ import (
 )
 
 const (
+	K8sDistroAKSUbuntu  = "aks-Ubuntu"
 	K8sDistroARO        = "aro"
 	K8sDistroMinikubeGH = "minikube-github"
 )
 
 var (
-	supportedK8sDistros = []string{K8sDistroARO, K8sDistroMinikubeGH}
+	supportedK8sDistros = []string{K8sDistroAKSUbuntu, K8sDistroARO, K8sDistroMinikubeGH}
 	cleaningUp          = uint32(0)
 )
 
@@ -52,6 +53,7 @@ var (
 	doNotDeploySPO = flag.Bool("no-deploy-spo", false, "don't deploy the Security Profiles Operator (SPO)")
 
 	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
+	k8sArch = flag.String("k8s-arch", "amd64", "allows to skip tests that are not supported on a given CPU architectur")
 )
 
 func runCommands(cmds []*command, t *testing.T) {
@@ -470,6 +472,10 @@ func TestDns(t *testing.T) {
 }
 
 func TestEbpftop(t *testing.T) {
+	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "amd64" {
+		t.Skip("Skip running top ebpf gadget on AKS Ubuntu amd64: see issue #931")
+	}
+
 	t.Parallel()
 
 	ebpftopCmd := &command{
@@ -491,6 +497,17 @@ func TestExecsnoop(t *testing.T) {
 
 	t.Parallel()
 
+	shArgs := []string{"/bin/sh", "-c", "while true; do date && sleep 0.1; done"}
+	dateArgs := []string{"/bin/date"}
+	sleepArgs := []string{"/bin/sleep", "0.1"}
+	// on arm64, trace exec uses kprobe and it cannot trace the arguments:
+	// 243759db6b19 ("pkg/gadgets: Use kprobe for execsnoop on arm64.")
+	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "arm64" {
+		shArgs = nil
+		dateArgs = nil
+		sleepArgs = nil
+	}
+
 	execsnoopCmd := &command{
 		name:         "StartExecsnoopGadget",
 		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s -o json", ns),
@@ -500,17 +517,17 @@ func TestExecsnoop(t *testing.T) {
 				{
 					Event: buildBaseEvent(ns),
 					Comm:  "sh",
-					Args:  []string{"/bin/sh", "-c", "while true; do date && sleep 0.1; done"},
+					Args:  shArgs,
 				},
 				{
 					Event: buildBaseEvent(ns),
 					Comm:  "date",
-					Args:  []string{"/bin/date"},
+					Args:  dateArgs,
 				},
 				{
 					Event: buildBaseEvent(ns),
 					Comm:  "sleep",
-					Args:  []string{"/bin/sleep", "0.1"},
+					Args:  sleepArgs,
 				},
 			}
 
@@ -797,6 +814,10 @@ func TestProcessCollector(t *testing.T) {
 		t.Skip("Skip running process-collector gadget on ARO: iterators are not supported on kernel 4.18.0-305.19.1.el8_4.x86_64")
 	}
 
+	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "amd64" {
+		t.Skip("Skip running process-collector gadget on AKS Ubuntu amd64: iterators are not supported on kernel 5.4.0-1089-azure")
+	}
+
 	ns := generateTestNamespaceName("test-process-collector")
 
 	t.Parallel()
@@ -921,6 +942,10 @@ func TestSnisnoop(t *testing.T) {
 func TestSocketCollector(t *testing.T) {
 	if *k8sDistro == K8sDistroARO {
 		t.Skip("Skip running socket-collector gadget on ARO: iterators are not supported on kernel 4.18.0-305.19.1.el8_4.x86_64")
+	}
+
+	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "amd64" {
+		t.Skip("Skip running socket-collector gadget on AKS Ubuntu amd64: iterators are not supported on kernel 5.4.0-1089-azure")
 	}
 
 	ns := generateTestNamespaceName("test-socket-collector")
