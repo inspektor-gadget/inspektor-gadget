@@ -15,22 +15,19 @@ A fork of this project should enable GitHub Actions in the repo settings page
 and add the proper
 [secrets](https://help.github.com/en/actions/configuring-and-managing-workflows/creating-and-storing-encrypted-secrets#creating-encrypted-secrets-for-a-repository)
 to be able to use this workflow. The following sections describes what
-secrets needs to be added to enable all the CI tests.
+secrets need to be added to enable all the CI tests.
 
 ## Container repository
 
 To run the integration tests, it is necessary to have the gadget container image
-available on a container repository so that it can be installed in the
-Kubernetes cluster where the tests will run.
+available so that it can be installed/loaded in the Kubernetes cluster where the
+tests will run.
 
-As a default, `ghcr.io/${{ github.repository }}-dev` is used to store images
-created in the CI pipeline for all branches except main and tags.
-When the target branch correspond to the main or the push refers to a tag, the
-default repository is `ghcr.io/${{ github.repository }}`.
-This permits a clear separation between "in development" images and production
-ones.
-During a release, integration test container image will be pushed to
-`ghcr.io/${{ github.repository }}-test`.
+As a default, images are shared via artifacts between workflow jobs
+for all CI pipeline. When the target branch correspond to the main or
+the push refers to a tag, the images are also pushed to
+`ghcr.io/${{ github.repository }}`. This permits a clear separation
+between "in development" images and production ones.
 
 Note that, you need to [set repository packages as public](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility#configuring-visibility-of-container-images-for-your-personal-account) to allow anonymous pull.
 
