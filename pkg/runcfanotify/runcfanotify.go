@@ -371,7 +371,15 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 	if err != nil {
 		return false, err
 	}
-	if path != pidFile {
+
+	// Consider files identical if they have the same device/inode,
+	// even if the paths differ due to symlinks (for example,
+	// the event's path is /run/... but the runc --pid-file argument
+	// uses /var/run/..., where /var/run is a symlink to /run).
+	filesAreIdentical, err := checkFilesAreIdentical(path, pidFile)
+	if err != nil {
+		return false, err
+	} else if !filesAreIdentical {
 		return false, nil
 	}
 
@@ -422,6 +430,20 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		Bundle:          bundleDir,
 	})
 	return true, nil
+}
+
+func checkFilesAreIdentical(path1, path2 string) (bool, error) {
+	f1, err := os.Stat(path1)
+	if err != nil {
+		return false, err
+	}
+
+	f2, err := os.Stat(path2)
+	if err != nil {
+		return false, err
+	}
+
+	return os.SameFile(f1, f2), nil
 }
 
 func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) error {
