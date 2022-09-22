@@ -28,6 +28,7 @@ import (
 
 	bindTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
 	execTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	openTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/types"
 	signalTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
 	tcpTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 )
@@ -792,16 +793,34 @@ func TestOpensnoop(t *testing.T) {
 	t.Parallel()
 
 	opensnoopCmd := &command{
-		name:           "StartOpensnoopGadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace open -n %s", ns),
-		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+whoami\s+3`, ns),
-		startAndStop:   true,
+		name:         "StartOpensnoopGadget",
+		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace open -n %s -o json", ns),
+		startAndStop: true,
+		expectedOutputFn: func(output string) error {
+			expectedEntry := &openTypes.Event{
+				Event: buildBaseEvent(ns),
+				Comm:  "cat",
+				Fd:    3,
+				Ret:   3,
+				Err:   0,
+				Path:  "/dev/null",
+			}
+
+			normalize := func(e *openTypes.Event) {
+				e.Node = ""
+				e.MountNsID = 0
+				e.Pid = 0
+				e.UID = 0
+			}
+
+			return expectAllToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	commands := []*command{
 		createTestNamespaceCommand(ns),
 		opensnoopCmd,
-		busyboxPodRepeatCommand(ns, "whoami"),
+		busyboxPodRepeatCommand(ns, "cat /dev/null"),
 		waitUntilTestPodReadyCommand(ns),
 		deleteTestNamespaceCommand(ns),
 	}
