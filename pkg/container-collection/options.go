@@ -36,6 +36,31 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
 )
 
+func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData, container *Container) {
+	// Runtime
+	container.ID = containerData.ID
+	container.Runtime = containerData.Runtime
+
+	// Kubernetes
+	container.Namespace = containerData.PodNamespace
+	container.Podname = containerData.PodName
+	container.PodUID = containerData.PodUID
+
+	// Notice we are temporarily using the runtime container name as the
+	// Kubernetes container name because the Container struct doesn't have that
+	// field, and we don't support filtering by runtime container name yet.
+	container.Name = containerData.Name
+
+	// Some gadgets using the Trace CRD approach in local-gadget require the
+	// namespace and pod name to be set.
+	if container.Namespace == "" {
+		container.Namespace = "default"
+	}
+	if container.Podname == "" {
+		container.Podname = containerData.Name
+	}
+}
+
 func containerRuntimeEnricher(
 	runtimeName string,
 	runtimeClient runtimeclient.ContainerRuntimeClient,
@@ -47,19 +72,14 @@ func containerRuntimeEnricher(
 		return true
 	}
 
-	c, err := runtimeClient.GetContainer(container.ID)
+	containerData, err := runtimeClient.GetContainer(container.ID)
 	if err != nil {
 		log.Debugf("Runtime enricher (%s): failed to get container: %s",
 			runtimeName, err)
 		return true
 	}
 
-	container.Name = c.Name
-	container.Runtime = c.Runtime
-	container.ID = c.ID
-	// Some gadgets require the namespace and pod name to be set
-	container.Namespace = "default"
-	container.Podname = container.Name
+	enrichContainerWithContainerData(containerData, container)
 
 	return true
 }
@@ -90,9 +110,11 @@ func WithMultipleContainerRuntimesEnrichment(runtimes []*containerutils.RuntimeC
 // WithContainerRuntimeEnrichment automatically adds the container name using
 // the requested container runtime.
 //
-// Notice that it also sets the container namespace to "default" and the podname
-// equal to the container name. It is done because some gadgets need those two
-// values to be set.
+// Pay attention if you want to use it with other enrichers that set the
+// Kubernetes metadata as this enricher also collects such info from the
+// runtime. Notice also that, if such info is missing in the runtime, it
+// hardcodes the namespace to "default" and the podname equal to the container
+// name because some gadgets need those two values to be set.
 //
 // ContainerCollection.Initialize(WithContainerRuntimeEnrichment(*RuntimeConfig))
 func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) ContainerCollectionOption {
@@ -133,24 +155,17 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 				continue
 			}
 
-			containerData, err := runtimeClient.GetContainerDetails(container.ID)
+			containerDetails, err := runtimeClient.GetContainerDetails(container.ID)
 			if err != nil {
 				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find container: %s",
 					runtime.Name, container.Name, container.ID, err)
 				continue
 			}
 
-			cc.initialContainers = append(cc.initialContainers,
-				&Container{
-					ID:      container.ID,
-					Pid:     uint32(containerData.Pid),
-					Name:    container.Name,
-					Runtime: container.Runtime,
-
-					// Some gadgets require the namespace and pod name to be set
-					Namespace: "default",
-					Podname:   container.Name,
-				})
+			var c Container
+			c.Pid = uint32(containerDetails.Pid)
+			enrichContainerWithContainerData(&containerDetails.ContainerData, &c)
+			cc.initialContainers = append(cc.initialContainers, &c)
 		}
 
 		return nil
