@@ -59,6 +59,10 @@ func NewTcpconnectParserWithK8sInfo(outputConfig *commonutils.OutputConfig) Trac
 	return newTcpconnectParser(outputConfig, commonutils.GetKubernetesColumns())
 }
 
+func NewTcpconnectParserWithRuntimeInfo(outputConfig *commonutils.OutputConfig) TraceParser[tcpconnectTypes.Event] {
+	return newTcpconnectParser(outputConfig, commonutils.GetContainerRuntimeColumns())
+}
+
 func (p *TcpconnectParser) TransformEvent(event *tcpconnectTypes.Event) string {
 	return p.Transform(event, func(event *tcpconnectTypes.Event) string {
 		var sb strings.Builder
