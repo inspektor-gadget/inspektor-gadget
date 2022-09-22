@@ -272,7 +272,7 @@ func (t *Tracer) run() {
 		addr := C.ip_to_string(eventC)
 		defer C.free(unsafe.Pointer(addr))
 
-		interfaceString := "0"
+		interfaceString := ""
 		interfaceNum := int(eventC.bound_dev_if)
 		if interfaceNum != 0 {
 			// It does exist a net link which index is 0.

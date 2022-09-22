@@ -361,7 +361,7 @@ func TestBindsnoop(t *testing.T) {
 				Addr:      "::",
 				Port:      9090,
 				Options:   ".R...",
-				Interface: "0",
+				Interface: "",
 			}
 
 			normalize := func(e *bindTypes.Event) {
