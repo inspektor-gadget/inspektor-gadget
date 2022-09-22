@@ -173,7 +173,7 @@ Available Commands:
   open         Trace open system calls
   signal       Trace signals received by processes
   sni          Trace Server Name Indication (SNI) from TLS requests
-  tcp          Trace tcp connect, accept and close
+  tcp          Trace TCP connect, accept and close
   tcpconnect   Trace connect system calls
 
 ...

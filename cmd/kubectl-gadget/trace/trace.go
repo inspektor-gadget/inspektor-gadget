@@ -72,7 +72,23 @@ func (g *TraceGadget[Event]) Run() error {
 			return ""
 		}
 
-		return g.parser.TransformEvent(&e)
+		switch g.commonFlags.OutputMode {
+		case commonutils.OutputModeJSON:
+			b, err := json.Marshal(e)
+			if err != nil {
+				fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
+				return ""
+			}
+
+			return string(b)
+		case commonutils.OutputModeColumns:
+			fallthrough
+		case commonutils.OutputModeCustomColumns:
+			return g.parser.TransformToColumns(&e)
+		default:
+			fmt.Fprint(os.Stderr, commonutils.WrapInErrOutputModeNotSupported(g.commonFlags.OutputMode))
+			return ""
+		}
 	}
 
 	if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {

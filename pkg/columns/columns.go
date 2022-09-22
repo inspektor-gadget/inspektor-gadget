@@ -275,6 +275,6 @@ func (c *Columns[T]) SetExtractor(columnName string, extractor func(*T) string) 
 func (c *Columns[T]) MustSetExtractor(columnName string, extractor func(*T) string) {
 	err := c.SetExtractor(columnName, extractor)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("setting extractor for %q column: %w", columnName, err))
 	}
 }

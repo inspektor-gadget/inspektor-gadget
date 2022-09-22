@@ -40,7 +40,7 @@ type SnapshotEvent interface {
 
 // SnapshotParser defines the interface that every snapshot-gadget parser has to
 // implement.
-type SnapshotParser[Event SnapshotEvent] interface {
+type SnapshotParser[Event any] interface {
 	// SortEvents sorts a slice of events based on a predefined prioritization.
 	SortEvents(*[]Event)
 

@@ -41,7 +41,7 @@ type Options struct {
 
 func DefaultOptions() *Options {
 	return &Options{
-		AutoScale:      false,
+		AutoScale:      true,
 		ColumnDivider:  DividerSpace,
 		DefaultColumns: nil,
 		HeaderStyle:    HeaderStyleUppercase,

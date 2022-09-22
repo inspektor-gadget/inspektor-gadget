@@ -31,7 +31,6 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
 
-	"github.com/kinvolk/inspektor-gadget/cmd/common/trace"
 	"github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 )
 
@@ -91,28 +90,20 @@ func main() {
 	}
 	defer containerCollection.Close()
 
-	// Define the configuration of the output
-	config := &utils.OutputConfig{
-		// Configure the output mode to use
-		OutputMode: utils.OutputModeColumns,
-
-		// Define the list of columns we're interested in
-		CustomColumns: append([]string{"container"}, trace.GetExecDefaultColumns()...),
+	// Create a parser. It's the component that converts events to columns.
+	execParser, err := utils.NewGadgetParser(&utils.OutputConfig{}, types.GetColumns())
+	if err != nil {
+		fmt.Printf("failed to create parser: %s\n", err)
+		return
 	}
-
-	// Create a parser. It's the component that converts events to
-	// strings according to the configuration above.
-	execparser := trace.NewExecParser(config)
 
 	// Define a callback to be called each time there is an event.
 	eventCallback := func(event types.Event) {
-		// Convert the event to string and print to the terminal.
-		fmt.Println(execparser.TransformEvent(&event))
+		// Convert the event to columns and print to the terminal.
+		fmt.Println(execParser.TransformToColumns(&event))
 	}
 
-	if config.OutputMode != utils.OutputModeJSON {
-		fmt.Println(execparser.BuildColumnsHeader())
-	}
+	fmt.Println(execParser.BuildColumnsHeader())
 
 	// Create a tracer instance. This is the glue piece that allows
 	// this example to filter events by containers.

@@ -21,8 +21,9 @@ import (
 	"github.com/spf13/cobra"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	bindTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
 )
 
 func newBindCmd() *cobra.Command {
@@ -35,10 +36,15 @@ func newBindCmd() *cobra.Command {
 			portsStringSlice = append(portsStringSlice, strconv.FormatUint(uint64(port), 10))
 		}
 
-		bindGadget := &TraceGadget[types.Event]{
+		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, bindTypes.GetColumns())
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
+		}
+
+		bindGadget := &TraceGadget[bindTypes.Event]{
 			name:        "bindsnoop",
 			commonFlags: &commonFlags,
-			parser:      commontrace.NewBindParserWithK8sInfo(&commonFlags.OutputConfig),
+			parser:      parser,
 			params: map[string]string{
 				"pid":           strconv.FormatUint(uint64(flags.TargetPid), 10),
 				"ports":         strings.Join(portsStringSlice, ","),
