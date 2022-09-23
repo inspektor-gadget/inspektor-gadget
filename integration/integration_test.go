@@ -27,6 +27,7 @@ import (
 	"time"
 
 	bindTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	capabilitiesTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	execTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	openTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/types"
 	signalTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
@@ -436,9 +437,29 @@ func TestCapabilities(t *testing.T) {
 		name: "StartCapabilitiesGadget",
 		// use --audit-only=false to make it work on ARO.
 		// See https://github.com/kinvolk/inspektor-gadget/issues/985 for more details.
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace capabilities -n %s --audit-only=false", ns),
-		expectedRegexp: fmt.Sprintf(`%s\s+test-pod.*nice.*CAP_SYS_NICE`, ns),
-		startAndStop:   true,
+		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace capabilities -n %s --audit-only=false -o json", ns),
+		startAndStop: true,
+		expectedOutputFn: func(output string) error {
+			expectedEntry := &capabilitiesTypes.Event{
+				Event:   buildBaseEvent(ns),
+				Comm:    "nice",
+				CapName: "CAP_SYS_NICE",
+				Cap:     23,
+				Audit:   1,
+				Verdict: "Deny",
+			}
+
+			normalize := func(e *capabilitiesTypes.Event) {
+				e.Node = ""
+				e.Pid = 0
+				e.UID = 0
+				e.MountNsID = 0
+				// Do not check InsetID to avoid introducing dependency on the kernel version
+				e.InsetID = nil
+			}
+
+			return expectEntriesToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	commands := []*command{
