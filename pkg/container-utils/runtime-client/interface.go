@@ -39,6 +39,9 @@ type ContainerData struct {
 	// Current state of the container.
 	State string
 
+	// Name of container in Kubernetes.
+	KubernetesContainerName string
+
 	// Unique identifier of pod running the container.
 	KubernetesPodUID string
 
@@ -90,9 +93,10 @@ const (
 )
 
 const (
-	containerLabelK8sPodName      = "io.kubernetes.pod.name"
-	containerLabelK8sPodNamespace = "io.kubernetes.pod.namespace"
-	containerLabelK8sPodUID       = "io.kubernetes.pod.uid"
+	containerLabelK8sContainerName = "io.kubernetes.container.name"
+	containerLabelK8sPodName       = "io.kubernetes.pod.name"
+	containerLabelK8sPodNamespace  = "io.kubernetes.pod.namespace"
+	containerLabelK8sPodUID        = "io.kubernetes.pod.uid"
 )
 
 // ContainerRuntimeClient defines the interface to communicate with the
@@ -130,6 +134,9 @@ func ParseContainerID(expectedRuntime, containerID string) (string, error) {
 }
 
 func EnrichWithK8sMetadata(container *ContainerData, labels map[string]string) {
+	if name, ok := labels[containerLabelK8sContainerName]; ok {
+		container.KubernetesContainerName = name
+	}
 	if podName, ok := labels[containerLabelK8sPodName]; ok {
 		container.KubernetesPodName = podName
 	}
