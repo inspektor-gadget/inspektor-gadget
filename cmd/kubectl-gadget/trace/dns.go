@@ -15,95 +15,35 @@
 package trace
 
 import (
-	"fmt"
-	"strings"
+	"github.com/spf13/cobra"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
 	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
-
-	"github.com/spf13/cobra"
+	dnsTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
 )
 
-type DNSParser struct {
-	commonutils.BaseParser[types.Event]
-}
-
 func newDNSCmd() *cobra.Command {
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"type",
-				"qtype",
-				"name",
-			},
-		},
-	}
+	var commonFlags utils.CommonFlags
 
-	cmd := &cobra.Command{
-		Use:   "dns",
-		Short: "Trace DNS requests",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			dnsGadget := &TraceGadget[types.Event]{
-				name:        "dns",
-				commonFlags: commonFlags,
-				parser:      NewDNSParser(&commonFlags.OutputConfig),
-			}
-
-			return dnsGadget.Run()
-		},
-	}
-
-	utils.AddCommonFlags(cmd, commonFlags)
-
-	return cmd
-}
-
-func NewDNSParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParser[types.Event] {
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -30,
-		"type":      -9,
-		"qtype":     -10,
-		"name":      -24,
-	}
-
-	return &DNSParser{
-		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
-	}
-}
-
-func (p *DNSParser) TransformToColumns(event *types.Event) string {
-	var sb strings.Builder
-
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-		case "type":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.PktType))
-		case "qtype":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.QType))
-		case "name":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.DNSName))
-		default:
-			continue
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, dnsTypes.GetColumns())
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
+		execGadget := &TraceGadget[dnsTypes.Event]{
+			name:        "dns",
+			commonFlags: &commonFlags,
+			parser:      parser,
+		}
+
+		return execGadget.Run()
 	}
 
-	return sb.String()
+	cmd := commontrace.NewDNSCmd(runCmd)
+
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }

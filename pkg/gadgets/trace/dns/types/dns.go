@@ -15,15 +15,25 @@
 package types
 
 import (
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
 
-	DNSName string `json:"name,omitempty"`
-	PktType string `json:"pktType,omitempty"`
-	QType   string `json:"qtype,omitempty"`
+	PktType string `json:"pktType,omitempty" column:"type,minWidth:7,maxWidth:9"`
+	QType   string `json:"qtype,omitempty" column:"qtype,minWidth:5,maxWidth:10"`
+	DNSName string `json:"name,omitempty" column:"name,width:30"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	cols := columns.MustCreateColumns[Event]()
+
+	col, _ := cols.GetColumn("container")
+	col.Visible = false
+
+	return cols
 }
 
 func Base(ev eventtypes.Event) Event {
