@@ -146,10 +146,10 @@ func parseContainerDetailsData(runtimeName string, containerStatus *pb.Container
 	// Create container details structure to be filled.
 	containerDetailsData := &runtimeclient.ContainerDetailsData{
 		ContainerData: runtimeclient.ContainerData{
-			ID:      containerStatus.Id,
-			Name:    strings.TrimPrefix(containerStatus.GetMetadata().Name, "/"),
-			State:   containerStatusStateToRuntimeClientState(containerStatus.GetState()),
-			Runtime: runtimeName,
+			ID:                   containerStatus.Id,
+			RuntimeContainerName: strings.TrimPrefix(containerStatus.GetMetadata().Name, "/"),
+			State:                containerStatusStateToRuntimeClientState(containerStatus.GetState()),
+			Runtime:              runtimeName,
 		},
 	}
 
@@ -281,10 +281,10 @@ func containerStatusStateToRuntimeClientState(containerStatusState pb.ContainerS
 
 func CRIContainerToContainerData(runtimeName string, container *pb.Container) *runtimeclient.ContainerData {
 	containerData := &runtimeclient.ContainerData{
-		ID:      container.Id,
-		Name:    strings.TrimPrefix(container.GetMetadata().Name, "/"),
-		State:   containerStatusStateToRuntimeClientState(container.GetState()),
-		Runtime: runtimeName,
+		ID:                   container.Id,
+		RuntimeContainerName: strings.TrimPrefix(container.GetMetadata().Name, "/"),
+		State:                containerStatusStateToRuntimeClientState(container.GetState()),
+		Runtime:              runtimeName,
 	}
 
 	// Fill K8S information.

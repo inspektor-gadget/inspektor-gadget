@@ -42,14 +42,14 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 	container.Runtime = containerData.Runtime
 
 	// Kubernetes
-	container.KubernetesNamespace = containerData.PodNamespace
-	container.KubernetesPodName = containerData.PodName
-	container.KubernetesPodUID = containerData.PodUID
+	container.KubernetesNamespace = containerData.KubernetesNamespace
+	container.KubernetesPodName = containerData.KubernetesPodName
+	container.KubernetesPodUID = containerData.KubernetesPodUID
 
 	// Notice we are temporarily using the runtime container name as the
 	// Kubernetes container name because the Container struct doesn't have that
 	// field, and we don't support filtering by runtime container name yet.
-	container.KubernetesContainerName = containerData.Name
+	container.KubernetesContainerName = containerData.RuntimeContainerName
 
 	// Some gadgets using the Trace CRD approach in local-gadget require the
 	// namespace and pod name to be set.
@@ -57,7 +57,7 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 		container.KubernetesNamespace = "default"
 	}
 	if container.KubernetesPodName == "" {
-		container.KubernetesPodName = containerData.Name
+		container.KubernetesPodName = containerData.RuntimeContainerName
 	}
 }
 
@@ -151,14 +151,14 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		for _, container := range containers {
 			if container.State != runtimeclient.StateRunning {
 				log.Debugf("Runtime enricher(%s): Skip container %q (ID: %s): not running",
-					runtime.Name, container.Name, container.ID)
+					runtime.Name, container.RuntimeContainerName, container.ID)
 				continue
 			}
 
 			containerDetails, err := runtimeClient.GetContainerDetails(container.ID)
 			if err != nil {
 				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find container: %s",
-					runtime.Name, container.Name, container.ID, err)
+					runtime.Name, container.RuntimeContainerName, container.ID, err)
 				continue
 			}
 

@@ -146,10 +146,10 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 
 	containerDetailsData := runtimeclient.ContainerDetailsData{
 		ContainerData: runtimeclient.ContainerData{
-			ID:      containerJSON.ID,
-			Name:    strings.TrimPrefix(containerJSON.Name, "/"),
-			State:   containerStatusStateToRuntimeClientState(containerJSON.State.Status),
-			Runtime: Name,
+			ID:                   containerJSON.ID,
+			RuntimeContainerName: strings.TrimPrefix(containerJSON.Name, "/"),
+			State:                containerStatusStateToRuntimeClientState(containerJSON.State.Status),
+			Runtime:              Name,
 		},
 		Pid:         containerJSON.State.Pid,
 		CgroupsPath: string(containerJSON.HostConfig.Cgroup),
@@ -218,10 +218,10 @@ func containerStatusStateToRuntimeClientState(containerState string) (runtimeCli
 
 func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {
 	containerData := &runtimeclient.ContainerData{
-		ID:      container.ID,
-		Name:    strings.TrimPrefix(container.Names[0], "/"),
-		State:   containerStatusStateToRuntimeClientState(container.State),
-		Runtime: Name,
+		ID:                   container.ID,
+		RuntimeContainerName: strings.TrimPrefix(container.Names[0], "/"),
+		State:                containerStatusStateToRuntimeClientState(container.State),
+		Runtime:              Name,
 	}
 
 	// Fill K8S information.

@@ -22,30 +22,31 @@ import (
 // ContainerData contains container information returned from the container
 // runtime clients.
 type ContainerData struct {
-	// ID is the container ID without the container runtime prefix. For
-	// instance, "cri-o://" for CRI-O.
-	ID string
-
-	// Name is the container name. In the case the container runtime response
-	// with multiples, Name contains only the first element.
-	Name string
-
-	// Current state of the container.
-	State string
-
 	// Runtime is the name of the runtime (e.g. docker, cri-o, containerd). It
 	// is useful to distinguish who is the "owner" of each container in a list
 	// of containers collected from multiples runtimes.
 	Runtime string
 
+	// ID is the container ID without the container runtime prefix. For
+	// instance, "cri-o://" for CRI-O.
+	ID string
+
+	// RuntimeContainerName is the container name. In the case the container
+	// runtime response with multiples, RuntimeContainerName contains only the
+	// first element.
+	RuntimeContainerName string
+
+	// Current state of the container.
+	State string
+
 	// Unique identifier of pod running the container.
-	PodUID string
+	KubernetesPodUID string
 
 	// Name of the pod running the container.
-	PodName string
+	KubernetesPodName string
 
 	// Namespace of the pod running the container.
-	PodNamespace string
+	KubernetesNamespace string
 }
 
 // ContainerDetailsData contains container extra information returned from the
@@ -130,12 +131,12 @@ func ParseContainerID(expectedRuntime, containerID string) (string, error) {
 
 func EnrichWithK8sMetadata(container *ContainerData, labels map[string]string) {
 	if podName, ok := labels[containerLabelK8sPodName]; ok {
-		container.PodName = podName
+		container.KubernetesPodName = podName
 	}
 	if podNamespace, ok := labels[containerLabelK8sPodNamespace]; ok {
-		container.PodNamespace = podNamespace
+		container.KubernetesNamespace = podNamespace
 	}
 	if podUID, ok := labels[containerLabelK8sPodUID]; ok {
-		container.PodUID = podUID
+		container.KubernetesPodUID = podUID
 	}
 }
