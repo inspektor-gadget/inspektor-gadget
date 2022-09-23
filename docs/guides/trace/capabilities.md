@@ -59,7 +59,7 @@ Let's use Inspektor Gadget to watch the capability checks:
 
 ```bash
 $ kubectl gadget trace capabilities --selector name=set-priority
-NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             UID     CAP  NAME             AUDIT  VERDICT
+NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             UID     CAP  CAPNAME          AUDIT  VERDICT
 minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110385  nice             0       23   CAP_SYS_NICE     1      Deny
 minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110592  nice             0       23   CAP_SYS_NICE     1      Deny
 minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110764  nice             0       23   CAP_SYS_NICE     1      Deny
@@ -78,7 +78,7 @@ did not use them:
 The meaning of the columns is:
 
 * `CAP`: capability number.
-* `NAME`: capability name in a human friendly format.
+* `CAPNAME`: capability name in a human friendly format.
 * `AUDIT`: whether the kernel should audit the security request or not.
 * `VERDICT`: whether the capability was present (allow) or not (deny)
 
@@ -161,7 +161,7 @@ We can see the same checks but this time with the `Allow` verdict:
 
 ```bash
 $ kubectl gadget trace capabilities --selector name=set-priority
-NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             UID     CAP  NAME             AUDIT  VERDICT
+NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             UID     CAP  CAPNAME          AUDIT  VERDICT
 minikube         default          set-priority-768db6dcf7-rp8gd  set-priority     10158   nice             0       23   CAP_SYS_NICE     1      Allow
 minikube         default          set-priority-768db6dcf7-rp8gd  set-priority     10365   nice             0       23   CAP_SYS_NICE     1      Allow
 ```
