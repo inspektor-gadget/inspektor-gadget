@@ -432,8 +432,10 @@ func TestCapabilities(t *testing.T) {
 	t.Parallel()
 
 	capabilitiesCmd := &command{
-		name:           "StartCapabilitiesGadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace capabilities -n %s", ns),
+		name: "StartCapabilitiesGadget",
+		// use --audit-only=false to make it work on ARO.
+		// See https://github.com/kinvolk/inspektor-gadget/issues/985 for more details.
+		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace capabilities -n %s --audit-only=false", ns),
 		expectedRegexp: fmt.Sprintf(`%s\s+test-pod.*nice.*CAP_SYS_NICE`, ns),
 		startAndStop:   true,
 	}
