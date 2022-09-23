@@ -267,7 +267,7 @@ func TestAuditSeccomp(t *testing.T) {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
 
-	seccompProfile := `{"defaultAction":"SCMP_ACT_ALLOW","architectures":["SCMP_ARCH_X86_64"],"syscalls":[{"action":"SCMP_ACT_LOG","names":["unshare"]}]}`
+	seccompProfile := `{"defaultAction":"SCMP_ACT_ALLOW","syscalls":[{"action":"SCMP_ACT_LOG","names":["unshare"]}]}`
 	runTestContainer(t, containerName, "docker.io/library/alpine", "unshare -i ; echo OK", seccompProfile)
 
 	stop := make(chan struct{})
