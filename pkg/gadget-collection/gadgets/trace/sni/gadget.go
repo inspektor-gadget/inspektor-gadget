@@ -184,7 +184,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		if container.Netns == t.netnsHost {
 			return "host"
 		}
-		return container.Namespace + "/" + container.Podname
+		return container.KubernetesNamespace + "/" + container.KubernetesPodName
 	}
 
 	attachContainerFunc := func(container *containercollection.Container) error {

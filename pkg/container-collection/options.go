@@ -42,22 +42,22 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 	container.Runtime = containerData.Runtime
 
 	// Kubernetes
-	container.Namespace = containerData.PodNamespace
-	container.Podname = containerData.PodName
-	container.PodUID = containerData.PodUID
+	container.KubernetesNamespace = containerData.PodNamespace
+	container.KubernetesPodName = containerData.PodName
+	container.KubernetesPodUID = containerData.PodUID
 
 	// Notice we are temporarily using the runtime container name as the
 	// Kubernetes container name because the Container struct doesn't have that
 	// field, and we don't support filtering by runtime container name yet.
-	container.Name = containerData.Name
+	container.KubernetesContainerName = containerData.Name
 
 	// Some gadgets using the Trace CRD approach in local-gadget require the
 	// namespace and pod name to be set.
-	if container.Namespace == "" {
-		container.Namespace = "default"
+	if container.KubernetesNamespace == "" {
+		container.KubernetesNamespace = "default"
 	}
-	if container.Podname == "" {
-		container.Podname = containerData.Name
+	if container.KubernetesPodName == "" {
+		container.KubernetesPodName = containerData.Name
 	}
 }
 
@@ -68,7 +68,7 @@ func containerRuntimeEnricher(
 ) bool {
 	// Is container already enriched? Notice that, at this point, the container
 	// was already enriched with the PID by the hook.
-	if container.Name != "" && container.Namespace != "" && container.Podname != "" {
+	if container.KubernetesContainerName != "" && container.KubernetesNamespace != "" && container.KubernetesPodName != "" {
 		return true
 	}
 
@@ -267,7 +267,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 								continue // container is already there. All good!
 							}
 							log.Warnf("container %s/%s/%s wasn't detected by the main hook! The fallback pod informer will add it.",
-								container.Namespace, container.Podname, container.Name)
+								container.KubernetesNamespace, container.KubernetesPodName, container.KubernetesContainerName)
 						}
 						cc.AddContainer(&newContainer)
 
@@ -412,7 +412,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			if container.Podname != "" {
+			if container.KubernetesPodName != "" {
 				return true
 			}
 
@@ -470,14 +470,14 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 				}
 			}
 
-			container.Namespace = namespace
-			container.Podname = podname
-			container.PodUID = podUID
-			container.Name = containerName
-			container.Labels = labels
+			container.KubernetesNamespace = namespace
+			container.KubernetesPodName = podname
+			container.KubernetesPodUID = podUID
+			container.KubernetesContainerName = containerName
+			container.KubernetesLabels = labels
 
 			// drop pause containers
-			if container.Podname != "" && containerName == "" {
+			if container.KubernetesPodName != "" && containerName == "" {
 				return false
 			}
 

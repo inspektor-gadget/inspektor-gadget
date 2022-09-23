@@ -112,9 +112,9 @@ func (cm *ContainersMap) addContainerInMap(c *containercollection.Container) {
 	val := Container{}
 
 	copyToC(&val.container_id, c.ID)
-	copyToC(&val.namespace, c.Namespace)
-	copyToC(&val.pod, c.Podname)
-	copyToC(&val.container, c.Name)
+	copyToC(&val.namespace, c.KubernetesNamespace)
+	copyToC(&val.pod, c.KubernetesPodName)
+	copyToC(&val.container, c.KubernetesContainerName)
 
 	cm.containersMap.Put(mntnsC, val)
 }
@@ -131,7 +131,7 @@ func (cm *ContainersMap) ContainersMapUpdater() containercollection.FuncNotify {
 		switch event.Type {
 		case containercollection.EventTypeAddContainer:
 			// Skip the pause container
-			if event.Container.Name == "" {
+			if event.Container.KubernetesContainerName == "" {
 				return
 			}
 

@@ -156,7 +156,7 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container string) (mntns uint64) {
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
-		if namespace == c.Namespace && pod == c.Podname && container == c.Name {
+		if namespace == c.KubernetesNamespace && pod == c.KubernetesPodName && container == c.KubernetesContainerName {
 			mntns = c.Mntns
 			// container found, stop iterating
 			return false
@@ -190,8 +190,8 @@ func (cc *ContainerCollection) LookupMntnsByPod(namespace, pod string) map[strin
 	ret := make(map[string]uint64)
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
-		if namespace == c.Namespace && pod == c.Podname {
-			ret[c.Name] = c.Mntns
+		if namespace == c.KubernetesNamespace && pod == c.KubernetesPodName {
+			ret[c.KubernetesContainerName] = c.Mntns
 		}
 		return true
 	})
@@ -203,7 +203,7 @@ func (cc *ContainerCollection) LookupMntnsByPod(namespace, pod string) map[strin
 func (cc *ContainerCollection) LookupPIDByContainer(namespace, pod, container string) (pid uint32) {
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
-		if namespace == c.Namespace && pod == c.Podname && container == c.Name {
+		if namespace == c.KubernetesNamespace && pod == c.KubernetesPodName && container == c.KubernetesContainerName {
 			pid = c.Pid
 			// container found, stop iterating
 			return false
@@ -220,8 +220,8 @@ func (cc *ContainerCollection) LookupPIDByPod(namespace, pod string) map[string]
 	ret := make(map[string]uint32)
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
-		if namespace == c.Namespace && pod == c.Podname {
-			ret[c.Name] = c.Pid
+		if namespace == c.KubernetesNamespace && pod == c.KubernetesPodName {
+			ret[c.KubernetesContainerName] = c.Pid
 		}
 		return true
 	})
@@ -239,7 +239,7 @@ func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *metav1
 			ownerRef, err = c.GetOwnerReference()
 			if err != nil {
 				log.Warnf("Failed to get owner reference of %s/%s/%s: %s",
-					c.Namespace, c.Podname, c.Name, err)
+					c.KubernetesNamespace, c.KubernetesPodName, c.KubernetesContainerName, err)
 			}
 			// container found, stop iterating
 			return false
@@ -305,9 +305,9 @@ func (cc *ContainerCollection) Enrich(event *eventtypes.CommonData, mountnsid ui
 
 	container := cc.LookupContainerByMntns(mountnsid)
 	if container != nil {
-		event.Container = container.Name
-		event.Pod = container.Podname
-		event.Namespace = container.Namespace
+		event.Container = container.KubernetesContainerName
+		event.Pod = container.KubernetesPodName
+		event.Namespace = container.KubernetesNamespace
 	}
 }
 

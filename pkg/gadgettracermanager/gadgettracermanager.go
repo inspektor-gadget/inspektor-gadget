@@ -155,15 +155,15 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 	}
 
 	container := containercollection.Container{
-		ID:        containerDefinition.Id,
-		Pid:       containerDefinition.Pid,
-		Namespace: containerDefinition.Namespace,
-		Podname:   containerDefinition.Podname,
-		Name:      containerDefinition.Name,
-		Labels:    map[string]string{},
+		ID:                      containerDefinition.Id,
+		Pid:                     containerDefinition.Pid,
+		KubernetesNamespace:     containerDefinition.Namespace,
+		KubernetesPodName:       containerDefinition.Podname,
+		KubernetesContainerName: containerDefinition.Name,
+		KubernetesLabels:        map[string]string{},
 	}
 	for _, l := range containerDefinition.Labels {
-		container.Labels[l.Key] = l.Value
+		container.KubernetesLabels[l.Key] = l.Value
 	}
 	if containerDefinition.OciConfig != "" {
 		containerConfig := &ocispec.Spec{}

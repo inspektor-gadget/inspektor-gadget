@@ -55,7 +55,7 @@ func newSocketCmd() *cobra.Command {
 					// to be notified.
 					if container.Pid == 0 {
 						return nil, fmt.Errorf("container %q does not have PID",
-							container.Name)
+							container.KubernetesContainerName)
 					}
 
 					if _, ok := visitedNetNs[container.Netns]; ok {
@@ -66,8 +66,8 @@ func newSocketCmd() *cobra.Command {
 
 					netNsSockets, err := tracer.RunCollector(
 						container.Pid,
-						container.Podname,
-						container.Namespace,
+						container.KubernetesPodName,
+						container.KubernetesNamespace,
 						"",
 						flags.ParsedProtocol,
 					)

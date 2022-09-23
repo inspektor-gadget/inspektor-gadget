@@ -35,9 +35,9 @@ func TestSelector(t *testing.T) {
 			match:       true,
 			selector:    &ContainerSelector{},
 			container: &Container{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
+				KubernetesNamespace:     "this-namespace",
+				KubernetesPodName:       "this-pod",
+				KubernetesContainerName: "this-container",
 			},
 		},
 		{
@@ -53,10 +53,10 @@ func TestSelector(t *testing.T) {
 				},
 			},
 			container: &Container{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
-				Labels: map[string]string{
+				KubernetesNamespace:     "this-namespace",
+				KubernetesPodName:       "this-pod",
+				KubernetesContainerName: "this-container",
+				KubernetesLabels: map[string]string{
 					"unrelated-label": "here",
 					"key1":            "value1",
 					"key2":            "value2",
@@ -71,9 +71,9 @@ func TestSelector(t *testing.T) {
 				Podname:   "this-pod",
 			},
 			container: &Container{
-				Namespace: "this-namespace",
-				Podname:   "a-misnamed-pod",
-				Name:      "this-container",
+				KubernetesNamespace:     "this-namespace",
+				KubernetesPodName:       "a-misnamed-pod",
+				KubernetesContainerName: "this-container",
 			},
 		},
 		{
@@ -89,10 +89,10 @@ func TestSelector(t *testing.T) {
 				},
 			},
 			container: &Container{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
-				Labels: map[string]string{
+				KubernetesNamespace:     "this-namespace",
+				KubernetesPodName:       "this-pod",
+				KubernetesContainerName: "this-container",
+				KubernetesLabels: map[string]string{
 					"key1": "value1",
 					"key2": "something-else",
 				},
@@ -106,9 +106,9 @@ func TestSelector(t *testing.T) {
 				Podname:   "this-pod",
 			},
 			container: &Container{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
+				KubernetesNamespace:     "this-namespace",
+				KubernetesPodName:       "this-pod",
+				KubernetesContainerName: "this-container",
 			},
 		},
 		{
@@ -119,9 +119,9 @@ func TestSelector(t *testing.T) {
 				Podname:   "this-pod",
 			},
 			container: &Container{
-				Namespace: "ns2",
-				Podname:   "this-pod",
-				Name:      "this-container",
+				KubernetesNamespace:     "ns2",
+				KubernetesPodName:       "this-pod",
+				KubernetesContainerName: "this-container",
 			},
 		},
 	}
@@ -147,14 +147,14 @@ func TestContainerResolver(t *testing.T) {
 	// Add 3 Containers
 	for i := 0; i < 3; i++ {
 		cc.AddContainer(&Container{
-			ID:         fmt.Sprintf("abcde%d", i),
-			Namespace:  "this-namespace",
-			Podname:    "my-pod",
-			Name:       fmt.Sprintf("container%d", i),
-			Mntns:      55555 + uint64(i),
-			Pid:        uint32(100 + i),
-			CgroupPath: "/none",
-			CgroupID:   1,
+			ID:                      fmt.Sprintf("abcde%d", i),
+			KubernetesNamespace:     "this-namespace",
+			KubernetesPodName:       "my-pod",
+			KubernetesContainerName: fmt.Sprintf("container%d", i),
+			Mntns:                   55555 + uint64(i),
+			Pid:                     uint32(100 + i),
+			CgroupPath:              "/none",
+			CgroupID:                1,
 			ownerReference: &metav1.OwnerReference{
 				UID: types.UID(fmt.Sprintf("abcde%d", i)),
 			},
@@ -245,16 +245,16 @@ func TestContainerResolver(t *testing.T) {
 
 	// Check LookupContainerByMntns
 	containerByMntns0 := cc.LookupContainerByMntns(55555)
-	if containerByMntns0.Name != "container0" {
+	if containerByMntns0.KubernetesContainerName != "container0" {
 		t.Fatalf("Error in LookupContainerByMntns: expected %s, found %s", "container0",
-			containerByMntns0.Name)
+			containerByMntns0.KubernetesContainerName)
 	}
 
 	// Check LookupContainerByMntns
 	containerByMntns2 := cc.LookupContainerByMntns(55555 + 2)
-	if containerByMntns2.Name != "container2" {
+	if containerByMntns2.KubernetesContainerName != "container2" {
 		t.Fatalf("Error in LookupContainerByMntns: expected %s, found %s", "container2",
-			containerByMntns2.Name)
+			containerByMntns2.KubernetesContainerName)
 	}
 
 	containerByMntnsNotFound := cc.LookupContainerByMntns(989898)
@@ -264,11 +264,11 @@ func TestContainerResolver(t *testing.T) {
 
 	// Add new container with same pod and container name of container0 but in different namespace
 	cc.AddContainer(&Container{
-		ID:        "abcde0-different",
-		Namespace: "another-namespace",
-		Podname:   "my-pod",
-		Name:      "container0",
-		Labels: map[string]string{
+		ID:                      "abcde0-different",
+		KubernetesNamespace:     "another-namespace",
+		KubernetesPodName:       "my-pod",
+		KubernetesContainerName: "container0",
+		KubernetesLabels: map[string]string{
 			"key1": "value1",
 			"key2": "value2",
 		},
@@ -283,7 +283,7 @@ func TestContainerResolver(t *testing.T) {
 	if len(selectedContainers) != 1 {
 		t.Fatalf("Error while looking up containers by one label: invalid number of matches")
 	}
-	if v, found := selectedContainers[0].Labels["key1"]; !found || v != "value1" {
+	if v, found := selectedContainers[0].KubernetesLabels["key1"]; !found || v != "value1" {
 		t.Fatalf("Error while looking up containers by one label: unexpected container %+v",
 			selectedContainers[0])
 	}
@@ -300,7 +300,7 @@ func TestContainerResolver(t *testing.T) {
 		t.Fatalf("Error while looking up containers by multiple labels: invalid number of matches")
 	}
 	for sk, sv := range selector.Labels {
-		if v, found := selectedContainers[0].Labels[sk]; !found || v != sv {
+		if v, found := selectedContainers[0].KubernetesLabels[sk]; !found || v != sv {
 			t.Fatalf("Error while looking up containers by multiple labels: unexpected container %+v",
 				selectedContainers[0])
 		}
@@ -314,7 +314,7 @@ func TestContainerResolver(t *testing.T) {
 		t.Fatalf("Error while looking up containers by namespace: invalid number of matches")
 	}
 	for _, container := range selectedContainers {
-		if container.Namespace != "this-namespace" {
+		if container.KubernetesNamespace != "this-namespace" {
 			t.Fatalf("Error while looking up containers by namespace: unexpected container %+v",
 				container)
 		}
@@ -329,7 +329,7 @@ func TestContainerResolver(t *testing.T) {
 		t.Fatalf("Error while looking up containers by namespace and pod: invalid number of matches")
 	}
 	for _, container := range selectedContainers {
-		if container.Namespace != "this-namespace" || container.Podname != "my-pod" {
+		if container.KubernetesNamespace != "this-namespace" || container.KubernetesPodName != "my-pod" {
 			t.Fatalf("Error while looking up containers by namespace and pod: unexpected container %+v",
 				container)
 		}
@@ -343,7 +343,7 @@ func TestContainerResolver(t *testing.T) {
 		t.Fatalf("Error while looking up containers by name: invalid number of matches")
 	}
 	for _, container := range selectedContainers {
-		if container.Name != "container0" {
+		if container.KubernetesContainerName != "container0" {
 			t.Fatalf("Error while looking up containers by name: unexpected container %+v",
 				container)
 		}
@@ -358,7 +358,7 @@ func TestContainerResolver(t *testing.T) {
 		t.Fatalf("Error while looking up containers by name and pod: invalid number of matches")
 	}
 	for _, container := range selectedContainers {
-		if container.Podname != "my-pod" || container.Name != "container0" {
+		if container.KubernetesPodName != "my-pod" || container.KubernetesContainerName != "container0" {
 			t.Fatalf("Error while looking up containers by name and pod: unexpected container %+v",
 				container)
 		}
@@ -373,7 +373,7 @@ func TestContainerResolver(t *testing.T) {
 	if len(selectedContainers) != 1 {
 		t.Fatalf("Error while looking up specific container: invalid number of matches")
 	}
-	if selectedContainers[0].Namespace != "this-namespace" || selectedContainers[0].Podname != "my-pod" || selectedContainers[0].Name != "container0" {
+	if selectedContainers[0].KubernetesNamespace != "this-namespace" || selectedContainers[0].KubernetesPodName != "my-pod" || selectedContainers[0].KubernetesContainerName != "container0" {
 		t.Fatalf("Error while looking up specific container: unexpected container %+v",
 			selectedContainers[0])
 	}
@@ -387,7 +387,7 @@ func TestContainerResolver(t *testing.T) {
 	if len(selectedContainers) != 1 {
 		t.Fatalf("Error while looking up specific container: invalid number of matches")
 	}
-	if selectedContainers[0].Namespace != "another-namespace" || selectedContainers[0].Podname != "my-pod" || selectedContainers[0].Name != "container0" {
+	if selectedContainers[0].KubernetesNamespace != "another-namespace" || selectedContainers[0].KubernetesPodName != "my-pod" || selectedContainers[0].KubernetesContainerName != "container0" {
 		t.Fatalf("Error while looking up specific container: unexpected container %+v",
 			selectedContainers[0])
 	}
@@ -401,7 +401,7 @@ func TestContainerResolver(t *testing.T) {
 	if len(selectedContainers) != 1 {
 		t.Fatalf("Error while looking up specific container: invalid number of matches")
 	}
-	if selectedContainers[0].Namespace != "this-namespace" || selectedContainers[0].Podname != "my-pod" || selectedContainers[0].Name != "container2" {
+	if selectedContainers[0].KubernetesNamespace != "this-namespace" || selectedContainers[0].KubernetesPodName != "my-pod" || selectedContainers[0].KubernetesContainerName != "container2" {
 		t.Fatalf("Error while looking up specific container: unexpected container %+v",
 			selectedContainers[0])
 	}

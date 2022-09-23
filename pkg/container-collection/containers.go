@@ -57,11 +57,11 @@ type Container struct {
 	CgroupV2 string `json:"cgroupV2,omitempty"`
 
 	// Kubernetes metadata
-	Namespace string            `json:"namespace,omitempty"`
-	Podname   string            `json:"podname,omitempty"`
-	Name      string            `json:"name,omitempty" column:"name,width:30" columnTags:"runtime"`
-	Labels    map[string]string `json:"labels,omitempty"`
-	PodUID    string            `json:"podUID,omitempty"`
+	KubernetesNamespace     string            `json:"kubernetesNamespace,omitempty"`
+	KubernetesPodName       string            `json:"kubernetesPodName,omitempty"`
+	KubernetesPodUID        string            `json:"kubernetesPodUID,omitempty"`
+	KubernetesContainerName string            `json:"kubernetesContainerName,omitempty" column:"name,width:30" columnTags:"runtime"`
+	KubernetesLabels        map[string]string `json:"kubernetesLabels,omitempty"`
 
 	ownerReference *metav1.OwnerReference
 }
@@ -108,8 +108,8 @@ func ownerReferenceEnrichment(
 ) error {
 	resGroupVersion := "v1"
 	resKind := "pods"
-	resName := container.Podname
-	resNamespace := container.Namespace
+	resName := container.KubernetesPodName
+	resNamespace := container.KubernetesNamespace
 
 	var highestOwnerRef *metav1.OwnerReference
 

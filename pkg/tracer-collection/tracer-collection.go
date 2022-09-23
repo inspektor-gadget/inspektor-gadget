@@ -71,7 +71,7 @@ func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 		switch event.Type {
 		case containercollection.EventTypeAddContainer:
 			// Skip the pause container
-			if event.Container.Name == "" {
+			if event.Container.KubernetesContainerName == "" {
 				return
 			}
 
@@ -178,7 +178,7 @@ func (tc *TracerCollection) TracerDump() (out string) {
 		}
 		out += "        Matches:\n"
 		tc.containerCollection.ContainerRangeWithSelector(&t.containerSelector, func(c *containercollection.Container) {
-			out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupID=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupID)
+			out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupID=%v]\n", c.KubernetesNamespace, c.KubernetesPodName, c.Mntns, c.CgroupID)
 		})
 	}
 	return
