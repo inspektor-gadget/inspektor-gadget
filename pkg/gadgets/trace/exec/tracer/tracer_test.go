@@ -162,12 +162,11 @@ func TestExecTracer(t *testing.T) {
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
 				if len(events) != 1 {
-					t.Fatalf("one event expected")
+					t.Fatalf("One event expected")
 				}
 
-				if events[0].UID != uint32(info.UID) {
-					t.Fatalf("event has bad UID: %d, expected: %d", events[0].UID, info.UID)
-				}
+				utilstest.Equal(t, uint32(info.UID), events[0].UID,
+					"Event has bad UID")
 			},
 		},
 		"truncates_captured_args_in_trace_to_maximum_possible_length": {
@@ -187,11 +186,11 @@ func TestExecTracer(t *testing.T) {
 			},
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
 				if len(events) != 1 {
-					t.Fatalf("one event expected")
+					t.Fatalf("One event expected")
 				}
 
 				if diff := cmp.Diff(events[0].Args, append([]string{"/bin/cat"}, manyArgs...)); diff != "" {
-					t.Fatalf("event has bad args, diff: \n%s", diff)
+					t.Fatalf("Event has bad args, diff: \n%s", diff)
 				}
 			},
 		},
@@ -287,13 +286,11 @@ func TestExecTracerMultipleMntNsIDsFilter(t *testing.T) {
 	})
 
 	for i := 0; i < n-1; i++ {
-		if events[i].MountNsID != expectedEvents[i].mntNsID {
-			t.Fatalf("Captured event has bad MountNsID")
-		}
+		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].MountNsID,
+			"Captured event has bad MountNsID")
 
-		if events[i].Pid != uint32(expectedEvents[i].catPid) {
-			t.Fatalf("Captured event has bad PID")
-		}
+		utilstest.Equal(t, uint32(expectedEvents[i].catPid), events[i].Pid,
+			"Captured event has bad PID")
 	}
 }
 

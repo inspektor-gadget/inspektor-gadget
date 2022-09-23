@@ -160,12 +160,11 @@ func TestOpenTracer(t *testing.T) {
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
 				if len(events) != 1 {
-					t.Fatalf("one event expected")
+					t.Fatalf("One event expected")
 				}
 
-				if events[0].UID != uint32(info.UID) {
-					t.Fatalf("event has bad UID: %d, expected: %d", events[0].UID, info.UID)
-				}
+				utilstest.Equal(t, uint32(info.UID), events[0].UID,
+					"Captured event has bad UID")
 			},
 		},
 		"event_has_correct_error": {
@@ -184,12 +183,11 @@ func TestOpenTracer(t *testing.T) {
 			},
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
 				if len(events) != 1 {
-					t.Fatalf("one event expected")
+					t.Fatalf("One event expected")
 				}
 
-				if events[0].Err != int(unix.ENOENT) {
-					t.Fatalf("event has bad Err: %d, expected: %d", events[0].Err, unix.ENOENT)
-				}
+				utilstest.Equal(t, int(unix.ENOENT), events[0].Err,
+					"Captured event has bad Err")
 			},
 		},
 		"event_has_correct_ret_on_error": {
@@ -208,12 +206,11 @@ func TestOpenTracer(t *testing.T) {
 			},
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
 				if len(events) != 1 {
-					t.Fatalf("one event expected")
+					t.Fatalf("One event expected")
 				}
 
-				if events[0].Ret != -int(unix.ENOENT) {
-					t.Fatalf("event has bad Ret: %d, expected: %d", events[0].Err, -int(unix.ENOENT))
-				}
+				utilstest.Equal(t, -int(unix.ENOENT), events[0].Ret,
+					"Captured event has bad Ret")
 			},
 		},
 	} {
@@ -309,13 +306,11 @@ func TestOpenTracerMultipleMntNsIDsFilter(t *testing.T) {
 	})
 
 	for i := 0; i < n-1; i++ {
-		if events[i].MountNsID != expectedEvents[i].mntNsID {
-			t.Fatalf("Captured event has bad MountNsID")
-		}
+		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].MountNsID,
+			"Captured event has bad MountNsID")
 
-		if events[i].Fd != expectedEvents[i].fd {
-			t.Fatalf("Captured event has bad Fd")
-		}
+		utilstest.Equal(t, expectedEvents[i].fd, events[i].Fd,
+			"Captured event has bad fd")
 	}
 }
 

@@ -129,3 +129,12 @@ func ExpectOneEvent[Event any, Extra any](getEvent func(info *RunnerInfo, extra 
 		}
 	}
 }
+
+// Equal compares if two values are the same.
+func Equal[T comparable](t *testing.T, expected, actual T, message string) {
+	t.Helper()
+
+	if expected != actual {
+		t.Errorf("%s: want: %v; got: %v", message, expected, actual)
+	}
+}
