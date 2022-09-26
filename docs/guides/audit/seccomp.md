@@ -30,8 +30,6 @@ metadata:
     description: "Log some syscalls"
 spec:
   defaultAction: SCMP_ACT_ALLOW
-  architectures:
-  - SCMP_ARCH_X86_64
   syscalls:
   - action: SCMP_ACT_KILL
     names:
@@ -91,9 +89,6 @@ default          mypod            unshare          kill_thread
 ```json
 {
   "defaultAction": "SCMP_ACT_ALLOW",
-  "architectures": [
-    "SCMP_ARCH_X86_64"
-  ],
   "syscalls": [
     {
       "action": "SCMP_ACT_KILL",
