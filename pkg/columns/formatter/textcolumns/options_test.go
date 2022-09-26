@@ -27,26 +27,26 @@ func TestOptions(t *testing.T) {
 
 	WithAutoScale(true)(opts)
 	if !opts.AutoScale {
-		t.Errorf("expected AutoScale to be true")
+		t.Errorf("Expected AutoScale to be true")
 	}
 
 	WithColumnDivider("X")(opts)
 	if opts.ColumnDivider != "X" {
-		t.Errorf("expected ColumnDivider to be X")
+		t.Errorf("Expected ColumnDivider to be X")
 	}
 
 	WithDefaultColumns([]string{"abc"})(opts)
 	if len(opts.DefaultColumns) != 1 || opts.DefaultColumns[0] != "abc" {
-		t.Errorf("expected DefaultColumns to have exactly 'abc' as value")
+		t.Errorf("Expected DefaultColumns to have exactly 'abc' as value")
 	}
 
 	WithHeaderStyle(HeaderStyleLowercase)(opts)
 	if opts.HeaderStyle != HeaderStyleLowercase {
-		t.Errorf("expected HeaderStyle to be HeaderStyleLowercase")
+		t.Errorf("Expected HeaderStyle to be HeaderStyleLowercase")
 	}
 
 	WithRowDivider("X")(opts)
 	if opts.RowDivider != "X" {
-		t.Errorf("expected RowDivider to be X")
+		t.Errorf("Expected RowDivider to be X")
 	}
 }

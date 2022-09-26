@@ -54,7 +54,10 @@ func TestTextColumnsFormatter_FormatEntry(t *testing.T) {
 	}
 
 	b := bytes.NewBuffer(nil)
-	formatter.WriteTable(b, testEntries)
+	err := formatter.WriteTable(b, testEntries)
+	if err != nil {
+		t.Errorf("unexpected write error: %v", err)
+	}
 	out := b.String()
 	if out != strings.Join(append([]string{"NAME        AGE   SIZE  BALANCE CANDANCE", "————————————————————————————————————————"}, expected...), "\n")+"\n" {
 		t.Errorf("got %s", out)

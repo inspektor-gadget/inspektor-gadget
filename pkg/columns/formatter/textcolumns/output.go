@@ -61,6 +61,9 @@ func (tf *TextColumnsFormatter[T]) setFormatter(column *Column[T]) {
 }
 
 func (tf *TextColumnsFormatter[T]) buildFixedString(s string, length int, ellipsisType ellipsis.EllipsisType, alignment columns.Alignment) string {
+	if length <= 0 {
+		return ""
+	}
 	rs := []rune(s)
 
 	shortened := ellipsis.Shorten(rs, length, ellipsisType)
@@ -133,15 +136,34 @@ func (tf *TextColumnsFormatter[T]) FormatRowDivider() string {
 
 // WriteTable writes header, divider and body with the current settings, where the body consists of the entries given
 // to the writer
-func (tf *TextColumnsFormatter[T]) WriteTable(writer io.Writer, entries []*T) {
-	writer.Write([]byte(tf.FormatHeader()))
-	writer.Write([]byte("\n"))
+func (tf *TextColumnsFormatter[T]) WriteTable(writer io.Writer, entries []*T) error {
+	_, err := writer.Write([]byte(tf.FormatHeader()))
+	if err != nil {
+		return err
+	}
+	_, err = writer.Write([]byte("\n"))
+	if err != nil {
+		return err
+	}
 	if tf.options.RowDivider != DividerNone {
-		writer.Write([]byte(tf.FormatRowDivider()))
-		writer.Write([]byte("\n"))
+		_, err = writer.Write([]byte(tf.FormatRowDivider()))
+		if err != nil {
+			return err
+		}
+		_, err = writer.Write([]byte("\n"))
+		if err != nil {
+			return err
+		}
 	}
 	for _, entry := range entries {
-		writer.Write([]byte(tf.FormatEntry(entry)))
-		writer.Write([]byte("\n"))
+		_, err = writer.Write([]byte(tf.FormatEntry(entry)))
+		if err != nil {
+			return err
+		}
+		_, err = writer.Write([]byte("\n"))
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }

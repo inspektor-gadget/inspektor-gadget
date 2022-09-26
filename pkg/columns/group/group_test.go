@@ -19,8 +19,6 @@ import (
 	"testing"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/columns"
-
-	"github.com/kinvolk/inspektor-gadget/pkg/columns/sort"
 )
 
 func TestGroupSum(t *testing.T) {
@@ -29,10 +27,11 @@ func TestGroupSum(t *testing.T) {
 		EmbeddedFloat float64 `column:"embeddedFloat,group:sum"`
 	}
 	type testStruct struct {
-		Name  string  `column:"name"`
-		Int   int64   `column:"int,group:sum"`
-		Uint  uint64  `column:"uint,group:sum"`
-		Float float64 `column:"float,group:sum"`
+		Name      string  `column:"name"`
+		Int       int64   `column:"int,group:sum"`
+		Uint      uint64  `column:"uint,group:sum"`
+		Float     float64 `column:"float,group:sum"`
+		Secondary int     `column:"secondary"`
 		Embedded
 	}
 	type test struct {
@@ -44,10 +43,10 @@ func TestGroupSum(t *testing.T) {
 	}
 
 	entries := []*testStruct{
-		{Name: "a", Int: 1, Float: 1, Uint: 1, Embedded: Embedded{EmbeddedInt: 1, EmbeddedFloat: 1}},
-		{Name: "a", Int: 1, Float: 1, Uint: 1, Embedded: Embedded{EmbeddedInt: 1, EmbeddedFloat: 1}},
-		{Name: "b", Int: 2, Float: 2, Uint: 2, Embedded: Embedded{EmbeddedInt: 2, EmbeddedFloat: 2}},
-		{Name: "b", Int: 2, Float: 2, Uint: 2, Embedded: Embedded{EmbeddedInt: 2, EmbeddedFloat: 2}},
+		{Name: "a", Int: 1, Float: 1, Uint: 1, Secondary: 1, Embedded: Embedded{EmbeddedInt: 1, EmbeddedFloat: 1}},
+		{Name: "a", Int: 1, Float: 1, Uint: 1, Secondary: 2, Embedded: Embedded{EmbeddedInt: 1, EmbeddedFloat: 1}},
+		{Name: "b", Int: 2, Float: 2, Uint: 2, Secondary: 2, Embedded: Embedded{EmbeddedInt: 2, EmbeddedFloat: 2}},
+		{Name: "b", Int: 2, Float: 2, Uint: 2, Secondary: 3, Embedded: Embedded{EmbeddedInt: 2, EmbeddedFloat: 2}},
 		nil,
 	}
 
@@ -58,10 +57,11 @@ func TestGroupSum(t *testing.T) {
 			Input:   entries,
 			ExpectedResult: []*testStruct{
 				{
-					Name:  "a",
-					Int:   6,
-					Uint:  6,
-					Float: 6,
+					Name:      "a",
+					Int:       6,
+					Uint:      6,
+					Float:     6,
+					Secondary: 1,
 					Embedded: Embedded{
 						EmbeddedInt:   6,
 						EmbeddedFloat: 6,
@@ -75,23 +75,54 @@ func TestGroupSum(t *testing.T) {
 			Input:   entries,
 			ExpectedResult: []*testStruct{
 				{
-					Name:  "a",
-					Int:   2,
-					Uint:  2,
-					Float: 2,
+					Name:      "a",
+					Int:       2,
+					Uint:      2,
+					Float:     2,
+					Secondary: 1,
 					Embedded: Embedded{
 						EmbeddedInt:   2,
 						EmbeddedFloat: 2,
 					},
 				},
 				{
-					Name:  "b",
-					Int:   4,
-					Uint:  4,
-					Float: 4,
+					Name:      "b",
+					Int:       4,
+					Uint:      4,
+					Float:     4,
+					Secondary: 2,
 					Embedded: Embedded{
 						EmbeddedInt:   4,
 						EmbeddedFloat: 4,
+					},
+				},
+			},
+		},
+		{
+			Name:    "GroupByMultipleColumn",
+			GroupBy: []string{"secondary", "name"},
+			Input:   entries,
+			ExpectedResult: []*testStruct{
+				{
+					Name:      "a",
+					Int:       4,
+					Uint:      4,
+					Float:     4,
+					Secondary: 1,
+					Embedded: Embedded{
+						EmbeddedInt:   4,
+						EmbeddedFloat: 4,
+					},
+				},
+				{
+					Name:      "b",
+					Int:       2,
+					Uint:      2,
+					Float:     2,
+					Secondary: 3,
+					Embedded: Embedded{
+						EmbeddedInt:   2,
+						EmbeddedFloat: 2,
 					},
 				},
 			},
@@ -123,18 +154,17 @@ func TestGroupSum(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			result, err := GroupEntries(cmap, test.Input, test.GroupBy)
 
-			// We need to sort the result as the grouping result is not consistent due
-			// to internally using a map
-			sort.SortEntries(cmap, result, test.GroupBy)
-
 			if err != nil && !test.ExpectError {
-				t.Errorf("while grouping: %v", err)
+				t.Errorf("While grouping: %v", err)
 			}
 			if err == nil && test.ExpectError {
-				t.Errorf("expected error")
+				t.Errorf("Expected error")
 			}
 			if !reflect.DeepEqual(result, test.ExpectedResult) {
-				t.Errorf("got %+v", result)
+				for _, entry := range result {
+					t.Logf("%+v", entry)
+				}
+				t.Errorf("Unexpected result")
 			}
 		})
 	}

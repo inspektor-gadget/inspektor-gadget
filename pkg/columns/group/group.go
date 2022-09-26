@@ -17,13 +17,37 @@ package group
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/kinvolk/inspektor-gadget/pkg/columns"
+	"github.com/kinvolk/inspektor-gadget/pkg/columns/sort"
 )
 
+func getStringFromValue(value reflect.Value) string {
+	switch value.Kind() {
+	case reflect.String:
+		return value.String()
+	case reflect.Int,
+		reflect.Int8,
+		reflect.Int16,
+		reflect.Int32,
+		reflect.Int64:
+		return strconv.FormatInt(value.Int(), 10)
+	case reflect.Uint,
+		reflect.Uint8,
+		reflect.Uint16,
+		reflect.Uint32,
+		reflect.Uint64:
+		return strconv.FormatUint(value.Uint(), 10)
+	case reflect.Float32, reflect.Float64:
+		return strconv.FormatFloat(value.Float(), 'E', -1, 64)
+	}
+	return value.String()
+}
+
 // GroupEntries will group the given entries using the column names given in groupBy and return a new
-// array with the results
+// array with the results; if groupBy contains an empty string, all given entries will be grouped
 func GroupEntries[T any](columns columns.ColumnMap[T], entries []*T, groupBy []string) ([]*T, error) {
 	if entries == nil {
 		return nil, nil
@@ -75,7 +99,7 @@ func GroupEntries[T any](columns columns.ColumnMap[T], entries []*T, groupBy []s
 			}
 
 			// Transform group key according to request
-			key := column.GetRef(entry.Elem()).String()
+			key := getStringFromValue(column.GetRef(entry.Elem()))
 
 			if _, ok := groupMap[key]; !ok {
 				groupMap[key] = make([]reflect.Value, 0)
@@ -86,6 +110,9 @@ func GroupEntries[T any](columns columns.ColumnMap[T], entries []*T, groupBy []s
 
 		outEntries := make([]*T, 0, len(groupMap))
 		flattenValues(columns, &outEntries, groupMap)
+
+		// Sort by groupName to get a deterministic result
+		sort.SortEntries(columns, outEntries, []string{groupName})
 
 		newEntries = outEntries
 	}

@@ -54,31 +54,20 @@ func WithEmbedded(embedded bool) ColumnFilter {
 
 // WithTags makes sure that all returned columns contain all the given tags
 func WithTags(tags []string) ColumnFilter {
-	for i := range tags {
-		tags[i] = strings.ToLower(tags[i])
-	}
-	numTags := len(tags)
+	tags = ToLowerStrings(tags)
 	return func(matcher ColumnMatcher) bool {
-		marked := make([]bool, numTags)
-		count := 0
-		for i, tag := range tags {
-			if !marked[i] && matcher.HasTag(tag) {
-				count++
-				marked[i] = true
-				if count == numTags {
-					return true
-				}
+		for _, tag := range tags {
+			if !matcher.HasTag(tag) {
+				return false
 			}
 		}
-		return false
+		return true
 	}
 }
 
 // WithoutTags makes sure that all returned columns contain none of the given tags
 func WithoutTags(tags []string) ColumnFilter {
-	for i := range tags {
-		tags[i] = strings.ToLower(tags[i])
-	}
+	tags = ToLowerStrings(tags)
 	return func(matcher ColumnMatcher) bool {
 		for _, tag := range tags {
 			if matcher.HasTag(tag) {
