@@ -177,3 +177,31 @@ func TestTextColumnsFormatter_AdjustWidthsMaxWidth(t *testing.T) {
 		t.Errorf("expected entry does not match, got %s", cstr)
 	}
 }
+
+func TestWidthRestrictions(t *testing.T) {
+	type testStruct struct {
+		Name        string `column:"name,width:5,minWidth:2,maxWidth:10"`
+		SecondField string `column:"second"`
+	}
+	entries := []*testStruct{
+		{"123456789012", "123456789012"},
+		{"234567890123", "234567890123"},
+	}
+	cols, err := columns.NewColumns[testStruct]()
+	if err != nil {
+		t.Fatalf("error initializing")
+	}
+	formatter := NewFormatter(cols.GetColumnMap(), WithRowDivider(DividerDash), WithAutoScale(true))
+	t.Run("maxWidth", func(t *testing.T) {
+		formatter.RecalculateWidths(40, false)
+		if cstr := strings.TrimSpace(formatter.FormatEntry(entries[0])); cstr != "123456789… 123456789012" {
+			t.Errorf("expected entry does not match, got %s", cstr)
+		}
+	})
+	t.Run("minWidth", func(t *testing.T) {
+		formatter.RecalculateWidths(1, false)
+		if cstr := strings.TrimSpace(formatter.FormatEntry(entries[0])); cstr != "1… …" {
+			t.Errorf("expected entry does not match, got %s", cstr)
+		}
+	})
+}

@@ -172,7 +172,6 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []int) error {
 		}
 
 		column := &Column[T]{
-			Width:        c.options.DefaultWidth,
 			EllipsisType: c.options.DefaultEllipsis,
 			Alignment:    c.options.DefaultAlignment,
 			Visible:      true,
@@ -196,6 +195,35 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []int) error {
 		err := column.fromTag(tag)
 		if err != nil {
 			return fmt.Errorf("error parsing tag for %q on field %q: %w", t.Name(), f.Name, err)
+		}
+
+		// fall back to struct field name if column name is empty
+		if column.Name == "" {
+			column.Name = f.Name
+		}
+
+		if column.Width > 0 && column.MinWidth > column.Width {
+			return fmt.Errorf("minWidth should not be greater than width on field %q", t.Name())
+		}
+		if column.MaxWidth > 0 {
+			if column.MaxWidth < column.Width {
+				return fmt.Errorf("maxWidth should not be less than width on field %q", t.Name())
+			}
+			if column.MaxWidth < column.MinWidth {
+				return fmt.Errorf("maxWidth must be greater than minWidth %q", t.Name())
+			}
+		}
+
+		// check if we can default to a maxWidth for this field
+		if column.MaxWidth == 0 {
+			column.MaxWidth = column.getWidthFromType()
+		}
+
+		if column.Width == 0 {
+			column.Width = c.options.DefaultWidth
+		}
+		if column.MinWidth > column.Width {
+			column.Width = column.MinWidth
 		}
 
 		// add optional description

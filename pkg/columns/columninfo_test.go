@@ -244,45 +244,140 @@ func TestColumnsPrecision(t *testing.T) {
 
 func TestColumnsWidth(t *testing.T) {
 	type testSuccess1 struct {
-		FieldWidth int64 `column:"int,width:4"`
-	}
-	type testFail1 struct {
-		Field int64 `column:"fail,width"` // no param
-	}
-	type testFail2 struct {
-		Field int64 `column:"fail,width:"` // empty param
-	}
-	type testFail3 struct {
-		Field int64 `column:"fail,width:foo"` // invalid param
-	}
-	type testFail4 struct {
-		Field int64 `column:"fail,width:sum:bar"` // double param
+		FieldWidth     int64 `column:"int,width:4"`
+		FieldWidthType int64 `column:"intType,width:type"`
 	}
 
-	cols, err := NewColumns[testSuccess1]()
-	if err != nil {
-		t.Fatalf("failed to initialize: %v", err)
-	}
-	if col, ok := cols.GetColumn("int"); !ok || col.Width != 4 {
-		t.Errorf("expected column %q to have Width set to %d", "int", 4)
+	cols := expectColumnsSuccess[testSuccess1](t)
+	expectColumnValue(t, expectColumn(t, cols, "int"), "Width", 4)
+	expectColumnValue(t, expectColumn(t, cols, "intType"), "Width", MaxCharsInt64)
+
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,width"`
+	}](t, "missing parameter")
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,width:"`
+	}](t, "empty parameter")
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,width:foo"`
+	}](t, "invalid parameter")
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,width:sum:bar"`
+	}](t, "double parameter")
+}
+
+func TestColumnsMaxWidth(t *testing.T) {
+	type testSuccess1 struct {
+		FieldMaxWidth     int64 `column:"int,maxWidth:4"`
+		FieldMaxWidthType int64 `column:"intType,maxWidth:type"`
 	}
 
-	_, err = NewColumns[testFail1]()
-	if err == nil {
-		t.Errorf("succeeded to initialize but expected error")
+	cols := expectColumnsSuccess[testSuccess1](t)
+
+	expectColumnValue(t, expectColumn(t, cols, "int"), "MaxWidth", 4)
+	expectColumnValue(t, expectColumn(t, cols, "intType"), "MaxWidth", MaxCharsInt64)
+
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,maxWidth"`
+	}](t, "missing parameter")
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,maxWidth:"`
+	}](t, "empty parameter")
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,maxWidth:foo"`
+	}](t, "invalid parameter")
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,maxWidth:sum:bar"`
+	}](t, "double parameter")
+}
+
+func TestColumnsMinWidth(t *testing.T) {
+	type testSuccess1 struct {
+		FieldMinWidth     int64 `column:"int,minWidth:4"`
+		FieldMaxWidthType int64 `column:"intType,minWidth:type"`
 	}
-	_, err = NewColumns[testFail2]()
-	if err == nil {
-		t.Errorf("succeeded to initialize but expected error")
+
+	cols := expectColumnsSuccess[testSuccess1](t)
+	expectColumnValue(t, expectColumn(t, cols, "int"), "MinWidth", 4)
+	expectColumnValue(t, expectColumn(t, cols, "intType"), "MinWidth", MaxCharsInt64)
+
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,minWidth"`
+	}](t, "missing parameter")
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,minWidth:"`
+	}](t, "empty parameter")
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,minWidth:foo"`
+	}](t, "invalid parameter")
+	expectColumnsFail[struct {
+		Field int64 `column:"fail,minWidth:sum:bar"`
+	}](t, "double parameter")
+}
+
+func TestColumnsWidthFromType(t *testing.T) {
+	type testSuccess1 struct {
+		Int8   int8   `column:",minWidth:type,maxWidth:type,width:type"`
+		Int16  int16  `column:",minWidth:type,maxWidth:type,width:type"`
+		Int32  int32  `column:",minWidth:type,maxWidth:type,width:type"`
+		Int64  int64  `column:",minWidth:type,maxWidth:type,width:type"`
+		Uint8  uint8  `column:",minWidth:type,maxWidth:type,width:type"`
+		Uint16 uint16 `column:",minWidth:type,maxWidth:type,width:type"`
+		Uint32 uint32 `column:",minWidth:type,maxWidth:type,width:type"`
+		Uint64 uint64 `column:",minWidth:type,maxWidth:type,width:type"`
+		Bool   bool   `column:",minWidth:type,maxWidth:type,width:type"`
 	}
-	_, err = NewColumns[testFail3]()
-	if err == nil {
-		t.Errorf("succeeded to initialize but expected error")
-	}
-	_, err = NewColumns[testFail4]()
-	if err == nil {
-		t.Errorf("succeeded to initialize but expected error")
-	}
+
+	cols := expectColumnsSuccess[testSuccess1](t)
+
+	col := expectColumn(t, cols, "int8")
+	expectColumnValue(t, col, "Width", MaxCharsInt8)
+	expectColumnValue(t, col, "MinWidth", MaxCharsInt8)
+	expectColumnValue(t, col, "MaxWidth", MaxCharsInt8)
+
+	col = expectColumn(t, cols, "int16")
+	expectColumnValue(t, col, "Width", MaxCharsInt16)
+	expectColumnValue(t, col, "MinWidth", MaxCharsInt16)
+	expectColumnValue(t, col, "MaxWidth", MaxCharsInt16)
+
+	col = expectColumn(t, cols, "int32")
+	expectColumnValue(t, col, "Width", MaxCharsInt32)
+	expectColumnValue(t, col, "MinWidth", MaxCharsInt32)
+	expectColumnValue(t, col, "MaxWidth", MaxCharsInt32)
+
+	col = expectColumn(t, cols, "int64")
+	expectColumnValue(t, col, "Width", MaxCharsInt64)
+	expectColumnValue(t, col, "MinWidth", MaxCharsInt64)
+	expectColumnValue(t, col, "MaxWidth", MaxCharsInt64)
+
+	col = expectColumn(t, cols, "uint8")
+	expectColumnValue(t, col, "Width", MaxCharsUint8)
+	expectColumnValue(t, col, "MinWidth", MaxCharsUint8)
+	expectColumnValue(t, col, "MaxWidth", MaxCharsUint8)
+
+	col = expectColumn(t, cols, "uint16")
+	expectColumnValue(t, col, "Width", MaxCharsUint16)
+	expectColumnValue(t, col, "MinWidth", MaxCharsUint16)
+	expectColumnValue(t, col, "MaxWidth", MaxCharsUint16)
+
+	col = expectColumn(t, cols, "uint32")
+	expectColumnValue(t, col, "Width", MaxCharsUint32)
+	expectColumnValue(t, col, "MinWidth", MaxCharsUint32)
+	expectColumnValue(t, col, "MaxWidth", MaxCharsUint32)
+
+	col = expectColumn(t, cols, "uint64")
+	expectColumnValue(t, col, "Width", MaxCharsUint64)
+	expectColumnValue(t, col, "MinWidth", MaxCharsUint64)
+	expectColumnValue(t, col, "MaxWidth", MaxCharsUint64)
+
+	col = expectColumn(t, cols, "bool")
+	expectColumnValue(t, col, "Width", MaxCharsBool)
+	expectColumnValue(t, col, "MinWidth", MaxCharsBool)
+	expectColumnValue(t, col, "MaxWidth", MaxCharsBool)
+
+	expectColumnsFail[struct {
+		String string `column:",minWidth:type,maxWidth:type,width:type"`
+	}](t, "invalid field type")
 }
 
 func TestWithoutColumnTag(t *testing.T) {
