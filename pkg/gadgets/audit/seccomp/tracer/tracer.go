@@ -151,9 +151,9 @@ func (t *Tracer) run() {
 					// ring buffer, we might not be able to get the
 					// Kubernetes metadata from the mount namespace
 					// id.
-					Namespace: C.GoString(&eventC.container.namespace[0]),
-					Pod:       C.GoString(&eventC.container.pod[0]),
-					Container: C.GoString(&eventC.container.container[0]),
+					KubernetesNamespace:     C.GoString(&eventC.container.namespace[0]),
+					KubernetesPodName:       C.GoString(&eventC.container.pod[0]),
+					KubernetesContainerName: C.GoString(&eventC.container.container[0]),
 				},
 			},
 			Pid:       uint32(eventC.pid),

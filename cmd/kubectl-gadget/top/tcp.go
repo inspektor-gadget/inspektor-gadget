@@ -259,13 +259,13 @@ func (p *TCPParser) TransformStats(stats *types.Stats) string {
 		for _, col := range p.OutputConfig.CustomColumns {
 			switch col {
 			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Node))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.KubernetesNode))
 			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Namespace))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.KubernetesNamespace))
 			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Pod))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.KubernetesPodName))
 			case "container":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Container))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.KubernetesContainerName))
 			case "pid":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Pid))
 			case "comm":

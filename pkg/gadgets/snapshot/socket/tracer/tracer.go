@@ -165,9 +165,9 @@ func RunCollector(pid uint32, podname, namespace, node string, proto socketcolle
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Node:      node,
-							Namespace: namespace,
-							Pod:       podname,
+							KubernetesNode:      node,
+							KubernetesNamespace: namespace,
+							KubernetesPodName:   podname,
 						},
 					},
 					Protocol:      proto,

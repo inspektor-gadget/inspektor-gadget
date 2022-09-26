@@ -121,11 +121,11 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	fillEvent := func(event *types.Event, key string) {
-		event.Node = trace.Spec.Node
+		event.KubernetesNode = trace.Spec.Node
 		keyParts := strings.SplitN(key, "/", 2)
 		if len(keyParts) == 2 {
-			event.Namespace = keyParts[0]
-			event.Pod = keyParts[1]
+			event.KubernetesNamespace = keyParts[0]
+			event.KubernetesPodName = keyParts[1]
 		} else if key != "host" {
 			event.Type = eventtypes.ERR
 			event.Message = fmt.Sprintf("unknown key %s", key)
@@ -136,7 +136,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			Event: eventtypes.Event{
 				Type: t,
 				CommonData: eventtypes.CommonData{
-					Node: trace.Spec.Node,
+					KubernetesNode: trace.Spec.Node,
 				},
 				Message: message,
 			},
@@ -155,7 +155,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 				CommonData: eventtypes.CommonData{
-					Node: trace.Spec.Node,
+					KubernetesNode: trace.Spec.Node,
 				},
 			},
 			Name: name,

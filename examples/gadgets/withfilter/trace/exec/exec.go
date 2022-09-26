@@ -91,7 +91,7 @@ func main() {
 	// Define a callback to be called each time there is an event.
 	eventCallback := func(event types.Event) {
 		fmt.Printf("A new %q process with pid %d was executed in container %q\n",
-			event.Comm, event.Pid, event.Container)
+			event.Comm, event.Pid, event.KubernetesContainerName)
 	}
 
 	// Create a tracer instance. This is the glue piece that allows

@@ -420,9 +420,9 @@ func TestDNS(t *testing.T) {
 		Event: eventtypes.Event{
 			Type: eventtypes.DEBUG,
 			CommonData: eventtypes.CommonData{
-				Node:      "local",
-				Namespace: "default",
-				Pod:       "test-local-gadget-dns001",
+				KubernetesNode:      "local",
+				KubernetesNamespace: "default",
+				KubernetesPodName:   "test-local-gadget-dns001",
 			},
 			Message: "tracer attached",
 		},
@@ -443,9 +443,9 @@ func TestDNS(t *testing.T) {
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
 			CommonData: eventtypes.CommonData{
-				Node:      "local",
-				Namespace: "default",
-				Pod:       "test-local-gadget-dns001",
+				KubernetesNode:      "local",
+				KubernetesNamespace: "default",
+				KubernetesPodName:   "test-local-gadget-dns001",
 			},
 		},
 		DNSName: "microsoft.com.",
@@ -468,9 +468,9 @@ func TestDNS(t *testing.T) {
 		Event: eventtypes.Event{
 			Type: eventtypes.DEBUG,
 			CommonData: eventtypes.CommonData{
-				Node:      "local",
-				Namespace: "default",
-				Pod:       "test-local-gadget-dns001",
+				KubernetesNode:      "local",
+				KubernetesNamespace: "default",
+				KubernetesPodName:   "test-local-gadget-dns001",
 			},
 			Message: "tracer detached",
 		},
@@ -542,9 +542,9 @@ func TestNetworkGraph(t *testing.T) {
 		Event: eventtypes.Event{
 			Type: eventtypes.DEBUG,
 			CommonData: eventtypes.CommonData{
-				Node:      "local",
-				Namespace: "default",
-				Pod:       "test-local-gadget-network-graph001",
+				KubernetesNode:      "local",
+				KubernetesNamespace: "default",
+				KubernetesPodName:   "test-local-gadget-network-graph001",
 			},
 			Message: "tracer attached",
 		},
@@ -565,9 +565,9 @@ func TestNetworkGraph(t *testing.T) {
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
 			CommonData: eventtypes.CommonData{
-				Node:      "local",
-				Namespace: "default",
-				Pod:       "test-local-gadget-network-graph001",
+				KubernetesNode:      "local",
+				KubernetesNamespace: "default",
+				KubernetesPodName:   "test-local-gadget-network-graph001",
 			},
 		},
 		PktType: "OUTGOING",
@@ -591,9 +591,9 @@ func TestNetworkGraph(t *testing.T) {
 		Event: eventtypes.Event{
 			Type: eventtypes.DEBUG,
 			CommonData: eventtypes.CommonData{
-				Node:      "local",
-				Namespace: "default",
-				Pod:       "test-local-gadget-network-graph001",
+				KubernetesNode:      "local",
+				KubernetesNamespace: "default",
+				KubernetesPodName:   "test-local-gadget-network-graph001",
 			},
 			Message: "tracer detached",
 		},

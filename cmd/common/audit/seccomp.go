@@ -71,13 +71,13 @@ func (p *SeccompParser) TransformEvent(e *types.Event) string {
 		for _, col := range p.OutputConfig.CustomColumns {
 			switch col {
 			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Node))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.KubernetesNode))
 			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Namespace))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.KubernetesNamespace))
 			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Pod))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.KubernetesPodName))
 			case "container":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.Container))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], e.KubernetesContainerName))
 			case "pid":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], e.Pid))
 			case "comm":

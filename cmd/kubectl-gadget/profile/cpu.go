@@ -190,13 +190,13 @@ func (p *CPUParser) TransformReport(report *types.Report) string {
 		for _, col := range p.OutputConfig.CustomColumns {
 			switch col {
 			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Node))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.KubernetesNode))
 			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Namespace))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.KubernetesNamespace))
 			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Pod))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.KubernetesPodName))
 			case "container":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Container))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.KubernetesContainerName))
 			case "pid":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], report.Pid))
 			case "comm":

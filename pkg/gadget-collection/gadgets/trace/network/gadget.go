@@ -126,7 +126,7 @@ func (t *Trace) publishMessage(
 		Event: eventtypes.Event{
 			Type: eventType,
 			CommonData: eventtypes.CommonData{
-				Node: trace.Spec.Node,
+				KubernetesNode: trace.Spec.Node,
 			},
 			Message: msg,
 		},
@@ -134,8 +134,8 @@ func (t *Trace) publishMessage(
 
 	keyParts := strings.SplitN(key, "/", 2)
 	if len(keyParts) == 2 {
-		event.Namespace = keyParts[0]
-		event.Pod = keyParts[1]
+		event.KubernetesNamespace = keyParts[0]
+		event.KubernetesPodName = keyParts[1]
 	} else if key != "host" {
 		event.Type = eventtypes.ERR
 		event.Message = fmt.Sprintf("unknown key %s", key)
@@ -288,7 +288,7 @@ func (t *Trace) update(trace, traceBeforePatch *gadgetv1alpha1.Trace) bool {
 
 	for _, event := range newEvents {
 		// for now, ignore events on the host netns
-		if event.Pod != "" {
+		if event.KubernetesPodName != "" {
 			t.publishEvent(trace, &event)
 		}
 	}

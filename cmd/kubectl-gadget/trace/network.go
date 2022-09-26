@@ -85,7 +85,7 @@ func NewNetworkParser(outputConfig *commonutils.OutputConfig) commontrace.TraceP
 func (p *NetworkParser) TransformIntoColumns(event *types.Event) string {
 	var sb strings.Builder
 
-	if event.Pod == "" {
+	if event.KubernetesPodName == "" {
 		// ignore events on host netns for now
 		return ""
 	}
@@ -105,11 +105,11 @@ func (p *NetworkParser) TransformIntoColumns(event *types.Event) string {
 	for _, col := range p.OutputConfig.CustomColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.KubernetesNode))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.KubernetesNamespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.KubernetesPodName))
 		case "type":
 			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.PktType))
 		case "proto":

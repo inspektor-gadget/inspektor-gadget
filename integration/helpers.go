@@ -97,10 +97,10 @@ func BuildBaseEvent(namespace string) eventtypes.Event {
 	return eventtypes.Event{
 		Type: eventtypes.NORMAL,
 		CommonData: eventtypes.CommonData{
-			Namespace: namespace,
+			KubernetesNamespace: namespace,
 			// Pod and Container name are defined by BusyboxPodCommand.
-			Pod:       "test-pod",
-			Container: "test-pod",
+			KubernetesPodName:       "test-pod",
+			KubernetesContainerName: "test-pod",
 			// TODO: Include the Node
 		},
 	}

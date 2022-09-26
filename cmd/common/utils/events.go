@@ -37,10 +37,10 @@ func ManageSpecialEvent(e eventtypes.Event, verbose bool) {
 		fallthrough
 	case eventtypes.INFO:
 		podMsgSuffix := ""
-		if e.Namespace != "" && e.Pod != "" {
-			podMsgSuffix = ", pod " + e.Namespace + "/" + e.Pod
+		if e.KubernetesNamespace != "" && e.KubernetesPodName != "" {
+			podMsgSuffix = ", pod " + e.KubernetesNamespace + "/" + e.KubernetesPodName
 		}
 
-		fmt.Fprintf(os.Stderr, "%s: node %s%s: %s\n", e.Type, e.Node, podMsgSuffix, e.Message)
+		fmt.Fprintf(os.Stderr, "%s: node %s%s: %s\n", e.Type, e.KubernetesNode, podMsgSuffix, e.Message)
 	}
 }

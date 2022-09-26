@@ -230,7 +230,7 @@ func (p *EbpfParser) PrintStats() {
 	stats := []types.Stats{}
 	for node, stat := range p.nodeStats {
 		for i := range stat {
-			stat[i].Node = node
+			stat[i].KubernetesNode = node
 		}
 		stats = append(stats, stat...)
 	}
@@ -255,7 +255,7 @@ func (p *EbpfParser) TransformStats(stats *types.Stats) string {
 		for _, col := range p.OutputConfig.CustomColumns {
 			switch col {
 			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Node))
+				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.KubernetesNode))
 			case "progid":
 				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.ProgramID))
 			case "type":

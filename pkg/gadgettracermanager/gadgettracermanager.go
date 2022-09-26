@@ -92,7 +92,7 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 			ev := eventtypes.Event{
 				Type: eventtypes.ERR,
 				CommonData: eventtypes.CommonData{
-					Node: g.nodeName,
+					KubernetesNode: g.nodeName,
 				},
 				Message: "events lost in gadget tracer manager",
 			}

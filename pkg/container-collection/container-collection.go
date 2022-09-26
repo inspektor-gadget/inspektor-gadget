@@ -301,13 +301,13 @@ func (cc *ContainerCollection) ContainerRangeWithSelector(
 }
 
 func (cc *ContainerCollection) Enrich(event *eventtypes.CommonData, mountnsid uint64) {
-	event.Node = cc.nodeName
+	event.KubernetesNode = cc.nodeName
 
 	container := cc.LookupContainerByMntns(mountnsid)
 	if container != nil {
-		event.Container = container.KubernetesContainerName
-		event.Pod = container.KubernetesPodName
-		event.Namespace = container.KubernetesNamespace
+		event.KubernetesContainerName = container.KubernetesContainerName
+		event.KubernetesPodName = container.KubernetesPodName
+		event.KubernetesNamespace = container.KubernetesNamespace
 	}
 }
 

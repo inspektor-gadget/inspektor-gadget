@@ -92,13 +92,13 @@ func (p *OOMKillParser) TransformIntoColumns(event *types.Event) string {
 	for _, col := range p.OutputConfig.CustomColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.KubernetesNode))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.KubernetesNamespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.KubernetesPodName))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
+			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.KubernetesContainerName))
 		case "kpid":
 			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.KilledPid))
 		case "kcomm":

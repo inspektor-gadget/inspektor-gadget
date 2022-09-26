@@ -82,11 +82,11 @@ func (s *SocketParser) TransformToColumns(e *types.Event) string {
 	for _, col := range s.OutputConfig.CustomColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%s", e.Node))
+			sb.WriteString(fmt.Sprintf("%s", e.KubernetesNode))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%s", e.Namespace))
+			sb.WriteString(fmt.Sprintf("%s", e.KubernetesNamespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%s", e.Pod))
+			sb.WriteString(fmt.Sprintf("%s", e.KubernetesPodName))
 		case "protocol":
 			sb.WriteString(fmt.Sprintf("%s", e.Protocol))
 		case "local":
@@ -110,12 +110,12 @@ func (s *SocketParser) SortEvents(allSockets *[]types.Event) {
 	sort.Slice(*allSockets, func(i, j int) bool {
 		si, sj := (*allSockets)[i], (*allSockets)[j]
 		switch {
-		case si.Node != sj.Node:
-			return si.Node < sj.Node
-		case si.Namespace != sj.Namespace:
-			return si.Namespace < sj.Namespace
-		case si.Pod != sj.Pod:
-			return si.Pod < sj.Pod
+		case si.KubernetesNode != sj.KubernetesNode:
+			return si.KubernetesNode < sj.KubernetesNode
+		case si.KubernetesNamespace != sj.KubernetesNamespace:
+			return si.KubernetesNamespace < sj.KubernetesNamespace
+		case si.KubernetesPodName != sj.KubernetesPodName:
+			return si.KubernetesPodName < sj.KubernetesPodName
 		case si.Protocol != sj.Protocol:
 			return si.Protocol < sj.Protocol
 		case si.Status != sj.Status:

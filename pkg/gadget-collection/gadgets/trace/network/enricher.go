@@ -70,9 +70,9 @@ func (e *Enricher) convertEvent(
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
 			CommonData: eventtypes.CommonData{
-				Node:      e.node,
-				Namespace: namespace,
-				Pod:       name,
+				KubernetesNode:      e.node,
+				KubernetesNamespace: namespace,
+				KubernetesPodName:   name,
 			},
 			Message: "",
 		},
@@ -120,7 +120,7 @@ func (e *Enricher) convertEvent(
 	// shorter name without the random suffix. That will be used to
 	// generate the network policy name.
 	if pods.Items[localPodIndex].OwnerReferences != nil {
-		nameItems := strings.Split(out.Pod, "-")
+		nameItems := strings.Split(out.KubernetesPodName, "-")
 		if len(nameItems) > 2 {
 			out.PodOwner = strings.Join(nameItems[:len(nameItems)-2], "-")
 		}

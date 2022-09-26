@@ -29,18 +29,18 @@ func Init(nodeName string) {
 
 type CommonData struct {
 	// Node where the event comes from
-	Node string `json:"node,omitempty" column:"node,width:30,ellipsis:middle" columnTags:"kubernetes"`
+	KubernetesNode string `json:"kubernetesNode,omitempty" column:"node,width:30,ellipsis:middle" columnTags:"kubernetes"`
 
 	// Pod namespace where the event comes from, or empty for host-level
 	// event
-	Namespace string `json:"namespace,omitempty" column:"namespace,width:30" columnTags:"kubernetes"`
+	KubernetesNamespace string `json:"kubernetesNamespace,omitempty" column:"namespace,width:30" columnTags:"kubernetes"`
 
 	// Pod where the event comes from, or empty for host-level event
-	Pod string `json:"pod,omitempty" column:"pod,width:30,ellipsis:middle" columnTags:"kubernetes"`
+	KubernetesPodName string `json:"kubernetesPodName,omitempty" column:"pod,width:30,ellipsis:middle" columnTags:"kubernetes"`
 
-	// Container where the event comes from, or empty for host-level or
-	// pod-level event
-	Container string `json:"container,omitempty" column:"container,width:30" columnTags:"kubernetes,runtime"`
+	// Container where the event comes from. It could be empty for host-level or
+	// pod-level event. Or, when the tracer is not running in a Kubernetes env.
+	KubernetesContainerName string `json:"kubernetesContainerName,omitempty" column:"container,width:30" columnTags:"kubernetes"`
 }
 
 const (
@@ -77,7 +77,7 @@ type Event struct {
 func Err(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			KubernetesNode: node,
 		},
 		Type:    ERR,
 		Message: msg,
@@ -87,7 +87,7 @@ func Err(msg string) Event {
 func Warn(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			KubernetesNode: node,
 		},
 		Type:    WARN,
 		Message: msg,
@@ -97,7 +97,7 @@ func Warn(msg string) Event {
 func Debug(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			KubernetesNode: node,
 		},
 		Type:    DEBUG,
 		Message: msg,
@@ -107,7 +107,7 @@ func Debug(msg string) Event {
 func Info(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			KubernetesNode: node,
 		},
 		Type:    INFO,
 		Message: msg,

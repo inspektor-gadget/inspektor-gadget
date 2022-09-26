@@ -72,8 +72,8 @@ func Unique(edges []Event) []Event {
 
 func (e *Event) Key() string {
 	return fmt.Sprintf("%s/%s/%s/%s/%s/%d",
-		e.Namespace,
-		e.Pod,
+		e.KubernetesNamespace,
+		e.KubernetesPodName,
 		e.PktType,
 		e.Proto,
 		e.IP,

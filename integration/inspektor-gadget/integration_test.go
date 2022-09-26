@@ -331,7 +331,7 @@ func TestBindsnoop(t *testing.T) {
 			}
 
 			normalize := func(e *bindTypes.Event) {
-				e.Node = ""
+				e.KubernetesNode = ""
 				e.Pid = 0
 				e.MountNsID = 0
 			}
@@ -416,7 +416,7 @@ func TestCapabilities(t *testing.T) {
 			}
 
 			normalize := func(e *capabilitiesTypes.Event) {
-				e.Node = ""
+				e.KubernetesNode = ""
 				e.Pid = 0
 				e.UID = 0
 				e.MountNsID = 0
@@ -466,11 +466,11 @@ func TestDns(t *testing.T) {
 
 			// DNS gadget doesn't provide container data. Remove it.
 			for _, entry := range expectedEntries {
-				entry.Container = ""
+				entry.KubernetesContainerName = ""
 			}
 
 			normalize := func(e *dnsTypes.Event) {
-				e.Node = ""
+				e.KubernetesNode = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
@@ -549,7 +549,7 @@ func TestExecsnoop(t *testing.T) {
 			}
 
 			normalize := func(e *execTypes.Event) {
-				e.Node = ""
+				e.KubernetesNode = ""
 				e.Pid = 0
 				e.Ppid = 0
 				e.UID = 0
@@ -823,7 +823,7 @@ func TestOpensnoop(t *testing.T) {
 			}
 
 			normalize := func(e *openTypes.Event) {
-				e.Node = ""
+				e.KubernetesNode = ""
 				e.MountNsID = 0
 				e.Pid = 0
 				e.UID = 0
@@ -929,7 +929,7 @@ func TestSigsnoop(t *testing.T) {
 			}
 
 			normalize := func(e *signalTypes.Event) {
-				e.Node = ""
+				e.KubernetesNode = ""
 				e.Pid = 0
 				e.TargetPid = 0
 				e.Retval = 0
@@ -1063,7 +1063,7 @@ func TestTcptracer(t *testing.T) {
 			}
 
 			normalize := func(e *tcpTypes.Event) {
-				e.Node = ""
+				e.KubernetesNode = ""
 				e.Pid = 0
 				e.Saddr = ""
 				e.Sport = 0

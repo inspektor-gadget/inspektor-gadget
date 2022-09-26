@@ -144,7 +144,7 @@ func (a *NetworkPolicyAdvisor) labelKeyString(labels map[string]string) (ret str
  * namespace:label1=value1,label2=value2
  */
 func (a *NetworkPolicyAdvisor) localPodKey(e types.Event) (ret string) {
-	return e.Namespace + ":" + a.labelKeyString(e.PodLabels)
+	return e.KubernetesNamespace + ":" + a.labelKeyString(e.PodLabels)
 }
 
 func (a *NetworkPolicyAdvisor) networkPeerKey(e types.Event) (ret string) {
@@ -173,7 +173,7 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 				PodSelector: &metav1.LabelSelector{MatchLabels: a.labelFilter(e.RemotePodLabels)},
 			},
 		}
-		if e.Namespace != e.RemotePodNamespace {
+		if e.KubernetesNamespace != e.RemotePodNamespace {
 			peers[0].NamespaceSelector = &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					// Kubernetes 1.22 is guaranteed to add the following label on namespaces:
@@ -190,7 +190,7 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 				PodSelector: &metav1.LabelSelector{MatchLabels: e.RemoteSvcLabelSelector},
 			},
 		}
-		if e.Namespace != e.RemoteSvcNamespace {
+		if e.KubernetesNamespace != e.RemoteSvcNamespace {
 			peers[0].NamespaceSelector = &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					// Kubernetes 1.22 is guaranteed to add the following label on namespaces:
@@ -341,7 +341,7 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 			}
 		}
 
-		name := events[0].Pod
+		name := events[0].KubernetesPodName
 		if events[0].PodOwner != "" {
 			name = events[0].PodOwner
 		}
@@ -353,7 +353,7 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
-				Namespace: events[0].Namespace,
+				Namespace: events[0].KubernetesNamespace,
 				Labels:    map[string]string{},
 			},
 			Spec: networkingv1.NetworkPolicySpec{

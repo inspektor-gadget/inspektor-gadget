@@ -91,13 +91,13 @@ func (p *ProcessParser) TransformToColumns(e *types.Event) string {
 	for _, col := range p.OutputConfig.CustomColumns {
 		switch col {
 		case "node":
-			sb.WriteString(fmt.Sprintf("%s", e.Node))
+			sb.WriteString(fmt.Sprintf("%s", e.KubernetesNode))
 		case "namespace":
-			sb.WriteString(fmt.Sprintf("%s", e.Namespace))
+			sb.WriteString(fmt.Sprintf("%s", e.KubernetesNamespace))
 		case "pod":
-			sb.WriteString(fmt.Sprintf("%s", e.Pod))
+			sb.WriteString(fmt.Sprintf("%s", e.KubernetesPodName))
 		case "container":
-			sb.WriteString(fmt.Sprintf("%s", e.Container))
+			sb.WriteString(fmt.Sprintf("%s", e.KubernetesContainerName))
 		case "comm":
 			sb.WriteString(fmt.Sprintf("%s", e.Command))
 		case "tgid":
@@ -127,14 +127,14 @@ func (p *ProcessParser) SortEvents(allProcesses *[]types.Event) {
 	sort.Slice(*allProcesses, func(i, j int) bool {
 		pi, pj := (*allProcesses)[i], (*allProcesses)[j]
 		switch {
-		case pi.Node != pj.Node:
-			return pi.Node < pj.Node
-		case pi.Namespace != pj.Namespace:
-			return pi.Namespace < pj.Namespace
-		case pi.Pod != pj.Pod:
-			return pi.Pod < pj.Pod
-		case pi.Container != pj.Container:
-			return pi.Container < pj.Container
+		case pi.KubernetesNode != pj.KubernetesNode:
+			return pi.KubernetesNode < pj.KubernetesNode
+		case pi.KubernetesNamespace != pj.KubernetesNamespace:
+			return pi.KubernetesNamespace < pj.KubernetesNamespace
+		case pi.KubernetesPodName != pj.KubernetesPodName:
+			return pi.KubernetesPodName < pj.KubernetesPodName
+		case pi.KubernetesContainerName != pj.KubernetesContainerName:
+			return pi.KubernetesContainerName < pj.KubernetesContainerName
 		case pi.Command != pj.Command:
 			return pi.Command < pj.Command
 		case pi.Tgid != pj.Tgid:
