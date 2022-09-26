@@ -97,7 +97,7 @@ Available Commands:
   snapshot    Take a snapshot of a subsystem and print it
   top         Gather, sort and periodically report events according to a given criteria
   trace       Trace and print system events
-  traceloop   Get strace-like logs of a pod from the past
+  traceloop   Get strace-like logs of a container from the past
   undeploy    Undeploy Inspektor Gadget from cluster
   version     Show version
 
