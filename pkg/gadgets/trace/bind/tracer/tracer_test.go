@@ -36,15 +36,10 @@ func TestBindTracerCreate(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	tracer, err := tracer.NewTracer(&tracer.Config{}, nil,
-		func(types.Event) {})
-	if err != nil {
-		t.Fatalf("Error creating tracer: %s", err)
-	}
+	tracer := createTracer(t, &tracer.Config{}, func(types.Event) {})
 	if tracer == nil {
 		t.Fatal("Returned tracer was nil")
 	}
-	t.Cleanup(tracer.Stop)
 }
 
 func TestBindTracerStopIdempotent(t *testing.T) {
@@ -52,14 +47,7 @@ func TestBindTracerStopIdempotent(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	tracer, err := tracer.NewTracer(&tracer.Config{}, nil,
-		func(types.Event) {})
-	if err != nil {
-		t.Fatalf("Error creating tracer: %s", err)
-	}
-	if tracer == nil {
-		t.Fatal("Returned tracer was nil")
-	}
+	tracer := createTracer(t, &tracer.Config{}, func(types.Event) {})
 
 	// Check that a double stop doesn't cause issues
 	tracer.Stop()

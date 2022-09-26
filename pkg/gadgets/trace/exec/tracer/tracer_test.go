@@ -36,15 +36,10 @@ func TestExecTracerCreate(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	tracer, err := tracer.NewTracer(&tracer.Config{}, nil,
-		func(types.Event) {})
-	if err != nil {
-		t.Fatalf("Error creating tracer: %s", err)
-	}
+	tracer := createTracer(t, &tracer.Config{}, func(types.Event) {})
 	if tracer == nil {
 		t.Fatal("Returned tracer was nil")
 	}
-	t.Cleanup(tracer.Stop)
 }
 
 func TestExecTracerStopIdempotent(t *testing.T) {
@@ -52,32 +47,11 @@ func TestExecTracerStopIdempotent(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	tracer, err := tracer.NewTracer(&tracer.Config{}, nil,
-		func(types.Event) {})
-	if err != nil {
-		t.Fatalf("Error creating tracer: %s", err)
-	}
-	if tracer == nil {
-		t.Fatal("Returned tracer was nil")
-	}
+	tracer := createTracer(t, &tracer.Config{}, func(types.Event) {})
 
 	// Check that a double stop doesn't cause issues
 	tracer.Stop()
 	tracer.Stop()
-}
-
-func createTracer(
-	t *testing.T, config *tracer.Config, callback func(types.Event),
-) *tracer.Tracer {
-	t.Helper()
-
-	tracer, err := tracer.NewTracer(config, nil, callback)
-	if err != nil {
-		t.Fatalf("Error creating tracer: %s", err)
-	}
-	t.Cleanup(tracer.Stop)
-
-	return tracer
 }
 
 func TestExecTracer(t *testing.T) {
@@ -292,6 +266,20 @@ func TestExecTracerMultipleMntNsIDsFilter(t *testing.T) {
 		utilstest.Equal(t, uint32(expectedEvents[i].catPid), events[i].Pid,
 			"Captured event has bad PID")
 	}
+}
+
+func createTracer(
+	t *testing.T, config *tracer.Config, callback func(types.Event),
+) *tracer.Tracer {
+	t.Helper()
+
+	tracer, err := tracer.NewTracer(config, nil, callback)
+	if err != nil {
+		t.Fatalf("Error creating tracer: %s", err)
+	}
+	t.Cleanup(tracer.Stop)
+
+	return tracer
 }
 
 // Function to generate an event used most of the times.
