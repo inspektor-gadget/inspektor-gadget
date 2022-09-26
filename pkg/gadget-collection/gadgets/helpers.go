@@ -37,9 +37,9 @@ func ContainerSelectorFromContainerFilter(f *gadgetv1alpha1.ContainerFilter) *co
 		labels[k] = v
 	}
 	return &containercollection.ContainerSelector{
-		Namespace: f.Namespace,
-		Podname:   f.Podname,
-		Labels:    labels,
-		Name:      f.ContainerName,
+		KubernetesNamespace:     f.Namespace,
+		KubernetesPodName:       f.Podname,
+		KubernetesLabels:        labels,
+		KubernetesContainerName: f.ContainerName,
 	}
 }

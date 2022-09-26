@@ -67,10 +67,10 @@ type Container struct {
 }
 
 type ContainerSelector struct {
-	Namespace string
-	Podname   string
-	Labels    map[string]string
-	Name      string
+	KubernetesNamespace     string
+	KubernetesPodName       string
+	KubernetesLabels        map[string]string
+	KubernetesContainerName string
 }
 
 // GetOwnerReference returns the owner reference information of the

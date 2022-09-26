@@ -107,7 +107,7 @@ func main() {
 	// Create a tracer instance. This is the glue piece that allows
 	// this example to filter events by containers.
 	containerSelector := containercollection.ContainerSelector{
-		Name: containerName,
+		KubernetesContainerName: containerName,
 	}
 
 	if err := tracerCollection.AddTracer(traceName, containerSelector); err != nil {

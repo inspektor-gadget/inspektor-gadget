@@ -53,7 +53,7 @@ func (g *TraceGadget[Event]) Run() error {
 	// TODO: Improve filtering, see further details in
 	// https://github.com/kinvolk/inspektor-gadget/issues/644.
 	containerSelector := containercollection.ContainerSelector{
-		Name: g.commonFlags.Containername,
+		KubernetesContainerName: g.commonFlags.Containername,
 	}
 
 	// Create mount namespace map to filter by containers

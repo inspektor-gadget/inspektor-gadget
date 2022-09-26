@@ -32,7 +32,7 @@ func TestTracer(t *testing.T) {
 		err := g.AddTracer(
 			fmt.Sprintf("my_tracer_id%d", i),
 			containercollection.ContainerSelector{
-				Namespace: fmt.Sprintf("this-namespace%d", i),
+				KubernetesNamespace: fmt.Sprintf("this-namespace%d", i),
 			},
 		)
 		if err != nil {
@@ -48,7 +48,7 @@ func TestTracer(t *testing.T) {
 	err = g.AddTracer(
 		fmt.Sprintf("my_tracer_id%d", 0),
 		containercollection.ContainerSelector{
-			Namespace: fmt.Sprintf("this-namespace%d", 0),
+			KubernetesNamespace: fmt.Sprintf("this-namespace%d", 0),
 		},
 	)
 	if err == nil {
