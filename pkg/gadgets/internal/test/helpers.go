@@ -44,6 +44,7 @@ func CreateMntNsFilterMap(t *testing.T, mountNsIDs ...uint64) *ebpf.Map {
 	if err != nil {
 		t.Fatalf("Failed to create eBPF map: %s", err)
 	}
+	t.Cleanup(func() { m.Close() })
 
 	for _, mountnsid := range mountNsIDs {
 		if err := m.Put(mountnsid, one); err != nil {
