@@ -63,7 +63,7 @@ func NewTcpconnectParserWithRuntimeInfo(outputConfig *commonutils.OutputConfig) 
 	return newTcpconnectParser(outputConfig, commonutils.GetContainerRuntimeColumns())
 }
 
-func (p *TcpconnectParser) TransformToColumns(event *tcpconnectTypes.Event) string {
+func (p *TcpconnectParser) TransformIntoColumns(event *tcpconnectTypes.Event) string {
 	var sb strings.Builder
 
 	for _, col := range p.OutputConfig.CustomColumns {

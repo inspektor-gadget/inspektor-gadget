@@ -94,6 +94,6 @@ func (p *GadgetParser[T]) BuildColumnsHeader() string {
 	return p.formatter.FormatHeader()
 }
 
-func (p *GadgetParser[T]) TransformToColumns(entry *T) string {
+func (p *GadgetParser[T]) TransformIntoColumns(entry *T) string {
 	return p.formatter.FormatEntry(entry)
 }

@@ -108,7 +108,7 @@ func getCall(e *types.Event) string {
 	return ""
 }
 
-func (p *MountParser) TransformToColumns(event *types.Event) string {
+func (p *MountParser) TransformIntoColumns(event *types.Event) string {
 	var sb strings.Builder
 
 	for _, col := range p.OutputConfig.CustomColumns {
