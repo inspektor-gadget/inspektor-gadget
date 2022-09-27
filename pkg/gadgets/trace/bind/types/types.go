@@ -22,11 +22,11 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	Pid       uint32 `json:"pid,omitempty" column:"pid,width:7,fixed"`
-	Comm      string `json:"comm,omitempty" column:"comm,width:16,fixed"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
+	Comm      string `json:"comm,omitempty" column:"comm,maxWidth:16"`
 	Protocol  string `json:"proto,omitempty" column:"proto,width:5,fixed"`
 	Addr      string `json:"addr,omitempty" column:"addr,width:16"`
-	Port      uint16 `json:"port,omitempty" column:"port,width:5,fixed"`
+	Port      uint16 `json:"port,omitempty" column:"port,minWidth:type"`
 	Options   string `json:"opts,omitempty" column:"opts,width:5,fixed"`
 	Interface string `json:"if,omitempty" column:"if,width:12"`
 	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`

@@ -24,6 +24,7 @@ import (
 type Column[T any] struct {
 	col             *columns.Column[T]
 	calculatedWidth int
+	treatAsFixed    bool
 	formatter       ColumnFormatter
 }
 

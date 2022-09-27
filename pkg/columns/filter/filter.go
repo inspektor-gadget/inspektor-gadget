@@ -37,7 +37,7 @@ const (
 	comparisonTypeGte
 )
 
-type filterSpec[T any] struct {
+type FilterSpec[T any] struct {
 	value          string
 	refValue       interface{}
 	comparisonType comparisonType
@@ -47,9 +47,46 @@ type filterSpec[T any] struct {
 	cols           columns.ColumnMap[T]
 }
 
+func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T]) (value reflect.Value, err error) {
+	switch fs.column.Kind() {
+	case reflect.Int,
+		reflect.Int8,
+		reflect.Int16,
+		reflect.Int32,
+		reflect.Int64:
+		number, err := strconv.ParseInt(fs.value, 10, 64)
+		if err != nil {
+			return value, fmt.Errorf("tried to compare %q to int column %q", fs.value, column.Name)
+		}
+		value = reflect.ValueOf(number).Convert(column.Type())
+	case reflect.Uint,
+		reflect.Uint8,
+		reflect.Uint16,
+		reflect.Uint32,
+		reflect.Uint64:
+		number, err := strconv.ParseUint(fs.value, 10, 64)
+		if err != nil {
+			return value, fmt.Errorf("tried to compare %q to uint column %q", fs.value, column.Name)
+		}
+		value = reflect.ValueOf(number).Convert(column.Type())
+	case reflect.Float32,
+		reflect.Float64:
+		number, err := strconv.ParseFloat(fs.value, 64)
+		if err != nil {
+			return value, fmt.Errorf("tried to compare %q to float column %q", fs.value, column.Name)
+		}
+		value = reflect.ValueOf(number).Convert(column.Type())
+	case reflect.String:
+		value = reflect.ValueOf(fs.value)
+	default:
+		return reflect.Value{}, fmt.Errorf("tried to match %q on unsupported column %q", fs.value, column.Name)
+	}
+	return value, nil
+}
+
 // GetFilterFromString prepares a filter that has a Match() function that can be called on
 // entries of type *T
-func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*filterSpec[T], error) {
+func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*FilterSpec[T], error) {
 	filterInfo := strings.SplitN(filter, ":", 2)
 	if len(filterInfo) == 1 {
 		// special case: only a column means we match with an empty string
@@ -62,7 +99,7 @@ func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*filt
 		return nil, fmt.Errorf("could not apply filter: column %q not found", filterInfo[0])
 	}
 
-	fs := &filterSpec[T]{
+	fs := &FilterSpec[T]{
 		cols:   cols,
 		column: column,
 	}
@@ -108,46 +145,18 @@ func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*filt
 		return nil, fmt.Errorf("tried to apply regular expression on non-string column %q", fs.column.Name)
 	}
 
-	// We precalculate value to be of a comparable type to column.kind when comparisonType is comparisonTypeMatch
+	// We precalculate value to be of a comparable type to column.kind when comparisonType is not comparisonTypeRegex
 	var value reflect.Value
+	var err error
 	switch fs.comparisonType {
 	case comparisonTypeMatch,
 		comparisonTypeGt,
 		comparisonTypeGte,
 		comparisonTypeLt,
 		comparisonTypeLte:
-		switch fs.column.Kind() {
-		case reflect.Int,
-			reflect.Int8,
-			reflect.Int16,
-			reflect.Int32,
-			reflect.Int64:
-			number, err := strconv.ParseInt(fs.value, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("tried to compare %q to int column %q", fs.value, column.Name)
-			}
-			value = reflect.ValueOf(number).Convert(column.Type())
-		case reflect.Uint,
-			reflect.Uint8,
-			reflect.Uint16,
-			reflect.Uint32,
-			reflect.Uint64:
-			number, err := strconv.ParseUint(fs.value, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("tried to compare %q to uint column %q", fs.value, column.Name)
-			}
-			value = reflect.ValueOf(number).Convert(column.Type())
-		case reflect.Float32,
-			reflect.Float64:
-			number, err := strconv.ParseFloat(fs.value, 64)
-			if err != nil {
-				return nil, fmt.Errorf("tried to compare %q to float column %q", fs.value, column.Name)
-			}
-			value = reflect.ValueOf(number).Convert(column.Type())
-		case reflect.String:
-			value = reflect.ValueOf(fs.value)
-		default:
-			return nil, fmt.Errorf("tried to match %q on unsupported column %q", fs.value, column.Name)
+		value, err = getValueFromFilterSpec(fs, column)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -175,14 +184,46 @@ func compare[T constraints.Ordered](a, b T, ct comparisonType, negate bool) bool
 	}
 }
 
-func (fs *filterSpec[T]) Match(entry *T) bool {
+func (fs *FilterSpec[T]) compare(field reflect.Value) bool {
+	switch fs.column.Kind() {
+	case reflect.Int:
+		return compare(field.Interface().(int), fs.refValue.(int), fs.comparisonType, fs.negate)
+	case reflect.Int8:
+		return compare(field.Interface().(int8), fs.refValue.(int8), fs.comparisonType, fs.negate)
+	case reflect.Int16:
+		return compare(field.Interface().(int16), fs.refValue.(int16), fs.comparisonType, fs.negate)
+	case reflect.Int32:
+		return compare(field.Interface().(int32), fs.refValue.(int32), fs.comparisonType, fs.negate)
+	case reflect.Int64:
+		return compare(field.Interface().(int64), fs.refValue.(int64), fs.comparisonType, fs.negate)
+	case reflect.Uint:
+		return compare(field.Interface().(uint), fs.refValue.(uint), fs.comparisonType, fs.negate)
+	case reflect.Uint8:
+		return compare(field.Interface().(uint8), fs.refValue.(uint8), fs.comparisonType, fs.negate)
+	case reflect.Uint16:
+		return compare(field.Interface().(uint16), fs.refValue.(uint16), fs.comparisonType, fs.negate)
+	case reflect.Uint32:
+		return compare(field.Interface().(uint32), fs.refValue.(uint32), fs.comparisonType, fs.negate)
+	case reflect.Uint64:
+		return compare(field.Interface().(uint64), fs.refValue.(uint64), fs.comparisonType, fs.negate)
+	case reflect.Float32:
+		return compare(field.Interface().(float32), fs.refValue.(float32), fs.comparisonType, fs.negate)
+	case reflect.Float64:
+		return compare(field.Interface().(float64), fs.refValue.(float64), fs.comparisonType, fs.negate)
+	case reflect.String:
+		return compare(field.Interface().(string), fs.refValue.(string), fs.comparisonType, fs.negate)
+	}
+	return false
+}
+
+// Match matches a single entry against the FilterSpec and returns true if it matches
+func (fs *FilterSpec[T]) Match(entry *T) bool {
 	if entry == nil {
 		return fs.negate
 	}
 
 	field := fs.column.GetRef(reflect.ValueOf(entry))
 
-	matches := false
 	switch fs.comparisonType {
 	case
 		comparisonTypeMatch,
@@ -190,44 +231,15 @@ func (fs *filterSpec[T]) Match(entry *T) bool {
 		comparisonTypeGte,
 		comparisonTypeLt,
 		comparisonTypeLte:
-		switch fs.column.Kind() {
-		case reflect.Int:
-			return compare(field.Interface().(int), fs.refValue.(int), fs.comparisonType, fs.negate)
-		case reflect.Int8:
-			return compare(field.Interface().(int8), fs.refValue.(int8), fs.comparisonType, fs.negate)
-		case reflect.Int16:
-			return compare(field.Interface().(int16), fs.refValue.(int16), fs.comparisonType, fs.negate)
-		case reflect.Int32:
-			return compare(field.Interface().(int32), fs.refValue.(int32), fs.comparisonType, fs.negate)
-		case reflect.Int64:
-			return compare(field.Interface().(int64), fs.refValue.(int64), fs.comparisonType, fs.negate)
-		case reflect.Uint:
-			return compare(field.Interface().(uint), fs.refValue.(uint), fs.comparisonType, fs.negate)
-		case reflect.Uint8:
-			return compare(field.Interface().(uint8), fs.refValue.(uint8), fs.comparisonType, fs.negate)
-		case reflect.Uint16:
-			return compare(field.Interface().(uint16), fs.refValue.(uint16), fs.comparisonType, fs.negate)
-		case reflect.Uint32:
-			return compare(field.Interface().(uint32), fs.refValue.(uint32), fs.comparisonType, fs.negate)
-		case reflect.Uint64:
-			return compare(field.Interface().(uint64), fs.refValue.(uint64), fs.comparisonType, fs.negate)
-		case reflect.Float32:
-			return compare(field.Interface().(float32), fs.refValue.(float32), fs.comparisonType, fs.negate)
-		case reflect.Float64:
-			return compare(field.Interface().(float64), fs.refValue.(float64), fs.comparisonType, fs.negate)
-		case reflect.String:
-			return compare(field.Interface().(string), fs.refValue.(string), fs.comparisonType, fs.negate)
-		}
+		return fs.compare(field)
 	case comparisonTypeRegex:
-		if fs.regex.MatchString(field.String()) {
-			matches = true
-		}
+		return fs.regex.MatchString(field.String()) != fs.negate
 	}
 
-	return matches != fs.negate
+	return false
 }
 
-// FilterEntries will filter entries according to the given filters.
+// FilterEntries will return the elements of entries that match all given filters.
 func FilterEntries[T any](cols columns.ColumnMap[T], entries []*T, filters []string) ([]*T, error) {
 	if entries == nil {
 		return nil, nil

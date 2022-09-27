@@ -59,68 +59,71 @@ func TestSorter(t *testing.T) {
 
 	cmap := cols.GetColumnMap()
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
-	SortEntries(cmap, testEntries, []string{"uint"})
+	shuffle := func() {
+		rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	}
 
+	shuffle()
+	SortEntries(cmap, testEntries, []string{"uint"})
 	if testEntries[0].Uint != 1 {
 		t.Errorf("expected value to be 1")
 	}
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	shuffle()
 	SortEntries(cmap, testEntries, []string{"-uint"})
 	if testEntries[0].Uint != 5 {
 		t.Errorf("expected value to be 5")
 	}
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	shuffle()
 	SortEntries(cmap, testEntries, []string{"int"})
 	if testEntries[0].Int != 1 {
 		t.Errorf("expected value to be 1")
 	}
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	shuffle()
 	SortEntries(cmap, testEntries, []string{"-int"})
 	if testEntries[0].Int != 5 {
 		t.Errorf("expected value to be 5")
 	}
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	shuffle()
 	SortEntries(cmap, testEntries, []string{"float32"})
 	if testEntries[0].Float32 != 1 {
 		t.Errorf("expected value to be 1")
 	}
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	shuffle()
 	SortEntries(cmap, testEntries, []string{"-float32"})
 	if testEntries[0].Float32 != 5 {
 		t.Errorf("expected value to be 5")
 	}
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	shuffle()
 	SortEntries(cmap, testEntries, []string{"float64"})
 	if testEntries[0].Float64 != 1 {
 		t.Errorf("expected value to be 1")
 	}
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	shuffle()
 	SortEntries(cmap, testEntries, []string{"-float64"})
 	if testEntries[0].Float64 != 5 {
 		t.Errorf("expected value to be 5")
 	}
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	shuffle()
 	SortEntries(cmap, testEntries, []string{"group", "string"})
 	if testEntries[0].Group != "a" || testEntries[0].String != "a" {
 		t.Errorf("expected value to be a (group) and a (string)")
 	}
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	shuffle()
 	SortEntries(cmap, testEntries, []string{"embeddedInt"})
 	if testEntries[0].EmbeddedInt != 3 {
 		t.Errorf("expected embedded value to be a 3")
 	}
 
-	rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+	shuffle()
 	SortEntries(cmap, testEntries, []string{"string"})
 	if testEntries[0].String != "a" {
 		t.Errorf("expected value to be a")

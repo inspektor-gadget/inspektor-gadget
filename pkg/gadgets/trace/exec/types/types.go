@@ -24,12 +24,12 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	Pid       uint32   `json:"pid,omitempty" column:"pid,width:7,fixed"`
-	Ppid      uint32   `json:"ppid,omitempty" column:"ppid,width:7,fixed"`
-	Comm      string   `json:"pcomm,omitempty" column:"comm,width:16,fixed"`
+	Pid       uint32   `json:"pid,omitempty" column:"pid,minWidth:7"`
+	Ppid      uint32   `json:"ppid,omitempty" column:"ppid,minWidth:7"`
+	Comm      string   `json:"pcomm,omitempty" column:"comm,maxWidth:16"`
 	Retval    int      `json:"ret,omitempty" column:"ret,width:3,fixed"`
 	Args      []string `json:"args,omitempty" column:"args,width:40"`
-	UID       uint32   `json:"uid,omitempty" column:"uid,width:10,fixed,hide"`
+	UID       uint32   `json:"uid,omitempty" column:"uid,minWidth:10,hide"`
 	MountNsID uint64   `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
 }
 

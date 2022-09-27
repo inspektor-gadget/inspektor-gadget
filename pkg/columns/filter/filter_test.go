@@ -249,7 +249,7 @@ func TestFilters(t *testing.T) {
 
 	cols, err := columns.NewColumns[testData]()
 	if err != nil {
-		t.Errorf("failed to initialize: %v", err)
+		t.Errorf("Failed to initialize: %v", err)
 	}
 
 	cmap := cols.GetColumnMap()
@@ -257,7 +257,7 @@ func TestFilters(t *testing.T) {
 	t.Run("test empty input", func(t *testing.T) {
 		res, err := FilterEntries(cmap, nil, []string{""})
 		if err != nil || res != nil {
-			t.Errorf("expected returned entries and err to be nil")
+			t.Errorf("Expected returned entries and err to be nil")
 		}
 	})
 
@@ -265,13 +265,13 @@ func TestFilters(t *testing.T) {
 		t.Run(filterTest.description, func(t *testing.T) {
 			out, err := FilterEntries(cmap, filterEntries, []string{filterTest.filterString})
 			if err != nil && !filterTest.expectError {
-				t.Errorf("unexpected error: %v", err)
+				t.Errorf("Unexpected error: %v", err)
 			}
 			if err == nil && filterTest.expectError {
-				t.Errorf("expected error")
+				t.Errorf("Expected error")
 			}
 			if len(out) != filterTest.expectedCount {
-				t.Errorf("expected %d entries, got %d", filterTest.expectedCount, len(out))
+				t.Errorf("Expected %d entries, got %d", filterTest.expectedCount, len(out))
 			}
 		})
 	}
@@ -281,6 +281,19 @@ func TestFilters(t *testing.T) {
 		t.Errorf("failed to get filter: %v", err)
 	}
 	if filter.Match(nil) {
-		t.Errorf("matching nil on non-negated filter should result in false")
+		t.Errorf("Matching nil on non-negated filter should result in false")
 	}
+
+	t.Run("multiple filters", func(t *testing.T) {
+		out, err := FilterEntries(cmap, filterEntries, []string{"int:1", "int8:1", "string:Demo 123"})
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		if len(out) != 1 {
+			t.Fatalf("Expected %d entries, got %d", 1, len(out))
+		}
+		if out[0].Int != 1 {
+			t.Errorf("Expected another entry")
+		}
+	})
 }

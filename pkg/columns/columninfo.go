@@ -23,9 +23,23 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/columns/ellipsis"
 )
 
+const (
+	MaxCharsUint8  = 3  // 255
+	MaxCharsInt8   = 4  // -128
+	MaxCharsUint16 = 5  // 65535
+	MaxCharsInt16  = 6  // -32768
+	MaxCharsUint32 = 10 // 4294967295
+	MaxCharsInt32  = 11 // -2147483648
+	MaxCharsUint64 = 20 // 18446744073709551615
+	MaxCharsInt64  = 20 // −9223372036854775808
+	MaxCharsBool   = 5  // false
+)
+
 type Column[T any] struct {
 	Name         string                // Name of the column; case-insensitive for most use cases
 	Width        int                   // Width to reserve for this column
+	MinWidth     int                   // MinWidth will be the minimum width this column will be scaled to when using auto-scaling
+	MaxWidth     int                   // MaxWidth will be the maximum width this column will be scaled to when using auto-scaling
 	Alignment    Alignment             // Alignment of this column (left or right)
 	Extractor    func(*T) string       // Extractor to be used; this can be defined to transform the output before retrieving the actual value
 	Visible      bool                  // Visible defines whether a column is to be shown by default
@@ -43,11 +57,57 @@ type Column[T any] struct {
 	columnType    reflect.Type // cached type info from reflection
 }
 
+func (ci *Column[T]) getWidthFromType() int {
+	switch ci.kind {
+	case reflect.Uint8:
+		return MaxCharsUint8
+	case reflect.Int8:
+		return MaxCharsInt8
+	case reflect.Uint16:
+		return MaxCharsUint16
+	case reflect.Int16:
+		return MaxCharsInt16
+	case reflect.Uint32:
+		return MaxCharsUint32
+	case reflect.Int32:
+		return MaxCharsInt32
+	case reflect.Uint64, reflect.Uint:
+		return MaxCharsUint64
+	case reflect.Int64, reflect.Int:
+		return MaxCharsInt64
+	case reflect.Bool:
+		return MaxCharsBool
+	}
+	return 0
+}
+
+func (ci *Column[T]) getWidth(params []string) (int, error) {
+	if len(params) == 1 {
+		return 0, fmt.Errorf("missing %q value for field %q", params[0], ci.Name)
+	}
+	if params[1] == "type" {
+		// Special case, we get the maximum length this field can have by its type
+		w := ci.getWidthFromType()
+		if w > 0 {
+			return w, nil
+		}
+		return 0, fmt.Errorf("special value %q used for field %q is only available for integer and bool types", params[1], ci.Name)
+	}
+
+	res, err := strconv.Atoi(params[1])
+	if err != nil {
+		return 0, fmt.Errorf("invalid width %q for field %q: %w", params[1], ci.Name, err)
+	}
+
+	return res, nil
+}
+
 func (ci *Column[T]) fromTag(tag string) error {
 	tagInfo := strings.Split(tag, ",")
 	ci.Name = tagInfo[0]
 
 	tagInfo = tagInfo[1:]
+	var err error
 	for _, subTag := range tagInfo {
 		params := strings.SplitN(subTag, ":", 2)
 		paramsLen := len(params)
@@ -129,14 +189,20 @@ func (ci *Column[T]) fromTag(tag string) error {
 			}
 			ci.Precision = w
 		case "width":
-			if paramsLen == 1 {
-				return fmt.Errorf("missing width value for field %q", ci.Name)
-			}
-			w, err := strconv.Atoi(params[1])
+			ci.Width, err = ci.getWidth(params)
 			if err != nil {
-				return fmt.Errorf("invalid width %q for field %q: %w", params[1], ci.Name, err)
+				return err
 			}
-			ci.Width = w
+		case "maxWidth":
+			ci.MaxWidth, err = ci.getWidth(params)
+			if err != nil {
+				return err
+			}
+		case "minWidth":
+			ci.MinWidth, err = ci.getWidth(params)
+			if err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("invalid column parameter %q for field %q", params[0], ci.Name)
 		}
