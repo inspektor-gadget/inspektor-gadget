@@ -87,7 +87,7 @@ func deployInspektorGadget(image, imagePullPolicy string, livenessProbe bool) *c
 	}
 }
 
-func deploySPO(limitReplicas, bestEffortResourceMgmt bool) *command {
+func deploySPO(limitReplicas, patchWebhookConfig, bestEffortResourceMgmt bool) *command {
 	cmdStr := fmt.Sprintf(`
 kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml
 kubectl --namespace cert-manager wait --for condition=ready pod -l app.kubernetes.io/instance=cert-manager
@@ -123,6 +123,16 @@ for i in $(seq 1 120); do
   sleep 1
 done
 
+# Similar to https://github.com/Azure/AKS/issues/1771 SPO webhook reconcilation doesn't work
+# on AKS because of an additional selector. So we patch the SPO-daemon config to respect this selector
+# using https://github.com/kubernetes-sigs/security-profiles-operator/blob/main/installation-usage.md#configuring-webhooks.
+# SPO issue: https://github.com/kubernetes-sigs/security-profiles-operator/issues/1187
+if [ %v = true ] ; then
+  kubectl -n security-profiles-operator patch spod spod  --type=merge \
+    -p='{"spec":{"webhookOptions":[{"name":"binding.spo.io","namespaceSelector":{"matchExpressions":[{"key":"control-plane","operator":"DoesNotExist"}]}},{"name":"recording.spo.io","namespaceSelector":{"matchExpressions":[{"key":"control-plane","operator":"DoesNotExist"}]}}]}}'
+  kubectl -n security-profiles-operator wait spod spod --for condition=ready
+fi
+
 # If requested, remove the resource management and let Kubernetes use the best-effort
 # QoS approach. It is useful on system with limited resources as Minikube on a GH runner.
 if [ %v = true ] ; then
@@ -140,7 +150,7 @@ kubectl -n security-profiles-operator wait deploy security-profiles-operator-web
   (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
 kubectl rollout status -n security-profiles-operator ds spod --timeout=180s || \
   (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
-`, limitReplicas, bestEffortResourceMgmt)
+`, limitReplicas, patchWebhookConfig, bestEffortResourceMgmt)
 	return &command{
 		name:           "DeploySecurityProfilesOperator",
 		cmd:            cmdStr,
@@ -158,8 +168,8 @@ var cleanupSPO *command = &command{
 	name: "RemoveSecurityProfilesOperator",
 	cmd: `
 	kubectl delete seccompprofile --all --all-namespaces
-	kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.3/deploy/operator.yaml
-	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml
+	kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.3/deploy/operator.yaml --ignore-not-found
+	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml --ignore-not-found
 	`,
 	cleanup: true,
 }

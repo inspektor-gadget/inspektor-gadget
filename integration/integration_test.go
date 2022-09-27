@@ -171,13 +171,16 @@ func testMain(m *testing.M) int {
 
 	if !*doNotDeploySPO {
 		limitReplicas := false
+		patchWebhookConfig := false
 		bestEffortResourceMgmt := false
 		if *k8sDistro == K8sDistroMinikubeGH {
 			limitReplicas = true
 			bestEffortResourceMgmt = true
 		}
-
-		initCommands = append(initCommands, deploySPO(limitReplicas, bestEffortResourceMgmt))
+		if *k8sDistro == K8sDistroAKSUbuntu {
+			patchWebhookConfig = true
+		}
+		initCommands = append(initCommands, deploySPO(limitReplicas, patchWebhookConfig, bestEffortResourceMgmt))
 		cleanupCommands = append(cleanupCommands, cleanupSPO)
 	}
 
