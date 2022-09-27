@@ -100,12 +100,11 @@ func (r *Runner) runLoop() {
 	// die because some changes are not recoverable, like switching
 	// to a non-root UID.
 
-	mntns, err := createMntNamespace()
+	mountnsid, err := createMntNamespace()
 	if err != nil {
 		r.replies <- fmt.Errorf("creating mount namespace: %w", err)
 		return
 	}
-	defer unix.Close(mntns)
 
 	if r.config.UID != 0 {
 		// syscall.Setuid() can't be used here because it'll
@@ -119,15 +118,6 @@ func (r *Runner) runLoop() {
 		}
 	}
 
-	pid := os.Getpid()
-	tid := unix.Gettid()
-
-	mountnsid, err := getMntNamespaceInode(pid, tid)
-	if err != nil {
-		r.replies <- fmt.Errorf("getting namespace inode: %w", err)
-		return
-	}
-
 	comm, err := os.Executable()
 	if err != nil {
 		r.replies <- fmt.Errorf("getting current executable: %w", err)
@@ -135,7 +125,7 @@ func (r *Runner) runLoop() {
 	}
 
 	r.Info = &RunnerInfo{
-		Pid:       pid,
+		Pid:       os.Getpid(),
 		Comm:      filepath.Base(comm),
 		UID:       r.config.UID,
 		MountNsID: mountnsid,
@@ -149,14 +139,17 @@ func (r *Runner) runLoop() {
 	}
 }
 
-func createMntNamespace() (int, error) {
+func createMntNamespace() (uint64, error) {
 	if err := unix.Unshare(syscall.CLONE_NEWNS); err != nil {
-		return -1, err
+		return 0, err
 	}
-	return getMntNsHandle()
+	return getMntNamespaceInode()
 }
 
-func getMntNamespaceInode(pid, tid int) (uint64, error) {
+func getMntNamespaceInode() (uint64, error) {
+	pid := os.Getpid()
+	tid := unix.Gettid()
+
 	fileinfo, err := os.Stat(fmt.Sprintf("/proc/%d/task/%d/ns/mnt", pid, tid))
 	if err != nil {
 		return 0, err
@@ -166,18 +159,4 @@ func getMntNamespaceInode(pid, tid int) (uint64, error) {
 		return 0, errors.New("not a syscall.Stat_t")
 	}
 	return stat.Ino, nil
-}
-
-// getMntNsHandle gets a handle to the current thread mount namespace.
-func getMntNsHandle() (int, error) {
-	pid := os.Getpid()
-	tid := unix.Gettid()
-
-	path := fmt.Sprintf("/proc/%d/task/%d/ns/mnt", pid, tid)
-
-	fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC, 0)
-	if err != nil {
-		return -1, err
-	}
-	return fd, nil
 }
