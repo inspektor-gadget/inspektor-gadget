@@ -48,14 +48,17 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 	container.KubernetesPodUID = containerData.KubernetesPodUID
 	container.KubernetesContainerName = containerData.KubernetesContainerName
 
-	// Some gadgets using the Trace CRD approach in local-gadget require the
-	// namespace and pod name to be set.
-	if container.KubernetesNamespace == "" {
-		container.KubernetesNamespace = "default"
-	}
-	if container.KubernetesPodName == "" {
-		container.KubernetesPodName = containerData.RuntimeContainerName
-	}
+	// IMPORTANT: Temporary disabling this workaround to avoid showing wrong
+	// information for non-k8s containers. It implies that filtering feature
+	// will not work on local-gadget interactive mode.
+	// Some gadgets using the Trace CRD approach (interactive mode) in
+	// local-gadget require the namespace and pod name to be set.
+	// if container.KubernetesNamespace == "" {
+	// 	container.KubernetesNamespace = "default"
+	// }
+	// if container.KubernetesPodName == "" {
+	// 	container.KubernetesPodName = containerData.RuntimeContainerName
+	// }
 }
 
 func containerRuntimeEnricher(
