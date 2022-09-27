@@ -198,17 +198,27 @@ distributeLeftover:
 	tf.buildFillString()
 }
 
-// AdjustWidthsToScreen will try to get the width of the screen buffer and call RecalculateWidths with that value
+// GetTerminalWidth returns the width of the terminal (if one is in use) or 0 otherwise
+func GetTerminalWidth() int {
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return 0
+	}
+	terminalWidth, _, err := term.GetSize(0)
+	if err != nil {
+		return 0
+	}
+	return terminalWidth
+}
+
+// AdjustWidthsToScreen will try to get the width of the screen buffer and, if successful, call RecalculateWidths with
+// that value
 func (tf *TextColumnsFormatter[T]) AdjustWidthsToScreen() {
 	if !tf.options.AutoScale {
 		return
 	}
 
-	if !term.IsTerminal(int(os.Stdout.Fd())) {
-		return
-	}
-	terminalWidth, _, err := term.GetSize(0)
-	if err != nil {
+	terminalWidth := GetTerminalWidth()
+	if terminalWidth == 0 {
 		return
 	}
 
