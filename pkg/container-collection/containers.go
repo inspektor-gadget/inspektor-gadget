@@ -22,15 +22,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
+
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 )
 
 // Container represents a container with its metadata.
 type Container struct {
+	// Container Runtime
+	Runtime string `json:"runtime,omitempty" column:"runtime,minWidth:5,maxWidth:10" columnTags:"runtime"`
+
 	// ID is the container id, typically a 64 hexadecimal string
-	ID string `json:"id,omitempty"`
+	ID string `json:"id,omitempty" column:"id,width:13,maxWidth:64" columnTags:"runtime"`
 
 	// Pid is the process id of the container
-	Pid uint32 `json:"pid,omitempty"`
+	Pid uint32 `json:"pid,omitempty" column:"pid,minWidth:7,hide"`
 
 	// Container's configuration is the config.json from the OCI runtime
 	// spec
@@ -42,8 +47,8 @@ type Container struct {
 	Bundle string `json:"bundle,omitempty"`
 
 	// Linux metadata can be derived from the pid via /proc/$pid/...
-	Mntns      uint64 `json:"mntns,omitempty"`
-	Netns      uint64 `json:"netns,omitempty"`
+	Mntns      uint64 `json:"mntns,omitempty" column:"mntns,width:12,hide"`
+	Netns      uint64 `json:"netns,omitempty" column:"netns,width:12,hide"`
 	CgroupPath string `json:"cgroupPath,omitempty"`
 	CgroupID   uint64 `json:"cgroupID,omitempty"`
 	// Data required to find the container to Pod association in the
@@ -54,12 +59,9 @@ type Container struct {
 	// Kubernetes metadata
 	Namespace string            `json:"namespace,omitempty"`
 	Podname   string            `json:"podname,omitempty"`
-	Name      string            `json:"name,omitempty"`
+	Name      string            `json:"name,omitempty" column:"name,width:30" columnTags:"runtime"`
 	Labels    map[string]string `json:"labels,omitempty"`
 	PodUID    string            `json:"podUID,omitempty"`
-
-	// Container Runtime metadata
-	Runtime string `json:"runtime,omitempty"`
 
 	ownerReference *metav1.OwnerReference
 }
@@ -155,4 +157,8 @@ func ownerReferenceEnrichment(
 	}
 
 	return nil
+}
+
+func GetColumns() *columns.Columns[Container] {
+	return columns.MustCreateColumns[Container]()
 }

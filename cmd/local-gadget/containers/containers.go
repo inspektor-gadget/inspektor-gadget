@@ -17,10 +17,6 @@ package containers
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"sort"
-	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -34,42 +30,9 @@ type ContainerFlags struct {
 	noTrunc bool
 }
 
-type ContainerParser struct {
-	commonutils.BaseParser[containercollection.Container]
-
-	containerFlags *ContainerFlags
-}
-
 func NewListContainersCmd() *cobra.Command {
+	var commonFlags utils.CommonFlags
 	var containerFlags ContainerFlags
-
-	availableColumns := []string{
-		"runtime",
-		"id",
-		"name",
-		"pid",
-		"mntns",
-		"netns",
-		"namespace",
-		"podname",
-		"poduid",
-		"cgrouppath",
-		"cgroupid",
-		"cgroupv1",
-		"cgroupv2",
-	}
-
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"runtime",
-				"id",
-				"name",
-			},
-		},
-	}
 
 	cmd := &cobra.Command{
 		Use:   "list-containers",
@@ -81,16 +44,16 @@ func NewListContainersCmd() *cobra.Command {
 			}
 			defer localGadgetManager.Close()
 
-			parser := &ContainerParser{
-				BaseParser:     commonutils.NewBaseTabParser[containercollection.Container](availableColumns, &commonFlags.OutputConfig),
-				containerFlags: &containerFlags,
+			parser, err := newContainerParser(&commonFlags.OutputConfig, &containerFlags)
+			if err != nil {
+				return commonutils.WrapInErrParserCreate(err)
 			}
 
 			containers := localGadgetManager.GetContainersBySelector(&containercollection.ContainerSelector{
 				Name: commonFlags.Containername,
 			})
 
-			parser.SortContainers(containers)
+			parser.Sort(containers, []string{"runtime", "name"})
 
 			switch commonFlags.OutputMode {
 			case commonutils.OutputModeJSON:
@@ -103,15 +66,7 @@ func NewListContainersCmd() *cobra.Command {
 			case commonutils.OutputModeColumns:
 				fallthrough
 			case commonutils.OutputModeCustomColumns:
-				w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-				fmt.Fprintln(w, parser.BuildColumnsHeader())
-
-				for _, c := range containers {
-					fmt.Fprintln(w, parser.TransformToColumns(c))
-				}
-
-				w.Flush()
+				fmt.Println(parser.TransformIntoTable(containers))
 			default:
 				return commonutils.WrapInErrOutputModeNotSupported(commonFlags.OutputMode)
 			}
@@ -127,65 +82,30 @@ func NewListContainersCmd() *cobra.Command {
 		"Don't truncate container ID",
 	)
 
-	utils.AddCommonFlags(cmd, commonFlags)
+	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
 }
 
-func (p *ContainerParser) SortContainers(containers []*containercollection.Container) {
-	sort.Slice(containers, func(i, j int) bool {
-		si, sj := (containers)[i], (containers)[j]
-		switch {
-		case si.Runtime != sj.Runtime:
-			return si.Runtime < sj.Runtime
-		case si.Name != sj.Name:
-			return si.Name < sj.Name
-		default:
-			return si.ID < sj.ID
-		}
-	})
-}
+func newContainerParser(
+	outputConfig *commonutils.OutputConfig, flags *ContainerFlags,
+) (
+	*commonutils.GadgetParser[containercollection.Container], error,
+) {
+	containerColumns := containercollection.GetColumns()
 
-func (p *ContainerParser) TransformToColumns(c *containercollection.Container) string {
-	var sb strings.Builder
-
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "runtime":
-			sb.WriteString(fmt.Sprintf("%s", c.Runtime))
-		case "id":
-			if p.containerFlags.noTrunc {
-				sb.WriteString(fmt.Sprintf("%s", c.ID))
-			} else {
-				sb.WriteString(fmt.Sprintf("%.13s", c.ID))
-			}
-		case "name":
-			sb.WriteString(fmt.Sprintf("%s", c.Name))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%d", c.Pid))
-		case "mntns":
-			sb.WriteString(fmt.Sprintf("%d", c.Mntns))
-		case "netns":
-			sb.WriteString(fmt.Sprintf("%d", c.Netns))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%s", c.Namespace))
-		case "podname":
-			sb.WriteString(fmt.Sprintf("%s", c.Podname))
-		case "poduid":
-			sb.WriteString(fmt.Sprintf("%s", c.PodUID))
-		case "cgrouppath":
-			sb.WriteString(fmt.Sprintf("%s", c.CgroupPath))
-		case "cgroupid":
-			sb.WriteString(fmt.Sprintf("%d", c.CgroupID))
-		case "cgroupv1":
-			sb.WriteString(fmt.Sprintf("%s", c.CgroupV1))
-		case "cgroupv2":
-			sb.WriteString(fmt.Sprintf("%s", c.CgroupV2))
-		default:
-			continue
-		}
-		sb.WriteRune('\t')
+	idCol, ok := containerColumns.GetColumn("id")
+	if !ok {
+		return nil, fmt.Errorf(`"id" column doesn't exist`)
 	}
 
-	return sb.String()
+	// By default, the "id" column is configured with width=13 and no fixed. In
+	// this way, the auto-scale will do its magic when --no-trunc is not set.
+	// Instead, when it is set, we must ensure auto-scale doesn't truncate it.
+	if flags.noTrunc {
+		idCol.Width = 64
+		idCol.FixedWidth = true
+	}
+
+	return commonutils.NewGadgetParserWithRuntimeInfo(outputConfig, containerColumns)
 }
