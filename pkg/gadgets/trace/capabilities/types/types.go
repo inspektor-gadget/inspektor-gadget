@@ -15,6 +15,9 @@
 package types
 
 import (
+	"fmt"
+
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
@@ -29,15 +32,29 @@ const (
 type Event struct {
 	eventtypes.Event
 
-	MountNsID uint64 `json:"mountnsid,omitempty"`
-	Pid       uint32 `json:"pid,omitempty"`
-	UID       uint32 `json:"uid,omitempty"`
-	Comm      string `json:"comm,omitempty"`
-	CapName   string `json:"capName,omitempty"`
-	Cap       int    `json:"cap,omitempty"`
-	Audit     int    `json:"audit,omitempty"`
-	InsetID   *bool  `json:"insetid,omitempty"`
-	Verdict   string `json:"verdict,omitempty"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
+	Comm      string `json:"comm,omitempty" column:"comm,maxWidth:16"`
+	UID       uint32 `json:"uid,omitempty" column:"uid,minWidth:6"`
+	Cap       int    `json:"cap,omitempty" column:"cap,width:3,fixed"`
+	CapName   string `json:"capName,omitempty" column:"capName,width:20,ellipsis:start"`
+	Audit     int    `json:"audit,omitempty" column:"audit,minWidth:5"`
+	Verdict   string `json:"verdict,omitempty" column:"verdict,width:7,fixed"`
+	InsetID   *bool  `json:"insetid,omitempty" column:"insetid,width:7,fixed,hide"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	cols := columns.MustCreateColumns[Event]()
+
+	cols.SetExtractor("insetid", func(event *Event) (ret string) {
+		if event.InsetID == nil {
+			return "N/A"
+		}
+
+		return fmt.Sprintf("%t", *event.InsetID)
+	})
+
+	return cols
 }
 
 func Base(ev eventtypes.Event) Event {
