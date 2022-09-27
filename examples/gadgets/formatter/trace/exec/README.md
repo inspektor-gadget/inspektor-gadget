@@ -1,8 +1,8 @@
-# trace exec example (with filter and parser)
+# trace exec example (with filter and formatter)
 
 This example shows how to use different packages to create an
 application to trace the process creation filtering by containers, using
-an event parser to format the events.
+an event formatter to print the events in a column format.
 
 This is is a continuation of
 [trace/exec/withfilter](../../../withfilter/trace/exec/).
