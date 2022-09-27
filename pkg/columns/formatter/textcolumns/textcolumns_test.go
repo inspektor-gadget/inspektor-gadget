@@ -15,7 +15,6 @@
 package textcolumns
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
@@ -39,7 +38,7 @@ var testEntries = []*testStruct{
 
 var testColumns = columns.MustCreateColumns[testStruct]().GetColumnMap()
 
-func TestTextColumnsFormatter_FormatEntry(t *testing.T) {
+func TestTextColumnsFormatter_FormatEntryAndTable(t *testing.T) {
 	expected := []string{
 		"Alice        32   1.74     1000 true    ",
 		"Bob          26   1.73     -200 true    ",
@@ -47,21 +46,21 @@ func TestTextColumnsFormatter_FormatEntry(t *testing.T) {
 		"",
 	}
 	formatter := NewFormatter(testColumns, WithRowDivider(DividerDash))
-	for i, entry := range testEntries {
-		if res := formatter.FormatEntry(entry); res != expected[i] {
-			t.Errorf("got %s, expected %s", res, expected[i])
-		}
-	}
 
-	b := bytes.NewBuffer(nil)
-	err := formatter.WriteTable(b, testEntries)
-	if err != nil {
-		t.Errorf("unexpected write error: %v", err)
-	}
-	out := b.String()
-	if out != strings.Join(append([]string{"NAME        AGE   SIZE  BALANCE CANDANCE", "————————————————————————————————————————"}, expected...), "\n")+"\n" {
-		t.Errorf("got %s", out)
-	}
+	t.Run("FormatEntry", func(t *testing.T) {
+		for i, entry := range testEntries {
+			if res := formatter.FormatEntry(entry); res != expected[i] {
+				t.Errorf("got %s, expected %s", res, expected[i])
+			}
+		}
+	})
+
+	t.Run("FormatTable", func(t *testing.T) {
+		out := formatter.FormatTable(testEntries)
+		if out != strings.Join(append([]string{"NAME        AGE   SIZE  BALANCE CANDANCE", "————————————————————————————————————————"}, expected...), "\n") {
+			t.Errorf("got %s", out)
+		}
+	})
 }
 
 func TestTextColumnsFormatter_FormatHeader(t *testing.T) {
