@@ -101,6 +101,14 @@ func (p *GadgetParser[T]) TransformIntoColumns(entry *T) string {
 	return p.formatter.FormatEntry(entry)
 }
 
+func (p *GadgetParser[T]) TransformIntoTable(entries []*T) string {
+	// Disable auto-scaling as AdjustWidthsToContent will already manage the
+	// screen size.
+	p.formatter.SetAutoScale(false)
+	p.formatter.AdjustWidthsToContent(entries, true, textcolumns.GetTerminalWidth(), true)
+	return p.formatter.FormatTable(entries)
+}
+
 func (p *GadgetParser[T]) Sort(entries []*T, sortBy []string) {
 	sort.SortEntries(p.colsMap, entries, sortBy)
 }
