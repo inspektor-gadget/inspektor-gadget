@@ -82,7 +82,7 @@ func NewNetworkParser(outputConfig *commonutils.OutputConfig) commontrace.TraceP
 	}
 }
 
-func (p *NetworkParser) TransformToColumns(event *types.Event) string {
+func (p *NetworkParser) TransformIntoColumns(event *types.Event) string {
 	var sb strings.Builder
 
 	if event.Pod == "" {

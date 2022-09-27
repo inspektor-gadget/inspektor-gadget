@@ -86,7 +86,7 @@ func NewOOMKillParser(outputConfig *commonutils.OutputConfig) commontrace.TraceP
 	}
 }
 
-func (p *OOMKillParser) TransformToColumns(event *types.Event) string {
+func (p *OOMKillParser) TransformIntoColumns(event *types.Event) string {
 	var sb strings.Builder
 
 	for _, col := range p.OutputConfig.CustomColumns {

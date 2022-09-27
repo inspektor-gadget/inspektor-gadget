@@ -76,7 +76,7 @@ func NewSNIParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParse
 	}
 }
 
-func (p *SNIParser) TransformToColumns(event *types.Event) string {
+func (p *SNIParser) TransformIntoColumns(event *types.Event) string {
 	var sb strings.Builder
 
 	for _, col := range p.OutputConfig.CustomColumns {

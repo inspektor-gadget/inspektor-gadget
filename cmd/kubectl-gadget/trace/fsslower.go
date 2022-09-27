@@ -133,7 +133,7 @@ func NewFsslowerParser(outputConfig *commonutils.OutputConfig) commontrace.Trace
 	}
 }
 
-func (p *FsslowerParser) TransformToColumns(event *types.Event) string {
+func (p *FsslowerParser) TransformIntoColumns(event *types.Event) string {
 	var sb strings.Builder
 
 	// TODO: what to print in this case?
