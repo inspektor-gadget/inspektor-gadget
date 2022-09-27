@@ -23,6 +23,7 @@ import (
 
 	"github.com/cilium/ebpf/rlimit"
 
+	"github.com/kinvolk/inspektor-gadget/pkg/columns/formatter/textcolumns"
 	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/containerd"
@@ -30,8 +31,6 @@ import (
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
-
-	"github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 )
 
 const traceName = "trace_exec"
@@ -90,20 +89,20 @@ func main() {
 	}
 	defer containerCollection.Close()
 
-	// Create a parser. It's the component that converts events to columns.
-	execParser, err := utils.NewGadgetParser(&utils.OutputConfig{}, types.GetColumns())
-	if err != nil {
-		fmt.Printf("failed to create parser: %s\n", err)
-		return
-	}
+	// Create a formatter. It's the component that converts events to columns.
+	colNames := []string{"container", "pid", "ppid", "comm", "ret", "args"}
+	formatter := textcolumns.NewFormatter(
+		types.GetColumns().GetColumnMap(),
+		textcolumns.WithDefaultColumns(colNames),
+	)
 
 	// Define a callback to be called each time there is an event.
 	eventCallback := func(event types.Event) {
 		// Convert the event to columns and print to the terminal.
-		fmt.Println(execParser.TransformToColumns(&event))
+		fmt.Println(formatter.FormatEntry(&event))
 	}
 
-	fmt.Println(execParser.BuildColumnsHeader())
+	fmt.Println(formatter.FormatHeader())
 
 	// Create a tracer instance. This is the glue piece that allows
 	// this example to filter events by containers.
