@@ -31,6 +31,9 @@ type Container struct {
 	// Container Runtime
 	Runtime string `json:"runtime,omitempty" column:"runtime,minWidth:5,maxWidth:10" columnTags:"runtime"`
 
+	// RuntimeContainerName is the container name given by the Container Runtime
+	RuntimeContainerName string `json:"runtimeContainerName,omitempty" column:"name,width:30" columnTags:"runtime"`
+
 	// ID is the container id, typically a 64 hexadecimal string
 	ID string `json:"id,omitempty" column:"id,width:13,maxWidth:64" columnTags:"runtime"`
 
@@ -60,7 +63,7 @@ type Container struct {
 	KubernetesNamespace     string            `json:"kubernetesNamespace,omitempty"`
 	KubernetesPodName       string            `json:"kubernetesPodName,omitempty"`
 	KubernetesPodUID        string            `json:"kubernetesPodUID,omitempty"`
-	KubernetesContainerName string            `json:"kubernetesContainerName,omitempty" column:"name,width:30" columnTags:"runtime"`
+	KubernetesContainerName string            `json:"kubernetesContainerName,omitempty"`
 	KubernetesLabels        map[string]string `json:"kubernetesLabels,omitempty"`
 
 	ownerReference *metav1.OwnerReference
@@ -71,6 +74,7 @@ type ContainerSelector struct {
 	KubernetesPodName       string
 	KubernetesLabels        map[string]string
 	KubernetesContainerName string
+	RuntimeContainerName    string
 }
 
 // GetOwnerReference returns the owner reference information of the

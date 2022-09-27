@@ -33,15 +33,12 @@ func TestListContainers(t *testing.T) {
 		Cmd:  fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s", *containerRuntime),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
-				Podname:   "test-pod",
-				Runtime:   *containerRuntime,
-				Namespace: ns,
+				KubernetesPodName:   "test-pod",
+				KubernetesNamespace: ns,
+				Runtime:             *containerRuntime,
 			}
 
 			normalize := func(c *containercollection.Container) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/kinvolk/inspektor-gadget/issues/737
-				c.Name = ""
 				c.ID = ""
 				c.Pid = 0
 				c.OciConfig = nil
@@ -52,8 +49,8 @@ func TestListContainers(t *testing.T) {
 				c.CgroupID = 0
 				c.CgroupV1 = ""
 				c.CgroupV2 = ""
-				c.Labels = nil
-				c.PodUID = ""
+				c.KubernetesLabels = nil
+				c.KubernetesPodUID = ""
 			}
 
 			var containers []*containercollection.Container
@@ -90,10 +87,8 @@ func TestListSingleContainer(t *testing.T) {
 	cn := fmt.Sprintf("%s-container", prefix)
 	ns := GenerateTestNamespaceName(fmt.Sprintf("%s-namespace", prefix))
 
-	// TODO: Handle it once we support getting K8s container name for docker
-	// Issue: https://github.com/kinvolk/inspektor-gadget/issues/737
 	if *containerRuntime == ContainerRuntimeDocker {
-		t.Skip("Skip TestListSingleContainer on docker since we don't propagate the Kubernetes pod container name")
+		t.Skip("Skip TestListSingleContainer on docker since it uses a different notation for naming Kubernetes containers")
 	}
 
 	TestPodYaml := fmt.Sprintf(`
@@ -118,10 +113,10 @@ spec:
 		Cmd:  fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s --containername=%s", *containerRuntime, cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
-				Name:      cn,
-				Podname:   po,
-				Runtime:   *containerRuntime,
-				Namespace: ns,
+				KubernetesContainerName: cn,
+				KubernetesPodName:       po,
+				KubernetesNamespace:     ns,
+				Runtime:                 *containerRuntime,
 			}
 
 			normalize := func(c *containercollection.Container) {
@@ -135,8 +130,8 @@ spec:
 				c.CgroupID = 0
 				c.CgroupV1 = ""
 				c.CgroupV2 = ""
-				c.Labels = nil
-				c.PodUID = ""
+				c.KubernetesLabels = nil
+				c.KubernetesPodUID = ""
 			}
 
 			var containers []*containercollection.Container

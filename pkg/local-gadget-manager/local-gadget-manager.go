@@ -103,7 +103,7 @@ func (l *LocalGadgetManager) ListTraceResources() []string {
 func (l *LocalGadgetManager) ListContainers() []string {
 	containers := []string{}
 	l.ContainerCollection.ContainerRange(func(c *containercollection.Container) {
-		containers = append(containers, c.KubernetesContainerName)
+		containers = append(containers, c.RuntimeContainerName)
 	})
 	sort.Strings(containers)
 	return containers

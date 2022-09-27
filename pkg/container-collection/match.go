@@ -32,6 +32,9 @@ func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
 	if s.KubernetesContainerName != "" && s.KubernetesContainerName != c.KubernetesContainerName {
 		return false
 	}
+	if s.RuntimeContainerName != "" && s.RuntimeContainerName != c.RuntimeContainerName {
+		return false
+	}
 	for sk, sv := range s.KubernetesLabels {
 		if cv, ok := c.KubernetesLabels[sk]; !ok || cv != sv {
 			return false

@@ -40,16 +40,13 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 	// Runtime
 	container.ID = containerData.ID
 	container.Runtime = containerData.Runtime
+	container.RuntimeContainerName = containerData.RuntimeContainerName
 
 	// Kubernetes
 	container.KubernetesNamespace = containerData.KubernetesNamespace
 	container.KubernetesPodName = containerData.KubernetesPodName
 	container.KubernetesPodUID = containerData.KubernetesPodUID
-
-	// Notice we are temporarily using the runtime container name as the
-	// Kubernetes container name because the Container struct doesn't have that
-	// field, and we don't support filtering by runtime container name yet.
-	container.KubernetesContainerName = containerData.RuntimeContainerName
+	container.KubernetesContainerName = containerData.KubernetesContainerName
 
 	// Some gadgets using the Trace CRD approach in local-gadget require the
 	// namespace and pod name to be set.

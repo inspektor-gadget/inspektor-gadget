@@ -45,7 +45,7 @@ func NewListContainersCmd() *cobra.Command {
 			}
 
 			containers := localGadgetManager.GetContainersBySelector(&containercollection.ContainerSelector{
-				KubernetesContainerName: commonFlags.Containername,
+				RuntimeContainerName: commonFlags.Containername,
 			})
 
 			parser.Sort(containers, []string{"runtime", "name"})
