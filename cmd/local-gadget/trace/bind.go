@@ -32,7 +32,11 @@ func newBindCmd() *cobra.Command {
 	var flags commontrace.BindFlags
 
 	runCmd := func(*cobra.Command, []string) error {
-		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, bindTypes.GetColumns())
+		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(
+			&commonFlags.OutputConfig,
+			bindTypes.GetColumns(),
+			commonFlags.ShowK8sMetadata,
+		)
 		if err != nil {
 			return commonutils.WrapInErrParserCreate(err)
 		}

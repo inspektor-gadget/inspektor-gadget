@@ -36,6 +36,9 @@ type CommonFlags struct {
 	// Containername allows to filter containers by name.
 	Containername string
 
+	// Show Kubernetes metadata
+	ShowK8sMetadata bool
+
 	// The name of the container runtimes to be used separated by comma.
 	Runtimes string
 
@@ -121,6 +124,14 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		"c",
 		"",
 		"Show only data from containers with that name",
+	)
+
+	command.PersistentFlags().BoolVarP(
+		&commonFlags.ShowK8sMetadata,
+		"k8s-metadata",
+		"k",
+		false,
+		"Show Kubernetes metadata",
 	)
 
 	command.PersistentFlags().StringVarP(

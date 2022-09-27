@@ -31,7 +31,11 @@ func newTCPCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
 	runCmd := func(*cobra.Command, []string) error {
-		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, tcpTypes.GetColumns())
+		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(
+			&commonFlags.OutputConfig,
+			tcpTypes.GetColumns(),
+			commonFlags.ShowK8sMetadata,
+		)
 		if err != nil {
 			return commonutils.WrapInErrParserCreate(err)
 		}

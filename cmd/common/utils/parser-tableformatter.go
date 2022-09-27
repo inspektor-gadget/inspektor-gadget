@@ -32,12 +32,12 @@ type Option func(*GadgetParserOptions)
 
 func WithMetadataTag(metadataTag string) Option {
 	return func(opts *GadgetParserOptions) {
-		opts.metadataTag = metadataTag
+		opts.metadataTags = append(opts.metadataTags, metadataTag)
 	}
 }
 
 type GadgetParserOptions struct {
-	metadataTag string
+	metadataTags []string
 }
 
 // GadgetParser is a parser that helps printing the gadget output in columns
@@ -49,7 +49,6 @@ type GadgetParser[T any] struct {
 
 func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T], options ...Option) (*GadgetParser[T], error) {
 	var opts GadgetParserOptions
-
 	for _, o := range options {
 		o(&opts)
 	}
@@ -57,12 +56,17 @@ func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T]
 	// If no tag is provided, we use only the columns with no specific tag. In
 	// other words, the gadget-specific columns. Otherwise, we also include the
 	// columns with the requested tag.
-	var colsMap columns.ColumnMap[T]
-	if opts.metadataTag == "" {
-		colsMap = cols.GetColumnMap(columns.WithNoTags())
+	var filter columns.ColumnFilter
+	if len(opts.metadataTags) == 0 {
+		filter = columns.WithNoTags()
 	} else {
-		colsMap = cols.GetColumnMap(columns.Or(columns.WithTag(opts.metadataTag), columns.WithNoTags()))
+		filter = columns.WithNoTags()
+		for _, tag := range opts.metadataTags {
+			filter = columns.Or(filter, columns.WithTag(tag))
+		}
+
 	}
+	colsMap := cols.GetColumnMap(filter)
 
 	var formatter *textcolumns.TextColumnsFormatter[T]
 	if len(outputConfig.CustomColumns) != 0 {
@@ -85,12 +89,43 @@ func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T]
 	}, nil
 }
 
-func NewGadgetParserWithK8sInfo[T any](outputConfig *OutputConfig, columns *columns.Columns[T]) (*GadgetParser[T], error) {
-	return NewGadgetParser(outputConfig, columns, WithMetadataTag(KubernetesTag))
+func NewGadgetParserWithK8sInfo[T any](outputConfig *OutputConfig, cols *columns.Columns[T]) (*GadgetParser[T], error) {
+	return NewGadgetParser(outputConfig, cols, WithMetadataTag(KubernetesTag))
 }
 
-func NewGadgetParserWithRuntimeInfo[T any](outputConfig *OutputConfig, columns *columns.Columns[T]) (*GadgetParser[T], error) {
-	return NewGadgetParser(outputConfig, columns, WithMetadataTag(ContainerRuntimeTag))
+func NewGadgetParserWithRuntimeInfo[T any](outputConfig *OutputConfig, cols *columns.Columns[T], appendK8sInfo bool) (*GadgetParser[T], error) {
+	options := []Option{WithMetadataTag(ContainerRuntimeTag)}
+
+	if appendK8sInfo || len(outputConfig.CustomColumns) != 0 {
+		// Include Kubernetes columns but add them by last with prefix "k8s-"
+		options = append(options, WithMetadataTag(KubernetesTag))
+		for _, c := range cols.GetColumnMap(columns.WithTag(KubernetesTag)) {
+			if c.Name == "node" {
+				c.Visible = false
+				continue
+			}
+
+			c.Order = 1000 * c.Order
+			cols.RenameColumn(c.Name, "k8s-"+c.Name)
+		}
+	} else {
+		// We anyway need to rename the Kubernetes container column as we want
+		// the runtimeContainerName column to be the main one: "container".
+		k8sContainerCol, ok := cols.GetColumn("container")
+		if !ok {
+			panic(`renaming "container" column`)
+		}
+		cols.RenameColumn(k8sContainerCol.Name, "k8s-"+k8sContainerCol.Name)
+	}
+
+	// Make runtimeContainerName the main container column
+	runtimeContainerCol, ok := cols.GetColumn("runtimeContainerName")
+	if !ok {
+		panic(`renaming "runtimeContainerName" column`)
+	}
+	cols.RenameColumn(runtimeContainerCol.Name, "container")
+
+	return NewGadgetParser(outputConfig, cols, options...)
 }
 
 func (p *GadgetParser[T]) BuildColumnsHeader() string {

@@ -39,7 +39,11 @@ func NewListContainersCmd() *cobra.Command {
 			}
 			defer localGadgetManager.Close()
 
-			parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, containercollection.GetColumns())
+			parser, err := commonutils.NewGadgetParserWithRuntimeInfo(
+				&commonFlags.OutputConfig,
+				containercollection.GetColumns(),
+				commonFlags.ShowK8sMetadata,
+			)
 			if err != nil {
 				return commonutils.WrapInErrParserCreate(err)
 			}
@@ -48,7 +52,7 @@ func NewListContainersCmd() *cobra.Command {
 				RuntimeContainerName: commonFlags.Containername,
 			})
 
-			parser.Sort(containers, []string{"runtime", "name"})
+			parser.Sort(containers, []string{"runtime", "container"})
 
 			switch commonFlags.OutputMode {
 			case commonutils.OutputModeJSON:

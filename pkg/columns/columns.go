@@ -150,6 +150,24 @@ func (c ColumnMap[T]) VerifyColumnNames(columnNames []string) (valid []string, i
 	return
 }
 
+func (c ColumnMap[T]) RenameColumn(columnName string, newColumnName string) error {
+	column, ok := c[strings.ToLower(columnName)]
+	if !ok {
+		return fmt.Errorf("unknown column: %q", columnName)
+	}
+
+	_, ok = c[strings.ToLower(newColumnName)]
+	if ok {
+		return fmt.Errorf("column name already in use: %q", columnName)
+	}
+
+	column.Name = newColumnName
+	c[newColumnName] = column
+	delete(c, strings.ToLower(columnName))
+
+	return nil
+}
+
 func (c *Columns[T]) iterateFields(t reflect.Type, sub []int) error {
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
@@ -177,7 +195,7 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []int) error {
 			Visible:      true,
 			Precision:    2,
 
-			Order: len(c.ColumnMap) * 10,
+			Order: (len(c.ColumnMap) + 1) * 10,
 		}
 
 		if sub == nil {

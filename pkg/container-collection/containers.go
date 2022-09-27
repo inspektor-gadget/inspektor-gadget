@@ -32,7 +32,7 @@ type Container struct {
 	Runtime string `json:"runtime,omitempty" column:"runtime,minWidth:5,maxWidth:10" columnTags:"runtime"`
 
 	// RuntimeContainerName is the container name given by the Container Runtime
-	RuntimeContainerName string `json:"runtimeContainerName,omitempty" column:"name,width:30" columnTags:"runtime"`
+	RuntimeContainerName string `json:"runtimeContainerName,omitempty" column:"runtimeContainerName,width:30" columnTags:"runtime"`
 
 	// ID is the container id, typically a 64 hexadecimal string
 	ID string `json:"id,omitempty" column:"id,width:13,maxWidth:64" columnTags:"runtime"`
@@ -60,10 +60,10 @@ type Container struct {
 	CgroupV2 string `json:"cgroupV2,omitempty"`
 
 	// Kubernetes metadata
-	KubernetesNamespace     string            `json:"kubernetesNamespace,omitempty"`
-	KubernetesPodName       string            `json:"kubernetesPodName,omitempty"`
-	KubernetesPodUID        string            `json:"kubernetesPodUID,omitempty"`
-	KubernetesContainerName string            `json:"kubernetesContainerName,omitempty"`
+	KubernetesNamespace     string            `json:"kubernetesNamespace,omitempty" column:"namespace,width:30" columnTags:"kubernetes"`
+	KubernetesPodName       string            `json:"kubernetesPodName,omitempty" column:"pod,width:30,ellipsis:middle" columnTags:"kubernetes"`
+	KubernetesPodUID        string            `json:"kubernetesPodUID,omitempty" column:"poduid,width:30,hide" columnTags:"kubernetes"`
+	KubernetesContainerName string            `json:"kubernetesContainerName,omitempty" column:"container,width:30" columnTags:"kubernetes"`
 	KubernetesLabels        map[string]string `json:"kubernetesLabels,omitempty"`
 
 	ownerReference *metav1.OwnerReference
