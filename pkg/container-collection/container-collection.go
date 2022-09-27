@@ -308,6 +308,8 @@ func (cc *ContainerCollection) Enrich(event *eventtypes.CommonData, mountnsid ui
 		event.KubernetesContainerName = container.KubernetesContainerName
 		event.KubernetesPodName = container.KubernetesPodName
 		event.KubernetesNamespace = container.KubernetesNamespace
+		event.Runtime = container.Runtime
+		event.RuntimeContainerName = container.RuntimeContainerName
 	}
 }
 

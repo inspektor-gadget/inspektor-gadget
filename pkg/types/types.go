@@ -41,6 +41,16 @@ type CommonData struct {
 	// Container where the event comes from. It could be empty for host-level or
 	// pod-level event. Or, when the tracer is not running in a Kubernetes env.
 	KubernetesContainerName string `json:"kubernetesContainerName,omitempty" column:"container,width:30" columnTags:"kubernetes"`
+
+	// Container Runtime managing the container where the event comes from. It
+	// could be empty if the enricher doesn't use the Container Runtime as
+	// source for enrichment.
+	Runtime string `json:"runtime,omitempty" column:"runtime,width:10,fixed,hide" columnTags:"runtime"`
+
+	// It refers to the same container of KubernetesContainerName, it is just
+	// that some Container Runtimes use a different naming notation. As Runtime,
+	// it could be empty in some cases.
+	RuntimeContainerName string `json:"runtimeContainerName,omitempty" column:"runtimeContainerName,width:30" columnTags:"runtime"`
 }
 
 const (
