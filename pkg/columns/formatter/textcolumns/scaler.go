@@ -297,6 +297,8 @@ func (tf *TextColumnsFormatter[T]) AdjustWidthsToContent(entries []*T, considerH
 		totalWidth += column.calculatedWidth
 	}
 
+	tf.buildFillString()
+
 	// Last but not least, add column dividers
 	totalWidth += len([]rune(tf.options.ColumnDivider)) * (len(tf.showColumns) - 1)
 
