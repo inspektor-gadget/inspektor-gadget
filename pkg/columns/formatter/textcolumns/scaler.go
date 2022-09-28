@@ -307,6 +307,9 @@ func (tf *TextColumnsFormatter[T]) AdjustWidthsToContent(entries []*T, considerH
 		return
 	}
 
+	// Force RecalculateWidths() to run
+	tf.currentMaxWidth = -1
+
 	// We did our best, but let's resize to fit to maxWidth
 	tf.RecalculateWidths(maxWidth, force)
 }
