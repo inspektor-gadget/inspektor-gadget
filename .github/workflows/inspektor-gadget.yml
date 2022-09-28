@@ -587,6 +587,7 @@ jobs:
     strategy:
       matrix:
         type: [default, core]
+        driver: [none, docker]
     steps:
     - uses: actions/checkout@v3
     - name: Setup go
@@ -600,6 +601,11 @@ jobs:
         minikube version: 'v1.25.2'
         kubernetes version: 'v1.23.0'
         github token: ${{ secrets.GITHUB_TOKEN }}
+        driver: ${{ matrix.driver }}
+        # When using docker driver, run the integration tests on two nodes.
+        # As GitHub Runner has only 2 CPU and 7 GB of DRAM, we cannot use a big
+        # number here.
+        start args: ${{ matrix.driver == 'docker' && '-n 2' || '' }}
     - name: Get gadget-container-image-${{ matrix.type }}-linux-amd64.tar from artifact.
       uses: actions/download-artifact@v2
       with:
