@@ -26,13 +26,8 @@ import (
 	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
 )
 
-type ContainerFlags struct {
-	noTrunc bool
-}
-
 func NewListContainersCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
-	var containerFlags ContainerFlags
 
 	cmd := &cobra.Command{
 		Use:   "list-containers",
@@ -44,7 +39,7 @@ func NewListContainersCmd() *cobra.Command {
 			}
 			defer localGadgetManager.Close()
 
-			parser, err := newContainerParser(&commonFlags.OutputConfig, &containerFlags)
+			parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, containercollection.GetColumns())
 			if err != nil {
 				return commonutils.WrapInErrParserCreate(err)
 			}
@@ -75,37 +70,7 @@ func NewListContainersCmd() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().BoolVar(
-		&containerFlags.noTrunc,
-		"no-trunc",
-		false,
-		"Don't truncate container ID",
-	)
-
 	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
-}
-
-func newContainerParser(
-	outputConfig *commonutils.OutputConfig, flags *ContainerFlags,
-) (
-	*commonutils.GadgetParser[containercollection.Container], error,
-) {
-	containerColumns := containercollection.GetColumns()
-
-	idCol, ok := containerColumns.GetColumn("id")
-	if !ok {
-		return nil, fmt.Errorf(`"id" column doesn't exist`)
-	}
-
-	// By default, the "id" column is configured with width=13 and no fixed. In
-	// this way, the auto-scale will do its magic when --no-trunc is not set.
-	// Instead, when it is set, we must ensure auto-scale doesn't truncate it.
-	if flags.noTrunc {
-		idCol.Width = 64
-		idCol.FixedWidth = true
-	}
-
-	return commonutils.NewGadgetParserWithRuntimeInfo(outputConfig, containerColumns)
 }
