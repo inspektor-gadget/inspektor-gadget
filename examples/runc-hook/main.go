@@ -239,6 +239,6 @@ func main() {
 
 	// Graceful shutdown
 	exit := make(chan os.Signal, 1)
-	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(exit, syscall.SIGINT, syscall.SIGTERM)
 	<-exit
 }
