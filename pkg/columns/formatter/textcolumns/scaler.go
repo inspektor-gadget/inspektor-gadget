@@ -59,16 +59,22 @@ func (tf *TextColumnsFormatter[T]) RecalculateWidths(maxWidth int, force bool) {
 	for _, column := range tf.showColumns {
 		// Reset temporary values
 		column.treatAsFixed = false
+		if column.width == 0 {
+			column.width = column.col.Width
+		}
+		if column.maxWidth == 0 {
+			column.maxWidth = column.col.MaxWidth
+		}
 
 		occurrences[column.col.Name]++
 
 		if column.col.FixedWidth && !force {
-			requiredWidth += column.col.Width
-			totalWidthFixed += column.col.Width
+			requiredWidth += column.width
+			totalWidthFixed += column.width
 			continue
 		}
 
-		totalWidthNotFixed += column.col.Width
+		totalWidthNotFixed += column.width
 
 		if column.col.MinWidth > 0 && !force {
 			requiredWidth += column.col.MinWidth
@@ -102,34 +108,34 @@ func (tf *TextColumnsFormatter[T]) RecalculateWidths(maxWidth int, force bool) {
 
 		totalAdjustedWidthNotFixed = 0
 		for _, column := range tf.showColumns {
-			if (column.col.FixedWidth || column.treatAsFixed) && !force {
+			if (column.col.FixedWidth && !force) || column.treatAsFixed {
 				if column.col.FixedWidth {
-					column.calculatedWidth = column.col.Width
+					column.calculatedWidth = column.width
 				}
 				continue
 			}
 
 			// set calculatedWidth based on the "weight" (relative width to other columns) of this column
-			column.calculatedWidth = int(math.Floor(float64(column.col.Width) / float64(totalWidthNotFixed) * float64(maxWidth-totalWidthFixed)))
+			column.calculatedWidth = int(math.Floor(float64(column.width) / float64(totalWidthNotFixed) * float64(maxWidth-totalWidthFixed)))
 
 			// honor min/max widths; they'll now be treated as fixed width, afterwards we'll need another pass
-			if !force {
-				if column.col.MaxWidth > 0 && column.calculatedWidth > column.col.MaxWidth {
-					column.calculatedWidth = column.col.MaxWidth
-					column.treatAsFixed = true
-					satisfied = false
+			if column.maxWidth > 0 && column.calculatedWidth > column.maxWidth {
+				column.calculatedWidth = column.maxWidth
+				column.treatAsFixed = true
+				satisfied = false
 
-					addToFixed += column.calculatedWidth
-					removeFromNotFixed += column.col.Width
-					continue
-				}
+				addToFixed += column.calculatedWidth
+				removeFromNotFixed += column.width
+				continue
+			}
+			if !force {
 				if column.col.MinWidth > 0 && column.calculatedWidth < column.col.MinWidth {
 					column.calculatedWidth = column.col.MinWidth
 					column.treatAsFixed = true
 					satisfied = false
 
 					addToFixed += column.calculatedWidth
-					removeFromNotFixed += column.col.Width
+					removeFromNotFixed += column.width
 					continue
 				}
 			}
@@ -155,7 +161,7 @@ distributeLeftover:
 
 		// distribute one to each remaining candidate
 		for _, column := range tf.showColumns {
-			if (column.col.FixedWidth || column.treatAsFixed) && !force {
+			if (column.col.FixedWidth && !force) || column.treatAsFixed {
 				continue
 			}
 
@@ -294,6 +300,11 @@ func (tf *TextColumnsFormatter[T]) AdjustWidthsToContent(entries []*T, considerH
 	totalWidth := 0
 	for columnIndex, column := range tf.showColumns {
 		column.calculatedWidth = columnWidths[columnIndex]
+
+		// Let's also save this width as hints for the RecalculateWidths(), if needed
+		column.width = columnWidths[columnIndex]
+		column.maxWidth = columnWidths[columnIndex]
+
 		totalWidth += column.calculatedWidth
 	}
 
