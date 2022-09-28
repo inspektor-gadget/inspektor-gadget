@@ -15,6 +15,7 @@
 package textcolumns
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"reflect"
@@ -134,8 +135,15 @@ func (tf *TextColumnsFormatter[T]) FormatRowDivider() string {
 	return string([]rune(row.String())[:rowDividerLen])
 }
 
-// WriteTable writes header, divider and body with the current settings, where the body consists of the entries given
-// to the writer
+// FormatTable returns header, divider and the formatted entries with the current settings as a string
+func (tf *TextColumnsFormatter[T]) FormatTable(entries []*T) string {
+	buf := bytes.NewBuffer(nil)
+	_ = tf.WriteTable(buf, entries)
+	out := buf.Bytes()
+	return string(out[:len(out)-1])
+}
+
+// WriteTable writes header, divider nd the formatted entries with the current settings to writer
 func (tf *TextColumnsFormatter[T]) WriteTable(writer io.Writer, entries []*T) error {
 	_, err := writer.Write([]byte(tf.FormatHeader()))
 	if err != nil {

@@ -108,6 +108,21 @@ func (tf *TextColumnsFormatter[T]) SetShowColumns(columns []string) {
 	tf.rebuild()
 }
 
+// SetAutoScale enables or disables the AutoScale option for the formatter. This will recalculate the widths.
+func (tf *TextColumnsFormatter[T]) SetAutoScale(enableAutoScale bool) {
+	tf.options.AutoScale = enableAutoScale
+	if enableAutoScale {
+		tf.rebuild()
+	} else {
+		// Set calculated width to configured widths
+		for _, column := range tf.columns {
+			column.calculatedWidth = column.col.Width
+			column.treatAsFixed = false
+		}
+		tf.buildFillString()
+	}
+}
+
 func (tf *TextColumnsFormatter[T]) rebuild() {
 	tf.buildFillString()
 	tf.currentMaxWidth = -1 // force recalculation

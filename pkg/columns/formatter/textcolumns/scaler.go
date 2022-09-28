@@ -198,17 +198,27 @@ distributeLeftover:
 	tf.buildFillString()
 }
 
-// AdjustWidthsToScreen will try to get the width of the screen buffer and call RecalculateWidths with that value
+// GetTerminalWidth returns the width of the terminal (if one is in use) or 0 otherwise
+func GetTerminalWidth() int {
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return 0
+	}
+	terminalWidth, _, err := term.GetSize(0)
+	if err != nil {
+		return 0
+	}
+	return terminalWidth
+}
+
+// AdjustWidthsToScreen will try to get the width of the screen buffer and, if successful, call RecalculateWidths with
+// that value
 func (tf *TextColumnsFormatter[T]) AdjustWidthsToScreen() {
 	if !tf.options.AutoScale {
 		return
 	}
 
-	if !term.IsTerminal(int(os.Stdout.Fd())) {
-		return
-	}
-	terminalWidth, _, err := term.GetSize(0)
-	if err != nil {
+	terminalWidth := GetTerminalWidth()
+	if terminalWidth == 0 {
 		return
 	}
 
@@ -287,6 +297,8 @@ func (tf *TextColumnsFormatter[T]) AdjustWidthsToContent(entries []*T, considerH
 		totalWidth += column.calculatedWidth
 	}
 
+	tf.buildFillString()
+
 	// Last but not least, add column dividers
 	totalWidth += len([]rune(tf.options.ColumnDivider)) * (len(tf.showColumns) - 1)
 
@@ -294,6 +306,9 @@ func (tf *TextColumnsFormatter[T]) AdjustWidthsToContent(entries []*T, considerH
 		// Yay, it fits! (or user doesn't care)
 		return
 	}
+
+	// Force RecalculateWidths() to run
+	tf.currentMaxWidth = -1
 
 	// We did our best, but let's resize to fit to maxWidth
 	tf.RecalculateWidths(maxWidth, force)
