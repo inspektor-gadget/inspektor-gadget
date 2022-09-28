@@ -28,6 +28,7 @@ import (
 
 	bindTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
 	capabilitiesTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
+	dnsTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	execTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	openTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/types"
 	signalTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
@@ -479,16 +480,42 @@ func TestDns(t *testing.T) {
 	t.Parallel()
 
 	dnsCmd := &command{
-		name:           "StartDnsGadget",
-		cmd:            fmt.Sprintf("$KUBECTL_GADGET trace dns -n %s", ns),
-		expectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+OUTGOING\s+A\s+microsoft.com`, ns),
-		startAndStop:   true,
+		name:         "StartDnsGadget",
+		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace dns -n %s -o json", ns),
+		startAndStop: true,
+		expectedOutputFn: func(output string) error {
+			expectedEntries := []*dnsTypes.Event{
+				{
+					Event:   buildBaseEvent(ns),
+					PktType: "OUTGOING",
+					DNSName: "inspektor-gadget.io.",
+					QType:   "A",
+				},
+				{
+					Event:   buildBaseEvent(ns),
+					PktType: "OUTGOING",
+					DNSName: "inspektor-gadget.io.",
+					QType:   "AAAA",
+				},
+			}
+
+			// DNS gadget doesn't provide container data. Remove it.
+			for _, entry := range expectedEntries {
+				entry.Container = ""
+			}
+
+			normalize := func(e *dnsTypes.Event) {
+				e.Node = ""
+			}
+
+			return expectEntriesToMatch(output, normalize, expectedEntries...)
+		},
 	}
 
 	commands := []*command{
 		createTestNamespaceCommand(ns),
 		dnsCmd,
-		busyboxPodRepeatCommand(ns, "nslookup microsoft.com"),
+		busyboxPodRepeatCommand(ns, "nslookup inspektor-gadget.io"),
 		waitUntilTestPodReadyCommand(ns),
 		deleteTestNamespaceCommand(ns),
 	}
