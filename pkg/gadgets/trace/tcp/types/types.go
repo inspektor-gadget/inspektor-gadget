@@ -23,20 +23,23 @@ type Event struct {
 	eventtypes.Event
 
 	Operation string `json:"operation,omitempty" column:"t,width:1,fixed"`
-	Pid       uint32 `json:"pid,omitempty" column:"pid,width:7,fixed"`
-	Comm      string `json:"comm,omitempty" column:"comm,width:16,fixed"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
+	Comm      string `json:"comm,omitempty" column:"comm,maxWidth:16"`
 	IPVersion int    `json:"ipversion,omitempty" column:"ip,width:2,fixed"`
-	Saddr     string `json:"saddr,omitempty" column:"saddr,width:22"`
-	Daddr     string `json:"daddr,omitempty" column:"daddr,width:22"`
-	Sport     uint16 `json:"sport,omitempty" column:"sport,width:5,fixed"`
-	Dport     uint16 `json:"dport,omitempty" column:"dport,width:5,fixed"`
+	// For Saddr and Daddr:
+	// Min: XXX.XXX.XXX.XXX (IPv4) = 15
+	// Max: 0000:0000:0000:0000:0000:ffff:XXX.XXX.XXX.XXX (IPv4-mapped IPv6 address) = 45
+	Saddr     string `json:"saddr,omitempty" column:"saddr,minWidth:15,maxWidth:45"`
+	Daddr     string `json:"daddr,omitempty" column:"daddr,minWidth:15,maxWidth:45"`
+	Sport     uint16 `json:"sport,omitempty" column:"sport,minWidth:type"`
+	Dport     uint16 `json:"dport,omitempty" column:"dport,minWidth:type"`
 	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
 }
 
 func GetColumns() *columns.Columns[Event] {
-	execColumns := columns.MustCreateColumns[Event]()
+	tcpColumns := columns.MustCreateColumns[Event]()
 
-	execColumns.MustSetExtractor("t", func(event *Event) (ret string) {
+	tcpColumns.MustSetExtractor("t", func(event *Event) (ret string) {
 		operations := map[string]string{
 			"accept":  "A",
 			"connect": "C",
@@ -51,7 +54,7 @@ func GetColumns() *columns.Columns[Event] {
 		return "U"
 	})
 
-	return execColumns
+	return tcpColumns
 }
 
 func Base(ev eventtypes.Event) Event {
