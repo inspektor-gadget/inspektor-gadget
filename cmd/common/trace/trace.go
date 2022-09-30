@@ -34,7 +34,7 @@ type TraceEvent interface {
 // implement.
 type TraceParser[Event any] interface {
 	// Transform is called to transform an event to columns.
-	TransformToColumns(event *Event) string
+	TransformIntoColumns(event *Event) string
 
 	// BuildColumnsHeader returns a header to be used when the user requests to
 	// present the output in columns.
