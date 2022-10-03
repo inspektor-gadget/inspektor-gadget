@@ -549,7 +549,7 @@ func TestExecsnoop(t *testing.T) {
 
 	t.Parallel()
 
-	shArgs := []string{"/bin/sh", "-c", "while true; do date && sleep 0.1; done"}
+	shArgs := []string{"/bin/sh", "-c", "while true; do date ; sleep 0.1; done"}
 	dateArgs := []string{"/bin/date"}
 	sleepArgs := []string{"/bin/sleep", "0.1"}
 	// on arm64, trace exec uses kprobe and it cannot trace the arguments:
