@@ -430,15 +430,17 @@ func TestBiotop(t *testing.T) {
 }
 
 func TestCapabilities(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running trace capabilities on ARO: See https://github.com/kinvolk/inspektor-gadget/issues/985 for more details")
+	}
+
 	ns := generateTestNamespaceName("test-capabilities")
 
 	t.Parallel()
 
 	capabilitiesCmd := &command{
-		name: "StartCapabilitiesGadget",
-		// use --audit-only=false to make it work on ARO.
-		// See https://github.com/kinvolk/inspektor-gadget/issues/985 for more details.
-		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace capabilities -n %s --audit-only=false -o json", ns),
+		name:         "StartCapabilitiesGadget",
+		cmd:          fmt.Sprintf("$KUBECTL_GADGET trace capabilities -n %s -o json", ns),
 		startAndStop: true,
 		expectedOutputFn: func(output string) error {
 			expectedEntry := &capabilitiesTypes.Event{
