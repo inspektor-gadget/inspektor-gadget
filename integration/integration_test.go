@@ -156,16 +156,10 @@ func testMain(m *testing.M) int {
 
 	if !*doNotDeployIG {
 		imagePullPolicy := "Always"
-		livenessProbe := true
-		// livenessProbe are causing some issues in the ARO integration cluster,
-		// see: https://github.com/kinvolk/inspektor-gadget/issues/799
-		if *k8sDistro == K8sDistroARO {
-			livenessProbe = false
-		}
 		if *k8sDistro == K8sDistroMinikubeGH {
 			imagePullPolicy = "Never"
 		}
-		deployCmd := deployInspektorGadget(*image, imagePullPolicy, livenessProbe)
+		deployCmd := deployInspektorGadget(*image, imagePullPolicy)
 		initCommands = append(initCommands, deployCmd)
 
 		cleanupCommands = append(cleanupCommands, cleanupInspektorGadget)
