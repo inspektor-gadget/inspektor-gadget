@@ -665,16 +665,6 @@ jobs:
         pattern: "*-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
-    - name: Upload Testing Asset
-      id: upload-release-asset-testing
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: integration-asset/gadget-integration-tests-job.yaml
-        asset_name: gadget-integration-tests-job.yaml
-        asset_content_type: application/x-yaml
     - name: Update new version in krew-index
       if: github.repository == 'kinvolk/inspektor-gadget'
       uses: rajatjindal/krew-release-bot@v0.0.40
