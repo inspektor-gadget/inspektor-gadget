@@ -1017,9 +1017,9 @@ func genericStreams(
 			err := ExecPod(client, nodeName, cmd,
 				postProcess.OutStreams[index], postProcess.ErrStreams[index])
 			if err == nil {
-				completion <- fmt.Sprintf("Trace completed on node %q\n", nodeName)
+				completion <- fmt.Sprintf("Trace completed on node %q", nodeName)
 			} else {
-				completion <- fmt.Sprintf("Error: failed to receive stream on node %q: %v\n", nodeName, err)
+				completion <- fmt.Sprintf("Error: failed to receive stream on node %q: %v", nodeName, err)
 			}
 		}(i.Spec.Node, i.ObjectMeta.Namespace, i.ObjectMeta.Name, index)
 	}
@@ -1041,7 +1041,7 @@ func genericStreams(
 			}
 			return nil
 		case msg := <-completion:
-			fmt.Printf("%s", msg)
+			fmt.Fprintln(os.Stderr, msg)
 			if atomic.AddInt32(&streamCount, -1) == 0 {
 				return nil
 			}
