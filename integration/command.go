@@ -446,7 +446,7 @@ func (c *command) stop(t *testing.T) {
 // busyboxPodRepeatCommand returns a command that creates a pod and runs
 // "cmd" each 0.1 seconds inside the pod.
 func busyboxPodRepeatCommand(namespace, cmd string) *command {
-	cmdStr := fmt.Sprintf("while true; do %s && sleep 0.1; done", cmd)
+	cmdStr := fmt.Sprintf("while true; do %s ; sleep 0.1; done", cmd)
 	return busyboxPodCommand(namespace, cmdStr)
 }
 
