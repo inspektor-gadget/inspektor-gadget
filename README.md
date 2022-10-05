@@ -190,6 +190,11 @@ programs are and how Inspektor Gadget uses them is briefly explained here:
 
 You can read further details about the architecture [here](docs/architecture.md).
 
+## local-gadget
+
+Inspektor Gadget can also be used without Kubernetes to trace containers with
+the [`local-gadget`](docs/local-gadget.md) tool.
+
 ## Kernel requirements
 
 The different gadgets shipped with Inspektor Gadget use a variety of eBPF
