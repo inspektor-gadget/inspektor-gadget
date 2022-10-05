@@ -21,7 +21,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget trace mount
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
+NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNTNS      CALL
 ```
 
 Indeed, it is waiting for `mount` and `umount` to be called.
@@ -40,7 +40,7 @@ command terminated with exit code 255
 Go back to *the first terminal* and see:
 
 ```bash
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
+NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNTNS      CALL
 minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext3", MS_SILENT, "") = -2
 minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext2", MS_SILENT, "") = -2
 minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext4", MS_SILENT, "") = -2
@@ -65,7 +65,7 @@ NAME        READY   STATUS    RESTARTS   AGE     LABELS
 busybox-0   1/1     Running   0          2m9s    run=busybox-0
 busybox-1   1/1     Running   0          3m59s   run=busybox-1
 $ kubectl gadget trace mount --selector run=busybox-0
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
+NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNTNS      CALL
 ```
 
 As you can see, the `--selector` option, and its `-l` shorthand awaits for pods labels as argument.
@@ -85,7 +85,7 @@ command terminated with exit code 255
 Go back to the first terminal, you should only see output related to `mount /foo /bar` as a result of using `--selector` options filtering the pods:
 
 ```bash
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNT_NS      CALL
+NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNTNS      CALL
 minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext3", MS_SILENT, "") = -2
 minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext2", MS_SILENT, "") = -2
 minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext4", MS_SILENT, "") = -2

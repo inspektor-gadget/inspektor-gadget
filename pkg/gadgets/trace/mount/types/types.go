@@ -15,25 +15,59 @@
 package types
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
 
-	MountNsID uint64   `json:"mntnsid,omitempty"`
-	Pid       uint32   `json:"pid,omitempty"`
-	Tid       uint32   `json:"tid,omitempty"`
-	Comm      string   `json:"comm,omitempty"`
-	Operation string   `json:"operation,omitempty"`
-	Retval    int      `json:"ret,omitempty"`
-	Latency   uint64   `json:"latency,omitempty"`
-	Fs        string   `json:"fs,omitempty"`
-	Source    string   `json:"source,omitempty"`
-	Target    string   `json:"target,omitempty"`
-	Data      string   `json:"data,omitempty"`
-	Flags     []string `json:"flags,omitempty"`
+	Comm      string   `json:"comm,omitempty" column:"comm,maxWidth:16"`
+	Pid       uint32   `json:"pid,omitempty" column:"pid,minWidth:7"`
+	Tid       uint32   `json:"tid,omitempty" column:"tid,minWidth:7"`
+	MountNsID uint64   `json:"mntnsid,omitempty" column:"mntns,width:12"`
+	Operation string   `json:"operation,omitempty" column:"op,minWidth:5,maxWidth:7,hide"`
+	Retval    int      `json:"ret,omitempty" column:"ret,width:3,fixed,hide"`
+	Latency   uint64   `json:"latency,omitempty" column:"latency,minWidth:3,hide"`
+	Fs        string   `json:"fs,omitempty" column:"fs,minWidth:3,maxWidth:8,hide"`
+	Source    string   `json:"source,omitempty" column:"src,width:16,hide"`
+	Target    string   `json:"target,omitempty" column:"dst,width:16,hide"`
+	Data      string   `json:"data,omitempty" column:"data,width:16,hide"`
+	Flags     []string `json:"flags,omitempty" column:"flags,width:24,hide"`
 	FlagsRaw  uint64   `json:"flagsRaw,omitempty"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	cols := columns.MustCreateColumns[Event]()
+
+	cols.MustAddColumn(columns.Column[Event]{
+		Name:    "call",
+		Width:   80,
+		Visible: true,
+		Order:   1000,
+		Extractor: func(e *Event) string {
+			switch e.Operation {
+			case "mount":
+				format := `mount("%s", "%s", "%s", %s, "%s") = %d`
+				return fmt.Sprintf(format, e.Source, e.Target, e.Fs, strings.Join(e.Flags, " | "),
+					e.Data, e.Retval)
+			case "umount":
+				format := `umount("%s", %s) = %d`
+				return fmt.Sprintf(format, e.Target, strings.Join(e.Flags, " | "), e.Retval)
+			}
+
+			return ""
+		},
+	})
+
+	cols.MustSetExtractor("flags", func(event *Event) string {
+		return strings.Join(event.Flags, " | ")
+	})
+
+	return cols
 }
 
 func Base(ev eventtypes.Event) Event {
