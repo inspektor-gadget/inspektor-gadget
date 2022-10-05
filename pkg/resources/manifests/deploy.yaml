@@ -133,16 +133,6 @@ spec:
             command:
               - /bin/gadgettracermanager
               - -liveness
-        startupProbe:
-          periodSeconds: 5
-          timeoutSeconds: 2
-          # TODO: Decrease this long worse case startup time after fixing
-          # https://github.com/kinvolk/inspektor-gadget/issues/799.
-          failureThreshold: 60
-          exec:
-            command:
-              - /bin/gadgettracermanager
-              - -liveness
         env:
           - name: NODE_NAME
             valueFrom:
