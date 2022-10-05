@@ -88,8 +88,7 @@ Wrote /work/pkg/gadgettracermanager/containers-map/containersmap_bpfel.go
 
 Inspektor Gadget also provides the [`local-gadget`](local-gadget.md) tool to
 trace containers without Kubernetes. It can be built independently from the
-`kubectl-gadget` and the gadget container image. The result is a single binary
-that can be copied to a Kubernetes node or any host to trace its containers.
+`kubectl-gadget` and the gadget container image.
 
 ```bash
 $ make local-gadget
