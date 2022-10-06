@@ -205,7 +205,8 @@ minikube-install: gadget-default-container kubectl-gadget
 		$(MINIKUBE) image load $(CONTAINER_REPO):$(IMAGE_TAG) ; \
 	fi
 	@echo "Image in Minikube:"
-	$(MINIKUBE) image ls --format=table | grep "$(CONTAINER_REPO)\s*|\s*$(IMAGE_TAG)" || true
+	$(MINIKUBE) image ls --format=table | grep "$(CONTAINER_REPO)\s*|\s*$(IMAGE_TAG)" || \
+		(echo "Image $(CONTAINER_REPO)\s*|\s*$(IMAGE_TAG) was not correctly loaded into Minikube" && false)
 	@echo
 	# Remove all resources created by Inspektor Gadget.
 	./kubectl-gadget undeploy || true
