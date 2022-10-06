@@ -200,7 +200,7 @@ minikube-install: gadget-default-container kubectl-gadget
 	# features. So we have to keep "docker-save|docker-load" when
 	# available.
 	if $(MINIKUBE) docker-env >/dev/null 2>&1 ; then \
-		docker save $(CONTAINER_REPO):$(IMAGE_TAG) $(PV) | (eval $$($(MINIKUBE) -p minikube docker-env | grep =) && docker load) ; \
+		docker save $(CONTAINER_REPO):$(IMAGE_TAG) $(PV) | (eval $$($(MINIKUBE) docker-env | grep =) && docker load) ; \
 	else \
 		$(MINIKUBE) image load $(CONTAINER_REPO):$(IMAGE_TAG) ; \
 	fi
