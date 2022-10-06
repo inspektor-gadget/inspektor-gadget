@@ -31,6 +31,7 @@ import (
 	capabilitiesTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	dnsTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	execTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	mountTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/mount/types"
 	openTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/types"
 	signalTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
 	tcpTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
@@ -630,10 +631,33 @@ func TestMountsnoop(t *testing.T) {
 	t.Parallel()
 
 	mountsnoopCmd := &Command{
-		Name:           "StartMountsnoopGadget",
-		Cmd:            fmt.Sprintf("$KUBECTL_GADGET trace mount -n %s", ns),
-		ExpectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod+\s+mount\s+\d+\s+\d+\s+\d+\s+mount\("/mnt", "/mnt", .*\) = -2`, ns),
-		StartAndStop:   true,
+		Name:         "StartMountsnoopGadget",
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace mount -n %s -o json", ns),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEntry := &mountTypes.Event{
+				Event:     BuildBaseEvent(ns),
+				Comm:      "mount",
+				Operation: "mount",
+				Retval:    -2,
+				Source:    "/mnt",
+				Target:    "/mnt",
+			}
+
+			normalize := func(e *mountTypes.Event) {
+				e.Node = ""
+				e.Pid = 0
+				e.Tid = 0
+				e.MountNsID = 0
+				e.Latency = 0
+				e.Fs = ""
+				e.Data = ""
+				e.Flags = nil
+				e.FlagsRaw = 0
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	commands := []*Command{
