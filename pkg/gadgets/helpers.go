@@ -41,3 +41,12 @@ func CloseLink(l link.Link) link.Link {
 type DataEnricher interface {
 	Enrich(event *types.CommonData, mountnsid uint64)
 }
+
+func FromCString(in []byte) string {
+	for i := 0; i < len(in); i++ {
+		if in[i] == 0 {
+			return string(in[:i])
+		}
+	}
+	return string(in)
+}
