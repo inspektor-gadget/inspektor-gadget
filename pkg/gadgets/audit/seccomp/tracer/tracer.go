@@ -28,12 +28,8 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang auditseccomp ./bpf/audit-seccomp.c -- -I./bpf/ -I../../../../ -I../../../../${TARGET} -D__KERNEL__
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang auditseccompwithfilters ./bpf/audit-seccomp.c -- -DWITH_FILTER=1 -I./bpf/ -I../../../../ -I../../../../${TARGET} -D__KERNEL__
-
-// #include <linux/types.h>
-// #include "./bpf/audit-seccomp.h"
-import "C"
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type event -cc clang auditseccomp ./bpf/audit-seccomp.c -- -I./bpf/ -I../../../../ -I../../../../${TARGET} -D__KERNEL__
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type event -cc clang auditseccompwithfilters ./bpf/audit-seccomp.c -- -DWITH_FILTER=1 -I./bpf/ -I../../../../ -I../../../../${TARGET} -D__KERNEL__
 
 const (
 	BPFProgName = "ig_audit_secc"
@@ -136,7 +132,7 @@ func (t *Tracer) run() {
 			continue
 		}
 
-		eventC := (*C.struct_event)(unsafe.Pointer(&record.RawSample[0]))
+		eventC := (*auditseccompEvent)(unsafe.Pointer(&record.RawSample[0]))
 
 		event := types.Event{
 			Event: eventtypes.Event{
@@ -151,16 +147,16 @@ func (t *Tracer) run() {
 					// ring buffer, we might not be able to get the
 					// Kubernetes metadata from the mount namespace
 					// id.
-					Namespace: C.GoString(&eventC.container.namespace[0]),
-					Pod:       C.GoString(&eventC.container.pod[0]),
-					Container: C.GoString(&eventC.container.container[0]),
+					Namespace: gadgets.FromCString(eventC.Container.Namespace[:]),
+					Pod:       gadgets.FromCString(eventC.Container.Pod[:]),
+					Container: gadgets.FromCString(eventC.Container.Container[:]),
 				},
 			},
-			Pid:       uint32(eventC.pid),
-			MountNsID: uint64(eventC.mntns_id),
-			Syscall:   syscallToName(int(eventC.syscall)),
-			Code:      codeToName(uint(eventC.code)),
-			Comm:      C.GoString(&eventC.comm[0]),
+			Pid:       uint32(eventC.Pid),
+			MountNsID: uint64(eventC.MntnsId),
+			Syscall:   syscallToName(int(eventC.Syscall)),
+			Code:      codeToName(uint(eventC.Code)),
+			Comm:      gadgets.FromCString(eventC.Comm[:]),
 		}
 
 		t.eventCallback(event)
