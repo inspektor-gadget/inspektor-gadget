@@ -24,24 +24,20 @@ import (
 	"golang.org/x/sys/unix"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/common"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang containersmap ./bpf/containers-map.c -- -I./bpf/ -I../../ -I../../${TARGET}
 
-// #include "../common.h"
-import "C"
-
 const (
 	BPFMapName        = "containers"
-	NameMaxLength     = C.NAME_MAX_LENGTH
+	NameMaxLength     = common.NameMaxLength
 	NameMaxCharacters = NameMaxLength - 1
 )
 
-type Container = C.struct_container
-
-func copyToC(dest *[NameMaxLength]C.char, source string) {
+func copyToC(dest *[NameMaxLength]byte, source string) {
 	for i := 0; i < len(source) && i < NameMaxCharacters; i++ {
-		dest[i] = C.char(source[i])
+		dest[i] = source[i]
 	}
 }
 
@@ -109,12 +105,12 @@ func (cm *ContainersMap) addContainerInMap(c *containercollection.Container) {
 	}
 	mntnsC := uint64(c.Mntns)
 
-	val := Container{}
+	val := common.Container{}
 
-	copyToC(&val.container_id, c.ID)
-	copyToC(&val.namespace, c.Namespace)
-	copyToC(&val.pod, c.Podname)
-	copyToC(&val.container, c.Name)
+	copyToC(&val.ContainerID, c.ID)
+	copyToC(&val.Namespace, c.Namespace)
+	copyToC(&val.Pod, c.Podname)
+	copyToC(&val.Container, c.Name)
 
 	cm.containersMap.Put(mntnsC, val)
 }
