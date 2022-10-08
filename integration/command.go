@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package integration
 
 import (
 	"bytes"
@@ -24,6 +24,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/kr/pretty"
 )
@@ -33,12 +34,33 @@ const (
 	namespaceLabelValue string = "ig-integration-tests"
 )
 
-type command struct {
-	// name of the command to be run, used to give information.
-	name string
+type Command struct {
+	// Name of the command to be run, used to give information.
+	Name string
 
-	// cmd is a string of the command which will be run.
-	cmd string
+	// Cmd is a string of the command which will be run.
+	Cmd string
+
+	// ExpectedString contains the exact expected output of the command.
+	ExpectedString string
+
+	// ExpectedRegexp contains a regex used to match against the command output.
+	ExpectedRegexp string
+
+	// ExpectedOutputFn is a function used to verify the output.
+	ExpectedOutputFn func(output string) error
+
+	// Cleanup indicates this command is used to clean resource and should not be
+	// skipped even if previous commands failed.
+	Cleanup bool
+
+	// StartAndStop indicates this command should first be started then stopped.
+	// It corresponds to gadget like execsnoop which wait user to type Ctrl^C.
+	StartAndStop bool
+
+	// Started indicates this command was Started.
+	// It is only used by command which have StartAndStop set.
+	Started bool
 
 	// command is a Cmd object used when we want to start the command, then other
 	// do stuff and wait for its completion.
@@ -49,30 +71,10 @@ type command struct {
 
 	// stderr contains command standard output when started using Startcommand().
 	stderr bytes.Buffer
-
-	// expectedString contains the exact expected output of the command.
-	expectedString string
-
-	// expectedRegexp contains a regex used to match against the command output.
-	expectedRegexp string
-
-	// expectedOutputFn is a function used to verify the output.
-	expectedOutputFn func(output string) error
-
-	// cleanup indicates this command is used to clean resource and should not be
-	// skipped even if previous commands failed.
-	cleanup bool
-
-	// startAndStop indicates this command should first be started then stopped.
-	// It corresponds to gadget like execsnoop which wait user to type Ctrl^C.
-	startAndStop bool
-
-	// started indicates this command was started.
-	// It is only used by command which have startAndStop set.
-	started bool
 }
 
-func deployInspektorGadget(image, imagePullPolicy string) *command {
+// DeployInspektorGadget deploys inspector gadget in Kubernetes
+func DeployInspektorGadget(image, imagePullPolicy string) *Command {
 	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --image-pull-policy=%s --debug",
 		imagePullPolicy)
 
@@ -80,14 +82,14 @@ func deployInspektorGadget(image, imagePullPolicy string) *command {
 		cmd = cmd + " --image=" + image
 	}
 
-	return &command{
-		name:           "DeployInspektorGadget",
-		cmd:            cmd,
-		expectedRegexp: `\d\/\d gadget pod\(s\) ready`,
+	return &Command{
+		Name:           "DeployInspektorGadget",
+		Cmd:            cmd,
+		ExpectedRegexp: `\d\/\d gadget pod\(s\) ready`,
 	}
 }
 
-func deploySPO(limitReplicas, patchWebhookConfig, bestEffortResourceMgmt bool) *command {
+func DeploySPO(limitReplicas, patchWebhookConfig, bestEffortResourceMgmt bool) *Command {
 	cmdStr := fmt.Sprintf(`
 kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml
 kubectl --namespace cert-manager wait --for condition=ready pod -l app.kubernetes.io/instance=cert-manager
@@ -150,42 +152,78 @@ kubectl -n security-profiles-operator wait deploy security-profiles-operator-web
   (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
 kubectl rollout status -n security-profiles-operator ds spod --timeout=180s || \
   (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
+
 `, limitReplicas, patchWebhookConfig, bestEffortResourceMgmt)
-	return &command{
-		name:           "DeploySecurityProfilesOperator",
-		cmd:            cmdStr,
-		expectedRegexp: `daemon set "spod" successfully rolled out`,
+	return &Command{
+		Name:           "DeploySecurityProfilesOperator",
+		Cmd:            cmdStr,
+		ExpectedRegexp: `daemon set "spod" successfully rolled out`,
 	}
 }
 
-var cleanupInspektorGadget *command = &command{
-	name:    "CleanupInspektorGadget",
-	cmd:     "$KUBECTL_GADGET undeploy",
-	cleanup: true,
+// CleanupInspektorGadget cleans up inspector gadget in Kubernetes
+var CleanupInspektorGadget *Command = &Command{
+	Name:    "CleanupInspektorGadget",
+	Cmd:     "$KUBECTL_GADGET undeploy",
+	Cleanup: true,
 }
 
-var cleanupSPO *command = &command{
-	name: "RemoveSecurityProfilesOperator",
-	cmd: `
+// CleanupSPO cleans up security profile operator in Kubernetes
+var CleanupSPO *Command = &Command{
+	Name: "RemoveSecurityProfilesOperator",
+	Cmd: `
 	kubectl delete seccompprofile --all --all-namespaces
 	kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.3/deploy/operator.yaml --ignore-not-found
 	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml --ignore-not-found
 	`,
-	cleanup: true,
+	Cleanup: true,
 }
 
-// createExecCmd creates an exec.Cmd for the command c.cmd and stores it in
-// command.command. The exec.Cmd is configured to store the stdout and stderr in
-// command.stdout and command.stderr so that we can use them on
-// command.verifyOutput().
-func (c *command) createExecCmd() {
-	cmd := exec.Command("/bin/sh", "-c", c.cmd)
+// RunCommands is used to run a list of commands with stopping/clean up logic.
+func RunCommands(cmds []*Command, t *testing.T) {
+	// defer all cleanup commands so we are sure to exit clean whatever
+	// happened
+	defer func() {
+		for _, cmd := range cmds {
+			if cmd.Cleanup {
+				cmd.Run(t)
+			}
+		}
+	}()
+
+	// defer stopping commands
+	defer func() {
+		for _, cmd := range cmds {
+			if cmd.StartAndStop && cmd.Started {
+				// Wait a bit before stopping the command.
+				time.Sleep(10 * time.Second)
+				cmd.Stop(t)
+			}
+		}
+	}()
+
+	// run all commands but cleanup ones
+	for _, cmd := range cmds {
+		if cmd.Cleanup {
+			continue
+		}
+
+		cmd.Run(t)
+	}
+}
+
+// createExecCmd creates an exec.Cmd for the command c.Cmd and stores it in
+// Command.command. The exec.Cmd is configured to store the stdout and stderr in
+// Command.stdout and Command.stderr so that we can use them on
+// Command.verifyOutput().
+func (c *Command) createExecCmd() {
+	cmd := exec.Command("/bin/sh", "-c", c.Cmd)
 
 	cmd.Stdout = &c.stdout
 	cmd.Stderr = &c.stderr
 
 	// To be able to kill the process of /bin/sh and its child (the process of
-	// c.cmd), we need to send the termination signal to their process group ID
+	// c.Cmd), we need to send the termination signal to their process group ID
 	// (PGID). However, child processes get the same PGID as their parents by
 	// default, so in order to avoid killing also the integration tests process,
 	// we set the fields Setpgid and Pgid of syscall.SysProcAttr before
@@ -224,24 +262,24 @@ func getInspektorGadgetLogs() string {
 // verifyOutput verifies if the stdout match with the expected regular
 // expression and the expected string. If it doesn't, verifyOutput returns and
 // error and the gadget pod logs.
-func (c *command) verifyOutput() error {
+func (c *Command) verifyOutput() error {
 	output := c.stdout.String()
 
-	if c.expectedRegexp != "" {
-		r := regexp.MustCompile(c.expectedRegexp)
+	if c.ExpectedRegexp != "" {
+		r := regexp.MustCompile(c.ExpectedRegexp)
 		if !r.MatchString(output) {
 			return fmt.Errorf("output didn't match the expected regexp: %s\n%s",
-				c.expectedRegexp, getInspektorGadgetLogs())
+				c.ExpectedRegexp, getInspektorGadgetLogs())
 		}
 	}
 
-	if c.expectedString != "" && output != c.expectedString {
+	if c.ExpectedString != "" && output != c.ExpectedString {
 		return fmt.Errorf("output didn't match the expected string: %s\n%v\n%s",
-			c.expectedString, pretty.Diff(c.expectedString, output), getInspektorGadgetLogs())
+			c.ExpectedString, pretty.Diff(c.ExpectedString, output), getInspektorGadgetLogs())
 	}
 
-	if c.expectedOutputFn != nil {
-		if err := c.expectedOutputFn(output); err != nil {
+	if c.ExpectedOutputFn != nil {
+		if err := c.ExpectedOutputFn(output); err != nil {
 			return fmt.Errorf("verifying output with custom function: %w\n%s",
 				err, getInspektorGadgetLogs())
 		}
@@ -252,7 +290,7 @@ func (c *command) verifyOutput() error {
 
 // kill kills a command by sending SIGKILL because we want to stop the process
 // immediatly and avoid that the signal is trapped.
-func (c *command) kill() error {
+func (c *Command) kill() error {
 	const sig syscall.Signal = syscall.SIGKILL
 
 	// No need to kill, command has not been executed yet or it already exited
@@ -263,16 +301,16 @@ func (c *command) kill() error {
 	// Given that we set Setpgid, here we just need to send the PID of /bin/sh
 	// (which is the same PGID) as a negative number to syscall.Kill(). As a
 	// result, the signal will be received by all the processes with such PGID,
-	// in our case, the process of /bin/sh and c.cmd.
+	// in our case, the process of /bin/sh and c.Cmd.
 	err := syscall.Kill(-c.command.Process.Pid, sig)
 	if err != nil {
 		return err
 	}
 
-	// In some cases, we do not have to wait here because the cmd was executed
+	// In some cases, we do not have to wait here because the Cmd was executed
 	// with Run(), which already waits. On the contrary, in the case it was
-	// executed with Start() thus c.started is true, we need to wait indeed.
-	if c.started {
+	// executed with Start() thus c.Started is true, we need to wait indeed.
+	if c.Started {
 		err = c.command.Wait()
 		if err == nil {
 			return nil
@@ -300,158 +338,158 @@ func (c *command) kill() error {
 	return err
 }
 
-// runWithoutTest runs the command, this is thought to be used in TestMain().
-func (c *command) runWithoutTest() error {
+// RunWithoutTest runs the Command, this is thought to be used in TestMain().
+func (c *Command) RunWithoutTest() error {
 	c.createExecCmd()
 
-	fmt.Printf("Run command(%s):\n%s\n", c.name, c.cmd)
+	fmt.Printf("run command(%s):\n%s\n", c.Name, c.Cmd)
 	err := c.command.Run()
 	fmt.Printf("Command returned(%s):\n%s\n%s\n",
-		c.name, c.stderr.String(), c.stdout.String())
+		c.Name, c.stderr.String(), c.stdout.String())
 
 	if err != nil {
-		return fmt.Errorf("failed to run command(%s): %w", c.name, err)
+		return fmt.Errorf("failed to run command(%s): %w", c.Name, err)
 	}
 
 	if err = c.verifyOutput(); err != nil {
-		return fmt.Errorf("invalid command output(%s): %w", c.name, err)
+		return fmt.Errorf("invalid command output(%s): %w", c.Name, err)
 	}
 
 	return nil
 }
 
-// startWithoutTest starts the command, this is thought to be used in TestMain().
-func (c *command) startWithoutTest() error {
-	if c.started {
-		fmt.Printf("Warn(%s): trying to start command but it was already started\n", c.name)
+// StartWithoutTest starts the Command, this is thought to be used in TestMain().
+func (c *Command) StartWithoutTest() error {
+	if c.Started {
+		fmt.Printf("Warn(%s): trying to start command but it was already Started\n", c.Name)
 		return nil
 	}
 
 	c.createExecCmd()
 
-	fmt.Printf("Start command(%s): %s\n", c.name, c.cmd)
+	fmt.Printf("Start command(%s): %s\n", c.Name, c.Cmd)
 	err := c.command.Start()
 	if err != nil {
-		return fmt.Errorf("failed to start command(%s): %w", c.name, err)
+		return fmt.Errorf("failed to start command(%s): %w", c.Name, err)
 	}
 
-	c.started = true
+	c.Started = true
 
 	return nil
 }
 
-// waitWithoutTest waits for a command that was started with startWithoutTest(),
+// WaitWithoutTest waits for a Command that was started with StartWithoutTest(),
 // this is thought to be used in TestMain().
-func (c *command) waitWithoutTest() error {
-	if !c.started {
-		fmt.Printf("Warn(%s): trying to wait for a command that has not been started yet\n", c.name)
+func (c *Command) WaitWithoutTest() error {
+	if !c.Started {
+		fmt.Printf("Warn(%s): trying to wait for a command that has not been Started yet\n", c.Name)
 		return nil
 	}
 
-	fmt.Printf("Wait for command(%s)\n", c.name)
+	fmt.Printf("Wait for command(%s)\n", c.Name)
 	err := c.command.Wait()
 	fmt.Printf("Command returned(%s):\n%s\n%s\n",
-		c.name, c.stderr.String(), c.stdout.String())
+		c.Name, c.stderr.String(), c.stdout.String())
 
 	if err != nil {
-		return fmt.Errorf("failed to wait for command(%s): %w", c.name, err)
+		return fmt.Errorf("failed to wait for command(%s): %w", c.Name, err)
 	}
 
-	c.started = false
+	c.Started = false
 
 	return nil
 }
 
-// killWithoutTest kills for a command that was started with startWithoutTest()
-// or runWithoutTest() and we do not need to verify its output. This is thought
+// KillWithoutTest kills a Command started with StartWithoutTest()
+// or RunWithoutTest() and we do not need to verify its output. This is thought
 // to be used in TestMain().
-func (c *command) killWithoutTest() error {
-	fmt.Printf("Kill command(%s)\n", c.name)
+func (c *Command) KillWithoutTest() error {
+	fmt.Printf("Kill command(%s)\n", c.Name)
 
 	if err := c.kill(); err != nil {
-		return fmt.Errorf("failed to kill command(%s): %w", c.name, err)
+		return fmt.Errorf("failed to kill command(%s): %w", c.Name, err)
 	}
 
 	return nil
 }
 
-// run runs the command on the given as parameter test.
-func (c *command) run(t *testing.T) {
+// Run runs the Command on the given as parameter test.
+func (c *Command) Run(t *testing.T) {
 	c.createExecCmd()
 
-	if c.startAndStop {
-		c.start(t)
+	if c.StartAndStop {
+		c.Start(t)
 		return
 	}
 
-	t.Logf("Run command(%s):\n%s\n", c.name, c.cmd)
+	t.Logf("Run command(%s):\n%s\n", c.Name, c.Cmd)
 	err := c.command.Run()
 	t.Logf("Command returned(%s):\n%s\n%s\n",
-		c.name, c.stderr.String(), c.stdout.String())
+		c.Name, c.stderr.String(), c.stdout.String())
 
 	if err != nil {
-		t.Fatalf("failed to run command(%s): %s\n", c.name, err)
+		t.Fatalf("failed to run command(%s): %s\n", c.Name, err)
 	}
 
 	err = c.verifyOutput()
 	if err != nil {
-		t.Fatalf("invalid command output(%s): %s\n", c.name, err)
+		t.Fatalf("invalid command output(%s): %s\n", c.Name, err)
 	}
 }
 
-// start starts the command on the given as parameter test, you need to
-// wait it using stop().
-func (c *command) start(t *testing.T) {
-	if c.started {
-		t.Logf("Warn(%s): trying to start command but it was already started\n", c.name)
+// Start starts the Command on the given as parameter test, you need to
+// wait it using Stop().
+func (c *Command) Start(t *testing.T) {
+	if c.Started {
+		t.Logf("Warn(%s): trying to start command but it was already Started\n", c.Name)
 		return
 	}
 
-	t.Logf("Start command(%s): %s\n", c.name, c.cmd)
+	t.Logf("Start command(%s): %s\n", c.Name, c.Cmd)
 	err := c.command.Start()
 	if err != nil {
-		t.Fatalf("failed to start command(%s): %s\n", c.name, err)
+		t.Fatalf("failed to start command(%s): %s\n", c.Name, err)
 	}
 
-	c.started = true
+	c.Started = true
 }
 
-// stop stops a command previously started with start().
+// Stop stops a Command previously started with Start().
 // To do so, it Kill() the process corresponding to this Cmd and then wait for
 // its termination.
-// Cmd output is then checked with regard to expectedString and expectedRegexp
-func (c *command) stop(t *testing.T) {
-	if !c.started {
-		t.Logf("Warn(%s): trying to stop command but it was not started\n", c.name)
+// Cmd output is then checked with regard to ExpectedString and ExpectedRegexp
+func (c *Command) Stop(t *testing.T) {
+	if !c.Started {
+		t.Logf("Warn(%s): trying to stop command but it was not Started\n", c.Name)
 		return
 	}
 
-	t.Logf("Stop command(%s)\n", c.name)
+	t.Logf("Stop command(%s)\n", c.Name)
 	err := c.kill()
 	t.Logf("Command returned(%s):\n%s\n%s\n",
-		c.name, c.stderr.String(), c.stdout.String())
+		c.Name, c.stderr.String(), c.stdout.String())
 
 	if err != nil {
-		t.Fatalf("failed to stop command(%s): %s\n", c.name, err)
+		t.Fatalf("failed to stop command(%s): %s\n", c.Name, err)
 	}
 
 	err = c.verifyOutput()
 	if err != nil {
-		t.Fatalf("invalid command output(%s): %s\n", c.name, err)
+		t.Fatalf("invalid command output(%s): %s\n", c.Name, err)
 	}
 
-	c.started = false
+	c.Started = false
 }
 
-// busyboxPodRepeatCommand returns a command that creates a pod and runs
+// BusyboxPodRepeatCommand returns a Command that creates a pod and runs
 // "cmd" each 0.1 seconds inside the pod.
-func busyboxPodRepeatCommand(namespace, cmd string) *command {
+func BusyboxPodRepeatCommand(namespace, cmd string) *Command {
 	cmdStr := fmt.Sprintf("while true; do %s ; sleep 0.1; done", cmd)
-	return busyboxPodCommand(namespace, cmdStr)
+	return BusyboxPodCommand(namespace, cmdStr)
 }
 
-// busyboxPodCommand returns a command that creates a pod and runs "cmd" in it.
-func busyboxPodCommand(namespace, cmd string) *command {
+// BusyboxPodCommand returns a Command that creates a pod and runs "cmd" in it.
+func BusyboxPodCommand(namespace, cmd string) *Command {
 	cmdStr := fmt.Sprintf(`kubectl apply -f - <<"EOF"
 apiVersion: v1
 kind: Pod
@@ -472,23 +510,23 @@ spec:
 EOF
 `, namespace, cmd)
 
-	return &command{
-		name:           "RunTestPod",
-		cmd:            cmdStr,
-		expectedString: "pod/test-pod created\n",
+	return &Command{
+		Name:           "RunTestPod",
+		Cmd:            cmdStr,
+		ExpectedString: "pod/test-pod created\n",
 	}
 }
 
-// generateTestNamespaceName returns a string which can be used as unique
+// GenerateTestNamespaceName returns a string which can be used as unique
 // namespace.
 // The returned value is: namespace_parameter-random_integer.
-func generateTestNamespaceName(namespace string) string {
+func GenerateTestNamespaceName(namespace string) string {
 	return fmt.Sprintf("%s-%d", namespace, rand.Int())
 }
 
-// createTestNamespaceCommand returns a command which creates a namespace whom
+// CreateTestNamespaceCommand returns a Command which creates a namespace whom
 // name is given as parameter.
-func createTestNamespaceCommand(namespace string) *command {
+func CreateTestNamespaceCommand(namespace string) *Command {
 	cmd := fmt.Sprintf(`kubectl apply -f - <<"EOF"
 apiVersion: v1
 kind: Namespace
@@ -505,40 +543,40 @@ while true; do
 done
 	`, namespace, namespaceLabelKey, namespaceLabelValue, namespace)
 
-	return &command{
-		name: "Create test namespace",
-		cmd:  cmd,
+	return &Command{
+		Name: "Create test namespace",
+		Cmd:  cmd,
 	}
 }
 
-// deleteTestNamespaceCommand returns a command which deletes a namespace whom
+// DeleteTestNamespaceCommand returns a Command which deletes a namespace whom
 // name is given as parameter.
-func deleteTestNamespaceCommand(namespace string) *command {
-	return &command{
-		name:           "DeleteTestNamespace",
-		cmd:            fmt.Sprintf("kubectl delete ns %s", namespace),
-		expectedString: fmt.Sprintf("namespace \"%s\" deleted\n", namespace),
-		cleanup:        true,
+func DeleteTestNamespaceCommand(namespace string) *Command {
+	return &Command{
+		Name:           "DeleteTestNamespace",
+		Cmd:            fmt.Sprintf("kubectl delete ns %s", namespace),
+		ExpectedString: fmt.Sprintf("namespace \"%s\" deleted\n", namespace),
+		Cleanup:        true,
 	}
 }
 
-// deleteRemainingNamespacesCommand returns a command which deletes a namespace whom
+// DeleteRemainingNamespacesCommand returns a Command which deletes a namespace whom
 // name is given as parameter.
-func deleteRemainingNamespacesCommand() *command {
-	return &command{
-		name: "DeleteRemainingTestNamespace",
-		cmd: fmt.Sprintf("kubectl delete ns -l %s=%s",
+func DeleteRemainingNamespacesCommand() *Command {
+	return &Command{
+		Name: "DeleteRemainingTestNamespace",
+		Cmd: fmt.Sprintf("kubectl delete ns -l %s=%s",
 			namespaceLabelKey, namespaceLabelValue),
-		cleanup: true,
+		Cleanup: true,
 	}
 }
 
-// waitUntilTestPodReadyCommand returns a command which waits until test-pod in
+// WaitUntilTestPodReadyCommand returns a Command which waits until test-pod in
 // the given as parameter namespace is ready.
-func waitUntilTestPodReadyCommand(namespace string) *command {
-	return &command{
-		name:           "WaitForTestPod",
-		cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready -n %s test-pod", namespace),
-		expectedString: "pod/test-pod condition met\n",
+func WaitUntilTestPodReadyCommand(namespace string) *Command {
+	return &Command{
+		Name:           "WaitForTestPod",
+		Cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready -n %s test-pod", namespace),
+		ExpectedString: "pod/test-pod condition met\n",
 	}
 }

@@ -165,7 +165,7 @@ local-gadget-tests:
 .PHONY: integration-tests
 integration-tests: kubectl-gadget
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \
-		go test ./integration/... \
+		go test ./integration/inspektor-gadget/... \
 			-integration \
 			-timeout 30m \
 			-k8s-distro $(KUBERNETES_DISTRIBUTION) \

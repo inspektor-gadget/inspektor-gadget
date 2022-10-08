@@ -468,6 +468,43 @@ jobs:
 
         perl tools/check-readme.pl ./kubectl-gadget README.md
 
+  test-integration-local-gadget:
+    name: Integration tests for local gadget
+    # level: 2
+    needs: [ test-unit, test-local-gadget, build-local-gadget ]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [ docker, containerd, cri-o ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Get local-gadget-linux-amd64.tar.gz from artifact.
+        uses: actions/download-artifact@v2
+        with:
+          name: local-gadget-linux-amd64-tar-gz
+          path: /home/runner/work/inspektor-gadget/
+      - name: Unpack local-gadget-linux-amd64.tar.gz
+        run: |
+          tar zxvf /home/runner/work/inspektor-gadget/local-gadget-linux-amd64.tar.gz
+          mv local-gadget local-gadget-linux-amd64
+      # https://github.com/kubernetes/minikube/issues/12928#issuecomment-1245458044
+      - name: Upgrade docker for ${{ matrix.runtime }}
+        if: matrix.runtime == 'cri-o'
+        run: |
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  test"
+          sudo apt-get update
+          sudo apt-get install docker-ce
+      - name: Run integration for container runtime ${{ matrix.runtime }}
+        run: |
+          make -C integration/local-gadget CONTAINER_RUNTIME=${{ matrix.runtime }} -o build setup test
+
   test-integration-aks:
     name: Integration tests on AKS
     # level: 2
