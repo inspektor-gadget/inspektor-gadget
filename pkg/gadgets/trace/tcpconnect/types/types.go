@@ -15,20 +15,28 @@
 package types
 
 import (
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
 
-	MountNsID uint64 `json:"mountnsid,omitempty"`
-	Pid       uint32 `json:"pid,omitempty"`
-	UID       uint32 `json:"uid,omitempty"`
-	Comm      string `json:"comm,omitempty"`
-	IPVersion int    `json:"ipversion,omitempty"`
-	Saddr     string `json:"saddr,omitempty"`
-	Daddr     string `json:"daddr,omitempty"`
-	Dport     uint16 `json:"dport,omitempty"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
+	UID       uint32 `json:"uid,omitempty" column:"uid,minWidth:6,hide"`
+	Comm      string `json:"comm,omitempty" column:"comm,maxWidth:16"`
+	IPVersion int    `json:"ipversion,omitempty" column:"ip,width:2,fixed"`
+	// For Saddr and Daddr:
+	// Min: XXX.XXX.XXX.XXX (IPv4) = 15
+	// Max: 0000:0000:0000:0000:0000:ffff:XXX.XXX.XXX.XXX (IPv4-mapped IPv6 address) = 45
+	Saddr     string `json:"saddr,omitempty" column:"saddr,minWidth:15,maxWidth:45"`
+	Daddr     string `json:"daddr,omitempty" column:"daddr,minWidth:15,maxWidth:45"`
+	Dport     uint16 `json:"dport,omitempty" column:"dport,minWidth:type"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	return columns.MustCreateColumns[Event]()
 }
 
 func Base(ev eventtypes.Event) Event {
