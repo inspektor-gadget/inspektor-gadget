@@ -16,7 +16,11 @@ description: >
   * [Hook Mode](#hook-mode)
   * [Specific Information for Different Platforms](#specific-information-for-different-platforms)
     + [Minikube](#minikube)
-  * [Version skew policy](#version-skew-policy)
+- [Uninstalling from the cluster](#uninstalling-from-the-cluster)
+- [Version skew policy](#version-skew-policy)
+- [Installing local-gadget](#installing-local-gadget)
+  * [Install a specific release](#install-a-specific-release-1)
+  * [Compile from source](#compile-from-source-1)
 <!-- /toc -->
 
 Inspektor Gadget is composed of a `kubectl` plugin executed in the user's
@@ -148,7 +152,7 @@ $ minikube start --driver=docker
 The following command will remove all the resources created by Inspektor
 Gadget from the cluster:
 
-```
+```bash
 $ kubectl gadget undeploy
 ```
 
@@ -159,3 +163,31 @@ deployed on the cluster to be the exact same version. Even if this is
 possible that different versions work well together, we don't provide
 any guarantee in those cases. We'll visit this policy again once we
 approach to the v1.0 release.
+
+## Installing local-gadget
+
+The [`local-gadget`](local-gadget.md) tool can be built and installed
+independently. The result is a single binary (statically linked) that can be
+copied to a Kubernetes node or any host to trace its containers.
+
+### Install a specific release
+
+It is possible to download the asset for a given release and platform from the
+[releases page](https://github.com/kinvolk/inspektor-gadget/releases/).
+
+For instance, to download the latest release for linux-amd64:
+
+```bash
+$ curl -sL https://github.com/kinvolk/inspektor-gadget/releases/latest/download/local-gadget-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - local-gadget
+$ local-gadget version
+```
+
+### Compile from source
+
+`local-gadget` is built using a Docker container, so you don't have to worry
+about installing dependencies:
+
+```bash
+$ make local-gadget
+$ sudo cp local-gadget /usr/local/bin/
+```

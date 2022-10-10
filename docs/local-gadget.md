@@ -35,6 +35,11 @@ The architecture of `local-gadget` is described in the main
 - Outside a Kubernetes environment, for observing and debugging standalone
   containers.
 
+## Installation
+
+The instruction to install `local-gadget` are available in the main
+[installation](install.md#installing-local-gadget) guide.
+
 ## Usage
 
 Currently, the `local-gadget` can trace containers managed by Docker regardless
