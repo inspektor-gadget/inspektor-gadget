@@ -34,6 +34,7 @@ import (
 	openTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/types"
 	signalTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
 	tcpTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
+	tcpconnectTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
 )
 
 const (
@@ -1008,10 +1009,36 @@ func TestTcpconnect(t *testing.T) {
 	t.Parallel()
 
 	tcpconnectCmd := &Command{
-		Name:           "StartTcpconnectGadget",
-		Cmd:            fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s", ns),
-		ExpectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+wget`, ns),
-		StartAndStop:   true,
+		Name:         "StartTcpconnectGadget",
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s -o json", ns),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEntries := []*tcpconnectTypes.Event{
+				{
+					Event:     BuildBaseEvent(ns),
+					Comm:      "wget",
+					IPVersion: 4,
+					Daddr:     "1.1.1.1",
+					Dport:     80,
+				},
+				{
+					Event:     BuildBaseEvent(ns),
+					Comm:      "wget",
+					IPVersion: 4,
+					Daddr:     "1.1.1.1",
+					Dport:     443,
+				},
+			}
+
+			normalize := func(e *tcpconnectTypes.Event) {
+				e.Node = ""
+				e.Pid = 0
+				e.Saddr = ""
+				e.MountNsID = 0
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+		},
 	}
 
 	commands := []*Command{
