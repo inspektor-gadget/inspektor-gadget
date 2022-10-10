@@ -40,6 +40,12 @@ func init() {
 	// Max: 0000:0000:0000:0000:0000:ffff:XXX.XXX.XXX.XXX (IPv4-mapped IPv6 address) = 45
 	columns.MustRegisterTemplate("ipaddr", "minWidth:15,maxWidth:45")
 	columns.MustRegisterTemplate("ipport", "minWidth:type")
+
+	// For system calls as the longest is sched_rr_get_interval_time64 with 28
+	// characters:
+	// https://gist.github.com/alban/aa664b3c46aaf24aeb69caae29a01ae5
+	// But there is a lot of system calls which name is below 18 characters.
+	columns.MustRegisterTemplate("syscall", "width:18,maxWidth:28")
 }
 
 func Init(nodeName string) {
