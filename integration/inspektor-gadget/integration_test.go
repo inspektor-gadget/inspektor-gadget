@@ -829,7 +829,7 @@ func TestOpensnoop(t *testing.T) {
 				e.UID = 0
 			}
 
-			return ExpectAllToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
