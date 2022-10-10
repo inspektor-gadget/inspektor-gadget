@@ -15,6 +15,9 @@
 package gadgets
 
 import (
+	"encoding/binary"
+	"unsafe"
+
 	"github.com/cilium/ebpf/link"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -49,4 +52,16 @@ func FromCString(in []byte) string {
 		}
 	}
 	return string(in)
+}
+
+func Htonl(hl uint32) uint32 {
+	var nl [4]byte
+	binary.BigEndian.PutUint32(nl[:], hl)
+	return *(*uint32)(unsafe.Pointer(&nl[0]))
+}
+
+func Htons(hs uint16) uint16 {
+	var ns [2]byte
+	binary.BigEndian.PutUint16(ns[:], hs)
+	return *(*uint16)(unsafe.Pointer(&ns[0]))
 }
