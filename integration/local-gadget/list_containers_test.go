@@ -33,6 +33,7 @@ func TestListContainers(t *testing.T) {
 		Cmd:  fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s", *containerRuntime),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
+				Name:      "test-pod",
 				Podname:   "test-pod",
 				Runtime:   *containerRuntime,
 				Namespace: ns,
@@ -41,7 +42,10 @@ func TestListContainers(t *testing.T) {
 			normalize := func(c *containercollection.Container) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/kinvolk/inspektor-gadget/issues/737
-				c.Name = ""
+				if *containerRuntime == ContainerRuntimeDocker {
+					c.Name = "test-pod"
+				}
+
 				c.ID = ""
 				c.Pid = 0
 				c.OciConfig = nil

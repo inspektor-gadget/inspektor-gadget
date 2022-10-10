@@ -43,7 +43,10 @@ func TestTraceBind(t *testing.T) {
 			normalize := func(e *bindTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/kinvolk/inspektor-gadget/issues/737
-				e.Container = "test-pod"
+				if *containerRuntime == ContainerRuntimeDocker {
+					e.Container = "test-pod"
+				}
+
 				e.Node = ""
 				e.Pid = 0
 				e.MountNsID = 0
