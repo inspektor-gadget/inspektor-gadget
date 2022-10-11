@@ -110,6 +110,7 @@ func NewTraceCmd() *cobra.Command {
 	traceCmd := commontrace.NewCommonTraceCmd()
 
 	traceCmd.AddCommand(newBindCmd())
+	traceCmd.AddCommand(newCapabilitiesCmd())
 	traceCmd.AddCommand(newExecCmd())
 	traceCmd.AddCommand(newTCPCmd())
 	traceCmd.AddCommand(newTcpconnectCmd())

@@ -19,28 +19,28 @@ import (
 	"testing"
 
 	. "github.com/kinvolk/inspektor-gadget/integration"
-	bindTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	capabilitiesTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 )
 
-func TestTraceBind(t *testing.T) {
+func TestTraceCapabilities(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-bind")
+	ns := GenerateTestNamespaceName("test-trace-capabilities")
 
-	traceBindCmd := &Command{
-		Name:         "TraceBind",
-		Cmd:          fmt.Sprintf("local-gadget trace bind -o json --runtimes=%s", *containerRuntime),
+	capabilitiesCmd := &Command{
+		Name:         "TraceCapabilities",
+		Cmd:          fmt.Sprintf("local-gadget trace capabilities -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &bindTypes.Event{
-				Event:    BuildBaseEvent(ns),
-				Comm:     "nc",
-				Protocol: "TCP",
-				Addr:     "::",
-				Port:     9090,
-				Options:  ".R...",
+			expectedEntry := &capabilitiesTypes.Event{
+				Event:   BuildBaseEvent(ns),
+				Comm:    "nice",
+				CapName: "CAP_SYS_NICE",
+				Cap:     23,
+				Audit:   1,
+				Verdict: "Deny",
 			}
 
-			normalize := func(e *bindTypes.Event) {
+			normalize := func(e *capabilitiesTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/kinvolk/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
@@ -48,22 +48,23 @@ func TestTraceBind(t *testing.T) {
 				}
 
 				e.Pid = 0
+				e.UID = 0
 				e.MountNsID = 0
+				// Do not check InsetID to avoid introducing dependency on the kernel version
+				e.InsetID = nil
 			}
 
-			// Since we aren't doing any filtering in traceBindCmd we avoid using ExpectAllToMatch
-			// Issue: https://github.com/kinvolk/inspektor-gadget/issues/644
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
-	// TODO: traceBindCmd should moved up the list once we can trace new cri-o containers.
+	// TODO: capabilitiesCmd should moved up the list once we can trace new cri-o containers.
 	// Issue: https://github.com/kinvolk/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		BusyboxPodRepeatCommand(ns, "nc -l -p 9090 -w 1"),
+		BusyboxPodRepeatCommand(ns, "nice -n -20 echo"),
 		WaitUntilTestPodReadyCommand(ns),
-		traceBindCmd,
+		capabilitiesCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 
