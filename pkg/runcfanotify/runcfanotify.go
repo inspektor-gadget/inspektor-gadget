@@ -138,24 +138,14 @@ func initFanotify() (*fanotify.NotifyFD, error) {
 
 // Supported detects if RuncNotifier is supported in the current environment
 func Supported() bool {
-	// Test that runc is available
-	runcFound := false
-	for _, path := range runcPaths {
-		if _, err := os.Stat(filepath.Join(hostRoot, path)); err == nil {
-			runcFound = true
-			break
-		}
+	notifier, err := NewRuncNotifier(func(notif ContainerEvent) {})
+	if notifier != nil {
+		notifier.Close()
 	}
-	if !runcFound {
-		return false
-	}
-	// Test that it's possible to run fanotify
-	notifyFD, err := initFanotify()
 	if err != nil {
-		return false
+		log.Debugf("Runcfanotify: not supported: %s", err)
 	}
-	notifyFD.File.Close()
-	return true
+	return err == nil
 }
 
 // NewRuncNotifier uses fanotify to detect when runc containers are created
@@ -175,14 +165,28 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	}
 	n.runcBinaryNotify = runcBinaryNotify
 
-	for _, runcPath := range runcPaths {
-		file := filepath.Join(hostRoot, runcPath)
-		err = runcBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, file)
-		if err == nil {
-			log.Debugf("Checking %q: done", file)
-		} else {
-			log.Debugf("Checking %q: %s", file, err)
+	runcMonitored := false
+
+	for _, r := range runcPaths {
+		runcPath := filepath.Join(hostRoot, r)
+
+		log.Debugf("Runcfanotify: trying runc at %s", runcPath)
+
+		if _, err := os.Stat(runcPath); errors.Is(err, os.ErrNotExist) {
+			log.Debugf("Runcfanotify: runc at %s not found", runcPath)
+			continue
 		}
+
+		if err := runcBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runcPath); err != nil {
+			log.Warnf("Runcfanotify: failed to fanotify mark: %s", err)
+			continue
+		}
+		runcMonitored = true
+	}
+
+	if !runcMonitored {
+		runcBinaryNotify.File.Close()
+		return nil, errors.New("no runc instance can be monitored with fanotify")
 	}
 
 	n.wg.Add(2)
