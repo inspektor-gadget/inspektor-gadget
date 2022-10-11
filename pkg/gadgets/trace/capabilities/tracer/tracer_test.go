@@ -1,0 +1,380 @@
+//go:build linux
+// +build linux
+
+// Copyright 2022 The Inspektor Gadget authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tracer_test
+
+import (
+	"fmt"
+	"log"
+	"net"
+	"os"
+	"os/exec"
+	"sort"
+	"testing"
+	"time"
+
+	utilstest "github.com/kinvolk/inspektor-gadget/pkg/gadgets/internal/test"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/tracer"
+	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
+	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	"github.com/moby/moby/pkg/parsers/kernel"
+	"golang.org/x/sys/unix"
+)
+
+func TestCapabilitiesTracerCreate(t *testing.T) {
+	t.Parallel()
+
+	utilstest.RequireRoot(t)
+
+	tracer := createTracer(t, &tracer.Config{}, func(types.Event) {})
+	if tracer == nil {
+		t.Fatal("Returned tracer was nil")
+	}
+}
+
+func TestTraceCapabilitiesTracerStopIdempotent(t *testing.T) {
+	t.Parallel()
+
+	utilstest.RequireRoot(t)
+
+	tracer := createTracer(t, &tracer.Config{}, func(types.Event) {})
+
+	// Check that a double stop doesn't cause issues
+	tracer.Stop()
+	tracer.Stop()
+}
+
+func TestCapabilitiesTracer(t *testing.T) {
+	t.Parallel()
+
+	utilstest.RequireRoot(t)
+	// Needs kernel >= 5.1.0 because it introduced the InsetID field.
+	utilstest.RequireKernelVersion(t, &kernel.VersionInfo{Kernel: 5, Major: 1, Minor: 0})
+
+	false_ := false
+
+	type testDefinition struct {
+		getTracerConfig func(info *utilstest.RunnerInfo) *tracer.Config
+		runnerConfig    *utilstest.RunnerConfig
+		generateEvent   func() error
+		validateEvent   func(t *testing.T, info *utilstest.RunnerInfo, _ interface{}, events []types.Event)
+	}
+
+	for name, test := range map[string]testDefinition{
+		"captures_all_events_with_no_filters_configured": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{}
+			},
+			generateEvent: chown,
+			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, _ interface{}) *types.Event {
+				return &types.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					MountNsID: info.MountNsID,
+					Pid:       uint32(info.Pid),
+					UID:       uint32(info.UID),
+					Comm:      info.Comm,
+					CapName:   "CAP_CHOWN",
+					Cap:       0,
+					Audit:     1,
+					InsetID:   &false_,
+					Verdict:   "Allow",
+				}
+			}),
+		},
+		"captures_no_events_with_no_matching_filter": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, 0),
+				}
+			},
+			generateEvent: chown,
+			validateEvent: utilstest.ExpectNoEvent[types.Event, interface{}],
+		},
+		"captures_events_with_matching_filter_CAP_CHOWN": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			generateEvent: chown,
+			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, _ interface{}) *types.Event {
+				return &types.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					MountNsID: info.MountNsID,
+					Pid:       uint32(info.Pid),
+					UID:       uint32(info.UID),
+					Comm:      info.Comm,
+					CapName:   "CAP_CHOWN",
+					Cap:       0,
+					Audit:     1,
+					InsetID:   &false_,
+					Verdict:   "Allow",
+				}
+			}),
+		},
+		"captures_events_with_matching_filter_CAP_NET_BIND_SERVICE": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			generateEvent: bind,
+			validateEvent: utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, _ interface{}) *types.Event {
+				return &types.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					MountNsID: info.MountNsID,
+					Pid:       uint32(info.Pid),
+					UID:       uint32(info.UID),
+					Comm:      info.Comm,
+					CapName:   "CAP_NET_BIND_SERVICE",
+					Cap:       10,
+					Audit:     1,
+					InsetID:   &false_,
+					Verdict:   "Allow",
+				}
+			}),
+		},
+		"verdict_deny": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			runnerConfig: &utilstest.RunnerConfig{UID: 1245},
+			generateEvent: func() error {
+				if err := chown(); err == nil {
+					return fmt.Errorf("chwon should have failed")
+				}
+				return nil
+			},
+			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, _ interface{}) *types.Event {
+				return &types.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					MountNsID: info.MountNsID,
+					Pid:       uint32(info.Pid),
+					UID:       uint32(info.UID),
+					Comm:      info.Comm,
+					CapName:   "CAP_CHOWN",
+					Cap:       0,
+					Audit:     1,
+					InsetID:   &false_,
+					Verdict:   "Deny",
+				}
+			}),
+		},
+		"audit_only_false": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					AuditOnly:  false,
+				}
+			},
+			generateEvent: generateNonAudit,
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ interface{}, events []types.Event) {
+				for _, event := range events {
+					if event.Audit == 0 {
+						return
+					}
+				}
+
+				t.Fatal("No audit event was captured")
+			},
+		},
+		"audit_only_true": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					AuditOnly:  true,
+				}
+			},
+			generateEvent: generateNonAudit,
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ interface{}, events []types.Event) {
+				for _, event := range events {
+					if event.Audit == 0 {
+						t.Fatal("No audit event was captured")
+					}
+				}
+			},
+		},
+	} {
+		test := test
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			events := []types.Event{}
+			eventCallback := func(event types.Event) {
+				events = append(events, event)
+			}
+
+			runner := utilstest.NewRunnerWithTest(t, test.runnerConfig)
+
+			createTracer(t, test.getTracerConfig(runner.Info), eventCallback)
+
+			utilstest.RunWithRunner(t, runner, test.generateEvent)
+
+			// Give some time for the tracer to capture the events
+			time.Sleep(100 * time.Millisecond)
+
+			test.validateEvent(t, runner.Info, 0, events)
+		})
+	}
+}
+
+func TestCapabilitiesTracerMultipleMntNsIDsFilter(t *testing.T) {
+	t.Parallel()
+
+	utilstest.RequireRoot(t)
+
+	events := []types.Event{}
+	eventCallback := func(event types.Event) {
+		events = append(events, event)
+	}
+
+	// struct with only fields we want to check on this test
+	type expectedEvent struct {
+		mntNsID uint64
+	}
+
+	const n int = 5
+	runners := make([]*utilstest.Runner, n)
+	expectedEvents := make([]expectedEvent, n)
+	mntNsIDs := make([]uint64, n)
+
+	for i := 0; i < n; i++ {
+		runners[i] = utilstest.NewRunnerWithTest(t, nil)
+		mntNsIDs[i] = runners[i].Info.MountNsID
+		expectedEvents[i].mntNsID = runners[i].Info.MountNsID
+	}
+
+	// Filter events from all runners but last one
+	config := &tracer.Config{
+		MountnsMap: utilstest.CreateMntNsFilterMap(t, mntNsIDs[:n-1]...),
+		AuditOnly:  true,
+	}
+
+	createTracer(t, config, eventCallback)
+
+	for i := 0; i < n; i++ {
+		utilstest.RunWithRunner(t, runners[i], bind)
+	}
+
+	// Give some time for the tracer to capture the events
+	time.Sleep(100 * time.Millisecond)
+
+	if len(events) != n-1 {
+		t.Fatalf("%d events were expected, %d found", n-1, len(events))
+	}
+
+	// Pop last event since it shouldn't have been captured
+	expectedEvents = expectedEvents[:n-1]
+
+	// Order of events is not guaranteed, then we need to sort before comparing
+	sort.Slice(expectedEvents, func(i, j int) bool {
+		return expectedEvents[i].mntNsID < expectedEvents[j].mntNsID
+	})
+	sort.Slice(events, func(i, j int) bool {
+		return events[i].MountNsID < events[j].MountNsID
+	})
+
+	for i := 0; i < n-1; i++ {
+		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].MountNsID,
+			"Captured event has bad MountNsID")
+
+		utilstest.Equal(t, "CAP_NET_BIND_SERVICE", events[i].CapName,
+			"Captured event has bad CapName")
+	}
+}
+
+func createTracer(
+	t *testing.T, config *tracer.Config, callback func(types.Event),
+) *tracer.Tracer {
+	t.Helper()
+
+	tracer, err := tracer.NewTracer(config, nil, callback)
+	if err != nil {
+		t.Fatalf("Error creating tracer: %s", err)
+	}
+	t.Cleanup(tracer.Stop)
+
+	return tracer
+}
+
+func generateNonAudit() error {
+	// This command will generate some non-audit capabilities checks
+	cmd := exec.Command("/bin/cat", "/dev/null")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("running command: %w", err)
+	}
+
+	return nil
+}
+
+// chown requires CAP_CHOWN
+func chown() error {
+	file, err := os.CreateTemp("/tmp", "prefix")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.Remove(file.Name())
+
+	return unix.Chown(file.Name(), 1000, 1000)
+}
+
+// bind requires CAP_NET_BIND_SERVICE as it binds to a port less than 1024
+func bind() error {
+	ipStr := "127.0.0.1"
+	domain := unix.AF_INET
+	typ := unix.SOCK_STREAM
+	port := 555
+
+	fd, err := unix.Socket(domain, typ, 0)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(fd)
+
+	var sa unix.Sockaddr
+
+	ip := net.ParseIP(ipStr)
+
+	if ip.To4() != nil {
+		sa4 := &unix.SockaddrInet4{Port: port}
+		copy(sa4.Addr[:], ip.To4())
+		sa = sa4
+	} else if ip.To16() != nil {
+		sa6 := &unix.SockaddrInet6{Port: port}
+		copy(sa6.Addr[:], ip.To16())
+		sa = sa6
+	} else {
+		return fmt.Errorf("invalid IP address")
+	}
+
+	if err := unix.Bind(fd, sa); err != nil {
+		return fmt.Errorf("Bind: %w", err)
+	}
+
+	return nil
+}

@@ -23,6 +23,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/google/go-cmp/cmp"
+	"github.com/moby/moby/pkg/parsers/kernel"
 	"golang.org/x/sys/unix"
 )
 
@@ -44,6 +45,7 @@ func CreateMntNsFilterMap(t *testing.T, mountNsIDs ...uint64) *ebpf.Map {
 	if err != nil {
 		t.Fatalf("Failed to create eBPF map: %s", err)
 	}
+	t.Cleanup(func() { m.Close() })
 
 	for _, mountnsid := range mountNsIDs {
 		if err := m.Put(mountnsid, one); err != nil {
@@ -61,6 +63,17 @@ func RequireRoot(t *testing.T) {
 
 	if unix.Getuid() != 0 {
 		t.Skip("Test requires root")
+	}
+}
+
+func RequireKernelVersion(t *testing.T, expectedVersion *kernel.VersionInfo) {
+	version, err := kernel.GetKernelVersion()
+	if err != nil {
+		t.Fatalf("Failed to get kernel version: %s", err)
+	}
+
+	if kernel.CompareKernelVersion(*version, *expectedVersion) < 0 {
+		t.Skipf("Test requires kernel %s", expectedVersion)
 	}
 }
 

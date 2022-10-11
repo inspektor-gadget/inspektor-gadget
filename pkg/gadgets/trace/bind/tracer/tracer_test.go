@@ -36,15 +36,10 @@ func TestBindTracerCreate(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	tracer, err := tracer.NewTracer(&tracer.Config{}, nil,
-		func(types.Event) {})
-	if err != nil {
-		t.Fatalf("Error creating tracer: %s", err)
-	}
+	tracer := createTracer(t, &tracer.Config{}, func(types.Event) {})
 	if tracer == nil {
 		t.Fatal("Returned tracer was nil")
 	}
-	t.Cleanup(tracer.Stop)
 }
 
 func TestBindTracerStopIdempotent(t *testing.T) {
@@ -52,14 +47,7 @@ func TestBindTracerStopIdempotent(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	tracer, err := tracer.NewTracer(&tracer.Config{}, nil,
-		func(types.Event) {})
-	if err != nil {
-		t.Fatalf("Error creating tracer: %s", err)
-	}
-	if tracer == nil {
-		t.Fatal("Returned tracer was nil")
-	}
+	tracer := createTracer(t, &tracer.Config{}, func(types.Event) {})
 
 	// Check that a double stop doesn't cause issues
 	tracer.Stop()
@@ -79,14 +67,14 @@ func TestBindTracer(t *testing.T) {
 
 	const unprivilegedUID = int(1435)
 
-	type test struct {
+	type testDefinition struct {
 		getTracerConfig func(info *utilstest.RunnerInfo) *tracer.Config
 		runnerConfig    *utilstest.RunnerConfig
 		generateEvent   func() (uint16, error)
 		validateEvent   func(t *testing.T, info *utilstest.RunnerInfo, port uint16, events []types.Event)
 	}
 
-	for name, test := range map[string]test{
+	for name, test := range map[string]testDefinition{
 		"captures_all_events_with_no_filters_configured": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
 				return &tracer.Config{}
@@ -366,12 +354,12 @@ func TestBindTracerOpts(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	type test struct {
+	type testDefinition struct {
 		opts         []sockOpt
 		expectedOpts string
 	}
 
-	for name, test := range map[string]test{
+	for name, test := range map[string]testDefinition{
 		"no_options": {
 			opts:         nil,
 			expectedOpts: ".....",
