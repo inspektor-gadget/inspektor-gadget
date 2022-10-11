@@ -15,18 +15,23 @@
 package types
 
 import (
+	"github.com/kinvolk/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
 
-	TriggeredPid  uint32 `json:"tpid,omitempty"`
-	TriggeredComm string `json:"tcomm,omitempty"`
-	KilledPid     uint32 `json:"kpid,omitempty"`
-	KilledComm    string `json:"kcomm,omitempty"`
-	Pages         uint64 `json:"pages,omitempty"`
-	MountNsID     uint64 `json:"mountnsid,omitempty"`
+	KilledPid     uint32 `json:"kpid,omitempty" column:"kpid,minWidth:7"`
+	KilledComm    string `json:"kcomm,omitempty" column:"kcomm,maxWidth:16"`
+	Pages         uint64 `json:"pages,omitempty" column:"pages,width:6"`
+	TriggeredPid  uint32 `json:"tpid,omitempty" column:"tpid,minWidth:7"`
+	TriggeredComm string `json:"tcomm,omitempty" column:"tcomm,maxWidth:16"`
+	MountNsID     uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	return columns.MustCreateColumns[Event]()
 }
 
 func Base(ev eventtypes.Event) Event {

@@ -40,7 +40,7 @@ Go back to *the first terminal* and see:
 
 ```bash
 NODE             NAMESPACE        POD              CONTAINER        KPID   KCOMM            PAGES  TPID             TCOMM
-minikube         oomkill-demo     test-pod         test-container   11507  tail             32768  11507  tail
+minikube         oomkill-demo     test-pod         test-container   11507  tail             32768  11507            tail
 ```
 
 The printed lined corresponds to the killing of the `perl` process by the OOM killer.
