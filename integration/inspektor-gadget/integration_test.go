@@ -292,8 +292,9 @@ spec:
       type: Localhost
       localhostProfile: operator/%s/log.json
   restartPolicy: Never
+  terminationGracePeriodSeconds: 0
   containers:
-  - name: container1
+  - name: test-pod-container
     image: busybox
     command: ["sh"]
     args: ["-c", "while true; do unshare -i; sleep 1; done"]
@@ -305,7 +306,7 @@ EOF
 		{
 			Name:           "RunAuditSeccompGadget",
 			Cmd:            fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15", ns),
-			ExpectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+container1\s+\d+\s+unshare\s+unshare\s+kill_thread`, ns),
+			ExpectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod-container\s+\d+\s+unshare\s+unshare\s+kill_thread`, ns),
 		},
 		DeleteTestNamespaceCommand(ns),
 	}
@@ -820,6 +821,8 @@ metadata:
   name: test-pod
   namespace: %s
 spec:
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 0
   containers:
   - name: test-pod-container
     image: busybox
