@@ -95,6 +95,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	auditOnly := types.AuditOnlyDefault
+	unique := types.UniqueDefault
 
 	if trace.Spec.Parameters != nil {
 		params := trace.Spec.Parameters
@@ -104,6 +105,13 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			auditOnly, err = strconv.ParseBool(val)
 			if err != nil {
 				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.AuditOnlyParam)
+				return
+			}
+		}
+		if val, ok := params[types.UniqueParam]; ok {
+			unique, err = strconv.ParseBool(val)
+			if err != nil {
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.UniqueParam)
 				return
 			}
 		}
@@ -130,6 +138,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	config := &tracer.Config{
 		MountnsMap: mountNsMap,
 		AuditOnly:  auditOnly,
+		Unique:     unique,
 	}
 
 	t.tracer, err = tracer.NewTracer(config, t.helpers, eventCallback)

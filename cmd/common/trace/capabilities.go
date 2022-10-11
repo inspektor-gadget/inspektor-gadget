@@ -20,6 +20,7 @@ import (
 
 type CapabilitiesFlags struct {
 	AuditOnly bool
+	Unique    bool
 }
 
 func NewCapabilitiesCmd(runCmd func(*cobra.Command, []string) error, flags *CapabilitiesFlags) *cobra.Command {
@@ -35,6 +36,14 @@ func NewCapabilitiesCmd(runCmd func(*cobra.Command, []string) error, flags *Capa
 		"",
 		true,
 		"Only show audit checks",
+	)
+
+	cmd.PersistentFlags().BoolVarP(
+		&flags.Unique,
+		"unique",
+		"",
+		false,
+		"Only show a capability once on the same container",
 	)
 
 	return cmd

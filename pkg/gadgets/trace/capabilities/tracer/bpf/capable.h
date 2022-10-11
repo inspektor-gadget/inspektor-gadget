@@ -18,8 +18,4 @@ struct cap_event {
 	char	task[TASK_COMM_LEN];
 };
 
-enum uniqueness {
-	UNQ_OFF, UNQ_PID, UNQ_CGROUP
-};
-
 #endif /* __CAPABLE_H */
