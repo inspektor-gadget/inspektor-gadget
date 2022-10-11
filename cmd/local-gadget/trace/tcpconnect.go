@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
 	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
@@ -30,9 +31,17 @@ func newTcpconnectCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
 	runCmd := func(*cobra.Command, []string) error {
+		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(
+			&commonFlags.OutputConfig,
+			tcpconnectTypes.GetColumns(),
+		)
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
+		}
+
 		tcpconnectGadget := &TraceGadget[tcpconnectTypes.Event]{
 			commonFlags: &commonFlags,
-			parser:      commontrace.NewTcpconnectParserWithRuntimeInfo(&commonFlags.OutputConfig),
+			parser:      parser,
 			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(tcpconnectTypes.Event)) (trace.Tracer, error) {
 				return tcpconnectTracer.NewTracer(&tcpconnectTracer.Config{MountnsMap: mountnsmap}, enricher, eventCallback)
 			},

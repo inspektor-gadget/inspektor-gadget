@@ -18,18 +18,27 @@ import (
 	"github.com/spf13/cobra"
 
 	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
 	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
+	tcpconnectTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
 )
 
 func newTcpconnectCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
 	runCmd := func(*cobra.Command, []string) error {
-		tcpconnectGadget := &TraceGadget[types.Event]{
+		parser, err := commonutils.NewGadgetParserWithK8sInfo(
+			&commonFlags.OutputConfig,
+			tcpconnectTypes.GetColumns(),
+		)
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
+		}
+
+		tcpconnectGadget := &TraceGadget[tcpconnectTypes.Event]{
 			name:        "tcpconnect",
 			commonFlags: &commonFlags,
-			parser:      commontrace.NewTcpconnectParserWithK8sInfo(&commonFlags.OutputConfig),
+			parser:      parser,
 		}
 
 		return tcpconnectGadget.Run()
