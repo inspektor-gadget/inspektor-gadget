@@ -40,6 +40,12 @@ const (
 	EventTypeRemoveContainer
 )
 
+var hostRoot string
+
+func init() {
+	hostRoot = os.Getenv("HOST_ROOT")
+}
+
 // ContainerEvent is the notification for container creation or termination
 type ContainerEvent struct {
 	// Type is whether the container was added or removed
@@ -90,17 +96,13 @@ type RuncNotifier struct {
 // runcPaths is the list of paths where runc could be installed. Depending on
 // the Linux distribution, it could be in different locations.
 //
-// When this package is executed in a container, it looks at the /host volume.
+// When this package is executed in a container, it prepends the
+// HOST_ROOT env variable to the path.
 var runcPaths = []string{
 	"/usr/bin/runc",
 	"/usr/sbin/runc",
 	"/usr/local/sbin/runc",
 	"/run/torcx/unpack/docker/bin/runc",
-
-	"/host/usr/bin/runc",
-	"/host/usr/sbin/runc",
-	"/host/usr/local/sbin/runc",
-	"/host/run/torcx/unpack/docker/bin/runc",
 }
 
 // true if the SYS_PIDFD_OPEN syscall is available
@@ -139,7 +141,7 @@ func Supported() bool {
 	// Test that runc is available
 	runcFound := false
 	for _, path := range runcPaths {
-		if _, err := os.Stat(path); err == nil {
+		if _, err := os.Stat(filepath.Join(hostRoot, path)); err == nil {
 			runcFound = true
 			break
 		}
@@ -173,7 +175,8 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	}
 	n.runcBinaryNotify = runcBinaryNotify
 
-	for _, file := range runcPaths {
+	for _, runcPath := range runcPaths {
+		file := filepath.Join(hostRoot, runcPath)
 		err = runcBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, file)
 		if err == nil {
 			log.Debugf("Checking %q: done", file)
@@ -462,7 +465,7 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 	err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
 	if err != nil {
 		pidFileDirNotify.File.Close()
-		return fmt.Errorf("cannot mark %s: %w", bundleDir, err)
+		return fmt.Errorf("cannot mark %s: %w", pidFileDir, err)
 	}
 
 	// watchPidFileIterate() will read config.json and it might be in the
@@ -575,12 +578,12 @@ func (n *RuncNotifier) watchRuncIterate() (bool, error) {
 		}
 		if cmdlineArr[i] == "--bundle" && i+1 < len(cmdlineArr) {
 			i++
-			bundleDir = cmdlineArr[i]
+			bundleDir = filepath.Join(hostRoot, cmdlineArr[i])
 			continue
 		}
 		if cmdlineArr[i] == "--pid-file" && i+1 < len(cmdlineArr) {
 			i++
-			pidFile = cmdlineArr[i]
+			pidFile = filepath.Join(hostRoot, cmdlineArr[i])
 			continue
 		}
 	}
