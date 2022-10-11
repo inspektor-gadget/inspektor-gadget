@@ -93,14 +93,14 @@ func TestExecTracer(t *testing.T) {
 		manyArgs = append(manyArgs, "/dev/null")
 	}
 
-	type test struct {
+	type testDefinition struct {
 		getTracerConfig func(info *utilstest.RunnerInfo) *tracer.Config
 		runnerConfig    *utilstest.RunnerConfig
 		generateEvent   func() (int, error)
 		validateEvent   func(t *testing.T, info *utilstest.RunnerInfo, catPid int, events []types.Event)
 	}
 
-	for name, test := range map[string]test{
+	for name, test := range map[string]testDefinition{
 		"captures_all_events_with_no_filters_configured": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
 				return &tracer.Config{}

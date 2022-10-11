@@ -34,7 +34,7 @@ func TestGroupSum(t *testing.T) {
 		Secondary int     `column:"secondary"`
 		Embedded
 	}
-	type test struct {
+	type testDefinition struct {
 		Name           string
 		GroupBy        []string
 		Input          []*testStruct
@@ -50,7 +50,7 @@ func TestGroupSum(t *testing.T) {
 		nil,
 	}
 
-	tests := []test{
+	tests := []testDefinition{
 		{
 			Name:    "GroupAll",
 			GroupBy: []string{""},
