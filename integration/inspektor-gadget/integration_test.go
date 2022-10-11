@@ -32,6 +32,7 @@ import (
 	dnsTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	execTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	mountTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/mount/types"
+	oomkillTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
 	openTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/types"
 	signalTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
 	tcpTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
@@ -789,10 +790,27 @@ func TestOomkill(t *testing.T) {
 	t.Parallel()
 
 	oomkillCmd := &Command{
-		Name:           "StarOomkilGadget",
-		Cmd:            fmt.Sprintf("$KUBECTL_GADGET trace oomkill -n %s", ns),
-		ExpectedRegexp: `\d+\s+tail`,
-		StartAndStop:   true,
+		Name:         "StartOomkilGadget",
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace oomkill -n %s -o json", ns),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEntry := &oomkillTypes.Event{
+				Event:      BuildBaseEvent(ns),
+				KilledComm: "tail",
+			}
+			expectedEntry.Container = "test-pod-container"
+
+			normalize := func(e *oomkillTypes.Event) {
+				e.Node = ""
+				e.KilledPid = 0
+				e.Pages = 0
+				e.TriggeredPid = 0
+				e.TriggeredComm = ""
+				e.MountNsID = 0
+			}
+
+			return ExpectAllToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	limitPodYaml := fmt.Sprintf(`
