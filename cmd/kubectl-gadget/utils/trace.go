@@ -701,7 +701,7 @@ var sigIntReceivedNumber = 0
 // On reception of this signal, the given trace will be deleted.
 // This function fixes trace not being deleted when calling:
 // kubectl gadget process-collector -A | head -n0
-func sigHandler(traceID *string) {
+func sigHandler(traceID *string, printTerminationMessage bool) {
 	c := make(chan os.Signal)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGILL, syscall.SIGABRT, syscall.SIGFPE, syscall.SIGSEGV, syscall.SIGPIPE, syscall.SIGALRM, syscall.SIGTERM, syscall.SIGBUS, syscall.SIGTRAP)
 	go func() {
@@ -718,13 +718,16 @@ func sigHandler(traceID *string) {
 				os.Exit(1)
 			}
 
-			sigHandler(traceID)
+			sigHandler(traceID, printTerminationMessage)
 		}
 
 		if *traceID != "" {
 			DeleteTrace(*traceID)
 		}
 		if sig == syscall.SIGINT {
+			if printTerminationMessage {
+				fmt.Println("\nTerminating...")
+			}
 			os.Exit(0)
 		} else {
 			os.Exit(1)
@@ -902,7 +905,7 @@ func PrintAllTraces(config *TraceConfig) error {
 func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) string) error {
 	var traceID string
 
-	sigHandler(&traceID)
+	sigHandler(&traceID, config.CommonFlags.OutputMode != commonutils.OutputModeJSON)
 
 	if config.TraceOutputMode != gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must be Stream. Otherwise, call RunTraceAndPrintStatusOutput")
@@ -923,7 +926,7 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 func RunTraceStreamCallback(config *TraceConfig, callback func(line string, node string)) error {
 	var traceID string
 
-	sigHandler(&traceID)
+	sigHandler(&traceID, false)
 
 	if config.TraceOutputMode != gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must be Stream")
@@ -956,7 +959,7 @@ func RunTraceAndPrintStatusOutput(
 ) error {
 	var traceID string
 
-	sigHandler(&traceID)
+	sigHandler(&traceID, false)
 
 	if config.TraceOutputMode == gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must not be Stream. Otherwise, call RunTraceAndPrintStream")
@@ -978,8 +981,6 @@ func genericStreams(
 	callback func(line string, node string),
 	transform func(line string) string,
 ) error {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	completion := make(chan string)
 
 	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
@@ -1035,11 +1036,6 @@ func genericStreams(
 
 	for {
 		select {
-		case <-sigs:
-			if params.OutputMode != commonutils.OutputModeJSON {
-				fmt.Println("\nTerminating...")
-			}
-			return nil
 		case msg := <-completion:
 			fmt.Fprintln(os.Stderr, msg)
 			if atomic.AddInt32(&streamCount, -1) == 0 {
