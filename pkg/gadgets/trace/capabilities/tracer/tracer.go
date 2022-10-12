@@ -41,6 +41,7 @@ import (
 type Config struct {
 	MountnsMap *ebpf.Map
 	AuditOnly  bool
+	Unique     bool
 }
 
 type Tracer struct {
@@ -150,6 +151,7 @@ func (t *Tracer) start() error {
 		"filter_by_mnt_ns":   filterByMntNs,
 		"linux_version_code": runningKernelVersion,
 		"audit_only":         t.config.AuditOnly,
+		"unique":             t.config.Unique,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {

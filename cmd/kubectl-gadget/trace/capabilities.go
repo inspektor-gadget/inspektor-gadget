@@ -41,6 +41,7 @@ func newCapabilitiesCmd() *cobra.Command {
 			parser:      parser,
 			params: map[string]string{
 				capabilitiesTypes.AuditOnlyParam: strconv.FormatBool(flags.AuditOnly),
+				capabilitiesTypes.UniqueParam:    strconv.FormatBool(flags.Unique),
 			},
 		}
 

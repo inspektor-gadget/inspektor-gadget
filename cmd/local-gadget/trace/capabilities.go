@@ -47,6 +47,7 @@ func newCapabilitiesCmd() *cobra.Command {
 				config := &capabilitiesTracer.Config{
 					MountnsMap: mountnsmap,
 					AuditOnly:  flags.AuditOnly,
+					Unique:     flags.Unique,
 				}
 
 				return capabilitiesTracer.NewTracer(config, enricher, eventCallback)

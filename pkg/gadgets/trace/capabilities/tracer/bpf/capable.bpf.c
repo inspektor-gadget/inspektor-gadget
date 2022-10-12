@@ -20,11 +20,11 @@
 #define MAX_ENTRIES	10240
 
 const volatile pid_t my_pid = -1;
-const volatile enum uniqueness unique_type = UNQ_OFF;
 const volatile pid_t targ_pid = -1;
 const volatile bool filter_by_mnt_ns = false;
 const volatile u32 linux_version_code = 0;
 const volatile bool audit_only = false;
+const volatile bool unique = false;
 
 struct args_t {
 	int cap;
@@ -46,8 +46,7 @@ struct {
 
 struct unique_key {
 	int cap;
-	u32 tgid;
-	u64 cgroupid;
+	u64 mntns_id;
 };
 
 struct {
@@ -97,13 +96,11 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred, struct user_namespace *t
 		}
 	}
 
-	if (unique_type) {
-		struct unique_key key = {.cap = cap};
-		if (unique_type == UNQ_CGROUP) {
-			key.cgroupid = bpf_get_current_cgroup_id();
-		} else {
-			key.tgid = pid_tgid;
-		}
+	if (unique) {
+		struct unique_key key = {
+			.cap = cap,
+			.mntns_id = mntns_id,
+		};
 
 		if (bpf_map_lookup_elem(&seen, &key) != NULL) {
 			return 0;

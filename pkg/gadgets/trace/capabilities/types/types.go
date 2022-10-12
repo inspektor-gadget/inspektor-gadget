@@ -23,10 +23,12 @@ import (
 
 const (
 	AuditOnlyDefault = false
+	UniqueDefault    = false
 )
 
 const (
 	AuditOnlyParam = "audit-only"
+	UniqueParam    = "unique"
 )
 
 type Event struct {

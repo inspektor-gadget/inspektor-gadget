@@ -19,9 +19,9 @@ type capabilitiesArgsT struct {
 }
 
 type capabilitiesUniqueKey struct {
-	Cap      int32
-	Tgid     uint32
-	Cgroupid uint64
+	Cap     int32
+	_       [4]byte
+	MntnsId uint64
 }
 
 // loadCapabilities returns the embedded CollectionSpec for capabilities.
