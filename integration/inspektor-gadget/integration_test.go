@@ -411,7 +411,7 @@ func TestCapabilities(t *testing.T) {
 			expectedEntry := &capabilitiesTypes.Event{
 				Event:   BuildBaseEvent(ns),
 				Comm:    "nice",
-				CapName: "CAP_SYS_NICE",
+				CapName: "SYS_NICE",
 				Cap:     23,
 				Audit:   1,
 				Verdict: "Deny",
