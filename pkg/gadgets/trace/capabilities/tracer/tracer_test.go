@@ -89,7 +89,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Pid:       uint32(info.Pid),
 					UID:       uint32(info.UID),
 					Comm:      info.Comm,
-					CapName:   "CAP_CHOWN",
+					CapName:   "CHOWN",
 					Cap:       0,
 					Audit:     1,
 					InsetID:   &false_,
@@ -122,7 +122,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Pid:       uint32(info.Pid),
 					UID:       uint32(info.UID),
 					Comm:      info.Comm,
-					CapName:   "CAP_CHOWN",
+					CapName:   "CHOWN",
 					Cap:       0,
 					Audit:     1,
 					InsetID:   &false_,
@@ -146,7 +146,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Pid:       uint32(info.Pid),
 					UID:       uint32(info.UID),
 					Comm:      info.Comm,
-					CapName:   "CAP_NET_BIND_SERVICE",
+					CapName:   "NET_BIND_SERVICE",
 					Cap:       10,
 					Audit:     1,
 					InsetID:   &false_,
@@ -176,7 +176,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Pid:       uint32(info.Pid),
 					UID:       uint32(info.UID),
 					Comm:      info.Comm,
-					CapName:   "CAP_CHOWN",
+					CapName:   "CHOWN",
 					Cap:       0,
 					Audit:     1,
 					InsetID:   &false_,
@@ -303,7 +303,7 @@ func TestCapabilitiesTracerMultipleMntNsIDsFilter(t *testing.T) {
 		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].MountNsID,
 			"Captured event has bad MountNsID")
 
-		utilstest.Equal(t, "CAP_NET_BIND_SERVICE", events[i].CapName,
+		utilstest.Equal(t, "NET_BIND_SERVICE", events[i].CapName,
 			"Captured event has bad CapName")
 	}
 }

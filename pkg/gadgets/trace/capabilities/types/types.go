@@ -38,7 +38,7 @@ type Event struct {
 	Comm      string `json:"comm,omitempty" column:"comm,maxWidth:16"`
 	UID       uint32 `json:"uid,omitempty" column:"uid,minWidth:6"`
 	Cap       int    `json:"cap,omitempty" column:"cap,width:3,fixed"`
-	CapName   string `json:"capName,omitempty" column:"capName,width:20,ellipsis:start"`
+	CapName   string `json:"capName,omitempty" column:"capName,width:18,fixed"`
 	Audit     int    `json:"audit,omitempty" column:"audit,minWidth:5"`
 	Verdict   string `json:"verdict,omitempty" column:"verdict,width:7,fixed"`
 	InsetID   *bool  `json:"insetid,omitempty" column:"insetid,width:7,fixed,hide"`
