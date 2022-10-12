@@ -218,6 +218,52 @@ func TestCapabilitiesTracer(t *testing.T) {
 				}
 			},
 		},
+		"unique_false": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					Unique:     false,
+				}
+			},
+			generateEvent: repeatChown,
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ interface{}, events []types.Event) {
+				nfound := 0
+				for _, event := range events {
+					if event.CapName == "CHOWN" {
+						nfound++
+					}
+				}
+
+				if nfound <= 1 {
+					t.Fatalf("Capability not found")
+				}
+			},
+		},
+		"unique_true": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					Unique:     true,
+				}
+			},
+			generateEvent: repeatChown,
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ interface{}, events []types.Event) {
+				nfound := 0
+				for _, event := range events {
+					if event.CapName == "CHOWN" {
+						nfound++
+					}
+				}
+
+				if nfound == 0 {
+					t.Fatalf("Capability not found")
+				}
+
+				if nfound > 1 {
+					t.Fatalf("Capability not unique: found %d times", nfound)
+				}
+			},
+		},
 	} {
 		test := test
 
@@ -327,6 +373,16 @@ func generateNonAudit() error {
 	cmd := exec.Command("/bin/cat", "/dev/null")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("running command: %w", err)
+	}
+
+	return nil
+}
+
+func repeatChown() error {
+	for i := 0; i < 5; i++ {
+		if err := chown(); err != nil {
+			return err
+		}
 	}
 
 	return nil
