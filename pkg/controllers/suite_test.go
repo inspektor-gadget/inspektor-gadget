@@ -36,8 +36,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	//+kubebuilder:scaffold:imports
 )
 

@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 )
 
 func TestParseExtraInfo(t *testing.T) {

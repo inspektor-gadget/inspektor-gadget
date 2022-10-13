@@ -26,10 +26,10 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/types"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 )
 
 type FileFlags struct {

@@ -19,10 +19,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	commonsnapshot "github.com/inspektor-gadget/inspektor-gadget/cmd/common/snapshot"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
 // SnapshotGadget represents a gadget belonging to the snapshot category.

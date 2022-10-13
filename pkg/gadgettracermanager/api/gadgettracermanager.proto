@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager";
+option go_package = "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager";
 
 package gadgettracermanager;
 

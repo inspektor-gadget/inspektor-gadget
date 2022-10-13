@@ -17,7 +17,7 @@ package trace
 import (
 	"github.com/spf13/cobra"
 
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type TraceEvent interface {

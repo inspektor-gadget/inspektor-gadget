@@ -26,17 +26,17 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/kinvolk/inspektor-gadget/integration"
-	bindTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
-	capabilitiesTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
-	dnsTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
-	execTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
-	mountTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/mount/types"
-	oomkillTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
-	openTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/types"
-	signalTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
-	tcpTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
-	tcpconnectTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
+	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	bindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
+	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	mountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
+	oomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
+	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
+	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
+	tcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
+	tcpconnectTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
 )
 
 const (
@@ -53,7 +53,7 @@ var (
 var (
 	integration = flag.Bool("integration", false, "run integration tests")
 
-	// image such as ghcr.io/kinvolk/inspektor-gadget:latest
+	// image such as ghcr.io/inspektor-gadget/inspektor-gadget:latest
 	image = flag.String("image", "", "gadget container image")
 
 	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
@@ -397,7 +397,7 @@ func TestBiotop(t *testing.T) {
 
 func TestCapabilities(t *testing.T) {
 	if *k8sDistro == K8sDistroARO {
-		t.Skip("Skip running trace capabilities on ARO: See https://github.com/kinvolk/inspektor-gadget/issues/985 for more details")
+		t.Skip("Skip running trace capabilities on ARO: See https://github.com/inspektor-gadget/inspektor-gadget/issues/985 for more details")
 	}
 
 	ns := GenerateTestNamespaceName("test-capabilities")
@@ -1179,7 +1179,7 @@ func TestTcptop(t *testing.T) {
 
 // This test is flaky (https://github.com/kinvolk/traceloop/issues/42),
 // let's disable it until we rework this gadget
-// https://github.com/kinvolk/inspektor-gadget/issues/371
+// https://github.com/inspektor-gadget/inspektor-gadget/issues/371
 func _TestTraceloop(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-traceloop")
 

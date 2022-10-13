@@ -17,7 +17,7 @@ package columns
 import (
 	"testing"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns/ellipsis"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 )
 
 func TestOptions(t *testing.T) {

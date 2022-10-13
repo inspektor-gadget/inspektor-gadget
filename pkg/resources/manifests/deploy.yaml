@@ -99,7 +99,7 @@ spec:
         # /sys/fs/bpf as well as /sys/kernel/debug/tracing.
         # Otherwise, we can have error like:
         # "failed to create server failed to create folder for pinning bpf maps: mkdir /sys/fs/bpf/gadget: permission denied"
-        # (For reference, see: https://github.com/kinvolk/inspektor-gadget/runs/3966318270?check_suite_focus=true#step:20:221)
+        # (For reference, see: https://github.com/inspektor-gadget/inspektor-gadget/runs/3966318270?check_suite_focus=true#step:20:221)
         container.apparmor.security.beta.kubernetes.io/gadget: "unconfined"
         inspektor-gadget.kinvolk.io/option-hook-mode: "auto"
     spec:
@@ -111,7 +111,7 @@ spec:
       containers:
       - name: gadget
         terminationMessagePolicy: FallbackToLogsOnError
-        image: "ghcr.io/kinvolk/inspektor-gadget:latest"
+        image: "ghcr.io/inspektor-gadget/inspektor-gadget:latest"
         imagePullPolicy: "Always"
         command: [ "/entrypoint.sh" ]
         lifecycle:
@@ -155,7 +155,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: GADGET_IMAGE
-            value: "ghcr.io/kinvolk/inspektor-gadget"
+            value: "ghcr.io/inspektor-gadget/inspektor-gadget"
           - name: INSPEKTOR_GADGET_VERSION
             value: "latest"
           - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE

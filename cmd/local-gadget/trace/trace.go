@@ -24,14 +24,14 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/spf13/cobra"
 
-	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	commontrace "github.com/inspektor-gadget/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 // TraceGadget represents a gadget belonging to the trace category.
@@ -51,7 +51,7 @@ func (g *TraceGadget[Event]) Run() error {
 	defer localGadgetManager.Close()
 
 	// TODO: Improve filtering, see further details in
-	// https://github.com/kinvolk/inspektor-gadget/issues/644.
+	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
 	containerSelector := containercollection.ContainerSelector{
 		Name: g.commonFlags.Containername,
 	}

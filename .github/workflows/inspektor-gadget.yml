@@ -703,7 +703,7 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Update new version in krew-index
-      if: github.repository == 'kinvolk/inspektor-gadget'
+      if: github.repository == 'inspektor-gadget/inspektor-gadget'
       uses: rajatjindal/krew-release-bot@v0.0.40
       with:
         workdir: /home/runner/work/inspektor-gadget/inspektor-gadget

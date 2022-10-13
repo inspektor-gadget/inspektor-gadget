@@ -31,9 +31,9 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang opensnoop ./bpf/opensnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET}

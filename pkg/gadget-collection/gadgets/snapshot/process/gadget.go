@@ -18,9 +18,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
 )
 
 type Trace struct {

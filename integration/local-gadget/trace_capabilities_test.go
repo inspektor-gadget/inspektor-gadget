@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/kinvolk/inspektor-gadget/integration"
-	capabilitiesTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
+	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 )
 
 func TestTraceCapabilities(t *testing.T) {
@@ -42,7 +42,7 @@ func TestTraceCapabilities(t *testing.T) {
 
 			normalize := func(e *capabilitiesTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/kinvolk/inspektor-gadget/issues/737
+				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
 					e.Container = "test-pod"
 				}
@@ -59,7 +59,7 @@ func TestTraceCapabilities(t *testing.T) {
 	}
 
 	// TODO: capabilitiesCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/kinvolk/inspektor-gadget/issues/1018
+	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodRepeatCommand(ns, "nice -n -20 echo"),

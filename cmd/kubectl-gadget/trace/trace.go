@@ -19,11 +19,11 @@ import (
 	"fmt"
 	"os"
 
-	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	commontrace "github.com/inspektor-gadget/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	"github.com/spf13/cobra"
 )

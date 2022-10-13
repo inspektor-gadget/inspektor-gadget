@@ -20,8 +20,8 @@ import (
 	"reflect"
 	"testing"
 
-	. "github.com/kinvolk/inspektor-gadget/integration"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
+	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 )
 
 func TestListContainers(t *testing.T) {
@@ -41,7 +41,7 @@ func TestListContainers(t *testing.T) {
 
 			normalize := func(c *containercollection.Container) {
 				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/kinvolk/inspektor-gadget/issues/737
+				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
 					c.Name = "test-pod"
 				}
@@ -95,7 +95,7 @@ func TestListSingleContainer(t *testing.T) {
 	ns := GenerateTestNamespaceName(fmt.Sprintf("%s-namespace", prefix))
 
 	// TODO: Handle it once we support getting K8s container name for docker
-	// Issue: https://github.com/kinvolk/inspektor-gadget/issues/737
+	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 	if *containerRuntime == ContainerRuntimeDocker {
 		t.Skip("Skip TestListSingleContainer on docker since we don't propagate the Kubernetes pod container name")
 	}

@@ -24,8 +24,8 @@ import (
 	"syscall"
 
 	"github.com/google/uuid"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/cpu/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/tracer"
 )
 
 type Tracer struct {

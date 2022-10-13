@@ -15,7 +15,7 @@
 package types
 
 import (
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Event struct {

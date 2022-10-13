@@ -19,13 +19,13 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/profile"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/profile"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/block-io/tracer"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/profile/block-io"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/tracer"
+	standardtracer "github.com/inspektor-gadget/inspektor-gadget/pkg/standardgadgets/profile/block-io"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
 type Trace struct {

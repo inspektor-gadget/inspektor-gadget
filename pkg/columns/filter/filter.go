@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 
 	"golang.org/x/exp/constraints"
 )

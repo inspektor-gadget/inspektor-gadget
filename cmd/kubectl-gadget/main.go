@@ -19,14 +19,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/advise"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/audit"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/profile"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/snapshot"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/top"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/advise"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/audit"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/profile"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/snapshot"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/top"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/trace"
 
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
 // common params for all gadgets

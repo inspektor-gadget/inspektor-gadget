@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns"
-	"github.com/kinvolk/inspektor-gadget/pkg/columns/formatter/textcolumns"
-	"github.com/kinvolk/inspektor-gadget/pkg/columns/sort"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 )
 
 const (

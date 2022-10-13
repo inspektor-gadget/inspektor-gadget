@@ -17,8 +17,8 @@ package crio
 import (
 	"time"
 
-	criclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/cri"
-	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
+	criclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 )
 
 const (

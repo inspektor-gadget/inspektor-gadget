@@ -24,10 +24,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/containerd"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/crio"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/docker"
-	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/containerd"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/crio"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/docker"
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 )

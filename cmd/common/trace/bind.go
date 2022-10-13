@@ -20,7 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 )
 
 type BindFlags struct {

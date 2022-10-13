@@ -23,11 +23,11 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	filetoptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	filetoptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
 type Trace struct {

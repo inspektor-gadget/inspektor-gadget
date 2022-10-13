@@ -1,4 +1,4 @@
-module github.com/kinvolk/inspektor-gadget
+module github.com/inspektor-gadget/inspektor-gadget
 
 go 1.18
 

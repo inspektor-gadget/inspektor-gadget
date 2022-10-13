@@ -19,7 +19,7 @@ import (
 
 	"github.com/cilium/ebpf/rlimit"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
 )
 
 func main() {

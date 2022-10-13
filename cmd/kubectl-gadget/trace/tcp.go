@@ -17,10 +17,10 @@ package trace
 import (
 	"github.com/spf13/cobra"
 
-	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	tcpTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcp/types"
+	commontrace "github.com/inspektor-gadget/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	tcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 )
 
 func newTCPCmd() *cobra.Command {

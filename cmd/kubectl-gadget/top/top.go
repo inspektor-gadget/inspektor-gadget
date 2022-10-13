@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 
 	"github.com/spf13/cobra"
 )

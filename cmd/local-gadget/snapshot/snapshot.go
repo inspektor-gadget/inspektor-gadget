@@ -17,11 +17,11 @@ package snapshot
 import (
 	"github.com/spf13/cobra"
 
-	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
+	commonsnapshot "github.com/inspektor-gadget/inspektor-gadget/cmd/common/snapshot"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 )
 
 // SnapshotGadget represents a gadget belonging to the snapshot category.
@@ -42,7 +42,7 @@ func (g *SnapshotGadget[Event]) Run() error {
 	defer localGadgetManager.Close()
 
 	// TODO: Improve filtering, see further details in
-	// https://github.com/kinvolk/inspektor-gadget/issues/644.
+	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
 	containerSelector := &containercollection.ContainerSelector{
 		Name: g.commonFlags.Containername,
 	}
@@ -62,7 +62,7 @@ func NewSnapshotCmd() *cobra.Command {
 
 	// Socket gadget is disabled until we will enrich the socket information
 	// with the container that is using the inode. For further details, see
-	// https://github.com/kinvolk/inspektor-gadget/issues/744.
+	// https://github.com/inspektor-gadget/inspektor-gadget/issues/744.
 	// traceCmd.AddCommand(newSocketCmd())
 
 	return cmd

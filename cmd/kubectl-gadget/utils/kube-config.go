@@ -18,7 +18,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/factory"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/factory"
 )
 
 func kubeRestConfig() (*restclient.Config, error) {

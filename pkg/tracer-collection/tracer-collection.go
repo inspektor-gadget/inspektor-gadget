@@ -21,8 +21,8 @@ import (
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
 
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/stream"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/stream"
 )
 
 const (

@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/kinvolk/inspektor-gadget/integration"
-	bindTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	bindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
 )
 
 func TestTraceBind(t *testing.T) {
@@ -42,7 +42,7 @@ func TestTraceBind(t *testing.T) {
 
 			normalize := func(e *bindTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/kinvolk/inspektor-gadget/issues/737
+				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
 					e.Container = "test-pod"
 				}
@@ -52,13 +52,13 @@ func TestTraceBind(t *testing.T) {
 			}
 
 			// Since we aren't doing any filtering in traceBindCmd we avoid using ExpectAllToMatch
-			// Issue: https://github.com/kinvolk/inspektor-gadget/issues/644
+			// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/644
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	// TODO: traceBindCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/kinvolk/inspektor-gadget/issues/1018
+	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodRepeatCommand(ns, "nc -l -p 9090 -w 1"),

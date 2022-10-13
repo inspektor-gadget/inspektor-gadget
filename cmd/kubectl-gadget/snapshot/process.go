@@ -17,9 +17,9 @@ package snapshot
 import (
 	"github.com/spf13/cobra"
 
-	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	commonsnapshot "github.com/inspektor-gadget/inspektor-gadget/cmd/common/snapshot"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 )
 
 func newProcessCmd() *cobra.Command {

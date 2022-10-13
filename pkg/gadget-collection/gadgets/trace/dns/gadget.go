@@ -22,13 +22,13 @@ import (
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	dnstracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	dnstracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Trace struct {

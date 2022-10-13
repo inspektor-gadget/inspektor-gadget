@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf/rlimit"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 )
 
 const (

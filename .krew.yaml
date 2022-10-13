@@ -4,7 +4,7 @@ metadata:
   name: gadget
 spec:
   version: {{ .TagName }}
-  homepage: https://github.com/kinvolk/inspektor-gadget
+  homepage: https://github.com/inspektor-gadget/inspektor-gadget
   shortDescription: Gadgets for debugging and introspecting apps
   description: |
     Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect
@@ -22,46 +22,46 @@ spec:
     fetch the log data from ring buffers and display it. What eBPF programs are
     and how Inspektor Gadget uses them is briefly explained in the architecture
     document:
-    https://github.com/kinvolk/inspektor-gadget/blob/main/docs/architecture.md
+    https://github.com/inspektor-gadget/inspektor-gadget/blob/main/docs/architecture.md
   caveats: |
     Inspektor Gadget needs to be deployed to each node:
 
     $ kubectl gadget deploy
 
-    Read the documentation available at https://github.com/kinvolk/inspektor-gadget
+    Read the documentation available at https://github.com/inspektor-gadget/inspektor-gadget
     to get more information about the server side installation process.
   platforms:
   - selector:
       matchLabels:
         os: linux
         arch: amd64
-    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-linux-amd64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-linux-amd64.tar.gz" .TagName }}
     bin: kubectl-gadget
 
   - selector:
       matchLabels:
         os: linux
         arch: arm64
-    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-linux-arm64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-linux-arm64.tar.gz" .TagName }}
     bin: kubectl-gadget
 
   - selector:
       matchLabels:
         os: darwin
         arch: amd64
-    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-darwin-amd64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-darwin-amd64.tar.gz" .TagName }}
     bin: kubectl-gadget
 
   - selector:
       matchLabels:
         os: darwin
         arch: arm64
-    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-darwin-arm64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-darwin-arm64.tar.gz" .TagName }}
     bin: kubectl-gadget
 
   - selector:
       matchLabels:
         os: windows
         arch: amd64
-    {{addURIAndSha "https://github.com/kinvolk/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-windows-amd64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-windows-amd64.tar.gz" .TagName }}
     bin: kubectl-gadget

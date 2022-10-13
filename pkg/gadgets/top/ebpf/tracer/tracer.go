@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/bpfstats"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/ebpf/piditer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/piditer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 
 	"github.com/cilium/ebpf"
 )

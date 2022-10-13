@@ -47,7 +47,7 @@ of whether they were created via Kubernetes or not. In addition, it can also
 use the CRI to trace containers managed by containerd and CRI-O, meaning only
 the ones created via Kubernetes. Support for non-Kubernetes containers with
 containerd is coming, see issue
-[#734](https://github.com/kinvolk/inspektor-gadget/issues/734).
+[#734](https://github.com/inspektor-gadget/inspektor-gadget/issues/734).
 
 By default, the `local-gadget` will try to communicate with the Docker Engine
 API and the CRI API of containerd and CRI-O:

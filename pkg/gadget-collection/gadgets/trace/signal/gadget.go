@@ -19,13 +19,13 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/signal/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 
 	log "github.com/sirupsen/logrus"
 )

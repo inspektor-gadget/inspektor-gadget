@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"strings"
 
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/containerd"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/crio"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/docker"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/containerd"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/crio"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/docker"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

@@ -23,10 +23,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	nettracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/types"
-	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	nettracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Enricher struct {

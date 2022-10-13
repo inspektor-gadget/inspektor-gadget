@@ -33,12 +33,12 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
-	ebpftoptypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/ebpf/types"
-	dnstypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
-	networktypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	ebpftoptypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+	dnstypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	networktypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 var rootTest = flag.Bool("root-test", false, "enable tests requiring root")

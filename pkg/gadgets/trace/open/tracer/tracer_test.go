@@ -25,10 +25,10 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	utilstest "github.com/kinvolk/inspektor-gadget/pkg/gadgets/internal/test"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/open/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	utilstest "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/test"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestOpenTracerCreate(t *testing.T) {

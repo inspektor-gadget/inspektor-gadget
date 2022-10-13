@@ -1,7 +1,7 @@
 # Container Collection Example
 
 This is a basic example that uses the container-collection package
-("github.com/kinvolk/inspektor-gadget/pkg/container-collection") to
+("github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection") to
 print a message when a container is created or removed.
 
 ## How to build

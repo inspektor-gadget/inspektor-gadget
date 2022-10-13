@@ -22,10 +22,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	processcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
-	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	processcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	socketcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type SnapshotEvent interface {

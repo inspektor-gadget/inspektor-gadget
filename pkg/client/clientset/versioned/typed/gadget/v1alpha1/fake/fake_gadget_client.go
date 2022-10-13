@@ -17,7 +17,7 @@
 package fake
 
 import (
-	v1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/client/clientset/versioned/typed/gadget/v1alpha1"
+	v1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/client/clientset/versioned/typed/gadget/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )

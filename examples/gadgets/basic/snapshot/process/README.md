@@ -1,7 +1,7 @@
 # snapshot process example
 
 This example uses the
-[snapshot/process](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/snapshot/process)
+[snapshot/process](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/pkg/gadgets/snapshot/process)
 package to get a list of the running processes in the host.
 
 ## How to build

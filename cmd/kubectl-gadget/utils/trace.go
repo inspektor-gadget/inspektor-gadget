@@ -42,10 +42,10 @@ import (
 
 	"github.com/blang/semver"
 
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	clientset "github.com/kinvolk/inspektor-gadget/pkg/client/clientset/versioned"
-	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	clientset "github.com/inspektor-gadget/inspektor-gadget/pkg/client/clientset/versioned"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
 const (

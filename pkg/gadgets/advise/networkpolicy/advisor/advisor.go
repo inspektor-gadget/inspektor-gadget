@@ -29,8 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	k8syaml "sigs.k8s.io/yaml"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/network/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 var defaultLabelsToIgnore = map[string]struct{}{

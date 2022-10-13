@@ -20,10 +20,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 )
 
 func NewListContainersCmd() *cobra.Command {

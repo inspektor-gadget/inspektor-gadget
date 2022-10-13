@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"sort"
 
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type SortBy int
