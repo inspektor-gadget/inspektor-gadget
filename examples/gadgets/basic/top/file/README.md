@@ -1,7 +1,7 @@
 # top file example
 
 This is example shows how to use
-[top/file](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/top/file)
+[top/file](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/pkg/gadgets/top/file)
 package to get a list of the files with a higher number of write
 operations on the host.
 

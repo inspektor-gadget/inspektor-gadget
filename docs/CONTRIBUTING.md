@@ -15,7 +15,7 @@ Inspektor Gadget.
 
 ### Setup developer environment
 
-- [Fork](https://github.com/kinvolk/inspektor-gadget/fork) and clone this repo:
+- [Fork](https://github.com/inspektor-gadget/inspektor-gadget/fork) and clone this repo:
     - `git clone git@github.com:your_account/inspektor-gadget.git`.
 - Install [Docker](https://docs.docker.com/get-docker/), [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx) and [Golang](https://golang.org/doc/install).
 
@@ -39,7 +39,7 @@ Inspektor Gadget provides two different container images:
 - gadget-default: Contains CO-RE and BCC gadgets
 - gadget-core: Containes only CO-RE gadgets that are integrated with the gadget tracer manager
   * traceloop gadget is not included, it will be included once
-    [#371](https://github.com/kinvolk/inspektor-gadget/issues/371) is
+    [#371](https://github.com/inspektor-gadget/inspektor-gadget/issues/371) is
     fixed.
 
 You can build and push the container gadget image by running the following commands:
@@ -60,7 +60,7 @@ argument when deploying to the Kubernetes cluster.
 - Using a locally built container image requires pushing it to a container
 registry, either local or remote. The default registry can be overridden by
 changing the value of the `CONTAINER_REPO` env variable, which defaults to
-`ghcr.io/kinvolk/inspektor-gadget` if not defined.
+`ghcr.io/inspektor-gadget/inspektor-gadget` if not defined.
 - The compilation uses `tools/image-tag` to choose the tag of the container
 image to use according to the branch that you are compiling.
 - If you wish to make changes to traceloop program, update
@@ -166,10 +166,10 @@ Kinvolk's [contribution guidelines on git](https://github.com/kinvolk/contributi
 
 If you're looking where to start, you can check the issues with the
 `good first issue` label on
-[Inspektor Gadget](https://github.com/kinvolk/inspektor-gadget/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or
+[Inspektor Gadget](https://github.com/inspektor-gadget/inspektor-gadget/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or
 [traceloop](https://github.com/kinvolk/traceloop/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
 Don't hesitate to
-[talk to us](https://github.com/kinvolk/inspektor-gadget#discussions)
+[talk to us](https://github.com/inspektor-gadget/inspektor-gadget#discussions)
 if you need further help.
 
 ### Proposing new features
@@ -206,8 +206,8 @@ implementations to port a different BCC gadget.
 
 Once the gadget has been updated in the BCC repo, it can be added to Inspektor
 Gadget by filling a PR adding the gadget to
-[`cmd/kubectl-gadget/bcck8s.go`](https://github.com/kinvolk/inspektor-gadget/blob/0cf97d9ea6432f080eafa1a3280f3447085ea96a/cmd/kubectl-gadget/bcck8s.go#L26).
-The [add gadget bindsnoop](https://github.com/kinvolk/inspektor-gadget/pull/35/files#diff-f616fa5f11da59a9ae7344d196bbf357R40-R43)
+[`cmd/kubectl-gadget/bcck8s.go`](https://github.com/inspektor-gadget/inspektor-gadget/blob/0cf97d9ea6432f080eafa1a3280f3447085ea96a/cmd/kubectl-gadget/bcck8s.go#L26).
+The [add gadget bindsnoop](https://github.com/inspektor-gadget/inspektor-gadget/pull/35/files#diff-f616fa5f11da59a9ae7344d196bbf357R40-R43)
 PR is an example of it.
 
 The [adding new BCC-based gadgets in Inspektor Gadget](https://kinvolk.io/blog/2020/04/adding-new-bcc-based-gadgets-in-inspektor-gadget/)
@@ -232,7 +232,7 @@ so that the Github actions are triggered, and a new image is published.
 Once the image is available in registries, you have to update
 `gadget-default.Dockerfile` so that it uses the just created image, same goes for local
 compilation with `gadget-local.Dockerfile`. The
-[Update BCC container image](https://github.com/kinvolk/inspektor-gadget/pull/190)
+[Update BCC container image](https://github.com/inspektor-gadget/inspektor-gadget/pull/190)
 PR is an example of it.
 
 Currently, we use Docker Hub to pull the BCC image when building the gadget

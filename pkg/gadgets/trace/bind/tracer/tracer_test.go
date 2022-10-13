@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
-	utilstest "github.com/kinvolk/inspektor-gadget/pkg/gadgets/internal/test"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	utilstest "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/test"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"golang.org/x/sys/unix"
 )
 

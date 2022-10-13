@@ -30,10 +30,10 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
-	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/cgroups"
-	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
-	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
 )
 
 func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData, container *Container) {

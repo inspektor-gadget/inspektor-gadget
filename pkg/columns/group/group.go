@@ -20,8 +20,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns"
-	"github.com/kinvolk/inspektor-gadget/pkg/columns/sort"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 )
 
 func getStringFromValue(value reflect.Value) string {

@@ -20,10 +20,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/containerd"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/docker"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/containerd"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/docker"
 )
 
 func main() {

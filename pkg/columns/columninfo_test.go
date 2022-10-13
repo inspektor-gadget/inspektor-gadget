@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns/ellipsis"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 )
 
 func expectColumnsSuccess[T any](t *testing.T, options ...Option) *Columns[T] {

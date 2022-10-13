@@ -17,13 +17,13 @@ package snapshot
 import (
 	"github.com/spf13/cobra"
 
-	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	processTracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
-	processTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/process/types"
-	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
+	commonsnapshot "github.com/inspektor-gadget/inspektor-gadget/cmd/common/snapshot"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	processTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
+	processTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 )
 
 func newProcessCmd() *cobra.Command {

@@ -10,8 +10,8 @@ RUN \
 COPY go.mod go.sum /cache/
 RUN cd /cache && go mod download
 
-ADD . /go/src/github.com/kinvolk/inspektor-gadget
-WORKDIR /go/src/github.com/kinvolk/inspektor-gadget
+ADD . /go/src/github.com/inspektor-gadget/inspektor-gadget
+WORKDIR /go/src/github.com/inspektor-gadget/inspektor-gadget
 
 ARG GOOS=linux
 ENV GOOS=${GOOS}
@@ -31,4 +31,4 @@ RUN \
 	go build \
 		-ldflags "-X main.version=${VERSION} -extldflags '-static'" \
 		-o local-gadget-${GOOS}-${GOARCH} \
-		github.com/kinvolk/inspektor-gadget/cmd/local-gadget
+		github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget

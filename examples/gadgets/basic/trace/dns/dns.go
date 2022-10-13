@@ -22,8 +22,8 @@ import (
 
 	"github.com/cilium/ebpf/rlimit"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 )
 
 const key = "host"

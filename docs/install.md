@@ -46,11 +46,11 @@ $ kubectl gadget --help
 ### Install a specific release
 
 Download the asset for a given release and platform from the
-[releases page](https://github.com/kinvolk/inspektor-gadget/releases/),
+[releases page](https://github.com/inspektor-gadget/inspektor-gadget/releases/),
 uncompress and move the `kubectl-gadget` executable to your `PATH`.
 
 ```bash
-$ curl -sL https://github.com/kinvolk/inspektor-gadget/releases/latest/download/kubectl-gadget-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - kubectl-gadget
+$ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/latest/download/kubectl-gadget-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - kubectl-gadget
 $ kubectl gadget version
 ```
 
@@ -60,7 +60,7 @@ To build Inspektor Gadget from source, you'll need to have a Golang version
 1.18 or higher installed.
 
 ```bash
-$ git clone https://github.com/kinvolk/inspektor-gadget.git
+$ git clone https://github.com/inspektor-gadget/inspektor-gadget.git
 $ cd inspektor-gadget
 $ make kubectl-gadget-linux-amd64
 $ sudo cp kubectl-gadget-linux-amd64 /usr/local/bin/kubectl-gadget
@@ -173,12 +173,12 @@ copied to a Kubernetes node or any host to trace its containers.
 ### Install a specific release
 
 It is possible to download the asset for a given release and platform from the
-[releases page](https://github.com/kinvolk/inspektor-gadget/releases/).
+[releases page](https://github.com/inspektor-gadget/inspektor-gadget/releases/).
 
 For instance, to download the latest release for linux-amd64:
 
 ```bash
-$ curl -sL https://github.com/kinvolk/inspektor-gadget/releases/latest/download/local-gadget-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - local-gadget
+$ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/latest/download/local-gadget-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - local-gadget
 $ local-gadget version
 ```
 

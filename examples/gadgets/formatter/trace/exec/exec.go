@@ -23,14 +23,14 @@ import (
 
 	"github.com/cilium/ebpf/rlimit"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns/formatter/textcolumns"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/containerd"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/docker"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
-	tracercollection "github.com/kinvolk/inspektor-gadget/pkg/tracer-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/containerd"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/docker"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 )
 
 const traceName = "trace_exec"

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func ManageSpecialEvent(e eventtypes.Event, verbose bool) {

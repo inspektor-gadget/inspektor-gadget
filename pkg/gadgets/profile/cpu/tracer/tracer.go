@@ -36,8 +36,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/cilium/ebpf"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/profile/cpu/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	"golang.org/x/sys/unix"
 )
 

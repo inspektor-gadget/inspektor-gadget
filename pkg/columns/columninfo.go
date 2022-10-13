@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns/ellipsis"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 )
 
 const (

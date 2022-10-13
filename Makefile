@@ -1,7 +1,7 @@
 TAG := `git describe --tags --always`
 VERSION :=
 
-CONTAINER_REPO ?= ghcr.io/kinvolk/inspektor-gadget
+CONTAINER_REPO ?= ghcr.io/inspektor-gadget/inspektor-gadget
 IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
 MINIKUBE ?= minikube
@@ -56,7 +56,7 @@ all: build local-gadget
 phony_explicit:
 
 ebpf-objects:
-	docker run -it --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) -v $(shell pwd):/work ghcr.io/kinvolk/inspektor-gadget-ebpf-builder
+	docker run -it --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) -v $(shell pwd):/work ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder
 
 ebpf-objects-outside-docker:
 	TARGET=arm64 go generate ./...
@@ -108,7 +108,7 @@ kubectl-gadget-%: phony_explicit
 	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
 	go build -ldflags $(LDFLAGS) \
 		-o kubectl-gadget-$${GOOS}-$${GOARCH} \
-		github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget
+		github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget
 
 .PHONY: install/kubectl-gadget
 install/kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)

@@ -22,8 +22,8 @@ import (
 
 	"github.com/cilium/ebpf/rlimit"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 )
 
 func main() {

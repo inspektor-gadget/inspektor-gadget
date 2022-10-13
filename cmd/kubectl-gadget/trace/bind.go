@@ -20,10 +20,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	commontrace "github.com/kinvolk/inspektor-gadget/cmd/common/trace"
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/cmd/kubectl-gadget/utils"
-	bindTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	commontrace "github.com/inspektor-gadget/inspektor-gadget/cmd/common/trace"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	bindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
 )
 
 func newBindCmd() *cobra.Command {

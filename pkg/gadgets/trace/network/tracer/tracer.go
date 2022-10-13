@@ -24,7 +24,7 @@ import (
 	"github.com/cilium/ebpf"
 	"golang.org/x/sys/unix"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/rawsock"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 )
 
 //go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang graphmap ./bpf/graphmap.c -- $CLANG_OS_FLAGS -I./bpf/"

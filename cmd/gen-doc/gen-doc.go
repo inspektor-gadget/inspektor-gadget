@@ -27,8 +27,8 @@ import (
 	"github.com/giantswarm/crd-docs-generator/pkg/output"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 
-	gadgetcollection "github.com/kinvolk/inspektor-gadget/pkg/gadget-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
+	gadgetcollection "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 )
 
 var repo string
@@ -144,7 +144,7 @@ func main() {
 			metadata.CRDItem{},
 			filepath.Join(repo, "pkg/resources/samples"),
 			filepath.Join(repo, "docs/crds"),
-			"github.com/kinvolk/inspektor-gadget",
+			"github.com/inspektor-gadget/inspektor-gadget",
 			"version-unknown",
 			filepath.Join(repo, "cmd/gen-doc/crd.template"))
 		if err != nil {

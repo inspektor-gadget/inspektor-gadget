@@ -17,8 +17,8 @@ package types
 import (
 	"fmt"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (

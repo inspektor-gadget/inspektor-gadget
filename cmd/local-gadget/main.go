@@ -19,10 +19,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/containers"
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/interactive"
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/snapshot"
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/containers"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/interactive"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/snapshot"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/trace"
 )
 
 func main() {

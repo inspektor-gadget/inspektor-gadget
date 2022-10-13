@@ -17,8 +17,8 @@ package filter_test
 import (
 	"fmt"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns"
-	"github.com/kinvolk/inspektor-gadget/pkg/columns/filter"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/filter"
 )
 
 func ExampleFilterEntries() {

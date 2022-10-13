@@ -30,8 +30,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
 var (
@@ -54,7 +54,7 @@ func publishEvent(c *containercollection.Container, reason, message string) {
 			Host:      *node,
 		},
 		Count:               1,
-		ReportingController: "github.com/kinvolk/inspektor-gadget",
+		ReportingController: "github.com/inspektor-gadget/inspektor-gadget",
 		ReportingInstance:   os.Getenv("POD_NAME"), // pod name
 		FirstTimestamp:      eventTime,
 		LastTimestamp:       eventTime,

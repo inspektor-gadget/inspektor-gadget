@@ -27,7 +27,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 )
 
 func ExecPodSimple(client *kubernetes.Clientset, node string, podCmd string) string {

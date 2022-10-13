@@ -1,7 +1,7 @@
 # trace dns example
 
 This is a basic example showing how to use
-[trace/dns](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/trace/dns)
+[trace/dns](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/pkg/gadgets/trace/dns)
 package to trace DNS requests on the host.
 
 

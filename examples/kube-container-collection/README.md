@@ -1,7 +1,7 @@
 # Example with the container-collection package
 
 This example uses the container-collection package
-("github.com/kinvolk/inspektor-gadget/pkg/container-collection") in order to be
+("github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection") in order to be
 notified when a new container is started and to attach the OCI config.json as a
 Kubernetes event.
 

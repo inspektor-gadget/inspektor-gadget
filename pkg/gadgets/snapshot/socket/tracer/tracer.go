@@ -22,9 +22,9 @@ import (
 
 	"github.com/cilium/ebpf/link"
 
-	socketcollectortypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
-	"github.com/kinvolk/inspektor-gadget/pkg/netnsenter"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	socketcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang IterTCPv4 ./bpf/tcp4-collector.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c

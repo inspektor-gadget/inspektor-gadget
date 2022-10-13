@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	commonutils "github.com/kinvolk/inspektor-gadget/cmd/common/utils"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
 )
 
 type SeccompParser struct {

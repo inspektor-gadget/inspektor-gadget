@@ -23,7 +23,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 
 	"github.com/containerd/nri/skel"
 	types "github.com/containerd/nri/types/v1"

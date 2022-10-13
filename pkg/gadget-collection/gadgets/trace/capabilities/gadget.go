@@ -21,14 +21,14 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
-	standardtracer "github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace/capabilities"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
+	standardtracer "github.com/inspektor-gadget/inspektor-gadget/pkg/standardgadgets/trace/capabilities"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
 type Trace struct {

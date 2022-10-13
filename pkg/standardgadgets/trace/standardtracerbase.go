@@ -28,8 +28,8 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/google/uuid"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Event interface {

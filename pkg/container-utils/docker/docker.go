@@ -24,8 +24,8 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/kinvolk/inspektor-gadget/pkg/container-utils/cgroups"
-	runtimeclient "github.com/kinvolk/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	log "github.com/sirupsen/logrus"
 )
 

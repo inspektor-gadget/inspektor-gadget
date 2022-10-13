@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type SortBy int

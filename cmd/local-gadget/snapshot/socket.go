@@ -19,12 +19,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	commonsnapshot "github.com/kinvolk/inspektor-gadget/cmd/common/snapshot"
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
-	containercollection "github.com/kinvolk/inspektor-gadget/pkg/container-collection"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer"
-	socketTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
-	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
+	commonsnapshot "github.com/inspektor-gadget/inspektor-gadget/cmd/common/snapshot"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer"
+	socketTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
+	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 )
 
 func newSocketCmd() *cobra.Command {

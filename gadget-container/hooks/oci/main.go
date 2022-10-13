@@ -33,8 +33,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	containerutils "github.com/kinvolk/inspektor-gadget/pkg/container-utils"
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 var (

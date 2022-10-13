@@ -19,7 +19,7 @@ package versioned
 import (
 	"fmt"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/client/clientset/versioned/typed/gadget/v1alpha1"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/client/clientset/versioned/typed/gadget/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

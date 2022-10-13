@@ -17,11 +17,11 @@ package auditseccomp
 import (
 	"fmt"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	auditseccomptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit/seccomp/tracer"
-	types "github.com/kinvolk/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
-	eventtypes "github.com/kinvolk/inspektor-gadget/pkg/types"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	auditseccomptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/tracer"
+	types "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Trace struct {

@@ -21,11 +21,11 @@ import (
 	"strings"
 	"time"
 
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/kinvolk/inspektor-gadget/pkg/bpfstats"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadget-collection/gadgets"
-	ebpftoptracer "github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/ebpf/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	ebpftoptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 
 	log "github.com/sirupsen/logrus"
 )

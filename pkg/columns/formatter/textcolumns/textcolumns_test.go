@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 )
 
 type testStruct struct {

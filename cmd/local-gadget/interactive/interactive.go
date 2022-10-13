@@ -25,9 +25,9 @@ import (
 	"syscall"
 
 	"github.com/chzyer/readline"
-	"github.com/kinvolk/inspektor-gadget/cmd/local-gadget/utils"
-	gadgetv1alpha1 "github.com/kinvolk/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	localgadgetmanager "github.com/kinvolk/inspektor-gadget/pkg/local-gadget-manager"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 	"github.com/spf13/cobra"
 )
 

@@ -35,8 +35,8 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager"
-	pb "github.com/kinvolk/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
+	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 var (
@@ -121,7 +121,7 @@ func main() {
 			// https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes.
 			// IMPORTANT: Consider that setting timeoutSeconds to a value larger
 			// than clientTimeout will have no effect. Check further details in
-			// https://github.com/kinvolk/inspektor-gadget/issues/940.
+			// https://github.com/inspektor-gadget/inspektor-gadget/issues/940.
 			clientTimeout = time.Minute
 		}
 

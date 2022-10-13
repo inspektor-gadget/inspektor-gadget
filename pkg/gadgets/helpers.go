@@ -16,7 +16,7 @@ package gadgets
 
 import (
 	"github.com/cilium/ebpf/link"
-	"github.com/kinvolk/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (

@@ -23,8 +23,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/top/file/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"

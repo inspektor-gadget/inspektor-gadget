@@ -11,7 +11,7 @@ operator-sdk version
 # Generate sources in the gadget-operator directory
 mkdir gadget-operator
 cd gadget-operator
-operator-sdk init --domain kinvolk.io --repo github.com/kinvolk/inspektor-gadget
+operator-sdk init --domain kinvolk.io --repo github.com/inspektor-gadget/inspektor-gadget
 cp ../hack/boilerplate.go.txt hack/boilerplate.go.txt
 operator-sdk create api --group gadget --version v1alpha1 --kind Trace --resource --controller
 make manifests

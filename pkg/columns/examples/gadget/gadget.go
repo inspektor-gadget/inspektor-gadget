@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/columns"
-	"github.com/kinvolk/inspektor-gadget/pkg/columns/formatter/textcolumns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
 )
 
 type Kubernetes struct {

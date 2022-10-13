@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/kinvolk/inspektor-gadget/integration"
-	tcpconnectTypes "github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
+	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	tcpconnectTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
 )
 
 func TestTraceTcpconnect(t *testing.T) {
@@ -50,7 +50,7 @@ func TestTraceTcpconnect(t *testing.T) {
 
 			normalize := func(e *tcpconnectTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/kinvolk/inspektor-gadget/issues/737
+				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
 					e.Container = "test-pod"
 				}
@@ -65,7 +65,7 @@ func TestTraceTcpconnect(t *testing.T) {
 	}
 
 	// TODO: tcpconnectCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/kinvolk/inspektor-gadget/issues/1018
+	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null -T 3 http://1.1.1.1"),

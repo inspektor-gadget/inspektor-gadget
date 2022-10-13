@@ -32,8 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/k8sutil"
-	"github.com/kinvolk/inspektor-gadget/pkg/runcfanotify"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
 )
 
 var (
@@ -70,7 +70,7 @@ func publishEvent(reason, message string) {
 			Host:      *node,
 		},
 		Count:               1,
-		ReportingController: "github.com/kinvolk/inspektor-gadget",
+		ReportingController: "github.com/inspektor-gadget/inspektor-gadget",
 		ReportingInstance:   os.Getenv("POD_NAME"), // pod name
 		FirstTimestamp:      eventTime,
 		LastTimestamp:       eventTime,

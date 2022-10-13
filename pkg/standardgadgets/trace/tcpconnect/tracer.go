@@ -17,9 +17,9 @@ package standard
 import (
 	"strings"
 
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/tracer"
-	"github.com/kinvolk/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
-	"github.com/kinvolk/inspektor-gadget/pkg/standardgadgets/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/standardgadgets/trace"
 )
 
 func NewTracer(config *tracer.Config, eventCallback func(types.Event)) (*trace.StandardTracer[types.Event], error) {

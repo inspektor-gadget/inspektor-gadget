@@ -1,7 +1,7 @@
 # trace exec example
 
 This is a basic example showing how to use
-[trace/exec](https://github.com/kinvolk/inspektor-gadget/tree/main/pkg/gadgets/trace/exec)
+[trace/exec](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/pkg/gadgets/trace/exec)
 package to trace the creation of new processes in the host.
 
 In this case, not filter is passed to the tracer, hence all the new

@@ -35,10 +35,10 @@ go mod vendor
 popd
 
 bash ${TEMP}/vendor/k8s.io/code-generator/generate-groups.sh "client" \
-  github.com/kinvolk/inspektor-gadget/pkg/client github.com/kinvolk/inspektor-gadget/pkg/apis \
+  github.com/inspektor-gadget/inspektor-gadget/pkg/client github.com/inspektor-gadget/inspektor-gadget/pkg/apis \
   gadget:v1alpha1 \
   --output-base ${TEMP} \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
 
-cp -r ${TEMP}/github.com/kinvolk/inspektor-gadget/pkg/client/ ${SCRIPT_ROOT}/pkg/
+cp -r ${TEMP}/github.com/inspektor-gadget/inspektor-gadget/pkg/client/ ${SCRIPT_ROOT}/pkg/
 rm -rf ${TEMP}
