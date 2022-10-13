@@ -36,6 +36,7 @@ func main() {
 		containers.NewListContainersCmd(),
 		snapshot.NewSnapshotCmd(),
 		trace.NewTraceCmd(),
+		newTraceloopCmd(),
 		newVersionCmd(),
 	)
 
