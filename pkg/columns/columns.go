@@ -197,6 +197,22 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []int) error {
 			return fmt.Errorf("error parsing tag for %q on field %q: %w", t.Name(), f.Name, err)
 		}
 
+		if column.useTemplate {
+			tpl, ok := getTemplate(column.template)
+			if !ok {
+				return fmt.Errorf("error applying template %q for %q on field %q: template not found", column.template, t.Name(), f.Name)
+			}
+			if err := column.parseTagInfo(strings.Split(tpl, ",")); err != nil {
+				return fmt.Errorf("error applying template %q for %q on field %q: %w", column.template, t.Name(), f.Name, err)
+			}
+
+			// re-apply information from field tag to overwrite template settings
+			err = column.fromTag(tag)
+			if err != nil {
+				return fmt.Errorf("error parsing tag for %q on field %q: %w", t.Name(), f.Name, err)
+			}
+		}
+
 		// fall back to struct field name if column name is empty
 		if column.Name == "" {
 			column.Name = f.Name
