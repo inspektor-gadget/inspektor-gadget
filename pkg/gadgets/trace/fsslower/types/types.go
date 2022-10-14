@@ -15,6 +15,7 @@
 package types
 
 import (
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -25,14 +26,18 @@ const (
 type Event struct {
 	eventtypes.Event
 
-	MountNsID uint64 `json:"mountnsid,omitempty"`
-	Comm      string `json:"comm,omitempty"`
-	Pid       uint32 `json:"pid,omitempty"`
-	Op        string `json:"op,omitempty"`
-	Bytes     uint64 `json:"bytes,omitempty"`
-	Offset    int64  `json:"offset,omitempty"`
-	Latency   uint64 `json:"latency,omitempty"`
-	File      string `json:"file,omitempty"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
+	Comm      string `json:"comm,omitempty" column:"comm,maxWidth:16"`
+	Op        string `json:"op,omitempty" column:"T,width:1,fixed"`
+	Bytes     uint64 `json:"bytes,omitempty" column:"bytes,width:10,align:right"`
+	Offset    int64  `json:"offset,omitempty" column:"offset,width:10,align:right"`
+	Latency   uint64 `json:"latency,omitempty" column:"lat,width:10,align:right"`
+	File      string `json:"file,omitempty" column:"file,width:24,maxWidth:32"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	return columns.MustCreateColumns[Event]()
 }
 
 func Base(ev eventtypes.Event) Event {

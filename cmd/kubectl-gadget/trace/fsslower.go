@@ -15,163 +15,41 @@
 package trace
 
 import (
-	"fmt"
-	"math"
 	"strconv"
-	"strings"
+
+	"github.com/spf13/cobra"
 
 	commontrace "github.com/inspektor-gadget/inspektor-gadget/cmd/common/trace"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
-
-	"github.com/spf13/cobra"
+	fsslowerTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
 )
 
-type FsslowerParser struct {
-	commonutils.BaseParser[types.Event]
-}
-
 func newFsSlowerCmd() *cobra.Command {
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"container",
-				"pid",
-				"comm",
-				"t",
-				"bytes",
-				"offset",
-				"lat",
-				"file",
-			},
-		},
-	}
+	var commonFlags utils.CommonFlags
+	var flags commontrace.FsSlowerFlags
 
-	var (
-		// flags
-		fsslowerMinLatency uint
-		fsslowerFilesystem string
-	)
-
-	validFsSlowerFilesystems := []string{"btrfs", "ext4", "nfs", "xfs"}
-
-	cmd := &cobra.Command{
-		Use:   "fsslower",
-		Short: "Trace open, read, write and fsync operations slower than a threshold",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if fsslowerFilesystem == "" {
-				return commonutils.WrapInErrMissingArgs("--filesystem / -f")
-			}
-
-			found := false
-			for _, val := range validFsSlowerFilesystems {
-				if fsslowerFilesystem == val {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				return commonutils.WrapInErrInvalidArg("--filesystem / -f",
-					fmt.Errorf("%q is not a valid filesystem", fsslowerFilesystem))
-			}
-
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			fsslowerGadget := &TraceGadget[types.Event]{
-				name:        "fsslower",
-				commonFlags: commonFlags,
-				parser:      NewFsslowerParser(&commonFlags.OutputConfig),
-				params: map[string]string{
-					"filesystem": fsslowerFilesystem,
-					"minlatency": strconv.FormatUint(uint64(fsslowerMinLatency), 10),
-				},
-			}
-
-			return fsslowerGadget.Run()
-		},
-	}
-
-	cmd.Flags().UintVarP(
-		&fsslowerMinLatency, "min", "m", types.MinLatencyDefault,
-		"Min latency to trace, in ms",
-	)
-	cmd.Flags().StringVarP(
-		&fsslowerFilesystem, "filesystem", "f", "",
-		fmt.Sprintf("Which filesystem to trace: [%s]", strings.Join(validFsSlowerFilesystems, ", ")),
-	)
-
-	utils.AddCommonFlags(cmd, commonFlags)
-
-	return cmd
-}
-
-func NewFsslowerParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParser[types.Event] {
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -30,
-		"container": -16,
-		"pid":       -7,
-		"comm":      -16,
-		"t":         -1,
-		"bytes":     -6,
-		"offset":    -7,
-		"lat":       -8,
-		"file":      -24,
-	}
-
-	return &FsslowerParser{
-		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
-	}
-}
-
-func (p *FsslowerParser) TransformIntoColumns(event *types.Event) string {
-	var sb strings.Builder
-
-	// TODO: what to print in this case?
-	if event.Bytes == math.MaxInt64 {
-		event.Bytes = 0
-	}
-
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
-		case "t":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Op))
-		case "bytes":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Bytes))
-		case "offset":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Offset))
-		case "lat":
-			sb.WriteString(fmt.Sprintf("%*.2f", p.ColumnsWidth[col], float64(event.Latency)/1000.0))
-		case "file":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.File))
-		default:
-			continue
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, fsslowerTypes.GetColumns())
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
+		fsslowerGadget := &TraceGadget[fsslowerTypes.Event]{
+			name:        "fsslower",
+			commonFlags: &commonFlags,
+			parser:      parser,
+			params: map[string]string{
+				"filesystem": flags.Filesystem,
+				"minlatency": strconv.FormatUint(uint64(flags.MinLatency), 10),
+			},
+		}
+
+		return fsslowerGadget.Run()
 	}
 
-	return sb.String()
+	cmd := commontrace.NewFsSlowerCmd(runCmd, &flags)
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
