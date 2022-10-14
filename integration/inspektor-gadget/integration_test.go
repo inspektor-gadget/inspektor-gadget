@@ -31,6 +31,7 @@ import (
 	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	fsslowerType "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
 	mountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
 	oomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
 	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
@@ -610,10 +611,28 @@ func TestFsslower(t *testing.T) {
 	t.Parallel()
 
 	fsslowerCmd := &Command{
-		Name:           "StartFsslowerGadget",
-		Cmd:            fmt.Sprintf("$KUBECTL_GADGET trace fsslower -n %s -f %s -m 0", ns, fsType),
-		ExpectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+\d+\s+cat`, ns),
-		StartAndStop:   true,
+		Name:         "StartFsslowerGadget",
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace fsslower -n %s -f %s -m 0 -o json", ns, fsType),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEntry := &fsslowerType.Event{
+				Event: BuildBaseEvent(ns),
+				Comm:  "cat",
+				File:  "foo",
+				Op:    "R",
+			}
+
+			normalize := func(e *fsslowerType.Event) {
+				e.Node = ""
+				e.MountNsID = 0
+				e.Pid = 0
+				e.Bytes = 0
+				e.Offset = 0
+				e.Latency = 0
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	commands := []*Command{
