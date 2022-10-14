@@ -23,31 +23,34 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	execTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
-	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	oomkillTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/tracer"
+	oomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
 )
 
-func newExecCmd() *cobra.Command {
+func newOOMKillCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
 	runCmd := func(*cobra.Command, []string) error {
-		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, execTypes.GetColumns())
+		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(
+			&commonFlags.OutputConfig,
+			oomkillTypes.GetColumns(),
+		)
 		if err != nil {
 			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		execGadget := &TraceGadget[execTypes.Event]{
+		oomkillGadget := &TraceGadget[oomkillTypes.Event]{
 			commonFlags: &commonFlags,
 			parser:      parser,
-			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(execTypes.Event)) (trace.Tracer, error) {
-				return execTracer.NewTracer(&execTracer.Config{MountnsMap: mountnsmap}, enricher, eventCallback)
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(oomkillTypes.Event)) (trace.Tracer, error) {
+				return oomkillTracer.NewTracer(&oomkillTracer.Config{MountnsMap: mountnsmap}, enricher, eventCallback)
 			},
 		}
 
-		return execGadget.Run()
+		return oomkillGadget.Run()
 	}
 
-	cmd := commontrace.NewExecCmd(runCmd)
+	cmd := commontrace.NewOOMKillCmd(runCmd)
 
 	utils.AddCommonFlags(cmd, &commonFlags)
 
