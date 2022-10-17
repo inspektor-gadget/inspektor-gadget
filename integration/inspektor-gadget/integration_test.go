@@ -33,6 +33,7 @@ import (
 	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	fsslowerType "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
 	mountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
+	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	oomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
 	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
 	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
@@ -902,6 +903,72 @@ func TestOpensnoop(t *testing.T) {
 		CreateTestNamespaceCommand(ns),
 		opensnoopCmd,
 		BusyboxPodRepeatCommand(ns, "cat /dev/null"),
+		WaitUntilTestPodReadyCommand(ns),
+		DeleteTestNamespaceCommand(ns),
+	}
+
+	RunCommands(commands, t)
+}
+
+func TestNetworkGraph(t *testing.T) {
+	ns := GenerateTestNamespaceName("test-networkgraph")
+
+	t.Parallel()
+
+	networkGraphCmd := &Command{
+		Name:         "StartNetworkGadget",
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace network -n %s -o json", ns),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEntries := []*networkTypes.Event{
+				{
+					Event:       BuildBaseEvent(ns),
+					PktType:     "OUTGOING",
+					Proto:       "tcp",
+					Port:        80,
+					IP:          "1.1.1.1",
+					PodLabels:   map[string]string{"run": "test-pod"},
+					RemoteKind:  "other",
+					RemoteOther: "1.1.1.1",
+				},
+				{
+					Event:                  BuildBaseEvent(ns),
+					PktType:                "OUTGOING",
+					Proto:                  "udp",
+					Port:                   53,
+					PodLabels:              map[string]string{"run": "test-pod"},
+					RemoteKind:             "svc",
+					RemoteSvcNamespace:     "kube-system",
+					RemoteSvcName:          "kube-dns",
+					RemoteSvcLabelSelector: map[string]string{"k8s-app": "kube-dns"},
+				},
+			}
+			// Network gadget doesn't provide container data. Remove it.
+			for _, entry := range expectedEntries {
+				entry.Container = ""
+			}
+
+			normalize := func(e *networkTypes.Event) {
+				e.Node = ""
+				e.Container = ""
+				e.PodHostIP = ""
+				e.PodIP = ""
+				e.PodOwner = ""
+				e.Debug = ""
+
+				if e.RemoteKind == "svc" {
+					e.IP = ""
+				}
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+		},
+	}
+
+	commands := []*Command{
+		CreateTestNamespaceCommand(ns),
+		networkGraphCmd,
+		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null 1.1.1.1.nip.io"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
