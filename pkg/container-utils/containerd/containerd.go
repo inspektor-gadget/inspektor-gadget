@@ -22,9 +22,7 @@ import (
 )
 
 const (
-	Name              = "containerd"
-	DefaultSocketPath = "/run/containerd/containerd.sock"
-	DefaultTimeout    = 2 * time.Second
+	DefaultTimeout = 2 * time.Second
 )
 
 type ContainerdClient struct {
@@ -33,10 +31,10 @@ type ContainerdClient struct {
 
 func NewContainerdClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
 	if socketPath == "" {
-		socketPath = DefaultSocketPath
+		socketPath = runtimeclient.ContainerdDefaultSocketPath
 	}
 
-	criClient, err := criclient.NewCRIClient(Name, socketPath, DefaultTimeout)
+	criClient, err := criclient.NewCRIClient(runtimeclient.ContainerdName, socketPath, DefaultTimeout)
 	if err != nil {
 		return nil, err
 	}

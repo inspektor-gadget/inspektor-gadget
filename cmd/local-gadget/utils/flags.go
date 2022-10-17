@@ -20,9 +20,7 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/containerd"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/crio"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/docker"
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -64,11 +62,11 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 			socketPath := ""
 
 			switch runtimeName {
-			case docker.Name:
+			case runtimeclient.DockerName:
 				socketPath = commonFlags.DockerSocketPath
-			case containerd.Name:
+			case runtimeclient.ContainerdName:
 				socketPath = commonFlags.ContainerdSocketPath
-			case crio.Name:
+			case runtimeclient.CrioName:
 				socketPath = commonFlags.CrioSocketPath
 			default:
 				return commonutils.WrapInErrInvalidArg("--runtime / -r",
@@ -134,21 +132,21 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 	command.PersistentFlags().StringVarP(
 		&commonFlags.DockerSocketPath,
 		"docker-socketpath", "",
-		docker.DefaultSocketPath,
+		runtimeclient.DockerDefaultSocketPath,
 		"Docker Engine API Unix socket path",
 	)
 
 	command.PersistentFlags().StringVarP(
 		&commonFlags.ContainerdSocketPath,
 		"containerd-socketpath", "",
-		containerd.DefaultSocketPath,
+		runtimeclient.ContainerdDefaultSocketPath,
 		"containerd CRI Unix socket path",
 	)
 
 	command.PersistentFlags().StringVarP(
 		&commonFlags.CrioSocketPath,
 		"crio-socketpath", "",
-		crio.DefaultSocketPath,
+		runtimeclient.CrioDefaultSocketPath,
 		"CRI-O CRI Unix socket path",
 	)
 }

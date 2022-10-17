@@ -19,6 +19,17 @@ import (
 	"strings"
 )
 
+const (
+	DockerName              = "docker"
+	DockerDefaultSocketPath = "/run/docker.sock"
+
+	CrioName              = "cri-o"
+	CrioDefaultSocketPath = "/run/crio/crio.sock"
+
+	ContainerdName              = "containerd"
+	ContainerdDefaultSocketPath = "/run/containerd/containerd.sock"
+)
+
 // ContainerData contains container information returned from the container
 // runtime clients.
 type ContainerData struct {

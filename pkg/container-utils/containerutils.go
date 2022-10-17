@@ -33,9 +33,9 @@ import (
 )
 
 var AvailableRuntimes = []string{
-	docker.Name,
-	containerd.Name,
-	crio.Name,
+	runtimeclient.DockerName,
+	runtimeclient.ContainerdName,
+	runtimeclient.CrioName,
 }
 
 type RuntimeConfig struct {
@@ -45,11 +45,11 @@ type RuntimeConfig struct {
 
 func NewContainerRuntimeClient(runtime *RuntimeConfig) (runtimeclient.ContainerRuntimeClient, error) {
 	switch runtime.Name {
-	case docker.Name:
+	case runtimeclient.DockerName:
 		return docker.NewDockerClient(runtime.SocketPath)
-	case containerd.Name:
+	case runtimeclient.ContainerdName:
 		return containerd.NewContainerdClient(runtime.SocketPath)
-	case crio.Name:
+	case runtimeclient.CrioName:
 		return crio.NewCrioClient(runtime.SocketPath)
 	default:
 		return nil, fmt.Errorf("unknown container runtime: %s (available %s)",
