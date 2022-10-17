@@ -20,6 +20,9 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 )
 
 const (
@@ -40,6 +43,23 @@ type OutputConfig struct {
 
 	// Verbose prints additional information
 	Verbose bool
+}
+
+func AddOutputFlags(command *cobra.Command, outputConfig *OutputConfig) {
+	command.PersistentFlags().StringVarP(
+		&outputConfig.OutputMode,
+		"output",
+		"o",
+		OutputModeColumns,
+		fmt.Sprintf("Output format (%s).", strings.Join(SupportedOutputModes, ", ")),
+	)
+
+	command.PersistentFlags().BoolVarP(
+		&outputConfig.Verbose,
+		"verbose", "v",
+		false,
+		"Print debug information",
+	)
 }
 
 func (config *OutputConfig) ParseOutputConfig() error {
@@ -74,4 +94,33 @@ func (config *OutputConfig) ParseOutputConfig() error {
 		return WrapInErrInvalidArg("--output / -o",
 			fmt.Errorf("%q is not a valid output format", config.OutputMode))
 	}
+}
+
+type RuntimesSocketPathConfig struct {
+	Docker     string
+	Containerd string
+	Crio       string
+}
+
+func AddRuntimesSocketPathFlags(command *cobra.Command, config *RuntimesSocketPathConfig) {
+	command.PersistentFlags().StringVarP(
+		&config.Docker,
+		"docker-socketpath", "",
+		runtimeclient.DockerDefaultSocketPath,
+		"Docker Engine API Unix socket path",
+	)
+
+	command.PersistentFlags().StringVarP(
+		&config.Containerd,
+		"containerd-socketpath", "",
+		runtimeclient.ContainerdDefaultSocketPath,
+		"containerd CRI Unix socket path",
+	)
+
+	command.PersistentFlags().StringVarP(
+		&config.Crio,
+		"crio-socketpath", "",
+		runtimeclient.CrioDefaultSocketPath,
+		"CRI-O CRI Unix socket path",
+	)
 }

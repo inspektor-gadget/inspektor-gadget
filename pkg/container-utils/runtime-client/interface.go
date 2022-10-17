@@ -20,14 +20,15 @@ import (
 )
 
 const (
-	DockerName              = "docker"
-	DockerDefaultSocketPath = "/run/docker.sock"
-
+	// Make sure to keep these settings in sync with pkg/resources/manifests/deploy.yaml
 	CrioName              = "cri-o"
 	CrioDefaultSocketPath = "/run/crio/crio.sock"
 
 	ContainerdName              = "containerd"
 	ContainerdDefaultSocketPath = "/run/containerd/containerd.sock"
+
+	DockerName              = "docker"
+	DockerDefaultSocketPath = "/run/docker.sock"
 )
 
 // ContainerData contains container information returned from the container

@@ -24,9 +24,10 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
-	log "github.com/sirupsen/logrus"
 )
 
 const (

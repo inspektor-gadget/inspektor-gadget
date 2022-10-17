@@ -24,12 +24,12 @@ import (
 	"strings"
 	"syscall"
 
+	ocispec "github.com/opencontainers/runtime-spec/specs-go"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/containerd"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/crio"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/docker"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
-
-	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 var AvailableRuntimes = []string{
@@ -46,11 +46,23 @@ type RuntimeConfig struct {
 func NewContainerRuntimeClient(runtime *RuntimeConfig) (runtimeclient.ContainerRuntimeClient, error) {
 	switch runtime.Name {
 	case runtimeclient.DockerName:
-		return docker.NewDockerClient(runtime.SocketPath)
+		socketPath := runtime.SocketPath
+		if envsp := os.Getenv("INSPEKTOR_GADGET_DOCKER_SOCKETPATH"); envsp != "" && socketPath == "" {
+			socketPath = envsp
+		}
+		return docker.NewDockerClient(socketPath)
 	case runtimeclient.ContainerdName:
-		return containerd.NewContainerdClient(runtime.SocketPath)
+		socketPath := runtime.SocketPath
+		if envsp := os.Getenv("INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"); envsp != "" && socketPath == "" {
+			socketPath = envsp
+		}
+		return containerd.NewContainerdClient(socketPath)
 	case runtimeclient.CrioName:
-		return crio.NewCrioClient(runtime.SocketPath)
+		socketPath := runtime.SocketPath
+		if envsp := os.Getenv("INSPEKTOR_GADGET_CRIO_SOCKETPATH"); envsp != "" && socketPath == "" {
+			socketPath = envsp
+		}
+		return crio.NewCrioClient(socketPath)
 	default:
 		return nil, fmt.Errorf("unknown container runtime: %s (available %s)",
 			runtime, strings.Join(AvailableRuntimes, ", "))
