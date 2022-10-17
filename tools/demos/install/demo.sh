@@ -22,6 +22,6 @@ run "kubectl gadget deploy"
 run "kubectl get pod -n gadget"
 
 desc "And check the installed version"
-run "kubectl logs -n gadget -l k8s-app=gadget --tail=-1 | grep 'Inspektor Gadget version'"
+run "kubectl gadget version"
 
 sleep 5
