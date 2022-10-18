@@ -10,7 +10,7 @@ all: $(addsuffix /demo.gif,$(DEMO_LIST))
 
 all-gadgets: $(addsuffix /demo.gif,$(DEMO_LIST_EXCEPT_INSTALL))
 
-%/demo.gif: %/*.sh
+%/demo.gif: %/*.sh check-terminal
 	@echo "Demo $*"
 	rm -f $*/demo.cast $*/demo.gif
 	@echo "Demo $*: initialization"
@@ -22,6 +22,12 @@ all-gadgets: $(addsuffix /demo.gif,$(DEMO_LIST_EXCEPT_INSTALL))
 	@echo "Demo $*: converting cast file to gif"
 	agg $*/demo.cast $*/demo.gif
 	ls -lh $*/demo.gif
+
+.PHONY: check-terminal
+check-terminal:
+	echo -ne '\e[8;24;80t'
+	test `tput lines` -eq 24
+	test `tput cols` -eq 80
 
 .PHONY: list
 list:

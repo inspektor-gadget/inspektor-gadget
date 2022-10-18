@@ -18,6 +18,6 @@
 
 desc "Let's trace new processes"
 run "kubectl get pod -n demo"
-run "kubectl gadget trace exec -n demo --timeout 4 -o custom-columns=pod,pid,pcomm,args"
+run "kubectl gadget trace exec -n demo --timeout 4 -o custom-columns=pod,pid,comm,args"
 
 sleep 5

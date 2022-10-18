@@ -21,6 +21,6 @@ run "kubectl run -n demo test-pod --image ubuntu -- sh -c 'while true ; do tar c
 run "kubectl wait -n demo --for=condition=ready pod/test-pod"
 
 desc "Let's trace"
-run "kubectl gadget trace fsslower -n demo -f ext4 -m 1 --timeout 3"
+run "kubectl gadget trace fsslower -n demo -f ext4 -m 1 --timeout 5"
 
 sleep 5
