@@ -55,6 +55,8 @@ type Column[T any] struct {
 	subFieldIndex []int        // used for embedded structs
 	kind          reflect.Kind // cached kind info from reflection
 	columnType    reflect.Type // cached type info from reflection
+	useTemplate   bool         // if a template has been set, this will be true
+	template      string       // defines the template that will be used. Non-typed templates will be applied first.
 }
 
 func (ci *Column[T]) getWidthFromType() int {
@@ -105,8 +107,10 @@ func (ci *Column[T]) getWidth(params []string) (int, error) {
 func (ci *Column[T]) fromTag(tag string) error {
 	tagInfo := strings.Split(tag, ",")
 	ci.Name = tagInfo[0]
+	return ci.parseTagInfo(tagInfo[1:])
+}
 
-	tagInfo = tagInfo[1:]
+func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 	var err error
 	for _, subTag := range tagInfo {
 		params := strings.SplitN(subTag, ":", 2)
@@ -203,6 +207,12 @@ func (ci *Column[T]) fromTag(tag string) error {
 			if err != nil {
 				return err
 			}
+		case "template":
+			ci.useTemplate = true
+			if paramsLen < 2 || params[1] == "" {
+				return fmt.Errorf("no template specified for field %q", ci.Name)
+			}
+			ci.template = params[1]
 		default:
 			return fmt.Errorf("invalid column parameter %q for field %q", params[0], ci.Name)
 		}

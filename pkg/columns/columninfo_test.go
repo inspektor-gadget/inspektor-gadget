@@ -461,3 +461,49 @@ func TestColumnMatcher(t *testing.T) {
 		t.Errorf("Didn't expect mainString to have tag 'test'")
 	}
 }
+
+func TestColumnTemplates(t *testing.T) {
+	if RegisterTemplate("", "width:789") == nil {
+		t.Errorf("Expected error because of empty name")
+	}
+	if RegisterTemplate("demo", "") == nil {
+		t.Errorf("Expected error because of empty value")
+	}
+
+	if err := RegisterTemplate("numbers", "width:123"); err != nil {
+		t.Errorf("Expected success, got %v", err)
+	}
+
+	type testSuccess1 struct {
+		Int16 int16 `column:",template:numbers"`
+		Int32 int32 `column:",template:numbers,width:5"`
+		Int64 int64 `column:",template:numbers,hide"`
+	}
+
+	cols := expectColumnsSuccess[testSuccess1](t)
+
+	expectColumnValue(t, expectColumn(t, cols, "int16"), "Width", 123)
+	expectColumnValue(t, expectColumn(t, cols, "int32"), "Width", 5)
+	expectColumnValue(t, expectColumn(t, cols, "int64"), "Width", 123)
+	expectColumnValue(t, expectColumn(t, cols, "int64"), "Visible", false)
+
+	expectColumnsFail[struct {
+		String string `column:",template"`
+	}](t, "not template name given")
+
+	expectColumnsFail[struct {
+		String string `column:",template:foobar"`
+	}](t, "trying to use non-existing template")
+}
+
+func TestColumnTemplatesRegisterExisting(t *testing.T) {
+	t.Run("untyped", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("expected panic")
+			}
+		}()
+		MustRegisterTemplate("abc", "width:123")
+		MustRegisterTemplate("abc", "width:123")
+	})
+}
