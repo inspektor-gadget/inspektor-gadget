@@ -15,107 +15,34 @@
 package trace
 
 import (
-	"fmt"
-	"strings"
+	"github.com/spf13/cobra"
 
 	commontrace "github.com/inspektor-gadget/inspektor-gadget/cmd/common/trace"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
-
-	"github.com/spf13/cobra"
+	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
 )
 
-type OpenParser struct {
-	commonutils.BaseParser[types.Event]
-}
-
 func newOpenCmd() *cobra.Command {
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"container",
-				"pid",
-				"comm",
-				"fd",
-				"err",
-				"path",
-			},
-		},
-	}
+	var commonFlags utils.CommonFlags
 
-	cmd := &cobra.Command{
-		Use:   "open",
-		Short: "Trace open system calls",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			openGadget := &TraceGadget[types.Event]{
-				name:        "opensnoop",
-				commonFlags: commonFlags,
-				parser:      NewOpenParser(&commonFlags.OutputConfig),
-			}
-
-			return openGadget.Run()
-		},
-	}
-
-	utils.AddCommonFlags(cmd, commonFlags)
-
-	return cmd
-}
-
-func NewOpenParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParser[types.Event] {
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -30,
-		"container": -16,
-		"pid":       -7,
-		"comm":      -16,
-		"fd":        -3,
-		"err":       -3,
-		"path":      -24,
-	}
-
-	return &OpenParser{
-		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
-	}
-}
-
-func (p *OpenParser) TransformIntoColumns(event *types.Event) string {
-	var sb strings.Builder
-
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-		case "container":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Container))
-		case "pid":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Pid))
-		case "comm":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Comm))
-		case "fd":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Fd))
-		case "err":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Err))
-		case "path":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Path))
-		default:
-			continue
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, openTypes.GetColumns())
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
+		openGadget := &TraceGadget[openTypes.Event]{
+			name:        "opensnoop",
+			commonFlags: &commonFlags,
+			parser:      parser,
+		}
+
+		return openGadget.Run()
 	}
 
-	return sb.String()
+	cmd := commontrace.NewOpenCmd(runCmd)
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
