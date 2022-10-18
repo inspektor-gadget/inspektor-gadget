@@ -17,6 +17,8 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 )
 
 type EventType string
@@ -25,6 +27,17 @@ var node string
 
 func Init(nodeName string) {
 	node = nodeName
+
+	// Register column templates
+	columns.MustRegisterTemplate("comm", "maxWidth:16")
+	columns.MustRegisterTemplate("pid", "minWidth:7")
+	columns.MustRegisterTemplate("ns", "width:12,hide")
+
+	// For IPs (IPv4+IPv6):
+	// Min: XXX.XXX.XXX.XXX (IPv4) = 15
+	// Max: 0000:0000:0000:0000:0000:ffff:XXX.XXX.XXX.XXX (IPv4-mapped IPv6 address) = 45
+	columns.MustRegisterTemplate("ipaddr", "minWidth:15,maxWidth:45")
+	columns.MustRegisterTemplate("ipport", "minWidth:type")
 }
 
 type CommonData struct {
