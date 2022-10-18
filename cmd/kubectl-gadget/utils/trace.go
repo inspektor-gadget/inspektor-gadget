@@ -230,7 +230,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 	opts := metav1.ListOptions{LabelSelector: "k8s-app=gadget"}
 	pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), opts)
 	if err != nil {
-		return commonutils.WrapInErrListNodes(err)
+		return commonutils.WrapInErrListPods(err)
 	}
 
 	if len(pods.Items) == 0 {

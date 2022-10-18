@@ -51,7 +51,7 @@ var versionCmd = &cobra.Command{
 		opts := metav1.ListOptions{LabelSelector: "k8s-app=gadget"}
 		pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), opts)
 		if err != nil {
-			return commonutils.WrapInErrListNodes(err)
+			return commonutils.WrapInErrListPods(err)
 		}
 
 		serverVersions := make(map[string]struct{})

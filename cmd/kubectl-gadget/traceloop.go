@@ -132,7 +132,7 @@ func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracem
 	}
 	pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), listOptions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get gadget pods: %w", err)
+		return nil, commonutils.WrapInErrListPods(err)
 	}
 	if len(pods.Items) == 0 {
 		return nil, errors.New("no gadget pods found")
