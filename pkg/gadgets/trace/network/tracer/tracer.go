@@ -44,7 +44,7 @@ type Edge struct {
 	PktType string
 	IP      net.IP
 	Proto   string
-	Port    int
+	Port    uint16
 }
 
 type link struct {
@@ -214,7 +214,7 @@ func (t *Tracer) Pop() ([]Edge, error) {
 			PktType: pktTypeString(int(key.PktType)),
 			IP:      ip,
 			Proto:   protoString(int(key.Proto)),
-			Port:    int(C.htons(C.ushort(key.Port))),
+			Port:    uint16(C.htons(C.ushort(key.Port))),
 		}
 	}
 

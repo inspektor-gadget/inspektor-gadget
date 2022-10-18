@@ -27,7 +27,7 @@ type Event struct {
 	PktType string `json:"pktType,omitempty"`
 	Proto   string `json:"proto,omitempty"`
 	IP      string `json:"ip,omitempty"`
-	Port    int    `json:"port,omitempty"`
+	Port    uint16 `json:"port,omitempty"`
 
 	/* pod, svc or other */
 	RemoteKind string `json:"remoteKind,omitempty"`
