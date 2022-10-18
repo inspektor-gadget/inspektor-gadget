@@ -41,7 +41,7 @@ runs:
         fi
 
         container_repo=${{ inputs.registry }}/${{ inputs.container-image }}
-        echo "::set-output name=container-repo::${container_repo}"
+        echo "container-repo=${container_repo}" >> $GITHUB_OUTPUT
     - name: Output image tag
       id: craft-image-tag
       shell: bash
@@ -57,4 +57,4 @@ runs:
           image_tag="${image_tag}-core"
         fi
 
-        echo "::set-output name=image-tag::${image_tag}"
+        echo "image-tag=${image_tag}" >> $GITHUB_OUTPUT

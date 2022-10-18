@@ -248,7 +248,7 @@ jobs:
       id: published-gadget-container-images
       if: github.event_name != 'pull_request'
       run: |
-          echo "::set-output name=${{ matrix.type }}-${{ matrix.platform }}::${{ steps.publish-gadget-container-images.outputs.digest }}"
+          echo "${{ matrix.type }}-${{ matrix.platform }}=${{ steps.publish-gadget-container-images.outputs.digest }}" >> $GITHUB_OUTPUT
 
   publish-gadget-images-manifest:
     name: Publish gadget container images manifest
@@ -433,20 +433,20 @@ jobs:
                 "${{ secrets.OPENSHIFT_PASSWORD }}" != "" ]]; \
           then
             echo "Secrets to use an ARO cluster were configured in the repo"
-            echo "::set-output name=aro::true"
+            echo "aro=true" >> $GITHUB_OUTPUT
           else
             echo "Secrets to use an ARO cluster were not configured in the repo"
-            echo "::set-output name=aro::false"
+            echo "aro=false" >> $GITHUB_OUTPUT
           fi
 
           if [[ "${{ secrets.AZURE_AKS_CREDS }}" != "" && \
                 "${{ secrets.AZURE_AKS_RESOURCE_GROUP }}" != "" ]]; \
           then
             echo "Secrets to use an AKS cluster were configured in the repo"
-            echo "::set-output name=aks::true"
+            echo "aks=true" >> $GITHUB_OUTPUT
           else
             echo "Secrets to use an AKS cluster were not configured in the repo"
-            echo "::set-output name=aks::false"
+            echo "aks=false" >> $GITHUB_OUTPUT
           fi
 
   check-readme-up-to-date:
