@@ -25,9 +25,7 @@ type EventType string
 
 var node string
 
-func Init(nodeName string) {
-	node = nodeName
-
+func init() {
 	// Register column templates
 	columns.MustRegisterTemplate("comm", "maxWidth:16")
 	columns.MustRegisterTemplate("pid", "minWidth:7")
@@ -38,6 +36,10 @@ func Init(nodeName string) {
 	// Max: 0000:0000:0000:0000:0000:ffff:XXX.XXX.XXX.XXX (IPv4-mapped IPv6 address) = 45
 	columns.MustRegisterTemplate("ipaddr", "minWidth:15,maxWidth:45")
 	columns.MustRegisterTemplate("ipport", "minWidth:type")
+}
+
+func Init(nodeName string) {
+	node = nodeName
 }
 
 type CommonData struct {
