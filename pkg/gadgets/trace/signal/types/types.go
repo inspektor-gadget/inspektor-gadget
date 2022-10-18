@@ -22,14 +22,14 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	Pid  uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
-	Comm string `json:"comm,omitempty" column:"comm,maxWidth:16"`
+	Pid  uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm string `json:"comm,omitempty" column:"comm,template:comm"`
 	// The most common signals are SIGKILL, SIGTERM, SIGINT (6 chars) and the
 	// longest is SIGRTMIN+XX (11 chars).
 	Signal    string `json:"signal,omitempty" column:"signal,minWidth:6,maxWidth:11,ellipsis:start"`
-	TargetPid uint32 `json:"tpid,omitempty" column:"tpid,minWidth:7"`
+	TargetPid uint32 `json:"tpid,omitempty" column:"tpid,template:pid"`
 	Retval    int    `json:"ret,omitempty" column:"ret,width:3,fixed"`
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
 }
 
 func GetColumns() *columns.Columns[Event] {

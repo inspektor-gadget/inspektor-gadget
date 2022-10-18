@@ -22,12 +22,12 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	KilledPid     uint32 `json:"kpid,omitempty" column:"kpid,minWidth:7"`
-	KilledComm    string `json:"kcomm,omitempty" column:"kcomm,maxWidth:16"`
+	KilledPid     uint32 `json:"kpid,omitempty" column:"kpid,template:pid"`
+	KilledComm    string `json:"kcomm,omitempty" column:"kcomm,template:comm"`
 	Pages         uint64 `json:"pages,omitempty" column:"pages,width:6"`
-	TriggeredPid  uint32 `json:"tpid,omitempty" column:"tpid,minWidth:7"`
-	TriggeredComm string `json:"tcomm,omitempty" column:"tcomm,maxWidth:16"`
-	MountNsID     uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+	TriggeredPid  uint32 `json:"tpid,omitempty" column:"tpid,template:pid"`
+	TriggeredComm string `json:"tcomm,omitempty" column:"tcomm,template:comm"`
+	MountNsID     uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
 }
 
 func GetColumns() *columns.Columns[Event] {

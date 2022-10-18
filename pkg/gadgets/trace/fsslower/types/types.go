@@ -26,9 +26,9 @@ const (
 type Event struct {
 	eventtypes.Event
 
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
-	Pid       uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
-	Comm      string `json:"comm,omitempty" column:"comm,maxWidth:16"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
 	Op        string `json:"op,omitempty" column:"T,width:1,fixed"`
 	Bytes     uint64 `json:"bytes,omitempty" column:"bytes,width:10,align:right"`
 	Offset    int64  `json:"offset,omitempty" column:"offset,width:10,align:right"`

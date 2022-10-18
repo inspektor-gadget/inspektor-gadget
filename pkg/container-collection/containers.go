@@ -35,7 +35,7 @@ type Container struct {
 	ID string `json:"id,omitempty" column:"id,width:13,maxWidth:64" columnTags:"runtime"`
 
 	// Pid is the process id of the container
-	Pid uint32 `json:"pid,omitempty" column:"pid,minWidth:7,hide"`
+	Pid uint32 `json:"pid,omitempty" column:"pid,template:pid,hide"`
 
 	// Container's configuration is the config.json from the OCI runtime
 	// spec
@@ -47,8 +47,8 @@ type Container struct {
 	Bundle string `json:"bundle,omitempty"`
 
 	// Linux metadata can be derived from the pid via /proc/$pid/...
-	Mntns      uint64 `json:"mntns,omitempty" column:"mntns,width:12,hide"`
-	Netns      uint64 `json:"netns,omitempty" column:"netns,width:12,hide"`
+	Mntns      uint64 `json:"mntns,omitempty" column:"mntns,template:ns"`
+	Netns      uint64 `json:"netns,omitempty" column:"netns,template:ns"`
 	CgroupPath string `json:"cgroupPath,omitempty"`
 	CgroupID   uint64 `json:"cgroupID,omitempty"`
 	// Data required to find the container to Pod association in the

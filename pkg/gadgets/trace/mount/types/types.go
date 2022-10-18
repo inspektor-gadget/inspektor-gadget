@@ -25,10 +25,10 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	Comm      string   `json:"comm,omitempty" column:"comm,maxWidth:16"`
-	Pid       uint32   `json:"pid,omitempty" column:"pid,minWidth:7"`
-	Tid       uint32   `json:"tid,omitempty" column:"tid,minWidth:7"`
-	MountNsID uint64   `json:"mntnsid,omitempty" column:"mntns,width:12"`
+	Comm      string   `json:"comm,omitempty" column:"comm,template:comm"`
+	Pid       uint32   `json:"pid,omitempty" column:"pid,template:pid"`
+	Tid       uint32   `json:"tid,omitempty" column:"tid,template:pid"`
+	MountNsID uint64   `json:"mntnsid,omitempty" column:"mntns,template:ns"`
 	Operation string   `json:"operation,omitempty" column:"op,minWidth:5,maxWidth:7,hide"`
 	Retval    int      `json:"ret,omitempty" column:"ret,width:3,fixed,hide"`
 	Latency   uint64   `json:"latency,omitempty" column:"latency,minWidth:3,hide"`

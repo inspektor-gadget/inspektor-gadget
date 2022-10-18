@@ -22,14 +22,14 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	Pid       uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
-	Comm      string `json:"comm,omitempty" column:"comm,maxWidth:16"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
 	Protocol  string `json:"proto,omitempty" column:"proto,width:5,fixed"`
-	Addr      string `json:"addr,omitempty" column:"addr,width:16"`
-	Port      uint16 `json:"port,omitempty" column:"port,minWidth:type"`
+	Addr      string `json:"addr,omitempty" column:"addr,template:ipaddr"`
+	Port      uint16 `json:"port,omitempty" column:"port,template:ipport"`
 	Options   string `json:"opts,omitempty" column:"opts,width:5,fixed"`
 	Interface string `json:"if,omitempty" column:"if,width:12"`
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
 }
 
 func GetColumns() *columns.Columns[Event] {
