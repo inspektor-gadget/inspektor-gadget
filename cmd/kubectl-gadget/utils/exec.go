@@ -52,7 +52,7 @@ func ExecPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 	}
 	pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), listOptions)
 	if err != nil {
-		return err
+		return commonutils.WrapInErrListPods(err)
 	}
 	if len(pods.Items) == 0 {
 		return commonutils.ErrGadgetPodNotFound

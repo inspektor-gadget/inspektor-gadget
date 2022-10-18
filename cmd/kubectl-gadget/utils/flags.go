@@ -120,7 +120,7 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 			}
 			pods, err := client.CoreV1().Pods(GadgetNamespace).List(context.TODO(), opts)
 			if err != nil {
-				return commonutils.WrapInErrListNodes(err)
+				return commonutils.WrapInErrListPods(err)
 			}
 
 			if len(pods.Items) == 0 {
