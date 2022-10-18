@@ -26,7 +26,7 @@ type Event struct {
 
 	PktType string `json:"pktType,omitempty"`
 	Proto   string `json:"proto,omitempty"`
-	IP      string `json:"ip,omitempty"`
+	Addr    string `json:"addr,omitempty"`
 	Port    uint16 `json:"port,omitempty"`
 
 	/* pod, svc or other */
@@ -76,7 +76,7 @@ func (e *Event) Key() string {
 		e.Pod,
 		e.PktType,
 		e.Proto,
-		e.IP,
+		e.Addr,
 		e.Port)
 }
 

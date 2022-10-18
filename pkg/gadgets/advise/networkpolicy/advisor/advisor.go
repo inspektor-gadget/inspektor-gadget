@@ -287,7 +287,7 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 		// Kubernetes Network Policies can't block traffic from a pod's
 		// own resident node. Therefore we must not generate a network
 		// policy in that case.
-		if e.PktType == "HOST" && e.PodHostIP == e.IP {
+		if e.PktType == "HOST" && e.PodHostIP == e.Addr {
 			continue
 		}
 
