@@ -22,17 +22,14 @@ import (
 type Event struct {
 	eventtypes.Event
 
-	Pid       uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
 	UID       uint32 `json:"uid,omitempty" column:"uid,minWidth:6,hide"`
-	Comm      string `json:"comm,omitempty" column:"comm,maxWidth:16"`
+	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
 	IPVersion int    `json:"ipversion,omitempty" column:"ip,width:2,fixed"`
-	// For Saddr and Daddr:
-	// Min: XXX.XXX.XXX.XXX (IPv4) = 15
-	// Max: 0000:0000:0000:0000:0000:ffff:XXX.XXX.XXX.XXX (IPv4-mapped IPv6 address) = 45
-	Saddr     string `json:"saddr,omitempty" column:"saddr,minWidth:15,maxWidth:45"`
-	Daddr     string `json:"daddr,omitempty" column:"daddr,minWidth:15,maxWidth:45"`
-	Dport     uint16 `json:"dport,omitempty" column:"dport,minWidth:type"`
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
+	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr"`
+	Daddr     string `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
+	Dport     uint16 `json:"dport,omitempty" column:"dport,template:ipport"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
 }
 
 func GetColumns() *columns.Columns[Event] {
