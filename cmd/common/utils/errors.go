@@ -35,6 +35,10 @@ func WrapInErrListNodes(err error) error {
 	return fmt.Errorf("failed to list nodes: %w", err)
 }
 
+func WrapInErrListPods(err error) error {
+	return fmt.Errorf("listing pods: %w", err)
+}
+
 // Manager
 
 func WrapInErrManagerInit(err error) error {
