@@ -12,7 +12,6 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/giantswarm/crd-docs-generator v0.7.1
 	github.com/google/uuid v1.2.0
-	github.com/kinvolk/traceloop v0.0.0-20210623155108-6f4efc6fca46
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.16.0
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
