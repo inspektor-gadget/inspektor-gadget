@@ -74,9 +74,12 @@ var (
 	quiet               bool
 	debug               bool
 	wait                bool
+	runtimesConfig      commonutils.RuntimesSocketPathConfig
 )
 
 func init() {
+	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
+
 	deployCmd.PersistentFlags().StringVarP(
 		&image,
 		"image", "",
@@ -320,6 +323,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					gadgetContainer.Env[i].Value = hookMode
 				case "INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER":
 					gadgetContainer.Env[i].Value = strconv.FormatBool(fallbackPodInformer)
+				case utils.GadgetEnvironmentContainerdSocketpath:
+					gadgetContainer.Env[i].Value = runtimesConfig.Containerd
+				case utils.GadgetEnvironmentCRIOSocketpath:
+					gadgetContainer.Env[i].Value = runtimesConfig.Crio
+				case utils.GadgetEnvironmentDockerSocketpath:
+					gadgetContainer.Env[i].Value = runtimesConfig.Docker
 				}
 			}
 

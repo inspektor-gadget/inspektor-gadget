@@ -144,6 +144,8 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 	// No 'Namespace' flag because it's added automatically by
 	// KubernetesConfigFlags.AddFlags(rootCmd.PersistentFlags())
 
+	commonutils.AddOutputFlags(command, &params.OutputConfig)
+
 	command.PersistentFlags().StringVarP(
 		&params.LabelsRaw,
 		"selector",
@@ -183,26 +185,9 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 		"Show data from pods in all namespaces",
 	)
 
-	command.PersistentFlags().StringVarP(
-		&params.OutputMode,
-		"output",
-		"o",
-		commonutils.OutputModeColumns,
-		fmt.Sprintf("Output format (%s).", strings.Join(commonutils.SupportedOutputModes, ", ")),
-	)
-
-	command.PersistentFlags().BoolVarP(
-		&params.Verbose,
-		"verbose",
-		"",
-		false,
-		"Print additional information",
-	)
-
-	command.PersistentFlags().IntVarP(
+	command.PersistentFlags().IntVar(
 		&params.Timeout,
 		"timeout",
-		"",
 		0,
 		"Number of seconds that the gadget will run for",
 	)

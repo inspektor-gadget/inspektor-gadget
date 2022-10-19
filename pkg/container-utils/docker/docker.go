@@ -24,15 +24,14 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	dockerfilters "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
-	Name              = "docker"
-	DefaultSocketPath = "/run/docker.sock"
-	DefaultTimeout    = 2 * time.Second
+	DefaultTimeout = 2 * time.Second
 )
 
 // DockerClient implements the ContainerRuntimeClient interface but using the
@@ -47,7 +46,7 @@ type DockerClient struct {
 
 func NewDockerClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
 	if socketPath == "" {
-		socketPath = DefaultSocketPath
+		socketPath = runtimeclient.DockerDefaultSocketPath
 	}
 
 	cli, err := client.NewClientWithOpts(
@@ -121,7 +120,7 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 }
 
 func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.ContainerDetailsData, error) {
-	containerID, err := runtimeclient.ParseContainerID(Name, containerID)
+	containerID, err := runtimeclient.ParseContainerID(runtimeclient.DockerName, containerID)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +148,7 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 			ID:      containerJSON.ID,
 			Name:    strings.TrimPrefix(containerJSON.Name, "/"),
 			State:   containerStatusStateToRuntimeClientState(containerJSON.State.Status),
-			Runtime: Name,
+			Runtime: runtimeclient.DockerName,
 		},
 		Pid:         containerJSON.State.Pid,
 		CgroupsPath: string(containerJSON.HostConfig.Cgroup),
@@ -221,7 +220,7 @@ func DockerContainerToContainerData(container *dockertypes.Container) *runtimecl
 		ID:      container.ID,
 		Name:    strings.TrimPrefix(container.Names[0], "/"),
 		State:   containerStatusStateToRuntimeClientState(container.State),
-		Runtime: Name,
+		Runtime: runtimeclient.DockerName,
 	}
 
 	// Fill K8S information.

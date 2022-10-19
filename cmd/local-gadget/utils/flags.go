@@ -20,9 +20,7 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/containerd"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/crio"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/docker"
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -33,20 +31,14 @@ type CommonFlags struct {
 	// OutputConfig describes the way output should be printed.
 	commonutils.OutputConfig
 
+	// Saves all runtime socket paths
+	commonutils.RuntimesSocketPathConfig
+
 	// Containername allows to filter containers by name.
 	Containername string
 
 	// The name of the container runtimes to be used separated by comma.
 	Runtimes string
-
-	// DockerSocketPath is the Docker Engine API Unix socket path.
-	DockerSocketPath string
-
-	// ContainerdSocketPath is the containerd CRI Unix socket path.
-	ContainerdSocketPath string
-
-	// CrioSocketPath is the CRI-O CRI Unix socket path.
-	CrioSocketPath string
 
 	// RuntimeConfigs contains the list of the container runtimes to be used
 	// with their specific socket path.
@@ -64,12 +56,12 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 			socketPath := ""
 
 			switch runtimeName {
-			case docker.Name:
-				socketPath = commonFlags.DockerSocketPath
-			case containerd.Name:
-				socketPath = commonFlags.ContainerdSocketPath
-			case crio.Name:
-				socketPath = commonFlags.CrioSocketPath
+			case runtimeclient.DockerName:
+				socketPath = commonFlags.RuntimesSocketPathConfig.Docker
+			case runtimeclient.ContainerdName:
+				socketPath = commonFlags.RuntimesSocketPathConfig.Containerd
+			case runtimeclient.CrioName:
+				socketPath = commonFlags.RuntimesSocketPathConfig.Crio
 			default:
 				return commonutils.WrapInErrInvalidArg("--runtime / -r",
 					fmt.Errorf("runtime %q is not supported", p))
@@ -100,20 +92,8 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 	// do not print usage when there is an error
 	command.SilenceUsage = true
 
-	command.PersistentFlags().BoolVarP(
-		&commonFlags.Verbose,
-		"verbose", "v",
-		false,
-		"Print debug information",
-	)
-
-	command.PersistentFlags().StringVarP(
-		&commonFlags.OutputMode,
-		"output",
-		"o",
-		commonutils.OutputModeColumns,
-		fmt.Sprintf("Output format (%s).", strings.Join(commonutils.SupportedOutputModes, ", ")),
-	)
+	commonutils.AddOutputFlags(command, &commonFlags.OutputConfig)
+	commonutils.AddRuntimesSocketPathFlags(command, &commonFlags.RuntimesSocketPathConfig)
 
 	command.PersistentFlags().StringVarP(
 		&commonFlags.Containername,
@@ -129,26 +109,5 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		strings.Join(containerutils.AvailableRuntimes, ","),
 		fmt.Sprintf("Container runtimes to be used separated by comma. Supported values are: %s",
 			strings.Join(containerutils.AvailableRuntimes, ", ")),
-	)
-
-	command.PersistentFlags().StringVarP(
-		&commonFlags.DockerSocketPath,
-		"docker-socketpath", "",
-		docker.DefaultSocketPath,
-		"Docker Engine API Unix socket path",
-	)
-
-	command.PersistentFlags().StringVarP(
-		&commonFlags.ContainerdSocketPath,
-		"containerd-socketpath", "",
-		containerd.DefaultSocketPath,
-		"containerd CRI Unix socket path",
-	)
-
-	command.PersistentFlags().StringVarP(
-		&commonFlags.CrioSocketPath,
-		"crio-socketpath", "",
-		crio.DefaultSocketPath,
-		"CRI-O CRI Unix socket path",
 	)
 }

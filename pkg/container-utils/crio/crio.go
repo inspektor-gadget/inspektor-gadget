@@ -22,9 +22,7 @@ import (
 )
 
 const (
-	Name              = "cri-o"
-	DefaultSocketPath = "/run/crio/crio.sock"
-	DefaultTimeout    = 2 * time.Second
+	DefaultTimeout = 2 * time.Second
 )
 
 type CrioClient struct {
@@ -33,10 +31,10 @@ type CrioClient struct {
 
 func NewCrioClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
 	if socketPath == "" {
-		socketPath = DefaultSocketPath
+		socketPath = runtimeclient.CrioDefaultSocketPath
 	}
 
-	criClient, err := criclient.NewCRIClient(Name, socketPath, DefaultTimeout)
+	criClient, err := criclient.NewCRIClient(runtimeclient.CrioName, socketPath, DefaultTimeout)
 	if err != nil {
 		return nil, err
 	}
