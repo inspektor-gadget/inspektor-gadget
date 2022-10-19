@@ -82,5 +82,6 @@ func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
 		"socket-collector":  socketcollector.NewFactory(),
 		"seccomp":           seccomp.NewFactory(),
 		"snisnoop":          snisnoop.NewFactory(),
+		"sigsnoop":          sigsnoop.NewFactory(),
 	}
 }
