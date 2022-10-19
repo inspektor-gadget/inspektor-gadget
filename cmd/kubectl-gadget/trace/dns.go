@@ -32,13 +32,13 @@ func newDNSCmd() *cobra.Command {
 			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		execGadget := &TraceGadget[dnsTypes.Event]{
+		dnsGadget := &TraceGadget[dnsTypes.Event]{
 			name:        "dns",
 			commonFlags: &commonFlags,
 			parser:      parser,
 		}
 
-		return execGadget.Run()
+		return dnsGadget.Run()
 	}
 
 	cmd := commontrace.NewDNSCmd(runCmd)
