@@ -93,15 +93,19 @@ out:
 	return nil
 }
 
+func BuildCommonData(namespace string) eventtypes.CommonData {
+	return eventtypes.CommonData{
+		Namespace: namespace,
+		// Pod and Container name are defined by BusyboxPodCommand.
+		Pod:       "test-pod",
+		Container: "test-pod",
+		// TODO: Include the Node
+	}
+}
+
 func BuildBaseEvent(namespace string) eventtypes.Event {
 	return eventtypes.Event{
-		Type: eventtypes.NORMAL,
-		CommonData: eventtypes.CommonData{
-			Namespace: namespace,
-			// Pod and Container name are defined by BusyboxPodCommand.
-			Pod:       "test-pod",
-			Container: "test-pod",
-			// TODO: Include the Node
-		},
+		Type:       eventtypes.NORMAL,
+		CommonData: BuildCommonData(namespace),
 	}
 }

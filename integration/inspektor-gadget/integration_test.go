@@ -27,6 +27,7 @@ import (
 	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 	bindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
 	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
@@ -1249,16 +1250,36 @@ func TestTcptop(t *testing.T) {
 	t.Parallel()
 
 	tcptopCmd := &Command{
-		Name:           "StartTcptopGadget",
-		Cmd:            fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s", ns),
-		ExpectedRegexp: `wget`,
-		StartAndStop:   true,
+		Name:         "StartTcptopGadget",
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json", ns),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEntry := &tcptopTypes.Stats{
+				CommonData: BuildCommonData(ns),
+				Daddr:      "1.1.1.1",
+				Comm:       "wget",
+				Dport:      80,
+				Family:     syscall.AF_INET,
+			}
+
+			normalize := func(e *tcptopTypes.Stats) {
+				e.Node = ""
+				e.Saddr = ""
+				e.MountNsID = 0
+				e.Pid = 0
+				e.Sport = 0
+				e.Sent = 0
+				e.Received = 0
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		tcptopCmd,
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://kinvolk.io"),
+		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null 1.1.1.1"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
