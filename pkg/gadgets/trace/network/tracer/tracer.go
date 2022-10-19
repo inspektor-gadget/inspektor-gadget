@@ -42,9 +42,9 @@ const (
 type Edge struct {
 	Key     string
 	PktType string
-	IP      net.IP
+	Addr    net.IP
 	Proto   string
-	Port    int
+	Port    uint16
 }
 
 type link struct {
@@ -212,9 +212,9 @@ func (t *Tracer) Pop() ([]Edge, error) {
 		return Edge{
 			Key:     t.containerQuarkToKey(uint64(key.ContainerQuark)),
 			PktType: pktTypeString(int(key.PktType)),
-			IP:      ip,
+			Addr:    ip,
 			Proto:   protoString(int(key.Proto)),
-			Port:    int(C.htons(C.ushort(key.Port))),
+			Port:    uint16(C.htons(C.ushort(key.Port))),
 		}
 	}
 

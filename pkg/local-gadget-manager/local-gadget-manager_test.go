@@ -572,7 +572,7 @@ func TestNetworkGraph(t *testing.T) {
 		},
 		PktType: "OUTGOING",
 		Proto:   "tcp",
-		IP:      "1.1.1.1",
+		Addr:    "1.1.1.1",
 		Port:    443,
 	}
 
