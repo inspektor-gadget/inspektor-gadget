@@ -932,15 +932,12 @@ func TestNetworkGraph(t *testing.T) {
 					RemoteOther: "1.1.1.1",
 				},
 				{
-					Event:                  BuildBaseEvent(ns),
-					PktType:                "OUTGOING",
-					Proto:                  "udp",
-					Port:                   53,
-					PodLabels:              map[string]string{"run": "test-pod"},
-					RemoteKind:             "svc",
-					RemoteSvcNamespace:     "kube-system",
-					RemoteSvcName:          "kube-dns",
-					RemoteSvcLabelSelector: map[string]string{"k8s-app": "kube-dns"},
+					Event:      BuildBaseEvent(ns),
+					PktType:    "OUTGOING",
+					Proto:      "udp",
+					Port:       53,
+					PodLabels:  map[string]string{"run": "test-pod"},
+					RemoteKind: "svc",
 				},
 			}
 			// Network gadget doesn't provide container data. Remove it.
@@ -955,6 +952,9 @@ func TestNetworkGraph(t *testing.T) {
 				e.PodIP = ""
 				e.PodOwner = ""
 				e.Debug = ""
+				e.RemoteSvcNamespace = ""
+				e.RemoteSvcName = ""
+				e.RemoteSvcLabelSelector = nil
 
 				if e.RemoteKind == "svc" {
 					e.IP = ""
