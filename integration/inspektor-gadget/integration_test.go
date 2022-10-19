@@ -926,7 +926,7 @@ func TestNetworkGraph(t *testing.T) {
 					PktType:     "OUTGOING",
 					Proto:       "tcp",
 					Port:        80,
-					IP:          "1.1.1.1",
+					Addr:        "1.1.1.1",
 					PodLabels:   map[string]string{"run": "test-pod"},
 					RemoteKind:  "other",
 					RemoteOther: "1.1.1.1",
@@ -957,7 +957,7 @@ func TestNetworkGraph(t *testing.T) {
 				e.RemoteSvcLabelSelector = nil
 
 				if e.RemoteKind == "svc" {
-					e.IP = ""
+					e.Addr = ""
 				}
 			}
 
