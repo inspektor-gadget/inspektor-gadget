@@ -85,7 +85,7 @@ func DeployInspektorGadget(image, imagePullPolicy string) *Command {
 	return &Command{
 		Name:           "DeployInspektorGadget",
 		Cmd:            cmd,
-		ExpectedRegexp: `\d\/\d gadget pod\(s\) ready`,
+		ExpectedRegexp: "Inspektor Gadget successfully deployed",
 	}
 }
 
