@@ -673,6 +673,7 @@ jobs:
       - documentation-checks
       - lint
       - test-integration-minikube
+      - test-integration-aks
       - test-integration-aro
       - test-local-gadget
       - check-readme-up-to-date
