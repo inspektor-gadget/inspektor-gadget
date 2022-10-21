@@ -115,6 +115,7 @@ func NewTraceCmd() *cobra.Command {
 	traceCmd.AddCommand(newOOMKillCmd())
 	traceCmd.AddCommand(newTCPCmd())
 	traceCmd.AddCommand(newTcpconnectCmd())
+	traceCmd.AddCommand(newSignalCmd())
 
 	return traceCmd
 }

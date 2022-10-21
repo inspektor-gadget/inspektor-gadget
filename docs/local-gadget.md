@@ -289,6 +289,29 @@ CONTAINER        PID     COMM             IP  SADDR            DADDR            
 test-container   503650  wget             4   172.17.0.3       93.184.216.34    80
 ```
 
+### Trace/Signal
+
+The signal trace gadget is used to trace system signals received by containers.
+
+```bash
+$ docker run -it --rm --name test-container busybox /bin/sh
+/ # sleep 100 &
+/ # echo $!
+7
+/ # kill -kill $!
+/ # exit
+```
+
+```bash
+$ sudo local-gadget trace signal --containername test-container
+WARN[0000] Runtime enricher (containerd): couldn't get current containers
+WARN[0000] Runtime enricher (cri-o): couldn't get current containers
+CONTAINER                  PID        COMM          SIGNAL      TPID       RET
+test-container             11131      sh            SIGKILL     11162      0
+test-container             11131      sh            SIGKILL     7          0
+test-container             11131      sh            SIGHUP      11131      0
+```
+
 ## Using the interactive mode
 
 The interactive mode allows us to create multiple traces at the same time.
