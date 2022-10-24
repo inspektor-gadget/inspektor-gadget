@@ -295,34 +295,50 @@ func parseLabelSequence(sample []byte) (ret string) {
 	return ret
 }
 
-func parseDNSEvent(rawSample []byte) (nameserver string, ret string, pktType string, qType string) {
-	dnsEvent := (*C.struct_event_t)(unsafe.Pointer(&rawSample[0]))
-
-	if len(rawSample) < int(unsafe.Sizeof(*dnsEvent)) {
-		return
+func parseDNSEvent(rawSample []byte) (*types.Event, error) {
+	event := types.Event{
+		Event: eventtypes.Event{
+			Type: eventtypes.NORMAL,
+		},
 	}
 
-	dstAddr := C.get_dst_addr(dnsEvent)
-	nameserver = C.GoString(dstAddr)
-	C.free(unsafe.Pointer(dstAddr))
+	dnsEvent := (*C.struct_event_t)(unsafe.Pointer(&rawSample[0]))
+	if len(rawSample) < int(unsafe.Sizeof(*dnsEvent)) {
+		return nil, errors.New("invalid sample size")
+	}
+
+	event.ID = fmt.Sprintf("%.4x", dnsEvent.id)
+
+	if dnsEvent.qr == 1 {
+		event.Qr = types.DNSPktTypeResponse
+		srcAddr := C.get_src_addr(dnsEvent)
+		event.Nameserver = C.GoString(srcAddr)
+		C.free(unsafe.Pointer(srcAddr))
+	} else {
+		event.Qr = types.DNSPktTypeQuery
+		dstAddr := C.get_dst_addr(dnsEvent)
+		event.Nameserver = C.GoString(dstAddr)
+		C.free(unsafe.Pointer(dstAddr))
+	}
 
 	// Convert name into a string with dots
-	ret = parseLabelSequence(rawSample[unsafe.Offsetof(dnsEvent.name):])
+	event.DNSName = parseLabelSequence(rawSample[unsafe.Offsetof(dnsEvent.name):])
 
 	// Parse the packet type
-	pktType = "UNKNOWN"
+	event.PktType = "UNKNOWN"
 	pktTypeUint := uint(dnsEvent.pkt_type)
 	if pktTypeUint < uint(len(pktTypeNames)) {
-		pktType = pktTypeNames[pktTypeUint]
+		event.PktType = pktTypeNames[pktTypeUint]
 	}
 
 	qTypeUint := uint(dnsEvent.qtype)
-	qType, ok := qTypeNames[qTypeUint]
+	var ok bool
+	event.QType, ok = qTypeNames[qTypeUint]
 	if !ok {
-		qType = "UNASSIGNED"
+		event.QType = "UNASSIGNED"
 	}
 
-	return
+	return &event, nil
 }
 
 func (t *Tracer) listen(
@@ -348,18 +364,12 @@ func (t *Tracer) listen(
 			continue
 		}
 
-		nameserver, name, pktType, qType := parseDNSEvent(record.RawSample)
-
-		event := types.Event{
-			Event: eventtypes.Event{
-				Type: eventtypes.NORMAL,
-			},
-			Nameserver: nameserver,
-			DNSName:    name,
-			PktType:    pktType,
-			QType:      qType,
+		event, err := parseDNSEvent(record.RawSample)
+		if err != nil {
+			eventCallback(types.Base(eventtypes.Err(err.Error())))
+			continue
 		}
-		eventCallback(event)
+		eventCallback(*event)
 	}
 }
 

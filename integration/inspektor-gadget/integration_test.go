@@ -460,6 +460,8 @@ func TestDns(t *testing.T) {
 			expectedEntries := []*dnsTypes.Event{
 				{
 					Event:      BuildBaseEvent(ns),
+					ID:         "0000",
+					Qr:         dnsTypes.DNSPktTypeQuery,
 					Nameserver: "8.8.4.4",
 					PktType:    "OUTGOING",
 					DNSName:    "inspektor-gadget.io.",
@@ -467,8 +469,28 @@ func TestDns(t *testing.T) {
 				},
 				{
 					Event:      BuildBaseEvent(ns),
+					ID:         "0000",
+					Qr:         dnsTypes.DNSPktTypeResponse,
+					Nameserver: "8.8.4.4",
+					PktType:    "HOST",
+					DNSName:    "inspektor-gadget.io.",
+					QType:      "A",
+				},
+				{
+					Event:      BuildBaseEvent(ns),
+					ID:         "0000",
+					Qr:         dnsTypes.DNSPktTypeQuery,
 					Nameserver: "8.8.4.4",
 					PktType:    "OUTGOING",
+					DNSName:    "inspektor-gadget.io.",
+					QType:      "A",
+				},
+				{
+					Event:      BuildBaseEvent(ns),
+					ID:         "0000",
+					Qr:         dnsTypes.DNSPktTypeResponse,
+					Nameserver: "8.8.4.4",
+					PktType:    "HOST",
 					DNSName:    "inspektor-gadget.io.",
 					QType:      "AAAA",
 				},
@@ -481,6 +503,7 @@ func TestDns(t *testing.T) {
 
 			normalize := func(e *dnsTypes.Event) {
 				e.Node = ""
+				e.ID = "0000"
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
@@ -490,7 +513,9 @@ func TestDns(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		dnsCmd,
-		BusyboxPodRepeatCommand(ns, "nslookup inspektor-gadget.io 8.8.4.4"),
+		BusyboxPodRepeatCommand(ns,
+			"nslookup -type=a inspektor-gadget.io. 8.8.4.4 ;"+
+				"nslookup -type=aaaa inspektor-gadget.io. 8.8.4.4"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

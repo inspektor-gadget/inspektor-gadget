@@ -16,6 +16,11 @@ struct event_t {
 	};
 	__u32 af; // AF_INET or AF_INET6
 
+	__u16 id;
+
+	// qr says if the dns message is a query (0), or a response (1)
+	unsigned char qr;
+
 	char name[MAX_DNS_NAME];
 	unsigned char pkt_type;
 	unsigned short qtype;

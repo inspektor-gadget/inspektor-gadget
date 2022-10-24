@@ -67,24 +67,17 @@ int ig_trace_dns(struct __sk_buff *skb)
 	if (load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol)) != IPPROTO_UDP)
 		return 0;
 
-	// Skip non DNS Query packets
 	union dnsflags flags;
 	flags.flags = load_half(skb, DNS_OFF + offsetof(struct dnshdr, flags));
-
-	// Capture questions and ignore answers
-	if (flags.qr)
-		return 0;
 
 	// Skip DNS packets with more than 1 question
 	if (load_half(skb, DNS_OFF + offsetof(struct dnshdr, qdcount)) != 1)
 		return 0;
 
-	// Skip DNS packets with answers
-	if (load_half(skb, DNS_OFF + offsetof(struct dnshdr, ancount)) != 0)
-		return 0;
-
-	// Skip DNS packets with authority records
-	if (load_half(skb, DNS_OFF + offsetof(struct dnshdr, nscount)) != 0)
+	__u16 ancount = load_half(skb, DNS_OFF + offsetof(struct dnshdr, ancount));
+	__u16 nscount = load_half(skb, DNS_OFF + offsetof(struct dnshdr, nscount));
+	// Skip DNS queries with answers
+	if ((flags.qr == 0) && (ancount + nscount != 0))
 		return 0;
 
 	// This loop iterates over the DNS labels to find the total DNS name
@@ -109,13 +102,16 @@ int ig_trace_dns(struct __sk_buff *skb)
 		return 0;
 
 	struct event_t event = {0,};
+	event.id = load_half(skb, DNS_OFF + offsetof(struct dnshdr, id));
 	event.af = AF_INET;
 	event.daddr_v4 = load_word(skb, ETH_HLEN + offsetof(struct iphdr, daddr));
 	event.saddr_v4 = load_word(skb, ETH_HLEN + offsetof(struct iphdr, saddr));
 	// load_word converts from network to host endianness. Convert back to
-	// network endianness.
+	// network endianness because inet_ntop() requires it.
 	event.daddr_v4 = bpf_htonl(event.daddr_v4);
 	event.saddr_v4 = bpf_htonl(event.saddr_v4);
+
+	event.qr = flags.qr;
 
 	bpf_skb_load_bytes(skb, DNS_OFF + sizeof(struct dnshdr), event.name, len);
 

@@ -497,11 +497,36 @@ func TestDNS(t *testing.T) {
 				Pod:       "test-local-gadget-dns001",
 			},
 		},
+		ID:         "0000",
+		Qr:         dnstypes.DNSPktTypeQuery,
 		Nameserver: nameserver,
 		DNSName:    "magic-1-2-3-4.nip.io.",
 		PktType:    "OUTGOING",
 		QType:      "A",
 	}
+
+	// normalize
+	id := event.ID
+	event.ID = "0000"
+
+	if event != expectedEvent {
+		t.Fatalf("Received: %v, Expected: %v", event, expectedEvent)
+	}
+
+	// check dns response is traced
+	result = <-ch
+	event = dnstypes.Event{}
+	if err := json.Unmarshal([]byte(result), &event); err != nil {
+		t.Fatalf("failed to unmarshal json: %s", err)
+	}
+
+	expectedEvent.PktType = "HOST"
+	expectedEvent.Qr = dnstypes.DNSPktTypeResponse
+
+	if event.ID != id {
+		t.Fatalf("Response ID: %v, Expected: %v", event.ID, id)
+	}
+	event.ID = "0000"
 
 	if event != expectedEvent {
 		t.Fatalf("Received: %v, Expected: %v", event, expectedEvent)
