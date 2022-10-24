@@ -6,6 +6,7 @@
 #include <linux/ip.h>
 #include <linux/in.h>
 #include <linux/udp.h>
+#include <sys/socket.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
@@ -104,10 +105,19 @@ int ig_trace_dns(struct __sk_buff *skb)
 	}
 
 	__u32 len = i < MAX_DNS_NAME ? i : MAX_DNS_NAME;
+	if  (len == 0)
+		return 0;
 
 	struct event_t event = {0,};
-	if (len > 0)
-		bpf_skb_load_bytes(skb, DNS_OFF + sizeof(struct dnshdr), event.name, len);
+	event.af = AF_INET;
+	event.daddr_v4 = load_word(skb, ETH_HLEN + offsetof(struct iphdr, daddr));
+	event.saddr_v4 = load_word(skb, ETH_HLEN + offsetof(struct iphdr, saddr));
+	// load_word converts from network to host endianness. Convert back to
+	// network endianness.
+	event.daddr_v4 = bpf_htonl(event.daddr_v4);
+	event.saddr_v4 = bpf_htonl(event.saddr_v4);
+
+	bpf_skb_load_bytes(skb, DNS_OFF + sizeof(struct dnshdr), event.name, len);
 
 	event.pkt_type = skb->pkt_type;
 
@@ -115,8 +125,6 @@ int ig_trace_dns(struct __sk_buff *skb)
 	// https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.2
 	event.qtype = load_half(skb, DNS_OFF + sizeof(struct dnshdr) + len + 1);
 
-	// TODO: we should not send the event when len == 0. But the verifier
-	// won't let us.
 	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
 	return 0;

@@ -459,16 +459,18 @@ func TestDns(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*dnsTypes.Event{
 				{
-					Event:   BuildBaseEvent(ns),
-					PktType: "OUTGOING",
-					DNSName: "inspektor-gadget.io.",
-					QType:   "A",
+					Event:      BuildBaseEvent(ns),
+					Nameserver: "8.8.4.4",
+					PktType:    "OUTGOING",
+					DNSName:    "inspektor-gadget.io.",
+					QType:      "A",
 				},
 				{
-					Event:   BuildBaseEvent(ns),
-					PktType: "OUTGOING",
-					DNSName: "inspektor-gadget.io.",
-					QType:   "AAAA",
+					Event:      BuildBaseEvent(ns),
+					Nameserver: "8.8.4.4",
+					PktType:    "OUTGOING",
+					DNSName:    "inspektor-gadget.io.",
+					QType:      "AAAA",
 				},
 			}
 
@@ -488,7 +490,7 @@ func TestDns(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		dnsCmd,
-		BusyboxPodRepeatCommand(ns, "nslookup inspektor-gadget.io"),
+		BusyboxPodRepeatCommand(ns, "nslookup inspektor-gadget.io 8.8.4.4"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

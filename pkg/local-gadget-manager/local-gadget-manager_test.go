@@ -442,7 +442,10 @@ func TestDNS(t *testing.T) {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
 
-	runTestContainer(t, containerName, "docker.io/tutum/dnsutils", "dig microsoft.com", "")
+	// select a nameserver that is not symmetrical with endianness
+	nameserver := "8.8.4.4"
+
+	runTestContainer(t, containerName, "docker.io/tutum/dnsutils", "dig @"+nameserver+" magic-1-2-3-4.nip.io", "")
 
 	stop := make(chan struct{})
 
@@ -494,9 +497,10 @@ func TestDNS(t *testing.T) {
 				Pod:       "test-local-gadget-dns001",
 			},
 		},
-		DNSName: "microsoft.com.",
-		PktType: "OUTGOING",
-		QType:   "A",
+		Nameserver: nameserver,
+		DNSName:    "magic-1-2-3-4.nip.io.",
+		PktType:    "OUTGOING",
+		QType:      "A",
 	}
 
 	if event != expectedEvent {
