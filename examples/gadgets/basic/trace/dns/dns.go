@@ -37,8 +37,14 @@ func main() {
 
 	// Define a callback to be called each time there is an event.
 	eventCallback := func(event types.Event) {
-		fmt.Printf("A new %q dns request to %s was executed\n",
-			event.QType, event.DNSName)
+		qr := event.Qr
+		if qr == types.DNSPktTypeQuery {
+			qr = "request"
+		} else if qr == types.DNSPktTypeResponse {
+			qr = "response"
+		}
+		fmt.Printf("A new %q dns %s about %s was observed\n",
+			event.QType, qr, event.DNSName)
 	}
 
 	// Create tracer. In this case no parameters are passed.
@@ -49,7 +55,7 @@ func main() {
 	}
 	defer tracer.Close()
 
-	// The tracer has to be attached. The requests will be traced on
+	// The tracer has to be attached. The DNS packets will be traced on
 	// the network namespace of pid.
 	pid := uint32(os.Getpid())
 	if err := tracer.Attach(key, pid, eventCallback); err != nil {

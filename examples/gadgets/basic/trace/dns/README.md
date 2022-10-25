@@ -23,28 +23,19 @@ Then, perform some DNS requests:
 
 
 ```bash
-$ nslookup microsoft.com
-$ nslookup google.com
+$ nslookup -querytype=a microsoft.com.
+$ nslookup -querytype=a google.com.
 ```
 
 The first terminal will print information about the DNS requests:
 ```bash
 $ sudo ./dns
-A new "A" dns request to microsoft.com. was executed
-A new "A" dns request to microsoft.com. was executed
-A new "A" dns request to microsoft.com. was executed
-A new "AAAA" dns request to microsoft.com. was executed
-A new "AAAA" dns request to microsoft.com. was executed
-A new "AAAA" dns request to microsoft.com. was executed
-A new "A" dns request to signaler-pa.clients6.google.com. was executed
-A new "A" dns request to signaler-pa.clients6.google.com. was executed
-A new "AAAA" dns request to signaler-pa.clients6.google.com. was executed
-A new "AAAA" dns request to signaler-pa.clients6.google.com. was executed
-A new "AAAA" dns request to signaler-pa.clients6.google.com. was executed
-A new "A" dns request to google.com. was executed
-A new "A" dns request to google.com. was executed
-A new "A" dns request to google.com. was executed
-A new "AAAA" dns request to google.com. was executed
-A new "AAAA" dns request to google.com. was executed
-A new "AAAA" dns request to google.com. was executed
+A new "A" dns request about microsoft.com. was observed
+A new "A" dns request about microsoft.com. was observed
+A new "A" dns response about microsoft.com. was observed
+A new "A" dns response about microsoft.com. was observed
+A new "A" dns request about google.com. was observed
+A new "A" dns request about google.com. was observed
+A new "A" dns response about google.com. was observed
+A new "A" dns response about google.com. was observed
 ```
