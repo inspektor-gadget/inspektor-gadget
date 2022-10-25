@@ -39,8 +39,9 @@ const (
 
 type FilterSpec[T any] struct {
 	value          string
-	refValue       interface{}
+	refValue       any
 	comparisonType comparisonType
+	compareFunc    func(entry *T) bool
 	negate         bool
 	regex          *regexp.Regexp
 	column         *columns.Column[T]
@@ -164,56 +165,87 @@ func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*Filt
 		fs.refValue = value.Interface()
 	}
 
+	fs.compareFunc = fs.getComparisonFunc()
+
 	return fs, nil
 }
 
-func compare[T constraints.Ordered](a, b T, ct comparisonType, negate bool) bool {
-	switch ct {
-	case comparisonTypeMatch:
-		return a == b != negate
-	case comparisonTypeGt:
-		return a > b != negate
-	case comparisonTypeGte:
-		return a >= b != negate
-	case comparisonTypeLt:
-		return a < b != negate
-	case comparisonTypeLte:
-		return a <= b != negate
+func (fs *FilterSpec[T]) getComparisonFunc() func(*T) bool {
+	offset := fs.column.GetOffset()
+
+	switch fs.column.Kind() {
+	case reflect.Int:
+		return getComparisonFuncForComparisonType[int, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Int8:
+		return getComparisonFuncForComparisonType[int8, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Int16:
+		return getComparisonFuncForComparisonType[int16, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Int32:
+		return getComparisonFuncForComparisonType[int32, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Int64:
+		return getComparisonFuncForComparisonType[int64, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Uint:
+		return getComparisonFuncForComparisonType[uint, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Uint8:
+		return getComparisonFuncForComparisonType[uint8, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Uint16:
+		return getComparisonFuncForComparisonType[uint16, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Uint32:
+		return getComparisonFuncForComparisonType[uint32, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Uint64:
+		return getComparisonFuncForComparisonType[uint64, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.String:
+		if fs.comparisonType == comparisonTypeRegex {
+			return func(entry *T) bool {
+				return fs.regex.MatchString(columns.GetField[string](entry, fs.column.GetOffset())) != fs.negate
+			}
+		}
+		return getComparisonFuncForComparisonType[string, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Float32:
+		return getComparisonFuncForComparisonType[float32, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Float64:
+		return getComparisonFuncForComparisonType[float64, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+	case reflect.Bool:
+		if fs.comparisonType == comparisonTypeMatch {
+			return func(entry *T) bool {
+				return columns.GetField[bool](entry, offset) == fs.refValue.(bool)
+			}
+		}
+		fallthrough
 	default:
-		return false
+		return func(a *T) bool {
+			return false
+		}
 	}
 }
 
-func (fs *FilterSpec[T]) compare(field reflect.Value) bool {
-	switch fs.column.Kind() {
-	case reflect.Int:
-		return compare(field.Interface().(int), fs.refValue.(int), fs.comparisonType, fs.negate)
-	case reflect.Int8:
-		return compare(field.Interface().(int8), fs.refValue.(int8), fs.comparisonType, fs.negate)
-	case reflect.Int16:
-		return compare(field.Interface().(int16), fs.refValue.(int16), fs.comparisonType, fs.negate)
-	case reflect.Int32:
-		return compare(field.Interface().(int32), fs.refValue.(int32), fs.comparisonType, fs.negate)
-	case reflect.Int64:
-		return compare(field.Interface().(int64), fs.refValue.(int64), fs.comparisonType, fs.negate)
-	case reflect.Uint:
-		return compare(field.Interface().(uint), fs.refValue.(uint), fs.comparisonType, fs.negate)
-	case reflect.Uint8:
-		return compare(field.Interface().(uint8), fs.refValue.(uint8), fs.comparisonType, fs.negate)
-	case reflect.Uint16:
-		return compare(field.Interface().(uint16), fs.refValue.(uint16), fs.comparisonType, fs.negate)
-	case reflect.Uint32:
-		return compare(field.Interface().(uint32), fs.refValue.(uint32), fs.comparisonType, fs.negate)
-	case reflect.Uint64:
-		return compare(field.Interface().(uint64), fs.refValue.(uint64), fs.comparisonType, fs.negate)
-	case reflect.Float32:
-		return compare(field.Interface().(float32), fs.refValue.(float32), fs.comparisonType, fs.negate)
-	case reflect.Float64:
-		return compare(field.Interface().(float64), fs.refValue.(float64), fs.comparisonType, fs.negate)
-	case reflect.String:
-		return compare(field.Interface().(string), fs.refValue.(string), fs.comparisonType, fs.negate)
+func getComparisonFuncForComparisonType[OT constraints.Ordered, T any](ct comparisonType, negate bool, offset uintptr, refValue any) func(a *T) bool {
+	switch ct {
+	case comparisonTypeMatch:
+		return func(a *T) bool {
+			return columns.GetField[OT](a, offset) == refValue.(OT) != negate
+		}
+	case comparisonTypeGt:
+		return func(a *T) bool {
+			return columns.GetField[OT](a, offset) > refValue.(OT) != negate
+		}
+	case comparisonTypeGte:
+		return func(a *T) bool {
+			return columns.GetField[OT](a, offset) >= refValue.(OT) != negate
+		}
+	case comparisonTypeLt:
+		return func(a *T) bool {
+			return columns.GetField[OT](a, offset) < refValue.(OT) != negate
+		}
+	case comparisonTypeLte:
+		return func(a *T) bool {
+			return columns.GetField[OT](a, offset) <= refValue.(OT) != negate
+		}
+	default:
+		return func(a *T) bool {
+			return false
+		}
 	}
-	return false
 }
 
 // Match matches a single entry against the FilterSpec and returns true if it matches
@@ -221,22 +253,7 @@ func (fs *FilterSpec[T]) Match(entry *T) bool {
 	if entry == nil {
 		return fs.negate
 	}
-
-	field := fs.column.GetRef(reflect.ValueOf(entry))
-
-	switch fs.comparisonType {
-	case
-		comparisonTypeMatch,
-		comparisonTypeGt,
-		comparisonTypeGte,
-		comparisonTypeLt,
-		comparisonTypeLte:
-		return fs.compare(field)
-	case comparisonTypeRegex:
-		return fs.regex.MatchString(field.String()) != fs.negate
-	}
-
-	return false
+	return fs.compareFunc(entry)
 }
 
 // FilterEntries will return the elements of entries that match all given filters.
