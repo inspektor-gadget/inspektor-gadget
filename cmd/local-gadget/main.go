@@ -36,10 +36,10 @@ func main() {
 		audit.NewAuditCmd(),
 		containers.NewListContainersCmd(),
 		interactive.NewInteractiveCmd(),
-		snapshot.NewSnapshotCmd(),
-		trace.NewTraceCmd(),
 		newTraceloopCmd(),
 		newVersionCmd(),
+		snapshot.NewSnapshotCmd(),
+		trace.NewTraceCmd(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {
