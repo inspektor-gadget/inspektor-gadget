@@ -497,7 +497,9 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 				return
 			}
 			if err != nil {
-				log.Errorf("error watching pid: %v\n", err)
+				log.Warnf("error watching pid: %v\n", err)
+				pidFileDirNotify.File.Close()
+				return
 			}
 			if stop {
 				pidFileDirNotify.File.Close()

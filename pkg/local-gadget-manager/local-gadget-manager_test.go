@@ -131,6 +131,46 @@ func runTestContainer(t *testing.T, name, image, command, seccompProfile string)
 	}
 }
 
+func runFailedContainer(t *testing.T) {
+	containerName := "test-local-gadget-failed-container"
+	image := "docker.io/library/busybox"
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		t.Fatalf("Failed to connect to Docker: %s", err)
+	}
+	ctx := context.Background()
+
+	_ = cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{})
+
+	reader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
+	if err != nil {
+		t.Fatalf("Failed to pull image container: %s", err)
+	}
+	io.Copy(io.Discard, reader)
+
+	resp, err := cli.ContainerCreate(ctx, &container.Config{
+		Image: image,
+		Cmd:   []string{"/none"},
+		Tty:   false,
+	}, nil, nil, nil, containerName)
+	if err != nil {
+		t.Fatalf("Failed to create container: %s", err)
+	}
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err == nil {
+		t.Fatalf("ContainerStart should have failed!")
+	}
+
+	err = cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{Force: true})
+	if err != nil {
+		t.Fatalf("Failed to remove container: %s", err)
+	}
+
+	err = cli.Close()
+	if err != nil {
+		t.Fatalf("Failed to close docker client: %s", err)
+	}
+}
+
 func stacks() string {
 	buf := make([]byte, 1024)
 	for {
@@ -184,12 +224,18 @@ func TestClose(t *testing.T) {
 
 	initialFdList := currentFdList(t)
 
-	localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
-	if err != nil {
-		t.Fatalf("Failed to start local gadget manager: %s", err)
-	}
+	for i := 0; i < 4; i++ {
+		localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
+		if err != nil {
+			t.Fatalf("Failed to start local gadget manager: %s", err)
+		}
 
-	localGadgetManager.Close()
+		if i%2 == 0 {
+			runFailedContainer(t)
+		}
+
+		localGadgetManager.Close()
+	}
 
 	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
 }
