@@ -1,0 +1,17 @@
+apiVersion: gadget.kinvolk.io/v1alpha1
+kind: Trace
+metadata:
+  name: byob
+  namespace: gadget
+spec:
+  node: minikube
+  gadget: byob
+  filter:
+    namespace: default
+  runMode: Manual
+  outputMode: Stream
+  parameters:
+    # OCI Image containing the ELF module
+    ociImage: "ghcr.io/solo-io/bumblebee/tcpconnect:0.0.11"
+    # ELF module compressed with zlib and encoded in base64
+    progContent: ""

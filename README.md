@@ -45,6 +45,7 @@ Explore the following documentation to find out which tools can help you in your
 	- [`tcp`](docs/guides/top/tcp.md)
 - `trace`:
 	- [`bind`](docs/guides/trace/bind.md)
+	- [`byob`](docs/guides/byob.md)
 	- [`capabilities`](docs/guides/trace/capabilities.md)
 	- [`dns`](docs/guides/trace/dns.md)
 	- [`exec`](docs/guides/trace/exec.md)
@@ -171,6 +172,7 @@ Usage:
 
 Available Commands:
   bind         Trace the kernel functions performing socket binding
+  byob         Trace with your own BPF program
   capabilities Trace security capability checks
   dns          Trace DNS requests
   exec         Trace new processes
