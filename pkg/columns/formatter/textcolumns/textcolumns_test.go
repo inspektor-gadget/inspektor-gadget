@@ -204,3 +204,25 @@ func TestWidthRestrictions(t *testing.T) {
 		}
 	})
 }
+
+func TestWithTypeDefinition(t *testing.T) {
+	type StringAlias string
+	type testStruct struct {
+		Name StringAlias `column:"name,width:5,minWidth:2,maxWidth:10"`
+	}
+	entries := []*testStruct{
+		{"123456789012"},
+		{"234567890123"},
+	}
+	cols, err := columns.NewColumns[testStruct]()
+	if err != nil {
+		t.Fatalf("error initializing")
+	}
+	formatter := NewFormatter(cols.GetColumnMap(), WithAutoScale(false))
+	formatter.AdjustWidthsToContent(entries, false, 0, false)
+	for _, entry := range entries {
+		if formatter.FormatEntry(entry) != string(entry.Name) {
+			t.Errorf("expected %q, got %q", entry.Name, formatter.FormatEntry(entry))
+		}
+	}
+}
