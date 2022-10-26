@@ -30,7 +30,7 @@ func TestColumnMap(t *testing.T) {
 		t.Errorf("Expected stringfield in column map")
 	}
 	if _, ok := columnMap["intfield"]; !ok {
-		t.Errorf("Expected stringfield in column map")
+		t.Errorf("Expected intfield in column map")
 	}
 }
 
@@ -43,6 +43,28 @@ func TestEmptyStruct(t *testing.T) {
 	columnMap := cols.GetColumnMap()
 	if len(columnMap) != 0 {
 		t.Errorf("Expected empty column map")
+	}
+}
+
+func TestFieldsWithTypeDefinition(t *testing.T) {
+	type StringAlias string
+	type IntAlias int
+	type testStruct struct {
+		StringField StringAlias `column:"stringField"`
+		IntField    IntAlias    `column:"intField"`
+	}
+
+	testVar := &testStruct{
+		StringField: "abc",
+		IntField:    123,
+	}
+
+	cols := expectColumnsSuccess[testStruct](t)
+	if expectColumn(t, cols, "stringField").Get(testVar).Interface() != testVar.StringField {
+		t.Errorf("expected stringField to contain %q", testVar.StringField)
+	}
+	if expectColumn(t, cols, "intField").Get(testVar).Interface() != testVar.IntField {
+		t.Errorf("expected intField to contain %q", testVar.IntField)
 	}
 }
 

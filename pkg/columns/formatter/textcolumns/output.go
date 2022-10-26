@@ -52,7 +52,7 @@ func (tf *TextColumnsFormatter[T]) setFormatter(column *Column[T]) {
 		}
 	case reflect.String:
 		column.formatter = func(v interface{}) string {
-			return tf.buildFixedString(v.(string), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
+			return tf.buildFixedString(reflect.ValueOf(v).String(), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
 		}
 	default:
 		column.formatter = func(v interface{}) string {

@@ -267,7 +267,7 @@ func (tf *TextColumnsFormatter[T]) AdjustWidthsToContent(entries []*T, considerH
 				reflect.Float64:
 				flen = len([]rune(strconv.FormatFloat(field.Float(), 'f', column.col.Precision, 64)))
 			case reflect.String:
-				flen = len([]rune(field.Interface().(string)))
+				flen = len([]rune(field.String()))
 			default:
 				flen = len([]rune(fmt.Sprintf("%v", field.Interface())))
 			}
