@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -30,15 +29,12 @@ import (
 func parseMultiJSONOutput[T any](output string, normalize func(*T)) ([]*T, error) {
 	ret := []*T{}
 
-	scanner := bufio.NewScanner(strings.NewReader(output))
-	for scanner.Scan() {
+	decoder := json.NewDecoder(strings.NewReader(output))
+	for decoder.More() {
 		var entry T
-
-		line := scanner.Text()
-		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			return nil, fmt.Errorf("unmarshaling line %q: %w", line, err)
+		if err := decoder.Decode(&entry); err != nil {
+			return nil, fmt.Errorf("decoding json: %w", err)
 		}
-
 		// To be able to use reflect.DeepEqual and cmp.Diff, we need to
 		// "normalize" the output so that it only includes non-default values
 		// for the fields we are able to verify.
@@ -47,9 +43,6 @@ func parseMultiJSONOutput[T any](output string, normalize func(*T)) ([]*T, error
 		}
 
 		ret = append(ret, &entry)
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("parsing output: %w", err)
 	}
 
 	return ret, nil

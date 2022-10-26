@@ -15,9 +15,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"reflect"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -60,19 +58,7 @@ func TestListContainers(t *testing.T) {
 				c.PodUID = ""
 			}
 
-			var containers []*containercollection.Container
-			if err := json.Unmarshal([]byte(output), &containers); err != nil {
-				return err
-			}
-
-			for _, gotContainer := range containers {
-				normalize(gotContainer)
-				if reflect.DeepEqual(gotContainer, expectedContainer) {
-					return nil
-				}
-			}
-
-			return fmt.Errorf("output doesn't contain the expected container: %+v", expectedContainer)
+			return ExpectEntriesInArrayToMatch(output, normalize, expectedContainer)
 		},
 	}
 
@@ -143,23 +129,7 @@ spec:
 				c.PodUID = ""
 			}
 
-			var containers []*containercollection.Container
-			if err := json.Unmarshal([]byte(output), &containers); err != nil {
-				return err
-			}
-
-			if len(containers) == 0 {
-				return fmt.Errorf("expect at least one container in output")
-			}
-
-			for _, gotContainer := range containers {
-				normalize(gotContainer)
-				if !reflect.DeepEqual(gotContainer, expectedContainer) {
-					return fmt.Errorf("expect at least one container to match, expected=%+v, got=%+v", expectedContainer, gotContainer)
-				}
-			}
-
-			return nil
+			return ExpectAllToMatch(output, normalize, expectedContainer)
 		},
 	}
 

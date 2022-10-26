@@ -17,6 +17,9 @@ package containers
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -26,8 +29,11 @@ import (
 	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 )
 
+const localGadgetSubKey = "local-gadget-key"
+
 func NewListContainersCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
+	var optionWatch bool
 
 	cmd := &cobra.Command{
 		Use:   "list-containers",
@@ -44,31 +50,87 @@ func NewListContainersCmd() *cobra.Command {
 				return commonutils.WrapInErrParserCreate(err)
 			}
 
-			containers := localGadgetManager.GetContainersBySelector(&containercollection.ContainerSelector{
-				Name: commonFlags.Containername,
-			})
+			containers := localGadgetManager.ContainerCollection.Subscribe(
+				localGadgetSubKey,
+				containercollection.ContainerSelector{
+					Name: commonFlags.Containername,
+				},
+				func(event containercollection.PubSubEvent) {
+					switch event.Type {
+					case containercollection.EventTypeAddContainer:
+						if err = printContainer(parser, commonFlags, event.Container); err != nil {
+							fmt.Fprintf(os.Stderr, "Warning: %s\n", err)
+						}
+					}
+				})
+			defer localGadgetManager.ContainerCollection.Unsubscribe(localGadgetSubKey)
 
 			parser.Sort(containers, []string{"runtime", "name"})
-
-			switch commonFlags.OutputMode {
-			case commonutils.OutputModeJSON:
-				b, err := json.MarshalIndent(containers, "", "  ")
-				if err != nil {
-					return commonutils.WrapInErrMarshalOutput(err)
+			if optionWatch {
+				if commonFlags.OutputMode != commonutils.OutputModeJSON {
+					fmt.Println(parser.BuildColumnsHeader())
+				}
+				for _, container := range containers {
+					if err = printContainer(parser, commonFlags, container); err != nil {
+						return err
+					}
 				}
 
-				fmt.Printf("%s\n", b)
-			case commonutils.OutputModeColumns:
-				fallthrough
-			case commonutils.OutputModeCustomColumns:
-				fmt.Println(parser.TransformIntoTable(containers))
+				stop := make(chan os.Signal, 1)
+				signal.Notify(stop, syscall.SIGINT)
+				<-stop
+			} else {
+				if err = printContainers(parser, commonFlags, containers); err != nil {
+					return err
+				}
 			}
 
 			return nil
 		},
 	}
 
+	cmd.Flags().BoolVarP(
+		&optionWatch,
+		"watch", "w",
+		false,
+		"After listing the containers, watch for new containers")
+
 	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
+}
+
+func printContainers(parser *commonutils.GadgetParser[containercollection.Container], commonFlags utils.CommonFlags, containers []*containercollection.Container) error {
+	switch commonFlags.OutputMode {
+	case commonutils.OutputModeJSON:
+		b, err := json.MarshalIndent(containers, "", "  ")
+		if err != nil {
+			return commonutils.WrapInErrMarshalOutput(err)
+		}
+
+		fmt.Printf("%s\n", b)
+	case commonutils.OutputModeColumns:
+		fallthrough
+	case commonutils.OutputModeCustomColumns:
+		fmt.Println(parser.TransformIntoTable(containers))
+	}
+
+	return nil
+}
+
+func printContainer(parser *commonutils.GadgetParser[containercollection.Container], commonFlags utils.CommonFlags, container *containercollection.Container) error {
+	switch commonFlags.OutputMode {
+	case commonutils.OutputModeJSON:
+		b, err := json.MarshalIndent(container, "", "  ")
+		if err != nil {
+			return commonutils.WrapInErrMarshalOutput(err)
+		}
+		fmt.Printf("%s\n", b)
+	case commonutils.OutputModeColumns:
+		fallthrough
+	case commonutils.OutputModeCustomColumns:
+		fmt.Println(parser.TransformIntoColumns(container))
+	}
+
+	return nil
 }
