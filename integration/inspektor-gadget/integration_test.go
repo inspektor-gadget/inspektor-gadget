@@ -27,6 +27,7 @@ import (
 	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	ebpftopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 	bindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
 	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
@@ -503,10 +504,35 @@ func TestEbpftop(t *testing.T) {
 	t.Parallel()
 
 	ebpftopCmd := &Command{
-		Name:           "StartEbpftopGadget",
-		Cmd:            fmt.Sprintf("$KUBECTL_GADGET top ebpf"),
-		ExpectedRegexp: fmt.Sprintf(`\S*\s+\d+\s+Tracing\s+ig_top_ebpf_it\s+\d+\s+\S*\s+`),
-		StartAndStop:   true,
+		Name:         "StartEbpftopGadget",
+		Cmd:          "$KUBECTL_GADGET top ebpf -o json",
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEntry := &ebpftopTypes.Stats{
+				Name: "ig_top_ebpf_it",
+				Type: "Tracing",
+			}
+
+			normalize := func(e *ebpftopTypes.Stats) {
+				e.Node = ""
+				e.Namespace = ""
+				e.Pod = ""
+				e.Container = ""
+				e.Namespace = ""
+				e.ProgramID = 0
+				e.Pids = nil
+				e.CurrentRuntime = 0
+				e.CurrentRunCount = 0
+				e.CumulativeRuntime = 0
+				e.CumulativeRunCount = 0
+				e.TotalRuntime = 0
+				e.TotalRunCount = 0
+				e.MapMemory = 0
+				e.MapCount = 0
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	commands := []*Command{
