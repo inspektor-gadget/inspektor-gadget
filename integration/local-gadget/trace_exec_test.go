@@ -26,8 +26,8 @@ func TestTraceExec(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-exec")
 
-	cmd := "date"
-	// shArgs := []string{"/bin/sh", "-c", cmd}
+	cmd := "while true; do date ; sleep 0.1; done"
+	shArgs := []string{"/bin/sh", "-c", cmd}
 	dateArgs := []string{"/bin/date"}
 	sleepArgs := []string{"/bin/sleep", "0.1"}
 
@@ -37,13 +37,11 @@ func TestTraceExec(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*execTypes.Event{
-				// TODO: Enable this test once we can trace new cri-o containers.
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
-				// {
-				// 	Event: BuildBaseEvent(ns),
-				// 	Comm:  "sh",
-				// 	Args:  shArgs,
-				// },
+				{
+					Event: BuildBaseEvent(ns),
+					Comm:  "sh",
+					Args:  shArgs,
+				},
 				{
 					Event: BuildBaseEvent(ns),
 					Comm:  "date",
@@ -74,13 +72,11 @@ func TestTraceExec(t *testing.T) {
 		},
 	}
 
-	// TODO: traceExecCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		BusyboxPodRepeatCommand(ns, cmd),
-		WaitUntilTestPodReadyCommand(ns),
 		traceExecCmd,
+		BusyboxPodCommand(ns, cmd),
+		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 

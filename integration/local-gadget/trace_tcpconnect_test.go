@@ -66,12 +66,10 @@ func TestTraceTcpconnect(t *testing.T) {
 		},
 	}
 
-	// TODO: tcpconnectCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
+		tcpconnectCmd,
 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
-		tcpconnectCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 

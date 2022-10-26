@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -68,10 +67,9 @@ func containerRuntimeEnricher(
 ) bool {
 	// Is container already enriched? Notice that, at this point, the container
 	// was already enriched with the PID by the hook.
-	if container.Name != "" && container.Namespace != "" && container.Podname != "" {
+	if container.IsEnriched() {
 		return true
 	}
-
 	containerData, err := runtimeClient.GetContainer(container.ID)
 	if err != nil {
 		log.Debugf("Runtime enricher (%s): failed to get container: %s",
@@ -501,7 +499,6 @@ func WithRuncFanotify() ContainerCollectionOption {
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
 				}
-
 				cc.AddContainer(container)
 			case runcfanotify.EventTypeRemoveContainer:
 				cc.RemoveContainer(notif.ContainerID)
@@ -579,6 +576,56 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 				return true
 			}
 			container.Netns = netns
+			return true
+		})
+		return nil
+	}
+}
+
+// WithOCIConfigEnrichment enriches container using provided OCI config
+func WithOCIConfigEnrichment() ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
+			if container.OciConfig == nil || container.IsEnriched() {
+				return true
+			}
+
+			var containerTypeAnnotation, containerNameAnnotation, podNameAnnotation, podNamespaceAnnotation, podUIDAnnotation string
+			if cm := container.OciConfig.Annotations[crioContainerManagerAnnotation]; cm == runtimeclient.CrioName {
+				container.Runtime = runtimeclient.CrioName
+				containerTypeAnnotation = crioContainerTypeAnnotation
+				containerNameAnnotation = crioContainerNameAnnotation
+				podNameAnnotation = crioPodNameAnnotation
+				podNamespaceAnnotation = crioPodNamespaceAnnotation
+				podUIDAnnotation = crioPodUIDAnnotation
+			} else if _, isContainerd := container.OciConfig.Annotations[containerdContainerTypeAnnotation]; isContainerd {
+				container.Runtime = runtimeclient.ContainerdName
+				containerTypeAnnotation = containerdContainerTypeAnnotation
+				containerNameAnnotation = containerdContainerNameAnnotation
+				podNameAnnotation = containerdPodNameAnnotation
+				podNamespaceAnnotation = containerdPodNamespaceAnnotation
+				podUIDAnnotation = containerdPodUIDAnnotation
+			} else {
+				return true
+			}
+
+			// TODO: handle this once we support pod sandboxes via WithContainerRuntimeEnrichment
+			// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1095
+			if ct := container.OciConfig.Annotations[containerTypeAnnotation]; ct == containerTypeSandbox {
+				return false
+			}
+			if cn, ok := container.OciConfig.Annotations[containerNameAnnotation]; ok {
+				container.Name = cn
+			}
+			if pn, ok := container.OciConfig.Annotations[podNameAnnotation]; ok {
+				container.Podname = pn
+			}
+			if ns, ok := container.OciConfig.Annotations[podNamespaceAnnotation]; ok {
+				container.Namespace = ns
+			}
+			if pUID, ok := container.OciConfig.Annotations[podUIDAnnotation]; ok {
+				container.PodUID = pUID
+			}
 			return true
 		})
 		return nil

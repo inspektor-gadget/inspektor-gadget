@@ -59,13 +59,11 @@ func TestTraceFsslower(t *testing.T) {
 		},
 	}
 
-	// TODO: traceFsslowerCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
+		traceFsslowerCmd,
 		BusyboxPodCommand(ns, "echo 'this is foo' > foo && while true; do cat foo && sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
-		traceFsslowerCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 

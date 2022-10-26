@@ -57,13 +57,11 @@ func TestTraceBind(t *testing.T) {
 		},
 	}
 
-	// TODO: traceBindCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
+		traceBindCmd,
 		BusyboxPodRepeatCommand(ns, "nc -l -p 9090 -w 1"),
 		WaitUntilTestPodReadyCommand(ns),
-		traceBindCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 

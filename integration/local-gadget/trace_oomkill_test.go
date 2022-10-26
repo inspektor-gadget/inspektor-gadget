@@ -75,17 +75,15 @@ spec:
     - while true; do tail /dev/zero; done
 `, ns)
 
-	// TODO: traceOOMKillCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
+		traceOOMKillCmd,
 		{
 			Name:           "RunOomkillTestPod",
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
 			ExpectedRegexp: "pod/test-pod created",
 		},
 		WaitUntilTestPodReadyCommand(ns),
-		traceOOMKillCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 

@@ -58,13 +58,11 @@ func TestTraceCapabilities(t *testing.T) {
 		},
 	}
 
-	// TODO: capabilitiesCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
+		capabilitiesCmd,
 		BusyboxPodRepeatCommand(ns, "nice -n -20 echo"),
 		WaitUntilTestPodReadyCommand(ns),
-		capabilitiesCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 

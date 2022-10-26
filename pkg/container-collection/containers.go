@@ -162,3 +162,7 @@ func ownerReferenceEnrichment(
 func GetColumns() *columns.Columns[Container] {
 	return columns.MustCreateColumns[Container]()
 }
+
+func (c *Container) IsEnriched() bool {
+	return c.Name != "" && c.Podname != "" && c.Namespace != "" && c.PodUID != "" && c.Runtime != ""
+}
