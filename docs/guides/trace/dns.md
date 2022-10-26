@@ -2,13 +2,13 @@
 title: 'Using trace dns'
 weight: 20
 description: >
-  Trace DNS requests.
+  Trace DNS queries and responses.
 ---
 
 ![Screencast of the trace dns gadget](dns.gif)
 
-The trace dns gadget prints information about DNS requests performed by the different
-pods.
+The trace dns gadget prints information about DNS queries and responses sent
+and received by the different pods.
 
 Create a `demo` namespace:
 
@@ -21,37 +21,28 @@ Start the dns gadget:
 
 ```bash
 $ kubectl gadget trace dns -n demo
-NODE             NAMESPACE        POD              TYPE      QTYPE      NAME
+NODE                          NAMESPACE                     POD                           QR NAMESERVER      TYPE      QTYPE      NAME
 ```
 
 Run a pod on a different terminal and perform some DNS requests:
 
 ```bash
 $ kubectl -n demo run mypod -it --image=wbitt/network-multitool -- /bin/sh
-# nslookup www.microsoft.com
-# nslookup www.google.com
-# nslookup www.amazon.com
+# nslookup -querytype=a inspektor-gadget.io. 8.8.4.4
+# nslookup -querytype=aaaa inspektor-gadget.io. 8.8.4.4
+# nslookup -querytype=mx inspektor-gadget.io. 8.8.4.4
 ```
 
 The requests will be logged by the DNS gadget:
 
 ```bash
-NODE             NAMESPACE        POD              TYPE      QTYPE      NAME
-minikube         demo             mypod            OUTGOING  A          www.microsoft.com.demo.svc.cluster.local.
-minikube         demo             mypod            OUTGOING  A          www.microsoft.com.svc.cluster.local.
-minikube         demo             mypod            OUTGOING  A          www.microsoft.com.cluster.local.
-minikube         demo             mypod            OUTGOING  A          www.microsoft.com.
-minikube         demo             mypod            OUTGOING  AAAA       e13678.dscb.akamaiedge.net.
-minikube         demo             mypod            OUTGOING  A          www.google.com.demo.svc.cluster.local.
-minikube         demo             mypod            OUTGOING  A          www.google.com.svc.cluster.local.
-minikube         demo             mypod            OUTGOING  A          www.google.com.cluster.local.
-minikube         demo             mypod            OUTGOING  A          www.google.com.
-minikube         demo             mypod            OUTGOING  AAAA       www.google.com.
-minikube         demo             mypod            OUTGOING  A          www.amazon.com.demo.svc.cluster.local.
-minikube         demo             mypod            OUTGOING  A          www.amazon.com.svc.cluster.local.
-minikube         demo             mypod            OUTGOING  A          www.amazon.com.cluster.local.
-minikube         demo             mypod            OUTGOING  A          www.amazon.com.
-minikube         demo             mypod            OUTGOING  AAAA       e15316.a.akamaiedge.net.
+NODE                          NAMESPACE                     POD                           QR NAMESERVER      TYPE      QTYPE      NAME
+minikube                      demo                          mypod                         Q  8.8.4.4         OUTGOING  A          inspektor-gadget.io.
+minikube                      demo                          mypod                         R  8.8.4.4         HOST      A          inspektor-gadget.io.
+minikube                      demo                          mypod                         Q  8.8.4.4         OUTGOING  AAAA       inspektor-gadget.io.
+minikube                      demo                          mypod                         R  8.8.4.4         HOST      AAAA       inspektor-gadget.io.
+minikube                      demo                          mypod                         Q  8.8.4.4         OUTGOING  MX         inspektor-gadget.io.
+minikube                      demo                          mypod                         R  8.8.4.4         HOST      MX         inspektor-gadget.io.
 ```
 
 Delete the demo test namespace:

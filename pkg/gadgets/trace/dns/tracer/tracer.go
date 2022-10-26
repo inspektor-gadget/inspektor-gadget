@@ -33,7 +33,41 @@ import (
 
 //go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/"
 
+// #include <linux/types.h>
 // #include "bpf/dns-common.h"
+// #include <arpa/inet.h>
+// #include <stdlib.h>
+//
+//static char *addr_str(const void *addr, __u32 af) {
+//	size_t size = af == AF_INET ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN;
+//	char *str;
+//
+//	str = malloc(size);
+//	if (!str)
+//		return NULL;
+//
+//	inet_ntop(af, addr, str, size);
+//
+//	return str;
+//}
+//
+//static char *get_src_addr(const struct event_t *ev) {
+//	if (ev->af == AF_INET)
+//		return addr_str(&ev->saddr_v4, ev->af);
+//	else if (ev->af == AF_INET6)
+//		return addr_str(&ev->saddr_v6, ev->af);
+//	else
+//		return NULL;
+//}
+//
+//static char *get_dst_addr(const struct event_t *ev) {
+//	if (ev->af == AF_INET)
+//		return addr_str(&ev->daddr_v4, ev->af);
+//	else if (ev->af == AF_INET6)
+//		return addr_str(&ev->daddr_v6, ev->af);
+//	else
+//		return NULL;
+//}
 import "C"
 
 const (
@@ -242,40 +276,69 @@ var qTypeNames = map[uint]string{
 	32769: "DLV",
 }
 
-func parseDNSEvent(rawSample []byte) (ret string, pktType string, qType string) {
-	// Convert name into a string with dots
-	name := make([]byte, C.MAX_DNS_NAME)
-	copy(name, rawSample)
+// parseLabelSequence parses a label sequence into a string with dots.
+// See https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.2
+func parseLabelSequence(sample []byte) (ret string) {
+	sampleBounded := make([]byte, C.MAX_DNS_NAME)
+	copy(sampleBounded, sample)
 
 	for i := 0; i < C.MAX_DNS_NAME; i++ {
-		length := int(name[i])
+		length := int(sampleBounded[i])
 		if length == 0 {
 			break
 		}
 		if i+1+length < C.MAX_DNS_NAME {
-			ret += string(name[i+1:i+1+length]) + "."
+			ret += string(sampleBounded[i+1:i+1+length]) + "."
 		}
 		i += length
 	}
+	return ret
+}
 
-	// Parse the packet type
-	pktType = "UNKNOWN"
+func parseDNSEvent(rawSample []byte) (*types.Event, error) {
+	event := types.Event{
+		Event: eventtypes.Event{
+			Type: eventtypes.NORMAL,
+		},
+	}
+
 	dnsEvent := (*C.struct_event_t)(unsafe.Pointer(&rawSample[0]))
 	if len(rawSample) < int(unsafe.Sizeof(*dnsEvent)) {
-		return
+		return nil, errors.New("invalid sample size")
 	}
+
+	event.ID = fmt.Sprintf("%.4x", dnsEvent.id)
+
+	if dnsEvent.qr == 1 {
+		event.Qr = types.DNSPktTypeResponse
+		srcAddr := C.get_src_addr(dnsEvent)
+		event.Nameserver = C.GoString(srcAddr)
+		C.free(unsafe.Pointer(srcAddr))
+	} else {
+		event.Qr = types.DNSPktTypeQuery
+		dstAddr := C.get_dst_addr(dnsEvent)
+		event.Nameserver = C.GoString(dstAddr)
+		C.free(unsafe.Pointer(dstAddr))
+	}
+
+	// Convert name into a string with dots
+	event.DNSName = parseLabelSequence(rawSample[unsafe.Offsetof(dnsEvent.name):])
+
+	// Parse the packet type
+	event.PktType = "UNKNOWN"
 	pktTypeUint := uint(dnsEvent.pkt_type)
 	if pktTypeUint < uint(len(pktTypeNames)) {
-		pktType = pktTypeNames[pktTypeUint]
+		event.PktType = pktTypeNames[pktTypeUint]
 	}
 
 	qTypeUint := uint(dnsEvent.qtype)
-	qType, ok := qTypeNames[qTypeUint]
+	var ok bool
+	event.QType, ok = qTypeNames[qTypeUint]
 	if !ok {
-		qType = "UNASSIGNED"
+		event.QType = "UNASSIGNED"
 	}
 
-	return
+	return &event, nil
 }
 
 func (t *Tracer) listen(
@@ -301,21 +364,12 @@ func (t *Tracer) listen(
 			continue
 		}
 
-		name, pktType, qType := parseDNSEvent(record.RawSample)
-
-		// TODO: Ideally, messages with name=="" should not be emitted
-		// by the BPF program (see TODO in dns.c).
-		if len(name) > 0 {
-			event := types.Event{
-				Event: eventtypes.Event{
-					Type: eventtypes.NORMAL,
-				},
-				DNSName: name,
-				PktType: pktType,
-				QType:   qType,
-			}
-			eventCallback(event)
+		event, err := parseDNSEvent(record.RawSample)
+		if err != nil {
+			eventCallback(types.Base(eventtypes.Err(err.Error())))
+			continue
 		}
+		eventCallback(*event)
 	}
 }
 
