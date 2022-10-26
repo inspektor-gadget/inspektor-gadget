@@ -489,20 +489,17 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 	n.wg.Add(1)
 	go func() {
 		defer n.wg.Done()
-
+		defer pidFileDirNotify.File.Close()
 		for {
 			stop, err := n.watchPidFileIterate(pidFileDirNotify, bundleDir, pidFile, pidFileDir)
 			if n.closed {
-				pidFileDirNotify.File.Close()
 				return
 			}
 			if err != nil {
 				log.Warnf("error watching pid: %v\n", err)
-				pidFileDirNotify.File.Close()
 				return
 			}
 			if stop {
-				pidFileDirNotify.File.Close()
 				return
 			}
 		}
