@@ -30,13 +30,14 @@ import (
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 )
 
 type TCPFlags struct {
 	CommonTopFlags
 
-	ParsedSortBy types.SortBy
+	ParsedSortBy []string
 	FilteredPid  uint
 	Family       uint
 }
@@ -46,7 +47,8 @@ type TCPParser struct {
 	sync.Mutex
 
 	flags     *TCPFlags
-	nodeStats map[string][]types.Stats
+	nodeStats map[string][]*types.Stats
+	colMap    columns.ColumnMap[types.Stats]
 }
 
 func newTCPCmd() *cobra.Command {
@@ -86,6 +88,8 @@ func newTCPCmd() *cobra.Command {
 		"received":  -7,
 	}
 
+	cols := columns.MustCreateColumns[types.Stats]()
+
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("tcp [interval=%d]", types.IntervalDefault),
 		Short: "Periodically report TCP activity",
@@ -95,8 +99,11 @@ func newTCPCmd() *cobra.Command {
 			parser := &TCPParser{
 				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonFlags.OutputConfig),
 				flags:      &flags,
-				nodeStats:  make(map[string][]types.Stats),
+				nodeStats:  make(map[string][]*types.Stats),
 			}
+
+			parser.colMap = cols.GetColumnMap()
+
 			if len(args) == 1 {
 				flags.OutputInterval, err = strconv.Atoi(args[0])
 				if err != nil {
@@ -154,10 +161,19 @@ func newTCPCmd() *cobra.Command {
 		},
 		SilenceUsage: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			flags.ParsedSortBy, err = types.ParseSortBy(flags.SortBy)
-			if err != nil {
-				return commonutils.WrapInErrInvalidArg("--sort", err)
+			sortByColumns := strings.Split(flags.SortBy, ",")
+			flags.ParsedSortBy = make([]string, len(sortByColumns))
+
+			for i, col := range sortByColumns {
+				colToTest := col
+				if len(col) > 0 && col[0] == '-' {
+					colToTest = colToTest[1:]
+				}
+				_, ok := cols.GetColumn(colToTest)
+				if !ok {
+					return commonutils.WrapInErrInvalidArg("--sort", fmt.Errorf("\"%v\" is not a recognized column to sort by", colToTest))
+				}
+				flags.ParsedSortBy[i] = col
 			}
 
 			return nil
@@ -165,7 +181,7 @@ func newTCPCmd() *cobra.Command {
 		Args: cobra.MaximumNArgs(1),
 	}
 
-	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, types.SortBySlice)
+	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, cols.GetColumnNames())
 
 	cmd.PersistentFlags().UintVarP(
 		&flags.FilteredPid,
@@ -234,21 +250,21 @@ func (p *TCPParser) PrintStats() {
 	// Sort and print stats
 	p.Lock()
 
-	stats := []types.Stats{}
+	stats := []*types.Stats{}
 	for _, stat := range p.nodeStats {
 		stats = append(stats, stat...)
 	}
-	p.nodeStats = make(map[string][]types.Stats)
+	p.nodeStats = make(map[string][]*types.Stats)
 
 	p.Unlock()
 
-	types.SortStats(stats, p.flags.ParsedSortBy)
+	types.SortStats(stats, p.flags.ParsedSortBy, &p.colMap)
 
 	for idx, stat := range stats {
 		if idx == p.flags.MaxRows {
 			break
 		}
-		fmt.Println(p.TransformStats(&stat))
+		fmt.Println(p.TransformStats(stat))
 	}
 }
 

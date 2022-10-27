@@ -23,6 +23,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 
@@ -70,7 +71,7 @@ type Config struct {
 	TargetFamily int32
 	MaxRows      int
 	Interval     time.Duration
-	SortBy       types.SortBy
+	SortBy       []string
 }
 
 type Tracer struct {
@@ -81,6 +82,7 @@ type Tracer struct {
 	enricher           gadgets.DataEnricher
 	eventCallback      func(*types.Event)
 	done               chan bool
+	colMap             columns.ColumnMap[types.Stats]
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricher,
@@ -97,6 +99,13 @@ func NewTracer(config *Config, enricher gadgets.DataEnricher,
 		t.Stop()
 		return nil, err
 	}
+
+	statCols, err := columns.NewColumns[types.Stats]()
+	if err != nil {
+		t.Stop()
+		return nil, err
+	}
+	t.colMap = statCols.GetColumnMap()
 
 	return t, nil
 }
@@ -157,8 +166,8 @@ func (t *Tracer) start() error {
 	return nil
 }
 
-func (t *Tracer) nextStats() ([]types.Stats, error) {
-	stats := []types.Stats{}
+func (t *Tracer) nextStats() ([]*types.Stats, error) {
+	stats := []*types.Stats{}
 
 	var prev *C.struct_ip_key_t = nil
 	key := C.struct_ip_key_t{}
@@ -221,7 +230,7 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 			t.enricher.Enrich(&stat.CommonData, stat.MountNsID)
 		}
 
-		stats = append(stats, stat)
+		stats = append(stats, &stat)
 
 		prev = &key
 		if err := ips.NextKey(unsafe.Pointer(prev), unsafe.Pointer(&key)); err != nil {
@@ -232,7 +241,7 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 		}
 	}
 
-	types.SortStats(stats, t.config.SortBy)
+	types.SortStats(stats, t.config.SortBy, &t.colMap)
 
 	return stats, nil
 }
