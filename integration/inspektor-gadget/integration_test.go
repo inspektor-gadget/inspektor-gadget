@@ -27,6 +27,7 @@ import (
 	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	biotopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 	ebpftopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	filetopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
@@ -384,10 +385,29 @@ func TestBiotop(t *testing.T) {
 	t.Parallel()
 
 	biotopCmd := &Command{
-		Name:           "StartBiotopGadget",
-		Cmd:            fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s", ns),
-		ExpectedRegexp: `test-pod\s+test-pod\s+\d+\s+dd`,
-		StartAndStop:   true,
+		Name:         "StartBiotopGadget",
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json", ns),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEntry := &biotopTypes.Stats{
+				CommonData: BuildCommonData(ns),
+				Write:      true,
+				Comm:       "dd",
+			}
+
+			normalize := func(e *biotopTypes.Stats) {
+				e.Node = ""
+				e.Major = 0
+				e.Minor = 0
+				e.MicroSecs = 0
+				e.MountNsID = 0
+				e.Pid = 0
+				e.Operations = 0
+				e.Bytes = 0
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	commands := []*Command{
