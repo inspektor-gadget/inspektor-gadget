@@ -85,6 +85,9 @@ func (g *TraceGadget[Event]) Run() error {
 			fallthrough
 		case commonutils.OutputModeCustomColumns:
 			return g.parser.TransformIntoColumns(&e)
+		case commonutils.OutputModeCustom:
+			g.parser.TransformIntoColumns(&e) // Forward to this method, but don't do anything else
+			return ""
 		default:
 			fmt.Fprint(os.Stderr, commonutils.WrapInErrOutputModeNotSupported(g.commonFlags.OutputMode))
 			return ""
@@ -114,6 +117,7 @@ func NewTraceCmd() *cobra.Command {
 	traceCmd.AddCommand(newSNICmd())
 	traceCmd.AddCommand(newTCPCmd())
 	traceCmd.AddCommand(newTcpconnectCmd())
+	traceCmd.AddCommand(newTCPDumpCmd())
 
 	return traceCmd
 }

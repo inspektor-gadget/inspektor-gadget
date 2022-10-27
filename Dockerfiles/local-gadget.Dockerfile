@@ -29,6 +29,7 @@ RUN \
 		export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig ; \
 	fi ; \
 	go build \
+		-tags localgadget \
 		-ldflags "-X main.version=${VERSION} -extldflags '-static'" \
 		-o local-gadget-${GOOS}-${GOARCH} \
 		github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget

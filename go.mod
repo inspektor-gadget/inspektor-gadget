@@ -43,9 +43,12 @@ require (
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/cloudflare/cbpfc v0.0.0-20221017140110-11acb56438a2
 	github.com/google/go-cmp v0.5.8
+	github.com/google/gopacket v1.1.19
 	github.com/kr/pretty v0.3.0
 	github.com/moby/moby v20.10.18+incompatible
+	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f
 )
 
 require (
@@ -134,7 +137,6 @@ require (
 	go.uber.org/zap v1.19.0 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
-	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
 	golang.org/x/oauth2 v0.0.0-20210402161424-2e8d93401602 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect

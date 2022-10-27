@@ -39,6 +39,7 @@ import (
 	snisnoop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/sni"
 	tcptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/tcp"
 	tcpconnect "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/tcpconnect"
+	tcpdump "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/tcpdump"
 	traceloop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/traceloop"
 )
 
@@ -65,6 +66,7 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 		"snisnoop":          snisnoop.NewFactory(),
 		"socket-collector":  socketcollector.NewFactory(),
 		"tcpconnect":        tcpconnect.NewFactory(),
+		"tcpdump":           tcpdump.NewFactory(),
 		"tcptop":            tcptop.NewFactory(),
 		"tcptracer":         tcptracer.NewFactory(),
 		"traceloop":         traceloop.NewFactory(),

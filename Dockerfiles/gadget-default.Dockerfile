@@ -24,7 +24,7 @@ RUN set -ex; \
 	dpkg --add-architecture ${TARGETARCH} && \
 	apt-get update && \
 	apt-get install -y golang-1.18 libelf-dev:${TARGETARCH} \
-		pkg-config:${TARGETARCH} libseccomp-dev:${TARGETARCH} && \
+		pkg-config:${TARGETARCH} libseccomp-dev:${TARGETARCH} libpcap-dev:${TARGETARCH} && \
 	ln -s /usr/lib/go-1.18/bin/go /bin/go && \
 	if [ ${TARGETARCH} = 'arm64' ]; then \
 		apt-get install -y gcc-aarch64-linux-gnu; \
@@ -76,7 +76,7 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
-		ca-certificates curl jq wget xz-utils binutils rpm2cpio cpio && \
+		ca-certificates curl jq wget xz-utils binutils rpm2cpio cpio libpcap-dev && \
 		rmdir /usr/src && ln -sf /host/usr/src /usr/src && \
 		rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
 

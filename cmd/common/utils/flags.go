@@ -29,6 +29,7 @@ const (
 	OutputModeColumns       = "columns"
 	OutputModeJSON          = "json"
 	OutputModeCustomColumns = "custom-columns"
+	OutputModeCustom        = "custom"
 )
 
 var SupportedOutputModes = []string{OutputModeColumns, OutputModeJSON, OutputModeCustomColumns}
