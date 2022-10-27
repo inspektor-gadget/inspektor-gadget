@@ -40,7 +40,7 @@ runs:
             # Forward the SIGINT directly to test process but wait for current
             # active jobs since we can only wait for current shell child process.
             echo "IntegrationTestsJob: Notifying the integration tests process about the cancellation"
-            kill -2 $(pidof integration.test) > /dev/null
+            kill -2 $(pidof inspektor-gadget.test) > /dev/null
             echo "IntegrationTestsJob: Waiting for the integration tests process to finish"
             wait $(jobs -p)
             echo "IntegrationTestsJob: We are done with the clean-up. Let the job exit"
