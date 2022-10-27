@@ -23,6 +23,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	tcptoptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
@@ -48,6 +49,8 @@ func NewFactory() gadgets.TraceFactory {
 }
 
 func (f *TraceFactory) Description() string {
+	cols := columns.MustCreateColumns[types.Stats]()
+
 	t := `tcptop shows command generating TCP connections, with container details.
 
 The following parameters are supported:
@@ -58,7 +61,7 @@ The following parameters are supported:
 - %s: Only get events for this IP version. (either 4 or 6, default to all)`
 	return fmt.Sprintf(t, types.IntervalParam, types.IntervalDefault,
 		types.MaxRowsParam, types.MaxRowsDefault,
-		types.SortByParam, strings.Join(types.SortBySlice, ","), types.SortByDefault,
+		types.SortByParam, strings.Join(cols.GetColumnNames(), ","), strings.Join(types.SortByDefault, ","),
 		types.PidParam, types.FamilyParam)
 }
 
@@ -133,10 +136,21 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		}
 
 		if val, ok := params[types.SortByParam]; ok {
-			sortBy, err = types.ParseSortBy(val)
-			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.SortByParam)
-				return
+			sortByColumns := strings.Split(params[types.SortByParam], ",")
+			sortBy = make([]string, len(sortByColumns))
+
+			cols := columns.MustCreateColumns[types.Stats]()
+			for i, col := range sortByColumns {
+				colToTest := col
+				if len(col) > 0 && col[0] == '-' {
+					colToTest = colToTest[1:]
+				}
+				_, ok := cols.GetColumn(colToTest)
+				if !ok {
+					trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.SortByParam)
+					return
+				}
+				sortBy[i] = col
 			}
 		}
 
