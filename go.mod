@@ -46,6 +46,7 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/kr/pretty v0.3.0
 	github.com/moby/moby v20.10.18+incompatible
+	gotest.tools/v3 v3.0.3
 )
 
 require (
