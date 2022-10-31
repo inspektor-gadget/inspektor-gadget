@@ -27,6 +27,7 @@ import (
 	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	processCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	biotopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 	ebpftopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
@@ -1091,9 +1092,23 @@ func TestProcessCollector(t *testing.T) {
 		BusyboxPodCommand(ns, "nc -l -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
 		{
-			Name:           "RunPprocessCollectorGadget",
-			Cmd:            fmt.Sprintf("$KUBECTL_GADGET snapshot process -n %s", ns),
-			ExpectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod\s+nc\s+\d+`, ns),
+			Name: "RunPprocessCollectorGadget",
+			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot process -n %s -o json", ns),
+			ExpectedOutputFn: func(output string) error {
+				expectedEntry := &processCollectorTypes.Event{
+					Event:   BuildBaseEvent(ns),
+					Command: "nc",
+				}
+
+				normalize := func(e *processCollectorTypes.Event) {
+					e.Node = ""
+					e.Tgid = 0
+					e.Pid = 0
+					e.MountNsID = 0
+				}
+
+				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
+			},
 		},
 		DeleteTestNamespaceCommand(ns),
 	}
