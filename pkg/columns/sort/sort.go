@@ -18,24 +18,69 @@ import (
 	"reflect"
 	"sort"
 
+	"golang.org/x/exp/constraints"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 )
 
 type columnSorter[T any] struct {
-	array   []*T
-	column  *columns.Column[T]
-	swapper func(i, j int)
-	less    func(i, j int) bool
+	column *columns.Column[T]
+	order  columns.Order
 }
 
-// SortEntries sorts entries by applying the sortBy rules from right to left (first rule has the highest
-// priority). The rules are strings containing the column names, optionally prefixed with "-" to switch to descending
-// sort order.
-func SortEntries[T any](cols columns.ColumnMap[T], entries []*T, sortBy []string) {
-	if entries == nil {
+type ColumnSorterCollection[T any] struct {
+	sorters []*columnSorter[T]
+}
+
+func (csc *ColumnSorterCollection[T]) Sort(entries []*T) {
+	if len(entries) == 0 {
 		return
 	}
 
+	for _, s := range csc.sorters {
+		var sortFunc func(i, j int) bool
+		offs := s.column.GetOffset()
+		order := s.order
+
+		switch s.column.Kind() {
+		case reflect.Int:
+			sortFunc = getLessFunc[int, T](entries, offs, order)
+		case reflect.Int8:
+			sortFunc = getLessFunc[int8, T](entries, offs, order)
+		case reflect.Int16:
+			sortFunc = getLessFunc[int16, T](entries, offs, order)
+		case reflect.Int32:
+			sortFunc = getLessFunc[int32, T](entries, offs, order)
+		case reflect.Int64:
+			sortFunc = getLessFunc[int64, T](entries, offs, order)
+		case reflect.Uint:
+			sortFunc = getLessFunc[uint, T](entries, offs, order)
+		case reflect.Uint8:
+			sortFunc = getLessFunc[uint8, T](entries, offs, order)
+		case reflect.Uint16:
+			sortFunc = getLessFunc[uint16, T](entries, offs, order)
+		case reflect.Uint32:
+			sortFunc = getLessFunc[uint32, T](entries, offs, order)
+		case reflect.Uint64:
+			sortFunc = getLessFunc[uint64, T](entries, offs, order)
+		case reflect.Float32:
+			sortFunc = getLessFunc[float32, T](entries, offs, order)
+		case reflect.Float64:
+			sortFunc = getLessFunc[float64, T](entries, offs, order)
+		case reflect.String:
+			sortFunc = getLessFunc[string, T](entries, offs, order)
+		default:
+			continue
+		}
+
+		sort.SliceStable(entries, sortFunc)
+	}
+}
+
+// Prepare prepares a sorter collection that can be re-used for multiple calls to Sort() for efficiency. Filter rules
+// will be applied from right to left (first rule has the highest priority).
+func Prepare[T any](cols columns.ColumnMap[T], sortBy []string) *ColumnSorterCollection[T] {
+	sorters := make([]*columnSorter[T], 0, len(sortBy))
 	for i := len(sortBy) - 1; i >= 0; i-- {
 		sortField := sortBy[i]
 
@@ -55,93 +100,36 @@ func SortEntries[T any](cols columns.ColumnMap[T], entries []*T, sortBy []string
 			continue
 		}
 
-		sorter := newColumnSorter(entries, column, order)
-		if sorter == nil {
-			continue
-		}
-		sort.Stable(sorter)
+		sorters = append(sorters, &columnSorter[T]{
+			column: column,
+			order:  order,
+		})
+	}
+	return &ColumnSorterCollection[T]{
+		sorters: sorters,
 	}
 }
 
-func newColumnSorter[T any](array []*T, column *columns.Column[T], order columns.Order) *columnSorter[T] {
-	cs := &columnSorter[T]{
-		array:   array,
-		column:  column,
-		swapper: reflect.Swapper(array),
+// SortEntries sorts entries by applying the sortBy rules from right to left (first rule has the highest
+// priority). The rules are strings containing the column names, optionally prefixed with "-" to switch to descending
+// sort order.
+func SortEntries[T any](cols columns.ColumnMap[T], entries []*T, sortBy []string) {
+	if entries == nil {
+		return
 	}
 
-	switch column.Kind() {
-	case reflect.Int,
-		reflect.Int8,
-		reflect.Int16,
-		reflect.Int32,
-		reflect.Int64:
-		cs.less = func(i, j int) bool {
-			v1 := reflect.ValueOf(array[i])
-			v2 := reflect.ValueOf(array[j])
-			if v1.IsNil() {
-				return false
-			}
-			if v2.IsNil() {
-				return true
-			}
-			return !(column.GetRef(v1).Int() < column.GetRef(v2).Int()) != order
+	coll := Prepare(cols, sortBy)
+	coll.Sort(entries)
+}
+
+func getLessFunc[OT constraints.Ordered, T any](array []*T, offs uintptr, order columns.Order) func(i, j int) bool {
+	return func(i, j int) bool {
+		if array[i] == nil {
+			return false
 		}
-	case reflect.Uint,
-		reflect.Uint8,
-		reflect.Uint16,
-		reflect.Uint32,
-		reflect.Uint64:
-		cs.less = func(i, j int) bool {
-			v1 := reflect.ValueOf(array[i])
-			v2 := reflect.ValueOf(array[j])
-			if v1.IsNil() {
-				return false
-			}
-			if v2.IsNil() {
-				return true
-			}
-			return !(column.GetRef(v1).Uint() < column.GetRef(v2).Uint()) != order
+		if array[j] == nil {
+			return true
 		}
-	case reflect.Float32,
-		reflect.Float64:
-		cs.less = func(i, j int) bool {
-			v1 := reflect.ValueOf(array[i])
-			v2 := reflect.ValueOf(array[j])
-			if v1.IsNil() {
-				return false
-			}
-			if v2.IsNil() {
-				return true
-			}
-			return !(column.GetRef(v1).Float() < column.GetRef(v2).Float()) != order
-		}
-	case reflect.String:
-		cs.less = func(i, j int) bool {
-			v1 := reflect.ValueOf(array[i])
-			v2 := reflect.ValueOf(array[j])
-			if v1.IsNil() {
-				return false
-			}
-			if v2.IsNil() {
-				return true
-			}
-			return !(column.GetRef(v1).String() < column.GetRef(v2).String()) != order
-		}
-	default:
-		return nil
+		return !(columns.GetField[OT](array[i], offs) < columns.GetField[OT](array[j], offs)) != order
 	}
-	return cs
-}
-
-func (cs *columnSorter[T]) Len() int {
-	return len(cs.array)
-}
-
-func (cs *columnSorter[T]) Swap(i, j int) {
-	cs.swapper(i, j)
-}
-
-func (cs *columnSorter[T]) Less(i, j int) bool {
-	return cs.less(i, j)
 }

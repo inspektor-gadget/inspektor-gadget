@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"unsafe"
 )
 
 type ColumnMap[T any] map[string]*Column[T]
@@ -69,7 +70,7 @@ func NewColumns[T any](options ...Option) (*Columns[T], error) {
 		options:   opts,
 	}
 
-	err := columns.iterateFields(t, nil)
+	err := columns.iterateFields(t, nil, 0)
 	if err != nil {
 		return nil, fmt.Errorf("error trying to initialize columns on type %s: %w", t.String(), err)
 	}
@@ -150,11 +151,11 @@ func (c ColumnMap[T]) VerifyColumnNames(columnNames []string) (valid []string, i
 	return
 }
 
-func (c *Columns[T]) iterateFields(t reflect.Type, sub []int) error {
+func (c *Columns[T]) iterateFields(t reflect.Type, sub []int, offset uintptr) error {
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
 		if f.Anonymous {
-			err := c.iterateFields(f.Type, append(append([]int{}, sub...), i))
+			err := c.iterateFields(f.Type, append(append([]int{}, sub...), i), offset+f.Offset)
 			if err != nil {
 				return err
 			}
@@ -176,6 +177,7 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []int) error {
 			Alignment:    c.options.DefaultAlignment,
 			Visible:      true,
 			Precision:    2,
+			offset:       offset + f.Offset,
 
 			Order: len(c.ColumnMap) * 10,
 		}
@@ -321,4 +323,11 @@ func (c *Columns[T]) MustSetExtractor(columnName string, extractor func(*T) stri
 	if err != nil {
 		panic(fmt.Errorf("setting extractor for %q column: %w", columnName, err))
 	}
+}
+
+// GetField is a helper to retrieve a value of type OT from a struct of type T given an offset
+func GetField[OT any, T any](entry *T, offset uintptr) OT {
+	// Keep the pointer arithmetic on one line. See:
+	// https://go101.org/article/unsafe.html#pattern-convert-to-uintptr-and-back
+	return *(*OT)(unsafe.Add(unsafe.Pointer(entry), offset))
 }

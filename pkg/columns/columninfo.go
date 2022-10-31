@@ -51,6 +51,7 @@ type Column[T any] struct {
 	Order        int                   // Order defines the default order in which columns are shown
 	Tags         []string              // Tags can be used to dynamically include or exclude columns
 
+	offset        uintptr
 	fieldIndex    int          // used for the main struct
 	subFieldIndex []int        // used for embedded structs
 	kind          reflect.Kind // cached kind info from reflection
@@ -231,6 +232,10 @@ func (ci *Column[T]) Get(entry *T) reflect.Value {
 		return reflect.ValueOf(ci.Extractor(v.Interface().(*T)))
 	}
 	return ci.getRawField(v)
+}
+
+func (ci *Column[T]) GetOffset() uintptr {
+	return ci.offset
 }
 
 // GetRef returns the reflected value of an already reflected entry for the current column; expects v to be valid or
