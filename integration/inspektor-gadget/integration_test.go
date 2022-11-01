@@ -41,6 +41,7 @@ import (
 	oomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
 	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
 	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
+	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
 	tcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 	tcpconnectTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
 )
@@ -1185,16 +1186,30 @@ func TestSnisnoop(t *testing.T) {
 	t.Parallel()
 
 	snisnoopCmd := &Command{
-		Name:           "StartSnisnoopGadget",
-		Cmd:            fmt.Sprintf("$KUBECTL_GADGET trace sni -n %s", ns),
-		ExpectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+kinvolk.io`, ns),
-		StartAndStop:   true,
+		Name:         "StartSnisnoopGadget",
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace sni -n %s -o json", ns),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEntry := &sniTypes.Event{
+				Event: BuildBaseEvent(ns),
+				Name:  "inspektor-gadget.io",
+			}
+
+			// SNI gadget doesn't provide container data. Remove it.
+			expectedEntry.Container = ""
+
+			normalize := func(e *sniTypes.Event) {
+				e.Node = ""
+			}
+
+			return ExpectAllToMatch(output, normalize, expectedEntry)
+		},
 	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		snisnoopCmd,
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://kinvolk.io"),
+		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://inspektor-gadget.io"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
