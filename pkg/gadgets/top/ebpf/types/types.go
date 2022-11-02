@@ -15,9 +15,8 @@
 package types
 
 import (
-	"fmt"
-	"sort"
-
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -39,8 +38,9 @@ const (
 const (
 	MaxRowsDefault  = 20
 	IntervalDefault = 1
-	SortByDefault   = ALL
 )
+
+var SortByDefault = []string{"-currentRuntime", "-currentRunCount"}
 
 const (
 	IntervalParam = "interval"
@@ -48,85 +48,29 @@ const (
 	SortByParam   = "sort_by"
 )
 
-var SortBySlice = []string{
-	"all",
-	"runtime",
-	"runcount",
-	"progid",
-	"totalruntime",
-	"totalruncount",
-	"cumulruntime",
-	"cumulruncount",
-	"mapmemory",
-	"mapcount",
-}
-
-func (s SortBy) String() string {
-	if int(s) < 0 || int(s) >= len(SortBySlice) {
-		return "INVALID"
-	}
-
-	return SortBySlice[int(s)]
-}
-
-func ParseSortBy(sortby string) (SortBy, error) {
-	for i, v := range SortBySlice {
-		if v == sortby {
-			return SortBy(i), nil
-		}
-	}
-	return ALL, fmt.Errorf("%q is not a valid sort by value", sortby)
-}
-
-func SortStats(stats []Stats, sortBy SortBy) {
-	sort.Slice(stats, func(i, j int) bool {
-		a := stats[i]
-		b := stats[j]
-
-		switch sortBy {
-		case RUNTIME:
-			return a.CurrentRuntime > b.CurrentRuntime
-		case RUNCOUNT:
-			return a.CurrentRunCount > b.CurrentRunCount
-		case TOTALRUNTIME:
-			return a.TotalRuntime > b.TotalRuntime
-		case TOTALRUNCOUNT:
-			return a.TotalRunCount > b.TotalRunCount
-		case CUMULRUNTIME:
-			return a.CumulativeRuntime > b.CumulativeRuntime
-		case CUMULRUNCOUNT:
-			return a.CumulativeRunCount > b.CumulativeRunCount
-		case PROGRAMID:
-			return a.ProgramID > b.ProgramID
-		case MAPMEMORY:
-			return a.MapMemory > b.MapMemory
-		case MAPCOUNT:
-			return a.MapCount > b.MapCount
-		default:
-			return a.CurrentRuntime > b.CurrentRuntime && a.CurrentRunCount > b.CurrentRunCount
-		}
-	})
+func SortStats(stats []*Stats, sortBy []string, colMap *columns.ColumnMap[Stats]) {
+	columnssort.SortEntries(*colMap, stats, sortBy)
 }
 
 type Event struct {
-	Error string  `json:"error,omitempty"`
-	Stats []Stats `json:"stats,omitempty"`
+	Error string   `json:"error,omitempty"`
+	Stats []*Stats `json:"stats,omitempty"`
 }
 
 type Stats struct {
 	eventtypes.CommonData
-	ProgramID          uint32     `json:"progid"`
-	Pids               []*PidInfo `json:"pids,omitempty"`
-	Name               string     `json:"name,omitempty"`
-	Type               string     `json:"type,omitempty"`
-	CurrentRuntime     int64      `json:"currentRuntime,omitempty"`
-	CurrentRunCount    uint64     `json:"currentRunCount,omitempty"`
-	CumulativeRuntime  int64      `json:"cumulRuntime,omitempty"`
-	CumulativeRunCount uint64     `json:"cumulRunCount,omitempty"`
-	TotalRuntime       int64      `json:"totalRuntime,omitempty"`
-	TotalRunCount      uint64     `json:"totalRunCount,omitempty"`
-	MapMemory          uint64     `json:"mapMemory,omitempty"`
-	MapCount           uint32     `json:"mapCount,omitempty"`
+	ProgramID          uint32     `json:"progid" column:"progid"`
+	Pids               []*PidInfo `json:"pids,omitempty" column:"pids"`
+	Name               string     `json:"name,omitempty" column:"name"`
+	Type               string     `json:"type,omitempty" column:"type"`
+	CurrentRuntime     int64      `json:"currentRuntime,omitempty" column:"currentRuntime"`
+	CurrentRunCount    uint64     `json:"currentRunCount,omitempty" column:"currentRunCount"`
+	CumulativeRuntime  int64      `json:"cumulRuntime,omitempty" column:"cumulRuntime"`
+	CumulativeRunCount uint64     `json:"cumulRunCount,omitempty" column:"cumulRunCount"`
+	TotalRuntime       int64      `json:"totalRuntime,omitempty" column:"totalRuntime"`
+	TotalRunCount      uint64     `json:"totalRunCount,omitempty" column:"totalRunCount"`
+	MapMemory          uint64     `json:"mapMemory,omitempty" column:"mapMemory"`
+	MapCount           uint32     `json:"mapCount,omitempty" column:"mapCount"`
 }
 
 type PidInfo struct {

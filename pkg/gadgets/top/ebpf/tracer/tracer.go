@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/piditer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 
@@ -34,7 +35,7 @@ import (
 type Config struct {
 	MaxRows  int
 	Interval time.Duration
-	SortBy   types.SortBy
+	SortBy   []string
 }
 
 type programStats struct {
@@ -52,6 +53,7 @@ type Tracer struct {
 
 	startStats map[string]programStats
 	prevStats  map[string]programStats
+	colMap     columns.ColumnMap[types.Stats]
 }
 
 func NewTracer(config *Config, eventCallback func(*types.Event),
@@ -67,6 +69,13 @@ func NewTracer(config *Config, eventCallback func(*types.Event),
 		t.Stop()
 		return nil, err
 	}
+
+	statCols, err := columns.NewColumns[types.Stats]()
+	if err != nil {
+		t.Stop()
+		return nil, err
+	}
+	t.colMap = statCols.GetColumnMap()
 
 	t.run()
 
@@ -171,8 +180,8 @@ func getPidMapFromProcFs() (map[uint32][]*types.PidInfo, error) {
 	return pidmap, nil
 }
 
-func (t *Tracer) nextStats() ([]types.Stats, error) {
-	stats := make([]types.Stats, 0)
+func (t *Tracer) nextStats() ([]*types.Stats, error) {
+	stats := make([]*types.Stats, 0)
 
 	var err error
 	var prog *ebpf.Program
@@ -270,7 +279,7 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 			runCount: totalRunCount,
 		}
 
-		stats = append(stats, types.Stats{
+		stats = append(stats, &types.Stats{
 			ProgramID:          uint32(curID),
 			Name:               pi.Name,
 			Type:               pi.Type.String(),
@@ -315,7 +324,7 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 		}
 	}
 
-	types.SortStats(stats, t.config.SortBy)
+	types.SortStats(stats, t.config.SortBy, &t.colMap)
 
 	return stats, nil
 }
