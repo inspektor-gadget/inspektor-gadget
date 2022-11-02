@@ -19,7 +19,7 @@ type sigsnoopEvent struct {
 	MntnsId uint64
 	Sig     int32
 	Ret     int32
-	Comm    [16]int8
+	Comm    [16]uint8
 }
 
 // loadSigsnoop returns the embedded CollectionSpec for sigsnoop.
@@ -37,9 +37,9 @@ func loadSigsnoop() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *sigsnoopObjects
-//     *sigsnoopPrograms
-//     *sigsnoopMaps
+//	*sigsnoopObjects
+//	*sigsnoopPrograms
+//	*sigsnoopMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadSigsnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -148,5 +148,6 @@ func _SigsnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed sigsnoop_bpfel.o
 var _SigsnoopBytes []byte

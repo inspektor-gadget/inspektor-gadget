@@ -12,6 +12,9 @@ const volatile int target_signal = 0;
 const volatile bool failed_only = false;
 const volatile bool filter_by_mnt_ns = false;
 
+// we need this to make sure the compiler doesn't remove our struct
+const struct event *unusedevent __attribute__((unused));
+
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);

@@ -10,7 +10,7 @@ struct event {
 	__u64 mntns_id;
 	int sig;
 	int ret;
-	char comm[TASK_COMM_LEN];
+	__u8 comm[TASK_COMM_LEN];
 };
 
 #endif /* __SIGSNOOP_H */
