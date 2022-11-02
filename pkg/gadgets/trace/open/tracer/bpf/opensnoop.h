@@ -19,8 +19,8 @@ struct event {
 	__u64 mntns_id;
 	int ret;
 	int flags;
-	char comm[TASK_COMM_LEN];
-	char fname[NAME_MAX];
+	__u8 comm[TASK_COMM_LEN];
+	__u8 fname[NAME_MAX];
 };
 
 #endif /* __OPENSNOOP_H */
