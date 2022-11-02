@@ -13,6 +13,19 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type tcpconnectEvent struct {
+	SaddrV6 [16]uint8
+	DaddrV6 [16]uint8
+	Task    [16]uint8
+	TsUs    uint64
+	Af      uint32
+	Pid     uint32
+	Uid     uint32
+	Dport   uint16
+	_       [2]byte
+	MntnsId uint64
+}
+
 type tcpconnectIpv4FlowKey struct {
 	Saddr uint32
 	Daddr uint32
@@ -41,9 +54,9 @@ func loadTcpconnect() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *tcpconnectObjects
-//     *tcpconnectPrograms
-//     *tcpconnectMaps
+//	*tcpconnectObjects
+//	*tcpconnectPrograms
+//	*tcpconnectMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadTcpconnectObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -149,5 +162,6 @@ func _TcpconnectClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed tcpconnect_bpfel_x86.o
 var _TcpconnectBytes []byte
