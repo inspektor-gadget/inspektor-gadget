@@ -22,8 +22,12 @@ for i in ocihookgadget prestart.sh poststop.sh ; do
 done
 
 # CRIO hooks
-rm -f /host/etc/containers/oci/hooks.d/gadget-prestart.json
-rm -f /host/etc/containers/oci/hooks.d/gadget-poststop.json
+for HOOK_PATH in "/host/etc/containers/oci/hooks.d" \
+                 "/host/usr/share/containers/oci/hooks.d/"
+do
+  rm -f $HOOK_PATH/gadget-prestart.json
+  rm -f $HOOK_PATH/gadget-poststop.json
+done
 
 # ld preload support
 if [ -f "/host/etc/ld.so.preload" ] ; then
