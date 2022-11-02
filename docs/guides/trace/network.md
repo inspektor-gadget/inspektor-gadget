@@ -1,9 +1,9 @@
 ---
-title: 'The "network-graph" gadget'
+title: 'The "network" gadget'
 weight: 10
 ---
 
-The network-graph gadget monitors the network activity in the specified pods
+The network gadget monitors the network activity in the specified pods
 and records the list of TCP connections and UDP streams.
 
 ### On Kubernetes

@@ -15,116 +15,34 @@
 package trace
 
 import (
-	"fmt"
-	"strings"
+	"github.com/spf13/cobra"
 
 	commontrace "github.com/inspektor-gadget/inspektor-gadget/cmd/common/trace"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
-
-	"github.com/spf13/cobra"
+	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 )
 
-type NetworkParser struct {
-	commonutils.BaseParser[types.Event]
-}
-
 func newNetworkCmd() *cobra.Command {
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"type",
-				"proto",
-				"port",
-				"remote",
-			},
-		},
-	}
+	var commonFlags utils.CommonFlags
 
-	cmd := &cobra.Command{
-		Use:   "network",
-		Short: "Trace network streams",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			networkGadget := &TraceGadget[types.Event]{
-				name:        "network-graph",
-				commonFlags: commonFlags,
-				parser:      NewNetworkParser(&commonFlags.OutputConfig),
-			}
-
-			return networkGadget.Run()
-		},
-	}
-
-	utils.AddCommonFlags(cmd, commonFlags)
-
-	return cmd
-}
-
-func NewNetworkParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParser[types.Event] {
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -30,
-		"type":      -9,
-		"proto":     -6,
-		"port":      -7,
-		"remote":    -30,
-	}
-
-	return &NetworkParser{
-		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
-	}
-}
-
-func (p *NetworkParser) TransformIntoColumns(event *types.Event) string {
-	var sb strings.Builder
-
-	if event.Pod == "" {
-		// ignore events on host netns for now
-		return ""
-	}
-
-	remote := ""
-	switch event.RemoteKind {
-	case "pod":
-		remote = fmt.Sprintf("pod %s/%s", event.RemotePodNamespace, event.RemotePodName)
-	case "svc":
-		remote = fmt.Sprintf("svc %s/%s", event.RemoteSvcNamespace, event.RemoteSvcName)
-	case "other":
-		remote = fmt.Sprintf("endpoint %s", event.RemoteOther)
-	default:
-		remote = fmt.Sprintf("? %s", event.Debug)
-	}
-
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-		case "type":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.PktType))
-		case "proto":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Proto))
-		case "port":
-			sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], event.Port))
-		case "remote":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], remote))
-		default:
-			continue
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, networkTypes.GetColumns())
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
+		networkGadget := &TraceGadget[networkTypes.Event]{
+			name:        "network-graph",
+			commonFlags: &commonFlags,
+			parser:      parser,
+		}
+
+		return networkGadget.Run()
 	}
 
-	return sb.String()
+	cmd := commontrace.NewNetworkCmd(runCmd)
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }

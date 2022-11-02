@@ -18,39 +18,69 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
 
-	PktType string `json:"pktType,omitempty"`
-	Proto   string `json:"proto,omitempty"`
-	Addr    string `json:"addr,omitempty"`
-	Port    uint16 `json:"port,omitempty"`
+	PktType string `json:"pktType,omitempty" column:"type,maxWidth:9"`
+	Proto   string `json:"proto,omitempty" column:"proto,maxWidth:5"`
+	Addr    string `json:"addr,omitempty" column:"addr,template:ipaddr,hide"`
+	Port    uint16 `json:"port,omitempty" column:"ipport,template:ipport"`
 
 	/* pod, svc or other */
-	RemoteKind string `json:"remoteKind,omitempty"`
+	RemoteKind string `json:"remoteKind,omitempty" column:"kind,maxWidth:5"`
 
-	PodHostIP string            `json:"podHostIP,omitempty"`
-	PodIP     string            `json:"podIP,omitempty"`
-	PodOwner  string            `json:"podOwner,omitempty"`
-	PodLabels map[string]string `json:"podLabels,omitempty"`
+	PodHostIP string            `json:"podHostIP,omitempty" column:"podhostip,template:ipaddr,hide"`
+	PodIP     string            `json:"podIP,omitempty" column:"podip,template:ipaddr,hide"`
+	PodOwner  string            `json:"podOwner,omitempty" column:"podowner,hide"`
+	PodLabels map[string]string `json:"podLabels,omitempty" column:"padlabels,hide"`
 
 	/* if RemoteKind = svc */
-	RemoteSvcNamespace     string            `json:"remoteServiceNamespace,omitempty"`
-	RemoteSvcName          string            `json:"remoteServiceName,omitempty"`
-	RemoteSvcLabelSelector map[string]string `json:"remoteServiceLabelSelector,omitempty"`
+	RemoteSvcNamespace     string            `json:"remoteServiceNamespace,omitempty" column:"remotesvcns,hide"`
+	RemoteSvcName          string            `json:"remoteServiceName,omitempty" column:"remotesvcname,hide"`
+	RemoteSvcLabelSelector map[string]string `json:"remoteServiceLabelSelector,omitempty" column:"remotesvclabel,hide"`
 
 	/* if RemoteKind = pod */
-	RemotePodNamespace string            `json:"remotePodNamespace,omitempty"`
-	RemotePodName      string            `json:"remotePodName,omitempty"`
-	RemotePodLabels    map[string]string `json:"remotePodLabels,omitempty"`
+	RemotePodNamespace string            `json:"remotePodNamespace,omitempty" column:"remotepodns,hide"`
+	RemotePodName      string            `json:"remotePodName,omitempty" column:"remotepodname,hide"`
+	RemotePodLabels    map[string]string `json:"remotePodLabels,omitempty" column:"remotepodlabel,hide"`
 
 	/* if RemoteKind = other */
-	RemoteOther string `json:"remoteOther,omitempty"`
+	RemoteOther string `json:"remoteOther,omitempty" column:"remoteother,template:ipaddr,hide"`
+}
 
-	Debug string `json:"debug,omitempty"`
+func GetColumns() *columns.Columns[Event] {
+	cols := columns.MustCreateColumns[Event]()
+
+	cols.MustAddColumn(columns.Column[Event]{
+		Name:         "remote",
+		Width:        32,
+		MinWidth:     21,
+		Visible:      true,
+		Order:        1000,
+		EllipsisType: ellipsis.Start,
+		Extractor: func(e *Event) string {
+			switch e.RemoteKind {
+			case "pod":
+				return fmt.Sprintf("pod %s/%s", e.RemotePodNamespace, e.RemotePodName)
+			case "svc":
+				return fmt.Sprintf("svc %s/%s", e.RemoteSvcNamespace, e.RemoteSvcName)
+			case "other":
+				return fmt.Sprintf("endpoint %s", e.RemoteOther)
+			default:
+				return "unknown"
+			}
+		},
+	})
+
+	col, _ := cols.GetColumn("container")
+	col.Visible = false
+
+	return cols
 }
 
 func (e Event) GetBaseEvent() eventtypes.Event {

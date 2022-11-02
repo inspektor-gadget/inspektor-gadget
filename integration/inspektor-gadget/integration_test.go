@@ -1049,7 +1049,6 @@ func TestNetworkGraph(t *testing.T) {
 				e.PodHostIP = ""
 				e.PodIP = ""
 				e.PodOwner = ""
-				e.Debug = ""
 				e.RemoteSvcNamespace = ""
 				e.RemoteSvcName = ""
 				e.RemoteSvcLabelSelector = nil
