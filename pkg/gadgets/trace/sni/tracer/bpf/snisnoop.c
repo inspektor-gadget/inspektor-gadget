@@ -13,6 +13,9 @@
 
 #include "snisnoop.h"
 
+// we need this to make sure the compiler doesn't remove our struct
+const struct event_t *unusedevent __attribute__((unused));
+
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 } events SEC(".maps");
