@@ -26,7 +26,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func parseOutput[T any](output string, normalize func(*T)) ([]*T, error) {
+func parseMultiJSONOutput[T any](output string, normalize func(*T)) ([]*T, error) {
 	ret := []*T{}
 
 	scanner := bufio.NewScanner(strings.NewReader(output))
@@ -54,32 +54,56 @@ func parseOutput[T any](output string, normalize func(*T)) ([]*T, error) {
 	return ret, nil
 }
 
-// ExpectAllToMatch verifies that the expectedEntry is matched by all the
-// entries in the output.
-func ExpectAllToMatch[T any](output string, normalize func(*T), expectedEntry *T) error {
-	entries, err := parseOutput(output, normalize)
-	if err != nil {
-		return err
+func parseJSONArrayOutput[T any](output string, normalize func(*T)) ([]*T, error) {
+	entries := []*T{}
+
+	if err := json.Unmarshal([]byte(output), &entries); err != nil {
+		return nil, fmt.Errorf("unmarshaling output array: %w", err)
 	}
 
+	for _, entry := range entries {
+		// To be able to use reflect.DeepEqual and cmp.Diff, we need to
+		// "normalize" the output so that it only includes non-default values
+		// for the fields we are able to verify.
+		if normalize != nil {
+			normalize(entry)
+		}
+	}
+
+	return entries, nil
+}
+
+func expectAllToMatch[T any](entries []*T, expectedEntry *T) error {
 	for _, entry := range entries {
 		if !reflect.DeepEqual(expectedEntry, entry) {
 			return fmt.Errorf("unexpected output entry:\n%s",
 				cmp.Diff(expectedEntry, entry))
 		}
 	}
-
 	return nil
 }
 
-// ExpectEntriesToMatch verifies that all the entries in expectedEntries are
-// matched by at least one entry in the output.
-func ExpectEntriesToMatch[T any](output string, normalize func(*T), expectedEntries ...*T) error {
-	entries, err := parseOutput(output, normalize)
+// ExpectAllToMatch verifies that the expectedEntry is matched by all the
+// entries in the output (Lines of independent JSON objects).
+func ExpectAllToMatch[T any](output string, normalize func(*T), expectedEntry *T) error {
+	entries, err := parseMultiJSONOutput(output, normalize)
 	if err != nil {
 		return err
 	}
+	return expectAllToMatch(entries, expectedEntry)
+}
 
+// ExpectAllInArrayToMatch verifies that the expectedEntry is matched by all the
+// entries in the output (JSON array of JSON objects).
+func ExpectAllInArrayToMatch[T any](output string, normalize func(*T), expectedEntry *T) error {
+	entries, err := parseJSONArrayOutput(output, normalize)
+	if err != nil {
+		return err
+	}
+	return expectAllToMatch(entries, expectedEntry)
+}
+
+func expectEntriesToMatch[T any](entries []*T, expectedEntries ...*T) error {
 out:
 	for _, expectedEntry := range expectedEntries {
 		for _, entry := range entries {
@@ -89,8 +113,27 @@ out:
 		}
 		return fmt.Errorf("output doesn't contain the expected entry: %+v", expectedEntry)
 	}
-
 	return nil
+}
+
+// ExpectEntriesToMatch verifies that all the entries in expectedEntries are
+// matched by at least one entry in the output (Lines of independent JSON objects).
+func ExpectEntriesToMatch[T any](output string, normalize func(*T), expectedEntries ...*T) error {
+	entries, err := parseMultiJSONOutput(output, normalize)
+	if err != nil {
+		return err
+	}
+	return expectEntriesToMatch(entries, expectedEntries...)
+}
+
+// ExpectEntriesInArrayToMatch verifies that all the entries in expectedEntries are
+// matched by at least one entry in the output (JSON array of JSON objects).
+func ExpectEntriesInArrayToMatch[T any](output string, normalize func(*T), expectedEntries ...*T) error {
+	entries, err := parseJSONArrayOutput(output, normalize)
+	if err != nil {
+		return err
+	}
+	return expectEntriesToMatch(entries, expectedEntries...)
 }
 
 func BuildCommonData(namespace string) eventtypes.CommonData {

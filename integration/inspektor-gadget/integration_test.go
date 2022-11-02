@@ -27,6 +27,7 @@ import (
 	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	biotopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 	ebpftopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	filetopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
@@ -1235,9 +1236,30 @@ func TestSocketCollector(t *testing.T) {
 		BusyboxPodCommand(ns, "nc -l 0.0.0.0 -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
 		{
-			Name:           "RunSocketCollectorGadget",
-			Cmd:            fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s", ns),
-			ExpectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+TCP\s+0\.0\.0\.0`, ns),
+			Name: "RunSocketCollectorGadget",
+			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json", ns),
+			ExpectedOutputFn: func(output string) error {
+				expectedEntry := &socketCollectorTypes.Event{
+					Event:         BuildBaseEvent(ns),
+					Protocol:      "TCP",
+					LocalAddress:  "0.0.0.0",
+					LocalPort:     9090,
+					RemoteAddress: "0.0.0.0",
+					RemotePort:    0,
+					Status:        "LISTEN",
+				}
+
+				// Socket gadget doesn't provide container data yet. See issue #744.
+				expectedEntry.Container = ""
+
+				normalize := func(e *socketCollectorTypes.Event) {
+					e.Node = ""
+					e.Container = ""
+					e.InodeNumber = 0
+				}
+
+				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
+			},
 		},
 		DeleteTestNamespaceCommand(ns),
 	}
