@@ -13,6 +13,21 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type bindsnoopBindEvent struct {
+	Addr       [16]uint8
+	MountNsId  uint64
+	TsUs       uint64
+	Pid        uint32
+	BoundDevIf uint32
+	Ret        int32
+	Port       uint16
+	Proto      uint16
+	Opts       uint8
+	Ver        uint8
+	Task       [16]uint8
+	_          [6]byte
+}
+
 // loadBindsnoop returns the embedded CollectionSpec for bindsnoop.
 func loadBindsnoop() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_BindsnoopBytes)
@@ -28,9 +43,9 @@ func loadBindsnoop() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *bindsnoopObjects
-//     *bindsnoopPrograms
-//     *bindsnoopMaps
+//	*bindsnoopObjects
+//	*bindsnoopPrograms
+//	*bindsnoopMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadBindsnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -133,5 +148,6 @@ func _BindsnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed bindsnoop_bpfel_x86.o
 var _BindsnoopBytes []byte
