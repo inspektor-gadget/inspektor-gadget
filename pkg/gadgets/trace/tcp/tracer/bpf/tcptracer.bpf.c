@@ -19,6 +19,10 @@ const volatile bool filter_by_mnt_ns = false;
 #define AF_INET		2
 #define AF_INET6	10
 
+// we need this to make sure the compiler doesn't remove our struct
+const struct event *unusedevent __attribute__((unused));
+const enum event_type unused_eventtype __attribute__((unused));
+
 /*
  * tcp_set_state doesn't run in the context of the process that initiated the
  * connection so we need to store a map TUPLE -> PID to send the right PID on

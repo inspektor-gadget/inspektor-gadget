@@ -13,6 +13,30 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type tcptracerEvent struct {
+	Saddr   [16]uint8
+	Daddr   [16]uint8
+	Task    [16]uint8
+	MntnsId uint64
+	TsUs    uint64
+	Af      uint32
+	Pid     uint32
+	Uid     uint32
+	Netns   uint32
+	Dport   uint16
+	Sport   uint16
+	Type    tcptracerEventType
+	_       [11]byte
+}
+
+type tcptracerEventType int8
+
+const (
+	tcptracerEventTypeTCP_EVENT_TYPE_CONNECT tcptracerEventType = 0
+	tcptracerEventTypeTCP_EVENT_TYPE_ACCEPT  tcptracerEventType = 1
+	tcptracerEventTypeTCP_EVENT_TYPE_CLOSE   tcptracerEventType = 2
+)
+
 // loadTcptracer returns the embedded CollectionSpec for tcptracer.
 func loadTcptracer() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_TcptracerBytes)
@@ -28,9 +52,9 @@ func loadTcptracer() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *tcptracerObjects
-//     *tcptracerPrograms
-//     *tcptracerMaps
+//	*tcptracerObjects
+//	*tcptracerPrograms
+//	*tcptracerMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadTcptracerObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -142,5 +166,6 @@ func _TcptracerClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed tcptracer_bpfel_x86.o
 var _TcptracerBytes []byte
