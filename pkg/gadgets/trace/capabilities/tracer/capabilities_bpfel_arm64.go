@@ -18,6 +18,17 @@ type capabilitiesArgsT struct {
 	CapOpt int32
 }
 
+type capabilitiesCapEvent struct {
+	Mntnsid uint64
+	Pid     uint32
+	Cap     int32
+	Tgid    uint32
+	Uid     uint32
+	CapOpt  int32
+	Ret     int32
+	Task    [16]uint8
+}
+
 type capabilitiesUniqueKey struct {
 	Cap     int32
 	_       [4]byte
@@ -39,9 +50,9 @@ func loadCapabilities() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *capabilitiesObjects
-//     *capabilitiesPrograms
-//     *capabilitiesMaps
+//	*capabilitiesObjects
+//	*capabilitiesPrograms
+//	*capabilitiesMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadCapabilitiesObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -138,5 +149,6 @@ func _CapabilitiesClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed capabilities_bpfel_arm64.o
 var _CapabilitiesBytes []byte
