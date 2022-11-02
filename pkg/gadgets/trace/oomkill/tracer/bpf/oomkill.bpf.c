@@ -8,6 +8,9 @@
 
 #include "oomkill.h"
 
+// we need this to make sure the compiler doesn't remove our struct
+const struct data_t *unuseddata __attribute__((unused));
+
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(u32));
