@@ -63,7 +63,7 @@ func main() {
 		Interval: interval * time.Second,
 		MaxRows:  maxRows,
 		// Sort results by number of write operations
-		SortBy: types.WRITES,
+		SortBy: []string{"-writes"},
 	}
 
 	tracer, err := tracer.NewTracer(tracerConfig, nil, callback)
