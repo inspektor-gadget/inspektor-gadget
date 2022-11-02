@@ -13,15 +13,15 @@
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
 
 struct event {
+	__u64 mntns_id;
 	__u32 pid;
 	__u32 ppid;
 	__u32 uid;
-	__u64 mntns_id;
 	int retval;
 	int args_count;
 	unsigned int args_size;
-	char comm[TASK_COMM_LEN];
-	char args[FULL_MAX_ARGS_ARR];
+	__u8 comm[TASK_COMM_LEN];
+	__u8 args[FULL_MAX_ARGS_ARR];
 };
 
 #endif /* __EXECSNOOP_H */
