@@ -25,6 +25,9 @@ unsigned long long load_half(void *skb,
 unsigned long long load_word(void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.word");
 
+// we need this to make sure the compiler doesn't remove our struct
+const struct event_t *unusedevent __attribute__((unused));
+
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 } events SEC(".maps");
