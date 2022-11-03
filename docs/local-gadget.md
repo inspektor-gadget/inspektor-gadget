@@ -251,6 +251,33 @@ calico-node      421056  sv
 gadget           421066  gadgettracerman
 ```
 
+### Trace/Open
+
+The trace mount tool shows the files opened by containers.
+
+Let's start the gadget in a terminal:
+
+```bash
+$ sudo local-gadget trace open --containername test-container
+CONTAINER                                                  PID        COMM             FD    ERR PATH
+```
+
+Run a container that opens some files:
+
+```bash
+$ docker run --name test-container -it --rm busybox /bin/sh -c 'while /bin/true ; do whoami ; sleep 3 ; done'
+```
+
+The tools will show the different files opened by the container:
+
+```bash
+$ sudo local-gadget trace open --containername test-container
+CONTAINER                                                  PID        COMM             FD    ERR PATH
+test-container                                             630417     whoami           3     0   /etc/passwd
+test-container                                             630954     whoami           3     0   /etc/passwd
+```
+
+
 ### Trace/Mount
 
 The trace mount tool shows when a container performs a `mount()` syscall.
