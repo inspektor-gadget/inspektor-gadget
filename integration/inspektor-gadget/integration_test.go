@@ -1407,20 +1407,29 @@ func TestTcptop(t *testing.T) {
 
 	t.Parallel()
 
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
+
+	RunCommands(commandsPreTest, t)
+	NginxIP := GetTestPodIP(ns, "nginx-pod")
+
 	tcptopCmd := &Command{
 		Name:         "StartTcptopGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			saddr := GetTestPodIP(ns, "test-pod")
+			TestPodIP := GetTestPodIP(ns, "test-pod")
 
 			expectedEntry := &tcptopTypes.Stats{
 				CommonData: BuildCommonData(ns),
-				Daddr:      "1.1.1.1",
 				Comm:       "wget",
 				Dport:      80,
 				Family:     syscall.AF_INET,
-				Saddr:      saddr,
+				Saddr:      TestPodIP,
+				Daddr:      NginxIP,
 			}
 
 			normalize := func(e *tcptopTypes.Stats) {
@@ -1437,9 +1446,8 @@ func TestTcptop(t *testing.T) {
 	}
 
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
 		tcptopCmd,
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null 1.1.1.1"),
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
