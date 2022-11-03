@@ -1027,59 +1027,50 @@ func TestNetworkGraph(t *testing.T) {
 
 	t.Parallel()
 
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
+
+	RunCommands(commandsPreTest, t)
+	NginxIP := GetTestPodIP(ns, "nginx-pod")
+
 	networkGraphCmd := &Command{
 		Name:         "StartNetworkGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace network -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntries := []*networkTypes.Event{
-				{
-					Event:       BuildBaseEvent(ns),
-					PktType:     "OUTGOING",
-					Proto:       "tcp",
-					Port:        80,
-					Addr:        "1.1.1.1",
-					PodLabels:   map[string]string{"run": "test-pod"},
-					RemoteKind:  "other",
-					RemoteOther: "1.1.1.1",
-				},
-				{
-					Event:      BuildBaseEvent(ns),
-					PktType:    "OUTGOING",
-					Proto:      "udp",
-					Port:       53,
-					PodLabels:  map[string]string{"run": "test-pod"},
-					RemoteKind: "svc",
-				},
+			TestPodIP := GetTestPodIP(ns, "test-pod")
+
+			expectedEntry := &networkTypes.Event{
+				Event:              BuildBaseEvent(ns),
+				PktType:            "OUTGOING",
+				Proto:              "tcp",
+				Addr:               NginxIP,
+				Port:               80,
+				RemoteKind:         "pod",
+				PodIP:              TestPodIP,
+				PodLabels:          map[string]string{"run": "test-pod"},
+				RemotePodNamespace: ns,
+				RemotePodName:      "nginx-pod",
+				RemotePodLabels:    map[string]string{"run": "nginx-pod"},
 			}
 			// Network gadget doesn't provide container data. Remove it.
-			for _, entry := range expectedEntries {
-				entry.Container = ""
-			}
+			expectedEntry.Container = ""
 
 			normalize := func(e *networkTypes.Event) {
 				e.Node = ""
-				e.Container = ""
 				e.PodHostIP = ""
-				e.PodIP = ""
-				e.PodOwner = ""
-				e.RemoteSvcNamespace = ""
-				e.RemoteSvcName = ""
-				e.RemoteSvcLabelSelector = nil
-
-				if e.RemoteKind == "svc" {
-					e.Addr = ""
-				}
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
 		networkGraphCmd,
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null 1.1.1.1.nip.io"),
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
