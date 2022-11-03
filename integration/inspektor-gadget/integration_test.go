@@ -1319,6 +1319,8 @@ func TestTcpconnect(t *testing.T) {
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			saddr := GetTestPodIP(ns, "test-pod")
+
 			expectedEntries := []*tcpconnectTypes.Event{
 				{
 					Event:     BuildBaseEvent(ns),
@@ -1326,6 +1328,7 @@ func TestTcpconnect(t *testing.T) {
 					IPVersion: 4,
 					Daddr:     "1.1.1.1",
 					Dport:     80,
+					Saddr:     saddr,
 				},
 				{
 					Event:     BuildBaseEvent(ns),
@@ -1333,13 +1336,13 @@ func TestTcpconnect(t *testing.T) {
 					IPVersion: 4,
 					Daddr:     "1.1.1.1",
 					Dport:     443,
+					Saddr:     saddr,
 				},
 			}
 
 			normalize := func(e *tcpconnectTypes.Event) {
 				e.Node = ""
 				e.Pid = 0
-				e.Saddr = ""
 				e.MountNsID = 0
 			}
 
@@ -1368,6 +1371,8 @@ func TestTcptracer(t *testing.T) {
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcp -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			saddr := GetTestPodIP(ns, "test-pod")
+
 			expectedEntries := []*tcpTypes.Event{
 				{
 					Event:     BuildBaseEvent(ns),
@@ -1376,6 +1381,7 @@ func TestTcptracer(t *testing.T) {
 					Daddr:     "1.1.1.1",
 					Dport:     80,
 					Operation: "connect",
+					Saddr:     saddr,
 				},
 				{
 					Event:     BuildBaseEvent(ns),
@@ -1384,6 +1390,7 @@ func TestTcptracer(t *testing.T) {
 					Daddr:     "1.1.1.1",
 					Dport:     80,
 					Operation: "close",
+					Saddr:     saddr,
 				},
 				{
 					Event:     BuildBaseEvent(ns),
@@ -1392,13 +1399,13 @@ func TestTcptracer(t *testing.T) {
 					Daddr:     "1.1.1.1",
 					Dport:     443,
 					Operation: "connect",
+					Saddr:     saddr,
 				},
 			}
 
 			normalize := func(e *tcpTypes.Event) {
 				e.Node = ""
 				e.Pid = 0
-				e.Saddr = ""
 				e.Sport = 0
 				e.MountNsID = 0
 			}
@@ -1428,17 +1435,19 @@ func TestTcptop(t *testing.T) {
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			saddr := GetTestPodIP(ns, "test-pod")
+
 			expectedEntry := &tcptopTypes.Stats{
 				CommonData: BuildCommonData(ns),
 				Daddr:      "1.1.1.1",
 				Comm:       "wget",
 				Dport:      80,
 				Family:     syscall.AF_INET,
+				Saddr:      saddr,
 			}
 
 			normalize := func(e *tcptopTypes.Stats) {
 				e.Node = ""
-				e.Saddr = ""
 				e.MountNsID = 0
 				e.Pid = 0
 				e.Sport = 0
