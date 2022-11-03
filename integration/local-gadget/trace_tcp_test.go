@@ -26,36 +26,29 @@ func TestTraceTCP(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-tcp")
 
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
+
+	RunCommands(commandsPreTest, t)
+	NginxIP := GetTestPodIP(ns, "nginx-pod")
 	traceTCPCmd := &Command{
 		Name:         "TraceTCP",
 		Cmd:          fmt.Sprintf("local-gadget trace tcp -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntries := []*tcpTypes.Event{
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     80,
-					Operation: "connect",
-				},
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     80,
-					Operation: "close",
-				},
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     443,
-					Operation: "connect",
-				},
+			TestPodIP := GetTestPodIP(ns, "test-pod")
+
+			expectedEntry := &tcpTypes.Event{
+				Event:     BuildBaseEvent(ns),
+				Comm:      "wget",
+				IPVersion: 4,
+				Saddr:     TestPodIP,
+				Daddr:     NginxIP,
+				Dport:     80,
+				Operation: "connect",
 			}
 
 			normalize := func(e *tcpTypes.Event) {
@@ -66,20 +59,18 @@ func TestTraceTCP(t *testing.T) {
 				}
 
 				e.Pid = 0
-				e.Saddr = ""
 				e.Sport = 0
 				e.MountNsID = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	// TODO: traceTCPCmd should moved up the list once we can trace new cri-o containers.
 	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null -T 3 http://1.1.1.1"),
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
 		traceTCPCmd,
 		DeleteTestNamespaceCommand(ns),
