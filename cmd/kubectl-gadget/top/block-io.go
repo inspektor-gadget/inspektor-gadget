@@ -34,23 +34,17 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
 
-type BlockIOFlags struct {
-	CommonTopFlags
-
-	ParsedSortBy []string
-}
-
 type BlockIOParser struct {
 	commonutils.BaseParser[types.Stats]
 	sync.Mutex
 
-	flags     *BlockIOFlags
+	flags     *CommonTopFlags
 	nodeStats map[string][]*types.Stats
 	colMap    columns.ColumnMap[types.Stats]
 }
 
 func newBlockIOCmd() *cobra.Command {
-	var flags BlockIOFlags
+	var flags CommonTopFlags
 
 	commonFlags := &utils.CommonFlags{
 		OutputConfig: commonutils.OutputConfig{
@@ -174,7 +168,7 @@ func newBlockIOCmd() *cobra.Command {
 		Args: cobra.MaximumNArgs(1),
 	}
 
-	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, cols.GetColumnNames())
+	addCommonTopFlags(cmd, &flags, commonFlags, types.MaxRowsDefault, cols.GetColumnNames())
 
 	return cmd
 }

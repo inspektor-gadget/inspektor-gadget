@@ -37,8 +37,7 @@ import (
 type FileFlags struct {
 	CommonTopFlags
 
-	ParsedSortBy []string
-	allFiles     bool
+	allFiles bool
 }
 
 type FileParser struct {

@@ -35,23 +35,17 @@ import (
 	"golang.org/x/term"
 )
 
-type EbpfFlags struct {
-	CommonTopFlags
-
-	ParsedSortBy []string
-}
-
 type EbpfParser struct {
 	commonutils.BaseParser[types.Stats]
 	sync.Mutex
 
-	flags     *EbpfFlags
+	flags     *CommonTopFlags
 	nodeStats map[string][]*types.Stats
 	colMap    columns.ColumnMap[types.Stats]
 }
 
 func newEbpfCmd() *cobra.Command {
-	var flags EbpfFlags
+	var flags CommonTopFlags
 
 	commonFlags := &utils.CommonFlags{
 		OutputConfig: commonutils.OutputConfig{
@@ -193,7 +187,7 @@ func newEbpfCmd() *cobra.Command {
 		Args: cobra.MaximumNArgs(1),
 	}
 
-	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, cols.GetColumnNames())
+	addCommonTopFlags(cmd, &flags, commonFlags, types.MaxRowsDefault, cols.GetColumnNames())
 
 	return cmd
 }
