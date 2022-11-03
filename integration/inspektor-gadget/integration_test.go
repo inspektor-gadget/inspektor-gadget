@@ -1305,30 +1305,29 @@ func TestTcpconnect(t *testing.T) {
 
 	t.Parallel()
 
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
+
+	RunCommands(commandsPreTest, t)
+	NginxIP := GetTestPodIP(ns, "nginx-pod")
+
 	tcpconnectCmd := &Command{
 		Name:         "StartTcpconnectGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			saddr := GetTestPodIP(ns, "test-pod")
+			TestPodIP := GetTestPodIP(ns, "test-pod")
 
-			expectedEntries := []*tcpconnectTypes.Event{
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     80,
-					Saddr:     saddr,
-				},
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     443,
-					Saddr:     saddr,
-				},
+			expectedEntry := &tcpconnectTypes.Event{
+				Event:     BuildBaseEvent(ns),
+				Comm:      "wget",
+				IPVersion: 4,
+				Dport:     80,
+				Saddr:     TestPodIP,
+				Daddr:     NginxIP,
 			}
 
 			normalize := func(e *tcpconnectTypes.Event) {
@@ -1337,14 +1336,13 @@ func TestTcpconnect(t *testing.T) {
 				e.MountNsID = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
 		tcpconnectCmd,
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null -T 3 http://1.1.1.1"),
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
