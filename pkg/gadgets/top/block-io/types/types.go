@@ -15,8 +15,6 @@
 package types
 
 import (
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
-	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -62,8 +60,4 @@ type Stats struct {
 	MountNsID  uint64 `json:"mountnsid,omitempty" column:"mountnsid"`
 	Pid        int32  `json:"pid,omitempty" column:"pid"`
 	Comm       string `json:"comm,omitempty" column:"comm"`
-}
-
-func SortStats(stats []*Stats, sortBy []string, colMap *columns.ColumnMap[Stats]) {
-	columnssort.SortEntries(*colMap, stats, sortBy)
 }

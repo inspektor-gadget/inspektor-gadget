@@ -15,8 +15,6 @@
 package types
 
 import (
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
-	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -47,10 +45,6 @@ const (
 	MaxRowsParam  = "max_rows"
 	SortByParam   = "sort_by"
 )
-
-func SortStats(stats []*Stats, sortBy []string, colMap *columns.ColumnMap[Stats]) {
-	columnssort.SortEntries(*colMap, stats, sortBy)
-}
 
 type Event struct {
 	Error string   `json:"error,omitempty"`

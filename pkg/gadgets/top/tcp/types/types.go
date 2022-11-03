@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"syscall"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
-	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -70,8 +68,4 @@ type Stats struct {
 	Family    uint16 `json:"family,omitempty" column:"family"`
 	Sent      uint64 `json:"sent,omitempty" column:"sent"`
 	Received  uint64 `json:"received,omitempty" column:"received"`
-}
-
-func SortStats(stats []*Stats, sortBy []string, colMap *columns.ColumnMap[Stats]) {
-	columnssort.SortEntries(*colMap, stats, sortBy)
 }

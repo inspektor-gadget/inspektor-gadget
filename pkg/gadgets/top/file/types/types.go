@@ -15,8 +15,6 @@
 package types
 
 import (
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
-	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -66,8 +64,4 @@ type Stats struct {
 	Filename   string `json:"filename,omitempty" column:"filename"`
 	Comm       string `json:"comm,omitempty" column:"comm"`
 	FileType   byte   `json:"fileType,omitempty" column:"fileType"` // R = Regular File, S = Socket, O = Other
-}
-
-func SortStats(stats []*Stats, sortBy []string, colMap *columns.ColumnMap[Stats]) {
-	columnssort.SortEntries(*colMap, stats, sortBy)
 }

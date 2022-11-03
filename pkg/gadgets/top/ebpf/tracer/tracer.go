@@ -26,6 +26,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/piditer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 
@@ -324,7 +325,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		}
 	}
 
-	types.SortStats(stats, t.config.SortBy, &t.colMap)
+	top.SortStats(stats, t.config.SortBy, &t.colMap)
 
 	return stats, nil
 }
