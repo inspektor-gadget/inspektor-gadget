@@ -27,6 +27,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 
 	"github.com/docker/go-units"
@@ -257,7 +258,7 @@ func (p *EbpfParser) PrintStats() {
 
 	p.Unlock()
 
-	types.SortStats(stats, p.flags.ParsedSortBy, &p.colMap)
+	top.SortStats(stats, p.flags.ParsedSortBy, &p.colMap)
 
 	for idx, stat := range stats {
 		if idx == p.flags.MaxRows {

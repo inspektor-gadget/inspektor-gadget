@@ -25,6 +25,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 
 	"github.com/cilium/ebpf"
@@ -241,7 +242,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		}
 	}
 
-	types.SortStats(stats, t.config.SortBy, &t.colMap)
+	top.SortStats(stats, t.config.SortBy, &t.colMap)
 
 	return stats, nil
 }
