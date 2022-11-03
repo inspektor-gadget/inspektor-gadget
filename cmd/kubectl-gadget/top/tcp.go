@@ -38,9 +38,8 @@ import (
 type TCPFlags struct {
 	CommonTopFlags
 
-	ParsedSortBy []string
-	FilteredPid  uint
-	Family       uint
+	FilteredPid uint
+	Family      uint
 }
 
 type TCPParser struct {

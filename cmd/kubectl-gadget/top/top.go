@@ -27,6 +27,7 @@ type CommonTopFlags struct {
 	OutputInterval int
 	MaxRows        int
 	SortBy         string
+	ParsedSortBy   []string
 }
 
 func NewTopCmd() *cobra.Command {
