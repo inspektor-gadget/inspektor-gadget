@@ -912,6 +912,11 @@ spec:
 		},
 		DeleteTestNamespaceCommand(nsClient),
 		DeleteTestNamespaceCommand(nsServer),
+		{
+			Name:    "CleanupLogFiles",
+			Cmd:     "rm -f networktrace-client.log networktrace-server.log",
+			Cleanup: true,
+		},
 	}
 
 	RunCommands(commands, t)
