@@ -571,12 +571,18 @@ func DeleteRemainingNamespacesCommand() *Command {
 	}
 }
 
+// WaitUntilPodReadyCommand returns a Command which waits until pod with the specified name in
+// the given as parameter namespace is ready.
+func WaitUntilPodReadyCommand(namespace string, podname string) *Command {
+	return &Command{
+		Name:           "WaitForTestPod",
+		Cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready -n %s %s", namespace, podname),
+		ExpectedString: fmt.Sprintf("pod/%s condition met\n", podname),
+	}
+}
+
 // WaitUntilTestPodReadyCommand returns a Command which waits until test-pod in
 // the given as parameter namespace is ready.
 func WaitUntilTestPodReadyCommand(namespace string) *Command {
-	return &Command{
-		Name:           "WaitForTestPod",
-		Cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready -n %s test-pod", namespace),
-		ExpectedString: "pod/test-pod condition met\n",
-	}
+	return WaitUntilPodReadyCommand(namespace, "test-pod")
 }
