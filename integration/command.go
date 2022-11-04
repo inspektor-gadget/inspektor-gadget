@@ -481,6 +481,42 @@ func (c *Command) Stop(t *testing.T) {
 	c.Started = false
 }
 
+// PodCommand returns a Command that starts a pid with a specified image, command and args
+func PodCommand(podname, image, namespace, command, commandArgs string) *Command {
+	cmdLine := ""
+	if command != "" {
+		cmdLine = fmt.Sprintf("\n    command: %s", command)
+	}
+
+	commandArgsLine := ""
+	if commandArgs != "" {
+		commandArgsLine = fmt.Sprintf("\n    args:\n    - %s", commandArgs)
+	}
+
+	cmdStr := fmt.Sprintf(`kubectl apply -f - <<"EOF"
+apiVersion: v1
+kind: Pod
+metadata:
+  name: %s
+  namespace: %s
+  labels:
+    run: %s
+spec:
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 0
+  containers:
+  - name: %s
+    image: %s%s%s
+EOF
+`, podname, namespace, podname, podname, image, cmdLine, commandArgsLine)
+
+	return &Command{
+		Name:           fmt.Sprintf("Run%s", podname),
+		Cmd:            cmdStr,
+		ExpectedString: fmt.Sprintf("pod/%s created\n", podname),
+	}
+}
+
 // BusyboxPodRepeatCommand returns a Command that creates a pod and runs
 // "cmd" each 0.1 seconds inside the pod.
 func BusyboxPodRepeatCommand(namespace, cmd string) *Command {
@@ -490,31 +526,7 @@ func BusyboxPodRepeatCommand(namespace, cmd string) *Command {
 
 // BusyboxPodCommand returns a Command that creates a pod and runs "cmd" in it.
 func BusyboxPodCommand(namespace, cmd string) *Command {
-	cmdStr := fmt.Sprintf(`kubectl apply -f - <<"EOF"
-apiVersion: v1
-kind: Pod
-metadata:
-  name: test-pod
-  namespace: %s
-  labels:
-    run: test-pod
-spec:
-  restartPolicy: Never
-  terminationGracePeriodSeconds: 0
-  containers:
-  - name: test-pod
-    image: busybox
-    command: ["/bin/sh", "-c"]
-    args:
-    - %s
-EOF
-`, namespace, cmd)
-
-	return &Command{
-		Name:           "RunTestPod",
-		Cmd:            cmdStr,
-		ExpectedString: "pod/test-pod created\n",
-	}
+	return PodCommand("test-pod", "busybox", namespace, `["/bin/sh", "-c"]`, cmd)
 }
 
 // GenerateTestNamespaceName returns a string which can be used as unique
