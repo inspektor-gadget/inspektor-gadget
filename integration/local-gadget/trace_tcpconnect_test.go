@@ -26,26 +26,29 @@ func TestTraceTcpconnect(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-tcpconnect")
 
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
+
+	RunCommands(commandsPreTest, t)
+	NginxIP := GetTestPodIP(ns, "nginx-pod")
+
 	tcpconnectCmd := &Command{
 		Name:         "StartTcpconnectGadget",
 		Cmd:          fmt.Sprintf("local-gadget trace tcpconnect -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntries := []*tcpconnectTypes.Event{
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     80,
-				},
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     443,
-				},
+			TestPodIP := GetTestPodIP(ns, "test-pod")
+
+			expectedEntry := &tcpconnectTypes.Event{
+				Event:     BuildBaseEvent(ns),
+				Comm:      "wget",
+				IPVersion: 4,
+				Saddr:     TestPodIP,
+				Daddr:     NginxIP,
+				Dport:     80,
 			}
 
 			normalize := func(e *tcpconnectTypes.Event) {
@@ -56,19 +59,17 @@ func TestTraceTcpconnect(t *testing.T) {
 				}
 
 				e.Pid = 0
-				e.Saddr = ""
 				e.MountNsID = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	// TODO: tcpconnectCmd should moved up the list once we can trace new cri-o containers.
 	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null -T 3 http://1.1.1.1"),
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
 		tcpconnectCmd,
 		DeleteTestNamespaceCommand(ns),

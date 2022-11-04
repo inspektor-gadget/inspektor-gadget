@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"os/exec"
 	"reflect"
 	"strings"
 
@@ -151,4 +152,15 @@ func BuildBaseEvent(namespace string) eventtypes.Event {
 		Type:       eventtypes.NORMAL,
 		CommonData: BuildCommonData(namespace),
 	}
+}
+
+func GetTestPodIP(ns string, podname string) string {
+	cmd := exec.Command("kubectl", "-n", ns, "get", "pod", podname, "-o", "jsonpath='{.status.podIP}'")
+	r, err := cmd.Output()
+	if err != nil {
+		return fmt.Sprintf("failed to get Pod IP: %s", err)
+	}
+
+	ip := string(r)
+	return ip[1 : len(ip)-1]
 }

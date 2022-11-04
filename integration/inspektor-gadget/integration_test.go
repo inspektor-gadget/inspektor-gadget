@@ -1027,59 +1027,50 @@ func TestNetworkGraph(t *testing.T) {
 
 	t.Parallel()
 
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
+
+	RunCommands(commandsPreTest, t)
+	NginxIP := GetTestPodIP(ns, "nginx-pod")
+
 	networkGraphCmd := &Command{
 		Name:         "StartNetworkGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace network -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntries := []*networkTypes.Event{
-				{
-					Event:       BuildBaseEvent(ns),
-					PktType:     "OUTGOING",
-					Proto:       "tcp",
-					Port:        80,
-					Addr:        "1.1.1.1",
-					PodLabels:   map[string]string{"run": "test-pod"},
-					RemoteKind:  "other",
-					RemoteOther: "1.1.1.1",
-				},
-				{
-					Event:      BuildBaseEvent(ns),
-					PktType:    "OUTGOING",
-					Proto:      "udp",
-					Port:       53,
-					PodLabels:  map[string]string{"run": "test-pod"},
-					RemoteKind: "svc",
-				},
+			TestPodIP := GetTestPodIP(ns, "test-pod")
+
+			expectedEntry := &networkTypes.Event{
+				Event:              BuildBaseEvent(ns),
+				PktType:            "OUTGOING",
+				Proto:              "tcp",
+				Addr:               NginxIP,
+				Port:               80,
+				RemoteKind:         "pod",
+				PodIP:              TestPodIP,
+				PodLabels:          map[string]string{"run": "test-pod"},
+				RemotePodNamespace: ns,
+				RemotePodName:      "nginx-pod",
+				RemotePodLabels:    map[string]string{"run": "nginx-pod"},
 			}
 			// Network gadget doesn't provide container data. Remove it.
-			for _, entry := range expectedEntries {
-				entry.Container = ""
-			}
+			expectedEntry.Container = ""
 
 			normalize := func(e *networkTypes.Event) {
 				e.Node = ""
-				e.Container = ""
 				e.PodHostIP = ""
-				e.PodIP = ""
-				e.PodOwner = ""
-				e.RemoteSvcNamespace = ""
-				e.RemoteSvcName = ""
-				e.RemoteSvcLabelSelector = nil
-
-				if e.RemoteKind == "svc" {
-					e.Addr = ""
-				}
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
 		networkGraphCmd,
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null 1.1.1.1.nip.io"),
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
@@ -1314,43 +1305,44 @@ func TestTcpconnect(t *testing.T) {
 
 	t.Parallel()
 
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
+
+	RunCommands(commandsPreTest, t)
+	NginxIP := GetTestPodIP(ns, "nginx-pod")
+
 	tcpconnectCmd := &Command{
 		Name:         "StartTcpconnectGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntries := []*tcpconnectTypes.Event{
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     80,
-				},
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     443,
-				},
+			TestPodIP := GetTestPodIP(ns, "test-pod")
+
+			expectedEntry := &tcpconnectTypes.Event{
+				Event:     BuildBaseEvent(ns),
+				Comm:      "wget",
+				IPVersion: 4,
+				Dport:     80,
+				Saddr:     TestPodIP,
+				Daddr:     NginxIP,
 			}
 
 			normalize := func(e *tcpconnectTypes.Event) {
 				e.Node = ""
 				e.Pid = 0
-				e.Saddr = ""
 				e.MountNsID = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
 		tcpconnectCmd,
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null -T 3 http://1.1.1.1"),
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
@@ -1363,54 +1355,46 @@ func TestTcptracer(t *testing.T) {
 
 	t.Parallel()
 
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
+
+	RunCommands(commandsPreTest, t)
+	NginxIP := GetTestPodIP(ns, "nginx-pod")
+
 	tcptracerCmd := &Command{
 		Name:         "StartTcptracerGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcp -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntries := []*tcpTypes.Event{
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     80,
-					Operation: "connect",
-				},
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     80,
-					Operation: "close",
-				},
-				{
-					Event:     BuildBaseEvent(ns),
-					Comm:      "wget",
-					IPVersion: 4,
-					Daddr:     "1.1.1.1",
-					Dport:     443,
-					Operation: "connect",
-				},
+			TestPodIP := GetTestPodIP(ns, "test-pod")
+
+			expectedEntry := &tcpTypes.Event{
+				Event:     BuildBaseEvent(ns),
+				Comm:      "wget",
+				IPVersion: 4,
+				Dport:     80,
+				Operation: "connect",
+				Saddr:     TestPodIP,
+				Daddr:     NginxIP,
 			}
 
 			normalize := func(e *tcpTypes.Event) {
 				e.Node = ""
 				e.Pid = 0
-				e.Saddr = ""
 				e.Sport = 0
 				e.MountNsID = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
 		tcptracerCmd,
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null -T 3 http://1.1.1.1"),
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
@@ -1423,22 +1407,33 @@ func TestTcptop(t *testing.T) {
 
 	t.Parallel()
 
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
+
+	RunCommands(commandsPreTest, t)
+	NginxIP := GetTestPodIP(ns, "nginx-pod")
+
 	tcptopCmd := &Command{
 		Name:         "StartTcptopGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			TestPodIP := GetTestPodIP(ns, "test-pod")
+
 			expectedEntry := &tcptopTypes.Stats{
 				CommonData: BuildCommonData(ns),
-				Daddr:      "1.1.1.1",
 				Comm:       "wget",
 				Dport:      80,
 				Family:     syscall.AF_INET,
+				Saddr:      TestPodIP,
+				Daddr:      NginxIP,
 			}
 
 			normalize := func(e *tcptopTypes.Stats) {
 				e.Node = ""
-				e.Saddr = ""
 				e.MountNsID = 0
 				e.Pid = 0
 				e.Sport = 0
@@ -1451,9 +1446,8 @@ func TestTcptop(t *testing.T) {
 	}
 
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
 		tcptopCmd,
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null 1.1.1.1"),
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
