@@ -19,6 +19,15 @@ import (
 	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 )
 
+const (
+	MaxRowsDefault  = 20
+	IntervalDefault = 1
+
+	IntervalParam = "interval"
+	MaxRowsParam  = "max_rows"
+	SortByParam   = "sort_by"
+)
+
 func SortStats[T any](stats []*T, sortBy []string, colMap *columns.ColumnMap[T]) {
 	columnssort.SortEntries(*colMap, stats, sortBy)
 }

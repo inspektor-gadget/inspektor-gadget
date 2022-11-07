@@ -29,50 +29,47 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 )
 
-type TCPFlags struct {
-	CommonTopFlags
-
-	FilteredPid uint
-	Family      uint
-}
-
 type TCPParser struct {
 	commonutils.BaseParser[types.Stats]
 	sync.Mutex
 
-	flags     *TCPFlags
+	flags     *CommonTopFlags
 	nodeStats map[string][]*types.Stats
 	colMap    columns.ColumnMap[types.Stats]
 }
 
 func newTCPCmd() *cobra.Command {
-	var flags TCPFlags
-
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"container",
-				"pid",
-				"comm",
-				"ip",
-				"saddr",
-				"daddr",
-				"sent",
-				"received",
+	commonTopFlags := &CommonTopFlags{
+		commonFlags: utils.CommonFlags{
+			OutputConfig: commonutils.OutputConfig{
+				// The columns that will be used in case the user does not specify
+				// which specific columns they want to print.
+				CustomColumns: []string{
+					"node",
+					"namespace",
+					"pod",
+					"container",
+					"pid",
+					"comm",
+					"ip",
+					"saddr",
+					"daddr",
+					"sent",
+					"received",
+				},
 			},
 		},
 	}
+
+	var (
+		FilteredPid uint
+		Family      uint
+	)
 
 	columnsWidth := map[string]int{
 		"node":      -16,
@@ -91,107 +88,49 @@ func newTCPCmd() *cobra.Command {
 	cols := columns.MustCreateColumns[types.Stats]()
 
 	cmd := &cobra.Command{
-		Use:   fmt.Sprintf("tcp [interval=%d]", types.IntervalDefault),
+		Use:   fmt.Sprintf("tcp [interval=%d]", top.IntervalDefault),
 		Short: "Periodically report TCP activity",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-
 			parser := &TCPParser{
-				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonFlags.OutputConfig),
-				flags:      &flags,
+				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonTopFlags.commonFlags.OutputConfig),
+				flags:      commonTopFlags,
 				nodeStats:  make(map[string][]*types.Stats),
 			}
 
 			parser.colMap = cols.GetColumnMap()
 
-			if len(args) == 1 {
-				flags.OutputInterval, err = strconv.Atoi(args[0])
-				if err != nil {
-					return commonutils.WrapInErrInvalidArg("<interval>",
-						fmt.Errorf("%q is not a valid value", args[0]))
-				}
-			} else {
-				flags.OutputInterval = types.IntervalDefault
+			parameters := make(map[string]string)
+			if Family != 0 {
+				parameters[types.FamilyParam] = strconv.FormatUint(uint64(Family), 10)
+			}
+			if FilteredPid != 0 {
+				parameters[types.PidParam] = strconv.FormatUint(uint64(FilteredPid), 10)
 			}
 
-			parameters := map[string]string{
-				types.MaxRowsParam:  strconv.Itoa(flags.MaxRows),
-				types.IntervalParam: strconv.Itoa(flags.OutputInterval),
-				types.SortByParam:   flags.SortBy,
+			gadget := &TopGadget[types.Stats]{
+				name:           "tcptop",
+				commonTopFlags: commonTopFlags,
+				params:         parameters,
+				parser:         parser,
 			}
 
-			if flags.Family != 0 {
-				parameters[types.FamilyParam] = strconv.FormatUint(uint64(flags.Family), 10)
-			}
-
-			if flags.FilteredPid != 0 {
-				parameters[types.PidParam] = strconv.FormatUint(uint64(flags.FilteredPid), 10)
-			}
-
-			config := &utils.TraceConfig{
-				GadgetName:       "tcptop",
-				Operation:        gadgetv1alpha1.OperationStart,
-				TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
-				TraceOutputState: gadgetv1alpha1.TraceStateStarted,
-				CommonFlags:      commonFlags,
-				Parameters:       parameters,
-			}
-
-			// when params.Timeout == interval it means the user
-			// only wants to run for a given amount of time and print
-			// that result.
-			singleShot := commonFlags.Timeout == flags.OutputInterval
-
-			// start print loop if this is not a "single shot" operation
-			if singleShot {
-				parser.PrintHeader()
-			} else {
-				parser.StartPrintLoop()
-			}
-
-			if err := utils.RunTraceStreamCallback(config, parser.Callback); err != nil {
-				return commonutils.WrapInErrRunGadget(err)
-			}
-
-			if singleShot {
-				parser.PrintStats()
-			}
-
-			return nil
+			return gadget.Run(args)
 		},
 		SilenceUsage: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			sortByColumns := strings.Split(flags.SortBy, ",")
-			flags.ParsedSortBy = make([]string, len(sortByColumns))
-
-			for i, col := range sortByColumns {
-				colToTest := col
-				if len(col) > 0 && col[0] == '-' {
-					colToTest = colToTest[1:]
-				}
-				_, ok := cols.GetColumn(colToTest)
-				if !ok {
-					return commonutils.WrapInErrInvalidArg("--sort", fmt.Errorf("\"%v\" is not a recognized column to sort by", colToTest))
-				}
-				flags.ParsedSortBy[i] = col
-			}
-
-			return nil
-		},
-		Args: cobra.MaximumNArgs(1),
+		Args:         cobra.MaximumNArgs(1),
 	}
 
-	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, cols.GetColumnNames())
+	addCommonTopFlags(cmd, commonTopFlags, &commonTopFlags.commonFlags, cols.GetColumnNames(), types.SortByDefault)
 
 	cmd.PersistentFlags().UintVarP(
-		&flags.FilteredPid,
+		&FilteredPid,
 		"pid",
 		"",
 		0,
 		"Show only TCP events generated by this particular PID",
 	)
 	cmd.PersistentFlags().UintVarP(
-		&flags.Family,
+		&Family,
 		"family",
 		"f",
 		0,

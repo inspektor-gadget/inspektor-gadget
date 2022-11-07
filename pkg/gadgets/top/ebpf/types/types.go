@@ -40,12 +40,6 @@ const (
 
 var SortByDefault = []string{"-currentRuntime", "-currentRunCount"}
 
-const (
-	IntervalParam = "interval"
-	MaxRowsParam  = "max_rows"
-	SortByParam   = "sort_by"
-)
-
 type Event struct {
 	Error string   `json:"error,omitempty"`
 	Stats []*Stats `json:"stats,omitempty"`

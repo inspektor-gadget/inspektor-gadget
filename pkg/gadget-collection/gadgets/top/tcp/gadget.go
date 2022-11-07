@@ -25,6 +25,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	tcptoptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 
@@ -59,9 +60,9 @@ The following parameters are supported:
 - %s: The field to sort the results by (%s). (default %s)
 - %s: Only get events for this PID (default to all).
 - %s: Only get events for this IP version. (either 4 or 6, default to all)`
-	return fmt.Sprintf(t, types.IntervalParam, types.IntervalDefault,
-		types.MaxRowsParam, types.MaxRowsDefault,
-		types.SortByParam, strings.Join(cols.GetColumnNames(), ","), strings.Join(types.SortByDefault, ","),
+	return fmt.Sprintf(t, top.IntervalParam, top.IntervalDefault,
+		top.MaxRowsParam, top.MaxRowsDefault,
+		top.SortByParam, strings.Join(cols.GetColumnNames(), ","), strings.Join(types.SortByDefault, ","),
 		types.PidParam, types.FamilyParam)
 }
 
@@ -109,8 +110,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
-	maxRows := types.MaxRowsDefault
-	intervalSeconds := types.IntervalDefault
+	maxRows := top.MaxRowsDefault
+	intervalSeconds := top.IntervalDefault
 	sortBy := types.SortByDefault
 	targetPid := int32(-1)
 	targetFamily := int32(-1)
@@ -119,24 +120,24 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		params := trace.Spec.Parameters
 		var err error
 
-		if val, ok := params[types.MaxRowsParam]; ok {
+		if val, ok := params[top.MaxRowsParam]; ok {
 			maxRows, err = strconv.Atoi(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.MaxRowsParam)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, top.MaxRowsParam)
 				return
 			}
 		}
 
-		if val, ok := params[types.IntervalParam]; ok {
+		if val, ok := params[top.IntervalParam]; ok {
 			intervalSeconds, err = strconv.Atoi(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.IntervalParam)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, top.IntervalParam)
 				return
 			}
 		}
 
-		if val, ok := params[types.SortByParam]; ok {
-			sortByColumns := strings.Split(params[types.SortByParam], ",")
+		if val, ok := params[top.SortByParam]; ok {
+			sortByColumns := strings.Split(params[top.SortByParam], ",")
 			sortBy = make([]string, len(sortByColumns))
 
 			cols := columns.MustCreateColumns[types.Stats]()
@@ -147,7 +148,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 				}
 				_, ok := cols.GetColumn(colToTest)
 				if !ok {
-					trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.SortByParam)
+					trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, top.SortByParam)
 					return
 				}
 				sortBy[i] = col
