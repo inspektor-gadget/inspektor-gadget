@@ -68,6 +68,7 @@ func TestTraceTcpconnect(t *testing.T) {
 
 	commands := []*Command{
 		tcpconnectCmd,
+		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),

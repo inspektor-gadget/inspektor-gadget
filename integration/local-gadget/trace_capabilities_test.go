@@ -61,6 +61,7 @@ func TestTraceCapabilities(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		capabilitiesCmd,
+		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		BusyboxPodRepeatCommand(ns, "nice -n -20 echo"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),

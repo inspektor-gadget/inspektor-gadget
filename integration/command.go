@@ -624,3 +624,11 @@ func WaitUntilPodReadyCommand(namespace string, podname string) *Command {
 func WaitUntilTestPodReadyCommand(namespace string) *Command {
 	return WaitUntilPodReadyCommand(namespace, "test-pod")
 }
+
+// SleepForSecondsCommand returns a Command which sleeps for given seconds
+func SleepForSecondsCommand(seconds int) *Command {
+	return &Command{
+		Name: "SleepForSeconds",
+		Cmd:  fmt.Sprintf("sleep %d", seconds),
+	}
+}

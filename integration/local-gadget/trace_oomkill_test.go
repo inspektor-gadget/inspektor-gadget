@@ -78,6 +78,7 @@ spec:
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		traceOOMKillCmd,
+		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		{
 			Name:           "RunOomkillTestPod",
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
