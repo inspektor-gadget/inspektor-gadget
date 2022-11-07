@@ -20,7 +20,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -133,18 +132,6 @@ func (p *BlockIOParser) Callback(line string, node string) {
 	}
 
 	p.nodeStats[node] = event.Stats
-}
-
-func (p *BlockIOParser) StartPrintLoop() {
-	go func() {
-		ticker := time.NewTicker(time.Duration(p.flags.OutputInterval) * time.Second)
-		p.PrintHeader()
-		for {
-			_ = <-ticker.C
-			p.PrintHeader()
-			p.PrintStats()
-		}
-	}()
 }
 
 func (p *BlockIOParser) PrintHeader() {

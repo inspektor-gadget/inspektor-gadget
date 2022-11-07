@@ -137,18 +137,6 @@ func (p *EbpfParser) Callback(line string, node string) {
 	p.nodeStats[node] = event.Stats
 }
 
-func (p *EbpfParser) StartPrintLoop() {
-	go func() {
-		ticker := time.NewTicker(time.Duration(p.flags.OutputInterval) * time.Second)
-		p.PrintHeader()
-		for {
-			_ = <-ticker.C
-			p.PrintHeader()
-			p.PrintStats()
-		}
-	}()
-}
-
 func (p *EbpfParser) PrintHeader() {
 	if p.OutputConfig.OutputMode == commonutils.OutputModeJSON {
 		return
