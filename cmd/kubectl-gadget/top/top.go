@@ -16,17 +16,19 @@ package top
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
-
-	"github.com/spf13/cobra"
 )
 
 type CommonTopFlags struct {
@@ -67,7 +69,10 @@ func addCommonTopFlags(
 // TopParser defines the interface that every top-gadget parser has to
 // implement.
 type TopParser[Stats any] interface {
-	PrintHeader()
+	// BuildColumnsHeader returns a header to be used when the user requests to
+	// present the output in columns.
+	BuildColumnsHeader() string
+
 	PrintStats()
 	Callback(line string, node string)
 }
@@ -125,7 +130,7 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 
 	// start print loop if this is not a "single shot" operation
 	if singleShot {
-		g.parser.PrintHeader()
+		g.PrintHeader()
 	} else {
 		g.StartPrintLoop()
 	}
@@ -144,11 +149,25 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 func (g *TopGadget[Stats]) StartPrintLoop() {
 	go func() {
 		ticker := time.NewTicker(time.Duration(g.commonTopFlags.OutputInterval) * time.Second)
-		g.parser.PrintHeader()
+		g.PrintHeader()
 		for {
 			<-ticker.C
-			g.parser.PrintHeader()
+			g.PrintHeader()
 			g.parser.PrintStats()
 		}
 	}()
+}
+
+func (g *TopGadget[Stats]) PrintHeader() {
+	if g.commonTopFlags.OutputMode == commonutils.OutputModeJSON {
+		return
+	}
+
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		utils.ClearScreen()
+	} else {
+		fmt.Println("")
+	}
+
+	fmt.Println(g.parser.BuildColumnsHeader())
 }
