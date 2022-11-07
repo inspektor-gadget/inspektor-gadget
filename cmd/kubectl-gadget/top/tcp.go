@@ -22,7 +22,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -157,18 +156,6 @@ func (p *TCPParser) Callback(line string, node string) {
 	}
 
 	p.nodeStats[node] = event.Stats
-}
-
-func (p *TCPParser) StartPrintLoop() {
-	go func() {
-		ticker := time.NewTicker(time.Duration(p.flags.OutputInterval) * time.Second)
-		p.PrintHeader()
-		for {
-			_ = <-ticker.C
-			p.PrintHeader()
-			p.PrintStats()
-		}
-	}()
 }
 
 func (p *TCPParser) PrintHeader() {

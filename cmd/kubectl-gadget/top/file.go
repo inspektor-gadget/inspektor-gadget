@@ -21,7 +21,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -143,18 +142,6 @@ func (p *FileParser) Callback(line string, node string) {
 	}
 
 	p.nodeStats[node] = event.Stats
-}
-
-func (p *FileParser) StartPrintLoop() {
-	go func() {
-		ticker := time.NewTicker(time.Duration(p.flags.OutputInterval) * time.Second)
-		p.PrintHeader()
-		for {
-			_ = <-ticker.C
-			p.PrintHeader()
-			p.PrintStats()
-		}
-	}()
 }
 
 func (p *FileParser) PrintHeader() {

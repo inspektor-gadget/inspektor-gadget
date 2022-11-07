@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
@@ -66,7 +67,6 @@ func addCommonTopFlags(
 // TopParser defines the interface that every top-gadget parser has to
 // implement.
 type TopParser[Stats any] interface {
-	StartPrintLoop()
 	PrintHeader()
 	PrintStats()
 	Callback(line string, node string)
@@ -127,7 +127,7 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 	if singleShot {
 		g.parser.PrintHeader()
 	} else {
-		g.parser.StartPrintLoop()
+		g.StartPrintLoop()
 	}
 
 	if err := utils.RunTraceStreamCallback(config, g.parser.Callback); err != nil {
@@ -139,4 +139,16 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 	}
 
 	return nil
+}
+
+func (g *TopGadget[Stats]) StartPrintLoop() {
+	go func() {
+		ticker := time.NewTicker(time.Duration(g.commonTopFlags.OutputInterval) * time.Second)
+		g.parser.PrintHeader()
+		for {
+			<-ticker.C
+			g.parser.PrintHeader()
+			g.parser.PrintStats()
+		}
+	}()
 }
