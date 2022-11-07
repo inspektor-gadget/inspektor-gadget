@@ -370,6 +370,32 @@ test-container             11131      sh            SIGKILL     7          0
 test-container             11131      sh            SIGHUP      11131      0
 ```
 
+### Traceloop
+
+The `traceloop` gadget is used to trace system calls issued by containers:
+
+```bash
+$ docker run -it --rm --name test-container busybox /bin/sh
+/ # ls
+
+```
+
+```bash
+$ sudo local-gadget traceloop --containername test-container
+WARN[0000] Runtime enricher (containerd): couldn't get current containers
+WARN[0000] Runtime enricher (cri-o): couldn't get current containers
+Tracing syscalls... Hit Ctrl-C to end
+^C
+CPU PID        COMM             NAME                                       PARAMS                                                                                        RET
+...
+6   150829     sh               execve                                     filename=18759352 /bin/ls, argv=18759280, envp=18759296                                       0
+6   150829     ls               brk                                        brk=0                                                                                         36…
+6   150829     ls               brk                                        brk=36440320                                                                                  36…
+...
+6   150829     ls               write                                      fd=1, buf=5355360 bin   dev   etc   home  pro… 158
+6   150829     ls               exit_group                                 error_code=0                                                                                  ...
+```
+
 ## Using the interactive mode
 
 The interactive mode allows us to create multiple traces at the same time.
