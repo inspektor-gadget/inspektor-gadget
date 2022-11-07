@@ -29,17 +29,12 @@ const (
 )
 
 const (
-	MaxRowsDefault  = 20
-	IntervalDefault = 1
 	AllFilesDefault = false
 )
 
 var SortByDefault = []string{"-reads", "-writes", "-rbytes", "-wbytes"}
 
 const (
-	IntervalParam = "interval"
-	MaxRowsParam  = "max_rows"
-	SortByParam   = "sort_by"
 	AllFilesParam = "pid"
 )
 

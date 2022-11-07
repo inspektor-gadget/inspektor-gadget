@@ -27,18 +27,7 @@ const (
 	TIME
 )
 
-const (
-	MaxRowsDefault  = 20
-	IntervalDefault = 1
-)
-
 var SortByDefault = []string{"-io", "-bytes", "-us"}
-
-const (
-	IntervalParam = "interval"
-	MaxRowsParam  = "max_rows"
-	SortByParam   = "sort_by"
-)
 
 // Stats represents the operations performed on a single file
 type Stats struct {

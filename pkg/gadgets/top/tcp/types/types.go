@@ -21,19 +21,11 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-const (
-	MaxRowsDefault  = 20
-	IntervalDefault = 1
-)
-
 var SortByDefault = []string{"-sent", "-received"}
 
 const (
-	IntervalParam = "interval"
-	MaxRowsParam  = "max_rows"
-	SortByParam   = "sort_by"
-	PidParam      = "pid"
-	FamilyParam   = "family"
+	PidParam    = "pid"
+	FamilyParam = "family"
 )
 
 func ParseFilterByFamily(family string) (int32, error) {

@@ -58,9 +58,9 @@ The following parameters are supported:
  - %s: Maximum rows to print. (default %d)
  - %s: The field to sort the results by (%s). (default %s)
  - %s: Show all files. (default %v, i.e. show regular files only)`
-	return fmt.Sprintf(t, types.IntervalParam, types.IntervalDefault,
-		types.MaxRowsParam, types.MaxRowsDefault,
-		types.SortByParam, strings.Join(cols.GetColumnNames(), ","), strings.Join(types.SortByDefault, ","),
+	return fmt.Sprintf(t, top.IntervalParam, top.IntervalDefault,
+		top.MaxRowsParam, top.MaxRowsDefault,
+		top.SortByParam, strings.Join(cols.GetColumnNames(), ","), strings.Join(types.SortByDefault, ","),
 		types.AllFilesParam, types.AllFilesDefault)
 }
 
@@ -108,8 +108,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
-	maxRows := types.MaxRowsDefault
-	intervalSeconds := types.IntervalDefault
+	maxRows := top.MaxRowsDefault
+	intervalSeconds := top.IntervalDefault
 	sortBy := types.SortByDefault
 	allFiles := types.AllFilesDefault
 
@@ -117,29 +117,29 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		params := trace.Spec.Parameters
 		var err error
 
-		if val, ok := params[types.MaxRowsParam]; ok {
+		if val, ok := params[top.MaxRowsParam]; ok {
 			maxRows, err = strconv.Atoi(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, types.MaxRowsParam, err)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, top.MaxRowsParam, err)
 				return
 			}
 		}
 
-		if val, ok := params[types.IntervalParam]; ok {
+		if val, ok := params[top.IntervalParam]; ok {
 			intervalSeconds, err = strconv.Atoi(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, types.IntervalParam, err)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, top.IntervalParam, err)
 				return
 			}
 		}
 
-		if val, ok := params[types.SortByParam]; ok {
+		if val, ok := params[top.SortByParam]; ok {
 			sortByColumns := strings.Split(val, ",")
 			cols := columns.MustCreateColumns[types.Stats]()
 
 			_, invalidCols := cols.VerifyColumnNames(sortByColumns)
 			if len(invalidCols) > 0 {
-				trace.Status.OperationError = fmt.Sprintf("%q are not valid for %q", strings.Join(invalidCols, ","), types.SortByParam)
+				trace.Status.OperationError = fmt.Sprintf("%q are not valid for %q", strings.Join(invalidCols, ","), top.SortByParam)
 				return
 			}
 

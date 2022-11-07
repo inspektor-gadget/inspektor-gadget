@@ -33,18 +33,7 @@ const (
 	MAPCOUNT
 )
 
-const (
-	MaxRowsDefault  = 20
-	IntervalDefault = 1
-)
-
 var SortByDefault = []string{"-currentRuntime", "-currentRunCount"}
-
-const (
-	IntervalParam = "interval"
-	MaxRowsParam  = "max_rows"
-	SortByParam   = "sort_by"
-)
 
 type Stats struct {
 	eventtypes.CommonData

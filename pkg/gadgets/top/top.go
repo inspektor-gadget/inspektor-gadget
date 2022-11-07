@@ -19,6 +19,15 @@ import (
 	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 )
 
+const (
+	MaxRowsDefault  = 20
+	IntervalDefault = 1
+
+	IntervalParam = "interval"
+	MaxRowsParam  = "max_rows"
+	SortByParam   = "sort_by"
+)
+
 type Event[T any] struct {
 	Error string `json:"error,omitempty"`
 	Stats []*T   `json:"stats,omitempty"`
