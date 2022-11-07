@@ -27,6 +27,7 @@ import (
 	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	seccompauditTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
 	bioprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
 	cpuprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	processCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
@@ -305,7 +306,7 @@ spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
-  - name: test-pod-container
+  - name: test-pod
     image: busybox
     command: ["sh"]
     args: ["-c", "while true; do unshare -i; sleep 1; done"]
@@ -315,9 +316,24 @@ EOF
 		},
 		WaitUntilTestPodReadyCommand(ns),
 		{
-			Name:           "RunAuditSeccompGadget",
-			Cmd:            fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15", ns),
-			ExpectedRegexp: fmt.Sprintf(`%s\s+test-pod\s+test-pod-container\s+\d+\s+unshare\s+unshare\s+kill_thread`, ns),
+			Name: "RunAuditSeccompGadget",
+			Cmd:  fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15 -o json", ns),
+			ExpectedOutputFn: func(output string) error {
+				expectedEntry := &seccompauditTypes.Event{
+					Event:   BuildBaseEvent(ns),
+					Syscall: "unshare",
+					Code:    "kill_thread",
+					Comm:    "unshare",
+				}
+
+				normalize := func(e *seccompauditTypes.Event) {
+					e.Node = ""
+					e.Pid = 0
+					e.MountNsID = 0
+				}
+
+				return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			},
 		},
 		DeleteTestNamespaceCommand(ns),
 	}
