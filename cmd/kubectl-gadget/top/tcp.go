@@ -24,7 +24,6 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
@@ -156,20 +155,6 @@ func (p *TCPParser) Callback(line string, node string) {
 	}
 
 	p.nodeStats[node] = event.Stats
-}
-
-func (p *TCPParser) PrintHeader() {
-	if p.OutputConfig.OutputMode == commonutils.OutputModeJSON {
-		return
-	}
-
-	if term.IsTerminal(int(os.Stdout.Fd())) {
-		utils.ClearScreen()
-	} else {
-		fmt.Println("")
-	}
-
-	fmt.Println(p.BuildColumnsHeader())
 }
 
 func (p *TCPParser) PrintStats() {
