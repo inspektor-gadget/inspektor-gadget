@@ -27,6 +27,10 @@ var node string
 
 func init() {
 	// Register column templates
+	columns.MustRegisterTemplate("node", "width:30,ellipsis:middle")
+	columns.MustRegisterTemplate("namespace", "width:30")
+	columns.MustRegisterTemplate("pod", "width:30,ellipsis:middle")
+	columns.MustRegisterTemplate("container", "width:30")
 	columns.MustRegisterTemplate("comm", "maxWidth:16")
 	columns.MustRegisterTemplate("pid", "minWidth:7")
 	columns.MustRegisterTemplate("ns", "width:12,hide")
@@ -44,18 +48,18 @@ func Init(nodeName string) {
 
 type CommonData struct {
 	// Node where the event comes from
-	Node string `json:"node,omitempty" column:"node,width:30,ellipsis:middle" columnTags:"kubernetes"`
+	Node string `json:"node,omitempty" column:"node,template:node" columnTags:"kubernetes"`
 
 	// Pod namespace where the event comes from, or empty for host-level
 	// event
-	Namespace string `json:"namespace,omitempty" column:"namespace,width:30" columnTags:"kubernetes"`
+	Namespace string `json:"namespace,omitempty" column:"namespace,template:namespace" columnTags:"kubernetes"`
 
 	// Pod where the event comes from, or empty for host-level event
-	Pod string `json:"pod,omitempty" column:"pod,width:30,ellipsis:middle" columnTags:"kubernetes"`
+	Pod string `json:"pod,omitempty" column:"pod,template:pod" columnTags:"kubernetes"`
 
 	// Container where the event comes from, or empty for host-level or
 	// pod-level event
-	Container string `json:"container,omitempty" column:"container,width:30" columnTags:"kubernetes,runtime"`
+	Container string `json:"container,omitempty" column:"container,template:container" columnTags:"kubernetes,runtime"`
 }
 
 const (
