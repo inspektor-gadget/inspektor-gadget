@@ -1476,10 +1476,7 @@ func TestTcptop(t *testing.T) {
 	RunCommands(commands, t)
 }
 
-// This test is flaky (https://github.com/kinvolk/traceloop/issues/42),
-// let's disable it until we rework this gadget
-// https://github.com/inspektor-gadget/inspektor-gadget/issues/371
-func _TestTraceloop(t *testing.T) {
+func TestTraceloop(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-traceloop")
 
 	t.Parallel()
@@ -1504,24 +1501,23 @@ func _TestTraceloop(t *testing.T) {
 		},
 		{
 			Name:           "CheckTraceloopList",
-			Cmd:            fmt.Sprintf("sleep 20 ; $KUBECTL_GADGET traceloop list -n %s --no-headers | grep multiplication | awk '{print $1\" \"$6}'", ns),
-			ExpectedString: "multiplication started\n",
+			Cmd:            "sleep 20; $KUBECTL_GADGET traceloop list | grep multiplication",
+			ExpectedRegexp: "multiplication",
 		},
 		{
 			Name:           "CheckTraceloopShow",
-			Cmd:            fmt.Sprintf(`TRACE_ID=$($KUBECTL_GADGET traceloop list -n %s --no-headers | `, ns) + `grep multiplication | awk '{printf "%s", $4}') ; $KUBECTL_GADGET traceloop show $TRACE_ID | grep -C 5 write`,
-			ExpectedRegexp: "\\[bc\\] write\\(1, \"42\\\\n\", 3\\)",
+			Cmd:            "CONTAINER_ID=$($KUBECTL_GADGET traceloop list | grep multiplication | awk '{ print $5 }'); $KUBECTL_GADGET traceloop show $CONTAINER_ID | grep -C 5 write",
+			ExpectedRegexp: `bc\s+write\s+fd=\d+,\s+buf="42`,
 		},
 		{
 			Name:    "PrintTraceloopList",
-			Cmd:     "$KUBECTL_GADGET traceloop list -A",
+			Cmd:     "$KUBECTL_GADGET traceloop list",
 			Cleanup: true,
 		},
 		{
-			Name:           "StopTraceloopGadget",
-			Cmd:            "$KUBECTL_GADGET traceloop stop",
-			ExpectedString: "",
-			Cleanup:        true,
+			Name:    "StopTraceloopGadget",
+			Cmd:     "$KUBECTL_GADGET traceloop stop",
+			Cleanup: true,
 		},
 		{
 			Name:    "WaitForTraceloopStopped",
