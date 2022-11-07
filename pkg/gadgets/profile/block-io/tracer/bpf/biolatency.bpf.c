@@ -47,6 +47,9 @@ struct {
 static __always_inline
 int trace_rq_start(struct request *rq, int issue)
 {
+	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
+		return 0;
+
 	if (issue && targ_queued && BPF_CORE_READ(rq, q, elevator))
 		return 0;
 
@@ -71,12 +74,13 @@ int trace_rq_start(struct request *rq, int issue)
 	return 0;
 }
 
-SEC("raw_tp/block_rq_insert")
-int ig_profio_ins(u64 *ctx)
+static int handle_block_rq_insert(__u64 *ctx)
 {
-	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
-		return 0;
-
+	/**
+	 * commit a54895fa (v5.11-rc1) changed tracepoint argument list
+	 * from TP_PROTO(struct request_queue *q, struct request *rq)
+	 * to TP_PROTO(struct request *rq)
+	 */
 #ifdef KERNEL_BEFORE_5_11
 	return trace_rq_start((void *)ctx[1], false);
 #else /* !KERNEL_BEFORE_5_11 */
@@ -84,12 +88,13 @@ int ig_profio_ins(u64 *ctx)
 #endif /* !KERNEL_BEFORE_5_11 */
 }
 
-SEC("raw_tp/block_rq_issue")
-int ig_profio_iss(u64 *ctx)
+static int handle_block_rq_issue(__u64 *ctx)
 {
-	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
-		return 0;
-
+	/**
+	 * commit a54895fa (v5.11-rc1) changed tracepoint argument list
+	 * from TP_PROTO(struct request_queue *q, struct request *rq)
+	 * to TP_PROTO(struct request *rq)
+	 */
 #ifdef KERNEL_BEFORE_5_11
 	return trace_rq_start((void *)ctx[1], true);
 #else /* !KERNEL_BEFORE_5_11 */
@@ -97,9 +102,7 @@ int ig_profio_iss(u64 *ctx)
 #endif /* !KERNEL_BEFORE_5_11 */
 }
 
-SEC("raw_tp/block_rq_complete")
-int BPF_PROG(ig_profio_done, struct request *rq, int error,
-	unsigned int nr_bytes)
+static int handle_block_rq_complete(struct request *rq, int error, unsigned int nr_bytes)
 {
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
 		return 0;
@@ -151,6 +154,44 @@ int BPF_PROG(ig_profio_done, struct request *rq, int error,
 cleanup:
 	bpf_map_delete_elem(&start, &rq);
 	return 0;
+}
+
+SEC("tp_btf/block_rq_insert")
+int ig_profio_ins(u64 *ctx)
+{
+	return handle_block_rq_insert(ctx);
+}
+
+SEC("tp_btf/block_rq_issue")
+int ig_profio_iss(u64 *ctx)
+{
+	return handle_block_rq_issue(ctx);
+}
+
+SEC("tp_btf/block_rq_complete")
+int BPF_PROG(ig_profio_done, struct request *rq, int error,
+	     unsigned int nr_bytes)
+{
+	return handle_block_rq_complete(rq, error, nr_bytes);
+}
+
+SEC("raw_tp/block_rq_insert")
+int ig_profio_ins_raw(u64 *ctx)
+{
+	return handle_block_rq_insert(ctx);
+}
+
+SEC("raw_tp/block_rq_issue")
+int ig_profio_iss_raw(u64 *ctx)
+{
+	return handle_block_rq_issue(ctx);
+}
+
+SEC("raw_tp/block_rq_complete")
+int BPF_PROG(ig_profio_done_raw, struct request *rq, int error,
+	     unsigned int nr_bytes)
+{
+	return handle_block_rq_complete(rq, error, nr_bytes);
 }
 
 char LICENSE[] SEC("license") = "GPL";

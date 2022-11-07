@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"unsafe"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -132,23 +134,42 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	blockRqCompleteLink, err := link.AttachRawTracepoint(link.RawTracepointOptions{Name: "block_rq_complete", Program: t.objs.IgProfioDone})
+	blockRqCompleteLink, err := link.AttachTracing(link.TracingOptions{Program: t.objs.IgProfioDone})
 	if err != nil {
-		return fmt.Errorf("error attaching tracing: %w", err)
-	}
-	t.blockRqCompleteLink = blockRqCompleteLink
+		log.Infof("Gadget biolatency: using raw tracepoints rather than BTF ones: %v", err)
 
-	blockRqInsertLink, err := link.AttachRawTracepoint(link.RawTracepointOptions{Name: "block_rq_insert", Program: t.objs.IgProfioIns})
-	if err != nil {
-		return fmt.Errorf("error attaching tracing: %w", err)
-	}
-	t.blockRqInsertLink = blockRqInsertLink
+		blockRqCompleteLink, err := link.AttachRawTracepoint(link.RawTracepointOptions{Name: "block_rq_complete", Program: t.objs.IgProfioDoneRaw})
+		if err != nil {
+			return fmt.Errorf("error attaching tracing: %w", err)
+		}
+		t.blockRqCompleteLink = blockRqCompleteLink
 
-	blockRqIssueLink, err := link.AttachRawTracepoint(link.RawTracepointOptions{Name: "block_rq_issue", Program: t.objs.IgProfioIss})
-	if err != nil {
-		return fmt.Errorf("error attaching tracing: %w", err)
-	}
-	t.blockRqIssueLink = blockRqIssueLink
+		blockRqInsertLink, err := link.AttachRawTracepoint(link.RawTracepointOptions{Name: "block_rq_insert", Program: t.objs.IgProfioInsRaw})
+		if err != nil {
+			return fmt.Errorf("error attaching tracing: %w", err)
+		}
+		t.blockRqInsertLink = blockRqInsertLink
 
+		blockRqIssueLink, err := link.AttachRawTracepoint(link.RawTracepointOptions{Name: "block_rq_issue", Program: t.objs.IgProfioIssRaw})
+		if err != nil {
+			return fmt.Errorf("error attaching tracing: %w", err)
+		}
+		t.blockRqIssueLink = blockRqIssueLink
+		return fmt.Errorf("error attaching tracing: %w", err)
+	} else {
+		t.blockRqCompleteLink = blockRqCompleteLink
+
+		blockRqInsertLink, err := link.AttachTracing(link.TracingOptions{Program: t.objs.IgProfioIns})
+		if err != nil {
+			return fmt.Errorf("error attaching tracing: %w", err)
+		}
+		t.blockRqInsertLink = blockRqInsertLink
+
+		blockRqIssueLink, err := link.AttachTracing(link.TracingOptions{Program: t.objs.IgProfioIss})
+		if err != nil {
+			return fmt.Errorf("error attaching tracing: %w", err)
+		}
+		t.blockRqIssueLink = blockRqIssueLink
+	}
 	return nil
 }

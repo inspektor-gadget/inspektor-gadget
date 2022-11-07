@@ -61,9 +61,12 @@ type biolatencyBeforeSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type biolatencyBeforeProgramSpecs struct {
-	IgProfioDone *ebpf.ProgramSpec `ebpf:"ig_profio_done"`
-	IgProfioIns  *ebpf.ProgramSpec `ebpf:"ig_profio_ins"`
-	IgProfioIss  *ebpf.ProgramSpec `ebpf:"ig_profio_iss"`
+	IgProfioDone    *ebpf.ProgramSpec `ebpf:"ig_profio_done"`
+	IgProfioDoneRaw *ebpf.ProgramSpec `ebpf:"ig_profio_done_raw"`
+	IgProfioIns     *ebpf.ProgramSpec `ebpf:"ig_profio_ins"`
+	IgProfioInsRaw  *ebpf.ProgramSpec `ebpf:"ig_profio_ins_raw"`
+	IgProfioIss     *ebpf.ProgramSpec `ebpf:"ig_profio_iss"`
+	IgProfioIssRaw  *ebpf.ProgramSpec `ebpf:"ig_profio_iss_raw"`
 }
 
 // biolatencyBeforeMapSpecs contains maps before they are loaded into the kernel.
@@ -111,16 +114,22 @@ func (m *biolatencyBeforeMaps) Close() error {
 //
 // It can be passed to loadBiolatencyBeforeObjects or ebpf.CollectionSpec.LoadAndAssign.
 type biolatencyBeforePrograms struct {
-	IgProfioDone *ebpf.Program `ebpf:"ig_profio_done"`
-	IgProfioIns  *ebpf.Program `ebpf:"ig_profio_ins"`
-	IgProfioIss  *ebpf.Program `ebpf:"ig_profio_iss"`
+	IgProfioDone    *ebpf.Program `ebpf:"ig_profio_done"`
+	IgProfioDoneRaw *ebpf.Program `ebpf:"ig_profio_done_raw"`
+	IgProfioIns     *ebpf.Program `ebpf:"ig_profio_ins"`
+	IgProfioInsRaw  *ebpf.Program `ebpf:"ig_profio_ins_raw"`
+	IgProfioIss     *ebpf.Program `ebpf:"ig_profio_iss"`
+	IgProfioIssRaw  *ebpf.Program `ebpf:"ig_profio_iss_raw"`
 }
 
 func (p *biolatencyBeforePrograms) Close() error {
 	return _BiolatencyBeforeClose(
 		p.IgProfioDone,
+		p.IgProfioDoneRaw,
 		p.IgProfioIns,
+		p.IgProfioInsRaw,
 		p.IgProfioIss,
+		p.IgProfioIssRaw,
 	)
 }
 
