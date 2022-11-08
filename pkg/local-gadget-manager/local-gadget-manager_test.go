@@ -593,92 +593,90 @@ func TestNetworkGraph(t *testing.T) {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
 
-	runTestContainer(t, containerName, "docker.io/library/alpine", "wget https://1.1.1.1", "")
+	runTestContainer(t, containerName, "docker.io/library/nginx", "nginx && curl 127.0.0.1", "")
 
 	stop := make(chan struct{})
+	defer close(stop)
 
 	ch, err := localGadgetManager.StreamTraceResourceOutput("my-tracer", stop)
 	if err != nil {
 		t.Fatalf("Failed to get stream: %s", err)
 	}
 
-	var event networktypes.Event
-	var expectedEvent networktypes.Event
-	var result string
-
-	// check that attached message is sent
-	result = <-ch
-	event = networktypes.Event{}
-	if err := json.Unmarshal([]byte(result), &event); err != nil {
-		t.Fatalf("failed to unmarshal json: %s", err)
-	}
-
-	expectedEvent = networktypes.Event{
-		Event: eventtypes.Event{
-			Type: eventtypes.DEBUG,
-			CommonData: eventtypes.CommonData{
-				Node:      "local",
-				Namespace: "default",
-				Pod:       "test-local-gadget-network-graph001",
+	expectedEvents := []networktypes.Event{
+		{
+			Event: eventtypes.Event{
+				Type: eventtypes.DEBUG,
+				CommonData: eventtypes.CommonData{
+					Node:      "local",
+					Namespace: "default",
+					Pod:       "test-local-gadget-network-graph001",
+				},
+				Message: "tracer attached",
 			},
-			Message: "tracer attached",
+		},
+		{
+			Event: eventtypes.Event{
+				Type: eventtypes.NORMAL,
+				CommonData: eventtypes.CommonData{
+					Node:      "local",
+					Namespace: "default",
+					Pod:       "test-local-gadget-network-graph001",
+				},
+			},
+			PktType: "OUTGOING",
+			Proto:   "tcp",
+			// There's no place like
+			Addr: "127.0.0.1",
+			Port: 80,
+		},
+		{
+			Event: eventtypes.Event{
+				Type: eventtypes.NORMAL,
+				CommonData: eventtypes.CommonData{
+					Node:      "local",
+					Namespace: "default",
+					Pod:       "test-local-gadget-network-graph001",
+				},
+			},
+			PktType: "HOST",
+			Proto:   "tcp",
+			Addr:    "127.0.0.1",
+			Port:    80,
+		},
+		{
+			Event: eventtypes.Event{
+				Type: eventtypes.DEBUG,
+				CommonData: eventtypes.CommonData{
+					Node:      "local",
+					Namespace: "default",
+					Pod:       "test-local-gadget-network-graph001",
+				},
+				Message: "tracer detached",
+			},
 		},
 	}
 
-	if !reflect.DeepEqual(event, expectedEvent) {
-		t.Fatalf("Received: %+v, Expected: %+v", event, expectedEvent)
-	}
+outerLoop:
+	for range expectedEvents {
+		result := <-ch
 
-	// check network-graph event
-	result = <-ch
-	event = networktypes.Event{}
-	if err := json.Unmarshal([]byte(result), &event); err != nil {
-		t.Fatalf("failed to unmarshal json: %s", err)
-	}
+		event := networktypes.Event{}
+		if err := json.Unmarshal([]byte(result), &event); err != nil {
+			t.Fatalf("failed to unmarshal json: %s", err)
+		}
 
-	expectedEvent = networktypes.Event{
-		Event: eventtypes.Event{
-			Type: eventtypes.NORMAL,
-			CommonData: eventtypes.CommonData{
-				Node:      "local",
-				Namespace: "default",
-				Pod:       "test-local-gadget-network-graph001",
-			},
-		},
-		PktType: "OUTGOING",
-		Proto:   "tcp",
-		Addr:    "1.1.1.1",
-		Port:    443,
-	}
+		// Network graph does not guarantee the order where the events are received.
+		// So, we check if the received event is part of the expected events.
+		// If this is not the case we would hit the below Fatalf.
+		for _, expectedEvent := range expectedEvents {
+			if reflect.DeepEqual(event, expectedEvent) {
+				continue outerLoop
+			}
+		}
 
-	if !reflect.DeepEqual(event, expectedEvent) {
-		t.Fatalf("Received: %+v, Expected: %+v", event, expectedEvent)
+		t.Fatalf("Received: %+v event is not part of expected: %+v", event, expectedEvents)
 	}
-
-	// check that detached message is sent
-	result = <-ch
-	event = networktypes.Event{}
-	if err := json.Unmarshal([]byte(result), &event); err != nil {
-		t.Fatalf("failed to unmarshal json: %s", err)
-	}
-
-	expectedEvent = networktypes.Event{
-		Event: eventtypes.Event{
-			Type: eventtypes.DEBUG,
-			CommonData: eventtypes.CommonData{
-				Node:      "local",
-				Namespace: "default",
-				Pod:       "test-local-gadget-network-graph001",
-			},
-			Message: "tracer detached",
-		},
-	}
-
-	if !reflect.DeepEqual(event, expectedEvent) {
-		t.Fatalf("Received: %+v, Expected: %+v", event, expectedEvent)
-	}
-
-	close(stop)
 
 	err = localGadgetManager.DeleteTraceResource("my-tracer")
 	if err != nil {
