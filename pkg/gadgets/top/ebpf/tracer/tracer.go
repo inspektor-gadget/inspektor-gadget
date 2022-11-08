@@ -24,13 +24,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cilium/ebpf"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/piditer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
-
-	"github.com/cilium/ebpf"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Config struct {
@@ -55,15 +56,18 @@ type Tracer struct {
 	startStats map[string]programStats
 	prevStats  map[string]programStats
 	colMap     columns.ColumnMap[types.Stats]
+
+	node string
 }
 
-func NewTracer(config *Config, eventCallback func(*top.Event[types.Stats]),
+func NewTracer(config *Config, eventCallback func(*top.Event[types.Stats]), node string,
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
 		eventCallback: eventCallback,
 		done:          make(chan bool),
 		prevStats:     make(map[string]programStats),
+		node:          node,
 	}
 
 	if err := t.start(); err != nil {
@@ -281,6 +285,9 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		}
 
 		stats = append(stats, &types.Stats{
+			CommonData: eventtypes.CommonData{
+				Node: t.node,
+			},
 			ProgramID:          uint32(curID),
 			Name:               pi.Name,
 			Type:               pi.Type.String(),

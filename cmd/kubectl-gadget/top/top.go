@@ -15,10 +15,12 @@
 package top
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -72,17 +74,19 @@ type TopParser[Stats any] interface {
 	// BuildColumnsHeader returns a header to be used when the user requests to
 	// present the output in columns.
 	BuildColumnsHeader() string
-
-	PrintStats()
-	Callback(line string, node string)
+	TransformStats(*Stats) string
 }
 
 // TopGadget represents a gadget belonging to the top category.
 type TopGadget[Stats any] struct {
+	sync.Mutex
+
 	name           string
 	commonTopFlags *CommonTopFlags
 	params         map[string]string
 	parser         TopParser[Stats]
+	nodeStats      map[string][]*Stats
+	colMap         columns.ColumnMap[Stats]
 }
 
 func (g *TopGadget[Stats]) Run(args []string) error {
@@ -99,8 +103,7 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 	}
 
 	sortByColumns := strings.Split(g.commonTopFlags.SortBy, ",")
-	cols := columns.MustCreateColumns[Stats]()
-	_, invalidCols := cols.VerifyColumnNames(sortByColumns)
+	_, invalidCols := g.colMap.VerifyColumnNames(sortByColumns)
 
 	if len(invalidCols) > 0 {
 		return commonutils.WrapInErrInvalidArg("--sort", fmt.Errorf("invalid columns to sort by: %q", strings.Join(invalidCols, ",")))
@@ -135,12 +138,12 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 		g.StartPrintLoop()
 	}
 
-	if err := utils.RunTraceStreamCallback(config, g.parser.Callback); err != nil {
+	if err := utils.RunTraceStreamCallback(config, g.Callback); err != nil {
 		return commonutils.WrapInErrRunGadget(err)
 	}
 
 	if singleShot {
-		g.parser.PrintStats()
+		g.PrintStats()
 	}
 
 	return nil
@@ -153,7 +156,7 @@ func (g *TopGadget[Stats]) StartPrintLoop() {
 		for {
 			<-ticker.C
 			g.PrintHeader()
-			g.parser.PrintStats()
+			g.PrintStats()
 		}
 	}()
 }
@@ -170,4 +173,44 @@ func (g *TopGadget[Stats]) PrintHeader() {
 	}
 
 	fmt.Println(g.parser.BuildColumnsHeader())
+}
+
+func (g *TopGadget[Stats]) Callback(line string, node string) {
+	var event top.Event[Stats]
+
+	if err := json.Unmarshal([]byte(line), &event); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
+		return
+	}
+
+	if event.Error != "" {
+		fmt.Fprintf(os.Stderr, "Error: failed on node %q: %s", node, event.Error)
+		return
+	}
+
+	g.Lock()
+	defer g.Unlock()
+	g.nodeStats[node] = event.Stats
+}
+
+func (g *TopGadget[Stats]) PrintStats() {
+	// Sort and print stats
+	g.Lock()
+
+	stats := []*Stats{}
+	for _, stat := range g.nodeStats {
+		stats = append(stats, stat...)
+	}
+	g.nodeStats = make(map[string][]*Stats)
+
+	g.Unlock()
+
+	top.SortStats(stats, g.commonTopFlags.ParsedSortBy, &g.colMap)
+
+	for idx, stat := range stats {
+		if idx == g.commonTopFlags.MaxRows {
+			break
+		}
+		fmt.Println(g.parser.TransformStats(stat))
+	}
 }

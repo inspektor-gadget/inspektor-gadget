@@ -15,11 +15,8 @@
 package top
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
-	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -32,11 +29,8 @@ import (
 
 type BlockIOParser struct {
 	commonutils.BaseParser[types.Stats]
-	sync.Mutex
 
-	flags     *CommonTopFlags
-	nodeStats map[string][]*types.Stats
-	colMap    columns.ColumnMap[types.Stats]
+	flags *CommonTopFlags
 }
 
 func newBlockIOCmd() *cobra.Command {
@@ -84,24 +78,17 @@ func newBlockIOCmd() *cobra.Command {
 		Use:   fmt.Sprintf("block-io [interval=%d]", top.IntervalDefault),
 		Short: "Periodically report block device I/O activity",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-
 			parser := &BlockIOParser{
 				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonTopFlags.OutputConfig),
 				flags:      commonTopFlags,
-				nodeStats:  make(map[string][]*types.Stats),
 			}
-
-			statCols, err := columns.NewColumns[types.Stats]()
-			if err != nil {
-				return err
-			}
-			parser.colMap = statCols.GetColumnMap()
 
 			gadget := &TopGadget[types.Stats]{
 				name:           "biotop",
 				commonTopFlags: commonTopFlags,
 				parser:         parser,
+				nodeStats:      make(map[string][]*types.Stats),
+				colMap:         cols.GetColumnMap(),
 			}
 
 			return gadget.Run(args)
@@ -112,47 +99,6 @@ func newBlockIOCmd() *cobra.Command {
 	addCommonTopFlags(cmd, commonTopFlags, &commonTopFlags.CommonFlags, cols.GetColumnNames(), types.SortByDefault)
 
 	return cmd
-}
-
-func (p *BlockIOParser) Callback(line string, node string) {
-	p.Lock()
-	defer p.Unlock()
-
-	var event top.Event[types.Stats]
-
-	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
-		return
-	}
-
-	if event.Error != "" {
-		fmt.Fprintf(os.Stderr, "Error: failed on node %q: %s", node, event.Error)
-		return
-	}
-
-	p.nodeStats[node] = event.Stats
-}
-
-func (p *BlockIOParser) PrintStats() {
-	// Sort and print stats
-	p.Lock()
-
-	stats := []*types.Stats{}
-	for _, stat := range p.nodeStats {
-		stats = append(stats, stat...)
-	}
-	p.nodeStats = make(map[string][]*types.Stats)
-
-	p.Unlock()
-
-	top.SortStats(stats, p.flags.ParsedSortBy, &p.colMap)
-
-	for idx, stat := range stats {
-		if idx == p.flags.MaxRows {
-			break
-		}
-		fmt.Println(p.TransformStats(stat))
-	}
 }
 
 func (p *BlockIOParser) TransformStats(stats *types.Stats) string {
