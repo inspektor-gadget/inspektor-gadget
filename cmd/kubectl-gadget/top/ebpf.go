@@ -17,9 +17,7 @@ package top
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
-	"sync"
 	"time"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
@@ -34,11 +32,8 @@ import (
 
 type EbpfParser struct {
 	commonutils.BaseParser[types.Stats]
-	sync.Mutex
 
-	flags     *CommonTopFlags
-	nodeStats map[string][]*types.Stats
-	colMap    columns.ColumnMap[types.Stats]
+	flags *CommonTopFlags
 }
 
 func newEbpfCmd() *cobra.Command {
@@ -86,24 +81,17 @@ func newEbpfCmd() *cobra.Command {
 		Use:   fmt.Sprintf("ebpf [interval=%d]", top.IntervalDefault),
 		Short: "Periodically report ebpf runtime stats",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-
 			parser := &EbpfParser{
 				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonTopFlags.commonFlags.OutputConfig),
 				flags:      commonTopFlags,
-				nodeStats:  make(map[string][]*types.Stats),
 			}
-
-			statCols, err := columns.NewColumns[types.Stats]()
-			if err != nil {
-				return err
-			}
-			parser.colMap = statCols.GetColumnMap()
 
 			gadget := &TopGadget[types.Stats]{
 				name:           "ebpftop",
 				commonTopFlags: commonTopFlags,
 				parser:         parser,
+				nodeStats:      make(map[string][]*types.Stats),
+				colMap:         cols.GetColumnMap(),
 			}
 
 			return gadget.Run(args)
@@ -117,48 +105,29 @@ func newEbpfCmd() *cobra.Command {
 	return cmd
 }
 
-func (p *EbpfParser) Callback(line string, node string) {
-	p.Lock()
-	defer p.Unlock()
-
+func (p *EbpfParser) UnmarshalStats(line, node string) ([]*types.Stats, error) {
 	var event types.Event
 
 	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
-		return
+		return nil, commonutils.WrapInErrUnmarshalOutput(err, line)
 	}
 
 	if event.Error != "" {
-		fmt.Fprintf(os.Stderr, "Error: failed on node %q: %s", node, event.Error)
-		return
+		return nil, fmt.Errorf("error: failed on node %q: %s", node, event.Error)
 	}
 
-	p.nodeStats[node] = event.Stats
+	return event.Stats, nil
 }
 
-func (p *EbpfParser) PrintStats() {
-	// Sort and print stats
-	p.Lock()
-
+func (p *EbpfParser) CollectStats(nodeStats map[string][]*types.Stats) []*types.Stats {
 	stats := []*types.Stats{}
-	for node, stat := range p.nodeStats {
+	for node, stat := range nodeStats {
 		for i := range stat {
 			stat[i].Node = node
 		}
 		stats = append(stats, stat...)
 	}
-	p.nodeStats = make(map[string][]*types.Stats)
-
-	p.Unlock()
-
-	top.SortStats(stats, p.flags.ParsedSortBy, &p.colMap)
-
-	for idx, stat := range stats {
-		if idx == p.flags.MaxRows {
-			break
-		}
-		fmt.Println(p.TransformStats(stat))
-	}
+	return stats
 }
 
 func (p *EbpfParser) TransformStats(stats *types.Stats) string {

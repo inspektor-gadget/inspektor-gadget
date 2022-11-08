@@ -19,6 +19,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -72,17 +73,22 @@ type TopParser[Stats any] interface {
 	// BuildColumnsHeader returns a header to be used when the user requests to
 	// present the output in columns.
 	BuildColumnsHeader() string
+	TransformStats(*Stats) string
 
-	PrintStats()
-	Callback(line string, node string)
+	UnmarshalStats(line, node string) ([]*Stats, error)
+	CollectStats(nodeStats map[string][]*Stats) []*Stats
 }
 
 // TopGadget represents a gadget belonging to the top category.
 type TopGadget[Stats any] struct {
+	sync.Mutex
+
 	name           string
 	commonTopFlags *CommonTopFlags
 	params         map[string]string
 	parser         TopParser[Stats]
+	nodeStats      map[string][]*Stats
+	colMap         columns.ColumnMap[Stats]
 }
 
 func (g *TopGadget[Stats]) Run(args []string) error {
@@ -135,12 +141,12 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 		g.StartPrintLoop()
 	}
 
-	if err := utils.RunTraceStreamCallback(config, g.parser.Callback); err != nil {
+	if err := utils.RunTraceStreamCallback(config, g.Callback); err != nil {
 		return commonutils.WrapInErrRunGadget(err)
 	}
 
 	if singleShot {
-		g.parser.PrintStats()
+		g.PrintStats()
 	}
 
 	return nil
@@ -153,7 +159,7 @@ func (g *TopGadget[Stats]) StartPrintLoop() {
 		for {
 			<-ticker.C
 			g.PrintHeader()
-			g.parser.PrintStats()
+			g.PrintStats()
 		}
 	}()
 }
@@ -170,4 +176,36 @@ func (g *TopGadget[Stats]) PrintHeader() {
 	}
 
 	fmt.Println(g.parser.BuildColumnsHeader())
+}
+
+func (g *TopGadget[Stats]) Callback(line string, node string) {
+	g.Lock()
+	defer g.Unlock()
+
+	stats, err := g.parser.UnmarshalStats(line, node)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s", err.Error())
+		return
+	}
+
+	g.nodeStats[node] = stats
+}
+
+func (g *TopGadget[Stats]) PrintStats() {
+	// Sort and print stats
+	g.Lock()
+
+	stats := g.parser.CollectStats(g.nodeStats)
+	g.nodeStats = make(map[string][]*Stats)
+
+	g.Unlock()
+
+	top.SortStats(stats, g.commonTopFlags.ParsedSortBy, &g.colMap)
+
+	for idx, stat := range stats {
+		if idx == g.commonTopFlags.MaxRows {
+			break
+		}
+		fmt.Println(g.parser.TransformStats(stat))
+	}
 }

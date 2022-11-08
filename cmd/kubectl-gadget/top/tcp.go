@@ -17,10 +17,8 @@ package top
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -34,11 +32,8 @@ import (
 
 type TCPParser struct {
 	commonutils.BaseParser[types.Stats]
-	sync.Mutex
 
-	flags     *CommonTopFlags
-	nodeStats map[string][]*types.Stats
-	colMap    columns.ColumnMap[types.Stats]
+	flags *CommonTopFlags
 }
 
 func newTCPCmd() *cobra.Command {
@@ -92,10 +87,7 @@ func newTCPCmd() *cobra.Command {
 			parser := &TCPParser{
 				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonTopFlags.commonFlags.OutputConfig),
 				flags:      commonTopFlags,
-				nodeStats:  make(map[string][]*types.Stats),
 			}
-
-			parser.colMap = cols.GetColumnMap()
 
 			parameters := make(map[string]string)
 			if Family != 0 {
@@ -110,6 +102,8 @@ func newTCPCmd() *cobra.Command {
 				commonTopFlags: commonTopFlags,
 				params:         parameters,
 				parser:         parser,
+				nodeStats:      make(map[string][]*types.Stats),
+				colMap:         cols.GetColumnMap(),
 			}
 
 			return gadget.Run(args)
@@ -138,45 +132,26 @@ func newTCPCmd() *cobra.Command {
 	return cmd
 }
 
-func (p *TCPParser) Callback(line string, node string) {
-	p.Lock()
-	defer p.Unlock()
-
+func (p *TCPParser) UnmarshalStats(line, node string) ([]*types.Stats, error) {
 	var event types.Event
 
 	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
-		return
+		return nil, commonutils.WrapInErrUnmarshalOutput(err, line)
 	}
 
 	if event.Error != "" {
-		fmt.Fprintf(os.Stderr, "Error: failed on node %q: %s", node, event.Error)
-		return
+		return nil, fmt.Errorf("error: failed on node %q: %s", node, event.Error)
 	}
 
-	p.nodeStats[node] = event.Stats
+	return event.Stats, nil
 }
 
-func (p *TCPParser) PrintStats() {
-	// Sort and print stats
-	p.Lock()
-
+func (p *TCPParser) CollectStats(nodeStats map[string][]*types.Stats) []*types.Stats {
 	stats := []*types.Stats{}
-	for _, stat := range p.nodeStats {
+	for _, stat := range nodeStats {
 		stats = append(stats, stat...)
 	}
-	p.nodeStats = make(map[string][]*types.Stats)
-
-	p.Unlock()
-
-	top.SortStats(stats, p.flags.ParsedSortBy, &p.colMap)
-
-	for idx, stat := range stats {
-		if idx == p.flags.MaxRows {
-			break
-		}
-		fmt.Println(p.TransformStats(stat))
-	}
+	return stats
 }
 
 func (p *TCPParser) TransformStats(stats *types.Stats) string {
