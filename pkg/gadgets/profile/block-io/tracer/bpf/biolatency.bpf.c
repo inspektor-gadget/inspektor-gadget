@@ -47,7 +47,7 @@ struct {
 static __always_inline
 int trace_rq_start(struct request *rq, int issue)
 {
-	if (issue && targ_queued && BPF_CORE_READ(rq->q, elevator))
+	if (issue && targ_queued && BPF_CORE_READ(rq, q, elevator))
 		return 0;
 
 	u64 ts = bpf_ktime_get_ns();
@@ -71,7 +71,7 @@ int trace_rq_start(struct request *rq, int issue)
 	return 0;
 }
 
-SEC("tp_btf/block_rq_insert")
+SEC("raw_tp/block_rq_insert")
 int ig_profio_ins(u64 *ctx)
 {
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
@@ -84,7 +84,7 @@ int ig_profio_ins(u64 *ctx)
 #endif /* !KERNEL_BEFORE_5_11 */
 }
 
-SEC("tp_btf/block_rq_issue")
+SEC("raw_tp/block_rq_issue")
 int ig_profio_iss(u64 *ctx)
 {
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
@@ -97,7 +97,7 @@ int ig_profio_iss(u64 *ctx)
 #endif /* !KERNEL_BEFORE_5_11 */
 }
 
-SEC("tp_btf/block_rq_complete")
+SEC("raw_tp/block_rq_complete")
 int BPF_PROG(ig_profio_done, struct request *rq, int error,
 	unsigned int nr_bytes)
 {
@@ -129,7 +129,7 @@ int BPF_PROG(ig_profio_done, struct request *rq, int error,
 					BPF_CORE_READ(disk, first_minor)) : 0;
 	}
 	if (targ_per_flag)
-		hkey.cmd_flags = rq->cmd_flags;
+		hkey.cmd_flags = BPF_CORE_READ(rq, cmd_flags);
 
 	histp = bpf_map_lookup_elem(&hists, &hkey);
 	if (!histp) {
