@@ -160,7 +160,7 @@ func testMain(m *testing.M) int {
 			patchWebhookConfig = true
 		}
 		initCommands = append(initCommands, DeploySPO(limitReplicas, patchWebhookConfig, bestEffortResourceMgmt))
-		cleanupCommands = append(cleanupCommands, CleanupSPO)
+		cleanupCommands = append(cleanupCommands, CleanupSPO...)
 	}
 
 	notifyInitDone := make(chan bool, 1)
