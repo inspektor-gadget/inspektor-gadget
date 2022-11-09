@@ -16,6 +16,7 @@ package gadgets
 
 import (
 	"encoding/binary"
+	"net/netip"
 	"unsafe"
 
 	"github.com/cilium/ebpf/link"
@@ -64,4 +65,15 @@ func Htons(hs uint16) uint16 {
 	var ns [2]byte
 	binary.BigEndian.PutUint16(ns[:], hs)
 	return *(*uint16)(unsafe.Pointer(&ns[0]))
+}
+
+func IPStringFromBytes(ipBytes [16]byte, ipType int) string {
+	switch ipType {
+	case 4:
+		return netip.AddrFrom4(*(*[4]byte)(ipBytes[0:4])).String()
+	case 6:
+		return netip.AddrFrom16(ipBytes).String()
+	default:
+		return ""
+	}
 }
