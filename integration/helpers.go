@@ -164,3 +164,8 @@ func GetTestPodIP(ns string, podname string) string {
 	ip := string(r)
 	return ip[1 : len(ip)-1]
 }
+
+func CheckNamespace(ns string) bool {
+	cmd := exec.Command("kubectl", "get", "ns", ns)
+	return cmd.Run() == nil
+}
