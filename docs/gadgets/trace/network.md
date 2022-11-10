@@ -27,26 +27,24 @@ minikube         demo             shell                          OUTGOING  tcp  
 
 ### With local-gadget
 
-* Start local-gadget:
+Let's start the gadget in a terminal:
 
 ```bash
-$ sudo ./local-gadget --runtimes=docker
-» create network-graph trace1 --container-selector demo
-State: Started
-» stream trace1 -f
+$ sudo local-gadget trace network -c test-container
+CONTAINER                       TYPE      PROTO PORT  REMOTE
 ```
 
-* Generate some network traffic:
+Run a container that generates TCP and UDP network traffic:
 
 ```bash
-> $ docker run --name demo -ti --rm busybox
-> / # for i in `seq 5` ; do wget http://1.1.1.1.nip.io/ ; done
+$ docker run --name test-container -ti --rm busybox /bin/sh -c "wget http://1.1.1.1.nip.io/"
 ```
 
-* Observe the results:
+The tools will show the network activity:
 
-```json
-{"type":"debug","message":"tracer attached","node":"local","namespace":"default","pod":"demo"}
-{"type":"normal","namespace":"default","pod":"demo","pktType":"OUTGOING","proto":"tcp","port":80,"remoteAddr":"1.1.1.1"}
-{"type":"normal","namespace":"default","pod":"demo","pktType":"OUTGOING","proto":"udp","port":53,"remoteAddr":"192.168.0.1"}
+```bash
+$ sudo local-gadget trace network -c test-container
+CONTAINER                       TYPE      PROTO PORT  REMOTE
+demo                            OUTGOING  udp   53    192.168.67.1
+demo                            OUTGOING  tcp   80    1.1.1.1
 ```

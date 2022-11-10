@@ -28,24 +28,16 @@ import (
 )
 
 type Enricher struct {
-	withKubernetes bool
-	clientset      *kubernetes.Clientset
+	clientset *kubernetes.Clientset
 }
 
-func NewEnricher(withKubernetes bool) (*Enricher, error) {
-	if !withKubernetes {
-		return &Enricher{
-			withKubernetes: withKubernetes,
-		}, nil
-	}
-
+func NewEnricher() (*Enricher, error) {
 	clientset, err := k8sutil.NewClientset("")
 	if err != nil {
 		return nil, err
 	}
 	return &Enricher{
-		withKubernetes: withKubernetes,
-		clientset:      clientset,
+		clientset: clientset,
 	}, nil
 }
 
@@ -111,21 +103,15 @@ func enrich(event *types.Event, pods *corev1.PodList, svcs *corev1.ServiceList) 
 }
 
 func (e *Enricher) Enrich(events []*types.Event) {
-	var err error
-	pods := &corev1.PodList{}
-	svcs := &corev1.ServiceList{}
-
-	if e.withKubernetes {
-		pods, err = e.clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			log.Errorf("%s", err)
-			return
-		}
-		svcs, err = e.clientset.CoreV1().Services("").List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			log.Errorf("%s", err)
-			return
-		}
+	pods, err := e.clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Errorf("%s", err)
+		return
+	}
+	svcs, err := e.clientset.CoreV1().Services("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Errorf("%s", err)
+		return
 	}
 
 	for _, event := range events {

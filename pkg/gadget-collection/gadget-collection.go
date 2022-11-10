@@ -76,7 +76,6 @@ func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
 		"capabilities":      capabilities.NewFactory(),
 		"dns":               dns.NewFactory(),
 		"ebpftop":           ebpftop.NewFactory(),
-		"network-graph":     networkgraph.NewFactory(),
 		"process-collector": processcollector.NewFactory(),
 		"socket-collector":  socketcollector.NewFactory(),
 		"snisnoop":          snisnoop.NewFactory(),

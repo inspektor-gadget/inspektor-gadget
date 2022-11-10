@@ -113,8 +113,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	var err error
-	withKubernetes := t.client != nil
-	t.enricher, err = NewEnricher(withKubernetes)
+	t.enricher, err = NewEnricher()
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("Failed to start network-graph enricher: %s", err)
 		return
