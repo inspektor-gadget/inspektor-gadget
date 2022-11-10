@@ -251,6 +251,37 @@ calico-node      421056  sv
 gadget           421066  gadgettracerman
 ```
 
+### Trace/Mount
+
+The trace mount tool shows when a container performs a `mount()` syscall.
+
+Let's start the gadget in a terminal:
+
+```bash
+$ sudo local-gadget trace mount
+CONTAINER                         COMM             PID        TID        CALL
+```
+
+Run a container that uses mount:
+
+```bash
+$ docker run --name test-container -it --rm busybox /bin/sh -c "mount /bar /foo"
+```
+
+The tools will show the different mount() calls that the container performed:
+
+```bash
+$ sudo local-gadget trace mount
+CONTAINER                         COMM             PID        TID        CALL
+test-container                    mount            235385     235385     mount("/bar", "/foo", "ext3", MS_SILENT, "") = -2
+test-container                    mount            235385     235385     mount("/bar", "/foo", "ext2", MS_SILENT, "") = -2
+test-container                    mount            235385     235385     mount("/bar", "/foo", "ext4", MS_SILENT, "") = -2
+test-container                    mount            235385     235385     mount("/bar", "/foo", "squashf", MS_SILENT, "") = -2
+test-container                    mount            235385     235385     mount("/bar", "/foo", "vfat", MS_SILENT, "") = -2
+test-container                    mount            235385     235385     mount("/bar", "/foo", "fuseblk", MS_SILENT, "") = -2
+test-container                    mount            235385     235385     mount("/bar", "/foo", "btrfs", MS_SILENT, "") = -2
+```
+
 ### Trace/Tcp
 
 We can also monitor the TCP connections using the tcp trace gadget. For
