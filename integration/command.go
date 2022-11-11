@@ -34,7 +34,7 @@ const (
 	namespaceLabelValue string = "ig-integration-tests"
 )
 
-type Command struct {
+type CmdCommand struct {
 	// Name of the command to be run, used to give information.
 	Name string
 
@@ -74,7 +74,7 @@ type Command struct {
 }
 
 // DeployInspektorGadget deploys inspector gadget in Kubernetes
-func DeployInspektorGadget(image, imagePullPolicy string) *Command {
+func DeployInspektorGadget(image, imagePullPolicy string) *CmdCommand {
 	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --image-pull-policy=%s --debug",
 		imagePullPolicy)
 
@@ -82,14 +82,14 @@ func DeployInspektorGadget(image, imagePullPolicy string) *Command {
 		cmd = cmd + " --image=" + image
 	}
 
-	return &Command{
+	return &CmdCommand{
 		Name:           "DeployInspektorGadget",
 		Cmd:            cmd,
 		ExpectedRegexp: "Inspektor Gadget successfully deployed",
 	}
 }
 
-func DeploySPO(limitReplicas, patchWebhookConfig, bestEffortResourceMgmt bool) *Command {
+func DeploySPO(limitReplicas, patchWebhookConfig, bestEffortResourceMgmt bool) *CmdCommand {
 	cmdStr := fmt.Sprintf(`
 kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml
 kubectl --namespace cert-manager wait --for condition=ready pod -l app.kubernetes.io/instance=cert-manager
@@ -154,7 +154,7 @@ kubectl rollout status -n security-profiles-operator ds spod --timeout=180s || \
   (kubectl get pod -n security-profiles-operator ; kubectl get events -n security-profiles-operator ; false)
 
 `, limitReplicas, patchWebhookConfig, bestEffortResourceMgmt)
-	return &Command{
+	return &CmdCommand{
 		Name:           "DeploySecurityProfilesOperator",
 		Cmd:            cmdStr,
 		ExpectedRegexp: `daemon set "spod" successfully rolled out`,
@@ -162,14 +162,14 @@ kubectl rollout status -n security-profiles-operator ds spod --timeout=180s || \
 }
 
 // CleanupInspektorGadget cleans up inspector gadget in Kubernetes
-var CleanupInspektorGadget = &Command{
+var CleanupInspektorGadget *CmdCommand = &CmdCommand{
 	Name:    "CleanupInspektorGadget",
 	Cmd:     "$KUBECTL_GADGET undeploy",
 	Cleanup: true,
 }
 
 // CleanupSPO cleans up security profile operator in Kubernetes
-var CleanupSPO = []*Command{
+var CleanupSPO = []*CmdCommand{
 	{
 		Name: "RemoveSecurityProfilesOperator",
 		Cmd: `
@@ -206,7 +206,7 @@ var CleanupSPO = []*Command{
 }
 
 // RunCommands is used to run a list of commands with stopping/clean up logic.
-func RunCommands(cmds []*Command, t *testing.T) {
+func RunCommands(cmds []*CmdCommand, t *testing.T) {
 	// defer all cleanup commands so we are sure to exit clean whatever
 	// happened
 	defer func() {
@@ -239,10 +239,10 @@ func RunCommands(cmds []*Command, t *testing.T) {
 }
 
 // createExecCmd creates an exec.Cmd for the command c.Cmd and stores it in
-// Command.command. The exec.Cmd is configured to store the stdout and stderr in
-// Command.stdout and Command.stderr so that we can use them on
-// Command.verifyOutput().
-func (c *Command) createExecCmd() {
+// CmdCommand.command. The exec.Cmd is configured to store the stdout and stderr in
+// CmdCommand.stdout and CmdCommand.stderr so that we can use them on
+// CmdCommand.verifyOutput().
+func (c *CmdCommand) createExecCmd() {
 	cmd := exec.Command("/bin/sh", "-c", c.Cmd)
 
 	cmd.Stdout = &c.stdout
@@ -288,7 +288,7 @@ func getInspektorGadgetLogs() string {
 // verifyOutput verifies if the stdout match with the expected regular
 // expression and the expected string. If it doesn't, verifyOutput returns and
 // error and the gadget pod logs.
-func (c *Command) verifyOutput() error {
+func (c *CmdCommand) verifyOutput() error {
 	output := c.stdout.String()
 
 	if c.ExpectedRegexp != "" {
@@ -316,7 +316,7 @@ func (c *Command) verifyOutput() error {
 
 // kill kills a command by sending SIGKILL because we want to stop the process
 // immediatly and avoid that the signal is trapped.
-func (c *Command) kill() error {
+func (c *CmdCommand) kill() error {
 	const sig syscall.Signal = syscall.SIGKILL
 
 	// No need to kill, command has not been executed yet or it already exited
@@ -364,8 +364,8 @@ func (c *Command) kill() error {
 	return err
 }
 
-// RunWithoutTest runs the Command, this is thought to be used in TestMain().
-func (c *Command) RunWithoutTest() error {
+// RunWithoutTest runs the CmdCommand, this is thought to be used in TestMain().
+func (c *CmdCommand) RunWithoutTest() error {
 	c.createExecCmd()
 
 	fmt.Printf("run command(%s):\n%s\n", c.Name, c.Cmd)
@@ -384,8 +384,8 @@ func (c *Command) RunWithoutTest() error {
 	return nil
 }
 
-// StartWithoutTest starts the Command, this is thought to be used in TestMain().
-func (c *Command) StartWithoutTest() error {
+// StartWithoutTest starts the CmdCommand, this is thought to be used in TestMain().
+func (c *CmdCommand) StartWithoutTest() error {
 	if c.Started {
 		fmt.Printf("Warn(%s): trying to start command but it was already Started\n", c.Name)
 		return nil
@@ -404,9 +404,9 @@ func (c *Command) StartWithoutTest() error {
 	return nil
 }
 
-// WaitWithoutTest waits for a Command that was started with StartWithoutTest(),
+// WaitWithoutTest waits for a CmdCommand that was started with StartWithoutTest(),
 // this is thought to be used in TestMain().
-func (c *Command) WaitWithoutTest() error {
+func (c *CmdCommand) WaitWithoutTest() error {
 	if !c.Started {
 		fmt.Printf("Warn(%s): trying to wait for a command that has not been Started yet\n", c.Name)
 		return nil
@@ -426,10 +426,10 @@ func (c *Command) WaitWithoutTest() error {
 	return nil
 }
 
-// KillWithoutTest kills a Command started with StartWithoutTest()
+// KillWithoutTest kills a CmdCommand started with StartWithoutTest()
 // or RunWithoutTest() and we do not need to verify its output. This is thought
 // to be used in TestMain().
-func (c *Command) KillWithoutTest() error {
+func (c *CmdCommand) KillWithoutTest() error {
 	fmt.Printf("Kill command(%s)\n", c.Name)
 
 	if err := c.kill(); err != nil {
@@ -439,8 +439,8 @@ func (c *Command) KillWithoutTest() error {
 	return nil
 }
 
-// Run runs the Command on the given as parameter test.
-func (c *Command) Run(t *testing.T) {
+// Run runs the CmdCommand on the given as parameter test.
+func (c *CmdCommand) Run(t *testing.T) {
 	c.createExecCmd()
 
 	if c.StartAndStop {
@@ -463,9 +463,9 @@ func (c *Command) Run(t *testing.T) {
 	}
 }
 
-// Start starts the Command on the given as parameter test, you need to
+// Start starts the CmdCommand on the given as parameter test, you need to
 // wait it using Stop().
-func (c *Command) Start(t *testing.T) {
+func (c *CmdCommand) Start(t *testing.T) {
 	if c.Started {
 		t.Logf("Warn(%s): trying to start command but it was already Started\n", c.Name)
 		return
@@ -480,11 +480,11 @@ func (c *Command) Start(t *testing.T) {
 	c.Started = true
 }
 
-// Stop stops a Command previously started with Start().
+// Stop stops a CmdCommand previously started with Start().
 // To do so, it Kill() the process corresponding to this Cmd and then wait for
 // its termination.
 // Cmd output is then checked with regard to ExpectedString and ExpectedRegexp
-func (c *Command) Stop(t *testing.T) {
+func (c *CmdCommand) Stop(t *testing.T) {
 	if !c.Started {
 		t.Logf("Warn(%s): trying to stop command but it was not Started\n", c.Name)
 		return
@@ -507,8 +507,8 @@ func (c *Command) Stop(t *testing.T) {
 	c.Started = false
 }
 
-// PodCommand returns a Command that starts a pid with a specified image, command and args
-func PodCommand(podname, image, namespace, command, commandArgs string) *Command {
+// PodCommand returns a CmdCommand that starts a pid with a specified image, command and args
+func PodCommand(podname, image, namespace, command, commandArgs string) *CmdCommand {
 	cmdLine := ""
 	if command != "" {
 		cmdLine = fmt.Sprintf("\n    command: %s", command)
@@ -536,22 +536,22 @@ spec:
 EOF
 `, podname, namespace, podname, podname, image, cmdLine, commandArgsLine)
 
-	return &Command{
+	return &CmdCommand{
 		Name:           fmt.Sprintf("Run%s", podname),
 		Cmd:            cmdStr,
 		ExpectedString: fmt.Sprintf("pod/%s created\n", podname),
 	}
 }
 
-// BusyboxPodRepeatCommand returns a Command that creates a pod and runs
+// BusyboxPodRepeatCommand returns a CmdCommand that creates a pod and runs
 // "cmd" each 0.1 seconds inside the pod.
-func BusyboxPodRepeatCommand(namespace, cmd string) *Command {
+func BusyboxPodRepeatCommand(namespace, cmd string) *CmdCommand {
 	cmdStr := fmt.Sprintf("while true; do %s ; sleep 0.1; done", cmd)
 	return BusyboxPodCommand(namespace, cmdStr)
 }
 
 // BusyboxPodCommand returns a Command that creates a pod and runs "cmd" in it.
-func BusyboxPodCommand(namespace, cmd string) *Command {
+func BusyboxPodCommand(namespace, cmd string) *CmdCommand {
 	return PodCommand("test-pod", "busybox", namespace, `["/bin/sh", "-c"]`, cmd)
 }
 
@@ -562,9 +562,9 @@ func GenerateTestNamespaceName(namespace string) string {
 	return fmt.Sprintf("%s-%d", namespace, rand.Int())
 }
 
-// CreateTestNamespaceCommand returns a Command which creates a namespace whom
+// CreateTestNamespaceCommand returns a CmdCommand which creates a namespace whom
 // name is given as parameter.
-func CreateTestNamespaceCommand(namespace string) *Command {
+func CreateTestNamespaceCommand(namespace string) *CmdCommand {
 	cmd := fmt.Sprintf(`kubectl apply -f - <<"EOF"
 apiVersion: v1
 kind: Namespace
@@ -581,16 +581,16 @@ while true; do
 done
 	`, namespace, namespaceLabelKey, namespaceLabelValue, namespace)
 
-	return &Command{
+	return &CmdCommand{
 		Name: "Create test namespace",
 		Cmd:  cmd,
 	}
 }
 
-// DeleteTestNamespaceCommand returns a Command which deletes a namespace whom
+// DeleteTestNamespaceCommand returns a CmdCommand which deletes a namespace whom
 // name is given as parameter.
-func DeleteTestNamespaceCommand(namespace string) *Command {
-	return &Command{
+func DeleteTestNamespaceCommand(namespace string) *CmdCommand {
+	return &CmdCommand{
 		Name:           "DeleteTestNamespace",
 		Cmd:            fmt.Sprintf("kubectl delete ns %s", namespace),
 		ExpectedString: fmt.Sprintf("namespace \"%s\" deleted\n", namespace),
@@ -598,10 +598,10 @@ func DeleteTestNamespaceCommand(namespace string) *Command {
 	}
 }
 
-// DeleteRemainingNamespacesCommand returns a Command which deletes a namespace whom
+// DeleteRemainingNamespacesCommand returns a CmdCommand which deletes a namespace whom
 // name is given as parameter.
-func DeleteRemainingNamespacesCommand() *Command {
-	return &Command{
+func DeleteRemainingNamespacesCommand() *CmdCommand {
+	return &CmdCommand{
 		Name: "DeleteRemainingTestNamespace",
 		Cmd: fmt.Sprintf("kubectl delete ns -l %s=%s",
 			namespaceLabelKey, namespaceLabelValue),
@@ -609,25 +609,25 @@ func DeleteRemainingNamespacesCommand() *Command {
 	}
 }
 
-// WaitUntilPodReadyCommand returns a Command which waits until pod with the specified name in
+// WaitUntilPodReadyCommand returns a CmdCommand which waits until pod with the specified name in
 // the given as parameter namespace is ready.
-func WaitUntilPodReadyCommand(namespace string, podname string) *Command {
-	return &Command{
+func WaitUntilPodReadyCommand(namespace string, podname string) *CmdCommand {
+	return &CmdCommand{
 		Name:           "WaitForTestPod",
 		Cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready -n %s %s", namespace, podname),
 		ExpectedString: fmt.Sprintf("pod/%s condition met\n", podname),
 	}
 }
 
-// WaitUntilTestPodReadyCommand returns a Command which waits until test-pod in
+// WaitUntilTestPodReadyCommand returns a CmdCommand which waits until test-pod in
 // the given as parameter namespace is ready.
-func WaitUntilTestPodReadyCommand(namespace string) *Command {
+func WaitUntilTestPodReadyCommand(namespace string) *CmdCommand {
 	return WaitUntilPodReadyCommand(namespace, "test-pod")
 }
 
 // SleepForSecondsCommand returns a Command which sleeps for given seconds
-func SleepForSecondsCommand(seconds int) *Command {
-	return &Command{
+func SleepForSecondsCommand(seconds int) *CmdCommand {
+	return &CmdCommand{
 		Name: "SleepForSeconds",
 		Cmd:  fmt.Sprintf("sleep %d", seconds),
 	}

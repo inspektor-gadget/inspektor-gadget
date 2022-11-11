@@ -29,7 +29,7 @@ func TestTraceFsslower(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-fsslower")
 
-	traceFsslowerCmd := &Command{
+	traceFsslowerCmd := &CmdCommand{
 		Name:         "TraceFsslower",
 		Cmd:          fmt.Sprintf("local-gadget trace fsslower -f %s -m 0 -o json", fsType),
 		StartAndStop: true,
@@ -59,7 +59,7 @@ func TestTraceFsslower(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []*CmdCommand{
 		CreateTestNamespaceCommand(ns),
 		traceFsslowerCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started

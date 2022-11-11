@@ -26,7 +26,7 @@ func TestTraceOOMKill(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-oomkill")
 
-	traceOOMKillCmd := &Command{
+	traceOOMKillCmd := &CmdCommand{
 		Name:         "TraceOomkill",
 		Cmd:          fmt.Sprintf("local-gadget trace oomkill -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
@@ -75,7 +75,7 @@ spec:
     - while true; do tail /dev/zero; done
 `, ns)
 
-	commands := []*Command{
+	commands := []*CmdCommand{
 		CreateTestNamespaceCommand(ns),
 		traceOOMKillCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started

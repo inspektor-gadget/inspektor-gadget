@@ -26,7 +26,7 @@ func TestListContainers(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-list-containers")
 
-	listContainersCmd := &Command{
+	listContainersCmd := &CmdCommand{
 		Name: "RunListContainers",
 		Cmd:  fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s", *containerRuntime),
 		ExpectedOutputFn: func(output string) error {
@@ -62,7 +62,7 @@ func TestListContainers(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []*CmdCommand{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "sleep inf"),
 		WaitUntilTestPodReadyCommand(ns),
@@ -84,7 +84,7 @@ func TestFilterByContainerName(t *testing.T) {
 		t.Skip("Skip TestFilterByContainerName on docker since we don't propagate the Kubernetes pod container name")
 	}
 
-	listContainersCmd := &Command{
+	listContainersCmd := &CmdCommand{
 		Name: "RunFilterByContainerName",
 		Cmd:  fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s --containername=%s", *containerRuntime, cn),
 		ExpectedOutputFn: func(output string) error {
@@ -114,7 +114,7 @@ func TestFilterByContainerName(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []*CmdCommand{
 		CreateTestNamespaceCommand(ns),
 		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
 		WaitUntilPodReadyCommand(ns, cn),
@@ -136,7 +136,7 @@ func TestWatchContainers(t *testing.T) {
 		t.Skip("Skip TestWatchContainers on docker since we don't propagate the Kubernetes pod container name")
 	}
 
-	watchContainersCmd := &Command{
+	watchContainersCmd := &CmdCommand{
 		Name:         "RunWatchContainers",
 		Cmd:          fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
 		StartAndStop: true,
@@ -167,7 +167,7 @@ func TestWatchContainers(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []*CmdCommand{
 		CreateTestNamespaceCommand(ns),
 		watchContainersCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started

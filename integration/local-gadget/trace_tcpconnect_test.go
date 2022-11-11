@@ -26,7 +26,7 @@ func TestTraceTcpconnect(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-tcpconnect")
 
-	commandsPreTest := []*Command{
+	commandsPreTest := []*CmdCommand{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("nginx-pod", "nginx", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
@@ -35,7 +35,7 @@ func TestTraceTcpconnect(t *testing.T) {
 	RunCommands(commandsPreTest, t)
 	NginxIP := GetTestPodIP(ns, "nginx-pod")
 
-	tcpconnectCmd := &Command{
+	tcpconnectCmd := &CmdCommand{
 		Name:         "StartTcpconnectGadget",
 		Cmd:          fmt.Sprintf("local-gadget trace tcpconnect -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
@@ -66,7 +66,7 @@ func TestTraceTcpconnect(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []*CmdCommand{
 		tcpconnectCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),

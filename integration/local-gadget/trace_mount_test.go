@@ -28,7 +28,7 @@ func TestTraceMount(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-mount")
 
-	traceMountCmd := &Command{
+	traceMountCmd := &CmdCommand{
 		Name:         "TraceMount",
 		Cmd:          fmt.Sprintf("local-gadget trace mount -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
@@ -61,7 +61,7 @@ func TestTraceMount(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []*CmdCommand{
 		CreateTestNamespaceCommand(ns),
 		traceMountCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started

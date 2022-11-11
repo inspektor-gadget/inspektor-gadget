@@ -31,7 +31,7 @@ func TestTraceExec(t *testing.T) {
 	dateArgs := []string{"/bin/date"}
 	sleepArgs := []string{"/bin/sleep", "0.1"}
 
-	traceExecCmd := &Command{
+	traceExecCmd := &CmdCommand{
 		Name:         "TraceExec",
 		Cmd:          fmt.Sprintf("local-gadget trace exec -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
@@ -72,7 +72,7 @@ func TestTraceExec(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []*CmdCommand{
 		CreateTestNamespaceCommand(ns),
 		traceExecCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
