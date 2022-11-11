@@ -46,11 +46,6 @@ const (
 	SortByParam   = "sort_by"
 )
 
-type Event struct {
-	Error string   `json:"error,omitempty"`
-	Stats []*Stats `json:"stats,omitempty"`
-}
-
 type Stats struct {
 	eventtypes.CommonData
 	ProgramID          uint32     `json:"progid" column:"progid"`

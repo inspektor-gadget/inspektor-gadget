@@ -19,6 +19,11 @@ import (
 	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 )
 
+type Event[T any] struct {
+	Error string `json:"error,omitempty"`
+	Stats []*T   `json:"stats,omitempty"`
+}
+
 func SortStats[T any](stats []*T, sortBy []string, colMap *columns.ColumnMap[T]) {
 	columnssort.SortEntries(*colMap, stats, sortBy)
 }

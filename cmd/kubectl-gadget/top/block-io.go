@@ -183,7 +183,7 @@ func (p *BlockIOParser) Callback(line string, node string) {
 	p.Lock()
 	defer p.Unlock()
 
-	var event types.Event
+	var event top.Event[types.Stats]
 
 	if err := json.Unmarshal([]byte(line), &event); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))

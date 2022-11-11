@@ -35,6 +35,7 @@ import (
 
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	top "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	ebpftoptypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	dnstypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	networktypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
@@ -383,7 +384,7 @@ ebpfeventloop:
 			t.Fatalf("Timeout while waiting for stream events")
 			break ebpfeventloop
 		case result := <-ch:
-			event := ebpftoptypes.Event{}
+			event := top.Event[ebpftoptypes.Stats]{}
 			if err := json.Unmarshal([]byte(result), &event); err != nil {
 				t.Fatalf("failed to unmarshal json: %s", err)
 			}

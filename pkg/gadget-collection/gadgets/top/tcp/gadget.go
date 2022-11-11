@@ -23,12 +23,12 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	tcptoptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-
-	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
 type Trace struct {
@@ -181,7 +181,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		TargetFamily: targetFamily,
 	}
 
-	eventCallback := func(ev *types.Event) {
+	eventCallback := func(ev *top.Event[types.Stats]) {
 		r, err := json.Marshal(ev)
 		if err != nil {
 			log.Warnf("Gadget %s: Failed to marshall event: %s", trace.Spec.Gadget, err)

@@ -21,14 +21,15 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	ebpftoptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type Trace struct {
@@ -154,7 +155,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		SortBy:   sortBy,
 	}
 
-	eventCallback := func(ev *types.Event) {
+	eventCallback := func(ev *top.Event[types.Stats]) {
 		r, err := json.Marshal(ev)
 		if err != nil {
 			log.Warnf("Gadget %s: Failed to marshal event: %s", trace.Spec.Gadget, err)

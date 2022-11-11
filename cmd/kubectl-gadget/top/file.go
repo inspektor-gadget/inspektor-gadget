@@ -38,7 +38,7 @@ type FileFlags struct {
 	CommonTopFlags
 
 	ParsedSortBy []string
-	AllFiles     bool
+	allFiles     bool
 }
 
 type FileParser struct {
@@ -130,7 +130,7 @@ func newFileCmd() *cobra.Command {
 					types.IntervalParam: strconv.Itoa(flags.OutputInterval),
 					types.MaxRowsParam:  strconv.Itoa(flags.MaxRows),
 					types.SortByParam:   flags.SortBy,
-					types.AllFilesParam: strconv.FormatBool(flags.AllFiles),
+					types.AllFilesParam: strconv.FormatBool(flags.allFiles),
 				},
 			}
 
@@ -180,7 +180,7 @@ func newFileCmd() *cobra.Command {
 
 	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, cols.GetColumnNames())
 
-	cmd.Flags().BoolVarP(&flags.AllFiles, "all-files", "a", types.AllFilesDefault, "Include non-regular file types (sockets, FIFOs, etc)")
+	cmd.Flags().BoolVarP(&flags.allFiles, "all-files", "a", types.AllFilesDefault, "Include non-regular file types (sockets, FIFOs, etc)")
 
 	return cmd
 }
@@ -189,7 +189,7 @@ func (p *FileParser) Callback(line string, node string) {
 	p.Lock()
 	defer p.Unlock()
 
-	var event types.Event
+	var event top.Event[types.Stats]
 
 	if err := json.Unmarshal([]byte(line), &event); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))

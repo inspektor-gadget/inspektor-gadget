@@ -53,13 +53,13 @@ type Tracer struct {
 	readLink      link.Link
 	writeLink     link.Link
 	enricher      gadgets.DataEnricher
-	eventCallback func(*types.Event)
+	eventCallback func(*top.Event[types.Stats])
 	done          chan bool
 	colMap        columns.ColumnMap[types.Stats]
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricher,
-	eventCallback func(*types.Event),
+	eventCallback func(*top.Event[types.Stats]),
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
@@ -225,7 +225,7 @@ func (t *Tracer) run() {
 			case <-ticker.C:
 				stats, err := t.nextStats()
 				if err != nil {
-					t.eventCallback(&types.Event{
+					t.eventCallback(&top.Event[types.Stats]{
 						Error: err.Error(),
 					})
 					return
@@ -235,7 +235,7 @@ func (t *Tracer) run() {
 				if n > t.config.MaxRows {
 					n = t.config.MaxRows
 				}
-				t.eventCallback(&types.Event{Stats: stats[:n]})
+				t.eventCallback(&top.Event[types.Stats]{Stats: stats[:n]})
 			}
 		}
 	}()
