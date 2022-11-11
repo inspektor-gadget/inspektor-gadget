@@ -22,7 +22,6 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
@@ -72,7 +71,7 @@ func newBlockIOCmd() *cobra.Command {
 		"ios":       -8,
 	}
 
-	cols := columns.MustCreateColumns[types.Stats]()
+	cols := types.GetColumns()
 
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("block-io [interval=%d]", top.IntervalDefault),

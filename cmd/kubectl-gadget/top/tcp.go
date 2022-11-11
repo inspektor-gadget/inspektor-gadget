@@ -24,7 +24,6 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 )
@@ -77,7 +76,7 @@ func newTCPCmd() *cobra.Command {
 		"received":  -7,
 	}
 
-	cols := columns.MustCreateColumns[types.Stats]()
+	cols := types.GetColumns()
 
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("tcp [interval=%d]", top.IntervalDefault),

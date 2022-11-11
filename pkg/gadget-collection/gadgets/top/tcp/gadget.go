@@ -24,7 +24,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	tcptoptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/tracer"
@@ -49,7 +48,7 @@ func NewFactory() gadgets.TraceFactory {
 }
 
 func (f *TraceFactory) Description() string {
-	cols := columns.MustCreateColumns[types.Stats]()
+	cols := types.GetColumns()
 
 	t := `tcptop shows command generating TCP connections, with container details.
 
@@ -137,9 +136,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 		if val, ok := params[top.SortByParam]; ok {
 			sortByColumns := strings.Split(val, ",")
-			cols := columns.MustCreateColumns[types.Stats]()
 
-			_, invalidCols := cols.VerifyColumnNames(sortByColumns)
+			_, invalidCols := types.GetColumns().VerifyColumnNames(sortByColumns)
 			if len(invalidCols) > 0 {
 				trace.Status.OperationError = fmt.Sprintf("%q are not valid for %q", strings.Join(invalidCols, ","), top.SortByParam)
 				return

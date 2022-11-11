@@ -15,6 +15,7 @@
 package types
 
 import (
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -49,6 +50,10 @@ type Stats struct {
 	TotalRunCount      uint64     `json:"totalRunCount,omitempty" column:"totalRunCount"`
 	MapMemory          uint64     `json:"mapMemory,omitempty" column:"mapMemory"`
 	MapCount           uint32     `json:"mapCount,omitempty" column:"mapCount"`
+}
+
+func GetColumns() *columns.Columns[Stats] {
+	return columns.MustCreateColumns[Stats]()
 }
 
 type PidInfo struct {
