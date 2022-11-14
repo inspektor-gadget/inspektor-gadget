@@ -270,13 +270,13 @@ func (t *Trace) update(trace, traceBeforePatch *gadgetv1alpha1.Trace) bool {
 		t.publishMessage(trace, eventtypes.ERR, "host", "tracer is nil at tick")
 		return false
 	}
-	newEdges, err := t.tracer.Pop()
+	newEvents, err := t.tracer.Pop()
 	if err != nil {
 		log.Errorf("failed to read BPF map: %s", err)
 		t.publishMessage(trace, eventtypes.ERR, "host", fmt.Sprintf("failed to read BPF map: %s", err))
 		return false
 	}
-	newEvents := t.enricher.Enrich(newEdges)
+	t.enricher.Enrich(newEvents)
 
 	if t.client != nil {
 		patch := client.MergeFrom(traceBeforePatch)
@@ -289,7 +289,7 @@ func (t *Trace) update(trace, traceBeforePatch *gadgetv1alpha1.Trace) bool {
 	for _, event := range newEvents {
 		// for now, ignore events on the host netns
 		if event.Pod != "" {
-			t.publishEvent(trace, &event)
+			t.publishEvent(trace, event)
 		}
 	}
 	return true
