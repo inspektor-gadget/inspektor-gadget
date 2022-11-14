@@ -23,6 +23,14 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+type RemoteKind string
+
+const (
+	RemoteKindPod     RemoteKind = "pod"
+	RemoteKindService RemoteKind = "svc"
+	RemoteKindOther   RemoteKind = "other"
+)
+
 type Event struct {
 	eventtypes.Event
 
@@ -31,22 +39,21 @@ type Event struct {
 	Addr    string `json:"addr,omitempty" column:"addr,template:ipaddr,hide"`
 	Port    uint16 `json:"port,omitempty" column:"port,template:ipport"`
 
-	/* pod, svc or other */
-	RemoteKind string `json:"remoteKind,omitempty" column:"kind,maxWidth:5"`
-
 	/* Further information of pod where event occurs */
 	PodHostIP string            `json:"podHostIP,omitempty" column:"podhostip,template:ipaddr,hide"`
 	PodIP     string            `json:"podIP,omitempty" column:"podip,template:ipaddr,hide"`
 	PodOwner  string            `json:"podOwner,omitempty" column:"podowner,hide"`
 	PodLabels map[string]string `json:"podLabels,omitempty" column:"padlabels,hide"`
 
+	/* Remote */
+	RemoteKind RemoteKind `json:"remoteKind,omitempty" column:"kind,maxWidth:5"`
 
-	/* if RemoteKind = pod or svc */
-	RemoteNamespace string            `json:"remoteNamespace,omitempty" column:"remotens,hide"`
+	/* if RemoteKind = RemoteKindPod or RemoteKindService */
 	RemoteName      string            `json:"remoteName,omitempty" column:"remotename,hide"`
+	RemoteNamespace string            `json:"remoteNamespace,omitempty" column:"remotens,hide"`
 	RemoteLabels    map[string]string `json:"remoteLabels,omitempty" column:"remotelabels,hide"`
 
-	/* if RemoteKind = other */
+	/* if RemoteKind = RemoteKindOther */
 	RemoteOther string `json:"remoteOther,omitempty" column:"remoteother,template:ipaddr,hide"`
 }
 
@@ -62,11 +69,11 @@ func GetColumns() *columns.Columns[Event] {
 		EllipsisType: ellipsis.Start,
 		Extractor: func(e *Event) string {
 			switch e.RemoteKind {
-			case "pod":
+			case RemoteKindPod:
 				return fmt.Sprintf("pod %s/%s", e.RemoteNamespace, e.RemoteName)
-			case "svc":
+			case RemoteKindService:
 				return fmt.Sprintf("svc %s/%s", e.RemoteNamespace, e.RemoteName)
-			case "other":
+			case RemoteKindOther:
 				return fmt.Sprintf("endpoint %s", e.RemoteOther)
 			default:
 				return "unknown"

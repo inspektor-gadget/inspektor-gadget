@@ -148,12 +148,12 @@ func (a *NetworkPolicyAdvisor) localPodKey(e types.Event) (ret string) {
 }
 
 func (a *NetworkPolicyAdvisor) networkPeerKey(e types.Event) (ret string) {
-	if e.RemoteKind == "pod" {
-		ret = e.RemoteKind + ":" + e.RemoteNamespace + ":" + a.labelKeyString(e.RemoteLabels)
-	} else if e.RemoteKind == "svc" {
-		ret = e.RemoteKind + ":" + e.RemoteNamespace + ":" + a.labelKeyString(e.RemoteLabels)
-	} else if e.RemoteKind == "other" {
-		ret = e.RemoteKind + ":" + e.RemoteOther
+	if e.RemoteKind == types.RemoteKindPod {
+		ret = string(e.RemoteKind) + ":" + e.RemoteNamespace + ":" + a.labelKeyString(e.RemoteLabels)
+	} else if e.RemoteKind == types.RemoteKindService {
+		ret = string(e.RemoteKind) + ":" + e.RemoteNamespace + ":" + a.labelKeyString(e.RemoteLabels)
+	} else if e.RemoteKind == types.RemoteKindOther {
+		ret = string(e.RemoteKind) + ":" + e.RemoteAddr
 	}
 	return fmt.Sprintf("%s:%d", ret, e.Port)
 }
@@ -167,7 +167,7 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 			Protocol: &protocol,
 		},
 	}
-	if e.RemoteKind == "pod" {
+	if e.RemoteKind == types.RemoteKindPod {
 		peers = []networkingv1.NetworkPolicyPeer{
 			{
 				PodSelector: &metav1.LabelSelector{MatchLabels: a.labelFilter(e.RemoteLabels)},
@@ -184,7 +184,7 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 				},
 			}
 		}
-	} else if e.RemoteKind == "svc" {
+	} else if e.RemoteKind == types.RemoteKindService {
 		peers = []networkingv1.NetworkPolicyPeer{
 			{
 				PodSelector: &metav1.LabelSelector{MatchLabels: e.RemoteLabels},
@@ -201,7 +201,7 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 				},
 			}
 		}
-	} else if e.RemoteKind == "other" {
+	} else if e.RemoteKind == types.RemoteKindOther {
 		if e.RemoteOther == "127.0.0.1" {
 			// No need to generate a network policy for localhost
 			peers = []networkingv1.NetworkPolicyPeer{}
