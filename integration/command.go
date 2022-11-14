@@ -16,6 +16,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -27,12 +28,54 @@ import (
 	"time"
 
 	"github.com/kr/pretty"
+	v1 "k8s.io/api/core/v1"
+	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
 const (
 	namespaceLabelKey   string = "scope"
 	namespaceLabelValue string = "ig-integration-tests"
 )
+
+type Command interface {
+	Run(*testing.T)
+	Start(*testing.T)
+	Stop(*testing.T)
+
+	RunWithoutTest() error
+	StartWithoutTest() error
+	WaitWithoutTest() error
+	KillWithoutTest() error
+
+	IsCleanup() bool
+	IsStartAndStop() bool
+	IsStarted() bool
+}
+
+type K8sCommand struct {
+	name    string
+	runFunc func(*testing.T)
+}
+
+func (c *K8sCommand) Run(t *testing.T) {
+	t.Logf("Run K8sCommand:\n%s\n", c.name)
+	c.runFunc(t)
+}
+func (c *K8sCommand) Start(*testing.T) {}
+func (c *K8sCommand) Stop(*testing.T)  {}
+
+func (c *K8sCommand) RunWithoutTest() error   { return nil }
+func (c *K8sCommand) StartWithoutTest() error { return nil }
+func (c *K8sCommand) WaitWithoutTest() error  { return nil }
+func (c *K8sCommand) KillWithoutTest() error  { return nil }
+
+func (c *K8sCommand) IsCleanup() bool      { return false }
+func (c *K8sCommand) IsStartAndStop() bool { return false }
+func (c *K8sCommand) IsStarted() bool      { return false }
 
 type CmdCommand struct {
 	// Name of the command to be run, used to give information.
@@ -72,6 +115,10 @@ type CmdCommand struct {
 	// stderr contains command standard output when started using Startcommand().
 	stderr bytes.Buffer
 }
+
+func (c *CmdCommand) IsCleanup() bool      { return c.Cleanup }
+func (c *CmdCommand) IsStartAndStop() bool { return c.StartAndStop }
+func (c *CmdCommand) IsStarted() bool      { return c.Started }
 
 // DeployInspektorGadget deploys inspector gadget in Kubernetes
 func DeployInspektorGadget(image, imagePullPolicy string) *CmdCommand {
@@ -169,8 +216,8 @@ var CleanupInspektorGadget *CmdCommand = &CmdCommand{
 }
 
 // CleanupSPO cleans up security profile operator in Kubernetes
-var CleanupSPO = []*CmdCommand{
-	{
+var CleanupSPO = []Command{
+	&CmdCommand{
 		Name: "RemoveSecurityProfilesOperator",
 		Cmd: `
 		kubectl delete seccompprofile --all --all-namespaces
@@ -179,7 +226,7 @@ var CleanupSPO = []*CmdCommand{
 		`,
 		Cleanup: true,
 	},
-	{
+	&CmdCommand{
 		Name: "PatchSecurityProfilesOperatorProfiles",
 		Cmd: `
 		while true; do
@@ -206,12 +253,12 @@ var CleanupSPO = []*CmdCommand{
 }
 
 // RunCommands is used to run a list of commands with stopping/clean up logic.
-func RunCommands(cmds []*CmdCommand, t *testing.T) {
+func RunCommands(cmds []Command, t *testing.T) {
 	// defer all cleanup commands so we are sure to exit clean whatever
 	// happened
 	defer func() {
 		for _, cmd := range cmds {
-			if cmd.Cleanup {
+			if cmd.IsCleanup() {
 				cmd.Run(t)
 			}
 		}
@@ -220,7 +267,7 @@ func RunCommands(cmds []*CmdCommand, t *testing.T) {
 	// defer stopping commands
 	defer func() {
 		for _, cmd := range cmds {
-			if cmd.StartAndStop && cmd.Started {
+			if cmd.IsStartAndStop() && cmd.IsStarted() {
 				// Wait a bit before stopping the command.
 				time.Sleep(10 * time.Second)
 				cmd.Stop(t)
@@ -230,7 +277,7 @@ func RunCommands(cmds []*CmdCommand, t *testing.T) {
 
 	// run all commands but cleanup ones
 	for _, cmd := range cmds {
-		if cmd.Cleanup {
+		if cmd.IsCleanup() {
 			continue
 		}
 
@@ -543,6 +590,56 @@ EOF
 	}
 }
 
+// PodCommandThroughAPI returns a Command that starts a pid with a specified image, command and args
+func PodCommandThroughAPI(podname, image, namespace string, command, commandArgs []string) *K8sCommand {
+	return &K8sCommand{
+		name: fmt.Sprintf("Creating pod %s", podname),
+		runFunc: func(t *testing.T) {
+			k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
+			if err != nil {
+				t.Fatalf("Creating pod (%s): %s", podname, commonutils.WrapInErrSetupK8sClient(err).Error())
+				return
+			}
+
+			containerConfig := v1.Container{
+				Name:    podname,
+				Image:   image,
+				Command: command,
+				Args:    commandArgs,
+			}
+
+			gracedPeriod := int64(0)
+			podSpec := v1.PodSpec{
+				RestartPolicy:                 v1.RestartPolicyNever,
+				TerminationGracePeriodSeconds: &gracedPeriod,
+				Containers:                    []v1.Container{containerConfig},
+			}
+
+			objectMeta := k8smeta.ObjectMeta{
+				Name:      podname,
+				Namespace: namespace,
+				Labels: map[string]string{
+					"run": podname,
+				},
+			}
+
+			podConfig := v1.Pod{
+				ObjectMeta: objectMeta,
+				Spec:       podSpec,
+			}
+
+			podClient := k8sClient.CoreV1().Pods(namespace)
+			// First returned variable is the pod. Maybe we could use it later?
+			_, err = podClient.Create(context.TODO(), &podConfig, k8smeta.CreateOptions{})
+
+			if err != nil {
+				t.Fatalf("Creating pod (%s): %s\n", podname, err.Error())
+				return
+			}
+		},
+	}
+}
+
 // BusyboxPodRepeatCommand returns a CmdCommand that creates a pod and runs
 // "cmd" each 0.1 seconds inside the pod.
 func BusyboxPodRepeatCommand(namespace, cmd string) *CmdCommand {
@@ -553,6 +650,11 @@ func BusyboxPodRepeatCommand(namespace, cmd string) *CmdCommand {
 // BusyboxPodCommand returns a Command that creates a pod and runs "cmd" in it.
 func BusyboxPodCommand(namespace, cmd string) *CmdCommand {
 	return PodCommand("test-pod", "busybox", namespace, `["/bin/sh", "-c"]`, cmd)
+}
+
+// BusyboxPodCommandThroughAPI  returns a Command that creates a pod and runs "cmd" in it.
+func BusyboxPodCommandThroughAPI(namespace, cmd string) *K8sCommand {
+	return PodCommandThroughAPI("test-pod", "busybox", namespace, []string{"/bin/sh", "-c"}, []string{cmd})
 }
 
 // GenerateTestNamespaceName returns a string which can be used as unique

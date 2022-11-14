@@ -61,7 +61,7 @@ func TestTraceMount(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		traceMountCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started

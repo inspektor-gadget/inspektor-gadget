@@ -26,7 +26,7 @@ func TestTraceDns(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-dns")
 
-	traceDNSCmd := &Command{
+	traceDNSCmd := &CmdCommand{
 		Name:         "TraceDns",
 		Cmd:          fmt.Sprintf("local-gadget trace dns -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
@@ -79,7 +79,7 @@ func TestTraceDns(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		traceDNSCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started

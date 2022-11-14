@@ -75,11 +75,11 @@ spec:
     - while true; do tail /dev/zero; done
 `, ns)
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		traceOOMKillCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		{
+		&CmdCommand{
 			Name:           "RunOomkillTestPod",
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
 			ExpectedRegexp: "pod/test-pod created",

@@ -26,7 +26,7 @@ func TestTraceSni(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-sni")
 
-	traceSNICmd := &Command{
+	traceSNICmd := &CmdCommand{
 		Name:         "TraceSNI",
 		Cmd:          fmt.Sprintf("local-gadget trace sni -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
@@ -48,7 +48,7 @@ func TestTraceSni(t *testing.T) {
 		},
 	}
 
-	commands := []*Command{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		traceSNICmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started

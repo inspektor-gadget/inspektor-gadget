@@ -77,7 +77,7 @@ var (
 	k8sArch   = flag.String("k8s-arch", "amd64", "allows to skip tests that are not supported on a given CPU architecture")
 )
 
-func cleanupFunc(cleanupCommands []*CmdCommand) {
+func cleanupFunc(cleanupCommands []Command) {
 	if !atomic.CompareAndSwapUint32(&cleaningUp, 0, 1) {
 		return
 	}
@@ -137,8 +137,8 @@ func testMain(m *testing.M) int {
 	rand.Seed(seed)
 	fmt.Printf("using random seed: %d\n", seed)
 
-	initCommands := []*CmdCommand{}
-	cleanupCommands := []*CmdCommand{DeleteRemainingNamespacesCommand()}
+	initCommands := []Command{}
+	cleanupCommands := []Command{DeleteRemainingNamespacesCommand()}
 
 	if !*doNotDeployIG {
 		imagePullPolicy := "Always"
@@ -266,9 +266,9 @@ func TestAuditSeccomp(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
-		{
+		&CmdCommand{
 			Name: "CreateSeccompProfile",
 			Cmd: fmt.Sprintf(`
 				kubectl apply -f - <<EOF
@@ -292,11 +292,11 @@ EOF
 			`, spName, ns),
 			ExpectedRegexp: fmt.Sprintf("seccompprofile.security-profiles-operator.x-k8s.io/%s created", spName),
 		},
-		{
+		&CmdCommand{
 			Name: "WaitForSeccompProfile",
 			Cmd:  fmt.Sprintf("kubectl wait sp --for condition=ready -n %s %s", ns, spName),
 		},
-		{
+		&CmdCommand{
 			Name: "RunSeccompAuditTestPod",
 			Cmd: fmt.Sprintf(`
 				kubectl apply -f - <<EOF
@@ -322,7 +322,7 @@ EOF
 			ExpectedRegexp: "pod/test-pod created",
 		},
 		WaitUntilTestPodReadyCommand(ns),
-		{
+		&CmdCommand{
 			Name: "RunAuditSeccompGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15 -o json", ns),
 			ExpectedOutputFn: func(output string) error {
@@ -378,7 +378,7 @@ func TestBindsnoop(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		bindsnoopCmd,
 		BusyboxPodRepeatCommand(ns, "nc -l -p 9090 -w 1"),
@@ -392,8 +392,8 @@ func TestBindsnoop(t *testing.T) {
 func TestBiolatency(t *testing.T) {
 	t.Parallel()
 
-	commands := []*CmdCommand{
-		{
+	commands := []Command{
+		&CmdCommand{
 			Name: "RunBiolatencyGadget",
 			Cmd:  "$KUBECTL_GADGET profile block-io --node $(kubectl get node --no-headers | cut -d' ' -f1 | head -1) --timeout 15 -o json",
 			ExpectedOutputFn: func(output string) error {
@@ -449,7 +449,7 @@ func TestBiotop(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		biotopCmd,
 		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096"),
@@ -496,7 +496,7 @@ func TestCapabilities(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		capabilitiesCmd,
 		BusyboxPodRepeatCommand(ns, "nice -n -20 echo"),
@@ -570,7 +570,7 @@ func TestDns(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		dnsCmd,
 		BusyboxPodRepeatCommand(ns,
@@ -625,7 +625,7 @@ func TestEbpftop(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		ebpftopCmd,
 	}
 
@@ -685,7 +685,7 @@ func TestExecsnoop(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		execsnoopCmd,
 		BusyboxPodCommand(ns, cmd),
@@ -728,7 +728,7 @@ func TestFiletop(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		filetopCmd,
 		BusyboxPodRepeatCommand(ns, "echo date >> /tmp/date.txt"),
@@ -774,7 +774,7 @@ func TestFsslower(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		fsslowerCmd,
 		BusyboxPodCommand(ns, "echo 'this is foo' > foo && while true; do cat foo && sleep 0.1; done"),
@@ -820,7 +820,7 @@ func TestMountsnoop(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		mountsnoopCmd,
 		BusyboxPodRepeatCommand(ns, "mount /mnt /mnt"),
@@ -837,10 +837,10 @@ func TestNetworkpolicy(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(nsServer),
 		BusyboxPodRepeatCommand(nsServer, "nc -lk -p 9090 -e /bin/cat"),
-		{
+		&CmdCommand{
 			Name:           "CreateService",
 			Cmd:            fmt.Sprintf("kubectl expose -n %s pod test-pod --port 9090", nsServer),
 			ExpectedRegexp: "service/test-pod exposed",
@@ -849,7 +849,7 @@ func TestNetworkpolicy(t *testing.T) {
 		CreateTestNamespaceCommand(nsClient),
 		BusyboxPodRepeatCommand(nsClient, fmt.Sprintf("echo ok | nc -w 1 test-pod.%s.svc.cluster.local 9090 || true", nsServer)),
 		WaitUntilTestPodReadyCommand(nsClient),
-		{
+		&CmdCommand{
 			Name: "RunNetworkPolicyMonitorClient",
 			Cmd: fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace-client.log &
 					sleep 10
@@ -857,7 +857,7 @@ func TestNetworkpolicy(t *testing.T) {
 					head networktrace-client.log | sort | uniq`, nsClient),
 			ExpectedRegexp: fmt.Sprintf(`{"node":".*","namespace":"%s","pod":"test-pod","type":"normal","pktType":"OUTGOING","proto":"tcp","port":9090,"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"svc","remoteAddr":".*","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsClient, nsServer),
 		},
-		{
+		&CmdCommand{
 			// Docker bridge does not preserve source IP :-(
 			// https://github.com/kubernetes/minikube/issues/11211
 			// Skip this command with SKIP_TEST if docker is detected
@@ -869,7 +869,7 @@ func TestNetworkpolicy(t *testing.T) {
 					kubectl get node -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}'|grep -q docker && echo SKIP_TEST || true`, nsServer),
 			ExpectedRegexp: fmt.Sprintf(`SKIP_TEST|{"node":".*","namespace":"%s","pod":"test-pod","type":"normal","pktType":"HOST","proto":"tcp","port":9090,"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"pod","remoteAddr":".*","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsServer, nsClient),
 		},
-		{
+		&CmdCommand{
 			Name: "RunNetworkPolicyReportClient",
 			Cmd:  "$KUBECTL_GADGET advise network-policy report --input ./networktrace-client.log",
 			ExpectedRegexp: fmt.Sprintf(`apiVersion: networking.k8s.io/v1
@@ -907,7 +907,7 @@ spec:
   - Ingress
   - Egress`, nsClient, nsServer),
 		},
-		{
+		&CmdCommand{
 			Name: "RunNetworkPolicyReportServer",
 			Cmd: `$KUBECTL_GADGET advise network-policy report --input ./networktrace-server.log
 				kubectl get node -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}'|grep -q docker && echo SKIP_TEST || true`,
@@ -938,7 +938,7 @@ spec:
 		},
 		DeleteTestNamespaceCommand(nsClient),
 		DeleteTestNamespaceCommand(nsServer),
-		{
+		&CmdCommand{
 			Name:    "CleanupLogFiles",
 			Cmd:     "rm -f networktrace-client.log networktrace-server.log",
 			Cleanup: true,
@@ -997,10 +997,10 @@ spec:
     - while true; do tail /dev/zero; done
 `, ns)
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		oomkillCmd,
-		{
+		&CmdCommand{
 			Name:           "RunOomkillTestPod",
 			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
 			ExpectedRegexp: "pod/test-pod created",
@@ -1042,7 +1042,7 @@ func TestOpensnoop(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		opensnoopCmd,
 		BusyboxPodRepeatCommand(ns, "cat /dev/null"),
@@ -1058,7 +1058,7 @@ func TestNetworkGraph(t *testing.T) {
 
 	t.Parallel()
 
-	commandsPreTest := []*CmdCommand{
+	commandsPreTest := []Command{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("nginx-pod", "nginx", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
@@ -1099,7 +1099,7 @@ func TestNetworkGraph(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		networkGraphCmd,
 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
@@ -1122,11 +1122,11 @@ func TestProcessCollector(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "nc -l -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
-		{
+		&CmdCommand{
 			Name: "RunPprocessCollectorGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot process -n %s -o json", ns),
 			ExpectedOutputFn: func(output string) error {
@@ -1156,11 +1156,11 @@ func TestCpuProfile(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "while true; do echo foo > /dev/null; done"),
 		WaitUntilTestPodReadyCommand(ns),
-		{
+		&CmdCommand{
 			Name: "RunProfileGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -K --timeout 15 -o json", ns),
 			ExpectedOutputFn: func(output string) error {
@@ -1191,11 +1191,11 @@ func TestSeccompadvisor(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodRepeatCommand(ns, "echo foo"),
 		WaitUntilTestPodReadyCommand(ns),
-		{
+		&CmdCommand{
 			Name:           "RunSeccompAdvisorGadget",
 			Cmd:            fmt.Sprintf("id=$($KUBECTL_GADGET advise seccomp-profile start -n %s -p test-pod); sleep 30; $KUBECTL_GADGET advise seccomp-profile stop $id", ns),
 			ExpectedRegexp: `write`,
@@ -1234,7 +1234,7 @@ func TestSigsnoop(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		sigsnoopCmd,
 		BusyboxPodRepeatCommand(ns, "sleep 3 & kill $!"),
@@ -1271,7 +1271,7 @@ func TestSnisnoop(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		snisnoopCmd,
 		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://inspektor-gadget.io"),
@@ -1295,11 +1295,11 @@ func TestSocketCollector(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "nc -l 0.0.0.0 -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
-		{
+		&CmdCommand{
 			Name: "RunSocketCollectorGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json", ns),
 			ExpectedOutputFn: func(output string) error {
@@ -1336,7 +1336,7 @@ func TestTcpconnect(t *testing.T) {
 
 	t.Parallel()
 
-	commandsPreTest := []*CmdCommand{
+	commandsPreTest := []Command{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("nginx-pod", "nginx", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
@@ -1371,7 +1371,7 @@ func TestTcpconnect(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		tcpconnectCmd,
 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
@@ -1386,7 +1386,7 @@ func TestTcptracer(t *testing.T) {
 
 	t.Parallel()
 
-	commandsPreTest := []*CmdCommand{
+	commandsPreTest := []Command{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("nginx-pod", "nginx", ns, "", ""),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
@@ -1423,7 +1423,7 @@ func TestTcptracer(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		tcptracerCmd,
 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
@@ -1438,9 +1438,9 @@ func TestTcptop(t *testing.T) {
 
 	t.Parallel()
 
-	commandsPreTest := []*CmdCommand{
+	commandsPreTest := []Command{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		PodCommandThroughAPI("nginx-pod", "nginx", ns, nil, nil),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
 	}
 
@@ -1476,7 +1476,7 @@ func TestTcptop(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		tcptopCmd,
 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
@@ -1491,45 +1491,45 @@ func TestTraceloop(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
-		{
+		&CmdCommand{
 			Name: "StartTraceloopGadget",
 			Cmd:  "$KUBECTL_GADGET traceloop start",
 		},
-		{
+		&CmdCommand{
 			Name: "WaitForTraceloopStarted",
 			Cmd:  "sleep 15",
 		},
-		{
+		&CmdCommand{
 			Name: "RunTraceloopTestPod",
 			Cmd:  fmt.Sprintf("kubectl run --restart=Never -n %s --image=busybox multiplication -- sh -c 'RANDOM=output ; echo \"3*7*2\" | bc > /tmp/file-$RANDOM ; sleep infinity'", ns),
 		},
-		{
+		&CmdCommand{
 			Name: "WaitForTraceloopTestPod",
 			Cmd:  fmt.Sprintf("sleep 5 ; kubectl wait -n %s --for=condition=ready pod/multiplication ; kubectl get pod -n %s ; sleep 2", ns, ns),
 		},
-		{
+		&CmdCommand{
 			Name:           "CheckTraceloopList",
 			Cmd:            "sleep 20; $KUBECTL_GADGET traceloop list | grep multiplication",
 			ExpectedRegexp: "multiplication",
 		},
-		{
+		&CmdCommand{
 			Name:           "CheckTraceloopShow",
 			Cmd:            "CONTAINER_ID=$($KUBECTL_GADGET traceloop list | grep multiplication | awk '{ print $5 }'); $KUBECTL_GADGET traceloop show $CONTAINER_ID | grep -C 5 write",
 			ExpectedRegexp: `bc\s+write\s+fd=\d+,\s+buf="42`,
 		},
-		{
+		&CmdCommand{
 			Name:    "PrintTraceloopList",
 			Cmd:     "$KUBECTL_GADGET traceloop list",
 			Cleanup: true,
 		},
-		{
+		&CmdCommand{
 			Name:    "StopTraceloopGadget",
 			Cmd:     "$KUBECTL_GADGET traceloop stop",
 			Cleanup: true,
 		},
-		{
+		&CmdCommand{
 			Name:    "WaitForTraceloopStopped",
 			Cmd:     "sleep 15",
 			Cleanup: true,

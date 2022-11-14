@@ -59,7 +59,7 @@ func TestTraceFsslower(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		traceFsslowerCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started

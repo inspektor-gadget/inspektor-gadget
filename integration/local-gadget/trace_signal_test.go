@@ -54,7 +54,7 @@ func TestTraceSignal(t *testing.T) {
 		},
 	}
 
-	commands := []*CmdCommand{
+	commands := []Command{
 		CreateTestNamespaceCommand(ns),
 		traceSignalCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
