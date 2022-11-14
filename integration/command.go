@@ -30,6 +30,7 @@ import (
 	"github.com/kr/pretty"
 	v1 "k8s.io/api/core/v1"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
@@ -761,6 +762,73 @@ func WaitUntilPodReadyCommand(namespace string, podname string) *CmdCommand {
 		Name:           "WaitForTestPod",
 		Cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready -n %s %s", namespace, podname),
 		ExpectedString: fmt.Sprintf("pod/%s condition met\n", podname),
+	}
+}
+
+// WaitUntilPodReadyCommandThroughAPI returns a CmdCommand which waits until pod with the specified name in
+// the given as parameter namespace is ready.
+func WaitUntilPodReadyCommandThroughAPI(namespace string, podname string) *K8sCommand {
+	return &K8sCommand{
+		name: fmt.Sprintf("Waiting for pod %s", podname),
+		runFunc: func(t *testing.T) {
+			k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
+			if err != nil {
+				t.Fatal(commonutils.WrapInErrSetupK8sClient(err).Error())
+				return
+			}
+
+			podClient := k8sClient.CoreV1().Pods(namespace)
+
+			opts := k8smeta.ListOptions{
+				FieldSelector: fmt.Sprintf("metadata.name=%s", podname),
+			}
+			watcher, err := podClient.Watch(context.TODO(), opts)
+			if err != nil {
+				t.Fatalf("Adding watch for pod (%s): %s\n", podname, err.Error())
+				return
+			}
+			defer watcher.Stop()
+
+			isReady := func(conditions []v1.PodCondition) bool {
+				for _, condition := range conditions {
+					if condition.Type == v1.PodReady {
+						return condition.Status == v1.ConditionTrue
+					}
+				}
+				return false
+			}
+
+			podList, err := podClient.List(context.TODO(), opts)
+			if err != nil {
+				t.Fatal(commonutils.WrapInErrListPods(err).Error())
+				return
+			} else if len(podList.Items) > 1 {
+				t.Fatalf("Found %d pods with name %s instead of 1", len(podList.Items), podname)
+				return
+			} else if len(podList.Items) == 1 {
+				// Check after .Watch(...) so we do not miss an event
+				if isReady(podList.Items[0].Status.Conditions) {
+					return
+				}
+			}
+
+			for event := range watcher.ResultChan() {
+				switch event.Type {
+				case watch.Added:
+				case watch.Modified:
+					pod := event.Object.(*v1.Pod)
+
+					if isReady(pod.Status.Conditions) {
+						return
+					}
+				case watch.Error:
+				default:
+					t.Fatalf("Unknown event while waiting for pod %s", podname)
+					return
+				}
+			}
+			t.Fatalf("Timeout waiting for pod %s", podname)
+		},
 	}
 }
 
