@@ -202,14 +202,14 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 			}
 		}
 	} else if e.RemoteKind == types.RemoteKindOther {
-		if e.RemoteOther == "127.0.0.1" {
+		if e.RemoteAddr == "127.0.0.1" {
 			// No need to generate a network policy for localhost
 			peers = []networkingv1.NetworkPolicyPeer{}
 		} else {
 			peers = []networkingv1.NetworkPolicyPeer{
 				{
 					IPBlock: &networkingv1.IPBlock{
-						CIDR: e.RemoteOther + "/32",
+						CIDR: e.RemoteAddr + "/32",
 					},
 				},
 			}
@@ -287,7 +287,7 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 		// Kubernetes Network Policies can't block traffic from a pod's
 		// own resident node. Therefore we must not generate a network
 		// policy in that case.
-		if e.PktType == "HOST" && e.PodHostIP == e.Addr {
+		if e.PktType == "HOST" && e.PodHostIP == e.RemoteAddr {
 			continue
 		}
 

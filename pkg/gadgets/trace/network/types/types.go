@@ -36,7 +36,6 @@ type Event struct {
 
 	PktType string `json:"pktType,omitempty" column:"type,maxWidth:9"`
 	Proto   string `json:"proto,omitempty" column:"proto,maxWidth:5"`
-	Addr    string `json:"addr,omitempty" column:"addr,template:ipaddr,hide"`
 	Port    uint16 `json:"port,omitempty" column:"port,template:ipport"`
 
 	/* Further information of pod where event occurs */
@@ -46,15 +45,13 @@ type Event struct {
 	PodLabels map[string]string `json:"podLabels,omitempty" column:"padlabels,hide"`
 
 	/* Remote */
-	RemoteKind RemoteKind `json:"remoteKind,omitempty" column:"kind,maxWidth:5"`
+	RemoteKind RemoteKind `json:"remoteKind,omitempty" column:"remoteKind,maxWidth:5"`
+	RemoteAddr string     `json:"remoteAddr,omitempty" column:"remoteAddr,template:ipaddr,hide"`
 
 	/* if RemoteKind = RemoteKindPod or RemoteKindService */
 	RemoteName      string            `json:"remoteName,omitempty" column:"remotename,hide"`
 	RemoteNamespace string            `json:"remoteNamespace,omitempty" column:"remotens,hide"`
 	RemoteLabels    map[string]string `json:"remoteLabels,omitempty" column:"remotelabels,hide"`
-
-	/* if RemoteKind = RemoteKindOther */
-	RemoteOther string `json:"remoteOther,omitempty" column:"remoteother,template:ipaddr,hide"`
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -74,7 +71,7 @@ func GetColumns() *columns.Columns[Event] {
 			case RemoteKindService:
 				return fmt.Sprintf("svc %s/%s", e.RemoteNamespace, e.RemoteName)
 			case RemoteKindOther:
-				return fmt.Sprintf("endpoint %s", e.RemoteOther)
+				return fmt.Sprintf("endpoint %s", e.RemoteAddr)
 			default:
 				return "unknown"
 			}
@@ -110,7 +107,7 @@ func (e *Event) Key() string {
 		e.Pod,
 		e.PktType,
 		e.Proto,
-		e.Addr,
+		e.RemoteAddr,
 		e.Port)
 }
 

@@ -79,11 +79,12 @@ func (e *Enricher) convertEvent(
 
 		PktType: edge.PktType,
 		Proto:   edge.Proto,
-		Addr:    edge.Addr.String(),
 		Port:    edge.Port,
+
+		RemoteAddr: edge.Addr.String(),
 	}
 
-	// Find the pod resource where the packet capture occured
+	// Find the pod resource where the packet capture occurred
 	localPodIndex := -1
 	for i, pod := range pods.Items {
 		if pod.GetNamespace() == namespace && pod.GetName() == name {
@@ -137,9 +138,9 @@ func (e *Enricher) convertEvent(
 			}
 		}
 	}
+
 	if out.RemoteKind == "" {
 		out.RemoteKind = types.RemoteKindOther
-		out.RemoteOther = edge.Addr.String()
 	}
 
 	return out

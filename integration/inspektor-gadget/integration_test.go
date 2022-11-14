@@ -855,7 +855,7 @@ func TestNetworkpolicy(t *testing.T) {
 					sleep 10
 					kill $!
 					head networktrace-client.log | sort | uniq`, nsClient),
-			ExpectedRegexp: fmt.Sprintf(`{"node":".*","namespace":"%s","pod":"test-pod","type":"normal","pktType":"OUTGOING","proto":"tcp","addr":".*","port":9090,"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"svc","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsClient, nsServer),
+			ExpectedRegexp: fmt.Sprintf(`{"node":".*","namespace":"%s","pod":"test-pod","type":"normal","pktType":"OUTGOING","proto":"tcp","port":9090,"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"svc","remoteAddr":".*","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsClient, nsServer),
 		},
 		{
 			// Docker bridge does not preserve source IP :-(
@@ -867,7 +867,7 @@ func TestNetworkpolicy(t *testing.T) {
 					kill $!
 					head networktrace-server.log | sort | uniq
 					kubectl get node -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}'|grep -q docker && echo SKIP_TEST || true`, nsServer),
-			ExpectedRegexp: fmt.Sprintf(`SKIP_TEST|{"node":".*","namespace":"%s","pod":"test-pod","type":"normal","pktType":"HOST","proto":"tcp","addr":".*","port":9090,"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"pod","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsServer, nsClient),
+			ExpectedRegexp: fmt.Sprintf(`SKIP_TEST|{"node":".*","namespace":"%s","pod":"test-pod","type":"normal","pktType":"HOST","proto":"tcp","port":9090,"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"pod","remoteAddr":".*","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsServer, nsClient),
 		},
 		{
 			Name: "RunNetworkPolicyReportClient",
@@ -1078,7 +1078,7 @@ func TestNetworkGraph(t *testing.T) {
 				Event:           BuildBaseEvent(ns),
 				PktType:         "OUTGOING",
 				Proto:           "tcp",
-				Addr:            NginxIP,
+				RemoteAddr:      NginxIP,
 				Port:            80,
 				RemoteKind:      networkTypes.RemoteKindPod,
 				PodIP:           TestPodIP,
