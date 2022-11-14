@@ -45,7 +45,7 @@ type Event struct {
 	PodLabels map[string]string `json:"podLabels,omitempty" column:"padlabels,hide"`
 
 	/* Remote */
-	RemoteKind RemoteKind `json:"remoteKind,omitempty" column:"remoteKind,maxWidth:5"`
+	RemoteKind RemoteKind `json:"remoteKind,omitempty" column:"remoteKind,maxWidth:5,hide"`
 	RemoteAddr string     `json:"remoteAddr,omitempty" column:"remoteAddr,template:ipaddr,hide"`
 
 	/* if RemoteKind = RemoteKindPod or RemoteKindService */
