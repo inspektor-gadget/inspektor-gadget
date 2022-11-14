@@ -689,6 +689,49 @@ done
 	}
 }
 
+// CreateTestNamespaceCommandThroughAPI returns a CmdCommand which creates a namespace whom
+// name is given as parameter.
+// Still a todo
+func CreateTestNamespaceCommandThroughAPI(namespace string) *K8sCommand {
+	return &K8sCommand{
+		name: fmt.Sprintf("Creating namespace %s", namespace),
+		runFunc: func(t *testing.T) {
+			k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
+			if err != nil {
+				t.Fatalf("creating namespace %s: %s", namespace, commonutils.WrapInErrSetupK8sClient(err).Error())
+				return
+			}
+			objectMeta := k8smeta.ObjectMeta{
+				Name: namespace,
+				Labels: map[string]string{
+					namespaceLabelKey: namespaceLabelValue,
+				},
+			}
+
+			nsConfig := v1.Namespace{
+				ObjectMeta: objectMeta,
+			}
+
+			ns, err := k8sClient.CoreV1().Namespaces().Create(context.TODO(), &nsConfig, k8smeta.CreateOptions{})
+			if err != nil {
+				t.Fatalf("creating namespace %s: %s", namespace, err.Error())
+				return
+			}
+
+			timeout := 15
+			for i := 0; i < timeout; i++ {
+				if ns.Status.Phase == v1.NamespaceActive {
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+			if ns.Status.Phase != v1.NamespaceActive {
+				t.Fatalf("namespace %s was not active after %d seconds", namespace, timeout)
+			}
+		},
+	}
+}
+
 // DeleteTestNamespaceCommand returns a CmdCommand which deletes a namespace whom
 // name is given as parameter.
 func DeleteTestNamespaceCommand(namespace string) *CmdCommand {

@@ -1439,7 +1439,7 @@ func TestTcptop(t *testing.T) {
 	t.Parallel()
 
 	commandsPreTest := []Command{
-		CreateTestNamespaceCommand(ns),
+		CreateTestNamespaceCommandThroughAPI(ns),
 		PodCommandThroughAPI("nginx-pod", "nginx", ns, nil, nil),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
 	}
