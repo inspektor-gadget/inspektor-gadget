@@ -708,12 +708,12 @@ func waitForNoOperation(traceID string) (*gadgetv1alpha1.TraceList, error) {
 
 var sigIntReceivedNumber = 0
 
-// sigHandler installs a handler for all signals which cause termination as
+// SigHandler installs a handler for all signals which cause termination as
 // their default behavior.
 // On reception of this signal, the given trace will be deleted.
 // This function fixes trace not being deleted when calling:
 // kubectl gadget process-collector -A | head -n0
-func sigHandler(traceID *string, printTerminationMessage bool) {
+func SigHandler(traceID *string, printTerminationMessage bool) {
 	c := make(chan os.Signal)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGILL, syscall.SIGABRT, syscall.SIGFPE, syscall.SIGSEGV, syscall.SIGPIPE, syscall.SIGALRM, syscall.SIGTERM, syscall.SIGBUS, syscall.SIGTRAP)
 	go func() {
@@ -730,7 +730,7 @@ func sigHandler(traceID *string, printTerminationMessage bool) {
 				os.Exit(1)
 			}
 
-			sigHandler(traceID, printTerminationMessage)
+			SigHandler(traceID, printTerminationMessage)
 		}
 
 		if *traceID != "" {
@@ -917,7 +917,7 @@ func PrintAllTraces(config *TraceConfig) error {
 func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) string) error {
 	var traceID string
 
-	sigHandler(&traceID, config.CommonFlags.OutputMode != commonutils.OutputModeJSON)
+	SigHandler(&traceID, config.CommonFlags.OutputMode != commonutils.OutputModeJSON)
 
 	if config.TraceOutputMode != gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must be Stream. Otherwise, call RunTraceAndPrintStatusOutput")
@@ -938,7 +938,7 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 func RunTraceStreamCallback(config *TraceConfig, callback func(line string, node string)) error {
 	var traceID string
 
-	sigHandler(&traceID, false)
+	SigHandler(&traceID, false)
 
 	if config.TraceOutputMode != gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must be Stream")
@@ -971,7 +971,7 @@ func RunTraceAndPrintStatusOutput(
 ) error {
 	var traceID string
 
-	sigHandler(&traceID, false)
+	SigHandler(&traceID, false)
 
 	if config.TraceOutputMode == gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must not be Stream. Otherwise, call RunTraceAndPrintStream")
