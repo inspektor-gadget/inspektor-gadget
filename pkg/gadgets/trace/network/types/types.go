@@ -29,7 +29,7 @@ type Event struct {
 	PktType string `json:"pktType,omitempty" column:"type,maxWidth:9"`
 	Proto   string `json:"proto,omitempty" column:"proto,maxWidth:5"`
 	Addr    string `json:"addr,omitempty" column:"addr,template:ipaddr,hide"`
-	Port    uint16 `json:"port,omitempty" column:"ipport,template:ipport"`
+	Port    uint16 `json:"port,omitempty" column:"port,template:ipport"`
 
 	/* pod, svc or other */
 	RemoteKind string `json:"remoteKind,omitempty" column:"kind,maxWidth:5"`
