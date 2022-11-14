@@ -15,13 +15,23 @@
 package types
 
 import (
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
 
-	Name string `json:"name,omitempty"`
+	Name string `json:"name,omitempty" column:"name,width:30"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	cols := columns.MustCreateColumns[Event]()
+
+	col, _ := cols.GetColumn("container")
+	col.Visible = false
+
+	return cols
 }
 
 func Base(ev eventtypes.Event) Event {

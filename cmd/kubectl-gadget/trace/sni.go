@@ -15,87 +15,34 @@
 package trace
 
 import (
-	"fmt"
-	"strings"
-
 	commontrace "github.com/inspektor-gadget/inspektor-gadget/cmd/common/trace"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
+	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
 
 	"github.com/spf13/cobra"
 )
 
-type SNIParser struct {
-	commonutils.BaseParser[types.Event]
-}
-
 func newSNICmd() *cobra.Command {
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"name",
-			},
-		},
-	}
+	var commonFlags utils.CommonFlags
 
-	cmd := &cobra.Command{
-		Use:   "sni",
-		Short: "Trace Server Name Indication (SNI) from TLS requests",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sniGadget := &TraceGadget[types.Event]{
-				name:        "snisnoop",
-				commonFlags: commonFlags,
-				parser:      NewSNIParser(&commonFlags.OutputConfig),
-			}
-
-			return sniGadget.Run()
-		},
-	}
-
-	utils.AddCommonFlags(cmd, commonFlags)
-
-	return cmd
-}
-
-func NewSNIParser(outputConfig *commonutils.OutputConfig) commontrace.TraceParser[types.Event] {
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -30,
-		"name":      -24,
-	}
-
-	return &SNIParser{
-		BaseParser: commonutils.NewBaseWidthParser[types.Event](columnsWidth, outputConfig),
-	}
-}
-
-func (p *SNIParser) TransformIntoColumns(event *types.Event) string {
-	var sb strings.Builder
-
-	for _, col := range p.OutputConfig.CustomColumns {
-		switch col {
-		case "node":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Node))
-		case "namespace":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Namespace))
-		case "pod":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Pod))
-		case "name":
-			sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], event.Name))
-		default:
-			continue
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, sniTypes.GetColumns())
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		// Needed when field is larger than the predefined columnsWidth.
-		sb.WriteRune(' ')
+		sniGadget := &TraceGadget[sniTypes.Event]{
+			name:        "snisnoop",
+			commonFlags: &commonFlags,
+			parser:      parser,
+		}
+
+		return sniGadget.Run()
 	}
 
-	return sb.String()
+	cmd := commontrace.NewSNICmd(runCmd)
+	utils.AddCommonFlags(cmd, &commonFlags)
+
+	return cmd
 }
