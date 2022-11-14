@@ -96,6 +96,9 @@ type TraceConfig struct {
 
 	// Parameters is used to pass specific gadget configurations.
 	Parameters map[string]string
+
+	// AdditionalLabels is used to pass specific labels to traces.
+	AdditionalLabels map[string]string
 }
 
 func init() {
@@ -384,6 +387,15 @@ func CreateTrace(config *TraceConfig) (string, error) {
 		},
 	}
 
+	for key, value := range config.AdditionalLabels {
+		v, ok := trace.ObjectMeta.Labels[key]
+		if ok {
+			return "", fmt.Errorf("label %q is already present with value %q", key, v)
+		}
+
+		trace.ObjectMeta.Labels[key] = value
+	}
+
 	err := createTraces(trace)
 	if err != nil {
 		return "", err
@@ -407,9 +419,9 @@ func CreateTrace(config *TraceConfig) (string, error) {
 	return traceID, nil
 }
 
-// getTraceListFromOptions returns a list of traces corresponding to the given
+// GetTraceListFromOptions returns a list of traces corresponding to the given
 // options.
-func getTraceListFromOptions(listTracesOptions metav1.ListOptions) (*gadgetv1alpha1.TraceList, error) {
+func GetTraceListFromOptions(listTracesOptions metav1.ListOptions) (*gadgetv1alpha1.TraceList, error) {
 	traceClient, err := getTraceClient()
 	if err != nil {
 		return nil, err
@@ -428,7 +440,7 @@ func getTraceListFromID(traceID string) (*gadgetv1alpha1.TraceList, error) {
 		LabelSelector: fmt.Sprintf("%s=%s", GlobalTraceID, traceID),
 	}
 
-	traces, err := getTraceListFromOptions(listTracesOptions)
+	traces, err := GetTraceListFromOptions(listTracesOptions)
 	if err != nil {
 		return traces, fmt.Errorf("failed to get traces from traceID %q: %w", traceID, err)
 	}
@@ -824,7 +836,7 @@ func getTraceListFromParameters(config *TraceConfig) ([]gadgetv1alpha1.Trace, er
 		LabelSelector: labelsFromFilter(filter),
 	}
 
-	traces, err := getTraceListFromOptions(listTracesOptions)
+	traces, err := GetTraceListFromOptions(listTracesOptions)
 	if err != nil {
 		return []gadgetv1alpha1.Trace{}, err
 	}
@@ -1068,7 +1080,7 @@ func ListTracesByGadgetName(gadget string) ([]gadgetv1alpha1.Trace, error) {
 		LabelSelector: fmt.Sprintf("gadgetName=%s", gadget),
 	}
 
-	traces, err := getTraceListFromOptions(listTracesOptions)
+	traces, err := GetTraceListFromOptions(listTracesOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get traces by gadget name: %w", err)
 	}
