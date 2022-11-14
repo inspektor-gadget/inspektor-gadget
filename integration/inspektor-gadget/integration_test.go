@@ -1075,17 +1075,17 @@ func TestNetworkGraph(t *testing.T) {
 			TestPodIP := GetTestPodIP(ns, "test-pod")
 
 			expectedEntry := &networkTypes.Event{
-				Event:              BuildBaseEvent(ns),
-				PktType:            "OUTGOING",
-				Proto:              "tcp",
-				Addr:               NginxIP,
-				Port:               80,
-				RemoteKind:         "pod",
-				PodIP:              TestPodIP,
-				PodLabels:          map[string]string{"run": "test-pod"},
-				RemotePodNamespace: ns,
-				RemotePodName:      "nginx-pod",
-				RemotePodLabels:    map[string]string{"run": "nginx-pod"},
+				Event:           BuildBaseEvent(ns),
+				PktType:         "OUTGOING",
+				Proto:           "tcp",
+				Addr:            NginxIP,
+				Port:            80,
+				RemoteKind:      "pod",
+				PodIP:           TestPodIP,
+				PodLabels:       map[string]string{"run": "test-pod"},
+				RemoteNamespace: ns,
+				RemoteName:      "nginx-pod",
+				RemoteLabels:    map[string]string{"run": "nginx-pod"},
 			}
 			// Network gadget doesn't provide container data. Remove it.
 			expectedEntry.Container = ""

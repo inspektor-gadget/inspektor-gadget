@@ -106,9 +106,9 @@ func (e *Enricher) convertEvent(
 		}
 		if pod.Status.PodIP == edge.Addr.String() {
 			out.RemoteKind = "pod"
-			out.RemotePodNamespace = pod.Namespace
-			out.RemotePodName = pod.Name
-			out.RemotePodLabels = pod.Labels
+			out.RemoteNamespace = pod.Namespace
+			out.RemoteName = pod.Name
+			out.RemoteLabels = pod.Labels
 			break
 		}
 	}
@@ -130,9 +130,9 @@ func (e *Enricher) convertEvent(
 		for _, svc := range svcs.Items {
 			if svc.Spec.ClusterIP == edge.Addr.String() {
 				out.RemoteKind = "svc"
-				out.RemoteSvcNamespace = svc.Namespace
-				out.RemoteSvcName = svc.Name
-				out.RemoteSvcLabelSelector = svc.Spec.Selector
+				out.RemoteNamespace = svc.Namespace
+				out.RemoteName = svc.Name
+				out.RemoteLabels = svc.Spec.Selector
 				break
 			}
 		}

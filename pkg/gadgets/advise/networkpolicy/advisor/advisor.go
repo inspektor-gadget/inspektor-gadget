@@ -149,9 +149,9 @@ func (a *NetworkPolicyAdvisor) localPodKey(e types.Event) (ret string) {
 
 func (a *NetworkPolicyAdvisor) networkPeerKey(e types.Event) (ret string) {
 	if e.RemoteKind == "pod" {
-		ret = e.RemoteKind + ":" + e.RemotePodNamespace + ":" + a.labelKeyString(e.RemotePodLabels)
+		ret = e.RemoteKind + ":" + e.RemoteNamespace + ":" + a.labelKeyString(e.RemoteLabels)
 	} else if e.RemoteKind == "svc" {
-		ret = e.RemoteKind + ":" + e.RemoteSvcNamespace + ":" + a.labelKeyString(e.RemoteSvcLabelSelector)
+		ret = e.RemoteKind + ":" + e.RemoteNamespace + ":" + a.labelKeyString(e.RemoteLabels)
 	} else if e.RemoteKind == "other" {
 		ret = e.RemoteKind + ":" + e.RemoteOther
 	}
@@ -170,34 +170,34 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 	if e.RemoteKind == "pod" {
 		peers = []networkingv1.NetworkPolicyPeer{
 			{
-				PodSelector: &metav1.LabelSelector{MatchLabels: a.labelFilter(e.RemotePodLabels)},
+				PodSelector: &metav1.LabelSelector{MatchLabels: a.labelFilter(e.RemoteLabels)},
 			},
 		}
-		if e.Namespace != e.RemotePodNamespace {
+		if e.Namespace != e.RemoteNamespace {
 			peers[0].NamespaceSelector = &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					// Kubernetes 1.22 is guaranteed to add the following label on namespaces:
 					// kubernetes.io/metadata.name=obj.Name
 					// See:
 					// https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/2161-apiserver-default-labels#proposal
-					"kubernetes.io/metadata.name": e.RemotePodNamespace,
+					"kubernetes.io/metadata.name": e.RemoteNamespace,
 				},
 			}
 		}
 	} else if e.RemoteKind == "svc" {
 		peers = []networkingv1.NetworkPolicyPeer{
 			{
-				PodSelector: &metav1.LabelSelector{MatchLabels: e.RemoteSvcLabelSelector},
+				PodSelector: &metav1.LabelSelector{MatchLabels: e.RemoteLabels},
 			},
 		}
-		if e.Namespace != e.RemoteSvcNamespace {
+		if e.Namespace != e.RemoteNamespace {
 			peers[0].NamespaceSelector = &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					// Kubernetes 1.22 is guaranteed to add the following label on namespaces:
 					// kubernetes.io/metadata.name=obj.Name
 					// See:
 					// https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/2161-apiserver-default-labels#proposal
-					"kubernetes.io/metadata.name": e.RemoteSvcNamespace,
+					"kubernetes.io/metadata.name": e.RemoteNamespace,
 				},
 			}
 		}
