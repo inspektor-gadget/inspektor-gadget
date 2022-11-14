@@ -15,7 +15,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -86,35 +85,4 @@ func GetColumns() *columns.Columns[Event] {
 
 func (e Event) GetBaseEvent() eventtypes.Event {
 	return e.Event
-}
-
-func Unique(edges []Event) []Event {
-	keys := make(map[string]bool)
-	list := []Event{}
-	for _, e := range edges {
-		key := e.Key()
-		if _, value := keys[key]; !value {
-			keys[key] = true
-			list = append(list, e)
-		}
-	}
-	return list
-}
-
-func (e *Event) Key() string {
-	return fmt.Sprintf("%s/%s/%s/%s/%s/%d",
-		e.Namespace,
-		e.Pod,
-		e.PktType,
-		e.Proto,
-		e.RemoteAddr,
-		e.Port)
-}
-
-func EventsString(edges []Event) string {
-	b, err := json.Marshal(edges)
-	if err != nil {
-		return fmt.Sprintf("error marshalling event: %s\n", err)
-	}
-	return string(b)
 }
