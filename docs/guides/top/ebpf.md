@@ -72,11 +72,10 @@ minikube         8        CGroupSKB                                             
 
 ### A note about memory usage of maps
 
-The shown value for MapMemory is calculated by using the parameters of the map: `max_entries * (key_size + value_size)`.
+The shown value for MapMemory is read from `/proc/<pid>/fdinfo/<map_id>`.
 This is the maximum size the map can have, but it doesn't necessarily reflect its current memory allocation. Additionally, maps can
 be used by more than one program and would account towards the MapMemory of all those programs.
 
 Also note:
 * BPF_MAP_TYPE_PERF_EVENT_ARRAY: value_size is not counting the ring buffers, but only their file descriptors (i.e. sizeof(int) = 4 bytes)
 * BPF_MAP_TYPE_{HASH,ARRAY}_OF_MAPS: value_size is not counting the inner maps, but only their file descriptors (i.e. sizeof(int) = 4 bytes)
-* PERCPU maps: the reported size is for one cpu, the multiplication by the number of cpus is left as an exercise to the reader
