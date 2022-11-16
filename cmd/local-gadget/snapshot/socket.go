@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	commonsnapshot "github.com/inspektor-gadget/inspektor-gadget/cmd/common/snapshot"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer"
@@ -32,9 +33,14 @@ func newSocketCmd() *cobra.Command {
 	var flags commonsnapshot.SocketFlags
 
 	runCmd := func(*cobra.Command, []string) error {
+		parser, err := commonsnapshot.NewSocketParserWithRuntimeInfo(&commonFlags.OutputConfig, &flags)
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
+		}
+
 		socketGadget := &SnapshotGadget[socketTypes.Event]{
 			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[socketTypes.Event]{
-				Parser: commonsnapshot.NewSocketParserWithRuntimeInfo(&commonFlags.OutputConfig, &flags),
+				Parser: parser,
 			},
 			commonFlags: &commonFlags,
 			runTracer: func(localGadgetManager *localgadgetmanager.LocalGadgetManager, containerSelector *containercollection.ContainerSelector) ([]socketTypes.Event, error) {

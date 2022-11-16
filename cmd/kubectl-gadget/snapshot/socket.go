@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	commonsnapshot "github.com/inspektor-gadget/inspektor-gadget/cmd/common/snapshot"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 )
@@ -27,11 +28,16 @@ func newSocketCmd() *cobra.Command {
 	var flags commonsnapshot.SocketFlags
 
 	runCmd := func(cmd *cobra.Command, args []string) error {
+		parser, err := commonsnapshot.NewSocketParserWithK8sInfo(&commonFlags.OutputConfig, &flags)
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
+		}
+
 		socketGadget := &SnapshotGadget[types.Event]{
 			name:        "socket-collector",
 			commonFlags: &commonFlags,
 			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[types.Event]{
-				Parser: commonsnapshot.NewSocketParserWithK8sInfo(&commonFlags.OutputConfig, &flags),
+				Parser: parser,
 			},
 			params: map[string]string{
 				"protocol": flags.Protocol,

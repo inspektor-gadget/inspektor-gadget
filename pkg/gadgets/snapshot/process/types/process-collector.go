@@ -15,13 +15,19 @@
 package types
 
 import (
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
-	Tgid      int    `json:"tgid"`
-	Pid       int    `json:"pid"`
-	Command   string `json:"comm"`
-	MountNsID uint64 `json:"mntns"`
+
+	Command   string `json:"comm" column:"comm,template:comm"`
+	Tgid      int    `json:"tgid" column:"tgid,template:pid,hide"`
+	Pid       int    `json:"pid" column:"pid,template:pid"`
+	MountNsID uint64 `json:"mntns" column:"mntns,template:ns"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	return columns.MustCreateColumns[Event]()
 }

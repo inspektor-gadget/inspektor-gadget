@@ -17,8 +17,6 @@ package snapshot
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -78,14 +76,7 @@ func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []Event) error {
 	case commonutils.OutputModeColumns:
 		fallthrough
 	case commonutils.OutputModeCustomColumns:
-		// In the snapshot gadgets it's possible to use a tabwriter because
-		// we have the full list of events to print available, hence the
-		// tablewriter is able to determine the columns width. In other
-		// gadgets we don't know the size of all columns "a priori", hence
-		// we have to do a best effort printing fixed-width columns.
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-		fmt.Fprintln(w, g.Parser.BuildColumnsHeader())
+		fmt.Println(g.Parser.BuildColumnsHeader())
 
 		for _, e := range allEvents {
 			baseEvent := e.GetBaseEvent()
@@ -94,10 +85,8 @@ func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []Event) error {
 				continue
 			}
 
-			fmt.Fprintln(w, g.Parser.TransformToColumns(&e))
+			fmt.Println(g.Parser.TransformToColumns(&e))
 		}
-
-		w.Flush()
 	}
 
 	return nil
