@@ -30,7 +30,8 @@ type ProcessFlags struct {
 type ProcessParser struct {
 	commonutils.GadgetParser[types.Event]
 
-	flags *ProcessFlags
+	flags        *ProcessFlags
+	outputConfig *commonutils.OutputConfig
 }
 
 func newProcessParser(outputConfig *commonutils.OutputConfig, flags *ProcessFlags, cols *columns.Columns[types.Event], options ...commonutils.Option) (SnapshotParser[types.Event], error) {
@@ -42,6 +43,7 @@ func newProcessParser(outputConfig *commonutils.OutputConfig, flags *ProcessFlag
 	return &ProcessParser{
 		flags:        flags,
 		GadgetParser: *gadgetParser,
+		outputConfig: outputConfig,
 	}, nil
 }
 
@@ -53,14 +55,8 @@ func NewProcessParserWithRuntimeInfo(outputConfig *commonutils.OutputConfig, fla
 	return newProcessParser(outputConfig, flags, types.GetColumns(), commonutils.WithMetadataTag(commonutils.ContainerRuntimeTag))
 }
 
-func (p *ProcessParser) TransformToColumns(e *types.Event) string {
-	return p.GadgetParser.TransformIntoColumns(e)
-}
-
 func (p *ProcessParser) GetOutputConfig() *commonutils.OutputConfig {
-	return &commonutils.OutputConfig{
-		OutputMode: commonutils.OutputModeColumns,
-	}
+	return p.outputConfig
 }
 
 func (p *ProcessParser) SortEvents(allProcesses *[]*types.Event) {

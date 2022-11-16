@@ -35,6 +35,7 @@ type SocketFlags struct {
 
 type SocketParser struct {
 	commonutils.GadgetParser[types.Event]
+	outputConfig *commonutils.OutputConfig
 }
 
 func newSocketParser(outputConfig *commonutils.OutputConfig, flags *SocketFlags, cols *columns.Columns[types.Event], options ...commonutils.Option) (SnapshotParser[types.Event], error) {
@@ -48,6 +49,7 @@ func newSocketParser(outputConfig *commonutils.OutputConfig, flags *SocketFlags,
 
 	return &SocketParser{
 		GadgetParser: *gadgetParser,
+		outputConfig: outputConfig,
 	}, nil
 }
 
@@ -59,14 +61,8 @@ func NewSocketParserWithRuntimeInfo(outputConfig *commonutils.OutputConfig, flag
 	return newSocketParser(outputConfig, flags, types.GetColumns(), commonutils.WithMetadataTag(commonutils.ContainerRuntimeTag))
 }
 
-func (p *SocketParser) TransformToColumns(e *types.Event) string {
-	return p.GadgetParser.TransformIntoColumns(e)
-}
-
-func (p *SocketParser) GetOutputConfig() *commonutils.OutputConfig {
-	return &commonutils.OutputConfig{
-		OutputMode: commonutils.OutputModeColumns,
-	}
+func (s *SocketParser) GetOutputConfig() *commonutils.OutputConfig {
+	return s.outputConfig
 }
 
 func (s *SocketParser) SortEvents(allSockets *[]*types.Event) {
