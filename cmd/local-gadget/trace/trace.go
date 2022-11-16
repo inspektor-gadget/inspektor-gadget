@@ -118,6 +118,7 @@ func NewTraceCmd() *cobra.Command {
 	traceCmd.AddCommand(newTCPCmd())
 	traceCmd.AddCommand(newTcpconnectCmd())
 	traceCmd.AddCommand(newSignalCmd())
+	traceCmd.AddCommand(newSNICmd())
 
 	return traceCmd
 }

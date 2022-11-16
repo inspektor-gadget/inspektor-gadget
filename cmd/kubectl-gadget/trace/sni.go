@@ -15,17 +15,16 @@
 package trace
 
 import (
+	"github.com/spf13/cobra"
+
 	commontrace "github.com/inspektor-gadget/inspektor-gadget/cmd/common/trace"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
-
-	"github.com/spf13/cobra"
 )
 
 func newSNICmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
-
 	runCmd := func(cmd *cobra.Command, args []string) error {
 		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, sniTypes.GetColumns())
 		if err != nil {
