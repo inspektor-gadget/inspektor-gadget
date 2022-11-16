@@ -28,9 +28,9 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
@@ -47,6 +47,7 @@ var (
 	fallbackPodInformer bool
 	hookMode            string
 	socketfile          string
+	listenaddr          string
 	method              string
 	label               string
 	tracerid            string
@@ -61,6 +62,7 @@ var clientTimeout = 2 * time.Second
 
 func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
+	flag.StringVar(&listenaddr, "listenaddr", "127.0.0.1:7080", "GRPC listen address")
 	flag.StringVar(&hookMode, "hook-mode", "auto", "how to get containers start/stop notifications (podinformer, fanotify, auto, none)")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
@@ -221,13 +223,15 @@ func main() {
 			log.Fatalf("Environment variable NODE_NAME not set")
 		}
 
-		lis, err := net.Listen("unix", socketfile)
+		unixListener, err := net.Listen("unix", socketfile)
 		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
+			log.Fatalf("failed to listen (unix socket): %v", err)
 		}
 
-		var opts []grpc.ServerOption
-		grpcServer := grpc.NewServer(opts...)
+		tcpListener, err := net.Listen("tcp", listenaddr)
+		if err != nil {
+			log.Fatalf("failed to listen (tcp): %v", err)
+		}
 
 		var tracerManager *gadgettracermanager.GadgetTracerManager
 
@@ -236,18 +240,37 @@ func main() {
 			HookMode:            hookMode,
 			FallbackPodInformer: fallbackPodInformer,
 		})
-
 		if err != nil {
 			log.Fatalf("failed to create Gadget Tracer Manager server: %v", err)
 		}
 
-		pb.RegisterGadgetTracerManagerServer(grpcServer, tracerManager)
+		// Get TLS configuration (including a new certificate) for our gRPC endpoint
+		tlsConfig, err := getTLSConfig(node)
+		if err != nil {
+			log.Fatalf("failed to get TLS config for gRPC: %v", err)
+		}
+
+		// Local (unix socket, legacy) gRPC service
+		grpcServerUnix := grpc.NewServer()
+
+		// TCP bases gRPC service
+		var opts []grpc.ServerOption
+		opts = append(opts, grpc.Creds(credentials.NewTLS(tlsConfig)))
+		opts = append(opts, grpc.UnaryInterceptor(unaryInterceptor()))
+		opts = append(opts, grpc.StreamInterceptor(streamInterceptor()))
+		grpcServerTCP := grpc.NewServer(opts...)
+
+		// Register GadgetTracerManagerServer with both gRPC endpoints
+		pb.RegisterGadgetTracerManagerServer(grpcServerUnix, tracerManager)
+		pb.RegisterGadgetTracerManagerServer(grpcServerTCP, tracerManager)
 
 		healthserver := health.NewServer()
-		healthpb.RegisterHealthServer(grpcServer, healthserver)
+		healthpb.RegisterHealthServer(grpcServerUnix, healthserver)
 
-		log.Printf("Serving on gRPC socket %s", socketfile)
-		go grpcServer.Serve(lis)
+		log.Printf("Serving gRPC: unix://%s", socketfile)
+		log.Printf("Serving gRPC: %s", listenaddr)
+		go grpcServerUnix.Serve(unixListener)
+		go grpcServerTCP.Serve(tcpListener)
 
 		if controller {
 			go startController(node, tracerManager)
