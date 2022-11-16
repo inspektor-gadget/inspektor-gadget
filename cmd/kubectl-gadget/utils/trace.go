@@ -31,12 +31,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes/scheme"
-
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 
@@ -988,23 +987,6 @@ func genericStreams(
 		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
-	verbose := false
-	// verbose only when not json is used
-	if params.Verbose && params.OutputMode != commonutils.OutputModeJSON {
-		verbose = true
-	}
-
-	config := &PostProcessConfig{
-		Flows:     len(results.Items),
-		OutStream: os.Stdout,
-		ErrStream: os.Stderr,
-		Callback:  callback,
-		Transform: transform,
-		Verbose:   verbose,
-	}
-
-	postProcess := NewPostProcess(config)
-
 	streamCount := int32(0)
 	for index, i := range results.Items {
 		if params.Node != "" && i.Spec.Node != params.Node {
@@ -1012,11 +994,7 @@ func genericStreams(
 		}
 		atomic.AddInt32(&streamCount, 1)
 		go func(nodeName, namespace, name string, index int) {
-			cmd := fmt.Sprintf("exec gadgettracermanager -call receive-stream -tracerid trace_%s_%s",
-				namespace, name)
-			postProcess.OutStreams[index].Node = nodeName
-			err := ExecPod(client, nodeName, cmd,
-				postProcess.OutStreams[index], postProcess.ErrStreams[index])
+			err := ReceiveStream(client, nodeName, fmt.Sprintf("trace_%s_%s", namespace, name), callback, transform, os.Stdout)
 			if err == nil {
 				completion <- fmt.Sprintf("Trace completed on node %q", nodeName)
 			} else {

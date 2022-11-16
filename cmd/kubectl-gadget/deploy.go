@@ -25,12 +25,7 @@ import (
 	"strings"
 	"time"
 
-	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 	"github.com/spf13/cobra"
-
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -51,6 +46,13 @@ import (
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	"sigs.k8s.io/yaml"
+
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	certhelpers "github.com/inspektor-gadget/inspektor-gadget/internal/cert-helpers"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/certs"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 )
 
 var deployCmd = &cobra.Command{
@@ -257,6 +259,27 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	objects = append(objects, traceObjects...)
+
+	// Create a new CA for gRPC communication
+	caCert, caPrivateKey, err := certhelpers.GenerateCA()
+	if err != nil {
+		return fmt.Errorf("generating gadget CA: %w", err)
+	}
+	objects = append(objects, &v1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      certs.CASecretName,
+			Namespace: utils.GadgetNamespace,
+		},
+		Data: map[string][]byte{
+			"cert": caCert,
+			"key":  caPrivateKey,
+		},
+		Type: "Opaque",
+	})
 
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
