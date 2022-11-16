@@ -43,8 +43,8 @@ func newSocketCmd() *cobra.Command {
 				Parser: parser,
 			},
 			commonFlags: &commonFlags,
-			runTracer: func(localGadgetManager *localgadgetmanager.LocalGadgetManager, containerSelector *containercollection.ContainerSelector) ([]socketTypes.Event, error) {
-				allSockets := []socketTypes.Event{}
+			runTracer: func(localGadgetManager *localgadgetmanager.LocalGadgetManager, containerSelector *containercollection.ContainerSelector) ([]*socketTypes.Event, error) {
+				allSockets := []*socketTypes.Event{}
 
 				// Given that the tracer works per network namespace, we only
 				// need to run it once per namespace.

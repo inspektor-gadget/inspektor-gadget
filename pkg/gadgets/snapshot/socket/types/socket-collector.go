@@ -46,7 +46,7 @@ type Event struct {
 	RemoteAddress string `json:"remoteAddress" column:"remoteAddr,template:ipaddr,hide"`
 	RemotePort    uint16 `json:"remotePort" column:"remotePort,template:ipport,hide"`
 	Status        string `json:"status" column:"status,order:1002,maxWidth:12"`
-	InodeNumber   uint64 `json:"inodeNumber" column:"inode,hide"`
+	InodeNumber   uint64 `json:"inodeNumber" column:"inode,order:1003,hide"`
 }
 
 func GetColumns() *columns.Columns[Event] {

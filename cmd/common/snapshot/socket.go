@@ -16,13 +16,14 @@ package snapshot
 
 import (
 	"fmt"
-	"sort"
 	"strings"
+
+	"github.com/spf13/cobra"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
-	"github.com/spf13/cobra"
 )
 
 type SocketFlags struct {
@@ -68,32 +69,9 @@ func (p *SocketParser) GetOutputConfig() *commonutils.OutputConfig {
 	}
 }
 
-func (s *SocketParser) SortEvents(allSockets *[]types.Event) {
-	sort.Slice(*allSockets, func(i, j int) bool {
-		si, sj := (*allSockets)[i], (*allSockets)[j]
-		switch {
-		case si.Node != sj.Node:
-			return si.Node < sj.Node
-		case si.Namespace != sj.Namespace:
-			return si.Namespace < sj.Namespace
-		case si.Pod != sj.Pod:
-			return si.Pod < sj.Pod
-		case si.Protocol != sj.Protocol:
-			return si.Protocol < sj.Protocol
-		case si.Status != sj.Status:
-			return si.Status < sj.Status
-		case si.LocalAddress != sj.LocalAddress:
-			return si.LocalAddress < sj.LocalAddress
-		case si.RemoteAddress != sj.RemoteAddress:
-			return si.RemoteAddress < sj.RemoteAddress
-		case si.LocalPort != sj.LocalPort:
-			return si.LocalPort < sj.LocalPort
-		case si.RemotePort != sj.RemotePort:
-			return si.RemotePort < sj.RemotePort
-		default:
-			return si.InodeNumber < sj.InodeNumber
-		}
-	})
+func (s *SocketParser) SortEvents(allSockets *[]*types.Event) {
+	columnssort.SortEntries(types.GetColumns().GetColumnMap(), *allSockets,
+		[]string{"node", "namespace", "pod", "proto", "status", "localAddr", "remoteAddr", "localPort", "remotePort", "inode"})
 }
 
 func NewSocketCmd(runCmd func(*cobra.Command, []string) error, flags *SocketFlags) *cobra.Command {

@@ -15,12 +15,11 @@
 package snapshot
 
 import (
-	"sort"
-
 	"github.com/spf13/cobra"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 )
 
@@ -64,9 +63,9 @@ func (p *ProcessParser) GetOutputConfig() *commonutils.OutputConfig {
 	}
 }
 
-func (p *ProcessParser) SortEvents(allProcesses *[]types.Event) {
+func (p *ProcessParser) SortEvents(allProcesses *[]*types.Event) {
 	if !p.flags.showThreads {
-		allProcessesTrimmed := []types.Event{}
+		allProcessesTrimmed := []*types.Event{}
 		for _, i := range *allProcesses {
 			if i.Tgid == i.Pid {
 				allProcessesTrimmed = append(allProcessesTrimmed, i)
@@ -75,25 +74,8 @@ func (p *ProcessParser) SortEvents(allProcesses *[]types.Event) {
 		*allProcesses = allProcessesTrimmed
 	}
 
-	sort.Slice(*allProcesses, func(i, j int) bool {
-		pi, pj := (*allProcesses)[i], (*allProcesses)[j]
-		switch {
-		case pi.Node != pj.Node:
-			return pi.Node < pj.Node
-		case pi.Namespace != pj.Namespace:
-			return pi.Namespace < pj.Namespace
-		case pi.Pod != pj.Pod:
-			return pi.Pod < pj.Pod
-		case pi.Container != pj.Container:
-			return pi.Container < pj.Container
-		case pi.Command != pj.Command:
-			return pi.Command < pj.Command
-		case pi.Tgid != pj.Tgid:
-			return pi.Tgid < pj.Tgid
-		default:
-			return pi.Pid < pj.Pid
-		}
-	})
+	columnssort.SortEntries(types.GetColumns().GetColumnMap(), *allProcesses,
+		[]string{"node", "namespace", "pod", "container", "cmd", "tgid", "pid"})
 }
 
 func NewProcessCmd(runCmd func(*cobra.Command, []string) error, flags *ProcessFlags) *cobra.Command {

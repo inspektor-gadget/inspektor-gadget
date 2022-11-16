@@ -50,14 +50,14 @@ func (g *SnapshotGadget[Event]) Run() error {
 	// generates a list of results per node. It merges, sorts and print all of them
 	// in the requested mode.
 	callback := func(traceOutputMode string, results []string) error {
-		allEvents := []Event{}
+		allEvents := []*Event{}
 
 		for _, r := range results {
 			if len(r) == 0 {
 				continue
 			}
 
-			var events []Event
+			var events []*Event
 			if err := json.Unmarshal([]byte(r), &events); err != nil {
 				return commonutils.WrapInErrUnmarshalOutput(err, r)
 			}

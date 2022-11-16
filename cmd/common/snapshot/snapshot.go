@@ -40,7 +40,7 @@ type SnapshotEvent interface {
 // implement.
 type SnapshotParser[Event any] interface {
 	// SortEvents sorts a slice of events based on a predefined prioritization.
-	SortEvents(*[]Event)
+	SortEvents(*[]*Event)
 
 	// TransformToColumns is called to transform an event to columns.
 	TransformToColumns(*Event) string
@@ -60,7 +60,7 @@ type SnapshotGadgetPrinter[Event SnapshotEvent] struct {
 	Parser SnapshotParser[Event]
 }
 
-func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []Event) error {
+func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []*Event) error {
 	g.Parser.SortEvents(&allEvents)
 
 	outputConfig := g.Parser.GetOutputConfig()
@@ -79,13 +79,13 @@ func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []Event) error {
 		fmt.Println(g.Parser.BuildColumnsHeader())
 
 		for _, e := range allEvents {
-			baseEvent := e.GetBaseEvent()
+			baseEvent := (*e).GetBaseEvent()
 			if baseEvent.Type != eventtypes.NORMAL {
 				commonutils.HandleSpecialEvent(baseEvent, outputConfig.Verbose)
 				continue
 			}
 
-			fmt.Println(g.Parser.TransformToColumns(&e))
+			fmt.Println(g.Parser.TransformToColumns(e))
 		}
 	}
 
