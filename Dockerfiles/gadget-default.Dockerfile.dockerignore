@@ -1,6 +1,7 @@
 *
 !go.mod
 !go.sum
+!internal
 !gadget-container
 !pkg
 !tools
