@@ -68,9 +68,6 @@ var (
 	// image such as ghcr.io/inspektor-gadget/inspektor-gadget:latest
 	image = flag.String("image", "", "gadget container image")
 
-	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
-	doNotDeploySPO = flag.Bool("no-deploy-spo", false, "don't deploy the Security Profiles Operator (SPO)")
-
 	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
 	k8sArch   = flag.String("k8s-arch", "amd64", "allows to skip tests that are not supported on a given CPU architecture")
 )
@@ -138,7 +135,8 @@ func testMain(m *testing.M) int {
 	initCommands := []*Command{}
 	cleanupCommands := []*Command{DeleteRemainingNamespacesCommand()}
 
-	if !*doNotDeployIG {
+	deployIG := !CheckNamespace("gadget")
+	if deployIG {
 		imagePullPolicy := "Always"
 		if *k8sDistro == K8sDistroMinikubeGH {
 			imagePullPolicy = "Never"
@@ -149,7 +147,8 @@ func testMain(m *testing.M) int {
 		cleanupCommands = append(cleanupCommands, CleanupInspektorGadget)
 	}
 
-	if !*doNotDeploySPO {
+	deploySPO := !CheckNamespace("security-profiles-operator")
+	if deploySPO {
 		limitReplicas := false
 		patchWebhookConfig := false
 		bestEffortResourceMgmt := false
