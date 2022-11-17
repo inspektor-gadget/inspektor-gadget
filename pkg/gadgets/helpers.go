@@ -15,6 +15,10 @@
 package gadgets
 
 import (
+	"encoding/binary"
+	"net/netip"
+	"unsafe"
+
 	"github.com/cilium/ebpf/link"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -40,4 +44,36 @@ func CloseLink(l link.Link) link.Link {
 // like node, namespace, pod name and container name.
 type DataEnricher interface {
 	Enrich(event *types.CommonData, mountnsid uint64)
+}
+
+func FromCString(in []byte) string {
+	for i := 0; i < len(in); i++ {
+		if in[i] == 0 {
+			return string(in[:i])
+		}
+	}
+	return string(in)
+}
+
+func Htonl(hl uint32) uint32 {
+	var nl [4]byte
+	binary.BigEndian.PutUint32(nl[:], hl)
+	return *(*uint32)(unsafe.Pointer(&nl[0]))
+}
+
+func Htons(hs uint16) uint16 {
+	var ns [2]byte
+	binary.BigEndian.PutUint16(ns[:], hs)
+	return *(*uint16)(unsafe.Pointer(&ns[0]))
+}
+
+func IPStringFromBytes(ipBytes [16]byte, ipType int) string {
+	switch ipType {
+	case 4:
+		return netip.AddrFrom4(*(*[4]byte)(ipBytes[0:4])).String()
+	case 6:
+		return netip.AddrFrom16(ipBytes).String()
+	default:
+		return ""
+	}
 }

@@ -35,8 +35,6 @@ import (
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 )
 
-import "C"
-
 type GadgetTracerManager struct {
 	pb.UnimplementedGadgetTracerManagerServer
 	containercollection.ContainerCollection
@@ -311,9 +309,9 @@ type Conf struct {
 
 // Close releases any resource that could be in use by the tracer manager, like
 // ebpf maps.
-func (m *GadgetTracerManager) Close() {
-	if m.containersMap != nil {
-		m.containersMap.Close()
+func (g *GadgetTracerManager) Close() {
+	if g.containersMap != nil {
+		g.containersMap.Close()
 	}
-	m.ContainerCollection.Close()
+	g.ContainerCollection.Close()
 }

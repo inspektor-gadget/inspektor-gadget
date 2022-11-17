@@ -21,56 +21,9 @@ import (
 	"path/filepath"
 	"strings"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
-
-/*
-#define _GNU_SOURCE
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdint.h>
-
-struct cgid_file_handle
-{
-  //struct file_handle handle;
-  unsigned int handle_bytes;
-  int handle_type;
-  uint64_t cgid;
-};
-
-uint64_t get_cgroupid(char *path) {
-  struct cgid_file_handle *h;
-  int mount_id;
-  int err;
-  uint64_t ret;
-
-  h = malloc(sizeof(struct cgid_file_handle));
-  if (!h)
-    return 0;
-
-  h->handle_bytes = 8;
-  err = name_to_handle_at(AT_FDCWD, path, (struct file_handle *)h, &mount_id, 0);
-  if (err != 0) {
-    ret = 0;
-    goto out;
-  }
-
-  if (h->handle_bytes != 8) {
-    ret = 0;
-    goto out;
-  }
-
-  ret = h->cgid;
-
-out:
-  free(h);
-
-  return ret;
-}
-*/
-import "C"
 
 func CgroupPathV2AddMountpoint(path string) (string, error) {
 	pathWithMountpoint := filepath.Join("/sys/fs/cgroup/unified", path)
@@ -85,12 +38,14 @@ func CgroupPathV2AddMountpoint(path string) (string, error) {
 
 // GetCgroupID returns the cgroup2 ID of a path.
 func GetCgroupID(pathWithMountpoint string) (uint64, error) {
-	cPathWithMountpoint := C.CString(pathWithMountpoint)
-	ret := uint64(C.get_cgroupid(cPathWithMountpoint))
-	C.free(unsafe.Pointer(cPathWithMountpoint))
-	if ret == 0 {
-		return 0, fmt.Errorf("GetCgroupID on %q failed", pathWithMountpoint)
+	hf, _, err := unix.NameToHandleAt(unix.AT_FDCWD, pathWithMountpoint, 0)
+	if err != nil {
+		return 0, fmt.Errorf("GetCgroupID on %q failed: %w", pathWithMountpoint, err)
 	}
+	if hf.Size() != 8 {
+		return 0, fmt.Errorf("GetCgroupID on %q failed: unexpected size", pathWithMountpoint)
+	}
+	ret := *(*uint64)(unsafe.Pointer(&hf.Bytes()[0]))
 	return ret, nil
 }
 
