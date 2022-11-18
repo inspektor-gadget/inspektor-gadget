@@ -17,6 +17,7 @@ package profile
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -29,44 +30,18 @@ import (
 type CPUFlags struct {
 	profileKernelOnly bool
 	profileUserOnly   bool
+
+	commonFlags utils.CommonFlags
 }
 
 type CPUParser struct {
-	commonutils.BaseParser[types.Report]
-
+	commonutils.GadgetParser[types.Report]
+	commonutils.OutputConfig
 	cpuFlags *CPUFlags
 }
 
 func newCPUCmd() *cobra.Command {
 	var cpuFlags CPUFlags
-
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"container",
-				"pid",
-				"comm",
-				"count",
-				"stack",
-			},
-		},
-	}
-
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -30,
-		"container": -16,
-		"pid":       -7,
-		"comm":      -16,
-		"count":     -6,
-		"stack":     -30,
-	}
 
 	cmd := &cobra.Command{
 		Use:          "cpu",
@@ -81,6 +56,11 @@ func newCPUCmd() *cobra.Command {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			parser, err := commonutils.NewGadgetParserWithK8sInfo(&cpuFlags.commonFlags.OutputConfig, types.GetColumns())
+			if err != nil {
+				return commonutils.WrapInErrParserCreate(err)
+			}
+
 			params := map[string]string{}
 			if cpuFlags.profileUserOnly {
 				params[types.ProfileUserParam] = ""
@@ -92,11 +72,12 @@ func newCPUCmd() *cobra.Command {
 			cpuGadget := &ProfileGadget{
 				gadgetName:    "profile",
 				params:        params,
-				commonFlags:   commonFlags,
+				commonFlags:   &cpuFlags.commonFlags,
 				inProgressMsg: "Capturing stack traces",
 				parser: &CPUParser{
-					BaseParser: commonutils.NewBaseWidthParser[types.Report](columnsWidth, &commonFlags.OutputConfig),
-					cpuFlags:   &cpuFlags,
+					GadgetParser: *parser,
+					OutputConfig: cpuFlags.commonFlags.OutputConfig,
+					cpuFlags:     &cpuFlags,
 				},
 			}
 
@@ -119,7 +100,7 @@ func newCPUCmd() *cobra.Command {
 		"Show stacks from kernel space only (no user space stacks)",
 	)
 
-	utils.AddCommonFlags(cmd, commonFlags)
+	utils.AddCommonFlags(cmd, &cpuFlags.commonFlags)
 
 	return cmd
 }
@@ -132,26 +113,7 @@ func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []str
 	case commonutils.OutputModeColumns:
 		fallthrough
 	case commonutils.OutputModeCustomColumns:
-		// Do not print the "stack" column header, it is not actually a column.
-		var i int
-		var col string
-
-		// Remove it from the list of columns to be printed
-		for i, col = range p.OutputConfig.CustomColumns {
-			if col == "stack" {
-				p.OutputConfig.CustomColumns = append(p.OutputConfig.CustomColumns[:i],
-					p.OutputConfig.CustomColumns[i+1:]...)
-				break
-			}
-		}
-
 		fmt.Println(p.BuildColumnsHeader())
-
-		// Add it back in the same position
-		if col == "stack" {
-			p.OutputConfig.CustomColumns = append(p.OutputConfig.CustomColumns[:i],
-				append([]string{col}, p.OutputConfig.CustomColumns[i:]...)...)
-		}
 	}
 
 	for _, r := range results {
@@ -184,41 +146,26 @@ func getReverseStringSlice(toReverse []string) string {
 }
 
 func (p *CPUParser) TransformReport(report *types.Report) string {
-	return p.Transform(report, func(e *types.Report) string {
-		var sb strings.Builder
-
-		for _, col := range p.OutputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], report.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], report.Comm))
-			case "count":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], report.Count))
-			case "stack":
-				if p.cpuFlags.profileUserOnly {
-					fmt.Fprint(&sb, getReverseStringSlice(report.UserStack))
-				} else if p.cpuFlags.profileKernelOnly {
-					fmt.Fprint(&sb, getReverseStringSlice(report.KernelStack))
-				} else {
-					fmt.Fprint(&sb, getReverseStringSlice(report.KernelStack), getReverseStringSlice(report.UserStack))
-				}
-			default:
-				continue
-			}
-
-			// Needed when field is larger than the predefined columnsWidth.
-			sb.WriteRune(' ')
+	switch p.OutputConfig.OutputMode {
+	case commonutils.OutputModeJSON:
+		b, err := json.Marshal(report)
+		if err != nil {
+			fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
+			return ""
 		}
 
-		return sb.String()
-	})
+		return string(b)
+	case commonutils.OutputModeColumns:
+		fallthrough
+	case commonutils.OutputModeCustomColumns:
+		otherCols := p.TransformIntoColumns(report)
+		if p.cpuFlags.profileUserOnly {
+			return otherCols + getReverseStringSlice(report.UserStack)
+		} else if p.cpuFlags.profileKernelOnly {
+			return otherCols + getReverseStringSlice(report.KernelStack)
+		} else {
+			return otherCols + getReverseStringSlice(report.KernelStack) + getReverseStringSlice(report.UserStack)
+		}
+	}
+	return ""
 }
