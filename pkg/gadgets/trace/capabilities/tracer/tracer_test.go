@@ -370,7 +370,10 @@ func createTracer(
 
 func generateNonAudit() error {
 	// This command will generate some non-audit capabilities checks
-	cmd := exec.Command("/bin/cat", "/dev/null")
+	// https://github.com/torvalds/linux/blob/84368d882b9688bfac77ce48d33b1e20a4e4a787/kernel/kallsyms.c#L899
+	// If TestCapabilitiesTracer/audit_only_false fails we should
+	// check that this command is actually generating those checks
+	cmd := exec.Command("/bin/cat", "/proc/kallsyms")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("running command: %w", err)
 	}
