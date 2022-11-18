@@ -62,7 +62,7 @@ func newDNSCmd() *cobra.Command {
 		eventCallback := func(container *containercollection.Container, event dnsTypes.Event) {
 			baseEvent := event.GetBaseEvent()
 			if baseEvent.Type != eventtypes.NORMAL {
-				commonutils.ManageSpecialEvent(baseEvent, commonFlags.Verbose)
+				commonutils.HandleSpecialEvent(baseEvent, commonFlags.Verbose)
 				return
 			}
 

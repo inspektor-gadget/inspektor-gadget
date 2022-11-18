@@ -58,7 +58,7 @@ func newSeccompCmd() *cobra.Command {
 		eventCallback := func(event seccompauditTypes.Event) {
 			baseEvent := event.Event
 			if baseEvent.Type != eventtypes.NORMAL {
-				commonutils.ManageSpecialEvent(baseEvent, commonFlags.Verbose)
+				commonutils.HandleSpecialEvent(&baseEvent, commonFlags.Verbose)
 				return
 			}
 

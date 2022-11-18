@@ -63,7 +63,7 @@ func newSeccompCmd() *cobra.Command {
 
 			baseEvent := e.Event
 			if baseEvent.Type != eventtypes.NORMAL {
-				commonutils.ManageSpecialEvent(&baseEvent, commonFlags.Verbose)
+				commonutils.HandleSpecialEvent(&baseEvent, commonFlags.Verbose)
 				return ""
 			}
 
