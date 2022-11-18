@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	AuditOnlyDefault = false
+	AuditOnlyDefault = true
 	UniqueDefault    = false
 )
 
