@@ -91,7 +91,6 @@ func newTraceloopCmd() *cobra.Command {
 			// Just to avoid mixing Ctrl^C and data.
 			fmt.Println()
 
-			// Print header
 			if commonFlags.OutputMode != commonutils.OutputModeJSON {
 				fmt.Println(parser.BuildColumnsHeader())
 			}

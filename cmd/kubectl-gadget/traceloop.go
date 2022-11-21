@@ -174,7 +174,6 @@ func runTraceloopList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Print header
 	if params.OutputMode != commonutils.OutputModeJSON {
 		fmt.Println(parser.BuildColumnsHeader())
 	}
@@ -228,16 +227,8 @@ func runTraceloopShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Print header
-	switch params.OutputMode {
-	case commonutils.OutputModeJSON:
-		// Nothing to print
-	case commonutils.OutputModeColumns:
-		fallthrough
-	case commonutils.OutputModeCustomColumns:
+	if params.OutputMode != commonutils.OutputModeJSON {
 		fmt.Println(parser.BuildColumnsHeader())
-	default:
-		return commonutils.WrapInErrOutputModeNotSupported(params.OutputMode)
 	}
 
 	var traceID string

@@ -88,8 +88,6 @@ func (g *TraceGadget[Event]) Run() error {
 			fallthrough
 		case commonutils.OutputModeCustomColumns:
 			fmt.Println(g.parser.TransformIntoColumns(&event))
-		default:
-			fmt.Fprint(os.Stderr, commonutils.WrapInErrOutputModeNotSupported(g.commonFlags.OutputMode))
 		}
 	}
 

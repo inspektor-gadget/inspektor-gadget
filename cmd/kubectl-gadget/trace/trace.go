@@ -48,13 +48,7 @@ func (g *TraceGadget[Event]) Run() error {
 		Parameters:       g.params,
 	}
 
-	// Print header
-	switch g.commonFlags.OutputMode {
-	case commonutils.OutputModeJSON:
-		// Nothing to print
-	case commonutils.OutputModeColumns:
-		fallthrough
-	case commonutils.OutputModeCustomColumns:
+	if g.commonFlags.OutputMode != commonutils.OutputModeJSON {
 		fmt.Println(g.parser.BuildColumnsHeader())
 	}
 
@@ -85,10 +79,9 @@ func (g *TraceGadget[Event]) Run() error {
 			fallthrough
 		case commonutils.OutputModeCustomColumns:
 			return g.parser.TransformIntoColumns(&e)
-		default:
-			fmt.Fprint(os.Stderr, commonutils.WrapInErrOutputModeNotSupported(g.commonFlags.OutputMode))
-			return ""
 		}
+
+		return ""
 	}
 
 	if err := utils.RunTraceAndPrintStream(config, transformEvent); err != nil {

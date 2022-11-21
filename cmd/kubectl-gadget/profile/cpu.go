@@ -106,13 +106,7 @@ func newCPUCmd() *cobra.Command {
 }
 
 func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []string) error {
-	// Print header
-	switch p.OutputConfig.OutputMode {
-	case commonutils.OutputModeJSON:
-		// Nothing to print
-	case commonutils.OutputModeColumns:
-		fallthrough
-	case commonutils.OutputModeCustomColumns:
+	if p.OutputConfig.OutputMode != commonutils.OutputModeJSON {
 		fmt.Println(p.BuildColumnsHeader())
 	}
 

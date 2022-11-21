@@ -98,8 +98,6 @@ func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []Event) error {
 		}
 
 		w.Flush()
-	default:
-		return commonutils.WrapInErrOutputModeNotSupported(outputConfig.OutputMode)
 	}
 
 	return nil
