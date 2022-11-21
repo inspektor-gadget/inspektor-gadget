@@ -19,63 +19,81 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	commonaudit "github.com/inspektor-gadget/inspektor-gadget/cmd/common/audit"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
+	seccompauditTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-
-	"github.com/spf13/cobra"
 )
 
 func newSeccompCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
-	cmd := &cobra.Command{
-		Use:          "seccomp",
-		Short:        "Audit syscalls according to the seccomp profile",
-		Args:         cobra.NoArgs,
-		SilenceUsage: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			parser := commonaudit.NewSeccompK8sParser(&commonFlags.OutputConfig)
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		parser, err := commonutils.NewGadgetParserWithK8sInfo(
+			&commonFlags.OutputConfig,
+			seccompauditTypes.GetColumns(),
+		)
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
+		}
 
-			if commonFlags.OutputMode != commonutils.OutputModeJSON {
-				fmt.Println(parser.BuildColumnsHeader())
+		if commonFlags.OutputMode != commonutils.OutputModeJSON {
+			fmt.Println(parser.BuildColumnsHeader())
+		}
+
+		config := &utils.TraceConfig{
+			GadgetName:       "audit-seccomp",
+			Operation:        gadgetv1alpha1.OperationStart,
+			TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
+			TraceOutputState: gadgetv1alpha1.TraceStateStarted,
+			CommonFlags:      &commonFlags,
+		}
+
+		transformEvent := func(line string) string {
+			var e seccompauditTypes.Event
+
+			if err := json.Unmarshal([]byte(line), &e); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
+				return ""
 			}
 
-			config := &utils.TraceConfig{
-				GadgetName:       "audit-seccomp",
-				Operation:        gadgetv1alpha1.OperationStart,
-				TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
-				TraceOutputState: gadgetv1alpha1.TraceStateStarted,
-				CommonFlags:      &commonFlags,
+			baseEvent := e.Event
+			if baseEvent.Type != eventtypes.NORMAL {
+				commonutils.ManageSpecialEvent(baseEvent, commonFlags.Verbose)
+				return ""
 			}
 
-			transformEvent := func(line string) string {
-				var e types.Event
-
-				if err := json.Unmarshal([]byte(line), &e); err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
+			switch commonFlags.OutputMode {
+			case commonutils.OutputModeJSON:
+				b, err := json.Marshal(e)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %s", fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
 					return ""
 				}
 
-				if e.Type != eventtypes.NORMAL {
-					commonutils.ManageSpecialEvent(e.Event, commonFlags.Verbose)
-					return ""
-				}
-
-				return parser.TransformEvent(&e)
+				return string(b)
+			case commonutils.OutputModeColumns:
+				fallthrough
+			case commonutils.OutputModeCustomColumns:
+				return parser.TransformIntoColumns(&e)
 			}
 
-			err := utils.RunTraceAndPrintStream(config, transformEvent)
-			if err != nil {
-				return commonutils.WrapInErrRunGadget(err)
-			}
+			return ""
+		}
 
-			return nil
-		},
+		err = utils.RunTraceAndPrintStream(config, transformEvent)
+		if err != nil {
+			return commonutils.WrapInErrRunGadget(err)
+		}
+
+		return nil
 	}
+
+	cmd := commonaudit.NewAuditCmd(runCmd)
 
 	utils.AddCommonFlags(cmd, &commonFlags)
 
