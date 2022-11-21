@@ -10,10 +10,10 @@ concurrency:
 on:
   pull_request:
   push:
-    branches:
-    - main
-    tags:
-    - 'v*'
+    #branches:
+    #- main
+    #tags:
+    #- 'v*'
 
 permissions: read-all
 
@@ -531,10 +531,10 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
         co-re: false
-    - uses: azure/login@v1
+    - uses: eiffel-fl/login@1eb693dc04fd8710ae25cbf9a7cffa53b1b4df63
       name: Login to Azure
       with:
-        creds: ${{ secrets.AZURE_AKS_CREDS }}
+        creds: foobar
     - name: Craft cluster name
       shell: bash
       run: |
