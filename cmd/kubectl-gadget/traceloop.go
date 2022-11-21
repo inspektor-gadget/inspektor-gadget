@@ -15,35 +15,28 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
-	"text/tabwriter"
-	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/docker/go-units"
-	"github.com/syndtr/gocapability/capability"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
-	"github.com/kinvolk/traceloop/pkg/tracemeta"
+	traceloopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 var traceloopCmd = &cobra.Command{
 	Use:   "traceloop",
-	Short: "Get strace-like logs of a pod from the past",
+	Short: "Get strace-like logs of a container from the past",
 }
 
 var traceloopListCmd = &cobra.Command{
@@ -70,131 +63,63 @@ var traceloopShowCmd = &cobra.Command{
 	RunE:  runTraceloopShow,
 }
 
-var traceloopPodCmd = &cobra.Command{
-	Use:   "pod",
-	Short: "show the traces in one pod",
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 3 {
-			return commonutils.WrapInErrMissingArgs("<namespace>, <podname> and <idx>")
-		}
-		return nil
-	},
-	RunE: runTraceloopPod,
+var traceloopDeleteCmd = &cobra.Command{
+	Use:   "delete",
+	Short: "delete one trace",
+	RunE:  runTraceloopDelete,
 }
-
-var traceloopCloseCmd = &cobra.Command{
-	Use:   "close",
-	Short: "close one trace",
-	RunE:  runTraceloopClose,
-}
-
-var (
-	optionListFull          bool
-	optionListAllNamespaces bool
-	optionListNoHeaders     bool
-)
 
 func init() {
 	rootCmd.AddCommand(traceloopCmd)
+	utils.AddCommonFlags(traceloopCmd, &params)
+
 	traceloopCmd.AddCommand(traceloopStartCmd)
 	traceloopCmd.AddCommand(traceloopStopCmd)
 	traceloopCmd.AddCommand(traceloopListCmd)
 	traceloopCmd.AddCommand(traceloopShowCmd)
-	traceloopCmd.AddCommand(traceloopPodCmd)
-	traceloopCmd.AddCommand(traceloopCloseCmd)
-
-	traceloopListCmd.PersistentFlags().BoolVarP(
-		&optionListFull,
-		"full", "f",
-		false,
-		"show all fields without truncating")
-
-	traceloopListCmd.PersistentFlags().BoolVarP(
-		&optionListAllNamespaces,
-		"all-namespaces", "A",
-		false,
-		"if present, list the traces across all namespaces.")
-
-	traceloopListCmd.PersistentFlags().BoolVarP(
-		&optionListNoHeaders,
-		"no-headers", "",
-		false,
-		"don't print headers.")
-}
-
-const (
-	traceloopStateAnnotation = "traceloop.kinvolk.io/state"
-)
-
-func getTracesListPerNode(client *kubernetes.Clientset) (out map[string][]tracemeta.TraceMeta, err error) {
-	listOptions := metav1.ListOptions{
-		LabelSelector: "k8s-app=gadget",
-	}
-	pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), listOptions)
-	if err != nil {
-		return nil, commonutils.WrapInErrListPods(err)
-	}
-	if len(pods.Items) == 0 {
-		return nil, errors.New("no gadget pods found")
-	}
-
-	out = map[string][]tracemeta.TraceMeta{}
-
-	validGadgetCount := 0
-	for _, pod := range pods.Items {
-		if pod.ObjectMeta.Annotations == nil {
-			continue
-		}
-
-		var tm []tracemeta.TraceMeta
-		state := pod.ObjectMeta.Annotations[traceloopStateAnnotation]
-		if state == "" {
-			continue
-		}
-
-		validGadgetCount++
-
-		err := json.Unmarshal([]byte(state), &tm)
-		if err != nil {
-			fmt.Printf("%v:\n%s\n", err, state)
-			continue
-		}
-		out[pod.Spec.NodeName] = tm
-	}
-
-	if validGadgetCount == 0 {
-		err = errors.New("traceloop is not running on any node. Please start it with 'kubectl gadget traceloop start'")
-	}
-
-	return
-}
-
-func capDecode(caps uint64) (out string) {
-	for _, c := range capability.List() {
-		if (caps & (1 << uint(c))) != 0 {
-			out += c.String() + ","
-		}
-	}
-	out = strings.TrimSuffix(out, ",")
-	return
+	traceloopCmd.AddCommand(traceloopDeleteCmd)
 }
 
 func runTraceloopStart(cmd *cobra.Command, args []string) error {
 	traces, err := utils.ListTracesByGadgetName("traceloop")
 	if err != nil {
-		return fmt.Errorf("failed to get traces: %w", err)
+		return err
 	}
 
 	if len(traces) != 0 {
-		return errors.New("traceloop already running. Run 'kubectl gadget traceloop stop' before")
+		return errors.New("traceloop was already started")
 	}
+
+	if params.NamespaceOverridden {
+		return commonutils.WrapInErrInvalidArg("--namespace / -n", fmt.Errorf("this gadget cannot filter by namespace"))
+	}
+
+	if params.Podname != "" {
+		return commonutils.WrapInErrInvalidArg("--podname / -p", fmt.Errorf("this gadget cannot filter by pod name"))
+	}
+
+	if params.Containername != "" {
+		return commonutils.WrapInErrInvalidArg("--containername / -c", fmt.Errorf("this gadget cannot filter by container name"))
+	}
+
+	// At the moment, there could be only one instance of traceloop running at a
+	// given time, so it should cover all existing namespaces.
+	// TODO Make traceloop accept -n option, this would need to care when
+	// removing from map of perf buffer to avoid reading non existing data.
+	params.AllNamespaces = true
+	params.Namespace = ""
 
 	// Create traceloop trace
 	_, err = utils.CreateTrace(&utils.TraceConfig{
 		GadgetName:      "traceloop",
 		Operation:       gadgetv1alpha1.OperationStart,
-		TraceOutputMode: gadgetv1alpha1.TraceOutputModeExternalResource,
+		TraceOutputMode: gadgetv1alpha1.TraceOutputModeStatus,
 		CommonFlags:     &params,
+		// This label permits us to differentiate between the global and long lived
+		// tracer and the short lived ones used to collect information.
+		AdditionalLabels: map[string]string{
+			"type": "global",
+		},
 	})
 	if err != nil {
 		return commonutils.WrapInErrRunGadget(err)
@@ -204,7 +129,26 @@ func runTraceloopStart(cmd *cobra.Command, args []string) error {
 }
 
 func runTraceloopStop(cmd *cobra.Command, args []string) error {
-	err := utils.DeleteTracesByGadgetName("traceloop")
+	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
+		LabelSelector: "gadgetName=traceloop,type=global",
+	})
+	if err != nil {
+		return err
+	}
+
+	traces := traceList.Items
+	if len(traces) == 0 {
+		return errors.New("please start traceloop before stopping it")
+	}
+
+	traceID := traces[0].Labels[utils.GlobalTraceID]
+
+	// Maybe there is no trace with the given ID.
+	// But it is better to try to delete something which does not exist than
+	// leaking a resource.
+	defer utils.DeleteTrace(traceID)
+
+	err = utils.SetTraceOperation(traceID, string(gadgetv1alpha1.OperationStop))
 	if err != nil {
 		return commonutils.WrapInErrStopGadget(err)
 	}
@@ -213,183 +157,287 @@ func runTraceloopStop(cmd *cobra.Command, args []string) error {
 }
 
 func runTraceloopList(cmd *cobra.Command, args []string) error {
-	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
-	if err != nil {
-		return commonutils.WrapInErrSetupK8sClient(err)
-	}
-
-	tracesPerNode, err := getTracesListPerNode(client)
-	if err != nil {
-		return fmt.Errorf("failed to get the running traces: %w", err)
-	}
-
-	var traces []tracemeta.TraceMeta
-	for _, tm := range tracesPerNode {
-		traces = append(traces, tm...)
-	}
-	sort.SliceStable(traces, func(i, j int) bool {
-		if traces[i].Namespace != traces[j].Namespace {
-			return traces[i].Namespace < traces[j].Namespace
-		}
-		if traces[i].Podname != traces[j].Podname {
-			return traces[i].Podname < traces[j].Podname
-		}
-		if traces[i].Containeridx != traces[j].Containeridx {
-			return traces[i].Containeridx < traces[j].Containeridx
-		}
-		if traces[i].TimeCreation != traces[j].TimeCreation {
-			return traces[i].TimeCreation < traces[j].TimeCreation
-		}
-		if traces[i].TimeDeletion != traces[j].TimeDeletion {
-			return traces[i].TimeDeletion < traces[j].TimeDeletion
-		}
-		return false
+	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
+		LabelSelector: "gadgetName=traceloop,type=global",
 	})
+	if err != nil {
+		return err
+	}
 
-	namespace, _ := utils.GetNamespace()
+	traces := traceList.Items
+	if len(traces) == 0 {
+		return errors.New("please start traceloop before trying to list traces")
+	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-	if !optionListNoHeaders {
-		if optionListFull {
-			fmt.Fprintln(w, "NODE\tNAMESPACE\tPOD\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\tCAPABILITIES\t")
-		} else {
-			if !optionListAllNamespaces {
-				fmt.Fprintln(w, "POD\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
-			} else {
-				fmt.Fprintln(w, "NAMESPACE\tPOD\tPODUID\tINDEX\tTRACEID\tCONTAINERID\tSTATUS\t")
-			}
-		}
+	parser, err := commonutils.NewGadgetParserWithK8sInfo(&params.OutputConfig, traceloopTypes.GetInfoColumns())
+	if err != nil {
+		return err
+	}
+
+	// Print header
+	if params.OutputMode != commonutils.OutputModeJSON {
+		fmt.Println(parser.BuildColumnsHeader())
 	}
 
 	for _, trace := range traces {
-		if trace.Containeridx == -1 {
-			// The pause container
-			continue
+		var infos []traceloopTypes.TraceloopInfo
+
+		err = json.Unmarshal([]byte(trace.Status.Output), &infos)
+		if err != nil {
+			return err
 		}
 
-		if trace.Namespace != namespace && !optionListAllNamespaces {
-			continue
-		}
+		for _, info := range infos {
+			info.Node = trace.Spec.Node
 
-		status := ""
-		switch trace.Status {
-		case "created":
-			fallthrough
-		case "ready":
-			status = "started"
-			if t, err := time.Parse(time.RFC3339, trace.TimeCreation); err == nil {
-				status += fmt.Sprintf(" %s ago",
-					strings.ToLower(units.HumanDuration(time.Now().Sub(t))))
-			}
-		case "deleted":
-			status = "terminated"
-			if t, err := time.Parse(time.RFC3339, trace.TimeDeletion); err == nil {
-				status += fmt.Sprintf(" %s ago",
-					strings.ToLower(units.HumanDuration(time.Now().Sub(t))))
-			}
-		default:
-			status = fmt.Sprintf("unknown (%v)", trace.Status)
-		}
-		if optionListFull {
-			fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n", trace.Node, trace.Namespace, trace.Podname, trace.PodUID, trace.Containeridx, trace.TraceID, trace.ContainerID, status, capDecode(trace.Capabilities))
-		} else {
-			uid := trace.PodUID
-			if len(uid) > 8 {
-				uid = uid[:8]
-			}
-			containerID := trace.ContainerID
-			containerID = strings.TrimPrefix(containerID, "docker://")
-			containerID = strings.TrimPrefix(containerID, "cri-o://")
-			if len(containerID) > 8 {
-				containerID = containerID[:8]
-			}
-			if !optionListAllNamespaces {
-				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n", trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)
-			} else {
-				fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\n", trace.Namespace, trace.Podname, uid, trace.Containeridx, trace.TraceID, containerID, status)
+			switch params.OutputMode {
+			case commonutils.OutputModeJSON:
+				b, err := json.Marshal(info)
+				if err != nil {
+					return commonutils.WrapInErrMarshalOutput(err)
+				}
+
+				fmt.Println(string(b))
+			case commonutils.OutputModeColumns:
+				fallthrough
+			case commonutils.OutputModeCustomColumns:
+				fmt.Println(parser.TransformIntoColumns(&info))
 			}
 		}
 	}
-	w.Flush()
 
 	return nil
 }
 
 func runTraceloopShow(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		return commonutils.WrapInErrMissingArgs("<trace-name>")
+		return commonutils.WrapInErrMissingArgs("<container-id>")
 	}
 
-	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
+	id := args[0]
+
+	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
+		LabelSelector: "gadgetName=traceloop,type=global",
+	})
 	if err != nil {
-		return commonutils.WrapInErrSetupK8sClient(err)
+		return err
 	}
 
-	tracesPerNode, err := getTracesListPerNode(client)
+	parser, err := commonutils.NewGadgetParserWithK8sInfo(&params.OutputConfig, traceloopTypes.GetColumns())
 	if err != nil {
-		return fmt.Errorf("failed to get traces: %w", err)
+		return err
 	}
 
-	for node, tm := range tracesPerNode {
-		for _, trace := range tm {
-			if trace.TraceID == args[0] {
-				fmt.Printf("%s", utils.ExecPodSimple(client, node,
-					fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/dump-by-traceid?traceid=%s' ; echo`, args[0])))
+	// Print header
+	switch params.OutputMode {
+	case commonutils.OutputModeJSON:
+		// Nothing to print
+	case commonutils.OutputModeColumns:
+		fallthrough
+	case commonutils.OutputModeCustomColumns:
+		fmt.Println(parser.BuildColumnsHeader())
+	default:
+		return commonutils.WrapInErrOutputModeNotSupported(params.OutputMode)
+	}
+
+	var traceID string
+
+	transformEvent := func(line string) string {
+		var events []traceloopTypes.Event
+		if err := json.Unmarshal([]byte(line), &events); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
+			return ""
+		}
+
+		for _, event := range events {
+			baseEvent := event.GetBaseEvent()
+			if baseEvent.Type != eventtypes.NORMAL {
+				commonutils.ManageSpecialEvent(baseEvent, params.Verbose)
+				return ""
+			}
+
+			switch params.OutputMode {
+			case commonutils.OutputModeJSON:
+				b, err := json.Marshal(event)
+				if err != nil {
+					fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
+					return ""
+				}
+
+				fmt.Println(string(b))
+			case commonutils.OutputModeColumns:
+				fallthrough
+			case commonutils.OutputModeCustomColumns:
+				fmt.Println(parser.TransformIntoColumns(&event))
 			}
 		}
+
+		// HACK Take a look at gadget.go.
+		utils.DeleteTrace(traceID)
+
+		os.Exit(0)
+
+		return ""
 	}
 
-	return nil
-}
+	traces := traceList.Items
+	for _, trace := range traces {
+		var infos []traceloopTypes.TraceloopInfo
 
-func runTraceloopPod(cmd *cobra.Command, args []string) error {
-	namespace := args[0]
-	podname := args[1]
-	idx := args[2]
+		err = json.Unmarshal([]byte(trace.Status.Output), &infos)
+		if err != nil {
+			return err
+		}
 
-	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
-	if err != nil {
-		return commonutils.WrapInErrSetupK8sClient(err)
-	}
+		containerID := ""
+		for _, info := range infos {
+			// The CLI can give a shorter ID (e.g. 12 characters long), so we need to
+			// test if the long container ID starts with the short one to use the long
+			// one in the rest of the code.
+			if strings.HasPrefix(info.ContainerID, id) {
+				containerID = info.ContainerID
 
-	pod, err := client.CoreV1().Pods(namespace).Get(context.TODO(), podname, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to get pod %s: %w", podname, err)
-	}
+				break
+			}
+		}
 
-	if pod.Spec.NodeName == "" {
-		return fmt.Errorf("pod %s not scheduled yet", podname)
-	}
-
-	fmt.Printf("%s", utils.ExecPodSimple(client, pod.Spec.NodeName,
-		fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/dump-pod?namespace=%s&podname=%s&idx=%s' ; echo`,
-			namespace, podname, idx)))
-
-	return nil
-}
-
-func runTraceloopClose(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return commonutils.WrapInErrMissingArgs("<trace-name>")
-	}
-
-	client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
-	if err != nil {
-		return commonutils.WrapInErrSetupK8sClient(err)
-	}
-
-	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return commonutils.WrapInErrListNodes(err)
-	}
-
-	for _, node := range nodes.Items {
-		if !strings.HasPrefix(args[0], node.Status.Addresses[0].Address+"_") {
+		// The container of interest does not depend on the current trace.
+		if len(containerID) == 0 {
 			continue
 		}
-		fmt.Printf("%s", utils.ExecPodSimple(client, node.Name,
-			fmt.Sprintf(`curl --silent --unix-socket /run/traceloop.socket 'http://localhost/close-by-name?name=%s' ; echo`, args[0])))
+
+		var err error
+
+		// We want to create only stream trace which is on the same node than
+		// corresponding trace.
+		params.Node = trace.Spec.Node
+
+		traceID, err = utils.CreateTrace(&utils.TraceConfig{
+			GadgetName:       "traceloop",
+			Operation:        gadgetv1alpha1.OperationCollect,
+			TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
+			TraceOutputState: gadgetv1alpha1.TraceStateCompleted,
+			CommonFlags:      &params,
+			Parameters: map[string]string{
+				// We will not create a traceloop/gadget.go:Trace for this specific
+				// trace CRD.
+				// In place, we will use the traceloop/gadget.go:Trace which was
+				// created when called traceloop/gadget.go:Start().
+				// To do so, we use this name to get the traceloop/gadget.go:Trace
+				// from the map.
+				// Nonetheless when Start()'ed, the used name was the namespaced one:
+				// https://github.com/inspektor-gadget/inspektor-gadget/blob/9532d507bbd741f6202e1945db20cb6d1471e0ac/pkg/controllers/trace_controller.go#L253
+				// So, we need to use the namespace here too.
+				"name":        fmt.Sprintf("%s/%s", trace.Namespace, trace.Name),
+				"containerID": containerID,
+			},
+			AdditionalLabels: map[string]string{
+				"type": "collecting",
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("error creating trace: %w", err)
+		}
+
+		utils.SigHandler(&traceID, params.OutputMode != commonutils.OutputModeJSON)
+
+		err = utils.PrintTraceOutputFromStream(traceID, string(gadgetv1alpha1.TraceStateCompleted), &params, transformEvent)
+		if err != nil {
+			return err
+		}
+
+		// There is only one container with the given ID, so only one trace which
+		// handles this container.
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("no trace associated with container ID %v exists", id)
+}
+
+func runTraceloopDelete(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
+		return commonutils.WrapInErrMissingArgs("<container-id>")
+	}
+
+	id := args[0]
+
+	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
+		LabelSelector: "gadgetName=traceloop,type=global",
+	})
+	if err != nil {
+		return err
+	}
+
+	traces := traceList.Items
+	for _, trace := range traces {
+		var infos []traceloopTypes.TraceloopInfo
+
+		err = json.Unmarshal([]byte(trace.Status.Output), &infos)
+		if err != nil {
+			return err
+		}
+
+		containerID := ""
+		for _, info := range infos {
+			// The CLI can give a shorter ID (e.g. 12 characters long), so we need to
+			// test if the long container ID starts with the short one to use the long
+			// one in the rest of the code.
+			if strings.HasPrefix(info.ContainerID, id) {
+				containerID = info.ContainerID
+
+				break
+			}
+		}
+
+		// The container of interest does not depend on the current trace.
+		if len(containerID) == 0 {
+			continue
+		}
+
+		// We want to create only trace which is on the same node than
+		// corresponding trace.
+		params.Node = trace.Spec.Node
+
+		traceID, err := utils.CreateTrace(&utils.TraceConfig{
+			GadgetName:       "traceloop",
+			Operation:        gadgetv1alpha1.OperationDelete,
+			TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStatus,
+			TraceOutputState: gadgetv1alpha1.TraceStateCompleted,
+			CommonFlags:      &params,
+			Parameters: map[string]string{
+				// We will not create a traceloop/gadget.go:Trace for this specific
+				// trace CRD.
+				// In place, we will use the traceloop/gadget.go:Trace which was
+				// created when called traceloop/gadget.go:Start().
+				// To do so, we use this name to get the traceloop/gadget.go:Trace
+				// from the map.
+				// Nonetheless when Start()'ed, the used name was the namespaced one:
+				// https://github.com/inspektor-gadget/inspektor-gadget/blob/9532d507bbd741f6202e1945db20cb6d1471e0ac/pkg/controllers/trace_controller.go#L253
+				// So, we need to use the namespace here too.
+				"name":        fmt.Sprintf("%s/%s", trace.Namespace, trace.Name),
+				"containerID": containerID,
+			},
+			AdditionalLabels: map[string]string{
+				"type": "deleting",
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("error creating trace: %w", err)
+		}
+
+		defer utils.DeleteTrace(traceID)
+
+		err = utils.PrintTraceOutputFromStatus(traceID, string(gadgetv1alpha1.TraceStateCompleted), func(_ string, _ []string) error {
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		// There is only one container with the given ID, so only one trace which
+		// handles this container.
+		return nil
+	}
+
+	return fmt.Errorf("no trace associated with container ID %v exists", id)
 }

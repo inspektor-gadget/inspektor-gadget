@@ -17,6 +17,7 @@ package gadgettracermanager
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"runtime"
 	"sync"
@@ -84,6 +85,10 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 	defer gadgetStream.Unsubscribe(ch)
 
 	g.mu.Unlock()
+
+	if ch == nil {
+		return errors.New("channel is nil, ranging over it will make us wait forever")
+	}
 
 	for l := range ch {
 		if l.EventLost {

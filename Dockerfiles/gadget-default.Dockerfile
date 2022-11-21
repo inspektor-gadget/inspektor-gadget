@@ -58,16 +58,6 @@ RUN set -ex; \
 			BTFHUB_ARCHIVE=/tmp/btfhub-archive/ OUTPUT=/tmp/btfs/ -j$(nproc); \
 	fi
 
-# Builder: traceloop
-
-# traceloop built from:
-# https://github.com/kinvolk/traceloop/commit/95857527df8d343a054d3754dc3b77c7c8c274c7
-# See:
-# - https://github.com/kinvolk/traceloop/actions
-# - https://hub.docker.com/r/kinvolk/traceloop/tags
-
-FROM docker.io/kinvolk/traceloop:20211109004128958575 as traceloop
-
 # Main gadget image
 
 FROM bcc
@@ -83,8 +73,6 @@ RUN set -ex; \
 COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
 
 COPY --from=builder /gadget/gadget-container/bin/gadgettracermanager /bin/
-
-COPY --from=traceloop /bin/traceloop /bin/
 
 ## Hooks Begins
 

@@ -35,6 +35,9 @@ const (
 	// OperationCollect indicates capturing system state
 	// at a specific point in time
 	OperationCollect Operation = "collect"
+	// OperationDelete indicates we want to delete a resource which is owned by a
+	// trace. At the moment, this is only used by traceloop.
+	OperationDelete Operation = "delete"
 )
 
 // RunMode defines running mode for the Trace

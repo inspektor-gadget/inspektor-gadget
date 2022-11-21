@@ -27,6 +27,10 @@ var node string
 
 func init() {
 	// Register column templates
+	columns.MustRegisterTemplate("node", "width:30,ellipsis:middle")
+	columns.MustRegisterTemplate("namespace", "width:30")
+	columns.MustRegisterTemplate("pod", "width:30,ellipsis:middle")
+	columns.MustRegisterTemplate("container", "width:30")
 	columns.MustRegisterTemplate("comm", "maxWidth:16")
 	columns.MustRegisterTemplate("pid", "minWidth:7")
 	columns.MustRegisterTemplate("ns", "width:12,hide")
@@ -36,6 +40,12 @@ func init() {
 	// Max: 0000:0000:0000:0000:0000:ffff:XXX.XXX.XXX.XXX (IPv4-mapped IPv6 address) = 45
 	columns.MustRegisterTemplate("ipaddr", "minWidth:15,maxWidth:45")
 	columns.MustRegisterTemplate("ipport", "minWidth:type")
+
+	// For system calls as the longest is sched_rr_get_interval_time64 with 28
+	// characters:
+	// https://gist.github.com/alban/aa664b3c46aaf24aeb69caae29a01ae5
+	// But there is a lot of system calls which name is below 18 characters.
+	columns.MustRegisterTemplate("syscall", "width:18,maxWidth:28")
 }
 
 func Init(nodeName string) {
@@ -44,18 +54,18 @@ func Init(nodeName string) {
 
 type CommonData struct {
 	// Node where the event comes from
-	Node string `json:"node,omitempty" column:"node,width:30,ellipsis:middle" columnTags:"kubernetes"`
+	Node string `json:"node,omitempty" column:"node,template:node" columnTags:"kubernetes"`
 
 	// Pod namespace where the event comes from, or empty for host-level
 	// event
-	Namespace string `json:"namespace,omitempty" column:"namespace,width:30" columnTags:"kubernetes"`
+	Namespace string `json:"namespace,omitempty" column:"namespace,template:namespace" columnTags:"kubernetes"`
 
 	// Pod where the event comes from, or empty for host-level event
-	Pod string `json:"pod,omitempty" column:"pod,width:30,ellipsis:middle" columnTags:"kubernetes"`
+	Pod string `json:"pod,omitempty" column:"pod,template:pod" columnTags:"kubernetes"`
 
 	// Container where the event comes from, or empty for host-level or
 	// pod-level event
-	Container string `json:"container,omitempty" column:"container,width:30" columnTags:"kubernetes,runtime"`
+	Container string `json:"container,omitempty" column:"container,template:container" columnTags:"kubernetes,runtime"`
 }
 
 const (

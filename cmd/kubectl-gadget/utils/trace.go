@@ -96,6 +96,9 @@ type TraceConfig struct {
 
 	// Parameters is used to pass specific gadget configurations.
 	Parameters map[string]string
+
+	// AdditionalLabels is used to pass specific labels to traces.
+	AdditionalLabels map[string]string
 }
 
 func init() {
@@ -384,6 +387,15 @@ func CreateTrace(config *TraceConfig) (string, error) {
 		},
 	}
 
+	for key, value := range config.AdditionalLabels {
+		v, ok := trace.ObjectMeta.Labels[key]
+		if ok {
+			return "", fmt.Errorf("label %q is already present with value %q", key, v)
+		}
+
+		trace.ObjectMeta.Labels[key] = value
+	}
+
 	err := createTraces(trace)
 	if err != nil {
 		return "", err
@@ -407,9 +419,9 @@ func CreateTrace(config *TraceConfig) (string, error) {
 	return traceID, nil
 }
 
-// getTraceListFromOptions returns a list of traces corresponding to the given
+// GetTraceListFromOptions returns a list of traces corresponding to the given
 // options.
-func getTraceListFromOptions(listTracesOptions metav1.ListOptions) (*gadgetv1alpha1.TraceList, error) {
+func GetTraceListFromOptions(listTracesOptions metav1.ListOptions) (*gadgetv1alpha1.TraceList, error) {
 	traceClient, err := getTraceClient()
 	if err != nil {
 		return nil, err
@@ -428,7 +440,7 @@ func getTraceListFromID(traceID string) (*gadgetv1alpha1.TraceList, error) {
 		LabelSelector: fmt.Sprintf("%s=%s", GlobalTraceID, traceID),
 	}
 
-	traces, err := getTraceListFromOptions(listTracesOptions)
+	traces, err := GetTraceListFromOptions(listTracesOptions)
 	if err != nil {
 		return traces, fmt.Errorf("failed to get traces from traceID %q: %w", traceID, err)
 	}
@@ -696,12 +708,12 @@ func waitForNoOperation(traceID string) (*gadgetv1alpha1.TraceList, error) {
 
 var sigIntReceivedNumber = 0
 
-// sigHandler installs a handler for all signals which cause termination as
+// SigHandler installs a handler for all signals which cause termination as
 // their default behavior.
 // On reception of this signal, the given trace will be deleted.
 // This function fixes trace not being deleted when calling:
 // kubectl gadget process-collector -A | head -n0
-func sigHandler(traceID *string, printTerminationMessage bool) {
+func SigHandler(traceID *string, printTerminationMessage bool) {
 	c := make(chan os.Signal)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGILL, syscall.SIGABRT, syscall.SIGFPE, syscall.SIGSEGV, syscall.SIGPIPE, syscall.SIGALRM, syscall.SIGTERM, syscall.SIGBUS, syscall.SIGTRAP)
 	go func() {
@@ -718,7 +730,7 @@ func sigHandler(traceID *string, printTerminationMessage bool) {
 				os.Exit(1)
 			}
 
-			sigHandler(traceID, printTerminationMessage)
+			SigHandler(traceID, printTerminationMessage)
 		}
 
 		if *traceID != "" {
@@ -824,7 +836,7 @@ func getTraceListFromParameters(config *TraceConfig) ([]gadgetv1alpha1.Trace, er
 		LabelSelector: labelsFromFilter(filter),
 	}
 
-	traces, err := getTraceListFromOptions(listTracesOptions)
+	traces, err := GetTraceListFromOptions(listTracesOptions)
 	if err != nil {
 		return []gadgetv1alpha1.Trace{}, err
 	}
@@ -905,7 +917,7 @@ func PrintAllTraces(config *TraceConfig) error {
 func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) string) error {
 	var traceID string
 
-	sigHandler(&traceID, config.CommonFlags.OutputMode != commonutils.OutputModeJSON)
+	SigHandler(&traceID, config.CommonFlags.OutputMode != commonutils.OutputModeJSON)
 
 	if config.TraceOutputMode != gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must be Stream. Otherwise, call RunTraceAndPrintStatusOutput")
@@ -926,7 +938,7 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 func RunTraceStreamCallback(config *TraceConfig, callback func(line string, node string)) error {
 	var traceID string
 
-	sigHandler(&traceID, false)
+	SigHandler(&traceID, false)
 
 	if config.TraceOutputMode != gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must be Stream")
@@ -959,7 +971,7 @@ func RunTraceAndPrintStatusOutput(
 ) error {
 	var traceID string
 
-	sigHandler(&traceID, false)
+	SigHandler(&traceID, false)
 
 	if config.TraceOutputMode == gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must not be Stream. Otherwise, call RunTraceAndPrintStream")
@@ -1068,7 +1080,7 @@ func ListTracesByGadgetName(gadget string) ([]gadgetv1alpha1.Trace, error) {
 		LabelSelector: fmt.Sprintf("gadgetName=%s", gadget),
 	}
 
-	traces, err := getTraceListFromOptions(listTracesOptions)
+	traces, err := GetTraceListFromOptions(listTracesOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get traces by gadget name: %w", err)
 	}

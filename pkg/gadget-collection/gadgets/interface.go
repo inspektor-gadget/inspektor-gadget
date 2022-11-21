@@ -15,6 +15,8 @@
 package gadgets
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/cilium/ebpf"
@@ -128,6 +130,22 @@ func (f *BaseFactory) LookupOrCreate(name string, newTrace func() interface{}) i
 	f.traces[name] = trace
 
 	return trace
+}
+
+func (f *BaseFactory) Lookup(name string) (interface{}, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.traces == nil {
+		return nil, errors.New("traces map is nil")
+	}
+
+	trace, ok := f.traces[name]
+	if !ok {
+		return nil, fmt.Errorf("no trace for name %q", name)
+	}
+
+	return trace, nil
 }
 
 func (f *BaseFactory) Delete(name string) {
