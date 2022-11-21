@@ -15,6 +15,7 @@
 package types
 
 import (
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -26,9 +27,13 @@ const (
 type Report struct {
 	eventtypes.CommonData
 
-	Comm        string   `json:"comm,omitempty"`
-	Pid         uint32   `json:"pid,omitempty"`
+	Comm        string   `json:"comm,omitempty" column:"comm,template:comm"`
+	Pid         uint32   `json:"pid,omitempty" column:"pid,template:pid"`
 	UserStack   []string `json:"userStack,omitempty"`
 	KernelStack []string `json:"kernelStack,omitempty"`
-	Count       uint64   `json:"count,omitempty"`
+	Count       uint64   `json:"count,omitempty" column:"count"`
+}
+
+func GetColumns() *columns.Columns[Report] {
+	return columns.MustCreateColumns[Report]()
 }
