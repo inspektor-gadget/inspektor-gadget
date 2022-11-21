@@ -162,21 +162,47 @@ kubectl rollout status -n security-profiles-operator ds spod --timeout=180s || \
 }
 
 // CleanupInspektorGadget cleans up inspector gadget in Kubernetes
-var CleanupInspektorGadget *Command = &Command{
+var CleanupInspektorGadget = &Command{
 	Name:    "CleanupInspektorGadget",
 	Cmd:     "$KUBECTL_GADGET undeploy",
 	Cleanup: true,
 }
 
 // CleanupSPO cleans up security profile operator in Kubernetes
-var CleanupSPO *Command = &Command{
-	Name: "RemoveSecurityProfilesOperator",
-	Cmd: `
-	kubectl delete seccompprofile --all --all-namespaces
-	kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.3/deploy/operator.yaml --ignore-not-found
-	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml --ignore-not-found
-	`,
-	Cleanup: true,
+var CleanupSPO = []*Command{
+	{
+		Name: "RemoveSecurityProfilesOperator",
+		Cmd: `
+		kubectl delete seccompprofile --all --all-namespaces
+		kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.3/deploy/operator.yaml --ignore-not-found
+		kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml --ignore-not-found
+		`,
+		Cleanup: true,
+	},
+	{
+		Name: "PatchSecurityProfilesOperatorProfiles",
+		Cmd: `
+		while true; do
+		  # Ensure we have profiles to clean, otherwise just exit.
+		  NAMESPACES=$(kubectl get seccompprofile --all-namespaces --no-headers --ignore-not-found -o custom-columns=":metadata.namespace" | uniq)
+		  if [ -z $NAMESPACES ]; then
+		    break
+		  fi
+ 
+		  # Patch profiles in each namespace, ignore any errors since it can already be deleted.
+		  for NAMESPACE in $NAMESPACES; do
+		    PROFILES=$(kubectl get seccompprofile --namespace $NAMESPACE -o name)
+		    for PROFILE in $PROFILES; do
+		      kubectl patch $PROFILE -n $NAMESPACE -p '{"metadata":{"finalizers":null}}' --type=merge || true
+		    done
+		  done
+
+		  # Give some time before starting next cycle.
+		  sleep 1
+		done
+		`,
+		Cleanup: true,
+	},
 }
 
 // RunCommands is used to run a list of commands with stopping/clean up logic.
