@@ -15,61 +15,49 @@
 package top
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 )
 
-type FileFlags struct {
-	CommonTopFlags
-
-	ParsedSortBy types.SortBy
-	AllFiles     bool
-}
-
 type FileParser struct {
 	commonutils.BaseParser[types.Stats]
-	sync.Mutex
 
-	flags     *FileFlags
-	nodeStats map[string][]types.Stats
+	flags *CommonTopFlags
 }
 
 func newFileCmd() *cobra.Command {
-	var flags FileFlags
-
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"namespace",
-				"pod",
-				"container",
-				"pid",
-				"comm",
-				"reads",
-				"writes",
-				"r_kb",
-				"w_kb",
-				"t",
-				"file",
+	commonTopFlags := &CommonTopFlags{
+		CommonFlags: utils.CommonFlags{
+			OutputConfig: commonutils.OutputConfig{
+				// The columns that will be used in case the user does not specify
+				// which specific columns they want to print.
+				CustomColumns: []string{
+					"node",
+					"namespace",
+					"pod",
+					"container",
+					"pid",
+					"comm",
+					"reads",
+					"writes",
+					"r_kb",
+					"w_kb",
+					"t",
+					"file",
+				},
 			},
 		},
 	}
+
+	var allFiles bool
 
 	columnsWidth := map[string]int{
 		"node":      -16,
@@ -87,149 +75,39 @@ func newFileCmd() *cobra.Command {
 		"file":      -30,
 	}
 
+	cols := types.GetColumns()
+
 	cmd := &cobra.Command{
-		Use:   fmt.Sprintf("file [interval=%d]", types.IntervalDefault),
+		Use:   fmt.Sprintf("file [interval=%d]", top.IntervalDefault),
 		Short: "Periodically report read/write activity by file",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-
 			parser := &FileParser{
-				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonFlags.OutputConfig),
-				flags:      &flags,
-				nodeStats:  make(map[string][]types.Stats),
+				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonTopFlags.OutputConfig),
+				flags:      commonTopFlags,
 			}
 
-			if len(args) == 1 {
-				flags.OutputInterval, err = strconv.Atoi(args[0])
-				if err != nil {
-					return commonutils.WrapInErrInvalidArg("<interval>",
-						fmt.Errorf("%q is not a valid value", args[0]))
-				}
-			} else {
-				flags.OutputInterval = types.IntervalDefault
-			}
-
-			config := &utils.TraceConfig{
-				GadgetName:       "filetop",
-				Operation:        gadgetv1alpha1.OperationStart,
-				TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
-				TraceOutputState: gadgetv1alpha1.TraceStateStarted,
-				CommonFlags:      commonFlags,
-				Parameters: map[string]string{
-					types.IntervalParam: strconv.Itoa(flags.OutputInterval),
-					types.MaxRowsParam:  strconv.Itoa(flags.MaxRows),
-					types.SortByParam:   flags.SortBy,
-					types.AllFilesParam: strconv.FormatBool(flags.AllFiles),
+			gadget := &TopGadget[types.Stats]{
+				name:           "filetop",
+				commonTopFlags: commonTopFlags,
+				params: map[string]string{
+					types.AllFilesParam: strconv.FormatBool(allFiles),
 				},
+				parser:    parser,
+				nodeStats: make(map[string][]*types.Stats),
+				colMap:    cols.GetColumnMap(),
 			}
 
-			// when params.Timeout == interval it means the user
-			// only wants to run for a given amount of time and print
-			// that result.
-			singleShot := commonFlags.Timeout == flags.OutputInterval
-
-			// start print loop if this is not a "single shot" operation
-			if singleShot {
-				parser.PrintHeader()
-			} else {
-				parser.StartPrintLoop()
-			}
-
-			if err = utils.RunTraceStreamCallback(config, parser.Callback); err != nil {
-				return commonutils.WrapInErrRunGadget(err)
-			}
-
-			if singleShot {
-				parser.PrintStats()
-			}
-
-			return nil
+			return gadget.Run(args)
 		},
 		SilenceUsage: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			flags.ParsedSortBy, err = types.ParseSortBy(flags.SortBy)
-			if err != nil {
-				return commonutils.WrapInErrInvalidArg("--sort", err)
-			}
-
-			return nil
-		},
-		Args: cobra.MaximumNArgs(1),
+		Args:         cobra.MaximumNArgs(1),
 	}
 
-	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, types.SortBySlice)
+	addCommonTopFlags(cmd, commonTopFlags, &commonTopFlags.CommonFlags, cols.GetColumnNames(), types.SortByDefault)
 
-	cmd.Flags().BoolVarP(&flags.AllFiles, "all-files", "a", types.AllFilesDefault, "Include non-regular file types (sockets, FIFOs, etc)")
+	cmd.Flags().BoolVarP(&allFiles, "all-files", "a", types.AllFilesDefault, "Include non-regular file types (sockets, FIFOs, etc)")
 
 	return cmd
-}
-
-func (p *FileParser) Callback(line string, node string) {
-	p.Lock()
-	defer p.Unlock()
-
-	var event types.Event
-
-	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
-		return
-	}
-
-	if event.Error != "" {
-		fmt.Fprintf(os.Stderr, "Error: failed on node %q: %s", node, event.Error)
-		return
-	}
-
-	p.nodeStats[node] = event.Stats
-}
-
-func (p *FileParser) StartPrintLoop() {
-	go func() {
-		ticker := time.NewTicker(time.Duration(p.flags.OutputInterval) * time.Second)
-		p.PrintHeader()
-		for {
-			_ = <-ticker.C
-			p.PrintHeader()
-			p.PrintStats()
-		}
-	}()
-}
-
-func (p *FileParser) PrintHeader() {
-	if p.OutputConfig.OutputMode == commonutils.OutputModeJSON {
-		return
-	}
-
-	if term.IsTerminal(int(os.Stdout.Fd())) {
-		utils.ClearScreen()
-	} else {
-		fmt.Println("")
-	}
-
-	fmt.Println(p.BuildColumnsHeader())
-}
-
-func (p *FileParser) PrintStats() {
-	// Sort and print stats
-	p.Lock()
-
-	stats := []types.Stats{}
-	for _, stat := range p.nodeStats {
-		stats = append(stats, stat...)
-	}
-	p.nodeStats = make(map[string][]types.Stats)
-
-	p.Unlock()
-
-	types.SortStats(stats, p.flags.ParsedSortBy)
-
-	for idx, stat := range stats {
-		if idx == p.flags.MaxRows {
-			break
-		}
-		fmt.Println(p.TransformStats(&stat))
-	}
 }
 
 func (p *FileParser) TransformStats(stats *types.Stats) string {

@@ -24,17 +24,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cilium/ebpf"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/piditer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
-
-	"github.com/cilium/ebpf"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Config struct {
 	MaxRows  int
 	Interval time.Duration
-	SortBy   types.SortBy
+	SortBy   []string
 }
 
 type programStats struct {
@@ -44,7 +47,7 @@ type programStats struct {
 
 type Tracer struct {
 	config        *Config
-	eventCallback func(*types.Event)
+	eventCallback func(*top.Event[types.Stats])
 	done          chan bool
 
 	iter                *piditer.PidIter
@@ -52,21 +55,32 @@ type Tracer struct {
 
 	startStats map[string]programStats
 	prevStats  map[string]programStats
+	colMap     columns.ColumnMap[types.Stats]
+
+	node string
 }
 
-func NewTracer(config *Config, eventCallback func(*types.Event),
+func NewTracer(config *Config, eventCallback func(*top.Event[types.Stats]), node string,
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
 		eventCallback: eventCallback,
 		done:          make(chan bool),
 		prevStats:     make(map[string]programStats),
+		node:          node,
 	}
 
 	if err := t.start(); err != nil {
 		t.Stop()
 		return nil, err
 	}
+
+	statCols, err := columns.NewColumns[types.Stats]()
+	if err != nil {
+		t.Stop()
+		return nil, err
+	}
+	t.colMap = statCols.GetColumnMap()
 
 	t.run()
 
@@ -171,8 +185,8 @@ func getPidMapFromProcFs() (map[uint32][]*types.PidInfo, error) {
 	return pidmap, nil
 }
 
-func (t *Tracer) nextStats() ([]types.Stats, error) {
-	stats := make([]types.Stats, 0)
+func (t *Tracer) nextStats() ([]*types.Stats, error) {
+	stats := make([]*types.Stats, 0)
 
 	var err error
 	var prog *ebpf.Program
@@ -270,7 +284,10 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 			runCount: totalRunCount,
 		}
 
-		stats = append(stats, types.Stats{
+		stats = append(stats, &types.Stats{
+			CommonData: eventtypes.CommonData{
+				Node: t.node,
+			},
 			ProgramID:          uint32(curID),
 			Name:               pi.Name,
 			Type:               pi.Type.String(),
@@ -315,7 +332,7 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 		}
 	}
 
-	types.SortStats(stats, t.config.SortBy)
+	top.SortStats(stats, t.config.SortBy, &t.colMap)
 
 	return stats, nil
 }
@@ -330,7 +347,7 @@ func (t *Tracer) run() {
 			case <-timer.C:
 				stats, err := t.nextStats()
 				if err != nil {
-					t.eventCallback(&types.Event{
+					t.eventCallback(&top.Event[types.Stats]{
 						Error: fmt.Sprintf("could not get next stats: %s", err),
 					})
 					return
@@ -340,7 +357,7 @@ func (t *Tracer) run() {
 				if n > t.config.MaxRows {
 					n = t.config.MaxRows
 				}
-				t.eventCallback(&types.Event{Stats: stats[:n]})
+				t.eventCallback(&top.Event[types.Stats]{Stats: stats[:n]})
 			}
 		}
 	}()

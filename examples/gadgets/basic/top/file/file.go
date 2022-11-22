@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf/rlimit"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 )
@@ -42,7 +43,7 @@ func main() {
 
 	// Define a callback that is called each interval seconds with
 	// the information collected.
-	callback := func(event *types.Event) {
+	callback := func(event *top.Event[types.Stats]) {
 		if event.Error != "" {
 			fmt.Fprintf(os.Stderr, "There was an error: %s\n", event.Error)
 			return
@@ -63,7 +64,7 @@ func main() {
 		Interval: interval * time.Second,
 		MaxRows:  maxRows,
 		// Sort results by number of write operations
-		SortBy: types.WRITES,
+		SortBy: []string{"-writes"},
 	}
 
 	tracer, err := tracer.NewTracer(tracerConfig, nil, callback)

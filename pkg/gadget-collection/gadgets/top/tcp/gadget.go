@@ -23,11 +23,11 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	tcptoptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-
-	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
 type Trace struct {
@@ -48,6 +48,8 @@ func NewFactory() gadgets.TraceFactory {
 }
 
 func (f *TraceFactory) Description() string {
+	cols := types.GetColumns()
+
 	t := `tcptop shows command generating TCP connections, with container details.
 
 The following parameters are supported:
@@ -56,9 +58,9 @@ The following parameters are supported:
 - %s: The field to sort the results by (%s). (default %s)
 - %s: Only get events for this PID (default to all).
 - %s: Only get events for this IP version. (either 4 or 6, default to all)`
-	return fmt.Sprintf(t, types.IntervalParam, types.IntervalDefault,
-		types.MaxRowsParam, types.MaxRowsDefault,
-		types.SortByParam, strings.Join(types.SortBySlice, ","), types.SortByDefault,
+	return fmt.Sprintf(t, top.IntervalParam, top.IntervalDefault,
+		top.MaxRowsParam, top.MaxRowsDefault,
+		top.SortByParam, strings.Join(cols.GetColumnNames(), ","), strings.Join(types.SortByDefault, ","),
 		types.PidParam, types.FamilyParam)
 }
 
@@ -106,8 +108,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
-	maxRows := types.MaxRowsDefault
-	intervalSeconds := types.IntervalDefault
+	maxRows := top.MaxRowsDefault
+	intervalSeconds := top.IntervalDefault
 	sortBy := types.SortByDefault
 	targetPid := int32(-1)
 	targetFamily := int32(-1)
@@ -116,28 +118,32 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		params := trace.Spec.Parameters
 		var err error
 
-		if val, ok := params[types.MaxRowsParam]; ok {
+		if val, ok := params[top.MaxRowsParam]; ok {
 			maxRows, err = strconv.Atoi(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.MaxRowsParam)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, top.MaxRowsParam)
 				return
 			}
 		}
 
-		if val, ok := params[types.IntervalParam]; ok {
+		if val, ok := params[top.IntervalParam]; ok {
 			intervalSeconds, err = strconv.Atoi(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.IntervalParam)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, top.IntervalParam)
 				return
 			}
 		}
 
-		if val, ok := params[types.SortByParam]; ok {
-			sortBy, err = types.ParseSortBy(val)
-			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %q", val, types.SortByParam)
+		if val, ok := params[top.SortByParam]; ok {
+			sortByColumns := strings.Split(val, ",")
+
+			_, invalidCols := types.GetColumns().VerifyColumnNames(sortByColumns)
+			if len(invalidCols) > 0 {
+				trace.Status.OperationError = fmt.Sprintf("%q are not valid for %q", strings.Join(invalidCols, ","), top.SortByParam)
 				return
 			}
+
+			sortBy = sortByColumns
 		}
 
 		if val, ok := params[types.PidParam]; ok {
@@ -173,7 +179,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		TargetFamily: targetFamily,
 	}
 
-	eventCallback := func(ev *types.Event) {
+	eventCallback := func(ev *top.Event[types.Stats]) {
 		r, err := json.Marshal(ev)
 		if err != nil {
 			log.Warnf("Gadget %s: Failed to marshall event: %s", trace.Spec.Gadget, err)

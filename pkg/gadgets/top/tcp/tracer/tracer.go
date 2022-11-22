@@ -23,7 +23,9 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 
 	"github.com/cilium/ebpf"
@@ -70,7 +72,7 @@ type Config struct {
 	TargetFamily int32
 	MaxRows      int
 	Interval     time.Duration
-	SortBy       types.SortBy
+	SortBy       []string
 }
 
 type Tracer struct {
@@ -79,12 +81,13 @@ type Tracer struct {
 	tcpSendmsgLink     link.Link
 	tcpCleanupRbufLink link.Link
 	enricher           gadgets.DataEnricher
-	eventCallback      func(*types.Event)
+	eventCallback      func(*top.Event[types.Stats])
 	done               chan bool
+	colMap             columns.ColumnMap[types.Stats]
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricher,
-	eventCallback func(*types.Event),
+	eventCallback func(*top.Event[types.Stats]),
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
@@ -97,6 +100,13 @@ func NewTracer(config *Config, enricher gadgets.DataEnricher,
 		t.Stop()
 		return nil, err
 	}
+
+	statCols, err := columns.NewColumns[types.Stats]()
+	if err != nil {
+		t.Stop()
+		return nil, err
+	}
+	t.colMap = statCols.GetColumnMap()
 
 	return t, nil
 }
@@ -157,8 +167,8 @@ func (t *Tracer) start() error {
 	return nil
 }
 
-func (t *Tracer) nextStats() ([]types.Stats, error) {
-	stats := []types.Stats{}
+func (t *Tracer) nextStats() ([]*types.Stats, error) {
+	stats := []*types.Stats{}
 
 	var prev *C.struct_ip_key_t = nil
 	key := C.struct_ip_key_t{}
@@ -221,7 +231,7 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 			t.enricher.Enrich(&stat.CommonData, stat.MountNsID)
 		}
 
-		stats = append(stats, stat)
+		stats = append(stats, &stat)
 
 		prev = &key
 		if err := ips.NextKey(unsafe.Pointer(prev), unsafe.Pointer(&key)); err != nil {
@@ -232,7 +242,7 @@ func (t *Tracer) nextStats() ([]types.Stats, error) {
 		}
 	}
 
-	types.SortStats(stats, t.config.SortBy)
+	top.SortStats(stats, t.config.SortBy, &t.colMap)
 
 	return stats, nil
 }
@@ -248,7 +258,7 @@ func (t *Tracer) run() {
 			case <-ticker.C:
 				stats, err := t.nextStats()
 				if err != nil {
-					t.eventCallback(&types.Event{
+					t.eventCallback(&top.Event[types.Stats]{
 						Error: err.Error(),
 					})
 					return
@@ -258,7 +268,7 @@ func (t *Tracer) run() {
 				if n > t.config.MaxRows {
 					n = t.config.MaxRows
 				}
-				t.eventCallback(&types.Event{Stats: stats[:n]})
+				t.eventCallback(&top.Event[types.Stats]{Stats: stats[:n]})
 			}
 		}
 	}()

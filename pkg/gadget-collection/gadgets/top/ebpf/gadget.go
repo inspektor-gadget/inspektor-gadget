@@ -21,13 +21,14 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	ebpftoptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type Trace struct {
@@ -51,15 +52,17 @@ func NewFactory() gadgets.TraceFactory {
 }
 
 func (f *TraceFactory) Description() string {
+	cols := types.GetColumns()
+
 	t := `ebpftop shows cpu time used by ebpf programs.
 
 The following parameters are supported:
  - %s: Output interval, in seconds. (default %d)
  - %s: Maximum rows to print. (default %d)
  - %s: The field to sort the results by (%s). (default %s)`
-	return fmt.Sprintf(t, types.IntervalParam, types.IntervalDefault,
-		types.MaxRowsParam, types.MaxRowsDefault,
-		types.SortByParam, strings.Join(types.SortBySlice, ","), types.SortByDefault)
+	return fmt.Sprintf(t, top.IntervalParam, top.IntervalDefault,
+		top.MaxRowsParam, top.MaxRowsDefault,
+		top.SortByParam, strings.Join(cols.GetColumnNames(), ","), strings.Join(types.SortByDefault, ","))
 }
 
 func (f *TraceFactory) OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode]struct{} {
@@ -107,36 +110,40 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	t.traceName = gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 	t.node = trace.Spec.Node
 
-	maxRows := types.MaxRowsDefault
-	intervalSeconds := types.IntervalDefault
+	maxRows := top.MaxRowsDefault
+	intervalSeconds := top.IntervalDefault
 	sortBy := types.SortByDefault
 
 	if trace.Spec.Parameters != nil {
 		params := trace.Spec.Parameters
 		var err error
 
-		if val, ok := params[types.MaxRowsParam]; ok {
+		if val, ok := params[top.MaxRowsParam]; ok {
 			maxRows, err = strconv.Atoi(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, types.MaxRowsParam, err)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, top.MaxRowsParam, err)
 				return
 			}
 		}
 
-		if val, ok := params[types.IntervalParam]; ok {
+		if val, ok := params[top.IntervalParam]; ok {
 			intervalSeconds, err = strconv.Atoi(val)
 			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, types.IntervalParam, err)
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, top.IntervalParam, err)
 				return
 			}
 		}
 
-		if val, ok := params[types.SortByParam]; ok {
-			sortBy, err = types.ParseSortBy(val)
-			if err != nil {
-				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, types.SortByParam, err)
+		if val, ok := params[top.SortByParam]; ok {
+			sortByColumns := strings.Split(val, ",")
+
+			_, invalidCols := types.GetColumns().VerifyColumnNames(sortByColumns)
+			if len(invalidCols) > 0 {
+				trace.Status.OperationError = fmt.Sprintf("%q are not valid for %q", strings.Join(invalidCols, ","), top.SortByParam)
 				return
 			}
+
+			sortBy = sortByColumns
 		}
 	}
 
@@ -146,7 +153,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		SortBy:   sortBy,
 	}
 
-	eventCallback := func(ev *types.Event) {
+	eventCallback := func(ev *top.Event[types.Stats]) {
 		r, err := json.Marshal(ev)
 		if err != nil {
 			log.Warnf("Gadget %s: Failed to marshal event: %s", trace.Spec.Gadget, err)
@@ -155,7 +162,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		t.helpers.PublishEvent(t.traceName, string(r))
 	}
 
-	tracer, err := ebpftoptracer.NewTracer(config, eventCallback)
+	tracer, err := ebpftoptracer.NewTracer(config, eventCallback, t.node)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 		return

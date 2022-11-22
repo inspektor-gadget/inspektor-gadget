@@ -15,56 +15,43 @@
 package top
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 )
-
-type EbpfFlags struct {
-	CommonTopFlags
-
-	ParsedSortBy types.SortBy
-}
 
 type EbpfParser struct {
 	commonutils.BaseParser[types.Stats]
-	sync.Mutex
 
-	flags     *EbpfFlags
-	nodeStats map[string][]types.Stats
+	flags *CommonTopFlags
 }
 
 func newEbpfCmd() *cobra.Command {
-	var flags EbpfFlags
-
-	commonFlags := &utils.CommonFlags{
-		OutputConfig: commonutils.OutputConfig{
-			// The columns that will be used in case the user does not specify
-			// which specific columns they want to print.
-			CustomColumns: []string{
-				"node",
-				"progid",
-				"type",
-				"name",
-				"pid",
-				"comm",
-				"runtime",
-				"runcount",
-				"mapmemory",
-				"mapcount",
+	commonTopFlags := &CommonTopFlags{
+		CommonFlags: utils.CommonFlags{
+			OutputConfig: commonutils.OutputConfig{
+				// The columns that will be used in case the user does not specify
+				// which specific columns they want to print.
+				CustomColumns: []string{
+					"node",
+					"progid",
+					"type",
+					"name",
+					"pid",
+					"comm",
+					"runtime",
+					"runcount",
+					"mapmemory",
+					"mapcount",
+				},
 			},
 		},
 	}
@@ -86,166 +73,51 @@ func newEbpfCmd() *cobra.Command {
 		"mapcount":      8,
 	}
 
+	cols := types.GetColumns()
+
 	cmd := &cobra.Command{
-		Use:   fmt.Sprintf("ebpf [interval=%d]", types.IntervalDefault),
+		Use:   fmt.Sprintf("ebpf [interval=%d]", top.IntervalDefault),
 		Short: "Periodically report ebpf runtime stats",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-
 			parser := &EbpfParser{
-				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonFlags.OutputConfig),
-				flags:      &flags,
-				nodeStats:  make(map[string][]types.Stats),
+				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonTopFlags.OutputConfig),
+				flags:      commonTopFlags,
 			}
 
-			if len(args) == 1 {
-				flags.OutputInterval, err = strconv.Atoi(args[0])
-				if err != nil {
-					return commonutils.WrapInErrInvalidArg("<interval>",
-						fmt.Errorf("%q is not a valid value", args[0]))
-				}
-			} else {
-				flags.OutputInterval = types.IntervalDefault
+			gadget := &TopGadget[types.Stats]{
+				name:           "ebpftop",
+				commonTopFlags: commonTopFlags,
+				parser:         parser,
+				nodeStats:      make(map[string][]*types.Stats),
+				colMap:         cols.GetColumnMap(),
 			}
 
-			config := &utils.TraceConfig{
-				GadgetName:       "ebpftop",
-				Operation:        gadgetv1alpha1.OperationStart,
-				TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
-				TraceOutputState: gadgetv1alpha1.TraceStateStarted,
-				CommonFlags:      commonFlags,
-				Parameters: map[string]string{
-					types.IntervalParam: strconv.Itoa(flags.OutputInterval),
-					types.MaxRowsParam:  strconv.Itoa(flags.MaxRows),
-					types.SortByParam:   flags.SortBy,
-				},
-			}
-
-			// when params.Timeout == interval it means the user
-			// only wants to run for a given amount of time and print
-			// that result.
-			singleShot := commonFlags.Timeout == flags.OutputInterval
-
-			// start print loop if this is not a "single shot" operation
-			if singleShot {
-				parser.PrintHeader()
-			} else {
-				parser.StartPrintLoop()
-			}
-
-			if err := utils.RunTraceStreamCallback(config, parser.Callback); err != nil {
-				return commonutils.WrapInErrRunGadget(err)
-			}
-
-			if singleShot {
-				parser.PrintStats()
-			}
-
-			return nil
-		},
-		SilenceUsage: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			flags.ParsedSortBy, err = types.ParseSortBy(flags.SortBy)
-			if err != nil {
-				return commonutils.WrapInErrInvalidArg("--sort", err)
-			}
-
-			if commonFlags.NamespaceOverridden {
+			if commonTopFlags.NamespaceOverridden {
 				return commonutils.WrapInErrInvalidArg("--namespace / -n",
 					fmt.Errorf("this gadget cannot filter by namespace"))
 			}
-			if commonFlags.Podname != "" {
+			if commonTopFlags.Podname != "" {
 				return commonutils.WrapInErrInvalidArg("--podname / -p",
 					fmt.Errorf("this gadget cannot filter by pod name"))
 			}
-			if commonFlags.Containername != "" {
+			if commonTopFlags.Containername != "" {
 				return commonutils.WrapInErrInvalidArg("--containername / -c",
 					fmt.Errorf("this gadget cannot filter by container name"))
 			}
-			if len(commonFlags.Labels) > 0 {
+			if len(commonTopFlags.Labels) > 0 {
 				return commonutils.WrapInErrInvalidArg("--selector / -l",
 					fmt.Errorf("this gadget cannot filter by selector"))
 			}
 
-			return nil
+			return gadget.Run(args)
 		},
-		Args: cobra.MaximumNArgs(1),
+		SilenceUsage: true,
+		Args:         cobra.MaximumNArgs(1),
 	}
 
-	addCommonTopFlags(cmd, &flags.CommonTopFlags, commonFlags, types.MaxRowsDefault, types.SortBySlice)
+	addCommonTopFlags(cmd, commonTopFlags, &commonTopFlags.CommonFlags, cols.GetColumnNames(), types.SortByDefault)
 
 	return cmd
-}
-
-func (p *EbpfParser) Callback(line string, node string) {
-	p.Lock()
-	defer p.Unlock()
-
-	var event types.Event
-
-	if err := json.Unmarshal([]byte(line), &event); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
-		return
-	}
-
-	if event.Error != "" {
-		fmt.Fprintf(os.Stderr, "Error: failed on node %q: %s", node, event.Error)
-		return
-	}
-
-	p.nodeStats[node] = event.Stats
-}
-
-func (p *EbpfParser) StartPrintLoop() {
-	go func() {
-		ticker := time.NewTicker(time.Duration(p.flags.OutputInterval) * time.Second)
-		p.PrintHeader()
-		for {
-			_ = <-ticker.C
-			p.PrintHeader()
-			p.PrintStats()
-		}
-	}()
-}
-
-func (p *EbpfParser) PrintHeader() {
-	if p.OutputConfig.OutputMode == commonutils.OutputModeJSON {
-		return
-	}
-
-	if term.IsTerminal(int(os.Stdout.Fd())) {
-		utils.ClearScreen()
-	} else {
-		fmt.Println("")
-	}
-
-	fmt.Println(p.BuildColumnsHeader())
-}
-
-func (p *EbpfParser) PrintStats() {
-	// Sort and print stats
-	p.Lock()
-
-	stats := []types.Stats{}
-	for node, stat := range p.nodeStats {
-		for i := range stat {
-			stat[i].Node = node
-		}
-		stats = append(stats, stat...)
-	}
-	p.nodeStats = make(map[string][]types.Stats)
-
-	p.Unlock()
-
-	types.SortStats(stats, p.flags.ParsedSortBy)
-
-	for idx, stat := range stats {
-		if idx == p.flags.MaxRows {
-			break
-		}
-		fmt.Println(p.TransformStats(&stat))
-	}
 }
 
 func (p *EbpfParser) TransformStats(stats *types.Stats) string {
