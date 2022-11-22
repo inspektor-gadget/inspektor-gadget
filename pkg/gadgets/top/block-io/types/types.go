@@ -28,23 +28,32 @@ const (
 	TIME
 )
 
-var SortByDefault = []string{"-io", "-bytes", "-us"}
+var SortByDefault = []string{"-ops", "-bytes", "-time"}
 
 // Stats represents the operations performed on a single file
 type Stats struct {
 	eventtypes.CommonData
 
-	Write      bool   `json:"write,omitempty" column:"write"`
+	Pid        int32  `json:"pid,omitempty" column:"pid"`
+	Comm       string `json:"comm,omitempty" column:"comm"`
+	Write      bool   `json:"write,omitempty" column:"r/w,maxWidth:3"`
 	Major      int    `json:"major,omitempty" column:"major"`
 	Minor      int    `json:"minor,omitempty" column:"minor"`
 	Bytes      uint64 `json:"bytes,omitempty" column:"bytes"`
-	MicroSecs  uint64 `json:"us,omitempty" column:"us"`
-	Operations uint32 `json:"io,omitempty" column:"io"`
-	MountNsID  uint64 `json:"mountnsid,omitempty" column:"mountnsid"`
-	Pid        int32  `json:"pid,omitempty" column:"pid"`
-	Comm       string `json:"comm,omitempty" column:"comm"`
+	MicroSecs  uint64 `json:"us,omitempty" column:"time"`
+	Operations uint32 `json:"ops,omitempty" column:"ops"`
+	MountNsID  uint64 `json:"mountnsid,omitempty" column:"mountnsid,template:ns,hide"`
 }
 
 func GetColumns() *columns.Columns[Stats] {
-	return columns.MustCreateColumns[Stats]()
+	cols := columns.MustCreateColumns[Stats]()
+
+	cols.MustSetExtractor("r/w", func(stats *Stats) (ret string) {
+		if stats.Write {
+			return "W"
+		}
+		return "R"
+	})
+
+	return cols
 }
