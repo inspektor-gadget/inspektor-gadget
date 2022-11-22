@@ -91,8 +91,7 @@ func (config *OutputConfig) ParseOutputConfig() error {
 		config.OutputMode = OutputModeCustomColumns
 		return nil
 	default:
-		return WrapInErrInvalidArg("--output / -o",
-			fmt.Errorf("%q is not a valid output format", config.OutputMode))
+		return WrapInErrOutputModeNotSupported(config.OutputMode)
 	}
 }
 

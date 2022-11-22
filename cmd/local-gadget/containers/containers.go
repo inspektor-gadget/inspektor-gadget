@@ -62,8 +62,6 @@ func NewListContainersCmd() *cobra.Command {
 				fallthrough
 			case commonutils.OutputModeCustomColumns:
 				fmt.Println(parser.TransformIntoTable(containers))
-			default:
-				return commonutils.WrapInErrOutputModeNotSupported(commonFlags.OutputMode)
 			}
 
 			return nil
