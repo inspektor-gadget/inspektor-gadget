@@ -17,17 +17,16 @@ package dns
 import (
 	"fmt"
 	"os"
-	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection/networktracer"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
-	dnstracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	dnsTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
+	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -37,7 +36,8 @@ type Trace struct {
 
 	started bool
 
-	tracer *dnstracer.Tracer
+	tracer *dnsTracer.Tracer
+	conn   *networktracer.ConnectionToContainerCollection
 
 	netnsHost uint64
 }
@@ -69,7 +69,9 @@ func (f *TraceFactory) OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode
 func deleteTrace(name string, t interface{}) {
 	trace := t.(*Trace)
 	if trace.started {
-		trace.helpers.Unsubscribe(genPubSubKey(name))
+		if trace.conn != nil {
+			trace.conn.Close()
+		}
 		trace.tracer.Close()
 		trace.tracer = nil
 	}
@@ -100,46 +102,7 @@ func (f *TraceFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOp
 	}
 }
 
-type pubSubKey string
-
-func genPubSubKey(name string) pubSubKey {
-	return pubSubKey(fmt.Sprintf("gadget/dns/%s", name))
-}
-
-func (t *Trace) publishMessage(
-	trace *gadgetv1alpha1.Trace,
-	eventType eventtypes.EventType,
-	key string,
-	msg string,
-) {
-	event := &types.Event{
-		Event: eventtypes.Event{
-			Type: eventType,
-			CommonData: eventtypes.CommonData{
-				Node: trace.Spec.Node,
-			},
-			Message: msg,
-		},
-	}
-
-	t.publishEvent(trace, event, key)
-}
-
-func (t *Trace) publishEvent(
-	trace *gadgetv1alpha1.Trace,
-	event *types.Event,
-	key string,
-) {
-	event.Node = trace.Spec.Node
-	keyParts := strings.SplitN(key, "/", 2)
-	if len(keyParts) == 2 {
-		event.Namespace = keyParts[0]
-		event.Pod = keyParts[1]
-	} else if key != "host" {
-		event.Type = eventtypes.ERR
-		event.Message = fmt.Sprintf("unknown key %s", key)
-	}
-
+func (t *Trace) publishEvent(trace *gadgetv1alpha1.Trace, event *dnsTypes.Event) {
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 	t.helpers.PublishEvent(
 		traceName,
@@ -154,69 +117,34 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	var err error
-	t.tracer, err = dnstracer.NewTracer()
+	t.tracer, err = dnsTracer.NewTracer()
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("Failed to start dns tracer: %s", err)
 		return
 	}
 
-	eventCallback := func(key string) func(event types.Event) {
-		return func(event types.Event) {
-			t.publishEvent(trace, &event, key)
+	eventCallback := func(container *containercollection.Container, event dnsTypes.Event) {
+		// Enrich event with data from container
+		event.Node = trace.Spec.Node
+		if !container.HostNetwork {
+			event.Namespace = container.Namespace
+			event.Pod = container.Podname
 		}
+
+		t.publishEvent(trace, &event)
 	}
 
-	genKey := func(container *containercollection.Container) string {
-		if container.Netns == t.netnsHost {
-			return "host"
-		}
-		return container.Namespace + "/" + container.Podname
+	config := &networktracer.ConnectToContainerCollectionConfig[dnsTypes.Event]{
+		Tracer:        t.tracer,
+		Resolver:      t.helpers,
+		Selector:      *gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
+		EventCallback: eventCallback,
+		Base:          dnsTypes.Base,
 	}
-
-	attachContainerFunc := func(container *containercollection.Container) error {
-		key := genKey(container)
-
-		err = t.tracer.Attach(key, container.Pid, eventCallback(key))
-		if err != nil {
-			t.publishMessage(trace, eventtypes.ERR, key, fmt.Sprintf("failed to attach tracer: %s", err))
-			return err
-		}
-		t.publishMessage(trace, eventtypes.DEBUG, key, "tracer attached")
-		return nil
-	}
-
-	detachContainerFunc := func(container *containercollection.Container) {
-		key := genKey(container)
-
-		err := t.tracer.Detach(key)
-		if err != nil {
-			t.publishMessage(trace, eventtypes.ERR, key, fmt.Sprintf("failed to detach tracer: %s", err))
-			return
-		}
-		t.publishMessage(trace, eventtypes.DEBUG, key, "tracer detached")
-	}
-
-	containerEventCallback := func(event containercollection.PubSubEvent) {
-		switch event.Type {
-		case containercollection.EventTypeAddContainer:
-			attachContainerFunc(event.Container)
-		case containercollection.EventTypeRemoveContainer:
-			detachContainerFunc(event.Container)
-		}
-	}
-
-	existingContainers := t.helpers.Subscribe(
-		genPubSubKey(trace.ObjectMeta.Namespace+"/"+trace.ObjectMeta.Name),
-		*gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
-		containerEventCallback,
-	)
-
-	for _, c := range existingContainers {
-		err := attachContainerFunc(c)
-		if err != nil {
-			log.Warnf("Warning: couldn't attach BPF program: %s", err)
-			break
-		}
+	t.conn, err = networktracer.ConnectToContainerCollection(config)
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("Failed to start dns tracer: %s", err)
+		return
 	}
 	t.started = true
 
@@ -229,7 +157,9 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	t.helpers.Unsubscribe(genPubSubKey(trace.ObjectMeta.Namespace + "/" + trace.ObjectMeta.Name))
+	if t.conn != nil {
+		t.conn.Close()
+	}
 	t.tracer.Close()
 	t.tracer = nil
 	t.started = false
