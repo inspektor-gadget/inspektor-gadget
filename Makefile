@@ -161,7 +161,7 @@ local-gadget-tests:
 	rm -f ./local-gadget-manager.test
 
 # INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g
-# INTEGRATION_TESTS_PARAMS="-run TestExecsnoop -v" make integration-tests
+# INTEGRATION_TESTS_PARAMS="-run TestExecsnoop -v -no-deploy-ig -no-deploy-spo" make integration-tests
 .PHONY: integration-tests
 integration-tests: kubectl-gadget
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \

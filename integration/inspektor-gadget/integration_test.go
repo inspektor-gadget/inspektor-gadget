@@ -57,6 +57,8 @@ const (
 	K8sDistroMinikubeGH = "minikube-github"
 )
 
+const securityProfileOperatorNamespace = "security-profiles-operator"
+
 var (
 	supportedK8sDistros = []string{K8sDistroAKSUbuntu, K8sDistroARO, K8sDistroMinikubeGH}
 	cleaningUp          = uint32(0)
@@ -67,6 +69,9 @@ var (
 
 	// image such as ghcr.io/inspektor-gadget/inspektor-gadget:latest
 	image = flag.String("image", "", "gadget container image")
+
+	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
+	doNotDeploySPO = flag.Bool("no-deploy-spo", false, "don't deploy the Security Profiles Operator (SPO)")
 
 	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
 	k8sArch   = flag.String("k8s-arch", "amd64", "allows to skip tests that are not supported on a given CPU architecture")
@@ -135,8 +140,7 @@ func testMain(m *testing.M) int {
 	initCommands := []*Command{}
 	cleanupCommands := []*Command{DeleteRemainingNamespacesCommand()}
 
-	deployIG := !CheckNamespace("gadget")
-	if deployIG {
+	if !*doNotDeployIG {
 		imagePullPolicy := "Always"
 		if *k8sDistro == K8sDistroMinikubeGH {
 			imagePullPolicy = "Never"
@@ -147,7 +151,7 @@ func testMain(m *testing.M) int {
 		cleanupCommands = append(cleanupCommands, CleanupInspektorGadget)
 	}
 
-	deploySPO := !CheckNamespace("security-profiles-operator")
+	deploySPO := !CheckNamespace(securityProfileOperatorNamespace) && !*doNotDeploySPO
 	if deploySPO {
 		limitReplicas := false
 		patchWebhookConfig := false
@@ -161,6 +165,10 @@ func testMain(m *testing.M) int {
 		}
 		initCommands = append(initCommands, DeploySPO(limitReplicas, patchWebhookConfig, bestEffortResourceMgmt))
 		cleanupCommands = append(cleanupCommands, CleanupSPO...)
+	}
+
+	if CheckNamespace(securityProfileOperatorNamespace) {
+		fmt.Println("Using existing installation of SPO in the cluster:")
 	}
 
 	notifyInitDone := make(chan bool, 1)
