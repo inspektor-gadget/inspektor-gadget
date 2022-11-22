@@ -39,14 +39,14 @@ struct syscall_event_t {
 
 	__u16 cpu;
 	__u16 id;
-	char comm[TASK_COMM_LEN];
+	__u8 comm[TASK_COMM_LEN];
 	/* how many syscall_event_cont_t messages to expect after */
 	__u8 cont_nr;
 	__u8 typ;
 };
 
 struct syscall_event_cont_t {
-	char param[PARAM_LEN];
+	__u8 param[PARAM_LEN];
 	__u64 timestamp;
 	__u64 length;
 	__u8 index;
