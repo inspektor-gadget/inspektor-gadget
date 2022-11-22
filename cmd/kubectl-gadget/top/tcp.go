@@ -17,64 +17,21 @@ package top
 import (
 	"fmt"
 	"strconv"
-	"strings"
-	"syscall"
 
 	"github.com/spf13/cobra"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 )
 
-type TCPParser struct {
-	commonutils.BaseParser[types.Stats]
-
-	flags *CommonTopFlags
-}
-
 func newTCPCmd() *cobra.Command {
-	commonTopFlags := &CommonTopFlags{
-		CommonFlags: utils.CommonFlags{
-			OutputConfig: commonutils.OutputConfig{
-				// The columns that will be used in case the user does not specify
-				// which specific columns they want to print.
-				CustomColumns: []string{
-					"node",
-					"namespace",
-					"pod",
-					"container",
-					"pid",
-					"comm",
-					"ip",
-					"saddr",
-					"daddr",
-					"sent",
-					"received",
-				},
-			},
-		},
-	}
+	var commonTopFlags CommonTopFlags
 
 	var (
 		filteredPid uint
 		family      uint
 	)
-
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -30,
-		"container": -16,
-		"pid":       -7,
-		"comm":      -16,
-		"ip":        -3,
-		"saddr":     -51,
-		"daddr":     -51,
-		"sent":      -7,
-		"received":  -7,
-	}
 
 	cols := types.GetColumns()
 
@@ -82,9 +39,9 @@ func newTCPCmd() *cobra.Command {
 		Use:   fmt.Sprintf("tcp [interval=%d]", top.IntervalDefault),
 		Short: "Periodically report TCP activity",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			parser := &TCPParser{
-				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonTopFlags.OutputConfig),
-				flags:      commonTopFlags,
+			parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonTopFlags.OutputConfig, types.GetColumns())
+			if err != nil {
+				return commonutils.WrapInErrParserCreate(err)
 			}
 
 			parameters := make(map[string]string)
@@ -97,7 +54,7 @@ func newTCPCmd() *cobra.Command {
 
 			gadget := &TopGadget[types.Stats]{
 				name:           "tcptop",
-				commonTopFlags: commonTopFlags,
+				commonTopFlags: &commonTopFlags,
 				params:         parameters,
 				parser:         parser,
 				nodeStats:      make(map[string][]*types.Stats),
@@ -110,7 +67,7 @@ func newTCPCmd() *cobra.Command {
 		Args:         cobra.MaximumNArgs(1),
 	}
 
-	addCommonTopFlags(cmd, commonTopFlags, &commonTopFlags.CommonFlags, cols.ColumnMap, types.SortByDefault)
+	addCommonTopFlags(cmd, &commonTopFlags, &commonTopFlags.CommonFlags, cols.ColumnMap, types.SortByDefault)
 
 	cmd.PersistentFlags().UintVarP(
 		&filteredPid,
@@ -128,45 +85,4 @@ func newTCPCmd() *cobra.Command {
 	)
 
 	return cmd
-}
-
-func (p *TCPParser) TransformIntoColumns(stats *types.Stats) string {
-	return p.Transform(stats, func(stats *types.Stats) string {
-		var sb strings.Builder
-
-		for _, col := range p.OutputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Comm))
-			case "ip":
-				tcpFamily := 4
-				if stats.Family == syscall.AF_INET6 {
-					tcpFamily = 6
-				}
-
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], tcpFamily))
-			case "saddr":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], fmt.Sprintf("%s:%d", stats.Saddr, stats.Sport)))
-			case "daddr":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], fmt.Sprintf("%s:%d", stats.Daddr, stats.Dport)))
-			case "sent":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Sent/1024))
-			case "received":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Received/1024))
-			}
-			sb.WriteRune(' ')
-		}
-
-		return sb.String()
-	})
 }

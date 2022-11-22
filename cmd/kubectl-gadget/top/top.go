@@ -70,7 +70,7 @@ func addCommonTopFlags[Stats any](
 		&commonTopFlags.SortBy, "sort",
 		"",
 		strings.Join(sortBySliceDefault, ","),
-		fmt.Sprintf("Sort columns. Join multiple columns with ','. Prefix with '-' to sort descending for that column. Available columns: (%s)", strings.Join(validCols, ", ")))
+		fmt.Sprintf("Sort by columns. Join multiple columns with ','. Prefix a column with '-' to sort in descending order. Available columns: (%s)", strings.Join(validCols, ", ")))
 	utils.AddCommonFlags(command, commonFlags)
 }
 
@@ -217,6 +217,20 @@ func (g *TopGadget[Stats]) PrintStats() {
 		if idx == g.commonTopFlags.MaxRows {
 			break
 		}
-		fmt.Println(g.parser.TransformIntoColumns(stat))
+
+		switch g.commonTopFlags.OutputConfig.OutputMode {
+		case commonutils.OutputModeJSON:
+			b, err := json.Marshal(stat)
+			if err != nil {
+				fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
+				continue
+			}
+
+			fmt.Println(string(b))
+		case commonutils.OutputModeColumns:
+			fallthrough
+		case commonutils.OutputModeCustomColumns:
+			fmt.Println(g.parser.TransformIntoColumns(stat))
+		}
 	}
 }

@@ -19,8 +19,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget top tcp
-NODE             NAMESPACE        POD              CONTAINER        PID     COMM             IPv LADDR
-    RADDR                                               RX_KB   TX_KB
+NODE            NAMESPACE       POD             CONTAINER       PID     COMM    IP REMOTE                LOCAL                 SENT    RECV
 ```
 
 Indeed, it is waiting for TCP connection to occur.
@@ -33,10 +32,9 @@ $ kubectl exec -ti test-pod -- wget kinvolk.io
 On *the first terminal*, you should see:
 
 ```
-NODE             NAMESPACE        POD              CONTAINER        PID     COMM             IPv LADDR
-    RADDR                                               RX_KB   TX_KB
-minikube         default          test-pod         test-pod         49447   wget             4   10.244.2.2:45426
-    188.114.97.3:443                                    10      0
+NODE            NAMESPACE       POD             CONTAINER       PID     COMM    IP REMOTE                LOCAL                 SENT    RECV
+minikube        default         test-pod        test-pod        134110  wget    4  188.114.96.3:443      172.17.0.2:38190      0       2
+minikube        default         test-pod        test-pod        134110  wget    4  188.114.96.3:80       172.17.0.2:33286      0       1
 ```
 
 This line corresponds to the TCP connection initiated by `wget`.
@@ -55,11 +53,10 @@ PID     COMM
 The following command is the same as default printing:
 
 ```bash
-$ kubectl gadget top tcp -o custom-columns=node,namespace,pod,container,pid,comm,family,saddr,daddr,sent,received
-NODE             NAMESPACE        POD              CONTAINER        PID     COMM             IPv LADDR
-    RADDR                                               RX_KB   TX_KB
-minikube         default          test-pod         test-pod         49447   wget             4   10.244.2.2:45426
-    188.114.97.3:443                                    10      0
+$ kubectl gadget top tcp -o custom-columns=node,namespace,pod,container,pid,comm,family,saddr,daddr,sent,recv
+NODE            NAMESPACE       POD             CONTAINER       PID     COMM    IP REMOTE                LOCAL                 SENT    RECV
+minikube        default         test-pod        test-pod        134752  wget    4  188.114.96.3:443      172.17.0.2:37563      0       2
+minikube        default         test-pod        test-pod        134752  wget    4  188.114.96.3:80       172.17.0.2:34258      0       1
 ```
 
 ## Use JSON output
