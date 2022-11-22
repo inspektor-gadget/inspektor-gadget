@@ -120,7 +120,7 @@ func newEbpfCmd() *cobra.Command {
 	return cmd
 }
 
-func (p *EbpfParser) TransformStats(stats *types.Stats) string {
+func (p *EbpfParser) TransformIntoColumns(stats *types.Stats) string {
 	return p.Transform(stats, func(stats *types.Stats) string {
 		var sb strings.Builder
 

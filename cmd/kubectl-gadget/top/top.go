@@ -74,7 +74,7 @@ type TopParser[Stats any] interface {
 	// BuildColumnsHeader returns a header to be used when the user requests to
 	// present the output in columns.
 	BuildColumnsHeader() string
-	TransformStats(*Stats) string
+	TransformIntoColumns(*Stats) string
 }
 
 // TopGadget represents a gadget belonging to the top category.
@@ -211,6 +211,6 @@ func (g *TopGadget[Stats]) PrintStats() {
 		if idx == g.commonTopFlags.MaxRows {
 			break
 		}
-		fmt.Println(g.parser.TransformStats(stat))
+		fmt.Println(g.parser.TransformIntoColumns(stat))
 	}
 }

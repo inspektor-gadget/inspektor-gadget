@@ -130,7 +130,7 @@ func newTCPCmd() *cobra.Command {
 	return cmd
 }
 
-func (p *TCPParser) TransformStats(stats *types.Stats) string {
+func (p *TCPParser) TransformIntoColumns(stats *types.Stats) string {
 	return p.Transform(stats, func(stats *types.Stats) string {
 		var sb strings.Builder
 

@@ -100,7 +100,7 @@ func newBlockIOCmd() *cobra.Command {
 	return cmd
 }
 
-func (p *BlockIOParser) TransformStats(stats *types.Stats) string {
+func (p *BlockIOParser) TransformIntoColumns(stats *types.Stats) string {
 	return p.Transform(stats, func(stats *types.Stats) string {
 		var sb strings.Builder
 
