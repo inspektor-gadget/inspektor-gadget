@@ -109,6 +109,7 @@ func NewTraceCmd() *cobra.Command {
 
 	traceCmd.AddCommand(newBindCmd())
 	traceCmd.AddCommand(newCapabilitiesCmd())
+	traceCmd.AddCommand(newDNSCmd())
 	traceCmd.AddCommand(newExecCmd())
 	traceCmd.AddCommand(newFsSlowerCmd())
 	traceCmd.AddCommand(newOOMKillCmd())
