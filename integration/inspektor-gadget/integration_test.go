@@ -592,7 +592,7 @@ func TestEbpftop(t *testing.T) {
 
 	ebpftopCmd := &Command{
 		Name:         "StartEbpftopGadget",
-		Cmd:          "$KUBECTL_GADGET top ebpf -o json",
+		Cmd:          "$KUBECTL_GADGET top ebpf -o json -r 999",
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &ebpftopTypes.Stats{
