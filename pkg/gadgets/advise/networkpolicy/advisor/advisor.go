@@ -148,12 +148,12 @@ func (a *NetworkPolicyAdvisor) localPodKey(e types.Event) (ret string) {
 }
 
 func (a *NetworkPolicyAdvisor) networkPeerKey(e types.Event) (ret string) {
-	if e.RemoteKind == "pod" {
-		ret = e.RemoteKind + ":" + e.RemotePodNamespace + ":" + a.labelKeyString(e.RemotePodLabels)
-	} else if e.RemoteKind == "svc" {
-		ret = e.RemoteKind + ":" + e.RemoteSvcNamespace + ":" + a.labelKeyString(e.RemoteSvcLabelSelector)
-	} else if e.RemoteKind == "other" {
-		ret = e.RemoteKind + ":" + e.RemoteOther
+	if e.RemoteKind == types.RemoteKindPod {
+		ret = string(e.RemoteKind) + ":" + e.RemoteNamespace + ":" + a.labelKeyString(e.RemoteLabels)
+	} else if e.RemoteKind == types.RemoteKindService {
+		ret = string(e.RemoteKind) + ":" + e.RemoteNamespace + ":" + a.labelKeyString(e.RemoteLabels)
+	} else if e.RemoteKind == types.RemoteKindOther {
+		ret = string(e.RemoteKind) + ":" + e.RemoteAddr
 	}
 	return fmt.Sprintf("%s:%d", ret, e.Port)
 }
@@ -167,49 +167,49 @@ func (a *NetworkPolicyAdvisor) eventToRule(e types.Event) (ports []networkingv1.
 			Protocol: &protocol,
 		},
 	}
-	if e.RemoteKind == "pod" {
+	if e.RemoteKind == types.RemoteKindPod {
 		peers = []networkingv1.NetworkPolicyPeer{
 			{
-				PodSelector: &metav1.LabelSelector{MatchLabels: a.labelFilter(e.RemotePodLabels)},
+				PodSelector: &metav1.LabelSelector{MatchLabels: a.labelFilter(e.RemoteLabels)},
 			},
 		}
-		if e.Namespace != e.RemotePodNamespace {
+		if e.Namespace != e.RemoteNamespace {
 			peers[0].NamespaceSelector = &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					// Kubernetes 1.22 is guaranteed to add the following label on namespaces:
 					// kubernetes.io/metadata.name=obj.Name
 					// See:
 					// https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/2161-apiserver-default-labels#proposal
-					"kubernetes.io/metadata.name": e.RemotePodNamespace,
+					"kubernetes.io/metadata.name": e.RemoteNamespace,
 				},
 			}
 		}
-	} else if e.RemoteKind == "svc" {
+	} else if e.RemoteKind == types.RemoteKindService {
 		peers = []networkingv1.NetworkPolicyPeer{
 			{
-				PodSelector: &metav1.LabelSelector{MatchLabels: e.RemoteSvcLabelSelector},
+				PodSelector: &metav1.LabelSelector{MatchLabels: e.RemoteLabels},
 			},
 		}
-		if e.Namespace != e.RemoteSvcNamespace {
+		if e.Namespace != e.RemoteNamespace {
 			peers[0].NamespaceSelector = &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					// Kubernetes 1.22 is guaranteed to add the following label on namespaces:
 					// kubernetes.io/metadata.name=obj.Name
 					// See:
 					// https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/2161-apiserver-default-labels#proposal
-					"kubernetes.io/metadata.name": e.RemoteSvcNamespace,
+					"kubernetes.io/metadata.name": e.RemoteNamespace,
 				},
 			}
 		}
-	} else if e.RemoteKind == "other" {
-		if e.RemoteOther == "127.0.0.1" {
+	} else if e.RemoteKind == types.RemoteKindOther {
+		if e.RemoteAddr == "127.0.0.1" {
 			// No need to generate a network policy for localhost
 			peers = []networkingv1.NetworkPolicyPeer{}
 		} else {
 			peers = []networkingv1.NetworkPolicyPeer{
 				{
 					IPBlock: &networkingv1.IPBlock{
-						CIDR: e.RemoteOther + "/32",
+						CIDR: e.RemoteAddr + "/32",
 					},
 				},
 			}
@@ -287,7 +287,7 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 		// Kubernetes Network Policies can't block traffic from a pod's
 		// own resident node. Therefore we must not generate a network
 		// policy in that case.
-		if e.PktType == "HOST" && e.PodHostIP == e.Addr {
+		if e.PktType == "HOST" && e.PodHostIP == e.RemoteAddr {
 			continue
 		}
 

@@ -15,7 +15,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -23,34 +22,38 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+type RemoteKind string
+
+const (
+	RemoteKindPod     RemoteKind = "pod"
+	RemoteKindService RemoteKind = "svc"
+	RemoteKindOther   RemoteKind = "other"
+)
+
 type Event struct {
 	eventtypes.Event
 
 	PktType string `json:"pktType,omitempty" column:"type,maxWidth:9"`
 	Proto   string `json:"proto,omitempty" column:"proto,maxWidth:5"`
-	Addr    string `json:"addr,omitempty" column:"addr,template:ipaddr,hide"`
-	Port    uint16 `json:"port,omitempty" column:"ipport,template:ipport"`
+	Port    uint16 `json:"port,omitempty" column:"port,template:ipport"`
 
-	/* pod, svc or other */
-	RemoteKind string `json:"remoteKind,omitempty" column:"kind,maxWidth:5"`
-
+	/* Further information of pod where event occurs */
 	PodHostIP string            `json:"podHostIP,omitempty" column:"podhostip,template:ipaddr,hide"`
 	PodIP     string            `json:"podIP,omitempty" column:"podip,template:ipaddr,hide"`
 	PodOwner  string            `json:"podOwner,omitempty" column:"podowner,hide"`
 	PodLabels map[string]string `json:"podLabels,omitempty" column:"padlabels,hide"`
 
-	/* if RemoteKind = svc */
-	RemoteSvcNamespace     string            `json:"remoteServiceNamespace,omitempty" column:"remotesvcns,hide"`
-	RemoteSvcName          string            `json:"remoteServiceName,omitempty" column:"remotesvcname,hide"`
-	RemoteSvcLabelSelector map[string]string `json:"remoteServiceLabelSelector,omitempty" column:"remotesvclabel,hide"`
+	/* Remote */
+	RemoteKind RemoteKind `json:"remoteKind,omitempty" column:"remoteKind,maxWidth:5,hide"`
+	RemoteAddr string     `json:"remoteAddr,omitempty" column:"remoteAddr,template:ipaddr,hide"`
 
-	/* if RemoteKind = pod */
-	RemotePodNamespace string            `json:"remotePodNamespace,omitempty" column:"remotepodns,hide"`
-	RemotePodName      string            `json:"remotePodName,omitempty" column:"remotepodname,hide"`
-	RemotePodLabels    map[string]string `json:"remotePodLabels,omitempty" column:"remotepodlabel,hide"`
+	/* if RemoteKind = RemoteKindPod or RemoteKindService */
+	RemoteName      string            `json:"remoteName,omitempty" column:"remotename,hide"`
+	RemoteNamespace string            `json:"remoteNamespace,omitempty" column:"remotens,hide"`
+	RemoteLabels    map[string]string `json:"remoteLabels,omitempty" column:"remotelabels,hide"`
 
-	/* if RemoteKind = other */
-	RemoteOther string `json:"remoteOther,omitempty" column:"remoteother,template:ipaddr,hide"`
+	// Key is the key used in Attach().
+	Key string `json:"-"`
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -65,14 +68,14 @@ func GetColumns() *columns.Columns[Event] {
 		EllipsisType: ellipsis.Start,
 		Extractor: func(e *Event) string {
 			switch e.RemoteKind {
-			case "pod":
-				return fmt.Sprintf("pod %s/%s", e.RemotePodNamespace, e.RemotePodName)
-			case "svc":
-				return fmt.Sprintf("svc %s/%s", e.RemoteSvcNamespace, e.RemoteSvcName)
-			case "other":
-				return fmt.Sprintf("endpoint %s", e.RemoteOther)
+			case RemoteKindPod:
+				return fmt.Sprintf("pod %s/%s", e.RemoteNamespace, e.RemoteName)
+			case RemoteKindService:
+				return fmt.Sprintf("svc %s/%s", e.RemoteNamespace, e.RemoteName)
+			case RemoteKindOther:
+				return fmt.Sprintf("endpoint %s", e.RemoteAddr)
 			default:
-				return "unknown"
+				return e.RemoteAddr
 			}
 		},
 	})
@@ -85,35 +88,4 @@ func GetColumns() *columns.Columns[Event] {
 
 func (e Event) GetBaseEvent() eventtypes.Event {
 	return e.Event
-}
-
-func Unique(edges []Event) []Event {
-	keys := make(map[string]bool)
-	list := []Event{}
-	for _, e := range edges {
-		key := e.Key()
-		if _, value := keys[key]; !value {
-			keys[key] = true
-			list = append(list, e)
-		}
-	}
-	return list
-}
-
-func (e *Event) Key() string {
-	return fmt.Sprintf("%s/%s/%s/%s/%s/%d",
-		e.Namespace,
-		e.Pod,
-		e.PktType,
-		e.Proto,
-		e.Addr,
-		e.Port)
-}
-
-func EventsString(edges []Event) string {
-	b, err := json.Marshal(edges)
-	if err != nil {
-		return fmt.Sprintf("error marshalling event: %s\n", err)
-	}
-	return string(b)
 }

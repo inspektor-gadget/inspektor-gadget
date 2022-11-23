@@ -24,7 +24,9 @@ import (
 	"github.com/cilium/ebpf"
 	"golang.org/x/sys/unix"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 //go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang graphmap ./bpf/graphmap.c -- $CLANG_OS_FLAGS -I./bpf/"
@@ -38,14 +40,6 @@ import "C"
 const (
 	BPFSocketAttach = 50
 )
-
-type Edge struct {
-	Key     string
-	PktType string
-	Addr    net.IP
-	Proto   string
-	Port    uint16
-}
 
 type link struct {
 	networkGraphObjects graphObjects
@@ -202,19 +196,25 @@ func (t *Tracer) containerQuarkToKey(quark uint64) string {
 	return key
 }
 
-func (t *Tracer) Pop() ([]Edge, error) {
+func (t *Tracer) Pop() ([]*types.Event, error) {
 	graphmap := t.networkGraphMapObjects.graphmapMaps.Graphmap
-	edges := []Edge{}
+	events := []*types.Event{}
 
-	convertKeyToEdge := func(key graphmapGraphKeyT) Edge {
+	convertKeyToEvent := func(key graphmapGraphKeyT) *types.Event {
 		ip := make(net.IP, 4)
 		binary.BigEndian.PutUint32(ip, uint32(C.htonl(C.uint(key.Ip))))
-		return Edge{
-			Key:     t.containerQuarkToKey(uint64(key.ContainerQuark)),
+		return &types.Event{
+			Event: eventtypes.Event{
+				Type: eventtypes.NORMAL,
+			},
 			PktType: pktTypeString(int(key.PktType)),
-			Addr:    ip,
 			Proto:   protoString(int(key.Proto)),
 			Port:    uint16(C.htons(C.ushort(key.Port))),
+
+			RemoteAddr: ip.String(),
+
+			// Internal usage
+			Key: t.containerQuarkToKey(uint64(key.ContainerQuark)),
 		}
 	}
 
@@ -224,10 +224,10 @@ func (t *Tracer) Pop() ([]Edge, error) {
 		deleteValues := make([]uint64, 256)
 		count, err := graphmap.BatchLookupAndDelete(nil, &nextKey, deleteKeys, deleteValues, nil)
 		for i := 0; i < count; i++ {
-			edges = append(edges, convertKeyToEdge(deleteKeys[i]))
+			events = append(events, convertKeyToEvent(deleteKeys[i]))
 		}
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
-			return edges, nil
+			return events, nil
 		}
 		if errors.Is(err, ebpf.ErrNotSupported) {
 			// Fallback to iteration & deletion without batch
@@ -243,7 +243,7 @@ func (t *Tracer) Pop() ([]Edge, error) {
 	entries := graphmap.Iterate()
 
 	for entries.Next(&key, &val) {
-		edges = append(edges, convertKeyToEdge(key))
+		events = append(events, convertKeyToEvent(key))
 
 		// Deleting an entry during the iteration causes the iteration
 		// to restart from the first key in the hash map. But in this
@@ -256,7 +256,7 @@ func (t *Tracer) Pop() ([]Edge, error) {
 	if err := entries.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating on map: %w", err)
 	}
-	return edges, nil
+	return events, nil
 }
 
 func (t *Tracer) releaseLink(key string, l *link) {

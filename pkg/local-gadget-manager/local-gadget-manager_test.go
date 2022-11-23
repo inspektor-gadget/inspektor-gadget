@@ -576,8 +576,8 @@ func TestNetworkGraph(t *testing.T) {
 			PktType: "OUTGOING",
 			Proto:   "tcp",
 			// There's no place like
-			Addr: "127.0.0.1",
-			Port: 80,
+			RemoteAddr: "127.0.0.1",
+			Port:       80,
 		},
 		{
 			Event: eventtypes.Event{
@@ -588,10 +588,10 @@ func TestNetworkGraph(t *testing.T) {
 					Pod:       "test-local-gadget-network-graph001",
 				},
 			},
-			PktType: "HOST",
-			Proto:   "tcp",
-			Addr:    "127.0.0.1",
-			Port:    80,
+			PktType:    "HOST",
+			Proto:      "tcp",
+			RemoteAddr: "127.0.0.1",
+			Port:       80,
 		},
 		{
 			Event: eventtypes.Event{

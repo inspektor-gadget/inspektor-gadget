@@ -23,10 +23,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	nettracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Enricher struct {
@@ -54,47 +52,29 @@ func NewEnricher(withKubernetes bool, node string) (*Enricher, error) {
 	}, nil
 }
 
-func (e *Enricher) convertEvent(
-	edge nettracer.Edge,
-	pods *corev1.PodList,
-	svcs *corev1.ServiceList,
-) types.Event {
+func enrich(event *types.Event, node string, pods *corev1.PodList, svcs *corev1.ServiceList) {
 	var namespace, name string
-	parts := strings.Split(edge.Key, "/")
+	parts := strings.Split(event.Key, "/")
 	if len(parts) == 2 {
 		namespace = parts[0]
 		name = parts[1]
 	}
+	event.Node = node
+	event.Namespace = namespace
+	event.Pod = name
 
-	out := types.Event{
-		Event: eventtypes.Event{
-			Type: eventtypes.NORMAL,
-			CommonData: eventtypes.CommonData{
-				Node:      e.node,
-				Namespace: namespace,
-				Pod:       name,
-			},
-			Message: "",
-		},
-
-		PktType: edge.PktType,
-		Proto:   edge.Proto,
-		Addr:    edge.Addr.String(),
-		Port:    edge.Port,
-	}
-
-	// Find the pod resource where the packet capture occured
+	// Find the pod resource where the packet capture occurred
 	localPodIndex := -1
 	for i, pod := range pods.Items {
 		if pod.GetNamespace() == namespace && pod.GetName() == name {
 			localPodIndex = i
-			out.PodLabels = pod.Labels
+			event.PodLabels = pod.Labels
 			// Kubernetes Network Policies can't block traffic from
 			// a pod's resident node. Therefore we must not
 			// generate a network policy in that case. The advisor
 			// will use PodHostIP to detect this.
-			out.PodHostIP = pod.Status.HostIP
-			out.PodIP = pod.Status.PodIP
+			event.PodHostIP = pod.Status.HostIP
+			event.PodIP = pod.Status.PodIP
 			break
 		}
 	}
@@ -104,48 +84,46 @@ func (e *Enricher) convertEvent(
 		if pod.Spec.HostNetwork {
 			continue
 		}
-		if pod.Status.PodIP == edge.Addr.String() {
-			out.RemoteKind = "pod"
-			out.RemotePodNamespace = pod.Namespace
-			out.RemotePodName = pod.Name
-			out.RemotePodLabels = pod.Labels
+		if pod.Status.PodIP == event.RemoteAddr {
+			event.RemoteKind = types.RemoteKindPod
+			event.RemoteNamespace = pod.Namespace
+			event.RemoteName = pod.Name
+			event.RemoteLabels = pod.Labels
 			break
 		}
 	}
 	if localPodIndex == -1 {
-		return out
+		return
 	}
 
 	// When the pod belongs to Deployment, ReplicaSet or DaemonSet, find the
 	// shorter name without the random suffix. That will be used to
 	// generate the network policy name.
 	if pods.Items[localPodIndex].OwnerReferences != nil {
-		nameItems := strings.Split(out.Pod, "-")
+		nameItems := strings.Split(event.Pod, "-")
 		if len(nameItems) > 2 {
-			out.PodOwner = strings.Join(nameItems[:len(nameItems)-2], "-")
+			event.PodOwner = strings.Join(nameItems[:len(nameItems)-2], "-")
 		}
 	}
 
-	if out.RemoteKind == "" {
+	if event.RemoteKind == "" {
 		for _, svc := range svcs.Items {
-			if svc.Spec.ClusterIP == edge.Addr.String() {
-				out.RemoteKind = "svc"
-				out.RemoteSvcNamespace = svc.Namespace
-				out.RemoteSvcName = svc.Name
-				out.RemoteSvcLabelSelector = svc.Spec.Selector
+			if svc.Spec.ClusterIP == event.RemoteAddr {
+				event.RemoteKind = types.RemoteKindService
+				event.RemoteNamespace = svc.Namespace
+				event.RemoteName = svc.Name
+				event.RemoteLabels = svc.Spec.Selector
 				break
 			}
 		}
 	}
-	if out.RemoteKind == "" {
-		out.RemoteKind = "other"
-		out.RemoteOther = edge.Addr.String()
-	}
 
-	return out
+	if event.RemoteKind == "" {
+		event.RemoteKind = types.RemoteKindOther
+	}
 }
 
-func (e *Enricher) Enrich(edges []nettracer.Edge) (out []types.Event) {
+func (e *Enricher) Enrich(events []*types.Event) {
 	var err error
 	pods := &corev1.PodList{}
 	svcs := &corev1.ServiceList{}
@@ -163,10 +141,9 @@ func (e *Enricher) Enrich(edges []nettracer.Edge) (out []types.Event) {
 		}
 	}
 
-	for _, edge := range edges {
-		out = append(out, e.convertEvent(edge, pods, svcs))
+	for _, event := range events {
+		enrich(event, e.node, pods, svcs)
 	}
-	return out
 }
 
 func (e *Enricher) Close() {
