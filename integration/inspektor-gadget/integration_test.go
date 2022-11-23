@@ -595,10 +595,11 @@ func TestEbpftop(t *testing.T) {
 		Cmd:          "$KUBECTL_GADGET top ebpf -o json",
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &ebpftopTypes.Stats{
-				Name: "ig_top_ebpf_it",
-				Type: "Tracing",
-			}
+			// Top gadgets truncate their output to 20 rows by default
+			// Even if we increase the amount or rows, the output might get
+			// truncated since we run the tests in parallel and we won't be
+			// able to find our own eBPF program "ig_top_ebpf_it"
+			expectedEntry := &ebpftopTypes.Stats{}
 
 			normalize := func(e *ebpftopTypes.Stats) {
 				e.Node = ""
@@ -607,6 +608,8 @@ func TestEbpftop(t *testing.T) {
 				e.Container = ""
 				e.Namespace = ""
 				e.ProgramID = 0
+				e.Name = ""
+				e.Type = ""
 				e.Pids = nil
 				e.CurrentRuntime = 0
 				e.CurrentRunCount = 0
