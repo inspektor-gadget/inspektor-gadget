@@ -103,10 +103,8 @@ default          mypod            unshare          kill_thread
 * Start the audit-seccomp gadget.
 
 ```bash
-$ sudo ./local-gadget
-» create audit-seccomp trace1
-State: Started
-» stream trace1 -f
+$ sudo local-gadget audit seccomp -r docker
+CONTAINER                                          PID        COMM             SYSCALL     CODE
 ```
 
 * In another terminal, start a container and run unshare:
@@ -119,6 +117,8 @@ Bad system call (core dumped)
 
 * Observe the syscalls logged by seccomp in the first terminal.
 
-```json
-{"type":"normal","node":"local","namespace":"default","pod":"laughing_tharp","container":"laughing_tharp","syscall":"unshare","code":"log","pid":949262,"mntns":4026532756,"comm":"unshare"}
+```bash
+$ sudo local-gadget audit seccomp -r docker
+CONTAINER                                          PID        COMM             SYSCALL     CODE
+eager_mclean                                       231712     unshare          unshare     kill_thread
 ```

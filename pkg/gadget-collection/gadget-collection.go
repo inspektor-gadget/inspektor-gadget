@@ -73,7 +73,6 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 
 func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
-		"audit-seccomp":     auditseccomp.NewFactory(),
 		"capabilities":      capabilities.NewFactory(),
 		"dns":               dns.NewFactory(),
 		"ebpftop":           ebpftop.NewFactory(),

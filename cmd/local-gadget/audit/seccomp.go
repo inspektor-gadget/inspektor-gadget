@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,14 +18,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
 	commonaudit "github.com/inspektor-gadget/inspektor-gadget/cmd/common/audit"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/tracer"
 	seccompauditTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
+	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -33,7 +37,13 @@ func newSeccompCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
 	runCmd := func(cmd *cobra.Command, args []string) error {
-		parser, err := commonutils.NewGadgetParserWithK8sInfo(
+		localGadgetManager, err := localgadgetmanager.NewManager(commonFlags.RuntimeConfigs)
+		if err != nil {
+			return commonutils.WrapInErrManagerInit(err)
+		}
+		defer localGadgetManager.Close()
+
+		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(
 			&commonFlags.OutputConfig,
 			seccompauditTypes.GetColumns(),
 		)
@@ -45,50 +55,56 @@ func newSeccompCmd() *cobra.Command {
 			fmt.Println(parser.BuildColumnsHeader())
 		}
 
-		config := &utils.TraceConfig{
-			GadgetName:       "audit-seccomp",
-			Operation:        gadgetv1alpha1.OperationStart,
-			TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
-			TraceOutputState: gadgetv1alpha1.TraceStateStarted,
-			CommonFlags:      &commonFlags,
-		}
-
-		transformEvent := func(line string) string {
-			var e seccompauditTypes.Event
-
-			if err := json.Unmarshal([]byte(line), &e); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %s", commonutils.WrapInErrUnmarshalOutput(err, line))
-				return ""
-			}
-
-			baseEvent := e.Event
+		eventCallback := func(event seccompauditTypes.Event) {
+			baseEvent := event.Event
 			if baseEvent.Type != eventtypes.NORMAL {
 				commonutils.ManageSpecialEvent(baseEvent, commonFlags.Verbose)
-				return ""
+				return
 			}
 
 			switch commonFlags.OutputMode {
 			case commonutils.OutputModeJSON:
-				b, err := json.Marshal(e)
+				b, err := json.Marshal(event)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error: %s", fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
-					return ""
+					return
 				}
 
-				return string(b)
+				fmt.Println(string(b))
 			case commonutils.OutputModeColumns:
 				fallthrough
 			case commonutils.OutputModeCustomColumns:
-				return parser.TransformIntoColumns(&e)
+				fmt.Println(parser.TransformIntoColumns(&event))
 			}
-
-			return ""
 		}
 
-		err = utils.RunTraceAndPrintStream(config, transformEvent)
+		// TODO: Improve filtering, see further details in
+		// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
+		containerSelector := containercollection.ContainerSelector{
+			Name: commonFlags.Containername,
+		}
+
+		// Create mount namespace map to filter by containers
+		mountnsmap, err := localGadgetManager.CreateMountNsMap(containerSelector)
 		if err != nil {
-			return commonutils.WrapInErrRunGadget(err)
+			return commonutils.WrapInErrManagerCreateMountNsMap(err)
 		}
+		defer localGadgetManager.RemoveMountNsMap()
+
+		config := &tracer.Config{
+			ContainersMap: localGadgetManager.ContainersMap(),
+			MountnsMap:    mountnsmap,
+		}
+
+		tracer, err := tracer.NewTracer(config, eventCallback)
+		if err != nil {
+			return fmt.Errorf("creating tracer: %w", err)
+		}
+		defer tracer.Close()
+
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+		<-stop
 
 		return nil
 	}

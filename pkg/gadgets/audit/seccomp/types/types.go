@@ -15,17 +15,22 @@
 package types
 
 import (
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
 
-	Syscall   string `json:"syscall,omitempty"`
-	Code      string `json:"code,omitempty"`
-	Pid       uint32 `json:"pid,omitempty"`
-	MountNsID uint64 `json:"mntns,omitempty"`
-	Comm      string `json:"comm,omitempty"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
+	Syscall   string `json:"syscall,omitempty" column:"syscall,template:syscall"`
+	Code      string `json:"code,omitempty" column:"code,width:12,fixed"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	return columns.MustCreateColumns[Event]()
 }
 
 func Base(ev eventtypes.Event) Event {
