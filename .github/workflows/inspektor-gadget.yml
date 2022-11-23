@@ -6,7 +6,9 @@ env:
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
 concurrency:
   group: ${{ github.ref }}
-  cancel-in-progress: true
+  # We do not want to cancel job in progress on main to be sure to catch new
+  # regression as soon as they are introduced.
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
 on:
   pull_request:
   push:
