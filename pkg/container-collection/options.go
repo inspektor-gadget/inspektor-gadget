@@ -17,6 +17,7 @@ package containercollection
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -35,6 +36,16 @@ import (
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
 )
+
+var netnsHost uint64
+
+func init() {
+	var err error
+	netnsHost, err = containerutils.GetNetNs(os.Getpid())
+	if err != nil {
+		panic(fmt.Sprintf("getting host net ns inode: %s", err))
+	}
+}
 
 func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData, container *Container) {
 	// Runtime
@@ -579,6 +590,7 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 				return true
 			}
 			container.Netns = netns
+			container.HostNetwork = netns == netnsHost
 			return true
 		})
 		return nil

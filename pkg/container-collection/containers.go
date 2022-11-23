@@ -47,10 +47,11 @@ type Container struct {
 	Bundle string `json:"bundle,omitempty"`
 
 	// Linux metadata can be derived from the pid via /proc/$pid/...
-	Mntns      uint64 `json:"mntns,omitempty" column:"mntns,template:ns"`
-	Netns      uint64 `json:"netns,omitempty" column:"netns,template:ns"`
-	CgroupPath string `json:"cgroupPath,omitempty"`
-	CgroupID   uint64 `json:"cgroupID,omitempty"`
+	Mntns       uint64 `json:"mntns,omitempty" column:"mntns,template:ns"`
+	Netns       uint64 `json:"netns,omitempty" column:"netns,template:ns"`
+	HostNetwork bool   `json:"hostNetwork,omitempty" column:"hostNetwork,width:11,fixed,hide"`
+	CgroupPath  string `json:"cgroupPath,omitempty"`
+	CgroupID    uint64 `json:"cgroupID,omitempty"`
 	// Data required to find the container to Pod association in the
 	// gadgettracermanager.
 	CgroupV1 string `json:"cgroupV1,omitempty"`
