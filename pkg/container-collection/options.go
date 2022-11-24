@@ -32,6 +32,7 @@ import (
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
+	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
 )
@@ -602,42 +603,34 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 				return true
 			}
 
-			var containerTypeAnnotation, containerNameAnnotation, podNameAnnotation, podNamespaceAnnotation, podUIDAnnotation string
-			if cm := container.OciConfig.Annotations[crioContainerManagerAnnotation]; cm == runtimeclient.CrioName {
-				container.Runtime = runtimeclient.CrioName
-				containerTypeAnnotation = crioContainerTypeAnnotation
-				containerNameAnnotation = crioContainerNameAnnotation
-				podNameAnnotation = crioPodNameAnnotation
-				podNamespaceAnnotation = crioPodNamespaceAnnotation
-				podUIDAnnotation = crioPodUIDAnnotation
-			} else if _, isContainerd := container.OciConfig.Annotations[containerdContainerTypeAnnotation]; isContainerd {
-				container.Runtime = runtimeclient.ContainerdName
-				containerTypeAnnotation = containerdContainerTypeAnnotation
-				containerNameAnnotation = containerdContainerNameAnnotation
-				podNameAnnotation = containerdPodNameAnnotation
-				podNamespaceAnnotation = containerdPodNamespaceAnnotation
-				podUIDAnnotation = containerdPodUIDAnnotation
-			} else {
+			resolver, err := ociannotations.NewResolverFromAnnotations(container.OciConfig.Annotations)
+			// ignore if annotations aren't supported for runtime e.g docker
+			if err != nil {
+				log.Debugf("OCIConfig enricher: failed to initialize annotation resolver: %s", err)
 				return true
 			}
 
 			// TODO: handle this once we support pod sandboxes via WithContainerRuntimeEnrichment
 			// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1095
-			if ct := container.OciConfig.Annotations[containerTypeAnnotation]; ct == containerTypeSandbox {
+			if ct := resolver.ContainerType(container.OciConfig.Annotations); ct == "sandbox" {
 				return false
 			}
-			if cn, ok := container.OciConfig.Annotations[containerNameAnnotation]; ok {
-				container.Name = cn
+
+			// enrich the container
+			container.Runtime = resolver.Runtime()
+			if name := resolver.ContainerName(container.OciConfig.Annotations); name != "" {
+				container.Name = name
 			}
-			if pn, ok := container.OciConfig.Annotations[podNameAnnotation]; ok {
-				container.Podname = pn
+			if podName := resolver.PodName(container.OciConfig.Annotations); podName != "" {
+				container.Podname = podName
 			}
-			if ns, ok := container.OciConfig.Annotations[podNamespaceAnnotation]; ok {
-				container.Namespace = ns
+			if podNamespace := resolver.PodNamespace(container.OciConfig.Annotations); podNamespace != "" {
+				container.Namespace = podNamespace
 			}
-			if pUID, ok := container.OciConfig.Annotations[podUIDAnnotation]; ok {
-				container.PodUID = pUID
+			if podUID := resolver.PodUID(container.OciConfig.Annotations); podUID != "" {
+				container.PodUID = podUID
 			}
+
 			return true
 		})
 		return nil
