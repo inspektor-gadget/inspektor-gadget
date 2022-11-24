@@ -243,7 +243,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) error {
 		for _, event := range events {
 			baseEvent := event.GetBaseEvent()
 			if baseEvent.Type != eventtypes.NORMAL {
-				commonutils.ManageSpecialEvent(baseEvent, params.Verbose)
+				commonutils.HandleSpecialEvent(baseEvent, params.Verbose)
 				return ""
 			}
 

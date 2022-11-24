@@ -21,7 +21,10 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func ManageSpecialEvent(e eventtypes.Event, verbose bool) {
+// HandleSpecialEvent prints the special events. Notice it does not receive the
+// OutputMode so it will always print the special events messages without any
+// specific format to standard error.
+func HandleSpecialEvent(e *eventtypes.Event, verbose bool) {
 	switch e.Type {
 	case eventtypes.READY:
 		// TODO
