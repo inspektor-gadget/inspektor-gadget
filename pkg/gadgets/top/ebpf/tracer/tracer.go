@@ -185,6 +185,29 @@ func getPidMapFromProcFs() (map[uint32][]*types.PidInfo, error) {
 	return pidmap, nil
 }
 
+func getMemoryUsage(m *ebpf.Map) (uint64, error) {
+	f, err := os.Open(fmt.Sprintf("/proc/self/fdinfo/%d", m.FD()))
+	if err != nil {
+		return 0, fmt.Errorf("could not read fdinfo: %w", err)
+	}
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		if strings.HasPrefix(sc.Text(), "memlock:\t") {
+			lineSplit := strings.Split(sc.Text(), "\t")
+			if len(lineSplit) == 2 {
+				size, err := strconv.ParseUint(lineSplit[1], 10, 64)
+				if err != nil {
+					return 0, fmt.Errorf("could not read memlock: %w", err)
+				}
+				return size, nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("could not find memlock in fdinfo")
+}
+
 func (t *Tracer) nextStats() ([]*types.Stats, error) {
 	stats := make([]*types.Stats, 0)
 
@@ -219,9 +242,12 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		if err != nil {
 			continue
 		}
-		mapSizes[curMapID] = (uint64(mapData.KeySize()) + uint64(mapData.ValueSize())) * uint64(mapData.MaxEntries())
 
+		mapSizes[curMapID], err = getMemoryUsage(mapData)
 		mapData.Close()
+		if err != nil {
+			return nil, fmt.Errorf("getting memory usage of map ID (%d): %w", curMapID, err)
+		}
 	}
 
 	for {
