@@ -15,9 +15,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"reflect"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -60,19 +58,7 @@ func TestListContainers(t *testing.T) {
 				c.PodUID = ""
 			}
 
-			var containers []*containercollection.Container
-			if err := json.Unmarshal([]byte(output), &containers); err != nil {
-				return err
-			}
-
-			for _, gotContainer := range containers {
-				normalize(gotContainer)
-				if reflect.DeepEqual(gotContainer, expectedContainer) {
-					return nil
-				}
-			}
-
-			return fmt.Errorf("output doesn't contain the expected container: %+v", expectedContainer)
+			return ExpectEntriesInArrayToMatch(output, normalize, expectedContainer)
 		},
 	}
 
@@ -87,43 +73,24 @@ func TestListContainers(t *testing.T) {
 	RunCommands(commands, t)
 }
 
-func TestListSingleContainer(t *testing.T) {
+func TestFilterByContainerName(t *testing.T) {
 	t.Parallel()
-	prefix := "test-list-single"
-	po := fmt.Sprintf("%s-pod", prefix)
-	cn := fmt.Sprintf("%s-container", prefix)
-	ns := GenerateTestNamespaceName(fmt.Sprintf("%s-namespace", prefix))
+	cn := "test-filtered-container"
+	ns := GenerateTestNamespaceName(cn)
 
 	// TODO: Handle it once we support getting K8s container name for docker
 	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 	if *containerRuntime == ContainerRuntimeDocker {
-		t.Skip("Skip TestListSingleContainer on docker since we don't propagate the Kubernetes pod container name")
+		t.Skip("Skip TestFilterByContainerName on docker since we don't propagate the Kubernetes pod container name")
 	}
 
-	TestPodYaml := fmt.Sprintf(`
-apiVersion: v1
-kind: Pod
-metadata:
-  namespace: %s
-  name: %s
-spec:
-  restartPolicy: Never
-  terminationGracePeriodSeconds: 0
-  containers:
-  - name: %s
-    image: busybox
-    command: ["/bin/sh", "-c"]
-    args:
-    - "sleep inf"
-`, ns, po, cn)
-
 	listContainersCmd := &Command{
-		Name: "RunListSingleContainer",
+		Name: "RunFilterByContainerName",
 		Cmd:  fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s --containername=%s", *containerRuntime, cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				Name:      cn,
-				Podname:   po,
+				Podname:   cn,
 				Runtime:   *containerRuntime,
 				Namespace: ns,
 			}
@@ -143,39 +110,69 @@ spec:
 				c.PodUID = ""
 			}
 
-			var containers []*containercollection.Container
-			if err := json.Unmarshal([]byte(output), &containers); err != nil {
-				return err
-			}
-
-			if len(containers) == 0 {
-				return fmt.Errorf("expect at least one container in output")
-			}
-
-			for _, gotContainer := range containers {
-				normalize(gotContainer)
-				if !reflect.DeepEqual(gotContainer, expectedContainer) {
-					return fmt.Errorf("expect at least one container to match, expected=%+v, got=%+v", expectedContainer, gotContainer)
-				}
-			}
-
-			return nil
+			return ExpectAllInArrayToMatch(output, normalize, expectedContainer)
 		},
 	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		{
-			Name:           "RunTestListSinglePod",
-			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", TestPodYaml),
-			ExpectedRegexp: fmt.Sprintf("pod/%s created", po),
-		},
-		{
-			Name:           "WaitForTestListSinglePod",
-			Cmd:            fmt.Sprintf("kubectl wait pod --for condition=ready -n %s %s", ns, po),
-			ExpectedString: fmt.Sprintf("pod/%s condition met\n", po),
-		},
+		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
+		WaitUntilPodReadyCommand(ns, cn),
 		listContainersCmd,
+		DeleteTestNamespaceCommand(ns),
+	}
+
+	RunCommands(commands, t)
+}
+
+func TestWatchContainers(t *testing.T) {
+	t.Parallel()
+	cn := "test-watched-container"
+	ns := GenerateTestNamespaceName(cn)
+
+	// TODO: Handle it once we support getting K8s container name for docker
+	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
+	if *containerRuntime == ContainerRuntimeDocker {
+		t.Skip("Skip TestWatchContainers on docker since we don't propagate the Kubernetes pod container name")
+	}
+
+	watchContainersCmd := &Command{
+		Name:         "RunWatchContainers",
+		Cmd:          fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedContainer := &containercollection.Container{
+				Name:      cn,
+				Podname:   cn,
+				Runtime:   *containerRuntime,
+				Namespace: ns,
+			}
+
+			normalize := func(c *containercollection.Container) {
+				c.ID = ""
+				c.Pid = 0
+				c.OciConfig = nil
+				c.Bundle = ""
+				c.Mntns = 0
+				c.Netns = 0
+				c.CgroupPath = ""
+				c.CgroupID = 0
+				c.CgroupV1 = ""
+				c.CgroupV2 = ""
+				c.Labels = nil
+				c.PodUID = ""
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedContainer)
+		},
+	}
+
+	commands := []*Command{
+		CreateTestNamespaceCommand(ns),
+		watchContainersCmd,
+		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
+		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
+		WaitUntilPodReadyCommand(ns, cn),
 		DeleteTestNamespaceCommand(ns),
 	}
 

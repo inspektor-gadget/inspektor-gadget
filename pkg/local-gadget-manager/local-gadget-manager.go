@@ -348,6 +348,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 
 	err = l.ContainerCollection.Initialize(
 		containercollection.WithPubSub(containerEventFuncs...),
+		containercollection.WithOCIConfigEnrichment(),
 		containercollection.WithCgroupEnrichment(),
 		containercollection.WithLinuxNamespaceEnrichment(),
 		containercollection.WithMultipleContainerRuntimesEnrichment(runtimes),

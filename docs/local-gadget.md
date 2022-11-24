@@ -92,6 +92,7 @@ Flags:
       --crio-socketpath string         CRI-O CRI Unix socket path (default "/run/crio/crio.sock")
       --docker-socketpath string       Docker Engine API Unix socket path (default "/run/docker.sock")
   -r, --runtimes string                Container runtimes to be used separated by comma. Supported values are: docker, containerd, cri-o (default "docker,containerd,cri-o")
+  -w, --watch                          After listing the containers, watch for new containers
   ...
 ```
 

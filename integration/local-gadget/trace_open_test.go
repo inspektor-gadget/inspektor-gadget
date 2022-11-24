@@ -56,13 +56,12 @@ func TestTraceOpen(t *testing.T) {
 		},
 	}
 
-	// TODO: traceOpenCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
+		traceOpenCmd,
+		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		BusyboxPodRepeatCommand(ns, "cat /dev/null"),
 		WaitUntilTestPodReadyCommand(ns),
-		traceOpenCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 

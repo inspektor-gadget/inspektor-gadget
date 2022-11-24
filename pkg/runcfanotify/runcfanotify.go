@@ -102,6 +102,7 @@ var runcPaths = []string{
 	"/usr/bin/runc",
 	"/usr/sbin/runc",
 	"/usr/local/sbin/runc",
+	"/usr/lib/cri-o-runc/sbin/runc",
 	"/run/torcx/unpack/docker/bin/runc",
 }
 
@@ -421,7 +422,9 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		return false, err
 	}
 
-	containerID := filepath.Base(filepath.Clean(bundleDir))
+	// cri-o appends userdata to bundleDir,
+	// so we trim it here to get the correct containerID
+	containerID := filepath.Base(filepath.Clean(strings.TrimSuffix(bundleDir, "userdata")))
 
 	err = n.AddWatchContainerTermination(containerID, containerPID)
 	if err != nil {

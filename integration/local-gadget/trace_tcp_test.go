@@ -34,6 +34,7 @@ func TestTraceTCP(t *testing.T) {
 
 	RunCommands(commandsPreTest, t)
 	NginxIP := GetTestPodIP(ns, "nginx-pod")
+
 	traceTCPCmd := &Command{
 		Name:         "TraceTCP",
 		Cmd:          fmt.Sprintf("local-gadget trace tcp -o json --runtimes=%s", *containerRuntime),
@@ -67,12 +68,11 @@ func TestTraceTCP(t *testing.T) {
 		},
 	}
 
-	// TODO: traceTCPCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
+		traceTCPCmd,
+		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
-		traceTCPCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 
