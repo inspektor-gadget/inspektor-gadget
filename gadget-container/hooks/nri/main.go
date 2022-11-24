@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 
@@ -95,7 +96,7 @@ func processContainer(r *types.Request, conf *igHookConf) error {
 	var client pb.GadgetTracerManagerClient
 	var ctx context.Context
 	var cancel context.CancelFunc
-	conn, err := grpc.Dial("unix://"+conf.Socketfile, grpc.WithInsecure())
+	conn, err := grpc.Dial("unix://"+conf.Socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
 	}

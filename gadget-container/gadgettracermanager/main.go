@@ -31,6 +31,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
@@ -109,7 +110,7 @@ func main() {
 	var conn *grpc.ClientConn
 	if liveness || dump || method != "" {
 		var err error
-		conn, err = grpc.Dial("unix://"+socketfile, grpc.WithInsecure())
+		conn, err = grpc.Dial("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Fatalf("fail to dial: %v", err)
 		}
