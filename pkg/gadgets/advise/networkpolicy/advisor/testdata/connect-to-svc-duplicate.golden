@@ -28,3 +28,4 @@ spec:
   policyTypes:
   - Ingress
   - Egress
+status: {}

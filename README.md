@@ -90,7 +90,7 @@ Usage:
 Available Commands:
   advise      Recommend system configurations based on collected information
   audit       Audit a subsystem
-  completion  generate the autocompletion script for the specified shell
+  completion  Generate the autocompletion script for the specified shell
   deploy      Deploy Inspektor Gadget on the cluster
   help        Help about any command
   profile     Profile different subsystems
