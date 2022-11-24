@@ -26,6 +26,7 @@ import (
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	pb "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
@@ -43,7 +44,7 @@ type CRIClient struct {
 func NewCRIClient(name, socketPath string, timeout time.Duration) (CRIClient, error) {
 	conn, err := grpc.Dial(
 		socketPath,
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
 			d := net.Dialer{Timeout: timeout}
 			return d.DialContext(ctx, "unix", socketPath)

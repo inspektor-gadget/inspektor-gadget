@@ -32,6 +32,7 @@ import (
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
@@ -79,7 +80,7 @@ func main() {
 	var client pb.GadgetTracerManagerClient
 	var ctx context.Context
 	var cancel context.CancelFunc
-	conn, err := grpc.Dial("unix://"+socketfile, grpc.WithInsecure())
+	conn, err := grpc.Dial("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		panic(err)
 	}
