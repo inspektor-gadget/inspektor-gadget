@@ -178,3 +178,5 @@ replace (
 )
 
 replace github.com/cilium/ebpf => github.com/inspektor-gadget/ebpf v0.0.0-20221124154204-19876eff65b2
+
+replace github.com/solo-io/bumblebee => github.com/alban/bumblebee v0.0.0-20221124194002-3aa867968d95
