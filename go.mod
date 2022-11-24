@@ -177,4 +177,4 @@ replace (
 	github.com/gogo/protobuf v1.3.1 => github.com/gogo/protobuf v1.3.2
 )
 
-replace github.com/cilium/ebpf => github.com/inspektor-gadget/ebpf v0.0.0-20221115161606-78aefc9a99fd
+replace github.com/cilium/ebpf => github.com/inspektor-gadget/ebpf v0.0.0-20221124154204-19876eff65b2
