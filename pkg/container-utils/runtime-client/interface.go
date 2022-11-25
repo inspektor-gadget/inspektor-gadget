@@ -15,6 +15,7 @@
 package runtimeclient
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -30,6 +31,8 @@ const (
 	DockerName              = "docker"
 	DockerDefaultSocketPath = "/run/docker.sock"
 )
+
+var ErrPauseContainer = errors.New("it is a pause container")
 
 // ContainerData contains container information returned from the container
 // runtime clients.

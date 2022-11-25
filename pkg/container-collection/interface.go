@@ -27,6 +27,11 @@ type ContainerResolver interface {
 	// inode id. If not found nil is returned.
 	LookupContainerByMntns(mntnsid uint64) *Container
 
+	// LookupContainersByNetns returns a slice of containers that run in a given
+	// network namespace. Or an empty slice if there are no containers running
+	// in that network namespace.
+	LookupContainersByNetns(netnsid uint64) []*Container
+
 	// LookupMntnsByPod returns the mount namespace inodes of all containers
 	// belonging to the pod specified in arguments, indexed by the name of the
 	// containers or an empty map if not found

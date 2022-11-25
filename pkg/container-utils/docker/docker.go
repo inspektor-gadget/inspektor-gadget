@@ -81,7 +81,22 @@ func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]dockertypes.
 			opts, err)
 	}
 
-	return containers, nil
+	// Temporarily drop pod sandbox containers. Otherwise, they will be
+	// considered as normal containers and EnrichByNetNs will incorrectly think
+	// that they are using a given network namespace. See issue
+	// https://github.com/inspektor-gadget/inspektor-gadget/issues/1095.
+	noPauseContainers := []dockertypes.Container{}
+	for _, c := range containers {
+		if c.Labels["io.kubernetes.docker.type"] == "podsandbox" {
+			continue
+		}
+		noPauseContainers = append(noPauseContainers, c)
+	}
+	if filter != nil && len(containers) != 0 && len(noPauseContainers) == 0 {
+		return nil, runtimeclient.ErrPauseContainer
+	}
+
+	return noPauseContainers, nil
 }
 
 func (c *DockerClient) GetContainers() ([]*runtimeclient.ContainerData, error) {

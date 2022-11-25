@@ -48,6 +48,13 @@ type DataEnricherByMntNs interface {
 	EnrichByMntNs(event *types.CommonData, mountnsid uint64)
 }
 
+// DataEnricherByNetNs is used to enrich events with Kubernetes information,
+// like node, namespace, pod name and container name when the network namespace
+// is available.
+type DataEnricherByNetNs interface {
+	EnrichByNetNs(event *types.CommonData, netnsid uint64)
+}
+
 func FromCString(in []byte) string {
 	for i := 0; i < len(in); i++ {
 		if in[i] == 0 {

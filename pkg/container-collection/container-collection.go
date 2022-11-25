@@ -183,6 +183,20 @@ func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container
 	return container
 }
 
+// LookupContainersByNetns returns a slice of containers that run in a given
+// network namespace. Or an empty slice if there are no containers running in
+// that network namespace.
+func (cc *ContainerCollection) LookupContainersByNetns(netnsid uint64) (containers []*Container) {
+	cc.containers.Range(func(key, value interface{}) bool {
+		c := value.(*Container)
+		if c.Netns == netnsid {
+			containers = append(containers, c)
+		}
+		return true
+	})
+	return containers
+}
+
 // LookupMntnsByPod returns the mount namespace inodes of all containers
 // belonging to the pod specified in arguments, indexed by the name of the
 // containers or an empty map if not found
@@ -309,6 +323,30 @@ func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mount
 		event.Pod = container.Podname
 		event.Namespace = container.Namespace
 	}
+}
+
+func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netnsid uint64) {
+	event.Node = cc.nodeName
+
+	containers := cc.LookupContainersByNetns(netnsid)
+	if len(containers) == 0 || containers[0].HostNetwork {
+		return
+	}
+	if len(containers) == 1 {
+		event.Container = containers[0].Name
+		event.Pod = containers[0].Podname
+		event.Namespace = containers[0].Namespace
+		return
+	}
+	if containers[0].Podname != "" && containers[0].Namespace != "" {
+		// Kubernetes containers within the same pod.
+		event.Pod = containers[0].Podname
+		event.Namespace = containers[0].Namespace
+	}
+	// else {
+	// 	TODO: Non-Kubernetes containers sharing the same network namespace.
+	// 	What should we do here?
+	// }
 }
 
 // Subscribe returns the list of existing containers and registers a callback

@@ -16,6 +16,7 @@ package containercollection
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -84,8 +85,15 @@ func containerRuntimeEnricher(
 	}
 	containerData, err := runtimeClient.GetContainer(container.ID)
 	if err != nil {
-		log.Debugf("Runtime enricher (%s): failed to get container: %s",
-			runtimeName, err)
+		// Temporary dropping pause container. See issue
+		// https://github.com/inspektor-gadget/inspektor-gadget/issues/1095.
+		if errors.Is(err, runtimeclient.ErrPauseContainer) {
+			log.Warnf("Runtime enricher (%s): failed to get container: %s",
+				runtimeName, err)
+			return false
+		}
+
+		// Container could be managed by another runtime, don't drop it.
 		return true
 	}
 

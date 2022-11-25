@@ -81,6 +81,7 @@ type TraceOperation struct {
 type GadgetHelpers interface {
 	containercollection.ContainerResolver
 	gadgets.DataEnricherByMntNs
+	gadgets.DataEnricherByNetNs
 
 	PublishEvent(tracerID string, line string) error
 	TracerMountNsMap(tracerID string) (*ebpf.Map, error)
