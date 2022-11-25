@@ -43,7 +43,7 @@ func newCapabilitiesCmd() *cobra.Command {
 		capabilitiesGadget := &TraceGadget[capabilitiesTypes.Event]{
 			commonFlags: &commonFlags,
 			parser:      parser,
-			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(capabilitiesTypes.Event)) (trace.Tracer, error) {
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(capabilitiesTypes.Event)) (trace.Tracer, error) {
 				config := &capabilitiesTracer.Config{
 					MountnsMap: mountnsmap,
 					AuditOnly:  flags.AuditOnly,

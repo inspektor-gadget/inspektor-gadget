@@ -51,13 +51,13 @@ type Tracer struct {
 	ioStartLink      link.Link
 	startRequestLink link.Link
 	doneLink         link.Link
-	enricher         gadgets.DataEnricher
+	enricher         gadgets.DataEnricherByMntNs
 	eventCallback    func(*top.Event[types.Stats])
 	done             chan bool
 	colMap           columns.ColumnMap[types.Stats]
 }
 
-func NewTracer(config *Config, enricher gadgets.DataEnricher,
+func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
 	eventCallback func(*top.Event[types.Stats]),
 ) (*Tracer, error) {
 	t := &Tracer{
@@ -255,7 +255,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		}
 
 		if t.enricher != nil {
-			t.enricher.Enrich(&stat.CommonData, stat.MountNsID)
+			t.enricher.EnrichByMntNs(&stat.CommonData, stat.MountNsID)
 		}
 
 		stats = append(stats, &stat)

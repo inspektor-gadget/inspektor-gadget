@@ -42,11 +42,11 @@ type Tracer struct {
 	objs          oomkillObjects
 	oomLink       link.Link
 	reader        *perf.Reader
-	enricher      gadgets.DataEnricher
+	enricher      gadgets.DataEnricherByMntNs
 	eventCallback func(types.Event)
 }
 
-func NewTracer(c *Config, enricher gadgets.DataEnricher, eventCallback func(types.Event)) (*Tracer, error) {
+func NewTracer(c *Config, enricher gadgets.DataEnricherByMntNs, eventCallback func(types.Event)) (*Tracer, error) {
 	t := &Tracer{
 		config:        c,
 		enricher:      enricher,
@@ -150,7 +150,7 @@ func (t *Tracer) run() {
 		}
 
 		if t.enricher != nil {
-			t.enricher.Enrich(&event.CommonData, event.MountNsID)
+			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
 		t.eventCallback(event)

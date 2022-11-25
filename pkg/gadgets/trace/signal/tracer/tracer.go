@@ -48,7 +48,7 @@ type Tracer struct {
 	signalGenerateLink link.Link
 	reader             *perf.Reader
 
-	enricher      gadgets.DataEnricher
+	enricher      gadgets.DataEnricherByMntNs
 	eventCallback func(types.Event)
 }
 
@@ -79,7 +79,7 @@ func signalIntToString(signal int) string {
 	return unix.SignalName(syscall.Signal(signal))
 }
 
-func NewTracer(config *Config, enricher gadgets.DataEnricher,
+func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
 	eventCallback func(types.Event),
 ) (*Tracer, error) {
 	t := &Tracer{
@@ -235,7 +235,7 @@ func (t *Tracer) run() {
 		}
 
 		if t.enricher != nil {
-			t.enricher.Enrich(&event.CommonData, event.MountNsID)
+			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
 		t.eventCallback(event)

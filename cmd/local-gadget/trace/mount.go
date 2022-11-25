@@ -39,7 +39,7 @@ func newMountCmd() *cobra.Command {
 		mountGadget := &TraceGadget[mountTypes.Event]{
 			commonFlags: &commonFlags,
 			parser:      parser,
-			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(mountTypes.Event)) (trace.Tracer, error) {
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(mountTypes.Event)) (trace.Tracer, error) {
 				return mountTracer.NewTracer(&mountTracer.Config{MountnsMap: mountnsmap}, enricher, eventCallback)
 			},
 		}

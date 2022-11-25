@@ -46,7 +46,7 @@ type Config struct {
 }
 
 type Tracer struct {
-	enricher gadgets.DataEnricher
+	enricher gadgets.DataEnricherByMntNs
 	objs     profileObjects
 	perfFds  []int
 	config   *Config
@@ -63,7 +63,7 @@ const (
 	frequencyBit = 1 << 10
 )
 
-func NewTracer(enricher gadgets.DataEnricher, config *Config) (*Tracer, error) {
+func NewTracer(enricher gadgets.DataEnricherByMntNs, config *Config) (*Tracer, error) {
 	t := &Tracer{
 		enricher: enricher,
 		config:   config,
@@ -256,7 +256,7 @@ func getReport(t *Tracer, kAllSyms []kernelSymbol, stack *ebpf.Map, keyCount key
 	}
 
 	if t.enricher != nil {
-		t.enricher.Enrich(&report.CommonData, k.MntnsId)
+		t.enricher.EnrichByMntNs(&report.CommonData, k.MntnsId)
 	}
 
 	return report, nil

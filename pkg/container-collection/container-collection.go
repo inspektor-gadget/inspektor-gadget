@@ -300,7 +300,7 @@ func (cc *ContainerCollection) ContainerRangeWithSelector(
 	})
 }
 
-func (cc *ContainerCollection) Enrich(event *eventtypes.CommonData, mountnsid uint64) {
+func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
 	event.Node = cc.nodeName
 
 	container := cc.LookupContainerByMntns(mountnsid)

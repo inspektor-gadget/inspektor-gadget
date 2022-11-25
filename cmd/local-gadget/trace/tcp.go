@@ -39,7 +39,7 @@ func newTCPCmd() *cobra.Command {
 		tcpGadget := &TraceGadget[tcpTypes.Event]{
 			commonFlags: &commonFlags,
 			parser:      parser,
-			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(tcpTypes.Event)) (trace.Tracer, error) {
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(tcpTypes.Event)) (trace.Tracer, error) {
 				return tcpTracer.NewTracer(&tcpTracer.Config{MountnsMap: mountnsmap}, enricher, eventCallback)
 			},
 		}

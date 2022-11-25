@@ -80,7 +80,7 @@ type TraceOperation struct {
 // gadgets implementation.
 type GadgetHelpers interface {
 	containercollection.ContainerResolver
-	gadgets.DataEnricher
+	gadgets.DataEnricherByMntNs
 
 	PublishEvent(tracerID string, line string) error
 	TracerMountNsMap(tracerID string) (*ebpf.Map, error)

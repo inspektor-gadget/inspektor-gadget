@@ -31,7 +31,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type collectorFunc func(config *Config, enricher gadgets.DataEnricher) ([]*snapshotProcessTypes.Event, error)
+type collectorFunc func(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*snapshotProcessTypes.Event, error)
 
 func BenchmarkEBPFTracer(b *testing.B) {
 	benchmarkTracer(b, runeBPFCollector)
