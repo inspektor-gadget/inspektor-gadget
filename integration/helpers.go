@@ -68,6 +68,9 @@ func parseJSONArrayOutput[T any](output string, normalize func(*T)) ([]*T, error
 }
 
 func expectAllToMatch[T any](entries []*T, expectedEntry *T) error {
+	if len(entries) == 0 {
+		return fmt.Errorf("no output entries to match")
+	}
 	for _, entry := range entries {
 		if !reflect.DeepEqual(expectedEntry, entry) {
 			return fmt.Errorf("unexpected output entry:\n%s",
