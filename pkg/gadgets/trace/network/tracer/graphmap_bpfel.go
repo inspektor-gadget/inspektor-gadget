@@ -14,7 +14,7 @@ import (
 )
 
 type graphmapGraphKeyT struct {
-	ContainerQuark uint64
+	ContainerNetns uint64
 	PktType        uint32
 	Ip             uint32
 	Proto          uint16

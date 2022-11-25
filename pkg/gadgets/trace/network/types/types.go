@@ -51,9 +51,6 @@ type Event struct {
 	RemoteName      string            `json:"remoteName,omitempty" column:"remotename,hide"`
 	RemoteNamespace string            `json:"remoteNamespace,omitempty" column:"remotens,hide"`
 	RemoteLabels    map[string]string `json:"remoteLabels,omitempty" column:"remotelabels,hide"`
-
-	// Key is the key used in Attach().
-	Key string `json:"-"`
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -84,4 +81,10 @@ func GetColumns() *columns.Columns[Event] {
 	col.Visible = false
 
 	return cols
+}
+
+func Base(ev eventtypes.Event) Event {
+	return Event{
+		Event: ev,
+	}
 }

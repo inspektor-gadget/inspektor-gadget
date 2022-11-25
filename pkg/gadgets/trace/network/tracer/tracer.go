@@ -19,11 +19,14 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"syscall"
 
 	"github.com/cilium/ebpf"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
@@ -38,34 +41,39 @@ const (
 	BPFSocketAttach = 50
 )
 
-type link struct {
+type attachment struct {
 	networkGraphObjects graphObjects
 
 	sockFd int
 
-	containerQuark uint64
-
-	// users count how many users called Attach(). This can happen for two reasons:
+	// users keeps track of the users' pid that have called Attach(). This can
+	// happen for two reasons:
 	// 1. several containers in a pod (sharing the netns)
 	// 2. pods with networkHost=true
-	users int
+	// In both cases, we want to attach the BPF program only once.
+	users map[uint32]struct{}
 }
 
 type Tracer struct {
 	// networkGraphMapObjects contains the eBPF map used by the per-netns eBPF programs
 	networkGraphMapObjects graphmapObjects
 
-	// key: namespace/podname
+	// key: network namespace inode number
 	// value: Tracelet
-	attachments map[string]*link
+	attachments map[uint64]*attachment
 
-	nextContainerQuark uint64
+	enricher gadgets.DataEnricherByNetNs
+
+	// Cache to store already enriched events from terminated (detached)
+	// containers.
+	sync.Mutex
+	cache []*types.Event
 }
 
-func NewTracer() (_ *Tracer, err error) {
+func NewTracer(enricher gadgets.DataEnricherByNetNs) (_ *Tracer, err error) {
 	t := &Tracer{
-		attachments:        make(map[string]*link),
-		nextContainerQuark: 1,
+		attachments: make(map[uint64]*attachment),
+		enricher:    enricher,
 	}
 	defer func() {
 		if err != nil {
@@ -86,23 +94,26 @@ func NewTracer() (_ *Tracer, err error) {
 	return t, nil
 }
 
-func (t *Tracer) Attach(key string, pid uint32) (err error) {
-	if l, ok := t.attachments[key]; ok {
-		l.users++
+func (t *Tracer) Attach(pid uint32) (err error) {
+	netns, err := containerutils.GetNetNs(int(pid))
+	if err != nil {
+		return fmt.Errorf("getting network namespace of pid %d: %w", pid, err)
+	}
+	if a, ok := t.attachments[netns]; ok {
+		a.users[pid] = struct{}{}
 		return nil
 	}
 
-	l := &link{
-		containerQuark: t.nextContainerQuark,
-		users:          1,
-		sockFd:         -1,
+	a := &attachment{
+		users:  map[uint32]struct{}{pid: {}},
+		sockFd: -1,
 	}
 	defer func() {
 		if err != nil {
 			// bpf2go objects can safely be closed even when not initialized
-			l.networkGraphObjects.Close()
-			if l.sockFd != -1 {
-				unix.Close(l.sockFd)
+			a.networkGraphObjects.Close()
+			if a.sockFd != -1 {
+				unix.Close(a.sockFd)
 			}
 		}
 	}()
@@ -113,7 +124,7 @@ func (t *Tracer) Attach(key string, pid uint32) (err error) {
 	}
 
 	consts := map[string]interface{}{
-		"container_quark": t.nextContainerQuark,
+		"container_netns": netns,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -121,7 +132,7 @@ func (t *Tracer) Attach(key string, pid uint32) (err error) {
 	}
 
 	if err := spec.LoadAndAssign(
-		&l.networkGraphObjects,
+		&a.networkGraphObjects,
 		&ebpf.CollectionOptions{
 			MapReplacements: map[string]*ebpf.Map{
 				"graphmap": t.networkGraphMapObjects.graphmapMaps.Graphmap,
@@ -131,20 +142,19 @@ func (t *Tracer) Attach(key string, pid uint32) (err error) {
 		return fmt.Errorf("failed to create BPF collection: %w", err)
 	}
 
-	if l.sockFd, err = rawsock.OpenRawSock(pid); err != nil {
+	if a.sockFd, err = rawsock.OpenRawSock(pid); err != nil {
 		return fmt.Errorf("failed to open raw socket: %w", err)
 	}
 
 	if err := syscall.SetsockoptInt(
-		l.sockFd,
+		a.sockFd,
 		syscall.SOL_SOCKET, BPFSocketAttach,
-		l.networkGraphObjects.graphPrograms.IgTraceNet.FD(),
+		a.networkGraphObjects.graphPrograms.IgTraceNet.FD(),
 	); err != nil {
 		return fmt.Errorf("failed to attach BPF program: %w", err)
 	}
 
-	t.attachments[key] = l
-	t.nextContainerQuark++
+	t.attachments[netns] = a
 
 	return nil
 }
@@ -182,38 +192,45 @@ func protoString(proto int) string {
 	return protoStr
 }
 
-func (t *Tracer) containerQuarkToKey(quark uint64) string {
-	key := "NotFound"
-	for k, v := range t.attachments {
-		if quark == v.containerQuark {
-			key = k
-			break
+func (t *Tracer) Pop() (events []*types.Event, err error) {
+	defer func() {
+		if err != nil {
+			return
 		}
-	}
-	return key
-}
 
-func (t *Tracer) Pop() ([]*types.Event, error) {
-	graphmap := t.networkGraphMapObjects.graphmapMaps.Graphmap
-	events := []*types.Event{}
+		l := len(t.cache)
+		if l == 0 {
+			return
+		}
+
+		log.Debugf("appending %d elements to the resulting events from cache", l)
+
+		t.Lock()
+		defer t.Unlock()
+		events = append(events, t.cache...)
+		t.cache = nil
+	}()
 
 	convertKeyToEvent := func(key graphmapGraphKeyT) *types.Event {
 		ip := make(net.IP, 4)
 		binary.BigEndian.PutUint32(ip, gadgets.Htonl(key.Ip))
-		return &types.Event{
+		e := &types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 			},
-			PktType: pktTypeString(int(key.PktType)),
-			Proto:   protoString(int(key.Proto)),
-			Port:    gadgets.Htons(key.Port),
-
+			PktType:    pktTypeString(int(key.PktType)),
+			Proto:      protoString(int(key.Proto)),
+			Port:       gadgets.Htons(key.Port),
 			RemoteAddr: ip.String(),
-
-			// Internal usage
-			Key: t.containerQuarkToKey(key.ContainerQuark),
 		}
+
+		if t.enricher != nil {
+			t.enricher.EnrichByNetNs(&e.CommonData, key.ContainerNetns)
+		}
+		return e
 	}
+
+	graphmap := t.networkGraphMapObjects.graphmapMaps.Graphmap
 
 	for {
 		nextKey := graphmapGraphKeyT{}
@@ -245,7 +262,7 @@ func (t *Tracer) Pop() ([]*types.Event, error) {
 		// Deleting an entry during the iteration causes the iteration
 		// to restart from the first key in the hash map. But in this
 		// case, this is not a problem since we're deleting everything
-		// inconditionally.
+		// unconditionally.
 		if err := graphmap.Delete(key); err != nil {
 			return nil, fmt.Errorf("error deleting key: %w", err)
 		}
@@ -256,27 +273,60 @@ func (t *Tracer) Pop() ([]*types.Event, error) {
 	return events, nil
 }
 
-func (t *Tracer) releaseLink(key string, l *link) {
-	unix.Close(l.sockFd)
-	l.networkGraphObjects.Close()
-	delete(t.attachments, key)
+func (t *Tracer) releaseAttachment(netns uint64, a *attachment) {
+	unix.Close(a.sockFd)
+	a.networkGraphObjects.Close()
+	delete(t.attachments, netns)
 }
 
-func (t *Tracer) Detach(key string) error {
-	if l, ok := t.attachments[key]; ok {
-		l.users--
-		if l.users == 0 {
-			t.releaseLink(key, l)
-		}
-		return nil
-	} else {
-		return fmt.Errorf("key not attached: %q", key)
+func (t *Tracer) populateCache() error {
+	events, err := t.Pop()
+	if err != nil {
+		return fmt.Errorf("popping events: %w", err)
 	}
+
+	l := len(events)
+	if l == 0 {
+		return nil
+	}
+
+	log.Debugf("caching %d events", l)
+
+	t.Lock()
+	defer t.Unlock()
+	t.cache = append(t.cache, events...)
+
+	return nil
+}
+
+func (t *Tracer) Detach(pid uint32) error {
+	for netns, a := range t.attachments {
+		if _, ok := a.users[pid]; ok {
+			delete(a.users, pid)
+			if len(a.users) == 0 {
+				t.releaseAttachment(netns, a)
+			}
+
+			// Before returning, read and enrich the events in the GraphMap to
+			// ensure EnrichByNetNs() is still able to retrieve the metadata of
+			// the container that is being detached. Otherwise, by the time
+			// Pop() will be called, the container might have been already
+			// deleted, and EnrichByNetNs() won't be able to enrich its events
+			// anymore.
+			if err := t.populateCache(); err != nil {
+				log.Errorf("caching events while detaching pid %d: %v", pid, err)
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("pid %d is not attached", pid)
 }
 
 func (t *Tracer) Close() {
 	for key, l := range t.attachments {
-		t.releaseLink(key, l)
+		t.releaseAttachment(key, l)
 	}
 	t.networkGraphMapObjects.Close()
 }
