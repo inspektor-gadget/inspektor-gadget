@@ -39,11 +39,17 @@ func HandleSpecialEvent(e *eventtypes.Event, verbose bool) {
 	case eventtypes.WARN:
 		fallthrough
 	case eventtypes.INFO:
-		podMsgSuffix := ""
-		if e.Namespace != "" && e.Pod != "" {
-			podMsgSuffix = ", pod " + e.Namespace + "/" + e.Pod
+		msgSyntax := ""
+		if e.Node != "" {
+			msgSyntax = "node " + e.Node
+
+			if e.Namespace != "" && e.Pod != "" {
+				msgSyntax = msgSyntax + ", pod " + e.Namespace + "/" + e.Pod
+			}
+		} else {
+			msgSyntax = "container " + e.Container
 		}
 
-		fmt.Fprintf(os.Stderr, "%s: node %s%s: %s\n", e.Type, e.Node, podMsgSuffix, e.Message)
+		fmt.Fprintf(os.Stderr, "%s: %s: %s\n", e.Type, msgSyntax, e.Message)
 	}
 }
