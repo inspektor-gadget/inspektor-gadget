@@ -22,85 +22,58 @@ import (
 
 	"github.com/spf13/cobra"
 
+	commonprofile "github.com/inspektor-gadget/inspektor-gadget/cmd/common/profile"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 )
 
-type CPUFlags struct {
-	profileKernelOnly bool
-	profileUserOnly   bool
-
-	commonFlags utils.CommonFlags
-}
-
 type CPUParser struct {
 	commonutils.GadgetParser[types.Report]
 	commonutils.OutputConfig
-	cpuFlags *CPUFlags
+	cpuFlags *commonprofile.CPUFlags
 }
 
 func newCPUCmd() *cobra.Command {
-	var cpuFlags CPUFlags
+	var commonFlags utils.CommonFlags
+	var cpuFlags commonprofile.CPUFlags
 
-	cmd := &cobra.Command{
-		Use:          "cpu",
-		Short:        "Analyze CPU performance by sampling stack traces",
-		Args:         cobra.NoArgs,
-		SilenceUsage: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if cpuFlags.profileUserOnly && cpuFlags.profileKernelOnly {
-				return commonutils.WrapInErrArgsNotSupported("-U and -K can't be used at the same time")
-			}
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		if cpuFlags.ProfileUserOnly && cpuFlags.ProfileKernelOnly {
+			return commonutils.WrapInErrArgsNotSupported("-U and -K can't be used at the same time")
+		}
 
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			parser, err := commonutils.NewGadgetParserWithK8sInfo(&cpuFlags.commonFlags.OutputConfig, types.GetColumns())
-			if err != nil {
-				return commonutils.WrapInErrParserCreate(err)
-			}
+		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, types.GetColumns())
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
+		}
 
-			params := map[string]string{}
-			if cpuFlags.profileUserOnly {
-				params[types.ProfileUserParam] = ""
-			}
-			if cpuFlags.profileKernelOnly {
-				params[types.ProfileKernelParam] = ""
-			}
+		params := map[string]string{}
+		if cpuFlags.ProfileUserOnly {
+			params[types.ProfileUserParam] = ""
+		}
+		if cpuFlags.ProfileKernelOnly {
+			params[types.ProfileKernelParam] = ""
+		}
 
-			cpuGadget := &ProfileGadget{
-				gadgetName:    "profile",
-				params:        params,
-				commonFlags:   &cpuFlags.commonFlags,
-				inProgressMsg: "Capturing stack traces",
-				parser: &CPUParser{
-					GadgetParser: *parser,
-					OutputConfig: cpuFlags.commonFlags.OutputConfig,
-					cpuFlags:     &cpuFlags,
-				},
-			}
+		cpuGadget := &ProfileGadget{
+			gadgetName:    "profile",
+			params:        params,
+			commonFlags:   &commonFlags,
+			inProgressMsg: "Capturing stack traces",
+			parser: &CPUParser{
+				GadgetParser: *parser,
+				OutputConfig: commonFlags.OutputConfig,
+				cpuFlags:     &cpuFlags,
+			},
+		}
 
-			return cpuGadget.Run()
-		},
+		return cpuGadget.Run()
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&cpuFlags.profileUserOnly,
-		"user-stack",
-		"U",
-		false,
-		"Show stacks from user space only (no kernel space stacks)",
-	)
-	cmd.PersistentFlags().BoolVarP(
-		&cpuFlags.profileKernelOnly,
-		"kernel-stack",
-		"K",
-		false,
-		"Show stacks from kernel space only (no user space stacks)",
-	)
+	cmd := commonprofile.NewCPUCmd(runCmd, &cpuFlags)
 
-	utils.AddCommonFlags(cmd, &cpuFlags.commonFlags)
+	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
 }
@@ -153,9 +126,9 @@ func (p *CPUParser) TransformReport(report *types.Report) string {
 		fallthrough
 	case commonutils.OutputModeCustomColumns:
 		otherCols := p.TransformIntoColumns(report)
-		if p.cpuFlags.profileUserOnly {
+		if p.cpuFlags.ProfileUserOnly {
 			return otherCols + getReverseStringSlice(report.UserStack)
-		} else if p.cpuFlags.profileKernelOnly {
+		} else if p.cpuFlags.ProfileKernelOnly {
 			return otherCols + getReverseStringSlice(report.KernelStack)
 		} else {
 			return otherCols + getReverseStringSlice(report.KernelStack) + getReverseStringSlice(report.UserStack)

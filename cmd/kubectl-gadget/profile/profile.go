@@ -20,17 +20,13 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/spf13/cobra"
+
+	commonprofile "github.com/inspektor-gadget/inspektor-gadget/cmd/common/profile"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/spf13/cobra"
 )
-
-// ProfileParser defines the interface that every profile-gadget parser has to
-// implement.
-type ProfileParser interface {
-	DisplayResultsCallback(string, []string) error
-}
 
 // ProfileGadget represents a gadget belonging to the profile category.
 type ProfileGadget struct {
@@ -38,7 +34,7 @@ type ProfileGadget struct {
 	commonFlags   *utils.CommonFlags
 	params        map[string]string
 	inProgressMsg string
-	parser        ProfileParser
+	parser        commonprofile.ProfileParser
 }
 
 // Run runs a ProfileGadget and prints the output after parsing it using the
@@ -100,10 +96,7 @@ func (g *ProfileGadget) Run() error {
 }
 
 func NewProfileCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "profile",
-		Short: "Profile different subsystems",
-	}
+	cmd := commonprofile.NewCommonProfileCmd()
 
 	cmd.AddCommand(newBlockIOCmd())
 	cmd.AddCommand(newCPUCmd())
