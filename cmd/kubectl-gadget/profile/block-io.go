@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	commonprofile "github.com/inspektor-gadget/inspektor-gadget/cmd/common/profile"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
@@ -34,37 +35,30 @@ type BlockIOParser struct {
 func newBlockIOCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 
-	cmd := &cobra.Command{
-		Use:          "block-io",
-		Short:        "Analyze block I/O performance through a latency distribution",
-		Args:         cobra.NoArgs,
-		SilenceUsage: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			// Biolatency does not support filtering so we need to avoid adding
-			// the default namespace configured in the kubeconfig file.
-			if commonFlags.Namespace != "" && !commonFlags.NamespaceOverridden {
-				commonFlags.Namespace = ""
-			}
+	runCmd := func(cmd *cobra.Command, args []string) error {
+		// Biolatency does not support filtering so we need to avoid adding
+		// the default namespace configured in the kubeconfig file.
+		if commonFlags.Namespace != "" && !commonFlags.NamespaceOverridden {
+			commonFlags.Namespace = ""
+		}
 
-			if commonFlags.Node == "" {
-				return commonutils.WrapInErrMissingArgs("--node")
-			}
+		if commonFlags.Node == "" {
+			return commonutils.WrapInErrMissingArgs("--node")
+		}
 
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			blockIOGadget := &ProfileGadget{
-				gadgetName:    "biolatency",
-				commonFlags:   &commonFlags,
-				inProgressMsg: "Tracing block device I/O",
-				parser: &BlockIOParser{
-					outputConfig: &commonFlags.OutputConfig,
-				},
-			}
+		blockIOGadget := &ProfileGadget{
+			gadgetName:    "biolatency",
+			commonFlags:   &commonFlags,
+			inProgressMsg: "Tracing block device I/O",
+			parser: &BlockIOParser{
+				outputConfig: &commonFlags.OutputConfig,
+			},
+		}
 
-			return blockIOGadget.Run()
-		},
+		return blockIOGadget.Run()
 	}
+
+	cmd := commonprofile.NewBlockIOCmd(runCmd)
 
 	utils.AddCommonFlags(cmd, &commonFlags)
 
