@@ -15,11 +15,6 @@
 package profile
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"strings"
-
 	"github.com/spf13/cobra"
 
 	commonprofile "github.com/inspektor-gadget/inspektor-gadget/cmd/common/profile"
@@ -27,12 +22,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 )
-
-type CPUParser struct {
-	commonutils.GadgetParser[types.Report]
-	commonutils.OutputConfig
-	cpuFlags *commonprofile.CPUFlags
-}
 
 func newCPUCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
@@ -61,10 +50,10 @@ func newCPUCmd() *cobra.Command {
 			params:        params,
 			commonFlags:   &commonFlags,
 			inProgressMsg: "Capturing stack traces",
-			parser: &CPUParser{
+			parser: &commonprofile.CPUParser{
 				GadgetParser: *parser,
 				OutputConfig: commonFlags.OutputConfig,
-				cpuFlags:     &cpuFlags,
+				CPUFlags:     &cpuFlags,
 			},
 		}
 
@@ -76,63 +65,4 @@ func newCPUCmd() *cobra.Command {
 	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
-}
-
-func (p *CPUParser) DisplayResultsCallback(traceOutputMode string, results []string) error {
-	if p.OutputConfig.OutputMode != commonutils.OutputModeJSON {
-		fmt.Println(p.BuildColumnsHeader())
-	}
-
-	for _, r := range results {
-		var reports []types.Report
-		if err := json.Unmarshal([]byte(r), &reports); err != nil {
-			return commonutils.WrapInErrUnmarshalOutput(err, r)
-		}
-
-		for _, report := range reports {
-			fmt.Println(p.TransformReport(&report))
-		}
-	}
-
-	return nil
-}
-
-// getReverseStringSlice return the reversed slice given as parameter.
-func getReverseStringSlice(toReverse []string) string {
-	if len(toReverse) == 0 {
-		return ""
-	}
-
-	size := len(toReverse) - 1
-
-	for i := 0; i < size/2; i++ {
-		toReverse[i], toReverse[size-i] = toReverse[size-i], toReverse[i]
-	}
-
-	return fmt.Sprintf("\n\t%s", strings.Join(toReverse, "\n\t"))
-}
-
-func (p *CPUParser) TransformReport(report *types.Report) string {
-	switch p.OutputConfig.OutputMode {
-	case commonutils.OutputModeJSON:
-		b, err := json.Marshal(report)
-		if err != nil {
-			fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
-			return ""
-		}
-
-		return string(b)
-	case commonutils.OutputModeColumns:
-		fallthrough
-	case commonutils.OutputModeCustomColumns:
-		otherCols := p.TransformIntoColumns(report)
-		if p.cpuFlags.ProfileUserOnly {
-			return otherCols + getReverseStringSlice(report.UserStack)
-		} else if p.cpuFlags.ProfileKernelOnly {
-			return otherCols + getReverseStringSlice(report.KernelStack)
-		} else {
-			return otherCols + getReverseStringSlice(report.KernelStack) + getReverseStringSlice(report.UserStack)
-		}
-	}
-	return ""
 }
