@@ -28,11 +28,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/advise/networkpolicy/advisor"
 )
 
-var networkPolicyCmd = &cobra.Command{
-	Use:   "network-policy",
-	Short: "Generate network policies based on recorded network activity",
-}
-
 var networkPolicyMonitorCmd = &cobra.Command{
 	Use:   "monitor",
 	Short: "Monitor the network traffic",
@@ -50,8 +45,11 @@ var (
 	outputFileName string
 )
 
-func init() {
-	AdviseCmd.AddCommand(networkPolicyCmd)
+func newNetworkPolicyCmd() *cobra.Command {
+	networkPolicyCmd := &cobra.Command{
+		Use:   "network-policy",
+		Short: "Generate network policies based on recorded network activity",
+	}
 	utils.AddCommonFlags(networkPolicyCmd, &params)
 
 	networkPolicyCmd.AddCommand(networkPolicyMonitorCmd)
@@ -60,6 +58,8 @@ func init() {
 	networkPolicyCmd.AddCommand(networkPolicyReportCmd)
 	networkPolicyReportCmd.PersistentFlags().StringVarP(&inputFileName, "input", "", "", "File with recorded network activity")
 	networkPolicyReportCmd.PersistentFlags().StringVarP(&outputFileName, "output", "", "-", "File name output")
+
+	return networkPolicyCmd
 }
 
 func newWriter(file string) (*bufio.Writer, func(), error) {

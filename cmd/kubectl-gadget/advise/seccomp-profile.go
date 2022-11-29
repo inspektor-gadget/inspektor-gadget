@@ -21,21 +21,16 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 
+	commonadvise "github.com/inspektor-gadget/inspektor-gadget/cmd/common/advise"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 )
-
-var seccompAdvisorCmd = &cobra.Command{
-	Use:   "seccomp-profile",
-	Short: "Generate seccomp profiles based on recorded syscalls activity",
-}
 
 var seccompAdvisorStartCmd = &cobra.Command{
 	Use:          "start",
@@ -63,12 +58,11 @@ var (
 	profilePrefix string
 )
 
-func init() {
-	// Add generic information.
-	AdviseCmd.AddCommand(seccompAdvisorCmd)
-	utils.AddCommonFlags(seccompAdvisorCmd, &params)
+func newSeccompProfileCmd() *cobra.Command {
+	seccompProfileCmd := commonadvise.NewSeccompProfileCmd(nil)
+	utils.AddCommonFlags(seccompProfileCmd, &params)
 
-	seccompAdvisorCmd.AddCommand(seccompAdvisorStartCmd)
+	seccompProfileCmd.AddCommand(seccompAdvisorStartCmd)
 	seccompAdvisorStartCmd.PersistentFlags().StringVarP(&outputMode,
 		"output-mode", "m",
 		"terminal",
@@ -77,8 +71,10 @@ func init() {
 		"profile-prefix", "",
 		"Name prefix of the seccomp profile to be created when using --output-mode=seccomp-profile.\nNamespace can be specified by using namespace/profile-prefix.")
 
-	seccompAdvisorCmd.AddCommand(seccompAdvisorStopCmd)
-	seccompAdvisorCmd.AddCommand(seccompAdvisorListCmd)
+	seccompProfileCmd.AddCommand(seccompAdvisorStopCmd)
+	seccompProfileCmd.AddCommand(seccompAdvisorListCmd)
+
+	return seccompProfileCmd
 }
 
 func outputModeToTraceOutputMode(outputMode string) (gadgetv1alpha1.TraceOutputMode, error) {

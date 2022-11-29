@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,20 +16,11 @@ package advise
 
 import (
 	"github.com/spf13/cobra"
-
-	commonadvise "github.com/inspektor-gadget/inspektor-gadget/cmd/common/advise"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
-// All the gadgets within this package use this global variable, so let's
-// declare it here.
-var params utils.CommonFlags
-
-func NewAdviseCmd() *cobra.Command {
-	cmd := commonadvise.NewCommonAdviseCmd()
-
-	cmd.AddCommand(newNetworkPolicyCmd())
-	cmd.AddCommand(newSeccompProfileCmd())
-
-	return cmd
+func NewCommonAdviseCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "advise",
+		Short: "Recommend system configurations based on collected information",
+	}
 }

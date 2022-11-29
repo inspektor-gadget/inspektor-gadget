@@ -40,7 +40,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	utils.FlagInit(rootCmd)
 
-	rootCmd.AddCommand(advise.AdviseCmd)
+	rootCmd.AddCommand(advise.NewAdviseCmd())
 	rootCmd.AddCommand(audit.NewAuditCmd())
 	rootCmd.AddCommand(profile.NewProfileCmd())
 	rootCmd.AddCommand(snapshot.NewSnapshotCmd())
