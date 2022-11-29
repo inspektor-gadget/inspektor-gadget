@@ -26,6 +26,9 @@ const volatile u32 linux_version_code = 0;
 const volatile bool audit_only = false;
 const volatile bool unique = false;
 
+// we need this to make sure the compiler doesn't remove our struct
+const struct cap_event *unusedcapevent __attribute__((unused));
+
 struct args_t {
 	int cap;
 	int cap_opt;

@@ -15,7 +15,7 @@ struct cap_event {
 	__u32	uid;
 	int	cap_opt;
 	int	ret;
-	char	task[TASK_COMM_LEN];
+	__u8	task[TASK_COMM_LEN];
 };
 
 #endif /* __CAPABLE_H */

@@ -17,43 +17,6 @@
 
 package tracer
 
-// #include <linux/types.h>
-// #include "./bpf/tcptracer.h"
-// #include <arpa/inet.h>
-// #include <stdlib.h>
-//
-//static char *addr_str(const void *addr, __u32 af) {
-//	size_t size = af == AF_INET ? INET_ADDRSTRLEN : INET6_ADDRSTRLEN;
-//	char *str;
-//
-//	str = malloc(size);
-//	if (!str)
-//		return NULL;
-//
-//	inet_ntop(af, addr, str, size);
-//
-//	return str;
-//}
-//
-//static char *get_src_addr(const struct event *ev) {
-//	if (ev->af == AF_INET)
-//		return addr_str(&ev->saddr_v4, ev->af);
-//	else if (ev->af == AF_INET6)
-//		return addr_str(&ev->saddr_v6, ev->af);
-//	else
-//		return NULL;
-//}
-//
-//static char *get_dst_addr(const struct event *ev) {
-//	if (ev->af == AF_INET)
-//		return addr_str(&ev->daddr_v4, ev->af);
-//	else if (ev->af == AF_INET6)
-//		return addr_str(&ev->daddr_v6, ev->af);
-//	else
-//		return NULL;
-//}
-import "C"
-
 import (
 	"errors"
 	"fmt"
@@ -63,12 +26,14 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+	"golang.org/x/sys/unix"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types tcptracer ./bpf/tcptracer.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type event -type event_type tcptracer ./bpf/tcptracer.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Config struct {
 	MountnsMap *ebpf.Map
@@ -222,40 +187,36 @@ func (t *Tracer) run() {
 			continue
 		}
 
-		eventC := (*C.struct_event)(unsafe.Pointer(&record.RawSample[0]))
+		bpfEvent := (*tcptracerEvent)(unsafe.Pointer(&record.RawSample[0]))
 
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 			},
-			MountNsID: uint64(eventC.mntns_id),
-			Pid:       uint32(eventC.pid),
-			Comm:      C.GoString(&eventC.task[0]),
-			Dport:     uint16(C.htons(eventC.dport)),
-			Sport:     uint16(C.htons(eventC.sport)),
+			MountNsID: bpfEvent.MntnsId,
+			Pid:       bpfEvent.Pid,
+			Comm:      gadgets.FromCString(bpfEvent.Task[:]),
+			Dport:     gadgets.Htons(bpfEvent.Dport),
+			Sport:     gadgets.Htons(bpfEvent.Sport),
 		}
 
-		if eventC.af == C.AF_INET {
+		if bpfEvent.Af == unix.AF_INET {
 			event.IPVersion = 4
-		} else if eventC.af == C.AF_INET6 {
+		} else if bpfEvent.Af == unix.AF_INET6 {
 			event.IPVersion = 6
 		}
 
-		if eventC._type == C.TCP_EVENT_TYPE_CONNECT {
+		event.Saddr = gadgets.IPStringFromBytes(bpfEvent.Saddr, event.IPVersion)
+		event.Daddr = gadgets.IPStringFromBytes(bpfEvent.Daddr, event.IPVersion)
+
+		switch bpfEvent.Type {
+		case tcptracerEventTypeTCP_EVENT_TYPE_CONNECT:
 			event.Operation = "connect"
-		} else if eventC._type == C.TCP_EVENT_TYPE_ACCEPT {
+		case tcptracerEventTypeTCP_EVENT_TYPE_ACCEPT:
 			event.Operation = "accept"
-		} else if eventC._type == C.TCP_EVENT_TYPE_CLOSE {
+		case tcptracerEventTypeTCP_EVENT_TYPE_CLOSE:
 			event.Operation = "close"
 		}
-
-		srcAddr := C.get_src_addr(eventC)
-		event.Saddr = C.GoString(srcAddr)
-		C.free(unsafe.Pointer(srcAddr))
-
-		dstAddr := C.get_dst_addr(eventC)
-		event.Daddr = C.GoString(dstAddr)
-		C.free(unsafe.Pointer(dstAddr))
 
 		if t.enricher != nil {
 			t.enricher.Enrich(&event.CommonData, event.MountNsID)

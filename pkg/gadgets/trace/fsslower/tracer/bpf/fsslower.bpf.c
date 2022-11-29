@@ -12,6 +12,9 @@ const volatile pid_t target_pid = 0;
 const volatile __u64 min_lat_ns = 0;
 const volatile bool filter_by_mnt_ns = false;
 
+// we need this to make sure the compiler doesn't remove our struct
+const struct event *unusedevent __attribute__((unused));
+
 struct data {
 	__u64 ts;
 	loff_t start;

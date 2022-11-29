@@ -14,17 +14,15 @@ import (
 )
 
 type execsnoopEvent struct {
+	MntnsId   uint64
 	Pid       uint32
 	Ppid      uint32
 	Uid       uint32
-	_         [4]byte
-	MntnsId   uint64
 	Retval    int32
 	ArgsCount int32
 	ArgsSize  uint32
-	Comm      [16]int8
-	Args      [7680]int8
-	_         [4]byte
+	Comm      [16]uint8
+	Args      [7680]uint8
 }
 
 // loadExecsnoop returns the embedded CollectionSpec for execsnoop.
@@ -42,9 +40,9 @@ func loadExecsnoop() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *execsnoopObjects
-//     *execsnoopPrograms
-//     *execsnoopMaps
+//	*execsnoopObjects
+//	*execsnoopPrograms
+//	*execsnoopMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadExecsnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -138,5 +136,6 @@ func _ExecsnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed execsnoop_bpfel_x86.o
 var _ExecsnoopBytes []byte

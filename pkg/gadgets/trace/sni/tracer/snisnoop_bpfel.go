@@ -13,6 +13,8 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type snisnoopEventT struct{ Name [128]uint8 }
+
 // loadSnisnoop returns the embedded CollectionSpec for snisnoop.
 func loadSnisnoop() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_SnisnoopBytes)
@@ -28,9 +30,9 @@ func loadSnisnoop() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *snisnoopObjects
-//     *snisnoopPrograms
-//     *snisnoopMaps
+//	*snisnoopObjects
+//	*snisnoopPrograms
+//	*snisnoopMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadSnisnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -115,5 +117,6 @@ func _SnisnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed snisnoop_bpfel.o
 var _SnisnoopBytes []byte

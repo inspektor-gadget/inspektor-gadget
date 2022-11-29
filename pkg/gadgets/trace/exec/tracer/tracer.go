@@ -17,10 +17,6 @@
 
 package tracer
 
-// #include <linux/types.h>
-// #include "./bpf/execsnoop.h"
-import "C"
-
 import (
 	"errors"
 	"fmt"
@@ -35,7 +31,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang -type event execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Config struct {
 	MountnsMap *ebpf.Map
@@ -146,31 +142,31 @@ func (t *Tracer) run() {
 			continue
 		}
 
-		eventC := (*C.struct_event)(unsafe.Pointer(&record.RawSample[0]))
+		bpfEvent := (*execsnoopEvent)(unsafe.Pointer(&record.RawSample[0]))
 
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 			},
-			Pid:       uint32(eventC.pid),
-			Ppid:      uint32(eventC.ppid),
-			UID:       uint32(eventC.uid),
-			MountNsID: uint64(eventC.mntns_id),
-			Retval:    int(eventC.retval),
-			Comm:      C.GoString(&eventC.comm[0]),
+			Pid:       bpfEvent.Pid,
+			Ppid:      bpfEvent.Ppid,
+			UID:       bpfEvent.Uid,
+			MountNsID: bpfEvent.MntnsId,
+			Retval:    int(bpfEvent.Retval),
+			Comm:      gadgets.FromCString(bpfEvent.Comm[:]),
 		}
 
 		argsCount := 0
 		buf := []byte{}
 
-		for i := 0; i < int(eventC.args_size) && argsCount < int(eventC.args_count); i++ {
-			c := eventC.args[i]
+		for i := 0; i < int(bpfEvent.ArgsSize) && argsCount < int(bpfEvent.ArgsCount); i++ {
+			c := bpfEvent.Args[i]
 			if c == 0 {
 				event.Args = append(event.Args, string(buf))
 				argsCount = 0
 				buf = []byte{}
 			} else {
-				buf = append(buf, byte(c))
+				buf = append(buf, c)
 			}
 		}
 

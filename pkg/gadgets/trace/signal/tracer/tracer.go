@@ -6,10 +6,6 @@
 
 package tracer
 
-// #include <linux/types.h>
-// #include "./bpf/sigsnoop.h"
-import "C"
-
 import (
 	"errors"
 	"fmt"
@@ -29,7 +25,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang sigsnoop ./bpf/sigsnoop.bpf.c -- -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event sigsnoop ./bpf/sigsnoop.bpf.c -- -I../../../../${TARGET}
 
 type Config struct {
 	MountnsMap   *ebpf.Map
@@ -221,18 +217,18 @@ func (t *Tracer) run() {
 			continue
 		}
 
-		eventC := (*C.struct_event)(unsafe.Pointer(&record.RawSample[0]))
+		bpfEvent := (*sigsnoopEvent)(unsafe.Pointer(&record.RawSample[0]))
 
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 			},
-			Pid:       uint32(eventC.pid),
-			TargetPid: uint32(eventC.tpid),
-			Signal:    signalIntToString(int(eventC.sig)),
-			Retval:    int(eventC.ret),
-			MountNsID: uint64(eventC.mntns_id),
-			Comm:      C.GoString(&eventC.comm[0]),
+			Pid:       bpfEvent.Pid,
+			TargetPid: bpfEvent.Tpid,
+			Signal:    signalIntToString(int(bpfEvent.Sig)),
+			Retval:    int(bpfEvent.Ret),
+			MountNsID: bpfEvent.MntnsId,
+			Comm:      gadgets.FromCString(bpfEvent.Comm[:]),
 		}
 
 		if t.enricher != nil {

@@ -21,8 +21,8 @@ struct event {
 	__u64 mntns_id;
 	__u32 pid;
 	enum fs_file_op op;
-	char file[FILE_NAME_LEN];
-	char task[TASK_COMM_LEN];
+	__u8 file[FILE_NAME_LEN];
+	__u8 task[TASK_COMM_LEN];
 };
 
 #endif /* __FSSLOWER_H */

@@ -9,8 +9,8 @@ struct data_t {
 	__u32 tpid;
 	__u64 pages;
 	__u64 mount_ns_id;
-	char fcomm[TASK_COMM_LEN];
-	char tcomm[TASK_COMM_LEN];
+	__u8 fcomm[TASK_COMM_LEN];
+	__u8 tcomm[TASK_COMM_LEN];
 };
 
 #endif /* __OOMKILL_H */

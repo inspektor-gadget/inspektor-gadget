@@ -15,6 +15,9 @@ const volatile uid_t targ_uid = INVALID_UID;
 const volatile bool targ_failed = false;
 const volatile bool filter_by_mnt_ns = false;
 
+// we need this to make sure the compiler doesn't remove our struct
+const struct event *unusedevent __attribute__((unused));
+
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 10240);

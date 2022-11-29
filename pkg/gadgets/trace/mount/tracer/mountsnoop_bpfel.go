@@ -13,6 +13,30 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type mountsnoopEvent struct {
+	Delta     uint64
+	Flags     uint64
+	Pid       uint32
+	Tid       uint32
+	MountNsId uint64
+	MntNs     uint32
+	Ret       int32
+	Comm      [16]uint8
+	Fs        [8]uint8
+	Src       [4096]uint8
+	Dest      [4096]uint8
+	Data      [512]uint8
+	Op        mountsnoopOp
+	_         [4]byte
+}
+
+type mountsnoopOp int32
+
+const (
+	mountsnoopOpMOUNT  mountsnoopOp = 0
+	mountsnoopOpUMOUNT mountsnoopOp = 1
+)
+
 // loadMountsnoop returns the embedded CollectionSpec for mountsnoop.
 func loadMountsnoop() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_MountsnoopBytes)
@@ -28,9 +52,9 @@ func loadMountsnoop() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *mountsnoopObjects
-//     *mountsnoopPrograms
-//     *mountsnoopMaps
+//	*mountsnoopObjects
+//	*mountsnoopPrograms
+//	*mountsnoopMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadMountsnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -133,5 +157,6 @@ func _MountsnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed mountsnoop_bpfel.o
 var _MountsnoopBytes []byte

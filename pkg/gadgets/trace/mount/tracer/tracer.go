@@ -17,10 +17,6 @@
 
 package tracer
 
-// #include <linux/types.h>
-// #include "./bpf/mountsnoop.h"
-import "C"
-
 import (
 	"errors"
 	"fmt"
@@ -35,7 +31,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang mountsnoop ./bpf/mountsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang -type event -type op mountsnoop ./bpf/mountsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Config struct {
 	MountnsMap *ebpf.Map
@@ -165,34 +161,34 @@ func (t *Tracer) run() {
 			continue
 		}
 
-		eventC := (*C.struct_event)(unsafe.Pointer(&record.RawSample[0]))
+		bpfEvent := (*mountsnoopEvent)(unsafe.Pointer(&record.RawSample[0]))
 
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 			},
-			MountNsID: uint64(eventC.mount_ns_id),
-			Pid:       uint32(eventC.pid),
-			Tid:       uint32(eventC.tid),
-			Comm:      C.GoString(&eventC.comm[0]),
-			Retval:    int(eventC.ret),
-			Latency:   uint64(eventC.delta),
-			Fs:        C.GoString(&eventC.fs[0]),
-			Source:    C.GoString(&eventC.src[0]),
-			Target:    C.GoString(&eventC.dest[0]),
-			Data:      C.GoString(&eventC.data[0]),
+			MountNsID: bpfEvent.MountNsId,
+			Pid:       bpfEvent.Pid,
+			Tid:       bpfEvent.Tid,
+			Comm:      gadgets.FromCString(bpfEvent.Comm[:]),
+			Retval:    int(bpfEvent.Ret),
+			Latency:   bpfEvent.Delta,
+			Fs:        gadgets.FromCString(bpfEvent.Fs[:]),
+			Source:    gadgets.FromCString(bpfEvent.Src[:]),
+			Target:    gadgets.FromCString(bpfEvent.Dest[:]),
+			Data:      gadgets.FromCString(bpfEvent.Data[:]),
 		}
 
-		switch eventC.op {
-		case C.MOUNT:
+		switch bpfEvent.Op {
+		case mountsnoopOpMOUNT:
 			event.Operation = "mount"
-		case C.UMOUNT:
+		case mountsnoopOpUMOUNT:
 			event.Operation = "umount"
 		default:
 			event.Operation = "unknown"
 		}
 
-		event.Flags = DecodeFlags(uint64(eventC.flags))
+		event.Flags = DecodeFlags(bpfEvent.Flags)
 
 		if t.enricher != nil {
 			t.enricher.Enrich(&event.CommonData, event.MountNsID)

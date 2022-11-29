@@ -13,6 +13,18 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type opensnoopEvent struct {
+	Ts      uint64
+	Pid     uint32
+	Uid     uint32
+	MntnsId uint64
+	Ret     int32
+	Flags   int32
+	Comm    [16]uint8
+	Fname   [255]uint8
+	_       [1]byte
+}
+
 // loadOpensnoop returns the embedded CollectionSpec for opensnoop.
 func loadOpensnoop() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_OpensnoopBytes)
@@ -28,9 +40,9 @@ func loadOpensnoop() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *opensnoopObjects
-//     *opensnoopPrograms
-//     *opensnoopMaps
+//	*opensnoopObjects
+//	*opensnoopPrograms
+//	*opensnoopMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadOpensnoopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -130,5 +142,6 @@ func _OpensnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed opensnoop_bpfel.o
 var _OpensnoopBytes []byte

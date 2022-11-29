@@ -36,7 +36,7 @@
 
 
 struct event_t {
-	char name[TLS_MAX_SERVER_NAME_LEN];
+	__u8 name[TLS_MAX_SERVER_NAME_LEN];
 };
 
 #endif

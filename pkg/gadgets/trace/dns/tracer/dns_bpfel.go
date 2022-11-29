@@ -13,6 +13,18 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type dnsEventT struct {
+	SaddrV6 [16]uint8
+	DaddrV6 [16]uint8
+	Af      uint32
+	Id      uint16
+	Qtype   uint16
+	Qr      uint8
+	PktType uint8
+	Name    [255]uint8
+	_       [3]byte
+}
+
 // loadDns returns the embedded CollectionSpec for dns.
 func loadDns() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_DnsBytes)
@@ -28,9 +40,9 @@ func loadDns() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *dnsObjects
-//     *dnsPrograms
-//     *dnsMaps
+//	*dnsObjects
+//	*dnsPrograms
+//	*dnsMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadDnsObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -115,5 +127,6 @@ func _DnsClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed dns_bpfel.o
 var _DnsBytes []byte

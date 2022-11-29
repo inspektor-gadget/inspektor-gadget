@@ -12,7 +12,7 @@
 
 #define TASK_COMM_LEN 16
 
-enum event_type {
+enum event_type : u8 {
 	TCP_EVENT_TYPE_CONNECT,
 	TCP_EVENT_TYPE_ACCEPT,
 	TCP_EVENT_TYPE_CLOSE,
@@ -20,14 +20,16 @@ enum event_type {
 
 struct event {
 	union {
-		__u32 saddr_v4;
+		__u8 saddr[16];
 		unsigned __int128 saddr_v6;
+		__u32 saddr_v4;
 	};
 	union {
-		__u32 daddr_v4;
+		__u8 daddr[16];
 		unsigned __int128 daddr_v6;
+		__u32 daddr_v4;
 	};
-	char task[TASK_COMM_LEN];
+	__u8 task[TASK_COMM_LEN];
 	__u64 mntns_id;
 	__u64 ts_us;
 	__u32 af; // AF_INET or AF_INET6
@@ -36,7 +38,7 @@ struct event {
 	__u32 netns;
 	__u16 dport;
 	__u16 sport;
-	__u8 type;
+	enum event_type type;
 };
 
 

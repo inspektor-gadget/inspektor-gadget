@@ -13,6 +13,15 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type oomkillDataT struct {
+	Fpid      uint32
+	Tpid      uint32
+	Pages     uint64
+	MountNsId uint64
+	Fcomm     [16]uint8
+	Tcomm     [16]uint8
+}
+
 // loadOomkill returns the embedded CollectionSpec for oomkill.
 func loadOomkill() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_OomkillBytes)
@@ -28,9 +37,9 @@ func loadOomkill() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *oomkillObjects
-//     *oomkillPrograms
-//     *oomkillMaps
+//	*oomkillObjects
+//	*oomkillPrograms
+//	*oomkillMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadOomkillObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -118,5 +127,6 @@ func _OomkillClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed oomkill_bpfel_x86.o
 var _OomkillBytes []byte

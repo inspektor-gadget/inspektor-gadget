@@ -13,6 +13,18 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type fsslowerEvent struct {
+	DeltaUs uint64
+	EndNs   uint64
+	Offset  int64
+	Size    uint64
+	MntnsId uint64
+	Pid     uint32
+	Op      int32
+	File    [32]uint8
+	Task    [16]uint8
+}
+
 // loadFsslower returns the embedded CollectionSpec for fsslower.
 func loadFsslower() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_FsslowerBytes)
@@ -28,9 +40,9 @@ func loadFsslower() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *fsslowerObjects
-//     *fsslowerPrograms
-//     *fsslowerMaps
+//	*fsslowerObjects
+//	*fsslowerPrograms
+//	*fsslowerMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadFsslowerObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -142,5 +154,6 @@ func _FsslowerClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed fsslower_bpfel_x86.o
 var _FsslowerBytes []byte
