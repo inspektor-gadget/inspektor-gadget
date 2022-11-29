@@ -15,22 +15,12 @@
 package profile
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"strings"
-
 	"github.com/spf13/cobra"
 
 	commonprofile "github.com/inspektor-gadget/inspektor-gadget/cmd/common/profile"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
 )
-
-type BlockIOParser struct {
-	outputConfig *commonutils.OutputConfig
-}
 
 func newBlockIOCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
@@ -50,8 +40,8 @@ func newBlockIOCmd() *cobra.Command {
 			gadgetName:    "biolatency",
 			commonFlags:   &commonFlags,
 			inProgressMsg: "Tracing block device I/O",
-			parser: &BlockIOParser{
-				outputConfig: &commonFlags.OutputConfig,
+			parser: &commonprofile.BlockIOParser{
+				OutputConfig: commonFlags.OutputConfig,
 			},
 		}
 
@@ -63,89 +53,4 @@ func newBlockIOCmd() *cobra.Command {
 	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
-}
-
-// starsToString prints a line of the histogram.
-// It is a golang translation of iovisor/bcc print_stars():
-// https://github.com/iovisor/bcc/blob/13b5563c11f7722a61a17c6ca0a1a387d2fa7788/libbpf-tools/trace_helpers.c#L878-L893
-func starsToString(val, valMax, width uint64) string {
-	minVal := uint64(0)
-	if val < valMax {
-		minVal = val
-	} else {
-		minVal = valMax
-	}
-
-	stars := minVal * width / valMax
-	spaces := width - stars
-
-	var sb strings.Builder
-	sb.WriteString(strings.Repeat("*", int(stars)))
-	sb.WriteString(strings.Repeat(" ", int(spaces)))
-	if val > valMax {
-		sb.WriteByte('+')
-	}
-
-	return sb.String()
-}
-
-// reportToString prints an histogram from a types.Report.
-// It is a golang adaption of iovisor/bcc print_log2_hist():
-// https://github.com/iovisor/bcc/blob/13b5563c11f7722a61a17c6ca0a1a387d2fa7788/libbpf-tools/trace_helpers.c#L895-L932
-func reportToString(report types.Report) string {
-	if len(report.Data) == 0 {
-		return ""
-	}
-
-	valMax := uint64(0)
-	for _, data := range report.Data {
-		if data.Count > valMax {
-			valMax = data.Count
-		}
-	}
-
-	// reportEntries maximum value is C.MAX_SLOTS which is 27, so we take the
-	// value when idx_max <= 32.
-	spaceBefore := 5
-	spaceAfter := 19
-	width := 10
-	stars := 40
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%*s%-*s : count    distribution\n", spaceBefore,
-		"", spaceAfter, report.ValType))
-
-	for _, data := range report.Data {
-		sb.WriteString(fmt.Sprintf("%*d -> %-*d : %-8d |%s|\n", width,
-			data.IntervalStart, width, data.IntervalEnd, data.Count,
-			starsToString(data.Count, valMax, uint64(stars))))
-	}
-
-	return sb.String()
-}
-
-func (p *BlockIOParser) DisplayResultsCallback(traceOutputMode string, results []string) error {
-	l := len(results)
-	if l > 1 {
-		return errors.New("there should be only one result because biolatency runs on one node at a time")
-	} else if l == 0 {
-		// Nothing to print, errors/warnings were already printed
-		return nil
-	}
-
-	var output string
-	if p.outputConfig.OutputMode == commonutils.OutputModeJSON {
-		output = results[0] + "\n"
-	} else {
-		var report types.Report
-		if err := json.Unmarshal([]byte(results[0]), &report); err != nil {
-			return commonutils.WrapInErrUnmarshalOutput(err, results[0])
-		}
-
-		output = reportToString(report)
-	}
-
-	fmt.Printf("%s", output)
-
-	return nil
 }
