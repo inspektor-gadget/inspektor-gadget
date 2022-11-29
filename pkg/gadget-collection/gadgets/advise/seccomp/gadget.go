@@ -532,7 +532,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 
 	switch trace.Spec.OutputMode {
 	case gadgetv1alpha1.TraceOutputModeStatus:
-		policy := syscallArrToLinuxSeccomp(b)
+		policy := seccomptracer.SyscallArrToLinuxSeccomp(b)
 		output, err := json.MarshalIndent(policy, "", "  ")
 		if err != nil {
 			trace.Status.OperationError = fmt.Sprintf("Failed to marshal seccomp policy: %s", err)
