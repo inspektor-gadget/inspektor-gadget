@@ -23,6 +23,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/audit"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/containers"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/interactive"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/profile"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/snapshot"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/trace"
 )
@@ -38,6 +39,7 @@ func main() {
 		audit.NewAuditCmd(),
 		containers.NewListContainersCmd(),
 		interactive.NewInteractiveCmd(),
+		profile.NewProfileCmd(),
 		snapshot.NewSnapshotCmd(),
 		trace.NewTraceCmd(),
 		newTraceloopCmd(),
