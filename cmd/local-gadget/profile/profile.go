@@ -107,6 +107,7 @@ func AddCommonProfileFlags(command *cobra.Command, profileFlags *ProfileFlags) {
 func NewProfileCmd() *cobra.Command {
 	cmd := commonprofile.NewCommonProfileCmd()
 
+	cmd.AddCommand(newBlockIOCmd())
 	cmd.AddCommand(newCPUCmd())
 
 	return cmd

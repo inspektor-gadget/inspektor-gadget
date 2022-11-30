@@ -27,6 +27,11 @@ the `--io` flag that will generate a given number of workers to spin on the
 way, we will generate disk I/O that we will analyse using the biolatency
 gadget.
 
+For further details, please refer to
+[the BCC documentation](https://github.com/iovisor/bcc/blob/master/tools/biolatency_example.txt).
+
+### With kubectl-gadget
+
 Firstly, let's use the profile block-io gadget to see the I/O latency in our
 testing node with its normal load work:
 
@@ -128,5 +133,45 @@ $ kubectl delete ns test-biolatency
 namespace "test-biolatency" deleted
 ```
 
-For further details, please refer to
-[the BCC documentation](https://github.com/iovisor/bcc/blob/master/tools/biolatency_example.txt).
+### With local-gadget
+
+* Generate some io load:
+
+```bash
+$ docker run -d --rm --name stresstest polinux/stress stress --io 10
+```
+
+* Start local-gadget:
+
+```bash
+$ sudo ./local-gadget profile block-io
+```
+
+* Observe the results:
+
+```bash
+$ sudo ./local-gadget profile block-io
+Tracing block device I/O... Hit Ctrl-C to end.^C
+     usecs               : count    distribution
+         1 -> 1          : 0        |                                        |
+         2 -> 3          : 0        |                                        |
+         4 -> 7          : 0        |                                        |
+         8 -> 15         : 0        |                                        |
+        16 -> 31         : 0        |                                        |
+        32 -> 63         : 113      |                                        |
+        64 -> 127        : 7169     |****************************************|
+       128 -> 255        : 3724     |********************                    |
+       256 -> 511        : 2198     |************                            |
+       512 -> 1023       : 712      |***                                     |
+      1024 -> 2047       : 203      |*                                       |
+      2048 -> 4095       : 23       |                                        |
+      4096 -> 8191       : 7        |                                        |
+      8192 -> 16383      : 3        |                                        |
+```
+
+* Remove the docker container:
+
+```bash
+$ docker stop stresstest
+```
+
