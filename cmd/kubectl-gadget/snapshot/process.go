@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	commonsnapshot "github.com/inspektor-gadget/inspektor-gadget/cmd/common/snapshot"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 )
@@ -27,11 +28,16 @@ func newProcessCmd() *cobra.Command {
 	var flags commonsnapshot.ProcessFlags
 
 	runCmd := func(cmd *cobra.Command, args []string) error {
+		parser, err := commonsnapshot.NewProcessParserWithK8sInfo(&commonFlags.OutputConfig, &flags)
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
+		}
+
 		processGadget := &SnapshotGadget[types.Event]{
 			name:        "process-collector",
 			commonFlags: &commonFlags,
 			SnapshotGadgetPrinter: commonsnapshot.SnapshotGadgetPrinter[types.Event]{
-				Parser: commonsnapshot.NewProcessParserWithK8sInfo(&commonFlags.OutputConfig, &flags),
+				Parser: parser,
 			},
 		}
 

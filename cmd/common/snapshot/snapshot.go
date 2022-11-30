@@ -17,8 +17,6 @@ package snapshot
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -42,15 +40,10 @@ type SnapshotEvent interface {
 // implement.
 type SnapshotParser[Event any] interface {
 	// SortEvents sorts a slice of events based on a predefined prioritization.
-	SortEvents(*[]Event)
+	SortEvents(*[]*Event)
 
-	// TransformToColumns is called to transform an event to columns.
-	TransformToColumns(*Event) string
-
-	// BuildColumnsHeader returns a header with the requested custom columns
-	// that exist in the predefined columns list. The columns are separated by
-	// tabs.
-	BuildColumnsHeader() string
+	// TransformIntoTable is called to transform headers and events into a table.
+	TransformIntoTable([]*Event) string
 
 	// GetOutputConfig returns the output configuration.
 	GetOutputConfig() *commonutils.OutputConfig
@@ -62,7 +55,7 @@ type SnapshotGadgetPrinter[Event SnapshotEvent] struct {
 	Parser SnapshotParser[Event]
 }
 
-func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []Event) error {
+func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []*Event) error {
 	g.Parser.SortEvents(&allEvents)
 
 	outputConfig := g.Parser.GetOutputConfig()
@@ -78,26 +71,18 @@ func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []Event) error {
 	case commonutils.OutputModeColumns:
 		fallthrough
 	case commonutils.OutputModeCustomColumns:
-		// In the snapshot gadgets it's possible to use a tabwriter because
-		// we have the full list of events to print available, hence the
-		// tablewriter is able to determine the columns width. In other
-		// gadgets we don't know the size of all columns "a priori", hence
-		// we have to do a best effort printing fixed-width columns.
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', 0)
-
-		fmt.Fprintln(w, g.Parser.BuildColumnsHeader())
-
+		allEventsTrimmed := []*Event{}
 		for _, e := range allEvents {
-			baseEvent := e.GetBaseEvent()
+			baseEvent := (*e).GetBaseEvent()
 			if baseEvent.Type != eventtypes.NORMAL {
 				commonutils.HandleSpecialEvent(baseEvent, outputConfig.Verbose)
 				continue
 			}
-
-			fmt.Fprintln(w, g.Parser.TransformToColumns(&e))
+			allEventsTrimmed = append(allEventsTrimmed, e)
 		}
+		allEvents = allEventsTrimmed
 
-		w.Flush()
+		fmt.Println(g.Parser.TransformIntoTable(allEvents))
 	}
 
 	return nil

@@ -29,7 +29,7 @@ type SnapshotGadget[Event commonsnapshot.SnapshotEvent] struct {
 	commonsnapshot.SnapshotGadgetPrinter[Event]
 
 	commonFlags *utils.CommonFlags
-	runTracer   func(*localgadgetmanager.LocalGadgetManager, *containercollection.ContainerSelector) ([]Event, error)
+	runTracer   func(*localgadgetmanager.LocalGadgetManager, *containercollection.ContainerSelector) ([]*Event, error)
 }
 
 // Run runs a SnapshotGadget and prints the output after parsing it using the

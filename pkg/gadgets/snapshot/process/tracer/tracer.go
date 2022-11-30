@@ -34,7 +34,7 @@ const (
 	BPFIterName = "ig_snap_proc"
 )
 
-func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]processcollectortypes.Event, error) {
+func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]*processcollectortypes.Event, error) {
 	var err error
 	var spec *ebpf.CollectionSpec
 
@@ -80,7 +80,7 @@ func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]processc
 	}
 	defer file.Close()
 
-	var events []processcollectortypes.Event
+	var events []*processcollectortypes.Event
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -116,7 +116,7 @@ func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]processc
 			enricher.Enrich(&event.CommonData, event.MountNsID)
 		}
 
-		events = append(events, event)
+		events = append(events, &event)
 	}
 
 	return events, nil

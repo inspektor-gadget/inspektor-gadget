@@ -104,7 +104,7 @@ func getUDPIter() (*link.Iter, error) {
 	return it, nil
 }
 
-func RunCollector(pid uint32, podname, namespace, node string, proto socketcollectortypes.Proto) ([]socketcollectortypes.Event, error) {
+func RunCollector(pid uint32, podname, namespace, node string, proto socketcollectortypes.Proto) ([]*socketcollectortypes.Event, error) {
 	var err error
 	var it *link.Iter
 	iters := []*link.Iter{}
@@ -131,7 +131,7 @@ func RunCollector(pid uint32, podname, namespace, node string, proto socketcolle
 		iters = append(iters, it)
 	}
 
-	sockets := []socketcollectortypes.Event{}
+	sockets := []*socketcollectortypes.Event{}
 	err = netnsenter.NetnsEnter(int(pid), func() error {
 		for _, it := range iters {
 			reader, err := it.Open()
@@ -161,7 +161,7 @@ func RunCollector(pid uint32, podname, namespace, node string, proto socketcolle
 					return err
 				}
 
-				sockets = append(sockets, socketcollectortypes.Event{
+				sockets = append(sockets, &socketcollectortypes.Event{
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{

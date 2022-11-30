@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -39,13 +40,44 @@ var ProtocolsMap = map[string]Proto{
 type Event struct {
 	eventtypes.Event
 
-	Protocol      string `json:"protocol"`
-	LocalAddress  string `json:"localAddress"`
-	LocalPort     uint16 `json:"localPort"`
-	RemoteAddress string `json:"remoteAddress"`
-	RemotePort    uint16 `json:"remotePort"`
-	Status        string `json:"status"`
-	InodeNumber   uint64 `json:"inodeNumber"`
+	Protocol      string `json:"protocol" column:"protocol,maxWidth:8"`
+	LocalAddress  string `json:"localAddress" column:"localAddr,template:ipaddr,hide"`
+	LocalPort     uint16 `json:"localPort" column:"localPort,template:ipport,hide"`
+	RemoteAddress string `json:"remoteAddress" column:"remoteAddr,template:ipaddr,hide"`
+	RemotePort    uint16 `json:"remotePort" column:"remotePort,template:ipport,hide"`
+	Status        string `json:"status" column:"status,order:1002,maxWidth:12"`
+	InodeNumber   uint64 `json:"inodeNumber" column:"inode,order:1003,hide"`
+}
+
+func GetColumns() *columns.Columns[Event] {
+	cols := columns.MustCreateColumns[Event]()
+
+	col, _ := cols.GetColumn("container")
+	col.Visible = false
+
+	cols.MustAddColumn(columns.Column[Event]{
+		Name:     "local",
+		MinWidth: 21, // 15(ipv4) + 1(:) + 5(port)
+		MaxWidth: 51, // 45(ipv4 mapped ipv6) + 1(:) + 5(port)
+		Visible:  true,
+		Order:    1000,
+		Extractor: func(e *Event) string {
+			return fmt.Sprintf("%s:%d", e.LocalAddress, e.LocalPort)
+		},
+	})
+
+	cols.MustAddColumn(columns.Column[Event]{
+		Name:     "remote",
+		MinWidth: 21, // 15(ipv4) + 1(:) + 5(port)
+		MaxWidth: 51, // 45(ipv4 mapped ipv6) + 1(:) + 5(port)
+		Visible:  true,
+		Order:    1001,
+		Extractor: func(e *Event) string {
+			return fmt.Sprintf("%s:%d", e.RemoteAddress, e.RemotePort)
+		},
+	})
+
+	return cols
 }
 
 func ParseProtocol(protocol string) (Proto, error) {

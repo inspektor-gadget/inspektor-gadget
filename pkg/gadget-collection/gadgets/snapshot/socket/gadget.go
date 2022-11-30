@@ -81,7 +81,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	allSockets := []socketcollectortypes.Event{}
+	allSockets := []*socketcollectortypes.Event{}
 
 	// Given that the socket-collector tracer works per network namespace and
 	// all the containers inside a namespace/pod share the network namespace,
