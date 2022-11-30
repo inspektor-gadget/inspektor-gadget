@@ -12,28 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package containercollection
+package ociannotations
 
 const (
-	// container types used by the runtimes
-	containerTypeSandbox   = "sandbox"
-	containerTypeContainer = "container"
-
-	// cri-o container annotations to get container information
-	// https://github.com/containers/podman/blob/main/pkg/annotations/annotations.go
-	// https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/types/labels.go
-	crioContainerManagerAnnotation = "io.container.manager"
-	crioPodNameAnnotation          = "io.kubernetes.pod.name"
-	crioPodNamespaceAnnotation     = "io.kubernetes.pod.namespace"
-	crioPodUIDAnnotation           = "io.kubernetes.pod.uid"
-	crioContainerNameAnnotation    = "io.kubernetes.container.name"
-	crioContainerTypeAnnotation    = "io.kubernetes.cri-o.ContainerType"
-
 	// containerd container annotations to get container information
 	// https://github.com/containerd/containerd/blob/main/pkg/cri/annotations/annotations.go
+	//
+	// Pod UID annotation added in:
+	// * containerd v1.7.0 via https://github.com/containerd/containerd/pull/7697
+	// * containerd v1.6.11 via https://github.com/containerd/containerd/pull/7735
 	containerdPodNameAnnotation       = "io.kubernetes.cri.sandbox-name"
 	containerdPodNamespaceAnnotation  = "io.kubernetes.cri.sandbox-namespace"
 	containerdPodUIDAnnotation        = "io.kubernetes.cri.sandbox-uid"
 	containerdContainerNameAnnotation = "io.kubernetes.cri.container-name"
 	containerdContainerTypeAnnotation = "io.kubernetes.cri.container-type"
 )
+
+type containerdResolver struct{}
+
+func (containerdResolver) ContainerName(annotations map[string]string) string {
+	return annotations[containerdContainerNameAnnotation]
+}
+
+func (containerdResolver) ContainerType(annotations map[string]string) string {
+	return annotations[containerdContainerTypeAnnotation]
+}
+
+func (containerdResolver) PodName(annotations map[string]string) string {
+	return annotations[containerdPodNameAnnotation]
+}
+
+func (containerdResolver) PodUID(annotations map[string]string) string {
+	return annotations[containerdPodUIDAnnotation]
+}
+
+func (containerdResolver) PodNamespace(annotations map[string]string) string {
+	return annotations[containerdPodNamespaceAnnotation]
+}
+
+func (containerdResolver) Runtime() string {
+	return "containerd"
+}
