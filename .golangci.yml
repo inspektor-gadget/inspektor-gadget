@@ -3,6 +3,7 @@ output:
 
 run:
   timeout: 3m
+  go: "1.18"
   build-tags:
   - withebpf
   - docs
@@ -26,13 +27,9 @@ linters:
   - errorlint
 
 linters-settings:
-  gofumpt:
-    lang-version: "1.18"
   staticcheck:
-    go: "1.18"
     checks: ["all"]
   stylecheck:
-    go: "1.18"
     checks: ["all"]
   errorlint:
     # https://github.com/polyfloyd/go-errorlint
