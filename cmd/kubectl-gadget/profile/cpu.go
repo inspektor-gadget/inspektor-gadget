@@ -87,14 +87,14 @@ func newCPUCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVarP(
 		&cpuFlags.profileUserOnly,
-		"user",
+		"user-stack",
 		"U",
 		false,
 		"Show stacks from user space only (no kernel space stacks)",
 	)
 	cmd.PersistentFlags().BoolVarP(
 		&cpuFlags.profileKernelOnly,
-		"kernel",
+		"kernel-stack",
 		"K",
 		false,
 		"Show stacks from kernel space only (no user space stacks)",
