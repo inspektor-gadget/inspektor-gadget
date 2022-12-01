@@ -48,6 +48,9 @@
 #define bpf_error_printk(fmt, ...)
 #endif /* !defined(SHOW_ERROR) */
 
+const struct syscall_event_t *unused_event __attribute__((unused));
+const struct syscall_event_cont_t *unused_event_cont __attribute__((unused));
+
 /*
  * We need this to avoid hitting the 512 bytes stack limit.
  * Indeed, pt_regs contains several u64 fields, so it is quite big.

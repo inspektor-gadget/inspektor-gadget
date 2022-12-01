@@ -55,6 +55,20 @@ func FromCString(in []byte) string {
 	return string(in)
 }
 
+func FromCStringN(in []byte, length int) string {
+	l := len(in)
+	if length < l {
+		l = length
+	}
+
+	for i := 0; i < l; i++ {
+		if in[i] == 0 {
+			return string(in[:i])
+		}
+	}
+	return string(in[:l])
+}
+
 func Htonl(hl uint32) uint32 {
 	var nl [4]byte
 	binary.BigEndian.PutUint32(nl[:], hl)

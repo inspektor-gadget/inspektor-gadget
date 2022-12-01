@@ -13,6 +13,27 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type traceloopSyscallEventContT struct {
+	Param     [128]uint8
+	Timestamp uint64
+	Length    uint64
+	Index     uint8
+	Failed    uint8
+	_         [6]byte
+}
+
+type traceloopSyscallEventT struct {
+	Args      [6]uint64
+	Timestamp uint64
+	Pid       uint32
+	Cpu       uint16
+	Id        uint16
+	Comm      [16]uint8
+	ContNr    uint8
+	Typ       uint8
+	_         [6]byte
+}
+
 // loadTraceloop returns the embedded CollectionSpec for traceloop.
 func loadTraceloop() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_TraceloopBytes)

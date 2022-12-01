@@ -17,10 +17,6 @@
 
 package tracer
 
-// #include <linux/types.h>
-// #include "./bpf/traceloop.h"
-import "C"
-
 import (
 	"errors"
 	"fmt"
@@ -40,18 +36,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang traceloop ./bpf/traceloop.bpf.c -- -I./bpf/ -I../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -type syscall_event_t -type syscall_event_cont_t -target ${TARGET} -cc clang traceloop ./bpf/traceloop.bpf.c -- -I./bpf/ -I../../../${TARGET}
 
+// These variables must match content of traceloop.h.
 var (
-	useNullByteLength        uint64 = uint64(C.USE_NULL_BYTE_LENGTH)
-	useRetAsParamLength      uint64 = uint64(C.USE_RET_AS_PARAM_LENGTH)
-	useArgIndexAsParamLength uint64 = uint64(C.USE_ARG_INDEX_AS_PARAM_LENGTH)
-	paramProbeAtExitMask     uint64 = uint64(C.PARAM_PROBE_AT_EXIT_MASK)
-)
+	useNullByteLength        uint64 = 0x0fffffffffffffff
+	useRetAsParamLength      uint64 = 0x0ffffffffffffffe
+	useArgIndexAsParamLength uint64 = 0x0ffffffffffffff0
+	paramProbeAtExitMask     uint64 = 0xf000000000000000
 
-var (
-	syscallEventTypeEnter uint8 = uint8(C.SYSCALL_EVENT_TYPE_ENTER)
-	syscallEventTypeExit  uint8 = uint8(C.SYSCALL_EVENT_TYPE_EXIT)
+	syscallEventTypeEnter uint8 = 0
+	syscallEventTypeExit  uint8 = 1
 )
 
 // This should match traceloop.h define SYSCALL_ARGS.
@@ -239,21 +234,21 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 	}
 
 	err := readOverWritable(reader, func(record perf.Record, size uint32) error {
-		var cSyscallEvent C.struct_syscall_event_t
-		var cSyscallContEvent C.struct_syscall_event_cont_t
+		var sysEvent *traceloopSyscallEventT
+		var sysEventCont *traceloopSyscallEventContT
 
 		switch uintptr(size) {
-		case alignSize(unsafe.Sizeof(cSyscallEvent)):
-			cSyscallEvent = *(*C.struct_syscall_event_t)(unsafe.Pointer(&record.RawSample[0]))
+		case alignSize(unsafe.Sizeof(*sysEvent)):
+			sysEvent = (*traceloopSyscallEventT)(unsafe.Pointer(&record.RawSample[0]))
 
 			event := &syscallEvent{
-				timestamp: uint64(cSyscallEvent.timestamp),
-				typ:       uint8(cSyscallEvent.typ),
-				contNr:    uint8(cSyscallEvent.cont_nr),
-				cpu:       uint16(cSyscallEvent.cpu),
-				id:        uint16(cSyscallEvent.id),
-				pid:       uint32(cSyscallEvent.pid),
-				comm:      C.GoString(&cSyscallEvent.comm[0]),
+				timestamp: sysEvent.Timestamp,
+				typ:       sysEvent.Typ,
+				contNr:    sysEvent.ContNr,
+				cpu:       sysEvent.Cpu,
+				id:        sysEvent.Id,
+				pid:       sysEvent.Pid,
+				comm:      gadgets.FromCString(sysEvent.Comm[:]),
 				mountNsID: reader.mntnsID,
 			}
 
@@ -262,7 +257,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 			case syscallEventTypeEnter:
 				event.args = make([]uint64, syscallArgs)
 				for i := uint8(0); i < syscallArgs; i++ {
-					event.args[i] = uint64(cSyscallEvent.args[i])
+					event.args[i] = sysEvent.Args[i]
 				}
 
 				typeMap = &syscallEnterEventsMap
@@ -270,7 +265,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				// In the C structure, args is an array of uint64.
 				// But in this particular case, we used it to store a C long, i.e. the
 				// syscall return value, so it is safe to cast it to golang int.
-				event.retval = int(cSyscallEvent.args[0])
+				event.retval = int(sysEvent.Args[0])
 
 				typeMap = &syscallExitEventsMap
 			default:
@@ -287,21 +282,21 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 			}
 
 			(*typeMap)[event.timestamp] = append((*typeMap)[event.timestamp], event)
-		case alignSize(unsafe.Sizeof(cSyscallContEvent)):
-			cSyscallContEvent = *(*C.struct_syscall_event_cont_t)(unsafe.Pointer(&record.RawSample[0]))
+		case alignSize(unsafe.Sizeof(*sysEventCont)):
+			sysEventCont = (*traceloopSyscallEventContT)(unsafe.Pointer(&record.RawSample[0]))
 
 			event := &syscallEventContinued{
-				timestamp: uint64(cSyscallContEvent.timestamp),
-				index:     uint8(cSyscallContEvent.index),
+				timestamp: sysEventCont.Timestamp,
+				index:     sysEventCont.Index,
 			}
 
-			if cSyscallContEvent.failed != 0 {
+			if sysEventCont.Failed != 0 {
 				event.param = "(Failed to dereference pointer)"
-			} else if uint64(cSyscallContEvent.length) == useNullByteLength {
+			} else if sysEventCont.Length == useNullByteLength {
 				// 0 byte at [C.PARAM_LENGTH - 1] is enforced in BPF code
-				event.param = C.GoString(&cSyscallContEvent.param[0])
+				event.param = gadgets.FromCString(sysEventCont.Param[:])
 			} else {
-				event.param = C.GoStringN(&cSyscallContEvent.param[0], C.int(cSyscallContEvent.length))
+				event.param = gadgets.FromCStringN(sysEventCont.Param[:], int(sysEventCont.Length))
 			}
 
 			// Remove all non unicode character from the string.
@@ -316,7 +311,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 			syscallContinuedEventsMap[event.timestamp] = append(syscallContinuedEventsMap[event.timestamp], event)
 		default:
-			log.Debugf("size %d does not correspond to any expected element, which are %d and %d; received data are: %v", size, unsafe.Sizeof(cSyscallEvent), unsafe.Sizeof(cSyscallContEvent), record.RawSample)
+			log.Debugf("size %d does not correspond to any expected element, which are %d and %d; received data are: %v", size, unsafe.Sizeof(sysEvent), unsafe.Sizeof(sysEventCont), record.RawSample)
 		}
 
 		return nil
