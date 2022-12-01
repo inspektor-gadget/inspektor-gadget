@@ -115,7 +115,7 @@ func newEbpfCmd() *cobra.Command {
 		Args:         cobra.MaximumNArgs(1),
 	}
 
-	addCommonTopFlags(cmd, commonTopFlags, &commonTopFlags.CommonFlags, cols.GetColumnNames(), types.SortByDefault)
+	addCommonTopFlags(cmd, commonTopFlags, &commonTopFlags.CommonFlags, cols.ColumnMap, types.SortByDefault)
 
 	return cmd
 }

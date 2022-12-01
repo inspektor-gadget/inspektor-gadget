@@ -103,7 +103,7 @@ func newFileCmd() *cobra.Command {
 		Args:         cobra.MaximumNArgs(1),
 	}
 
-	addCommonTopFlags(cmd, commonTopFlags, &commonTopFlags.CommonFlags, cols.GetColumnNames(), types.SortByDefault)
+	addCommonTopFlags(cmd, commonTopFlags, &commonTopFlags.CommonFlags, cols.ColumnMap, types.SortByDefault)
 
 	cmd.Flags().BoolVarP(&allFiles, "all-files", "a", types.AllFilesDefault, "Include non-regular file types (sockets, FIFOs, etc)")
 

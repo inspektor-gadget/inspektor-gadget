@@ -25,6 +25,7 @@ import (
 
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	ebpftoptracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/tracer"
@@ -53,6 +54,7 @@ func NewFactory() gadgets.TraceFactory {
 
 func (f *TraceFactory) Description() string {
 	cols := types.GetColumns()
+	validCols, _ := sort.FilterSortableColumns(cols.ColumnMap, cols.GetColumnNames())
 
 	t := `ebpftop shows cpu time used by ebpf programs.
 
@@ -62,7 +64,7 @@ The following parameters are supported:
  - %s: The field to sort the results by (%s). (default %s)`
 	return fmt.Sprintf(t, top.IntervalParam, top.IntervalDefault,
 		top.MaxRowsParam, top.MaxRowsDefault,
-		top.SortByParam, strings.Join(cols.GetColumnNames(), ","), strings.Join(types.SortByDefault, ","))
+		top.SortByParam, strings.Join(validCols, ","), strings.Join(types.SortByDefault, ","))
 }
 
 func (f *TraceFactory) OutputModesSupported() map[gadgetv1alpha1.TraceOutputMode]struct{} {
@@ -137,7 +139,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		if val, ok := params[top.SortByParam]; ok {
 			sortByColumns := strings.Split(val, ",")
 
-			_, invalidCols := types.GetColumns().VerifyColumnNames(sortByColumns)
+			_, invalidCols := sort.FilterSortableColumns(types.GetColumns().ColumnMap, sortByColumns)
 			if len(invalidCols) > 0 {
 				trace.Status.OperationError = fmt.Sprintf("%q are not valid for %q", strings.Join(invalidCols, ","), top.SortByParam)
 				return
