@@ -20,11 +20,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 )
@@ -45,45 +47,62 @@ func NewListContainersCmd() *cobra.Command {
 			}
 			defer localGadgetManager.Close()
 
-			parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, containercollection.GetColumns())
-			if err != nil {
-				return commonutils.WrapInErrParserCreate(err)
+			selector := containercollection.ContainerSelector{
+				Name: commonFlags.Containername,
 			}
 
-			containers := localGadgetManager.ContainerCollection.Subscribe(
-				localGadgetSubKey,
-				containercollection.ContainerSelector{
-					Name: commonFlags.Containername,
-				},
-				func(event containercollection.PubSubEvent) {
-					switch event.Type {
-					case containercollection.EventTypeAddContainer:
-						if err = printContainer(parser, commonFlags, event.Container); err != nil {
-							fmt.Fprintf(os.Stderr, "Warning: %s\n", err)
-						}
-					}
-				})
-			defer localGadgetManager.ContainerCollection.Unsubscribe(localGadgetSubKey)
-
-			parser.Sort(containers, []string{"runtime", "name"})
-			if optionWatch {
-				if commonFlags.OutputMode != commonutils.OutputModeJSON {
-					fmt.Println(parser.BuildColumnsHeader())
+			if !optionWatch {
+				parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, containercollection.GetColumns())
+				if err != nil {
+					return commonutils.WrapInErrParserCreate(err)
 				}
-				for _, container := range containers {
-					if err = printContainer(parser, commonFlags, container); err != nil {
-						return err
-					}
-				}
+				containers := localGadgetManager.GetContainersBySelector(&selector)
 
-				stop := make(chan os.Signal, 1)
-				signal.Notify(stop, syscall.SIGINT)
-				<-stop
-			} else {
+				parser.Sort(containers, []string{"runtime", "name"})
 				if err = printContainers(parser, commonFlags, containers); err != nil {
 					return err
 				}
+				return nil
 			}
+
+			cols := columns.MustCreateColumns[containercollection.PubSubEvent]()
+			cols.SetExtractor("event", func(event *containercollection.PubSubEvent) string {
+				return event.Type.String()
+			})
+
+			parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, cols)
+			if err != nil {
+				return commonutils.WrapInErrParserCreate(err)
+			}
+			containers := localGadgetManager.ContainerCollection.Subscribe(
+				localGadgetSubKey,
+				selector,
+				func(event containercollection.PubSubEvent) {
+					if err = printPubSubEvent(parser, commonFlags, &event); err != nil {
+						fmt.Fprintf(os.Stderr, "Warning: %s\n", err)
+					}
+				},
+			)
+			defer localGadgetManager.ContainerCollection.Unsubscribe(localGadgetSubKey)
+
+			if commonFlags.OutputMode != commonutils.OutputModeJSON {
+				fmt.Println(parser.BuildColumnsHeader())
+			}
+			timestamp := time.Now().Format(time.RFC3339)
+			for _, container := range containers {
+				e := containercollection.PubSubEvent{
+					Timestamp: timestamp,
+					Type:      containercollection.EventTypeAddContainer,
+					Container: container,
+				}
+				if err = printPubSubEvent(parser, commonFlags, &e); err != nil {
+					return err
+				}
+			}
+
+			stop := make(chan os.Signal, 1)
+			signal.Notify(stop, syscall.SIGINT)
+			<-stop
 
 			return nil
 		},
@@ -118,10 +137,10 @@ func printContainers(parser *commonutils.GadgetParser[containercollection.Contai
 	return nil
 }
 
-func printContainer(parser *commonutils.GadgetParser[containercollection.Container], commonFlags utils.CommonFlags, container *containercollection.Container) error {
+func printPubSubEvent(parser *commonutils.GadgetParser[containercollection.PubSubEvent], commonFlags utils.CommonFlags, event *containercollection.PubSubEvent) error {
 	switch commonFlags.OutputMode {
 	case commonutils.OutputModeJSON:
-		b, err := json.MarshalIndent(container, "", "  ")
+		b, err := json.MarshalIndent(event, "", "  ")
 		if err != nil {
 			return commonutils.WrapInErrMarshalOutput(err)
 		}
@@ -129,7 +148,7 @@ func printContainer(parser *commonutils.GadgetParser[containercollection.Contain
 	case commonutils.OutputModeColumns:
 		fallthrough
 	case commonutils.OutputModeCustomColumns:
-		fmt.Println(parser.TransformIntoColumns(container))
+		fmt.Println(parser.TransformIntoColumns(event))
 	}
 
 	return nil

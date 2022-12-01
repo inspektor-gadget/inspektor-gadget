@@ -125,9 +125,9 @@ func TestFilterByContainerName(t *testing.T) {
 	RunCommands(commands, t)
 }
 
-func TestWatchContainers(t *testing.T) {
+func TestWatchCreatedContainers(t *testing.T) {
 	t.Parallel()
-	cn := "test-watched-container"
+	cn := "test-created-container"
 	ns := GenerateTestNamespaceName(cn)
 
 	// TODO: Handle it once we support getting K8s container name for docker
@@ -141,29 +141,33 @@ func TestWatchContainers(t *testing.T) {
 		Cmd:          fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedContainer := &containercollection.Container{
-				Name:      cn,
-				Podname:   cn,
-				Runtime:   *containerRuntime,
-				Namespace: ns,
+			expectedEvent := &containercollection.PubSubEvent{
+				Type: containercollection.EventTypeAddContainer,
+				Container: &containercollection.Container{
+					Name:      cn,
+					Podname:   cn,
+					Runtime:   *containerRuntime,
+					Namespace: ns,
+				},
 			}
 
-			normalize := func(c *containercollection.Container) {
-				c.ID = ""
-				c.Pid = 0
-				c.OciConfig = nil
-				c.Bundle = ""
-				c.Mntns = 0
-				c.Netns = 0
-				c.CgroupPath = ""
-				c.CgroupID = 0
-				c.CgroupV1 = ""
-				c.CgroupV2 = ""
-				c.Labels = nil
-				c.PodUID = ""
+			normalize := func(e *containercollection.PubSubEvent) {
+				e.Container.ID = ""
+				e.Container.Pid = 0
+				e.Container.OciConfig = nil
+				e.Container.Bundle = ""
+				e.Container.Mntns = 0
+				e.Container.Netns = 0
+				e.Container.CgroupPath = ""
+				e.Container.CgroupID = 0
+				e.Container.CgroupV1 = ""
+				e.Container.CgroupV2 = ""
+				e.Container.Labels = nil
+				e.Container.PodUID = ""
+				e.Timestamp = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedContainer)
+			return ExpectAllToMatch(output, normalize, expectedEvent)
 		},
 	}
 
@@ -173,6 +177,67 @@ func TestWatchContainers(t *testing.T) {
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
 		WaitUntilPodReadyCommand(ns, cn),
+		DeleteTestNamespaceCommand(ns),
+	}
+
+	RunCommands(commands, t)
+}
+
+func TestWatchDeletedContainers(t *testing.T) {
+	t.Parallel()
+	cn := "test-deleted-container"
+	ns := GenerateTestNamespaceName(cn)
+
+	// TODO: Handle it once we support getting K8s container name for docker
+	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
+	if *containerRuntime == ContainerRuntimeDocker {
+		t.Skip("Skip TestWatchContainers on docker since we don't propagate the Kubernetes pod container name")
+	}
+
+	watchContainersCmd := &Command{
+		Name:         "RunWatchContainers",
+		Cmd:          fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEvent := &containercollection.PubSubEvent{
+				Type: containercollection.EventTypeRemoveContainer,
+				Container: &containercollection.Container{
+					Name:      cn,
+					Podname:   cn,
+					Runtime:   *containerRuntime,
+					Namespace: ns,
+				},
+			}
+
+			normalize := func(e *containercollection.PubSubEvent) {
+				e.Container.ID = ""
+				e.Container.Pid = 0
+				e.Container.OciConfig = nil
+				e.Container.Bundle = ""
+				e.Container.Mntns = 0
+				e.Container.Netns = 0
+				e.Container.CgroupPath = ""
+				e.Container.CgroupID = 0
+				e.Container.CgroupV1 = ""
+				e.Container.CgroupV2 = ""
+				e.Container.Labels = nil
+				e.Container.PodUID = ""
+				e.Timestamp = ""
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEvent)
+		},
+	}
+
+	commands := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
+		WaitUntilPodReadyCommand(ns, cn),
+		watchContainersCmd,
+		{
+			Name: "DeletePod",
+			Cmd:  fmt.Sprintf("kubectl delete pod %s -n %s", cn, ns),
+		},
 		DeleteTestNamespaceCommand(ns),
 	}
 
