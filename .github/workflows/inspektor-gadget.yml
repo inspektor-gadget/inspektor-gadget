@@ -10,10 +10,10 @@ concurrency:
 on:
   pull_request:
   push:
-    branches:
-    - main
-    tags:
-    - 'v*'
+    #branches:
+    #- main
+    #tags:
+    #- 'v*'
 
 permissions: read-all
 
@@ -22,24 +22,24 @@ permissions: read-all
 # Jobs of level N depend of, at least, one job on level N - 1 expect job whom
 # level is 0.
 jobs:
-  documentation-checks:
-    name: Documentation checks
-    # level: 0
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        cache: true
-      id: go
-    - name: Install debian packages
-      uses: ./.github/actions/install-debian-packages
-    - name: Check if generated files are updated
-      run: |
-        make manifests generate generate-documentation
-        git diff --exit-code HEAD --
+  #documentation-checks:
+    #name: Documentation checks
+    ## level: 0
+    #runs-on: ubuntu-latest
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Setup go
+      #uses: actions/setup-go@v3
+      #with:
+        #go-version: ${{ env.GO_VERSION }}
+        #cache: true
+      #id: go
+    #- name: Install debian packages
+      #uses: ./.github/actions/install-debian-packages
+    #- name: Check if generated files are updated
+      #run: |
+        #make manifests generate generate-documentation
+        #git diff --exit-code HEAD --
 
   lint:
     name: Lint
@@ -67,670 +67,670 @@ jobs:
         # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648
         args: "--out-${NO_FUTURE}format colored-line-number"
 
-  build-kubectl-gadget:
-    name: Build kubectl-gadget
-    # level: 0
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os: [linux, darwin, windows]
-        arch: [amd64, arm64]
-        exclude:
-          - os: windows
-            arch: arm64
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        cache: true
-      id: go
-    - name: Install debian packages
-      uses: ./.github/actions/install-debian-packages
-    - name: Set container repository and determine image tag
-      id: set-repo-determine-image-tag
-      uses: ./.github/actions/set-container-repo-and-determine-image-tag
-      with:
-        registry: ${{ env.REGISTRY }}
-        container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
-    - name: Build kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
-      run: |
-        git checkout
+  #build-kubectl-gadget:
+    #name: Build kubectl-gadget
+    ## level: 0
+    #runs-on: ubuntu-latest
+    #strategy:
+      #matrix:
+        #os: [linux, darwin, windows]
+        #arch: [amd64, arm64]
+        #exclude:
+          #- os: windows
+            #arch: arm64
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Setup go
+      #uses: actions/setup-go@v3
+      #with:
+        #go-version: ${{ env.GO_VERSION }}
+        #cache: true
+      #id: go
+    #- name: Install debian packages
+      #uses: ./.github/actions/install-debian-packages
+    #- name: Set container repository and determine image tag
+      #id: set-repo-determine-image-tag
+      #uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      #with:
+        #registry: ${{ env.REGISTRY }}
+        #container-image: ${{ env.CONTAINER_REPO }}
+        #co-re: false
+    #- name: Build kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
+      #run: |
+        #git checkout
 
-        # Prevent releases with -dirty suffix due to forgotten entries in
-        # .gitignore.
-        changes="$(git status --porcelain)"
-        if [ -n "$changes" ] ; then
-          echo "$changes"
-          exit 1
-        fi
+        ## Prevent releases with -dirty suffix due to forgotten entries in
+        ## .gitignore.
+        #changes="$(git status --porcelain)"
+        #if [ -n "$changes" ] ; then
+          #echo "$changes"
+          #exit 1
+        #fi
 
-        kubectl_gadget=kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
+        #kubectl_gadget=kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
 
-        CONTAINER_REPO=${{ steps.set-repo-determine-image-tag.outputs.container-repo }} \
-        IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
-        make $kubectl_gadget
+        #CONTAINER_REPO=${{ steps.set-repo-determine-image-tag.outputs.container-repo }} \
+        #IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
+        #make $kubectl_gadget
 
-        # Prepare assets for release and actions artifacts
-        platform=$(echo ${kubectl_gadget} | cut -d- -f3-4)
-        mkdir $platform
-        cp $kubectl_gadget $platform/kubectl-gadget
-        cp LICENSE $platform/
-        tar --sort=name --owner=root:0 --group=root:0 \
-          -czf ${kubectl_gadget}.tar.gz -C $platform \
-          kubectl-gadget LICENSE
-        rm -rf $platform
-    - name: Add kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
-      uses: actions/upload-artifact@master
-      with:
-        name: kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}-tar-gz
-        path: /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+        ## Prepare assets for release and actions artifacts
+        #platform=$(echo ${kubectl_gadget} | cut -d- -f3-4)
+        #mkdir $platform
+        #cp $kubectl_gadget $platform/kubectl-gadget
+        #cp LICENSE $platform/
+        #tar --sort=name --owner=root:0 --group=root:0 \
+          #-czf ${kubectl_gadget}.tar.gz -C $platform \
+          #kubectl-gadget LICENSE
+        #rm -rf $platform
+    #- name: Add kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
+      #uses: actions/upload-artifact@master
+      #with:
+        #name: kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}-tar-gz
+        #path: /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
 
-  build-local-gadget:
-    name: Build local-gadget
-    # level: 0
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        local-gadget-target: [local-gadget-linux-amd64, local-gadget-linux-arm64]
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        cache: true
-      id: go
-    - name: Install debian packages
-      # ALERT This action must be run after code was checkout otherwise it will
-      # not find this file.
-      uses: ./.github/actions/install-debian-packages
-    - name: Build ${{ matrix.local-gadget-target }}
-      run: |
-        make ${{ matrix.local-gadget-target }}
+  #build-local-gadget:
+    #name: Build local-gadget
+    ## level: 0
+    #runs-on: ubuntu-latest
+    #strategy:
+      #matrix:
+        #local-gadget-target: [local-gadget-linux-amd64, local-gadget-linux-arm64]
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Setup go
+      #uses: actions/setup-go@v3
+      #with:
+        #go-version: ${{ env.GO_VERSION }}
+        #cache: true
+      #id: go
+    #- name: Install debian packages
+      ## ALERT This action must be run after code was checkout otherwise it will
+      ## not find this file.
+      #uses: ./.github/actions/install-debian-packages
+    #- name: Build ${{ matrix.local-gadget-target }}
+      #run: |
+        #make ${{ matrix.local-gadget-target }}
 
-        # Prepare assets for release and actions artifacts
-        platform=$(echo ${{ matrix.local-gadget-target }} | cut -d- -f3-4)
-        mkdir $platform
-        cp ${{ matrix.local-gadget-target }} $platform/local-gadget
-        cp LICENSE $platform/
-        tar --sort=name --owner=root:0 --group=root:0 \
-          -czf ${{ matrix.local-gadget-target }}.tar.gz -C $platform \
-          local-gadget LICENSE
-        rm -rf $platform
-    - name: Add ${{ matrix.local-gadget-target }}.tar.gz as artifact.
-      uses: actions/upload-artifact@master
-      with:
-        name: ${{ matrix.local-gadget-target }}-tar-gz
-        path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.local-gadget-target }}.tar.gz
+        ## Prepare assets for release and actions artifacts
+        #platform=$(echo ${{ matrix.local-gadget-target }} | cut -d- -f3-4)
+        #mkdir $platform
+        #cp ${{ matrix.local-gadget-target }} $platform/local-gadget
+        #cp LICENSE $platform/
+        #tar --sort=name --owner=root:0 --group=root:0 \
+          #-czf ${{ matrix.local-gadget-target }}.tar.gz -C $platform \
+          #local-gadget LICENSE
+        #rm -rf $platform
+    #- name: Add ${{ matrix.local-gadget-target }}.tar.gz as artifact.
+      #uses: actions/upload-artifact@master
+      #with:
+        #name: ${{ matrix.local-gadget-target }}-tar-gz
+        #path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.local-gadget-target }}.tar.gz
 
-  build-gadget-container-images:
-    name: Build gadget container images
-    # level: 0
-    runs-on: ubuntu-latest
-    permissions:
-      # allow publishing container image
-      # in case of public fork repo/packages permissions will always be read
-      contents: read
-      packages: write
-    outputs:
-      digest-default-amd64: ${{ steps.published-gadget-container-images.outputs.default-amd64 }}
-      digest-default-arm64: ${{ steps.published-gadget-container-images.outputs.default-arm64 }}
-      digest-core-amd64: ${{ steps.published-gadget-container-images.outputs.core-amd64 }}
-      digest-core-arm64: ${{ steps.published-gadget-container-images.outputs.core-arm64 }}
-    strategy:
-      matrix:
-        type: [default, core]
-        os: [ linux ]
-        # For the moment, we only support these two platforms.
-        platform: [ arm64, amd64 ]
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v2
-    - name: Cache Docker layers
-      uses: actions/cache@v3.0.11
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-docker-${{ matrix.type }}-${{ hashFiles('Dockerfiles/gadget-${{ matrix.type }}.Dockerfile') }}
-        restore-keys: |
-          ${{ runner.os }}-docker-${{ matrix.type }}-
-    - name: Login to Container Registry
-      uses: docker/login-action@v2
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Set container repository and determine image tag
-      id: set-repo-determine-image-tag
-      uses: ./.github/actions/set-container-repo-and-determine-image-tag
-      with:
-        registry: ${{ env.REGISTRY }}
-        container-image: ${{ env.CONTAINER_REPO }}
-        co-re: ${{ matrix.type == 'core' }}
-    - name: Build gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: docker/build-push-action@v3
-      with:
-        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
-        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
-        build-args: |
-          ENABLE_BTFGEN=true
-        outputs: type=docker,dest=/tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
-        tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-        cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache-docker
-        platforms: ${{ matrix.os }}/${{ matrix.platform }}
-    - name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: actions/upload-artifact@master
-      with:
-        name: gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
-        path: /tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
-        retention-days: 1
-    # build time will not be increased with this workflow because of internal cache
-    # buildx is used here since it allows push-by-digest to avoid platform specific tags
-    - name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image to registry
-      id: publish-gadget-container-images
-      if: github.event_name != 'pull_request'
-      uses: docker/build-push-action@v3
-      with:
-        context: /home/runner/work/inspektor-gadget/inspektor-gadget/
-        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
-        build-args: |
-          ENABLE_BTFGEN=true
-        outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
-        cache-from: type=local,src=/tmp/.buildx-cache-docker
-        cache-to: type=local,dest=/tmp/.buildx-cache-registry
-        platforms: ${{ matrix.os }}/${{ matrix.platform }}
-    - name: Save gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image digest output
-      id: published-gadget-container-images
-      if: github.event_name != 'pull_request'
-      run: |
-          echo "${{ matrix.type }}-${{ matrix.platform }}=${{ steps.publish-gadget-container-images.outputs.digest }}" >> $GITHUB_OUTPUT
+  #build-gadget-container-images:
+    #name: Build gadget container images
+    ## level: 0
+    #runs-on: ubuntu-latest
+    #permissions:
+      ## allow publishing container image
+      ## in case of public fork repo/packages permissions will always be read
+      #contents: read
+      #packages: write
+    #outputs:
+      #digest-default-amd64: ${{ steps.published-gadget-container-images.outputs.default-amd64 }}
+      #digest-default-arm64: ${{ steps.published-gadget-container-images.outputs.default-arm64 }}
+      #digest-core-amd64: ${{ steps.published-gadget-container-images.outputs.core-amd64 }}
+      #digest-core-arm64: ${{ steps.published-gadget-container-images.outputs.core-arm64 }}
+    #strategy:
+      #matrix:
+        #type: [default, core]
+        #os: [ linux ]
+        ## For the moment, we only support these two platforms.
+        #platform: [ arm64, amd64 ]
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Set up QEMU
+      #uses: docker/setup-qemu-action@v2
+    #- name: Set up Docker Buildx
+      #id: buildx
+      #uses: docker/setup-buildx-action@v2
+    #- name: Cache Docker layers
+      #uses: actions/cache@v3.0.11
+      #with:
+        #path: /tmp/.buildx-cache
+        #key: ${{ runner.os }}-docker-${{ matrix.type }}-${{ hashFiles('Dockerfiles/gadget-${{ matrix.type }}.Dockerfile') }}
+        #restore-keys: |
+          #${{ runner.os }}-docker-${{ matrix.type }}-
+    #- name: Login to Container Registry
+      #uses: docker/login-action@v2
+      #with:
+        #registry: ${{ env.REGISTRY }}
+        #username: ${{ github.actor }}
+        #password: ${{ secrets.GITHUB_TOKEN }}
+    #- name: Set container repository and determine image tag
+      #id: set-repo-determine-image-tag
+      #uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      #with:
+        #registry: ${{ env.REGISTRY }}
+        #container-image: ${{ env.CONTAINER_REPO }}
+        #co-re: ${{ matrix.type == 'core' }}
+    #- name: Build gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
+      #uses: docker/build-push-action@v3
+      #with:
+        #context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        #file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
+        #build-args: |
+          #ENABLE_BTFGEN=true
+        #outputs: type=docker,dest=/tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+        #tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        #cache-from: type=local,src=/tmp/.buildx-cache
+        #cache-to: type=local,dest=/tmp/.buildx-cache-docker
+        #platforms: ${{ matrix.os }}/${{ matrix.platform }}
+    #- name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
+      #uses: actions/upload-artifact@master
+      #with:
+        #name: gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+        #path: /tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+        #retention-days: 1
+    ## build time will not be increased with this workflow because of internal cache
+    ## buildx is used here since it allows push-by-digest to avoid platform specific tags
+    #- name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image to registry
+      #id: publish-gadget-container-images
+      #if: github.event_name != 'pull_request'
+      #uses: docker/build-push-action@v3
+      #with:
+        #context: /home/runner/work/inspektor-gadget/inspektor-gadget/
+        #file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
+        #build-args: |
+          #ENABLE_BTFGEN=true
+        #outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
+        #cache-from: type=local,src=/tmp/.buildx-cache-docker
+        #cache-to: type=local,dest=/tmp/.buildx-cache-registry
+        #platforms: ${{ matrix.os }}/${{ matrix.platform }}
+    #- name: Save gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image digest output
+      #id: published-gadget-container-images
+      #if: github.event_name != 'pull_request'
+      #run: |
+          #echo "${{ matrix.type }}-${{ matrix.platform }}=${{ steps.publish-gadget-container-images.outputs.digest }}" >> $GITHUB_OUTPUT
 
-  publish-gadget-images-manifest:
-    name: Publish gadget container images manifest
-    # level: 1
-    if: github.event_name != 'pull_request'
-    needs: build-gadget-container-images
-    runs-on: ubuntu-latest
-    permissions:
-      # allow publishing container image
-      # in case of public fork repo/packages permissions will always be read
-      contents: read
-      packages: write
-    strategy:
-      matrix:
-        type: [ default, core ]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Login to Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set container repository and determine image tag
-        id: set-repo-determine-image-tag
-        uses: ./.github/actions/set-container-repo-and-determine-image-tag
-        with:
-          registry: ${{ env.REGISTRY }}
-          container-image: ${{ env.CONTAINER_REPO }}
-          co-re: ${{ matrix.type == 'core' }}
-      - name: Publish the manifest list
-        run: |
-          if [[ "${{ matrix.type }}" == "core" ]]; then
-            docker buildx imagetools create \
-              -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
-              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-amd64 }} \
-              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-arm64 }}
-          fi
+  #publish-gadget-images-manifest:
+    #name: Publish gadget container images manifest
+    ## level: 1
+    #if: github.event_name != 'pull_request'
+    #needs: build-gadget-container-images
+    #runs-on: ubuntu-latest
+    #permissions:
+      ## allow publishing container image
+      ## in case of public fork repo/packages permissions will always be read
+      #contents: read
+      #packages: write
+    #strategy:
+      #matrix:
+        #type: [ default, core ]
+    #steps:
+      #- uses: actions/checkout@v3
+      #- name: Login to Container Registry
+        #uses: docker/login-action@v2
+        #with:
+          #registry: ghcr.io
+          #username: ${{ github.actor }}
+          #password: ${{ secrets.GITHUB_TOKEN }}
+      #- name: Set container repository and determine image tag
+        #id: set-repo-determine-image-tag
+        #uses: ./.github/actions/set-container-repo-and-determine-image-tag
+        #with:
+          #registry: ${{ env.REGISTRY }}
+          #container-image: ${{ env.CONTAINER_REPO }}
+          #co-re: ${{ matrix.type == 'core' }}
+      #- name: Publish the manifest list
+        #run: |
+          #if [[ "${{ matrix.type }}" == "core" ]]; then
+            #docker buildx imagetools create \
+              #-t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
+              #${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-amd64 }} \
+              #${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-arm64 }}
+          #fi
 
-          if [[ "${{ matrix.type }}" == "default" ]]; then
-            docker buildx imagetools create \
-              -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
-              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-amd64 }} \
-              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-arm64 }}
-          fi
+          #if [[ "${{ matrix.type }}" == "default" ]]; then
+            #docker buildx imagetools create \
+              #-t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
+              #${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-amd64 }} \
+              #${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-arm64 }}
+          #fi
 
-  build-examples:
-    name: Build examples
-    # level: 0
-    runs-on: ubuntu-latest
-    permissions:
-      # allow publishing container image
-      # in case of public fork repo/packages permissions will always be read
-      contents: read
-      packages: write
-    strategy:
-      matrix:
-        example: [runc-hook, kube-container-collection]
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v2
-    - name: Login to Container Registry
-      uses: docker/login-action@v2
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Set container repository and determine image tag
-      id: set-repo-determine-image-tag
-      uses: ./.github/actions/set-container-repo-and-determine-image-tag
-      with:
-        registry: ${{ env.REGISTRY }}
-        container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
-    - name: Build example container
-      uses: docker/build-push-action@v3
-      with:
-        context: /home/runner/work/inspektor-gadget/inspektor-gadget
-        file: /home/runner/work/inspektor-gadget/inspektor-gadget/examples/${{ matrix.example }}/Dockerfile
-        push: ${{ secrets.PUSH_EXAMPLES == 'ENABLE_PUSH_EXAMPLES' }}
-        tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}-${{ matrix.example }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+  #build-examples:
+    #name: Build examples
+    ## level: 0
+    #runs-on: ubuntu-latest
+    #permissions:
+      ## allow publishing container image
+      ## in case of public fork repo/packages permissions will always be read
+      #contents: read
+      #packages: write
+    #strategy:
+      #matrix:
+        #example: [runc-hook, kube-container-collection]
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Set up Docker Buildx
+      #id: buildx
+      #uses: docker/setup-buildx-action@v2
+    #- name: Login to Container Registry
+      #uses: docker/login-action@v2
+      #with:
+        #registry: ${{ env.REGISTRY }}
+        #username: ${{ github.actor }}
+        #password: ${{ secrets.GITHUB_TOKEN }}
+    #- name: Set container repository and determine image tag
+      #id: set-repo-determine-image-tag
+      #uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      #with:
+        #registry: ${{ env.REGISTRY }}
+        #container-image: ${{ env.CONTAINER_REPO }}
+        #co-re: false
+    #- name: Build example container
+      #uses: docker/build-push-action@v3
+      #with:
+        #context: /home/runner/work/inspektor-gadget/inspektor-gadget
+        #file: /home/runner/work/inspektor-gadget/inspektor-gadget/examples/${{ matrix.example }}/Dockerfile
+        #push: ${{ secrets.PUSH_EXAMPLES == 'ENABLE_PUSH_EXAMPLES' }}
+        #tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}-${{ matrix.example }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
 
-  build-gadgets-examples:
-    name: Build Gadgets examples
-    # level: 0
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        cache: true
-    - name: Build example binaries
-      run: |
-        for dir in $(dirname $(find examples/gadgets -name README.md)); do
-          go build ./$dir;
-        done
+  #build-gadgets-examples:
+    #name: Build Gadgets examples
+    ## level: 0
+    #runs-on: ubuntu-latest
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Setup go
+      #uses: actions/setup-go@v3
+      #with:
+        #go-version: ${{ env.GO_VERSION }}
+        #cache: true
+    #- name: Build example binaries
+      #run: |
+        #for dir in $(dirname $(find examples/gadgets -name README.md)); do
+          #go build ./$dir;
+        #done
 
-  test-unit:
-    name: Unit tests
-    # level: 0
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        cache: true
-      id: go
-    - name: Install debian packages
-      uses: ./.github/actions/install-debian-packages
-    - name: Basic unit tests
-      run: |
-        make test
-    - name: Gadgets unit tests
-      run: |
-        make gadgets-unit-tests
-    - name: Controller unit tests
-      run: |
-        make controller-tests
+  #test-unit:
+    #name: Unit tests
+    ## level: 0
+    #runs-on: ubuntu-latest
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Setup go
+      #uses: actions/setup-go@v3
+      #with:
+        #go-version: ${{ env.GO_VERSION }}
+        #cache: true
+      #id: go
+    #- name: Install debian packages
+      #uses: ./.github/actions/install-debian-packages
+    #- name: Basic unit tests
+      #run: |
+        #make test
+    #- name: Gadgets unit tests
+      #run: |
+        #make gadgets-unit-tests
+    #- name: Controller unit tests
+      #run: |
+        #make controller-tests
 
-  test-local-gadget:
-    name: Unit tests for local-gadget
-    # level: 0
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        cache: true
-      id: go
-    - name: Install debian packages
-      uses: ./.github/actions/install-debian-packages
-    - name: Unit tests for local-gadget (as root)
-      run: |
-        KERNEL=$(uname -r)
-        ARCH=$(uname -m)
-        if test -f /sys/kernel/btf/vmlinux; then
-          echo "BTF is available at /sys/kernel/btf/vmlinux"
-        else
-          echo "BTF is not available: Trying BTFHub"
-          source /etc/os-release
-          URL="https://github.com/aquasecurity/btfhub-archive/raw/main/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
-          echo "Trying to download vmlinux from $URL"
+  #test-local-gadget:
+    #name: Unit tests for local-gadget
+    ## level: 0
+    #runs-on: ubuntu-latest
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Setup go
+      #uses: actions/setup-go@v3
+      #with:
+        #go-version: ${{ env.GO_VERSION }}
+        #cache: true
+      #id: go
+    #- name: Install debian packages
+      #uses: ./.github/actions/install-debian-packages
+    #- name: Unit tests for local-gadget (as root)
+      #run: |
+        #KERNEL=$(uname -r)
+        #ARCH=$(uname -m)
+        #if test -f /sys/kernel/btf/vmlinux; then
+          #echo "BTF is available at /sys/kernel/btf/vmlinux"
+        #else
+          #echo "BTF is not available: Trying BTFHub"
+          #source /etc/os-release
+          #URL="https://github.com/aquasecurity/btfhub-archive/raw/main/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
+          #echo "Trying to download vmlinux from $URL"
 
-          if [[ $(wget -S --spider "$URL" 2>&1 | grep 'HTTP/1.1 200 OK') ]]; then
-            wget -q -O /tmp/vmlinux.btf.tar.xz "$URL"
-            tar -xvf /tmp/vmlinux.btf.tar.xz
-            # Use objcopy to put the btf info in an ELF file as libbpf and cilium/ebpf
-            # by default check if there is an ELF file with the .BTF section at
-            # /boot/vmlinux-$KERNEL.
-            sudo objcopy --input binary --output elf64-little --rename-section .data=.BTF *.btf /boot/vmlinux-$KERNEL
-            rm *.btf
-            echo "vmlinux downloaded at /boot/vmlinux-$KERNEL"
-          else
-            echo "vmlinux not found"
-          fi
-        fi
+          #if [[ $(wget -S --spider "$URL" 2>&1 | grep 'HTTP/1.1 200 OK') ]]; then
+            #wget -q -O /tmp/vmlinux.btf.tar.xz "$URL"
+            #tar -xvf /tmp/vmlinux.btf.tar.xz
+            ## Use objcopy to put the btf info in an ELF file as libbpf and cilium/ebpf
+            ## by default check if there is an ELF file with the .BTF section at
+            ## /boot/vmlinux-$KERNEL.
+            #sudo objcopy --input binary --output elf64-little --rename-section .data=.BTF *.btf /boot/vmlinux-$KERNEL
+            #rm *.btf
+            #echo "vmlinux downloaded at /boot/vmlinux-$KERNEL"
+          #else
+            #echo "vmlinux not found"
+          #fi
+        #fi
 
-        make local-gadget-tests
+        #make local-gadget-tests
 
-  check-secrets:
-    name: Check repo secrets
-    # level: 0
-    runs-on: ubuntu-latest
-    outputs:
-      aro: ${{ steps.set_output.outputs.aro }}
-      aks: ${{ steps.set_output.outputs.aks }}
-    steps:
-      # Secrets cannot be used as if condition, use job output as workaround.
-      # https://github.com/actions/runner/issues/520
-      - id: set_output
-        run: |
-          if [[ "${{ secrets.OPENSHIFT_SERVER }}" != "" && \
-                "${{ secrets.OPENSHIFT_USER }}" != "" && \
-                "${{ secrets.OPENSHIFT_PASSWORD }}" != "" ]]; \
-          then
-            echo "Secrets to use an ARO cluster were configured in the repo"
-            echo "aro=true" >> $GITHUB_OUTPUT
-          else
-            echo "Secrets to use an ARO cluster were not configured in the repo"
-            echo "aro=false" >> $GITHUB_OUTPUT
-          fi
+  #check-secrets:
+    #name: Check repo secrets
+    ## level: 0
+    #runs-on: ubuntu-latest
+    #outputs:
+      #aro: ${{ steps.set_output.outputs.aro }}
+      #aks: ${{ steps.set_output.outputs.aks }}
+    #steps:
+      ## Secrets cannot be used as if condition, use job output as workaround.
+      ## https://github.com/actions/runner/issues/520
+      #- id: set_output
+        #run: |
+          #if [[ "${{ secrets.OPENSHIFT_SERVER }}" != "" && \
+                #"${{ secrets.OPENSHIFT_USER }}" != "" && \
+                #"${{ secrets.OPENSHIFT_PASSWORD }}" != "" ]]; \
+          #then
+            #echo "Secrets to use an ARO cluster were configured in the repo"
+            #echo "aro=true" >> $GITHUB_OUTPUT
+          #else
+            #echo "Secrets to use an ARO cluster were not configured in the repo"
+            #echo "aro=false" >> $GITHUB_OUTPUT
+          #fi
 
-          if [[ "${{ secrets.AZURE_AKS_CREDS }}" != "" && \
-                "${{ secrets.AZURE_AKS_RESOURCE_GROUP }}" != "" ]]; \
-          then
-            echo "Secrets to use an AKS cluster were configured in the repo"
-            echo "aks=true" >> $GITHUB_OUTPUT
-          else
-            echo "Secrets to use an AKS cluster were not configured in the repo"
-            echo "aks=false" >> $GITHUB_OUTPUT
-          fi
+          #if [[ "${{ secrets.AZURE_AKS_CREDS }}" != "" && \
+                #"${{ secrets.AZURE_AKS_RESOURCE_GROUP }}" != "" ]]; \
+          #then
+            #echo "Secrets to use an AKS cluster were configured in the repo"
+            #echo "aks=true" >> $GITHUB_OUTPUT
+          #else
+            #echo "Secrets to use an AKS cluster were not configured in the repo"
+            #echo "aks=false" >> $GITHUB_OUTPUT
+          #fi
 
-  check-readme-up-to-date:
-    name: Check that README is up to date
-    # level: 1
-    needs: build-kubectl-gadget
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
-      uses: actions/download-artifact@v3
-      with:
-        name: kubectl-gadget-linux-amd64-tar-gz
-        path: /home/runner/work/inspektor-gadget/
-    - name: Check that README is up to date
-      shell: bash
-      run: |
-        tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
+  #check-readme-up-to-date:
+    #name: Check that README is up to date
+    ## level: 1
+    #needs: build-kubectl-gadget
+    #runs-on: ubuntu-latest
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
+      #uses: actions/download-artifact@v3
+      #with:
+        #name: kubectl-gadget-linux-amd64-tar-gz
+        #path: /home/runner/work/inspektor-gadget/
+    #- name: Check that README is up to date
+      #shell: bash
+      #run: |
+        #tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
 
-        perl tools/check-readme.pl ./kubectl-gadget README.md
+        #perl tools/check-readme.pl ./kubectl-gadget README.md
 
-  test-integration-local-gadget:
-    name: Integration tests for local gadget
-    # level: 2
-    needs: [ test-unit, test-local-gadget, build-local-gadget ]
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        runtime: [ docker, containerd, cri-o ]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup go
-        uses: actions/setup-go@v3
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-      - name: Get local-gadget-linux-amd64.tar.gz from artifact.
-        uses: actions/download-artifact@v3
-        with:
-          name: local-gadget-linux-amd64-tar-gz
-          path: /home/runner/work/inspektor-gadget/
-      - name: Unpack local-gadget-linux-amd64.tar.gz
-        run: |
-          tar zxvf /home/runner/work/inspektor-gadget/local-gadget-linux-amd64.tar.gz
-          mv local-gadget local-gadget-linux-amd64
-      # https://github.com/kubernetes/minikube/issues/12928#issuecomment-1245458044
-      - name: Upgrade docker for ${{ matrix.runtime }}
-        if: matrix.runtime == 'cri-o'
-        run: |
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  test"
-          sudo apt-get update
-          sudo apt-get install docker-ce
-      - name: Run integration for container runtime ${{ matrix.runtime }}
-        run: |
-          make -C integration/local-gadget CONTAINER_RUNTIME=${{ matrix.runtime }} -o build setup test
+  #test-integration-local-gadget:
+    #name: Integration tests for local gadget
+    ## level: 2
+    #needs: [ test-unit, test-local-gadget, build-local-gadget ]
+    #runs-on: ubuntu-latest
+    #strategy:
+      #fail-fast: false
+      #matrix:
+        #runtime: [ docker, containerd, cri-o ]
+    #steps:
+      #- uses: actions/checkout@v3
+      #- name: Setup go
+        #uses: actions/setup-go@v3
+        #with:
+          #go-version: ${{ env.GO_VERSION }}
+          #cache: true
+      #- name: Get local-gadget-linux-amd64.tar.gz from artifact.
+        #uses: actions/download-artifact@v3
+        #with:
+          #name: local-gadget-linux-amd64-tar-gz
+          #path: /home/runner/work/inspektor-gadget/
+      #- name: Unpack local-gadget-linux-amd64.tar.gz
+        #run: |
+          #tar zxvf /home/runner/work/inspektor-gadget/local-gadget-linux-amd64.tar.gz
+          #mv local-gadget local-gadget-linux-amd64
+      ## https://github.com/kubernetes/minikube/issues/12928#issuecomment-1245458044
+      #- name: Upgrade docker for ${{ matrix.runtime }}
+        #if: matrix.runtime == 'cri-o'
+        #run: |
+          #curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          #sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  test"
+          #sudo apt-get update
+          #sudo apt-get install docker-ce
+      #- name: Run integration for container runtime ${{ matrix.runtime }}
+        #run: |
+          #make -C integration/local-gadget CONTAINER_RUNTIME=${{ matrix.runtime }} -o build setup test
 
-  test-integration-aks:
-    name: Integration tests on AKS
-    # level: 2
-    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images, publish-gadget-images-manifest]
-    if: needs.check-secrets.outputs.aks == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os-sku: [Ubuntu]
-        arch: [amd64, arm64]
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        cache: true
-    - name: Set container repository and determine image tag
-      id: set-repo-determine-image-tag
-      uses: ./.github/actions/set-container-repo-and-determine-image-tag
-      with:
-        registry: ${{ env.REGISTRY }}
-        container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
-    - uses: azure/login@v1
-      name: Login to Azure
-      with:
-        creds: ${{ secrets.AZURE_AKS_CREDS }}
-    - name: Craft cluster name
-      shell: bash
-      run: |
-        echo "CLUSTER_NAME=${{ env.AZURE_AKS_CLUSTER_PREFIX }}${{ matrix.arch }}-${{ matrix.os-sku }}" >> $GITHUB_ENV
-    - name: Create AKS cluster ${{ env.CLUSTER_NAME }}
-      shell: bash
-      run: |
-        node_size='Standard_D2s_v5'
-        if [ ${{ matrix.arch }} = 'arm64' ]; then
-          # 'p' means the node size corresponds to arm64 hardware.
-          node_size='Standard_D2ps_v5'
-        fi
+  #test-integration-aks:
+    #name: Integration tests on AKS
+    ## level: 2
+    #needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images, publish-gadget-images-manifest]
+    #if: needs.check-secrets.outputs.aks == 'true'
+    #runs-on: ubuntu-latest
+    #strategy:
+      #matrix:
+        #os-sku: [Ubuntu]
+        #arch: [amd64, arm64]
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Setup go
+      #uses: actions/setup-go@v3
+      #with:
+        #go-version: ${{ env.GO_VERSION }}
+        #cache: true
+    #- name: Set container repository and determine image tag
+      #id: set-repo-determine-image-tag
+      #uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      #with:
+        #registry: ${{ env.REGISTRY }}
+        #container-image: ${{ env.CONTAINER_REPO }}
+        #co-re: false
+    #- uses: azure/login@v1
+      #name: Login to Azure
+      #with:
+        #creds: ${{ secrets.AZURE_AKS_CREDS }}
+    #- name: Craft cluster name
+      #shell: bash
+      #run: |
+        #echo "CLUSTER_NAME=${{ env.AZURE_AKS_CLUSTER_PREFIX }}${{ matrix.arch }}-${{ matrix.os-sku }}" >> $GITHUB_ENV
+    #- name: Create AKS cluster ${{ env.CLUSTER_NAME }}
+      #shell: bash
+      #run: |
+        #node_size='Standard_D2s_v5'
+        #if [ ${{ matrix.arch }} = 'arm64' ]; then
+          ## 'p' means the node size corresponds to arm64 hardware.
+          #node_size='Standard_D2ps_v5'
+        #fi
 
-        # Let's keep thing in the US to avoid data crossing the Atlantic as
-        # GitHub data centers are in the US:
-        # https://github.blog/2017-10-12-evolution-of-our-data-centers/
-        az aks create -l westcentralus -g ${{ secrets.AZURE_AKS_RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} -s $node_size --os-sku ${{ matrix.os-sku }} --no-ssh-key
-    - uses: azure/aks-set-context@v3
-      name: Set AKS cluster ${{ env.CLUSTER_NAME }} context
-      with:
-        cluster-name: ${{ env.CLUSTER_NAME }}
-        resource-group: ${{ secrets.AZURE_AKS_RESOURCE_GROUP }}
-        admin: false
-    - name: Run integration tests
-      uses: ./.github/actions/run-integration-tests
-      with:
-        kubernetes_distribution: "aks-${{ matrix.os-sku }}"
-        kubernetes_architecture: "${{ matrix.arch }}"
-        container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
-        image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-    - name: Delete AKS cluster ${{ env.CLUSTER_NAME }}
-      if: always()
-      shell: bash
-      run: |
-        az aks delete -g ${{ secrets.AZURE_AKS_RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --no-wait --yes
+        ## Let's keep thing in the US to avoid data crossing the Atlantic as
+        ## GitHub data centers are in the US:
+        ## https://github.blog/2017-10-12-evolution-of-our-data-centers/
+        #az aks create -l westcentralus -g ${{ secrets.AZURE_AKS_RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} -s $node_size --os-sku ${{ matrix.os-sku }} --no-ssh-key
+    #- uses: azure/aks-set-context@v3
+      #name: Set AKS cluster ${{ env.CLUSTER_NAME }} context
+      #with:
+        #cluster-name: ${{ env.CLUSTER_NAME }}
+        #resource-group: ${{ secrets.AZURE_AKS_RESOURCE_GROUP }}
+        #admin: false
+    #- name: Run integration tests
+      #uses: ./.github/actions/run-integration-tests
+      #with:
+        #kubernetes_distribution: "aks-${{ matrix.os-sku }}"
+        #kubernetes_architecture: "${{ matrix.arch }}"
+        #container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        #image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+    #- name: Delete AKS cluster ${{ env.CLUSTER_NAME }}
+      #if: always()
+      #shell: bash
+      #run: |
+        #az aks delete -g ${{ secrets.AZURE_AKS_RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --no-wait --yes
 
-  # Integration tests for ARO are separated from others distributions because it
-  # is a pre-created cluster. It implies that we need to use a concurrency group
-  # to ensure that only one test-integration-aro job runs at a time so that we
-  # never try to use IG on that unique ARO cluster from different workflow runs.
-  test-integration-aro:
-    name: Integration tests on ARO
-    # level: 2
-    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images, publish-gadget-images-manifest]
-    # Run this job only if an ARO cluster is available on repo secrets. See
-    # docs/ci.md for further details.
-    if: needs.check-secrets.outputs.aro == 'true'
-    runs-on: ubuntu-latest
-    concurrency:
-      group: no-simultaneous-test-integration-aro
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        cache: true
-    - name: Authenticate and set ARO cluster context
-      # NOTE: This action generates the Kubernetes config file in the current
-      # directory. Therefore, it must be run after checking out code otherwise
-      # the file will be cleaned up.
-      uses: redhat-actions/oc-login@v1
-      with:
-        # API Server URL
-        openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
-        # Credentials (TODO: Use a functional Service Account, see issue #574)
-        openshift_username: ${{ secrets.OPENSHIFT_USER }}
-        openshift_password: ${{ secrets.OPENSHIFT_PASSWORD }}
-    - name: Set container repository and determine image tag
-      id: set-repo-determine-image-tag
-      uses: ./.github/actions/set-container-repo-and-determine-image-tag
-      with:
-        registry: ${{ env.REGISTRY }}
-        container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
-    - name: Run integration tests
-      uses: ./.github/actions/run-integration-tests
-      with:
-        kubernetes_distribution: "aro"
-        kubernetes_architecture: "amd64"
-        container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
-        image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+  ## Integration tests for ARO are separated from others distributions because it
+  ## is a pre-created cluster. It implies that we need to use a concurrency group
+  ## to ensure that only one test-integration-aro job runs at a time so that we
+  ## never try to use IG on that unique ARO cluster from different workflow runs.
+  #test-integration-aro:
+    #name: Integration tests on ARO
+    ## level: 2
+    #needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images, publish-gadget-images-manifest]
+    ## Run this job only if an ARO cluster is available on repo secrets. See
+    ## docs/ci.md for further details.
+    #if: needs.check-secrets.outputs.aro == 'true'
+    #runs-on: ubuntu-latest
+    #concurrency:
+      #group: no-simultaneous-test-integration-aro
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Setup go
+      #uses: actions/setup-go@v3
+      #with:
+        #go-version: ${{ env.GO_VERSION }}
+        #cache: true
+    #- name: Authenticate and set ARO cluster context
+      ## NOTE: This action generates the Kubernetes config file in the current
+      ## directory. Therefore, it must be run after checking out code otherwise
+      ## the file will be cleaned up.
+      #uses: redhat-actions/oc-login@v1
+      #with:
+        ## API Server URL
+        #openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
+        ## Credentials (TODO: Use a functional Service Account, see issue #574)
+        #openshift_username: ${{ secrets.OPENSHIFT_USER }}
+        #openshift_password: ${{ secrets.OPENSHIFT_PASSWORD }}
+    #- name: Set container repository and determine image tag
+      #id: set-repo-determine-image-tag
+      #uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      #with:
+        #registry: ${{ env.REGISTRY }}
+        #container-image: ${{ env.CONTAINER_REPO }}
+        #co-re: false
+    #- name: Run integration tests
+      #uses: ./.github/actions/run-integration-tests
+      #with:
+        #kubernetes_distribution: "aro"
+        #kubernetes_architecture: "amd64"
+        #container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        #image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
 
-  test-integration-minikube:
-    name: Integration tests
-    # level: 1
-    needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        type: [default, core]
-        driver: [none, docker]
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup go
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.GO_VERSION }}
-        cache: true
-    - name: Setup Minikube
-      uses: manusa/actions-setup-minikube@v2.7.1
-      with:
-        minikube version: 'v1.25.2'
-        kubernetes version: 'v1.23.0'
-        github token: ${{ secrets.GITHUB_TOKEN }}
-        driver: ${{ matrix.driver }}
-        # When using docker driver, run the integration tests on two nodes.
-        # As GitHub Runner has only 2 CPU and 7 GB of DRAM, we cannot use a big
-        # number here.
-        start args: ${{ matrix.driver == 'docker' && '-n 2' || '' }}
-    - name: Get gadget-container-image-${{ matrix.type }}-linux-amd64.tar from artifact.
-      uses: actions/download-artifact@v3
-      with:
-        name: gadget-container-image-${{ matrix.type }}-linux-amd64.tar
-        path: /home/runner/work/inspektor-gadget/
-    - name: Prepare minikube by loading gadget-container-image-${{ matrix.type }}-linux-amd64.tar
-      run: |
-        minikube image load /home/runner/work/inspektor-gadget/gadget-container-image-${{ matrix.type }}-linux-amd64.tar
-    - name: Set container repository and determine image tag
-      id: set-repo-determine-image-tag
-      uses: ./.github/actions/set-container-repo-and-determine-image-tag
-      with:
-        registry: ${{ env.REGISTRY }}
-        container-image: ${{ env.CONTAINER_REPO }}
-        co-re: ${{ matrix.type == 'core' }}
-    - name: Run integration tests
-      uses: ./.github/actions/run-integration-tests
-      with:
-        kubernetes_distribution: "minikube-github"
-        kubernetes_architecture: "amd64"
-        container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
-        image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+  #test-integration-minikube:
+    #name: Integration tests
+    ## level: 1
+    #needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images]
+    #runs-on: ubuntu-latest
+    #strategy:
+      #matrix:
+        #type: [default, core]
+        #driver: [none, docker]
+    #steps:
+    #- uses: actions/checkout@v3
+    #- name: Setup go
+      #uses: actions/setup-go@v3
+      #with:
+        #go-version: ${{ env.GO_VERSION }}
+        #cache: true
+    #- name: Setup Minikube
+      #uses: manusa/actions-setup-minikube@v2.7.1
+      #with:
+        #minikube version: 'v1.25.2'
+        #kubernetes version: 'v1.23.0'
+        #github token: ${{ secrets.GITHUB_TOKEN }}
+        #driver: ${{ matrix.driver }}
+        ## When using docker driver, run the integration tests on two nodes.
+        ## As GitHub Runner has only 2 CPU and 7 GB of DRAM, we cannot use a big
+        ## number here.
+        #start args: ${{ matrix.driver == 'docker' && '-n 2' || '' }}
+    #- name: Get gadget-container-image-${{ matrix.type }}-linux-amd64.tar from artifact.
+      #uses: actions/download-artifact@v3
+      #with:
+        #name: gadget-container-image-${{ matrix.type }}-linux-amd64.tar
+        #path: /home/runner/work/inspektor-gadget/
+    #- name: Prepare minikube by loading gadget-container-image-${{ matrix.type }}-linux-amd64.tar
+      #run: |
+        #minikube image load /home/runner/work/inspektor-gadget/gadget-container-image-${{ matrix.type }}-linux-amd64.tar
+    #- name: Set container repository and determine image tag
+      #id: set-repo-determine-image-tag
+      #uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      #with:
+        #registry: ${{ env.REGISTRY }}
+        #container-image: ${{ env.CONTAINER_REPO }}
+        #co-re: ${{ matrix.type == 'core' }}
+    #- name: Run integration tests
+      #uses: ./.github/actions/run-integration-tests
+      #with:
+        #kubernetes_distribution: "minikube-github"
+        #kubernetes_architecture: "amd64"
+        #container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
+        #image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
 
-  release:
-    name: Release
-    # level: 3
-    needs:
-      - documentation-checks
-      - lint
-      - test-integration-minikube
-      - test-integration-aks
-      - test-integration-aro
-      - test-local-gadget
-      - check-readme-up-to-date
-      - build-examples
-      - build-gadgets-examples
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-    - uses: actions/checkout@v3
-    - id: set-repo-determine-image-tag
-      uses: ./.github/actions/set-container-repo-and-determine-image-tag
-      with:
-        registry: ${{ env.REGISTRY }}
-        container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
-    - name: Build release YAML
-      run: |
-        export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-        export IMAGE="${{ env.REGISTRY }}/${{ env.RELEASE_CONTAINER_REPO }}:${IMAGE_TAG}"
+  #release:
+    #name: Release
+    ## level: 3
+    #needs:
+      #- documentation-checks
+      #- lint
+      #- test-integration-minikube
+      #- test-integration-aks
+      #- test-integration-aro
+      #- test-local-gadget
+      #- check-readme-up-to-date
+      #- build-examples
+      #- build-gadgets-examples
+    #runs-on: ubuntu-latest
+    #permissions:
+      #contents: write
+    #if: startsWith(github.ref, 'refs/tags/v')
+    #steps:
+    #- uses: actions/checkout@v3
+    #- id: set-repo-determine-image-tag
+      #uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      #with:
+        #registry: ${{ env.REGISTRY }}
+        #container-image: ${{ env.CONTAINER_REPO }}
+        #co-re: false
+    #- name: Build release YAML
+      #run: |
+        #export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        #export IMAGE="${{ env.REGISTRY }}/${{ env.RELEASE_CONTAINER_REPO }}:${IMAGE_TAG}"
 
-        # Use echo of cat to avoid printing a new line between files.
-        echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml) > inspektor-gadget.yaml
+        ## Use echo of cat to avoid printing a new line between files.
+        #echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml) > inspektor-gadget.yaml
 
-        perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${GITHUB_REF_NAME}.yaml
-    - name: Create Release
-      id: create_release
-      uses: softprops/action-gh-release@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        name: Release ${{ github.ref }}
-    - name: Get all artifacts.
-      uses: actions/download-artifact@v3
-    - name: Rename all artifacts to *-${{ env.GITHUB_REF_NAME }}.tar.gz
-      shell: bash
-      run: |
-        for i in *-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz; do
-          mv $i $(dirname $i)/$(basename $i .tar.gz)-${GITHUB_REF_NAME}.tar.gz
-        done
-    - name: Upload Gadget Release *.tar.gz
-      uses: csexton/release-asset-action@v2
-      with:
-        pattern: "*-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz"
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        release-url: ${{ steps.create_release.outputs.upload_url }}
-    - name: Upload YAML
-      uses: csexton/release-asset-action@v2
-      with:
-        file: inspektor-gadget-${GITHUB_REF_NAME}.yaml
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        release-url: ${{ steps.create_release.outputs.upload_url }}
-    - name: Update new version in krew-index
-      if: github.repository == 'inspektor-gadget/inspektor-gadget'
-      uses: rajatjindal/krew-release-bot@v0.0.43
-      with:
-        workdir: /home/runner/work/inspektor-gadget/inspektor-gadget
-        krew_template_file: .krew.yaml
+        #perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${GITHUB_REF_NAME}.yaml
+    #- name: Create Release
+      #id: create_release
+      #uses: softprops/action-gh-release@v1
+      #with:
+        #token: ${{ secrets.GITHUB_TOKEN }}
+        #name: Release ${{ github.ref }}
+    #- name: Get all artifacts.
+      #uses: actions/download-artifact@v3
+    #- name: Rename all artifacts to *-${{ env.GITHUB_REF_NAME }}.tar.gz
+      #shell: bash
+      #run: |
+        #for i in *-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz; do
+          #mv $i $(dirname $i)/$(basename $i .tar.gz)-${GITHUB_REF_NAME}.tar.gz
+        #done
+    #- name: Upload Gadget Release *.tar.gz
+      #uses: csexton/release-asset-action@v2
+      #with:
+        #pattern: "*-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz"
+        #github-token: ${{ secrets.GITHUB_TOKEN }}
+        #release-url: ${{ steps.create_release.outputs.upload_url }}
+    #- name: Upload YAML
+      #uses: csexton/release-asset-action@v2
+      #with:
+        #file: inspektor-gadget-${GITHUB_REF_NAME}.yaml
+        #github-token: ${{ secrets.GITHUB_TOKEN }}
+        #release-url: ${{ steps.create_release.outputs.upload_url }}
+    #- name: Update new version in krew-index
+      #if: github.repository == 'inspektor-gadget/inspektor-gadget'
+      #uses: rajatjindal/krew-release-bot@v0.0.43
+      #with:
+        #workdir: /home/runner/work/inspektor-gadget/inspektor-gadget
+        #krew_template_file: .krew.yaml
