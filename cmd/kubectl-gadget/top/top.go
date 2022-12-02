@@ -30,6 +30,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 )
 
@@ -56,15 +57,20 @@ func NewTopCmd() *cobra.Command {
 	return cmd
 }
 
-func addCommonTopFlags(
+func addCommonTopFlags[Stats any](
 	command *cobra.Command,
 	commonTopFlags *CommonTopFlags,
 	commonFlags *utils.CommonFlags,
-	sortBySlice []string,
+	colMap columns.ColumnMap[Stats],
 	sortBySliceDefault []string,
 ) {
 	command.Flags().IntVarP(&commonTopFlags.MaxRows, "max-rows", "r", top.MaxRowsDefault, "Maximum rows to print")
-	command.Flags().StringVarP(&commonTopFlags.SortBy, "sort", "", strings.Join(sortBySliceDefault, ","), fmt.Sprintf("Sort by column. Join multiple columsn with ','. Prefix with '-' to sort descending for that column. Columns: (%s)", strings.Join(sortBySlice, ", ")))
+	validCols, _ := sort.FilterSortableColumns(colMap, colMap.GetColumnNames())
+	command.Flags().StringVarP(
+		&commonTopFlags.SortBy, "sort",
+		"",
+		strings.Join(sortBySliceDefault, ","),
+		fmt.Sprintf("Sort by columns. Join multiple columns with ','. Prefix a column with '-' to sort in descending order. Available columns: (%s)", strings.Join(validCols, ", ")))
 	utils.AddCommonFlags(command, commonFlags)
 }
 
@@ -74,7 +80,7 @@ type TopParser[Stats any] interface {
 	// BuildColumnsHeader returns a header to be used when the user requests to
 	// present the output in columns.
 	BuildColumnsHeader() string
-	TransformStats(*Stats) string
+	TransformIntoColumns(*Stats) string
 }
 
 // TopGadget represents a gadget belonging to the top category.
@@ -103,7 +109,7 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 	}
 
 	sortByColumns := strings.Split(g.commonTopFlags.SortBy, ",")
-	_, invalidCols := g.colMap.VerifyColumnNames(sortByColumns)
+	_, invalidCols := sort.FilterSortableColumns(g.colMap, sortByColumns)
 
 	if len(invalidCols) > 0 {
 		return commonutils.WrapInErrInvalidArg("--sort", fmt.Errorf("invalid columns to sort by: %q", strings.Join(invalidCols, ",")))
@@ -211,6 +217,20 @@ func (g *TopGadget[Stats]) PrintStats() {
 		if idx == g.commonTopFlags.MaxRows {
 			break
 		}
-		fmt.Println(g.parser.TransformStats(stat))
+
+		switch g.commonTopFlags.OutputConfig.OutputMode {
+		case commonutils.OutputModeJSON:
+			b, err := json.Marshal(stat)
+			if err != nil {
+				fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
+				continue
+			}
+
+			fmt.Println(string(b))
+		case commonutils.OutputModeColumns:
+			fallthrough
+		case commonutils.OutputModeCustomColumns:
+			fmt.Println(g.parser.TransformIntoColumns(stat))
+		}
 	}
 }

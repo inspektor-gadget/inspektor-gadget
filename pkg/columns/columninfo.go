@@ -308,3 +308,13 @@ func (ci *Column[T]) IsEmbedded() bool {
 	}
 	return true
 }
+
+// IsVirtual returns true, if the column has direct reference to a field
+func (ci *Column[T]) IsVirtual() bool {
+	return ci.fieldIndex == virtualIndex
+}
+
+// HasCustomExtractor returns true, if the column has a user defined extractor set
+func (ci *Column[T]) HasCustomExtractor() bool {
+	return ci.Extractor != nil
+}

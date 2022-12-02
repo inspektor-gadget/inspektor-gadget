@@ -16,60 +16,16 @@ package top
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
 
-type BlockIOParser struct {
-	commonutils.BaseParser[types.Stats]
-
-	flags *CommonTopFlags
-}
-
 func newBlockIOCmd() *cobra.Command {
-	commonTopFlags := &CommonTopFlags{
-		CommonFlags: utils.CommonFlags{
-			OutputConfig: commonutils.OutputConfig{
-				// The columns that will be used in case the user does not specify
-				// which specific columns they want to print.
-				CustomColumns: []string{
-					"node",
-					"namespace",
-					"pod",
-					"container",
-					"pid",
-					"comm",
-					"r/w",
-					"major",
-					"minor",
-					"bytes",
-					"time",
-					"ios",
-				},
-			},
-		},
-	}
-
-	columnsWidth := map[string]int{
-		"node":      -16,
-		"namespace": -16,
-		"pod":       -30,
-		"container": -16,
-		"pid":       -7,
-		"comm":      -16,
-		"r/w":       -3,
-		"major":     -6,
-		"minor":     -6,
-		"bytes":     -7,
-		"time":      -8,
-		"ios":       -8,
-	}
+	var commonTopFlags CommonTopFlags
 
 	cols := types.GetColumns()
 
@@ -77,14 +33,14 @@ func newBlockIOCmd() *cobra.Command {
 		Use:   fmt.Sprintf("block-io [interval=%d]", top.IntervalDefault),
 		Short: "Periodically report block device I/O activity",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			parser := &BlockIOParser{
-				BaseParser: commonutils.NewBaseWidthParser[types.Stats](columnsWidth, &commonTopFlags.OutputConfig),
-				flags:      commonTopFlags,
+			parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonTopFlags.OutputConfig, types.GetColumns())
+			if err != nil {
+				return commonutils.WrapInErrParserCreate(err)
 			}
 
 			gadget := &TopGadget[types.Stats]{
 				name:           "biotop",
-				commonTopFlags: commonTopFlags,
+				commonTopFlags: &commonTopFlags,
 				parser:         parser,
 				nodeStats:      make(map[string][]*types.Stats),
 				colMap:         cols.GetColumnMap(),
@@ -95,50 +51,7 @@ func newBlockIOCmd() *cobra.Command {
 		Args: cobra.MaximumNArgs(1),
 	}
 
-	addCommonTopFlags(cmd, commonTopFlags, &commonTopFlags.CommonFlags, cols.GetColumnNames(), types.SortByDefault)
+	addCommonTopFlags(cmd, &commonTopFlags, &commonTopFlags.CommonFlags, cols.ColumnMap, types.SortByDefault)
 
 	return cmd
-}
-
-func (p *BlockIOParser) TransformStats(stats *types.Stats) string {
-	return p.Transform(stats, func(stats *types.Stats) string {
-		var sb strings.Builder
-
-		for _, col := range p.OutputConfig.CustomColumns {
-			switch col {
-			case "node":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Node))
-			case "namespace":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Namespace))
-			case "pod":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Pod))
-			case "container":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Container))
-			case "pid":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Pid))
-			case "comm":
-				sb.WriteString(fmt.Sprintf("%*s", p.ColumnsWidth[col], stats.Comm))
-			case "r/w":
-				rw := 'R'
-				if stats.Write {
-					rw = 'W'
-				}
-
-				sb.WriteString(fmt.Sprintf("%*c", p.ColumnsWidth[col], rw))
-			case "major":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Major))
-			case "minor":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Minor))
-			case "bytes":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Bytes))
-			case "time":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.MicroSecs))
-			case "ios":
-				sb.WriteString(fmt.Sprintf("%*d", p.ColumnsWidth[col], stats.Operations))
-			}
-			sb.WriteRune(' ')
-		}
-
-		return sb.String()
-	})
 }

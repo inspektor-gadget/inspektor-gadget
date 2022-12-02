@@ -42,7 +42,12 @@ func (csc *ColumnSorterCollection[T]) Sort(entries []*T) {
 		offs := s.column.GetOffset()
 		order := s.order
 
-		switch s.column.Kind() {
+		kind := s.column.Kind()
+		if s.column.HasCustomExtractor() {
+			kind = s.column.GetRaw(entries[0]).Kind()
+		}
+
+		switch kind {
 		case reflect.Int:
 			sortFunc = getLessFunc[int, T](entries, offs, order)
 		case reflect.Int8:
@@ -80,14 +85,11 @@ func (csc *ColumnSorterCollection[T]) Sort(entries []*T) {
 // Prepare prepares a sorter collection that can be re-used for multiple calls to Sort() for efficiency. Filter rules
 // will be applied from right to left (first rule has the highest priority).
 func Prepare[T any](cols columns.ColumnMap[T], sortBy []string) *ColumnSorterCollection[T] {
+	valid, _ := FilterSortableColumns(cols, sortBy)
+
 	sorters := make([]*columnSorter[T], 0, len(sortBy))
-	for i := len(sortBy) - 1; i >= 0; i-- {
-		sortField := sortBy[i]
-
-		if len(sortField) == 0 {
-			continue
-		}
-
+	for i := len(valid) - 1; i >= 0; i-- {
+		sortField := valid[i]
 		// Handle ordering
 		order := columns.OrderAsc
 		if sortField[0] == '-' {
@@ -95,16 +97,14 @@ func Prepare[T any](cols columns.ColumnMap[T], sortBy []string) *ColumnSorterCol
 			order = columns.OrderDesc
 		}
 
-		column, ok := cols.GetColumn(sortField)
-		if !ok {
-			continue
-		}
+		column, _ := cols.GetColumn(sortField)
 
 		sorters = append(sorters, &columnSorter[T]{
 			column: column,
 			order:  order,
 		})
 	}
+
 	return &ColumnSorterCollection[T]{
 		sorters: sorters,
 	}
@@ -132,4 +132,47 @@ func getLessFunc[OT constraints.Ordered, T any](array []*T, offs uintptr, order 
 		}
 		return !(columns.GetField[OT](array[i], offs) < columns.GetField[OT](array[j], offs)) != order
 	}
+}
+
+// CanSortBy returns true, if all requested sortBy arguments can be used for sorting
+// This is not the case for a virtual column, which has no underlying value type
+func CanSortBy[T any](cols columns.ColumnMap[T], sortBy []string) bool {
+	valid, _ := FilterSortableColumns(cols, sortBy)
+
+	return len(valid) == len(sortBy)
+}
+
+// FilterSortableColumns returns returns two lists, one containing the valid column names
+// and another containing the invalid column names.
+func FilterSortableColumns[T any](cols columns.ColumnMap[T], sortBy []string) ([]string, []string) {
+	valid := make([]string, 0, len(sortBy))
+	invalid := make([]string, 0)
+
+	for _, sortField := range sortBy {
+		if len(sortField) == 0 {
+			invalid = append(invalid, sortField)
+			continue
+		}
+
+		rawSortField := sortField
+		if rawSortField[0] == '-' {
+			rawSortField = rawSortField[1:]
+		}
+
+		column, ok := cols.GetColumn(rawSortField)
+		if !ok {
+			invalid = append(invalid, sortField)
+			continue
+		}
+
+		// Skip virtual columns, they have no underlying value to sort by
+		if column.IsVirtual() {
+			invalid = append(invalid, sortField)
+			continue
+		}
+
+		valid = append(valid, sortField)
+	}
+
+	return valid, invalid
 }

@@ -15,18 +15,11 @@
 package types
 
 import (
+	"fmt"
+
+	"github.com/docker/go-units"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-)
-
-type SortBy int
-
-const (
-	ALL SortBy = iota
-	READS
-	WRITES
-	RBYTES
-	WBYTES
 )
 
 const (
@@ -43,18 +36,30 @@ const (
 type Stats struct {
 	eventtypes.CommonData
 
+	Pid        uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Tid        uint32 `json:"tid,omitempty" column:"tid,template:pid,hide"`
+	Comm       string `json:"comm,omitempty" column:"comm,template:comm"`
 	Reads      uint64 `json:"reads,omitempty" column:"reads"`
 	Writes     uint64 `json:"writes,omitempty" column:"writes"`
 	ReadBytes  uint64 `json:"rbytes,omitempty" column:"rbytes"`
 	WriteBytes uint64 `json:"wbytes,omitempty" column:"wbytes"`
-	Pid        uint32 `json:"pid,omitempty" column:"pid"`
-	Tid        uint32 `json:"tid,omitempty" column:"tid"`
-	MountNsID  uint64 `json:"mountnsid,omitempty" column:"mountnsid"`
-	Filename   string `json:"filename,omitempty" column:"filename"`
-	Comm       string `json:"comm,omitempty" column:"comm"`
-	FileType   byte   `json:"fileType,omitempty" column:"fileType"` // R = Regular File, S = Socket, O = Other
+	MountNsID  uint64 `json:"mountnsid,omitempty" column:"mountnsid,template:ns,hide"`
+	FileType   byte   `json:"fileType,omitempty" column:"T,maxWidth:1"` // R = Regular File, S = Socket, O = Other
+	Filename   string `json:"filename,omitempty" column:"file"`
 }
 
 func GetColumns() *columns.Columns[Stats] {
-	return columns.MustCreateColumns[Stats]()
+	cols := columns.MustCreateColumns[Stats]()
+
+	cols.MustSetExtractor("rbytes", func(stats *Stats) (ret string) {
+		return fmt.Sprint(units.BytesSize(float64(stats.ReadBytes)))
+	})
+	cols.MustSetExtractor("wbytes", func(stats *Stats) (ret string) {
+		return fmt.Sprint(units.BytesSize(float64(stats.WriteBytes)))
+	})
+	cols.MustSetExtractor("T", func(stats *Stats) (ret string) {
+		return string(stats.FileType)
+	})
+
+	return cols
 }

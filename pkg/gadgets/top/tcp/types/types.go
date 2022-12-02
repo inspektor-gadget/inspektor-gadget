@@ -18,11 +18,12 @@ import (
 	"fmt"
 	"syscall"
 
+	"github.com/docker/go-units"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-var SortByDefault = []string{"-sent", "-received"}
+var SortByDefault = []string{"-sent", "-recv"}
 
 const (
 	PidParam    = "pid"
@@ -44,18 +45,54 @@ func ParseFilterByFamily(family string) (int32, error) {
 type Stats struct {
 	eventtypes.CommonData
 
-	Saddr     string `json:"saddr,omitempty" column:"saddr"`
-	Daddr     string `json:"daddr,omitempty" column:"daddr"`
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns"`
-	Pid       int32  `json:"pid,omitempty" column:"pid"`
-	Comm      string `json:"comm,omitempty" column:"comm"`
-	Sport     uint16 `json:"sport,omitempty" column:"sport"`
-	Dport     uint16 `json:"dport,omitempty" column:"dport"`
-	Family    uint16 `json:"family,omitempty" column:"family"`
-	Sent      uint64 `json:"sent,omitempty" column:"sent"`
-	Received  uint64 `json:"received,omitempty" column:"received"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns,hide"`
+	Pid       int32  `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
+	Family    uint16 `json:"family,omitempty" column:"ip,maxWidth:2"`
+	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr,hide"`
+	Daddr     string `json:"daddr,omitempty" column:"daddr,template:ipaddr,hide"`
+	Sport     uint16 `json:"sport,omitempty" column:"sport,template:ipport,hide"`
+	Dport     uint16 `json:"dport,omitempty" column:"dport,template:ipport,hide"`
+	Sent      uint64 `json:"sent,omitempty" column:"sent,order:1002"`
+	Received  uint64 `json:"received,omitempty" column:"recv,order:1003"`
 }
 
 func GetColumns() *columns.Columns[Stats] {
-	return columns.MustCreateColumns[Stats]()
+	cols := columns.MustCreateColumns[Stats]()
+
+	cols.MustSetExtractor("ip", func(stats *Stats) (ret string) {
+		if stats.Family == syscall.AF_INET {
+			return "4"
+		}
+		return "6"
+	})
+	cols.MustSetExtractor("sent", func(stats *Stats) (ret string) {
+		return fmt.Sprint(units.BytesSize(float64(stats.Sent)))
+	})
+	cols.MustSetExtractor("recv", func(stats *Stats) (ret string) {
+		return fmt.Sprint(units.BytesSize(float64(stats.Received)))
+	})
+
+	cols.MustAddColumn(columns.Column[Stats]{
+		Name:     "local",
+		MinWidth: 21, // 15(ipv4) + 1(:) + 5(port)
+		MaxWidth: 51, // 45(ipv4 mapped ipv6) + 1(:) + 5(port)
+		Visible:  true,
+		Order:    1000,
+		Extractor: func(s *Stats) string {
+			return fmt.Sprintf("%s:%d", s.Saddr, s.Sport)
+		},
+	})
+	cols.MustAddColumn(columns.Column[Stats]{
+		Name:     "remote",
+		MinWidth: 21, // 15(ipv4) + 1(:) + 5(port)
+		MaxWidth: 51, // 45(ipv4 mapped ipv6) + 1(:) + 5(port)
+		Visible:  true,
+		Order:    1000,
+		Extractor: func(s *Stats) string {
+			return fmt.Sprintf("%s:%d", s.Daddr, s.Dport)
+		},
+	})
+
+	return cols
 }

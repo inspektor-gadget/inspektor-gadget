@@ -23,5 +23,15 @@ for example sorts the array by the time column in descending order and afterward
 
 The "-" prefix means the sorter should use descending order. Sorting by multiple fields will be done from the last field
 to the first in a stable way - so the first column always gets the highest priority.
+
+Three special cases exist:
+ 1. Non-existent columns will be silently ignored.
+ 2. When a virtual column is selected as a column to sort by, that column will be silently ignored.
+ 3. A column with a custom extractor is allowed to sort by.
+    But the sorting function uses the underlying value instead of the result of the extractor function
+
+One can use sort.CanSortBy(columnMap, []string{"node", "-time"}) to check if any column will be silently ignored. For more
+information the function sort.FilterSortableColumns(columnMap, []string{"node", "-time"}) can be used, which returns two lists.
+One with all valid filterable columns and another one with the invalid columns
 */
 package sort
