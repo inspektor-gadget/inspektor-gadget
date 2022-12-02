@@ -14,8 +14,9 @@ runs:
       id: cache-debs
       with:
         path: "~/cache-debs"
-        # Update cache key if you add or update a package.
-        key: v4
+        # Any changes to this file or main workflow file will invalidate the
+        # cache.
+        key: ${{ hashFiles('.github/actions/install-debian-packages/action.yml', '.github/workflows/inspektor-gadget.yml') }}
     - name: Install debian packages
       shell: bash
       run: |
