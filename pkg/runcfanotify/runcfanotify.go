@@ -91,6 +91,8 @@ type RuncNotifier struct {
 	closed bool
 
 	wg sync.WaitGroup
+
+	pipeFds []int
 }
 
 // runcPaths is the list of paths where runc could be installed. Depending on
@@ -158,6 +160,7 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	n := &RuncNotifier{
 		callback:   callback,
 		containers: make(map[string]*runcContainer),
+		pipeFds:    []int{-1, -1},
 	}
 
 	runcBinaryNotify, err := initFanotify()
@@ -191,12 +194,17 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	}
 
 	n.wg.Add(2)
-	go n.watchRunc()
 	if pidfdOpenAvailable {
+		if err := unix.Pipe2(n.pipeFds, unix.O_NONBLOCK); err != nil {
+			runcBinaryNotify.File.Close()
+			return nil, fmt.Errorf("creating pipe: %w", err)
+		}
+
 		go n.watchContainersTermination()
 	} else {
 		go n.watchContainersTerminationFallback()
 	}
+	go n.watchRunc()
 
 	return n, nil
 }
@@ -240,13 +248,31 @@ func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containe
 
 	n.containers[containerID].pidfd = int(pidfd)
 
+	n.awakeWatchContainersTermination()
+
 	return nil
+}
+
+// awakeWatchContainersTermination writes to the pipe so
+// watchContainersTermination() unblocks waiting on poll() and can
+// update the list of the watched containers or return if the
+// runcnotifier instance was closed
+func (n *RuncNotifier) awakeWatchContainersTermination() {
+	if n.pipeFds[1] != -1 {
+		f := []byte{0}
+		unix.Write(n.pipeFds[1], f)
+	}
 }
 
 // watchContainerTermination waits until the container terminates using
 // pidfd_open (Linux >= 5.3), then sends a notification.
 func (n *RuncNotifier) watchContainersTermination() {
+	// Index used in the array of file descriptor we monitor
+	const pipeIndex = 0
+
 	defer n.wg.Done()
+
+	pipeFdR := n.pipeFds[0]
 
 	for {
 		if n.closed {
@@ -259,22 +285,25 @@ func (n *RuncNotifier) watchContainersTermination() {
 
 		n.mu.Lock()
 
-		fds := make([]unix.PollFd, len(n.containers))
+		fds := make([]unix.PollFd, len(n.containers)+1)
 		// array to create a relation between the fd position and the container
-		containersByIndex := make([]*runcContainer, len(n.containers))
+		containersByIndex := make([]*runcContainer, len(n.containers)+1)
 
 		i := 0
 
-		for _, c := range n.containers {
-			fds[i].Fd = int32(c.pidfd)
-			fds[i].Events = unix.POLLIN
+		fds[pipeIndex].Fd = int32(pipeFdR)
+		fds[pipeIndex].Events = unix.POLLIN
 
-			containersByIndex[i] = c
+		for _, c := range n.containers {
+			fds[i+1].Fd = int32(c.pidfd)
+			fds[i+1].Events = unix.POLLIN
+
+			containersByIndex[i+1] = c
 			i++
 		}
 		n.mu.Unlock()
 
-		count, err := unix.Poll(fds, 1000)
+		count, err := unix.Poll(fds, -1)
 		if err != nil && !errors.Is(err, unix.EINTR) {
 			log.Errorf("error polling pidfds: %s", err)
 			return
@@ -286,6 +315,13 @@ func (n *RuncNotifier) watchContainersTermination() {
 
 		for i, fd := range fds {
 			if fd.Revents == 0 {
+				continue
+			}
+
+			// if this is the pipe, read and continue processing
+			if i == pipeIndex {
+				r := make([]byte, 1)
+				unix.Read(int(fd.Fd), r)
 				continue
 			}
 
@@ -606,6 +642,12 @@ func (n *RuncNotifier) watchRuncIterate() (bool, error) {
 
 func (n *RuncNotifier) Close() {
 	n.closed = true
+	n.awakeWatchContainersTermination()
+	for _, fd := range n.pipeFds {
+		if fd != -1 {
+			unix.Close(fd)
+		}
+	}
 	n.runcBinaryNotify.File.Close()
 	n.wg.Wait()
 }
