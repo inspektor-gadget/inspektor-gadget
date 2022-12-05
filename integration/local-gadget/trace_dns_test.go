@@ -79,14 +79,13 @@ func TestTraceDns(t *testing.T) {
 		},
 	}
 
-	// TODO: traceDNSCmd should moved up the list once we can trace new cri-o containers.
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/1018
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
+		traceDNSCmd,
+		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		BusyboxPodRepeatCommand(ns, "nslookup -type=a inspektor-gadget.io. 8.8.4.4 ; "+
 			"nslookup -type=aaaa inspektor-gadget.io. 8.8.4.4"),
 		WaitUntilTestPodReadyCommand(ns),
-		traceDNSCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 

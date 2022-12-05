@@ -371,6 +371,25 @@ test-container             11131      sh            SIGKILL     7          0
 test-container             11131      sh            SIGHUP      11131      0
 ```
 
+### Trace/SNI
+The sni trace gadget is used to trace Server Name Indication (SNI) from TLS requests.
+```bash
+$ docker run -it --rm --name test-container busybox /bin/sh -c "wget https://example.com"
+Connecting to example.com (93.184.216.34:443)
+wget: note: TLS certificate validation not implemented
+saving to 'index.html'
+index.html           100% |*******************************************************************************************************************************************************************|  1256  0:00:00 ETA
+'index.html' saved
+```
+```bash
+$ sudo local-gadget trace sni --containername test-container
+WARN[0000] Runtime enricher (containerd): couldn't get current containers
+WARN[0000] Runtime enricher (cri-o): couldn't get current containers
+CONTAINER                                                                                                 NAME
+test-container                                                                                            example.com
+```
+
+
 ### Traceloop
 
 The `traceloop` gadget is used to trace system calls issued by containers:
