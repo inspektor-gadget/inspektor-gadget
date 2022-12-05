@@ -702,10 +702,10 @@ jobs:
     - name: Build release YAML
       run: |
         export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-        export IMAGE="${{ env.REGISTRY }}/${{ env.RELEASE_CONTAINER_REPO }}:${IMAGE_TAG}"
+        export IMAGE="${{ env.REGISTRY }}/${{ env.CONTAINER_REPO }}:${IMAGE_TAG}"
 
         # Use echo of cat to avoid printing a new line between files.
-        echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml) > inspektor-gadget.yaml
+        echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml)" > inspektor-gadget-${GITHUB_REF_NAME}.yaml
 
         perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${GITHUB_REF_NAME}.yaml
     - name: Create Release
