@@ -21,7 +21,7 @@ import (
 	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 )
 
-func syscallArrToSeccompPolicy(profileName *SeccompProfileNsName, syscallNames []string) *seccompprofile.SeccompProfile {
+func syscallNamesToSeccompPolicy(profileName *SeccompProfileNsName, syscallNames []string) *seccompprofile.SeccompProfile {
 	panic("Not implemented")
 	return nil
 }

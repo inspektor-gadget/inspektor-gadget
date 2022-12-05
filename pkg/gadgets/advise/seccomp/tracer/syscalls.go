@@ -18,12 +18,9 @@
 package tracer
 
 import (
-	"fmt"
 	"runtime"
-	"sort"
 
 	"github.com/opencontainers/runtime-spec/specs-go"
-	libseccomp "github.com/seccomp/libseccomp-golang"
 )
 
 /* Function arches() under the Apache License, Version 2.0 by the containerd authors:
@@ -50,27 +47,10 @@ func Arches() []specs.Arch {
 	}
 }
 
-func SyscallArrToNameList(v []byte) []string {
-	names := []string{}
-	for i, val := range v {
-		if val == 0 {
-			continue
-		}
-		call1 := libseccomp.ScmpSyscall(i)
-		name, err := call1.GetName()
-		if err != nil {
-			name = fmt.Sprintf("syscall%d", i)
-		}
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
-func SyscallArrToLinuxSeccomp(v []byte) *specs.LinuxSeccomp {
+func SyscallNamesToLinuxSeccomp(syscallNames []string) *specs.LinuxSeccomp {
 	syscalls := []specs.LinuxSyscall{
 		{
-			Names:  SyscallArrToNameList(v),
+			Names:  syscallNames,
 			Action: specs.ActAllow,
 			Args:   []specs.LinuxSeccompArg{},
 		},

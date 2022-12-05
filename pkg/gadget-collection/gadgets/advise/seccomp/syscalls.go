@@ -24,10 +24,10 @@ import (
 	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 )
 
-func syscallArrToSeccompPolicy(profileName *SeccompProfileNsName, v []byte) *seccompprofile.SeccompProfile {
+func syscallNamesToSeccompPolicy(profileName *SeccompProfileNsName, syscallNames []string) *seccompprofile.SeccompProfile {
 	syscalls := []*seccompprofile.Syscall{
 		{
-			Names:  tracer.SyscallArrToNameList(v),
+			Names:  syscallNames,
 			Action: commonseccomp.ActAllow,
 			Args:   []*seccompprofile.Arg{},
 		},

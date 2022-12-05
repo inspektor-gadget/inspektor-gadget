@@ -21,7 +21,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func SyscallArrToLinuxSeccomp(syscallNames []string) *specs.LinuxSeccomp {
+func SyscallNamesToLinuxSeccomp(syscallNames []string) *specs.LinuxSeccomp {
 	panic("Not implemented")
 	return nil
 }
