@@ -705,9 +705,9 @@ jobs:
         export IMAGE="${{ env.REGISTRY }}/${{ env.CONTAINER_REPO }}:${IMAGE_TAG}"
 
         # Use echo of cat to avoid printing a new line between files.
-        echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml)" > inspektor-gadget-${GITHUB_REF_NAME}.yaml
+        echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml)" > inspektor-gadget-${{ github.ref_name }}.yaml
 
-        perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${GITHUB_REF_NAME}.yaml
+        perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${{ github.ref_name }}.yaml
     - name: Create Release
       id: create_release
       uses: softprops/action-gh-release@v1
@@ -716,11 +716,11 @@ jobs:
         name: Release ${{ github.ref }}
     - name: Get all artifacts.
       uses: actions/download-artifact@v3
-    - name: Rename all artifacts to *-${{ env.GITHUB_REF_NAME }}.tar.gz
+    - name: Rename all artifacts to *-${{ github.ref_name }}.tar.gz
       shell: bash
       run: |
         for i in *-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz; do
-          mv $i $(dirname $i)/$(basename $i .tar.gz)-${GITHUB_REF_NAME}.tar.gz
+          mv $i $(dirname $i)/$(basename $i .tar.gz)-${{ github.ref_name }}.tar.gz
         done
     - name: Upload Gadget Release *.tar.gz
       uses: csexton/release-asset-action@v2
@@ -731,7 +731,7 @@ jobs:
     - name: Upload YAML
       uses: csexton/release-asset-action@v2
       with:
-        file: inspektor-gadget-${GITHUB_REF_NAME}.yaml
+        file: inspektor-gadget-${{ github.ref_name }}.yaml
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Update new version in krew-index
