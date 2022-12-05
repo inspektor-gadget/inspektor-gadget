@@ -47,11 +47,9 @@ var rootTest = flag.Bool("root-test", false, "enable tests requiring root")
 const (
 	// The product of these to contansts defines the maximum wait
 	// time before failing the checkFdList condition. These should
-	// be large enough to allow all resources to be freeded. There
-	// is a poll interval of 1 second in the runcfanotify package,
-	// so let's double that here. These only affect the duration of
-	// the failing tests, hence it's not a big problem to have big
-	// delays here.
+	// be large enough to allow all resources to be freeded. These
+	// only affect the duration of the failing tests, hence it's not
+	// a big problem to have big delays here.
 	checkFdListInterval = 100 * time.Millisecond
 	checkFdListAttempts = 20
 )
