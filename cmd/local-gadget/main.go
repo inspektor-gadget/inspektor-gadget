@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/advise"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/audit"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/containers"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/interactive"
@@ -33,6 +34,7 @@ func main() {
 	}
 
 	rootCmd.AddCommand(
+		advise.NewAdviseCmd(),
 		audit.NewAuditCmd(),
 		containers.NewListContainersCmd(),
 		interactive.NewInteractiveCmd(),

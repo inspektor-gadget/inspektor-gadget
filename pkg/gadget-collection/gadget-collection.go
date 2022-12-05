@@ -79,7 +79,6 @@ func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
 		"network-graph":     networkgraph.NewFactory(),
 		"process-collector": processcollector.NewFactory(),
 		"socket-collector":  socketcollector.NewFactory(),
-		"seccomp":           seccomp.NewFactory(),
 		"snisnoop":          snisnoop.NewFactory(),
 		"sigsnoop":          sigsnoop.NewFactory(),
 		"traceloop":         traceloop.NewFactory(),
