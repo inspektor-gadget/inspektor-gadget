@@ -46,18 +46,6 @@ minikube         default          ubuntu           github.com
 We can see that each time our `wget` client connected to a different
 server, our tracer caught the Server Name Indication requested.
 
-## Use JSON output
-
-This gadget supports JSON output, for this simply use `-o json`, and
-trigger the output as before:
-
-```bash
-$ kubectl gadget trace sni -o json
-{"type":"debug","message":"tracer attached","node":"minikube","namespace":"default","pod":"ubuntu"}
-{"type":"normal","node":"minikube","namespace":"default","pod":"ubuntu","name":"wikimedia.org"}
-{"type":"normal","node":"minikube","namespace":"default","pod":"ubuntu","name":"www.wikimedia.org"}
-```
-
 ## Clean everything
 
 Congratulations! You reached the end of this guide!

@@ -74,50 +74,6 @@ $ kubectl gadget -f --pid 42 --signal SIGKILL
 
 Note that, with `--signal` you can use the name of the signal (e.g. `SIGKILL`) or its integer value (e.g. 9).
 
-## Only print some information
-
-You can customize the information printed using `-o custom-columns=column0,...,columnN`.
-This command will only show the PID and command of the process which sent a signal:
-
-```bash
-$ kubectl gadget trace signal -o custom-columns=pid,comm
-PID    COMM
-131951 sh
-```
-
-The following command is the same as default printing:
-
-```bash
-$ kubectl gadget trace signal -A -o custom-columns=node,namespace,container,pod,pid,comm,signal,tpid,ret
-NODE             NAMESPACE        POD              CONTAINER        PID    COMM             SIGNAL    TPID   RET
-minikube         default          debian           debian           129484 sh               SIGKILL   129491 0
-minikube         default          debian           debian           129484 sh               SIGHUP    129491 0
-minikube         default          debian           debian           129484 sh               SIGHUP    129484 0
-```
-
-## Use JSON output
-
-This gadget supports JSON output, for this simply use `-o json`:
-
-```bash
-$ kubectl gadget trace signal -o json
-{"type":"normal","node":"minikube","namespace":"default","pod":"debian","container":"debian","pid":142872,"tpid":142885,"signal":9,"comm":"sh","mountnsid":4026532588}
-# You can use jq to make the output easier to read:
-$ kubectl gadget trace signal -o json | jq
-{
-  "type": "normal",
-  "node": "minikube",
-  "namespace": "default",
-  "pod": "debian",
-  "container": "debian",
-  "pid": 142872,
-  "tpid": 142885,
-  "signal": 9,
-  "comm": "sh",
-  "mountnsid": 4026532588
-}
-```
-
 ## Clean everything
 
 Congratulations! You reached the end of this guide!

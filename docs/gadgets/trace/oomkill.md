@@ -56,49 +56,6 @@ The line shown above can also be read like this: "The tail command, with PID 115
 
 Note that, in this case, the command which was killed by the OOM killer is the same which triggered it, **this is not always the case**.
 
-## Only print some information
-
-You can restrict the information printed using `-o custom-columns=column0,...,columnN`.
-This command will only show the PID and command of the killed process:
-
-```bash
-$ kubectl gadget trace oomkill -A -o custom-columns=kpid,kcomm
-KPID   KCOMM
-15182  tail
-```
-
-The following command is the same as default printing:
-
-```bash
-$ kubectl gadget trace oomkill -A -o custom-columns=node,namespace,container,pod,kpid,kcomm,pages,tpid,tcomm
-NODE             NAMESPACE        CONTAINER        POD              KPID   KCOMM            PAGES  TPID   TCOMM
-minikube         oomkill-demo     test-container   test-pod         17349  tail             32768  17349  tail
-```
-
-## Use JSON output
-
-This gadget supports JSON output, for this simply use `-o json`:
-
-```bash
-$ kubectl gadget trace oomkill -A -o json
-{"type":"normal","node":"minikube","namespace":"oomkill-demo","pod":"test-pod","container":"test-container","tpid":13416,"tcomm":"tail","kpid":13416,"kcomm":"tail","pages":32768,"mountnsid":4026532588}
-# You can use jq to make the output easier to read:
-$ kubectl gadget trace oomkill -A -o json | jq
-{
-  "type": "normal",
-  "node": "minikube",
-  "namespace": "oomkill-demo",
-  "pod": "test-pod",
-  "container": "test-container",
-  "tpid": 13416,
-  "tcomm": "tail",
-  "kpid": 13416,
-  "kcomm": "tail",
-  "pages": 32768,
-  "mountnsid": 4026532588
-}
-```
-
 ## Clean everything
 
 Congratulations! You reached the end of this guide!

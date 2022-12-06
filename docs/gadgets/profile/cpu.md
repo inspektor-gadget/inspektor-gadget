@@ -127,58 +127,6 @@ minikube         default          random                         random         
         [unknown]
 ```
 
-You can also use JSON as output:
-
-```bash
-$ kubectl gadget profile cpu --podname random -o json > /tmp/output.json; jq < /tmp/output.json
-{
-  "node": "minikube",
-  "namespace": "default",
-  "pod": "random",
-  "container": "random",
-  "comm": "cat",
-  "pid": 65969,
-  "userStack": [
-    "[unknown]",
-    "[unknown]"
-  ],
-  "kernelStack": [
-    "__lock_text_start",
-    "__lock_text_start",
-    "urandom_read_nowarn.isra.0",
-    "vfs_read",
-    "ksys_read",
-    "do_syscall_64",
-    "entry_SYSCALL_64_after_hwframe"
-  ],
-  "value": 1
-}
-...
-{
-  "node": "minikube",
-  "namespace": "default",
-  "pod": "random",
-  "container": "random",
-  "comm": "cat",
-  "pid": 65969,
-  "userStack": [
-    "[unknown]",
-    "[unknown]"
-  ],
-  "kernelStack": [
-    "__lock_text_start",
-    "__lock_text_start",
-    "_crng_backtrack_protect",
-    "urandom_read_nowarn.isra.0",
-    "vfs_read",
-    "ksys_read",
-    "do_syscall_64",
-    "entry_SYSCALL_64_after_hwframe"
-  ],
-  "value": 1
-}
-```
-
 Finally, we need to clean up our pod:
 
 ```bash

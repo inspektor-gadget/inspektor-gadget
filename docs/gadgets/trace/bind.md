@@ -56,51 +56,6 @@ So, this command will print all (*i.e.* succeeded and failed) attempts to bind a
 $ kubectl gadget trace bind -i=false --pid 42 -P=4242,4343
 ```
 
-## Only print some information
-
-You can customize the information printed using `-o custom-columns=column0,...,columnN`.
-This command will only show the PID and command of the process which sent a signal:
-
-```bash
-$ kubectl gadget trace bind -o custom-columns=pid,comm
-PID    COMM
-61198  nc
-```
-
-The following command is the same as default printing:
-
-```bash
-$ kubectl gadget trace bind -o custom-columns=node,namespace,container,pod,pid,proto,addr,port,opts,if
-NODE             NAMESPACE        CONTAINER        POD              PID    PROTO  ADDR             PORT   OPTS   IF
-minikube         default          test-pod         test-pod         61985  IP     ::               4242   .R...  0
-```
-
-## Use JSON output
-
-This gadget supports JSON output, for this simply use `-o json`:
-
-```bash
-$ kubectl gadget trace bind -o json
-{"type":"normal","node":"minikube","namespace":"default","pod":"test-pod","container":"test-pod","pid":62232,"comm":"nc","proto":"IP","addr":"::","port":4343,"opts":".R...","if":"0","mountnsid":4026532579}
-# You can use jq to make the output easier to read:
-$ kubectl gadget trace bind -o json | jq
-{
-  "type": "normal",
-  "node": "minikube",
-  "namespace": "default",
-  "pod": "test-pod",
-  "container": "test-pod",
-  "pid": 62232,
-  "comm": "nc",
-  "proto": "IP",
-  "addr": "::",
-  "port": 4343,
-  "opts": ".R...",
-  "if": "0",
-  "mountnsid": 4026532579
-}
-```
-
 ## Clean everything
 
 Congratulations! You reached the end of this guide!

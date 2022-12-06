@@ -39,58 +39,6 @@ minikube        default         test-pod        test-pod        134110  wget    
 
 This line corresponds to the TCP connection initiated by `wget`.
 
-## Only print some information
-
-You can customize the information printed using `-o custom-columns=column0,...,columnN`.
-This command will only show the PID and command of the process which sent a signal:
-
-```bash
-$ kubectl gadget top tcp -o custom-columns=pid,comm
-PID     COMM
-49447   wget
-```
-
-The following command is the same as default printing:
-
-```bash
-$ kubectl gadget top tcp -o custom-columns=node,namespace,pod,container,pid,comm,family,saddr,daddr,sent,recv
-NODE            NAMESPACE       POD             CONTAINER       PID     COMM    IP REMOTE                LOCAL                 SENT    RECV
-minikube        default         test-pod        test-pod        134752  wget    4  188.114.96.3:443      172.17.0.2:37563      0       2
-minikube        default         test-pod        test-pod        134752  wget    4  188.114.96.3:80       172.17.0.2:34258      0       1
-```
-
-## Use JSON output
-
-This gadget supports JSON output, for this simply use `-o json`:
-
-```bash
-$ kubectl gadget top tcp -o json
-[]
-[{"node":"minikube","namespace":"default","pod":"test-pod","container":"test-pod","saddr":"10.244.2.2","daddr":"188.114.96.3","mountnsid":4026532438,"pid":51782,"comm":"wget","sport":38338,"dport":443,"family":2,"received":8802}]
-[]
-# You can use jq to make the output easier to read:
-$ kubectl gadget top tcp -o json | jq
-[]
-[
-  {
-    "node": "minikube",
-    "namespace": "default",
-    "pod": "test-pod",
-    "container": "test-pod",
-    "saddr": "10.244.2.2",
-    "daddr": "188.114.96.3",
-    "mountnsid": 4026532438,
-    "pid": 51782,
-    "comm": "wget",
-    "sport": 38338,
-    "dport": 443,
-    "family": 2,
-    "received": 8802
-  }
-]
-[]
-```
-
 ## Clean everything
 
 Congratulations! You reached the end of this guide!
