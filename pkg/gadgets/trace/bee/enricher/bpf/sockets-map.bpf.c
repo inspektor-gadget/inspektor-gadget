@@ -39,21 +39,13 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	__u16 sport = 0;
 	int ret;
 
-	bpf_printk("probe_exit");
-
 	socketp = bpf_map_lookup_elem(&start, &pid_tgid);
 	if (!socketp)
 		return 0;
 
-	bpf_printk("probe_exit: pid_tgid found");
-
 	ret = PT_REGS_RC(ctx);
 	if (ret != 0)
 		goto cleanup;
-
-	bpf_printk("probe_exit: pid_tgid not fail");
-
-	bpf_printk("probe_exit: pid_tgid ver");
 
 	socket = *socketp;
 	sock = BPF_CORE_READ(socket, sk);
@@ -62,6 +54,10 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	struct sockets_key socket_key = {0,};
 
 	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
+
+	// TODO: remove this
+	socket_key.netns = 0;
+
 	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
 

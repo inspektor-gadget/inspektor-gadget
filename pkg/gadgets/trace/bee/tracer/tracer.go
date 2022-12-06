@@ -198,8 +198,6 @@ func (t *Tracer) start() error {
 		}
 
 		if m.Type == ebpf.Hash && mapName == "sockets" && strings.Contains(m.SectionName, ".auto") {
-			fmt.Printf("found map %q. Starting enricher\n", mapName)
-
 			t.socketEnricher, err = socketenricher.NewSocketsMap()
 			if err != nil {
 				return fmt.Errorf("failed to start socket enricher: %w", err)
@@ -314,6 +312,10 @@ func (t *Tracer) run() {
 			t.eventCallback(types.Base(eventtypes.Err(msg)))
 			return
 		}
+
+		// FIXME: DecodeBtfBinary has a bug with non-NULL-terminated strings.
+		// For now, ensure the problem does not happen in ebpf
+
 		result, err := d.DecodeBtfBinary(ctx, t.valueStruct, rawSample[:t.mapSizes[t.printMap]])
 		if err != nil {
 			msg := fmt.Sprintf("Error decoding btf: %s", err)
@@ -334,6 +336,11 @@ func (t *Tracer) run() {
 			MountNsID: uint64(0),
 			Payload:   fmt.Sprintf("%+v", string(b)),
 		}
+		var mountNsIdStruct struct {
+			MountNsID uint64 `json:"mount_ns_id"`
+		}
+		_ = json.Unmarshal(b, &mountNsIdStruct)
+		event.MountNsID = mountNsIdStruct.MountNsID
 
 		if t.enricher != nil {
 			t.enricher.Enrich(&event.CommonData, event.MountNsID)
