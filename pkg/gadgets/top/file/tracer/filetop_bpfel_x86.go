@@ -29,8 +29,8 @@ type filetopFileStat struct {
 	Pid        uint32
 	Tid        uint32
 	MntnsId    uint64
-	Filename   [4096]int8
-	Comm       [16]int8
+	Filename   [4096]uint8
+	Comm       [16]uint8
 	Type       int8
 	_          [7]byte
 }
@@ -50,9 +50,9 @@ func loadFiletop() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *filetopObjects
-//     *filetopPrograms
-//     *filetopMaps
+//	*filetopObjects
+//	*filetopPrograms
+//	*filetopMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadFiletopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -143,5 +143,6 @@ func _FiletopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed filetop_bpfel_x86.o
 var _FiletopBytes []byte

@@ -23,20 +23,16 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
-
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/link"
 )
 
-// #include <linux/types.h>
-// #include "./bpf/filetop.h"
-import "C"
-
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang filetop ./bpf/filetop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type file_stat -type file_id -cc clang filetop ./bpf/filetop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Config struct {
 	MountnsMap *ebpf.Map
@@ -144,8 +140,8 @@ func (t *Tracer) start() error {
 func (t *Tracer) nextStats() ([]*types.Stats, error) {
 	stats := []*types.Stats{}
 
-	var prev *C.struct_file_id = nil
-	key := C.struct_file_id{}
+	var prev *filetopFileId = nil
+	key := filetopFileId{}
 	entries := t.objs.Entries
 
 	defer func() {
@@ -177,22 +173,22 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 	}
 
 	for {
-		fileStat := C.struct_file_stat{}
+		fileStat := filetopFileStat{}
 		if err := entries.Lookup(key, unsafe.Pointer(&fileStat)); err != nil {
 			return nil, err
 		}
 
 		stat := types.Stats{
-			Reads:      uint64(fileStat.reads),
-			Writes:     uint64(fileStat.writes),
-			ReadBytes:  uint64(fileStat.read_bytes),
-			WriteBytes: uint64(fileStat.write_bytes),
-			Pid:        uint32(fileStat.pid),
-			Tid:        uint32(fileStat.tid),
-			Filename:   C.GoString(&fileStat.filename[0]),
-			Comm:       C.GoString(&fileStat.comm[0]),
-			FileType:   byte(fileStat.type_),
-			MountNsID:  uint64(fileStat.mntns_id),
+			Reads:      fileStat.Reads,
+			Writes:     fileStat.Writes,
+			ReadBytes:  fileStat.ReadBytes,
+			WriteBytes: fileStat.WriteBytes,
+			Pid:        fileStat.Pid,
+			Tid:        fileStat.Tid,
+			Filename:   gadgets.FromCString(fileStat.Filename[:]),
+			Comm:       gadgets.FromCString(fileStat.Comm[:]),
+			FileType:   byte(fileStat.Type),
+			MountNsID:  fileStat.MntnsId,
 		}
 
 		if t.enricher != nil {

@@ -28,7 +28,7 @@ struct {
 	__uint(value_size, sizeof(u32));
 } mount_ns_filter SEC(".maps");
 
-static void get_file_path(struct file *file, char *buf, size_t size)
+static void get_file_path(struct file *file, __u8 *buf, size_t size)
 {
 	struct qstr dname;
 
