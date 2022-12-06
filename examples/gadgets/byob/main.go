@@ -16,5 +16,7 @@ package main
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- -I./bpf/
 
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t http ./bpf/http.c -- -I./bpf/
+
 func main() {
 }
