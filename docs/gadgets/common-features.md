@@ -1,7 +1,7 @@
 ---
-title: 'General Usage'
+title: 'Common Features'
 weight: 10
-description: 'An overview of the flags shared across gadgets'
+description: 'An overview of the common features shared across gadgets'
 ---
 
 Inspektor Gadget comes with a wide array of gadgets that allow us to
@@ -9,9 +9,10 @@ inspect what's going on in our clusters. The flags and parameters that we
 can pass to each specific gadget may differ, but there are some that are
 supported across all gadgets.
 
-## Selecting Containers
+## Event Filtering
 
-There are several ways to choose the pods or containers to consider:
+There are several ways to choose the pods or containers that we want to
+trace:
 
  * `--node string`, show only data from pods running in that node
  * `-n string`, `--namespace string`, show data from pods in that namespace
@@ -23,6 +24,7 @@ There are several ways to choose the pods or containers to consider:
 
 We can use one or more of these parameters to choose which pods or
 containers will be inspected by our gadgets.
+
 For example:
 
 ```bash
@@ -39,7 +41,7 @@ $ kubectl gadget snapshot socket -A -p nginx
 Will get the `socket` snapshot for all pods with name `nginx`, regardless
 of which namespace they are in.
 
-## Handling Output
+## Output Format
 
 The `-o` or `--output` flag lets us decide the format for the output the
 gadget will generate. The default `columns` output shows some of the
