@@ -26,20 +26,16 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
-
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/link"
 )
 
-// #include <linux/types.h>
-// #include "./bpf/biotop.h"
-import "C"
-
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang biotop ./bpf/biotop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type info_t -type val_t -cc clang biotop ./bpf/biotop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Config struct {
 	TargetPid  int
@@ -208,8 +204,8 @@ func (t *Tracer) start() error {
 func (t *Tracer) nextStats() ([]*types.Stats, error) {
 	stats := []*types.Stats{}
 
-	var prev *C.struct_info_t = nil
-	key := C.struct_info_t{}
+	var prev *biotopInfoT = nil
+	key := biotopInfoT{}
 	counts := t.objs.Counts
 
 	defer func() {
@@ -241,21 +237,21 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 	}
 
 	for {
-		val := C.struct_val_t{}
+		val := biotopValT{}
 		if err := counts.Lookup(key, unsafe.Pointer(&val)); err != nil {
 			return nil, err
 		}
 
 		stat := types.Stats{
-			Write:      key.rwflag != 0,
-			Major:      int(key.major),
-			Minor:      int(key.minor),
-			MountNsID:  uint64(key.mntnsid),
-			Pid:        int32(key.pid),
-			Comm:       C.GoString(&key.name[0]),
-			Bytes:      uint64(val.bytes),
-			MicroSecs:  uint64(val.us),
-			Operations: uint32(val.io),
+			Write:      key.Rwflag != 0,
+			Major:      int(key.Major),
+			Minor:      int(key.Minor),
+			MountNsID:  key.Mntnsid,
+			Pid:        int32(key.Pid),
+			Comm:       gadgets.FromCString(key.Name[:]),
+			Bytes:      val.Bytes,
+			MicroSecs:  val.Us,
+			Operations: val.Io,
 		}
 
 		if t.enricher != nil {
