@@ -39,6 +39,7 @@ import (
 	"oras.land/oras-go/pkg/oras"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	socketenricher "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bee/enricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bee/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -73,6 +74,9 @@ type Tracer struct {
 	spec                 *ebpf.CollectionSpec
 	collection           *ebpf.Collection
 	socketFilterPrograms []*ebpf.Program
+
+	socketEnricher *socketenricher.SocketsMap
+	socketsMap     *ebpf.Map
 
 	printMap      string
 	valueStruct   *btf.Struct
@@ -168,10 +172,15 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
+	mapReplacements := map[string]*ebpf.Map{}
+
 	// Find the print map
 	for mapName, m := range t.spec.Maps {
 		//if strings.Contains(m.SectionName, "print") || strings.Contains(m.SectionName, "counter") {
 		if m.Type == ebpf.RingBuf || m.Type == ebpf.PerfEventArray {
+			if t.printMap != "" {
+				return fmt.Errorf("multiple print maps: %q and %q", t.printMap, mapName)
+			}
 			t.printMap = mapName
 
 			var ok bool
@@ -187,14 +196,36 @@ func (t *Tracer) start() error {
 			t.mapSizes[mapName] = t.spec.Maps[mapName].ValueSize
 			t.spec.Maps[mapName].ValueSize = 0
 		}
+
+		if m.Type == ebpf.Hash && mapName == "sockets" && strings.Contains(m.SectionName, ".auto") {
+			fmt.Printf("found map %q. Starting enricher\n", mapName)
+
+			t.socketEnricher, err = socketenricher.NewSocketsMap()
+			if err != nil {
+				return fmt.Errorf("failed to start socket enricher: %w", err)
+			}
+			t.socketsMap = t.socketEnricher.SocketsMap()
+			mapReplacements["sockets"] = t.socketsMap
+		}
 	}
 	if t.printMap == "" {
 		return fmt.Errorf("no BPF map named 'print'")
 	}
 
 	// Load the ebpf objects
-	t.collection, err = ebpf.NewCollection(t.spec)
+	opts := ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			LogSize: ebpf.DefaultVerifierLogSize * 5000,
+		},
+		MapReplacements: mapReplacements,
+	}
+	t.collection, err = ebpf.NewCollectionWithOptions(t.spec, opts)
 	if err != nil {
+		var errVerifier *ebpf.VerifierError
+		if errors.As(err, &errVerifier) {
+			fmt.Printf("Verifier error: %+v\n",
+				errVerifier)
+		}
 		return fmt.Errorf("failed to create BPF collection: %w", err)
 	}
 
@@ -276,14 +307,14 @@ func (t *Tracer) run() {
 			return
 		}
 
-		if uint32(len(rawSample)) != t.mapSizes[t.printMap] {
+		if uint32(len(rawSample)) < t.mapSizes[t.printMap] {
 			msg := fmt.Sprintf("Error reading ring buffer: len(RawSample)=%d!=%d",
 				len(rawSample),
 				t.mapSizes[t.printMap])
 			t.eventCallback(types.Base(eventtypes.Err(msg)))
 			return
 		}
-		result, err := d.DecodeBtfBinary(ctx, t.valueStruct, rawSample)
+		result, err := d.DecodeBtfBinary(ctx, t.valueStruct, rawSample[:t.mapSizes[t.printMap]])
 		if err != nil {
 			msg := fmt.Sprintf("Error decoding btf: %s", err)
 			t.eventCallback(types.Base(eventtypes.Err(msg)))
