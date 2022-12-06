@@ -41,6 +41,7 @@ type RunnerConfig struct {
 // fields like PID, UID and MountNsID.
 type RunnerInfo struct {
 	Pid       int
+	Tid       int
 	Comm      string
 	UID       int
 	MountNsID uint64
@@ -126,6 +127,7 @@ func (r *Runner) runLoop() {
 
 	r.Info = &RunnerInfo{
 		Pid:       os.Getpid(),
+		Tid:       unix.Gettid(),
 		Comm:      filepath.Base(comm),
 		UID:       r.config.UID,
 		MountNsID: mountnsid,
