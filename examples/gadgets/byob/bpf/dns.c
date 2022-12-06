@@ -21,7 +21,15 @@
 
 typedef __u32 ipv4_addr;
 
+#ifndef TASK_COMM_LEN
+#define TASK_COMM_LEN	16
+#endif
+
 struct event_t {
+	__u64 mount_ns_id;
+	__u64 pid_tgid;
+	char task[TASK_COMM_LEN];
+
 	ipv4_addr saddr_v4;
 	ipv4_addr daddr_v4;
 	__u32 af; // AF_INET or AF_INET6
@@ -36,6 +44,7 @@ struct event_t {
 	char name[MAX_DNS_NAME];
 };
 
+#define UDP_OFF (ETH_HLEN + sizeof(struct iphdr))
 #define DNS_OFF (ETH_HLEN + sizeof(struct iphdr) + sizeof(struct udphdr))
 
 /* llvm builtin functions that eBPF C program may use to
@@ -55,6 +64,27 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__type(value, struct event_t);
 } events SEC(".maps");
+
+struct sockets_key {
+	ipv4_addr saddr_v4;
+	ipv4_addr daddr_v4;
+	__u16 sport;
+	__u16 dport;
+	__u16 proto;
+};
+
+struct sockets_value {
+	__u64 mount_ns_id;
+	__u64 pid_tgid;
+	char task[TASK_COMM_LEN];
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 10240);
+	__type(key, struct sockets_key);
+	__type(value, struct sockets_value);
+} sockets SEC(".maps.auto");
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
 union dnsflags {
@@ -147,6 +177,18 @@ int ig_trace_dns(struct __sk_buff *skb)
 	// Read QTYPE right after the QNAME
 	// https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.2
 	event.qtype = load_half(skb, DNS_OFF + sizeof(struct dnshdr) + len + 1);
+
+	// Enrich event with process metadata
+	struct sockets_key key = {0,};
+	key.saddr_v4 = event.saddr_v4;
+	key.daddr_v4 = event.daddr_v4;
+	key.sport    = load_half(skb, UDP_OFF + offsetof(struct udphdr, source));
+	key.dport    = load_half(skb, UDP_OFF + offsetof(struct udphdr, dest));
+	key.proto    = IPPROTO_UDP;
+	struct sockets_value *socketp = bpf_map_lookup_elem(&sockets, &key);
+	if (socketp != NULL) {
+		event.mount_ns_id = socketp->mount_ns_id;
+	}
 
 	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
