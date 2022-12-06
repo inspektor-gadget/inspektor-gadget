@@ -45,8 +45,9 @@ func MustCreateColumns[T any](options ...Option) *Columns[T] {
 	return cols
 }
 
-// NewColumns creates a new column helper. T must be of type struct and
-// its fields must contain the column tags.
+// NewColumns creates a new column helper. T must be of type struct and its fields must have a column tag if they
+// should be considered. Struct and pointer to struct fields will be recursively traversed by default unless a column
+// tag with parameter "noembed" is present. Options can be passed to change the default behavior.
 func NewColumns[T any](options ...Option) (*Columns[T], error) {
 	opts := GetDefault()
 	for _, o := range options {
@@ -151,18 +152,31 @@ func (c ColumnMap[T]) VerifyColumnNames(columnNames []string) (valid []string, i
 	return
 }
 
-func (c *Columns[T]) iterateFields(t reflect.Type, sub []int, offset uintptr) error {
+func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintptr) error {
+	isPtr := false
+	if t.Kind() == reflect.Pointer {
+		if t.Elem().Kind() != reflect.Struct {
+			return errors.New("unsupported pointer type")
+		}
+		isPtr = true
+		t = t.Elem()
+	}
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-		if f.Anonymous {
-			err := c.iterateFields(f.Type, append(append([]int{}, sub...), i), offset+f.Offset)
-			if err != nil {
-				return err
-			}
-			continue
-		}
 
 		tag := f.Tag.Get("column")
+
+		// If this field is a pointer to a struct or a struct, try to embed it unless a "noembed" tag is set
+		if f.Type.Kind() == reflect.Struct || (f.Type.Kind() == reflect.Pointer && f.Type.Elem().Kind() == reflect.Struct) {
+			if !strings.Contains(tag, ",noembed") {
+				err := c.iterateFields(f.Type, append(append([]subField{}, sub...), subField{i, isPtr}), offset+f.Offset)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
 		if tag == "" && c.options.RequireColumnDefinition {
 			continue
 		}
@@ -186,7 +200,7 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []int, offset uintptr) er
 			column.fieldIndex = i
 		} else {
 			// Nested structs
-			column.subFieldIndex = append(append([]int{}, sub...), i)
+			column.subFieldIndex = append(append([]subField{}, sub...), subField{i, isPtr})
 		}
 
 		// store kind for faster lookups if required

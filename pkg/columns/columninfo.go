@@ -35,6 +35,11 @@ const (
 	MaxCharsBool   = 5  // false
 )
 
+type subField struct {
+	index int
+	isPtr bool
+}
+
 type Column[T any] struct {
 	Name         string                // Name of the column; case-insensitive for most use cases
 	Width        int                   // Width to reserve for this column
@@ -53,7 +58,7 @@ type Column[T any] struct {
 
 	offset        uintptr
 	fieldIndex    int          // used for the main struct
-	subFieldIndex []int        // used for embedded structs
+	subFieldIndex []subField   // used for embedded structs
 	kind          reflect.Kind // cached kind info from reflection
 	columnType    reflect.Type // cached type info from reflection
 	useTemplate   bool         // if a template has been set, this will be true
@@ -169,6 +174,10 @@ func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 				return fmt.Errorf("parameter hide on field %q must not have a value", ci.Name)
 			}
 			ci.Visible = false
+		case "noembed":
+			if ci.Kind() != reflect.Struct && (ci.Kind() != reflect.Pointer || ci.Type().Elem().Kind() != reflect.Struct) {
+				return fmt.Errorf("parameter noembed on field %q is only valid for struct types", ci.Name)
+			}
 		case "order":
 			if paramsLen == 1 {
 				return fmt.Errorf("missing width value for field %q", ci.Name)
@@ -248,7 +257,8 @@ func (ci *Column[T]) GetRef(v reflect.Value) reflect.Value {
 }
 
 // GetRaw returns the reflected value of an entry for the current column without evaluating the extractor func;
-// if given nil or run on a virtual column, it will return the zero value of the underlying type
+// if given nil or run on a virtual column, it will return the zero value of the underlying type. If using embedded
+// structs via pointers and the embedded value is nil, it will also return the zero value of the underlying type.
 func (ci *Column[T]) GetRaw(entry *T) reflect.Value {
 	if entry == nil || ci.fieldIndex == virtualIndex {
 		return reflect.Zero(ci.Type())
@@ -267,8 +277,15 @@ func (ci *Column[T]) getRawField(v reflect.Value) reflect.Value {
 	return v.Field(ci.fieldIndex)
 }
 
-func (ci *Column[T]) getFieldRec(v reflect.Value, sub []int) reflect.Value {
-	val := v.Field(sub[0])
+func (ci *Column[T]) getFieldRec(v reflect.Value, sub []subField) reflect.Value {
+	if sub[0].isPtr {
+		if v.IsNil() {
+			// Return the (empty) default value for this type
+			return reflect.Zero(ci.Type())
+		}
+		v = v.Elem()
+	}
+	val := v.Field(sub[0].index)
 	if len(sub) == 1 {
 		return val
 	}
