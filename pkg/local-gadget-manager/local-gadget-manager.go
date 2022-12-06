@@ -367,5 +367,10 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 
 func (l *LocalGadgetManager) Close() {
 	l.ContainerCollection.Close()
-	l.containersMap.Close()
+	if l.tracerCollection != nil {
+		l.tracerCollection.Close()
+	}
+	if l.containersMap != nil {
+		l.containersMap.Close()
+	}
 }

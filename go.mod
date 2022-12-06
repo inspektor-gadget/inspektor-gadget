@@ -43,6 +43,7 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/kr/pretty v0.3.0
 	github.com/moby/moby v20.10.20+incompatible
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	gotest.tools/v3 v3.0.3
 )
 

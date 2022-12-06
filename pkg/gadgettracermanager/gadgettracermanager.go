@@ -318,5 +318,8 @@ func (g *GadgetTracerManager) Close() {
 	if g.containersMap != nil {
 		g.containersMap.Close()
 	}
+	if g.tracerCollection != nil {
+		g.tracerCollection.Close()
+	}
 	g.ContainerCollection.Close()
 }
