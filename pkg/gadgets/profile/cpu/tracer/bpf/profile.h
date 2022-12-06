@@ -12,7 +12,7 @@ struct key_t {
 	__u32 pid;
 	int user_stack_id;
 	int kern_stack_id;
-	char name[TASK_COMM_LEN];
+	__u8 name[TASK_COMM_LEN];
 };
 
 #endif /* __PROFILE_H */

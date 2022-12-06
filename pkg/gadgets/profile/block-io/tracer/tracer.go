@@ -17,10 +17,6 @@
 
 package tracer
 
-// #include <linux/types.h>
-// #include "./bpf/biolatency.h"
-import "C"
-
 import (
 	"encoding/json"
 	"fmt"
@@ -28,13 +24,14 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"github.com/moby/moby/pkg/parsers/kernel"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
-	"github.com/moby/moby/pkg/parsers/kernel"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang biolatency ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../${TARGET}
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang biolatencyBefore ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../${TARGET} -DKERNEL_BEFORE_5_11
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type hist -type hist_key -cc clang biolatency ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type hist -type hist_key -cc clang biolatencyBefore ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../${TARGET} -DKERNEL_BEFORE_5_11
 
 type Tracer struct {
 	objs                biolatencyObjects
@@ -59,21 +56,21 @@ func getReport(histMap *ebpf.Map) (types.Report, error) {
 		ValType: "usecs",
 	}
 
-	key := C.struct_hist_key{}
+	key := biolatencyHistKey{}
 
 	err := histMap.NextKey(nil, unsafe.Pointer(&key))
 	if err != nil {
 		return types.Report{}, fmt.Errorf("error getting next key: %w", err)
 	}
 
-	hist := C.struct_hist{}
+	hist := biolatencyHist{}
 	if err := histMap.Lookup(key, unsafe.Pointer(&hist)); err != nil {
 		return types.Report{}, err
 	}
 
 	data := []types.Data{}
 	indexMax := 0
-	for i, val := range hist.slots {
+	for i, val := range hist.Slots {
 		if val > 0 {
 			indexMax = i
 		}

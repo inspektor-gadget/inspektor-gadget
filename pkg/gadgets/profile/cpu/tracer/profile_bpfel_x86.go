@@ -19,7 +19,7 @@ type profileKeyT struct {
 	Pid         uint32
 	UserStackId int32
 	KernStackId int32
-	Name        [16]int8
+	Name        [16]uint8
 	_           [4]byte
 }
 
@@ -38,9 +38,9 @@ func loadProfile() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *profileObjects
-//     *profilePrograms
-//     *profileMaps
+//	*profileObjects
+//	*profilePrograms
+//	*profileMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadProfileObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -131,5 +131,6 @@ func _ProfileClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed profile_bpfel_x86.o
 var _ProfileBytes []byte

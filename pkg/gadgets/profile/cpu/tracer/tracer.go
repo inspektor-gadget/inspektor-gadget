@@ -17,10 +17,6 @@
 
 package tracer
 
-// #include <linux/types.h>
-// #include "./bpf/profile.h"
-import "C"
-
 import (
 	"bufio"
 	"encoding/json"
@@ -33,15 +29,15 @@ import (
 	"strings"
 	"unsafe"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/cilium/ebpf"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
-	"golang.org/x/sys/unix"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang profile ./bpf/profile.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type key_t -cc clang profile ./bpf/profile.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Config struct {
 	MountnsMap      *ebpf.Map
@@ -82,15 +78,15 @@ func NewTracer(enricher gadgets.DataEnricher, config *Config) (*Tracer, error) {
 }
 
 type keyCount struct {
-	key   C.struct_key_t
+	key   profileKeyT
 	value uint64
 }
 
 func (t *Tracer) readCountsMap() ([]keyCount, error) {
-	var prev *C.struct_key_t = nil
+	var prev *profileKeyT = nil
 	counts := t.objs.profileMaps.Counts
 	keysCounts := []keyCount{}
-	key := C.struct_key_t{}
+	key := profileKeyT{}
 
 	if t.objs.profileMaps.Counts == nil {
 		return nil, fmt.Errorf("counts map was not created at moment of stop")
@@ -217,16 +213,16 @@ func getReport(t *Tracer, kAllSyms []kernelSymbol, stack *ebpf.Map, keyCount key
 	k := keyCount.key
 
 	// 	if (!env.kernel_stacks_only && k->user_stack_id >= 0) {
-	if k.user_stack_id >= 0 {
-		err := stack.Lookup(k.user_stack_id, unsafe.Pointer(&userInstructionPointers))
+	if k.UserStackId >= 0 {
+		err := stack.Lookup(k.UserStackId, unsafe.Pointer(&userInstructionPointers))
 		if err != nil {
 			return types.Report{}, err
 		}
 	}
 
 	// 	if (!env.user_stacks_only && k->kern_stack_id >= 0) {
-	if k.kern_stack_id >= 0 {
-		err := stack.Lookup(k.kern_stack_id, unsafe.Pointer(&kernelInstructionPointers))
+	if k.KernStackId >= 0 {
+		err := stack.Lookup(k.KernStackId, unsafe.Pointer(&kernelInstructionPointers))
 		if err != nil {
 			return types.Report{}, err
 		}
@@ -252,15 +248,15 @@ func getReport(t *Tracer, kAllSyms []kernelSymbol, stack *ebpf.Map, keyCount key
 	}
 
 	report := types.Report{
-		Comm:        C.GoString(&k.name[0]),
-		Pid:         uint32(k.pid),
+		Comm:        gadgets.FromCString(k.Name[:]),
+		Pid:         k.Pid,
 		UserStack:   userSymbols,
 		KernelStack: kernelSymbols,
 		Count:       v,
 	}
 
 	if t.enricher != nil {
-		t.enricher.Enrich(&report.CommonData, uint64(k.mntns_id))
+		t.enricher.Enrich(&report.CommonData, k.MntnsId)
 	}
 
 	return report, nil
