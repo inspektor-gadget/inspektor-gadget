@@ -22,7 +22,6 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	libseccomp "github.com/seccomp/libseccomp-golang"
-	log "github.com/sirupsen/logrus"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang seccomp ./bpf/seccomp.c -- -I./bpf/ -I../../../../${TARGET}
@@ -101,24 +100,21 @@ func syscallArrToNameList(v []byte) []string {
 	return names
 }
 
-func (t *Tracer) Peek(mntns uint64) []string {
+func (t *Tracer) Peek(mntns uint64) ([]string, error) {
 	b, err := t.seccompMap.LookupBytes(mntns)
 	if err != nil {
-		log.Errorf("Error while looking up the seccomp map: %s", err)
-		return make([]string, 0)
+		return nil, fmt.Errorf("looking up the seccomp map: %w", err)
 	}
 	// LookupBytes does not return an error when the entry is not found, so
 	// we need to test b==nil too
 	if b == nil {
 		// The container just hasn't done any syscall
-		log.Errorf("No syscall found with mntns %d", mntns)
-		return make([]string, 0)
+		return nil, fmt.Errorf("no syscall found")
 	}
 	if len(b) < syscallsCount {
-		log.Errorf("Error while looking up the seccomp map: wrong length: %d", len(b))
-		return make([]string, 0)
+		return nil, fmt.Errorf("looking up the seccomp map: wrong length: %d", len(b))
 	}
-	return syscallArrToNameList(b[:syscallsCount])
+	return syscallArrToNameList(b[:syscallsCount]), nil
 }
 
 func (t *Tracer) Delete(mntns uint64) {

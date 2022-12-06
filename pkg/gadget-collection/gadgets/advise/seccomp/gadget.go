@@ -340,7 +340,11 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
 	// Get the list of syscallNames from the BPF hash map
-	syscallNames := traceSingleton.tracer.Peek(event.Container.Mntns)
+	syscallNames, err := traceSingleton.tracer.Peek(event.Container.Mntns)
+	if err != nil {
+		log.Errorf("peeking syscalls for mntns %d: %s", event.Container.Mntns, err)
+		return
+	}
 
 	// The container has terminated. Cleanup the BPF hash map
 	traceSingleton.tracer.Delete(event.Container.Mntns)
@@ -528,7 +532,11 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 	}
 
 	// Get the list of syscallNames from the BPF hash map
-	syscallNames := traceSingleton.tracer.Peek(mntns)
+	syscallNames, err := traceSingleton.tracer.Peek(mntns)
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("peeking syscalls for mntns %d: %s", mntns, err)
+		return
+	}
 
 	switch trace.Spec.OutputMode {
 	case gadgetv1alpha1.TraceOutputModeStatus:
