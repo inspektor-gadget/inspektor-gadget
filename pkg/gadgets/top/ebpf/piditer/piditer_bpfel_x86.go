@@ -34,9 +34,9 @@ func loadPiditer() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *piditerObjects
-//     *piditerPrograms
-//     *piditerMaps
+//	*piditerObjects
+//	*piditerPrograms
+//	*piditerMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadPiditerObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -66,8 +66,7 @@ type piditerProgramSpecs struct {
 // piditerMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type piditerMapSpecs struct {
-}
+type piditerMapSpecs struct{}
 
 // piditerObjects contains all objects after they have been loaded into the kernel.
 //
@@ -87,8 +86,7 @@ func (o *piditerObjects) Close() error {
 // piditerMaps contains all maps after they have been loaded into the kernel.
 //
 // It can be passed to loadPiditerObjects or ebpf.CollectionSpec.LoadAndAssign.
-type piditerMaps struct {
-}
+type piditerMaps struct{}
 
 func (m *piditerMaps) Close() error {
 	return _PiditerClose()
@@ -117,5 +115,6 @@ func _PiditerClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed piditer_bpfel_x86.o
 var _PiditerBytes []byte
