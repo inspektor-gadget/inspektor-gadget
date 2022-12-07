@@ -703,7 +703,7 @@ func TestFiletop(t *testing.T) {
 
 	filetopCmd := &Command{
 		Name:         "StartFiletopGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top file -n %s -o json", ns),
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &filetopTypes.Stats{
