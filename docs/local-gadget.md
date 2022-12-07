@@ -231,21 +231,21 @@ This is the output when executing this gadget on a Kubernetes node:
 
 ```bash
 $ sudo local-gadget trace exec
-CONTAINER        PID     PPID    PCOMM            RET  ARGS
-calico-node      416789  416777  calico-node      0    /bin/calico-node -felix-live -bird-live
-calico-node      416804  416789  sv               0    /usr/local/bin/sv status /etc/service/enabled/confd
-calico-node      416805  416789  sv               0    /usr/local/bin/sv status /etc/service/enabled/bird
-gadget           416816  416806  gadgettracerman  0    /bin/gadgettracermanager -liveness
-gadget           416842  416823  gadgettracerman  0    /bin/gadgettracermanager -liveness
-calico-node      416887  416876  calico-node      0    /bin/calico-node -felix-ready -bird-ready
+CONTAINER        PID     PPID    COMM            RET  ARGS
+calico-node      416789  416777  calico-node     0    /bin/calico-node -felix-live -bird-live
+calico-node      416804  416789  sv              0    /usr/local/bin/sv status /etc/service/enabled/confd
+calico-node      416805  416789  sv              0    /usr/local/bin/sv status /etc/service/enabled/bird
+gadget           416816  416806  gadgettracerman 0    /bin/gadgettracermanager -liveness
+gadget           416842  416823  gadgettracerman 0    /bin/gadgettracermanager -liveness
+calico-node      416887  416876  calico-node     0    /bin/calico-node -felix-ready -bird-ready
 ```
 
 Remember that we can use the `-o custom-columns` flag to show only the columns
 we are interested in:
 
 ```bash
-$ sudo local-gadget trace exec -o custom-columns=container,pid,pcomm
-CONTAINER        PID     PCOMM
+$ sudo local-gadget trace exec -o custom-columns=container,pid,comm
+CONTAINER        PID     COMM
 calico-node      421023  ipset
 calico-node      421039  calico-node
 calico-node      421056  sv
