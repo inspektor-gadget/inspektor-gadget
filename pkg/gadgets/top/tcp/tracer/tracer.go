@@ -20,51 +20,20 @@ package tracer
 import (
 	"errors"
 	"fmt"
+	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/link"
 )
 
-// #include <linux/types.h>
-// #include "./bpf/tcptop.h"
-// #include <arpa/inet.h>
-// #include <stdlib.h>
-//
-//char *string_ip(const void *addr, int ip_type) {
-//	socklen_t size;
-//	char *ip;
-//
-//  // Should not occur because eBPF code already filter on this.
-//	if (ip_type != AF_INET && ip_type != AF_INET6)
-//		return NULL;
-//
-//	size = sizeof(*ip) * INET6_ADDRSTRLEN;
-//	ip = malloc(size);
-//  if (ip == NULL)
-//		return NULL;
-//
-//	inet_ntop(ip_type, addr, ip, size);
-//
-//	return ip;
-//}
-//
-// char *dst_addr(struct ip_key_t *key) {
-// 	return string_ip(&key->daddr, key->family);
-// }
-//
-// char *src_addr(struct ip_key_t *key) {
-// 	return string_ip(&key->saddr, key->family);
-// }
-import "C"
-
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target $TARGET -cc clang tcptop ./bpf/tcptop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target $TARGET -type ip_key_t -type traffic_t -cc clang tcptop ./bpf/tcptop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Config struct {
 	MountnsMap   *ebpf.Map
@@ -170,8 +139,8 @@ func (t *Tracer) start() error {
 func (t *Tracer) nextStats() ([]*types.Stats, error) {
 	stats := []*types.Stats{}
 
-	var prev *C.struct_ip_key_t = nil
-	key := C.struct_ip_key_t{}
+	var prev *tcptopIpKeyT = nil
+	key := tcptopIpKeyT{}
 	ips := t.objs.IpMap
 
 	defer func() {
@@ -203,29 +172,30 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 	}
 
 	for {
-		val := C.struct_traffic_t{}
+		val := tcptopTrafficT{}
 		if err := ips.Lookup(key, unsafe.Pointer(&val)); err != nil {
 			return nil, err
 		}
 
-		srcAddr := C.src_addr(&key)
-		dstAddr := C.dst_addr(&key)
-
 		stat := types.Stats{
-			Saddr:     C.GoString(srcAddr),
-			Daddr:     C.GoString(dstAddr),
-			MountNsID: uint64(key.mntnsid),
-			Pid:       int32(key.pid),
-			Comm:      C.GoString(&key.name[0]),
-			Sport:     uint16(key.lport),
-			Dport:     uint16(key.dport),
-			Family:    uint16(key.family),
-			Sent:      uint64(val.sent),
-			Received:  uint64(val.received),
+			MountNsID: key.Mntnsid,
+			Pid:       int32(key.Pid),
+			Comm:      gadgets.FromCString(key.Name[:]),
+			Sport:     key.Lport,
+			Dport:     key.Dport,
+			Family:    key.Family,
+			Sent:      val.Sent,
+			Received:  val.Received,
 		}
 
-		C.free(unsafe.Pointer(srcAddr))
-		C.free(unsafe.Pointer(dstAddr))
+		// eBPF program includes checks to only handle AF_INET and AF_INET6
+		ipType := 4
+		if key.Family == syscall.AF_INET6 {
+			ipType = 6
+		}
+
+		stat.Saddr = gadgets.IPStringFromBytes(key.Saddr, ipType)
+		stat.Daddr = gadgets.IPStringFromBytes(key.Daddr, ipType)
 
 		if t.enricher != nil {
 			t.enricher.Enrich(&stat.CommonData, stat.MountNsID)

@@ -19,7 +19,7 @@ type biotopInfoT struct {
 	Rwflag  int32
 	Major   int32
 	Minor   int32
-	Name    [16]int8
+	Name    [16]uint8
 }
 
 type biotopStartReqT struct {
@@ -56,9 +56,9 @@ func loadBiotop() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *biotopObjects
-//     *biotopPrograms
-//     *biotopMaps
+//	*biotopObjects
+//	*biotopPrograms
+//	*biotopMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadBiotopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -158,5 +158,6 @@ func _BiotopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed biotop_bpfel_x86.o
 var _BiotopBytes []byte

@@ -27,7 +27,7 @@ struct info_t {
 	int rwflag;
 	int major;
 	int minor;
-	char name[TASK_COMM_LEN];
+	__u8 name[TASK_COMM_LEN];
 };
 
 // the value of the output summary

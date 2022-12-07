@@ -25,8 +25,8 @@ struct file_stat {
 	__u32 pid;
 	__u32 tid;
 	__u64 mntns_id;
-	char filename[PATH_MAX];
-	char comm[TASK_COMM_LEN];
+	__u8 filename[PATH_MAX];
+	__u8 comm[TASK_COMM_LEN];
 	char type_;
 };
 

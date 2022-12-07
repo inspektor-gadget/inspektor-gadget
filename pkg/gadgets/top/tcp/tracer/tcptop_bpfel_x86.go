@@ -13,6 +13,23 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type tcptopIpKeyT struct {
+	Saddr   [16]uint8
+	Daddr   [16]uint8
+	Mntnsid uint64
+	Pid     uint32
+	Name    [16]uint8
+	Lport   uint16
+	Dport   uint16
+	Family  uint16
+	_       [6]byte
+}
+
+type tcptopTrafficT struct {
+	Sent     uint64
+	Received uint64
+}
+
 // loadTcptop returns the embedded CollectionSpec for tcptop.
 func loadTcptop() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_TcptopBytes)
@@ -28,9 +45,9 @@ func loadTcptop() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *tcptopObjects
-//     *tcptopPrograms
-//     *tcptopMaps
+//	*tcptopObjects
+//	*tcptopPrograms
+//	*tcptopMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadTcptopObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -121,5 +138,6 @@ func _TcptopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed tcptop_bpfel_x86.o
 var _TcptopBytes []byte

@@ -14,8 +14,6 @@
 
 package piditer
 
-import "C"
-
 import (
 	"bufio"
 	"errors"
@@ -27,10 +25,11 @@ import (
 	"sync"
 	"unsafe"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"golang.org/x/sys/unix"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -type pid_iter_entry piditer ./bpf/pid_iter.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -173,7 +172,7 @@ func (p *PidIter) DumpPids() ([]*PidIterEntry, error) {
 			res = append(res, &PidIterEntry{
 				ProgID: entry.Id,
 				Pid:    entry.Pid,
-				Comm:   C.GoString((*C.char)(unsafe.Pointer(&entry.Comm[0]))),
+				Comm:   gadgets.FromCString(entry.Comm[:]),
 			})
 		}
 	}
