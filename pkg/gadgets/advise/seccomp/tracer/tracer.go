@@ -16,12 +16,12 @@ package tracer
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	libseccomp "github.com/seccomp/libseccomp-golang"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang seccomp ./bpf/seccomp.c -- -I./bpf/ -I../../../../${TARGET}
@@ -83,24 +83,38 @@ func NewTracer() (*Tracer, error) {
 	return t, nil
 }
 
-func (t *Tracer) Peek(mntns uint64) []byte {
+func syscallArrToNameList(v []byte) []string {
+	names := []string{}
+	for i, val := range v {
+		if val == 0 {
+			continue
+		}
+		call1 := libseccomp.ScmpSyscall(i)
+		name, err := call1.GetName()
+		if err != nil {
+			name = fmt.Sprintf("syscall%d", i)
+		}
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func (t *Tracer) Peek(mntns uint64) ([]string, error) {
 	b, err := t.seccompMap.LookupBytes(mntns)
 	if err != nil {
-		log.Errorf("Error while looking up the seccomp map: %s", err)
-		return make([]byte, syscallsCount)
+		return nil, fmt.Errorf("looking up the seccomp map: %w", err)
 	}
 	// LookupBytes does not return an error when the entry is not found, so
 	// we need to test b==nil too
 	if b == nil {
 		// The container just hasn't done any syscall
-		log.Errorf("No syscall found with mntns %d", mntns)
-		return make([]byte, syscallsCount)
+		return nil, fmt.Errorf("no syscall found")
 	}
 	if len(b) < syscallsCount {
-		log.Errorf("Error while looking up the seccomp map: wrong length: %d", len(b))
-		return make([]byte, syscallsCount)
+		return nil, fmt.Errorf("looking up the seccomp map: wrong length: %d", len(b))
 	}
-	return b[:syscallsCount]
+	return syscallArrToNameList(b[:syscallsCount]), nil
 }
 
 func (t *Tracer) Delete(mntns uint64) {

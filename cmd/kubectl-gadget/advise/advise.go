@@ -15,16 +15,21 @@
 package advise
 
 import (
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-
 	"github.com/spf13/cobra"
+
+	commonadvise "github.com/inspektor-gadget/inspektor-gadget/cmd/common/advise"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
 // All the gadgets within this package use this global variable, so let's
 // declare it here.
 var params utils.CommonFlags
 
-var AdviseCmd = &cobra.Command{
-	Use:   "advise",
-	Short: "Recommend system configurations based on collected information",
+func NewAdviseCmd() *cobra.Command {
+	cmd := commonadvise.NewCommonAdviseCmd()
+
+	cmd.AddCommand(newNetworkPolicyCmd())
+	cmd.AddCommand(newSeccompProfileCmd())
+
+	return cmd
 }

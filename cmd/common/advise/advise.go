@@ -1,7 +1,4 @@
-//go:build docs
-// +build docs
-
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package seccomp
+package advise
 
 import (
-	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
+	"github.com/spf13/cobra"
 )
 
-func syscallNamesToSeccompPolicy(profileName *SeccompProfileNsName, syscallNames []string) *seccompprofile.SeccompProfile {
-	panic("Not implemented")
-	return nil
+func NewCommonAdviseCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "advise",
+		Short: "Recommend system configurations based on collected information",
+	}
 }

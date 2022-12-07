@@ -15,13 +15,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package seccomp
+package tracer
 
 import (
-	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func syscallNamesToSeccompPolicy(profileName *SeccompProfileNsName, syscallNames []string) *seccompprofile.SeccompProfile {
+func SyscallNamesToLinuxSeccomp(syscallNames []string) *specs.LinuxSeccomp {
 	panic("Not implemented")
 	return nil
 }

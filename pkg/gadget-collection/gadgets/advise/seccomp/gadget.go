@@ -306,7 +306,7 @@ func getSeccompProfileNsName(
 
 // generateSeccompPolicy generates a seccomp policy which is ready to be
 // created.
-func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, syscalls []byte, podname, containername, fullPodName string, ownerReference *metav1.OwnerReference) (*seccompprofile.SeccompProfile, error) {
+func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, syscallNames []string, podname, containername, fullPodName string, ownerReference *metav1.OwnerReference) (*seccompprofile.SeccompProfile, error) {
 	profileName, err := getSeccompProfileNsName(
 		client,
 		trace.ObjectMeta.Namespace,
@@ -317,7 +317,7 @@ func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, sy
 		return nil, fmt.Errorf("failed to get the profile name: %w", err)
 	}
 
-	r := syscallArrToSeccompPolicy(profileName, syscalls)
+	r := syscallNamesToSeccompPolicy(profileName, syscallNames)
 	seccompProfileAddLabelsAndAnnotations(r, trace, fullPodName, containername, ownerReference)
 
 	return r, nil
@@ -339,8 +339,12 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 
 	traceName := fmt.Sprintf("%s/%s", trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
-	// Get the list of syscalls from the BPF hash map
-	b := traceSingleton.tracer.Peek(event.Container.Mntns)
+	// Get the list of syscallNames from the BPF hash map
+	syscallNames, err := traceSingleton.tracer.Peek(event.Container.Mntns)
+	if err != nil {
+		log.Errorf("peeking syscalls for mntns %d: %s", event.Container.Mntns, err)
+		return
+	}
 
 	// The container has terminated. Cleanup the BPF hash map
 	traceSingleton.tracer.Delete(event.Container.Mntns)
@@ -350,7 +354,7 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 	// This field was fetched when the container was created
 	ownerReference := getContainerOwnerReference(event.Container)
 
-	r, err := generateSeccompPolicy(t.client, trace, b, event.Container.Podname,
+	r, err := generateSeccompPolicy(t.client, trace, syscallNames, event.Container.Podname,
 		event.Container.Name, namespacedName, ownerReference)
 	if err != nil {
 		log.Errorf("Trace %s: %v", traceName, err)
@@ -527,12 +531,16 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 		}
 	}
 
-	// Get the list of syscalls from the BPF hash map
-	b := traceSingleton.tracer.Peek(mntns)
+	// Get the list of syscallNames from the BPF hash map
+	syscallNames, err := traceSingleton.tracer.Peek(mntns)
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("peeking syscalls for mntns %d: %s", mntns, err)
+		return
+	}
 
 	switch trace.Spec.OutputMode {
 	case gadgetv1alpha1.TraceOutputModeStatus:
-		policy := syscallArrToLinuxSeccomp(b)
+		policy := seccomptracer.SyscallNamesToLinuxSeccomp(syscallNames)
 		output, err := json.MarshalIndent(policy, "", "  ")
 		if err != nil {
 			trace.Status.OperationError = fmt.Sprintf("Failed to marshal seccomp policy: %s", err)
@@ -545,7 +553,7 @@ func (t *Trace) Generate(trace *gadgetv1alpha1.Trace) {
 
 		ownerReference := t.helpers.LookupOwnerReferenceByMntns(mntns)
 
-		r, err := generateSeccompPolicy(t.client, trace, b, trace.Spec.Filter.Podname, containerName, podName, ownerReference)
+		r, err := generateSeccompPolicy(t.client, trace, syscallNames, trace.Spec.Filter.Podname, containerName, podName, ownerReference)
 		if err != nil {
 			trace.Status.OperationError = err.Error()
 			return

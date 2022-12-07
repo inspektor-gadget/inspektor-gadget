@@ -239,57 +239,6 @@ func TestClose(t *testing.T) {
 	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
 }
 
-func TestSeccomp(t *testing.T) {
-	if !*rootTest {
-		t.Skip("skipping test requiring root.")
-	}
-	localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
-	if err != nil {
-		t.Fatalf("Failed to start local gadget manager: %s", err)
-	}
-	defer localGadgetManager.Close()
-
-	initialFdList := currentFdList(t)
-
-	containerName := "test-local-gadget-seccomp001"
-	err = localGadgetManager.AddTraceResource("seccomp", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream)
-	if err != nil {
-		t.Fatalf("Failed to create tracer: %s", err)
-	}
-	err = localGadgetManager.ExecTraceResourceOperation("my-tracer", gadgetv1alpha1.OperationStart)
-	if err != nil {
-		t.Fatalf("Failed to start the tracer: %s", err)
-	}
-
-	runTestContainer(t, containerName, "docker.io/library/alpine", "mkdir /foo ; echo OK", "")
-
-	stop := make(chan struct{})
-
-	ch, err := localGadgetManager.StreamTraceResourceOutput("my-tracer", stop)
-	if err != nil {
-		t.Fatalf("Failed to get stream: %s", err)
-	}
-	results := <-ch
-	if !strings.Contains(results, "- mkdir") {
-		t.Fatalf("Failed to get correct Seccomp Policy: %s", results)
-	}
-
-	close(stop)
-
-	err = localGadgetManager.DeleteTraceResource("my-tracer")
-	if err != nil {
-		t.Fatalf("Failed to delete tracer: %s", err)
-	}
-
-	s := stacks()
-	keyword := "seccomp"
-	if strings.Contains(s, keyword) {
-		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
-	}
-
-	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
-}
-
 func TestEbpftop(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
