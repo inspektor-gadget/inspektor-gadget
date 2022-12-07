@@ -106,10 +106,24 @@ func TestGetters(t *testing.T) {
 	type embeddedStruct struct {
 		EmbeddedString string `column:"embeddedString"`
 	}
+	type embeddedPtrStruct struct {
+		EmbeddedString2 string `column:"embeddedString2"`
+	}
+	type ptrStruct struct {
+		EmbeddedString string `column:"ptrStructString"`
+	}
+	type normalStruct struct {
+		EmbeddedString string `column:"normalStructString"`
+	}
 	type testStruct struct {
 		embeddedStruct
-		StringField string `column:"stringField"`
-		IntField    int    `column:"intField"`
+		*embeddedPtrStruct
+		PointerStruct           *ptrStruct
+		NormalStruct            normalStruct
+		NotEmbeddedPtrStruct    *ptrStruct   `column:"ptrStruct,noembed"`
+		NotEmbeddedNormalStruct normalStruct `column:"normalStruct,noembed"`
+		StringField             string       `column:"stringField"`
+		IntField                int          `column:"intField"`
 	}
 	cols := expectColumnsSuccess[testStruct](t)
 
@@ -118,7 +132,6 @@ func TestGetters(t *testing.T) {
 	if col.Kind() != reflect.String {
 		t.Errorf("Expected Kind() to be reflect.String")
 	}
-
 	_, ok := col.Get(nil).Interface().(string)
 	if !ok {
 		t.Errorf("Expected returned value to be of type string")
@@ -174,9 +187,100 @@ func TestGetters(t *testing.T) {
 	refStruct := reflect.ValueOf(&testStruct{embeddedStruct: embeddedStruct{EmbeddedString: "demo"}})
 	str, ok = col.GetRef(refStruct).Interface().(string)
 	if !ok {
+		t.Errorf("Expected returned value to be of type string, got %+v", col.GetRef(refStruct).Interface())
+	}
+	if str != "demo" {
+		t.Errorf("Expected returned value to be string 'demo'")
+	}
+
+	// Embedded (via pointer) string tests
+	col = expectColumn(t, cols, "embeddedstring2")
+
+	_, ok = col.Get(nil).Interface().(string)
+	if !ok {
+		t.Errorf("Expected returned value to be of type string")
+	}
+	str, ok = col.Get(&testStruct{embeddedPtrStruct: &embeddedPtrStruct{EmbeddedString2: "demo"}}).Interface().(string)
+	if !ok {
 		t.Errorf("Expected returned value to be of type string")
 	}
 	if str != "demo" {
+		t.Errorf("Expected returned value to be string 'demo'")
+	}
+
+	str, ok = col.Get(&testStruct{}).Interface().(string)
+	if !ok {
+		t.Errorf("Expected returned value to be of type string, got %+v", col.Get(&testStruct{}).Interface())
+	}
+	if str != "" {
+		t.Errorf("Expected returned value to be an empty string")
+	}
+
+	// Embedded named structs (via pointer) string tests
+	col = expectColumn(t, cols, "ptrStructString")
+
+	_, ok = col.Get(nil).Interface().(string)
+	if !ok {
+		t.Errorf("Expected returned value to be of type string")
+	}
+	str, ok = col.Get(&testStruct{PointerStruct: &ptrStruct{EmbeddedString: "demo"}}).Interface().(string)
+	if !ok {
+		t.Errorf("Expected returned value to be of type string")
+	}
+	if str != "demo" {
+		t.Errorf("Expected returned value to be string 'demo'")
+	}
+
+	str, ok = col.Get(&testStruct{}).Interface().(string)
+	if !ok {
+		t.Errorf("Expected returned value to be of type string, got %+v", col.Get(&testStruct{}).Interface())
+	}
+	if str != "" {
+		t.Errorf("Expected returned value to be an empty string")
+	}
+
+	// Embedded named structs (without pointer) string tests
+	col = expectColumn(t, cols, "normalStructString")
+
+	_, ok = col.Get(nil).Interface().(string)
+	if !ok {
+		t.Errorf("Expected returned value to be of type string")
+	}
+	str, ok = col.Get(&testStruct{NormalStruct: normalStruct{EmbeddedString: "demo"}}).Interface().(string)
+	if !ok {
+		t.Errorf("Expected returned value to be of type string")
+	}
+	if str != "demo" {
+		t.Errorf("Expected returned value to be string 'demo'")
+	}
+
+	str, ok = col.Get(&testStruct{}).Interface().(string)
+	if !ok {
+		t.Errorf("Expected returned value to be of type string, got %+v", col.Get(&testStruct{}).Interface())
+	}
+	if str != "" {
+		t.Errorf("Expected returned value to be an empty string")
+	}
+
+	// Not-Embedded named structs (with pointer) string tests
+	col = expectColumn(t, cols, "ptrStruct")
+
+	tmpPtrStruct, ok := col.Get(&testStruct{NotEmbeddedPtrStruct: &ptrStruct{EmbeddedString: "demo"}}).Interface().(*ptrStruct)
+	if !ok {
+		t.Errorf("Expected returned value to be of type *ptrStruct")
+	}
+	if tmpPtrStruct.EmbeddedString != "demo" {
+		t.Errorf("Expected returned value to be string 'demo'")
+	}
+
+	// Not-Embedded named structs (without pointer) string tests
+	col = expectColumn(t, cols, "normalStruct")
+
+	tmpNormalStruct, ok := col.Get(&testStruct{NotEmbeddedNormalStruct: normalStruct{EmbeddedString: "demo"}}).Interface().(normalStruct)
+	if !ok {
+		t.Errorf("Expected returned value to be of type normalStruct")
+	}
+	if tmpNormalStruct.EmbeddedString != "demo" {
 		t.Errorf("Expected returned value to be string 'demo'")
 	}
 }
