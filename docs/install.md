@@ -87,6 +87,23 @@ If you wish to install an alternative gadget image, you could use the following 
 $ kubectl gadget deploy --image=ghcr.io/myfork/inspektor-gadget:tag
 ```
 
+### Deploy to specific nodes
+
+The `--node-selector` flag accepts a [label
+selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors)
+that defines the nodes where Inspektor Gadget will be deloyed to:
+
+```bash
+# Deploy only to the minikube-m02 node
+$ kubectl gadget deploy --node-selector kubernetes.io/hostname=minikube-m02
+
+# Deploy to all nodes but minikube
+$ kubectl gadget deploy --node-selector kubernetes.io/hostname!=minikube
+
+# Deploy to minikube and minikube-m03 nodes only
+$ kubectl gadget deploy --node-selector 'kubernetes.io/hostname in (minikube, minikube-m03)'
+```
+
 ### Hook Mode
 
 Inspektor Gadget needs to detect when containers are started and stopped.
