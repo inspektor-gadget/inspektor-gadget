@@ -14,10 +14,10 @@ import (
 )
 
 type auditseccompwithfiltersContainer struct {
-	ContainerId [256]int8
-	Namespace   [256]int8
-	Pod         [256]int8
-	Container   [256]int8
+	ContainerId [256]uint8
+	Namespace   [256]uint8
+	Pod         [256]uint8
+	Container   [256]uint8
 }
 
 type auditseccompwithfiltersEvent struct {
@@ -25,7 +25,7 @@ type auditseccompwithfiltersEvent struct {
 	MntnsId   uint64
 	Syscall   uint64
 	Code      uint64
-	Comm      [16]int8
+	Comm      [16]uint8
 	Container auditseccompwithfiltersContainer
 }
 
@@ -44,9 +44,9 @@ func loadAuditseccompwithfilters() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *auditseccompwithfiltersObjects
-//     *auditseccompwithfiltersPrograms
-//     *auditseccompwithfiltersMaps
+//	*auditseccompwithfiltersObjects
+//	*auditseccompwithfiltersPrograms
+//	*auditseccompwithfiltersMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadAuditseccompwithfiltersObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
@@ -140,5 +140,6 @@ func _AuditseccompwithfiltersClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed auditseccompwithfilters_bpfel_arm64.o
 var _AuditseccompwithfiltersBytes []byte
