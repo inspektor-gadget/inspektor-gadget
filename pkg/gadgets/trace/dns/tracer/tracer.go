@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,17 +17,12 @@ package tracer
 import (
 	"errors"
 	"fmt"
-	"os"
 	"syscall"
 	"unsafe"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/perf"
-	"golang.org/x/sys/unix"
-
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -35,28 +30,12 @@ import (
 
 const (
 	BPFProgName     = "ig_trace_dns"
-	BPFMapName      = "events"
+	BPFPerfMapName  = "events"
 	BPFSocketAttach = 50
 )
 
-type link struct {
-	collection *ebpf.Collection
-	perfRd     *perf.Reader
-
-	sockFd int
-
-	// users count how many users called Attach(). This can happen for two reasons:
-	// 1. several containers in a pod (sharing the netns)
-	// 2. pods with networkHost=true
-	users int
-}
-
 type Tracer struct {
-	spec *ebpf.CollectionSpec
-
-	// key: namespace/podname
-	// value: Tracelet
-	attachments map[string]*link
+	*networktracer.Tracer[types.Event]
 }
 
 func NewTracer() (*Tracer, error) {
@@ -65,71 +44,16 @@ func NewTracer() (*Tracer, error) {
 		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
 
-	t := &Tracer{
-		spec:        spec,
-		attachments: make(map[string]*link),
-	}
-
-	return t, nil
-}
-
-func (t *Tracer) Attach(
-	key string,
-	pid uint32,
-	eventCallback func(types.Event),
-) (err error) {
-	if l, ok := t.attachments[key]; ok {
-		l.users++
-		return nil
-	}
-
-	l := &link{
-		sockFd: -1,
-		users:  1,
-	}
-	defer func() {
-		if err != nil {
-			if l.perfRd != nil {
-				l.perfRd.Close()
-			}
-			if l.sockFd != -1 {
-				unix.Close(l.sockFd)
-			}
-			if l.collection != nil {
-				l.collection.Close()
-			}
-		}
-	}()
-
-	l.collection, err = ebpf.NewCollection(t.spec)
-	if err != nil {
-		return fmt.Errorf("failed to create BPF collection: %w", err)
-	}
-
-	l.perfRd, err = perf.NewReader(l.collection.Maps[BPFMapName], gadgets.PerfBufferPages*os.Getpagesize())
-	if err != nil {
-		return fmt.Errorf("failed to get a perf reader: %w", err)
-	}
-
-	prog, ok := l.collection.Programs[BPFProgName]
-	if !ok {
-		return fmt.Errorf("failed to find BPF program %q", BPFProgName)
-	}
-
-	l.sockFd, err = rawsock.OpenRawSock(pid)
-	if err != nil {
-		return fmt.Errorf("failed to open raw socket: %w", err)
-	}
-
-	if err := syscall.SetsockoptInt(l.sockFd, syscall.SOL_SOCKET, BPFSocketAttach, prog.FD()); err != nil {
-		return fmt.Errorf("failed to attach BPF program: %w", err)
-	}
-
-	t.attachments[key] = l
-
-	go t.listen(key, l.perfRd, eventCallback)
-
-	return nil
+	return &Tracer{
+		Tracer: networktracer.NewTracer(
+			spec,
+			BPFProgName,
+			BPFPerfMapName,
+			BPFSocketAttach,
+			types.Base,
+			parseDNSEvent,
+		),
+	}, nil
 }
 
 // pkt_type definitions:
@@ -308,61 +232,4 @@ func parseDNSEvent(rawSample []byte) (*types.Event, error) {
 	}
 
 	return &event, nil
-}
-
-func (t *Tracer) listen(
-	key string,
-	rd *perf.Reader,
-	eventCallback func(types.Event),
-) {
-	for {
-		record, err := rd.Read()
-		if err != nil {
-			if errors.Is(err, perf.ErrClosed) {
-				return
-			}
-
-			msg := fmt.Sprintf("Error reading perf ring buffer (%s): %s", key, err)
-			eventCallback(types.Base(eventtypes.Err(msg)))
-			return
-		}
-
-		if record.LostSamples != 0 {
-			msg := fmt.Sprintf("lost %d samples (%s)", record.LostSamples, key)
-			eventCallback(types.Base(eventtypes.Warn(msg)))
-			continue
-		}
-
-		event, err := parseDNSEvent(record.RawSample)
-		if err != nil {
-			eventCallback(types.Base(eventtypes.Err(err.Error())))
-			continue
-		}
-		eventCallback(*event)
-	}
-}
-
-func (t *Tracer) releaseLink(key string, l *link) {
-	l.perfRd.Close()
-	unix.Close(l.sockFd)
-	l.collection.Close()
-	delete(t.attachments, key)
-}
-
-func (t *Tracer) Detach(key string) error {
-	if l, ok := t.attachments[key]; ok {
-		l.users--
-		if l.users == 0 {
-			t.releaseLink(key, l)
-		}
-		return nil
-	} else {
-		return fmt.Errorf("key not attached: %q", key)
-	}
-}
-
-func (t *Tracer) Close() {
-	for key, l := range t.attachments {
-		t.releaseLink(key, l)
-	}
 }

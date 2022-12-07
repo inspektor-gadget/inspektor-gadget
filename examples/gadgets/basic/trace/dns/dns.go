@@ -26,8 +26,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 )
 
-const key = "host"
-
 func main() {
 	// In some kernel versions it's needed to bump the rlimits to
 	// use run BPF programs.
@@ -58,11 +56,11 @@ func main() {
 	// The tracer has to be attached. The DNS packets will be traced on
 	// the network namespace of pid.
 	pid := uint32(os.Getpid())
-	if err := tracer.Attach(key, pid, eventCallback); err != nil {
+	if err := tracer.Attach(pid, eventCallback); err != nil {
 		fmt.Printf("error attaching tracer: %s\n", err)
 		return
 	}
-	defer tracer.Detach(key)
+	defer tracer.Detach(pid)
 
 	// Graceful shutdown
 	exit := make(chan os.Signal, 1)

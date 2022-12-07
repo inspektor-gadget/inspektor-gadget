@@ -16,7 +16,6 @@ package networktracer
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/google/uuid"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
@@ -24,8 +23,8 @@ import (
 )
 
 type Tracer[Event any] interface {
-	Attach(key string, pid uint32, eventCallback func(Event)) error
-	Detach(key string) error
+	Attach(pid uint32, eventCallback func(Event)) error
+	Detach(pid uint32) error
 }
 
 type ConnectionToContainerCollection struct {
@@ -62,18 +61,11 @@ func ConnectToContainerCollection[Event any](
 	eventCallback := config.EventCallback
 	base := config.Base
 
-	genAttachKey := func(container *containercollection.Container) string {
-		// Use the network namespace inode id as attach key.
-		// This avoids attaching the tracer multiple times to
-		// the same network namespace.
-		return strconv.FormatUint(container.Netns, 10)
-	}
-
 	attachContainerFunc := func(container *containercollection.Container) {
 		cbWithContainer := func(ev Event) {
 			eventCallback(container, ev)
 		}
-		err := tracer.Attach(genAttachKey(container), container.Pid, cbWithContainer)
+		err := tracer.Attach(container.Pid, cbWithContainer)
 		if err != nil {
 			msg := fmt.Sprintf("start tracing container %q: %s", container.Name, err)
 			eventCallback(container, base(eventtypes.Err(msg)))
@@ -83,7 +75,7 @@ func ConnectToContainerCollection[Event any](
 	}
 
 	detachContainerFunc := func(container *containercollection.Container) {
-		err := tracer.Detach(genAttachKey(container))
+		err := tracer.Detach(container.Pid)
 		if err != nil {
 			msg := fmt.Sprintf("stop tracing container %q: %s", container.Name, err)
 			eventCallback(container, base(eventtypes.Err(msg)))

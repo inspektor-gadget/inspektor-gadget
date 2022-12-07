@@ -16,14 +16,12 @@ package snisnoop
 
 import (
 	"fmt"
-	"os"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection/networktracer"
-	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	sniTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/tracer"
 	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
@@ -38,21 +36,15 @@ type Trace struct {
 
 	tracer *sniTracer.Tracer
 	conn   *networktracer.ConnectionToContainerCollection
-
-	netnsHost uint64
 }
 
 type TraceFactory struct {
 	gadgets.BaseFactory
-
-	netnsHost uint64
 }
 
 func NewFactory() gadgets.TraceFactory {
-	netnsHost, _ := containerutils.GetNetNs(os.Getpid())
 	return &TraceFactory{
 		BaseFactory: gadgets.BaseFactory{DeleteTrace: deleteTrace},
-		netnsHost:   netnsHost,
 	}
 }
 
@@ -80,9 +72,8 @@ func deleteTrace(name string, t interface{}) {
 func (f *TraceFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOperation {
 	n := func() interface{} {
 		return &Trace{
-			client:    f.Client,
-			helpers:   f.Helpers,
-			netnsHost: f.netnsHost,
+			client:  f.Client,
+			helpers: f.Helpers,
 		}
 	}
 
