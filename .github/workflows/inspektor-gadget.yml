@@ -521,7 +521,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os-sku: [Ubuntu]
+        os-sku: [Ubuntu, Mariner]
         arch: [amd64, arm64]
     steps:
     - uses: actions/checkout@v3
@@ -553,6 +553,12 @@ jobs:
           # 'p' means the node size corresponds to arm64 hardware.
           node_size='Standard_D2ps_v5'
         fi
+
+        # Enable the aks-preview extension to use Mariner as --os-sku.
+        # This should lead to AKS being deployed on top of Mariner 2.0.
+        # We do not upgrade az because there is a problem doing so in the
+        # GitHub Action.
+        az extension add --name aks-preview
 
         # Let's keep thing in the US to avoid data crossing the Atlantic as
         # GitHub data centers are in the US:
