@@ -35,9 +35,9 @@ func LoadProcessCollector() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *ProcessCollectorObjects
-//     *ProcessCollectorPrograms
-//     *ProcessCollectorMaps
+//	*ProcessCollectorObjects
+//	*ProcessCollectorPrograms
+//	*ProcessCollectorMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func LoadProcessCollectorObjects(obj interface{}, opts *ebpf.CollectionOptions) error {

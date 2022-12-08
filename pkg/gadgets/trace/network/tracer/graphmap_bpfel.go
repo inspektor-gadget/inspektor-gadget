@@ -37,9 +37,9 @@ func loadGraphmap() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *graphmapObjects
-//     *graphmapPrograms
-//     *graphmapMaps
+//	*graphmapObjects
+//	*graphmapPrograms
+//	*graphmapMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadGraphmapObjects(obj interface{}, opts *ebpf.CollectionOptions) error {

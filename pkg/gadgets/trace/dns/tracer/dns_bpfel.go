@@ -127,6 +127,5 @@ func _DnsClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed dns_bpfel.o
 var _DnsBytes []byte

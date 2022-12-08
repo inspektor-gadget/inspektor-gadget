@@ -35,9 +35,9 @@ func loadBiolatencyBefore() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *biolatencyBeforeObjects
-//     *biolatencyBeforePrograms
-//     *biolatencyBeforeMaps
+//	*biolatencyBeforeObjects
+//	*biolatencyBeforePrograms
+//	*biolatencyBeforeMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadBiolatencyBeforeObjects(obj interface{}, opts *ebpf.CollectionOptions) error {

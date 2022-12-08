@@ -28,9 +28,9 @@ func LoadIterUDPv4() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *IterUDPv4Objects
-//     *IterUDPv4Programs
-//     *IterUDPv4Maps
+//	*IterUDPv4Objects
+//	*IterUDPv4Programs
+//	*IterUDPv4Maps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func LoadIterUDPv4Objects(obj interface{}, opts *ebpf.CollectionOptions) error {

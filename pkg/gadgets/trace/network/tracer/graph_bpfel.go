@@ -37,9 +37,9 @@ func loadGraph() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *graphObjects
-//     *graphPrograms
-//     *graphMaps
+//	*graphObjects
+//	*graphPrograms
+//	*graphMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadGraphObjects(obj interface{}, opts *ebpf.CollectionOptions) error {

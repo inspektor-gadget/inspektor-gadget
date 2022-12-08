@@ -148,6 +148,5 @@ func _SigsnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed sigsnoop_bpfel.o
 var _SigsnoopBytes []byte

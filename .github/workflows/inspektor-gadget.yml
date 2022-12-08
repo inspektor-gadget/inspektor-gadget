@@ -66,6 +66,21 @@ jobs:
         # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648
         args: "--out-${NO_FUTURE}format colored-line-number"
 
+  ebpf-objects-checks:
+    name: eBPF Object checks
+    # level: 0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Detect changes for ebpf objects
+        run: |
+          make ebpf-objects
+          changes="$(git status --porcelain)"
+          if [ -n "$changes" ] ; then
+            echo "$changes"
+            exit 1
+          fi
+
   build-kubectl-gadget:
     name: Build kubectl-gadget
     # level: 0
@@ -679,6 +694,7 @@ jobs:
     # level: 3
     needs:
       - documentation-checks
+      - ebpf-objects-checks
       - lint
       - test-integration-minikube
       - test-integration-aks
