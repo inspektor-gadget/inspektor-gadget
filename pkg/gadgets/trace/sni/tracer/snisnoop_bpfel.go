@@ -117,6 +117,5 @@ func _SnisnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed snisnoop_bpfel.o
 var _SnisnoopBytes []byte

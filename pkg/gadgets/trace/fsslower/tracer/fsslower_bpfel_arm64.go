@@ -20,7 +20,7 @@ type fsslowerEvent struct {
 	Size    uint64
 	MntnsId uint64
 	Pid     uint32
-	Op      int32
+	Op      uint32
 	File    [32]uint8
 	Task    [16]uint8
 }
@@ -154,6 +154,5 @@ func _FsslowerClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed fsslower_bpfel_arm64.o
 var _FsslowerBytes []byte

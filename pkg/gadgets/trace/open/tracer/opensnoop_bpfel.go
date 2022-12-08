@@ -142,6 +142,5 @@ func _OpensnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed opensnoop_bpfel.o
 var _OpensnoopBytes []byte

@@ -28,9 +28,9 @@ func LoadIterTCPv4() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *IterTCPv4Objects
-//     *IterTCPv4Programs
-//     *IterTCPv4Maps
+//	*IterTCPv4Objects
+//	*IterTCPv4Programs
+//	*IterTCPv4Maps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func LoadIterTCPv4Objects(obj interface{}, opts *ebpf.CollectionOptions) error {

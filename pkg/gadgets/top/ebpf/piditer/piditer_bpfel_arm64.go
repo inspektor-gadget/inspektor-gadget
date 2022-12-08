@@ -66,7 +66,8 @@ type piditerProgramSpecs struct {
 // piditerMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type piditerMapSpecs struct{}
+type piditerMapSpecs struct {
+}
 
 // piditerObjects contains all objects after they have been loaded into the kernel.
 //
@@ -86,7 +87,8 @@ func (o *piditerObjects) Close() error {
 // piditerMaps contains all maps after they have been loaded into the kernel.
 //
 // It can be passed to loadPiditerObjects or ebpf.CollectionSpec.LoadAndAssign.
-type piditerMaps struct{}
+type piditerMaps struct {
+}
 
 func (m *piditerMaps) Close() error {
 	return _PiditerClose()
@@ -115,6 +117,5 @@ func _PiditerClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed piditer_bpfel_arm64.o
 var _PiditerBytes []byte

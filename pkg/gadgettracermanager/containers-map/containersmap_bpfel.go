@@ -35,9 +35,9 @@ func loadContainersmap() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *containersmapObjects
-//     *containersmapPrograms
-//     *containersmapMaps
+//	*containersmapObjects
+//	*containersmapPrograms
+//	*containersmapMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadContainersmapObjects(obj interface{}, opts *ebpf.CollectionOptions) error {

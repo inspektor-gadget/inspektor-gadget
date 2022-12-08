@@ -30,7 +30,7 @@ type mountsnoopEvent struct {
 	_         [4]byte
 }
 
-type mountsnoopOp int32
+type mountsnoopOp uint32
 
 const (
 	mountsnoopOpMOUNT  mountsnoopOp = 0
@@ -157,6 +157,5 @@ func _MountsnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed mountsnoop_bpfel.o
 var _MountsnoopBytes []byte

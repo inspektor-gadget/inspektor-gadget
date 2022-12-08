@@ -149,6 +149,5 @@ func _CapabilitiesClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed capabilities_bpfel_arm64.o
 var _CapabilitiesBytes []byte

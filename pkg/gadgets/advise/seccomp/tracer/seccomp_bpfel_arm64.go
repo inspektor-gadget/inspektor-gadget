@@ -28,9 +28,9 @@ func loadSeccomp() (*ebpf.CollectionSpec, error) {
 //
 // The following types are suitable as obj argument:
 //
-//     *seccompObjects
-//     *seccompPrograms
-//     *seccompMaps
+//	*seccompObjects
+//	*seccompPrograms
+//	*seccompMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
 func loadSeccompObjects(obj interface{}, opts *ebpf.CollectionOptions) error {

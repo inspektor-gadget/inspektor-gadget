@@ -131,6 +131,5 @@ func _ProfileClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed profile_bpfel_arm64.o
 var _ProfileBytes []byte

@@ -140,6 +140,5 @@ func _AuditseccompwithfiltersClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed auditseccompwithfilters_bpfel_arm64.o
 var _AuditseccompwithfiltersBytes []byte

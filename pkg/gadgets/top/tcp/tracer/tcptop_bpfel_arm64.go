@@ -138,6 +138,5 @@ func _TcptopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
-//
 //go:embed tcptop_bpfel_arm64.o
 var _TcptopBytes []byte
