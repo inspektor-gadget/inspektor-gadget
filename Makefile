@@ -56,7 +56,7 @@ all: build local-gadget
 phony_explicit:
 
 ebpf-objects:
-	docker run -it --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) -v $(shell pwd):/work ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder
+	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) -v $(shell pwd):/work ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder
 
 ebpf-objects-outside-docker:
 	TARGET=arm64 go generate ./...
