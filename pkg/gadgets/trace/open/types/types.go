@@ -25,7 +25,7 @@ type Event struct {
 	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,width:12,hide"`
 	Pid       uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
 	UID       uint32 `json:"uid,omitempty" column:"uid,minWidth:10,hide"`
-	Comm      string `json:"pcomm,omitempty" column:"comm,maxWidth:16"`
+	Comm      string `json:"comm,omitempty" column:"comm,maxWidth:16"`
 	Fd        int    `json:"fd,omitempty" column:"fd,minWidth:2,width:3"`
 	Ret       int    `json:"ret,omitempty" column:"ret,width:3,fixed,hide"`
 	Err       int    `json:"err,omitempty" column:"err,width:3,fixed"`
