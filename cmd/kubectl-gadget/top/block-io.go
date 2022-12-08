@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,43 +15,43 @@
 package top
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
+	commontop "github.com/inspektor-gadget/inspektor-gadget/cmd/common/top"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
 
 func newBlockIOCmd() *cobra.Command {
-	var commonTopFlags CommonTopFlags
+	var commonFlags utils.CommonFlags
+	var flags commontop.CommonTopFlags
 
 	cols := types.GetColumns()
 
-	cmd := &cobra.Command{
-		Use:   fmt.Sprintf("block-io [interval=%d]", top.IntervalDefault),
-		Short: "Periodically report block device I/O activity",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonTopFlags.OutputConfig, types.GetColumns())
-			if err != nil {
-				return commonutils.WrapInErrParserCreate(err)
-			}
+	cmd := commontop.NewBlockIOCmd(func(cmd *cobra.Command, args []string) error {
+		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, cols)
+		if err != nil {
+			return commonutils.WrapInErrParserCreate(err)
+		}
 
-			gadget := &TopGadget[types.Stats]{
-				name:           "biotop",
-				commonTopFlags: &commonTopFlags,
-				parser:         parser,
-				nodeStats:      make(map[string][]*types.Stats),
-				colMap:         cols.GetColumnMap(),
-			}
+		gadget := &TopGadget[types.Stats]{
+			TopGadget: commontop.TopGadget[types.Stats]{
+				CommonTopFlags: &flags,
+				OutputConfig:   &commonFlags.OutputConfig,
+				Parser:         parser,
+				ColMap:         cols.ColumnMap,
+			},
+			name:        "biotop",
+			commonFlags: &commonFlags,
+			nodeStats:   make(map[string][]*types.Stats),
+		}
 
-			return gadget.Run(args)
-		},
-		Args: cobra.MaximumNArgs(1),
-	}
+		return gadget.Run(args)
+	})
 
-	addCommonTopFlags(cmd, &commonTopFlags, &commonTopFlags.CommonFlags, cols.ColumnMap, types.SortByDefault)
+	commontop.AddCommonTopFlags(cmd, &flags, cols.ColumnMap, types.SortByDefault)
+	utils.AddCommonFlags(cmd, &commonFlags)
 
 	return cmd
 }

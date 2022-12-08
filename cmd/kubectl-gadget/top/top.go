@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,118 +24,67 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 
+	commontop "github.com/inspektor-gadget/inspektor-gadget/cmd/common/top"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 )
 
-type CommonTopFlags struct {
-	utils.CommonFlags
-
-	OutputInterval int
-	MaxRows        int
-	SortBy         string
-	ParsedSortBy   []string
-}
-
-func NewTopCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "top",
-		Short: "Gather, sort and periodically report events according to a given criteria",
-	}
-
-	cmd.AddCommand(newBlockIOCmd())
-	cmd.AddCommand(newEbpfCmd())
-	cmd.AddCommand(newFileCmd())
-	cmd.AddCommand(newTCPCmd())
-
-	return cmd
-}
-
-func addCommonTopFlags[Stats any](
-	command *cobra.Command,
-	commonTopFlags *CommonTopFlags,
-	commonFlags *utils.CommonFlags,
-	colMap columns.ColumnMap[Stats],
-	sortBySliceDefault []string,
-) {
-	command.Flags().IntVarP(&commonTopFlags.MaxRows, "max-rows", "r", top.MaxRowsDefault, "Maximum rows to print")
-	validCols, _ := sort.FilterSortableColumns(colMap, colMap.GetColumnNames())
-	command.Flags().StringVarP(
-		&commonTopFlags.SortBy, "sort",
-		"",
-		strings.Join(sortBySliceDefault, ","),
-		fmt.Sprintf("Sort by columns. Join multiple columns with ','. Prefix a column with '-' to sort in descending order. Available columns: (%s)", strings.Join(validCols, ", ")))
-	utils.AddCommonFlags(command, commonFlags)
-}
-
-// TopParser defines the interface that every top-gadget parser has to
-// implement.
-type TopParser[Stats any] interface {
-	// BuildColumnsHeader returns a header to be used when the user requests to
-	// present the output in columns.
-	BuildColumnsHeader() string
-	TransformIntoColumns(*Stats) string
-}
-
 // TopGadget represents a gadget belonging to the top category.
 type TopGadget[Stats any] struct {
+	commontop.TopGadget[Stats]
 	sync.Mutex
 
-	name           string
-	commonTopFlags *CommonTopFlags
-	params         map[string]string
-	parser         TopParser[Stats]
-	nodeStats      map[string][]*Stats
-	colMap         columns.ColumnMap[Stats]
+	name        string
+	commonFlags *utils.CommonFlags
+	params      map[string]string
+	nodeStats   map[string][]*Stats
 }
 
 func (g *TopGadget[Stats]) Run(args []string) error {
 	var err error
 
 	if len(args) == 1 {
-		g.commonTopFlags.OutputInterval, err = strconv.Atoi(args[0])
+		g.CommonTopFlags.OutputInterval, err = strconv.Atoi(args[0])
 		if err != nil {
 			return commonutils.WrapInErrInvalidArg("<interval>",
 				fmt.Errorf("%q is not a valid value", args[0]))
 		}
 	} else {
-		g.commonTopFlags.OutputInterval = top.IntervalDefault
+		g.CommonTopFlags.OutputInterval = top.IntervalDefault
 	}
 
-	sortByColumns := strings.Split(g.commonTopFlags.SortBy, ",")
-	_, invalidCols := sort.FilterSortableColumns(g.colMap, sortByColumns)
+	sortByColumns := strings.Split(g.CommonTopFlags.SortBy, ",")
+	_, invalidCols := sort.FilterSortableColumns(g.ColMap, sortByColumns)
 
 	if len(invalidCols) > 0 {
 		return commonutils.WrapInErrInvalidArg("--sort", fmt.Errorf("invalid columns to sort by: %q", strings.Join(invalidCols, ",")))
 	}
-	g.commonTopFlags.ParsedSortBy = sortByColumns
+	g.CommonTopFlags.ParsedSortBy = sortByColumns
 
 	if g.params == nil {
 		g.params = make(map[string]string)
 	}
-	g.params[top.MaxRowsParam] = strconv.Itoa(g.commonTopFlags.MaxRows)
-	g.params[top.IntervalParam] = strconv.Itoa(g.commonTopFlags.OutputInterval)
-	g.params[top.SortByParam] = g.commonTopFlags.SortBy
+	g.params[top.MaxRowsParam] = strconv.Itoa(g.CommonTopFlags.MaxRows)
+	g.params[top.IntervalParam] = strconv.Itoa(g.CommonTopFlags.OutputInterval)
+	g.params[top.SortByParam] = g.CommonTopFlags.SortBy
 
 	config := &utils.TraceConfig{
 		GadgetName:       g.name,
 		Operation:        gadgetv1alpha1.OperationStart,
 		TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
 		TraceOutputState: gadgetv1alpha1.TraceStateStarted,
-		CommonFlags:      &g.commonTopFlags.CommonFlags,
+		CommonFlags:      g.commonFlags,
 		Parameters:       g.params,
 	}
 
 	// when params.Timeout == interval it means the user
 	// only wants to run for a given amount of time and print
 	// that result.
-	singleShot := g.commonTopFlags.Timeout == g.commonTopFlags.OutputInterval
+	singleShot := g.commonFlags.Timeout == g.CommonTopFlags.OutputInterval
 
 	// start print loop if this is not a "single shot" operation
 	if singleShot {
@@ -149,7 +98,7 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 	}
 
 	if singleShot {
-		g.PrintStats()
+		g.mergeAndPrintStats()
 	}
 
 	return nil
@@ -157,28 +106,29 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 
 func (g *TopGadget[Stats]) StartPrintLoop() {
 	go func() {
-		ticker := time.NewTicker(time.Duration(g.commonTopFlags.OutputInterval) * time.Second)
+		ticker := time.NewTicker(time.Duration(g.CommonTopFlags.OutputInterval) * time.Second)
 		g.PrintHeader()
 		for {
 			<-ticker.C
 			g.PrintHeader()
-			g.PrintStats()
+			g.mergeAndPrintStats()
 		}
 	}()
 }
 
-func (g *TopGadget[Stats]) PrintHeader() {
-	if g.commonTopFlags.OutputMode == commonutils.OutputModeJSON {
-		return
-	}
+func (g *TopGadget[Stats]) mergeAndPrintStats() {
+	// Sort and print stats
+	g.Lock()
 
-	if term.IsTerminal(int(os.Stdout.Fd())) {
-		utils.ClearScreen()
-	} else {
-		fmt.Println("")
+	stats := []*Stats{}
+	for _, stat := range g.nodeStats {
+		stats = append(stats, stat...)
 	}
+	g.nodeStats = make(map[string][]*Stats)
 
-	fmt.Println(g.parser.BuildColumnsHeader())
+	g.Unlock()
+
+	g.PrintStats(stats)
 }
 
 func (g *TopGadget[Stats]) Callback(line string, node string) {
@@ -199,38 +149,13 @@ func (g *TopGadget[Stats]) Callback(line string, node string) {
 	g.nodeStats[node] = event.Stats
 }
 
-func (g *TopGadget[Stats]) PrintStats() {
-	// Sort and print stats
-	g.Lock()
+func NewTopCmd() *cobra.Command {
+	cmd := commontop.NewCommonTopCmd()
 
-	stats := []*Stats{}
-	for _, stat := range g.nodeStats {
-		stats = append(stats, stat...)
-	}
-	g.nodeStats = make(map[string][]*Stats)
+	cmd.AddCommand(newBlockIOCmd())
+	cmd.AddCommand(newEbpfCmd())
+	cmd.AddCommand(newFileCmd())
+	cmd.AddCommand(newTCPCmd())
 
-	g.Unlock()
-
-	top.SortStats(stats, g.commonTopFlags.ParsedSortBy, &g.colMap)
-
-	for idx, stat := range stats {
-		if idx == g.commonTopFlags.MaxRows {
-			break
-		}
-
-		switch g.commonTopFlags.OutputConfig.OutputMode {
-		case commonutils.OutputModeJSON:
-			b, err := json.Marshal(stat)
-			if err != nil {
-				fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
-				continue
-			}
-
-			fmt.Println(string(b))
-		case commonutils.OutputModeColumns:
-			fallthrough
-		case commonutils.OutputModeCustomColumns:
-			fmt.Println(g.parser.TransformIntoColumns(stat))
-		}
-	}
+	return cmd
 }
