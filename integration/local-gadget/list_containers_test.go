@@ -116,7 +116,7 @@ func TestFilterByContainerName(t *testing.T) {
 
 	commands := []Command{
 		CreateTestNamespaceCommand(ns),
-		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
+		PodCommand(cn, "busybox", ns, []string{"sleep", "inf"}, nil),
 		WaitUntilPodReadyCommand(ns, cn),
 		listContainersCmd,
 		DeleteTestNamespaceCommand(ns),
@@ -171,7 +171,7 @@ func TestWatchContainers(t *testing.T) {
 		CreateTestNamespaceCommand(ns),
 		watchContainersCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
+		PodCommand(cn, "busybox", ns, []string{"sleep", "inf"}, nil),
 		WaitUntilPodReadyCommand(ns, cn),
 		DeleteTestNamespaceCommand(ns),
 	}

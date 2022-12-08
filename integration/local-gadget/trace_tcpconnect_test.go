@@ -28,7 +28,7 @@ func TestTraceTcpconnect(t *testing.T) {
 
 	commandsPreTest := []Command{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		PodCommand("nginx-pod", "nginx", ns, nil, nil),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
 	}
 

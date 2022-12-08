@@ -555,44 +555,8 @@ func (c *CmdCommand) Stop(t *testing.T) {
 	c.Started = false
 }
 
-// PodCommand returns a CmdCommand that starts a pid with a specified image, command and args
-func PodCommand(podname, image, namespace, command, commandArgs string) *CmdCommand {
-	cmdLine := ""
-	if command != "" {
-		cmdLine = fmt.Sprintf("\n    command: %s", command)
-	}
-
-	commandArgsLine := ""
-	if commandArgs != "" {
-		commandArgsLine = fmt.Sprintf("\n    args:\n    - %s", commandArgs)
-	}
-
-	cmdStr := fmt.Sprintf(`kubectl apply -f - <<"EOF"
-apiVersion: v1
-kind: Pod
-metadata:
-  name: %s
-  namespace: %s
-  labels:
-    run: %s
-spec:
-  restartPolicy: Never
-  terminationGracePeriodSeconds: 0
-  containers:
-  - name: %s
-    image: %s%s%s
-EOF
-`, podname, namespace, podname, podname, image, cmdLine, commandArgsLine)
-
-	return &CmdCommand{
-		Name:           fmt.Sprintf("Run%s", podname),
-		Cmd:            cmdStr,
-		ExpectedString: fmt.Sprintf("pod/%s created\n", podname),
-	}
-}
-
-// PodCommandThroughAPI returns a Command that starts a pid with a specified image, command and args
-func PodCommandThroughAPI(podname, image, namespace string, command, commandArgs []string) *K8sCommand {
+// PodCommand returns a Command that starts a pid with a specified image, command and args
+func PodCommand(podname, image, namespace string, command, commandArgs []string) *K8sCommand {
 	return &K8sCommand{
 		name: fmt.Sprintf("Creating pod %s", podname),
 		runFunc: func(t *testing.T) {
@@ -643,19 +607,14 @@ func PodCommandThroughAPI(podname, image, namespace string, command, commandArgs
 
 // BusyboxPodRepeatCommand returns a CmdCommand that creates a pod and runs
 // "cmd" each 0.1 seconds inside the pod.
-func BusyboxPodRepeatCommand(namespace, cmd string) *CmdCommand {
+func BusyboxPodRepeatCommand(namespace, cmd string) *K8sCommand {
 	cmdStr := fmt.Sprintf("while true; do %s ; sleep 0.1; done", cmd)
 	return BusyboxPodCommand(namespace, cmdStr)
 }
 
 // BusyboxPodCommand returns a Command that creates a pod and runs "cmd" in it.
-func BusyboxPodCommand(namespace, cmd string) *CmdCommand {
-	return PodCommand("test-pod", "busybox", namespace, `["/bin/sh", "-c"]`, cmd)
-}
-
-// BusyboxPodCommandThroughAPI  returns a Command that creates a pod and runs "cmd" in it.
-func BusyboxPodCommandThroughAPI(namespace, cmd string) *K8sCommand {
-	return PodCommandThroughAPI("test-pod", "busybox", namespace, []string{"/bin/sh", "-c"}, []string{cmd})
+func BusyboxPodCommand(namespace, cmd string) *K8sCommand {
+	return PodCommand("test-pod", "busybox", namespace, []string{"/bin/sh", "-c"}, []string{cmd})
 }
 
 // GenerateTestNamespaceName returns a string which can be used as unique

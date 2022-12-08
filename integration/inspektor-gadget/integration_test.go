@@ -1060,7 +1060,7 @@ func TestNetworkGraph(t *testing.T) {
 
 	commandsPreTest := []Command{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		PodCommand("nginx-pod", "nginx", ns, nil, nil),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
 	}
 
@@ -1338,7 +1338,7 @@ func TestTcpconnect(t *testing.T) {
 
 	commandsPreTest := []Command{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		PodCommand("nginx-pod", "nginx", ns, nil, nil),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
 	}
 
@@ -1388,7 +1388,7 @@ func TestTcptracer(t *testing.T) {
 
 	commandsPreTest := []Command{
 		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		PodCommand("nginx-pod", "nginx", ns, nil, nil),
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
 	}
 
@@ -1440,7 +1440,7 @@ func TestTcptop(t *testing.T) {
 
 	commandsPreTest := []Command{
 		CreateTestNamespaceCommandThroughAPI(ns),
-		PodCommandThroughAPI("nginx-pod", "nginx", ns, nil, nil),
+		PodCommand("nginx-pod", "nginx", ns, nil, nil),
 		WaitUntilPodReadyCommandThroughAPI(ns, "nginx-pod"),
 	}
 
