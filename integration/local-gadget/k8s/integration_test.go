@@ -20,6 +20,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
 const (
@@ -34,6 +36,10 @@ var (
 	integration      = flag.Bool("integration", false, "run integration tests")
 	containerRuntime = flag.String("container-runtime", "", "allows to do validation for expected runtime in the tests")
 )
+
+func init() {
+	DefaultTestComponent = LocalGadgetTestComponent
+}
 
 func TestMain(m *testing.M) {
 	flag.Parse()

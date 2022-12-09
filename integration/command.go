@@ -28,6 +28,17 @@ import (
 	"github.com/kr/pretty"
 )
 
+type TestComponent int
+
+const (
+	InspektorGadgetTestComponent TestComponent = iota
+	LocalGadgetTestComponent
+)
+
+// DefaultTestComponent indicates component under testing allowing component specific logic
+// e.g. indicating whether we have to enrich error message with InspektorGadget logs
+var DefaultTestComponent = InspektorGadgetTestComponent
+
 const (
 	namespaceLabelKey   string = "scope"
 	namespaceLabelValue string = "ig-integration-tests"
@@ -57,9 +68,9 @@ type Command struct {
 	// It corresponds to gadget like execsnoop which wait user to type Ctrl^C.
 	StartAndStop bool
 
-	// Started indicates this command was Started.
+	// started indicates this command was started.
 	// It is only used by command which have StartAndStop set.
-	Started bool
+	started bool
 
 	// command is a Cmd object used when we want to start the command, then other
 	// do stuff and wait for its completion.
@@ -81,7 +92,7 @@ func (c *Command) IsStartAndStop() bool {
 }
 
 func (c *Command) Running() bool {
-	return c.Started
+	return c.started
 }
 
 // DeployInspektorGadget deploys inspector gadget in Kubernetes
@@ -241,8 +252,11 @@ func (c *Command) createExecCmd() {
 
 // getInspektorGadgetLogs returns a string with the logs of the gadget pods
 func getInspektorGadgetLogs() string {
-	var sb strings.Builder
+	if DefaultTestComponent != InspektorGadgetTestComponent {
+		return ""
+	}
 
+	var sb strings.Builder
 	logCommands := []string{
 		"kubectl get pods -n gadget -o wide",
 		`for pod in $(kubectl get pods -n gadget -o name); do
@@ -313,8 +327,8 @@ func (c *Command) kill() error {
 
 	// In some cases, we do not have to wait here because the Cmd was executed
 	// with Run(), which already waits. On the contrary, in the case it was
-	// executed with Start() thus c.Started is true, we need to wait indeed.
-	if c.Started {
+	// executed with Start() thus c.started is true, we need to wait indeed.
+	if c.started {
 		err = c.command.Wait()
 		if err == nil {
 			return nil
@@ -364,8 +378,8 @@ func (c *Command) RunWithoutTest() error {
 
 // StartWithoutTest starts the Command, this is thought to be used in TestMain().
 func (c *Command) StartWithoutTest() error {
-	if c.Started {
-		fmt.Printf("Warn(%s): trying to start command but it was already Started\n", c.Name)
+	if c.started {
+		fmt.Printf("Warn(%s): trying to start command but it was already started\n", c.Name)
 		return nil
 	}
 
@@ -377,7 +391,7 @@ func (c *Command) StartWithoutTest() error {
 		return fmt.Errorf("failed to start command(%s): %w", c.Name, err)
 	}
 
-	c.Started = true
+	c.started = true
 
 	return nil
 }
@@ -385,8 +399,8 @@ func (c *Command) StartWithoutTest() error {
 // WaitWithoutTest waits for a Command that was started with StartWithoutTest(),
 // this is thought to be used in TestMain().
 func (c *Command) WaitWithoutTest() error {
-	if !c.Started {
-		fmt.Printf("Warn(%s): trying to wait for a command that has not been Started yet\n", c.Name)
+	if !c.started {
+		fmt.Printf("Warn(%s): trying to wait for a command that has not been started yet\n", c.Name)
 		return nil
 	}
 
@@ -399,7 +413,7 @@ func (c *Command) WaitWithoutTest() error {
 		return fmt.Errorf("failed to wait for command(%s): %w", c.Name, err)
 	}
 
-	c.Started = false
+	c.started = false
 
 	return nil
 }
@@ -439,8 +453,8 @@ func (c *Command) Run(t *testing.T) {
 // Start starts the Command on the given as parameter test, you need to
 // wait it using Stop().
 func (c *Command) Start(t *testing.T) {
-	if c.Started {
-		t.Logf("Warn(%s): trying to start command but it was already Started\n", c.Name)
+	if c.started {
+		t.Logf("Warn(%s): trying to start command but it was already started\n", c.Name)
 		return
 	}
 
@@ -452,7 +466,7 @@ func (c *Command) Start(t *testing.T) {
 		t.Fatalf("failed to start command(%s): %s\n", c.Name, err)
 	}
 
-	c.Started = true
+	c.started = true
 }
 
 // Stop stops a Command previously started with Start().
@@ -460,8 +474,8 @@ func (c *Command) Start(t *testing.T) {
 // its termination.
 // Cmd output is then checked with regard to ExpectedString and ExpectedRegexp
 func (c *Command) Stop(t *testing.T) {
-	if !c.Started {
-		t.Logf("Warn(%s): trying to stop command but it was not Started\n", c.Name)
+	if !c.started {
+		t.Logf("Warn(%s): trying to stop command but it was not started\n", c.Name)
 		return
 	}
 
@@ -479,7 +493,7 @@ func (c *Command) Stop(t *testing.T) {
 		t.Fatalf("invalid command output(%s): %s\n", c.Name, err)
 	}
 
-	c.Started = false
+	c.started = false
 }
 
 // PodCommand returns a Command that starts a pid with a specified image, command and args

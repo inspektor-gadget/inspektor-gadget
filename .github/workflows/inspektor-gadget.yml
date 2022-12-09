@@ -494,8 +494,8 @@ jobs:
 
         perl tools/check-readme.pl ./kubectl-gadget README.md
 
-  test-integration-local-gadget:
-    name: Integration tests for local gadget
+  test-integration-k8s-local-gadget:
+    name: Integration tests for local gadget with Kubernetes Containers
     # level: 2
     needs: [ test-unit, test-local-gadget, build-local-gadget ]
     runs-on: ubuntu-latest
@@ -536,7 +536,36 @@ jobs:
           sudo swapoff -a
       - name: Run integration for container runtime ${{ matrix.runtime }}
         run: |
-          make -C integration/local-gadget CONTAINER_RUNTIME=${{ matrix.runtime }} -o build setup test
+          make -C integration/local-gadget/k8s CONTAINER_RUNTIME=${{ matrix.runtime }} -o build setup test
+
+  test-integration-non-k8s-local-gadget:
+    name: Integration tests for local gadget with non-Kubernetes Containers
+    # level: 2
+    needs: [ test-unit, test-local-gadget, build-local-gadget ]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [ docker ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Get local-gadget-linux-amd64.tar.gz from artifact.
+        uses: actions/download-artifact@v3
+        with:
+          name: local-gadget-linux-amd64-tar-gz
+          path: /home/runner/work/inspektor-gadget/
+      - name: Unpack local-gadget-linux-amd64.tar.gz
+        run: |
+          tar zxvf /home/runner/work/inspektor-gadget/local-gadget-linux-amd64.tar.gz
+          mv local-gadget local-gadget-linux-amd64
+      - name: Run integration for container runtime ${{ matrix.runtime }}
+        run: |
+          make -C integration/local-gadget/non-k8s -o build test-${{ matrix.runtime }}
 
   test-integration-aks:
     name: Integration tests on AKS
@@ -716,7 +745,8 @@ jobs:
       - test-integration-aks
       - test-integration-aro
       - test-local-gadget
-      - test-integration-local-gadget
+      - test-integration-k8s-local-gadget
+      - test-integration-non-k8s-local-gadget
       - check-readme-up-to-date
       - build-examples
       - build-gadgets-examples

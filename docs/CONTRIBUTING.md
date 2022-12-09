@@ -126,24 +126,37 @@ $ make integration-tests
 
 ### Integration tests for Local Gadget
 
+#### Kubernetes
+
 The integration tests for local gadget uses minikube for testing different container runtimes.
-The minikube should always be configured to use docker `driver`. Currently, supported
+The minikube should always be configured to use docker `driver`. Currently supported
 container runtimes are `docker`, `containerd` and `cri-o`. You can set up minikube using:
 
 ```bash
-$ make -C integration/local-gadget setup-all
+$ make -C integration/local-gadget/k8s setup-all
 # for single container runtime e.g containerd
-$ make -C integration/local-gadget CONTAINER_RUNTIME=containerd setup
+$ make -C integration/local-gadget/k8s CONTAINER_RUNTIME=containerd setup
 ```
 
 And run the test using:
 
 ```bash
-$ make -C integration/local-gadget test-all
+$ make -C integration/local-gadget/k8s test-all
 # for single container runtime e.g containerd
-$ make -C integration/local-gadget CONTAINER_RUNTIME=containerd test
+$ make -C integration/local-gadget/k8s CONTAINER_RUNTIME=containerd test
 ```
+
 if no `CONTAINER_RUNTIME` is specified `docker` will be used as a default runtime.
+
+#### Non-Kubernetes
+
+The local-gadget integration tests for non-Kubernetes containers directly interact
+with container runtime. The tests assume that you already have the desired container
+runtime installed. Currently supported runtime is `docker` only, You can run the test using:
+
+```bash
+$ make -C integration/local-gadget/non-k8s test-docker
+```
 
 ### Continuous Integration
 
