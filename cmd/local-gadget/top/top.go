@@ -105,5 +105,7 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 func NewTopCmd() *cobra.Command {
 	cmd := commontop.NewCommonTopCmd()
 
+	cmd.AddCommand(newBlockIOCmd())
+
 	return cmd
 }
