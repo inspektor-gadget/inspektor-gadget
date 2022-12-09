@@ -211,9 +211,9 @@ jobs:
       uses: actions/cache@v3.0.11
       with:
         path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-docker-${{ matrix.type }}-${{ hashFiles('Dockerfiles/gadget-${{ matrix.type }}.Dockerfile') }}
+        key: ${{ runner.os }}-docker-${{ matrix.type }}-${{ matrix.platform }}-${{ hashFiles(format('Dockerfiles/gadget-{0}.Dockerfile', matrix.type)) }}
         restore-keys: |
-          ${{ runner.os }}-docker-${{ matrix.type }}-
+          ${{ runner.os }}-docker-${{ matrix.type }}-${{ matrix.platform }}-
     - name: Login to Container Registry
       uses: docker/login-action@v2
       with:
@@ -227,6 +227,9 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
         co-re: ${{ matrix.type == 'core' }}
+    # we are using cache-to mode=min (default) implying that only final image layers are cached, using cache
+    # mode=max results in builder image layer of ~7GB because of btfhub files in a layer, which is too
+    # large (gloabal limit 10GB) to work with GH caches. (TODO: if we can work with mode=max in future?)
     - name: Build gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: docker/build-push-action@v3
       with:
@@ -237,7 +240,7 @@ jobs:
         outputs: type=docker,dest=/tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache-docker
+        cache-to: type=local,dest=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
     - name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: actions/upload-artifact@master
@@ -257,14 +260,21 @@ jobs:
         build-args: |
           ENABLE_BTFGEN=true
         outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
-        cache-from: type=local,src=/tmp/.buildx-cache-docker
-        cache-to: type=local,dest=/tmp/.buildx-cache-registry
+        cache-from: type=local,src=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
     - name: Save gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image digest output
       id: published-gadget-container-images
       if: github.event_name != 'pull_request'
       run: |
           echo "${{ matrix.type }}-${{ matrix.platform }}=${{ steps.publish-gadget-container-images.outputs.digest }}" >> $GITHUB_OUTPUT
+
+    # old cache entries aren’t deleted, so the cache size keeps growing
+    # remove old cache and move new cache to cache path to workaround the issue
+    # https://github.com/docker/build-push-action/issues/252
+    - name: Move gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image cache to correct localtion
+      run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   publish-gadget-images-manifest:
     name: Publish gadget container images manifest
