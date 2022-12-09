@@ -107,6 +107,7 @@ func NewTopCmd() *cobra.Command {
 
 	cmd.AddCommand(newBlockIOCmd())
 	cmd.AddCommand(newEbpfCmd())
+	cmd.AddCommand(newFileCmd())
 
 	return cmd
 }
