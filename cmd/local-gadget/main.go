@@ -24,6 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/containers"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/interactive"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/snapshot"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/top"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/trace"
 )
 
@@ -39,6 +40,7 @@ func main() {
 		containers.NewListContainersCmd(),
 		interactive.NewInteractiveCmd(),
 		snapshot.NewSnapshotCmd(),
+		top.NewTopCmd(),
 		trace.NewTraceCmd(),
 		newTraceloopCmd(),
 		newVersionCmd(),
