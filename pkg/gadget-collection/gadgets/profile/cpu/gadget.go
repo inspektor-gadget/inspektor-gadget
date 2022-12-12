@@ -19,14 +19,12 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/profile"
-
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	standardtracer "github.com/inspektor-gadget/inspektor-gadget/pkg/standardgadgets/profile/cpu"
-
-	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
 
 type Trace struct {
@@ -134,14 +132,16 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
+	defer func() {
+		t.started = false
+		t.tracer = nil
+	}()
+
 	output, err := t.tracer.Stop()
 	if err != nil {
 		trace.Status.OperationError = err.Error()
 		return
 	}
-
-	t.tracer = nil
-	t.started = false
 
 	trace.Status.Output = output
 	trace.Status.State = gadgetv1alpha1.TraceStateCompleted
