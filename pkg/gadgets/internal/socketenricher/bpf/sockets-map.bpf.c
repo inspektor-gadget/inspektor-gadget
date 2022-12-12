@@ -34,8 +34,6 @@ static __always_inline int
 probe_bind_exit(struct pt_regs *ctx, short ver)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
-	__u32 tid = (__u32)pid_tgid;
 	struct task_struct *task;
 	struct socket **socketp, *socket;
 	struct inet_sock *inet_sock;
@@ -59,17 +57,13 @@ probe_bind_exit(struct pt_regs *ctx, short ver)
 
 	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
 
-	// TODO: remove this
-	socket_key.netns = 0;
-
 	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
 
 	struct sockets_value socket_value = {0,};
 	task = (struct task_struct*) bpf_get_current_task();
 	socket_value.mntns = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-	socket_value.pid = pid;
-	socket_value.tid = tid;
+	socket_value.pid_tgid = pid_tgid;
 	bpf_get_current_comm(&socket_value.task, sizeof(socket_value.task));
 	socket_value.server = 1;
 
@@ -93,9 +87,7 @@ static __always_inline int
 exit_tcp_connect(struct pt_regs *ctx, int ret)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-	__u32 pid = pid_tgid >> 32;
 	struct task_struct *task;
-	__u32 tid = pid_tgid;
 	struct sock **skpp;
 	struct sock *sk;
 	struct inet_sock *inet_sock;
@@ -115,17 +107,13 @@ exit_tcp_connect(struct pt_regs *ctx, int ret)
 
 	BPF_CORE_READ_INTO(&socket_key.netns, sk, __sk_common.skc_net.net, ns.inum);
 
-	// TODO: remove this
-	socket_key.netns = 0;
-
 	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sk, sk_protocol);
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
 
 	struct sockets_value socket_value = {0,};
 	task = (struct task_struct*) bpf_get_current_task();
 	socket_value.mntns = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-	socket_value.pid = pid;
-	socket_value.tid = tid;
+	socket_value.pid_tgid = pid_tgid;
 	bpf_get_current_comm(&socket_value.task, sizeof(socket_value.task));
 	socket_value.server = 0;
 
@@ -148,9 +136,6 @@ probe_release_entry(struct pt_regs *ctx, struct socket *socket)
 	struct sockets_key socket_key = {0,};
 
 	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
-
-	// TODO: remove this
-	socket_key.netns = 0;
 
 	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
@@ -218,6 +203,5 @@ int BPF_KPROBE(ig_free_ipv6_e, struct socket *socket)
 {
 	return probe_release_entry(ctx, socket);
 }
-
 
 char _license[] SEC("license") = "GPL";

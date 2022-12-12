@@ -15,7 +15,11 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
-#include <sockets-map.h>
+#include <socket-enricher.h>
+
+typedef __u32 ipv4_addr;
+
+#define TASK_COMM_LEN	16
 
 struct event_t {
 	__u64 mount_ns_id;
@@ -34,6 +38,13 @@ struct event_t {
 
 #define TCP_OFF (ETH_HLEN + sizeof(struct iphdr))
 
+unsigned long long load_byte(void *skb,
+			     unsigned long long off) asm("llvm.bpf.load.byte");
+unsigned long long load_half(void *skb,
+			     unsigned long long off) asm("llvm.bpf.load.half");
+unsigned long long load_word(void *skb,
+			     unsigned long long off) asm("llvm.bpf.load.word");
+
 // we need this to make sure the compiler doesn't remove our struct
 const struct event_t *unusedevent __attribute__((unused));
 
@@ -41,6 +52,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__type(value, struct event_t);
 } events SEC(".maps");
+
 
 SEC("socket1")
 int ig_trace_http(struct __sk_buff *skb)
@@ -88,13 +100,12 @@ int ig_trace_http(struct __sk_buff *skb)
 	event.pkt_type = skb->pkt_type;
 
 	// Enrich event with process metadata
-	struct sockets_value meta = {0,};
-	enrich_with_process(skb, &meta);
-
-	event.mount_ns_id = meta.mntns;
-	event.pid = meta.pid;
-	event.tid = meta.tid;
-	__builtin_memcpy(&event.task, meta.task, sizeof(event.task));
+	event.mount_ns_id = gadget_skb_get_mntns(skb);
+	__u64 pid_tgid = gadget_skb_get_pid_tgid(skb);
+	event.pid = pid_tgid >> 32;
+	event.tid = (__u32)pid_tgid;
+	*(__u64*)event.task = gadget_skb_get_comm1(skb);
+	*(__u64*)(event.task+8) = gadget_skb_get_comm2(skb);
 
 	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 

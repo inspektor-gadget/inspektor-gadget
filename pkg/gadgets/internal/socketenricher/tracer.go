@@ -16,6 +16,8 @@ package socketenricher
 
 import (
 	"fmt"
+	"io"
+	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -24,6 +26,8 @@ import (
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang socketenricher ./bpf/sockets-map.bpf.c -- -I./bpf/ -I../../../ -I../../../${TARGET}
+
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang extension ./bpf/extension.bpf.c -- -I./bpf/
 
 const (
 	BPFMapName = "sockets"
@@ -38,10 +42,18 @@ const (
 type SocketEnricher struct {
 	objs  socketenricherObjects
 	links []link.Link
+
+	extensionSpec *ebpf.CollectionSpec
 }
 
 func NewSocketsMap() (*SocketEnricher, error) {
 	se := &SocketEnricher{}
+
+	var err error
+	se.extensionSpec, err = loadExtension()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load extension: %w", err)
+	}
 
 	spec, err := loadSocketenricher()
 	if err != nil {
@@ -122,6 +134,65 @@ func NewSocketsMap() (*SocketEnricher, error) {
 
 func (se *SocketEnricher) SocketsMap() *ebpf.Map {
 	return se.objs.socketenricherMaps.Sockets
+}
+
+type ExtensionConnection struct {
+	closers []io.Closer
+}
+
+func (ec ExtensionConnection) Close() error {
+	for _, closer := range ec.closers {
+		if err := closer.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (se *SocketEnricher) PlugExtension(target *ebpf.Program, netns uint64) (io.Closer, error) {
+	spec := se.extensionSpec.Copy()
+
+	consts := map[string]interface{}{
+		"current_netns": netns,
+	}
+
+	if err := spec.RewriteConstants(consts); err != nil {
+		return nil, fmt.Errorf("error RewriteConstants during PlugExtension: %w", err)
+	}
+
+	for funcName, _ := range spec.Programs {
+		if !strings.HasPrefix(funcName, "gadget_") {
+			continue
+		}
+		spec.Programs[funcName].AttachTarget = target
+	}
+
+	mapReplacements := map[string]*ebpf.Map{
+		"sockets": se.objs.Sockets,
+	}
+	opts := ebpf.CollectionOptions{
+		MapReplacements: mapReplacements,
+	}
+	coll, err := ebpf.NewCollectionWithOptions(spec, opts)
+	if err != nil {
+		return nil, fmt.Errorf("error loading program: %w", err)
+	}
+	defer coll.Close()
+
+	ec := ExtensionConnection{}
+	for funcName, replacement := range coll.Programs {
+		if !strings.HasPrefix(funcName, "gadget_") {
+			continue
+		}
+
+		freplace, err := link.AttachFreplace(target, funcName, replacement)
+		if err != nil {
+			return nil, fmt.Errorf("error replacing function %q: %w", funcName, err)
+		}
+		ec.closers = append(ec.closers, freplace)
+	}
+
+	return ec, nil
 }
 
 func (se *SocketEnricher) Close() {

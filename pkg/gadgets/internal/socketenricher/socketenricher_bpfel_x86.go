@@ -14,19 +14,17 @@ import (
 )
 
 type socketenricherSocketsKey struct {
-	Netns uint64
+	Netns uint32
 	Proto uint16
 	Port  uint16
-	_     [4]byte
 }
 
 type socketenricherSocketsValue struct {
-	Mntns  uint64
-	Pid    uint32
-	Tid    uint32
-	Task   [16]int8
-	Server uint32
-	_      [4]byte
+	Mntns   uint64
+	PidTgid uint64
+	Task    [16]int8
+	Server  uint32
+	_       [4]byte
 }
 
 // loadSocketenricher returns the embedded CollectionSpec for socketenricher.

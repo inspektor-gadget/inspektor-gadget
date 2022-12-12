@@ -25,22 +25,6 @@ type httpEventT struct {
 	Verb      [16]int8
 }
 
-type httpSocketsKey struct {
-	Netns uint64
-	Proto uint16
-	Port  uint16
-	_     [4]byte
-}
-
-type httpSocketsValue struct {
-	Mntns  uint64
-	Pid    uint32
-	Tid    uint32
-	Task   [16]int8
-	Server uint32
-	_      [4]byte
-}
-
 // loadHttp returns the embedded CollectionSpec for http.
 func loadHttp() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_HttpBytes)
@@ -89,8 +73,7 @@ type httpProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type httpMapSpecs struct {
-	Events  *ebpf.MapSpec `ebpf:"events"`
-	Sockets *ebpf.MapSpec `ebpf:"sockets"`
+	Events *ebpf.MapSpec `ebpf:"events"`
 }
 
 // httpObjects contains all objects after they have been loaded into the kernel.
@@ -112,14 +95,12 @@ func (o *httpObjects) Close() error {
 //
 // It can be passed to loadHttpObjects or ebpf.CollectionSpec.LoadAndAssign.
 type httpMaps struct {
-	Events  *ebpf.Map `ebpf:"events"`
-	Sockets *ebpf.Map `ebpf:"sockets"`
+	Events *ebpf.Map `ebpf:"events"`
 }
 
 func (m *httpMaps) Close() error {
 	return _HttpClose(
 		m.Events,
-		m.Sockets,
 	)
 }
 

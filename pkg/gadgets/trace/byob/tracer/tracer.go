@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"syscall"
@@ -60,6 +61,11 @@ type Config struct {
 type networkLink struct {
 	sockFd int
 
+	spec       *ebpf.CollectionSpec
+	collection *ebpf.Collection
+
+	plugCloser io.Closer
+
 	users map[uint32]struct{}
 }
 
@@ -71,7 +77,7 @@ type Tracer struct {
 
 	spec                 *ebpf.CollectionSpec
 	collection           *ebpf.Collection
-	socketFilterPrograms []*ebpf.Program
+	socketFilterPrograms []string
 
 	socketEnricher *socketenricher.SocketEnricher
 	socketsMap     *ebpf.Map
@@ -191,7 +197,9 @@ func (t *Tracer) start() error {
 		if m.Type == ebpf.RingBuf || m.Type == ebpf.PerfEventArray {
 			// t.spec.Maps[mapName].BTF = nil
 			t.mapSizes[mapName] = t.spec.Maps[mapName].ValueSize
-			t.spec.Maps[mapName].ValueSize = 0
+			t.spec.Maps[mapName].ValueSize = 4
+			// Needed for MapReplacements
+			t.spec.Maps[mapName].KeySize = 4
 		}
 
 		if m.Type == ebpf.Hash && mapName == "sockets" && strings.Contains(m.SectionName, ".auto") {
@@ -252,8 +260,13 @@ func (t *Tracer) start() error {
 			}
 			t.links = append(t.links, l)
 		} else if p.Type == ebpf.SocketFilter && strings.HasPrefix(p.SectionName, "socket") {
-			t.socketFilterPrograms = append(t.socketFilterPrograms, t.collection.Programs[progName])
+			t.socketFilterPrograms = append(t.socketFilterPrograms, progName)
 		}
+	}
+
+	t.socketEnricher, err = socketenricher.NewSocketsMap()
+	if err != nil {
+		return fmt.Errorf("failed to start socket enricher: %w", err)
 	}
 
 	return nil
@@ -347,10 +360,20 @@ func (t *Tracer) run() {
 	}
 }
 
+// Attach attaches networking programs in the netns related to the pid
+//
+// Tracing programs (like kprobes) are attached once during start() but
+// networking programs are attached for each netns.
 func (t *Tracer) Attach(
 	pid uint32,
 	eventCallback func(types.Event),
 ) (err error) {
+	if len(t.socketFilterPrograms) == 0 {
+		// The BPF program does not have networking programs.
+		// Nothing to do.
+		return nil
+	}
+
 	netns, err := containerutils.GetNetNs(int(pid))
 	if err != nil {
 		return fmt.Errorf("getting network namespace of pid %d: %w", pid, err)
@@ -378,8 +401,49 @@ func (t *Tracer) Attach(
 		return fmt.Errorf("failed to open raw socket: %w", err)
 	}
 
-	for _, prog := range t.socketFilterPrograms {
-		if err := syscall.SetsockoptInt(a.sockFd, syscall.SOL_SOCKET, BPFSocketAttach, prog.FD()); err != nil {
+	a.spec = t.spec.Copy()
+
+	// Load the ebpf objects. We can't reuse t.collection because we want
+	// to have distinct global constants such as current_netns.
+
+	consts := map[string]interface{}{
+		"current_netns": netns,
+	}
+
+	if err := a.spec.RewriteConstants(consts); err != nil && !strings.Contains(err.Error(), "spec is missing one or more constants") {
+		return fmt.Errorf("error RewriteConstants while attaching to pid %d: %w", pid, err)
+	}
+
+	mapReplacements := map[string]*ebpf.Map{
+		// Reuse the print map, so we don't need to setup a new go
+		// routine to read a ring buffer for each netns.
+		t.printMap: t.collection.Maps[t.printMap],
+	}
+	opts := ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			LogSize: ebpf.DefaultVerifierLogSize * 5000,
+		},
+		MapReplacements: mapReplacements,
+	}
+
+	a.collection, err = ebpf.NewCollectionWithOptions(a.spec, opts)
+	if err != nil {
+		var errVerifier *ebpf.VerifierError
+		if errors.As(err, &errVerifier) {
+			fmt.Printf("Verifier error: %+v\n",
+				errVerifier)
+		}
+		return fmt.Errorf("failed to create BPF collection: %w", err)
+	}
+
+	for _, progName := range t.socketFilterPrograms {
+		closer, err := t.socketEnricher.PlugExtension(a.collection.Programs[progName], netns)
+		if err != nil {
+			return fmt.Errorf("failed to plug extension: %w", err)
+		}
+		a.plugCloser = closer
+
+		if err := syscall.SetsockoptInt(a.sockFd, syscall.SOL_SOCKET, BPFSocketAttach, a.collection.Programs[progName].FD()); err != nil {
 			return fmt.Errorf("failed to attach BPF program: %w", err)
 		}
 	}
@@ -391,6 +455,8 @@ func (t *Tracer) Attach(
 
 func (t *Tracer) releaseAttachment(netns uint64, a *networkLink) {
 	unix.Close(a.sockFd)
+	a.plugCloser.Close()
+	a.collection.Close()
 	delete(t.networkAttachments, netns)
 }
 
@@ -411,4 +477,5 @@ func (t *Tracer) Close() {
 	for pid, a := range t.networkAttachments {
 		t.releaseAttachment(pid, a)
 	}
+	t.collection.Close()
 }
