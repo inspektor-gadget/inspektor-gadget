@@ -11,6 +11,8 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
+#include <socket-enricher.h>
+
 #include "snisnoop.h"
 
 // we need this to make sure the compiler doesn't remove our struct
@@ -168,6 +170,14 @@ int ig_trace_sni(struct __sk_buff *skb)
 			break;
 		event.name[i] = sni[i];
 	}
+
+	// Enrich event with process metadata
+	event.mount_ns_id = gadget_skb_get_mntns(skb);
+	__u64 pid_tgid = gadget_skb_get_pid_tgid(skb);
+	event.pid = pid_tgid >> 32;
+	event.tid = (__u32)pid_tgid;
+	*(__u64*)event.task = gadget_skb_get_comm1(skb);
+	*(__u64*)(event.task+8) = gadget_skb_get_comm2(skb);
 
 	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 

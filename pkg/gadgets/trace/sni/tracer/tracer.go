@@ -16,6 +16,7 @@ package tracer
 
 import (
 	"fmt"
+	"unsafe"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
@@ -23,7 +24,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/"
+//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
 const (
 	BPFProgName         = "ig_trace_sni"
@@ -55,11 +56,9 @@ func NewTracer() (*Tracer, error) {
 }
 
 func parseSNIEvent(sample []byte) (*types.Event, error) {
-	if len(sample) > TLSMaxServerNameLen {
-		sample = sample[:TLSMaxServerNameLen]
-	}
+	bpfEvent := (*snisnoopEventT)(unsafe.Pointer(&sample[0]))
 
-	name := gadgets.FromCString(sample)
+	name := gadgets.FromCString(bpfEvent.Name[:])
 	if len(name) == 0 {
 		return nil, nil
 	}
@@ -68,7 +67,12 @@ func parseSNIEvent(sample []byte) (*types.Event, error) {
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
 		},
-		Name: name,
+		Pid:       bpfEvent.Pid,
+		Tid:       bpfEvent.Tid,
+		MountNsID: bpfEvent.MountNsId,
+		Comm:      gadgets.FromCString(bpfEvent.Task[:]),
+
+		Name: gadgets.FromCString(bpfEvent.Name[:]),
 	}
 
 	return &event, nil
