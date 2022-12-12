@@ -203,6 +203,22 @@ gadget       gadgettracerman    39645    39677
 gadget       gadgettracerman    39645    39678
 ```
 
+### Top/Block-io
+
+```bash
+$ sudo local-gadget top block-io
+CONTAINER                               PID         COMM                  R/W MAJOR                MINOR                BYTES                TIME                 OPS
+test-top-block-io                       63666       sync                  W   253                  0                    24576                428                  5
+test-top-block-io                       63715       dd                    W   253                  0                    2097152              4816                 5
+...
+```
+
+The previous output was got by running the following container
+
+```bash
+$ docker run --rm --name test-top-block-io busybox /bin/sh -c'while true; do dd if=/dev/zero of=/tmp/foo count=4096; sync; done'
+```
+
 ### Trace/Bind
 
 ```bash
@@ -211,13 +227,14 @@ CONTAINER        PID     COMM             PROTO  ADDR             PORT    OPTS  
 foo              380299  nc               TCP    ::               4242    .R...   0
 ```
 
-The previous output was trigged using the following test container:
+The previous output was triggered using the following test container:
 
 ```bash
 $ docker run -it --rm --name foo busybox /bin/sh -c "nc -l -p 4242"
 ```
 
 In case of need, we can specify the ports we want to monitor:
+
 ```bash
 $ sudo local-gadget trace bind --ports 4242
 ```
