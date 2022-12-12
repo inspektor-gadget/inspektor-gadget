@@ -22,6 +22,11 @@ import (
 type Event struct {
 	eventtypes.Event
 
+	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Tid       uint32 `json:"tid,omitempty" column:"tid,template:pid"`
+	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
+
 	Name string `json:"name,omitempty" column:"name,width:30"`
 }
 

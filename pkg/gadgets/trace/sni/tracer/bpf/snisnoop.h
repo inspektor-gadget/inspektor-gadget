@@ -34,8 +34,13 @@
 // The offset of the session ID length field from the start of the TLS payload.
 #define TLS_SESSION_ID_LENGTH_OFF 43
 
+#define TASK_COMM_LEN	16
 
 struct event_t {
+	__u64 mount_ns_id;
+	__u32 pid;
+	__u32 tid;
+	__u8 task[TASK_COMM_LEN];
 	__u8 name[TLS_MAX_SERVER_NAME_LEN];
 	__u64 timestamp;
 };
