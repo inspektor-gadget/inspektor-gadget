@@ -219,6 +219,26 @@ The previous output was got by running the following container
 $ docker run --rm --name test-top-block-io busybox /bin/sh -c'while true; do dd if=/dev/zero of=/tmp/foo count=4096; sync; done'
 ```
 
+### Top/Ebpf
+
+```bash
+$ sudo local-gadget top ebpf
+PROGID     TYPE                      NAME                     PID                      COMM                          RUNTIME RUNCOUNT                   MAPMEMORY MAPCOUNT
+1102       Tracing                   ig_top_ebpf_it           167925                   local-gadget                299.054µs 5534                            4KiB 1
+1097       TracePoint                tracepoint__sys          167850                   execsnoop                    25.055µs 2                           75.48MiB 3
+1099       TracePoint                tracepoint__sys          167850                   execsnoop                    23.629µs 2                           75.48MiB 4
+```
+
+The previous output was taken while running [iovisor/bcc `execsnoop`](https://github.com/iovisor/bcc/blob/88b5edbdc98a50dedf9a911b8f1ab5a63c574767/libbpf-tools/execsnoop.bpf.c):
+
+```bash
+$ sudo ./execsnoop
+PCOMM            PID    PPID   RET ARGS
+runc             167851 142428   0 /usr/bin/runc --version
+docker-init      167857 142428   0 /usr/bin/docker-init --version
+...
+```
+
 ### Trace/Bind
 
 ```bash
