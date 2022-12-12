@@ -239,6 +239,20 @@ docker-init      167857 142428   0 /usr/bin/docker-init --version
 ...
 ```
 
+### Top/File
+
+```bash
+$ sudo local-gadget top file
+CONTAINER                              PID        COMM             READS                WRITES               RBYTES               WBYTES               T FILE
+test-top-file                          139255     sh               0                    1                    0B                   4B                   R bar
+```
+
+The above output is the result of observing the following test container:
+
+```bash
+$ docker run --rm --name test-top-file busybox /bin/sh -c 'while true; do echo foo > bar; sleep 1; done'
+```
+
 ### Trace/Bind
 
 ```bash
