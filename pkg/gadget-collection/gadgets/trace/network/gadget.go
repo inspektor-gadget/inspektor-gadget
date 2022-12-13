@@ -15,7 +15,6 @@
 package networkgraph
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -236,17 +235,14 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 func (t *Trace) run(trace *gadgetv1alpha1.Trace) {
 	defer t.wg.Done()
-
-	traceBeforePatch := trace.DeepCopy()
 	ticker := time.NewTicker(time.Second)
-
 	for {
 		select {
 		case <-t.done:
 			ticker.Stop()
 			return
 		case key := <-t.detachContainer:
-			if !t.update(trace, traceBeforePatch) {
+			if !t.update(trace) {
 				return
 			}
 			err := t.tracer.Detach(key)
@@ -256,14 +252,14 @@ func (t *Trace) run(trace *gadgetv1alpha1.Trace) {
 			}
 			t.publishMessage(trace, eventtypes.DEBUG, key, "tracer detached")
 		case <-ticker.C:
-			if !t.update(trace, traceBeforePatch) {
+			if !t.update(trace) {
 				return
 			}
 		}
 	}
 }
 
-func (t *Trace) update(trace, traceBeforePatch *gadgetv1alpha1.Trace) bool {
+func (t *Trace) update(trace *gadgetv1alpha1.Trace) bool {
 	if t.tracer == nil {
 		// This should not happen with t.wg
 		log.Errorf("tracer is nil at tick")
@@ -277,14 +273,6 @@ func (t *Trace) update(trace, traceBeforePatch *gadgetv1alpha1.Trace) bool {
 		return false
 	}
 	t.enricher.Enrich(newEvents)
-
-	if t.client != nil {
-		patch := client.MergeFrom(traceBeforePatch)
-		err = t.client.Status().Patch(context.TODO(), trace, patch)
-		if err != nil {
-			log.Errorf("%s", err)
-		}
-	}
 
 	for _, event := range newEvents {
 		// for now, ignore events on the host netns
