@@ -710,6 +710,7 @@ jobs:
       - test-integration-aks
       - test-integration-aro
       - test-local-gadget
+      - test-integration-local-gadget
       - check-readme-up-to-date
       - build-examples
       - build-gadgets-examples
