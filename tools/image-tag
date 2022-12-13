@@ -12,13 +12,12 @@ if [ -n "$IMAGE_TAG" ]; then
   exit 0
 fi
 
-WORKING_SUFFIX=$(if git status --porcelain | grep -qE '^(?:[^?][^ ]|[^ ][^?])\s'; then echo "-WIP"; else echo ""; fi)
 BRANCH_PREFIX=$(git rev-parse --abbrev-ref HEAD)
 if [ "$1" = "branch" ] ; then
   if [ "$BRANCH_PREFIX" = "main" ] ; then
     BRANCH_PREFIX="latest"
   fi
-  echo "${BRANCH_PREFIX//\//-}$WORKING_SUFFIX"
+  echo "${BRANCH_PREFIX//\//-}"
 else
-  echo "${BRANCH_PREFIX//\//-}-$(git rev-parse --short HEAD)$WORKING_SUFFIX"
+  echo "${BRANCH_PREFIX//\//-}-$(git rev-parse --short HEAD)"
 fi
