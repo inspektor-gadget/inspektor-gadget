@@ -119,9 +119,10 @@ func (cc *ContainerCollection) GetContainer(id string) *Container {
 	return container
 }
 
-// RemoveContainer removes a container from the collection.
+// RemoveContainer removes a container from the collection, but only after
+// notifying all the subscribers.
 func (cc *ContainerCollection) RemoveContainer(id string) {
-	v, loaded := cc.containers.LoadAndDelete(id)
+	v, loaded := cc.containers.Load(id)
 	if !loaded {
 		return
 	}
@@ -129,6 +130,12 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 	if cc.pubsub != nil {
 		cc.pubsub.Publish(EventTypeRemoveContainer, v.(*Container))
 	}
+
+	// Remove the container from the collection after publishing the event as
+	// subscribers might need to use the different collection's lookups during
+	// the notification handler, and they expect the container to still be
+	// present.
+	cc.containers.Delete(id)
 }
 
 // AddContainer adds a container to the collection.
