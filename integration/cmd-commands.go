@@ -471,31 +471,6 @@ func (c *CmdCommand) Stop(t *testing.T) {
 	c.Started = false
 }
 
-// CreateTestNamespaceCommand returns a CmdCommand which creates a namespace whom
-// name is given as parameter.
-func CreateTestNamespaceCommand(namespace string) *CmdCommand {
-	cmd := fmt.Sprintf(`kubectl apply -f - <<"EOF"
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: %s
-  labels: {"%s": "%s"}
-EOF
-while true; do
-  kubectl -n %s get serviceaccount default
-  if [ $? -eq 0 ]; then
-    break
-  fi
-  sleep 1
-done
-	`, namespace, namespaceLabelKey, namespaceLabelValue, namespace)
-
-	return &CmdCommand{
-		Name: "Create test namespace",
-		Cmd:  cmd,
-	}
-}
-
 // DeleteTestNamespaceCommand returns a CmdCommand which deletes a namespace whom
 // name is given as parameter.
 func DeleteTestNamespaceCommand(namespace string) *CmdCommand {

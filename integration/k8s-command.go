@@ -112,10 +112,9 @@ func BusyboxPodRepeatCommand(namespace, cmd string) *K8sCommand {
 	return BusyboxPodCommand(namespace, cmdStr)
 }
 
-// CreateTestNamespaceCommandThroughAPI returns a CmdCommand which creates a namespace whom
+// CreateTestNamespaceCommand returns a K8sCommand which creates a namespace whom
 // name is given as parameter.
-// Still a todo
-func CreateTestNamespaceCommandThroughAPI(namespace string) *K8sCommand {
+func CreateTestNamespaceCommand(namespace string) *K8sCommand {
 	return &K8sCommand{
 		name: fmt.Sprintf("Creating namespace %s", namespace),
 		runFunc: func(t *testing.T) {
