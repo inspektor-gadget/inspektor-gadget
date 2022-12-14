@@ -27,8 +27,8 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang IterTCPv4 ./bpf/tcp4-collector.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang IterUDPv4 ./bpf/udp4-collector.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang iterTCPv4 ./bpf/tcp4-collector.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang iterUDPv4 ./bpf/udp4-collector.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
 
 func parseIPv4(ipU32 uint32) string {
 	ipBytes := make([]byte, 4)
@@ -71,8 +71,8 @@ func parseStatus(proto string, statusUint uint8) (string, error) {
 }
 
 func getTCPIter() (*link.Iter, error) {
-	objs := IterTCPv4Objects{}
-	if err := LoadIterTCPv4Objects(&objs, nil); err != nil {
+	objs := iterTCPv4Objects{}
+	if err := loadIterTCPv4Objects(&objs, nil); err != nil {
 		return nil, fmt.Errorf("failed to load TCP BPF objects: %w", err)
 	}
 	defer objs.Close()
@@ -88,8 +88,8 @@ func getTCPIter() (*link.Iter, error) {
 }
 
 func getUDPIter() (*link.Iter, error) {
-	objs := IterUDPv4Objects{}
-	if err := LoadIterUDPv4Objects(&objs, nil); err != nil {
+	objs := iterUDPv4Objects{}
+	if err := loadIterUDPv4Objects(&objs, nil); err != nil {
 		return nil, fmt.Errorf("failed to load UDP BPF objects: %w", err)
 	}
 	defer objs.Close()

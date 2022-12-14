@@ -13,28 +13,28 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-// LoadIterTCPv4 returns the embedded CollectionSpec for IterTCPv4.
-func LoadIterTCPv4() (*ebpf.CollectionSpec, error) {
+// loadIterTCPv4 returns the embedded CollectionSpec for iterTCPv4.
+func loadIterTCPv4() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_IterTCPv4Bytes)
 	spec, err := ebpf.LoadCollectionSpecFromReader(reader)
 	if err != nil {
-		return nil, fmt.Errorf("can't load IterTCPv4: %w", err)
+		return nil, fmt.Errorf("can't load iterTCPv4: %w", err)
 	}
 
 	return spec, err
 }
 
-// LoadIterTCPv4Objects loads IterTCPv4 and converts it into a struct.
+// loadIterTCPv4Objects loads iterTCPv4 and converts it into a struct.
 //
 // The following types are suitable as obj argument:
 //
-//	*IterTCPv4Objects
-//	*IterTCPv4Programs
-//	*IterTCPv4Maps
+//	*iterTCPv4Objects
+//	*iterTCPv4Programs
+//	*iterTCPv4Maps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func LoadIterTCPv4Objects(obj interface{}, opts *ebpf.CollectionOptions) error {
-	spec, err := LoadIterTCPv4()
+func loadIterTCPv4Objects(obj interface{}, opts *ebpf.CollectionOptions) error {
+	spec, err := loadIterTCPv4()
 	if err != nil {
 		return err
 	}
@@ -42,60 +42,60 @@ func LoadIterTCPv4Objects(obj interface{}, opts *ebpf.CollectionOptions) error {
 	return spec.LoadAndAssign(obj, opts)
 }
 
-// IterTCPv4Specs contains maps and programs before they are loaded into the kernel.
+// iterTCPv4Specs contains maps and programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type IterTCPv4Specs struct {
-	IterTCPv4ProgramSpecs
-	IterTCPv4MapSpecs
+type iterTCPv4Specs struct {
+	iterTCPv4ProgramSpecs
+	iterTCPv4MapSpecs
 }
 
-// IterTCPv4Specs contains programs before they are loaded into the kernel.
+// iterTCPv4Specs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type IterTCPv4ProgramSpecs struct {
+type iterTCPv4ProgramSpecs struct {
 	IgSnapTcp4 *ebpf.ProgramSpec `ebpf:"ig_snap_tcp4"`
 }
 
-// IterTCPv4MapSpecs contains maps before they are loaded into the kernel.
+// iterTCPv4MapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type IterTCPv4MapSpecs struct {
+type iterTCPv4MapSpecs struct {
 }
 
-// IterTCPv4Objects contains all objects after they have been loaded into the kernel.
+// iterTCPv4Objects contains all objects after they have been loaded into the kernel.
 //
-// It can be passed to LoadIterTCPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
-type IterTCPv4Objects struct {
-	IterTCPv4Programs
-	IterTCPv4Maps
+// It can be passed to loadIterTCPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
+type iterTCPv4Objects struct {
+	iterTCPv4Programs
+	iterTCPv4Maps
 }
 
-func (o *IterTCPv4Objects) Close() error {
+func (o *iterTCPv4Objects) Close() error {
 	return _IterTCPv4Close(
-		&o.IterTCPv4Programs,
-		&o.IterTCPv4Maps,
+		&o.iterTCPv4Programs,
+		&o.iterTCPv4Maps,
 	)
 }
 
-// IterTCPv4Maps contains all maps after they have been loaded into the kernel.
+// iterTCPv4Maps contains all maps after they have been loaded into the kernel.
 //
-// It can be passed to LoadIterTCPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
-type IterTCPv4Maps struct {
+// It can be passed to loadIterTCPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
+type iterTCPv4Maps struct {
 }
 
-func (m *IterTCPv4Maps) Close() error {
+func (m *iterTCPv4Maps) Close() error {
 	return _IterTCPv4Close()
 }
 
-// IterTCPv4Programs contains all programs after they have been loaded into the kernel.
+// iterTCPv4Programs contains all programs after they have been loaded into the kernel.
 //
-// It can be passed to LoadIterTCPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
-type IterTCPv4Programs struct {
+// It can be passed to loadIterTCPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
+type iterTCPv4Programs struct {
 	IgSnapTcp4 *ebpf.Program `ebpf:"ig_snap_tcp4"`
 }
 
-func (p *IterTCPv4Programs) Close() error {
+func (p *iterTCPv4Programs) Close() error {
 	return _IterTCPv4Close(
 		p.IgSnapTcp4,
 	)
