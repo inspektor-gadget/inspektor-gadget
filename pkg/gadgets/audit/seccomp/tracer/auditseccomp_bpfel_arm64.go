@@ -77,9 +77,10 @@ type auditseccompProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type auditseccompMapSpecs struct {
-	Containers *ebpf.MapSpec `ebpf:"containers"`
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	TmpEvent   *ebpf.MapSpec `ebpf:"tmp_event"`
+	Containers    *ebpf.MapSpec `ebpf:"containers"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	TmpEvent      *ebpf.MapSpec `ebpf:"tmp_event"`
 }
 
 // auditseccompObjects contains all objects after they have been loaded into the kernel.
@@ -101,15 +102,17 @@ func (o *auditseccompObjects) Close() error {
 //
 // It can be passed to loadAuditseccompObjects or ebpf.CollectionSpec.LoadAndAssign.
 type auditseccompMaps struct {
-	Containers *ebpf.Map `ebpf:"containers"`
-	Events     *ebpf.Map `ebpf:"events"`
-	TmpEvent   *ebpf.Map `ebpf:"tmp_event"`
+	Containers    *ebpf.Map `ebpf:"containers"`
+	Events        *ebpf.Map `ebpf:"events"`
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	TmpEvent      *ebpf.Map `ebpf:"tmp_event"`
 }
 
 func (m *auditseccompMaps) Close() error {
 	return _AuditseccompClose(
 		m.Containers,
 		m.Events,
+		m.MountNsFilter,
 		m.TmpEvent,
 	)
 }

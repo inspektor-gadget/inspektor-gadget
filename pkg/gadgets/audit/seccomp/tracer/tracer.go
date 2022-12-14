@@ -28,21 +28,14 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type event -cc clang auditseccomp ./bpf/audit-seccomp.c -- -I./bpf/ -I../../../../ -I../../../../${TARGET} -D__KERNEL__
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type event -cc clang auditseccompwithfilters ./bpf/audit-seccomp.c -- -DWITH_FILTER=1 -I./bpf/ -I../../../../ -I../../../../${TARGET} -D__KERNEL__
-
-const (
-	BPFProgName = "ig_audit_secc"
-	BPFMapName  = "events"
-)
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type event -cc clang auditseccomp ./bpf/audit-seccomp.bpf.c -- -I./bpf/ -I../../../../ -I../../../../${TARGET} -D__KERNEL__
 
 type Tracer struct {
 	config        *Config
 	eventCallback func(types.Event)
 
-	collection *ebpf.Collection
-	eventMap   *ebpf.Map
-	reader     *perf.Reader
+	objs   auditseccompObjects
+	reader *perf.Reader
 
 	// progLink links the BPF program to the tracepoint.
 	// A reference is kept so it can be closed it explicitly, otherwise
@@ -57,59 +50,65 @@ type Config struct {
 }
 
 func NewTracer(config *Config, eventCallback func(types.Event)) (*Tracer, error) {
-	var err error
-	var spec *ebpf.CollectionSpec
-
-	if config.MountnsMap == nil {
-		spec, err = loadAuditseccomp()
-	} else {
-		spec, err = loadAuditseccompwithfilters()
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
-	}
-
-	mapReplacements := map[string]*ebpf.Map{}
-
-	if config.MountnsMap != nil {
-		mapReplacements["mount_ns_filter"] = config.MountnsMap
-	}
-	if config.ContainersMap != nil {
-		mapReplacements["containers"] = config.ContainersMap
-	}
-	coll, err := ebpf.NewCollectionWithOptions(spec, ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
-	}
-
-	rd, err := perf.NewReader(coll.Maps[BPFMapName], gadgets.PerfBufferPages*os.Getpagesize())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get a perf reader: %w", err)
-	}
-
 	t := &Tracer{
 		config:        config,
 		eventCallback: eventCallback,
-		collection:    coll,
-		eventMap:      coll.Maps[BPFMapName],
-		reader:        rd,
 	}
 
-	kprobeProg, ok := coll.Programs[BPFProgName]
-	if !ok {
-		return nil, fmt.Errorf("failed to find BPF program %q", BPFProgName)
+	if err := t.start(); err != nil {
+		t.Close()
+		return nil, err
 	}
 
-	t.progLink, err = link.Kprobe("audit_seccomp", kprobeProg, nil)
+	return t, nil
+}
+
+func (t *Tracer) start() error {
+	spec, err := loadAuditseccomp()
 	if err != nil {
-		return nil, fmt.Errorf("failed to attach kprobe: %w", err)
+		return fmt.Errorf("failed to load ebpf program: %w", err)
+	}
+
+	mapReplacements := map[string]*ebpf.Map{}
+	filterByMntNs := false
+
+	if t.config.MountnsMap != nil {
+		filterByMntNs = true
+		mapReplacements["mount_ns_filter"] = t.config.MountnsMap
+	}
+	if t.config.ContainersMap != nil {
+		mapReplacements["containers"] = t.config.ContainersMap
+	}
+
+	consts := map[string]interface{}{
+		"filter_by_mnt_ns": filterByMntNs,
+	}
+
+	if err := spec.RewriteConstants(consts); err != nil {
+		return fmt.Errorf("error RewriteConstants: %w", err)
+	}
+
+	opts := ebpf.CollectionOptions{
+		MapReplacements: mapReplacements,
+	}
+
+	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
+		return fmt.Errorf("failed to load ebpf program: %w", err)
+	}
+
+	t.reader, err = perf.NewReader(t.objs.Events, gadgets.PerfBufferPages*os.Getpagesize())
+	if err != nil {
+		return fmt.Errorf("failed to get a perf reader: %w", err)
+	}
+
+	t.progLink, err = link.Kprobe("audit_seccomp", t.objs.IgAuditSecc, nil)
+	if err != nil {
+		return fmt.Errorf("failed to attach kprobe: %w", err)
 	}
 
 	go t.run()
 
-	return t, nil
+	return nil
 }
 
 func (t *Tracer) run() {
@@ -164,7 +163,9 @@ func (t *Tracer) run() {
 }
 
 func (t *Tracer) Close() {
-	t.reader.Close()
 	t.progLink = gadgets.CloseLink(t.progLink)
-	t.collection.Close()
+	if t.reader != nil {
+		t.reader.Close()
+	}
+	t.objs.Close()
 }
