@@ -36,7 +36,7 @@ func TestTraceDns(t *testing.T) {
 			expectedEntries := []*tracednsTypes.Event{
 				{
 					Event:      BuildBaseEvent(ns),
-					ID:         "0000",
+					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeQuery,
 					Nameserver: "8.8.4.4",
 					PktType:    "OUTGOING",
@@ -45,7 +45,7 @@ func TestTraceDns(t *testing.T) {
 				},
 				{
 					Event:      BuildBaseEvent(ns),
-					ID:         "0000",
+					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeResponse,
 					Nameserver: "8.8.4.4",
 					PktType:    "HOST",
@@ -56,7 +56,7 @@ func TestTraceDns(t *testing.T) {
 				},
 				{
 					Event:      BuildBaseEvent(ns),
-					ID:         "0000",
+					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeQuery,
 					Nameserver: "8.8.4.4",
 					PktType:    "OUTGOING",
@@ -65,7 +65,7 @@ func TestTraceDns(t *testing.T) {
 				},
 				{
 					Event:      BuildBaseEvent(ns),
-					ID:         "0000",
+					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeResponse,
 					Nameserver: "8.8.4.4",
 					PktType:    "HOST",
@@ -84,7 +84,10 @@ func TestTraceDns(t *testing.T) {
 			normalize := func(e *tracednsTypes.Event) {
 				e.Timestamp = 0
 				e.Node = ""
-				e.ID = "0000"
+				e.ID = ""
+				e.MountNsID = 0
+				e.Pid = 0
+				e.Tid = 0
 
 				// Latency should be > 0 only for DNS responses.
 				if e.Latency > 0 {

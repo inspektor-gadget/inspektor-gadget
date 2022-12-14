@@ -38,14 +38,16 @@ $ kubectl -n demo run mypod -it --image=wbitt/network-multitool -- /bin/sh
 The requests will be logged by the DNS gadget:
 
 ```bash
-NODE                 NAMESPACE            POD                  QR NAMESERVER      TYPE      QTYPE       NAME                RCODE
-minikube             demo                 mypod                Q  8.8.4.4         OUTGOING  A           inspektor-gadget.i…
-minikube             demo                 mypod                R  8.8.4.4         HOST      A           inspektor-gadget.i… NoError
-minikube             demo                 mypod                Q  8.8.4.4         OUTGOING  AAAA        inspektor-gadget.i…
-minikube             demo                 mypod                R  8.8.4.4         HOST      AAAA        inspektor-gadget.i… NoError
-minikube             demo                 mypod                Q  8.8.4.4         OUTGOING  MX          inspektor-gadget.i…
-minikube             demo                 mypod                R  8.8.4.4         HOST      MX          inspektor-gadget.i… NoError
+NODE                 NAMESPACE            POD                  PID         TID         COMM        QR NAMESERVER      TYPE      QTYPE      NAME                RCODE
+minikube             demo                 mypod                1285309     1285310     isc-net-00… Q  8.8.4.4         OUTGOING  A          inspektor-gadget.i…        
+minikube             demo                 mypod                1285309     1285310     isc-net-00… R  8.8.4.4         HOST      A          inspektor-gadget.i… NoError
+minikube             demo                 mypod                1285594     1285595     isc-net-00… Q  8.8.4.4         OUTGOING  AAAA       inspektor-gadget.i…        
+minikube             demo                 mypod                1285594     1285595     isc-net-00… R  8.8.4.4         HOST      AAAA       inspektor-gadget.i… NoError
+minikube             demo                 mypod                1285655     1285656     isc-net-00… Q  8.8.4.4         OUTGOING  MX         inspektor-gadget.i…        
+minikube             demo                 mypod                1285655     1285656     isc-net-00… R  8.8.4.4         HOST      MX         inspektor-gadget.i… NoError
 ```
+
+`isc-net-0000` is the name of one of the nslookup threads.
 
 Delete the demo test namespace:
 

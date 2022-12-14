@@ -21,6 +21,6 @@ run "kubectl run -n demo test-pod --image busybox -- sh -c 'while true ; do wget
 run "kubectl wait -n demo --for=condition=ready pod/test-pod"
 
 desc "Let's trace"
-run "kubectl gadget trace dns -n demo --timeout 3"
+run "kubectl gadget trace dns -n demo --timeout 3 -o custom-columns=pod,comm,qr,qtype,name"
 
 sleep 5

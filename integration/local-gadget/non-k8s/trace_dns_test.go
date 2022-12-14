@@ -41,6 +41,7 @@ func TestTraceDns(t *testing.T) {
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeQuery,
+					Comm:       "nslookup",
 					Nameserver: "8.8.4.4",
 					PktType:    "OUTGOING",
 					DNSName:    "inspektor-gadget.io.",
@@ -54,6 +55,7 @@ func TestTraceDns(t *testing.T) {
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeResponse,
+					Comm:       "nslookup",
 					Nameserver: "8.8.4.4",
 					PktType:    "HOST",
 					DNSName:    "inspektor-gadget.io.",
@@ -69,6 +71,7 @@ func TestTraceDns(t *testing.T) {
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeQuery,
+					Comm:       "nslookup",
 					Nameserver: "8.8.4.4",
 					PktType:    "OUTGOING",
 					DNSName:    "inspektor-gadget.io.",
@@ -82,6 +85,7 @@ func TestTraceDns(t *testing.T) {
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeResponse,
+					Comm:       "nslookup",
 					Nameserver: "8.8.4.4",
 					PktType:    "HOST",
 					DNSName:    "inspektor-gadget.io.",
@@ -94,6 +98,9 @@ func TestTraceDns(t *testing.T) {
 			normalize := func(e *dnsTypes.Event) {
 				e.ID = ""
 				e.Timestamp = 0
+				e.MountNsID = 0
+				e.Pid = 0
+				e.Tid = 0
 
 				// Latency should be > 0 only for DNS responses.
 				if e.Latency > 0 {

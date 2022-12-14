@@ -31,6 +31,11 @@ const (
 type Event struct {
 	eventtypes.Event
 
+	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Tid       uint32 `json:"tid,omitempty" column:"tid,template:pid"`
+	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
+
 	ID         string        `json:"id,omitempty" column:"id,width:4,fixed,hide"`
 	Qr         DNSPktType    `json:"qr,omitempty" column:"qr,width:2,fixed"`
 	Nameserver string        `json:"nameserver,omitempty" column:"nameserver,template:ipaddr"`
