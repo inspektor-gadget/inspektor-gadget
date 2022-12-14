@@ -18,6 +18,8 @@
 # editor and IDE paraphernalia
 .idea
 .vscode
+*.swp
+*.swo
 
 # Downloaded binaries
 bin/
@@ -29,4 +31,4 @@ hack/btfs/*
 # Build artifacts
 *.o
 # keep all bpf objects generated with bpf2go
-!pkg/gadgets/*/*/tracer/*.o
+!pkg/gadgets/**/*.o
