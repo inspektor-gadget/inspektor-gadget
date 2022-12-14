@@ -29,7 +29,11 @@ import (
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang processCollector ./bpf/process-collector.bpf.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
 
-func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]*processcollectortypes.Event, error) {
+type Config struct {
+	MountnsMap *ebpf.Map
+}
+
+func RunCollector(config *Config, enricher gadgets.DataEnricher) ([]*processcollectortypes.Event, error) {
 	spec, err := loadProcessCollector()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
@@ -38,9 +42,9 @@ func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]*process
 	mapReplacements := map[string]*ebpf.Map{}
 	filterByMntNs := false
 
-	if mntnsmap != nil {
+	if config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_filter"] = mntnsmap
+		mapReplacements["mount_ns_filter"] = config.MountnsMap
 	}
 
 	consts := map[string]interface{}{

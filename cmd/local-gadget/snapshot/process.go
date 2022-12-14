@@ -48,8 +48,10 @@ func newProcessCmd() *cobra.Command {
 					return nil, commonutils.WrapInErrManagerCreateMountNsMap(err)
 				}
 				defer localGadgetManager.RemoveMountNsMap()
-
-				return processTracer.RunCollector(&localGadgetManager.ContainerCollection, mountnsmap)
+				config := &processTracer.Config{
+					MountnsMap: mountnsmap,
+				}
+				return processTracer.RunCollector(config, &localGadgetManager.ContainerCollection)
 			},
 		}
 
