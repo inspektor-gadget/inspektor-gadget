@@ -137,6 +137,7 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 	event.flags = ap->flags;
 	event.ret = ret;
 	event.mntns_id = mntns_id;
+	event.timestamp = bpf_ktime_get_boot_ns();
 
 	/* emit event */
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,

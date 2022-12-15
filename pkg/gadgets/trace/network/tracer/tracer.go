@@ -211,12 +211,13 @@ func (t *Tracer) Pop() (events []*types.Event, err error) {
 		t.cache = nil
 	}()
 
-	convertKeyToEvent := func(key graphmapGraphKeyT) *types.Event {
+	convertKeyToEvent := func(key graphmapGraphKeyT, val uint64) *types.Event {
 		ip := make(net.IP, 4)
 		binary.BigEndian.PutUint32(ip, gadgets.Htonl(key.Ip))
 		e := &types.Event{
 			Event: eventtypes.Event{
-				Type: eventtypes.NORMAL,
+				Type:      eventtypes.NORMAL,
+				Timestamp: gadgets.WallTimeFromBootTime(val),
 			},
 			PktType:    pktTypeString(int(key.PktType)),
 			Proto:      protoString(int(key.Proto)),
@@ -238,7 +239,7 @@ func (t *Tracer) Pop() (events []*types.Event, err error) {
 		deleteValues := make([]uint64, 256)
 		count, err := graphmap.BatchLookupAndDelete(nil, &nextKey, deleteKeys, deleteValues, nil)
 		for i := 0; i < count; i++ {
-			events = append(events, convertKeyToEvent(deleteKeys[i]))
+			events = append(events, convertKeyToEvent(deleteKeys[i], deleteValues[i]))
 		}
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			return events, nil
@@ -257,7 +258,7 @@ func (t *Tracer) Pop() (events []*types.Event, err error) {
 	entries := graphmap.Iterate()
 
 	for entries.Next(&key, &val) {
-		events = append(events, convertKeyToEvent(key))
+		events = append(events, convertKeyToEvent(key, val))
 
 		// Deleting an entry during the iteration causes the iteration
 		// to restart from the first key in the hash map. But in this

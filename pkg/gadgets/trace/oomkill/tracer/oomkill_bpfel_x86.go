@@ -18,6 +18,7 @@ type oomkillDataT struct {
 	Tpid      uint32
 	Pages     uint64
 	MountNsId uint64
+	Timestamp uint64
 	Fcomm     [16]uint8
 	Tcomm     [16]uint8
 }

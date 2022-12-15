@@ -149,6 +149,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event.cap_opt = ap->cap_opt;
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.ret = PT_REGS_RC(ctx);
+	event.timestamp = bpf_ktime_get_boot_ns();
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 

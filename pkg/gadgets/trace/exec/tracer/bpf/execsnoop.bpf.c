@@ -78,6 +78,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	if (!event)
 		return 0;
 
+	event->timestamp = bpf_ktime_get_boot_ns();
 	event->pid = tgid;
 	event->uid = uid;
 	event->ppid = (pid_t)BPF_CORE_READ(task, real_parent, tgid);

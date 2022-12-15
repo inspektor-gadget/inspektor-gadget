@@ -168,6 +168,7 @@ int ig_trace_sni(struct __sk_buff *skb)
 			break;
 		event.name[i] = sni[i];
 	}
+	event.timestamp = bpf_ktime_get_boot_ns();
 
 	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 

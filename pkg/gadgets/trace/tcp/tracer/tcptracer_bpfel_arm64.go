@@ -14,19 +14,20 @@ import (
 )
 
 type tcptracerEvent struct {
-	Saddr   [16]uint8
-	Daddr   [16]uint8
-	Task    [16]uint8
-	MntnsId uint64
-	TsUs    uint64
-	Af      uint32
-	Pid     uint32
-	Uid     uint32
-	Netns   uint32
-	Dport   uint16
-	Sport   uint16
-	Type    tcptracerEventType
-	_       [11]byte
+	Saddr     [16]uint8
+	Daddr     [16]uint8
+	Task      [16]uint8
+	MntnsId   uint64
+	Timestamp uint64
+	TsUs      uint64
+	Af        uint32
+	Pid       uint32
+	Uid       uint32
+	Netns     uint32
+	Dport     uint16
+	Sport     uint16
+	Type      tcptracerEventType
+	_         [3]byte
 }
 
 type tcptracerEventType uint8

@@ -68,6 +68,8 @@ func TestTraceNetwork(t *testing.T) {
 			}
 
 			normalize := func(e *networkTypes.Event) {
+				e.Timestamp = 0
+
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {

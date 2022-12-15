@@ -43,6 +43,7 @@ int BPF_KPROBE(ig_oom_kill, struct oom_control *oc, const char *message)
 	bpf_get_current_comm(&data.fcomm, sizeof(data.fcomm));
 	bpf_probe_read_kernel(&data.tcomm, sizeof(data.tcomm), BPF_CORE_READ(oc, chosen, comm));
 	data.mount_ns_id = mntns_id;
+	data.timestamp = bpf_ktime_get_boot_ns();
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &data, sizeof(data));
 	return 0;
 }

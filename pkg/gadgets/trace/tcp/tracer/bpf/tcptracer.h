@@ -31,6 +31,7 @@ struct event {
 	};
 	__u8 task[TASK_COMM_LEN];
 	__u64 mntns_id;
+	__u64 timestamp;
 	__u64 ts_us;
 	__u32 af; // AF_INET or AF_INET6
 	__u32 pid;

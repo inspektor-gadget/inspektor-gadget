@@ -335,7 +335,8 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 			event := &types.Event{
 				Event: eventtypes.Event{
-					Type: eventtypes.NORMAL,
+					Type:      eventtypes.NORMAL,
+					Timestamp: gadgets.WallTimeFromBootTime(enterTimestamp),
 				},
 				Timestamp: enterTimestamp,
 				CPU:       enterEvent.cpu,
@@ -444,7 +445,8 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 			incompleteEnterEvent := &types.Event{
 				Event: eventtypes.Event{
-					Type: eventtypes.NORMAL,
+					Type:      eventtypes.NORMAL,
+					Timestamp: gadgets.WallTimeFromBootTime(enterTimestamp),
 				},
 				Timestamp: uint64(enterTimestamp),
 				CPU:       enterEvent.cpu,
@@ -475,7 +477,8 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 			incompleteExitEvent := &types.Event{
 				Event: eventtypes.Event{
-					Type: eventtypes.NORMAL,
+					Type:      eventtypes.NORMAL,
+					Timestamp: gadgets.WallTimeFromBootTime(exitTimestamp),
 				},
 				Timestamp: uint64(exitTimestamp),
 				CPU:       exitEvent.cpu,

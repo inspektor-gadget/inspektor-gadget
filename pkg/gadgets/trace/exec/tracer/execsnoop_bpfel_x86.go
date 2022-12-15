@@ -15,6 +15,7 @@ import (
 
 type execsnoopEvent struct {
 	MntnsId   uint64
+	Timestamp uint64
 	Pid       uint32
 	Ppid      uint32
 	Uid       uint32

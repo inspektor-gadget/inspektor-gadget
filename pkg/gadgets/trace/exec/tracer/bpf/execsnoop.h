@@ -14,6 +14,7 @@
 
 struct event {
 	__u64 mntns_id;
+	__u64 timestamp;
 	__u32 pid;
 	__u32 ppid;
 	__u32 uid;

@@ -9,6 +9,7 @@
 
 struct cap_event {
 	__u64	mntnsid;
+	__u64 timestamp;
 	__u32	pid;
 	int	cap;
 	__u32	tgid;

@@ -136,12 +136,12 @@ trace_v4(struct pt_regs *ctx, pid_t pid, struct sock *sk, __u16 dport, __u64 mnt
 	event.af = AF_INET;
 	event.pid = pid;
 	event.uid = bpf_get_current_uid_gid();
-	event.ts_us = bpf_ktime_get_ns() / 1000;
 	BPF_CORE_READ_INTO(&event.saddr_v4, sk, __sk_common.skc_rcv_saddr);
 	BPF_CORE_READ_INTO(&event.daddr_v4, sk, __sk_common.skc_daddr);
 	event.dport = dport;
 	event.mntns_id = mntns_id;
 	bpf_get_current_comm(event.task, sizeof(event.task));
+	event.timestamp = bpf_ktime_get_boot_ns();
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
 			      &event, sizeof(event));
@@ -155,7 +155,6 @@ trace_v6(struct pt_regs *ctx, pid_t pid, struct sock *sk, __u16 dport, __u64 mnt
 	event.af = AF_INET6;
 	event.pid = pid;
 	event.uid = bpf_get_current_uid_gid();
-	event.ts_us = bpf_ktime_get_ns() / 1000;
 	event.mntns_id = mntns_id;
 	BPF_CORE_READ_INTO(&event.saddr_v6, sk,
 			   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
@@ -163,6 +162,7 @@ trace_v6(struct pt_regs *ctx, pid_t pid, struct sock *sk, __u16 dport, __u64 mnt
 			   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	event.dport = dport;
 	bpf_get_current_comm(event.task, sizeof(event.task));
+	event.timestamp = bpf_ktime_get_boot_ns();
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
 			      &event, sizeof(event));

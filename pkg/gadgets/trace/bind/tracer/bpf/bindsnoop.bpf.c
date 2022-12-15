@@ -109,6 +109,7 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	event.ret = ret;
 	event.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	event.mount_ns_id = mntns_id;
+	event.timestamp = bpf_ktime_get_boot_ns();
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	if (ver == 4) {
 		event.ver = ver;

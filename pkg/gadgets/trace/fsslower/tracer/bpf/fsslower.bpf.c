@@ -117,6 +117,7 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	event.pid = pid;
 	event.op = op;
 	event.mntns_id = mntns_id;
+	event.timestamp = bpf_ktime_get_boot_ns();
 	fp = datap->fp;
 	dentry = BPF_CORE_READ(fp, f_path.dentry);
 	file_name = BPF_CORE_READ(dentry, d_name.name);

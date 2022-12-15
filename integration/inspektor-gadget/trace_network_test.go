@@ -82,6 +82,7 @@ func TestTraceNetwork(t *testing.T) {
 			}
 
 			normalize := func(e *tracenetworkTypes.Event) {
+				e.Timestamp = 0
 				e.Node = ""
 				e.PodHostIP = ""
 			}

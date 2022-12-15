@@ -17,9 +17,11 @@ package gadgets
 import (
 	"encoding/binary"
 	"net/netip"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf/link"
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -99,4 +101,34 @@ func IPStringFromBytes(ipBytes [16]byte, ipType int) string {
 	default:
 		return ""
 	}
+}
+
+var timeDiff time.Duration
+
+func init() {
+	var t unix.Timespec
+	err := unix.ClockGettime(unix.CLOCK_BOOTTIME, &t)
+	if err != nil {
+		panic(err)
+	}
+	timeDiff = time.Duration(time.Now().UnixNano() - t.Sec*1000*1000*1000 - t.Nsec)
+}
+
+// WallTimeFromBootTime converts a time from bpf_ktime_get_boot_ns() to the
+// wall time with nano precision.
+//
+// Example:
+//
+//	fmt.Printf("Time: %s\n", WallTimeFromBootTime(ts).String())
+//
+// would display:
+//
+//	Time: 2022-12-15T16:49:00.452371948+01:00
+//
+// Shell command to convert the number to a date:
+//
+//	$ date -d @$(echo 1671447636499110634/1000000000|bc -l) +"%d-%m-%Y %H:%M:%S:%N"
+//	19-12-2022 12:00:36:499110634
+func WallTimeFromBootTime(ts uint64) types.Time {
+	return types.Time(time.Unix(0, int64(ts)).Add(timeDiff).UnixNano())
 }

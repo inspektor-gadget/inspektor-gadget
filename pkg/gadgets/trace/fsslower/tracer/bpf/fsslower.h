@@ -19,6 +19,7 @@ struct event {
 	__s64 offset;
 	__u64 size;
 	__u64 mntns_id;
+	__u64 timestamp;
 	__u32 pid;
 	enum fs_file_op op;
 	__u8 file[FILE_NAME_LEN];

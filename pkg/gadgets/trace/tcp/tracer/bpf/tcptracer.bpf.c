@@ -285,6 +285,7 @@ int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 
 	fill_event(&tuple, &event, pid, uid, family, TCP_EVENT_TYPE_CLOSE, mntns_id);
 	bpf_get_current_comm(&event.task, sizeof(event.task));
+	event.timestamp = bpf_ktime_get_boot_ns();
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
 		      &event, sizeof(event));
@@ -317,6 +318,7 @@ int BPF_KPROBE(ig_tcp_state, struct sock *sk, int state)
 
 	fill_event(&tuple, &event, p->pid, p->uid, family, TCP_EVENT_TYPE_CONNECT, p->mntns_id);
 	__builtin_memcpy(&event.task, p->comm, sizeof(event.task));
+	event.timestamp = bpf_ktime_get_boot_ns();
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
 			      &event, sizeof(event));
@@ -361,6 +363,7 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 	fill_event(&t, &event, pid, uid, family, TCP_EVENT_TYPE_ACCEPT, mntns_id);
 
 	bpf_get_current_comm(&event.task, sizeof(event.task));
+	event.timestamp = bpf_ktime_get_boot_ns();
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
 			      &event, sizeof(event));
