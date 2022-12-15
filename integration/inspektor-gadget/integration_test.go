@@ -1127,7 +1127,7 @@ func TestProcessCollector(t *testing.T) {
 		BusyboxPodCommand(ns, "nc -l -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
 		{
-			Name: "RunPprocessCollectorGadget",
+			Name: "RunProcessCollectorGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot process -n %s -o json", ns),
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &processCollectorTypes.Event{
