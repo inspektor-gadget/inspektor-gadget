@@ -77,6 +77,8 @@ var (
 	runtimesConfig      commonutils.RuntimesSocketPathConfig
 )
 
+var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify"}
+
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
 
@@ -234,12 +236,16 @@ func createOrUpdateResource(client dynamic.Interface, mapper meta.RESTMapper, ob
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
-	if hookMode != "auto" &&
-		hookMode != "crio" &&
-		hookMode != "podinformer" &&
-		hookMode != "nri" &&
-		hookMode != "fanotify" {
-		return fmt.Errorf("invalid argument %q for --hook-mode=[auto,crio,podinformer,nri,fanotify]", hookMode)
+	found := false
+	for _, supportedHook := range supportedHooks {
+		if hookMode == supportedHook {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("invalid argument %q for --hook-mode=[%s]", hookMode, strings.Join(supportedHooks, ","))
 	}
 
 	if quiet && debug {
