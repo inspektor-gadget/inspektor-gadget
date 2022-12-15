@@ -198,6 +198,8 @@ func parseDNSEvent(rawSample []byte) (*types.Event, error) {
 
 	event.ID = fmt.Sprintf("%.4x", bpfEvent.Id)
 
+	event.Timestamp = bpfEvent.Timestamp
+
 	if bpfEvent.Qr == 1 {
 		event.Qr = types.DNSPktTypeResponse
 		if bpfEvent.Af == syscall.AF_INET {

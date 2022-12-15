@@ -24,6 +24,8 @@ struct event_t {
 	unsigned char pkt_type;
 
 	__u8 name[MAX_DNS_NAME];
+
+	__u64 timestamp; // CLOCK_MONOTONIC in nanoseconds
 };
 
 #endif

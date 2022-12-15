@@ -14,15 +14,16 @@ import (
 )
 
 type dnsEventT struct {
-	SaddrV6 [16]uint8
-	DaddrV6 [16]uint8
-	Af      uint32
-	Id      uint16
-	Qtype   uint16
-	Qr      uint8
-	PktType uint8
-	Name    [255]uint8
-	_       [3]byte
+	SaddrV6   [16]uint8
+	DaddrV6   [16]uint8
+	Af        uint32
+	Id        uint16
+	Qtype     uint16
+	Qr        uint8
+	PktType   uint8
+	Name      [255]uint8
+	_         [7]byte
+	Timestamp uint64
 }
 
 // loadDns returns the embedded CollectionSpec for dns.
