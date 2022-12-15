@@ -16,7 +16,6 @@ package stream
 
 import (
 	"sync"
-	"time"
 )
 
 const (
@@ -24,30 +23,29 @@ const (
 	SubChannelSize = 250
 )
 
-type TimestampedLine struct {
+type Record struct {
 	Line      string
-	Timestamp time.Time
 	EventLost bool
 }
 
 type GadgetStream struct {
 	mu sync.RWMutex
 
-	previousLines []TimestampedLine
+	previousLines []Record
 
 	// subs contains a list of subscribers
-	subs map[chan TimestampedLine]struct{}
+	subs map[chan Record]struct{}
 
 	closed bool
 }
 
 func NewGadgetStream() *GadgetStream {
 	return &GadgetStream{
-		subs: make(map[chan TimestampedLine]struct{}),
+		subs: make(map[chan Record]struct{}),
 	}
 }
 
-func (g *GadgetStream) Subscribe() chan TimestampedLine {
+func (g *GadgetStream) Subscribe() chan Record {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -55,7 +53,7 @@ func (g *GadgetStream) Subscribe() chan TimestampedLine {
 		return nil
 	}
 
-	ch := make(chan TimestampedLine, SubChannelSize)
+	ch := make(chan Record, SubChannelSize)
 	for _, l := range g.previousLines {
 		ch <- l
 	}
@@ -64,7 +62,7 @@ func (g *GadgetStream) Subscribe() chan TimestampedLine {
 	return ch
 }
 
-func (g *GadgetStream) Unsubscribe(ch chan TimestampedLine) {
+func (g *GadgetStream) Unsubscribe(ch chan Record) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -87,15 +85,14 @@ func (g *GadgetStream) Publish(line string) {
 		return
 	}
 
-	newLine := TimestampedLine{
-		Line:      line,
-		Timestamp: time.Now(),
+	newLine := Record{
+		Line: line,
 	}
 
 	if len(g.previousLines) == HistorySize {
 		// Force new array allocation to avoid an ever growing underlying array
 		// TODO: check possible performance issue
-		g.previousLines = append([]TimestampedLine{}, g.previousLines[1:]...)
+		g.previousLines = append([]Record{}, g.previousLines[1:]...)
 	}
 	g.previousLines = append(g.previousLines, newLine)
 
@@ -107,7 +104,7 @@ func (g *GadgetStream) Publish(line string) {
 			continue
 		case queuedCount == cap(ch)-1:
 			// Channel almost full. Last chance to signal the problem.
-			ch <- TimestampedLine{EventLost: true}
+			ch <- Record{EventLost: true}
 		case queuedCount < cap(ch)-1:
 			ch <- newLine
 		}
