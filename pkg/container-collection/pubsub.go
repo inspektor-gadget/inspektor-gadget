@@ -16,6 +16,7 @@ package containercollection
 
 import (
 	"sync"
+	"time"
 )
 
 type EventType int
@@ -27,9 +28,41 @@ const (
 	EventTypeRemoveContainer
 )
 
+func (e *EventType) String() string {
+	switch *e {
+	case EventTypeRemoveContainer:
+		return "DELETED"
+	case EventTypeAddContainer:
+		fallthrough
+	default:
+		return "CREATED"
+	}
+}
+
+func EventTypeFromString(s string) EventType {
+	switch s {
+	case "DELETED":
+		return EventTypeRemoveContainer
+	case "CREATED":
+		fallthrough
+	default:
+		return EventTypeAddContainer
+	}
+}
+
+func (e *EventType) MarshalText() (text []byte, err error) {
+	return []byte(e.String()), nil
+}
+
+func (e *EventType) UnmarshalText(bytes []byte) error {
+	*e = EventTypeFromString(string(bytes))
+	return nil
+}
+
 type PubSubEvent struct {
-	Type      EventType
-	Container *Container
+	Timestamp string     `json:"timestamp,omitempty" column:"timestamp,maxWidth:30" columnTags:"runtime"`
+	Type      EventType  `json:"event" column:"event,maxWidth:10" columnTags:"runtime"`
+	Container *Container `json:"container"`
 }
 
 // GadgetPubSub provides a synchronous publish subscribe mechanism for gadgets
@@ -85,6 +118,7 @@ func (g *GadgetPubSub) Publish(eventType EventType, container *Container) {
 		wg.Add(1)
 		go func(callback FuncNotify) {
 			event := PubSubEvent{
+				Timestamp: time.Now().Format(time.RFC3339),
 				Type:      eventType,
 				Container: container,
 			}
