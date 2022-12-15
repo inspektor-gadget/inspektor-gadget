@@ -37,8 +37,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	k8sversion "k8s.io/apimachinery/pkg/util/version"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -46,6 +48,7 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/cache"
@@ -75,6 +78,7 @@ var (
 	debug               bool
 	wait                bool
 	runtimesConfig      commonutils.RuntimesSocketPathConfig
+	nodeSelector        string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify"}
@@ -133,6 +137,11 @@ func init() {
 		"debug", "d",
 		false,
 		"show extra debug information")
+	deployCmd.PersistentFlags().StringVarP(
+		&nodeSelector,
+		"node-selector", "",
+		"",
+		"node labels selector for the Inspektor Gadget DaemonSet")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -233,6 +242,81 @@ func createOrUpdateResource(client dynamic.Interface, mapper meta.RESTMapper, ob
 	}
 
 	return obj, nil
+}
+
+// Based on https://github.com/kubernetes/kubernetes/issues/98256#issue-790804261
+func operatorAsNodeSelectorOperator(sop selection.Operator) (v1.NodeSelectorOperator, error) {
+	switch sop {
+	case selection.DoesNotExist:
+		return v1.NodeSelectorOpDoesNotExist, nil
+	case selection.Equals, selection.DoubleEquals, selection.In:
+		return v1.NodeSelectorOpIn, nil
+	case selection.NotEquals, selection.NotIn:
+		return v1.NodeSelectorOpNotIn, nil
+	case selection.Exists:
+		return v1.NodeSelectorOpExists, nil
+	case selection.GreaterThan:
+		return v1.NodeSelectorOpGt, nil
+	case selection.LessThan:
+		return v1.NodeSelectorOpLt, nil
+	default:
+		return v1.NodeSelectorOpIn, fmt.Errorf("%q is not a valid node selector operator", sop)
+	}
+}
+
+func selectorAsNodeSelector(s string) (*v1.NodeSelector, error) {
+	selector, err := labels.Parse(s)
+	if err != nil {
+		return nil, fmt.Errorf("parsing labels: %w", err)
+	}
+
+	nreqs := []v1.NodeSelectorRequirement{}
+	reqs, _ := selector.Requirements()
+	for _, req := range reqs {
+		operator, err := operatorAsNodeSelectorOperator(req.Operator())
+		if err != nil {
+			return nil, err
+		}
+		nreq := v1.NodeSelectorRequirement{
+			Key:      req.Key(),
+			Operator: operator,
+			Values:   req.Values().List(),
+		}
+		nreqs = append(nreqs, nreq)
+	}
+	nodeSelector := &v1.NodeSelector{
+		NodeSelectorTerms: []v1.NodeSelectorTerm{
+			{
+				MatchExpressions: nreqs,
+			},
+		},
+	}
+	return nodeSelector, nil
+}
+
+// createAffinity returns the affinity to be used for the DaemonSet.
+func createAffinity(client *kubernetes.Clientset) (*v1.Affinity, error) {
+	nodes, err := client.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{LabelSelector: nodeSelector})
+	if err != nil {
+		return nil, fmt.Errorf("listing nodes: %w", err)
+	}
+
+	if len(nodes.Items) == 0 {
+		return nil, fmt.Errorf("no nodes found for labels: %q", nodeSelector)
+	}
+
+	nodeSelector, err := selectorAsNodeSelector(nodeSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	affinity := &v1.Affinity{
+		NodeAffinity: &v1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: nodeSelector,
+		},
+	}
+
+	return affinity, nil
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
@@ -336,6 +420,14 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				case utils.GadgetEnvironmentDockerSocketpath:
 					gadgetContainer.Env[i].Value = runtimesConfig.Docker
 				}
+			}
+
+			if nodeSelector != "" {
+				affinity, err := createAffinity(k8sClient)
+				if err != nil {
+					return fmt.Errorf("creating affinity: %w", err)
+				}
+				daemonSet.Spec.Template.Spec.Affinity = affinity
 			}
 
 			// Get gadget daemon set (if any) to check if it was modified
