@@ -471,17 +471,6 @@ func (c *CmdCommand) Stop(t *testing.T) {
 	c.Started = false
 }
 
-// DeleteTestNamespaceCommand returns a CmdCommand which deletes a namespace whom
-// name is given as parameter.
-func DeleteTestNamespaceCommand(namespace string) *CmdCommand {
-	return &CmdCommand{
-		Name:           "DeleteTestNamespace",
-		Cmd:            fmt.Sprintf("kubectl delete ns %s", namespace),
-		ExpectedString: fmt.Sprintf("namespace \"%s\" deleted\n", namespace),
-		Cleanup:        true,
-	}
-}
-
 // DeleteRemainingNamespacesCommand returns a CmdCommand which deletes a namespace whom
 // name is given as parameter.
 func DeleteRemainingNamespacesCommand() *CmdCommand {

@@ -32,10 +32,11 @@ import (
 type K8sCommand struct {
 	name    string
 	runFunc func(*testing.T)
+	cleanup bool
 }
 
 func (c *K8sCommand) Run(t *testing.T) {
-	t.Logf("Run K8sCommand:\n%s\n", c.name)
+	t.Logf("Run K8sCommand: %s\n", c.name)
 	c.runFunc(t)
 }
 func (c *K8sCommand) Start(*testing.T) {}
@@ -46,7 +47,7 @@ func (c *K8sCommand) StartWithoutTest() error { return nil }
 func (c *K8sCommand) WaitWithoutTest() error  { return nil }
 func (c *K8sCommand) KillWithoutTest() error  { return nil }
 
-func (c *K8sCommand) IsCleanup() bool      { return false }
+func (c *K8sCommand) IsCleanup() bool      { return c.cleanup }
 func (c *K8sCommand) IsStartAndStop() bool { return false }
 func (c *K8sCommand) IsStarted() bool      { return false }
 
@@ -151,6 +152,67 @@ func CreateTestNamespaceCommand(namespace string) *K8sCommand {
 				t.Fatalf("namespace %s was not active after %d seconds", namespace, timeout)
 			}
 		},
+	}
+}
+
+// DeleteTestNamespaceCommand returns a CmdCommand which deletes a namespace whom
+// name is given as parameter.
+func DeleteTestNamespaceCommand(namespace string) *K8sCommand {
+	return &K8sCommand{
+		name:    fmt.Sprintf("Deleting namespace %s", namespace),
+		cleanup: true,
+		runFunc: func(t *testing.T) {
+			k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
+			if err != nil {
+				t.Fatalf("creating namespace %s: %s", namespace, commonutils.WrapInErrSetupK8sClient(err).Error())
+				return
+			}
+
+			// 1. Setup watcher
+			timeout := int64(30)
+			opts := k8smeta.ListOptions{
+				FieldSelector:  fmt.Sprintf("metadata.name=%s", namespace),
+				TimeoutSeconds: &timeout,
+			}
+			watcher, err := k8sClient.CoreV1().Namespaces().Watch(context.TODO(), opts)
+			if err != nil {
+				t.Fatalf("Adding watch for namespace (%s): %s\n", namespace, err.Error())
+				return
+			}
+
+			// 2. Do the action
+			k8sClient.CoreV1().Namespaces().Delete(context.TODO(), namespace, k8smeta.DeleteOptions{})
+
+			// 3. Check all events
+			for event := range watcher.ResultChan() {
+				switch event.Type {
+				case watch.Deleted:
+					return
+				case watch.Modified:
+				case watch.Added:
+				case watch.Bookmark:
+					continue
+				case watch.Error:
+					t.Fatalf("Error event while waiting for namespace deletion %s", namespace)
+					return
+				default:
+					t.Fatalf("Unknown event while waiting for namespace deletion %s", namespace)
+					return
+				}
+			}
+			t.Fatalf("Timeout while waiting for namespace deletion %s", namespace)
+		},
+	}
+}
+
+// DeleteRemainingNamespacesCommand returns a CmdCommand which deletes a namespace whom
+// name is given as parameter.
+func DeleteRemainingNamespacesCommandAPI() *CmdCommand {
+	return &CmdCommand{
+		Name: "DeleteRemainingTestNamespace",
+		Cmd: fmt.Sprintf("kubectl delete ns -l %s=%s",
+			namespaceLabelKey, namespaceLabelValue),
+		Cleanup: true,
 	}
 }
 
