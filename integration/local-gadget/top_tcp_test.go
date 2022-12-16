@@ -34,7 +34,7 @@ func TestTopTCP(t *testing.T) {
 		WaitUntilPodReadyCommand(ns, "nginx-pod"),
 	}
 
-	RunCommands(commandsPreTest, t)
+	RunTestSteps(commandsPreTest, t)
 	NginxIP := GetTestPodIP(ns, "nginx-pod")
 
 	topTCPCmd := &Command{
@@ -75,5 +75,5 @@ func TestTopTCP(t *testing.T) {
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }
