@@ -63,7 +63,7 @@ func (p *ProcessParser) SortEvents(allProcesses *[]*types.Event) {
 	if !p.flags.showThreads {
 		allProcessesTrimmed := []*types.Event{}
 		for _, i := range *allProcesses {
-			if i.Tgid == i.Pid {
+			if i.Tid == i.Pid {
 				allProcessesTrimmed = append(allProcessesTrimmed, i)
 			}
 		}

@@ -101,8 +101,8 @@ func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]*process
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 			},
-			Tgid:      tgid,
-			Pid:       pid,
+			Pid:       tgid,
+			Tid:       pid,
 			Command:   command,
 			MountNsID: mntnsid,
 		}
