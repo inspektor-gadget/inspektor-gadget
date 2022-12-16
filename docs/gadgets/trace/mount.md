@@ -96,51 +96,6 @@ minikube         default          busybox-0        busybox-0        mount       
 minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "xfs", MS_SILENT, "") = -2
 ```
 
-## Use JSON output.
-
-This gadget supports JSON output, for this simply use `-o json`:
-
-```bash
-$ kubectl gadget trace mount -o json
-{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":7954,"fs":"ext3","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
-{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":4051,"fs":"ext2","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
-{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":3702,"fs":"ext4","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
-{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":11737,"fs":"vfat","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
-{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":4145,"fs":"msdos","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
-{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":10073,"fs":"iso9660","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
-{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":4232,"fs":"fuseblk","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
-{"type":"normal","node":"minikube","namespace":"default","pod":"busybox-0","container":"busybox-0","mntnsid":4026532588,"pid":5307,"tid":5307,"comm":"mount","operation":"mount","ret":-2,"latency":3586,"fs":"xfs","source":"/mnt","target":"/mnt","flags":["MS_SILENT"]}
-# You can use jq to make the output easier to read:
-$ kubectl gadget trace mount -o json | jq
-{
-  "type": "normal",
-  "node": "minikube",
-  "namespace": "default",
-  "pod": "busybox-0",
-  "container": "busybox-0",
-  "mntnsid": 4026532588,
-  "pid": 5307,
-  "tid": 5307,
-  "comm": "mount",
-  "operation": "mount",
-  "ret": -2,
-  "latency": 7954,
-  "fs": "ext3",
-  "source": "/mnt",
-  "target": "/mnt",
-  "flags": [
-    "MS_SILENT"
-  ]
-}
-{
-  "type": "normal",
-  "node": "minikube",
-  "namespace": "default",
-  ...
-}
-...
-```
-
 ## Clean everything
 
 Congratulations! You reached the end of this guide!

@@ -71,37 +71,6 @@ minikube    demo         mypod    mypod        nginx    582340
 minikube    demo         mypod    mypod        sleep    584294
 ```
 
-We can also get the information in JSON format, by passing the `-o json` flag.
-
-```bash
-$ kubectl gadget snapshot process -n demo -o json
-[
-  {
-    "type": "normal",
-    "node": "minikube",
-    "namespace": "demo",
-    "pod": "mypod",
-    "container": "mypod",
-    "tgid": 582294,
-    "pid": 582294,
-    "comm": "nginx",
-    "mntns": 4026532507
-  },
-  {
-    "type": "normal",
-    "node": "minikube",
-    "namespace": "demo",
-    "pod": "mypod",
-    "container": "mypod",
-    "tgid": 582333,
-    "pid": 582333,
-    "comm": "nginx",
-    "mntns": 4026532507
-  },
-  ...
-]
-```
-
 Delete the demo test namespace:
 
 ```bash

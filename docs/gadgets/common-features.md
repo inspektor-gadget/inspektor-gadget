@@ -1,7 +1,7 @@
 ---
-title: 'General Usage'
+title: 'Common Features'
 weight: 10
-description: 'An overview of the flags shared across gadgets'
+description: 'An overview of the common features shared across gadgets'
 ---
 
 Inspektor Gadget comes with a wide array of gadgets that allow us to
@@ -9,9 +9,10 @@ inspect what's going on in our clusters. The flags and parameters that we
 can pass to each specific gadget may differ, but there are some that are
 supported across all gadgets.
 
-## Selecting Containers
+## Event Filtering
 
-There are several ways to choose the pods or containers to consider:
+There are several ways to choose the pods or containers that we want to
+trace:
 
  * `--node string`, show only data from pods running in that node
  * `-n string`, `--namespace string`, show data from pods in that namespace
@@ -23,23 +24,24 @@ There are several ways to choose the pods or containers to consider:
 
 We can use one or more of these parameters to choose which pods or
 containers will be inspected by our gadgets.
+
 For example:
 
-```
+```bash
 $ kubectl gadget trace exec -n demo -l app=myapp
 ```
 
 Will run the `exec` tracer for all pods in the `demo` namespace that have
 the `app=myapp` label.
 
-```
+```bash
 $ kubectl gadget snapshot socket -A -p nginx
 ```
 
 Will get the `socket` snapshot for all pods with name `nginx`, regardless
 of which namespace they are in.
 
-## Handling Output
+## Output Format
 
 The `-o` or `--output` flag lets us decide the format for the output the
 gadget will generate. The default `columns` output shows some of the
@@ -52,7 +54,7 @@ This can be overridden with either `json` or `custom-columns`.
 Passing `-o json` will print all the information gathered in JSON format.
 
 For example:
-```
+```bash
 $ kubectl gadget trace tcp -A -o json | jq
 {
   "type": "normal",
@@ -81,8 +83,8 @@ For example, when tracing which processes were killed because of the node
 running out of memory, we can choose to only print the PID and command of
 the killed process:
 
-```
-kubectl gadget trace oomkill -A -o custom-columns=kpid,kcomm
+```bash
+$ kubectl gadget trace oomkill -A -o custom-columns=kpid,kcomm
 KPID   KCOMM
 15182  tail
 ```
@@ -97,7 +99,7 @@ we want to run the gadget.
 For example, we can trace files that get opened by pods in the `gadget`
 namespace during a window of 5 seconds, like this:
 
-```
+```bash
 $ kubectl gadget trace open -n gadget --timeout 5
 NODE             NAMESPACE        POD              CONTAINER        PID    COMM             FD  ERR PATH
 minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0 /etc/ld.so.cache
@@ -117,7 +119,7 @@ support for many CLI options that are common to many Kubernetes tools,
 which let us specify how to connect to the cluster, which kubeconfig to
 use, and so on.
 
-```
+```bash
   --as string                      Username to impersonate for the operation
   --as-group stringArray           Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
   --cache-dir string               Default cache directory (default "/home/marga/.kube/cache")

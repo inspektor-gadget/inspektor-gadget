@@ -1,6 +1,8 @@
 ---
-title: CR Usage Reference
+title: Guides
 description: >
-  Syntax reference for using the Trace custom resource with each gadget.
+  This section provides an overview of the gadgets included in Inspektor
+  Gadget and guidance on how to use each.
 weight: 30
 ---
+
