@@ -13,28 +13,28 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-// LoadIterUDPv4 returns the embedded CollectionSpec for IterUDPv4.
-func LoadIterUDPv4() (*ebpf.CollectionSpec, error) {
+// loadIterUDPv4 returns the embedded CollectionSpec for iterUDPv4.
+func loadIterUDPv4() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_IterUDPv4Bytes)
 	spec, err := ebpf.LoadCollectionSpecFromReader(reader)
 	if err != nil {
-		return nil, fmt.Errorf("can't load IterUDPv4: %w", err)
+		return nil, fmt.Errorf("can't load iterUDPv4: %w", err)
 	}
 
 	return spec, err
 }
 
-// LoadIterUDPv4Objects loads IterUDPv4 and converts it into a struct.
+// loadIterUDPv4Objects loads iterUDPv4 and converts it into a struct.
 //
 // The following types are suitable as obj argument:
 //
-//	*IterUDPv4Objects
-//	*IterUDPv4Programs
-//	*IterUDPv4Maps
+//	*iterUDPv4Objects
+//	*iterUDPv4Programs
+//	*iterUDPv4Maps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func LoadIterUDPv4Objects(obj interface{}, opts *ebpf.CollectionOptions) error {
-	spec, err := LoadIterUDPv4()
+func loadIterUDPv4Objects(obj interface{}, opts *ebpf.CollectionOptions) error {
+	spec, err := loadIterUDPv4()
 	if err != nil {
 		return err
 	}
@@ -42,60 +42,60 @@ func LoadIterUDPv4Objects(obj interface{}, opts *ebpf.CollectionOptions) error {
 	return spec.LoadAndAssign(obj, opts)
 }
 
-// IterUDPv4Specs contains maps and programs before they are loaded into the kernel.
+// iterUDPv4Specs contains maps and programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type IterUDPv4Specs struct {
-	IterUDPv4ProgramSpecs
-	IterUDPv4MapSpecs
+type iterUDPv4Specs struct {
+	iterUDPv4ProgramSpecs
+	iterUDPv4MapSpecs
 }
 
-// IterUDPv4Specs contains programs before they are loaded into the kernel.
+// iterUDPv4Specs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type IterUDPv4ProgramSpecs struct {
+type iterUDPv4ProgramSpecs struct {
 	IgSnapUdp4 *ebpf.ProgramSpec `ebpf:"ig_snap_udp4"`
 }
 
-// IterUDPv4MapSpecs contains maps before they are loaded into the kernel.
+// iterUDPv4MapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type IterUDPv4MapSpecs struct {
+type iterUDPv4MapSpecs struct {
 }
 
-// IterUDPv4Objects contains all objects after they have been loaded into the kernel.
+// iterUDPv4Objects contains all objects after they have been loaded into the kernel.
 //
-// It can be passed to LoadIterUDPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
-type IterUDPv4Objects struct {
-	IterUDPv4Programs
-	IterUDPv4Maps
+// It can be passed to loadIterUDPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
+type iterUDPv4Objects struct {
+	iterUDPv4Programs
+	iterUDPv4Maps
 }
 
-func (o *IterUDPv4Objects) Close() error {
+func (o *iterUDPv4Objects) Close() error {
 	return _IterUDPv4Close(
-		&o.IterUDPv4Programs,
-		&o.IterUDPv4Maps,
+		&o.iterUDPv4Programs,
+		&o.iterUDPv4Maps,
 	)
 }
 
-// IterUDPv4Maps contains all maps after they have been loaded into the kernel.
+// iterUDPv4Maps contains all maps after they have been loaded into the kernel.
 //
-// It can be passed to LoadIterUDPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
-type IterUDPv4Maps struct {
+// It can be passed to loadIterUDPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
+type iterUDPv4Maps struct {
 }
 
-func (m *IterUDPv4Maps) Close() error {
+func (m *iterUDPv4Maps) Close() error {
 	return _IterUDPv4Close()
 }
 
-// IterUDPv4Programs contains all programs after they have been loaded into the kernel.
+// iterUDPv4Programs contains all programs after they have been loaded into the kernel.
 //
-// It can be passed to LoadIterUDPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
-type IterUDPv4Programs struct {
+// It can be passed to loadIterUDPv4Objects or ebpf.CollectionSpec.LoadAndAssign.
+type iterUDPv4Programs struct {
 	IgSnapUdp4 *ebpf.Program `ebpf:"ig_snap_udp4"`
 }
 
-func (p *IterUDPv4Programs) Close() error {
+func (p *iterUDPv4Programs) Close() error {
 	return _IterUDPv4Close(
 		p.IgSnapUdp4,
 	)

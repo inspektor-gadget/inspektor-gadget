@@ -13,35 +13,28 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type ProcessCollectorContainer struct {
-	ContainerId [256]int8
-	Namespace   [256]int8
-	Pod         [256]int8
-	Container   [256]int8
-}
-
-// LoadProcessCollector returns the embedded CollectionSpec for ProcessCollector.
-func LoadProcessCollector() (*ebpf.CollectionSpec, error) {
+// loadProcessCollector returns the embedded CollectionSpec for processCollector.
+func loadProcessCollector() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_ProcessCollectorBytes)
 	spec, err := ebpf.LoadCollectionSpecFromReader(reader)
 	if err != nil {
-		return nil, fmt.Errorf("can't load ProcessCollector: %w", err)
+		return nil, fmt.Errorf("can't load processCollector: %w", err)
 	}
 
 	return spec, err
 }
 
-// LoadProcessCollectorObjects loads ProcessCollector and converts it into a struct.
+// loadProcessCollectorObjects loads processCollector and converts it into a struct.
 //
 // The following types are suitable as obj argument:
 //
-//	*ProcessCollectorObjects
-//	*ProcessCollectorPrograms
-//	*ProcessCollectorMaps
+//	*processCollectorObjects
+//	*processCollectorPrograms
+//	*processCollectorMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func LoadProcessCollectorObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
-	spec, err := LoadProcessCollector()
+func loadProcessCollectorObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+	spec, err := loadProcessCollector()
 	if err != nil {
 		return err
 	}
@@ -49,64 +42,64 @@ func LoadProcessCollectorObjects(obj interface{}, opts *ebpf.CollectionOptions) 
 	return spec.LoadAndAssign(obj, opts)
 }
 
-// ProcessCollectorSpecs contains maps and programs before they are loaded into the kernel.
+// processCollectorSpecs contains maps and programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type ProcessCollectorSpecs struct {
-	ProcessCollectorProgramSpecs
-	ProcessCollectorMapSpecs
+type processCollectorSpecs struct {
+	processCollectorProgramSpecs
+	processCollectorMapSpecs
 }
 
-// ProcessCollectorSpecs contains programs before they are loaded into the kernel.
+// processCollectorSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type ProcessCollectorProgramSpecs struct {
+type processCollectorProgramSpecs struct {
 	IgSnapProc *ebpf.ProgramSpec `ebpf:"ig_snap_proc"`
 }
 
-// ProcessCollectorMapSpecs contains maps before they are loaded into the kernel.
+// processCollectorMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
-type ProcessCollectorMapSpecs struct {
-	Containers *ebpf.MapSpec `ebpf:"containers"`
+type processCollectorMapSpecs struct {
+	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
 }
 
-// ProcessCollectorObjects contains all objects after they have been loaded into the kernel.
+// processCollectorObjects contains all objects after they have been loaded into the kernel.
 //
-// It can be passed to LoadProcessCollectorObjects or ebpf.CollectionSpec.LoadAndAssign.
-type ProcessCollectorObjects struct {
-	ProcessCollectorPrograms
-	ProcessCollectorMaps
+// It can be passed to loadProcessCollectorObjects or ebpf.CollectionSpec.LoadAndAssign.
+type processCollectorObjects struct {
+	processCollectorPrograms
+	processCollectorMaps
 }
 
-func (o *ProcessCollectorObjects) Close() error {
+func (o *processCollectorObjects) Close() error {
 	return _ProcessCollectorClose(
-		&o.ProcessCollectorPrograms,
-		&o.ProcessCollectorMaps,
+		&o.processCollectorPrograms,
+		&o.processCollectorMaps,
 	)
 }
 
-// ProcessCollectorMaps contains all maps after they have been loaded into the kernel.
+// processCollectorMaps contains all maps after they have been loaded into the kernel.
 //
-// It can be passed to LoadProcessCollectorObjects or ebpf.CollectionSpec.LoadAndAssign.
-type ProcessCollectorMaps struct {
-	Containers *ebpf.Map `ebpf:"containers"`
+// It can be passed to loadProcessCollectorObjects or ebpf.CollectionSpec.LoadAndAssign.
+type processCollectorMaps struct {
+	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
 }
 
-func (m *ProcessCollectorMaps) Close() error {
+func (m *processCollectorMaps) Close() error {
 	return _ProcessCollectorClose(
-		m.Containers,
+		m.MountNsFilter,
 	)
 }
 
-// ProcessCollectorPrograms contains all programs after they have been loaded into the kernel.
+// processCollectorPrograms contains all programs after they have been loaded into the kernel.
 //
-// It can be passed to LoadProcessCollectorObjects or ebpf.CollectionSpec.LoadAndAssign.
-type ProcessCollectorPrograms struct {
+// It can be passed to loadProcessCollectorObjects or ebpf.CollectionSpec.LoadAndAssign.
+type processCollectorPrograms struct {
 	IgSnapProc *ebpf.Program `ebpf:"ig_snap_proc"`
 }
 
-func (p *ProcessCollectorPrograms) Close() error {
+func (p *processCollectorPrograms) Close() error {
 	return _ProcessCollectorClose(
 		p.IgSnapProc,
 	)

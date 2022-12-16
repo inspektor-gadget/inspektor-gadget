@@ -24,12 +24,7 @@ import (
 	libseccomp "github.com/seccomp/libseccomp-golang"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang seccomp ./bpf/seccomp.c -- -I./bpf/ -I../../../../${TARGET}
-
-const (
-	BPFProgName = "ig_seccomp_e"
-	BPFMapName  = "syscalls_per_mntns"
-)
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang seccomp ./bpf/seccomp.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 const (
 	// Please update these values also in bpf/seccomp-common.h
@@ -39,8 +34,7 @@ const (
 )
 
 type Tracer struct {
-	collection *ebpf.Collection
-	seccompMap *ebpf.Map
+	objs seccompObjects
 
 	// progLink links the BPF program to the tracepoint.
 	// A reference is kept so it can be closed it explicitly, otherwise
@@ -50,37 +44,37 @@ type Tracer struct {
 }
 
 func NewTracer() (*Tracer, error) {
-	spec, err := loadSeccomp()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load asset: %w", err)
-	}
+	t := &Tracer{}
 
-	coll, err := ebpf.NewCollection(spec)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
-	}
-
-	t := &Tracer{
-		collection: coll,
-		seccompMap: coll.Maps[BPFMapName],
-	}
-
-	t.seccompMap.Update(uint64(0), [syscallsMapValueSize]byte{}, ebpf.UpdateAny)
-
-	tracepointProg, ok := coll.Programs[BPFProgName]
-	if !ok {
-		return nil, fmt.Errorf("failed to find BPF program %q", BPFProgName)
-	}
-
-	t.progLink, err = link.AttachRawTracepoint(link.RawTracepointOptions{
-		Name:    "sys_enter",
-		Program: tracepointProg,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to open tracepoint: %w", err)
+	if err := t.start(); err != nil {
+		t.Close()
+		return nil, err
 	}
 
 	return t, nil
+}
+
+func (t *Tracer) start() error {
+	spec, err := loadSeccomp()
+	if err != nil {
+		return fmt.Errorf("failed to load asset: %w", err)
+	}
+
+	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
+		return fmt.Errorf("failed to load ebpf program: %w", err)
+	}
+
+	t.objs.SyscallsPerMntns.Update(uint64(0), [syscallsMapValueSize]byte{}, ebpf.UpdateAny)
+
+	t.progLink, err = link.AttachRawTracepoint(link.RawTracepointOptions{
+		Name:    "sys_enter",
+		Program: t.objs.IgSeccompE,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to open tracepoint: %w", err)
+	}
+
+	return nil
 }
 
 func syscallArrToNameList(v []byte) []string {
@@ -101,7 +95,7 @@ func syscallArrToNameList(v []byte) []string {
 }
 
 func (t *Tracer) Peek(mntns uint64) ([]string, error) {
-	b, err := t.seccompMap.LookupBytes(mntns)
+	b, err := t.objs.SyscallsPerMntns.LookupBytes(mntns)
 	if err != nil {
 		return nil, fmt.Errorf("looking up the seccomp map: %w", err)
 	}
@@ -118,10 +112,10 @@ func (t *Tracer) Peek(mntns uint64) ([]string, error) {
 }
 
 func (t *Tracer) Delete(mntns uint64) {
-	t.seccompMap.Delete(mntns)
+	t.objs.SyscallsPerMntns.Delete(mntns)
 }
 
 func (t *Tracer) Close() {
 	t.progLink = gadgets.CloseLink(t.progLink)
-	t.collection.Close()
+	t.objs.Close()
 }

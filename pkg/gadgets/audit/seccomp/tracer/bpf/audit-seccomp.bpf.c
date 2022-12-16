@@ -5,14 +5,20 @@
  */
 
 #include <vmlinux/vmlinux.h>
-
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
 #include "audit-seccomp.h"
 
-#include <gadgettracermanager/bpf-maps.h>
+#include <gadgettracermanager/containers-map.h>
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u64);
+	__type(value, __u32);
+	__uint(max_entries, MAX_CONTAINERS_PER_NODE);
+} mount_ns_filter SEC(".maps");
 
 /* The stack is limited, so use a map to build the event */
 struct {
@@ -26,6 +32,8 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 } events SEC(".maps");
 
+const volatile bool filter_by_mnt_ns = false;
+
 SEC("kprobe/audit_seccomp")
 int ig_audit_secc(struct pt_regs *ctx)
 {
@@ -37,11 +45,8 @@ int ig_audit_secc(struct pt_regs *ctx)
 	if (mntns_id == 0)
 		return 0;
 
-#ifdef WITH_FILTER
-	__u32 *found = bpf_map_lookup_elem(&mount_ns_filter, &mntns_id);
-	if (!found)
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
 		return 0;
-#endif
 
 	__u32 zero = 0;
 	struct event *event = bpf_map_lookup_elem(&tmp_event, &zero);

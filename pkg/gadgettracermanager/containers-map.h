@@ -12,13 +12,4 @@ struct {
 	__uint(max_entries, MAX_CONTAINERS_PER_NODE);
 } containers SEC(".maps");
 
-#ifdef WITH_FILTER
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, __u64);
-	__type(value, __u32);
-	__uint(max_entries, MAX_CONTAINERS_PER_NODE);
-} mount_ns_filter SEC(".maps");
-#endif
-
 #endif

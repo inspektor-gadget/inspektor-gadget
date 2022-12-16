@@ -27,47 +27,42 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang ProcessCollector ./bpf/process-collector.c -- -I../../../../ -I../../../../${TARGET} -Werror -O2 -g -c -x c
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang ProcessCollectorWithFilters ./bpf/process-collector.c -- -DWITH_FILTER=1 -I../../../../ -I../../../../${TARGET} -Werror -O2 -g -c -x c
-
-const (
-	BPFIterName = "ig_snap_proc"
-)
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang processCollector ./bpf/process-collector.bpf.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
 
 func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]*processcollectortypes.Event, error) {
-	var err error
-	var spec *ebpf.CollectionSpec
-
-	if mntnsmap == nil {
-		spec, err = LoadProcessCollector()
-	} else {
-		spec, err = LoadProcessCollectorWithFilters()
-	}
+	spec, err := loadProcessCollector()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	mapReplacements := map[string]*ebpf.Map{}
+	filterByMntNs := false
 
 	if mntnsmap != nil {
+		filterByMntNs = true
 		mapReplacements["mount_ns_filter"] = mntnsmap
 	}
 
-	coll, err := ebpf.NewCollectionWithOptions(spec,
-		ebpf.CollectionOptions{
-			MapReplacements: mapReplacements,
-		})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
+	consts := map[string]interface{}{
+		"filter_by_mnt_ns": filterByMntNs,
 	}
-	defer coll.Close()
 
-	dumpTask, ok := coll.Programs[BPFIterName]
-	if !ok {
-		return nil, fmt.Errorf("failed to find BPF iterator %q", BPFIterName)
+	if err := spec.RewriteConstants(consts); err != nil {
+		return nil, fmt.Errorf("error RewriteConstants: %w", err)
 	}
+
+	objs := processCollectorObjects{}
+	opts := ebpf.CollectionOptions{
+		MapReplacements: mapReplacements,
+	}
+
+	if err := spec.LoadAndAssign(&objs, &opts); err != nil {
+		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
+	}
+	defer objs.Close()
+
 	dumpTaskIter, err := link.AttachIter(link.IterOptions{
-		Program: dumpTask,
+		Program: objs.IgSnapProc,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach BPF iterator: %w", err)
