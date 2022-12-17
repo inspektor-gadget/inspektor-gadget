@@ -29,7 +29,7 @@ import (
 
 // CreateMntNsFilterMap creates and fills an eBPF map that can be used
 // to filter by mount namespace in the different tracers.
-func CreateMntNsFilterMap(t *testing.T, mountNsIDs ...uint64) *ebpf.Map {
+func CreateMntNsFilterMap(t testing.TB, mountNsIDs ...uint64) *ebpf.Map {
 	t.Helper()
 
 	const one = uint32(1)
@@ -58,7 +58,7 @@ func CreateMntNsFilterMap(t *testing.T, mountNsIDs ...uint64) *ebpf.Map {
 }
 
 // RequireRoot skips the test if the not running as root
-func RequireRoot(t *testing.T) {
+func RequireRoot(t testing.TB) {
 	t.Helper()
 
 	if unix.Getuid() != 0 {
@@ -66,7 +66,7 @@ func RequireRoot(t *testing.T) {
 	}
 }
 
-func RequireKernelVersion(t *testing.T, expectedVersion *kernel.VersionInfo) {
+func RequireKernelVersion(t testing.TB, expectedVersion *kernel.VersionInfo) {
 	version, err := kernel.GetKernelVersion()
 	if err != nil {
 		t.Fatalf("Failed to get kernel version: %s", err)
@@ -133,7 +133,7 @@ func ExpectOneEvent[Event any, Extra any](getEvent func(info *RunnerInfo, extra 
 		expectedEvent := getEvent(info, extra)
 
 		if len(events) != 1 {
-			t.Fatalf("More than one event found")
+			t.Fatalf("One event expected, found: %d", len(events))
 		}
 
 		if !reflect.DeepEqual(expectedEvent, &events[0]) {
