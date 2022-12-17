@@ -18,14 +18,20 @@
 package tracer
 
 import (
+	"fmt"
+	"os"
+	"os/exec"
+	"reflect"
 	"testing"
 
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/test"
-	processcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	snapshotProcessTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type collectorFunc func(config *Config, enricher gadgets.DataEnricher) ([]*processcollectortypes.Event, error)
+type collectorFunc func(config *Config, enricher gadgets.DataEnricher) ([]*snapshotProcessTypes.Event, error)
 
 func BenchmarkEBPFTracer(b *testing.B) {
 	benchmarkTracer(b, runeBPFCollector)
@@ -44,4 +50,129 @@ func benchmarkTracer(b *testing.B, runCollector collectorFunc) {
 			b.Fatalf("benchmarking collector: %s", err)
 		}
 	}
+}
+
+func TestEBPFTracer(t *testing.T) {
+	testTracer(t, runeBPFCollector)
+}
+
+func TestProcfsTracer(t *testing.T) {
+	testTracer(t, runProcfsCollector)
+}
+
+func testTracer(t *testing.T, runCollector collectorFunc) {
+	t.Parallel()
+
+	utilstest.RequireRoot(t)
+
+	type testDefinition struct {
+		getTracerConfig func(info *utilstest.RunnerInfo) *Config
+		runnerConfig    *utilstest.RunnerConfig
+		generateEvent   func() (int, error)
+		validateEvent   func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []snapshotProcessTypes.Event)
+	}
+
+	for name, test := range map[string]testDefinition{
+		"captures_all_events_with_no_filters_configured": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *Config {
+				return &Config{}
+			},
+			generateEvent: generateEvent,
+			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, sleepPid int) *snapshotProcessTypes.Event {
+				return &snapshotProcessTypes.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					Command:   "sleep",
+					Pid:       sleepPid,
+					Tid:       sleepPid,
+					MountNsID: info.MountNsID,
+				}
+			}),
+		},
+		"captures_no_events_with_no_matching_filter": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *Config {
+				// We can't use 0 as the mntnsid because the tracer will collect
+				// some defunct processes that don't have any mntnsid defined
+				// anymore. Then, we set the network namespace inode id to be sure
+				// there is not any mount namespace using that same inode.
+				mntns, _ := containerutils.GetNetNs(os.Getpid())
+				return &Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, mntns),
+				}
+			},
+			generateEvent: generateEvent,
+			validateEvent: utilstest.ExpectNoEvent[snapshotProcessTypes.Event, int],
+		},
+		"captures_events_with_matching_filter": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *Config {
+				return &Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			generateEvent: generateEvent,
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []snapshotProcessTypes.Event) {
+				if len(events) != 2 {
+					t.Fatalf("%d events expected, found: %d", 2, len(events))
+				}
+
+				expectedEvent := &snapshotProcessTypes.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					Command:   "sleep",
+					Pid:       sleepPid,
+					Tid:       sleepPid,
+					MountNsID: info.MountNsID,
+				}
+
+				for _, event := range events {
+					if reflect.DeepEqual(expectedEvent, &event) {
+						return
+					}
+				}
+
+				t.Fatalf("Event wasn't captured")
+			},
+		},
+	} {
+		test := test
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			runner := utilstest.NewRunnerWithTest(t, test.runnerConfig)
+
+			var sleepPid int
+
+			utilstest.RunWithRunner(t, runner, func() error {
+				var err error
+				sleepPid, err = test.generateEvent()
+				return err
+			})
+
+			events, err := runCollector(test.getTracerConfig(runner.Info), nil)
+			if err != nil {
+				t.Fatalf("running collector: %s", err)
+			}
+
+			// TODO: This won't be required once we pass pointers everywhere
+			validateEvents := []snapshotProcessTypes.Event{}
+			for _, event := range events {
+				validateEvents = append(validateEvents, *event)
+			}
+
+			test.validateEvent(t, runner.Info, sleepPid, validateEvents)
+		})
+	}
+}
+
+// Function that runs a "sleep" process.
+func generateEvent() (int, error) {
+	cmd := exec.Command("/bin/sleep", "3")
+	if err := cmd.Start(); err != nil {
+		return 0, fmt.Errorf("running command: %w", err)
+	}
+
+	return cmd.Process.Pid, nil
 }
