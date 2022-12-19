@@ -55,6 +55,7 @@ func TestTraceTcp(t *testing.T) {
 			}
 
 			normalize := func(e *tracetcpTypes.Event) {
+				e.Timestamp = 0
 				e.Node = ""
 				e.Pid = 0
 				e.Sport = 0

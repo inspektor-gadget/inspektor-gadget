@@ -43,6 +43,7 @@ func TestTraceMount(t *testing.T) {
 			}
 
 			normalize := func(e *tracemountTypes.Event) {
+				e.Timestamp = 0
 				e.Node = ""
 				e.Pid = 0
 				e.Tid = 0

@@ -40,6 +40,7 @@ func TestTraceOomkill(t *testing.T) {
 			expectedEntry.Container = "test-pod-container"
 
 			normalize := func(e *traceoomkillTypes.Event) {
+				e.Timestamp = 0
 				e.Node = ""
 				e.KilledPid = 0
 				e.Pages = 0

@@ -43,6 +43,7 @@ func TestTraceOpen(t *testing.T) {
 			}
 
 			normalize := func(e *traceopenTypes.Event) {
+				e.Timestamp = 0
 				e.Node = ""
 				e.MountNsID = 0
 				e.Pid = 0
