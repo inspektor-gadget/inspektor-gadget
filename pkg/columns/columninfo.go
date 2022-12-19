@@ -223,6 +223,15 @@ func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 				return fmt.Errorf("no template specified for field %q", ci.Name)
 			}
 			ci.template = params[1]
+		case "stringer":
+			stringer := reflect.TypeOf((*fmt.Stringer)(nil)).Elem()
+			if ci.Type().Implements(stringer) {
+				ci.Extractor = func(t *T) string {
+					return ci.getRawField(reflect.ValueOf(t)).Interface().(fmt.Stringer).String()
+				}
+			} else {
+				return fmt.Errorf("column parameter %q set for field %q, but doesn't implement fmt.Stringer", params[0], ci.Name)
+			}
 		default:
 			return fmt.Errorf("invalid column parameter %q for field %q", params[0], ci.Name)
 		}

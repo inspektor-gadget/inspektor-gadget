@@ -15,6 +15,7 @@
 package columns
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -326,6 +327,31 @@ func TestExtractor(t *testing.T) {
 	err = cols.SetExtractor("sTrInGfIeLd", nil)
 	if err == nil {
 		t.Errorf("Expected error when setting nil-extractor")
+	}
+}
+
+type Uint32 uint32
+
+func (v Uint32) String() string {
+	return fmt.Sprintf("%d-from-stringer", v)
+}
+
+func TestStringer(t *testing.T) {
+	type testStruct struct {
+		StringerField Uint32 `column:"stringerField,stringer"`
+	}
+	cols := expectColumnsSuccess[testStruct](t)
+	col := expectColumn(t, cols, "stringerField")
+
+	ts := &testStruct{StringerField: 12345}
+
+	val, ok := col.Get(ts).Interface().(string)
+	if !ok {
+		t.Fatalf("expected type string")
+	}
+	expected := "12345-from-stringer"
+	if val != expected {
+		t.Errorf("expected %q from stringer, got %q", expected, val)
 	}
 }
 
