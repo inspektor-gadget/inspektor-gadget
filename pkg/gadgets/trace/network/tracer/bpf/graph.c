@@ -33,7 +33,7 @@
 #define PACKET_HOST		0		/* To us		*/
 #endif
 
-#ifdef PACKET_OUTGOING
+#ifndef PACKET_OUTGOING
 #define PACKET_OUTGOING		4		/* Outgoing of any type */
 #endif
 
