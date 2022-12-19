@@ -224,11 +224,16 @@ func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 			}
 			ci.template = params[1]
 		case "stringer":
+			if ci.Extractor != nil {
+				break
+			}
 			stringer := reflect.TypeOf((*fmt.Stringer)(nil)).Elem()
 			if ci.Type().Implements(stringer) {
 				ci.Extractor = func(t *T) string {
 					return ci.getRawField(reflect.ValueOf(t)).Interface().(fmt.Stringer).String()
 				}
+				ci.kind = reflect.String
+				ci.columnType = stringType
 			} else {
 				return fmt.Errorf("column parameter %q set for field %q, but doesn't implement fmt.Stringer", params[0], ci.Name)
 			}
