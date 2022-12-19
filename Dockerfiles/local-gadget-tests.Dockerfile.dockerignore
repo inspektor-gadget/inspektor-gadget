@@ -1,0 +1,7 @@
+*
+!go.mod
+!go.sum
+!pkg
+!integration
+!Makefile*
+!*.mk
