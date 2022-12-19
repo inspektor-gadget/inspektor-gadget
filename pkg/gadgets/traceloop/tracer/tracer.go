@@ -340,7 +340,6 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 					Type:      eventtypes.NORMAL,
 					Timestamp: gadgets.WallTimeFromBootTime(enterTimestamp),
 				},
-				Timestamp: enterTimestamp,
 				CPU:       enterEvent.cpu,
 				Pid:       enterEvent.pid,
 				Comm:      enterEvent.comm,
@@ -435,8 +434,8 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 	// but they will be incomplete.
 	// One possible reason would be that the buffer is full and so it only remains
 	// some exit events and not the corresponding enter/
-	for _, enterTimestampEvents := range syscallEnterEventsMap {
-		for enterTimestamp, enterEvent := range enterTimestampEvents {
+	for enterTimestamp, enterTimestampEvents := range syscallEnterEventsMap {
+		for _, enterEvent := range enterTimestampEvents {
 			syscallName, err := syscallGetName(enterEvent.id)
 			if err != nil {
 				// It is best effort, so just long and continue in case of troubles.
@@ -450,7 +449,6 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 					Type:      eventtypes.NORMAL,
 					Timestamp: gadgets.WallTimeFromBootTime(enterTimestamp),
 				},
-				Timestamp: uint64(enterTimestamp),
 				CPU:       enterEvent.cpu,
 				Pid:       enterEvent.pid,
 				Comm:      enterEvent.comm,
@@ -468,8 +466,8 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 		}
 	}
 
-	for _, exitTimestampEvents := range syscallExitEventsMap {
-		for exitTimestamp, exitEvent := range exitTimestampEvents {
+	for exitTimestamp, exitTimestampEvents := range syscallExitEventsMap {
+		for _, exitEvent := range exitTimestampEvents {
 			syscallName, err := syscallGetName(exitEvent.id)
 			if err != nil {
 				log.Errorf("incomplete exit event: getting name of syscall number %d: %v", exitEvent.id, err)
@@ -482,7 +480,6 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 					Type:      eventtypes.NORMAL,
 					Timestamp: gadgets.WallTimeFromBootTime(exitTimestamp),
 				},
-				Timestamp: uint64(exitTimestamp),
 				CPU:       exitEvent.cpu,
 				Pid:       exitEvent.pid,
 				Comm:      exitEvent.comm,

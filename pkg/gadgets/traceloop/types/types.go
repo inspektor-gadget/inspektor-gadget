@@ -31,7 +31,6 @@ type SyscallParam struct {
 type Event struct {
 	eventtypes.Event
 
-	Timestamp  uint64         `json:"timestamp,omitempty" column:"timestamp,width:7,fixed,hide"`
 	CPU        uint16         `json:"cpu,omitempty" column:"cpu,width:3,fixed"`
 	Pid        uint32         `json:"pid,omitempty" column:"pid,template:pid"`
 	Comm       string         `json:"comm,omitempty" column:"comm,template:comm"`
