@@ -35,15 +35,27 @@ struct {
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
 union dnsflags {
 	struct {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+		__u8 rcode :4;	// response code
+		__u8 z :3;	// reserved
+		__u8 ra :1;	// recursion available
 		__u8 rd :1;	// recursion desired
 		__u8 tc :1;	// truncation
 		__u8 aa :1;	// authoritive answer
 		__u8 opcode :4;	// kind of query
 		__u8 qr :1;	// 0=query; 1=response
-
-		__u8 rcode :4;	// response code
-		__u8 z :3;	// reserved
+#elif __BYTE_ORDER == __ORDER_BIG_ENDIAN__
+		__u8 qr :1;	// 0=query; 1=response
+		__u8 opcode :4;	// kind of query
+		__u8 aa :1;	// authoritive answer
+		__u8 tc :1;	// truncation
+		__u8 rd :1;	// recursion desired
 		__u8 ra :1;	// recursion available
+		__u8 z :3;	// reserved
+		__u8 rcode :4;	// response code
+#else
+# error "Fix your compiler's __BYTE_ORDER__?!"
+#endif
 	};
 	__u16 flags;
 };
