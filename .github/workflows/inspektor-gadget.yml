@@ -666,7 +666,7 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: true
     - name: Setup Minikube
-      uses: manusa/actions-setup-minikube@v2.7.1
+      uses: manusa/actions-setup-minikube@v2.7.2
       with:
         minikube version: 'v1.25.2'
         kubernetes version: 'v1.23.0'
