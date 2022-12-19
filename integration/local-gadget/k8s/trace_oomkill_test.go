@@ -44,6 +44,7 @@ func TestTraceOOMKill(t *testing.T) {
 					e.Container = "test-pod-container"
 				}
 
+				e.Timestamp = 0
 				e.KilledPid = 0
 				e.Pages = 0
 				e.TriggeredPid = 0
