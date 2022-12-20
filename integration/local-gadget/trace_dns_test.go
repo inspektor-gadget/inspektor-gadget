@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -47,6 +48,7 @@ func TestTraceDns(t *testing.T) {
 					PktType:    "HOST",
 					DNSName:    "inspektor-gadget.io.",
 					QType:      "A",
+					Rcode:      "NoError",
 				},
 				{
 					Event:      BuildBaseEvent(ns),
@@ -63,6 +65,24 @@ func TestTraceDns(t *testing.T) {
 					PktType:    "HOST",
 					DNSName:    "inspektor-gadget.io.",
 					QType:      "AAAA",
+					Rcode:      "NoError",
+				},
+				{
+					Event:      BuildBaseEvent(ns),
+					Qr:         dnsTypes.DNSPktTypeQuery,
+					Nameserver: "8.8.4.4",
+					PktType:    "OUTGOING",
+					DNSName:    "nodomain.inspektor-gadget.io.",
+					QType:      "A",
+				},
+				{
+					Event:      BuildBaseEvent(ns),
+					Qr:         dnsTypes.DNSPktTypeResponse,
+					Nameserver: "8.8.4.4",
+					PktType:    "HOST",
+					DNSName:    "nodomain.inspektor-gadget.io.",
+					QType:      "A",
+					Rcode:      "NXDomain",
 				},
 			}
 
@@ -79,12 +99,17 @@ func TestTraceDns(t *testing.T) {
 		},
 	}
 
+	nslookupCmds := []string{
+		"nslookup -type=a inspektor-gadget.io. 8.8.4.4",
+		"nslookup -type=aaaa inspektor-gadget.io. 8.8.4.4",
+		"nslookup -type=a nodomain.inspektor-gadget.io. 8.8.4.4",
+	}
+
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		traceDNSCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "nslookup -type=a inspektor-gadget.io. 8.8.4.4 ; "+
-			"nslookup -type=aaaa inspektor-gadget.io. 8.8.4.4"),
+		BusyboxPodRepeatCommand(ns, strings.Join(nslookupCmds, " ; ")),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

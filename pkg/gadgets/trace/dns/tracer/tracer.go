@@ -165,6 +165,17 @@ var qTypeNames = map[uint]string{
 
 const MaxDNSName = int(unsafe.Sizeof(dnsEventT{}.Name))
 
+// DNS header RCODE (response code) field.
+// https://datatracker.ietf.org/doc/rfc1035#section-4.1.1
+var rCodeNames = map[uint8]string{
+	0: "NoError",
+	1: "FormErr",
+	2: "ServFail",
+	3: "NXDomain",
+	4: "NotImp",
+	5: "Refused",
+}
+
 // parseLabelSequence parses a label sequence into a string with dots.
 // See https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.2
 func parseLabelSequence(sample []byte) (ret string) {
@@ -229,6 +240,14 @@ func parseDNSEvent(rawSample []byte) (*types.Event, error) {
 	event.QType, ok = qTypeNames[qTypeUint]
 	if !ok {
 		event.QType = "UNASSIGNED"
+	}
+
+	if bpfEvent.Qr == 1 {
+		rCodeUint := uint8(bpfEvent.Rcode)
+		event.Rcode, ok = rCodeNames[rCodeUint]
+		if !ok {
+			event.Rcode = "UNKNOWN"
+		}
 	}
 
 	return &event, nil

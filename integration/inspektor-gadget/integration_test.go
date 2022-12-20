@@ -535,6 +535,7 @@ func TestDns(t *testing.T) {
 					PktType:    "HOST",
 					DNSName:    "inspektor-gadget.io.",
 					QType:      "A",
+					Rcode:      "NoError",
 				},
 				{
 					Event:      BuildBaseEvent(ns),
@@ -553,6 +554,7 @@ func TestDns(t *testing.T) {
 					PktType:    "HOST",
 					DNSName:    "inspektor-gadget.io.",
 					QType:      "AAAA",
+					Rcode:      "NoError",
 				},
 			}
 

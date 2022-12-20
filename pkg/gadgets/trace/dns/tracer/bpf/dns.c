@@ -128,6 +128,11 @@ int ig_trace_dns(struct __sk_buff *skb)
 
 	event.qr = flags.qr;
 
+	if (flags.qr == 1) {
+		// Response code set only for replies.
+		event.rcode = flags.rcode;
+	}
+
 	bpf_skb_load_bytes(skb, DNS_OFF + sizeof(struct dnshdr), event.name, len);
 
 	event.pkt_type = skb->pkt_type;
