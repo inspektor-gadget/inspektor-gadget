@@ -40,8 +40,8 @@ func TestSnapshotProcess(t *testing.T) {
 			normalize := func(e *types.Event) {
 				e.Node = ""
 				e.Container = ""
-				e.Tgid = 0
 				e.Pid = 0
+				e.Tid = 0
 				e.MountNsID = 0
 			}
 

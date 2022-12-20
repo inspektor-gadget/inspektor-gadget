@@ -1137,8 +1137,8 @@ func TestProcessCollector(t *testing.T) {
 
 				normalize := func(e *processCollectorTypes.Event) {
 					e.Node = ""
-					e.Tgid = 0
 					e.Pid = 0
+					e.Tid = 0
 					e.MountNsID = 0
 				}
 

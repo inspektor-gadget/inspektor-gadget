@@ -23,8 +23,8 @@ type Event struct {
 	eventtypes.Event
 
 	Command   string `json:"comm" column:"comm,template:comm"`
-	Tgid      int    `json:"tgid" column:"tgid,template:pid,hide"`
 	Pid       int    `json:"pid" column:"pid,template:pid"`
+	Tid       int    `json:"tid" column:"tid,template:pid,hide"`
 	MountNsID uint64 `json:"mntns" column:"mntns,template:ns"`
 }
 

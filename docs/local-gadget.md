@@ -190,7 +190,7 @@ And, show the all threads using the `-t` flag:
 
 ```bash
 $ sudo local-gadget snapshot process --containername gadget -t
-CONTAINER    COMM               TGID     PID
+CONTAINER    COMM               PID      TID
 gadget       gadgettracerman    39645    39645
 gadget       gadgettracerman    39645    39668
 gadget       gadgettracerman    39645    39669

@@ -35,6 +35,11 @@ type ProcessParser struct {
 }
 
 func newProcessParser(outputConfig *commonutils.OutputConfig, flags *ProcessFlags, cols *columns.Columns[types.Event], options ...commonutils.Option) (SnapshotParser[types.Event], error) {
+	if flags.showThreads {
+		col, _ := cols.GetColumn("tid")
+		col.Visible = true
+	}
+
 	gadgetParser, err := commonutils.NewGadgetParser(outputConfig, cols, options...)
 	if err != nil {
 		return nil, commonutils.WrapInErrParserCreate(err)
@@ -63,7 +68,7 @@ func (p *ProcessParser) SortEvents(allProcesses *[]*types.Event) {
 	if !p.flags.showThreads {
 		allProcessesTrimmed := []*types.Event{}
 		for _, i := range *allProcesses {
-			if i.Tgid == i.Pid {
+			if i.Tid == i.Pid {
 				allProcessesTrimmed = append(allProcessesTrimmed, i)
 			}
 		}
