@@ -35,6 +35,8 @@ type Event struct {
 	PktType    string     `json:"pktType,omitempty" column:"type,minWidth:7,maxWidth:9"`
 	QType      string     `json:"qtype,omitempty" column:"qtype,minWidth:5,maxWidth:10"`
 	DNSName    string     `json:"name,omitempty" column:"name,width:30"`
+	Endpoint1  uint64     `json:"endpoint1,omitempty" column:"endpoint1,width:9"`
+	Endpoint2  uint64     `json:"endpoint2,omitempty" column:"endpoint2,width:9"`
 }
 
 func GetColumns() *columns.Columns[Event] {

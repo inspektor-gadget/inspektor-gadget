@@ -32,6 +32,7 @@ import (
 	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
 	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/endpoint-collection"
 )
 
 func newSNICmd() *cobra.Command {
@@ -89,7 +90,16 @@ func newSNICmd() *cobra.Command {
 			}
 		}
 
-		tracer, err := sniTracer.NewTracer()
+		ec, err := endpointcollection.NewEndpointCollection()
+		if err != nil {
+			// FIXME
+			panic(err)
+		}
+
+		tracerConfig := sniTracer.Config{
+			EndpointCollection: ec,
+		}
+		tracer, err := sniTracer.NewTracer(&tracerConfig)
 		if err != nil {
 			return commonutils.WrapInErrGadgetTracerCreateAndRun(err)
 		}

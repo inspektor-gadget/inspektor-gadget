@@ -28,6 +28,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/endpoint-collection"
 )
 
 type attachment struct {
@@ -44,7 +45,8 @@ type attachment struct {
 	users map[uint32]struct{}
 }
 
-func newAttachment(
+func newAttachment[Event any](
+	t *Tracer[Event],
 	pid uint32,
 	spec *ebpf.CollectionSpec,
 	bpfProgName string,
@@ -69,7 +71,13 @@ func newAttachment(
 		}
 	}()
 
-	a.collection, err = ebpf.NewCollection(spec)
+	mapReplacements := map[string]*ebpf.Map{}
+	mapReplacements["endpoints"] = t.endpointCollection.EndpointsMap()
+	opts := ebpf.CollectionOptions{
+		MapReplacements: mapReplacements,
+	}
+
+	a.collection, err = ebpf.NewCollectionWithOptions(spec, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}
@@ -99,6 +107,8 @@ func newAttachment(
 type Tracer[Event any] struct {
 	spec *ebpf.CollectionSpec
 
+	endpointCollection *endpointcollection.EndpointCollection
+
 	// key: network namespace inode number
 	// value: Tracelet
 	attachments map[uint64]*attachment
@@ -113,6 +123,7 @@ type Tracer[Event any] struct {
 
 func NewTracer[Event any](
 	spec *ebpf.CollectionSpec,
+	ec *endpointcollection.EndpointCollection,
 	bpfProgName string,
 	bpfPerfMapName string,
 	bpfSocketAttach int,
@@ -120,13 +131,14 @@ func NewTracer[Event any](
 	parseEvent func([]byte) (*Event, error),
 ) *Tracer[Event] {
 	return &Tracer[Event]{
-		spec:            spec,
-		attachments:     make(map[uint64]*attachment),
-		bpfProgName:     bpfProgName,
-		bpfPerfMapName:  bpfPerfMapName,
-		bpfSocketAttach: bpfSocketAttach,
-		baseEvent:       baseEvent,
-		parseEvent:      parseEvent,
+		spec:               spec,
+		endpointCollection: ec,
+		attachments:        make(map[uint64]*attachment),
+		bpfProgName:        bpfProgName,
+		bpfPerfMapName:     bpfPerfMapName,
+		bpfSocketAttach:    bpfSocketAttach,
+		baseEvent:          baseEvent,
+		parseEvent:         parseEvent,
 	}
 }
 
@@ -140,7 +152,7 @@ func (t *Tracer[Event]) Attach(pid uint32, eventCallback func(Event)) error {
 		return nil
 	}
 
-	a, err := newAttachment(pid, t.spec, t.bpfProgName, t.bpfPerfMapName, t.bpfSocketAttach)
+	a, err := newAttachment(t, pid, t.spec, t.bpfProgName, t.bpfPerfMapName, t.bpfSocketAttach)
 	if err != nil {
 		return fmt.Errorf("creating network tracer attachment for pid %d: %w", pid, err)
 	}

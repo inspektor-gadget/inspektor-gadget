@@ -32,6 +32,7 @@ import (
 	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/endpoint-collection"
 )
 
 func newDNSCmd() *cobra.Command {
@@ -89,7 +90,16 @@ func newDNSCmd() *cobra.Command {
 			}
 		}
 
-		tracer, err := dnsTracer.NewTracer()
+		ec, err := endpointcollection.NewEndpointCollection()
+		if err != nil {
+			// FIXME
+			panic(err)
+		}
+
+		tracerConfig := dnsTracer.Config{
+			EndpointCollection: ec,
+		}
+		tracer, err := dnsTracer.NewTracer(&tracerConfig)
 		if err != nil {
 			return commonutils.WrapInErrGadgetTracerCreateAndRun(err)
 		}

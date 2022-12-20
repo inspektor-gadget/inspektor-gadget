@@ -26,6 +26,7 @@ import (
 	sniTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/tracer"
 	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/endpoint-collection"
 )
 
 type Trace struct {
@@ -107,8 +108,16 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	var err error
-	t.tracer, err = sniTracer.NewTracer()
+	endpointCollection, err := endpointcollection.NewEndpointCollection()
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("Failed to start sni tracer: %s", err)
+		return
+	}
+	tracerConfig := sniTracer.Config{
+		EndpointCollection: endpointCollection,
+	}
+
+	t.tracer, err = sniTracer.NewTracer(&tracerConfig)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("Failed to start sni tracer: %s", err)
 		return

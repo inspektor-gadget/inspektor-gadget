@@ -13,16 +13,27 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type dnsEndpointsKey struct {
+	Key struct {
+		Prefixlen uint32
+		Data      [0]uint8
+	}
+	Ip uint32
+}
+
 type dnsEventT struct {
-	SaddrV6 [16]uint8
-	DaddrV6 [16]uint8
-	Af      uint32
-	Id      uint16
-	Qtype   uint16
-	Qr      uint8
-	PktType uint8
-	Name    [255]uint8
-	_       [3]byte
+	SaddrV6       [16]uint8
+	DaddrV6       [16]uint8
+	Af            uint32
+	_             [4]byte
+	EndpointIdSrc uint64
+	EndpointIdDst uint64
+	Id            uint16
+	Qtype         uint16
+	Qr            uint8
+	PktType       uint8
+	Name          [255]uint8
+	_             [3]byte
 }
 
 // loadDns returns the embedded CollectionSpec for dns.
@@ -73,7 +84,8 @@ type dnsProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type dnsMapSpecs struct {
-	Events *ebpf.MapSpec `ebpf:"events"`
+	Endpoints *ebpf.MapSpec `ebpf:"endpoints"`
+	Events    *ebpf.MapSpec `ebpf:"events"`
 }
 
 // dnsObjects contains all objects after they have been loaded into the kernel.
@@ -95,11 +107,13 @@ func (o *dnsObjects) Close() error {
 //
 // It can be passed to loadDnsObjects or ebpf.CollectionSpec.LoadAndAssign.
 type dnsMaps struct {
-	Events *ebpf.Map `ebpf:"events"`
+	Endpoints *ebpf.Map `ebpf:"endpoints"`
+	Events    *ebpf.Map `ebpf:"events"`
 }
 
 func (m *dnsMaps) Close() error {
 	return _DnsClose(
+		m.Endpoints,
 		m.Events,
 	)
 }
@@ -127,5 +141,6 @@ func _DnsClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed dns_bpfel.o
 var _DnsBytes []byte

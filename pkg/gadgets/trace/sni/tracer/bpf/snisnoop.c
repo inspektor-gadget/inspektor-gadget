@@ -13,6 +13,8 @@
 
 #include "snisnoop.h"
 
+#include "endpointcollection.h"
+
 // we need this to make sure the compiler doesn't remove our struct
 const struct event_t *unusedevent __attribute__((unused));
 

@@ -21,9 +21,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/endpoint-collection"
 )
 
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/"
+//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../../endpoint-collection/bpf"
 
 const (
 	BPFProgName         = "ig_trace_sni"
@@ -32,19 +33,27 @@ const (
 	TLSMaxServerNameLen = len(snisnoopEventT{}.Name)
 )
 
+type Config struct {
+	EndpointCollection *endpointcollection.EndpointCollection
+}
+
 type Tracer struct {
+	config *Config
+
 	*networktracer.Tracer[types.Event]
 }
 
-func NewTracer() (*Tracer, error) {
+func NewTracer(config *Config) (*Tracer, error) {
 	spec, err := loadSnisnoop()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
 
 	return &Tracer{
+		config: config,
 		Tracer: networktracer.NewTracer(
 			spec,
+			config.EndpointCollection,
 			BPFProgName,
 			BPFPerfMapName,
 			BPFSocketAttach,

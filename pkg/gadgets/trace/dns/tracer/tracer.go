@@ -24,9 +24,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/endpoint-collection"
 )
 
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/"
+//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../../endpoint-collection/bpf"
 
 const (
 	BPFProgName     = "ig_trace_dns"
@@ -34,19 +35,27 @@ const (
 	BPFSocketAttach = 50
 )
 
+type Config struct {
+	EndpointCollection *endpointcollection.EndpointCollection
+}
+
 type Tracer struct {
+	config *Config
+
 	*networktracer.Tracer[types.Event]
 }
 
-func NewTracer() (*Tracer, error) {
+func NewTracer(config *Config) (*Tracer, error) {
 	spec, err := loadDns()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
 
 	return &Tracer{
+		config: config,
 		Tracer: networktracer.NewTracer(
 			spec,
+			config.EndpointCollection,
 			BPFProgName,
 			BPFPerfMapName,
 			BPFSocketAttach,
@@ -230,6 +239,9 @@ func parseDNSEvent(rawSample []byte) (*types.Event, error) {
 	if !ok {
 		event.QType = "UNASSIGNED"
 	}
+
+	event.Endpoint1 = bpfEvent.EndpointIdSrc
+	event.Endpoint2 = bpfEvent.EndpointIdDst
 
 	return &event, nil
 }

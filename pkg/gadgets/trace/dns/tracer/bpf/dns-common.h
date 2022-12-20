@@ -15,6 +15,8 @@ struct event_t {
 		__u32 daddr_v4;
 	};
 	__u32 af; // AF_INET or AF_INET6
+	__u64 endpoint_id_src;
+	__u64 endpoint_id_dst;
 
 	__u16 id;
 	unsigned short qtype;

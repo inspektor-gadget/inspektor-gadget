@@ -26,6 +26,7 @@ import (
 	dnsTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
 	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/endpoint-collection"
 )
 
 type Trace struct {
@@ -107,8 +108,16 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	var err error
-	t.tracer, err = dnsTracer.NewTracer()
+	endpointCollection, err := endpointcollection.NewEndpointCollection()
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("Failed to start dns tracer: %s", err)
+		return
+	}
+	tracerConfig := dnsTracer.Config{
+		EndpointCollection: endpointCollection,
+	}
+
+	t.tracer, err = dnsTracer.NewTracer(&tracerConfig)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("Failed to start dns tracer: %s", err)
 		return

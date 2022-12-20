@@ -46,7 +46,7 @@ func main() {
 	}
 
 	// Create tracer. In this case no parameters are passed.
-	tracer, err := tracer.NewTracer()
+	tracer, err := tracer.NewTracer(&tracer.Config{})
 	if err != nil {
 		fmt.Printf("error creating tracer: %s\n", err)
 		return

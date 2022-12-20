@@ -6,12 +6,17 @@
 #include <linux/ip.h>
 #include <linux/in.h>
 #include <linux/udp.h>
-#include <sys/socket.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
 #include "dns-common.h"
+
+#include "endpointcollection.h"
+
+#ifndef AF_INET
+#define AF_INET         2
+#endif
 
 #define DNS_OFF (ETH_HLEN + sizeof(struct iphdr) + sizeof(struct udphdr))
 
@@ -113,6 +118,9 @@ int ig_trace_dns(struct __sk_buff *skb)
 	// network endianness because inet_ntop() requires it.
 	event.daddr_v4 = bpf_htonl(event.daddr_v4);
 	event.saddr_v4 = bpf_htonl(event.saddr_v4);
+
+	event.endpoint_id_src = gadget_endpoint_lookup(event.saddr_v4);
+	event.endpoint_id_dst = gadget_endpoint_lookup(event.daddr_v4);
 
 	event.qr = flags.qr;
 
