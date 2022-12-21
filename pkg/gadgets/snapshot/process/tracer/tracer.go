@@ -16,12 +16,18 @@ package tracer
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	processcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -29,7 +35,35 @@ import (
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang processCollector ./bpf/process-collector.bpf.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
 
-func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]*processcollectortypes.Event, error) {
+type Config struct {
+	MountnsMap *ebpf.Map
+}
+
+var hostRoot string
+
+func init() {
+	hostRoot = os.Getenv("HOST_ROOT")
+}
+
+func RunCollector(config *Config, enricher gadgets.DataEnricher) ([]*processcollectortypes.Event, error) {
+	events, err := runeBPFCollector(config, enricher)
+	if err == nil {
+		return events, nil
+	}
+
+	if !errors.Is(err, ebpf.ErrNotSupported) {
+		return nil, fmt.Errorf("running ebpf iterator: %w", err)
+	}
+
+	events, err = runProcfsCollector(config, enricher)
+	if err != nil {
+		return nil, fmt.Errorf("running procfs collector: %w", err)
+	}
+
+	return events, err
+}
+
+func runeBPFCollector(config *Config, enricher gadgets.DataEnricher) ([]*processcollectortypes.Event, error) {
 	spec, err := loadProcessCollector()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
@@ -38,9 +72,9 @@ func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]*process
 	mapReplacements := map[string]*ebpf.Map{}
 	filterByMntNs := false
 
-	if mntnsmap != nil {
+	if config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_filter"] = mntnsmap
+		mapReplacements["mount_ns_filter"] = config.MountnsMap
 	}
 
 	consts := map[string]interface{}{
@@ -112,6 +146,94 @@ func RunCollector(enricher gadgets.DataEnricher, mntnsmap *ebpf.Map) ([]*process
 		}
 
 		events = append(events, &event)
+	}
+
+	return events, nil
+}
+
+func getPidEvents(config *Config, enricher gadgets.DataEnricher, pid int) ([]*processcollectortypes.Event, error) {
+	var events []*processcollectortypes.Event
+	var val uint32
+
+	items, err := os.ReadDir(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/task/", pid)))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range items {
+		if !item.IsDir() {
+			continue
+		}
+
+		tid64, err := strconv.ParseUint(item.Name(), 10, 32)
+		if err != nil {
+			continue
+		}
+		tid := int(tid64)
+
+		commBytes, _ := ioutil.ReadFile(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/comm", tid)))
+		comm := strings.TrimRight(string(commBytes), "\n")
+		mntnsid, err := containerutils.GetMntNs(tid)
+		if err != nil {
+			continue
+		}
+
+		if config.MountnsMap != nil {
+			// TODO: This would be more efficient to store
+			// these elements in user space to avoid
+			// performing systemcalls to lookup in the eBPF
+			// map
+			err := config.MountnsMap.Lookup(&mntnsid, &val)
+			if err != nil {
+				continue
+			}
+		}
+
+		event := processcollectortypes.Event{
+			Event: eventtypes.Event{
+				Type: eventtypes.NORMAL,
+			},
+			Tid:       tid,
+			Pid:       pid,
+			Command:   comm,
+			MountNsID: mntnsid,
+		}
+
+		if enricher != nil {
+			enricher.Enrich(&event.CommonData, event.MountNsID)
+		}
+
+		events = append(events, &event)
+	}
+
+	return events, nil
+}
+
+func runProcfsCollector(config *Config, enricher gadgets.DataEnricher) ([]*processcollectortypes.Event, error) {
+	items, err := os.ReadDir(filepath.Join(hostRoot, "/proc/"))
+	if err != nil {
+		return nil, err
+	}
+
+	var events []*processcollectortypes.Event
+
+	for _, item := range items {
+		if !item.IsDir() {
+			continue
+		}
+
+		pid64, err := strconv.ParseUint(item.Name(), 10, 32)
+		if err != nil {
+			continue
+		}
+		pid := int(pid64)
+
+		pidEvents, err := getPidEvents(config, enricher, pid)
+		if err != nil {
+			continue
+		}
+
+		events = append(events, pidEvents...)
 	}
 
 	return events, nil
