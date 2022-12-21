@@ -19,6 +19,10 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+const (
+	ShowThreadsParam = "show-threads"
+)
+
 type Event struct {
 	eventtypes.Event
 
