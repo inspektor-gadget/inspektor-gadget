@@ -59,15 +59,16 @@ func RunTestSteps[S TestStep](ops []S, t *testing.T) {
 	}()
 
 	// Defer stopping commands
-	defer func() {
-		for _, cmd := range ops {
+	for _, cmd := range ops {
+		cmd := cmd
+		defer func() {
 			if cmd.IsStartAndStop() && cmd.Running() {
 				// Wait a bit before stopping the step.
 				time.Sleep(stepWaitDuration)
 				cmd.Stop(t)
 			}
-		}
-	}()
+		}()
+	}
 
 	// Run all steps except cleanup ones
 	for _, cmd := range ops {
