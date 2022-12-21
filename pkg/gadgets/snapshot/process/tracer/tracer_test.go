@@ -33,11 +33,11 @@ import (
 
 type collectorFunc func(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*snapshotProcessTypes.Event, error)
 
-func BenchmarkEBPFTracer(b *testing.B) {
+func BenchmarkSnapshotProcessEBPFTracer(b *testing.B) {
 	benchmarkTracer(b, runeBPFCollector)
 }
 
-func BenchmarkProcfsTracer(b *testing.B) {
+func BenchmarkSnapshotProcessProcfsTracer(b *testing.B) {
 	benchmarkTracer(b, runProcfsCollector)
 }
 
@@ -52,11 +52,11 @@ func benchmarkTracer(b *testing.B, runCollector collectorFunc) {
 	}
 }
 
-func TestEBPFTracer(t *testing.T) {
+func TestSnapshotProcessEBPFTracer(t *testing.T) {
 	testTracer(t, runeBPFCollector)
 }
 
-func TestProcfsTracer(t *testing.T) {
+func TestSnapshotProcessProcfsTracer(t *testing.T) {
 	testTracer(t, runProcfsCollector)
 }
 
