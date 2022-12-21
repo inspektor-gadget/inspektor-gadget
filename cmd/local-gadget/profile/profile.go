@@ -18,81 +18,90 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	commonprofile "github.com/inspektor-gadget/inspektor-gadget/cmd/common/profile"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/profile"
 )
+
+type ProfileFlags struct {
+	utils.CommonFlags
+	Timeout int
+}
 
 // ProfileGadget represents a gadget belonging to the profile category.
 type ProfileGadget struct {
-	gadgetName    string
-	commonFlags   *utils.CommonFlags
-	params        map[string]string
+	profileFlags  *ProfileFlags
 	inProgressMsg string
 	parser        commonprofile.ProfileParser
+
+	createAndRunTracer func() (profile.Tracer, error)
 }
 
 // Run runs a ProfileGadget and prints the output after parsing it using the
 // ProfileParser's methods.
 func (g *ProfileGadget) Run() error {
-	traceConfig := &utils.TraceConfig{
-		GadgetName:        g.gadgetName,
-		Operation:         gadgetv1alpha1.OperationStart,
-		TraceOutputMode:   gadgetv1alpha1.TraceOutputModeStatus,
-		TraceOutputState:  gadgetv1alpha1.TraceStateCompleted,
-		TraceInitialState: gadgetv1alpha1.TraceStateStarted,
-		Parameters:        g.params,
-		CommonFlags:       g.commonFlags,
-	}
-
-	traceID, err := utils.CreateTrace(traceConfig)
+	gadgetTracer, err := g.createAndRunTracer()
 	if err != nil {
-		return commonutils.WrapInErrRunGadget(err)
+		return commonutils.WrapInErrGadgetTracerCreateAndRun(err)
 	}
-	defer utils.DeleteTrace(traceID)
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	if g.commonFlags.Timeout != 0 {
+	timeoutChannel := make(chan os.Signal, 1)
+	signal.Notify(timeoutChannel, os.Interrupt)
+	if g.profileFlags.Timeout != 0 {
 		go func() {
-			time.Sleep(time.Duration(g.commonFlags.Timeout) * time.Second)
-			c <- os.Interrupt
+			time.Sleep(time.Duration(g.profileFlags.Timeout) * time.Second)
+			timeoutChannel <- os.Interrupt
 		}()
 	}
 
-	if g.commonFlags.OutputMode != commonutils.OutputModeJSON {
-		if g.commonFlags.Timeout != 0 {
+	if g.profileFlags.OutputMode != commonutils.OutputModeJSON {
+		if g.profileFlags.Timeout != 0 {
 			fmt.Printf(g.inProgressMsg + "...")
 		} else {
 			fmt.Printf("%s... Hit Ctrl-C to end.", g.inProgressMsg)
 		}
 	}
 
-	<-c
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	if g.commonFlags.OutputMode != commonutils.OutputModeJSON {
-		// Trick to have ^C on the same line than above message, so the gadget
-		// output begins on a "clean" line.
-		fmt.Println()
+	select {
+	case <-timeoutChannel:
+	case <-stop:
 	}
 
-	err = utils.SetTraceOperation(traceID, string(gadgetv1alpha1.OperationStop))
+	result, err := gadgetTracer.Stop()
 	if err != nil {
-		return commonutils.WrapInErrStopGadget(err)
+		return err
 	}
 
-	err = utils.PrintTraceOutputFromStatus(traceID,
-		string(traceConfig.TraceOutputState), g.parser.DisplayResultsCallback)
+	// Trick to have ^C on the same line than above message, so the gadget
+	// output begins on a "clean" line.
+	fmt.Println()
+
+	err = g.parser.DisplayResultsCallback("", []string{result})
 	if err != nil {
-		return commonutils.WrapInErrGetGadgetOutput(err)
+		return err
 	}
 
 	return nil
+}
+
+func AddCommonProfileFlags(command *cobra.Command, profileFlags *ProfileFlags) {
+	utils.AddCommonFlags(command, &profileFlags.CommonFlags)
+
+	command.PersistentFlags().IntVar(
+		&profileFlags.Timeout,
+		"timeout",
+		0,
+		"Number of seconds that the gadget will run for",
+	)
 }
 
 func NewProfileCmd() *cobra.Command {

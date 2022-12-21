@@ -7,6 +7,8 @@ description: >
 
 The profile cpu gadget takes samples of the stack traces.
 
+### With kubectl-gadget
+
 Here we deploy a small demo pod "random":
 
 ```bash
@@ -132,3 +134,53 @@ Finally, we need to clean up our pod:
 ```bash
 $ kubectl delete pod random
 ```
+
+### With local-gadget
+
+* Generate some kernel load:
+
+```bash
+$ docker run -d --rm --name random busybox cat /dev/urandom > /dev/null
+```
+
+* Start local-gadget:
+
+```bash
+$ sudo ./local-gadget profile cpu -K --containername random --runtimes docker
+```
+
+* Observe the results:
+
+```bash
+sudo ./local-gadget profile cpu -K --containername random --runtimes docker
+Capturing stack traces... Hit Ctrl-C to end.^C
+CONTAINER                                                                                    COMM             PID        COUNT
+random                                                                                       cat              641045     1
+        entry_SYSCALL_64_after_hwframe
+        do_syscall_64
+        __x64_sys_sendfile64
+        do_sendfile
+        splice_file_to_pipe
+        generic_file_splice_read
+        get_random_bytes_user
+        chacha_block_generic
+        chacha_permute
+...
+random                                                                                       cat              641045     5
+        entry_SYSCALL_64_after_hwframe
+        do_syscall_64
+        __x64_sys_sendfile64
+        do_sendfile
+        splice_file_to_pipe
+        generic_file_splice_read
+        get_random_bytes_user
+        chacha_block_generic
+        chacha_permute
+```
+
+* Remove the docker container:
+
+```bash
+$ docker stop random
+```
+

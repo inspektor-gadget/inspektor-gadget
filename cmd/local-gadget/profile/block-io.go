@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,33 +15,33 @@
 package profile
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	commonprofile "github.com/inspektor-gadget/inspektor-gadget/cmd/common/profile"
-	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/profile"
+	bioTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/tracer"
 )
 
 func newBlockIOCmd() *cobra.Command {
-	var commonFlags utils.CommonFlags
+	var profileFlags ProfileFlags
 
-	runCmd := func(cmd *cobra.Command, args []string) error {
-		// Biolatency does not support filtering so we need to avoid adding
-		// the default namespace configured in the kubeconfig file.
-		if commonFlags.Namespace != "" && !commonFlags.NamespaceOverridden {
-			commonFlags.Namespace = ""
-		}
-
-		if commonFlags.Node == "" {
-			return commonutils.WrapInErrMissingArgs("--node")
+	runCmd := func(*cobra.Command, []string) error {
+		if profileFlags.Containername != "" || profileFlags.Runtimes != strings.Join(containerutils.AvailableRuntimes, ",") {
+			return fmt.Errorf("block-io gadget doesn't support filtering")
 		}
 
 		blockIOGadget := &ProfileGadget{
-			gadgetName:    "biolatency",
-			commonFlags:   &commonFlags,
+			profileFlags:  &profileFlags,
 			inProgressMsg: "Tracing block device I/O",
 			parser: &commonprofile.BlockIOParser{
-				OutputConfig: commonFlags.OutputConfig,
+				OutputConfig: profileFlags.OutputConfig,
+			},
+			createAndRunTracer: func() (profile.Tracer, error) {
+				return bioTracer.NewTracer()
 			},
 		}
 
@@ -49,8 +49,7 @@ func newBlockIOCmd() *cobra.Command {
 	}
 
 	cmd := commonprofile.NewBlockIOCmd(runCmd)
-
-	utils.AddCommonFlags(cmd, &commonFlags)
+	AddCommonProfileFlags(cmd, &profileFlags)
 
 	return cmd
 }
