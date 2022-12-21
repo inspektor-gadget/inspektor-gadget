@@ -28,35 +28,35 @@ Inspektor Gadget tools are known as gadgets. You can deploy one, two or many gad
 Explore the following documentation to find out which tools can help you in your investigations.
 
 - `advise`:
-	- [`network-policy`](docs/guides/advise/network-policy.md)
-	- [`seccomp-profile`](docs/guides/advise/seccomp-profile.md)
+	- [`network-policy`](docs/gadgets/advise/network-policy.md)
+	- [`seccomp-profile`](docs/gadgets/advise/seccomp-profile.md)
 - `audit`:
-	- [`seccomp`](docs/guides/audit/seccomp.md)
+	- [`seccomp`](docs/gadgets/audit/seccomp.md)
 - `profile`:
-	- [`block-io`](docs/guides/profile/block-io.md)
-	- [`cpu`](docs/guides/profile/cpu.md)
+	- [`block-io`](docs/gadgets/profile/block-io.md)
+	- [`cpu`](docs/gadgets/profile/cpu.md)
 - `snapshot`:
-	- [`process`](docs/guides/snapshot/process.md)
-	- [`socket`](docs/guides/snapshot/socket.md)
+	- [`process`](docs/gadgets/snapshot/process.md)
+	- [`socket`](docs/gadgets/snapshot/socket.md)
 - `top`:
-	- [`block-io`](docs/guides/top/block-io.md)
-	- [`ebpf`](docs/guides/top/ebpf.md)
-	- [`file`](docs/guides/top/file.md)
-	- [`tcp`](docs/guides/top/tcp.md)
+	- [`block-io`](docs/gadgets/top/block-io.md)
+	- [`ebpf`](docs/gadgets/top/ebpf.md)
+	- [`file`](docs/gadgets/top/file.md)
+	- [`tcp`](docs/gadgets/top/tcp.md)
 - `trace`:
-	- [`bind`](docs/guides/trace/bind.md)
-	- [`capabilities`](docs/guides/trace/capabilities.md)
-	- [`dns`](docs/guides/trace/dns.md)
-	- [`exec`](docs/guides/trace/exec.md)
-	- [`fsslower`](docs/guides/trace/fsslower.md)
-	- [`mount`](docs/guides/trace/mount.md)
-	- [`oomkill`](docs/guides/trace/oomkill.md)
-	- [`open`](docs/guides/trace/open.md)
-	- [`signal`](docs/guides/trace/signal.md)
-	- [`sni`](docs/guides/trace/sni.md)
-	- [`tcp`](docs/guides/trace/tcp.md)
-	- [`tcpconnect`](docs/guides/trace/tcpconnect.md)
-- [`traceloop`](docs/guides/traceloop.md)
+	- [`bind`](docs/gadgets/trace/bind.md)
+	- [`capabilities`](docs/gadgets/trace/capabilities.md)
+	- [`dns`](docs/gadgets/trace/dns.md)
+	- [`exec`](docs/gadgets/trace/exec.md)
+	- [`fsslower`](docs/gadgets/trace/fsslower.md)
+	- [`mount`](docs/gadgets/trace/mount.md)
+	- [`oomkill`](docs/gadgets/trace/oomkill.md)
+	- [`open`](docs/gadgets/trace/open.md)
+	- [`signal`](docs/gadgets/trace/signal.md)
+	- [`sni`](docs/gadgets/trace/sni.md)
+	- [`tcp`](docs/gadgets/trace/tcp.md)
+	- [`tcpconnect`](docs/gadgets/trace/tcpconnect.md)
+- [`traceloop`](docs/gadgets/traceloop.md)
 
 ## Installation
 
