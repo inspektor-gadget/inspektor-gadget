@@ -15,13 +15,18 @@
 package top
 
 import (
-	"strconv"
+	"time"
 
+	"github.com/cilium/ebpf"
 	"github.com/spf13/cobra"
 
 	commontop "github.com/inspektor-gadget/inspektor-gadget/cmd/common/top"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 )
 
@@ -32,29 +37,33 @@ func newFileCmd() *cobra.Command {
 	cols := types.GetColumns()
 
 	cmd := commontop.NewFileCmd(func(cmd *cobra.Command, args []string) error {
-		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, cols)
+		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, cols)
 		if err != nil {
 			return commonutils.WrapInErrParserCreate(err)
 		}
 
 		gadget := &TopGadget[types.Stats]{
 			TopGadget: commontop.TopGadget[types.Stats]{
-				Parser:         parser,
 				CommonTopFlags: &flags.CommonTopFlags,
 				OutputConfig:   &commonFlags.OutputConfig,
+				Parser:         parser,
 				ColMap:         cols.ColumnMap,
 			},
-			name: "filetop",
-			params: map[string]string{
-				types.AllFilesParam: strconv.FormatBool(flags.ShowAllFiles),
-			},
 			commonFlags: &commonFlags,
-			nodeStats:   make(map[string][]*types.Stats),
+			createAndRunTracer: func(mountNsMap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(*top.Event[types.Stats])) (trace.Tracer, error) {
+				config := &tracer.Config{
+					MaxRows:    flags.MaxRows,
+					Interval:   time.Second * time.Duration(flags.OutputInterval),
+					SortBy:     flags.ParsedSortBy,
+					MountnsMap: mountNsMap,
+				}
+
+				return tracer.NewTracer(config, enricher, eventCallback)
+			},
 		}
 
 		return gadget.Run(args)
 	}, &flags)
-	cmd.SilenceUsage = true
 
 	commontop.AddCommonTopFlags(cmd, &flags.CommonTopFlags, cols.ColumnMap, types.SortByDefault)
 	utils.AddCommonFlags(cmd, &commonFlags)

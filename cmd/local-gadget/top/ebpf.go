@@ -1,7 +1,7 @@
 // Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
+// you may not use this ebpf except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
@@ -15,21 +15,21 @@
 package top
 
 import (
-	"fmt"
+	"os"
+	"time"
+
+	"github.com/cilium/ebpf"
+	"github.com/spf13/cobra"
 
 	commontop "github.com/inspektor-gadget/inspektor-gadget/cmd/common/top"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
-
-	"github.com/spf13/cobra"
 )
-
-type EbpfParser struct {
-	commonutils.BaseParser[types.Stats]
-
-	flags *commontop.CommonTopFlags
-}
 
 func newEbpfCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
@@ -38,7 +38,12 @@ func newEbpfCmd() *cobra.Command {
 	cols := types.GetColumns()
 
 	cmd := commontop.NewEbpfCmd(func(cmd *cobra.Command, args []string) error {
-		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, cols)
+		hostname, err := os.Hostname()
+		if err != nil {
+			return err
+		}
+
+		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, cols)
 		if err != nil {
 			return commonutils.WrapInErrParserCreate(err)
 		}
@@ -50,31 +55,20 @@ func newEbpfCmd() *cobra.Command {
 				Parser:         parser,
 				ColMap:         cols.ColumnMap,
 			},
-			name:        "ebpftop",
 			commonFlags: &commonFlags,
-			nodeStats:   make(map[string][]*types.Stats),
-		}
+			createAndRunTracer: func(mountNsMap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(*top.Event[types.Stats])) (trace.Tracer, error) {
+				config := &tracer.Config{
+					MaxRows:  flags.MaxRows,
+					Interval: time.Second * time.Duration(flags.OutputInterval),
+					SortBy:   flags.ParsedSortBy,
+				}
 
-		if commonFlags.NamespaceOverridden {
-			return commonutils.WrapInErrInvalidArg("--namespace / -n",
-				fmt.Errorf("this gadget cannot filter by namespace"))
-		}
-		if commonFlags.Podname != "" {
-			return commonutils.WrapInErrInvalidArg("--podname / -p",
-				fmt.Errorf("this gadget cannot filter by pod name"))
-		}
-		if commonFlags.Containername != "" {
-			return commonutils.WrapInErrInvalidArg("--containername / -c",
-				fmt.Errorf("this gadget cannot filter by container name"))
-		}
-		if len(commonFlags.Labels) > 0 {
-			return commonutils.WrapInErrInvalidArg("--selector / -l",
-				fmt.Errorf("this gadget cannot filter by selector"))
+				return tracer.NewTracer(config, eventCallback, hostname)
+			},
 		}
 
 		return gadget.Run(args)
 	})
-	cmd.SilenceUsage = true
 
 	commontop.AddCommonTopFlags(cmd, &flags, cols.ColumnMap, types.SortByDefault)
 	utils.AddCommonFlags(cmd, &commonFlags)

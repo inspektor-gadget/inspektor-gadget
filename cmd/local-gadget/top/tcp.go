@@ -1,7 +1,7 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
+// you may not use this tcp except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
@@ -15,13 +15,18 @@
 package top
 
 import (
-	"strconv"
+	"time"
 
+	"github.com/cilium/ebpf"
 	"github.com/spf13/cobra"
 
 	commontop "github.com/inspektor-gadget/inspektor-gadget/cmd/common/top"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 )
 
@@ -32,17 +37,19 @@ func newTCPCmd() *cobra.Command {
 	cols := types.GetColumns()
 
 	cmd := commontop.NewTCPCmd(func(cmd *cobra.Command, args []string) error {
-		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, cols)
+		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, cols)
 		if err != nil {
 			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		parameters := make(map[string]string)
-		if flags.Family != 0 {
-			parameters[types.FamilyParam] = strconv.FormatUint(uint64(flags.Family), 10)
-		}
+		targetPid := int32(-1)
 		if flags.FilteredPid != 0 {
-			parameters[types.PidParam] = strconv.FormatUint(uint64(flags.FilteredPid), 10)
+			targetPid = int32(flags.FilteredPid)
+		}
+
+		targetFamily := int32(-1)
+		if flags.Family != 0 {
+			targetFamily = int32(flags.Family)
 		}
 
 		gadget := &TopGadget[types.Stats]{
@@ -52,15 +59,23 @@ func newTCPCmd() *cobra.Command {
 				Parser:         parser,
 				ColMap:         cols.ColumnMap,
 			},
-			name:        "tcptop",
-			params:      parameters,
 			commonFlags: &commonFlags,
-			nodeStats:   make(map[string][]*types.Stats),
+			createAndRunTracer: func(mountNsMap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(*top.Event[types.Stats])) (trace.Tracer, error) {
+				config := &tracer.Config{
+					MaxRows:      flags.MaxRows,
+					Interval:     time.Second * time.Duration(flags.OutputInterval),
+					SortBy:       flags.ParsedSortBy,
+					MountnsMap:   mountNsMap,
+					TargetPid:    targetPid,
+					TargetFamily: targetFamily,
+				}
+
+				return tracer.NewTracer(config, enricher, eventCallback)
+			},
 		}
 
 		return gadget.Run(args)
 	}, &flags)
-	cmd.SilenceUsage = true
 
 	commontop.AddCommonTopFlags(cmd, &flags.CommonTopFlags, cols.ColumnMap, types.SortByDefault)
 	utils.AddCommonFlags(cmd, &commonFlags)

@@ -15,30 +15,29 @@
 package top
 
 import (
-	"fmt"
+	"time"
+
+	"github.com/cilium/ebpf"
+	"github.com/spf13/cobra"
 
 	commontop "github.com/inspektor-gadget/inspektor-gadget/cmd/common/top"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
-
-	"github.com/spf13/cobra"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
 
-type EbpfParser struct {
-	commonutils.BaseParser[types.Stats]
-
-	flags *commontop.CommonTopFlags
-}
-
-func newEbpfCmd() *cobra.Command {
+func newBlockIOCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
 	var flags commontop.CommonTopFlags
 
 	cols := types.GetColumns()
 
-	cmd := commontop.NewEbpfCmd(func(cmd *cobra.Command, args []string) error {
-		parser, err := commonutils.NewGadgetParserWithK8sInfo(&commonFlags.OutputConfig, cols)
+	cmd := commontop.NewBlockIOCmd(func(cmd *cobra.Command, args []string) error {
+		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, types.GetColumns())
 		if err != nil {
 			return commonutils.WrapInErrParserCreate(err)
 		}
@@ -50,31 +49,21 @@ func newEbpfCmd() *cobra.Command {
 				Parser:         parser,
 				ColMap:         cols.ColumnMap,
 			},
-			name:        "ebpftop",
 			commonFlags: &commonFlags,
-			nodeStats:   make(map[string][]*types.Stats),
-		}
+			createAndRunTracer: func(mountNsMap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(*top.Event[types.Stats])) (trace.Tracer, error) {
+				config := &tracer.Config{
+					MaxRows:    flags.MaxRows,
+					Interval:   time.Second * time.Duration(flags.OutputInterval),
+					SortBy:     flags.ParsedSortBy,
+					MountnsMap: mountNsMap,
+				}
 
-		if commonFlags.NamespaceOverridden {
-			return commonutils.WrapInErrInvalidArg("--namespace / -n",
-				fmt.Errorf("this gadget cannot filter by namespace"))
-		}
-		if commonFlags.Podname != "" {
-			return commonutils.WrapInErrInvalidArg("--podname / -p",
-				fmt.Errorf("this gadget cannot filter by pod name"))
-		}
-		if commonFlags.Containername != "" {
-			return commonutils.WrapInErrInvalidArg("--containername / -c",
-				fmt.Errorf("this gadget cannot filter by container name"))
-		}
-		if len(commonFlags.Labels) > 0 {
-			return commonutils.WrapInErrInvalidArg("--selector / -l",
-				fmt.Errorf("this gadget cannot filter by selector"))
+				return tracer.NewTracer(config, enricher, eventCallback)
+			},
 		}
 
 		return gadget.Run(args)
 	})
-	cmd.SilenceUsage = true
 
 	commontop.AddCommonTopFlags(cmd, &flags, cols.ColumnMap, types.SortByDefault)
 	utils.AddCommonFlags(cmd, &commonFlags)
