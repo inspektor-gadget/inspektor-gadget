@@ -96,6 +96,8 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
+	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
+
 	mapReplacements := map[string]*ebpf.Map{}
 	filterByMntNs := false
 

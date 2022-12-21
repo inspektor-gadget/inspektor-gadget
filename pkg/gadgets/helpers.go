@@ -20,6 +20,9 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 	"golang.org/x/sys/unix"
 
@@ -33,6 +36,10 @@ const (
 	TraceDefaultNamespace = "gadget"
 
 	PerfBufferPages = 64
+
+	// bpf_ktime_get_boot_ns()'s func id as defined in Linux API
+	// https://github.com/torvalds/linux/blob/v6.2-rc1/include/uapi/linux/bpf.h#L5614
+	BpfKtimeGetBootNsFuncID = 125
 )
 
 // CloseLink closes l if it's not nil and returns nil
@@ -129,6 +136,61 @@ func init() {
 //
 //	$ date -d @$(echo 1671447636499110634/1000000000|bc -l) +"%d-%m-%Y %H:%M:%S:%N"
 //	19-12-2022 12:00:36:499110634
+//
+// bpf_ktime_get_boot_ns was added in Linux 5.7. If not available and the BPF
+// program returns 0, just get the timestamp in userspace.
 func WallTimeFromBootTime(ts uint64) types.Time {
+	if ts == 0 {
+		return types.Time(time.Now().UnixNano())
+	}
 	return types.Time(time.Unix(0, int64(ts)).Add(timeDiff).UnixNano())
+}
+
+// detectBpfKtimeGetBootNs returns true if bpf_ktime_get_boot_ns is available
+// in the current kernel. False negatives are possible if BTF is not available.
+func detectBpfKtimeGetBootNs() bool {
+	btfSpec, err := btf.LoadKernelSpec()
+	if err != nil {
+		return false
+	}
+
+	enum := &btf.Enum{}
+
+	err = btfSpec.TypeByName("bpf_func_id", &enum)
+	if err != nil {
+		return false
+	}
+
+	return len(enum.Values) >= BpfKtimeGetBootNsFuncID
+}
+
+// removeBpfKtimeGetBootNs removes calls to bpf_ktime_get_boot_ns and replaces
+// it by an assignment to zero
+func removeBpfKtimeGetBootNs(p *ebpf.ProgramSpec) {
+	iter := p.Instructions.Iterate()
+
+	for iter.Next() {
+		in := iter.Ins
+
+		if in.OpCode.Class().IsJump() &&
+			in.OpCode.JumpOp() == asm.Call &&
+			in.Constant == BpfKtimeGetBootNsFuncID {
+			// reset timestamp to zero
+			in.OpCode = asm.Mov.Op(asm.ImmSource)
+			in.Dst = asm.R0
+			in.Constant = 0
+		}
+	}
+}
+
+// FixBpfKtimeGetBootNs checks if bpf_ktime_get_boot_ns is supported by the
+// kernel and removes it if not
+func FixBpfKtimeGetBootNs(programSpecs map[string]*ebpf.ProgramSpec) {
+	if detectBpfKtimeGetBootNs() {
+		return
+	}
+
+	for _, s := range programSpecs {
+		removeBpfKtimeGetBootNs(s)
+	}
 }

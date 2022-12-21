@@ -107,6 +107,8 @@ func NewTracer(enricher gadgets.DataEnricherByMntNs) (*Tracer, error) {
 		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
 
+	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
+
 	syscallsOnce.Do(func() {
 		syscallsDeclarations, err = gatherSyscallsDeclarations()
 	})
