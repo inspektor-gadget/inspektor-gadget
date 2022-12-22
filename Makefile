@@ -125,8 +125,13 @@ GADGET_CONTAINERS = \
 gadget-container-all: $(GADGET_CONTAINERS)
 
 gadget-%-container:
-	docker buildx build -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) -f Dockerfiles/gadget-$*.Dockerfile \
-		--build-arg ENABLE_BTFGEN=$(ENABLE_BTFGEN) .
+	if $(ENABLE_BTFGEN) == "true" ; then \
+		./tools/getbtfhub.sh && \
+		$(MAKE) -f Makefile.btfgen BPFTOOL=$(HOME)/btfhub/tools/bin/bpftool.$(uname -m) \
+			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
+	fi
+	docker buildx build -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
+		-f Dockerfiles/gadget-$*.Dockerfile .
 
 push-gadget-%-container:
 	docker push $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,)
