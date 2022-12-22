@@ -256,6 +256,7 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 		containercollection.WithNodeName(conf.NodeName),
 	}
 	if !conf.TestOnly {
+		opts = append(opts, containercollection.WithOCIConfigEnrichment())
 		opts = append(opts, containercollection.WithCgroupEnrichment())
 		opts = append(opts, containercollection.WithLinuxNamespaceEnrichment())
 		opts = append(opts, containercollection.WithKubernetesEnrichment(g.nodeName, nil))
