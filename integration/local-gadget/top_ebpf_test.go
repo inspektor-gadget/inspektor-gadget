@@ -18,24 +18,24 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cilium/ebpf"
+
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 )
 
 func TestTopEbpf(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-top-ebpf")
 
 	topEbpfCmd := &Command{
 		Name:         "TopEbpf",
-		Cmd:          fmt.Sprintf("local-gadget top ebpf -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("local-gadget top ebpf -o json --runtimes=%s -m 100", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			// Top gadgets truncate their output to 20 rows by default
-			// Even if we increase the amount or rows, the output might get
-			// truncated since we run the tests in parallel and we won't be
-			// able to find our own eBPF program "ig_top_ebpf_it"
-			expectedEntry := &types.Stats{}
+			expectedEntry := &types.Stats{
+				Type: ebpf.Tracing.String(),
+				Name: "ig_top_ebpf_it",
+			}
 
 			normalize := func(e *types.Stats) {
 				e.Node = ""
@@ -44,8 +44,6 @@ func TestTopEbpf(t *testing.T) {
 				e.Container = ""
 				e.Namespace = ""
 				e.ProgramID = 0
-				e.Name = ""
-				e.Type = ""
 				e.Pids = nil
 				e.CurrentRuntime = 0
 				e.CurrentRunCount = 0
@@ -62,12 +60,7 @@ func TestTopEbpf(t *testing.T) {
 	}
 
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
 		topEbpfCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "echo foo > bar"),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
 	}
 
 	RunCommands(commands, t)
