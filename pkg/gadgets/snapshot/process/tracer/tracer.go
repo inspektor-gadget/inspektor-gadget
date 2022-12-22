@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -171,7 +170,7 @@ func getPidEvents(config *Config, enricher gadgets.DataEnricher, pid int) ([]*pr
 		}
 		tid := int(tid64)
 
-		commBytes, _ := ioutil.ReadFile(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/comm", tid)))
+		commBytes, _ := os.ReadFile(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/comm", tid)))
 		comm := strings.TrimRight(string(commBytes), "\n")
 		mntnsid, err := containerutils.GetMntNs(tid)
 		if err != nil {
