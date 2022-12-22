@@ -9,6 +9,8 @@ description: >
 
 The trace exec gadget streams new processes creation events.
 
+### On Kubernetes
+
 Let's deploy an example application that will spawn few new processes:
 
 ```bash
@@ -61,4 +63,33 @@ Finally, we clean up our demo app.
 
 ```bash
 $ kubectl delete -f docs/examples/ds-myapp.yaml
+```
+
+### With local-gadget
+
+Let's start the gadget in a terminal:
+
+```bash
+$ sudo local-gadget trace exec -c test-trace-exec
+CONTAINER                                         PID        PPID       COMM             RET ARGS
+```
+
+Run a container that executes some binaries:
+
+```bash
+$ docker run --name test-trace-exec -it --rm busybox /bin/sh -c 'while /bin/true ; do whoami ; sleep 3 ; done'
+```
+
+The tool will show the different processes executed by the container:
+
+```bash
+$ sudo local-gadget trace exec -c test-trace-exec
+CONTAINER                                         PID        PPID       COMM             RET ARGS
+test-trace-exec                                   99081      99062      sh               0   /bin/sh -c while /bin/true ; do whoami ; sleep 3 ; done
+test-trace-exec                                   99125      99081      true             0   /bin/true
+test-trace-exec                                   99126      99081      whoami           0   /bin/whoami
+test-trace-exec                                   99127      99081      sleep            0   /bin/sleep 3
+test-trace-exec                                   99128      99081      true             0   /bin/true
+test-trace-exec                                   99129      99081      whoami           0   /bin/whoami
+test-trace-exec                                   99130      99081      sleep            0   /bin/sleep 3
 ```

@@ -5,7 +5,11 @@ description: >
   Get strace-like logs of a container from the past.
 ---
 
-## Start traceloop
+The `traceloop` gadget is used to trace system calls issued by containers.
+
+### On kubernetes
+
+#### Start traceloop
 
 Traceloop is disabled by default from version 0.4.0. It can be enabled by using:
 
@@ -13,7 +17,7 @@ Traceloop is disabled by default from version 0.4.0. It can be enabled by using:
 $ kubectl gadget traceloop start
 ```
 
-## Multiplication demo
+###### Multiplication demo
 
 Let's run a pod to compute an important multiplication:
 
@@ -80,7 +84,7 @@ And if you no more need the `traceloop` gadget, you can stop it:
 $ kubectl gadget traceloop stop
 ```
 
-## Listing files demo
+##### Listing files demo
 
 With traceloop, we can strace pods in the past, even after they terminated.
 
@@ -117,4 +121,43 @@ $ kubectl gadget traceloop show 9c691a53cd43a0
 1   97851      ls               getxattr                                   pathname=140729093707632 /bin/zfgrep, name=94534234714099 system.posix_acl_access, value=0, … -61
 1
 ...
+```
+
+### With local-gadget
+
+Start a container in interactive mode:
+
+```bash
+$ docker run -it --rm --name test-traceloop busybox /bin/sh
+```
+
+
+Start traceloop in another terminal:
+
+```bash
+$ sudo local-gadget traceloop -c test-traceloop
+```
+
+Run a command inside the container
+
+```bash
+$ docker run -it --rm --name test-traceloop busybox /bin/sh
+/ # ls
+
+```
+
+Press Ctrl+C on the gadget terminal, it'll print the systemcalls performed by the container:
+
+```bash
+$ sudo local-gadget traceloop -c test-traceloop
+Tracing syscalls... Hit Ctrl-C to end
+^C
+CPU PID        COMM             NAME                                       PARAMS                                                                                        RET
+...
+6   150829     sh               execve                                     filename=18759352 /bin/ls, argv=18759280, envp=18759296                                       0
+6   150829     ls               brk                                        brk=0                                                                                         36…
+6   150829     ls               brk                                        brk=36440320                                                                                  36…
+...
+6   150829     ls               write                                      fd=1, buf=5355360 bin   dev   etc   home  pro… 158
+6   150829     ls               exit_group                                 error_code=0                                                                                  ...
 ```

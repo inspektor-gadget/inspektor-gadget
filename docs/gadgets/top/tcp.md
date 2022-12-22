@@ -7,7 +7,7 @@ description: >
 
 The top tcp gadget is used to visualize active TCP connections.
 
-## How to use it?
+### On Kubernetes
 
 First, we need to create one pod for us to play with:
 
@@ -39,7 +39,7 @@ minikube        default         test-pod        test-pod        134110  wget    
 
 This line corresponds to the TCP connection initiated by `wget`.
 
-## Clean everything
+#### Clean everything
 
 Congratulations! You reached the end of this guide!
 You can now delete the pod you created:
@@ -47,4 +47,21 @@ You can now delete the pod you created:
 ```bash
 $ kubectl delete pod test-pod
 pod "test-pod" deleted
+```
+
+### With local-gadget
+
+Start a container that runs `nginx` and access it locally:
+
+```bash
+$ docker run --rm --name test-top-tcp nginx /bin/sh -c 'nginx; while true; do curl localhost; sleep 1; done'
+```
+
+Start the gadget, it'll show the different connections created the localhost:
+
+```bash
+$ sudo local-gadget top tcp -c test-top-tcp
+CONTAINER                                              PID         COMM             IP LOCAL                 REMOTE                SENT                 RECV
+test-top-tcp                                           564780      nginx            4  127.0.0.1:80          127.0.0.1:35904       238B                 73B
+test-top-tcp                                           564813      curl             4  127.0.0.1:35904       127.0.0.1:80          73B                  853B
 ```

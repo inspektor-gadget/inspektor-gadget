@@ -7,7 +7,7 @@ description: >
 
 The profile cpu gadget takes samples of the stack traces.
 
-### With kubectl-gadget
+### On Kubernetes
 
 Here we deploy a small demo pod "random":
 
@@ -183,4 +183,3 @@ random                                                                          
 ```bash
 $ docker stop random
 ```
-

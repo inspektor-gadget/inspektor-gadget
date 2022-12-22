@@ -10,6 +10,8 @@ description: >
 The trace dns gadget prints information about DNS queries and responses sent
 and received by the different pods.
 
+### On Kubernetes
+
 Create a `demo` namespace:
 
 ```bash
@@ -51,3 +53,7 @@ Delete the demo test namespace:
 $ kubectl delete ns demo
 namespace "demo" deleted
 ```
+
+### With local-gadget
+
+TODO

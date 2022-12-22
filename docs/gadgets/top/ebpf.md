@@ -5,7 +5,9 @@ description: >
   Periodically report ebpf runtime stats.
 ---
 
-The top ebpf gadget is used to visualize the usage and performance of eBPF programs. 
+The top ebpf gadget is used to visualize the usage and performance of eBPF programs.
+
+### On Kubernetes
 
 This guide will let you run another gadget (we're using `top file` in this example) and see its metrics
 using `top ebpf`.
@@ -68,6 +70,29 @@ minikube         13       CGroupSKB                                             
 minikube         7        CGroupSKB                                                                0s             0
 minikube         8        CGroupSKB                                                                0s             0
 ...
+```
+
+### With local-gadget
+
+Run any tool that uses eBPF, for instance, [iovisor/bcc `execsnoop`](https://github.com/iovisor/bcc/blob/v0.26.0/libbpf-tools/execsnoop.bpf.c): from BCC. Please note that it can be run on the host directly.
+
+
+```bash
+$ sudo ./execsnoop
+PCOMM            PID    PPID   RET ARGS
+runc             167851 142428   0 /usr/bin/runc --version
+docker-init      167857 142428   0 /usr/bin/docker-init --version
+...
+```
+
+Start the `top ebpf` gadget in another terminal. It'll show the programs installed by the tool above.
+
+```bash
+$ sudo local-gadget top ebpf
+PROGID     TYPE                      NAME                     PID                      COMM                          RUNTIME RUNCOUNT                   MAPMEMORY MAPCOUNT
+1102       Tracing                   ig_top_ebpf_it           167925                   local-gadget                299.054µs 5534                            4KiB 1
+1097       TracePoint                tracepoint__sys          167850                   execsnoop                    25.055µs 2                           75.48MiB 3
+1099       TracePoint                tracepoint__sys          167850                   execsnoop                    23.629µs 2                           75.48MiB 4
 ```
 
 ### A note about memory usage of maps

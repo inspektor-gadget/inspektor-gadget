@@ -30,7 +30,7 @@ gadget.
 For further details, please refer to
 [the BCC documentation](https://github.com/iovisor/bcc/blob/master/tools/biolatency_example.txt).
 
-### With kubectl-gadget
+### On Kubernetes
 
 Firstly, let's use the profile block-io gadget to see the I/O latency in our
 testing node with its normal load work:
@@ -174,4 +174,3 @@ Tracing block device I/O... Hit Ctrl-C to end.^C
 ```bash
 $ docker stop stresstest
 ```
-

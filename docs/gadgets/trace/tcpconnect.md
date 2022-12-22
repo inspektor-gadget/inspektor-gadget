@@ -7,6 +7,8 @@ description: >
 
 The trace tcpconnect gadget traces TCP connect calls.
 
+### On Kubernetes
+
 In this guide, we will use this gadget to define a restrictive policy for outgoing connections.
 
 Before we start a demo pod that connects to a public HTTP server, we already begin to trace
@@ -130,4 +132,30 @@ $ kubectl delete pod mypod
 pod "mypod" deleted
 $ kubectl delete -f docs/examples/network-policy.yaml
 networkpolicy.networking.k8s.io "restrictive-network-policy" deleted
+```
+
+### With local-gadget
+
+Start the gadget on a terminal.
+
+```bash
+$ sudo local-gadget trace tcpconnect -c test-tcp-connect
+```
+
+Then, create a gadget that performs a TCP connection.
+
+```bash
+$ docker run -it --rm --name test-tcp-connect busybox /bin/sh -c "wget http://www.example.com"
+Connecting to www.example.com (93.184.216.34:80)
+saving to 'index.html'
+index.html           100% |************************************************************************************************|  1256  0:00:00 ETA
+'index.html' saved
+```
+
+The gadget will show the connection and related information to it.
+
+```bash
+$ sudo local-gadget trace tcpconnect -c test-tcp-connect
+CONTAINER        PID     COMM             IP  SADDR            DADDR            DPORT
+test-tcp-connect 503650  wget             4   172.17.0.3       93.184.216.34    80
 ```

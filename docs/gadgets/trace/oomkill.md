@@ -7,7 +7,7 @@ description: >
 
 The trace oomkill gadget is used to monitor when out-of-memory killer kills a process.
 
-## How to use it?
+### On Kubernetes
 
 First, we need to create one pod with limited amount of memory:
 
@@ -56,7 +56,7 @@ The line shown above can also be read like this: "The tail command, with PID 115
 
 Note that, in this case, the command which was killed by the OOM killer is the same which triggered it, **this is not always the case**.
 
-## Clean everything
+#### Clean everything
 
 Congratulations! You reached the end of this guide!
 You can now delete the resource we created:
@@ -66,3 +66,7 @@ $ kubectl delete -f docs/examples/limited-memory-pod.yaml
 namespace "oomkill-demo" deleted
 pod "test-pod" deleted
 ```
+
+### With local-gadget
+
+TODO

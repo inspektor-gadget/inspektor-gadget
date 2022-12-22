@@ -9,7 +9,7 @@ description: >
 
 The trace bind gadget is used to stream socket binding syscalls.
 
-## How to use it?
+### On Kubernetes
 
 First, we need to create one pod for us to play with:
 
@@ -42,7 +42,40 @@ minikube         default          test-pod         test-pod         58208  nc   
 
 This line corresponds to the socket binding operation initiated by `nc`.
 
-## Restricting output to certain PID, ports or succeeded and failed port bindings
+#### Clean everything
+
+Congratulations! You reached the end of this guide!
+You can now delete the pod you created:
+
+```bash
+$ kubectl delete pod test-pod
+pod "test-pod" deleted
+```
+
+### With local-gadget
+
+Start the gadget first
+
+```bash
+$ sudo local-gadget trace bind -c test-trace-bind
+CONTAINER        PID     COMM             PROTO  ADDR             PORT    OPTS    IF
+```
+
+In another terminal, run a container that performs a bind operation
+
+```bash
+$ docker run -it --rm --name test-trace-bind busybox /bin/sh -c "nc -l -p 4242"
+```
+
+The gadget will print the event on the first terminal:
+
+```bash
+$ sudo local-gadget trace bind -c test-trace-bind
+CONTAINER        PID     COMM             PROTO  ADDR             PORT    OPTS    IF
+test-trace-bind  380299  nc               TCP    ::               4242    .R...   0
+```
+
+### Restricting output to certain PID, ports or succeeded and failed port bindings
 
 With the following options, you can restrict the output:
 
@@ -54,14 +87,6 @@ So, this command will print all (*i.e.* succeeded and failed) attempts to bind a
 
 ```bash
 $ kubectl gadget trace bind -i=false --pid 42 -P=4242,4343
-```
 
-## Clean everything
-
-Congratulations! You reached the end of this guide!
-You can now delete the pod you created:
-
-```bash
-$ kubectl delete pod test-pod
-pod "test-pod" deleted
+$ sudo local-gadget trace bind -i=false --pid 42 -P=4242,4343
 ```
