@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cilium/ebpf"
+
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	seccompauditTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
 	bioprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
@@ -593,14 +595,13 @@ func TestEbpftop(t *testing.T) {
 
 	ebpftopCmd := &Command{
 		Name:         "StartEbpftopGadget",
-		Cmd:          "$KUBECTL_GADGET top ebpf -o json",
+		Cmd:          "$KUBECTL_GADGET top ebpf -o json -m 100",
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			// Top gadgets truncate their output to 20 rows by default
-			// Even if we increase the amount or rows, the output might get
-			// truncated since we run the tests in parallel and we won't be
-			// able to find our own eBPF program "ig_top_ebpf_it"
-			expectedEntry := &ebpftopTypes.Stats{}
+			expectedEntry := &ebpftopTypes.Stats{
+				Type: ebpf.Tracing.String(),
+				Name: "ig_top_ebpf_it",
+			}
 
 			normalize := func(e *ebpftopTypes.Stats) {
 				e.Node = ""
@@ -609,8 +610,6 @@ func TestEbpftop(t *testing.T) {
 				e.Container = ""
 				e.Namespace = ""
 				e.ProgramID = 0
-				e.Name = ""
-				e.Type = ""
 				e.Pids = nil
 				e.CurrentRuntime = 0
 				e.CurrentRunCount = 0
@@ -628,6 +627,7 @@ func TestEbpftop(t *testing.T) {
 
 	commands := []*Command{
 		ebpftopCmd,
+		SleepForSecondsCommand(2),
 	}
 
 	RunCommands(commands, t)
