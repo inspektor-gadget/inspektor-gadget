@@ -52,6 +52,7 @@ import (
 )
 
 const (
+	K8sDistroAKSMariner = "aks-Mariner"
 	K8sDistroAKSUbuntu  = "aks-Ubuntu"
 	K8sDistroARO        = "aro"
 	K8sDistroMinikubeGH = "minikube-github"
@@ -60,7 +61,7 @@ const (
 const securityProfileOperatorNamespace = "security-profiles-operator"
 
 var (
-	supportedK8sDistros = []string{K8sDistroAKSUbuntu, K8sDistroARO, K8sDistroMinikubeGH}
+	supportedK8sDistros = []string{K8sDistroAKSMariner, K8sDistroAKSUbuntu, K8sDistroARO, K8sDistroMinikubeGH}
 	cleaningUp          = uint32(0)
 )
 
@@ -643,7 +644,7 @@ func TestExecsnoop(t *testing.T) {
 	sleepArgs := []string{"/bin/sleep", "0.1"}
 	// on arm64, trace exec uses kprobe and it cannot trace the arguments:
 	// 243759db6b19 ("pkg/gadgets: Use kprobe for execsnoop on arm64.")
-	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "arm64" {
+	if *k8sArch == "arm64" {
 		shArgs = nil
 		dateArgs = nil
 		sleepArgs = nil
