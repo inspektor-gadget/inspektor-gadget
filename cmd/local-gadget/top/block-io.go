@@ -42,7 +42,7 @@ func newBlockIOCmd() *cobra.Command {
 			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		gadget := &TopGadget[types.Stats]{
+		gadget := &TopGadget[types.Stats, gadgets.DataEnricherByMntNs]{
 			TopGadget: commontop.TopGadget[types.Stats]{
 				CommonTopFlags: &flags,
 				OutputConfig:   &commonFlags.OutputConfig,

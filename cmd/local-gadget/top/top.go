@@ -31,22 +31,21 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 )
 
 // TopGadget represents a gadget belonging to the top category.
-type TopGadget[Stats any] struct {
+type TopGadget[Stats any, Enricher any] struct {
 	commontop.TopGadget[Stats]
 
 	commonFlags        *utils.CommonFlags
-	createAndRunTracer func(*ebpf.Map, gadgets.DataEnricherByMntNs, func(*top.Event[Stats])) (trace.Tracer, error)
+	createAndRunTracer func(*ebpf.Map, Enricher, func(*top.Event[Stats])) (trace.Tracer, error)
 }
 
 // Run runs a TopGadget and prints the output after parsing it using the
 // TopParser's methods.
-func (g *TopGadget[Stats]) Run(args []string) error {
+func (g *TopGadget[Stats, Enricher]) Run(args []string) error {
 	localGadgetManager, err := localgadgetmanager.NewManager(g.commonFlags.RuntimeConfigs)
 	if err != nil {
 		return commonutils.WrapInErrManagerInit(err)

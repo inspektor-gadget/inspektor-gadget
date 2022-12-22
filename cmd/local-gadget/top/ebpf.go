@@ -15,7 +15,6 @@
 package top
 
 import (
-	"os"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -38,17 +37,12 @@ func newEbpfCmd() *cobra.Command {
 	cols := types.GetColumns()
 
 	cmd := commontop.NewEbpfCmd(func(cmd *cobra.Command, args []string) error {
-		hostname, err := os.Hostname()
-		if err != nil {
-			return err
-		}
-
 		parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, cols)
 		if err != nil {
 			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		gadget := &TopGadget[types.Stats]{
+		gadget := &TopGadget[types.Stats, gadgets.DataNodeEnricher]{
 			TopGadget: commontop.TopGadget[types.Stats]{
 				CommonTopFlags: &flags,
 				OutputConfig:   &commonFlags.OutputConfig,
@@ -56,14 +50,14 @@ func newEbpfCmd() *cobra.Command {
 				ColMap:         cols.ColumnMap,
 			},
 			commonFlags: &commonFlags,
-			createAndRunTracer: func(mountNsMap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(*top.Event[types.Stats])) (trace.Tracer, error) {
+			createAndRunTracer: func(mountNsMap *ebpf.Map, enricher gadgets.DataNodeEnricher, eventCallback func(*top.Event[types.Stats])) (trace.Tracer, error) {
 				config := &tracer.Config{
 					MaxRows:  flags.MaxRows,
 					Interval: time.Second * time.Duration(flags.OutputInterval),
 					SortBy:   flags.ParsedSortBy,
 				}
 
-				return tracer.NewTracer(config, eventCallback, hostname)
+				return tracer.NewTracer(config, gadgets.DataNodeEnricher(enricher), eventCallback)
 			},
 		}
 

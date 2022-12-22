@@ -52,7 +52,7 @@ func newTCPCmd() *cobra.Command {
 			targetFamily = int32(flags.Family)
 		}
 
-		gadget := &TopGadget[types.Stats]{
+		gadget := &TopGadget[types.Stats, gadgets.DataEnricherByMntNs]{
 			TopGadget: commontop.TopGadget[types.Stats]{
 				CommonTopFlags: &flags.CommonTopFlags,
 				OutputConfig:   &commonFlags.OutputConfig,
