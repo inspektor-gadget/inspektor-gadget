@@ -418,6 +418,7 @@ func TestDNS(t *testing.T) {
 
 	expectedEvent.PktType = "HOST"
 	expectedEvent.Qr = dnstypes.DNSPktTypeResponse
+	expectedEvent.Rcode = "NoError"
 
 	if event.ID != id {
 		t.Fatalf("Response ID: %v, Expected: %v", event.ID, id)

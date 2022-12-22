@@ -22,6 +22,7 @@ struct event_t {
 	// qr says if the dns message is a query (0), or a response (1)
 	unsigned char qr;
 	unsigned char pkt_type;
+	unsigned char rcode;
 
 	__u8 name[MAX_DNS_NAME];
 };
