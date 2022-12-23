@@ -49,6 +49,7 @@ func newSignalCmd() *cobra.Command {
 					TargetSignal: flags.Sig,
 					TargetPid:    int32(flags.Pid),
 					FailedOnly:   flags.Failed,
+					KillOnly:     flags.KillOnly,
 				}, enricher, eventCallback)
 			},
 		}

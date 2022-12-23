@@ -19,9 +19,10 @@ import (
 )
 
 type SignalFlags struct {
-	Pid    uint64
-	Sig    string
-	Failed bool
+	Pid      uint64
+	Sig      string
+	Failed   bool
+	KillOnly bool
 }
 
 func NewSignalCmd(runCmd func(*cobra.Command, []string) error, flags *SignalFlags) *cobra.Command {
@@ -51,6 +52,13 @@ func NewSignalCmd(runCmd func(*cobra.Command, []string) error, flags *SignalFlag
 		"f",
 		false,
 		`Show only events where the syscall sending a signal failed`,
+	)
+	cmd.PersistentFlags().BoolVarP(
+		&flags.KillOnly,
+		"kill-only",
+		"k",
+		false,
+		`Show only events issued by kill syscall`,
 	)
 
 	return cmd

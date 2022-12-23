@@ -40,9 +40,10 @@ func newSignalCmd() *cobra.Command {
 			commonFlags: &commonFlags,
 			parser:      parser,
 			params: map[string]string{
-				"signal": flags.Sig,
-				"pid":    strconv.FormatUint(flags.Pid, 10),
-				"failed": strconv.FormatBool(flags.Failed),
+				"signal":    flags.Sig,
+				"pid":       strconv.FormatUint(flags.Pid, 10),
+				"failed":    strconv.FormatBool(flags.Failed),
+				"kill-only": strconv.FormatBool(flags.KillOnly),
 			},
 		}
 

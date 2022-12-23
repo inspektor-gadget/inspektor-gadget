@@ -54,6 +54,7 @@ The following parameters are supported:
 - failed: Trace only failed signal sending (default to false).
 - signal: Which particular signal to trace (default to all).
 - pid: Which particular pid to trace (default to all).
+- kill-only: Trace only signals sent by the kill syscall (default to false).
 `
 }
 
@@ -139,6 +140,17 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		failedOnly = failedParsed
 	}
 
+	killOnly := false
+	if kill, ok := params["kill-only"]; ok {
+		killParsed, err := strconv.ParseBool(kill)
+		if err != nil {
+			trace.Status.OperationError = fmt.Sprintf("%q is not valid for kill-only", kill)
+			return
+		}
+
+		killOnly = killParsed
+	}
+
 	var err error
 
 	mountNsMap, err := t.helpers.TracerMountNsMap(traceName)
@@ -151,6 +163,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		TargetPid:    targetPid,
 		TargetSignal: targetSignal,
 		FailedOnly:   failedOnly,
+		KillOnly:     killOnly,
 	}
 	t.tracer, err = tracer.NewTracer(config, t.helpers, eventCallback)
 	if err != nil {

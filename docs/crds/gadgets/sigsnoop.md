@@ -9,6 +9,7 @@ The following parameters are supported:
 - failed: Trace only failed signal sending (default to false).
 - signal: Which particular signal to trace (default to all).
 - pid: Which particular pid to trace (default to all).
+- kill-only: Trace only signals sent by the kill syscall (default to false).
 
 
 ### Example CR
