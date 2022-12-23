@@ -65,11 +65,12 @@ With the following option, you can restrict the output:
 * `--pid` only prints events where a signal is sent by the given PID.
 * `--signal` only prints events where the given signal is sent.
 * `-f/--failed-only` only prints events where signal failed to be delivered.
+* `-k/--kill-only` only prints events where signal was sent by using kill syscall.
 
-For example, this command will only print failed attempts to send `SIGKILL` by PID `42`:
+For example, this command will only print failed attempts to send `SIGKILL` by PID `42` which were initiated by calling kill syscall:
 
 ```bash
-$ kubectl gadget -f --pid 42 --signal SIGKILL
+$ kubectl gadget -k -f --pid 42 --signal SIGKILL
 ```
 
 Note that, with `--signal` you can use the name of the signal (e.g. `SIGKILL`) or its integer value (e.g. 9).
