@@ -24,6 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"golang.org/x/sys/unix"
 )
 
 //go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/"
@@ -44,6 +45,34 @@ func NewTracer() (*Tracer, error) {
 		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
 
+	latencyCalc, err := newDNSLatencyCalculator()
+	if err != nil {
+		return nil, err
+	}
+
+	parseAndEnrichDNSEvent := func(rawSample []byte, netns uint64) (*types.Event, error) {
+		bpfEvent := (*dnsEventT)(unsafe.Pointer(&rawSample[0]))
+		if len(rawSample) < int(unsafe.Sizeof(*bpfEvent)) {
+			return nil, errors.New("invalid sample size")
+		}
+
+		event, err := bpfEventToDNSEvent(bpfEvent)
+		if err != nil {
+			return nil, err
+		}
+
+		// Derive latency from the query/response timestamps.
+		// Filter by packet type (OUTGOING for queries and HOST for responses) to exclude cases where
+		// the packet is forwarded between containers in the host netns.
+		if bpfEvent.Qr == 0 && bpfEvent.PktType == unix.PACKET_OUTGOING {
+			latencyCalc.storeDNSQueryTimestamp(netns, bpfEvent.Id, bpfEvent.Timestamp)
+		} else if bpfEvent.Qr == 1 && bpfEvent.PktType == unix.PACKET_HOST {
+			event.Latency = latencyCalc.calculateDNSResponseLatency(netns, bpfEvent.Id, bpfEvent.Timestamp)
+		}
+
+		return event, nil
+	}
+
 	return &Tracer{
 		Tracer: networktracer.NewTracer(
 			spec,
@@ -51,7 +80,7 @@ func NewTracer() (*Tracer, error) {
 			BPFPerfMapName,
 			BPFSocketAttach,
 			types.Base,
-			parseDNSEvent,
+			parseAndEnrichDNSEvent,
 		),
 	}, nil
 }
@@ -195,17 +224,13 @@ func parseLabelSequence(sample []byte) (ret string) {
 	return ret
 }
 
-func parseDNSEvent(rawSample []byte) (*types.Event, error) {
+func bpfEventToDNSEvent(bpfEvent *dnsEventT) (*types.Event, error) {
 	event := types.Event{
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
 		},
 	}
 
-	bpfEvent := (*dnsEventT)(unsafe.Pointer(&rawSample[0]))
-	if len(rawSample) < int(unsafe.Sizeof(*bpfEvent)) {
-		return nil, errors.New("invalid sample size")
-	}
 	event.Event.Timestamp = gadgets.WallTimeFromBootTime(bpfEvent.Timestamp)
 
 	event.ID = fmt.Sprintf("%.4x", bpfEvent.Id)
@@ -227,7 +252,7 @@ func parseDNSEvent(rawSample []byte) (*types.Event, error) {
 	}
 
 	// Convert name into a string with dots
-	event.DNSName = parseLabelSequence(rawSample[unsafe.Offsetof(bpfEvent.Name):])
+	event.DNSName = parseLabelSequence(bpfEvent.Name[:])
 
 	// Parse the packet type
 	event.PktType = "UNKNOWN"

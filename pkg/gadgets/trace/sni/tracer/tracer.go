@@ -56,7 +56,7 @@ func NewTracer() (*Tracer, error) {
 	}, nil
 }
 
-func parseSNIEvent(sample []byte) (*types.Event, error) {
+func parseSNIEvent(sample []byte, netns uint64) (*types.Event, error) {
 	bpfEvent := (*snisnoopEventT)(unsafe.Pointer(&sample[0]))
 	if len(sample) < int(unsafe.Sizeof(*bpfEvent)) {
 		return nil, errors.New("invalid sample size")
