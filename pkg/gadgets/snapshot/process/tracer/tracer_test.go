@@ -86,6 +86,7 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 					Command:   "sleep",
 					Pid:       sleepPid,
 					Tid:       sleepPid,
+					ParentPid: 0,
 					MountNsID: info.MountNsID,
 				}
 			}),
@@ -123,6 +124,7 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 					Command:   "sleep",
 					Pid:       sleepPid,
 					Tid:       sleepPid,
+					ParentPid: 0,
 					MountNsID: info.MountNsID,
 				}
 
@@ -159,6 +161,10 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 			// TODO: This won't be required once we pass pointers everywhere
 			validateEvents := []snapshotProcessTypes.Event{}
 			for _, event := range events {
+				// Normalize parent PID to avoid failing tests as this is not trivial to
+				// guess the parent PID.
+				event.ParentPid = 0
+
 				validateEvents = append(validateEvents, *event)
 			}
 
