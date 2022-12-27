@@ -124,7 +124,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		if err != nil {
 			log.Warnf("Runtime enricher (%s): failed to initialize container runtime: %s",
 				runtime.Name, err)
-			return err
+			return nil
 		}
 
 		switch runtime.Name {
