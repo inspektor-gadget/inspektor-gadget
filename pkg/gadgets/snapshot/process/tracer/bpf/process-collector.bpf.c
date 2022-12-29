@@ -28,6 +28,8 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	__u32 seq_num = ctx->meta->seq_num;
 	__u64 session_id = ctx->meta->session_id;
 	struct task_struct *task = ctx->task;
+	struct task_struct *parent;
+	pid_t parent_pid;
 
 	if (task == NULL)
 		return 0;
@@ -37,7 +39,13 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
 		return 0;
 
-	BPF_SEQ_PRINTF(seq, "%d %d %llu %s\n", task->tgid, task->pid, mntns_id, task->comm);
+	parent = task->real_parent;
+	if (!parent)
+		parent_pid = -1;
+	else
+		parent_pid = parent->pid;
+
+	BPF_SEQ_PRINTF(seq, "%d %d %d %llu %s\n", task->tgid, task->pid, parent_pid, mntns_id, task->comm);
 
 	return 0;
 }

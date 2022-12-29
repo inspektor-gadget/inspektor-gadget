@@ -113,22 +113,22 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricher) ([]*process
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		var command string
-		var tgid, pid int
+		var tgid, pid, parentPid int
 		var mntnsid uint64
 
 		text := scanner.Text()
-		matchedElems, err := fmt.Sscanf(text, "%d %d %d", &tgid, &pid, &mntnsid)
+		matchedElems, err := fmt.Sscanf(text, "%d %d %d %d", &tgid, &pid, &parentPid, &mntnsid)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse process information: %w", err)
 		}
-		if matchedElems != 3 {
-			return nil, fmt.Errorf("failed to parse process information, expected 3 integers had %d", matchedElems)
+		if matchedElems != 4 {
+			return nil, fmt.Errorf("failed to parse process information, expected 4 integers had %d", matchedElems)
 		}
-		textSplit := strings.SplitN(text, " ", 4)
-		if len(textSplit) != 4 {
-			return nil, fmt.Errorf("failed to parse process information, expected 4 matched elements had %d", len(textSplit))
+		textSplit := strings.SplitN(text, " ", 5)
+		if len(textSplit) != 5 {
+			return nil, fmt.Errorf("failed to parse process information, expected 5 matched elements had %d", len(textSplit))
 		}
-		command = textSplit[3]
+		command = textSplit[4]
 
 		event := processcollectortypes.Event{
 			Event: eventtypes.Event{
@@ -137,6 +137,7 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricher) ([]*process
 			Pid:       tgid,
 			Tid:       pid,
 			Command:   command,
+			ParentPid: parentPid,
 			MountNsID: mntnsid,
 		}
 
@@ -188,6 +189,28 @@ func getPidEvents(config *Config, enricher gadgets.DataEnricher, pid int) ([]*pr
 			}
 		}
 
+		f, err := os.Open(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/status", tid)))
+		if err != nil {
+			continue
+		}
+
+		parentPid := -1
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			matchedElems, err := fmt.Sscanf(scanner.Text(), "PPid:\t%d", &parentPid)
+			if err != nil {
+				continue
+			}
+
+			if matchedElems != 1 {
+				continue
+			}
+
+			break
+		}
+
+		f.Close()
+
 		event := processcollectortypes.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
@@ -195,6 +218,7 @@ func getPidEvents(config *Config, enricher gadgets.DataEnricher, pid int) ([]*pr
 			Tid:       tid,
 			Pid:       pid,
 			Command:   comm,
+			ParentPid: parentPid,
 			MountNsID: mntnsid,
 		}
 

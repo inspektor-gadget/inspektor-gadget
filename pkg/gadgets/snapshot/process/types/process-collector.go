@@ -25,6 +25,7 @@ type Event struct {
 	Command   string `json:"comm" column:"comm,template:comm"`
 	Pid       int    `json:"pid" column:"pid,template:pid"`
 	Tid       int    `json:"tid" column:"tid,template:pid,hide"`
+	ParentPid int    `json:"ppid" column:"ppid,template:pid,hide"`
 	MountNsID uint64 `json:"mntns" column:"mntns,template:ns"`
 }
 

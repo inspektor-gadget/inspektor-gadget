@@ -42,6 +42,7 @@ func TestSnapshotProcess(t *testing.T) {
 				e.Container = ""
 				e.Pid = 0
 				e.Tid = 0
+				e.ParentPid = 0
 				e.MountNsID = 0
 			}
 
