@@ -32,6 +32,7 @@ type Config struct {
 	TargetSignal string
 	TargetPid    int32
 	FailedOnly   bool
+	KillOnly     bool
 }
 
 type Tracer struct {
@@ -152,39 +153,41 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	t.enterKillLink, err = link.Tracepoint("syscalls", "sys_enter_kill", t.objs.IgSigKillE, nil)
-	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
-	}
+	if t.config.KillOnly {
+		t.enterKillLink, err = link.Tracepoint("syscalls", "sys_enter_kill", t.objs.IgSigKillE, nil)
+		if err != nil {
+			return fmt.Errorf("error opening tracepoint sys_enter_kill: %w", err)
+		}
 
-	t.exitKillLink, err = link.Tracepoint("syscalls", "sys_exit_kill", t.objs.IgSigKillX, nil)
-	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
-	}
+		t.exitKillLink, err = link.Tracepoint("syscalls", "sys_exit_kill", t.objs.IgSigKillX, nil)
+		if err != nil {
+			return fmt.Errorf("error opening tracepoint sys_exit_kill: %w", err)
+		}
 
-	t.enterTkillLink, err = link.Tracepoint("syscalls", "sys_enter_tkill", t.objs.IgSigTkillE, nil)
-	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
-	}
+		t.enterTkillLink, err = link.Tracepoint("syscalls", "sys_enter_tkill", t.objs.IgSigTkillE, nil)
+		if err != nil {
+			return fmt.Errorf("error opening tracepoint sys_enter_tkill: %w", err)
+		}
 
-	t.exitTkillLink, err = link.Tracepoint("syscalls", "sys_exit_tkill", t.objs.IgSigTkillX, nil)
-	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
-	}
+		t.exitTkillLink, err = link.Tracepoint("syscalls", "sys_exit_tkill", t.objs.IgSigTkillX, nil)
+		if err != nil {
+			return fmt.Errorf("error opening tracepoint sys_exit_tkill: %w", err)
+		}
 
-	t.enterTgkillLink, err = link.Tracepoint("syscalls", "sys_enter_tgkill", t.objs.IgSigTgkillE, nil)
-	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
-	}
+		t.enterTgkillLink, err = link.Tracepoint("syscalls", "sys_enter_tgkill", t.objs.IgSigTgkillE, nil)
+		if err != nil {
+			return fmt.Errorf("error opening tracepoint sys_enter_tgkill: %w", err)
+		}
 
-	t.exitTgkillLink, err = link.Tracepoint("syscalls", "sys_exit_tgkill", t.objs.IgSigTgkillX, nil)
-	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
-	}
-
-	t.signalGenerateLink, err = link.Tracepoint("signal", "signal_generate", t.objs.IgSigGenerate, nil)
-	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
+		t.exitTgkillLink, err = link.Tracepoint("syscalls", "sys_exit_tgkill", t.objs.IgSigTgkillX, nil)
+		if err != nil {
+			return fmt.Errorf("error opening tracepoint sys_exit_tgkill: %w", err)
+		}
+	} else {
+		t.signalGenerateLink, err = link.Tracepoint("signal", "signal_generate", t.objs.IgSigGenerate, nil)
+		if err != nil {
+			return fmt.Errorf("error opening tracepoint signal_generate: %w", err)
+		}
 	}
 
 	t.reader, err = perf.NewReader(t.objs.sigsnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
