@@ -18,43 +18,32 @@ import (
 	"fmt"
 	"testing"
 
+	"golang.org/x/sys/unix"
+
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	mountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
 )
 
-func TestTraceExec(t *testing.T) {
+func TestTraceMount(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-exec")
+	ns := GenerateTestNamespaceName("test-trace-mount")
 
-	cmd := "while true; do date ; sleep 0.1; done"
-	shArgs := []string{"/bin/sh", "-c", cmd}
-	dateArgs := []string{"/bin/date"}
-	sleepArgs := []string{"/bin/sleep", "0.1"}
-
-	traceExecCmd := &Command{
-		Name:         "TraceExec",
-		Cmd:          fmt.Sprintf("local-gadget trace exec -o json --runtimes=%s", *containerRuntime),
+	traceMountCmd := &Command{
+		Name:         "TraceMount",
+		Cmd:          fmt.Sprintf("local-gadget trace mount -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntries := []*execTypes.Event{
-				{
-					Event: BuildBaseEvent(ns),
-					Comm:  "sh",
-					Args:  shArgs,
-				},
-				{
-					Event: BuildBaseEvent(ns),
-					Comm:  "date",
-					Args:  dateArgs,
-				},
-				{
-					Event: BuildBaseEvent(ns),
-					Comm:  "sleep",
-					Args:  sleepArgs,
-				},
+			expectedEntry := &mountTypes.Event{
+				Event:     BuildBaseEvent(ns),
+				Comm:      "mount",
+				Operation: "mount",
+				Retval:    -int(unix.ENOENT),
+				Source:    "/mnt",
+				Target:    "/mnt",
+				Flags:     []string{"MS_SILENT"},
 			}
 
-			normalize := func(e *execTypes.Event) {
+			normalize := func(e *mountTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
@@ -62,24 +51,24 @@ func TestTraceExec(t *testing.T) {
 				}
 
 				e.Pid = 0
-				e.Ppid = 0
-				e.UID = 0
-				e.Retval = 0
+				e.Tid = 0
 				e.MountNsID = 0
+				e.Latency = 0
+				e.Fs = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		traceExecCmd,
+		traceMountCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodCommand(ns, cmd),
+		BusyboxPodRepeatCommand(ns, "mount /mnt /mnt"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

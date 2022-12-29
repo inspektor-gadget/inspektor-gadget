@@ -1,7 +1,7 @@
 // Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
+// you may not use this block-io except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
@@ -19,37 +19,37 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceOpen(t *testing.T) {
+func TestTopBlockIO(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-open")
+	ns := GenerateTestNamespaceName("test-top-block-io")
 
-	traceOpenCmd := &Command{
-		Name:         "TraceOpen",
-		Cmd:          fmt.Sprintf("local-gadget trace open -o json --runtimes=%s", *containerRuntime),
+	topBlockIOCmd := &Command{
+		Name:         "TopBlockIO",
+		Cmd:          fmt.Sprintf("local-gadget top block-io -o json -m 999 --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &openTypes.Event{
-				Event: BuildBaseEvent(ns),
-				Comm:  "cat",
-				Fd:    3,
-				Ret:   3,
-				Err:   0,
-				Path:  "/dev/null",
+			expectedEntry := &types.Stats{
+				CommonData: eventtypes.CommonData{
+					Namespace: ns,
+					Pod:       "test-pod",
+				},
+				Comm:  "dd",
+				Write: true,
 			}
 
-			normalize := func(e *openTypes.Event) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					e.Container = "test-pod"
-				}
-
-				e.MountNsID = 0
+			normalize := func(e *types.Stats) {
+				e.Container = ""
 				e.Pid = 0
-				e.UID = 0
+				e.MountNsID = 0
+				e.Major = 0
+				e.Minor = 0
+				e.Bytes = 0
+				e.MicroSecs = 0
+				e.Operations = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -58,12 +58,12 @@ func TestTraceOpen(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		traceOpenCmd,
+		topBlockIOCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "cat /dev/null"),
+		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

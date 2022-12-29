@@ -19,34 +19,47 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	cpuprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
+	tcpconnectTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
 )
 
-func TestProfileCpu(t *testing.T) {
+func TestTraceTcpconnect(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-cpu-profile")
+	ns := GenerateTestNamespaceName("test-trace-tcpconnect")
 
-	profileCPUCmd := &Command{
-		Name: "ProfileCpu",
-		Cmd:  fmt.Sprintf("local-gadget profile cpu -K -o json --runtimes=%s --timeout 10", *containerRuntime),
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("nginx-pod", "nginx", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "nginx-pod"),
+	}
+
+	RunTestSteps(commandsPreTest, t)
+	NginxIP := GetTestPodIP(ns, "nginx-pod")
+
+	tcpconnectCmd := &Command{
+		Name:         "StartTcpconnectGadget",
+		Cmd:          fmt.Sprintf("local-gadget trace tcpconnect -o json --runtimes=%s", *containerRuntime),
+		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &cpuprofileTypes.Report{
-				CommonData: BuildCommonData(ns),
-				Comm:       "sh",
+			TestPodIP := GetTestPodIP(ns, "test-pod")
+
+			expectedEntry := &tcpconnectTypes.Event{
+				Event:     BuildBaseEvent(ns),
+				Comm:      "wget",
+				IPVersion: 4,
+				Saddr:     TestPodIP,
+				Daddr:     NginxIP,
+				Dport:     80,
 			}
 
-			normalize := func(e *cpuprofileTypes.Report) {
+			normalize := func(e *tcpconnectTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
 					e.Container = "test-pod"
 				}
 
-				e.Node = ""
 				e.Pid = 0
-				e.UserStack = nil
-				e.KernelStack = nil
-				e.Count = 0
+				e.MountNsID = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -54,12 +67,12 @@ func TestProfileCpu(t *testing.T) {
 	}
 
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		BusyboxPodCommand(ns, "while true; do echo foo > /dev/null; done"),
+		tcpconnectCmd,
+		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
+		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
 		WaitUntilTestPodReadyCommand(ns),
-		profileCPUCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

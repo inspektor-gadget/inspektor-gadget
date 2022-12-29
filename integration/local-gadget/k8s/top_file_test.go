@@ -19,29 +19,39 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTraceSni(t *testing.T) {
+func TestTopFile(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-sni")
+	ns := GenerateTestNamespaceName("test-top-file")
 
-	traceSNICmd := &Command{
-		Name:         "TraceSNI",
-		Cmd:          fmt.Sprintf("local-gadget trace sni -o json --runtimes=%s", *containerRuntime),
+	topFileCmd := &Command{
+		Name:         "TopFile",
+		Cmd:          fmt.Sprintf("local-gadget top file -o json -m 999 --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &sniTypes.Event{
-				Event: BuildBaseEvent(ns),
-				Name:  "kubernetes.default.svc.cluster.local",
+			expectedEntry := &types.Stats{
+				CommonData: eventtypes.CommonData{
+					Namespace: ns,
+					Pod:       "test-pod",
+				},
+				// echo is built-in
+				Comm:     "sh",
+				Filename: "bar",
+				FileType: 'R',
 			}
 
-			normalize := func(e *sniTypes.Event) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					e.Container = "test-pod"
-				}
+			normalize := func(e *types.Stats) {
+				e.Container = ""
+				e.Pid = 0
+				e.Tid = 0
+				e.MountNsID = 0
+				e.Reads = 0
+				e.ReadBytes = 0
+				e.Writes = 0
+				e.WriteBytes = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -50,12 +60,12 @@ func TestTraceSni(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		traceSNICmd,
+		topFileCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://kubernetes.default.svc.cluster.local"),
+		BusyboxPodRepeatCommand(ns, "echo foo > bar"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

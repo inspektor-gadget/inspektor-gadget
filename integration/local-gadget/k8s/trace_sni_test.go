@@ -1,7 +1,7 @@
 // Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this block-io except in compliance with the License.
+// you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
@@ -19,37 +19,29 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
 )
 
-func TestTopBlockIO(t *testing.T) {
+func TestTraceSni(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-top-block-io")
+	ns := GenerateTestNamespaceName("test-trace-sni")
 
-	topBlockIOCmd := &Command{
-		Name:         "TopBlockIO",
-		Cmd:          fmt.Sprintf("local-gadget top block-io -o json -m 999 --runtimes=%s", *containerRuntime),
+	traceSNICmd := &Command{
+		Name:         "TraceSNI",
+		Cmd:          fmt.Sprintf("local-gadget trace sni -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &types.Stats{
-				CommonData: eventtypes.CommonData{
-					Namespace: ns,
-					Pod:       "test-pod",
-				},
-				Comm:  "dd",
-				Write: true,
+			expectedEntry := &sniTypes.Event{
+				Event: BuildBaseEvent(ns),
+				Name:  "kubernetes.default.svc.cluster.local",
 			}
 
-			normalize := func(e *types.Stats) {
-				e.Container = ""
-				e.Pid = 0
-				e.MountNsID = 0
-				e.Major = 0
-				e.Minor = 0
-				e.Bytes = 0
-				e.MicroSecs = 0
-				e.Operations = 0
+			normalize := func(e *sniTypes.Event) {
+				// TODO: Handle it once we support getting K8s container name for docker
+				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
+				if *containerRuntime == ContainerRuntimeDocker {
+					e.Container = "test-pod"
+				}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -58,12 +50,12 @@ func TestTopBlockIO(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		topBlockIOCmd,
+		traceSNICmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096"),
+		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://kubernetes.default.svc.cluster.local"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

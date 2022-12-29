@@ -23,7 +23,7 @@ minikube:
 # build
 
 build:
-	make -C $(shell pwd)/../.. local-gadget
+	make -C $(shell pwd)/../../.. local-gadget
 
 # clean
 
@@ -64,14 +64,14 @@ test-all: $(TEST_TARGETS) test
 test: test-$(CONTAINER_RUNTIME)
 
 # INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g
-# INTEGRATION_TESTS_PARAMS="-test.run TestListContainers" CONTAINER_RUNTIME=containerd make -C integration/local-gadget test
+# INTEGRATION_TESTS_PARAMS="-test.run TestListContainers" CONTAINER_RUNTIME=containerd make -C integration/local-gadget/k8s test
 .PHONY: phony_explicit
 test-%: build
 	export MINIKUBE_PROFILE=minikube-$* && \
 	echo "Checking minikube with profile $${MINIKUBE_PROFILE} is running ..." && \
 	$(MINIKUBE) status -p $${MINIKUBE_PROFILE} -f {{.APIServer}} >/dev/null || (echo "Error: $${MINIKUBE_PROFILE} not running, exiting ..." && exit 1) && \
 	echo "Preparing minikube with profile $${MINIKUBE_PROFILE} for testing ..." && \
-	$(MINIKUBE) cp ../../local-gadget-linux-amd64 $${MINIKUBE_PROFILE}:/bin/local-gadget >/dev/null && \
+	$(MINIKUBE) cp ../../../local-gadget-linux-amd64 $${MINIKUBE_PROFILE}:/bin/local-gadget >/dev/null && \
 	$(MINIKUBE) ssh sudo chmod +x /bin/local-gadget && \
 	go test -c -o local-gadget-integration.test ./... && \
 	$(MINIKUBE) cp local-gadget-integration.test $${MINIKUBE_PROFILE}:/bin/local-gadget-integration.test >/dev/null && \

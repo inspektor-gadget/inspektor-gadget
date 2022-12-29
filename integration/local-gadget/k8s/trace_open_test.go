@@ -19,39 +19,37 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
+	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
 )
 
-func TestTraceCapabilities(t *testing.T) {
+func TestTraceOpen(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-capabilities")
+	ns := GenerateTestNamespaceName("test-trace-open")
 
-	capabilitiesCmd := &Command{
-		Name:         "TraceCapabilities",
-		Cmd:          fmt.Sprintf("local-gadget trace capabilities -o json --runtimes=%s", *containerRuntime),
+	traceOpenCmd := &Command{
+		Name:         "TraceOpen",
+		Cmd:          fmt.Sprintf("local-gadget trace open -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &capabilitiesTypes.Event{
-				Event:   BuildBaseEvent(ns),
-				Comm:    "nice",
-				CapName: "SYS_NICE",
-				Cap:     23,
-				Audit:   1,
-				Verdict: "Deny",
+			expectedEntry := &openTypes.Event{
+				Event: BuildBaseEvent(ns),
+				Comm:  "cat",
+				Fd:    3,
+				Ret:   3,
+				Err:   0,
+				Path:  "/dev/null",
 			}
 
-			normalize := func(e *capabilitiesTypes.Event) {
+			normalize := func(e *openTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
 					e.Container = "test-pod"
 				}
 
+				e.MountNsID = 0
 				e.Pid = 0
 				e.UID = 0
-				e.MountNsID = 0
-				// Do not check InsetID to avoid introducing dependency on the kernel version
-				e.InsetID = nil
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -60,12 +58,12 @@ func TestTraceCapabilities(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		capabilitiesCmd,
+		traceOpenCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "nice -n -20 echo"),
+		BusyboxPodRepeatCommand(ns, "cat /dev/null"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

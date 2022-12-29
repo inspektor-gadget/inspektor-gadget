@@ -19,39 +19,34 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	cpuprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 )
 
-func TestTopFile(t *testing.T) {
+func TestProfileCpu(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-top-file")
+	ns := GenerateTestNamespaceName("test-cpu-profile")
 
-	topFileCmd := &Command{
-		Name:         "TopFile",
-		Cmd:          fmt.Sprintf("local-gadget top file -o json -m 999 --runtimes=%s", *containerRuntime),
-		StartAndStop: true,
+	profileCPUCmd := &Command{
+		Name: "ProfileCpu",
+		Cmd:  fmt.Sprintf("local-gadget profile cpu -K -o json --runtimes=%s --timeout 10", *containerRuntime),
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &types.Stats{
-				CommonData: eventtypes.CommonData{
-					Namespace: ns,
-					Pod:       "test-pod",
-				},
-				// echo is built-in
-				Comm:     "sh",
-				Filename: "bar",
-				FileType: 'R',
+			expectedEntry := &cpuprofileTypes.Report{
+				CommonData: BuildCommonData(ns),
+				Comm:       "sh",
 			}
 
-			normalize := func(e *types.Stats) {
-				e.Container = ""
+			normalize := func(e *cpuprofileTypes.Report) {
+				// TODO: Handle it once we support getting K8s container name for docker
+				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
+				if *containerRuntime == ContainerRuntimeDocker {
+					e.Container = "test-pod"
+				}
+
+				e.Node = ""
 				e.Pid = 0
-				e.Tid = 0
-				e.MountNsID = 0
-				e.Reads = 0
-				e.ReadBytes = 0
-				e.Writes = 0
-				e.WriteBytes = 0
+				e.UserStack = nil
+				e.KernelStack = nil
+				e.Count = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -60,12 +55,11 @@ func TestTopFile(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		topFileCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "echo foo > bar"),
+		BusyboxPodCommand(ns, "while true; do echo foo > /dev/null; done"),
 		WaitUntilTestPodReadyCommand(ns),
+		profileCPUCmd,
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

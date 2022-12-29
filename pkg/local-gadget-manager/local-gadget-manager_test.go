@@ -15,12 +15,10 @@
 package localgadgetmanager
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"reflect"
 	"runtime"
@@ -29,12 +27,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 	top "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	ebpftoptypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	dnstypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
@@ -67,106 +62,6 @@ func TestBasic(t *testing.T) {
 	gadgets := localGadgetManager.ListGadgets()
 	if len(gadgets) == 0 {
 		t.Fatalf("Failed to get any gadgets")
-	}
-}
-
-func runTestContainer(t *testing.T, name, image, command, seccompProfile string) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		t.Fatalf("Failed to connect to Docker: %s", err)
-	}
-	ctx := context.Background()
-
-	_ = cli.ContainerRemove(ctx, name, types.ContainerRemoveOptions{})
-
-	reader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
-	if err != nil {
-		t.Fatalf("Failed to pull image container: %s", err)
-	}
-	io.Copy(io.Discard, reader)
-
-	hostConfig := &container.HostConfig{}
-	if seccompProfile != "" {
-		hostConfig.SecurityOpt = []string{fmt.Sprintf("seccomp=%s", seccompProfile)}
-	}
-
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: image,
-		Cmd:   []string{"/bin/sh", "-c", command},
-		Tty:   false,
-	}, hostConfig, nil, nil, name)
-	if err != nil {
-		t.Fatalf("Failed to create container: %s", err)
-	}
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		t.Fatalf("Failed to start container: %s", err)
-	}
-
-	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			t.Fatalf("Failed to wait for container: %s", err)
-		}
-	case <-statusCh:
-	}
-
-	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true})
-	if err != nil {
-		t.Fatalf("Failed to get container logs: %s", err)
-	}
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(out)
-	t.Logf("Container %s output:\n%s", image, string(buf.Bytes()))
-
-	err = cli.ContainerRemove(ctx, name, types.ContainerRemoveOptions{Force: true})
-	if err != nil {
-		t.Fatalf("Failed to remove container: %s", err)
-	}
-
-	err = cli.Close()
-	if err != nil {
-		t.Fatalf("Failed to close docker client: %s", err)
-	}
-}
-
-func runFailedContainer(t *testing.T) {
-	containerName := "test-local-gadget-failed-container"
-	image := "docker.io/library/busybox"
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		t.Fatalf("Failed to connect to Docker: %s", err)
-	}
-	ctx := context.Background()
-
-	_ = cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{})
-
-	reader, err := cli.ImagePull(ctx, image, types.ImagePullOptions{})
-	if err != nil {
-		t.Fatalf("Failed to pull image container: %s", err)
-	}
-	io.Copy(io.Discard, reader)
-
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: image,
-		Cmd:   []string{"/none"},
-		Tty:   false,
-	}, nil, nil, nil, containerName)
-	if err != nil {
-		t.Fatalf("Failed to create container: %s", err)
-	}
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err == nil {
-		t.Fatalf("ContainerStart should have failed!")
-	}
-
-	err = cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{Force: true})
-	if err != nil {
-		t.Fatalf("Failed to remove container: %s", err)
-	}
-
-	err = cli.Close()
-	if err != nil {
-		t.Fatalf("Failed to close docker client: %s", err)
 	}
 }
 
@@ -230,7 +125,7 @@ func TestClose(t *testing.T) {
 		}
 
 		if i%2 == 0 {
-			runFailedContainer(t)
+			testutils.RunDockerFailedContainer(context.Background(), t)
 		}
 
 		localGadgetManager.Close()
@@ -341,7 +236,11 @@ func TestDNS(t *testing.T) {
 	// select a nameserver that is not symmetrical with endianness
 	nameserver := "8.8.4.4"
 
-	runTestContainer(t, containerName, "docker.io/tutum/dnsutils", "dig @"+nameserver+" magic-1-2-3-4.nip.io", "")
+	testutils.RunDockerContainer(context.Background(), t,
+		"dig @"+nameserver+" magic-1-2-3-4.nip.io",
+		testutils.WithName(containerName),
+		testutils.WithImage("docker.io/tutum/dnsutils"),
+	)
 
 	stop := make(chan struct{})
 
@@ -490,7 +389,11 @@ func TestNetworkGraph(t *testing.T) {
 		t.Fatalf("Failed to start the tracer: %s", err)
 	}
 
-	runTestContainer(t, containerName, "docker.io/library/nginx", "nginx && curl 127.0.0.1", "")
+	testutils.RunDockerContainer(context.Background(), t,
+		"nginx && curl 127.0.0.1",
+		testutils.WithName(containerName),
+		testutils.WithImage("docker.io/library/nginx"),
+	)
 
 	stop := make(chan struct{})
 	defer close(stop)

@@ -63,5 +63,5 @@ func TestTopEbpf(t *testing.T) {
 		topEbpfCmd,
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

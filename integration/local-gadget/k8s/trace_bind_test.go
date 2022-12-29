@@ -19,25 +19,28 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
+	bindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
 )
 
-func TestTraceSignal(t *testing.T) {
+func TestTraceBind(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-signal")
+	ns := GenerateTestNamespaceName("test-trace-bind")
 
-	traceSignalCmd := &Command{
-		Name:         "TraceSignal",
-		Cmd:          fmt.Sprintf("local-gadget trace signal -o json --runtimes=%s", *containerRuntime),
+	traceBindCmd := &Command{
+		Name:         "TraceBind",
+		Cmd:          fmt.Sprintf("local-gadget trace bind -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &signalTypes.Event{
-				Event:  BuildBaseEvent(ns),
-				Comm:   "sh",
-				Signal: "SIGTERM",
+			expectedEntry := &bindTypes.Event{
+				Event:    BuildBaseEvent(ns),
+				Comm:     "nc",
+				Protocol: "TCP",
+				Addr:     "::",
+				Port:     9090,
+				Options:  ".R...",
 			}
 
-			normalize := func(e *signalTypes.Event) {
+			normalize := func(e *bindTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
@@ -45,23 +48,23 @@ func TestTraceSignal(t *testing.T) {
 				}
 
 				e.Pid = 0
-				e.TargetPid = 0
-				e.Retval = 0
 				e.MountNsID = 0
 			}
 
+			// Since we aren't doing any filtering in traceBindCmd we avoid using ExpectAllToMatch
+			// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/644
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		traceSignalCmd,
+		traceBindCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "sleep 3 & kill $!"),
+		BusyboxPodRepeatCommand(ns, "nc -l -p 9090 -w 1"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

@@ -19,40 +19,35 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	fsslowerTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
+	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
 )
 
-func TestTraceFsslower(t *testing.T) {
-	// TODO: does it work in all cases?
-	fsType := "ext4"
-
+func TestTraceSignal(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-fsslower")
+	ns := GenerateTestNamespaceName("test-trace-signal")
 
-	traceFsslowerCmd := &Command{
-		Name:         "TraceFsslower",
-		Cmd:          fmt.Sprintf("local-gadget trace fsslower -f %s -m 0 -o json", fsType),
+	traceSignalCmd := &Command{
+		Name:         "TraceSignal",
+		Cmd:          fmt.Sprintf("local-gadget trace signal -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &fsslowerTypes.Event{
-				Event: BuildBaseEvent(ns),
-				Comm:  "cat",
-				File:  "foo",
-				Op:    "R",
+			expectedEntry := &signalTypes.Event{
+				Event:  BuildBaseEvent(ns),
+				Comm:   "sh",
+				Signal: "SIGTERM",
 			}
 
-			normalize := func(e *fsslowerTypes.Event) {
+			normalize := func(e *signalTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
 					e.Container = "test-pod"
 				}
 
-				e.MountNsID = 0
 				e.Pid = 0
-				e.Bytes = 0
-				e.Offset = 0
-				e.Latency = 0
+				e.TargetPid = 0
+				e.Retval = 0
+				e.MountNsID = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -61,12 +56,12 @@ func TestTraceFsslower(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		traceFsslowerCmd,
+		traceSignalCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodCommand(ns, "echo 'this is foo' > foo && while true; do cat foo && sleep 0.1; done"),
+		BusyboxPodRepeatCommand(ns, "sleep 3 & kill $!"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

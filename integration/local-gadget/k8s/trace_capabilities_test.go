@@ -19,39 +19,28 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	tcpconnectTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
+	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 )
 
-func TestTraceTcpconnect(t *testing.T) {
+func TestTraceCapabilities(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-tcpconnect")
+	ns := GenerateTestNamespaceName("test-trace-capabilities")
 
-	commandsPreTest := []*Command{
-		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
-		WaitUntilPodReadyCommand(ns, "nginx-pod"),
-	}
-
-	RunCommands(commandsPreTest, t)
-	NginxIP := GetTestPodIP(ns, "nginx-pod")
-
-	tcpconnectCmd := &Command{
-		Name:         "StartTcpconnectGadget",
-		Cmd:          fmt.Sprintf("local-gadget trace tcpconnect -o json --runtimes=%s", *containerRuntime),
+	capabilitiesCmd := &Command{
+		Name:         "TraceCapabilities",
+		Cmd:          fmt.Sprintf("local-gadget trace capabilities -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			TestPodIP := GetTestPodIP(ns, "test-pod")
-
-			expectedEntry := &tcpconnectTypes.Event{
-				Event:     BuildBaseEvent(ns),
-				Comm:      "wget",
-				IPVersion: 4,
-				Saddr:     TestPodIP,
-				Daddr:     NginxIP,
-				Dport:     80,
+			expectedEntry := &capabilitiesTypes.Event{
+				Event:   BuildBaseEvent(ns),
+				Comm:    "nice",
+				CapName: "SYS_NICE",
+				Cap:     23,
+				Audit:   1,
+				Verdict: "Deny",
 			}
 
-			normalize := func(e *tcpconnectTypes.Event) {
+			normalize := func(e *capabilitiesTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
@@ -59,7 +48,10 @@ func TestTraceTcpconnect(t *testing.T) {
 				}
 
 				e.Pid = 0
+				e.UID = 0
 				e.MountNsID = 0
+				// Do not check InsetID to avoid introducing dependency on the kernel version
+				e.InsetID = nil
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -67,12 +59,13 @@ func TestTraceTcpconnect(t *testing.T) {
 	}
 
 	commands := []*Command{
-		tcpconnectCmd,
+		CreateTestNamespaceCommand(ns),
+		capabilitiesCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
+		BusyboxPodRepeatCommand(ns, "nice -n -20 echo"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }

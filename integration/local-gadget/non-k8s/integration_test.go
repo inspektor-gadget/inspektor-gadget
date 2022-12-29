@@ -15,35 +15,27 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"os"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	bioprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
 )
 
-func TestProfileBio(t *testing.T) {
-	t.Parallel()
+var integration = flag.Bool("integration", false, "run integration tests")
 
-	profileBioCmd := &Command{
-		Name: "ProfileBio",
-		Cmd:  "local-gadget profile block-io -o json --timeout 10",
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &bioprofileTypes.Report{
-				ValType: "usecs",
-			}
+func init() {
+	DefaultTestComponent = LocalGadgetTestComponent
+}
 
-			normalize := func(e *bioprofileTypes.Report) {
-				e.Data = nil
-				e.Time = ""
-			}
-
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
-		},
+func TestMain(m *testing.M) {
+	flag.Parse()
+	if !*integration {
+		fmt.Println("Skipping integration test.")
+		os.Exit(0)
 	}
 
-	commands := []*Command{
-		profileBioCmd,
-	}
-
-	RunCommands(commands, t)
+	fmt.Println("Start running tests:")
+	os.Exit(m.Run())
 }

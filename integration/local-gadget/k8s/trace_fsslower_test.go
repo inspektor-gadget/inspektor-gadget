@@ -18,43 +18,41 @@ import (
 	"fmt"
 	"testing"
 
-	"golang.org/x/sys/unix"
-
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	mountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
+	fsslowerTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
 )
 
-func TestTraceMount(t *testing.T) {
-	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-mount")
+func TestTraceFsslower(t *testing.T) {
+	// TODO: does it work in all cases?
+	fsType := "ext4"
 
-	traceMountCmd := &Command{
-		Name:         "TraceMount",
-		Cmd:          fmt.Sprintf("local-gadget trace mount -o json --runtimes=%s", *containerRuntime),
+	t.Parallel()
+	ns := GenerateTestNamespaceName("test-trace-fsslower")
+
+	traceFsslowerCmd := &Command{
+		Name:         "TraceFsslower",
+		Cmd:          fmt.Sprintf("local-gadget trace fsslower -f %s -m 0 -o json", fsType),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &mountTypes.Event{
-				Event:     BuildBaseEvent(ns),
-				Comm:      "mount",
-				Operation: "mount",
-				Retval:    -int(unix.ENOENT),
-				Source:    "/mnt",
-				Target:    "/mnt",
-				Flags:     []string{"MS_SILENT"},
+			expectedEntry := &fsslowerTypes.Event{
+				Event: BuildBaseEvent(ns),
+				Comm:  "cat",
+				File:  "foo",
+				Op:    "R",
 			}
 
-			normalize := func(e *mountTypes.Event) {
+			normalize := func(e *fsslowerTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
 					e.Container = "test-pod"
 				}
 
-				e.Pid = 0
-				e.Tid = 0
 				e.MountNsID = 0
+				e.Pid = 0
+				e.Bytes = 0
+				e.Offset = 0
 				e.Latency = 0
-				e.Fs = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -63,12 +61,12 @@ func TestTraceMount(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		traceMountCmd,
+		traceFsslowerCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "mount /mnt /mnt"),
+		BusyboxPodCommand(ns, "echo 'this is foo' > foo && while true; do cat foo && sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunCommands(commands, t)
+	RunTestSteps(commands, t)
 }
