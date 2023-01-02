@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Copyright 2019-2021 The Inspektor Gadget authors
 #
@@ -21,7 +21,7 @@ if [ ! -r /host/etc/os-release ] ; then
   exit 1
 fi
 
-source /host/etc/os-release
+. /host/etc/os-release
 
 echo -n "OS detected: "
 echo $PRETTY_NAME

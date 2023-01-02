@@ -65,14 +65,14 @@ FROM ${BASE_IMAGE}
 # available on the base image
 RUN set -ex; \
 	if command -v tdnf; then \
-		tdnf install -y libseccomp wget curl util-linux; \
+		tdnf install -y libseccomp wget util-linux; \
 	elif command -v yum; then \
-		yum install -y libseccomp wget curl util-linux; \
+		yum install -y libseccomp wget util-linux; \
 	elif command -v apt-get; then \
 		apt-get update && \
-		apt-get install -y seccomp wget curl util-linux; \
+		apt-get install -y seccomp wget util-linux; \
 	elif command -v apk; then \
-		apk add gcompat libseccomp bash wget curl util-linux; \
+		apk add gcompat libseccomp wget util-linux; \
 	fi && \
 	(rmdir /usr/src || true) && ln -sf /host/usr/src /usr/src && \
 	rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
