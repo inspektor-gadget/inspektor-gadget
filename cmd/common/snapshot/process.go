@@ -82,7 +82,7 @@ func (p *ProcessParser) SortEvents(allProcesses *[]*types.Event) {
 	}
 
 	columnssort.SortEntries(types.GetColumns().GetColumnMap(), *allProcesses,
-		[]string{"node", "namespace", "pod", "container", "cmd", "tgid", "pid"})
+		[]string{"node", "namespace", "pod", "container", "comm", "pid", "tid"})
 }
 
 func NewProcessCmd(runCmd func(*cobra.Command, []string) error, flags *ProcessFlags) *cobra.Command {
