@@ -70,8 +70,8 @@ func (p *ProcessParser) GetOutputConfig() *commonutils.OutputConfig {
 	return p.outputConfig
 }
 
-func (p *ProcessParser) SortEvents(allProcesses *[]*types.Event) {
-	columnssort.SortEntries(types.GetColumns().GetColumnMap(), *allProcesses,
+func (p *ProcessParser) SortEvents(allProcesses []*types.Event) {
+	columnssort.SortEntries(types.GetColumns().GetColumnMap(), allProcesses,
 		[]string{"node", "namespace", "pod", "container", "comm", "pid", "tid", "ppid"})
 }
 

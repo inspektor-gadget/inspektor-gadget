@@ -40,7 +40,7 @@ type SnapshotEvent interface {
 // implement.
 type SnapshotParser[Event any] interface {
 	// SortEvents sorts a slice of events based on a predefined prioritization.
-	SortEvents(*[]*Event)
+	SortEvents([]*Event)
 
 	// TransformIntoTable is called to transform headers and events into a table.
 	TransformIntoTable([]*Event) string
@@ -56,7 +56,7 @@ type SnapshotGadgetPrinter[Event SnapshotEvent] struct {
 }
 
 func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []*Event) error {
-	g.Parser.SortEvents(&allEvents)
+	g.Parser.SortEvents(allEvents)
 
 	outputConfig := g.Parser.GetOutputConfig()
 	switch outputConfig.OutputMode {
