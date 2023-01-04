@@ -81,23 +81,25 @@ func (g *TopGadget[Stats]) PrintHeader() {
 func (g *TopGadget[Stats]) PrintStats(stats []*Stats) {
 	top.SortStats(stats, g.CommonTopFlags.ParsedSortBy, &g.ColMap)
 
-	for idx, stat := range stats {
-		if idx == g.CommonTopFlags.MaxRows {
-			break
+	sliceEnd := g.CommonTopFlags.MaxRows
+	if sliceEnd > len(stats) {
+		sliceEnd = len(stats)
+	}
+
+	stats = stats[:sliceEnd]
+
+	switch g.OutputConfig.OutputMode {
+	case commonutils.OutputModeJSON:
+		b, err := json.Marshal(stats)
+		if err != nil {
+			fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
 		}
+		fmt.Println(string(b))
 
-		switch g.OutputConfig.OutputMode {
-		case commonutils.OutputModeJSON:
-			b, err := json.Marshal(stat)
-			if err != nil {
-				fmt.Fprint(os.Stderr, fmt.Sprint(commonutils.WrapInErrMarshalOutput(err)))
-				continue
-			}
-
-			fmt.Println(string(b))
-		case commonutils.OutputModeColumns:
-			fallthrough
-		case commonutils.OutputModeCustomColumns:
+	case commonutils.OutputModeColumns:
+		fallthrough
+	case commonutils.OutputModeCustomColumns:
+		for _, stat := range stats {
 			fmt.Println(g.Parser.TransformIntoColumns(stat))
 		}
 	}

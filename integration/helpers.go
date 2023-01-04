@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -67,6 +68,20 @@ func parseJSONArrayOutput[T any](output string, normalize func(*T)) ([]*T, error
 	return entries, nil
 }
 
+func parseMultipleJSONArrayOutput[T any](output string, normalize func(*T)) ([]*T, error) {
+	allEntries := make([]*T, 0)
+	sc := bufio.NewScanner(strings.NewReader(output))
+	for sc.Scan() {
+		entries, err := parseJSONArrayOutput(sc.Text(), normalize)
+		if err != nil {
+			return nil, err
+		}
+		allEntries = append(allEntries, entries...)
+	}
+
+	return allEntries, nil
+}
+
 func expectAllToMatch[T any](entries []*T, expectedEntry *T) error {
 	if len(entries) == 0 {
 		return fmt.Errorf("no output entries to match")
@@ -100,6 +115,16 @@ func ExpectAllInArrayToMatch[T any](output string, normalize func(*T), expectedE
 	return expectAllToMatch(entries, expectedEntry)
 }
 
+// ExpectAllInMultipleArrayToMatch verifies that the expectedEntry is matched by all the
+// entries in the output (multiple JSON array of JSON objects separated by newlines).
+func ExpectAllInMultipleArrayToMatch[T any](output string, normalize func(*T), expectedEntry *T) error {
+	entries, err := parseMultipleJSONArrayOutput(output, normalize)
+	if err != nil {
+		return err
+	}
+	return expectAllToMatch(entries, expectedEntry)
+}
+
 func expectEntriesToMatch[T any](entries []*T, expectedEntries ...*T) error {
 out:
 	for _, expectedEntry := range expectedEntries {
@@ -127,6 +152,16 @@ func ExpectEntriesToMatch[T any](output string, normalize func(*T), expectedEntr
 // matched by at least one entry in the output (JSON array of JSON objects).
 func ExpectEntriesInArrayToMatch[T any](output string, normalize func(*T), expectedEntries ...*T) error {
 	entries, err := parseJSONArrayOutput(output, normalize)
+	if err != nil {
+		return err
+	}
+	return expectEntriesToMatch(entries, expectedEntries...)
+}
+
+// ExpectEntriesInMultipleArrayToMatch verifies that all the entries in expectedEntries are
+// matched by at least one entry in the output (multiple JSON array of JSON objects separated by newlines).
+func ExpectEntriesInMultipleArrayToMatch[T any](output string, normalize func(*T), expectedEntries ...*T) error {
+	entries, err := parseMultipleJSONArrayOutput(output, normalize)
 	if err != nil {
 		return err
 	}
