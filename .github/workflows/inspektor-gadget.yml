@@ -554,7 +554,7 @@ jobs:
       - name: Run integration for container runtime ${{ matrix.runtime }}
         run: |
           set -o pipefail
-          make -C integration/local-gadget/k8s CONTAINER_RUNTIME=${{ matrix.runtime }} -o build setup test |& tee integration.log
+          make -C integration/local-gadget/k8s CONTAINER_RUNTIME=${{ matrix.runtime }} -o build minikube-start test |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
         continue-on-error: true

@@ -1,8 +1,4 @@
-MINIKUBE_VERSION ?= v1.27.0
-KUBERNETES_VERSION ?= v1.24.6
-MINIKUBE_DRIVER ?= docker
-
-CONTAINER_RUNTIME ?= docker
+include $(shell pwd)/../../../minikube.mk
 
 # make does not allow implicit rules (with '%') to be phony so let's use
 # the 'phony_explicit' dependency to make implicit rules inherit the phony
@@ -10,46 +6,11 @@ CONTAINER_RUNTIME ?= docker
 .PHONY: phony_explicit
 phony_explicit:
 
-# minikube
-
-MINIKUBE = $(shell pwd)/bin/minikube-$(MINIKUBE_VERSION)
-.PHONY: minikube
-minikube:
-	mkdir -p bin
-	test -e bin/minikube-$(MINIKUBE_VERSION) || \
-	(cd bin && curl -Lo ./minikube-$(MINIKUBE_VERSION) https://github.com/kubernetes/minikube/releases/download/$(MINIKUBE_VERSION)/minikube-linux-$(shell go env GOHOSTARCH))
-	chmod +x bin/minikube-$(MINIKUBE_VERSION)
 
 # build
 
 build:
 	make -C $(shell pwd)/../../.. local-gadget
-
-# clean
-
-.PHONY: clean
-clean:
-	$(MINIKUBE) delete -p minikube-docker
-	$(MINIKUBE) delete -p minikube-containerd
-	$(MINIKUBE) delete -p minikube-cri-o
-	rm -rf bin
-
-# setup
-
-SETUP_TARGETS = \
-	setup-docker \
-	setup-containerd \
-	setup-cri-o
-
-.PHONY: setup-all
-setup-all: $(SETUP_TARGETS) setup
-
-setup: setup-$(CONTAINER_RUNTIME)
-
-.PHONY: phony_explicit
-setup-%: minikube
-	$(MINIKUBE) status -p minikube-$* -f {{.APIServer}} >/dev/null || \
-	$(MINIKUBE) start -p minikube-$* --driver=$(MINIKUBE_DRIVER) --kubernetes-version=$(KUBERNETES_VERSION) --container-runtime=$* --wait=all
 
 # test
 
