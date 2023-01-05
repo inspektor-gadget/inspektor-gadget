@@ -16,10 +16,6 @@ package profile
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -31,7 +27,6 @@ import (
 
 type ProfileFlags struct {
 	utils.CommonFlags
-	Timeout int
 }
 
 // ProfileGadget represents a gadget belonging to the profile category.
@@ -51,15 +46,6 @@ func (g *ProfileGadget) Run() error {
 		return commonutils.WrapInErrGadgetTracerCreateAndRun(err)
 	}
 
-	timeoutChannel := make(chan os.Signal, 1)
-	signal.Notify(timeoutChannel, os.Interrupt)
-	if g.profileFlags.Timeout != 0 {
-		go func() {
-			time.Sleep(time.Duration(g.profileFlags.Timeout) * time.Second)
-			timeoutChannel <- os.Interrupt
-		}()
-	}
-
 	if g.profileFlags.OutputMode != commonutils.OutputModeJSON {
 		if g.profileFlags.Timeout != 0 {
 			fmt.Printf(g.inProgressMsg + "...")
@@ -68,13 +54,7 @@ func (g *ProfileGadget) Run() error {
 		}
 	}
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-
-	select {
-	case <-timeoutChannel:
-	case <-stop:
-	}
+	utils.WaitForEnd(&g.profileFlags.CommonFlags)
 
 	result, err := gadgetTracer.Stop()
 	if err != nil {
@@ -95,13 +75,6 @@ func (g *ProfileGadget) Run() error {
 
 func AddCommonProfileFlags(command *cobra.Command, profileFlags *ProfileFlags) {
 	utils.AddCommonFlags(command, &profileFlags.CommonFlags)
-
-	command.PersistentFlags().IntVar(
-		&profileFlags.Timeout,
-		"timeout",
-		0,
-		"Number of seconds that the gadget will run for",
-	)
 }
 
 func NewProfileCmd() *cobra.Command {

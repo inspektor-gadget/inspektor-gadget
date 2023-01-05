@@ -43,6 +43,9 @@ type CommonFlags struct {
 	// RuntimeConfigs contains the list of the container runtimes to be used
 	// with their specific socket path.
 	RuntimeConfigs []*containerutils.RuntimeConfig
+
+	// Number of seconds that the gadget will run for
+	Timeout int
 }
 
 func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
@@ -110,4 +113,15 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		fmt.Sprintf("Container runtimes to be used separated by comma. Supported values are: %s",
 			strings.Join(containerutils.AvailableRuntimes, ", ")),
 	)
+
+	command.PersistentFlags().IntVar(
+		&commonFlags.Timeout,
+		"timeout",
+		0,
+		"Number of seconds that the gadget will run for",
+	)
+}
+
+func HideFlagTimeout(command *cobra.Command) {
+	command.PersistentFlags().MarkHidden("timeout")
 }
