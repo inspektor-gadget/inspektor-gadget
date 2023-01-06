@@ -119,7 +119,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 
-	eventCallback := func(event types.Event) {
+	eventCallback := func(event *types.Event) {
 		r, err := json.Marshal(event)
 		if err != nil {
 			log.Warnf("Gadget %s: error marshalling event: %s", trace.Spec.Gadget, err)

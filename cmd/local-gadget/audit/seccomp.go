@@ -55,7 +55,7 @@ func newSeccompCmd() *cobra.Command {
 			fmt.Println(parser.BuildColumnsHeader())
 		}
 
-		eventCallback := func(event seccompauditTypes.Event) {
+		eventCallback := func(event *seccompauditTypes.Event) {
 			baseEvent := event.Event
 			if baseEvent.Type != eventtypes.NORMAL {
 				commonutils.HandleSpecialEvent(&baseEvent, commonFlags.Verbose)
@@ -74,7 +74,7 @@ func newSeccompCmd() *cobra.Command {
 			case commonutils.OutputModeColumns:
 				fallthrough
 			case commonutils.OutputModeCustomColumns:
-				fmt.Println(parser.TransformIntoColumns(&event))
+				fmt.Println(parser.TransformIntoColumns(event))
 			}
 		}
 

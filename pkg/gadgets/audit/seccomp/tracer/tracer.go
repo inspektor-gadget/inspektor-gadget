@@ -32,7 +32,7 @@ import (
 
 type Tracer struct {
 	config        *Config
-	eventCallback func(types.Event)
+	eventCallback func(*types.Event)
 
 	objs   auditseccompObjects
 	reader *perf.Reader
@@ -49,7 +49,7 @@ type Config struct {
 	MountnsMap    *ebpf.Map
 }
 
-func NewTracer(config *Config, eventCallback func(types.Event)) (*Tracer, error) {
+func NewTracer(config *Config, eventCallback func(*types.Event)) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
 		eventCallback: eventCallback,
@@ -158,7 +158,7 @@ func (t *Tracer) run() {
 			Comm:      gadgets.FromCString(eventC.Comm[:]),
 		}
 
-		t.eventCallback(event)
+		t.eventCallback(&event)
 	}
 }
 

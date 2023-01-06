@@ -54,8 +54,8 @@ func GetColumns() *columns.Columns[Event] {
 	return tcpColumns
 }
 
-func Base(ev eventtypes.Event) Event {
-	return Event{
+func Base(ev eventtypes.Event) *Event {
+	return &Event{
 		Event: ev,
 	}
 }

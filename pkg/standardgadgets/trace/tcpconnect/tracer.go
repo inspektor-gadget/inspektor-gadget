@@ -22,7 +22,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/standardgadgets/trace"
 )
 
-func NewTracer(config *tracer.Config, eventCallback func(types.Event)) (*trace.StandardTracer[types.Event], error) {
+func NewTracer(config *tracer.Config, eventCallback func(*types.Event)) (*trace.StandardTracer[types.Event], error) {
 	prepareLine := func(line string) string {
 		// "Hack" to avoid changing the BCC tool implementation
 		line = strings.ReplaceAll(line, `"ip"`, `"ipversion"`)

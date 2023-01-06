@@ -40,7 +40,7 @@ func newBindCmd() *cobra.Command {
 		bindGadget := &TraceGadget[bindTypes.Event]{
 			commonFlags: &commonFlags,
 			parser:      parser,
-			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(bindTypes.Event)) (trace.Tracer, error) {
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(*bindTypes.Event)) (trace.Tracer, error) {
 				config := &bindTracer.Config{
 					MountnsMap:   mountnsmap,
 					TargetPid:    flags.TargetPid,

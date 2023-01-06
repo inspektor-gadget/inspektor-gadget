@@ -20,7 +20,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/standardgadgets/trace"
 )
 
-func NewTracer(config *tracer.Config, eventCallback func(types.Event)) (*trace.StandardTracer[types.Event], error) {
+func NewTracer(config *tracer.Config, eventCallback func(*types.Event)) (*trace.StandardTracer[types.Event], error) {
 	standardConfig := &trace.StandardTracerConfig[types.Event]{
 		ScriptName:    "opensnoop",
 		EventCallback: eventCallback,

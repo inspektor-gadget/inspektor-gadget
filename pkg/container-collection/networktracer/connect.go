@@ -30,7 +30,7 @@ type Tracer interface {
 // CallbackTracer represents network tracers that provide the events through a
 // callback as soon as they are available.
 type CallbackTracer[Event any] interface {
-	Attach(pid uint32, eventCallback func(Event)) error
+	Attach(pid uint32, eventCallback func(*Event)) error
 }
 
 // PopTracer represents network tracers that don't return the events through a
@@ -53,8 +53,8 @@ type ConnectToContainerCollectionConfig[Event any] struct {
 	Tracer        Tracer
 	Resolver      containercollection.ContainerResolver
 	Selector      containercollection.ContainerSelector
-	EventCallback func(*containercollection.Container, Event)
-	Base          func(eventtypes.Event) Event
+	EventCallback func(*containercollection.Container, *Event)
+	Base          func(eventtypes.Event) *Event
 }
 
 // ConnectToContainerCollection connects a networking tracer to the
@@ -85,7 +85,7 @@ func ConnectToContainerCollection[Event any](
 		var err error
 		switch tracer.(type) {
 		case CallbackTracer[Event]:
-			cbWithContainer := func(ev Event) {
+			cbWithContainer := func(ev *Event) {
 				eventCallback(container, ev)
 			}
 			err = tracer.(CallbackTracer[Event]).Attach(container.Pid, cbWithContainer)

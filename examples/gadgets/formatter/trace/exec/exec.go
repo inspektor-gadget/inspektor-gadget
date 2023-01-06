@@ -96,9 +96,9 @@ func main() {
 	)
 
 	// Define a callback to be called each time there is an event.
-	eventCallback := func(event types.Event) {
+	eventCallback := func(event *types.Event) {
 		// Convert the event to columns and print to the terminal.
-		fmt.Println(formatter.FormatEntry(&event))
+		fmt.Println(formatter.FormatEntry(event))
 	}
 
 	fmt.Println(formatter.FormatHeader())

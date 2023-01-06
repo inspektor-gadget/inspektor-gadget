@@ -114,7 +114,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	eventCallback := func(container *containercollection.Container, event dnsTypes.Event) {
+	eventCallback := func(container *containercollection.Container, event *dnsTypes.Event) {
 		// Enrich event with data from container
 		event.Node = trace.Spec.Node
 		if !container.HostNetwork {
@@ -122,7 +122,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			event.Pod = container.Podname
 		}
 
-		t.publishEvent(trace, &event)
+		t.publishEvent(trace, event)
 	}
 
 	config := &networktracer.ConnectToContainerCollectionConfig[dnsTypes.Event]{

@@ -95,8 +95,8 @@ func GetInfoColumns() *columns.Columns[TraceloopInfo] {
 	return columns.MustCreateColumns[TraceloopInfo]()
 }
 
-func Base(ev eventtypes.Event) Event {
-	return Event{
+func Base(ev eventtypes.Event) *Event {
+	return &Event{
 		Event: ev,
 	}
 }

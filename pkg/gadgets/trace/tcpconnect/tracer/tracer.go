@@ -42,7 +42,7 @@ type Config struct {
 type Tracer struct {
 	config        *Config
 	enricher      gadgets.DataEnricherByMntNs
-	eventCallback func(types.Event)
+	eventCallback func(*types.Event)
 
 	objs        tcpconnectObjects
 	v4EnterLink link.Link
@@ -53,7 +53,7 @@ type Tracer struct {
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
-	eventCallback func(types.Event),
+	eventCallback func(*types.Event),
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
@@ -186,6 +186,6 @@ func (t *Tracer) run() {
 			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
-		t.eventCallback(event)
+		t.eventCallback(&event)
 	}
 }

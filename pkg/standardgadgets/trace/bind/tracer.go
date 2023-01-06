@@ -23,7 +23,7 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-func NewTracer(config *tracer.Config, eventCallback func(types.Event)) (*trace.StandardTracer[types.Event], error) {
+func NewTracer(config *tracer.Config, eventCallback func(*types.Event)) (*trace.StandardTracer[types.Event], error) {
 	prepareLine := func(line string) string {
 		event := map[string]interface{}{}
 

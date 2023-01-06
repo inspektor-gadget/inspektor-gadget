@@ -39,7 +39,7 @@ func newOpenCmd() *cobra.Command {
 		openGadget := &TraceGadget[openTypes.Event]{
 			commonFlags: &commonFlags,
 			parser:      parser,
-			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(openTypes.Event)) (trace.Tracer, error) {
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(*openTypes.Event)) (trace.Tracer, error) {
 				return openTracer.NewTracer(&openTracer.Config{MountnsMap: mountnsmap}, enricher, eventCallback)
 			},
 		}

@@ -59,7 +59,7 @@ func newDNSCmd() *cobra.Command {
 			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		eventCallback := func(container *containercollection.Container, event dnsTypes.Event) {
+		eventCallback := func(container *containercollection.Container, event *dnsTypes.Event) {
 			baseEvent := event.GetBaseEvent()
 			if baseEvent.Type != eventtypes.NORMAL {
 				commonutils.HandleSpecialEvent(baseEvent, commonFlags.Verbose)
@@ -85,7 +85,7 @@ func newDNSCmd() *cobra.Command {
 			case commonutils.OutputModeColumns:
 				fallthrough
 			case commonutils.OutputModeCustomColumns:
-				fmt.Println(parser.TransformIntoColumns(&event))
+				fmt.Println(parser.TransformIntoColumns(event))
 			}
 		}
 
