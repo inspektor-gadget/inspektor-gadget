@@ -26,7 +26,7 @@ func TestTraceExec(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-exec")
 
-	cmd := "while true; do date ; sleep 0.1; done"
+	cmd := "while true; do date ; /bin/sleep 0.1; done"
 	shArgs := []string{"/bin/sh", "-c", cmd}
 	dateArgs := []string{"/bin/date"}
 	sleepArgs := []string{"/bin/sleep", "0.1"}
