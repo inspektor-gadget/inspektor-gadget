@@ -32,7 +32,6 @@ import (
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
-	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
 	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
 	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
 	tcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
@@ -247,47 +246,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestOpensnoop(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-opensnoop")
-
-	t.Parallel()
-
-	opensnoopCmd := &Command{
-		Name:         "StartOpensnoopGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace open -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &openTypes.Event{
-				Event: BuildBaseEvent(ns),
-				Comm:  "cat",
-				Fd:    3,
-				Ret:   3,
-				Err:   0,
-				Path:  "/dev/null",
-			}
-
-			normalize := func(e *openTypes.Event) {
-				e.Node = ""
-				e.MountNsID = 0
-				e.Pid = 0
-				e.UID = 0
-			}
-
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		opensnoopCmd,
-		BusyboxPodRepeatCommand(ns, "cat /dev/null"),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestNetworkGraph(t *testing.T) {
