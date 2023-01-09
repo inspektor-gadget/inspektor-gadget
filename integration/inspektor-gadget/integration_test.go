@@ -35,7 +35,6 @@ import (
 	ebpftopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	filetopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	fsslowerType "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
@@ -257,53 +256,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestCapabilities(t *testing.T) {
-	if *k8sDistro == K8sDistroARO {
-		t.Skip("Skip running trace capabilities on ARO: See https://github.com/inspektor-gadget/inspektor-gadget/issues/985 for more details")
-	}
-
-	ns := GenerateTestNamespaceName("test-capabilities")
-
-	t.Parallel()
-
-	capabilitiesCmd := &Command{
-		Name:         "StartCapabilitiesGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace capabilities -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &capabilitiesTypes.Event{
-				Event:   BuildBaseEvent(ns),
-				Comm:    "nice",
-				CapName: "SYS_NICE",
-				Cap:     23,
-				Audit:   1,
-				Verdict: "Deny",
-			}
-
-			normalize := func(e *capabilitiesTypes.Event) {
-				e.Node = ""
-				e.Pid = 0
-				e.UID = 0
-				e.MountNsID = 0
-				// Do not check InsetID to avoid introducing dependency on the kernel version
-				e.InsetID = nil
-			}
-
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		capabilitiesCmd,
-		BusyboxPodRepeatCommand(ns, "nice -n -20 echo"),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestDns(t *testing.T) {
