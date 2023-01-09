@@ -56,7 +56,7 @@ func TestFilterByContainerName(t *testing.T) {
 		},
 	}
 
-	operations := []TestStep{
+	testSteps := []TestStep{
 		&DockerContainer{
 			Name:         cn,
 			Cmd:          "sleep inf",
@@ -66,7 +66,7 @@ func TestFilterByContainerName(t *testing.T) {
 		listContainersCmd,
 	}
 
-	RunTestSteps(operations, t)
+	RunTestSteps(testSteps, t)
 }
 
 func TestWatchContainers(t *testing.T) {
@@ -119,7 +119,7 @@ func TestWatchContainers(t *testing.T) {
 		},
 	}
 
-	operations := []TestStep{
+	testSteps := []TestStep{
 		watchContainersCommand,
 		SleepForSecondsCommand(2),
 		&DockerContainer{
@@ -128,5 +128,5 @@ func TestWatchContainers(t *testing.T) {
 		},
 	}
 
-	RunTestSteps(operations, t)
+	RunTestSteps(testSteps, t)
 }
