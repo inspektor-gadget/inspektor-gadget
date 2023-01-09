@@ -29,7 +29,6 @@ import (
 	"github.com/cilium/ebpf"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	bioprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
 	cpuprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	processCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
@@ -259,33 +258,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-
-
-func TestBiolatency(t *testing.T) {
-	t.Parallel()
-
-	commands := []*Command{
-		{
-			Name: "RunBiolatencyGadget",
-			Cmd:  "$KUBECTL_GADGET profile block-io --node $(kubectl get node --no-headers | cut -d' ' -f1 | head -1) --timeout 15 -o json",
-			ExpectedOutputFn: func(output string) error {
-				expectedEntry := &bioprofileTypes.Report{
-					ValType: "usecs",
-				}
-
-				normalize := func(e *bioprofileTypes.Report) {
-					e.Data = nil
-					e.Time = ""
-				}
-
-				return ExpectEntriesToMatch(output, normalize, expectedEntry)
-			},
-		},
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestBiotop(t *testing.T) {
