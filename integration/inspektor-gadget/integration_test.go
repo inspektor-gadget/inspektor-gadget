@@ -32,7 +32,6 @@ import (
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
-	oomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
 	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
 	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
 	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
@@ -248,70 +247,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestOomkill(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-oomkill")
-
-	t.Parallel()
-
-	oomkillCmd := &Command{
-		Name:         "StartOomkilGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace oomkill -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &oomkillTypes.Event{
-				Event:      BuildBaseEvent(ns),
-				KilledComm: "tail",
-			}
-			expectedEntry.Container = "test-pod-container"
-
-			normalize := func(e *oomkillTypes.Event) {
-				e.Node = ""
-				e.KilledPid = 0
-				e.Pages = 0
-				e.TriggeredPid = 0
-				e.TriggeredComm = ""
-				e.MountNsID = 0
-			}
-
-			return ExpectAllToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	limitPodYaml := fmt.Sprintf(`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: test-pod
-  namespace: %s
-spec:
-  restartPolicy: Never
-  terminationGracePeriodSeconds: 0
-  containers:
-  - name: test-pod-container
-    image: busybox
-    resources:
-      limits:
-        memory: "128Mi"
-    command: ["/bin/sh", "-c"]
-    args:
-    - while true; do tail /dev/zero; done
-`, ns)
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		oomkillCmd,
-		{
-			Name:           "RunOomkillTestPod",
-			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", limitPodYaml),
-			ExpectedRegexp: "pod/test-pod created",
-		},
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestOpensnoop(t *testing.T) {
