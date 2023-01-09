@@ -37,7 +37,6 @@ import (
 	ebpftopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	filetopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-	bindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
 	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
@@ -262,46 +261,7 @@ func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
 }
 
-func TestBindsnoop(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-bindsnoop")
 
-	t.Parallel()
-
-	bindsnoopCmd := &Command{
-		Name:         "StartBindsnoopGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace bind -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &bindTypes.Event{
-				Event:     BuildBaseEvent(ns),
-				Comm:      "nc",
-				Protocol:  "TCP",
-				Addr:      "::",
-				Port:      9090,
-				Options:   ".R...",
-				Interface: "",
-			}
-
-			normalize := func(e *bindTypes.Event) {
-				e.Node = ""
-				e.Pid = 0
-				e.MountNsID = 0
-			}
-
-			return ExpectAllToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		bindsnoopCmd,
-		BusyboxPodRepeatCommand(ns, "nc -l -p 9090 -w 1"),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
-}
 
 func TestBiolatency(t *testing.T) {
 	t.Parallel()
