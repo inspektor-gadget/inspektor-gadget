@@ -31,7 +31,6 @@ import (
 	processCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
 	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
 	tcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
@@ -246,60 +245,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestNetworkGraph(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-networkgraph")
-
-	t.Parallel()
-
-	commandsPreTest := []*Command{
-		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
-		WaitUntilPodReadyCommand(ns, "nginx-pod"),
-	}
-
-	RunTestSteps(commandsPreTest, t)
-	NginxIP := GetTestPodIP(ns, "nginx-pod")
-
-	networkGraphCmd := &Command{
-		Name:         "StartNetworkGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace network -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			TestPodIP := GetTestPodIP(ns, "test-pod")
-
-			expectedEntry := &networkTypes.Event{
-				Event:           BuildBaseEvent(ns),
-				PktType:         "OUTGOING",
-				Proto:           "tcp",
-				RemoteAddr:      NginxIP,
-				Port:            80,
-				RemoteKind:      networkTypes.RemoteKindPod,
-				PodIP:           TestPodIP,
-				PodLabels:       map[string]string{"run": "test-pod"},
-				RemoteNamespace: ns,
-				RemoteName:      "nginx-pod",
-				RemoteLabels:    map[string]string{"run": "nginx-pod"},
-			}
-
-			normalize := func(e *networkTypes.Event) {
-				e.Node = ""
-				e.PodHostIP = ""
-			}
-
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		networkGraphCmd,
-		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestProcessCollector(t *testing.T) {
