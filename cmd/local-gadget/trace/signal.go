@@ -43,7 +43,7 @@ func newSignalCmd() *cobra.Command {
 		signalGadget := &TraceGadget[signalTypes.Event]{
 			commonFlags: &commonFlags,
 			parser:      parser,
-			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(signalTypes.Event)) (trace.Tracer, error) {
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(signalTypes.Event)) (trace.Tracer, error) {
 				return signalTracer.NewTracer(&signalTracer.Config{
 					MountnsMap:   mountnsmap,
 					TargetSignal: flags.Sig,

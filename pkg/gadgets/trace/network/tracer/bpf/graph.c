@@ -2,8 +2,8 @@
 /* Copyright (c) 2022 The Inspektor Gadget authors */
 
 // Avoid CO-RE:
-// CO-RE relocations: relocate struct#35["iphdr"]: target struct#49626["iphdr"]: target struct#49626["iphdr"]: field "ihl" is a bitfield: not supported 
-// 
+// CO-RE relocations: relocate struct#35["iphdr"]: target struct#49626["iphdr"]: target struct#49626["iphdr"]: field "ihl" is a bitfield: not supported
+//
 // #include <vmlinux/vmlinux.h>
 
 #include <linux/bpf.h>
@@ -37,7 +37,7 @@
 #define PACKET_OUTGOING		4		/* Outgoing of any type */
 #endif
 
-const volatile u64 container_quark = 0;
+const volatile u64 container_netns = 0;
 
 SEC("socket1")
 int ig_trace_net(struct __sk_buff *skb)
@@ -100,7 +100,7 @@ int ig_trace_net(struct __sk_buff *skb)
 	}
 
 	struct graph_key_t key = {};
-	key.container_quark	= container_quark;
+	key.container_netns	= container_netns;
 	key.pkt_type		= skb->pkt_type;
 	key.proto		= iph.protocol;
 	key.port		= port;

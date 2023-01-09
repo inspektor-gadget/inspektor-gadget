@@ -65,7 +65,7 @@ type containerRingReader struct {
 }
 
 type Tracer struct {
-	enricher gadgets.DataEnricher
+	enricher gadgets.DataEnricherByMntNs
 
 	innerMapSpec *ebpf.MapSpec
 
@@ -97,7 +97,7 @@ type syscallEventContinued struct {
 	param     string
 }
 
-func NewTracer(enricher gadgets.DataEnricher) (*Tracer, error) {
+func NewTracer(enricher gadgets.DataEnricherByMntNs) (*Tracer, error) {
 	t := &Tracer{
 		enricher: enricher,
 	}
@@ -386,7 +386,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				delete(syscallEnterEventsMap, enterTimestamp)
 
 				if t.enricher != nil {
-					t.enricher.Enrich(&event.CommonData, event.MountNsID)
+					t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 				}
 
 				log.Debugf("%v", event)
@@ -413,7 +413,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				delete(syscallExitEventsMap, enterTimestamp)
 
 				if t.enricher != nil {
-					t.enricher.Enrich(&event.CommonData, event.MountNsID)
+					t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 				}
 				log.Debugf("%v", event)
 				events = append(events, event)
@@ -455,7 +455,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 			}
 
 			if t.enricher != nil {
-				t.enricher.Enrich(&incompleteEnterEvent.CommonData, incompleteEnterEvent.MountNsID)
+				t.enricher.EnrichByMntNs(&incompleteEnterEvent.CommonData, incompleteEnterEvent.MountNsID)
 			}
 
 			events = append(events, incompleteEnterEvent)
@@ -487,7 +487,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 			}
 
 			if t.enricher != nil {
-				t.enricher.Enrich(&incompleteExitEvent.CommonData, incompleteExitEvent.MountNsID)
+				t.enricher.EnrichByMntNs(&incompleteExitEvent.CommonData, incompleteExitEvent.MountNsID)
 			}
 
 			events = append(events, incompleteExitEvent)

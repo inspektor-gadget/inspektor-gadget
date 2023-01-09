@@ -38,7 +38,7 @@ import (
 type TraceGadget[Event commontrace.TraceEvent] struct {
 	commonFlags        *utils.CommonFlags
 	parser             commontrace.TraceParser[Event]
-	createAndRunTracer func(*ebpf.Map, gadgets.DataEnricher, func(Event)) (trace.Tracer, error)
+	createAndRunTracer func(*ebpf.Map, gadgets.DataEnricherByMntNs, func(Event)) (trace.Tracer, error)
 }
 
 // Run runs a TraceGadget and prints the output after parsing it using the

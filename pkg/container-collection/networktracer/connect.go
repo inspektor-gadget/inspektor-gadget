@@ -22,9 +22,22 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type Tracer[Event any] interface {
-	Attach(pid uint32, eventCallback func(Event)) error
+type Tracer interface {
+	// Tracer must also implement either CallbackTracer or PopTracer.
 	Detach(pid uint32) error
+}
+
+// CallbackTracer represents network tracers that provide the events through a
+// callback as soon as they are available.
+type CallbackTracer[Event any] interface {
+	Attach(pid uint32, eventCallback func(Event)) error
+}
+
+// PopTracer represents network tracers that don't return the events through a
+// callback but instead they provide a method to retrieve them.
+type PopTracer[Event any] interface {
+	Attach(pid uint32) error
+	Pop() ([]*Event, error)
 }
 
 type ConnectionToContainerCollection struct {
@@ -37,7 +50,7 @@ func (c *ConnectionToContainerCollection) Close() {
 }
 
 type ConnectToContainerCollectionConfig[Event any] struct {
-	Tracer        Tracer[Event]
+	Tracer        Tracer
 	Resolver      containercollection.ContainerResolver
 	Selector      containercollection.ContainerSelector
 	EventCallback func(*containercollection.Container, Event)
@@ -61,11 +74,24 @@ func ConnectToContainerCollection[Event any](
 	eventCallback := config.EventCallback
 	base := config.Base
 
+	switch tracer.(type) {
+	case CallbackTracer[Event]:
+	case PopTracer[Event]:
+	default:
+		return nil, fmt.Errorf("tracer doesn't provide any way to attach containers")
+	}
+
 	attachContainerFunc := func(container *containercollection.Container) {
-		cbWithContainer := func(ev Event) {
-			eventCallback(container, ev)
+		var err error
+		switch tracer.(type) {
+		case CallbackTracer[Event]:
+			cbWithContainer := func(ev Event) {
+				eventCallback(container, ev)
+			}
+			err = tracer.(CallbackTracer[Event]).Attach(container.Pid, cbWithContainer)
+		case PopTracer[Event]:
+			err = tracer.(PopTracer[Event]).Attach(container.Pid)
 		}
-		err := tracer.Attach(container.Pid, cbWithContainer)
 		if err != nil {
 			msg := fmt.Sprintf("start tracing container %q: %s", container.Name, err)
 			eventCallback(container, base(eventtypes.Err(msg)))

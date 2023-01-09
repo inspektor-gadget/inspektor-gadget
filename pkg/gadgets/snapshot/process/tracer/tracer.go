@@ -44,7 +44,7 @@ func init() {
 	hostRoot = os.Getenv("HOST_ROOT")
 }
 
-func RunCollector(config *Config, enricher gadgets.DataEnricher) ([]*processcollectortypes.Event, error) {
+func RunCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*processcollectortypes.Event, error) {
 	events, err := runeBPFCollector(config, enricher)
 	if err == nil {
 		return events, nil
@@ -62,7 +62,7 @@ func RunCollector(config *Config, enricher gadgets.DataEnricher) ([]*processcoll
 	return events, err
 }
 
-func runeBPFCollector(config *Config, enricher gadgets.DataEnricher) ([]*processcollectortypes.Event, error) {
+func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*processcollectortypes.Event, error) {
 	spec, err := loadProcessCollector()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
@@ -142,7 +142,7 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricher) ([]*process
 		}
 
 		if enricher != nil {
-			enricher.Enrich(&event.CommonData, event.MountNsID)
+			enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
 		events = append(events, &event)
@@ -151,7 +151,7 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricher) ([]*process
 	return events, nil
 }
 
-func getPidEvents(config *Config, enricher gadgets.DataEnricher, pid int) ([]*processcollectortypes.Event, error) {
+func getPidEvents(config *Config, enricher gadgets.DataEnricherByMntNs, pid int) ([]*processcollectortypes.Event, error) {
 	var events []*processcollectortypes.Event
 	var val uint32
 
@@ -223,7 +223,7 @@ func getPidEvents(config *Config, enricher gadgets.DataEnricher, pid int) ([]*pr
 		}
 
 		if enricher != nil {
-			enricher.Enrich(&event.CommonData, event.MountNsID)
+			enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
 		events = append(events, &event)
@@ -232,7 +232,7 @@ func getPidEvents(config *Config, enricher gadgets.DataEnricher, pid int) ([]*pr
 	return events, nil
 }
 
-func runProcfsCollector(config *Config, enricher gadgets.DataEnricher) ([]*processcollectortypes.Event, error) {
+func runProcfsCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*processcollectortypes.Event, error) {
 	items, err := os.ReadDir(filepath.Join(hostRoot, "/proc/"))
 	if err != nil {
 		return nil, err

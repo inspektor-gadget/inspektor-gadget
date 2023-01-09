@@ -41,7 +41,7 @@ type Config struct {
 
 type Tracer struct {
 	config        *Config
-	enricher      gadgets.DataEnricher
+	enricher      gadgets.DataEnricherByMntNs
 	eventCallback func(types.Event)
 
 	objs tcptracerObjects
@@ -57,7 +57,7 @@ type Tracer struct {
 	reader *perf.Reader
 }
 
-func NewTracer(config *Config, enricher gadgets.DataEnricher,
+func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
 	eventCallback func(types.Event),
 ) (*Tracer, error) {
 	t := &Tracer{
@@ -219,7 +219,7 @@ func (t *Tracer) run() {
 		}
 
 		if t.enricher != nil {
-			t.enricher.Enrich(&event.CommonData, event.MountNsID)
+			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
 		t.eventCallback(event)

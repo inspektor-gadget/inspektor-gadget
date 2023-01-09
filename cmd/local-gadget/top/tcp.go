@@ -60,7 +60,7 @@ func newTCPCmd() *cobra.Command {
 				ColMap:         cols.ColumnMap,
 			},
 			commonFlags: &commonFlags,
-			createAndRunTracer: func(mountNsMap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(*top.Event[types.Stats])) (trace.Tracer, error) {
+			createAndRunTracer: func(mountNsMap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(*top.Event[types.Stats])) (trace.Tracer, error) {
 				config := &tracer.Config{
 					MaxRows:      flags.MaxRows,
 					Interval:     time.Second * time.Duration(flags.OutputInterval),

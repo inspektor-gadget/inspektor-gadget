@@ -42,7 +42,7 @@ func newOOMKillCmd() *cobra.Command {
 		oomkillGadget := &TraceGadget[oomkillTypes.Event]{
 			commonFlags: &commonFlags,
 			parser:      parser,
-			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricher, eventCallback func(oomkillTypes.Event)) (trace.Tracer, error) {
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(oomkillTypes.Event)) (trace.Tracer, error) {
 				return oomkillTracer.NewTracer(&oomkillTracer.Config{MountnsMap: mountnsmap}, enricher, eventCallback)
 			},
 		}

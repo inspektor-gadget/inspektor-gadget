@@ -119,9 +119,10 @@ func (cc *ContainerCollection) GetContainer(id string) *Container {
 	return container
 }
 
-// RemoveContainer removes a container from the collection.
+// RemoveContainer removes a container from the collection, but only after
+// notifying all the subscribers.
 func (cc *ContainerCollection) RemoveContainer(id string) {
-	v, loaded := cc.containers.LoadAndDelete(id)
+	v, loaded := cc.containers.Load(id)
 	if !loaded {
 		return
 	}
@@ -129,6 +130,12 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 	if cc.pubsub != nil {
 		cc.pubsub.Publish(EventTypeRemoveContainer, v.(*Container))
 	}
+
+	// Remove the container from the collection after publishing the event as
+	// subscribers might need to use the different collection's lookups during
+	// the notification handler, and they expect the container to still be
+	// present.
+	cc.containers.Delete(id)
 }
 
 // AddContainer adds a container to the collection.
@@ -181,6 +188,20 @@ func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container
 		return true
 	})
 	return container
+}
+
+// LookupContainersByNetns returns a slice of containers that run in a given
+// network namespace. Or an empty slice if there are no containers running in
+// that network namespace.
+func (cc *ContainerCollection) LookupContainersByNetns(netnsid uint64) (containers []*Container) {
+	cc.containers.Range(func(key, value interface{}) bool {
+		c := value.(*Container)
+		if c.Netns == netnsid {
+			containers = append(containers, c)
+		}
+		return true
+	})
+	return containers
 }
 
 // LookupMntnsByPod returns the mount namespace inodes of all containers
@@ -300,7 +321,7 @@ func (cc *ContainerCollection) ContainerRangeWithSelector(
 	})
 }
 
-func (cc *ContainerCollection) Enrich(event *eventtypes.CommonData, mountnsid uint64) {
+func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
 	event.Node = cc.nodeName
 
 	container := cc.LookupContainerByMntns(mountnsid)
@@ -309,6 +330,30 @@ func (cc *ContainerCollection) Enrich(event *eventtypes.CommonData, mountnsid ui
 		event.Pod = container.Podname
 		event.Namespace = container.Namespace
 	}
+}
+
+func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netnsid uint64) {
+	event.Node = cc.nodeName
+
+	containers := cc.LookupContainersByNetns(netnsid)
+	if len(containers) == 0 || containers[0].HostNetwork {
+		return
+	}
+	if len(containers) == 1 {
+		event.Container = containers[0].Name
+		event.Pod = containers[0].Podname
+		event.Namespace = containers[0].Namespace
+		return
+	}
+	if containers[0].Podname != "" && containers[0].Namespace != "" {
+		// Kubernetes containers within the same pod.
+		event.Pod = containers[0].Podname
+		event.Namespace = containers[0].Namespace
+	}
+	// else {
+	// 	TODO: Non-Kubernetes containers sharing the same network namespace.
+	// 	What should we do here?
+	// }
 }
 
 // Subscribe returns the list of existing containers and registers a callback

@@ -30,14 +30,12 @@ import (
 type Enricher struct {
 	withKubernetes bool
 	clientset      *kubernetes.Clientset
-	node           string
 }
 
-func NewEnricher(withKubernetes bool, node string) (*Enricher, error) {
+func NewEnricher(withKubernetes bool) (*Enricher, error) {
 	if !withKubernetes {
 		return &Enricher{
 			withKubernetes: withKubernetes,
-			node:           node,
 		}, nil
 	}
 
@@ -48,25 +46,14 @@ func NewEnricher(withKubernetes bool, node string) (*Enricher, error) {
 	return &Enricher{
 		withKubernetes: withKubernetes,
 		clientset:      clientset,
-		node:           node,
 	}, nil
 }
 
-func enrich(event *types.Event, node string, pods *corev1.PodList, svcs *corev1.ServiceList) {
-	var namespace, name string
-	parts := strings.Split(event.Key, "/")
-	if len(parts) == 2 {
-		namespace = parts[0]
-		name = parts[1]
-	}
-	event.Node = node
-	event.Namespace = namespace
-	event.Pod = name
-
+func enrich(event *types.Event, pods *corev1.PodList, svcs *corev1.ServiceList) {
 	// Find the pod resource where the packet capture occurred
 	localPodIndex := -1
 	for i, pod := range pods.Items {
-		if pod.GetNamespace() == namespace && pod.GetName() == name {
+		if pod.GetNamespace() == event.Namespace && pod.GetName() == event.Pod {
 			localPodIndex = i
 			event.PodLabels = pod.Labels
 			// Kubernetes Network Policies can't block traffic from
@@ -142,7 +129,7 @@ func (e *Enricher) Enrich(events []*types.Event) {
 	}
 
 	for _, event := range events {
-		enrich(event, e.node, pods, svcs)
+		enrich(event, pods, svcs)
 	}
 }
 

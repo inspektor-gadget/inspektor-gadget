@@ -410,7 +410,8 @@ func TestNetworkGraph(t *testing.T) {
 				CommonData: eventtypes.CommonData{
 					Node:      "local",
 					Namespace: "default",
-					Pod:       "test-local-gadget-network-graph001",
+					Pod:       containerName,
+					Container: containerName,
 				},
 				Message: "tracer attached",
 			},
@@ -419,9 +420,9 @@ func TestNetworkGraph(t *testing.T) {
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 				CommonData: eventtypes.CommonData{
-					Node:      "local",
 					Namespace: "default",
-					Pod:       "test-local-gadget-network-graph001",
+					Pod:       containerName,
+					Container: containerName,
 				},
 			},
 			PktType: "OUTGOING",
@@ -434,9 +435,9 @@ func TestNetworkGraph(t *testing.T) {
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 				CommonData: eventtypes.CommonData{
-					Node:      "local",
 					Namespace: "default",
-					Pod:       "test-local-gadget-network-graph001",
+					Pod:       containerName,
+					Container: containerName,
 				},
 			},
 			PktType:    "HOST",
@@ -450,7 +451,8 @@ func TestNetworkGraph(t *testing.T) {
 				CommonData: eventtypes.CommonData{
 					Node:      "local",
 					Namespace: "default",
-					Pod:       "test-local-gadget-network-graph001",
+					Pod:       containerName,
+					Container: containerName,
 				},
 				Message: "tracer detached",
 			},

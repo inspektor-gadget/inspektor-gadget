@@ -41,10 +41,18 @@ func CloseLink(l link.Link) link.Link {
 	return nil
 }
 
-// DataEnricher is used to enrich events with Kubernetes information,
-// like node, namespace, pod name and container name.
-type DataEnricher interface {
-	Enrich(event *types.CommonData, mountnsid uint64)
+// DataEnricherByMntNs is used to enrich events with Kubernetes information,
+// like node, namespace, pod name and container name when the mount namespace
+// is available.
+type DataEnricherByMntNs interface {
+	EnrichByMntNs(event *types.CommonData, mountnsid uint64)
+}
+
+// DataEnricherByNetNs is used to enrich events with Kubernetes information,
+// like node, namespace, pod name and container name when the network namespace
+// is available.
+type DataEnricherByNetNs interface {
+	EnrichByNetNs(event *types.CommonData, netnsid uint64)
 }
 
 func FromCString(in []byte) string {

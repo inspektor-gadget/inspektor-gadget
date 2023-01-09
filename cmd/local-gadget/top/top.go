@@ -41,7 +41,7 @@ type TopGadget[Stats any] struct {
 	commontop.TopGadget[Stats]
 
 	commonFlags        *utils.CommonFlags
-	createAndRunTracer func(*ebpf.Map, gadgets.DataEnricher, func(*top.Event[Stats])) (trace.Tracer, error)
+	createAndRunTracer func(*ebpf.Map, gadgets.DataEnricherByMntNs, func(*top.Event[Stats])) (trace.Tracer, error)
 }
 
 // Run runs a TopGadget and prints the output after parsing it using the

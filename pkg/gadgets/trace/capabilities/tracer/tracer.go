@@ -46,7 +46,7 @@ type Tracer struct {
 	capEnterLink         link.Link
 	capExitLink          link.Link
 	reader               *perf.Reader
-	enricher             gadgets.DataEnricher
+	enricher             gadgets.DataEnricherByMntNs
 	eventCallback        func(types.Event)
 	runningKernelVersion uint32
 }
@@ -95,7 +95,7 @@ var capabilitiesNames = map[int32]string{
 	40: "CHECKPOINT_RESTORE",
 }
 
-func NewTracer(c *Config, enricher gadgets.DataEnricher,
+func NewTracer(c *Config, enricher gadgets.DataEnricherByMntNs,
 	eventCallback func(types.Event),
 ) (*Tracer, error) {
 	t := &Tracer{
@@ -261,7 +261,7 @@ func (t *Tracer) run() {
 		}
 
 		if t.enricher != nil {
-			t.enricher.Enrich(&event.CommonData, event.MountNsID)
+			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
 		t.eventCallback(event)
