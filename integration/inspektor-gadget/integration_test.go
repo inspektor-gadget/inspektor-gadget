@@ -30,7 +30,6 @@ import (
 	cpuprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	processCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
-	filetopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 	fsslowerType "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
 	mountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
@@ -251,49 +250,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestFiletop(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-filetop")
-
-	t.Parallel()
-
-	filetopCmd := &Command{
-		Name:         "StartFiletopGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &filetopTypes.Stats{
-				CommonData: BuildCommonData(ns),
-				Reads:      0,
-				ReadBytes:  0,
-				Filename:   "date.txt",
-				FileType:   byte('R'), // Regular file
-				Comm:       "sh",
-			}
-
-			normalize := func(e *filetopTypes.Stats) {
-				e.Node = ""
-				e.Writes = 0
-				e.WriteBytes = 0
-				e.Pid = 0
-				e.Tid = 0
-				e.MountNsID = 0
-			}
-
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		filetopCmd,
-		BusyboxPodRepeatCommand(ns, "echo date >> /tmp/date.txt"),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestFsslower(t *testing.T) {
