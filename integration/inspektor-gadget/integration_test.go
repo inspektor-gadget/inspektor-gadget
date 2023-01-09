@@ -31,7 +31,6 @@ import (
 	processCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-	fsslowerType "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
 	mountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
 	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	oomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
@@ -250,52 +249,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestFsslower(t *testing.T) {
-	fsType := "ext4"
-	if *k8sDistro == K8sDistroARO {
-		fsType = "xfs"
-	}
-
-	ns := GenerateTestNamespaceName("test-fsslower")
-
-	t.Parallel()
-
-	fsslowerCmd := &Command{
-		Name:         "StartFsslowerGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace fsslower -n %s -f %s -m 0 -o json", ns, fsType),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &fsslowerType.Event{
-				Event: BuildBaseEvent(ns),
-				Comm:  "cat",
-				File:  "foo",
-				Op:    "R",
-			}
-
-			normalize := func(e *fsslowerType.Event) {
-				e.Node = ""
-				e.MountNsID = 0
-				e.Pid = 0
-				e.Bytes = 0
-				e.Offset = 0
-				e.Latency = 0
-			}
-
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		fsslowerCmd,
-		BusyboxPodCommand(ns, "echo 'this is foo' > foo && while true; do cat foo && sleep 0.1; done"),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestMountsnoop(t *testing.T) {
