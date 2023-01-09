@@ -31,7 +31,6 @@ import (
 	processCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-	mountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
 	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	oomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
 	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
@@ -249,52 +248,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestMountsnoop(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-mountsnoop")
-
-	t.Parallel()
-
-	mountsnoopCmd := &Command{
-		Name:         "StartMountsnoopGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace mount -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &mountTypes.Event{
-				Event:     BuildBaseEvent(ns),
-				Comm:      "mount",
-				Operation: "mount",
-				Retval:    -2,
-				Source:    "/mnt",
-				Target:    "/mnt",
-			}
-
-			normalize := func(e *mountTypes.Event) {
-				e.Node = ""
-				e.Pid = 0
-				e.Tid = 0
-				e.MountNsID = 0
-				e.Latency = 0
-				e.Fs = ""
-				e.Data = ""
-				e.Flags = nil
-				e.FlagsRaw = 0
-			}
-
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		mountsnoopCmd,
-		BusyboxPodRepeatCommand(ns, "mount /mnt /mnt"),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestNetworkpolicy(t *testing.T) {
