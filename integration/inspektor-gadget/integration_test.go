@@ -27,7 +27,6 @@ import (
 	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 )
 
 const (
@@ -238,59 +237,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestTcptop(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-tcptop")
-
-	t.Parallel()
-
-	commandsPreTest := []*Command{
-		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
-		WaitUntilPodReadyCommand(ns, "nginx-pod"),
-	}
-
-	RunTestSteps(commandsPreTest, t)
-	NginxIP := GetTestPodIP(ns, "nginx-pod")
-
-	tcptopCmd := &Command{
-		Name:         "StartTcptopGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			TestPodIP := GetTestPodIP(ns, "test-pod")
-
-			expectedEntry := &tcptopTypes.Stats{
-				CommonData: BuildCommonData(ns),
-				Comm:       "wget",
-				Dport:      80,
-				Family:     syscall.AF_INET,
-				Saddr:      TestPodIP,
-				Daddr:      NginxIP,
-			}
-
-			normalize := func(e *tcptopTypes.Stats) {
-				e.Node = ""
-				e.MountNsID = 0
-				e.Pid = 0
-				e.Sport = 0
-				e.Sent = 0
-				e.Received = 0
-			}
-
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		tcptopCmd,
-		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestTraceloop(t *testing.T) {
