@@ -448,7 +448,7 @@ func TestBiotop(t *testing.T) {
 				e.Bytes = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
 		},
 	}
 
@@ -623,7 +623,7 @@ func TestEbpftop(t *testing.T) {
 				e.MapCount = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
 		},
 	}
 
@@ -727,7 +727,7 @@ func TestFiletop(t *testing.T) {
 				e.MountNsID = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
 		},
 	}
 
@@ -1468,7 +1468,7 @@ func TestTcptop(t *testing.T) {
 				e.Received = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
 		},
 	}
 

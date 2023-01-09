@@ -55,7 +55,7 @@ func TestTopEbpf(t *testing.T) {
 				e.MapCount = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
 		},
 	}
 

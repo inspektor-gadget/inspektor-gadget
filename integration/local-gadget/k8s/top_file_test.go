@@ -54,7 +54,7 @@ func TestTopFile(t *testing.T) {
 				e.WriteBytes = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
 		},
 	}
 

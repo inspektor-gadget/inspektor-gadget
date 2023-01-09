@@ -52,7 +52,7 @@ func TestTopBlockIO(t *testing.T) {
 				e.Operations = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
 		},
 	}
 

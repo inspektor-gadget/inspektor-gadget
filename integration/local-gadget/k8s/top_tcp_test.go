@@ -63,7 +63,7 @@ func TestTopTCP(t *testing.T) {
 				e.Received = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
 		},
 	}
 
