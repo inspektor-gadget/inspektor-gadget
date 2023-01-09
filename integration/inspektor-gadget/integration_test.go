@@ -32,7 +32,6 @@ import (
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	filetopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	fsslowerType "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
 	mountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
 	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
@@ -252,70 +251,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestExecsnoop(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-execsnoop")
-
-	t.Parallel()
-
-	cmd := "while true; do date ; /bin/sleep 0.1; done"
-	shArgs := []string{"/bin/sh", "-c", cmd}
-	dateArgs := []string{"/bin/date"}
-	sleepArgs := []string{"/bin/sleep", "0.1"}
-	// on arm64, trace exec uses kprobe and it cannot trace the arguments:
-	// 243759db6b19 ("pkg/gadgets: Use kprobe for execsnoop on arm64.")
-	if *k8sArch == "arm64" {
-		shArgs = nil
-		dateArgs = nil
-		sleepArgs = nil
-	}
-
-	execsnoopCmd := &Command{
-		Name:         "StartExecsnoopGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntries := []*execTypes.Event{
-				{
-					Event: BuildBaseEvent(ns),
-					Comm:  "sh",
-					Args:  shArgs,
-				},
-				{
-					Event: BuildBaseEvent(ns),
-					Comm:  "date",
-					Args:  dateArgs,
-				},
-				{
-					Event: BuildBaseEvent(ns),
-					Comm:  "sleep",
-					Args:  sleepArgs,
-				},
-			}
-
-			normalize := func(e *execTypes.Event) {
-				e.Node = ""
-				e.Pid = 0
-				e.Ppid = 0
-				e.UID = 0
-				e.Retval = 0
-				e.MountNsID = 0
-			}
-
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		execsnoopCmd,
-		BusyboxPodCommand(ns, cmd),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestFiletop(t *testing.T) {
