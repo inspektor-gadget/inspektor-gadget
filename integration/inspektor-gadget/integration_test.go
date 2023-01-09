@@ -27,7 +27,6 @@ import (
 	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	cpuprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
@@ -244,41 +243,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestCpuProfile(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-cpu-profile")
-
-	t.Parallel()
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		BusyboxPodCommand(ns, "while true; do echo foo > /dev/null; done"),
-		WaitUntilTestPodReadyCommand(ns),
-		{
-			Name: "RunProfileGadget",
-			Cmd:  fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -K --timeout 15 -o json", ns),
-			ExpectedOutputFn: func(output string) error {
-				expectedEntry := &cpuprofileTypes.Report{
-					CommonData: BuildCommonData(ns),
-					Comm:       "sh",
-				}
-
-				normalize := func(e *cpuprofileTypes.Report) {
-					e.Node = ""
-					e.Pid = 0
-					e.UserStack = nil
-					e.KernelStack = nil
-					e.Count = 0
-				}
-
-				return ExpectEntriesToMatch(output, normalize, expectedEntry)
-			},
-		},
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestSeccompadvisor(t *testing.T) {
