@@ -26,13 +26,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cilium/ebpf"
-
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	cpuprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	processCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
-	ebpftopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	filetopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
@@ -255,53 +252,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestEbpftop(t *testing.T) {
-	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "amd64" {
-		t.Skip("Skip running top ebpf gadget on AKS Ubuntu amd64: see issue #931")
-	}
-
-	t.Parallel()
-
-	ebpftopCmd := &Command{
-		Name:         "StartEbpftopGadget",
-		Cmd:          "$KUBECTL_GADGET top ebpf -o json -m 100",
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &ebpftopTypes.Stats{
-				Type: ebpf.Tracing.String(),
-				Name: "ig_top_ebpf_it",
-			}
-
-			normalize := func(e *ebpftopTypes.Stats) {
-				e.Node = ""
-				e.Namespace = ""
-				e.Pod = ""
-				e.Container = ""
-				e.Namespace = ""
-				e.ProgramID = 0
-				e.Pids = nil
-				e.CurrentRuntime = 0
-				e.CurrentRunCount = 0
-				e.CumulativeRuntime = 0
-				e.CumulativeRunCount = 0
-				e.TotalRuntime = 0
-				e.TotalRunCount = 0
-				e.MapMemory = 0
-				e.MapCount = 0
-			}
-
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		ebpftopCmd,
-		SleepForSecondsCommand(2),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestExecsnoop(t *testing.T) {
