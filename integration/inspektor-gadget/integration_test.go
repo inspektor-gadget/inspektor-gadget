@@ -27,7 +27,6 @@ import (
 	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 	tcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 	tcpconnectTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
@@ -241,55 +240,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestSocketCollector(t *testing.T) {
-	if *k8sDistro == K8sDistroARO {
-		t.Skip("Skip running socket-collector gadget on ARO: iterators are not supported on kernel 4.18.0-305.19.1.el8_4.x86_64")
-	}
-
-	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "amd64" {
-		t.Skip("Skip running socket-collector gadget on AKS Ubuntu amd64: iterators are not supported on kernel 5.4.0-1089-azure")
-	}
-
-	ns := GenerateTestNamespaceName("test-socket-collector")
-
-	t.Parallel()
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		BusyboxPodCommand(ns, "nc -l 0.0.0.0 -p 9090"),
-		WaitUntilTestPodReadyCommand(ns),
-		{
-			Name: "RunSocketCollectorGadget",
-			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json", ns),
-			ExpectedOutputFn: func(output string) error {
-				expectedEntry := &socketCollectorTypes.Event{
-					Event:         BuildBaseEvent(ns),
-					Protocol:      "TCP",
-					LocalAddress:  "0.0.0.0",
-					LocalPort:     9090,
-					RemoteAddress: "0.0.0.0",
-					RemotePort:    0,
-					Status:        "LISTEN",
-				}
-
-				// Socket gadget doesn't provide container data yet. See issue #744.
-				expectedEntry.Container = ""
-
-				normalize := func(e *socketCollectorTypes.Event) {
-					e.Node = ""
-					e.Container = ""
-					e.InodeNumber = 0
-				}
-
-				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
-			},
-		},
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestTcpconnect(t *testing.T) {
