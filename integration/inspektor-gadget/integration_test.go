@@ -28,7 +28,6 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	cpuprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
-	processCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
@@ -245,41 +244,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestProcessCollector(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-process-collector")
-
-	t.Parallel()
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		BusyboxPodCommand(ns, "nc -l -p 9090"),
-		WaitUntilTestPodReadyCommand(ns),
-		{
-			Name: "RunProcessCollectorGadget",
-			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot process -n %s -o json", ns),
-			ExpectedOutputFn: func(output string) error {
-				expectedEntry := &processCollectorTypes.Event{
-					Event:   BuildBaseEvent(ns),
-					Command: "nc",
-				}
-
-				normalize := func(e *processCollectorTypes.Event) {
-					e.Node = ""
-					e.Pid = 0
-					e.Tid = 0
-					e.ParentPid = 0
-					e.MountNsID = 0
-				}
-
-				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
-			},
-		},
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestCpuProfile(t *testing.T) {
