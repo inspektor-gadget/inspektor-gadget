@@ -28,7 +28,6 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-	tcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 )
 
 const (
@@ -239,58 +238,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestTcptracer(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-tcptracer")
-
-	t.Parallel()
-
-	commandsPreTest := []*Command{
-		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
-		WaitUntilPodReadyCommand(ns, "nginx-pod"),
-	}
-
-	RunTestSteps(commandsPreTest, t)
-	NginxIP := GetTestPodIP(ns, "nginx-pod")
-
-	tcptracerCmd := &Command{
-		Name:         "StartTcptracerGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcp -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			TestPodIP := GetTestPodIP(ns, "test-pod")
-
-			expectedEntry := &tcpTypes.Event{
-				Event:     BuildBaseEvent(ns),
-				Comm:      "wget",
-				IPVersion: 4,
-				Dport:     80,
-				Operation: "connect",
-				Saddr:     TestPodIP,
-				Daddr:     NginxIP,
-			}
-
-			normalize := func(e *tcpTypes.Event) {
-				e.Node = ""
-				e.Pid = 0
-				e.Sport = 0
-				e.MountNsID = 0
-			}
-
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		tcptracerCmd,
-		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestTcptop(t *testing.T) {
