@@ -70,13 +70,19 @@ func parseJSONArrayOutput[T any](output string, normalize func(*T)) ([]*T, error
 
 func parseMultipleJSONArrayOutput[T any](output string, normalize func(*T)) ([]*T, error) {
 	allEntries := make([]*T, 0)
+
 	sc := bufio.NewScanner(strings.NewReader(output))
+	// On ARO we saw arrays with charcounts of > 100,000. Lets just set 1 MB as the limit
+	sc.Buffer(make([]byte, 1024), 1024*1024)
 	for sc.Scan() {
 		entries, err := parseJSONArrayOutput(sc.Text(), normalize)
 		if err != nil {
 			return nil, err
 		}
 		allEntries = append(allEntries, entries...)
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("parsing multiple JSON arrays: %w", err)
 	}
 
 	return allEntries, nil
