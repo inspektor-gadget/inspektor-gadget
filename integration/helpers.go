@@ -78,6 +78,9 @@ func parseMultipleJSONArrayOutput[T any](output string, normalize func(*T)) ([]*
 		}
 		allEntries = append(allEntries, entries...)
 	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("parsing multiple JSON arrays: %w", err)
+	}
 
 	return allEntries, nil
 }
