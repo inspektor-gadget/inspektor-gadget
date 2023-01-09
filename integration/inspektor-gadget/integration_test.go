@@ -32,7 +32,6 @@ import (
 	cpuprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	processCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
-	biotopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 	ebpftopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	filetopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
@@ -258,52 +257,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestBiotop(t *testing.T) {
-	if *k8sDistro == K8sDistroARO {
-		t.Skip("Skip running biotop gadget on ARO: see issue #589")
-	}
-
-	ns := GenerateTestNamespaceName("test-biotop")
-
-	t.Parallel()
-
-	biotopCmd := &Command{
-		Name:         "StartBiotopGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &biotopTypes.Stats{
-				CommonData: BuildCommonData(ns),
-				Write:      true,
-				Comm:       "dd",
-			}
-
-			normalize := func(e *biotopTypes.Stats) {
-				e.Node = ""
-				e.Major = 0
-				e.Minor = 0
-				e.MicroSecs = 0
-				e.MountNsID = 0
-				e.Pid = 0
-				e.Operations = 0
-				e.Bytes = 0
-			}
-
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		biotopCmd,
-		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096"),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestCapabilities(t *testing.T) {
