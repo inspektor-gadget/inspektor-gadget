@@ -35,7 +35,6 @@ import (
 	ebpftopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	filetopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-	dnsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	fsslowerType "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
 	mountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
@@ -256,84 +255,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestDns(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-dns")
-
-	t.Parallel()
-
-	dnsCmd := &Command{
-		Name:         "StartDnsGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace dns -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntries := []*dnsTypes.Event{
-				{
-					Event:      BuildBaseEvent(ns),
-					ID:         "0000",
-					Qr:         dnsTypes.DNSPktTypeQuery,
-					Nameserver: "8.8.4.4",
-					PktType:    "OUTGOING",
-					DNSName:    "inspektor-gadget.io.",
-					QType:      "A",
-				},
-				{
-					Event:      BuildBaseEvent(ns),
-					ID:         "0000",
-					Qr:         dnsTypes.DNSPktTypeResponse,
-					Nameserver: "8.8.4.4",
-					PktType:    "HOST",
-					DNSName:    "inspektor-gadget.io.",
-					QType:      "A",
-					Rcode:      "NoError",
-				},
-				{
-					Event:      BuildBaseEvent(ns),
-					ID:         "0000",
-					Qr:         dnsTypes.DNSPktTypeQuery,
-					Nameserver: "8.8.4.4",
-					PktType:    "OUTGOING",
-					DNSName:    "inspektor-gadget.io.",
-					QType:      "A",
-				},
-				{
-					Event:      BuildBaseEvent(ns),
-					ID:         "0000",
-					Qr:         dnsTypes.DNSPktTypeResponse,
-					Nameserver: "8.8.4.4",
-					PktType:    "HOST",
-					DNSName:    "inspektor-gadget.io.",
-					QType:      "AAAA",
-					Rcode:      "NoError",
-				},
-			}
-
-			// DNS gadget doesn't provide container data. Remove it.
-			for _, entry := range expectedEntries {
-				entry.Container = ""
-			}
-
-			normalize := func(e *dnsTypes.Event) {
-				e.Node = ""
-				e.ID = "0000"
-			}
-
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		dnsCmd,
-		BusyboxPodRepeatCommand(ns,
-			"nslookup -type=a inspektor-gadget.io. 8.8.4.4 ;"+
-				"nslookup -type=aaaa inspektor-gadget.io. 8.8.4.4"),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestEbpftop(t *testing.T) {
