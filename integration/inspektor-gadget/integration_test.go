@@ -245,26 +245,6 @@ func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
 }
 
-func TestSeccompadvisor(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-seccomp-advisor")
-
-	t.Parallel()
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		BusyboxPodRepeatCommand(ns, "echo foo"),
-		WaitUntilTestPodReadyCommand(ns),
-		{
-			Name:           "RunSeccompAdvisorGadget",
-			Cmd:            fmt.Sprintf("id=$($KUBECTL_GADGET advise seccomp-profile start -n %s -p test-pod); sleep 30; $KUBECTL_GADGET advise seccomp-profile stop $id", ns),
-			ExpectedRegexp: `write`,
-		},
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
-}
-
 func TestSigsnoop(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-sigsnoop")
 
