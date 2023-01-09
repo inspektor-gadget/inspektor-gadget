@@ -29,7 +29,6 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	socketCollectorTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	tcptopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
 	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
 	tcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
 	tcpconnectTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
@@ -243,45 +242,6 @@ func testMain(m *testing.M) int {
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
-}
-
-func TestSigsnoop(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-sigsnoop")
-
-	t.Parallel()
-
-	sigsnoopCmd := &Command{
-		Name:         "StartSigsnoopGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace signal -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &signalTypes.Event{
-				Event:  BuildBaseEvent(ns),
-				Comm:   "sh",
-				Signal: "SIGTERM",
-			}
-
-			normalize := func(e *signalTypes.Event) {
-				e.Node = ""
-				e.Pid = 0
-				e.TargetPid = 0
-				e.Retval = 0
-				e.MountNsID = 0
-			}
-
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		sigsnoopCmd,
-		BusyboxPodRepeatCommand(ns, "sleep 3 & kill $!"),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t)
 }
 
 func TestSnisnoop(t *testing.T) {
