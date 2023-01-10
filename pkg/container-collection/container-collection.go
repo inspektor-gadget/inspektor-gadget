@@ -175,8 +175,13 @@ func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container 
 
 // LookupContainerByMntns returns a container by its mount namespace
 // inode id. If not found nil is returned.
+// If mount namespace inode id is 0, nil is returned.
 func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container {
 	var container *Container
+
+	if mntnsid == 0 {
+		return nil
+	}
 
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
