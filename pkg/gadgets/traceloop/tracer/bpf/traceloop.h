@@ -34,7 +34,8 @@ const __u8 SYSCALL_EVENT_TYPE_EXIT = 1;
 struct syscall_event_t {
 	/* __u64 ret stored in args[0] */
 	__u64 args[SYSCALL_ARGS];
-	__u64 timestamp;
+	__u64 monotonic_timestamp;
+	__u64 boot_timestamp;
 	__u32 pid;
 
 	__u16 cpu;
@@ -47,7 +48,7 @@ struct syscall_event_t {
 
 struct syscall_event_cont_t {
 	__u8 param[PARAM_LEN];
-	__u64 timestamp;
+	__u64 monotonic_timestamp;
 	__u64 length;
 	__u8 index;
 	__u8 failed;
@@ -58,7 +59,7 @@ struct syscall_def_t {
 };
 
 struct remembered_args {
-	__u64 timestamp;
+	__u64 monotonic_timestamp;
 	__u64 nr;
 	__u64 args[SYSCALL_ARGS];
 };
