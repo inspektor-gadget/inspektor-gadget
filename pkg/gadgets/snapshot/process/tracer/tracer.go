@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -35,7 +36,8 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang processCollector ./bpf/process-collector.bpf.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
 
 type Config struct {
-	MountnsMap *ebpf.Map
+	MountnsMap  *ebpf.Map
+	ShowThreads bool
 }
 
 var hostRoot string
@@ -78,6 +80,7 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 
 	consts := map[string]interface{}{
 		"filter_by_mnt_ns": filterByMntNs,
+		"show_threads":     config.ShowThreads,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -151,9 +154,44 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 	return events, nil
 }
 
+func getTidEvent(config *Config, enricher gadgets.DataEnricherByMntNs, pid, tid int) (*processcollectortypes.Event, error) {
+	var val uint32
+
+	commBytes, _ := ioutil.ReadFile(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/comm", tid)))
+	comm := strings.TrimRight(string(commBytes), "\n")
+	mntnsid, err := containerutils.GetMntNs(tid)
+	if err != nil {
+		return nil, err
+	}
+
+	if config.MountnsMap != nil {
+		// TODO: This would be more efficient to store these elements in user space to avoid
+		// performing systemcalls to lookup in the eBPF map
+		err := config.MountnsMap.Lookup(&mntnsid, &val)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	event := &processcollectortypes.Event{
+		Event: eventtypes.Event{
+			Type: eventtypes.NORMAL,
+		},
+		Tid:       tid,
+		Pid:       pid,
+		Command:   comm,
+		MountNsID: mntnsid,
+	}
+
+	if enricher != nil {
+		enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
+	}
+
+	return event, nil
+}
+
 func getPidEvents(config *Config, enricher gadgets.DataEnricherByMntNs, pid int) ([]*processcollectortypes.Event, error) {
 	var events []*processcollectortypes.Event
-	var val uint32
 
 	items, err := os.ReadDir(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/task/", pid)))
 	if err != nil {
@@ -170,63 +208,12 @@ func getPidEvents(config *Config, enricher gadgets.DataEnricherByMntNs, pid int)
 			continue
 		}
 		tid := int(tid64)
-
-		commBytes, _ := os.ReadFile(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/comm", tid)))
-		comm := strings.TrimRight(string(commBytes), "\n")
-		mntnsid, err := containerutils.GetMntNs(tid)
+		event, err := getTidEvent(config, enricher, pid, tid)
 		if err != nil {
 			continue
 		}
 
-		if config.MountnsMap != nil {
-			// TODO: This would be more efficient to store
-			// these elements in user space to avoid
-			// performing systemcalls to lookup in the eBPF
-			// map
-			err := config.MountnsMap.Lookup(&mntnsid, &val)
-			if err != nil {
-				continue
-			}
-		}
-
-		f, err := os.Open(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/status", tid)))
-		if err != nil {
-			continue
-		}
-
-		parentPid := -1
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			matchedElems, err := fmt.Sscanf(scanner.Text(), "PPid:\t%d", &parentPid)
-			if err != nil {
-				continue
-			}
-
-			if matchedElems != 1 {
-				continue
-			}
-
-			break
-		}
-
-		f.Close()
-
-		event := processcollectortypes.Event{
-			Event: eventtypes.Event{
-				Type: eventtypes.NORMAL,
-			},
-			Tid:       tid,
-			Pid:       pid,
-			Command:   comm,
-			ParentPid: parentPid,
-			MountNsID: mntnsid,
-		}
-
-		if enricher != nil {
-			enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
-		}
-
-		events = append(events, &event)
+		events = append(events, event)
 	}
 
 	return events, nil
@@ -251,12 +238,19 @@ func runProcfsCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([
 		}
 		pid := int(pid64)
 
-		pidEvents, err := getPidEvents(config, enricher, pid)
-		if err != nil {
-			continue
+		if config.ShowThreads {
+			pidEvents, err := getPidEvents(config, enricher, pid)
+			if err != nil {
+				continue
+			}
+			events = append(events, pidEvents...)
+		} else {
+			event, err := getTidEvent(config, enricher, pid, pid)
+			if err != nil {
+				continue
+			}
+			events = append(events, event)
 		}
-
-		events = append(events, pidEvents...)
 	}
 
 	return events, nil

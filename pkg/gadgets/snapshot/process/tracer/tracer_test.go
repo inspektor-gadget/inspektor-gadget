@@ -33,11 +33,11 @@ import (
 
 type collectorFunc func(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*snapshotProcessTypes.Event, error)
 
-func BenchmarkEBPFTracer(b *testing.B) {
+func BenchmarkSnapshotProcessEBPFTracer(b *testing.B) {
 	benchmarkTracer(b, runeBPFCollector)
 }
 
-func BenchmarkProcfsTracer(b *testing.B) {
+func BenchmarkSnapshotProcessProcfsTracer(b *testing.B) {
 	benchmarkTracer(b, runProcfsCollector)
 }
 
@@ -52,11 +52,11 @@ func benchmarkTracer(b *testing.B, runCollector collectorFunc) {
 	}
 }
 
-func TestEBPFTracer(t *testing.T) {
+func TestSnapshotProcessEBPFTracer(t *testing.T) {
 	testTracer(t, runeBPFCollector)
 }
 
-func TestProcfsTracer(t *testing.T) {
+func TestSnapshotProcessProcfsTracer(t *testing.T) {
 	testTracer(t, runProcfsCollector)
 }
 
@@ -112,6 +112,34 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 				}
 			},
 			generateEvent: generateEvent,
+			// We have to use ExpectAtLeastOneEvent because it's possible that the
+			// golang thread that executes this test is also captured
+			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, sleepPid int) *snapshotProcessTypes.Event {
+				return &snapshotProcessTypes.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					Command:   "sleep",
+					Pid:       sleepPid,
+					Tid:       sleepPid,
+					MountNsID: info.MountNsID,
+				}
+			}),
+		},
+		// This is a hacky way to test this: one of the threads of the goroutine is moved to
+		// the mount namespace created for testing, also the sleep process we execute is
+		// there. That's why 2 events are expected. A better way would be to execute a
+		// command that creates multiple threads and check if we capture all of them, but so
+		// far I haven't found an easy way to do so. One idea is to use python but it seems
+		// too complicated and will introduce another dependency for testing.
+		"captures_events_with_matching_filter_threads": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *Config {
+				return &Config{
+					MountnsMap:  utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					ShowThreads: true,
+				}
+			},
+			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []snapshotProcessTypes.Event) {
 				if len(events) != 2 {
 					t.Fatalf("%d events expected, found: %d", 2, len(events))
@@ -135,6 +163,22 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 				}
 
 				t.Fatalf("Event wasn't captured")
+			},
+		},
+		"no_threads_are_captured": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *Config {
+				return &Config{}
+			},
+			generateEvent: generateEvent,
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, sleepPid int, events []snapshotProcessTypes.Event) {
+				if len(events) == 0 {
+					t.Fatalf("no events were captured")
+				}
+				for _, event := range events {
+					if event.Pid != event.Tid {
+						t.Fatalf("thread %d was captured", event.Tid)
+					}
+				}
 			},
 		},
 	} {

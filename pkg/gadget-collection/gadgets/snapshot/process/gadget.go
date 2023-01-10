@@ -17,10 +17,12 @@ package processcollector
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 )
 
 type Trace struct {
@@ -71,8 +73,23 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
 		return
 	}
+
+	showThreads := false
+
+	params := trace.Spec.Parameters
+	if params != nil {
+		if val, ok := params[types.ShowThreadsParam]; ok {
+			var err error
+			showThreads, err = strconv.ParseBool(val)
+			if err != nil {
+				trace.Status.OperationError = fmt.Sprintf("%q is not valid for %s: %v", val, types.ShowThreadsParam, err)
+				return
+			}
+		}
+	}
 	config := &tracer.Config{
-		MountnsMap: mountNsMap,
+		MountnsMap:  mountNsMap,
+		ShowThreads: showThreads,
 	}
 	events, err := tracer.RunCollector(config, t.helpers)
 	if err != nil {

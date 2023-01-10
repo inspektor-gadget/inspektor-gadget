@@ -24,7 +24,7 @@ import (
 )
 
 type ProcessFlags struct {
-	showThreads    bool
+	ShowThreads    bool
 	showParentsPID bool
 }
 
@@ -36,7 +36,7 @@ type ProcessParser struct {
 }
 
 func newProcessParser(outputConfig *commonutils.OutputConfig, flags *ProcessFlags, cols *columns.Columns[types.Event], options ...commonutils.Option) (SnapshotParser[types.Event], error) {
-	if flags.showThreads {
+	if flags.ShowThreads {
 		col, _ := cols.GetColumn("tid")
 		col.Visible = true
 	}
@@ -71,16 +71,6 @@ func (p *ProcessParser) GetOutputConfig() *commonutils.OutputConfig {
 }
 
 func (p *ProcessParser) SortEvents(allProcesses *[]*types.Event) {
-	if !p.flags.showThreads {
-		allProcessesTrimmed := []*types.Event{}
-		for _, i := range *allProcesses {
-			if i.Tid == i.Pid {
-				allProcessesTrimmed = append(allProcessesTrimmed, i)
-			}
-		}
-		*allProcesses = allProcessesTrimmed
-	}
-
 	columnssort.SortEntries(types.GetColumns().GetColumnMap(), *allProcesses,
 		[]string{"node", "namespace", "pod", "container", "cmd", "tgid", "pid"})
 }
@@ -93,7 +83,7 @@ func NewProcessCmd(runCmd func(*cobra.Command, []string) error, flags *ProcessFl
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&flags.showThreads,
+		&flags.ShowThreads,
 		"threads",
 		"t",
 		false,

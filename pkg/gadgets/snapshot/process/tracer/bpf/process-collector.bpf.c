@@ -20,6 +20,7 @@ struct {
 } mount_ns_filter SEC(".maps");
 
 const volatile bool filter_by_mnt_ns = false;
+const volatile bool show_threads = false;
 
 SEC("iter/task")
 int ig_snap_proc(struct bpf_iter__task *ctx)
@@ -32,6 +33,9 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	pid_t parent_pid;
 
 	if (task == NULL)
+		return 0;
+
+	if (!show_threads && task->tgid != task->pid)
 		return 0;
 
 	__u64 mntns_id = task->nsproxy->mnt_ns->ns.inum;
