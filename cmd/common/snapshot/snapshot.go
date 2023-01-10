@@ -68,8 +68,6 @@ func (g *SnapshotGadgetPrinter[Event]) PrintEvents(allEvents []*Event) error {
 
 		fmt.Printf("%s\n", b)
 		return nil
-	case commonutils.OutputModeColumns:
-		fallthrough
 	case commonutils.OutputModeCustomColumns:
 		allEventsTrimmed := []*Event{}
 		for _, e := range allEvents {

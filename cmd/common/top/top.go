@@ -96,8 +96,6 @@ func (g *TopGadget[Stats]) PrintStats(stats []*Stats) {
 		}
 		fmt.Println(string(b))
 
-	case commonutils.OutputModeColumns:
-		fallthrough
 	case commonutils.OutputModeCustomColumns:
 		for _, stat := range stats {
 			fmt.Println(g.Parser.TransformIntoColumns(stat))

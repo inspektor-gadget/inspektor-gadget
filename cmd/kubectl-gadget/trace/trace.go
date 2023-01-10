@@ -75,8 +75,6 @@ func (g *TraceGadget[Event]) Run() error {
 			}
 
 			return string(b)
-		case commonutils.OutputModeColumns:
-			fallthrough
 		case commonutils.OutputModeCustomColumns:
 			return g.parser.TransformIntoColumns(&e)
 		}

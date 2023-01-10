@@ -71,8 +71,6 @@ func newSeccompCmd() *cobra.Command {
 				}
 
 				fmt.Println(string(b))
-			case commonutils.OutputModeColumns:
-				fallthrough
 			case commonutils.OutputModeCustomColumns:
 				fmt.Println(parser.TransformIntoColumns(&event))
 			}

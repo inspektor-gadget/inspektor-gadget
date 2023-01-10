@@ -108,8 +108,6 @@ func (p *CPUParser) TransformReport(report *cpuTypes.Report) string {
 		}
 
 		return string(b)
-	case utils.OutputModeColumns:
-		fallthrough
 	case utils.OutputModeCustomColumns:
 		otherCols := p.TransformIntoColumns(report)
 		if p.CPUFlags.ProfileUserOnly {

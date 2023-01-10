@@ -197,8 +197,6 @@ func runTraceloopList(cmd *cobra.Command, args []string) error {
 				}
 
 				fmt.Println(string(b))
-			case commonutils.OutputModeColumns:
-				fallthrough
 			case commonutils.OutputModeCustomColumns:
 				fmt.Println(parser.TransformIntoColumns(&info))
 			}
@@ -256,8 +254,6 @@ func runTraceloopShow(cmd *cobra.Command, args []string) error {
 				}
 
 				fmt.Println(string(b))
-			case commonutils.OutputModeColumns:
-				fallthrough
 			case commonutils.OutputModeCustomColumns:
 				fmt.Println(parser.TransformIntoColumns(&event))
 			}
