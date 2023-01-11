@@ -5,12 +5,18 @@ description: >
   Understand how everything comes together.
 ---
 
-Inspektor Gadget is deployed to each node as a privileged DaemonSet.
-It uses in-kernel eBPF helper programs to monitor events mainly related to
-syscalls from userspace programs in a pod. The eBPF programs are run by
-the kernel and gather the log data. Inspektor Gadget's userspace
-utilities fetch the log data from ring buffers and display it. What eBPF
-programs are and how Inspektor Gadget uses them is briefly explained here.
+Inspektor Gadget comes with several tools which permit monitoring different
+events related to specific kernel subsystems.
+
+![different tools offered by Inspektor Gadget](images/architecture/ebpf.svg)
+
+On Kubernetes, Inspektor Gadget is deployed to each node as a privileged
+DaemonSet.
+It uses in-kernel eBPF helper programs to monitor events from userspace programs
+in a pod. The eBPF programs are run by the kernel and gather the log data.
+Inspektor Gadget's userspace utilities fetch the log data from ring buffers
+and display it. What eBPF programs are and how Inspektor Gadget uses them is
+briefly explained here.
 
 ![k8s integration](images/architecture/k8s.svg)
 
