@@ -82,6 +82,7 @@ type GadgetHelpers interface {
 	containercollection.ContainerResolver
 	gadgets.DataEnricherByMntNs
 	gadgets.DataEnricherByNetNs
+	gadgets.DataNodeEnricher
 
 	PublishEvent(tracerID string, line string) error
 	TracerMountNsMap(tracerID string) (*ebpf.Map, error)
