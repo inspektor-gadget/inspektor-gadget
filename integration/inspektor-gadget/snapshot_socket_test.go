@@ -1,0 +1,69 @@
+// Copyright 2019-2022 The Inspektor Gadget authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package main
+
+import (
+	"fmt"
+	"testing"
+
+	snapshotsocketTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
+
+	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+)
+
+func TestSnapshotSocket(t *testing.T) {
+	if *k8sDistro == K8sDistroARO {
+		t.Skip("Skip running snapshot socket gadget on ARO: iterators are not supported on kernel 4.18.0-305.19.1.el8_4.x86_64")
+	}
+
+	ns := GenerateTestNamespaceName("test-socket-collector")
+
+	t.Parallel()
+
+	commands := []*Command{
+		CreateTestNamespaceCommand(ns),
+		BusyboxPodCommand(ns, "nc -l 0.0.0.0 -p 9090"),
+		WaitUntilTestPodReadyCommand(ns),
+		{
+			Name: "RunSnapshotSocketGadget",
+			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json", ns),
+			ExpectedOutputFn: func(output string) error {
+				expectedEntry := &snapshotsocketTypes.Event{
+					Event:         BuildBaseEvent(ns),
+					Protocol:      "TCP",
+					LocalAddress:  "0.0.0.0",
+					LocalPort:     9090,
+					RemoteAddress: "0.0.0.0",
+					RemotePort:    0,
+					Status:        "LISTEN",
+				}
+
+				// Socket gadget doesn't provide container data yet. See issue #744.
+				expectedEntry.Container = ""
+
+				normalize := func(e *snapshotsocketTypes.Event) {
+					e.Node = ""
+					e.Container = ""
+					e.InodeNumber = 0
+				}
+
+				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
+			},
+		},
+		DeleteTestNamespaceCommand(ns),
+	}
+
+	RunTestSteps(commands, t)
+}
