@@ -48,6 +48,12 @@ type DataEnricherByMntNs interface {
 	EnrichByMntNs(event *types.CommonData, mountnsid uint64)
 }
 
+// DataNodeEnricher is used to enrich events with Kubernetes node, without
+// needing any namespace.
+type DataNodeEnricher interface {
+	EnrichNode(event *types.CommonData)
+}
+
 // DataEnricherByNetNs is used to enrich events with Kubernetes information,
 // like node, namespace, pod name and container name when the network namespace
 // is available.

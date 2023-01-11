@@ -326,6 +326,10 @@ func (cc *ContainerCollection) ContainerRangeWithSelector(
 	})
 }
 
+func (cc *ContainerCollection) EnrichNode(event *eventtypes.CommonData) {
+	event.Node = cc.nodeName
+}
+
 func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
 	event.Node = cc.nodeName
 
