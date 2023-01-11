@@ -112,6 +112,7 @@ func NewTraceCmd() *cobra.Command {
 	traceCmd.AddCommand(newDNSCmd())
 	traceCmd.AddCommand(newExecCmd())
 	traceCmd.AddCommand(newFsSlowerCmd())
+	traceCmd.AddCommand(newNetworkCmd())
 	traceCmd.AddCommand(newOOMKillCmd())
 	traceCmd.AddCommand(newOpenCmd())
 	traceCmd.AddCommand(newMountCmd())

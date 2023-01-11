@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,16 +18,14 @@ import (
 	"fmt"
 	"testing"
 
-	tracenetworkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestTraceNetwork(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-trace-network")
-
 	t.Parallel()
+	ns := GenerateTestNamespaceName("test-trace-network")
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -39,25 +37,19 @@ func TestTraceNetwork(t *testing.T) {
 	nginxIP := GetTestPodIP(ns, "nginx-pod")
 
 	traceNetworkCmd := &Command{
-		Name:         "StartTraceNetworkGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace network -n %s -o json", ns),
+		Name:         "TraceNetwork",
+		Cmd:          fmt.Sprintf("local-gadget trace network -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			testPodIP := GetTestPodIP(ns, "test-pod")
 
-			expectedEntries := []*tracenetworkTypes.Event{
+			expectedEntries := []*networkTypes.Event{
 				{
-					Event:           BuildBaseEvent(ns),
-					PktType:         "OUTGOING",
-					Proto:           "tcp",
-					PodIP:           testPodIP,
-					PodLabels:       map[string]string{"run": "test-pod"},
-					Port:            80,
-					RemoteKind:      tracenetworkTypes.RemoteKindPod,
-					RemoteAddr:      nginxIP,
-					RemoteNamespace: ns,
-					RemoteName:      "nginx-pod",
-					RemoteLabels:    map[string]string{"run": "nginx-pod"},
+					Event:      BuildBaseEvent(ns),
+					PktType:    "OUTGOING",
+					Proto:      "tcp",
+					RemoteAddr: nginxIP,
+					Port:       80,
 				},
 				{
 					Event: eventtypes.Event{
@@ -68,22 +60,23 @@ func TestTraceNetwork(t *testing.T) {
 							Container: "nginx-pod",
 						},
 					},
-					PktType:         "HOST",
-					Proto:           "tcp",
-					PodIP:           nginxIP,
-					PodLabels:       map[string]string{"run": "nginx-pod"},
-					Port:            80,
-					RemoteKind:      tracenetworkTypes.RemoteKindPod,
-					RemoteAddr:      testPodIP,
-					RemoteNamespace: ns,
-					RemoteName:      "test-pod",
-					RemoteLabels:    map[string]string{"run": "test-pod"},
+					PktType:    "HOST",
+					Proto:      "tcp",
+					RemoteAddr: testPodIP,
+					Port:       80,
 				},
 			}
 
-			normalize := func(e *tracenetworkTypes.Event) {
-				e.Node = ""
-				e.PodHostIP = ""
+			normalize := func(e *networkTypes.Event) {
+				// TODO: Handle it once we support getting K8s container name for docker
+				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
+				if *containerRuntime == ContainerRuntimeDocker {
+					if e.Pod == "nginx-pod" {
+						e.Container = "nginx-pod"
+					} else if e.Pod == "test-pod" {
+						e.Container = "test-pod"
+					}
+				}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

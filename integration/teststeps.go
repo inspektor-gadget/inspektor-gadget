@@ -47,11 +47,11 @@ type TestStep interface {
 }
 
 // RunTestSteps is used to run a list of test steps with stopping/clean up logic.
-func RunTestSteps[S TestStep](ops []S, t *testing.T) {
+func RunTestSteps[S TestStep](steps []S, t *testing.T) {
 	// Defer all cleanup steps so we are sure to exit clean whatever
 	// happened
 	defer func() {
-		for _, o := range ops {
+		for _, o := range steps {
 			if o.IsCleanup() {
 				o.Run(t)
 			}
@@ -59,28 +59,28 @@ func RunTestSteps[S TestStep](ops []S, t *testing.T) {
 	}()
 
 	// Defer stopping commands
-	for _, cmd := range ops {
-		cmd := cmd
+	for _, step := range steps {
+		step := step
 		defer func() {
-			if cmd.IsStartAndStop() && cmd.Running() {
+			if step.IsStartAndStop() && step.Running() {
 				// Wait a bit before stopping the step.
 				time.Sleep(stepWaitDuration)
-				cmd.Stop(t)
+				step.Stop(t)
 			}
 		}()
 	}
 
 	// Run all steps except cleanup ones
-	for _, cmd := range ops {
-		if cmd.IsCleanup() {
+	for _, step := range steps {
+		if step.IsCleanup() {
 			continue
 		}
 
-		if cmd.IsStartAndStop() {
-			cmd.Start(t)
+		if step.IsStartAndStop() {
+			step.Start(t)
 			continue
 		}
 
-		cmd.Run(t)
+		step.Run(t)
 	}
 }

@@ -20,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -33,7 +32,6 @@ import (
 	top "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	ebpftoptypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
 	dnstypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
-	networktypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -360,133 +358,6 @@ func TestDNS(t *testing.T) {
 
 	s := stacks()
 	keyword := "pkg/gadgets/trace/dns/"
-	if strings.Contains(s, keyword) {
-		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
-	}
-
-	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
-}
-
-func TestNetworkGraph(t *testing.T) {
-	if !*rootTest {
-		t.Skip("skipping test requiring root.")
-	}
-	localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
-	if err != nil {
-		t.Fatalf("Failed to start local gadget manager: %s", err)
-	}
-	defer localGadgetManager.Close()
-
-	initialFdList := currentFdList(t)
-
-	containerName := "test-local-gadget-network-graph001"
-	err = localGadgetManager.AddTraceResource("network-graph", "my-tracer", containerName, gadgetv1alpha1.TraceOutputModeStream)
-	if err != nil {
-		t.Fatalf("Failed to create tracer: %s", err)
-	}
-	err = localGadgetManager.ExecTraceResourceOperation("my-tracer", gadgetv1alpha1.OperationStart)
-	if err != nil {
-		t.Fatalf("Failed to start the tracer: %s", err)
-	}
-
-	testutils.RunDockerContainer(context.Background(), t,
-		"nginx && curl 127.0.0.1",
-		testutils.WithName(containerName),
-		testutils.WithImage("docker.io/library/nginx"),
-	)
-
-	stop := make(chan struct{})
-	defer close(stop)
-
-	ch, err := localGadgetManager.StreamTraceResourceOutput("my-tracer", stop)
-	if err != nil {
-		t.Fatalf("Failed to get stream: %s", err)
-	}
-
-	expectedEvents := []networktypes.Event{
-		{
-			Event: eventtypes.Event{
-				Type: eventtypes.DEBUG,
-				CommonData: eventtypes.CommonData{
-					Node:      "local",
-					Namespace: "default",
-					Pod:       containerName,
-					Container: containerName,
-				},
-				Message: "tracer attached",
-			},
-		},
-		{
-			Event: eventtypes.Event{
-				Type: eventtypes.NORMAL,
-				CommonData: eventtypes.CommonData{
-					Namespace: "default",
-					Pod:       containerName,
-					Container: containerName,
-				},
-			},
-			PktType: "OUTGOING",
-			Proto:   "tcp",
-			// There's no place like
-			RemoteAddr: "127.0.0.1",
-			Port:       80,
-		},
-		{
-			Event: eventtypes.Event{
-				Type: eventtypes.NORMAL,
-				CommonData: eventtypes.CommonData{
-					Namespace: "default",
-					Pod:       containerName,
-					Container: containerName,
-				},
-			},
-			PktType:    "HOST",
-			Proto:      "tcp",
-			RemoteAddr: "127.0.0.1",
-			Port:       80,
-		},
-		{
-			Event: eventtypes.Event{
-				Type: eventtypes.DEBUG,
-				CommonData: eventtypes.CommonData{
-					Node:      "local",
-					Namespace: "default",
-					Pod:       containerName,
-					Container: containerName,
-				},
-				Message: "tracer detached",
-			},
-		},
-	}
-
-outerLoop:
-	for range expectedEvents {
-		result := <-ch
-
-		event := networktypes.Event{}
-		if err := json.Unmarshal([]byte(result), &event); err != nil {
-			t.Fatalf("failed to unmarshal json: %s", err)
-		}
-
-		// Network graph does not guarantee the order where the events are received.
-		// So, we check if the received event is part of the expected events.
-		// If this is not the case we would hit the below Fatalf.
-		for _, expectedEvent := range expectedEvents {
-			if reflect.DeepEqual(event, expectedEvent) {
-				continue outerLoop
-			}
-		}
-
-		t.Fatalf("Received: %+v event is not part of expected: %+v", event, expectedEvents)
-	}
-
-	err = localGadgetManager.DeleteTraceResource("my-tracer")
-	if err != nil {
-		t.Fatalf("Failed to delete tracer: %s", err)
-	}
-
-	s := stacks()
-	keyword := "pkg/gadgets/trace/network/"
 	if strings.Contains(s, keyword) {
 		t.Fatalf("Error: stack contains %q:\n%s", keyword, s)
 	}
