@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/factory"
 )
 
 func ExecPodSimple(client *kubernetes.Clientset, node string, podCmd string) string {
@@ -62,10 +63,13 @@ func ExecPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 	}
 	podName := pods.Items[0].Name
 
-	restConfig, err := kubeRestConfig()
+	restConfig, err := KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
 		return err
 	}
+
+	// set GroupVersion and NegotiatedSerializer for RESTClient
+	factory.SetKubernetesDefaults(restConfig)
 
 	restClient, err := restclient.RESTClientFor(restConfig)
 	if err != nil {
