@@ -65,8 +65,8 @@ func (s *SocketParser) GetOutputConfig() *commonutils.OutputConfig {
 	return s.outputConfig
 }
 
-func (s *SocketParser) SortEvents(allSockets *[]*types.Event) {
-	columnssort.SortEntries(types.GetColumns().GetColumnMap(), *allSockets,
+func (s *SocketParser) SortEvents(allSockets []*types.Event) {
+	columnssort.SortEntries(types.GetColumns().GetColumnMap(), allSockets,
 		[]string{"node", "namespace", "pod", "proto", "status", "localAddr", "remoteAddr", "localPort", "remotePort", "inode"})
 }
 
