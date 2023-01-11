@@ -43,10 +43,10 @@ type StandardTracerConfig[E Event] struct {
 	// BaseEvent transform a base event eventtypes.Event into the specific
 	// tracer's event type. It is needed because EventCallback receives specific
 	// tracer's event type.
-	BaseEvent func(eventtypes.Event) E
+	BaseEvent func(eventtypes.Event) *E
 
 	// EventCallback will be called each time the scripts produces a new line.
-	EventCallback func(E)
+	EventCallback func(*E)
 
 	// Some gadgets may need to modify the tool's output before marshaling it to
 	// avoid changing the BCC tool implementation.
@@ -60,9 +60,9 @@ type StandardTracerConfig[E Event] struct {
 // implementation. This type in charge of executing the BCC script and calls
 // eventCallback each time the scripts produces a new line.
 type StandardTracer[E Event] struct {
-	eventCallback func(E)
+	eventCallback func(*E)
 	prepareLine   func(string) string
-	baseEvent     func(eventtypes.Event) E
+	baseEvent     func(eventtypes.Event) *E
 
 	done              chan bool
 	cmd               *exec.Cmd
@@ -149,7 +149,7 @@ func (t *StandardTracer[E]) run(pipe io.ReadCloser) {
 		}
 
 		event := t.baseEvent(eventtypes.Event{Type: eventtypes.NORMAL})
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
+		if err := json.Unmarshal([]byte(line), event); err != nil {
 			msg := fmt.Sprintf("failed to unmarshal event '%s': %s", line, err)
 			t.eventCallback(t.baseEvent(eventtypes.Warn(msg)))
 			return

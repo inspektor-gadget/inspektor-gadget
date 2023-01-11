@@ -116,7 +116,7 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 	}
 	t.Cleanup(cc.Close)
 
-	eventCallback := func(event types.Event) {
+	eventCallback := func(event *types.Event) {
 		// "nonMatchingCommand" is only executed in the
 		// "nonMatching" container that doesn't match with the
 		// filter

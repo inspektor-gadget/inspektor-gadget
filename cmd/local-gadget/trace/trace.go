@@ -38,7 +38,7 @@ import (
 type TraceGadget[Event commontrace.TraceEvent] struct {
 	commonFlags        *utils.CommonFlags
 	parser             commontrace.TraceParser[Event]
-	createAndRunTracer func(*ebpf.Map, gadgets.DataEnricherByMntNs, func(Event)) (trace.Tracer, error)
+	createAndRunTracer func(*ebpf.Map, gadgets.DataEnricherByMntNs, func(*Event)) (trace.Tracer, error)
 }
 
 // Run runs a TraceGadget and prints the output after parsing it using the
@@ -68,8 +68,8 @@ func (g *TraceGadget[Event]) Run() error {
 	}
 
 	// Define a callback to be called each time there is an event.
-	eventCallback := func(event Event) {
-		baseEvent := event.GetBaseEvent()
+	eventCallback := func(event *Event) {
+		baseEvent := (*event).GetBaseEvent()
 		if baseEvent.Type != eventtypes.NORMAL {
 			commonutils.HandleSpecialEvent(baseEvent, g.commonFlags.Verbose)
 			return
@@ -87,7 +87,7 @@ func (g *TraceGadget[Event]) Run() error {
 		case commonutils.OutputModeColumns:
 			fallthrough
 		case commonutils.OutputModeCustomColumns:
-			fmt.Println(g.parser.TransformIntoColumns(&event))
+			fmt.Println(g.parser.TransformIntoColumns(event))
 		}
 	}
 

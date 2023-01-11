@@ -47,7 +47,7 @@ type Tracer struct {
 	capExitLink          link.Link
 	reader               *perf.Reader
 	enricher             gadgets.DataEnricherByMntNs
-	eventCallback        func(types.Event)
+	eventCallback        func(*types.Event)
 	runningKernelVersion uint32
 }
 
@@ -96,7 +96,7 @@ var capabilitiesNames = map[int32]string{
 }
 
 func NewTracer(c *Config, enricher gadgets.DataEnricherByMntNs,
-	eventCallback func(types.Event),
+	eventCallback func(*types.Event),
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        c,
@@ -264,6 +264,6 @@ func (t *Tracer) run() {
 			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
-		t.eventCallback(event)
+		t.eventCallback(&event)
 	}
 }

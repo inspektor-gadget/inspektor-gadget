@@ -40,7 +40,7 @@ func newFsSlowerCmd() *cobra.Command {
 		fsslowerGadget := &TraceGadget[fsslowerTypes.Event]{
 			commonFlags: &commonFlags,
 			parser:      parser,
-			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(fsslowerTypes.Event)) (trace.Tracer, error) {
+			createAndRunTracer: func(mountnsmap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(*fsslowerTypes.Event)) (trace.Tracer, error) {
 				config := &fsslowerTracer.Config{
 					MountnsMap: mountnsmap,
 					Filesystem: flags.Filesystem,

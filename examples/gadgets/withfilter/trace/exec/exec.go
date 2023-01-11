@@ -88,7 +88,7 @@ func main() {
 	defer containerCollection.Close()
 
 	// Define a callback to be called each time there is an event.
-	eventCallback := func(event types.Event) {
+	eventCallback := func(event *types.Event) {
 		fmt.Printf("A new %q process with pid %d was executed in container %q\n",
 			event.Comm, event.Pid, event.Container)
 	}

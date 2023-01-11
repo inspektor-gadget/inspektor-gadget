@@ -97,7 +97,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
-	eventCallback := func(event types.Event) {
+	eventCallback := func(event *types.Event) {
 		event.Node = trace.Spec.Node
 
 		t.helpers.PublishEvent(

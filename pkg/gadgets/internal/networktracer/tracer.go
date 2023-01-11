@@ -107,7 +107,7 @@ type Tracer[Event any] struct {
 	bpfPerfMapName  string
 	bpfSocketAttach int
 
-	baseEvent  func(ev types.Event) Event
+	baseEvent  func(ev types.Event) *Event
 	parseEvent func([]byte) (*Event, error)
 }
 
@@ -116,7 +116,7 @@ func NewTracer[Event any](
 	bpfProgName string,
 	bpfPerfMapName string,
 	bpfSocketAttach int,
-	baseEvent func(ev types.Event) Event,
+	baseEvent func(ev types.Event) *Event,
 	parseEvent func([]byte) (*Event, error),
 ) *Tracer[Event] {
 	return &Tracer[Event]{
@@ -130,7 +130,7 @@ func NewTracer[Event any](
 	}
 }
 
-func (t *Tracer[Event]) Attach(pid uint32, eventCallback func(Event)) error {
+func (t *Tracer[Event]) Attach(pid uint32, eventCallback func(*Event)) error {
 	netns, err := containerutils.GetNetNs(int(pid))
 	if err != nil {
 		return fmt.Errorf("getting network namespace of pid %d: %w", pid, err)
@@ -154,9 +154,9 @@ func (t *Tracer[Event]) Attach(pid uint32, eventCallback func(Event)) error {
 func (t *Tracer[Event]) listen(
 	netns uint64,
 	rd *perf.Reader,
-	baseEvent func(ev types.Event) Event,
+	baseEvent func(ev types.Event) *Event,
 	parseEvent func([]byte) (*Event, error),
-	eventCallback func(Event),
+	eventCallback func(*Event),
 ) {
 	for {
 		record, err := rd.Read()
@@ -184,7 +184,7 @@ func (t *Tracer[Event]) listen(
 		if event == nil {
 			continue
 		}
-		eventCallback(*event)
+		eventCallback(event)
 	}
 }
 

@@ -36,7 +36,7 @@ func TestOpenTracerCreate(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	tracer := createTracer(t, &tracer.Config{}, func(types.Event) {})
+	tracer := createTracer(t, &tracer.Config{}, func(*types.Event) {})
 	if tracer == nil {
 		t.Fatal("Returned tracer was nil")
 	}
@@ -47,7 +47,7 @@ func TestOpenTracerStopIdempotent(t *testing.T) {
 
 	utilstest.RequireRoot(t)
 
-	tracer := createTracer(t, &tracer.Config{}, func(types.Event) {})
+	tracer := createTracer(t, &tracer.Config{}, func(*types.Event) {})
 
 	// Check that a double stop doesn't cause issues
 	tracer.Stop()
@@ -55,7 +55,7 @@ func TestOpenTracerStopIdempotent(t *testing.T) {
 }
 
 func createTracer(
-	t *testing.T, config *tracer.Config, callback func(types.Event),
+	t *testing.T, config *tracer.Config, callback func(*types.Event),
 ) *tracer.Tracer {
 	t.Helper()
 
@@ -206,8 +206,8 @@ func TestOpenTracer(t *testing.T) {
 			t.Parallel()
 
 			events := []types.Event{}
-			eventCallback := func(event types.Event) {
-				events = append(events, event)
+			eventCallback := func(event *types.Event) {
+				events = append(events, *event)
 			}
 
 			runner := utilstest.NewRunnerWithTest(t, test.runnerConfig)
@@ -237,8 +237,8 @@ func TestOpenTracerMultipleMntNsIDsFilter(t *testing.T) {
 	utilstest.RequireRoot(t)
 
 	events := []types.Event{}
-	eventCallback := func(event types.Event) {
-		events = append(events, event)
+	eventCallback := func(event *types.Event) {
+		events = append(events, *event)
 	}
 
 	// struct with only fields we want to check on this test

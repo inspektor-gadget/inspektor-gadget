@@ -22,8 +22,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/standardgadgets/trace"
 )
 
-func NewTracer(config *tracer.Config, eventCallback func(types.Event)) (*trace.StandardTracer[types.Event], error) {
-	callback := func(event types.Event) {
+func NewTracer(config *tracer.Config, eventCallback func(*types.Event)) (*trace.StandardTracer[types.Event], error) {
+	callback := func(event *types.Event) {
 		event.Flags = tracer.DecodeFlags(event.FlagsRaw)
 		eventCallback(event)
 	}

@@ -34,7 +34,7 @@ func main() {
 	}
 
 	// Define a callback to be called each time there is an event.
-	eventCallback := func(event types.Event) {
+	eventCallback := func(event *types.Event) {
 		qr := event.Qr
 		if qr == types.DNSPktTypeQuery {
 			qr = "request"
