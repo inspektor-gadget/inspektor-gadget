@@ -7,6 +7,8 @@ description: >
 
 The snapshot socket gadget gathers information about TCP and UDP sockets.
 
+### On Kubernetes
+
 We will start this demo by using nginx to create a web server on port 80:
 
 ```bash
@@ -69,3 +71,7 @@ Delete test namespace:
 $ kubectl delete ns test-socketcollector
 namespace "test-socketcollector" deleted
 ```
+
+### With local-gadget
+
+The `snapshot socket` is not available on local-gadget yet. Please check https://github.com/inspektor-gadget/inspektor-gadget/issues/744.

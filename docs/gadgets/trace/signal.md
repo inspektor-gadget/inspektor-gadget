@@ -8,7 +8,7 @@ description: >
 The trace signal gadget is used to trace system signals received by the
 pods.
 
-## How to use it?
+### On Kubernetes
 
 First, we need to create one pod for us to play with:
 
@@ -58,7 +58,45 @@ Now, go back to the first terminal and see that `SIGSEGV` was sent to python:
 minikube         default          debian           debian           142244 python2.7        SIGSEGV   142244 0
 ```
 
-## Restricting output to certain PID, signals or failed to send the signals
+#### Clean everything
+
+Congratulations! You reached the end of this guide!
+You can now delete the pod you created:
+
+```bash
+$ kubectl delete pod debian
+pod "debian" deleted
+```
+
+### With local-gadget
+
+Start the gadget on a terminal.
+
+```bash
+$ sudo local-gadget trace signal -c test-trace-signal
+```
+
+Run a container and run sleep in the background, then will it:
+
+```bash
+$ docker run -it --rm --name test-trace-signal busybox /bin/sh
+/ # sleep 100 &
+/ # echo $!
+7
+/ # kill -kill $!
+/ # exit
+```
+
+The gadget will show that sh killed a process.
+
+```bash
+$ sudo local-gadget trace signal -c test-trace-signal
+CONTAINER                  PID        COMM          SIGNAL      TPID       RET
+test-trace-signal          11131      sh            SIGKILL     11162      0
+test-trace-signal          11131      sh            SIGHUP      11131      0
+```
+
+### Restricting output to certain PID, signals or failed to send the signals
 
 With the following option, you can restrict the output:
 
@@ -74,13 +112,3 @@ $ kubectl gadget -k -f --pid 42 --signal SIGKILL
 ```
 
 Note that, with `--signal` you can use the name of the signal (e.g. `SIGKILL`) or its integer value (e.g. 9).
-
-## Clean everything
-
-Congratulations! You reached the end of this guide!
-You can now delete the pod you created:
-
-```bash
-$ kubectl delete pod debian
-pod "debian" deleted
-```

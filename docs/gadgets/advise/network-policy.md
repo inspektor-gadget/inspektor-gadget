@@ -168,3 +168,7 @@ namespace "demo" deleted
 #### Limitations
 
 - When using the Docker bridge as CNI, pod-to-pod source IP is lost with services. This generates wrong ingress policies. https://github.com/kubernetes/minikube/issues/11211
+
+### With local-gadget
+
+This gadget is specific to Kubernetes and can't be used with local-gadget.

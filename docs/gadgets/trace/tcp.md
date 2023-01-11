@@ -8,7 +8,7 @@ description: >
 The trace tcp gadget can be used to monitor tcp connections, as it shows
 connect, accept and close events related to TCP connections.
 
-## How to use it?
+### On Kubernetes
 
 First, we need to create one pod:
 
@@ -63,7 +63,7 @@ So, the above line should be read like this: "Command `wget`, with PID 19981, es
 
 Note that, IP 188.114.97.3 corresponds to `kinvolk.io` while port 443 is the port generally used for HTTPS.
 
-## Clean everything
+#### Clean everything
 
 Congratulations! You reached the end of this guide!
 You can now delete the resource we created:
@@ -71,4 +71,33 @@ You can now delete the resource we created:
 ```bash
 $ kubectl delete pod busybox
 pod "busybox" deleted
+```
+
+### With local-gadget
+
+With the following container we can see that the gadget shows that a
+TCP connection was established.
+
+Start the gadget:
+
+```bash
+$ sudo local-gadget trace tcp -c test-trace-tcp
+```
+
+Then, run a container that creates a TCP connection.
+
+```bash
+$ docker run -it --rm --name test-trace-tcp busybox /bin/sh -c "wget https://www.example.com"
+Connecting to www.kinvolk.io (188.114.96.7:443)
+saving to 'index.html'
+index.html           100% |index.html           100% |**********************************| 36362  0:00:00 ETA
+'index.html' saved
+```
+
+The gadget will print that connection on the first terminal
+
+```bash
+$ sudo local-gadget trace tcp -c test-trace-tcp
+CONTAINER        T  PID     COMM             IP  SADDR                  DADDR                  SPORT   DPORT
+test-trace-tcp   C  11039   wget             4   172.17.0.2             188.114.96.7           57560   443
 ```

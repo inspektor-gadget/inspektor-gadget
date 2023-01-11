@@ -21,6 +21,8 @@ Specially if our pod is directly run as user instead of root (runAsUser: ID),
 we can give some more capabilities (think as partly root) and still take all
 unused capabilities to really lock it down.
 
+### On Kubernetes
+
 Here we have a small demo app which logs failures due to lacking capabilities.
 Since none of the default capabilities is dropped, we have to find
 out what non-default capability we have to add.
@@ -174,3 +176,7 @@ You can now delete the pod you created:
 ```
 $ kubectl delete -f docs/examples/app-set-priority-locked-down.yaml
 ```
+
+### With local-gadget
+
+TODO

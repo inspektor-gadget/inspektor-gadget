@@ -11,7 +11,9 @@ seccomp profile. It can integrate with the [Kubernetes Security Profile
 Operator](https://github.com/kubernetes-sigs/security-profiles-operator),
 directly generating the necessary `seccompprofile` resource.
 
-### Basic usage
+### On Kubernetes
+
+#### Basic usage
 
 For this demo, we will use a sample Python workload that uses uwsgi, flask
 and nginx. The deployment is split in two pieces, the `basic.yaml` file
@@ -96,117 +98,7 @@ $ kubectl gadget advise seccomp-profile stop jMzhur2dQjZJxDCI
 }
 ```
 
-### Using `kubectl annotate`
-
-You can also interact with this gadget by using `kubectl annotate`.
-To keep our example, you will need to use `trace-status.yaml` which content is
-the following:
-
-```yaml
-apiVersion: gadget.kinvolk.io/v1alpha1
-kind: Trace
-metadata:
-  name: seccomp
-  namespace: gadget
-spec:
-  node: demo-node
-  gadget: seccomp
-  filter:
-    namespace: seccomp-demo
-    podname: hello-python
-  runMode: Manual
-  outputMode: Status
-```
-
-The `namespace` and `node` under the `filter` label correspond to the `-n` and
-`-p` arguments we used previously.
-**Note that you need to set the correct node name in the spec of this
-resource**.
-
-Once you edited the trace, you can now create it and start it:
-
-```bash
-$ kubectl apply -f docs/examples/seccomp/trace-status.yaml
-trace.gadget.kinvolk.io/seccomp created
-$ kubectl annotate -n gadget trace/seccomp gadget.kinvolk.io/operation=start
-trace.gadget.kinvolk.io/seccomp annotated
-```
-
-After that, you can interact with the workload like we did previously:
-
-```bash
-$ kubectl port-forward service/hello-python-service -n seccomp-demo 8080:6000 &
-[1] 23574
-Forwarding from 127.0.0.1:8080 -> 80
-Forwarding from [::1]:8080 -> 80
-
-$ curl localhost:8080
-Handling connection for 8080
-Hello World!
-
-$ kill %1
-[1]+  Terminated              kubectl port-forward service/hello-python-service -n seccomp-demo 8080:6000
-```
-
-Now, we can use `kubectl annotate` to generate the trace:
-
-```bash
-$ kubectl annotate -n gadget trace/seccomp gadget.kinvolk.io/operation=generate
-trace.gadget.kinvolk.io/seccomp annotated
-```
-
-As the `outputMode` was set to `Status`, the generated policy will be stored in
-our CR's status. We can look at it and check out the list of syscalls that our
-`curl` call triggered.
-
-```bash
-$ kubectl get -n gadget trace/seccomp -o custom-columns=Status:.status
-Status
-map[output:{
-  "defaultAction": "SCMP_ACT_ERRNO",
-  "architectures": [
-    "SCMP_ARCH_X86_64",
-    "SCMP_ARCH_X86",
-    "SCMP_ARCH_X32"
-  ],
-  "syscalls": [
-    {
-      "names": [
-        "accept4",
-        "close",
-        "connect",
-        "epoll_ctl",
-        "epoll_wait",
-        "fstat",
-        "getsockname",
-        "getsockopt",
-        "ioctl",
-        "poll",
-        "read",
-        "recvfrom",
-        "setsockopt",
-        "socket",
-        "stat",
-        "wait4",
-        "write",
-        "writev"
-      ],
-      "action": "SCMP_ACT_ALLOW"
-    }
-  ]
-} state:Started]
-```
-
-We can stop the current trace using the `stop` operation, and delete the
-current pod, so that we can start a fresh new trace.
-
-```bash
-$ kubectl annotate -n gadget trace/seccomp gadget.kinvolk.io/operation=stop
-trace.gadget.kinvolk.io/seccomp annotated
-$ kubectl delete -f docs/examples/seccomp/trace-status.yaml
-```
-
-### Capturing all syscalls needed to bring up the pod
+#### Capturing all syscalls needed to bring up the pod
 
 That sample policy contains only the syscalls executed for that one single
 request that we made. If we want to apply a policy to our pod, we need to
@@ -258,7 +150,7 @@ $ kubectl gadget advise seccomp-profile stop TAyR9BXes6GU04rG
 This time, the output field will contain a lot more syscalls, as a lot of
 operations need to take place to bring up the pod.
 
-### Integration with Kubernetes Security Profiles Operator
+#### Integration with Kubernetes Security Profiles Operator
 
 We can use the output stored in the trace to create the seccomp policy for our
 pod. But instead of copying it manually, we can also use the integration with
@@ -360,7 +252,7 @@ We see that the seccomp profile is preventing this execution, and it will
 prevent any other execution that requires syscalls that were not part of
 the captured calls.
 
-### Cleanup
+#### Cleanup
 
 Once we're done with the demo, we can delete all the resources that we've
 used by deleting the `seccomp-demo` namespace:
@@ -369,6 +261,10 @@ used by deleting the `seccomp-demo` namespace:
 $ kubectl delete ns seccomp-demo
 namespace "seccomp-demo" deleted
 ```
+
+### With local-gadget
+
+TODO!
 
 ### Troubleshooting
 

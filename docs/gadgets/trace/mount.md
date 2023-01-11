@@ -8,7 +8,7 @@ description: >
 The trace mount gadget is used to monitor `mount` and `umount` syscalls.
 In this guide, we will learn how to use it by running a small Kubernetes cluster inside `minikube`.
 
-## How to use it?
+### On Kubernetes
 
 First, we need to create two pods for us to play with:
 
@@ -53,50 +53,7 @@ minikube         default          busybox-0        busybox-0        mount       
 
 All these lines correspond to the error we get from `mount` inside the pod.
 
-## Restrict output to certain pods
-
-It can be useful to restrict the output to certains pods. There are many
-flags that we can use for this. For example, we can use `--selector` option
-to select by label.  In a first terminal, run the following:
-
-```bash
-$ kubectl get pods --show-labels
-NAME        READY   STATUS    RESTARTS   AGE     LABELS
-busybox-0   1/1     Running   0          2m9s    run=busybox-0
-busybox-1   1/1     Running   0          3m59s   run=busybox-1
-$ kubectl gadget trace mount --selector run=busybox-0
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNTNS      CALL
-```
-
-As you can see, the `--selector` option, and its `-l` shorthand awaits for pods labels as argument.
-In *another terminal*, run these commands:
-
-```bash
-# Exec the first pod:
-$ kubectl exec -ti busybox-0 -- mount /foo /bar
-mount: mounting /foo on /bar failed: No such file or directory
-command terminated with exit code 255
-# Exec the other one:
-$ kubectl exec -ti busybox-1 -- mount /quux /quuz
-mount: mounting /quux on /quuz failed: No such file or directory
-command terminated with exit code 255
-```
-
-Go back to the first terminal, you should only see output related to `mount /foo /bar` as a result of using `--selector` options filtering the pods:
-
-```bash
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNTNS      CALL
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext3", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext2", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "ext4", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "vfat", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "msdos", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "iso9660", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "fuseblk", MS_SILENT, "") = -2
-minikube         default          busybox-0        busybox-0        mount            14469   14469   4026532682  mount("/foo", "/bar", "xfs", MS_SILENT, "") = -2
-```
-
-## Clean everything
+#### Clean everything
 
 Congratulations! You reached the end of this guide!
 You can now delete the two pods we created:
@@ -105,4 +62,33 @@ You can now delete the two pods we created:
 $ kubectl delete pod busybox-0 busybox-1
 pod "busybox-0" deleted
 pod "busybox-1" deleted
+```
+
+### With local-gadget
+
+Let's start the gadget in a terminal:
+
+```bash
+$ sudo local-gadget trace mount -c test-trace-mount
+CONTAINER                         COMM             PID        TID        CALL
+```
+
+Run a container that uses mount:
+
+```bash
+$ docker run --name test-trace-mount -it --rm busybox /bin/sh -c "mount /bar /foo"
+```
+
+The tool will show the different mount() calls that the container performed:
+
+```bash
+$ sudo local-gadget trace mount -c test-trace-mount
+CONTAINER                         COMM             PID        TID        CALL
+test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "ext3", MS_SILENT, "") = -2
+test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "ext2", MS_SILENT, "") = -2
+test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "ext4", MS_SILENT, "") = -2
+test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "squashf", MS_SILENT, "") = -2
+test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "vfat", MS_SILENT, "") = -2
+test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "fuseblk", MS_SILENT, "") = -2
+test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "btrfs", MS_SILENT, "") = -2
 ```

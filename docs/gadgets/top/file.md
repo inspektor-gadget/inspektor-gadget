@@ -7,6 +7,8 @@ description: >
 
 The top file gadget is used to visualize reads and writes by file, with container details.
 
+### On Kubernetes
+
 This guide will deploy an example workload that performs some disk I/O
 activity to show how to use `top file`.
 
@@ -82,4 +84,20 @@ Flags:
 ...
   -r, --maxrows int            Maximum rows to print (default 20)
 ...
+```
+
+### With local-gadget
+
+Start a container that performs some write operations to a file:
+
+```bash
+$ docker run --rm --name test-top-file busybox /bin/sh -c 'while true; do echo foo > bar; sleep 1; done'
+```
+
+Start the gadget and it'll show those operations:
+
+```bash
+$ sudo local-gadget top file -c test-top-file
+CONTAINER                              PID        COMM             READS                WRITES               RBYTES               WBYTES               T FILE
+test-top-file                          139255     sh               0                    1                    0B                   4B                   R bar
 ```

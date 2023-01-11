@@ -7,6 +7,8 @@ description: >
 
 The snapshot process gadget gathers information about running processes.
 
+### On Kubernetes
+
 Let's start this demo by creating a namespace:
 
 ```bash
@@ -76,4 +78,20 @@ Delete the demo test namespace:
 ```bash
 $ kubectl delete ns demo
 namespace "demo" deleted
+```
+
+### With local-gadget
+
+Create a container that runs sleep inside:
+
+```bash
+$ docker run --name test-snapshot-process -it --rm busybox /bin/sh -c 'sleep 100'
+```
+
+Run the snapshot process gadget, it'll print all process in the container:
+
+```bash
+$ sudo ./local-gadget snapshot process -c test-snapshot-process
+CONTAINER             COMM  PID
+test-snapshot-process sleep 100003
 ```

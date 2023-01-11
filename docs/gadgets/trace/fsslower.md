@@ -10,6 +10,8 @@ description: >
 The trace fsslower gadget streams file operations (open, read, write and
 fsync) that are slower than a threshold.
 
+### On Kubernetes
+
 In this guide you'll deploy an example workload that performs some
 open(), read() write() and sync() calls and will trace which ones are
 slower than 1 ms.
@@ -66,3 +68,7 @@ That's all, let's delete our example pod
 ```bash
 $ kubectl delete pod mypod
 ```
+
+### With local-gadget
+
+TODO
