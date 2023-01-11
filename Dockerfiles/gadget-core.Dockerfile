@@ -11,9 +11,6 @@ ARG BASE_IMAGE=alpine:3.14
 # Prepare and build gadget artifacts in a container
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
 
-ARG ENABLE_BTFGEN=false
-ENV ENABLE_BTFGEN=${ENABLE_BTFGEN}
-
 ARG TARGETARCH
 # We need a cross compiler and libraries for TARGETARCH due to CGO.
 RUN set -ex; \
@@ -30,14 +27,6 @@ RUN set -ex; \
 		apt-get install -y gcc-aarch64-linux-gnu; \
 	fi
 
-# Download BTFHub files
-COPY ./tools /btf-tools
-RUN set -ex; mkdir -p /tmp/btfs && \
-	if [ "$ENABLE_BTFGEN" = true ]; then \
-		cd /btf-tools && \
-		./getbtfhub.sh; \
-	fi
-
 # Cache go modules so they won't be downloaded at each build
 COPY go.mod go.sum /gadget/
 RUN cd /gadget && go mod download
@@ -49,14 +38,6 @@ RUN cd /gadget/gadget-container && \
 		export CC=aarch64-linux-gnu-gcc; \
 	fi; \
 	make -j$(nproc) TARGET_ARCH=${TARGETARCH} gadget-container-deps
-
-# Execute BTFGen
-RUN set -ex; \
-	if [ "$ENABLE_BTFGEN" = true ]; then \
-		cd /gadget && \
-		make btfgen BPFTOOL=/tmp/btfhub/tools/bin/bpftool.x86_64 \
-			BTFHUB_ARCHIVE=/tmp/btfhub-archive/ OUTPUT=/tmp/btfs/ -j$(nproc); \
-	fi
 
 # Main gadget image
 FROM ${BASE_IMAGE}
@@ -97,7 +78,7 @@ COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
 ## Hooks Ends
 
 # BTF files
-COPY --from=builder /tmp/btfs /btfs/
+COPY hack/btfs /btfs/
 
 # Mitigate https://github.com/kubernetes/kubernetes/issues/106962.
 RUN rm -f /var/run

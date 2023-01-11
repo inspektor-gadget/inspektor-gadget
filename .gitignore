@@ -22,6 +22,10 @@
 # Downloaded binaries
 bin/
 
+# BTF files
+hack/btfs/*
+!hack/btfs/README.md
+
 # Build artifacts
 *.o
 # keep all bpf objects generated with bpf2go

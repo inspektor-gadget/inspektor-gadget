@@ -227,6 +227,27 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
         co-re: ${{ matrix.type == 'core' }}
+    - name: Get btfhub-archive last commmit
+      id: get-btfhub-head
+      run: |
+        echo "head=$(git ls-remote https://github.com/aquasecurity/btfhub-archive/ HEAD | cut -f1)" >> $GITHUB_OUTPUT
+      shell: bash
+    - name: Cache BTFGen
+      id: cache-btfgen
+      uses: actions/cache@v3.0.11
+      with:
+        path: hack/btfs
+        # key is composed by
+        # - arch: amd64 or arm64
+        # - lastest commit of btfhub
+        # - hash of all bpf objects
+        key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/gadgets/**/*.o') }}
+    - name: BTFGen
+      if: ${{ steps.cache-btfgen.outputs.cache-hit != 'true' }}
+      run: |
+          ./tools/getbtfhub.sh
+          make btfgen BPFTOOL=$HOME/btfhub/tools/bin/bpftool.x86_64 \
+              BTFHUB_ARCHIVE=$HOME/btfhub-archive/ OUTPUT=$GITHUB_WORKSPACE/hack/btfs -j$(nproc)
     # we are using cache-to mode=min (default) implying that only final image layers are cached, using cache
     # mode=max results in builder image layer of ~7GB because of btfhub files in a layer, which is too
     # large (gloabal limit 10GB) to work with GH caches. (TODO: if we can work with mode=max in future?)
@@ -235,8 +256,6 @@ jobs:
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
-        build-args: |
-          ENABLE_BTFGEN=true
         outputs: type=docker,dest=/tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         cache-from: type=local,src=/tmp/.buildx-cache
@@ -257,8 +276,6 @@ jobs:
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
-        build-args: |
-          ENABLE_BTFGEN=true
         outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
         cache-from: type=local,src=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
