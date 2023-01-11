@@ -264,6 +264,7 @@ jobs:
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
+        target: main
     - name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: actions/upload-artifact@master
       with:

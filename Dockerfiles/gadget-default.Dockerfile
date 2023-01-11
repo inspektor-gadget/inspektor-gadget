@@ -31,6 +31,11 @@ RUN set -ex; \
 COPY go.mod go.sum /gadget/
 RUN cd /gadget && go mod download
 
+# This will be used to compile gadgettracermanager and other binaries without
+# optimization and with inlining deactivated.
+ARG DEBUG
+ENV DEBUG=${DEBUG}
+
 # This COPY is limited by .dockerignore
 COPY ./ /gadget
 RUN cd /gadget/gadget-container && \
@@ -41,7 +46,7 @@ RUN cd /gadget/gadget-container && \
 
 # Main gadget image
 
-FROM bcc
+FROM bcc as main
 
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
@@ -49,7 +54,14 @@ RUN set -ex; \
 	apt-get install -y --no-install-recommends \
 		ca-certificates jq wget xz-utils binutils && \
 		rmdir /usr/src && ln -sf /host/usr/src /usr/src && \
-		rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
+		rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime; \
+	if [ ${DEBUG_PORT} ]; then \
+		apt-get install -y software-properties-common && \
+		add-apt-repository ppa:longsleep/golang-backports && \
+		apt-get update && \
+		apt-get install -y golang-1.18 && \
+		/usr/lib/go-1.18/bin/go install github.com/go-delve/delve/cmd/dlv@latest; \
+	fi
 
 COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
 
@@ -75,3 +87,17 @@ COPY hack/btfs /btfs/
 
 # Mitigate https://github.com/kubernetes/kubernetes/issues/106962.
 RUN rm -f /var/run
+
+FROM main as debug
+
+# This is used in entrypoint.sh to run everything through delve.
+ARG DEBUG
+ENV DEBUG=${DEBUG}
+
+RUN set -ex; \
+	export DEBIAN_FRONTEND=noninteractive; \
+	apt-get install -y software-properties-common && \
+	add-apt-repository ppa:longsleep/golang-backports && \
+	apt-get update && \
+	apt-get install -y golang-1.18 && \
+	/usr/lib/go-1.18/bin/go install github.com/go-delve/delve/cmd/dlv@latest

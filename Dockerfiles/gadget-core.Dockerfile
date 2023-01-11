@@ -40,7 +40,7 @@ RUN cd /gadget/gadget-container && \
 	make -j$(nproc) TARGET_ARCH=${TARGETARCH} gadget-container-deps
 
 # Main gadget image
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} as main
 
 # install runtime dependencies  according to the package manager
 # available on the base image

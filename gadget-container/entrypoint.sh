@@ -166,5 +166,14 @@ echo "Starting the Gadget Tracer Manager..."
 # change directory before running gadgettracermanager
 cd /
 rm -f /run/gadgettracermanager.socket
-exec /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE \
-    -controller -fallback-podinformer=$INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
+# if DEBUG is part of the environment it means we are called from debug
+# container, so dlv was installed while building the image.
+if [ ${DEBUG} ]; then
+	# DEBUG_PORT is always part of the environment.
+	/root/go/bin/dlv exec --continue --accept-multiclient --headless --listen localhost:$DEBUG_PORT /bin/gadgettracermanager -- \
+		-serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE \
+		-controller -fallback-podinformer=$INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
+else
+	exec /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE \
+		-controller -fallback-podinformer=$INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
+fi
