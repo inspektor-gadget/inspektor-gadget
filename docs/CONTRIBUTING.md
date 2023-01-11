@@ -124,6 +124,53 @@ $ export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
 $ make integration-tests
 ```
 
+### Debugging `gadgettracermanager`
+
+You can debug the `gadgettracermanager` running inside the container with the
+following commands:
+
+```bash
+# You will need to deploy the debug container inside the minikube cluster
+$ make minikube-deploy-debug
+...
+# Get the gadget pod name you want to attach
+$ kubectl get pod -n gadget
+NAME           READY   STATUS    RESTARTS   AGE
+gadget-p5bc7   1/1     Running   0          18s
+# You need to port forward the gadget pod port 4040 to any of your localhost
+# available port.
+$ kubectl port-forward -n gadget pod/gadget-p5bc7 8081:4040 &
+# You can now connect to remove delve
+$ dlv connect :8081
+Handling connection for 8081
+Type 'help' for list of commands.
+# You will need to configure the substitute path to be able to browse code.
+(dlv) config substitute-path /gadget /absolute/path/to/inspektor-gadget
+# Let's break when the trace signal gadget is run.
+(dlv) b github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/tracer.run
+(dlv) c
+# In another terminal run ./kubectl-gadget trace signal -A.
+# Breakpoint is hit, you can now begin your debugging session.
+> github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/tracer.(*Tracer).run() ./pkg/gadgets/trace/signal/tracer/tracer.go:203 (hits goroutine(412):1 total:1) (PC: 0x312f9f2)
+   198:         go t.run()
+   199:
+   200:         return nil
+   201: }
+   202:
+=> 203: func (t *Tracer) run() {
+   204:         for {
+   205:                 record, err := t.reader.Read()
+   206:                 if err != nil {
+   207:                         if errors.Is(err, perf.ErrClosed) {
+   208:                                 // nothing to do, we're done
+(dlv)
+...
+# Once finished exit but do not kill the headless instance, otherwise you will
+# have to deploy the gadget pod again.
+(dlv) exit
+Would you like to kill the headless instance? [Y/n] n
+```
+
 ### Integration tests for Local Gadget
 
 #### Kubernetes
