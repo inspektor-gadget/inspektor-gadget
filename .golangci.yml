@@ -2,7 +2,7 @@ output:
   sort-results: true
 
 run:
-  timeout: 3m
+  timeout: 10m
   build-tags:
   - withebpf
   - docs
