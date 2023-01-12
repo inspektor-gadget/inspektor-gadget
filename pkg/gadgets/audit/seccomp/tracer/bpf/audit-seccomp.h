@@ -18,6 +18,7 @@
 struct event {
 	u64 pid;
 	u64 mntns_id;
+	u64 timestamp;
 	u64 syscall;
 	u64 code;
 	__u8 comm[TASK_COMM_LEN];
