@@ -53,6 +53,7 @@ int ig_audit_secc(struct pt_regs *ctx)
 	if (!event)
 		return 0;
 
+	event->timestamp = bpf_ktime_get_boot_ns();
 	event->pid = bpf_get_current_pid_tgid();
 	event->mntns_id = mntns_id;
 	event->syscall = syscall;

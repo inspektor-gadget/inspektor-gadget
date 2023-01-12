@@ -15,8 +15,9 @@
 package tracer
 
 import (
+	"errors"
 	"fmt"
-	"time"
+	"unsafe"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
@@ -56,6 +57,13 @@ func NewTracer() (*Tracer, error) {
 }
 
 func parseSNIEvent(sample []byte) (*types.Event, error) {
+	bpfEvent := (*snisnoopEventT)(unsafe.Pointer(&sample[0]))
+	if len(sample) < int(unsafe.Sizeof(*bpfEvent)) {
+		return nil, errors.New("invalid sample size")
+	}
+
+	timestamp := gadgets.WallTimeFromBootTime(bpfEvent.Timestamp)
+
 	if len(sample) > TLSMaxServerNameLen {
 		sample = sample[:TLSMaxServerNameLen]
 	}
@@ -67,10 +75,8 @@ func parseSNIEvent(sample []byte) (*types.Event, error) {
 
 	event := types.Event{
 		Event: eventtypes.Event{
-			Type: eventtypes.NORMAL,
-			// TODO: use bpfEvent
-			// Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
-			Timestamp: eventtypes.Time(time.Now().UnixNano()),
+			Type:      eventtypes.NORMAL,
+			Timestamp: timestamp,
 		},
 		Name: name,
 	}

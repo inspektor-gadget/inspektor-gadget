@@ -23,6 +23,7 @@ type auditseccompContainer struct {
 type auditseccompEvent struct {
 	Pid       uint64
 	MntnsId   uint64
+	Timestamp uint64
 	Syscall   uint64
 	Code      uint64
 	Comm      [16]uint8

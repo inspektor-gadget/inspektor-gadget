@@ -97,6 +97,7 @@ EOF
 				}
 
 				normalize := func(e *seccompauditTypes.Event) {
+					e.Timestamp = 0
 					e.Node = ""
 					e.Pid = 0
 					e.MountNsID = 0
