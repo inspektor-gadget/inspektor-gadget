@@ -80,6 +80,7 @@ func TestTraceDns(t *testing.T) {
 			}
 
 			normalize := func(e *tracednsTypes.Event) {
+				e.Timestamp = 0
 				e.Node = ""
 				e.ID = "0000"
 			}

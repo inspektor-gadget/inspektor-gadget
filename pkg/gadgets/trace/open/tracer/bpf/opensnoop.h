@@ -12,8 +12,8 @@ struct args_t {
 };
 
 struct event {
+	__u64 timestamp;
 	/* user terminology for pid: */
-	__u64 ts;
 	__u32 pid;
 	__u32 uid;
 	__u64 mntns_id;

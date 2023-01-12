@@ -42,6 +42,7 @@ func TestTraceSni(t *testing.T) {
 				if *containerRuntime == ContainerRuntimeDocker {
 					e.Container = "test-pod"
 				}
+				e.Timestamp = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

@@ -13,7 +13,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);
 	__type(key, struct graph_key_t);
-	__type(value, u64);
+	__type(value, u64); // timestamp
 } graphmap SEC(".maps");
 
 #endif

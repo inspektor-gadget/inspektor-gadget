@@ -47,6 +47,7 @@ func TestTraceOpen(t *testing.T) {
 					e.Container = "test-pod"
 				}
 
+				e.Timestamp = 0
 				e.MountNsID = 0
 				e.Pid = 0
 				e.UID = 0

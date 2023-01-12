@@ -272,6 +272,9 @@ func TestCapabilitiesTracer(t *testing.T) {
 
 			events := []types.Event{}
 			eventCallback := func(event *types.Event) {
+				// normalize
+				event.Timestamp = 0
+
 				events = append(events, *event)
 			}
 
@@ -296,6 +299,9 @@ func TestCapabilitiesTracerMultipleMntNsIDsFilter(t *testing.T) {
 
 	events := []types.Event{}
 	eventCallback := func(event *types.Event) {
+		// normalize
+		event.Timestamp = 0
+
 		events = append(events, *event)
 	}
 

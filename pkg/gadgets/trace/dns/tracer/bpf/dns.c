@@ -117,6 +117,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 		return 0;
 
 	struct event_t event = {0,};
+	event.timestamp = bpf_ktime_get_boot_ns();
 	event.id = load_half(skb, DNS_OFF + offsetof(struct dnshdr, id));
 	event.af = AF_INET;
 	event.daddr_v4 = load_word(skb, ETH_HLEN + offsetof(struct iphdr, daddr));

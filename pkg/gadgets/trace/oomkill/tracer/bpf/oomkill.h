@@ -9,6 +9,7 @@ struct data_t {
 	__u32 tpid;
 	__u64 pages;
 	__u64 mount_ns_id;
+	__u64 timestamp;
 	__u8 fcomm[TASK_COMM_LEN];
 	__u8 tcomm[TASK_COMM_LEN];
 };

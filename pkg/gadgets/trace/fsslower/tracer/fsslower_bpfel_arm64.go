@@ -14,15 +14,16 @@ import (
 )
 
 type fsslowerEvent struct {
-	DeltaUs uint64
-	EndNs   uint64
-	Offset  int64
-	Size    uint64
-	MntnsId uint64
-	Pid     uint32
-	Op      uint32
-	File    [32]uint8
-	Task    [16]uint8
+	DeltaUs   uint64
+	EndNs     uint64
+	Offset    int64
+	Size      uint64
+	MntnsId   uint64
+	Timestamp uint64
+	Pid       uint32
+	Op        uint32
+	File      [32]uint8
+	Task      [16]uint8
 }
 
 // loadFsslower returns the embedded CollectionSpec for fsslower.

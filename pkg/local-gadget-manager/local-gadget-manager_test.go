@@ -299,6 +299,7 @@ func TestDNS(t *testing.T) {
 	}
 
 	// normalize
+	event.Timestamp = 0
 	id := event.ID
 	event.ID = "0000"
 
@@ -320,6 +321,7 @@ func TestDNS(t *testing.T) {
 	if event.ID != id {
 		t.Fatalf("Response ID: %v, Expected: %v", event.ID, id)
 	}
+	event.Timestamp = 0
 	event.ID = "0000"
 
 	if event != expectedEvent {

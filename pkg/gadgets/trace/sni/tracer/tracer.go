@@ -16,6 +16,7 @@ package tracer
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
@@ -67,6 +68,9 @@ func parseSNIEvent(sample []byte) (*types.Event, error) {
 	event := types.Event{
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
+			// TODO: use bpfEvent
+			// Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
+			Timestamp: eventtypes.Time(time.Now().UnixNano()),
 		},
 		Name: name,
 	}

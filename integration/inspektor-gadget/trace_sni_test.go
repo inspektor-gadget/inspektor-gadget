@@ -42,6 +42,7 @@ func TestTraceSni(t *testing.T) {
 			expectedEntry.Container = ""
 
 			normalize := func(e *tracesniTypes.Event) {
+				e.Timestamp = 0
 				e.Node = ""
 			}
 

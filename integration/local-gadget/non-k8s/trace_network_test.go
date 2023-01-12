@@ -63,7 +63,11 @@ func TestTraceNetwork(t *testing.T) {
 				},
 			}
 
-			return ExpectEntriesToMatch(output, nil, expectedEntries...)
+			normalize := func(e *networkTypes.Event) {
+				e.Timestamp = 0
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
 		},
 	}
 

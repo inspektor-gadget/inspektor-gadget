@@ -7,6 +7,7 @@
 struct bind_event {
     __u8 addr[16];
 	__u64 mount_ns_id;
+	__u64 timestamp;
 	__u64 ts_us;
 	__u32 pid;
 	__u32 bound_dev_if;

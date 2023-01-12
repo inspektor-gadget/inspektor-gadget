@@ -14,15 +14,15 @@ import (
 )
 
 type opensnoopEvent struct {
-	Ts      uint64
-	Pid     uint32
-	Uid     uint32
-	MntnsId uint64
-	Ret     int32
-	Flags   int32
-	Comm    [16]uint8
-	Fname   [255]uint8
-	_       [1]byte
+	Timestamp uint64
+	Pid       uint32
+	Uid       uint32
+	MntnsId   uint64
+	Ret       int32
+	Flags     int32
+	Comm      [16]uint8
+	Fname     [255]uint8
+	_         [1]byte
 }
 
 // loadOpensnoop returns the embedded CollectionSpec for opensnoop.

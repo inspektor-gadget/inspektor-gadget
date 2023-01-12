@@ -33,7 +33,7 @@ struct event {
 		__u32 daddr_v4;
 	};
 	__u8 task[TASK_COMM_LEN];
-	__u64 ts_us;
+	__u64 timestamp;
 	__u32 af; // AF_INET or AF_INET6
 	__u32 pid;
 	__u32 uid;

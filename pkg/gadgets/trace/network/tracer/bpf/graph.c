@@ -109,9 +109,9 @@ int ig_trace_net(struct __sk_buff *skb)
 	} else {
 		key.ip		= iph.daddr;
 	}
-	u64 zero = 0;
+	u64 timestamp = bpf_ktime_get_boot_ns();
 
-	bpf_map_update_elem(&graphmap, &key, &zero, BPF_ANY);
+	bpf_map_update_elem(&graphmap, &key, &timestamp, BPF_NOEXIST);
 
 	return 0;
 }

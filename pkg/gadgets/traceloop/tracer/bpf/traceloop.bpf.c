@@ -152,7 +152,6 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	 * https://github.com/iovisor/bcc/issues/2623#issuecomment-560214481
 	 */
 	struct syscall_event_t sc = {};
-	u64 ts = bpf_ktime_get_ns();
 	struct task_struct *task;
 	u64 nr = ctx->args[1];
 	struct pt_regs *args;
@@ -161,14 +160,28 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	int ret;
 	int i;
 
-	sc.timestamp = ts;
+	/* The boot time timestamp is used to give the timestamp to users. It
+	 * is converted to the wall-clock time in userspace. It only works
+	 * from Linux 5.7. On older kernels, the BPF bytecode for
+	 * bpf_ktime_get_boot_ns is automatically removed by the BPF loader,
+	 * see FixBpfKtimeGetBootNs. In this way, this BPF program can still be
+	 * loaded on older kernels. */
+	u64 boot_ts = bpf_ktime_get_boot_ns();
+
+	/* The monotonic timestamp is used by traceloop to match the sys_enter
+	 * event with the cont and sys_exit events. This is an internal
+	 * implementation detail not exposed to the user. */
+	u64 monotonic_ts = bpf_ktime_get_ns();
+
+	sc.boot_timestamp = boot_ts;
+	sc.monotonic_timestamp = monotonic_ts;
 	sc.cont_nr = 0;
 	sc.cpu = bpf_get_smp_processor_id();
 	sc.pid = pid >> 32;
 	sc.typ = SYSCALL_EVENT_TYPE_ENTER;
 	sc.id = nr;
 
-	remembered.timestamp = ts;
+	remembered.monotonic_timestamp = monotonic_ts;
 	remembered.nr = nr;
 
 	syscall_def = bpf_map_lookup_elem(&syscalls, &nr);
@@ -200,7 +213,7 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 
 	args = bpf_map_lookup_elem(&regs_map, &pid);
 	if (!args) {
-		bpf_error_printk("enter: there should be a pt_regs for key %lu\n", ts);
+		bpf_error_printk("enter: there should be a pt_regs for key %lu\n", pid);
 
 		goto end;
 	}
@@ -236,7 +249,7 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 		bool null_terminated = false;
 		struct syscall_event_cont_t sc_cont = {};
 
-		sc_cont.timestamp = ts;
+		sc_cont.monotonic_timestamp = monotonic_ts;
 		sc_cont.index = i;
 		sc_cont.failed = false;
 
@@ -354,6 +367,7 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 		goto end;
 
 	struct syscall_event_t sc = {
+		.boot_timestamp = bpf_ktime_get_boot_ns(),
 		.cpu = bpf_get_smp_processor_id(),
 		.pid = pid >> 32,
 		.typ = SYSCALL_EVENT_TYPE_EXIT,
@@ -380,7 +394,7 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 	 * This ensures all events (enter, exit and cont) related to a given
 	 * syscall have the same timestamp.
 	 */
-	sc.timestamp = remembered->timestamp;
+	sc.monotonic_timestamp = remembered->monotonic_timestamp;
 
 	for (i = 0; i < SYSCALL_ARGS; i++) {
 		__u64 arg_len = syscall_def->args_len[i];
@@ -390,7 +404,7 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 
 		bool null_terminated = false;
 		struct syscall_event_cont_t sc_cont = {
-			.timestamp = remembered->timestamp,
+			.monotonic_timestamp = remembered->monotonic_timestamp,
 			.index = i,
 			.failed = false,
 		};

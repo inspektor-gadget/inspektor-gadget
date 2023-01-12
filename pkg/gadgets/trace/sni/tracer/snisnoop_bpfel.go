@@ -13,7 +13,10 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type snisnoopEventT struct{ Name [128]uint8 }
+type snisnoopEventT struct {
+	Name      [128]uint8
+	Timestamp uint64
+}
 
 // loadSnisnoop returns the embedded CollectionSpec for snisnoop.
 func loadSnisnoop() (*ebpf.CollectionSpec, error) {

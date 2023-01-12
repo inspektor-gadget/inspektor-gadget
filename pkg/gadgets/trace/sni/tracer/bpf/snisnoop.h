@@ -37,6 +37,7 @@
 
 struct event_t {
 	__u8 name[TLS_MAX_SERVER_NAME_LEN];
+	__u64 timestamp;
 };
 
 #endif

@@ -19,6 +19,7 @@ type mountsnoopEvent struct {
 	Pid       uint32
 	Tid       uint32
 	MountNsId uint64
+	Timestamp uint64
 	MntNs     uint32
 	Ret       int32
 	Comm      [16]uint8

@@ -16,6 +16,7 @@ import (
 type bindsnoopBindEvent struct {
 	Addr       [16]uint8
 	MountNsId  uint64
+	Timestamp  uint64
 	TsUs       uint64
 	Pid        uint32
 	BoundDevIf uint32

@@ -6,6 +6,7 @@
 #define MAX_DNS_NAME 255
 
 struct event_t {
+	__u64 timestamp;
 	union {
 		__u8 saddr_v6[16];
 		__u32 saddr_v4;

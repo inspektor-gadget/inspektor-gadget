@@ -14,16 +14,16 @@ import (
 )
 
 type tcpconnectEvent struct {
-	SaddrV6 [16]uint8
-	DaddrV6 [16]uint8
-	Task    [16]uint8
-	TsUs    uint64
-	Af      uint32
-	Pid     uint32
-	Uid     uint32
-	Dport   uint16
-	_       [2]byte
-	MntnsId uint64
+	SaddrV6   [16]uint8
+	DaddrV6   [16]uint8
+	Task      [16]uint8
+	Timestamp uint64
+	Af        uint32
+	Pid       uint32
+	Uid       uint32
+	Dport     uint16
+	_         [2]byte
+	MntnsId   uint64
 }
 
 type tcpconnectIpv4FlowKey struct {

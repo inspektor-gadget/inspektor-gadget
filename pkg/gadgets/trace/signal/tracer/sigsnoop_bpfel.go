@@ -14,12 +14,13 @@ import (
 )
 
 type sigsnoopEvent struct {
-	Pid     uint32
-	Tpid    uint32
-	MntnsId uint64
-	Sig     int32
-	Ret     int32
-	Comm    [16]uint8
+	Pid       uint32
+	Tpid      uint32
+	MntnsId   uint64
+	Timestamp uint64
+	Sig       int32
+	Ret       int32
+	Comm      [16]uint8
 }
 
 // loadSigsnoop returns the embedded CollectionSpec for sigsnoop.

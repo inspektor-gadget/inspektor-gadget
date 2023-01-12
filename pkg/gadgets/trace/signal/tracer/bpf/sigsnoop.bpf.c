@@ -80,6 +80,7 @@ static int probe_exit(void *ctx, int ret)
 		goto cleanup;
 
 	eventp->ret = ret;
+	eventp->timestamp = bpf_ktime_get_boot_ns();
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, eventp, sizeof(*eventp));
 
 cleanup:
@@ -166,6 +167,7 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 	event.sig = sig;
 	event.ret = ret;
 	bpf_get_current_comm(event.comm, sizeof(event.comm));
+	event.timestamp = bpf_ktime_get_boot_ns();
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 	return 0;
 }

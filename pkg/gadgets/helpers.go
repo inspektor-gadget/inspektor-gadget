@@ -17,9 +17,15 @@ package gadgets
 import (
 	"encoding/binary"
 	"net/netip"
+	"sync"
+	"time"
 	"unsafe"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
+	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -31,6 +37,10 @@ const (
 	TraceDefaultNamespace = "gadget"
 
 	PerfBufferPages = 64
+
+	// bpf_ktime_get_boot_ns()'s func id as defined in Linux API
+	// https://github.com/torvalds/linux/blob/v6.2-rc1/include/uapi/linux/bpf.h#L5614
+	BpfKtimeGetBootNsFuncID = 125
 )
 
 // CloseLink closes l if it's not nil and returns nil
@@ -98,5 +108,100 @@ func IPStringFromBytes(ipBytes [16]byte, ipType int) string {
 		return netip.AddrFrom16(ipBytes).String()
 	default:
 		return ""
+	}
+}
+
+var timeDiff time.Duration
+
+func init() {
+	var t unix.Timespec
+	err := unix.ClockGettime(unix.CLOCK_BOOTTIME, &t)
+	if err != nil {
+		panic(err)
+	}
+	timeDiff = time.Duration(time.Now().UnixNano() - t.Sec*1000*1000*1000 - t.Nsec)
+}
+
+// WallTimeFromBootTime converts a time from bpf_ktime_get_boot_ns() to the
+// wall time with nano precision.
+//
+// Example:
+//
+//	fmt.Printf("Time: %s\n", WallTimeFromBootTime(ts).String())
+//
+// would display:
+//
+//	Time: 2022-12-15T16:49:00.452371948+01:00
+//
+// Shell command to convert the number to a date:
+//
+//	$ date -d @$(echo 1671447636499110634/1000000000|bc -l) +"%d-%m-%Y %H:%M:%S:%N"
+//	19-12-2022 12:00:36:499110634
+//
+// bpf_ktime_get_boot_ns was added in Linux 5.7. If not available and the BPF
+// program returns 0, just get the timestamp in userspace.
+func WallTimeFromBootTime(ts uint64) types.Time {
+	if ts == 0 {
+		return types.Time(time.Now().UnixNano())
+	}
+	return types.Time(time.Unix(0, int64(ts)).Add(timeDiff).UnixNano())
+}
+
+var (
+	bpfKtimeGetBootNsOnce   sync.Once
+	bpfKtimeGetBootNsExists bool
+)
+
+// DetectBpfKtimeGetBootNs returns true if bpf_ktime_get_boot_ns is available
+// in the current kernel. False negatives are possible if BTF is not available.
+func DetectBpfKtimeGetBootNs() bool {
+	bpfKtimeGetBootNsOnce.Do(func() {
+		btfSpec, err := btf.LoadKernelSpec()
+		if err != nil {
+			bpfKtimeGetBootNsExists = false
+			return
+		}
+
+		enum := &btf.Enum{}
+		err = btfSpec.TypeByName("bpf_func_id", &enum)
+		if err != nil {
+			bpfKtimeGetBootNsExists = false
+			return
+		}
+
+		bpfKtimeGetBootNsExists = len(enum.Values) >= BpfKtimeGetBootNsFuncID
+	})
+
+	return bpfKtimeGetBootNsExists
+}
+
+// removeBpfKtimeGetBootNs removes calls to bpf_ktime_get_boot_ns and replaces
+// it by an assignment to zero
+func removeBpfKtimeGetBootNs(p *ebpf.ProgramSpec) {
+	iter := p.Instructions.Iterate()
+
+	for iter.Next() {
+		in := iter.Ins
+
+		if in.OpCode.Class().IsJump() &&
+			in.OpCode.JumpOp() == asm.Call &&
+			in.Constant == BpfKtimeGetBootNsFuncID {
+			// reset timestamp to zero
+			in.OpCode = asm.Mov.Op(asm.ImmSource)
+			in.Dst = asm.R0
+			in.Constant = 0
+		}
+	}
+}
+
+// FixBpfKtimeGetBootNs checks if bpf_ktime_get_boot_ns is supported by the
+// kernel and removes it if not
+func FixBpfKtimeGetBootNs(programSpecs map[string]*ebpf.ProgramSpec) {
+	if DetectBpfKtimeGetBootNs() {
+		return
+	}
+
+	for _, s := range programSpecs {
+		removeBpfKtimeGetBootNs(s)
 	}
 }

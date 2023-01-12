@@ -46,6 +46,7 @@ func TestTraceFsslower(t *testing.T) {
 			}
 
 			normalize := func(e *tracefsslowerType.Event) {
+				e.Timestamp = 0
 				e.Node = ""
 				e.MountNsID = 0
 				e.Pid = 0

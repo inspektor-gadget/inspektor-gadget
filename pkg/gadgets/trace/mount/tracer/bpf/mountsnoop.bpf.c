@@ -100,6 +100,7 @@ static int probe_exit(void *ctx, int ret)
 		return 0;
 
 	eventp->mount_ns_id = mntns_id;
+	eventp->timestamp = bpf_ktime_get_boot_ns();
 	eventp->delta = bpf_ktime_get_ns() - argp->ts;
 	eventp->flags = argp->flags;
 	eventp->pid = pid;

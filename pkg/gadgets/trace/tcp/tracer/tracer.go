@@ -96,6 +96,8 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
+	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
+
 	mapReplacements := map[string]*ebpf.Map{}
 	filterByMntNs := false
 
@@ -191,7 +193,8 @@ func (t *Tracer) run() {
 
 		event := types.Event{
 			Event: eventtypes.Event{
-				Type: eventtypes.NORMAL,
+				Type:      eventtypes.NORMAL,
+				Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
 			},
 			MountNsID: bpfEvent.MntnsId,
 			Pid:       bpfEvent.Pid,

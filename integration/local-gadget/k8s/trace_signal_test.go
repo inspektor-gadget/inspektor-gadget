@@ -44,6 +44,7 @@ func TestTraceSignal(t *testing.T) {
 					e.Container = "test-pod"
 				}
 
+				e.Timestamp = 0
 				e.Pid = 0
 				e.TargetPid = 0
 				e.Retval = 0
