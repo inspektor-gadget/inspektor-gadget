@@ -4,4 +4,7 @@ FROM golangci/golangci-lint:${VERSION}
 # library.
 RUN apt-get update \
 	&& apt-get install -y libseccomp-dev
-ENTRYPOINT golangci-lint run --fix
+
+# The timeout specified below is used by 'make lint'. Please keep in sync with
+# the timeout specified in .golangci.yml used by the CI.
+ENTRYPOINT golangci-lint run --fix --timeout=10m0s
