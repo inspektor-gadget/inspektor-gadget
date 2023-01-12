@@ -17,6 +17,7 @@ package gadgets
 import (
 	"encoding/binary"
 	"net/netip"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -146,22 +147,32 @@ func WallTimeFromBootTime(ts uint64) types.Time {
 	return types.Time(time.Unix(0, int64(ts)).Add(timeDiff).UnixNano())
 }
 
-// detectBpfKtimeGetBootNs returns true if bpf_ktime_get_boot_ns is available
+var (
+	bpfKtimeGetBootNsOnce   sync.Once
+	bpfKtimeGetBootNsExists bool
+)
+
+// DetectBpfKtimeGetBootNs returns true if bpf_ktime_get_boot_ns is available
 // in the current kernel. False negatives are possible if BTF is not available.
-func detectBpfKtimeGetBootNs() bool {
-	btfSpec, err := btf.LoadKernelSpec()
-	if err != nil {
-		return false
-	}
+func DetectBpfKtimeGetBootNs() bool {
+	bpfKtimeGetBootNsOnce.Do(func() {
+		btfSpec, err := btf.LoadKernelSpec()
+		if err != nil {
+			bpfKtimeGetBootNsExists = false
+			return
+		}
 
-	enum := &btf.Enum{}
+		enum := &btf.Enum{}
+		err = btfSpec.TypeByName("bpf_func_id", &enum)
+		if err != nil {
+			bpfKtimeGetBootNsExists = false
+			return
+		}
 
-	err = btfSpec.TypeByName("bpf_func_id", &enum)
-	if err != nil {
-		return false
-	}
+		bpfKtimeGetBootNsExists = len(enum.Values) >= BpfKtimeGetBootNsFuncID
+	})
 
-	return len(enum.Values) >= BpfKtimeGetBootNsFuncID
+	return bpfKtimeGetBootNsExists
 }
 
 // removeBpfKtimeGetBootNs removes calls to bpf_ktime_get_boot_ns and replaces
@@ -186,7 +197,7 @@ func removeBpfKtimeGetBootNs(p *ebpf.ProgramSpec) {
 // FixBpfKtimeGetBootNs checks if bpf_ktime_get_boot_ns is supported by the
 // kernel and removes it if not
 func FixBpfKtimeGetBootNs(programSpecs map[string]*ebpf.ProgramSpec) {
-	if detectBpfKtimeGetBootNs() {
+	if DetectBpfKtimeGetBootNs() {
 		return
 	}
 
