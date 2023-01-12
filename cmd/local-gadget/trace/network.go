@@ -155,8 +155,6 @@ func printEvents(
 			}
 
 			fmt.Println(string(b))
-		case commonutils.OutputModeColumns:
-			fallthrough
 		case commonutils.OutputModeCustomColumns:
 			fmt.Println(parser.TransformIntoColumns(event))
 		}
