@@ -28,7 +28,7 @@ var node string
 
 func init() {
 	// Register column templates
-	columns.MustRegisterTemplate("timestamp", "width:35,hide")
+	columns.MustRegisterTemplate("timestamp", "width:35,maxWidth:35,hide")
 	columns.MustRegisterTemplate("node", "width:30,ellipsis:middle")
 	columns.MustRegisterTemplate("namespace", "width:30")
 	columns.MustRegisterTemplate("pod", "width:30,ellipsis:middle")
