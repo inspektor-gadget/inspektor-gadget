@@ -26,12 +26,11 @@ import (
 )
 
 const (
-	OutputModeColumns       = "columns"
 	OutputModeJSON          = "json"
 	OutputModeCustomColumns = "custom-columns"
 )
 
-var SupportedOutputModes = []string{OutputModeColumns, OutputModeJSON, OutputModeCustomColumns}
+var SupportedOutputModes = []string{OutputModeJSON, OutputModeCustomColumns}
 
 // OutputConfig contains the flags that describes how to print the gadget's output
 type OutputConfig struct {
@@ -50,7 +49,7 @@ func AddOutputFlags(command *cobra.Command, outputConfig *OutputConfig) {
 		&outputConfig.OutputMode,
 		"output",
 		"o",
-		OutputModeColumns,
+		"",
 		fmt.Sprintf("Output format (%s).", strings.Join(SupportedOutputModes, ", ")),
 	)
 
@@ -68,8 +67,9 @@ func (config *OutputConfig) ParseOutputConfig() error {
 	}
 
 	switch {
-	case config.OutputMode == OutputModeColumns:
-		fallthrough
+	case len(config.OutputMode) == 0:
+		config.OutputMode = OutputModeCustomColumns
+		return nil
 	case config.OutputMode == OutputModeJSON:
 		return nil
 	case strings.HasPrefix(config.OutputMode, OutputModeCustomColumns):
