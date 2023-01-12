@@ -56,10 +56,19 @@ runs:
 
         # https://mywiki.wooledge.org/SignalTrap#When_is_the_signal_handled.3F
         echo "IntegrationTestsJob: Start"
+        set -o pipefail
         make \
           KUBERNETES_DISTRIBUTION=${{ inputs.kubernetes_distribution }} \
           KUBERNETES_ARCHITECTURE=${{ inputs.kubernetes_architecture }} \
           CONTAINER_REPO=${{ inputs.container_repo }} \
           IMAGE_TAG=${{ inputs.image_tag }} \
-          -o kubectl-gadget integration-tests & wait $!
+          -o kubectl-gadget integration-tests |& tee integration.log & wait $!
         echo "IntegrationTestsJob: Done"
+    - name: Prepare and publish test reports
+      if: always()
+      continue-on-error: true
+      uses: ./.github/actions/prepare-and-publish-test-reports
+      with:
+        test-log-file: integration.log
+        truncate-lines: 200
+

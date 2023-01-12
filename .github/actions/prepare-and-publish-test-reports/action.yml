@@ -1,0 +1,28 @@
+name: "Prepare and publish test reports"
+description: "Given go test results as plain text, prepare and publish test reports"
+
+inputs:
+  test-log-file:
+    description: "Test log file to be used to generate reports"
+    required: true
+  truncate-lines:
+    description: "Number of failed test log lines to truncate to"
+    default: "50"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install testjson2md
+      shell: bash
+      run: |
+        cd tools/testjson2md
+        go install
+    - name: Prepare test report as json
+      shell: bash
+      run: |
+        go tool test2json -t < ./${{ inputs.test-log-file }} > ./test-report.json
+    - name: Publish test reports as markdown
+      shell: bash
+      run: |
+        testjson2md -in ./test-report.json -out ./test-report.md -truncate-lines ${{ inputs.truncate-lines }}
+        cat test-report.md >> $GITHUB_STEP_SUMMARY
