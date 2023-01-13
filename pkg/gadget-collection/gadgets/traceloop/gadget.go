@@ -206,11 +206,6 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		t.containerIDs[containerID] = mntNsID
 		log.Debugf("tracer attached for %q (%d)", key, mntNsID)
 
-		// There is no client with local-gadget, so we can quit right now.
-		if t.client == nil {
-			return nil
-		}
-
 		var infos []types.TraceloopInfo
 		err = json.Unmarshal([]byte(trace.Status.Output), &infos)
 		if err != nil {

@@ -31,10 +31,8 @@ func TestFilterByContainerName(t *testing.T) {
 		Cmd:  fmt.Sprintf("./local-gadget list-containers -o json --runtimes=docker --containername=%s", cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
-				Podname:   cn,
-				Name:      cn,
-				Namespace: "default",
-				Runtime:   "docker",
+				Name:    cn,
+				Runtime: "docker",
 			}
 
 			normalize := func(c *containercollection.Container) {
@@ -82,19 +80,15 @@ func TestWatchContainers(t *testing.T) {
 				{
 					Type: containercollection.EventTypeAddContainer,
 					Container: &containercollection.Container{
-						Name:      cn,
-						Podname:   cn,
-						Runtime:   "docker",
-						Namespace: "default",
+						Name:    cn,
+						Runtime: "docker",
 					},
 				},
 				{
 					Type: containercollection.EventTypeRemoveContainer,
 					Container: &containercollection.Container{
-						Name:      cn,
-						Podname:   cn,
-						Runtime:   "docker",
-						Namespace: "default",
+						Name:    cn,
+						Runtime: "docker",
 					},
 				},
 			}

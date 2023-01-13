@@ -37,8 +37,6 @@ func TestTraceNetwork(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Namespace: "default",
-							Pod:       cn,
 							Container: cn,
 						},
 					},
@@ -51,8 +49,6 @@ func TestTraceNetwork(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Namespace: "default",
-							Pod:       cn,
 							Container: cn,
 						},
 					},
