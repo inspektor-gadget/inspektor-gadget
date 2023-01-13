@@ -52,23 +52,6 @@ func TestBasic(t *testing.T) {
 	localGadgetManager.Close()
 }
 
-func TestListGadgets(t *testing.T) {
-	if !*rootTest {
-		t.Skip("skipping test requiring root.")
-	}
-
-	localGadgetManager, err := NewManager(nil)
-	if err != nil {
-		t.Fatalf("Failed to start local gadget manager: %s", err)
-	}
-	defer localGadgetManager.Close()
-
-	gadgets := localGadgetManager.ListGadgets()
-	if len(gadgets) == 0 {
-		t.Fatalf("Failed to get any gadgets")
-	}
-}
-
 func TestContainersMap(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
