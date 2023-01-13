@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 
 func TestTraceNetwork(t *testing.T) {
 	t.Parallel()
-	cn := "test-trace-dns"
+	cn := "test-trace-network"
 
 	traceNetworkCmd := &Command{
 		Name:         "TraceNetwork",
