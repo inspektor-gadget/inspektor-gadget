@@ -123,6 +123,8 @@ func (t *Tracer) Attach(pid uint32) (err error) {
 		return fmt.Errorf("failed to load asset: %w", err)
 	}
 
+	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
+
 	consts := map[string]interface{}{
 		"container_netns": netns,
 	}
