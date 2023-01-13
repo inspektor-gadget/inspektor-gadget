@@ -10,19 +10,28 @@ events related to specific kernel subsystems.
 
 ![different tools offered by Inspektor Gadget](images/architecture/ebpf.svg)
 
-On Kubernetes, Inspektor Gadget is deployed to each node as a privileged
-DaemonSet.
-It uses in-kernel eBPF helper programs to monitor events from userspace programs
-in a pod. The eBPF programs are run by the kernel and gather the log data.
-Inspektor Gadget's userspace utilities fetch the log data from ring buffers
-and display it. What eBPF programs are and how Inspektor Gadget uses them is
-briefly explained here.
+It is usually deployed by the `kubectl gadget` plugin. It interacts with the
+kube-api server to create all the resources needed for Inspektor Gadget to work.
+Another way of deploying Inspektor Gadget is to directly apply the manifests
+using `kubectl`.
+As a result, Inspektor Gadget is deployed on each node of the cluster as a
+`DaemonSet`.
 
-![k8s integration](images/architecture/k8s.svg)
+![k8s deploy](images/architecture/k8s_deploy.svg)
+
+Inspektor Gadget provides a trace Custom Resource Definition (CRD) that is used
+to control it. The user interacts with the `kubectl gadget` CLI to create
+tracers in the cluster, this CLI uses the kubeapi-server to create create the
+corresponding trace CRs on each node. Then, the gadget pod implements a
+kubernetes controller that performs the actions indicated in the CR.
+
+![k8s trace CRD](images/architecture/k8s_trace.svg)
+
+This trace CRD is, in turn, used to create tracers which are in charge of
+installing eBPF program in the kernel.
 
 The Linux kernel has an inbuilt virtual machine for eBPF bytecode, allowing
-userspace to run small scripts in kernel space with limited impact (actually
-it is called eBPF to distinguish it from the historical eBPF).
+userspace to run small scripts in kernel space with limited impact.
 The eBPF programs are supplied by userspace in a binary format. The kernel
 then verifies the program through static analysis, so that no memory corruption
 can happen and no out of bounds access can leak sensitive data.
@@ -31,30 +40,34 @@ so that a eBPF program with logical bugs can not hang up the kernel.
 Read more on eBPF [here](https://lwn.net/Articles/740157/) and [here](http://www.brendangregg.com/ebpf.html).
 
 To trace pods, Inspektor Gadget attaches eBPF programs to kernel functions and
-the kernel will run them always when the functions are executed. Therefore, the eBPF
-programs need to detect if the syscall that triggered the function comes from a pod
-that Inspektor Gadget should trace. To do that the program looks up the current
-cgroup id in a eBPF map containing the list of pods to trace, if it's not found
-the program exits early.
-Finally, the eBPF program gathers the information to trace, e.g., syscall parameters,
-and writes them to a ring buffer or eBPF map. Inspektor Gadget's userspace utility
-listens or reads on this ring buffer or eBPF map and fetches new events.
-If the tracing ends, the eBPF program is removed again.
+the kernel will run them always when the functions are executed. Therefore, the
+eBPF programs need to detect if the syscall that triggered the function comes
+from a pod that Inspektor Gadget should trace. To do that the program looks up
+the current `mount` namespace id in a eBPF map containing the list of pods to
+trace, if it's not found the program exits early.
+Finally, the eBPF program gathers the information to trace, e.g., syscall
+parameters, and writes them to a ring buffer or eBPF map.
+
+![k8s trace CRD](images/architecture/k8s_install.svg)
+
+The events gathered by the eBPF program are written to specific kernel buffers.
+The userspace part of Inspektor Gadget reads this events from the buffer and
+publishes them to stream.
+This stream is displayed on the developer laptop using, internally the
+`kubectl exec` API.
+
+![k8s trace CRD](images/architecture/k8s_event.svg)
+
 
 The `Gadget Tracer Manager` keeps a list of running gadgets and containers.
-Each running gadget has an associated eBPF map that is filled with the cgroup
-ids of the containers to be traced according to the namespace, labels, pod name,
-etc. parameters passed to the gadget.
-The `Gadget Tracer Manager` also exposes a gRPC interface that is called each
-time a container is created or destroyed by the OCI PreStart and PostStop hooks.
-It updates the corresponding eBPF maps of each gadget if the container satisfies
-the matching criteria.
+Each running gadget has an associated eBPF map that is filled with the `mount`
+namespace identifiers of the containers to be traced according to the namespace,
+labels, pod name, etc. parameters passed to the gadget.
+The `Gadget Tracer Manager` knows about the current running containers thanks to
+`runc-fanotify` which adds or removes container to the `Gadget Tracer Manager`
+collection.
 
 ![Gadget Tracer Manager](images/architecture/gadget-tracer-manager.svg)
-
-The execsnoop, opensnoop, tcptop and tcpconnect subcommands use programs
-from [bcc](https://github.com/iovisor/bcc) with [special_filtering](https://github.com/iovisor/bcc/blob/master/docs/special_filtering.md).
-They are directly started on the nodes and their output is forwarded to Inspektor Gadget.
 
 Sometimes it is useful to run a eBPF program always in the background. It can trace
 everything and save it into different ringbuffers per pod.
@@ -94,4 +107,3 @@ together and separately.
 ## Previous talks
 
 - Introducing Flatcar Container Linux Edge, [Cloud Native Computing Meetup Berlin](https://www.meetup.com/Cloud-Native-Computing-Berlin/events/260143677/) ([slides](https://docs.google.com/presentation/d/1YF7R2b9HHYrcdpz2BuBznpISuVVZsXZEwD8a6SJoDwQ/edit))
-
