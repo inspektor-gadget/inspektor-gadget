@@ -28,12 +28,17 @@ import (
 	"github.com/medyagh/gopogh/pkg/report"
 )
 
+const (
+	// summaryLimitInBytes is the maximum size of the summary in bytes.
+	// https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#step-isolation-and-limits
+	summaryLimitInBytes = 1000000
+)
+
 var ErrInvalidContent = fmt.Errorf("invalid content")
 
 var (
-	inPath        = flag.String("in", "", "path to JSON file produced by go tool test2json")
-	outPath       = flag.String("out", "", "path to output file")
-	truncateLines = flag.Int("truncate-lines", 50, "number of failed test log lines to truncate to")
+	inPath  = flag.String("in", "", "path to JSON file produced by go tool test2json")
+	outPath = flag.String("out", "", "path to output file")
 )
 
 func main() {
@@ -94,24 +99,29 @@ func markdownForContent(content report.DisplayContent) ([]byte, error) {
 	fmt.Fprintf(&buf, "| %d | %d | %d | %d |\n", content.TotalTests,
 		len(content.Results["pass"]), len(content.Results["fail"]), len(content.Results["skip"]))
 
-	// failed tests
-	if len(content.Results["fail"]) > 0 {
-		fmt.Fprintf(&buf, "#### Failed Tests\n")
-		for _, test := range content.Results["fail"] {
-			fmt.Fprintf(&buf, "<details><summary>%s</summary>\n\n", test.TestName)
-			fmt.Fprintf(&buf, "```code\n")
-			fmt.Fprintf(&buf, "%s", testEventToString(lastN(test.Events, *truncateLines)))
-			fmt.Fprintf(&buf, "```\n")
-			fmt.Fprintf(&buf, "</details>\n")
-		}
-		fmt.Fprintf(&buf, "\n")
-	}
-
 	// test durations
 	fmt.Fprintf(&buf, "#### Test Durations :stopwatch:\n")
 	appendDuration(content, &buf, "Passed", "pass")
 	appendDuration(content, &buf, "Failed", "fail")
 	appendDuration(content, &buf, "Skipped", "skip")
+
+	// failed tests
+	if len(content.Results["fail"]) > 0 {
+		fmt.Fprintf(&buf, "\n#### Failed Tests\n")
+		for _, test := range content.Results["fail"] {
+			s, d := testEventToDetailsBlock(test.TestName, test.Events)
+			// check if we are over the limit
+			if buf.Len()+s > summaryLimitInBytes {
+				fmt.Fprintf(&buf, "<details><summary>%s</summary>\n\n", test.TestName)
+				fmt.Fprintf(&buf, "Logs skipped due to size limitations. Please check workflow [logs](%s) for details.\n", ghaJobUrl())
+				fmt.Fprintf(&buf, "</details>\n")
+				continue
+			}
+
+			fmt.Fprintf(&buf, "%s", d)
+		}
+		fmt.Fprintf(&buf, "\n")
+	}
 
 	return buf.Bytes(), nil
 }
@@ -136,17 +146,21 @@ func sortTestGroups(groups []models.TestGroup) []models.TestGroup {
 	return groups
 }
 
-func testEventToString(events []models.TestEvent) string {
+func testEventToDetailsBlock(name string, events []models.TestEvent) (int, []byte) {
 	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "<details><summary>%s</summary>\n\n", name)
+	fmt.Fprintf(&buf, "```code\n")
 	for _, event := range events {
 		fmt.Fprintf(&buf, "%s", event.Output)
 	}
-	return buf.String()
+	fmt.Fprintf(&buf, "```\n")
+	fmt.Fprintf(&buf, "</details>\n")
+	return len(buf.Bytes()), buf.Bytes()
 }
 
-func lastN[T any](s []T, n int) []T {
-	if len(s) <= n {
-		return s
+func ghaJobUrl() string {
+	if os.Getenv("GITHUB_ACTIONS") != "true" {
+		return ""
 	}
-	return s[len(s)-n:]
+	return os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv("GITHUB_REPOSITORY") + "/actions/runs/" + os.Getenv("GITHUB_RUN_ID") + "/attempts/" + os.Getenv("GITHUB_RUN_ATTEMPT")
 }
