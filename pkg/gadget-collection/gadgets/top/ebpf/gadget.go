@@ -164,7 +164,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		t.helpers.PublishEvent(t.traceName, string(r))
 	}
 
-	tracer, err := ebpftoptracer.NewTracer(config, eventCallback, t.node)
+	tracer, err := ebpftoptracer.NewTracer(config, t.helpers, eventCallback)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
 		return

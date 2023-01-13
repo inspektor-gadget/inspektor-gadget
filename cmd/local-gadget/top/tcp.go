@@ -24,7 +24,6 @@ import (
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
@@ -60,7 +59,7 @@ func newTCPCmd() *cobra.Command {
 				ColMap:         cols.ColumnMap,
 			},
 			commonFlags: &commonFlags,
-			createAndRunTracer: func(mountNsMap *ebpf.Map, enricher gadgets.DataEnricherByMntNs, eventCallback func(*top.Event[types.Stats])) (trace.Tracer, error) {
+			createAndRunTracer: func(mountNsMap *ebpf.Map, enricher EnricherByMntNsOrNode, eventCallback func(*top.Event[types.Stats])) (trace.Tracer, error) {
 				config := &tracer.Config{
 					MaxRows:      flags.MaxRows,
 					Interval:     time.Second * time.Duration(flags.OutputInterval),

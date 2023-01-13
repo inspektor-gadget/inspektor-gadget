@@ -36,12 +36,17 @@ import (
 	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
 )
 
+type EnricherByMntNsOrNode interface {
+	gadgets.DataNodeEnricher
+	gadgets.DataEnricherByMntNs
+}
+
 // TopGadget represents a gadget belonging to the top category.
 type TopGadget[Stats any] struct {
 	commontop.TopGadget[Stats]
 
 	commonFlags        *utils.CommonFlags
-	createAndRunTracer func(*ebpf.Map, gadgets.DataEnricherByMntNs, func(*top.Event[Stats])) (trace.Tracer, error)
+	createAndRunTracer func(*ebpf.Map, EnricherByMntNsOrNode, func(*top.Event[Stats])) (trace.Tracer, error)
 }
 
 // Run runs a TopGadget and prints the output after parsing it using the

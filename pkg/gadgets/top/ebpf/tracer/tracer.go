@@ -28,10 +28,10 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/piditer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Config struct {
@@ -47,6 +47,7 @@ type programStats struct {
 
 type Tracer struct {
 	config        *Config
+	enricher      gadgets.DataNodeEnricher
 	eventCallback func(*top.Event[types.Stats])
 	done          chan bool
 
@@ -56,18 +57,17 @@ type Tracer struct {
 	startStats map[string]programStats
 	prevStats  map[string]programStats
 	colMap     columns.ColumnMap[types.Stats]
-
-	node string
 }
 
-func NewTracer(config *Config, eventCallback func(*top.Event[types.Stats]), node string,
+func NewTracer(config *Config, enricher gadgets.DataNodeEnricher,
+	eventCallback func(*top.Event[types.Stats]),
 ) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
+		enricher:      enricher,
 		eventCallback: eventCallback,
 		done:          make(chan bool),
 		prevStats:     make(map[string]programStats),
-		node:          node,
 	}
 
 	if err := t.start(); err != nil {
@@ -310,10 +310,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			runCount: totalRunCount,
 		}
 
-		stats = append(stats, &types.Stats{
-			CommonData: eventtypes.CommonData{
-				Node: t.node,
-			},
+		stat := &types.Stats{
 			ProgramID:          uint32(curID),
 			Name:               pi.Name,
 			Type:               pi.Type.String(),
@@ -325,7 +322,13 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			CumulativeRunCount: cumulativeRunCount,
 			MapMemory:          totalMapMemory,
 			MapCount:           uint32(len(mapIDs)),
-		})
+		}
+
+		if t.enricher != nil {
+			t.enricher.EnrichNode(&stat.CommonData)
+		}
+
+		stats = append(stats, stat)
 
 		prog.Close()
 	}
