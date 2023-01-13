@@ -119,6 +119,8 @@ func NewTracer[Event any](
 	baseEvent func(ev types.Event) *Event,
 	parseEvent func([]byte) (*Event, error),
 ) *Tracer[Event] {
+	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
+
 	return &Tracer[Event]{
 		spec:            spec,
 		attachments:     make(map[uint64]*attachment),
