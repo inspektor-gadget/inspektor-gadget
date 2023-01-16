@@ -29,16 +29,16 @@ msg = @printf '  %-8s %s%s\n' "$(1)" "$(notdir $(2))" "$(if $(3), $(3))";
 MAKEFLAGS += --no-print-directory
 endif
 
-$(BTFHUB_ARCHIVE)/%.btf: $(BTFHUB_ARCHIVE)/%.btf.tar.xz
-	$(call msg,UNTAR,$@)
-	$(Q)tar xvfJ $< -C "$(@D)" --touch > /dev/null
-
 $(MIN_CORE_BTF_FILES): $(BPF_PROGS_O_FILES)
 
-$(OUTPUT)/%.btf: $(BTFHUB_ARCHIVE)/%.btf
+$(OUTPUT)/%.btf: BTF_FILE = $(<:.tar.xz=)
+$(OUTPUT)/%.btf: $(BTFHUB_ARCHIVE)/%.btf.tar.xz
+	$(call msg,UNTAR,$@)
+	$(Q)tar xvfJ $< -C "$(dir $<)" --touch > /dev/null
 	$(call msg,BTFGEN,$@)
 	$(Q)mkdir -p "$(@D)"
-	$(Q)if [ -f $< ]; then $(BPFTOOL) gen min_core_btf $< $@ $(BPF_PROGS_O_FILES); else echo "$< does not exist!" >&2; fi
+	$(Q)if [ -f $(BTF_FILE) ]; then $(BPFTOOL) gen min_core_btf $(BTF_FILE) $@ $(BPF_PROGS_O_FILES); else echo "$(BTF_FILE) does not exist!" >&2; fi
+	$(Q)rm -fr $(BTF_FILE)
 
 # delete failed targets
 .DELETE_ON_ERROR:
