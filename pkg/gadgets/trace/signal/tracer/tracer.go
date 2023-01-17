@@ -1,8 +1,19 @@
+// Copyright 2019-2023 The Inspektor Gadget authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build linux
 // +build linux
-
-// Copyright 2019-2022 The Inspektor Gadget authors
-// SPDX-License-Identifier: Apache-2.0
 
 package tracer
 
@@ -10,14 +21,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"syscall"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -50,29 +60,6 @@ type Tracer struct {
 
 	enricher      gadgets.DataEnricherByMntNs
 	eventCallback func(*types.Event)
-}
-
-func signalStringToInt(signal string) (int32, error) {
-	// There are three possibilities:
-	// 1. Either user did not give a signal, thus the argument is empty string.
-	// 2. Or signal begins with SIG.
-	// 3. Or signal is a string which contains an integer.
-	if signal == "" {
-		return 0, nil
-	}
-
-	if strings.HasPrefix(signal, "SIG") {
-		signalNum := unix.SignalNum(signal)
-		if signalNum == 0 {
-			return 0, fmt.Errorf("no signal found for %q", signal)
-		}
-
-		return int32(signalNum), nil
-	}
-
-	signalNum, err := strconv.ParseInt(signal, 10, 32)
-
-	return int32(signalNum), err
 }
 
 func signalIntToString(signal int) string {
@@ -243,4 +230,42 @@ func (t *Tracer) run() {
 
 		t.eventCallback(&event)
 	}
+}
+
+// --- Registry changes
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
+	t.config.MountnsMap = mountnsMap
+}
+
+func (t *Tracer) SetEventHandler(handler any) {
+	nh, ok := handler.(func(ev *types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventCallback = nh
+}
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+	tracer := &Tracer{
+		config: &Config{},
+	}
+	if runner == nil {
+		return tracer, nil
+	}
+
+	params := runner.GadgetParams()
+	tracer.config.TargetPid = params.Get(ParamPID).AsInt32()
+	tracer.config.FailedOnly = params.Get(ParamFailedOnly).AsBool()
+	tracer.config.KillOnly = params.Get(ParamKillOnly).AsBool()
+	tracer.config.TargetSignal = params.Get(ParamTargetSignal).AsString()
+	return tracer, nil
 }
