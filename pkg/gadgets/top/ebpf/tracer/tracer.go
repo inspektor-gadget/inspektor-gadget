@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -390,4 +390,55 @@ func (t *Tracer) run() {
 			}
 		}
 	}()
+}
+
+// --- Registry changes
+
+func (t *Tracer) SetEventHandlerArray(handler any) {
+	nh, ok := handler.(func(ev []*types.Stats))
+	if !ok {
+		panic("event handler invalid")
+	}
+
+	// TODO: add errorHandler
+	t.eventCallback = func(ev *top.Event[types.Stats]) {
+		if ev.Error != "" {
+			return
+		}
+		nh(ev.Stats)
+	}
+}
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+
+	statCols, err := columns.NewColumns[types.Stats]()
+	if err != nil {
+		t.Stop()
+		return err
+	}
+	t.colMap = statCols.GetColumnMap()
+
+	t.run()
+	return nil
+}
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+	tracer := &Tracer{
+		config:    &Config{},
+		done:      make(chan bool),
+		prevStats: make(map[string]programStats),
+	}
+	if runner == nil {
+		return &Tracer{}, nil
+	}
+
+	params := runner.GadgetParams()
+	tracer.config.MaxRows = params.Get(gadgets.ParamMaxRows).AsInt()
+	tracer.config.SortBy = params.Get(gadgets.ParamSortBy).AsStringSlice()
+	tracer.config.Interval = time.Second * time.Duration(params.Get(gadgets.ParamInterval).AsInt())
+	return tracer, nil
 }

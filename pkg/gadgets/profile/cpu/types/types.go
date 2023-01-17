@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,8 +32,25 @@ type Report struct {
 	UserStack   []string `json:"userStack,omitempty"`
 	KernelStack []string `json:"kernelStack,omitempty"`
 	Count       uint64   `json:"count,omitempty" column:"count"`
+
+	MntnsID uint64 `json:"-"`
 }
 
 func GetColumns() *columns.Columns[Report] {
 	return columns.MustCreateColumns[Report]()
+}
+
+func (r *Report) GetMountNSID() uint64 {
+	return r.MntnsID
+}
+
+func (r *Report) ExtraLines() []string {
+	var out []string
+	for i := len(r.KernelStack) - 1; i >= 0; i-- {
+		out = append(out, "\t"+r.KernelStack[i])
+	}
+	for i := len(r.UserStack) - 1; i >= 0; i-- {
+		out = append(out, "\t"+r.UserStack[i])
+	}
+	return out
 }
