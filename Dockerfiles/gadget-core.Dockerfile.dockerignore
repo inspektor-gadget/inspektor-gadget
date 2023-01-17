@@ -3,6 +3,7 @@
 !go.sum
 !gadget-container
 !hack/btfs
+!internal
 !pkg
 !tools
 !Makefile*
