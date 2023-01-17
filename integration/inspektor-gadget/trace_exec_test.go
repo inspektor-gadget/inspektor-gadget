@@ -80,6 +80,8 @@ func TestTraceExec(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		traceExecCmd,
+		// Give time to kubectl-gadget to start the tracer
+		SleepForSecondsCommand(3),
 		BusyboxPodCommand(ns, cmd),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
