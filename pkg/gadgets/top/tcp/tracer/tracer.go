@@ -1,10 +1,7 @@
-//go:build linux
-// +build linux
-
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this bio except in compliance with the License.
+// you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
@@ -14,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build linux
+// +build linux
 
 package tracer
 
@@ -242,4 +242,60 @@ func (t *Tracer) run() {
 			}
 		}
 	}()
+}
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+
+	statCols, err := columns.NewColumns[types.Stats]()
+	if err != nil {
+		t.Stop()
+		return err
+	}
+	t.colMap = statCols.GetColumnMap()
+
+	return nil
+}
+
+func (t *Tracer) SetEventHandlerArray(handler any) {
+	nh, ok := handler.(func(ev []*types.Stats))
+	if !ok {
+		panic("event handler invalid")
+	}
+
+	// TODO: add errorHandler
+	t.eventCallback = func(ev *top.Event[types.Stats]) {
+		if ev.Error != "" {
+			return
+		}
+		nh(ev.Stats)
+	}
+}
+
+func (t *Tracer) SetMountNsMap(mntnsMap *ebpf.Map) {
+	t.config.MountnsMap = mntnsMap
+}
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+	tracer := &Tracer{
+		config: &Config{
+			TargetFamily: -1,
+			TargetPid:    -1,
+		},
+		done: make(chan bool),
+	}
+	if runner == nil {
+		return tracer, nil
+	}
+
+	params := runner.GadgetParams()
+	tracer.config.MaxRows = params.Get(gadgets.ParamMaxRows).AsInt()
+	tracer.config.SortBy = params.Get(gadgets.ParamSortBy).AsStringSlice()
+	tracer.config.Interval = time.Second * time.Duration(params.Get(gadgets.ParamInterval).AsInt())
+	tracer.config.TargetFamily, _ = types.ParseFilterByFamily(params.Get(types.FamilyParam).AsString())
+	tracer.config.TargetPid = params.Get(types.PidParam).AsInt32()
+	return tracer, nil
 }

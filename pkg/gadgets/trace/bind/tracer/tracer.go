@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build linux
+// +build linux
 
 package tracer
 
@@ -285,4 +285,44 @@ func (t *Tracer) run() {
 
 		t.eventCallback(&event)
 	}
+}
+
+// --- Registry changes
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
+	t.config.MountnsMap = mountnsMap
+}
+
+func (t *Tracer) SetEventHandler(handler any) {
+	nh, ok := handler.(func(ev *types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventCallback = nh
+}
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+	// TODO(Mauricio): Can't we use this way on all gadgets?
+	if runner == nil {
+		return &Tracer{}, nil
+	}
+
+	params := runner.GadgetParams()
+
+	tracer := &Tracer{
+		config: &Config{
+			TargetPid:    params.Get(ParamPID).AsInt32(),
+			TargetPorts:  params.Get(ParamPorts).AsUint16Slice(),
+			IgnoreErrors: params.Get(ParamIgnoreErrors).AsBool(),
+		},
+	}
+	return tracer, nil
 }

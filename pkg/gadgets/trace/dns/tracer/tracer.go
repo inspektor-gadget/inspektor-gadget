@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,11 +20,12 @@ import (
 	"syscall"
 	"unsafe"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-	"golang.org/x/sys/unix"
 )
 
 //go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/"
@@ -277,4 +278,10 @@ func bpfEventToDNSEvent(bpfEvent *dnsEventT) (*types.Event, error) {
 	}
 
 	return &event, nil
+}
+
+// --- Registry changes
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+	return NewTracer()
 }

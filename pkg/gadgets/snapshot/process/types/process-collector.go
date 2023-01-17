@@ -36,3 +36,7 @@ type Event struct {
 func GetColumns() *columns.Columns[Event] {
 	return columns.MustCreateColumns[Event]()
 }
+
+func (ev *Event) GetMountNSID() uint64 {
+	return ev.MountNsID
+}

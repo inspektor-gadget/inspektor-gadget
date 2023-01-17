@@ -59,3 +59,7 @@ func Base(ev eventtypes.Event) *Event {
 		Event: ev,
 	}
 }
+
+func (ev *Event) GetMountNSID() uint64 {
+	return ev.MountNsID
+}

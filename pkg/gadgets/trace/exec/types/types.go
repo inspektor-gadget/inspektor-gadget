@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,4 +47,8 @@ func Base(ev eventtypes.Event) *Event {
 	return &Event{
 		Event: ev,
 	}
+}
+
+func (ev *Event) GetMountNSID() uint64 {
+	return ev.MountNsID
 }
