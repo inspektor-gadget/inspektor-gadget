@@ -172,3 +172,83 @@ func (t *Tracer) Close() {
 	}
 	t.objs.Close()
 }
+
+// ---
+
+func (t *Tracer) Start() error {
+	var err error
+	var spec *ebpf.CollectionSpec
+
+	config := t.config
+
+	spec, err = loadAuditseccomp()
+	if err != nil {
+		return fmt.Errorf("failed to load ebpf program: %w", err)
+	}
+
+	mapReplacements := map[string]*ebpf.Map{}
+	filterByMntNs := false
+
+	if config.MountnsMap != nil {
+		filterByMntNs = true
+		mapReplacements["mount_ns_filter"] = config.MountnsMap
+	}
+	if config.ContainersMap != nil {
+		mapReplacements["containers"] = config.ContainersMap
+	}
+
+	consts := map[string]interface{}{
+		"filter_by_mnt_ns": filterByMntNs,
+	}
+	if err := spec.RewriteConstants(consts); err != nil {
+		return fmt.Errorf("error RewriteConstants: %w", err)
+	}
+
+	opts := ebpf.CollectionOptions{
+		MapReplacements: mapReplacements,
+	}
+
+	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
+		return fmt.Errorf("failed to load ebpf program: %w", err)
+	}
+
+	t.reader, err = perf.NewReader(t.objs.Events, gadgets.PerfBufferPages*os.Getpagesize())
+	if err != nil {
+		return fmt.Errorf("failed to get a perf reader: %w", err)
+	}
+
+	t.progLink, err = link.Kprobe("audit_seccomp", t.objs.IgAuditSecc, nil)
+	if err != nil {
+		return fmt.Errorf("failed to attach kprobe: %w", err)
+	}
+
+	go t.run()
+
+	return nil
+}
+
+func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
+	t.config.MountnsMap = mountnsMap
+}
+
+func (t *Tracer) SetContainersMap(containersMap *ebpf.Map) {
+	t.config.ContainersMap = containersMap
+}
+
+func (t *Tracer) SetEventHandler(handler any) {
+	nh, ok := handler.(func(ev *types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventCallback = nh
+}
+
+func (t *Tracer) Stop() {
+}
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
+	t := &Tracer{
+		config: &Config{},
+	}
+	return t, nil
+}

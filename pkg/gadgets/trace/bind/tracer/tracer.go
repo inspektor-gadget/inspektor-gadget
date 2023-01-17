@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/vishvananda/netlink"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -285,4 +286,41 @@ func (t *Tracer) run() {
 
 		t.eventCallback(&event)
 	}
+}
+
+// --- Registry changes
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
+	t.config.MountnsMap = mountnsMap
+}
+
+func (t *Tracer) SetEventHandler(handler any) {
+	nh, ok := handler.(func(ev *types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventCallback = nh
+}
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
+	tracer := &Tracer{
+		config: &Config{},
+	}
+	if runner == nil {
+		return tracer, nil
+	}
+
+	pm := runner.GadgetParams().ParamMap()
+	params.StringAsInt(pm[ParamPID], &tracer.config.TargetPid)
+	params.StringAsUintSlice(pm[ParamPorts], &tracer.config.TargetPorts)
+	params.StringAsBool(pm[ParamIgnoreErrors], &tracer.config.IgnoreErrors)
+	return tracer, nil
 }

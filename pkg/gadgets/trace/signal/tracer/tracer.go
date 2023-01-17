@@ -10,8 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"syscall"
 	"unsafe"
 
@@ -20,6 +18,7 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	"golang.org/x/sys/unix"
@@ -50,29 +49,6 @@ type Tracer struct {
 
 	enricher      gadgets.DataEnricherByMntNs
 	eventCallback func(*types.Event)
-}
-
-func signalStringToInt(signal string) (int32, error) {
-	// There are three possibilities:
-	// 1. Either user did not give a signal, thus the argument is empty string.
-	// 2. Or signal begins with SIG.
-	// 3. Or signal is a string which contains an integer.
-	if signal == "" {
-		return 0, nil
-	}
-
-	if strings.HasPrefix(signal, "SIG") {
-		signalNum := unix.SignalNum(signal)
-		if signalNum == 0 {
-			return 0, fmt.Errorf("no signal found for %q", signal)
-		}
-
-		return int32(signalNum), nil
-	}
-
-	signalNum, err := strconv.ParseInt(signal, 10, 32)
-
-	return int32(signalNum), err
 }
 
 func signalIntToString(signal int) string {
@@ -243,4 +219,42 @@ func (t *Tracer) run() {
 
 		t.eventCallback(&event)
 	}
+}
+
+// --- Registry changes
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
+	t.config.MountnsMap = mountnsMap
+}
+
+func (t *Tracer) SetEventHandler(handler any) {
+	nh, ok := handler.(func(ev *types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventCallback = nh
+}
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
+	tracer := &Tracer{
+		config: &Config{},
+	}
+	if runner == nil {
+		return tracer, nil
+	}
+
+	pm := runner.GadgetParams().ParamMap()
+	params.StringAsInt(pm[ParamPID], &tracer.config.TargetPid)
+	params.StringAsBool(pm[ParamFailedOnly], &tracer.config.FailedOnly)
+	params.StringAsBool(pm[ParamKillOnly], &tracer.config.KillOnly)
+	params.StringAsString(pm[ParamTargetSignal], &tracer.config.TargetSignal)
+	return tracer, nil
 }

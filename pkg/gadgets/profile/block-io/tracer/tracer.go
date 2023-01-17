@@ -38,6 +38,8 @@ type Tracer struct {
 	blockRqCompleteLink link.Link
 	blockRqInsertLink   link.Link
 	blockRqIssueLink    link.Link
+	result              string
+	err                 error
 }
 
 func NewTracer() (*Tracer, error) {
@@ -148,4 +150,27 @@ func (t *Tracer) start() error {
 	t.blockRqIssueLink = blockRqIssueLink
 
 	return nil
+}
+
+// ---
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
+	t := &Tracer{}
+	return t, nil
+}
+
+func (t *Tracer) StartAlt() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *Tracer) StopAlt() {
+	t.result, t.err = t.Stop()
+}
+
+func (t *Tracer) Result() ([]byte, error) {
+	return []byte(t.result), t.err
 }

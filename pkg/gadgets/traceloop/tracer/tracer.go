@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -76,6 +77,8 @@ type Tracer struct {
 	// Same comment than above, this map is designed to handle parallel access.
 	// The keys of this map are containerID.
 	readers sync.Map
+
+	runner gadgets.Runner
 }
 
 type syscallEvent struct {
@@ -549,4 +552,49 @@ func (t *Tracer) Delete(containerID string) error {
 	reader.perfReader = nil
 
 	return err
+}
+
+// --- Registry changes
+
+func (t *Tracer) Start() error {
+	return nil
+}
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
+	if runner == nil {
+		return &Tracer{}, nil
+	}
+
+	t, err := NewTracer(nil)
+	if t != nil {
+		t.runner = runner
+	}
+	return t, err
+}
+
+func (t *Tracer) AttachGeneric(container *containercollection.Container, eventCallback any) error {
+	if cb, ok := eventCallback.(func(*types.Event)); ok {
+		err := t.Attach(container.ID, container.Mntns)
+		if err != nil {
+			return err
+		}
+		go func() {
+			for {
+				evs, err := t.Read(container.ID)
+				if err != nil {
+					t.runner.Logger().Debugf("error reading from container %s: %v", container.ID, err)
+					return
+				}
+				for _, ev := range evs {
+					cb(ev)
+				}
+			}
+		}()
+		return nil
+	}
+	return errors.New("invalid event callback")
+}
+
+func (t *Tracer) DetachGeneric(container *containercollection.Container) error {
+	return t.Detach(container.Mntns)
 }

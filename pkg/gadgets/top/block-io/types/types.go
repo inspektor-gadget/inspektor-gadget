@@ -45,6 +45,10 @@ type Stats struct {
 	MountNsID  uint64 `json:"mountnsid,omitempty" column:"mountnsid,template:ns,hide"`
 }
 
+func (ev *Stats) GetMountNSID() uint64 {
+	return ev.MountNsID
+}
+
 func GetColumns() *columns.Columns[Stats] {
 	cols := columns.MustCreateColumns[Stats]()
 

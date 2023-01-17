@@ -21,9 +21,11 @@ import (
 	"net"
 
 	"github.com/cilium/ebpf/link"
-
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	socketcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -192,4 +194,48 @@ func RunCollector(pid uint32, podname, namespace, node string, proto socketcolle
 	}
 
 	return sockets, nil
+}
+
+// ---
+
+type Tracer struct {
+	visitedNamespaced map[uint64]struct{}
+	protocols         string
+}
+
+func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
+	tracer := &Tracer{
+		visitedNamespaced: map[uint64]struct{}{},
+	}
+	if runner == nil {
+		return tracer, nil
+	}
+
+	pm := runner.GadgetParams().ParamMap()
+	params.StringAsString(pm[ParamProto], &tracer.protocols)
+
+	return tracer, nil
+}
+
+func (t *Tracer) AttachGeneric(container *containercollection.Container, eventCallback any) error {
+	// TODO: Necessary?
+	// if container.Pid == 0 {
+	// 	return fmt.Errorf("container %q does not have PID", container.Name)
+	// }
+	if _, ok := t.visitedNamespaced[container.Netns]; ok {
+		return nil
+	}
+	t.visitedNamespaced[container.Netns] = struct{}{}
+	res, err := RunCollector(container.Pid, container.Podname, container.Namespace, "", socketcollectortypes.ProtocolsMap[t.protocols]) // TODO: Node
+
+	if cb, ok := eventCallback.(func(*socketcollectortypes.Event)); ok {
+		for _, ev := range res {
+			cb(ev)
+		}
+	}
+	return err
+}
+
+func (t *Tracer) DetachGeneric(container *containercollection.Container) error {
+	return nil
 }

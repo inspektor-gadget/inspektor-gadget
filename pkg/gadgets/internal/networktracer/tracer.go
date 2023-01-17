@@ -22,6 +22,8 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/operators"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"golang.org/x/sys/unix"
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
@@ -151,6 +153,22 @@ func (t *Tracer[Event]) Attach(pid uint32, eventCallback func(*Event)) error {
 	go t.listen(netns, a.perfRd, t.baseEvent, t.processEvent, eventCallback)
 
 	return nil
+}
+
+func (t *Tracer[Event]) AttachGeneric(container *containercollection.Container, eventCallback any) error {
+	if cb, ok := eventCallback.(func(*Event)); ok {
+		return t.Attach(container.Pid, func(ev *Event) {
+			if setter, ok := any(ev).(operators.ContainerInfoSetters); ok {
+				setter.SetContainerInfo(container.Podname, container.Namespace, container.Name)
+			}
+			cb(ev)
+		})
+	}
+	return errors.New("invalid event callback")
+}
+
+func (t *Tracer[Event]) DetachGeneric(container *containercollection.Container) error {
+	return t.Detach(container.Pid)
 }
 
 func (t *Tracer[Event]) listen(
