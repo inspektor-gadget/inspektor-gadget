@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"syscall"
 
 	"github.com/docker/go-units"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -44,17 +45,17 @@ func ParseFilterByFamily(family string) (int32, error) {
 // Stats represents the operations performed on a single file
 type Stats struct {
 	eventtypes.CommonData
+	eventtypes.WithMountNsID
 
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns,hide"`
-	Pid       int32  `json:"pid,omitempty" column:"pid,template:pid"`
-	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
-	Family    uint16 `json:"family,omitempty" column:"ip,maxWidth:2"`
-	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr,hide"`
-	Daddr     string `json:"daddr,omitempty" column:"daddr,template:ipaddr,hide"`
-	Sport     uint16 `json:"sport,omitempty" column:"sport,template:ipport,hide"`
-	Dport     uint16 `json:"dport,omitempty" column:"dport,template:ipport,hide"`
-	Sent      uint64 `json:"sent,omitempty" column:"sent,order:1002"`
-	Received  uint64 `json:"received,omitempty" column:"recv,order:1003"`
+	Pid      int32  `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm     string `json:"comm,omitempty" column:"comm,template:comm"`
+	Family   uint16 `json:"family,omitempty" column:"ip,maxWidth:2"`
+	Saddr    string `json:"saddr,omitempty" column:"saddr,template:ipaddr,hide"`
+	Daddr    string `json:"daddr,omitempty" column:"daddr,template:ipaddr,hide"`
+	Sport    uint16 `json:"sport,omitempty" column:"sport,template:ipport,hide"`
+	Dport    uint16 `json:"dport,omitempty" column:"dport,template:ipport,hide"`
+	Sent     uint64 `json:"sent,omitempty" column:"sent,order:1002"`
+	Received uint64 `json:"received,omitempty" column:"recv,order:1003"`
 }
 
 func GetColumns() *columns.Columns[Stats] {

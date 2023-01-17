@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ var SortByDefault = []string{"-ops", "-bytes", "-time"}
 // Stats represents the operations performed on a single file
 type Stats struct {
 	eventtypes.CommonData
+	eventtypes.WithMountNsID
 
 	Pid        int32  `json:"pid,omitempty" column:"pid"`
 	Comm       string `json:"comm,omitempty" column:"comm"`
@@ -42,7 +43,6 @@ type Stats struct {
 	Bytes      uint64 `json:"bytes,omitempty" column:"bytes"`
 	MicroSecs  uint64 `json:"us,omitempty" column:"time"`
 	Operations uint32 `json:"ops,omitempty" column:"ops"`
-	MountNsID  uint64 `json:"mountnsid,omitempty" column:"mountnsid,template:ns,hide"`
 }
 
 func GetColumns() *columns.Columns[Stats] {

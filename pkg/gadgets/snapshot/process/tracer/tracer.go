@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build !withoutebpf
 
 package tracer
 
@@ -136,11 +138,11 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 			},
-			Pid:       tgid,
-			Tid:       pid,
-			Command:   command,
-			ParentPid: parentPid,
-			MountNsID: mntnsid,
+			Pid:           tgid,
+			Tid:           pid,
+			Command:       command,
+			ParentPid:     parentPid,
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: mntnsid},
 		}
 
 		if enricher != nil {
@@ -176,14 +178,14 @@ func getTidEvent(config *Config, enricher gadgets.DataEnricherByMntNs, pid, tid 
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
 		},
-		Tid:       tid,
-		Pid:       pid,
-		Command:   comm,
-		MountNsID: mntnsid,
+		Tid:           tid,
+		Pid:           pid,
+		Command:       comm,
+		WithMountNsID: eventtypes.WithMountNsID{MountNsID: mntnsid},
 	}
 
 	if enricher != nil {
-		enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
+		enricher.EnrichByMntNs(&event.CommonData, event.WithMountNsID.MountNsID)
 	}
 
 	return event, nil
@@ -253,4 +255,45 @@ func runProcfsCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([
 	}
 
 	return events, nil
+}
+
+// ---
+
+type Tracer struct {
+	config       *Config
+	eventHandler func(ev []*processcollectortypes.Event)
+}
+
+func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
+	tracer := &Tracer{
+		config: &Config{},
+	}
+	return tracer, nil
+}
+
+func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+	t.config.ShowThreads = params.Get(ParamThreads).AsBool()
+	return nil
+}
+
+func (t *Tracer) SetEventHandlerArray(handler any) {
+	nh, ok := handler.(func(ev []*processcollectortypes.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventHandler = nh
+}
+
+func (t *Tracer) SetMountNsMap(mntnsMap *ebpf.Map) {
+	t.config.MountnsMap = mntnsMap
+}
+
+func (t *Tracer) Run() error {
+	processes, err := RunCollector(t.config, nil)
+	if err != nil {
+		return err
+	}
+	t.eventHandler(processes)
+	return nil
 }

@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !withoutebpf
+
 package tracer
 
 import (
@@ -26,6 +25,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -251,14 +251,14 @@ func (t *Tracer) run() {
 				Type:      eventtypes.NORMAL,
 				Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
 			},
-			MountNsID: bpfEvent.MntnsId,
-			Comm:      gadgets.FromCString(bpfEvent.Task[:]),
-			Pid:       bpfEvent.Pid,
-			Op:        ops[int(bpfEvent.Op)],
-			Bytes:     bpfEvent.Size,
-			Offset:    bpfEvent.Offset,
-			Latency:   bpfEvent.DeltaUs,
-			File:      gadgets.FromCString(bpfEvent.File[:]),
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MntnsId},
+			Comm:          gadgets.FromCString(bpfEvent.Task[:]),
+			Pid:           bpfEvent.Pid,
+			Op:            ops[int(bpfEvent.Op)],
+			Bytes:         bpfEvent.Size,
+			Offset:        bpfEvent.Offset,
+			Latency:       bpfEvent.DeltaUs,
+			File:          gadgets.FromCString(bpfEvent.File[:]),
 		}
 
 		if t.enricher != nil {
@@ -267,4 +267,40 @@ func (t *Tracer) run() {
 
 		t.eventCallback(&event)
 	}
+}
+
+// --- Registry changes
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
+	t.config.MountnsMap = mountnsMap
+}
+
+func (t *Tracer) SetEventHandler(handler any) {
+	nh, ok := handler.(func(ev *types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventCallback = nh
+}
+
+func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
+	tracer := &Tracer{
+		config: &Config{},
+	}
+	return tracer, nil
+}
+
+func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+	t.config.Filesystem = params.Get(ParamFilesystem).AsString()
+	t.config.MinLatency = params.Get(ParamMinLatency).AsUint()
+	return nil
 }

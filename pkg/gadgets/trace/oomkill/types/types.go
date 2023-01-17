@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,13 +21,13 @@ import (
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
 
 	KilledPid     uint32 `json:"kpid,omitempty" column:"kpid,template:pid"`
 	KilledComm    string `json:"kcomm,omitempty" column:"kcomm,template:comm"`
 	Pages         uint64 `json:"pages,omitempty" column:"pages,width:6"`
 	TriggeredPid  uint32 `json:"tpid,omitempty" column:"tpid,template:pid"`
 	TriggeredComm string `json:"tcomm,omitempty" column:"tcomm,template:comm"`
-	MountNsID     uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
 }
 
 func GetColumns() *columns.Columns[Event] {

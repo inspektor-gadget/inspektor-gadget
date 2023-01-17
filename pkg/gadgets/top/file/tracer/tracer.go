@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build !withoutebpf
 
 package tracer
 
@@ -30,6 +29,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type file_stat -type file_id -cc clang filetop ./bpf/filetop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -179,16 +179,16 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		}
 
 		stat := types.Stats{
-			Reads:      fileStat.Reads,
-			Writes:     fileStat.Writes,
-			ReadBytes:  fileStat.ReadBytes,
-			WriteBytes: fileStat.WriteBytes,
-			Pid:        fileStat.Pid,
-			Tid:        fileStat.Tid,
-			Filename:   gadgets.FromCString(fileStat.Filename[:]),
-			Comm:       gadgets.FromCString(fileStat.Comm[:]),
-			FileType:   byte(fileStat.Type),
-			MountNsID:  fileStat.MntnsId,
+			Reads:         fileStat.Reads,
+			Writes:        fileStat.Writes,
+			ReadBytes:     fileStat.ReadBytes,
+			WriteBytes:    fileStat.WriteBytes,
+			Pid:           fileStat.Pid,
+			Tid:           fileStat.Tid,
+			Filename:      gadgets.FromCString(fileStat.Filename[:]),
+			Comm:          gadgets.FromCString(fileStat.Comm[:]),
+			FileType:      byte(fileStat.Type),
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: fileStat.MntnsId},
 		}
 
 		if t.enricher != nil {
@@ -235,4 +235,56 @@ func (t *Tracer) run() {
 			}
 		}
 	}()
+}
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+
+	statCols, err := columns.NewColumns[types.Stats]()
+	if err != nil {
+		t.Stop()
+		return err
+	}
+	t.colMap = statCols.GetColumnMap()
+
+	return nil
+}
+
+func (t *Tracer) SetEventHandlerArray(handler any) {
+	nh, ok := handler.(func(ev []*types.Stats))
+	if !ok {
+		panic("event handler invalid")
+	}
+
+	// TODO: add errorHandler
+	t.eventCallback = func(ev *top.Event[types.Stats]) {
+		if ev.Error != "" {
+			return
+		}
+		nh(ev.Stats)
+	}
+}
+
+func (t *Tracer) SetMountNsMap(mntnsMap *ebpf.Map) {
+	t.config.MountnsMap = mntnsMap
+}
+
+func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
+	tracer := &Tracer{
+		config: &Config{},
+		done:   make(chan bool),
+	}
+	return tracer, nil
+}
+
+func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+	t.config.MaxRows = params.Get(gadgets.ParamMaxRows).AsInt()
+	t.config.SortBy = params.Get(gadgets.ParamSortBy).AsStringSlice()
+	t.config.Interval = time.Second * time.Duration(params.Get(gadgets.ParamInterval).AsInt())
+	t.config.AllFiles = params.Get(types.AllFilesParam).AsBool()
+	return nil
 }

@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !withoutebpf
+
 package tracer
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	libseccomp "github.com/seccomp/libseccomp-golang"
+
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang seccomp ./bpf/seccomp.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -41,6 +46,10 @@ type Tracer struct {
 	// the garbage collector might unlink it via the finalizer at any
 	// moment.
 	progLink link.Link
+
+	// We keep references to mountns of containers we attach to, so we
+	// can collect information afterwards
+	containers map[*containercollection.Container][]string
 }
 
 func NewTracer() (*Tracer, error) {
@@ -118,4 +127,51 @@ func (t *Tracer) Delete(mntns uint64) {
 func (t *Tracer) Close() {
 	t.progLink = gadgets.CloseLink(t.progLink)
 	t.objs.Close()
+}
+
+// ---
+
+func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
+	t := &Tracer{
+		containers: make(map[*containercollection.Container][]string),
+	}
+	return t, nil
+}
+
+func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	return nil
+}
+
+func (t *Tracer) Stop() {
+}
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *Tracer) AttachContainer(container *containercollection.Container) error {
+	t.containers[container] = nil
+	return nil
+}
+
+func (t *Tracer) DetachContainer(container *containercollection.Container) error {
+	res, err := t.Peek(container.Mntns)
+	if err != nil {
+		t.containers[container] = []string{err.Error()}
+		return nil
+	}
+	t.containers[container] = res
+	return nil
+}
+
+func (t *Tracer) Result() ([]byte, error) {
+	out := make(map[string][]string)
+	for container, result := range t.containers {
+		out[container.Name] = result
+	}
+	return json.MarshalIndent(out, "", "  ")
 }

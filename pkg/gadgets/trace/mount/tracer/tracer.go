@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !withoutebpf
+
 package tracer
 
 import (
@@ -26,6 +25,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -170,16 +170,16 @@ func (t *Tracer) run() {
 				Type:      eventtypes.NORMAL,
 				Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
 			},
-			MountNsID: bpfEvent.MountNsId,
-			Pid:       bpfEvent.Pid,
-			Tid:       bpfEvent.Tid,
-			Comm:      gadgets.FromCString(bpfEvent.Comm[:]),
-			Retval:    int(bpfEvent.Ret),
-			Latency:   bpfEvent.Delta,
-			Fs:        gadgets.FromCString(bpfEvent.Fs[:]),
-			Source:    gadgets.FromCString(bpfEvent.Src[:]),
-			Target:    gadgets.FromCString(bpfEvent.Dest[:]),
-			Data:      gadgets.FromCString(bpfEvent.Data[:]),
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MountNsId},
+			Pid:           bpfEvent.Pid,
+			Tid:           bpfEvent.Tid,
+			Comm:          gadgets.FromCString(bpfEvent.Comm[:]),
+			Retval:        int(bpfEvent.Ret),
+			Latency:       bpfEvent.Delta,
+			Fs:            gadgets.FromCString(bpfEvent.Fs[:]),
+			Source:        gadgets.FromCString(bpfEvent.Src[:]),
+			Target:        gadgets.FromCString(bpfEvent.Dest[:]),
+			Data:          gadgets.FromCString(bpfEvent.Data[:]),
 		}
 
 		switch bpfEvent.Op {
@@ -199,4 +199,37 @@ func (t *Tracer) run() {
 
 		t.eventCallback(&event)
 	}
+}
+
+// --- Registry changes
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
+	t.config.MountnsMap = mountnsMap
+}
+
+func (t *Tracer) SetEventHandler(handler any) {
+	nh, ok := handler.(func(ev *types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventCallback = nh
+}
+
+func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
+	tracer := &Tracer{
+		config: &Config{},
+	}
+	return tracer, nil
+}
+
+func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	return nil
 }

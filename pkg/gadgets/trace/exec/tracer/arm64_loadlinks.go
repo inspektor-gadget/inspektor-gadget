@@ -1,7 +1,4 @@
-//go:build linux && arm64
-// +build linux,arm64
-
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux && arm64 && !withoutebpf
+
 package tracer
 
 import (
 	"fmt"
 
 	"github.com/cilium/ebpf/link"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
 

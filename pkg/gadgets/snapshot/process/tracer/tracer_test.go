@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build linux
+// +build linux
 
 package tracer
 
@@ -83,11 +83,11 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					Command:   "sleep",
-					Pid:       sleepPid,
-					Tid:       sleepPid,
-					ParentPid: 0,
-					MountNsID: info.MountNsID,
+					Command:       "sleep",
+					Pid:           sleepPid,
+					Tid:           sleepPid,
+					ParentPid:     0,
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
 			}),
 		},
@@ -119,10 +119,10 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					Command:   "sleep",
-					Pid:       sleepPid,
-					Tid:       sleepPid,
-					MountNsID: info.MountNsID,
+					Command:       "sleep",
+					Pid:           sleepPid,
+					Tid:           sleepPid,
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
 			}),
 		},
@@ -149,11 +149,11 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					Command:   "sleep",
-					Pid:       sleepPid,
-					Tid:       sleepPid,
-					ParentPid: 0,
-					MountNsID: info.MountNsID,
+					Command:       "sleep",
+					Pid:           sleepPid,
+					Tid:           sleepPid,
+					ParentPid:     0,
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
 
 				for _, event := range events {

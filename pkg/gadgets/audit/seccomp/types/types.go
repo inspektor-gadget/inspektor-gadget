@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,12 +21,12 @@ import (
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
 
-	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
-	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
-	Syscall   string `json:"syscall,omitempty" column:"syscall,template:syscall"`
-	Code      string `json:"code,omitempty" column:"code,width:12,fixed"`
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
+	Pid     uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm    string `json:"comm,omitempty" column:"comm,template:comm"`
+	Syscall string `json:"syscall,omitempty" column:"syscall,template:syscall"`
+	Code    string `json:"code,omitempty" column:"code,width:12,fixed"`
 }
 
 func GetColumns() *columns.Columns[Event] {

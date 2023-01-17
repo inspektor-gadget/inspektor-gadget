@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
+// +build linux
+
 package tracer_test
 
 import (
@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
@@ -85,13 +86,13 @@ func TestExecTracer(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					Pid:       uint32(catPid),
-					Ppid:      uint32(info.Pid),
-					UID:       uint32(info.UID),
-					MountNsID: info.MountNsID,
-					Retval:    0,
-					Comm:      "cat",
-					Args:      []string{"/bin/cat", "/dev/null"},
+					Pid:           uint32(catPid),
+					Ppid:          uint32(info.Pid),
+					UID:           uint32(info.UID),
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
+					Retval:        0,
+					Comm:          "cat",
+					Args:          []string{"/bin/cat", "/dev/null"},
 				}
 			}),
 		},
@@ -116,13 +117,13 @@ func TestExecTracer(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					Pid:       uint32(catPid),
-					Ppid:      uint32(info.Pid),
-					UID:       uint32(info.UID),
-					MountNsID: info.MountNsID,
-					Retval:    0,
-					Comm:      "cat",
-					Args:      []string{"/bin/cat", "/dev/null"},
+					Pid:           uint32(catPid),
+					Ppid:          uint32(info.Pid),
+					UID:           uint32(info.UID),
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
+					Retval:        0,
+					Comm:          "cat",
+					Args:          []string{"/bin/cat", "/dev/null"},
 				}
 			}),
 		},
@@ -262,11 +263,11 @@ func TestExecTracerMultipleMntNsIDsFilter(t *testing.T) {
 		return expectedEvents[i].mntNsID < expectedEvents[j].mntNsID
 	})
 	sort.Slice(events, func(i, j int) bool {
-		return events[i].MountNsID < events[j].MountNsID
+		return events[i].WithMountNsID.MountNsID < events[j].WithMountNsID.MountNsID
 	})
 
 	for i := 0; i < n-1; i++ {
-		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].MountNsID,
+		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].WithMountNsID.MountNsID,
 			"Captured event has bad MountNsID")
 
 		utilstest.Equal(t, uint32(expectedEvents[i].catPid), events[i].Pid,

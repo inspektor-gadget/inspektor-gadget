@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !withoutebpf
+
 package tracer
 
 import (
@@ -23,6 +25,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -140,11 +143,11 @@ func (t *Tracer) run() {
 				Type:      eventtypes.NORMAL,
 				Timestamp: gadgets.WallTimeFromBootTime(eventC.Timestamp),
 			},
-			Pid:       uint32(eventC.Pid),
-			MountNsID: uint64(eventC.MntnsId),
-			Syscall:   syscallToName(int(eventC.Syscall)),
-			Code:      codeToName(uint(eventC.Code)),
-			Comm:      gadgets.FromCString(eventC.Comm[:]),
+			Pid:           uint32(eventC.Pid),
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: eventC.MntnsId},
+			Syscall:       syscallToName(int(eventC.Syscall)),
+			Code:          codeToName(uint(eventC.Code)),
+			Comm:          gadgets.FromCString(eventC.Comm[:]),
 		}
 
 		if t.enricher != nil {
@@ -161,4 +164,40 @@ func (t *Tracer) Close() {
 		t.reader.Close()
 	}
 	t.objs.Close()
+}
+
+// ---
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
+	t.config.MountnsMap = mountnsMap
+}
+
+func (t *Tracer) SetEventHandler(handler any) {
+	nh, ok := handler.(func(ev *types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventCallback = nh
+}
+
+func (t *Tracer) Stop() {
+}
+
+func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
+	t := &Tracer{
+		config: &Config{},
+	}
+	return t, nil
+}
+
+func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	return nil
 }

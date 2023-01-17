@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,17 +33,17 @@ const (
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
 
-	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
-	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
-	Syscall   string `json:"syscall,omitempty" column:"syscall,template:syscall"`
-	UID       uint32 `json:"uid,omitempty" column:"uid,minWidth:6"`
-	Cap       int    `json:"cap,omitempty" column:"cap,width:3,fixed"`
-	CapName   string `json:"capName,omitempty" column:"capName,width:18,fixed"`
-	Audit     int    `json:"audit,omitempty" column:"audit,minWidth:5"`
-	Verdict   string `json:"verdict,omitempty" column:"verdict,width:7,fixed"`
-	InsetID   *bool  `json:"insetid,omitempty" column:"insetid,width:7,fixed,hide"`
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
+	Pid     uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm    string `json:"comm,omitempty" column:"comm,template:comm"`
+	Syscall string `json:"syscall,omitempty" column:"syscall,template:syscall"`
+	UID     uint32 `json:"uid,omitempty" column:"uid,minWidth:6"`
+	Cap     int    `json:"cap,omitempty" column:"cap,width:3,fixed"`
+	CapName string `json:"capName,omitempty" column:"capName,width:18,fixed"`
+	Audit   int    `json:"audit,omitempty" column:"audit,minWidth:5"`
+	Verdict string `json:"verdict,omitempty" column:"verdict,width:7,fixed"`
+	InsetID *bool  `json:"insetid,omitempty" column:"insetid,width:7,fixed,hide"`
 }
 
 func GetColumns() *columns.Columns[Event] {

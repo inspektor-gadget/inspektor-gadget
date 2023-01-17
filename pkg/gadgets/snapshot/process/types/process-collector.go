@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,12 +25,12 @@ const (
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
 
 	Command   string `json:"comm" column:"comm,template:comm"`
 	Pid       int    `json:"pid" column:"pid,template:pid"`
 	Tid       int    `json:"tid" column:"tid,template:pid,hide"`
 	ParentPid int    `json:"ppid" column:"ppid,template:pid,hide"`
-	MountNsID uint64 `json:"mntns" column:"mntns,template:ns"`
 }
 
 func GetColumns() *columns.Columns[Event] {

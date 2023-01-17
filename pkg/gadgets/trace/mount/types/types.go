@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,11 +24,11 @@ import (
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
 
 	Comm      string   `json:"comm,omitempty" column:"comm,template:comm"`
 	Pid       uint32   `json:"pid,omitempty" column:"pid,template:pid"`
 	Tid       uint32   `json:"tid,omitempty" column:"tid,template:pid"`
-	MountNsID uint64   `json:"mntnsid,omitempty" column:"mntns,template:ns"`
 	Operation string   `json:"operation,omitempty" column:"op,minWidth:5,maxWidth:7,hide"`
 	Retval    int      `json:"ret,omitempty" column:"ret,width:3,fixed,hide"`
 	Latency   uint64   `json:"latency,omitempty" column:"latency,minWidth:3,hide"`

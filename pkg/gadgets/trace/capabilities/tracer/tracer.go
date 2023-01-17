@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build !withoutebpf
 
 package tracer
 
@@ -282,16 +281,16 @@ func (t *Tracer) run() {
 				Type:      eventtypes.NORMAL,
 				Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
 			},
-			MountNsID: bpfEvent.Mntnsid,
-			Pid:       bpfEvent.Pid,
-			Cap:       int(bpfEvent.Cap),
-			UID:       bpfEvent.Uid,
-			Audit:     audit,
-			InsetID:   insetID,
-			Comm:      gadgets.FromCString(bpfEvent.Task[:]),
-			Syscall:   syscall,
-			CapName:   capabilityName,
-			Verdict:   verdict,
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.Mntnsid},
+			Pid:           bpfEvent.Pid,
+			Cap:           int(bpfEvent.Cap),
+			UID:           bpfEvent.Uid,
+			Audit:         audit,
+			InsetID:       insetID,
+			Comm:          gadgets.FromCString(bpfEvent.Task[:]),
+			Syscall:       syscall,
+			CapName:       capabilityName,
+			Verdict:       verdict,
 		}
 
 		if t.enricher != nil {
@@ -300,4 +299,40 @@ func (t *Tracer) run() {
 
 		t.eventCallback(&event)
 	}
+}
+
+// --- Registry changes
+
+func (t *Tracer) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
+	t.config.MountnsMap = mountnsMap
+}
+
+func (t *Tracer) SetEventHandler(handler any) {
+	nh, ok := handler.(func(ev *types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventCallback = nh
+}
+
+func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
+	tracer := &Tracer{
+		config: &Config{},
+	}
+	return tracer, nil
+}
+
+func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+	t.config.Unique = params.Get(ParamUnique).AsBool()
+	t.config.AuditOnly = params.Get(ParamAuditOnly).AsBool()
+	return nil
 }

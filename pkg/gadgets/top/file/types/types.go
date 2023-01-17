@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/docker/go-units"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -29,12 +30,13 @@ const (
 var SortByDefault = []string{"-reads", "-writes", "-rbytes", "-wbytes"}
 
 const (
-	AllFilesParam = "pid"
+	AllFilesParam = "all-files"
 )
 
 // Stats represents the operations performed on a single file
 type Stats struct {
 	eventtypes.CommonData
+	eventtypes.WithMountNsID
 
 	Pid        uint32 `json:"pid,omitempty" column:"pid,template:pid"`
 	Tid        uint32 `json:"tid,omitempty" column:"tid,template:pid,hide"`
@@ -43,7 +45,6 @@ type Stats struct {
 	Writes     uint64 `json:"writes,omitempty" column:"writes"`
 	ReadBytes  uint64 `json:"rbytes,omitempty" column:"rbytes"`
 	WriteBytes uint64 `json:"wbytes,omitempty" column:"wbytes"`
-	MountNsID  uint64 `json:"mountnsid,omitempty" column:"mountnsid,template:ns,hide"`
 	FileType   byte   `json:"fileType,omitempty" column:"T,maxWidth:1"` // R = Regular File, S = Socket, O = Other
 	Filename   string `json:"filename,omitempty" column:"file"`
 }
