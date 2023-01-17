@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
-	github.com/cilium/ebpf v0.9.1
+	github.com/cilium/ebpf v0.10.0
 	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
 	github.com/containers/common v0.46.0
 	github.com/docker/docker v20.10.17+incompatible
@@ -22,7 +22,7 @@ require (
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
-	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
+	golang.org/x/sys v0.2.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.0
@@ -40,8 +40,8 @@ require (
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/google/go-cmp v0.5.8
-	github.com/kr/pretty v0.3.0
+	github.com/google/go-cmp v0.5.9
+	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v20.10.20+incompatible
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	gotest.tools/v3 v3.0.3
@@ -119,7 +119,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/rogpeppe/go-internal v1.6.1 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
@@ -167,4 +167,4 @@ replace (
 	github.com/gogo/protobuf v1.3.1 => github.com/gogo/protobuf v1.3.2
 )
 
-replace github.com/cilium/ebpf => github.com/inspektor-gadget/ebpf v0.0.0-20221115161606-78aefc9a99fd
+replace github.com/cilium/ebpf => github.com/inspektor-gadget/ebpf v0.0.0-20230117151558-ea299d354cf6
