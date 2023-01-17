@@ -290,6 +290,19 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 	}
 }
 
+// WithHost adds the host as a virtual/fake container; TODO: Just for testing
+func WithHost() ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		newContainer := Container{}
+		newContainer.Name = "host"
+		newContainer.CgroupID = 1
+		newContainer.Pid = 1
+		newContainer.HostNetwork = true
+		cc.initialContainers = append(cc.initialContainers, &newContainer)
+		return nil
+	}
+}
+
 // WithInitialKubernetesContainers gets initial containers from the Kubernetes
 // API with the process ID from CRI.
 //
