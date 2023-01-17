@@ -178,6 +178,7 @@ func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container 
 func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container {
 	var container *Container
 
+	// TODO: This should be heavily optimized!
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if c.Mntns == mntnsid {
