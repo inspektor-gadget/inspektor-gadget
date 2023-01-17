@@ -1,10 +1,7 @@
-//go:build linux
-// +build linux
-
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this bio except in compliance with the License.
+// you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
@@ -14,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build linux
+// +build linux
 
 package tracer
 
@@ -38,7 +38,6 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type info_t -type val_t -cc clang biotop ./bpf/biotop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Config struct {
-	TargetPid  int
 	MaxRows    int
 	Interval   time.Duration
 	SortBy     []string
@@ -300,4 +299,58 @@ func (t *Tracer) run() {
 			}
 		}
 	}()
+}
+
+func (t *Tracer) SetEventHandlerArray(handler any) {
+	nh, ok := handler.(func(ev []*types.Stats))
+	if !ok {
+		panic("event handler invalid")
+	}
+
+	// TODO: add errorHandler
+	t.eventCallback = func(ev *top.Event[types.Stats]) {
+		if ev.Error != "" {
+			return
+		}
+		nh(ev.Stats)
+	}
+}
+
+func (t *Tracer) SetMountNsMap(mntnsMap *ebpf.Map) {
+	t.config.MountnsMap = mntnsMap
+}
+
+func (g *GadgetDesc) NewInstance(gadgetCtx gadgets.GadgetContext) (gadgets.Gadget, error) {
+	tracer := &Tracer{
+		config: &Config{
+			MaxRows:  20,
+			Interval: 1 * time.Second,
+			SortBy:   nil,
+		},
+		done: make(chan bool),
+	}
+	if gadgetCtx == nil {
+		return tracer, nil
+	}
+
+	params := gadgetCtx.GadgetParams()
+	tracer.config.MaxRows = params.Get(gadgets.ParamMaxRows).AsInt()
+	tracer.config.SortBy = params.Get(gadgets.ParamSortBy).AsStringSlice()
+	tracer.config.Interval = time.Second * time.Duration(params.Get(gadgets.ParamInterval).AsInt())
+	return tracer, nil
+}
+
+func (t *Tracer) Start() error {
+	statCols, err := columns.NewColumns[types.Stats]()
+	if err != nil {
+		return err
+	}
+	t.colMap = statCols.GetColumnMap()
+
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+
+	return nil
 }

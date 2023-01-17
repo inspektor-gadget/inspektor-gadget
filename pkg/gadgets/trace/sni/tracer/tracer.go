@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,4 +82,10 @@ func parseSNIEvent(sample []byte, netns uint64) (*types.Event, error) {
 	}
 
 	return &event, nil
+}
+
+// --- Registry changes
+
+func (g *GadgetDesc) NewInstance(gadgetCtx gadgets.GadgetContext) (gadgets.Gadget, error) {
+	return NewTracer()
 }

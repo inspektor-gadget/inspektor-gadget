@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build linux
+// +build linux
 
 package tracer
 
@@ -29,11 +29,13 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+	libseccomp "github.com/seccomp/libseccomp-golang"
+	log "github.com/sirupsen/logrus"
+
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-	libseccomp "github.com/seccomp/libseccomp-golang"
-	log "github.com/sirupsen/logrus"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -type syscall_event_t -type syscall_event_cont_t -target ${TARGET} -cc clang traceloop ./bpf/traceloop.bpf.c -- -I./bpf/ -I../../../${TARGET}
@@ -76,6 +78,8 @@ type Tracer struct {
 	// Same comment than above, this map is designed to handle parallel access.
 	// The keys of this map are containerID.
 	readers sync.Map
+
+	gadgetCtx gadgets.GadgetContext
 }
 
 type syscallEvent struct {
@@ -549,4 +553,46 @@ func (t *Tracer) Delete(containerID string) error {
 	reader.perfReader = nil
 
 	return err
+}
+
+// --- Registry changes
+
+func (t *Tracer) Start() error {
+	return nil
+}
+
+func (g *GadgetDesc) NewInstance(gadgetCtx gadgets.GadgetContext) (gadgets.Gadget, error) {
+	if gadgetCtx == nil {
+		return &Tracer{}, nil
+	}
+
+	t, err := NewTracer(nil)
+	if t != nil {
+		t.gadgetCtx = gadgetCtx
+	}
+	return t, err
+}
+
+func (t *Tracer) AttachGeneric(container *containercollection.Container) error {
+	err := t.Attach(container.ID, container.Mntns)
+	if err != nil {
+		return err
+	}
+	go func() {
+		for {
+			evs, err := t.Read(container.ID)
+			if err != nil {
+				t.gadgetCtx.Logger().Debugf("error reading from container %s: %v", container.ID, err)
+				return
+			}
+			for _, ev := range evs {
+				ev.SetContainerInfo(container.Podname, container.Namespace, container.Name)
+			}
+		}
+	}()
+	return nil
+}
+
+func (t *Tracer) DetachGeneric(container *containercollection.Container) error {
+	return t.Detach(container.Mntns)
 }

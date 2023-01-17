@@ -72,6 +72,7 @@ func SortableParams(gadget GadgetDesc, parser parser.Parser) params.ParamDescs {
 		{
 			Key:          ParamMaxRows,
 			Title:        "Max Rows",
+			Alias:        "m",
 			DefaultValue: "50",
 			TypeHint:     params.TypeUint32,
 			Description:  "Maximum number of rows to return",
