@@ -19,10 +19,13 @@ package tracer_test
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"testing"
 	"time"
 
+	"github.com/cilium/ebpf"
+	"github.com/google/go-cmp/cmp"
 	"golang.org/x/sys/unix"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
@@ -68,12 +71,29 @@ func createTracer(
 	return tracer
 }
 
+func getNCPU(t *testing.T) int {
+	// Calculate the number of CPU
+	dummyMap, err := ebpf.NewMap(&ebpf.MapSpec{
+		Type: ebpf.PerfEventArray,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nCPU := int(dummyMap.MaxEntries())
+	dummyMap.Close()
+	if nCPU < 1 {
+		t.Fatalf("too few CPUs: %d", nCPU)
+	}
+	return nCPU
+}
+
 func TestOpenTracer(t *testing.T) {
 	t.Parallel()
 
 	utilstest.RequireRoot(t)
 
 	const unprivilegedUID = int(1435)
+	nCPU := getNCPU(t)
 
 	type testDefinition struct {
 		getTracerConfig func(info *utilstest.RunnerInfo) *tracer.Config
@@ -199,6 +219,33 @@ func TestOpenTracer(t *testing.T) {
 					"Captured event has bad Ret")
 			},
 		},
+		"captures_events_on_all_cpu": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			generateEvent: generateEventsOnAllCPUs(t, nCPU),
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
+				if len(events) == 0 {
+					t.Fatal("no events received")
+				}
+
+				// Checking we receive the events in the right order
+				expectedPaths := []string{}
+				actualPaths := []string{}
+				for i := 0; i < len(events); i++ {
+					cpu := i % nCPU
+					path := fmt.Sprintf("/dev/null/event%d/cpu%d/", i, cpu)
+					expectedPaths = append(expectedPaths, path)
+					actualPaths = append(actualPaths, events[i].Path)
+				}
+				if !reflect.DeepEqual(expectedPaths, actualPaths) {
+					t.Fatalf("unexpected order of events:\n%s",
+						cmp.Diff(expectedPaths, actualPaths))
+				}
+			},
+		},
 	} {
 		test := test
 
@@ -226,7 +273,7 @@ func TestOpenTracer(t *testing.T) {
 			})
 
 			// Give some time for the tracer to capture the events
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 
 			test.validateEvent(t, runner.Info, fd, events)
 		})
@@ -314,4 +361,24 @@ func generateEvent() (int, error) {
 	unix.Close(fd)
 
 	return fd, nil
+}
+
+func generateEventsOnAllCPUs(t *testing.T, nCPU int) func() (int, error) {
+	return func() (int, error) {
+		for i := 0; i < 16; i++ {
+			var cpuset unix.CPUSet
+			cpu := i % nCPU
+			cpuset.Set(cpu)
+			err := unix.SchedSetaffinity(0, &cpuset)
+			if err != nil {
+				return 0, fmt.Errorf("sched set affinity: %w", err)
+			}
+			path := fmt.Sprintf("/dev/null/event%d/cpu%d/", i, cpu)
+			_, err = unix.Open(path, 0, 0)
+			if err == nil {
+				return 0, fmt.Errorf("error was expected opening %q", path)
+			}
+		}
+		return -1, nil
+	}
 }
