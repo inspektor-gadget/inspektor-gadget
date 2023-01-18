@@ -52,6 +52,7 @@ func TestTraceDns(t *testing.T) {
 					DNSName:    "inspektor-gadget.io.",
 					QType:      "A",
 					Rcode:      "NoError",
+					Latency:    1,
 				},
 				{
 					Event:      BuildBaseEvent(ns),
@@ -71,6 +72,7 @@ func TestTraceDns(t *testing.T) {
 					DNSName:    "inspektor-gadget.io.",
 					QType:      "AAAA",
 					Rcode:      "NoError",
+					Latency:    1,
 				},
 			}
 
@@ -83,6 +85,11 @@ func TestTraceDns(t *testing.T) {
 				e.Timestamp = 0
 				e.Node = ""
 				e.ID = "0000"
+
+				// Latency should be > 0 only for DNS responses.
+				if e.Latency > 0 {
+					e.Latency = 1
+				}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

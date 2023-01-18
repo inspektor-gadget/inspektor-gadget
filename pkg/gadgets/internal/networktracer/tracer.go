@@ -107,8 +107,8 @@ type Tracer[Event any] struct {
 	bpfPerfMapName  string
 	bpfSocketAttach int
 
-	baseEvent  func(ev types.Event) *Event
-	parseEvent func([]byte) (*Event, error)
+	baseEvent    func(ev types.Event) *Event
+	processEvent func(rawSample []byte, netns uint64) (*Event, error)
 }
 
 func NewTracer[Event any](
@@ -117,7 +117,7 @@ func NewTracer[Event any](
 	bpfPerfMapName string,
 	bpfSocketAttach int,
 	baseEvent func(ev types.Event) *Event,
-	parseEvent func([]byte) (*Event, error),
+	processEvent func(rawSample []byte, netns uint64) (*Event, error),
 ) *Tracer[Event] {
 	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
 
@@ -128,7 +128,7 @@ func NewTracer[Event any](
 		bpfPerfMapName:  bpfPerfMapName,
 		bpfSocketAttach: bpfSocketAttach,
 		baseEvent:       baseEvent,
-		parseEvent:      parseEvent,
+		processEvent:    processEvent,
 	}
 }
 
@@ -148,7 +148,7 @@ func (t *Tracer[Event]) Attach(pid uint32, eventCallback func(*Event)) error {
 	}
 	t.attachments[netns] = a
 
-	go t.listen(netns, a.perfRd, t.baseEvent, t.parseEvent, eventCallback)
+	go t.listen(netns, a.perfRd, t.baseEvent, t.processEvent, eventCallback)
 
 	return nil
 }
@@ -157,7 +157,7 @@ func (t *Tracer[Event]) listen(
 	netns uint64,
 	rd *perf.Reader,
 	baseEvent func(ev types.Event) *Event,
-	parseEvent func([]byte) (*Event, error),
+	processEvent func(rawSample []byte, netns uint64) (*Event, error),
 	eventCallback func(*Event),
 ) {
 	for {
@@ -178,7 +178,7 @@ func (t *Tracer[Event]) listen(
 			continue
 		}
 
-		event, err := parseEvent(record.RawSample)
+		event, err := processEvent(record.RawSample, netns)
 		if err != nil {
 			eventCallback(baseEvent(types.Err(err.Error())))
 			continue

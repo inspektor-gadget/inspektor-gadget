@@ -15,6 +15,8 @@
 package types
 
 import (
+	"time"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -29,13 +31,14 @@ const (
 type Event struct {
 	eventtypes.Event
 
-	ID         string     `json:"id,omitempty" column:"id,width:4,fixed,hide"`
-	Qr         DNSPktType `json:"qr,omitempty" column:"qr,width:2,fixed"`
-	Nameserver string     `json:"nameserver,omitempty" column:"nameserver,template:ipaddr"`
-	PktType    string     `json:"pktType,omitempty" column:"type,minWidth:7,maxWidth:9"`
-	QType      string     `json:"qtype,omitempty" column:"qtype,minWidth:5,maxWidth:10"`
-	DNSName    string     `json:"name,omitempty" column:"name,width:30"`
-	Rcode      string     `json:"rcode,omitempty" column:"rcode,minWidth:8"`
+	ID         string        `json:"id,omitempty" column:"id,width:4,fixed,hide"`
+	Qr         DNSPktType    `json:"qr,omitempty" column:"qr,width:2,fixed"`
+	Nameserver string        `json:"nameserver,omitempty" column:"nameserver,template:ipaddr"`
+	PktType    string        `json:"pktType,omitempty" column:"type,minWidth:7,maxWidth:9"`
+	QType      string        `json:"qtype,omitempty" column:"qtype,minWidth:5,maxWidth:10"`
+	DNSName    string        `json:"name,omitempty" column:"name,width:30"`
+	Rcode      string        `json:"rcode,omitempty" column:"rcode,minWidth:8"`
+	Latency    time.Duration `json:"latency,omitempty" column:"latency,hide"`
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -43,6 +46,17 @@ func GetColumns() *columns.Columns[Event] {
 
 	col, _ := cols.GetColumn("container")
 	col.Visible = false
+
+	cols.MustSetExtractor("latency", func(event *Event) string {
+		if event.Latency > 0 {
+			return event.Latency.String()
+		} else {
+			// Latency is reported only for DNS responses, not queries.
+			// Latency might not be set for responses if the lookup for the query timestamp failed,
+			// either because the query was evicted or the DNS packet had an invalid ID.
+			return ""
+		}
+	})
 
 	return cols
 }
