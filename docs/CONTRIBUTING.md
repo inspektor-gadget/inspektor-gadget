@@ -102,9 +102,9 @@ For faster iteration, it's possible to make changes to Inspektor Gadget and
 test them on minikube locally without pushing container images to any
 registry.
 
-* Follow the specific [installation instructions](install.md#minikube) for minikube.
+* Follow the specific [installation instructions](install.md#minikube) for minikube or use `make minikube-start` to start it.
 * Deploy the locally modified version of Inspektor Gadget to an already
-  running minikube cluster with `make minikube-install`.
+  running minikube cluster with `make minikube-deploy`.
 
 ### Unit tests
 
@@ -129,13 +129,15 @@ $ make integration-tests
 #### Kubernetes
 
 The integration tests for local gadget uses minikube for testing different container runtimes.
-The minikube should always be configured to use docker `driver`. Currently supported
-container runtimes are `docker`, `containerd` and `cri-o`. You can set up minikube using:
+The default minikube driver used for testing is `docker`. Currently supported
+container runtimes are `docker`, `containerd` and `cri-o`. You can start minikube using:
 
 ```bash
-$ make -C integration/local-gadget/k8s setup-all
+$ make minikube-start-all
 # for single container runtime e.g containerd
-$ make -C integration/local-gadget/k8s CONTAINER_RUNTIME=containerd setup
+$ make CONTAINER_RUNTIME=containerd minikube-start
+# for minikube driver other than docker e.g kvm2
+$ make MINIKUBE_DRIVER=kvm2 minikube-start
 ```
 
 And run the test using:

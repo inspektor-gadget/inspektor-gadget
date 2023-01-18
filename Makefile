@@ -40,6 +40,7 @@ export BPFTOOL ARCH
 
 include crd.mk
 include tests.mk
+include minikube.mk
 
 LDFLAGS := "-X main.version=$(VERSION) \
 -X main.gadgetimage=$(CONTAINER_REPO):$(IMAGE_TAG) \
@@ -169,7 +170,7 @@ local-gadget-tests:
 	rm -f ./local-gadget-manager.test
 
 # INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g
-# INTEGRATION_TESTS_PARAMS="-run TestExecsnoop -no-deploy-ig -no-deploy-spo" make integration-tests
+# INTEGRATION_TESTS_PARAMS="-run TestTraceExec -no-deploy-ig -no-deploy-spo" make integration-tests
 .PHONY: integration-tests
 integration-tests: kubectl-gadget
 	KUBECTL_GADGET="$(shell pwd)/kubectl-gadget" \
@@ -199,8 +200,8 @@ lint:
 
 # minikube
 LIVENESS_PROBE ?= true
-.PHONY: minikube-install
-minikube-install: gadget-default-container kubectl-gadget
+.PHONY: minikube-deploy
+minikube-deploy: minikube-start gadget-default-container kubectl-gadget
 	@echo "Image on the host:"
 	docker image list --format "table {{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.Size}}" |grep $(CONTAINER_REPO):$(IMAGE_TAG)
 	@echo
@@ -224,6 +225,8 @@ minikube-install: gadget-default-container kubectl-gadget
 	kubectl rollout status daemonset -n gadget gadget --timeout 30s
 	@echo "Image used by the gadget pod:"
 	kubectl get pod -n gadget -o yaml|grep imageID:
+	@echo "Minikube profile used:"
+	$(MINIKUBE) profile
 
 .PHONY: btfgen
 btfgen:
