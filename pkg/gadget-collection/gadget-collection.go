@@ -70,16 +70,3 @@ func TraceFactories() map[string]gadgets.TraceFactory {
 		"traceloop":         traceloop.NewFactory(),
 	}
 }
-
-func TraceFactoriesForLocalGadget() map[string]gadgets.TraceFactory {
-	return map[string]gadgets.TraceFactory{
-		"capabilities":      capabilities.NewFactory(),
-		"dns":               dns.NewFactory(),
-		"ebpftop":           ebpftop.NewFactory(),
-		"process-collector": processcollector.NewFactory(),
-		"socket-collector":  socketcollector.NewFactory(),
-		"snisnoop":          snisnoop.NewFactory(),
-		"sigsnoop":          sigsnoop.NewFactory(),
-		"traceloop":         traceloop.NewFactory(),
-	}
-}

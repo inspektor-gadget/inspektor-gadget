@@ -35,8 +35,6 @@ func TestSnapshotProcess(t *testing.T) {
 				Event: eventtypes.Event{
 					Type: eventtypes.NORMAL,
 					CommonData: eventtypes.CommonData{
-						Namespace: "default",
-						Pod:       cn,
 						Container: cn,
 					},
 				},

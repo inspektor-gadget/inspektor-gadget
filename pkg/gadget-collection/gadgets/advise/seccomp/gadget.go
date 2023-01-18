@@ -17,7 +17,6 @@ package seccomp
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -28,7 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	seccompprofile "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 	k8syaml "sigs.k8s.io/yaml"
@@ -280,22 +278,16 @@ func getSeccompProfileNsName(
 
 	// Fallback to the trace's namespace and podname but adding a counter
 	// suffix in case there is already a profile with the podname name.
-	var profileName string
-	if cli != nil {
-		profileList := &seccompprofile.SeccompProfileList{}
-		err := cli.List(
-			context.TODO(),
-			profileList,
-			client.InNamespace(traceNs),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve SeccompProfiles in %q: %w", traceNs, err)
-		}
-		profileName = getSeccompProfileNextName(profileList.Items, podname)
-	} else {
-		// This is mainly for the local-gadget where name verification is not needed
-		profileName = podname
+	profileList := &seccompprofile.SeccompProfileList{}
+	err := cli.List(
+		context.TODO(),
+		profileList,
+		client.InNamespace(traceNs),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve SeccompProfiles in %q: %w", traceNs, err)
 	}
+	profileName := getSeccompProfileNextName(profileList.Items, podname)
 
 	return &SeccompProfileNsName{
 		namespace:    traceNs,
@@ -387,14 +379,10 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 
 func getContainerOwnerReference(c *containercollection.Container) *metav1.OwnerReference {
 	ownerRef, err := c.GetOwnerReference()
-	// Owner reference doesn't make any sense for local-gadget, then
-	// do not print any warning message if this is not running in
-	// the cluster.
-	if err != nil && !errors.Is(err, rest.ErrNotInCluster) {
+	if err != nil {
 		log.Warnf("Failed to get owner reference of %s/%s/%s: %s",
 			c.Namespace, c.Podname, c.Name, err)
 	}
-
 	return ownerRef
 }
 
