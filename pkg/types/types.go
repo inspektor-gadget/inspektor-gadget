@@ -113,6 +113,14 @@ type Event struct {
 	Message string `json:"message,omitempty"`
 }
 
+type EventWithTimestamp interface {
+	GetTimestamp() Time
+}
+
+func (e Event) GetTimestamp() Time {
+	return e.Timestamp
+}
+
 // GetBaseEvent is needed to implement commonutils.BaseElement and
 // snapshot.SnapshotEvent interfaces.
 func (e Event) GetBaseEvent() *Event {

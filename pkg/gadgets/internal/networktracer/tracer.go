@@ -25,6 +25,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/event-sorter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -96,7 +97,7 @@ func newAttachment(
 	return a, nil
 }
 
-type Tracer[Event any] struct {
+type Tracer[Event types.EventWithTimestamp] struct {
 	spec *ebpf.CollectionSpec
 
 	// key: network namespace inode number
@@ -109,9 +110,10 @@ type Tracer[Event any] struct {
 
 	baseEvent    func(ev types.Event) *Event
 	processEvent func(rawSample []byte, netns uint64) (*Event, error)
+	eventSorter  *eventsorter.EventSorter
 }
 
-func NewTracer[Event any](
+func NewTracer[Event types.EventWithTimestamp](
 	spec *ebpf.CollectionSpec,
 	bpfProgName string,
 	bpfPerfMapName string,
@@ -129,6 +131,7 @@ func NewTracer[Event any](
 		bpfSocketAttach: bpfSocketAttach,
 		baseEvent:       baseEvent,
 		processEvent:    processEvent,
+		eventSorter:     eventsorter.NewEventSorter(),
 	}
 }
 
@@ -148,7 +151,7 @@ func (t *Tracer[Event]) Attach(pid uint32, eventCallback func(*Event)) error {
 	}
 	t.attachments[netns] = a
 
-	go t.listen(netns, a.perfRd, t.baseEvent, t.processEvent, eventCallback)
+	go t.listen(netns, a.perfRd, t.baseEvent, t.processEvent, eventCallback, t.eventSorter)
 
 	return nil
 }
@@ -159,6 +162,7 @@ func (t *Tracer[Event]) listen(
 	baseEvent func(ev types.Event) *Event,
 	processEvent func(rawSample []byte, netns uint64) (*Event, error),
 	eventCallback func(*Event),
+	eventSorter *eventsorter.EventSorter,
 ) {
 	for {
 		record, err := rd.Read()
@@ -186,7 +190,9 @@ func (t *Tracer[Event]) listen(
 		if event == nil {
 			continue
 		}
-		eventCallback(event)
+		eventSorter.Append(uint64(types.EventWithTimestamp(*event).GetTimestamp()), func() {
+			eventCallback(event)
+		})
 	}
 }
 
@@ -214,4 +220,5 @@ func (t *Tracer[Event]) Close() {
 	for key, l := range t.attachments {
 		t.releaseAttachment(key, l)
 	}
+	t.eventSorter.Close()
 }
