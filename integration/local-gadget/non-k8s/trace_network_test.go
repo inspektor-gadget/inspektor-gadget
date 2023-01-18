@@ -73,6 +73,7 @@ func TestTraceNetwork(t *testing.T) {
 
 	testSteps := []TestStep{
 		traceNetworkCmd,
+		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		&DockerContainer{
 			Name:    cn,
 			Cmd:     "nginx && curl 127.0.0.1",
