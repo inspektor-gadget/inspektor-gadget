@@ -107,6 +107,7 @@ func TestTraceDns(t *testing.T) {
 
 	testSteps := []TestStep{
 		traceDNSCmd,
+		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		&DockerContainer{
 			Name: cn,
 			Cmd: "nslookup -type=a inspektor-gadget.io. 8.8.4.4 ; " +
