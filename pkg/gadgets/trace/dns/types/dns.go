@@ -15,6 +15,7 @@
 package types
 
 import (
+	"strings"
 	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -46,6 +47,8 @@ type Event struct {
 	DNSName    string        `json:"name,omitempty" column:"name,width:30"`
 	Rcode      string        `json:"rcode,omitempty" column:"rcode,minWidth:8"`
 	Latency    time.Duration `json:"latency,omitempty" column:"latency,hide"`
+	NumAnswers int           `json:"numAnswers,omitempty" column:"numAnswers,hide" columnDesc:"Number of addresses contained in the response."`
+	Addresses  []string      `json:"addresses,omitempty" column:"addresses,width:32,hide" columnDesc:"Addresses in the response. Maximum 8 are reported. Only available if the response is compressed."`
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -66,6 +69,10 @@ func GetColumns() *columns.Columns[Event] {
 			// either because the query was evicted or the DNS packet had an invalid ID.
 			return ""
 		}
+	})
+
+	cols.MustSetExtractor("addresses", func(event *Event) string {
+		return strings.Join(event.Addresses, ",")
 	})
 
 	return cols

@@ -64,6 +64,8 @@ func TestTraceDns(t *testing.T) {
 					QType:      "A",
 					Rcode:      "NoError",
 					Latency:    1,
+					NumAnswers: 1,
+					Addresses:  []string{"127.0.0.1"},
 				},
 				{
 					Event:      BuildBaseEvent(ns),
@@ -84,6 +86,8 @@ func TestTraceDns(t *testing.T) {
 					QType:      "AAAA",
 					Rcode:      "NoError",
 					Latency:    1,
+					NumAnswers: 1,
+					Addresses:  []string{"::1"},
 				},
 				{
 					Event:      BuildBaseEvent(ns),
@@ -104,6 +108,7 @@ func TestTraceDns(t *testing.T) {
 					QType:      "A",
 					Rcode:      "NXDomain",
 					Latency:    1,
+					NumAnswers: 0,
 				},
 			}
 
