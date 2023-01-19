@@ -63,6 +63,71 @@ struct dnshdr {
 	__u16 arcount; // number of additional records
 };
 
+static __always_inline __u32 dns_name_length(struct __sk_buff *skb)
+{
+	// This loop iterates over the DNS labels to find the total DNS name
+	// length.
+	unsigned int i;
+	unsigned int skip = 0;
+	for (i = 0; i < MAX_DNS_NAME ; i++) {
+		if (skip != 0) {
+			skip--;
+		} else {
+			int label_len = load_byte(skb, DNS_OFF + sizeof(struct dnshdr) + i);
+			if (label_len == 0)
+				break;
+			// The simple solution "i += label_len" gives verifier
+			// errors, so work around with skip.
+			skip = label_len;
+		}
+	}
+
+	return i < MAX_DNS_NAME ? i : MAX_DNS_NAME;
+}
+
+static __always_inline int
+output_dns_event(struct __sk_buff *skb, union dnsflags flags, __u32 name_len)
+{
+	struct event_t event = {0,};
+	event.timestamp = bpf_ktime_get_boot_ns();
+	event.id = load_half(skb, DNS_OFF + offsetof(struct dnshdr, id));
+	event.af = AF_INET;
+	event.daddr_v4 = load_word(skb, ETH_HLEN + offsetof(struct iphdr, daddr));
+	event.saddr_v4 = load_word(skb, ETH_HLEN + offsetof(struct iphdr, saddr));
+	// load_word converts from network to host endianness. Convert back to
+	// network endianness because inet_ntop() requires it.
+	event.daddr_v4 = bpf_htonl(event.daddr_v4);
+	event.saddr_v4 = bpf_htonl(event.saddr_v4);
+
+	event.qr = flags.qr;
+
+	if (flags.qr == 1) {
+		// Response code set only for replies.
+		event.rcode = flags.rcode;
+	}
+
+	bpf_skb_load_bytes(skb, DNS_OFF + sizeof(struct dnshdr), event.name, name_len);
+
+	event.pkt_type = skb->pkt_type;
+
+	// Read QTYPE right after the QNAME
+	// https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.2
+	event.qtype = load_half(skb, DNS_OFF + sizeof(struct dnshdr) + name_len + 1);
+
+	// Enrich event with process metadata
+	struct sockets_value *skb_val = gadget_socket_lookup(skb);
+	if (skb_val != NULL) {
+		event.mount_ns_id = skb_val->mntns;
+		event.pid = skb_val->pid_tgid >> 32;
+		event.tid = (__u32)skb_val->pid_tgid;
+		__builtin_memcpy(&event.task,  skb_val->task, sizeof(event.task));
+	}
+
+	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+
+	return 0;
+}
+
 SEC("socket1")
 int ig_trace_dns(struct __sk_buff *skb)
 {
@@ -83,69 +148,16 @@ int ig_trace_dns(struct __sk_buff *skb)
 
 	__u16 ancount = load_half(skb, DNS_OFF + offsetof(struct dnshdr, ancount));
 	__u16 nscount = load_half(skb, DNS_OFF + offsetof(struct dnshdr, nscount));
+
 	// Skip DNS queries with answers
 	if ((flags.qr == 0) && (ancount + nscount != 0))
 		return 0;
 
-	// This loop iterates over the DNS labels to find the total DNS name
-	// length.
-	unsigned int i;
-	unsigned int skip = 0;
-	for (i = 0; i < MAX_DNS_NAME ; i++) {
-		if (skip != 0) {
-			skip--;
-		} else {
-			int label_len = load_byte(skb, DNS_OFF + sizeof(struct dnshdr) + i);
-			if (label_len == 0)
-				break;
-			// The simple solution "i += label_len" gives verifier
-			// errors, so work around with skip.
-			skip = label_len;
-		}
-	}
-
-	__u32 len = i < MAX_DNS_NAME ? i : MAX_DNS_NAME;
-	if  (len == 0)
+	__u32 name_len = dns_name_length(skb);
+	if (name_len == 0)
 		return 0;
 
-	struct event_t event = {0,};
-	event.timestamp = bpf_ktime_get_boot_ns();
-	event.id = load_half(skb, DNS_OFF + offsetof(struct dnshdr, id));
-	event.af = AF_INET;
-	event.daddr_v4 = load_word(skb, ETH_HLEN + offsetof(struct iphdr, daddr));
-	event.saddr_v4 = load_word(skb, ETH_HLEN + offsetof(struct iphdr, saddr));
-	// load_word converts from network to host endianness. Convert back to
-	// network endianness because inet_ntop() requires it.
-	event.daddr_v4 = bpf_htonl(event.daddr_v4);
-	event.saddr_v4 = bpf_htonl(event.saddr_v4);
-
-	event.qr = flags.qr;
-
-	if (flags.qr == 1) {
-		// Response code set only for replies.
-		event.rcode = flags.rcode;
-	}
-
-	bpf_skb_load_bytes(skb, DNS_OFF + sizeof(struct dnshdr), event.name, len);
-
-	event.pkt_type = skb->pkt_type;
-
-	// Read QTYPE right after the QNAME
-	// https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.2
-	event.qtype = load_half(skb, DNS_OFF + sizeof(struct dnshdr) + len + 1);
-
-	// Enrich event with process metadata
-	struct sockets_value *skb_val = gadget_socket_lookup(skb);
-	if (skb_val != NULL) {
-		event.mount_ns_id = skb_val->mntns;
-		event.pid = skb_val->pid_tgid >> 32;
-		event.tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event.task,  skb_val->task, sizeof(event.task));
-	}
-
-	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
-
-	return 0;
+	return output_dns_event(skb, flags, name_len);
 }
 
 char _license[] SEC("license") = "GPL";
