@@ -26,6 +26,8 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/event-sorter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -44,6 +46,7 @@ type Tracer struct {
 	reader        *perf.Reader
 	enricher      gadgets.DataEnricherByMntNs
 	eventCallback func(*types.Event)
+	eventSorter   *eventsorter.EventSorter
 }
 
 func NewTracer(c *Config, enricher gadgets.DataEnricherByMntNs, eventCallback func(*types.Event)) (*Tracer, error) {
@@ -73,6 +76,7 @@ func (t *Tracer) stop() {
 	}
 
 	t.objs.Close()
+	t.eventSorter.Close()
 }
 
 func (t *Tracer) start() error {
@@ -119,6 +123,8 @@ func (t *Tracer) start() error {
 	}
 	t.reader = reader
 
+	t.eventSorter = eventsorter.NewEventSorter()
+
 	go t.run()
 
 	return nil
@@ -156,6 +162,8 @@ func (t *Tracer) run() {
 			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
-		t.eventCallback(&event)
+		t.eventSorter.Append(uint64(event.Timestamp), func() {
+			t.eventCallback(&event)
+		})
 	}
 }

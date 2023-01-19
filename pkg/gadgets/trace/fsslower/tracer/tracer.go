@@ -26,6 +26,8 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/event-sorter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -55,6 +57,7 @@ type Tracer struct {
 	syncEnterLink  link.Link
 	syncExitLink   link.Link
 	reader         *perf.Reader
+	eventSorter    *eventsorter.EventSorter
 }
 
 type fsConf struct {
@@ -130,6 +133,7 @@ func (t *Tracer) Stop() {
 	}
 
 	t.objs.Close()
+	t.eventSorter.Close()
 }
 
 func (t *Tracer) start() error {
@@ -218,6 +222,8 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
 
+	t.eventSorter = eventsorter.NewEventSorter()
+
 	go t.run()
 
 	return nil
@@ -265,6 +271,8 @@ func (t *Tracer) run() {
 			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
-		t.eventCallback(&event)
+		t.eventSorter.Append(uint64(event.Timestamp), func() {
+			t.eventCallback(&event)
+		})
 	}
 }
