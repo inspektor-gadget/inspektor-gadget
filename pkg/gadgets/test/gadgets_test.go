@@ -34,43 +34,6 @@ import (
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 )
 
-func runContainerTest(
-	cc *containercollection.ContainerCollection,
-	name string,
-	f func() error,
-	iterations int,
-) error {
-	for i := 0; i < iterations; i++ {
-		r, err := utilstest.NewRunner(&utilstest.RunnerConfig{})
-		if err != nil {
-			return fmt.Errorf("failed to create runner: %w", err)
-		}
-
-		container := &containercollection.Container{
-			ID:    uuid.New().String(),
-			Name:  name,
-			Mntns: r.Info.MountNsID,
-			Pid:   uint32(r.Info.Tid),
-		}
-
-		cc.AddContainer(container)
-
-		if err := r.Run(f); err != nil {
-			return fmt.Errorf("failed to run command: %w", err)
-		}
-
-		r.Close()
-
-		go func() {
-			// Sleep some time to simulate a delay deleting the container
-			time.Sleep(1 * time.Millisecond)
-			cc.RemoveContainer(container.ID)
-		}()
-	}
-
-	return nil
-}
-
 // Function to generate an event used most of the times.
 // Returns pid of executed process.
 func generateEvent(cmdName string) error {
@@ -80,6 +43,55 @@ func generateEvent(cmdName string) error {
 	}
 
 	return nil
+}
+
+func createTestEnv(
+	t *testing.T,
+	traceName string,
+	containerName string,
+	eventCallback func(event *types.Event),
+) *containercollection.ContainerCollection {
+	t.Helper()
+
+	cc := &containercollection.ContainerCollection{}
+
+	tc, err := tracercollection.NewTracerCollection(cc)
+	if err != nil {
+		t.Fatalf("failed to create tracer collection: %s", err)
+	}
+	t.Cleanup(tc.Close)
+
+	opts := []containercollection.ContainerCollectionOption{
+		containercollection.WithPubSub(tc.TracerMapsUpdater()),
+	}
+
+	if err := cc.Initialize(opts...); err != nil {
+		t.Fatalf("failed to init container collection: %s", err)
+	}
+	t.Cleanup(cc.Close)
+
+	containerSelector := containercollection.ContainerSelector{
+		Name: containerName,
+	}
+	if err := tc.AddTracer(traceName, containerSelector); err != nil {
+		t.Fatalf("error adding tracer: %s", err)
+	}
+	t.Cleanup(func() { tc.RemoveTracer(traceName) })
+
+	// Get mount namespace map to filter by containers
+	mountnsmap, err := tc.TracerMountNsMap(traceName)
+	if err != nil {
+		t.Fatalf("failed to get mountnsmap: %s", err)
+	}
+
+	// Create the tracer
+	tracer, err := tracer.NewTracer(&tracer.Config{MountnsMap: mountnsmap}, cc, eventCallback)
+	if err != nil {
+		t.Fatalf("failed to create tracer: %s", err)
+	}
+	t.Cleanup(tracer.Stop)
+
+	return cc
 }
 
 // TestContainerRemovalRaceCondition checks that a container is removed
@@ -99,23 +111,6 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 		nonMatchingCommand   = "touch"
 	)
 
-	cc := &containercollection.ContainerCollection{}
-
-	tc, err := tracercollection.NewTracerCollection(cc)
-	if err != nil {
-		t.Fatalf("failed to create tracer collection: %s", err)
-	}
-	t.Cleanup(tc.Close)
-
-	opts := []containercollection.ContainerCollectionOption{
-		containercollection.WithPubSub(tc.TracerMapsUpdater()),
-	}
-
-	if err := cc.Initialize(opts...); err != nil {
-		t.Fatalf("failed to init container collection: %s", err)
-	}
-	t.Cleanup(cc.Close)
-
 	eventCallback := func(event *types.Event) {
 		// "nonMatchingCommand" is only executed in the
 		// "nonMatching" container that doesn't match with the
@@ -125,26 +120,44 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 		}
 	}
 
-	containerSelector := containercollection.ContainerSelector{
-		Name: matchingContainer,
-	}
-	if err := tc.AddTracer(traceName, containerSelector); err != nil {
-		t.Fatalf("error adding tracer: %s", err)
-	}
-	t.Cleanup(func() { tc.RemoveTracer(traceName) })
+	cc := createTestEnv(t, traceName, matchingContainer, eventCallback)
 
-	// Get mount namespace map to filter by containers
-	mountnsmap, err := tc.TracerMountNsMap(traceName)
-	if err != nil {
-		t.Fatalf("failed to get mountnsmap: %s", err)
-	}
+	runContainerTest := func(
+		cc *containercollection.ContainerCollection,
+		name string,
+		f func() error,
+		iterations int,
+	) error {
+		for i := 0; i < iterations; i++ {
+			r, err := utilstest.NewRunner(&utilstest.RunnerConfig{})
+			if err != nil {
+				return fmt.Errorf("failed to create runner: %w", err)
+			}
 
-	// Create the tracer
-	tracer, err := tracer.NewTracer(&tracer.Config{MountnsMap: mountnsmap}, cc, eventCallback)
-	if err != nil {
-		t.Fatalf("failed to create tracer: %s", err)
+			container := &containercollection.Container{
+				ID:    uuid.New().String(),
+				Name:  name,
+				Mntns: r.Info.MountNsID,
+				Pid:   uint32(r.Info.Tid),
+			}
+
+			cc.AddContainer(container)
+
+			if err := r.Run(f); err != nil {
+				return fmt.Errorf("failed to run command: %w", err)
+			}
+
+			r.Close()
+
+			// Use a delay to simulate the time it requires Inspektor Gadget to remove the
+			// container after it's notified. Notice that the container hooks are not blocking
+			// on the remove events, hence when we get the notification the container is already
+			// gone.
+			time.AfterFunc(1*time.Millisecond, func() { cc.RemoveContainer(container.ID) })
+		}
+
+		return nil
 	}
-	t.Cleanup(tracer.Stop)
 
 	const n = 1000
 
