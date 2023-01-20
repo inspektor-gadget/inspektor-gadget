@@ -176,3 +176,74 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 		t.Fatalf("failed generating events: %s", err)
 	}
 }
+
+// TestEventEnrichmentRaceCondition checks that an event is properly enriched when the generating
+// container is removed soon after it generates the event.
+// https://github.com/inspektor-gadget/inspektor-gadget/issues/1178
+func TestEventEnrichmentRaceCondition(t *testing.T) {
+	t.Parallel()
+
+	utilstest.RequireRoot(t)
+
+	const (
+		traceName     = "trace_exec"
+		containerName = "foo"
+		command       = "cat"
+	)
+
+	eventCallback := func(event *types.Event) {
+		if event.Container == "" {
+			t.Fatal("event not enriched")
+		}
+	}
+
+	cc := createTestEnv(t, traceName, containerName, eventCallback)
+
+	const n = 1000
+
+	errs, _ := errgroup.WithContext(context.TODO())
+
+	runContainerTest := func(
+		cc *containercollection.ContainerCollection,
+		name string,
+		f func() error,
+		iterations int,
+	) error {
+		for i := 0; i < iterations; i++ {
+			r, err := utilstest.NewRunner(&utilstest.RunnerConfig{})
+			if err != nil {
+				return fmt.Errorf("failed to create runner: %w", err)
+			}
+
+			container := &containercollection.Container{
+				ID:    uuid.New().String(),
+				Name:  name,
+				Mntns: r.Info.MountNsID,
+				Pid:   uint32(r.Info.Tid),
+			}
+
+			cc.AddContainer(container)
+			// Remove the container right after it generates the command. Running this
+			// after r.Run() will be too late, so let's do in a different goroutine to
+			// have some time.
+			go func() { cc.RemoveContainer(container.ID) }()
+
+			if err := r.Run(f); err != nil {
+				return fmt.Errorf("failed to run command: %w", err)
+			}
+
+			r.Close()
+		}
+
+		return nil
+	}
+
+	errs.Go(func() error {
+		catDevNull := func() error { return generateEvent(command) }
+		return runContainerTest(cc, containerName, catDevNull, n)
+	})
+
+	if err := errs.Wait(); err != nil {
+		t.Fatalf("failed generating events: %s", err)
+	}
+}
