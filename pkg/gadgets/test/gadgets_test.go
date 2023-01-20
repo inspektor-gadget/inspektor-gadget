@@ -62,7 +62,7 @@ func createTestEnv(
 	t.Cleanup(tc.Close)
 
 	opts := []containercollection.ContainerCollectionOption{
-		containercollection.WithPubSub(tc.TracerMapsUpdater()),
+		containercollection.WithTracerCollection(tc),
 	}
 
 	if err := cc.Initialize(opts...); err != nil {

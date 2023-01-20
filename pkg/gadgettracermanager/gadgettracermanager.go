@@ -235,7 +235,9 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 		return nil, err
 	}
 
-	containerEventFuncs := []containercollection.FuncNotify{}
+	opts := []containercollection.ContainerCollectionOption{
+		containercollection.WithNodeName(conf.NodeName),
+	}
 
 	if !conf.TestOnly {
 		if err := rlimit.RemoveMemlock(); err != nil {
@@ -247,19 +249,12 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 			return nil, fmt.Errorf("error creating containers map: %w", err)
 		}
 
-		containerEventFuncs = append(containerEventFuncs, g.containersMap.ContainersMapUpdater())
-		containerEventFuncs = append(containerEventFuncs, g.tracerCollection.TracerMapsUpdater())
-	}
-
-	opts := []containercollection.ContainerCollectionOption{
-		containercollection.WithPubSub(containerEventFuncs...),
-		containercollection.WithNodeName(conf.NodeName),
-	}
-	if !conf.TestOnly {
+		opts = append(opts, containercollection.WithPubSub(g.containersMap.ContainersMapUpdater()))
 		opts = append(opts, containercollection.WithOCIConfigEnrichment())
 		opts = append(opts, containercollection.WithCgroupEnrichment())
 		opts = append(opts, containercollection.WithLinuxNamespaceEnrichment())
 		opts = append(opts, containercollection.WithKubernetesEnrichment(g.nodeName, nil))
+		opts = append(opts, containercollection.WithTracerCollection(g.tracerCollection))
 	}
 
 	podInformerUsed := false

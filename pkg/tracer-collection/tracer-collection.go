@@ -17,11 +17,9 @@ package tracercollection
 import (
 	"fmt"
 	"os"
-	"sync"
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/stream"
@@ -35,17 +33,7 @@ const (
 type TracerCollection struct {
 	tracers             map[string]tracer
 	containerCollection *containercollection.ContainerCollection
-
-	// We keep an open file descriptor of the containers mount
-	// namespace to be sure the kernel doesn't reuse the inode id
-	// before we remove this from the mnt ns ebpf map. This logic
-	// avoids a race condition when the mnt ns inode id is reused by
-	// a new container and we erroneously pick events from it.
-	// Key: container ID
-	containerMntNsFds map[string]int
-	mu                sync.Mutex
-
-	testOnly bool
+	testOnly            bool
 }
 
 type tracer struct {
@@ -62,7 +50,6 @@ func NewTracerCollection(cc *containercollection.ContainerCollection) (*TracerCo
 	return &TracerCollection{
 		tracers:             make(map[string]tracer),
 		containerCollection: cc,
-		containerMntNsFds:   make(map[string]int),
 	}, nil
 }
 
@@ -87,16 +74,6 @@ func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 				return
 			}
 
-			path := fmt.Sprintf("/proc/%d/ns/mnt", event.Container.Pid)
-			fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC, 0)
-			if err != nil {
-				return
-			}
-
-			tc.mu.Lock()
-			tc.containerMntNsFds[event.Container.ID] = fd
-			tc.mu.Unlock()
-
 			for _, t := range tc.tracers {
 				if containercollection.ContainerSelectorMatches(&t.containerSelector, event.Container) {
 					mntnsC := uint64(event.Container.Mntns)
@@ -116,13 +93,6 @@ func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 					t.mntnsSetMap.Delete(mntnsC)
 				}
 			}
-
-			tc.mu.Lock()
-			if fd, ok := tc.containerMntNsFds[event.Container.ID]; ok {
-				unix.Close(fd)
-				delete(tc.containerMntNsFds, event.Container.ID)
-			}
-			tc.mu.Unlock()
 		}
 	}
 }
@@ -218,14 +188,7 @@ func (tc *TracerCollection) TracerExists(id string) bool {
 	return ok
 }
 
-func (tc *TracerCollection) Close() {
-	tc.mu.Lock()
-	defer tc.mu.Unlock()
-
-	for _, fd := range tc.containerMntNsFds {
-		unix.Close(fd)
-	}
-}
+func (tc *TracerCollection) Close() {}
 
 func (tc *TracerCollection) TracerMountNsMap(id string) (*ebpf.Map, error) {
 	t, ok := tc.tracers[id]

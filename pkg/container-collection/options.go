@@ -20,8 +20,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -639,6 +642,45 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 func WithNodeName(nodeName string) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		cc.nodeName = nodeName
+		return nil
+	}
+}
+
+type TracerCollection interface {
+	TracerMapsUpdater() FuncNotify
+}
+
+// WithTracerCollection enables the interation between the TracerCollection and ContainerCollection
+// packages. When this option is used:
+// - A cache mechanism to keep containers after they are removed is enabled.
+// - The tracer collection TracerMapsUpdater() receives notifications from containers created /
+// removed.
+func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		// 2 seconds should enough time for the tracer to read the event from the perf ring
+		// buffer and enrich it after the container has been terminated.
+		cc.cacheDelay = 2 * time.Second
+		cc.cachedContainers = &sync.Map{}
+
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
+			path := fmt.Sprintf("/proc/%d/ns/mnt", container.Pid)
+			fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+			if err != nil {
+				log.Warnf("WithTracerCollection: failed to open mntns reference for container %s: %s",
+					container.ID, err)
+				return false
+			}
+
+			container.mntNsFd = fd
+			return true
+		})
+
+		if cc.pubsub == nil {
+			cc.pubsub = NewGadgetPubSub()
+		}
+
+		cc.pubsub.Subscribe("tracercollection", tc.TracerMapsUpdater(), nil)
+
 		return nil
 	}
 }

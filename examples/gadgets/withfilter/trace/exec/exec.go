@@ -63,7 +63,7 @@ func main() {
 	opts := []containercollection.ContainerCollectionOption{
 		// Indicate the callback that will be invoked each time
 		// there is an event
-		containercollection.WithPubSub(tracerCollection.TracerMapsUpdater()),
+		containercollection.WithTracerCollection(tracerCollection),
 
 		// Get containers created with runc
 		containercollection.WithRuncFanotify(),
