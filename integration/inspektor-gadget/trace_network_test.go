@@ -36,14 +36,20 @@ func TestTraceNetwork(t *testing.T) {
 	}
 
 	RunTestSteps(commandsPreTest, t)
-	nginxIP := GetTestPodIP(ns, "nginx-pod")
+	nginxIP, err := GetTestPodIP(ns, "nginx-pod")
+	if err != nil {
+		t.Fatalf("failed to get pod ip %s", err)
+	}
 
 	traceNetworkCmd := &Command{
 		Name:         "StartTraceNetworkGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace network -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			testPodIP := GetTestPodIP(ns, "test-pod")
+			testPodIP, err := GetTestPodIP(ns, "test-pod")
+			if err != nil {
+				return fmt.Errorf("getting pod ip: %w", err)
+			}
 
 			expectedEntries := []*tracenetworkTypes.Event{
 				{
