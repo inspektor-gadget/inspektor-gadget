@@ -113,9 +113,9 @@ func DeployInspektorGadget(image, imagePullPolicy string) *Command {
 
 func DeploySPO(limitReplicas, patchWebhookConfig, bestEffortResourceMgmt bool) *Command {
 	cmdStr := fmt.Sprintf(`
-kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.10.0/cert-manager.yaml
 kubectl --namespace cert-manager wait --for condition=ready pod -l app.kubernetes.io/instance=cert-manager
-curl https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.3/deploy/operator.yaml | \
+curl https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.6.0/deploy/operator.yaml | \
   if [ %v = true ] ; then
     sed 's/replicas: 3/replicas: 1/' | grep -v cpu:
   else
@@ -196,8 +196,8 @@ var CleanupSPO = []*Command{
 		Name: "RemoveSecurityProfilesOperator",
 		Cmd: `
 		kubectl delete seccompprofile --all --all-namespaces
-		kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.4.3/deploy/operator.yaml --ignore-not-found
-		kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.8.0/cert-manager.yaml --ignore-not-found
+		kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/security-profiles-operator/v0.6.0/deploy/operator.yaml --ignore-not-found
+		kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.10.0/cert-manager.yaml --ignore-not-found
 		`,
 		Cleanup: true,
 	},
