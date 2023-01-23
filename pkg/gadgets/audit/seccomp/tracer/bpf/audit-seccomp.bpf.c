@@ -11,13 +11,11 @@
 
 #include "audit-seccomp.h"
 
-#include <gadgettracermanager/containers-map.h>
-
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, __u64);
 	__type(value, __u32);
-	__uint(max_entries, MAX_CONTAINERS_PER_NODE);
+	__uint(max_entries, 1024);
 } mount_ns_filter SEC(".maps");
 
 /* The stack is limited, so use a map to build the event */
@@ -59,13 +57,6 @@ int ig_audit_secc(struct pt_regs *ctx)
 	event->syscall = syscall;
 	event->code = code;
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
-
-	struct container *container_entry;
-	container_entry = bpf_map_lookup_elem(&containers, &mntns_id);
-	if (container_entry)
-		bpf_probe_read_kernel(&event->container, sizeof(event->container), container_entry);
-	else
-		__builtin_memset(&event->container, 0, sizeof(event->container));
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event, sizeof(*event));
 	return 0;

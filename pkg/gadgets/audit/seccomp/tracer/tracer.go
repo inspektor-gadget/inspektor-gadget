@@ -32,6 +32,7 @@ import (
 
 type Tracer struct {
 	config        *Config
+	enricher      gadgets.DataEnricherByMntNs
 	eventCallback func(*types.Event)
 
 	objs   auditseccompObjects
@@ -45,13 +46,15 @@ type Tracer struct {
 }
 
 type Config struct {
-	ContainersMap *ebpf.Map
-	MountnsMap    *ebpf.Map
+	MountnsMap *ebpf.Map
 }
 
-func NewTracer(config *Config, eventCallback func(*types.Event)) (*Tracer, error) {
+func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
+	eventCallback func(*types.Event),
+) (*Tracer, error) {
 	t := &Tracer{
 		config:        config,
+		enricher:      enricher,
 		eventCallback: eventCallback,
 	}
 
@@ -77,9 +80,6 @@ func (t *Tracer) start() error {
 	if t.config.MountnsMap != nil {
 		filterByMntNs = true
 		mapReplacements["mount_ns_filter"] = t.config.MountnsMap
-	}
-	if t.config.ContainersMap != nil {
-		mapReplacements["containers"] = t.config.ContainersMap
 	}
 
 	consts := map[string]interface{}{
@@ -139,26 +139,16 @@ func (t *Tracer) run() {
 			Event: eventtypes.Event{
 				Type:      eventtypes.NORMAL,
 				Timestamp: gadgets.WallTimeFromBootTime(eventC.Timestamp),
-				CommonData: eventtypes.CommonData{
-					// Get 'Namespace', 'Pod' and 'Container' from
-					// BPF and not from the gadget helpers  because the
-					// container might be terminated immediately
-					// after the BPF kprobe on audit_seccomp() is
-					// executed (e.g. with SCMP_ACT_KILL), so by
-					// the time the event is read from the perf
-					// ring buffer, we might not be able to get the
-					// Kubernetes metadata from the mount namespace
-					// id.
-					Namespace: gadgets.FromCString(eventC.Container.Namespace[:]),
-					Pod:       gadgets.FromCString(eventC.Container.Pod[:]),
-					Container: gadgets.FromCString(eventC.Container.Container[:]),
-				},
 			},
 			Pid:       uint32(eventC.Pid),
 			MountNsID: uint64(eventC.MntnsId),
 			Syscall:   syscallToName(int(eventC.Syscall)),
 			Code:      codeToName(uint(eventC.Code)),
 			Comm:      gadgets.FromCString(eventC.Comm[:]),
+		}
+
+		if t.enricher != nil {
+			t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 		}
 
 		t.eventCallback(&event)

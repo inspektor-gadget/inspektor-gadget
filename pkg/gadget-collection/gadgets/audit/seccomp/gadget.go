@@ -115,10 +115,9 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	config := &auditseccomptracer.Config{
-		MountnsMap:    mountNsMap,
-		ContainersMap: t.helpers.ContainersMap(),
+		MountnsMap: mountNsMap,
 	}
-	t.tracer, err = auditseccomptracer.NewTracer(config, eventCallback)
+	t.tracer, err = auditseccomptracer.NewTracer(config, t.helpers, eventCallback)
 	if err != nil {
 		trace.Status.OperationError = fmt.Sprintf("Failed to start audit seccomp tracer: %s", err)
 		return
