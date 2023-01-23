@@ -219,7 +219,7 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 
 // Function that runs a "sleep" process.
 func generateEvent() (int, error) {
-	cmd := exec.Command("/bin/sleep", "3")
+	cmd := exec.Command("/bin/sleep", "5")
 	if err := cmd.Start(); err != nil {
 		return 0, fmt.Errorf("running command: %w", err)
 	}
