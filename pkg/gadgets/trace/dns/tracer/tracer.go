@@ -65,9 +65,9 @@ func NewTracer() (*Tracer, error) {
 		// Filter by packet type (OUTGOING for queries and HOST for responses) to exclude cases where
 		// the packet is forwarded between containers in the host netns.
 		if bpfEvent.Qr == 0 && bpfEvent.PktType == unix.PACKET_OUTGOING {
-			latencyCalc.storeDNSQueryTimestamp(netns, bpfEvent.Id, bpfEvent.Timestamp)
+			latencyCalc.storeDNSQueryTimestamp(netns, bpfEvent.Id, uint64(event.Event.Timestamp))
 		} else if bpfEvent.Qr == 1 && bpfEvent.PktType == unix.PACKET_HOST {
-			event.Latency = latencyCalc.calculateDNSResponseLatency(netns, bpfEvent.Id, bpfEvent.Timestamp)
+			event.Latency = latencyCalc.calculateDNSResponseLatency(netns, bpfEvent.Id, uint64(event.Event.Timestamp))
 		}
 
 		return event, nil
