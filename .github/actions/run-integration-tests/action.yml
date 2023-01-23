@@ -70,5 +70,4 @@ runs:
       uses: ./.github/actions/prepare-and-publish-test-reports
       with:
         test-log-file: integration.log
-        truncate-lines: 200
 

@@ -5,9 +5,6 @@ inputs:
   test-log-file:
     description: "Test log file to be used to generate reports"
     required: true
-  truncate-lines:
-    description: "Number of failed test log lines to truncate to"
-    default: "50"
 
 runs:
   using: "composite"
@@ -24,5 +21,5 @@ runs:
     - name: Publish test reports as markdown
       shell: bash
       run: |
-        testjson2md -in ./test-report.json -out ./test-report.md -truncate-lines ${{ inputs.truncate-lines }}
+        testjson2md -in ./test-report.json -out ./test-report.md
         cat test-report.md >> $GITHUB_STEP_SUMMARY
