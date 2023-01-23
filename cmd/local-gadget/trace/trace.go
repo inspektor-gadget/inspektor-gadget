@@ -18,8 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/cilium/ebpf"
 	"github.com/spf13/cobra"
@@ -95,10 +93,7 @@ func (g *TraceGadget[Event]) Run() error {
 	}
 	defer gadgetTracer.Stop()
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-
+	utils.WaitForEnd(g.commonFlags)
 	return nil
 }
 

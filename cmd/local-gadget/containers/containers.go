@@ -18,8 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -100,10 +98,7 @@ func NewListContainersCmd() *cobra.Command {
 				}
 			}
 
-			stop := make(chan os.Signal, 1)
-			signal.Notify(stop, syscall.SIGINT)
-			<-stop
-
+			utils.WaitForEnd(&commonFlags)
 			return nil
 		},
 	}

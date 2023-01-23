@@ -94,6 +94,7 @@ func newSocketCmd() *cobra.Command {
 	cmd := commonsnapshot.NewSocketCmd(runCmd, &flags)
 
 	utils.AddCommonFlags(cmd, &commonFlags)
+	utils.HideFlagTimeout(cmd)
 
 	return cmd
 }

@@ -16,11 +16,8 @@ package top
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"github.com/cilium/ebpf"
 	"github.com/spf13/cobra"
@@ -100,10 +97,7 @@ func (g *TopGadget[Stats]) Run(args []string) error {
 	}
 	defer gadgetTracer.Stop()
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-
+	utils.WaitForEnd(g.commonFlags)
 	return nil
 }
 
