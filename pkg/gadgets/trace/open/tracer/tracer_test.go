@@ -25,7 +25,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/test"
+	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"

@@ -27,8 +27,8 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
+	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
