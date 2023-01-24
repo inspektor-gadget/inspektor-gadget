@@ -128,7 +128,7 @@ func TestBindTracer(t *testing.T) {
 				}
 			}),
 		},
-		"ipv4": {
+		"tcp4": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
 				return &tracer.Config{
 					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
@@ -141,9 +141,10 @@ func TestBindTracer(t *testing.T) {
 				}
 
 				utilstest.Equal(t, "127.0.0.2", events[0].Addr, "Captured event has bad Addr")
+				utilstest.Equal(t, "TCP", events[0].Protocol, "Captured event has bad Protocol")
 			},
 		},
-		"ipv6": {
+		"tcp6": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
 				return &tracer.Config{
 					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
@@ -156,9 +157,10 @@ func TestBindTracer(t *testing.T) {
 				}
 
 				utilstest.Equal(t, "::", events[0].Addr, "Captured event has bad Addr")
+				utilstest.Equal(t, "TCP", events[0].Protocol, "Captured event has bad Protocol")
 			},
 		},
-		"udp": {
+		"udp4": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
 				return &tracer.Config{
 					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
@@ -170,22 +172,24 @@ func TestBindTracer(t *testing.T) {
 					t.Fatalf("Wrong number of events received %d, expected 1", len(events))
 				}
 
+				utilstest.Equal(t, "127.0.0.1", events[0].Addr, "Captured event has bad Addr")
 				utilstest.Equal(t, "UDP", events[0].Protocol, "Captured event has bad Protocol")
 			},
 		},
-		"tcp": {
+		"udp6": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
 				return &tracer.Config{
 					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
 				}
 			},
-			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_STREAM, 0),
+			generateEvent: bindSocketFn("::", unix.AF_INET6, unix.SOCK_DGRAM, 0),
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, port uint16, events []types.Event) {
 				if len(events) != 1 {
 					t.Fatalf("Wrong number of events received %d, expected 1", len(events))
 				}
 
-				utilstest.Equal(t, "TCP", events[0].Protocol, "Captured event has bad Protocol")
+				utilstest.Equal(t, "::", events[0].Addr, "Captured event has bad Addr")
+				utilstest.Equal(t, "UDP", events[0].Protocol, "Captured event has bad Protocol")
 			},
 		},
 		"interface": {
