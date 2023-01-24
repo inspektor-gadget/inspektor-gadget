@@ -53,7 +53,7 @@ func TestTraceSni(t *testing.T) {
 		CreateTestNamespaceCommand(ns),
 		traceSNICmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://kubernetes.default.svc.cluster.local"),
+		BusyboxPodRepeatCommand(ns, "wget --no-check-certificate -T 2 -q -O /dev/null https://kubernetes.default.svc.cluster.local"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

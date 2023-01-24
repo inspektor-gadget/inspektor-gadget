@@ -53,7 +53,7 @@ func TestTraceSni(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		traceSniCmd,
-		BusyboxPodRepeatCommand(ns, "wget -q -O /dev/null https://inspektor-gadget.io"),
+		BusyboxPodRepeatCommand(ns, "wget --no-check-certificate -T 2 -q -O /dev/null https://inspektor-gadget.io"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
