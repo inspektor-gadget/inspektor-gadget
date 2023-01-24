@@ -28,15 +28,6 @@ func TestTopTCP(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-tcp")
 
-	commandsPreTest := []*Command{
-		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
-		WaitUntilPodReadyCommand(ns, "nginx-pod"),
-	}
-
-	RunTestSteps(commandsPreTest, t)
-	NginxIP := GetTestPodIP(ns, "nginx-pod")
-
 	topTCPCmd := &Command{
 		Name:         "TopTCP",
 		Cmd:          fmt.Sprintf("local-gadget top tcp -o json -m 999 --runtimes=%s", *containerRuntime),
@@ -47,17 +38,17 @@ func TestTopTCP(t *testing.T) {
 					Namespace: ns,
 					Pod:       "test-pod",
 				},
-				Comm:   "wget",
+				Comm:   "curl",
 				Family: syscall.AF_INET,
-				Daddr:  NginxIP,
 				Dport:  80,
+				Saddr:  "127.0.0.1",
+				Daddr:  "127.0.0.1",
 			}
 
 			normalize := func(e *types.Stats) {
 				e.Container = ""
 				e.Pid = 0
 				e.MountNsID = 0
-				e.Saddr = ""
 				e.Sport = 0
 				e.Sent = 0
 				e.Received = 0
@@ -68,9 +59,10 @@ func TestTopTCP(t *testing.T) {
 	}
 
 	commands := []*Command{
+		CreateTestNamespaceCommand(ns),
 		topTCPCmd,
 		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
+		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

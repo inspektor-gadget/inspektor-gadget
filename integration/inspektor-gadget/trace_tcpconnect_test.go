@@ -28,29 +28,18 @@ func TestTraceTcpconnect(t *testing.T) {
 
 	t.Parallel()
 
-	commandsPreTest := []*Command{
-		CreateTestNamespaceCommand(ns),
-		PodCommand("nginx-pod", "nginx", ns, "", ""),
-		WaitUntilPodReadyCommand(ns, "nginx-pod"),
-	}
-
-	RunTestSteps(commandsPreTest, t)
-	NginxIP := GetTestPodIP(ns, "nginx-pod")
-
 	traceTcpconnectCmd := &Command{
 		Name:         "StartTraceTcpconnectGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			TestPodIP := GetTestPodIP(ns, "test-pod")
-
 			expectedEntry := &tracetcpconnectTypes.Event{
 				Event:     BuildBaseEvent(ns),
-				Comm:      "wget",
+				Comm:      "curl",
 				IPVersion: 4,
 				Dport:     80,
-				Saddr:     TestPodIP,
-				Daddr:     NginxIP,
+				Saddr:     "127.0.0.1",
+				Daddr:     "127.0.0.1",
 			}
 
 			normalize := func(e *tracetcpconnectTypes.Event) {
@@ -65,8 +54,9 @@ func TestTraceTcpconnect(t *testing.T) {
 	}
 
 	commands := []*Command{
+		CreateTestNamespaceCommand(ns),
 		traceTcpconnectCmd,
-		BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", NginxIP)),
+		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

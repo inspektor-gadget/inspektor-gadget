@@ -34,14 +34,20 @@ func TestTraceNetwork(t *testing.T) {
 	}
 
 	RunTestSteps(commandsPreTest, t)
-	nginxIP := GetTestPodIP(ns, "nginx-pod")
+	nginxIP, err := GetTestPodIP(ns, "nginx-pod")
+	if err != nil {
+		t.Fatalf("failed to get pod ip %s", err)
+	}
 
 	traceNetworkCmd := &Command{
 		Name:         "TraceNetwork",
 		Cmd:          fmt.Sprintf("local-gadget trace network -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			testPodIP := GetTestPodIP(ns, "test-pod")
+			testPodIP, err := GetTestPodIP(ns, "test-pod")
+			if err != nil {
+				return fmt.Errorf("getting pod ip: %w", err)
+			}
 
 			expectedEntries := []*networkTypes.Event{
 				{
