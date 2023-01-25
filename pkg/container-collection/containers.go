@@ -65,6 +65,13 @@ type Container struct {
 	PodUID    string            `json:"podUID,omitempty"`
 
 	ownerReference *metav1.OwnerReference
+
+	// We keep an open file descriptor of the containers mount namespace to be sure the kernel
+	// doesn't reuse the inode id before we get rid of this container. This logic avoids a race
+	// condition when the mnt ns inode id is reused by a new container and we erroneously pick
+	// events from it.
+	// This is only used when cachedContainers are enabled through WithTracerCollection().
+	mntNsFd int
 }
 
 type ContainerSelector struct {

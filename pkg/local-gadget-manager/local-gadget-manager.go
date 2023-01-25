@@ -91,17 +91,15 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 	if err != nil {
 		return nil, fmt.Errorf("error creating containers map: %w", err)
 	}
-	containerEventFuncs := []containercollection.FuncNotify{}
-	containerEventFuncs = append(containerEventFuncs, l.containersMap.ContainersMapUpdater())
-	containerEventFuncs = append(containerEventFuncs, l.tracerCollection.TracerMapsUpdater())
 
 	err = l.ContainerCollection.Initialize(
-		containercollection.WithPubSub(containerEventFuncs...),
+		containercollection.WithPubSub(l.containersMap.ContainersMapUpdater()),
 		containercollection.WithOCIConfigEnrichment(),
 		containercollection.WithCgroupEnrichment(),
 		containercollection.WithLinuxNamespaceEnrichment(),
 		containercollection.WithMultipleContainerRuntimesEnrichment(runtimes),
 		containercollection.WithRuncFanotify(),
+		containercollection.WithTracerCollection(l.tracerCollection),
 	)
 	if err != nil {
 		return nil, err

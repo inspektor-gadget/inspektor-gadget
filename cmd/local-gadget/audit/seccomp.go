@@ -88,11 +88,10 @@ func newSeccompCmd() *cobra.Command {
 		defer localGadgetManager.RemoveMountNsMap()
 
 		config := &tracer.Config{
-			ContainersMap: localGadgetManager.ContainersMap(),
-			MountnsMap:    mountnsmap,
+			MountnsMap: mountnsmap,
 		}
 
-		tracer, err := tracer.NewTracer(config, eventCallback)
+		tracer, err := tracer.NewTracer(config, localGadgetManager, eventCallback)
 		if err != nil {
 			return fmt.Errorf("creating tracer: %w", err)
 		}

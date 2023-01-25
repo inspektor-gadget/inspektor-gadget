@@ -23,8 +23,10 @@ package containercollection
 
 import (
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +40,11 @@ type ContainerCollection struct {
 	// Keys:   containerID string
 	// Values: container   Container
 	containers sync.Map
+
+	// Saves containers for "cacheDelay" to be able to enrich events after the container is
+	// removed. This is enabled by using WithTracerCollection().
+	cachedContainers *sync.Map
+	cacheDelay       time.Duration
 
 	// subs contains a list of subscribers of container events
 	pubsub *GadgetPubSub
@@ -127,8 +134,20 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 		return
 	}
 
+	container := v.(*Container)
+
 	if cc.pubsub != nil {
-		cc.pubsub.Publish(EventTypeRemoveContainer, v.(*Container))
+		cc.pubsub.Publish(EventTypeRemoveContainer, container)
+	}
+
+	// Save the container in the cache as enrichers might need the container some time after it
+	// has been removed.
+	if cc.cachedContainers != nil {
+		cc.cachedContainers.Store(id, v)
+		time.AfterFunc(cc.cacheDelay, func() {
+			cc.cachedContainers.Delete(id)
+			unix.Close(container.mntNsFd)
+		})
 	}
 
 	// Remove the container from the collection after publishing the event as
@@ -173,12 +192,10 @@ func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container 
 	return
 }
 
-// LookupContainerByMntns returns a container by its mount namespace
-// inode id. If not found nil is returned.
-func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container {
+func lookupContainerByMntns(m *sync.Map, mntnsid uint64) *Container {
 	var container *Container
 
-	cc.containers.Range(func(key, value interface{}) bool {
+	m.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if c.Mntns == mntnsid {
 			container = c
@@ -188,6 +205,12 @@ func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container
 		return true
 	})
 	return container
+}
+
+// LookupContainerByMntns returns a container by its mount namespace
+// inode id. If not found nil is returned.
+func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container {
+	return lookupContainerByMntns(&cc.containers, mntnsid)
 }
 
 // LookupContainersByNetns returns a slice of containers that run in a given
@@ -328,7 +351,11 @@ func (cc *ContainerCollection) EnrichNode(event *eventtypes.CommonData) {
 func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
 	event.Node = cc.nodeName
 
-	container := cc.LookupContainerByMntns(mountnsid)
+	container := lookupContainerByMntns(&cc.containers, mountnsid)
+	if container == nil && cc.cachedContainers != nil {
+		container = lookupContainerByMntns(cc.cachedContainers, mountnsid)
+	}
+
 	if container != nil {
 		event.Container = container.Name
 		event.Pod = container.Podname

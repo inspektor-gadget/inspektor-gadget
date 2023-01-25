@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/test"
+	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"

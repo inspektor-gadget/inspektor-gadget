@@ -27,49 +27,12 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
+	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 )
-
-func runContainerTest(
-	cc *containercollection.ContainerCollection,
-	name string,
-	f func() error,
-	iterations int,
-) error {
-	for i := 0; i < iterations; i++ {
-		r, err := utilstest.NewRunner(&utilstest.RunnerConfig{})
-		if err != nil {
-			return fmt.Errorf("failed to create runner: %w", err)
-		}
-
-		container := &containercollection.Container{
-			ID:    uuid.New().String(),
-			Name:  name,
-			Mntns: r.Info.MountNsID,
-			Pid:   uint32(r.Info.Tid),
-		}
-
-		cc.AddContainer(container)
-
-		if err := r.Run(f); err != nil {
-			return fmt.Errorf("failed to run command: %w", err)
-		}
-
-		r.Close()
-
-		go func() {
-			// Sleep some time to simulate a delay deleting the container
-			time.Sleep(1 * time.Millisecond)
-			cc.RemoveContainer(container.ID)
-		}()
-	}
-
-	return nil
-}
 
 // Function to generate an event used most of the times.
 // Returns pid of executed process.
@@ -82,22 +45,13 @@ func generateEvent(cmdName string) error {
 	return nil
 }
 
-// TestContainerRemovalRaceCondition checks that a container is removed
-// from the mount ns inode ids map fast enough to avoid capturing events
-// from the wrong container. See
-// https://github.com/inspektor-gadget/inspektor-gadget/issues/1001
-func TestContainerRemovalRaceCondition(t *testing.T) {
-	t.Parallel()
-
-	utilstest.RequireRoot(t)
-
-	const (
-		traceName            = "trace_exec"
-		matchingContainer    = "foo"
-		nonMatchingContainer = "bar"
-		matchingCommand      = "cat"
-		nonMatchingCommand   = "touch"
-	)
+func createTestEnv(
+	t *testing.T,
+	traceName string,
+	containerName string,
+	eventCallback func(event *types.Event),
+) *containercollection.ContainerCollection {
+	t.Helper()
 
 	cc := &containercollection.ContainerCollection{}
 
@@ -108,7 +62,7 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 	t.Cleanup(tc.Close)
 
 	opts := []containercollection.ContainerCollectionOption{
-		containercollection.WithPubSub(tc.TracerMapsUpdater()),
+		containercollection.WithTracerCollection(tc),
 	}
 
 	if err := cc.Initialize(opts...); err != nil {
@@ -116,17 +70,8 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 	}
 	t.Cleanup(cc.Close)
 
-	eventCallback := func(event *types.Event) {
-		// "nonMatchingCommand" is only executed in the
-		// "nonMatching" container that doesn't match with the
-		// filter
-		if event.Comm == nonMatchingCommand {
-			t.Fatalf("bad event captured")
-		}
-	}
-
 	containerSelector := containercollection.ContainerSelector{
-		Name: matchingContainer,
+		Name: containerName,
 	}
 	if err := tc.AddTracer(traceName, containerSelector); err != nil {
 		t.Fatalf("error adding tracer: %s", err)
@@ -146,6 +91,74 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 	}
 	t.Cleanup(tracer.Stop)
 
+	return cc
+}
+
+// TestContainerRemovalRaceCondition checks that a container is removed
+// from the mount ns inode ids map fast enough to avoid capturing events
+// from the wrong container. See
+// https://github.com/inspektor-gadget/inspektor-gadget/issues/1001
+func TestContainerRemovalRaceCondition(t *testing.T) {
+	t.Parallel()
+
+	utilstest.RequireRoot(t)
+
+	const (
+		traceName            = "trace_exec"
+		matchingContainer    = "foo"
+		nonMatchingContainer = "bar"
+		matchingCommand      = "cat"
+		nonMatchingCommand   = "touch"
+	)
+
+	eventCallback := func(event *types.Event) {
+		// "nonMatchingCommand" is only executed in the
+		// "nonMatching" container that doesn't match with the
+		// filter
+		if event.Comm == nonMatchingCommand {
+			t.Fatalf("bad event captured")
+		}
+	}
+
+	cc := createTestEnv(t, traceName, matchingContainer, eventCallback)
+
+	runContainerTest := func(
+		cc *containercollection.ContainerCollection,
+		name string,
+		f func() error,
+		iterations int,
+	) error {
+		for i := 0; i < iterations; i++ {
+			r, err := utilstest.NewRunner(&utilstest.RunnerConfig{})
+			if err != nil {
+				return fmt.Errorf("failed to create runner: %w", err)
+			}
+
+			container := &containercollection.Container{
+				ID:    uuid.New().String(),
+				Name:  name,
+				Mntns: r.Info.MountNsID,
+				Pid:   uint32(r.Info.Tid),
+			}
+
+			cc.AddContainer(container)
+
+			if err := r.Run(f); err != nil {
+				return fmt.Errorf("failed to run command: %w", err)
+			}
+
+			r.Close()
+
+			// Use a delay to simulate the time it requires Inspektor Gadget to remove the
+			// container after it's notified. Notice that the container hooks are not blocking
+			// on the remove events, hence when we get the notification the container is already
+			// gone.
+			time.AfterFunc(1*time.Millisecond, func() { cc.RemoveContainer(container.ID) })
+		}
+
+		return nil
+	}
+
 	const n = 1000
 
 	errs, _ := errgroup.WithContext(context.TODO())
@@ -157,6 +170,77 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 	errs.Go(func() error {
 		touchDevNull := func() error { return generateEvent(nonMatchingCommand) }
 		return runContainerTest(cc, nonMatchingContainer, touchDevNull, n)
+	})
+
+	if err := errs.Wait(); err != nil {
+		t.Fatalf("failed generating events: %s", err)
+	}
+}
+
+// TestEventEnrichmentRaceCondition checks that an event is properly enriched when the generating
+// container is removed soon after it generates the event.
+// https://github.com/inspektor-gadget/inspektor-gadget/issues/1178
+func TestEventEnrichmentRaceCondition(t *testing.T) {
+	t.Parallel()
+
+	utilstest.RequireRoot(t)
+
+	const (
+		traceName     = "trace_exec"
+		containerName = "foo"
+		command       = "cat"
+	)
+
+	eventCallback := func(event *types.Event) {
+		if event.Container == "" {
+			t.Fatal("event not enriched")
+		}
+	}
+
+	cc := createTestEnv(t, traceName, containerName, eventCallback)
+
+	const n = 1000
+
+	errs, _ := errgroup.WithContext(context.TODO())
+
+	runContainerTest := func(
+		cc *containercollection.ContainerCollection,
+		name string,
+		f func() error,
+		iterations int,
+	) error {
+		for i := 0; i < iterations; i++ {
+			r, err := utilstest.NewRunner(&utilstest.RunnerConfig{})
+			if err != nil {
+				return fmt.Errorf("failed to create runner: %w", err)
+			}
+
+			container := &containercollection.Container{
+				ID:    uuid.New().String(),
+				Name:  name,
+				Mntns: r.Info.MountNsID,
+				Pid:   uint32(r.Info.Tid),
+			}
+
+			cc.AddContainer(container)
+			// Remove the container right after it generates the command. Running this
+			// after r.Run() will be too late, so let's do in a different goroutine to
+			// have some time.
+			go func() { cc.RemoveContainer(container.ID) }()
+
+			if err := r.Run(f); err != nil {
+				return fmt.Errorf("failed to run command: %w", err)
+			}
+
+			r.Close()
+		}
+
+		return nil
+	}
+
+	errs.Go(func() error {
+		catDevNull := func() error { return generateEvent(command) }
+		return runContainerTest(cc, containerName, catDevNull, n)
 	})
 
 	if err := errs.Wait(); err != nil {

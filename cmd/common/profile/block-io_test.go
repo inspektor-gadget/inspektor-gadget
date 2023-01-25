@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"testing"
 
-	"gotest.tools/v3/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
 )
@@ -161,16 +161,16 @@ func validateReportToString(report types.Report, t *testing.T) {
 	result := reportToString(report)
 
 	if len(report.Data) == 0 {
-		assert.Equal(t, result, "")
+		require.Equal(t, result, "")
 		return
 	}
 
 	lines := regexp.MustCompile("\r?\n").Split(result, -1)
 
-	assert.Equal(t, len(lines), len(report.Data)+2)
+	require.Equal(t, len(lines), len(report.Data)+2)
 	regexHeader := regexp.MustCompile(fmt.Sprintf(`\s*%s\s+:\s+count\s+distribution`, report.ValType))
-	assert.Assert(t, regexHeader.MatchString(lines[0]))
-	assert.Equal(t, lines[len(lines)-1], "")
+	require.True(t, regexHeader.MatchString(lines[0]))
+	require.Equal(t, lines[len(lines)-1], "")
 
 	regexData := regexp.MustCompile(`\s*(\d+)\s->\s(\d+)\s+:\s(\d+)\s+\|\**\s*\|`)
 
@@ -179,11 +179,11 @@ func validateReportToString(report types.Report, t *testing.T) {
 		line := lines[i+1]
 		parts := regexData.FindStringSubmatch(line)
 
-		assert.Equal(t, len(parts), 4)
-		assert.Equal(t, parts[0], line)
-		assert.Equal(t, parts[1], strconv.FormatUint(data.IntervalStart, 10))
-		assert.Equal(t, parts[2], strconv.FormatUint(data.IntervalEnd, 10))
-		assert.Equal(t, parts[3], strconv.FormatUint(data.Count, 10))
+		require.Equal(t, len(parts), 4)
+		require.Equal(t, parts[0], line)
+		require.Equal(t, parts[1], strconv.FormatUint(data.IntervalStart, 10))
+		require.Equal(t, parts[2], strconv.FormatUint(data.IntervalEnd, 10))
+		require.Equal(t, parts[3], strconv.FormatUint(data.Count, 10))
 	}
 }
 

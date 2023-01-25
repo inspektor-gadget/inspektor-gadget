@@ -13,13 +13,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type auditseccompContainer struct {
-	ContainerId [256]uint8
-	Namespace   [256]uint8
-	Pod         [256]uint8
-	Container   [256]uint8
-}
-
 type auditseccompEvent struct {
 	Pid       uint64
 	MntnsId   uint64
@@ -27,7 +20,6 @@ type auditseccompEvent struct {
 	Syscall   uint64
 	Code      uint64
 	Comm      [16]uint8
-	Container auditseccompContainer
 }
 
 // loadAuditseccomp returns the embedded CollectionSpec for auditseccomp.
@@ -78,7 +70,6 @@ type auditseccompProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type auditseccompMapSpecs struct {
-	Containers    *ebpf.MapSpec `ebpf:"containers"`
 	Events        *ebpf.MapSpec `ebpf:"events"`
 	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
 	TmpEvent      *ebpf.MapSpec `ebpf:"tmp_event"`
@@ -103,7 +94,6 @@ func (o *auditseccompObjects) Close() error {
 //
 // It can be passed to loadAuditseccompObjects or ebpf.CollectionSpec.LoadAndAssign.
 type auditseccompMaps struct {
-	Containers    *ebpf.Map `ebpf:"containers"`
 	Events        *ebpf.Map `ebpf:"events"`
 	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
 	TmpEvent      *ebpf.Map `ebpf:"tmp_event"`
@@ -111,7 +101,6 @@ type auditseccompMaps struct {
 
 func (m *auditseccompMaps) Close() error {
 	return _AuditseccompClose(
-		m.Containers,
 		m.Events,
 		m.MountNsFilter,
 		m.TmpEvent,
