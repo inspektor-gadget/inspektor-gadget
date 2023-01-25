@@ -8,8 +8,6 @@ description: >
 Inspektor Gadget comes with several tools which permit monitoring different
 events related to specific kernel subsystems.
 
-![different tools offered by Inspektor Gadget](images/architecture/inspektor_gadget_tools.svg)
-
 It is usually deployed by the `kubectl gadget` plugin. It interacts with the
 kube-api server to create all the resources needed for Inspektor Gadget to work.
 Another way of deploying Inspektor Gadget is to directly apply the manifests

@@ -25,6 +25,8 @@ and quicker to find the relevant information.
 
 Inspektor Gadget tools are known as gadgets. You can deploy one, two or many gadgets.
 
+![different tools offered by Inspektor Gadget](docs/images/architecture/inspektor_gadget_tools.svg)
+
 Explore the following documentation to find out which tools can help you in your investigations.
 
 - `advise`:
