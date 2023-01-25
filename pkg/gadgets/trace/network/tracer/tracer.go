@@ -28,6 +28,7 @@ import (
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/ebpfoptions"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -87,7 +88,7 @@ func NewTracer(enricher gadgets.DataEnricherByNetNs) (_ *Tracer, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
-	if err := specMap.LoadAndAssign(&t.networkGraphMapObjects, &ebpf.CollectionOptions{}); err != nil {
+	if err := specMap.LoadAndAssign(&t.networkGraphMapObjects, ebpfoptions.CollectionOptions()); err != nil {
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
@@ -133,13 +134,14 @@ func (t *Tracer) Attach(pid uint32) (err error) {
 		return fmt.Errorf("error RewriteConstants: %w", err)
 	}
 
+	opts := ebpfoptions.CollectionOptions()
+	opts.MapReplacements = map[string]*ebpf.Map{
+		"graphmap": t.networkGraphMapObjects.graphmapMaps.Graphmap,
+	}
+
 	if err := spec.LoadAndAssign(
 		&a.networkGraphObjects,
-		&ebpf.CollectionOptions{
-			MapReplacements: map[string]*ebpf.Map{
-				"graphmap": t.networkGraphMapObjects.graphmapMaps.Graphmap,
-			},
-		},
+		opts,
 	); err != nil {
 		return fmt.Errorf("failed to create BPF collection: %w", err)
 	}

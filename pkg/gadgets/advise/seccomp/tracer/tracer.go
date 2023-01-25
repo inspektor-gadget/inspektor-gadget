@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/ebpfoptions"
 	libseccomp "github.com/seccomp/libseccomp-golang"
 )
 
@@ -60,7 +61,7 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load asset: %w", err)
 	}
 
-	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
+	if err := spec.LoadAndAssign(&t.objs, ebpfoptions.CollectionOptions()); err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 

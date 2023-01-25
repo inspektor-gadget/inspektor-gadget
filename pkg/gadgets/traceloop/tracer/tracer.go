@@ -30,6 +30,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/ebpfoptions"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	libseccomp "github.com/seccomp/libseccomp-golang"
@@ -133,7 +134,7 @@ func NewTracer(enricher gadgets.DataEnricherByMntNs) (*Tracer, error) {
 		})
 	}
 
-	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
+	if err := spec.LoadAndAssign(&t.objs, ebpfoptions.CollectionOptions()); err != nil {
 		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
 

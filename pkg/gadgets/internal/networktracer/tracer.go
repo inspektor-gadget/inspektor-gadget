@@ -26,6 +26,7 @@ import (
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/ebpfoptions"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -69,7 +70,7 @@ func newAttachment(
 		}
 	}()
 
-	a.collection, err = ebpf.NewCollection(spec)
+	a.collection, err = ebpf.NewCollectionWithOptions(spec, *ebpfoptions.CollectionOptions())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
 	}

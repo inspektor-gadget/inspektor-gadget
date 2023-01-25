@@ -29,6 +29,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/ebpfoptions"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 )
@@ -113,11 +114,10 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("error RewriteConstants: %w", err)
 	}
 
-	opts := ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
-	}
+	opts := ebpfoptions.CollectionOptions()
+	opts.MapReplacements = mapReplacements
 
-	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
+	if err := spec.LoadAndAssign(&t.objs, opts); err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 

@@ -27,6 +27,7 @@ import (
 	"github.com/moby/moby/pkg/parsers/kernel"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/ebpfoptions"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
 )
 
@@ -125,7 +126,7 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
+	if err := spec.LoadAndAssign(&t.objs, ebpfoptions.CollectionOptions()); err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 

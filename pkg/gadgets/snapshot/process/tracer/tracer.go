@@ -28,6 +28,7 @@ import (
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/ebpfoptions"
 	processcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -87,11 +88,10 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 	}
 
 	objs := processCollectorObjects{}
-	opts := ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
-	}
+	opts := ebpfoptions.CollectionOptions()
+	opts.MapReplacements = mapReplacements
 
-	if err := spec.LoadAndAssign(&objs, &opts); err != nil {
+	if err := spec.LoadAndAssign(&objs, opts); err != nil {
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 	defer objs.Close()

@@ -22,6 +22,7 @@ import (
 
 	"github.com/cilium/ebpf/link"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/ebpfoptions"
 	socketcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -72,7 +73,7 @@ func parseStatus(proto string, statusUint uint8) (string, error) {
 
 func getTCPIter() (*link.Iter, error) {
 	objs := iterTCPv4Objects{}
-	if err := loadIterTCPv4Objects(&objs, nil); err != nil {
+	if err := loadIterTCPv4Objects(&objs, ebpfoptions.CollectionOptions()); err != nil {
 		return nil, fmt.Errorf("failed to load TCP BPF objects: %w", err)
 	}
 	defer objs.Close()
@@ -89,7 +90,7 @@ func getTCPIter() (*link.Iter, error) {
 
 func getUDPIter() (*link.Iter, error) {
 	objs := iterUDPv4Objects{}
-	if err := loadIterUDPv4Objects(&objs, nil); err != nil {
+	if err := loadIterUDPv4Objects(&objs, ebpfoptions.CollectionOptions()); err != nil {
 		return nil, fmt.Errorf("failed to load UDP BPF objects: %w", err)
 	}
 	defer objs.Close()

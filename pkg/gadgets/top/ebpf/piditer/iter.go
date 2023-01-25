@@ -25,11 +25,11 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/ebpfoptions"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -type pid_iter_entry piditer ./bpf/pid_iter.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -126,9 +126,9 @@ func NewTracer() (iter *PidIter, err error) {
 		return nil, fmt.Errorf("error RewriteConstants: %w", err)
 	}
 
-	opts := ebpf.CollectionOptions{}
+	opts := ebpfoptions.CollectionOptions()
 
-	if err = spec.LoadAndAssign(&p.objs, &opts); err != nil {
+	if err = spec.LoadAndAssign(&p.objs, opts); err != nil {
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
