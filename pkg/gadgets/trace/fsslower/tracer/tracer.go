@@ -28,7 +28,6 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -300,8 +299,8 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
 		return tracer, nil
 	}
 
-	pm := runner.GadgetParams().ParamMap()
-	params.StringAsString(pm[ParamFilesystem], &tracer.config.Filesystem)
-	params.StringAsUint(pm[ParamMinLatency], &tracer.config.MinLatency)
+	params := runner.GadgetParams()
+	tracer.config.Filesystem = params.Get(ParamFilesystem).AsString()
+	tracer.config.MinLatency = params.Get(ParamMinLatency).AsUint()
 	return tracer, nil
 }

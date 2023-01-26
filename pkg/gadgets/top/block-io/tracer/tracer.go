@@ -33,7 +33,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type info_t -type val_t -cc clang biotop ./bpf/biotop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -334,13 +333,10 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
 		return tracer, nil
 	}
 
-	pm := runner.GadgetParams().ParamMap()
-
-	interval := 0
-	params.StringAsInt(pm[gadgets.ParamMaxRows], &tracer.config.MaxRows)
-	params.StringAsInt(pm[gadgets.ParamInterval], &interval)
-	params.StringAsStringSlice(pm[gadgets.ParamSortBy], &tracer.config.SortBy)
-	tracer.config.Interval = time.Second * time.Duration(interval)
+	params := runner.GadgetParams()
+	tracer.config.MaxRows = params.Get(gadgets.ParamMaxRows).AsInt()
+	tracer.config.SortBy = params.Get(gadgets.ParamSortBy).AsStringSlice()
+	tracer.config.Interval = time.Second * time.Duration(params.Get(gadgets.ParamInterval).AsInt())
 	return tracer, nil
 }
 

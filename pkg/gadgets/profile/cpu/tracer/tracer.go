@@ -35,7 +35,6 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -452,8 +451,8 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
 		return tracer, nil
 	}
 
-	pm := runner.GadgetParams().ParamMap()
-	params.StringAsBool(pm[ParamUserStack], &tracer.config.UserStackOnly)
-	params.StringAsBool(pm[ParamKernelStack], &tracer.config.KernelStackOnly)
+	params := runner.GadgetParams()
+	tracer.config.UserStackOnly = params.Get(ParamUserStack).AsBool()
+	tracer.config.KernelStackOnly = params.Get(ParamKernelStack).AsBool()
 	return tracer, nil
 }

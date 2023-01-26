@@ -29,7 +29,6 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -302,8 +301,8 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
 		return tracer, nil
 	}
 
-	pm := runner.GadgetParams().ParamMap()
-	params.StringAsBool(pm[ParamUnique], &tracer.config.Unique)
-	params.StringAsBool(pm[ParamAuditOnly], &tracer.config.Unique)
+	params := runner.GadgetParams()
+	tracer.config.Unique = params.Get(ParamUnique).AsBool()
+	tracer.config.AuditOnly = params.Get(ParamAuditOnly).AsBool()
 	return tracer, nil
 }

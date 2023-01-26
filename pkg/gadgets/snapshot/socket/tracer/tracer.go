@@ -25,7 +25,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	socketcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -211,9 +210,8 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
 		return tracer, nil
 	}
 
-	pm := runner.GadgetParams().ParamMap()
-	params.StringAsString(pm[ParamProto], &tracer.protocols)
-
+	params := runner.GadgetParams()
+	tracer.protocols = params.Get(ParamProto).AsString()
 	return tracer, nil
 }
 

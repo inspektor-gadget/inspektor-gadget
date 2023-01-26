@@ -30,7 +30,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type file_stat -type file_id -cc clang filetop ./bpf/filetop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -282,12 +281,10 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
 		return tracer, nil
 	}
 
-	pm := runner.GadgetParams().ParamMap()
-	interval := 0
-	params.StringAsInt(pm[gadgets.ParamMaxRows], &tracer.config.MaxRows)
-	params.StringAsInt(pm[gadgets.ParamInterval], &interval)
-	params.StringAsStringSlice(pm[gadgets.ParamSortBy], &tracer.config.SortBy)
-	params.StringAsBool(pm[types.AllFilesParam], &tracer.config.AllFiles)
-	tracer.config.Interval = time.Second * time.Duration(interval)
+	params := runner.GadgetParams()
+	tracer.config.MaxRows = params.Get(gadgets.ParamMaxRows).AsInt()
+	tracer.config.SortBy = params.Get(gadgets.ParamSortBy).AsStringSlice()
+	tracer.config.Interval = time.Second * time.Duration(params.Get(gadgets.ParamInterval).AsInt())
+	tracer.config.AllFiles = params.Get(types.AllFilesParam).AsBool()
 	return tracer, nil
 }

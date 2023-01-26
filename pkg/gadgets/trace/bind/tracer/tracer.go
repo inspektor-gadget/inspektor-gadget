@@ -26,7 +26,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/vishvananda/netlink"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -311,16 +310,20 @@ func (t *Tracer) SetEventHandler(handler any) {
 }
 
 func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
-	tracer := &Tracer{
-		config: &Config{},
-	}
+	// TODO(Mauricio): Can't we use this way on all gadgets?
 	if runner == nil {
-		return tracer, nil
+		return &Tracer{}, nil
 	}
 
-	pm := runner.GadgetParams().ParamMap()
-	params.StringAsInt(pm[ParamPID], &tracer.config.TargetPid)
-	params.StringAsUintSlice(pm[ParamPorts], &tracer.config.TargetPorts)
-	params.StringAsBool(pm[ParamIgnoreErrors], &tracer.config.IgnoreErrors)
+	params := runner.GadgetParams()
+
+	tracer := &Tracer{
+		config: &Config{
+			TargetPid:    params.Get(ParamPID).AsInt32(),
+			TargetPorts:  params.Get(ParamPorts).AsUint16Slice(),
+			IgnoreErrors: params.Get(ParamIgnoreErrors).AsBool(),
+		},
+	}
+
 	return tracer, nil
 }

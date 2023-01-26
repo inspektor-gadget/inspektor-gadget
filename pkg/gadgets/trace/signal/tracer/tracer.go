@@ -18,7 +18,6 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	"golang.org/x/sys/unix"
@@ -251,10 +250,10 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
 		return tracer, nil
 	}
 
-	pm := runner.GadgetParams().ParamMap()
-	params.StringAsInt(pm[ParamPID], &tracer.config.TargetPid)
-	params.StringAsBool(pm[ParamFailedOnly], &tracer.config.FailedOnly)
-	params.StringAsBool(pm[ParamKillOnly], &tracer.config.KillOnly)
-	params.StringAsString(pm[ParamTargetSignal], &tracer.config.TargetSignal)
+	params := runner.GadgetParams()
+	tracer.config.TargetPid = params.Get(ParamPID).AsInt32()
+	tracer.config.FailedOnly = params.Get(ParamFailedOnly).AsBool()
+	tracer.config.KillOnly = params.Get(ParamKillOnly).AsBool()
+	tracer.config.TargetSignal = params.Get(ParamTargetSignal).AsString()
 	return tracer, nil
 }

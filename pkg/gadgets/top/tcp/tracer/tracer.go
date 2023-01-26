@@ -31,7 +31,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target $TARGET -type ip_key_t -type traffic_t -cc clang tcptop ./bpf/tcptop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -291,14 +290,11 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (any, error) {
 	if runner == nil {
 		return tracer, nil
 	}
-
-	pm := runner.GadgetParams().ParamMap()
-	interval := 0
-	params.StringAsInt(pm[gadgets.ParamMaxRows], &tracer.config.MaxRows)
-	params.StringAsInt(pm[gadgets.ParamInterval], &interval)
-	params.StringAsStringSlice(pm[gadgets.ParamSortBy], &tracer.config.SortBy)
-	tracer.config.TargetFamily, _ = types.ParseFilterByFamily(pm[types.FamilyParam])
-	params.StringAsInt(pm[types.PidParam], &tracer.config.TargetPid)
-	tracer.config.Interval = time.Second * time.Duration(interval)
+	params := runner.GadgetParams()
+	tracer.config.MaxRows = params.Get(gadgets.ParamMaxRows).AsInt()
+	tracer.config.SortBy = params.Get(gadgets.ParamSortBy).AsStringSlice()
+	tracer.config.Interval = time.Second * time.Duration(params.Get(gadgets.ParamInterval).AsInt())
+	tracer.config.TargetFamily, _ = types.ParseFilterByFamily(params.Get(types.FamilyParam).AsString())
+	tracer.config.TargetPid = params.Get(types.PidParam).AsInt32()
 	return tracer, nil
 }
