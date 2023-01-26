@@ -196,7 +196,8 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 				}
 
 				if gadget.Type().CanSort() {
-					err := columns.SetSorting(strings.Split(gadgetParams.Get(gadgets.ParamSortBy), ","))
+					sortBy := gadgetParams.Get(gadgets.ParamSortBy).AsStringSlice()
+					err := columns.SetSorting(sortBy)
 					if err != nil {
 						return err // TODO: Wrap
 					}
