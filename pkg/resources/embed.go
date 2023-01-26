@@ -26,3 +26,6 @@ var RbacRole string
 
 //go:embed manifests/deploy.yaml
 var GadgetDeployment string
+
+//go:embed seccomp-profile/profile.yaml
+var GadgetSeccompProfile string
