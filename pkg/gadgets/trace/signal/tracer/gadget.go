@@ -59,7 +59,7 @@ func (g *Gadget) ParamDescs() params.ParamDescs {
 			Key:          ParamPID,
 			DefaultValue: "0",
 			Description:  "Show only signal sent by this particular PID",
-			Validator:    params.ValidateNumber,
+			TypeHint:     params.TypeInt32,
 		},
 		{
 			Key:         ParamTargetSignal,
