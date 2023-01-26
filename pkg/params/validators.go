@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"unsafe"
 )
 
 type TypeHint string
@@ -76,104 +75,4 @@ func ValidateSlice(validator ParamValidator) func(value string) error {
 		}
 		return nil
 	}
-}
-
-func ParamAsIntSlice[T int | int8 | int16 | int32 | int64](p *Param, target *[]T) {
-	StringAsIntSlice(p.value, target)
-}
-
-func StringAsIntSlice[T int | int8 | int16 | int32 | int64](s string, target *[]T) {
-	if s == "" {
-		*target = []T{}
-		return
-	}
-	in := strings.Split(s, ",")
-	out := make([]T, 0, len(in))
-	for _, entry := range in {
-		n, _ := strconv.ParseInt(entry, 10, int(unsafe.Sizeof(*new(T))*8))
-		out = append(out, T(n))
-	}
-	*target = out
-}
-
-func ParamAsUintSlice[T uint | uint8 | uint16 | uint32 | uint64](p *Param, target *[]T) {
-	StringAsUintSlice(p.value, target)
-}
-
-func StringAsUintSlice[T uint | uint8 | uint16 | uint32 | uint64](s string, target *[]T) {
-	if s == "" {
-		*target = []T{}
-		return
-	}
-	in := strings.Split(s, ",")
-	out := make([]T, 0, len(in))
-	for _, entry := range in {
-		n, _ := strconv.ParseUint(entry, 10, int(unsafe.Sizeof(*new(T))*8))
-		out = append(out, T(n))
-	}
-	*target = out
-}
-
-func ParamAsFloat[T float32 | float64](p *Param, target *T) {
-	StringAsFloat(p.value, target)
-}
-
-func StringAsFloat[T float32 | float64](s string, target *T) {
-	n, _ := strconv.ParseFloat(s, int(unsafe.Sizeof(*target)*8))
-	*target = T(n)
-}
-
-func ParamAsInt[T int | int8 | int16 | int32 | int64](p *Param, target *T) {
-	StringAsInt(p.value, target)
-}
-
-func StringAsInt[T int | int8 | int16 | int32 | int64](s string, target *T) {
-	n, _ := strconv.ParseInt(s, 10, int(unsafe.Sizeof(*target)*8))
-	*target = T(n)
-}
-
-func ParamAsUint[T uint | uint8 | uint16 | uint32 | uint64](p *Param, target *T) {
-	StringAsUint(p.value, target)
-}
-
-func StringAsUint[T uint | uint8 | uint16 | uint32 | uint64](s string, target *T) {
-	n, _ := strconv.ParseUint(s, 10, int(unsafe.Sizeof(*target)*8))
-	*target = T(n)
-}
-
-func ParamAsString[T string](p *Param, target *T) {
-	StringAsString(p.value, target)
-}
-
-func StringAsString[T string](s string, target *T) {
-	*target = T(s)
-}
-
-func ParamAsStringSlice[T string](p *Param, target *[]T) {
-	StringAsStringSlice(p.value, target)
-}
-
-func StringAsStringSlice[T string](s string, target *[]T) {
-	if s == "" {
-		*target = []T{}
-		return
-	}
-	in := strings.Split(s, ",")
-	out := make([]T, 0, len(in))
-	for _, entry := range in {
-		out = append(out, T(entry))
-	}
-	*target = out
-}
-
-func ParamAsBool(p *Param, target *bool) {
-	StringAsBool(p.value, target)
-}
-
-func StringAsBool(s string, target *bool) {
-	if strings.ToLower(s) == "true" {
-		*target = true
-		return
-	}
-	*target = false
 }

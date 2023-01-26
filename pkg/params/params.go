@@ -21,6 +21,7 @@ package params
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -157,14 +158,14 @@ func (p *Params) Validate() error {
 	return nil
 }
 
-// Get returns the value of the parameter with the given key or an empty string
-func (p *Params) Get(key string) string {
+// Get returns the parameter with the given key or nil
+func (p *Params) Get(key string) *Param {
 	for _, param := range *p {
 		if key == param.Key {
-			return param.String()
+			return param
 		}
 	}
-	return ""
+	return nil
 }
 
 func (p *Params) ValidateStringMap(cfg map[string]string) error {
@@ -228,4 +229,113 @@ func (p ParamsCollection) Set(entry, key, val string) error {
 		return fmt.Errorf("%q is not part of the collection", entry)
 	}
 	return p[entry].Set(key, val)
+}
+
+func (p *Param) AsFloat32() float32 {
+	n, _ := strconv.ParseFloat(p.value, 32)
+	return float32(n)
+}
+
+func (p *Param) AsFloat64() float64 {
+	n, _ := strconv.ParseFloat(p.value, 64)
+	return float64(n)
+}
+
+func (p *Param) AsInt() int {
+	n, _ := strconv.ParseInt(p.value, 10, strconv.IntSize)
+	return int(n)
+}
+
+func (p *Param) AsInt8() int8 {
+	n, _ := strconv.ParseInt(p.value, 10, 8)
+	return int8(n)
+}
+
+func (p *Param) AsInt16() int16 {
+	n, _ := strconv.ParseInt(p.value, 10, 16)
+	return int16(n)
+}
+
+func (p *Param) AsInt32() int32 {
+	n, _ := strconv.ParseInt(p.value, 10, 32)
+	return int32(n)
+}
+
+func (p *Param) AsInt64() int64 {
+	n, _ := strconv.ParseInt(p.value, 10, 64)
+	return int64(n)
+}
+
+func (p *Param) AsUint() uint {
+	n, _ := strconv.ParseUint(p.value, 10, strconv.IntSize)
+	return uint(n)
+}
+
+func (p *Param) AsUint8() uint8 {
+	n, _ := strconv.ParseUint(p.value, 10, 8)
+	return uint8(n)
+}
+
+func (p *Param) AsUint16() uint16 {
+	n, _ := strconv.ParseUint(p.value, 10, 16)
+	return uint16(n)
+}
+
+func (p *Param) AsUint32() uint32 {
+	n, _ := strconv.ParseUint(p.value, 10, 32)
+	return uint32(n)
+}
+
+func (p *Param) AsUint64() uint64 {
+	n, _ := strconv.ParseUint(p.value, 10, 64)
+	return uint64(n)
+}
+
+func (p *Param) AsString() string {
+	return p.value
+}
+
+func (p *Param) AsStringSlice() []string {
+	return strings.Split(p.value, ",")
+}
+
+func (p *Param) AsBool() bool {
+	return strings.ToLower(p.value) == "true"
+}
+
+// AsUint16Slice is useful for handling network ports.
+func (p *Param) AsUint16Slice() []uint16 {
+	strs := strings.Split(p.value, ",")
+	out := make([]uint16, 0, len(strs))
+
+	for _, entry := range strs {
+		n, _ := strconv.ParseUint(entry, 10, 16)
+		out = append(out, uint16(n))
+	}
+
+	return out
+}
+
+func (p *Param) AsUint64Slice() []uint64 {
+	strs := strings.Split(p.value, ",")
+	out := make([]uint64, 0, len(strs))
+
+	for _, entry := range strs {
+		n, _ := strconv.ParseUint(entry, 10, 64)
+		out = append(out, n)
+	}
+
+	return out
+}
+
+func (p *Param) AsInt64Slice() []int64 {
+	strs := strings.Split(p.value, ",")
+	out := make([]int64, 0, len(strs))
+
+	for _, entry := range strs {
+		n, _ := strconv.ParseInt(entry, 10, 64)
+		out = append(out, n)
+	}
+
+	return out
 }
