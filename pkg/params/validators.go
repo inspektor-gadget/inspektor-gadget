@@ -23,19 +23,55 @@ import (
 type TypeHint string
 
 const (
+	TypeBool   TypeHint = "bool"
 	TypeString TypeHint = "string"
 	TypeInt    TypeHint = "int"
+	TypeInt8   TypeHint = "int8"
+	TypeInt16  TypeHint = "int16"
+	TypeInt32  TypeHint = "int32"
+	TypeInt64  TypeHint = "int64"
 	TypeUint   TypeHint = "uint"
-	TypeBool   TypeHint = "bool"
+	TypeUint8  TypeHint = "uint8"
+	TypeUint16 TypeHint = "uint16"
+	TypeUint32 TypeHint = "uint32"
+	TypeUint64 TypeHint = "uint64"
 )
 
 var typeHintValidators = map[TypeHint]ParamValidator{
-	TypeInt:  ValidateNumber, // TODO: more specific
-	TypeUint: ValidateNumber, // TODO: more specific
-	TypeBool: ValidateBool,
+	TypeBool:   ValidateBool,
+	TypeInt:    ValidateInt(strconv.IntSize),
+	TypeInt8:   ValidateInt(8),
+	TypeInt16:  ValidateInt(16),
+	TypeInt32:  ValidateInt(32),
+	TypeInt64:  ValidateInt(64),
+	TypeUint:   ValidateUint(strconv.IntSize),
+	TypeUint8:  ValidateUint(8),
+	TypeUint16: ValidateUint(16),
+	TypeUint32: ValidateUint(32),
+	TypeUint64: ValidateUint(64),
 }
 
 type ParamValidator func(value string) error
+
+func ValidateInt(bitsize int) func(string) error {
+	return func(value string) error {
+		_, err := strconv.ParseInt(value, 10, bitsize)
+		if err != nil {
+			return fmt.Errorf("expected numeric value: %w", err)
+		}
+		return nil
+	}
+}
+
+func ValidateUint(bitsize int) func(string) error {
+	return func(value string) error {
+		_, err := strconv.ParseUint(value, 10, bitsize)
+		if err != nil {
+			return fmt.Errorf("expected numeric value: %w", err)
+		}
+		return nil
+	}
+}
 
 func ValidateBool(value string) error {
 	value = strings.ToLower(value)
@@ -45,17 +81,22 @@ func ValidateBool(value string) error {
 	return nil
 }
 
-func ValidateNumber(value string) error {
-	_, err := strconv.Atoi(value)
-	if err != nil {
-		return fmt.Errorf("expected numeric value: %w", err)
-	}
-	return nil
-}
-
-func ValidateNumberRange(min, max int64) func(value string) error {
+func ValidateIntRange(min, max int64) func(value string) error {
 	return func(value string) error {
 		number, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return fmt.Errorf("expected numeric value")
+		}
+		if number < min || number > max {
+			return fmt.Errorf("number out of range: got %d, expected min %d, max %d", number, min, max)
+		}
+		return nil
+	}
+}
+
+func ValidateUintRange(min, max uint64) func(value string) error {
+	return func(value string) error {
+		number, err := strconv.ParseUint(value, 10, 64)
 		if err != nil {
 			return fmt.Errorf("expected numeric value: %w", err)
 		}
