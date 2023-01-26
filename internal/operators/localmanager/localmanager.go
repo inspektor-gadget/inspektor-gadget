@@ -200,7 +200,7 @@ func (l *LocalManager) PreGadgetRun(runner operators.Runner, tracer any, perGadg
 	// TODO: Improve filtering, see further details in
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
 	containerSelector := containercollection.ContainerSelector{
-		Name: perGadgetParams.Get(ContainerName),
+		Name: perGadgetParams.Get(ContainerName).AsString(),
 	}
 
 	if setter, ok := tracer.(MountNsMapSetter); ok {
