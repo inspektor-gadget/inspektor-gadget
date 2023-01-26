@@ -29,6 +29,9 @@ func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
 	if s.Podname != "" && s.Podname != c.Podname {
 		return false
 	}
+	if strings.HasSuffix(s.Name, "*") && strings.HasPrefix(c.Name, s.Name[:len(s.Name)-1]) {
+		return true
+	}
 	if s.Name != "" && s.Name != c.Name {
 		return false
 	}
