@@ -78,8 +78,7 @@ type ParamDesc struct {
 // Param holds a ParamDesc but can additionally store a value
 type Param struct {
 	*ParamDesc
-	value    string
-	assigned bool
+	value string
 }
 
 // GetTitle returns a human friendly title of the field; is no Title has been specified,
@@ -92,7 +91,10 @@ func (p *ParamDesc) GetTitle() string {
 }
 
 func (p *ParamDesc) ToParam() *Param {
-	return &Param{ParamDesc: p}
+	return &Param{
+		ParamDesc: p,
+		value:     p.DefaultValue,
+	}
 }
 
 // Validate validates a string against the given parameter
@@ -169,7 +171,6 @@ func (p *Params) AddKeyValuePair(key, value string) {
 	*p = append(*p, &Param{
 		ParamDesc: &ParamDesc{Key: key},
 		value:     value,
-		assigned:  true,
 	})
 }
 
@@ -227,10 +228,8 @@ func (p *Param) String() string {
 	if p == nil {
 		return ""
 	}
-	if p.assigned {
-		return p.value
-	}
-	return p.DefaultValue
+
+	return p.value
 }
 
 // Set validates and sets the new value; it is also a member of the pflag.Value interface,
@@ -240,7 +239,6 @@ func (p *Param) Set(val string) error {
 	if err != nil {
 		return err
 	}
-	p.assigned = true
 	p.value = val
 	return nil
 }
