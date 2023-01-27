@@ -173,8 +173,20 @@ func (p *parser[T]) eventHandlerArray(enrichers ...func(any) error) func([]*T) {
 				enricher(ev)
 			}
 		}
-		// TODO: Filter
-		p.eventCallbackArray(events)
+
+		filteredEvents := make([]*T, 0)
+		if p.filterSpec != nil {
+			for _, ev := range events {
+				if !p.filterSpec.Match(ev) {
+					continue
+				}
+				filteredEvents = append(filteredEvents, ev)
+			}
+		} else {
+			filteredEvents = events
+		}
+
+		p.eventCallbackArray(filteredEvents)
 	}
 }
 
