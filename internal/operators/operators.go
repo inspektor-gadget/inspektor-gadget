@@ -200,9 +200,11 @@ func (e Operators) PreGadgetRun(runner Runner, trace any, perGadgetParamCollecti
 }
 
 func (e Operators) PostGadgetRun() error {
-	// TODO: Handling errors?
 	for _, operator := range e {
-		operator.PostGadgetRun()
+		err := operator.PostGadgetRun()
+		if err != nil {
+			return fmt.Errorf("post gadget run failed: %w", err)
+		}
 	}
 	return nil
 }
