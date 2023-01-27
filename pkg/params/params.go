@@ -308,6 +308,9 @@ func (p *Param) AsString() string {
 }
 
 func (p *Param) AsStringSlice() []string {
+	if p.value == "" {
+		return []string{}
+	}
 	return strings.Split(p.value, ",")
 }
 
@@ -317,7 +320,7 @@ func (p *Param) AsBool() bool {
 
 // AsUint16Slice is useful for handling network ports.
 func (p *Param) AsUint16Slice() []uint16 {
-	strs := strings.Split(p.value, ",")
+	strs := p.AsStringSlice()
 	out := make([]uint16, 0, len(strs))
 
 	for _, entry := range strs {
@@ -329,7 +332,7 @@ func (p *Param) AsUint16Slice() []uint16 {
 }
 
 func (p *Param) AsUint64Slice() []uint64 {
-	strs := strings.Split(p.value, ",")
+	strs := p.AsStringSlice()
 	out := make([]uint64, 0, len(strs))
 
 	for _, entry := range strs {
@@ -341,7 +344,7 @@ func (p *Param) AsUint64Slice() []uint64 {
 }
 
 func (p *Param) AsInt64Slice() []int64 {
-	strs := strings.Split(p.value, ",")
+	strs := p.AsStringSlice()
 	out := make([]int64, 0, len(strs))
 
 	for _, entry := range strs {
