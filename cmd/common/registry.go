@@ -43,7 +43,7 @@ import (
 // AddCommandsFromRegistry adds all gadgets known by the registry as cobra commands as a subcommand to their categories
 func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, columnFilters []cols.ColumnFilter) {
 	// Add runtime flags
-	runtimeParams := runtime.Params().ToParams()
+	runtimeParams := runtime.Params()
 	addFlags(rootCmd, runtimeParams)
 
 	// Add operator global flags
@@ -75,7 +75,7 @@ func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, co
 			rootCmd.AddCommand(cmd)
 			lookup[gadget.Category()] = cmd
 		}
-		cmd.AddCommand(buildCommandFromGadget(gadget, columnFilters, runtime, runtimeParams))
+		cmd.AddCommand(buildCommandFromGadget(gadget, columnFilters, runtime))
 	}
 }
 
@@ -112,10 +112,10 @@ func buildOutputFormatsHelp(outputFormats gadgets.OutputFormats) []string {
 	return outputFormatsHelp
 }
 
-func buildCommandFromGadget(gadget gadgets.Gadget,
+func buildCommandFromGadget(
+	gadget gadgets.Gadget,
 	columnFilters []cols.ColumnFilter,
 	runtime runtime.Runtime,
-	runtimeParams *params.Params,
 ) *cobra.Command {
 	var outputMode string
 	var verbose bool
@@ -149,7 +149,7 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := runtime.Init(runtimeParams)
+			err := runtime.Init()
 			if err != nil {
 				return fmt.Errorf("init runtime: %w", err)
 			}
@@ -252,7 +252,7 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 			}
 
 			// Finally, hand over to runtime
-			return runner.RunGadget(runtimeParams)
+			return runner.RunGadget()
 		},
 	}
 
@@ -334,6 +334,10 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 }
 
 func addFlags(cmd *cobra.Command, params *params.Params) {
+	if params == nil {
+		return
+	}
+
 	for _, p := range *params {
 		desc := p.Description
 

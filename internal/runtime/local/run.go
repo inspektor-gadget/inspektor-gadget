@@ -22,7 +22,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
 
-func (r *Runtime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstantiate) error {
+func (lr *localRuntime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstantiate) error {
 	log := runner.Logger()
 
 	// Create gadget instance

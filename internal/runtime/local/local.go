@@ -23,19 +23,21 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
-type Runtime struct {
+type localRuntime struct {
 	rc []*containerutils.RuntimeConfig
+
+	params *params.Params
 }
 
-func (r *Runtime) Init(runtimeParams *params.Params) error {
+func (lr *localRuntime) Init() error {
 	return nil
 }
 
-func (r *Runtime) DeInit() error {
+func (lr *localRuntime) DeInit() error {
 	return nil
 }
 
-func (r *Runtime) RunGadget(runner runtime.Runner, runtimeParams *params.Params) error {
+func (lr *localRuntime) RunGadget(runner runtime.Runner) error {
 	logger := runner.Logger()
 
 	logger.Debugf("running with local runtime")
@@ -45,11 +47,21 @@ func (r *Runtime) RunGadget(runner runtime.Runner, runtimeParams *params.Params)
 		return errors.New("gadget not instantiable")
 	}
 
-	logger.Debugf("> Params: %+v", runtimeParams.ParamMap())
+	if lr.params != nil {
+		logger.Debugf("> Params: %+v", lr.params.ParamMap())
+	} else {
+		logger.Debugf("> Params: nil")
+	}
 
-	return r.runGadget(runner, gadgetInst)
+	return lr.runGadget(runner, gadgetInst)
 }
 
-func (r *Runtime) Params() params.ParamDescs {
-	return nil
+func (lr *localRuntime) Params() *params.Params {
+	return lr.params
+}
+
+func NewRuntime() *localRuntime {
+	return &localRuntime{
+		// NOTE: In case of need, define params here
+	}
 }

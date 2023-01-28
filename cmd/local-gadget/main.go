@@ -42,7 +42,7 @@ func main() {
 		newVersionCmd(),
 	)
 
-	runtime := &local.Runtime{}
+	runtime := local.NewRuntime()
 	// columnFilters for local-gadget
 	columnFilters := []columns.ColumnFilter{columns.Or(columns.WithTag("runtime"), columns.WithNoTags())}
 	common.AddCommandsFromRegistry(rootCmd, runtime, columnFilters)
