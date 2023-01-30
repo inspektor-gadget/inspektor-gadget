@@ -129,7 +129,7 @@ func (t *Tracer) Close() {
 
 // ---
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
 	t := &Tracer{
 		containers: make(map[*containercollection.Container][]string),
 	}

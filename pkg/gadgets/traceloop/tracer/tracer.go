@@ -561,7 +561,7 @@ func (t *Tracer) Start() error {
 	return nil
 }
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
 	if runner == nil {
 		return &Tracer{}, nil
 	}

@@ -19,39 +19,42 @@ import (
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
-type Gadget struct{}
+type gadget struct {
+	*gadgets.GadgetWithParams
+}
 
-func (g *Gadget) Name() string {
+func (g *gadget) Name() string {
 	return "dns"
 }
 
-func (g *Gadget) Category() string {
+func (g *gadget) Category() string {
 	return gadgets.CategoryTrace
 }
 
-func (g *Gadget) Type() gadgets.GadgetType {
+func (g *gadget) Type() gadgets.GadgetType {
 	return gadgets.TypeTrace
 }
 
-func (g *Gadget) Description() string {
+func (g *gadget) Description() string {
 	return "The dns gadget traces DNS requests."
 }
 
-func (g *Gadget) Params() params.ParamDescs {
-	return params.ParamDescs{}
+func (g *gadget) Parser() parser.Parser {
+	return parser.NewParser(types.GetColumns())
 }
 
-func (g *Gadget) Parser() parser.Parser {
-	return parser.NewParser[types.Event](types.GetColumns())
-}
-
-func (g *Gadget) EventPrototype() any {
+func (g *gadget) EventPrototype() any {
 	return &types.Event{}
 }
 
+func NewGadget() *gadget {
+	return &gadget{
+		GadgetWithParams: gadgets.NewGadgetWithParams(nil),
+	}
+}
+
 func init() {
-	gadgetregistry.RegisterGadget(&Gadget{})
+	gadgetregistry.RegisterGadget(NewGadget())
 }

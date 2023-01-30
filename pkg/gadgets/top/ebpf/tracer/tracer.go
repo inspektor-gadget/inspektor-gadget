@@ -426,7 +426,7 @@ func (t *Tracer) Start() error {
 	return nil
 }
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
 	tracer := &Tracer{
 		config:    &Config{},
 		done:      make(chan bool),
@@ -436,7 +436,7 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, err
 		return &Tracer{}, nil
 	}
 
-	params := runner.GadgetParams()
+	params := g.GetParams(runner.ID())
 	tracer.config.MaxRows = params.Get(gadgets.ParamMaxRows).AsInt()
 	tracer.config.SortBy = params.Get(gadgets.ParamSortBy).AsStringSlice()
 	tracer.config.Interval = time.Second * time.Duration(params.Get(gadgets.ParamInterval).AsInt())

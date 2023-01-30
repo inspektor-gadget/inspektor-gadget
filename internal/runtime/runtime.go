@@ -34,7 +34,6 @@ type Runner interface {
 	Logger() logger.Logger
 	SetResult([]byte, error)
 	GetResult() ([]byte, error)
-	GadgetParams() *params.Params
 }
 
 // Runtime is the interface for gadget runtimes like kubectl-gadget, local-gadget

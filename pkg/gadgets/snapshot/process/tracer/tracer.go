@@ -262,7 +262,7 @@ type Tracer struct {
 	eventHandler func(ev []*processcollectortypes.Event)
 }
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
 	tracer := &Tracer{
 		config: &Config{},
 	}
@@ -270,7 +270,7 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, err
 		return tracer, nil
 	}
 
-	params := runner.GadgetParams()
+	params := g.GetParams(runner.ID())
 	tracer.config.ShowThreads = params.Get(ParamThreads).AsBool()
 	return tracer, nil
 }

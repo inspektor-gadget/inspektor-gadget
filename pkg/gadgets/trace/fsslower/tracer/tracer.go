@@ -292,7 +292,7 @@ func (t *Tracer) SetEventHandler(handler any) {
 	t.eventCallback = nh
 }
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
 	tracer := &Tracer{
 		config: &Config{},
 	}
@@ -300,7 +300,7 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, err
 		return tracer, nil
 	}
 
-	params := runner.GadgetParams()
+	params := g.GetParams(runner.ID())
 	tracer.config.Filesystem = params.Get(ParamFilesystem).AsString()
 	tracer.config.MinLatency = params.Get(ParamMinLatency).AsUint()
 	return tracer, nil

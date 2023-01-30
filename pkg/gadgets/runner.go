@@ -18,12 +18,10 @@ import (
 	"context"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/logger"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
 type Runner interface {
 	ID() string
 	Context() context.Context
-	GadgetParams() *params.Params
 	Logger() logger.Logger
 }

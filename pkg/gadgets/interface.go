@@ -54,9 +54,10 @@ type Gadget interface {
 	// gadget. This is only really used when GadgetInstantiate is not implemented.
 	Type() GadgetType
 
-	// Params returns a map of configuration parameters. These hold also default values, descriptions, validators and
-	// so on. Used whenever a gadget is called somehow. Auto-creates parameters for cobra as well.
-	Params() params.ParamDescs
+	// Params returns a new instance of configuration parameters. These hold
+	// also default values, descriptions, validators and so on. Used whenever a
+	// gadget is called somehow. Auto-creates parameters for cobra as well.
+	NewParams(id string) *params.Params
 
 	// Parser returns a parser.Parser instance that can handle events and do certain operations on them
 	// (sorting, filtering, etc.) without the caller needing to know about the underlying types.
@@ -64,6 +65,33 @@ type Gadget interface {
 
 	// EventPrototype returns a blank event. Useful for checking for interfaces on it (see operators).
 	EventPrototype() any
+}
+
+type GadgetWithParams struct {
+	paramsDescs      *params.ParamDescs
+	paramsCollection params.Collection
+}
+
+func NewGadgetWithParams(descs *params.ParamDescs) *GadgetWithParams {
+	if descs == nil {
+		descs = &params.ParamDescs{}
+	}
+	return &GadgetWithParams{
+		paramsDescs:      descs,
+		paramsCollection: make(params.Collection),
+	}
+}
+
+func (g *GadgetWithParams) NewParams(id string) *params.Params {
+	if _, ok := g.paramsCollection[id]; ok {
+		return nil
+	}
+	g.paramsCollection[id] = g.paramsDescs.ToParams()
+	return g.paramsCollection[id]
+}
+
+func (g *GadgetWithParams) GetParams(id string) *params.Params {
+	return g.paramsCollection[id]
 }
 
 type GadgetResult interface {

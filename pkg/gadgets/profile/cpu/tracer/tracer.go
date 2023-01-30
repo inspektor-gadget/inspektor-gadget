@@ -436,7 +436,7 @@ func (t *TracerWrap) SetMountNsMap(mountNsMap *ebpf.Map) {
 	t.Tracer.config.MountnsMap = mountNsMap
 }
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
 	tracer := &TracerWrap{
 		Tracer: Tracer{
 			config: &Config{},
@@ -446,7 +446,7 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, err
 		return tracer, nil
 	}
 
-	params := runner.GadgetParams()
+	params := g.GetParams(runner.ID())
 	tracer.config.UserStackOnly = params.Get(ParamUserStack).AsBool()
 	tracer.config.KernelStackOnly = params.Get(ParamKernelStack).AsBool()
 	return tracer, nil

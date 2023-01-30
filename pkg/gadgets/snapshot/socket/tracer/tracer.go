@@ -203,7 +203,7 @@ type Tracer struct {
 	protocols         string
 }
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
 	tracer := &Tracer{
 		visitedNamespaced: map[uint64]struct{}{},
 	}
@@ -211,7 +211,7 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, err
 		return tracer, nil
 	}
 
-	params := runner.GadgetParams()
+	params := g.GetParams(runner.ID())
 	tracer.protocols = params.Get(ParamProto).AsString()
 
 	return tracer, nil

@@ -348,7 +348,7 @@ func (t *Tracer) Close() {
 // --- Registry changes
 // TODO: This can be optimized a lot after using NewInstance() for everything
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
 	tracer := &Tracer{
 		runner:      runner,
 		attachments: make(map[uint64]*attachment),

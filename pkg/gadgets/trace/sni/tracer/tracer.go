@@ -86,6 +86,6 @@ func parseSNIEvent(sample []byte, netns uint64) (*types.Event, error) {
 
 // --- Registry changes
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
 	return NewTracer()
 }

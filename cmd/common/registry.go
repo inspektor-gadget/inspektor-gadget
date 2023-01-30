@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -127,6 +128,9 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 	outputFormats := gadgets.OutputFormats{}
 	defaultOutputFormat := ""
 
+	// This is used to identify a gadget instance.
+	id := uuid.New().String()
+
 	// Instantiate parser - this is important to do, because we might apply filters and such to this instance
 	parser := gadget.Parser()
 	if parser != nil && columnFilters != nil {
@@ -134,7 +138,7 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 	}
 
 	// Instantiate gadget params - this is important, because the params get filled out by cobra
-	gadgetParams := gadget.Params().ToParams()
+	gadgetParams := gadget.NewParams(id)
 
 	// Get per gadget operator params
 	validOperators := operators.GetOperatorsForGadget(gadget)
@@ -174,7 +178,7 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 			// Create new runner
 			runner := gadgetrunner.NewGadgetRunner(
 				ctx,
-				"",
+				id,
 				runtime,
 				gadget,
 				parser,
@@ -254,7 +258,7 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 			}
 
 			// Finally, hand over to runtime
-			return runner.RunGadget(runtimeParams, operatorsParamsCollection, operatorsPerGadgetParamCollection, gadgetParams)
+			return runner.RunGadget(runtimeParams, operatorsParamsCollection, operatorsPerGadgetParamCollection)
 		},
 	}
 

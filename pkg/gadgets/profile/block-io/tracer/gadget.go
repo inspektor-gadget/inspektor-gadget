@@ -23,40 +23,37 @@ import (
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
-type Gadget struct{}
+type gadget struct {
+	*gadgets.GadgetWithParams
+}
 
-func (g *Gadget) Name() string {
+func (g *gadget) Name() string {
 	return "block-io"
 }
 
-func (g *Gadget) Category() string {
+func (g *gadget) Category() string {
 	return gadgets.CategoryProfile
 }
 
-func (g *Gadget) Type() gadgets.GadgetType {
+func (g *gadget) Type() gadgets.GadgetType {
 	return gadgets.TypeProfile
 }
 
-func (g *Gadget) Description() string {
+func (g *gadget) Description() string {
 	return "Analyze block I/O performance through a latency distribution"
 }
 
-func (g *Gadget) Params() params.ParamDescs {
-	return params.ParamDescs{}
-}
-
-func (g *Gadget) Parser() parser.Parser {
+func (g *gadget) Parser() parser.Parser {
 	return nil
 }
 
-func (g *Gadget) EventPrototype() any {
+func (g *gadget) EventPrototype() any {
 	return &types.Report{}
 }
 
-func (g *Gadget) OutputFormats() (gadgets.OutputFormats, string) {
+func (g *gadget) OutputFormats() (gadgets.OutputFormats, string) {
 	return gadgets.OutputFormats{
 		"report": gadgets.OutputFormat{
 			Name:        "Report",
@@ -73,8 +70,14 @@ func (g *Gadget) OutputFormats() (gadgets.OutputFormats, string) {
 	}, "report"
 }
 
+func NewGadget() *gadget {
+	return &gadget{
+		GadgetWithParams: gadgets.NewGadgetWithParams(nil),
+	}
+}
+
 func init() {
-	gadgetregistry.RegisterGadget(&Gadget{})
+	gadgetregistry.RegisterGadget(NewGadget())
 }
 
 // --- moved from cmd/common/profile, should be removed there

@@ -154,7 +154,7 @@ func (t *Tracer) start() error {
 
 // ---
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
 	t := &Tracer{}
 	return t, nil
 }

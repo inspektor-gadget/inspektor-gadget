@@ -30,30 +30,40 @@ const (
 	ParamExtend = "extend"
 )
 
-type Gadget struct{}
+type gadget struct {
+	*gadgets.GadgetWithParams
+}
 
-func (g *Gadget) Name() string {
+func (g *gadget) Name() string {
 	return "socket"
 }
 
-func (g *Gadget) Category() string {
+func (g *gadget) Category() string {
 	return gadgets.CategorySnapshot
 }
 
-func (g *Gadget) Type() gadgets.GadgetType {
+func (g *gadget) Type() gadgets.GadgetType {
 	return gadgets.TypeOneShot
 }
 
-func (g *Gadget) Description() string {
+func (g *gadget) Description() string {
 	return "Gather information about TCP and UDP sockets"
 }
 
-func (g *Gadget) Params() params.ParamDescs {
+func (g *gadget) Parser() parser.Parser {
+	return parser.NewParser(types.GetColumns())
+}
+
+func (g *gadget) EventPrototype() any {
+	return &types.Event{}
+}
+
+func NewGadget() *gadget {
 	var protocols []string
 	for protocol := range types.ProtocolsMap {
 		protocols = append(protocols, protocol)
 	}
-	return params.ParamDescs{
+	paramsDescs := &params.ParamDescs{
 		{
 			Key:            ParamProto,
 			Title:          "Protocol",
@@ -63,16 +73,11 @@ func (g *Gadget) Params() params.ParamDescs {
 			PossibleValues: protocols,
 		},
 	}
-}
-
-func (g *Gadget) Parser() parser.Parser {
-	return parser.NewParser[types.Event](types.GetColumns())
-}
-
-func (g *Gadget) EventPrototype() any {
-	return &types.Event{}
+	return &gadget{
+		GadgetWithParams: gadgets.NewGadgetWithParams(paramsDescs),
+	}
 }
 
 func init() {
-	gadgetregistry.RegisterGadget(&Gadget{})
+	gadgetregistry.RegisterGadget(NewGadget())
 }

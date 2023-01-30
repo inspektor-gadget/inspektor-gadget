@@ -22,26 +22,40 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
-type Gadget struct{}
+type gadget struct {
+	*gadgets.GadgetWithParams
+}
 
-func (g *Gadget) Name() string {
+func (g *gadget) Name() string {
 	return "file"
 }
 
-func (g *Gadget) Category() string {
+func (g *gadget) Category() string {
 	return gadgets.CategoryTop
 }
 
-func (g *Gadget) Type() gadgets.GadgetType {
+func (g *gadget) Type() gadgets.GadgetType {
 	return gadgets.TypeTraceIntervals
 }
 
-func (g *Gadget) Description() string {
+func (g *gadget) Description() string {
 	return "Periodically report read/write activity by file"
 }
 
-func (g *Gadget) Params() params.ParamDescs {
-	return params.ParamDescs{
+func (g *gadget) Parser() parser.Parser {
+	return parser.NewParser(types.GetColumns())
+}
+
+func (g *gadget) EventPrototype() any {
+	return &types.Stats{}
+}
+
+func (g *gadget) SortByDefault() []string {
+	return types.SortByDefault
+}
+
+func NewGadget() *gadget {
+	paramsDescs := &params.ParamDescs{
 		{
 			Key:          types.AllFilesParam,
 			Title:        "Show all files",
@@ -51,20 +65,11 @@ func (g *Gadget) Params() params.ParamDescs {
 			TypeHint:     params.TypeBool,
 		},
 	}
-}
-
-func (g *Gadget) Parser() parser.Parser {
-	return parser.NewParser[types.Stats](types.GetColumns())
-}
-
-func (g *Gadget) EventPrototype() any {
-	return &types.Stats{}
-}
-
-func (g *Gadget) SortByDefault() []string {
-	return types.SortByDefault
+	return &gadget{
+		GadgetWithParams: gadgets.NewGadgetWithParams(paramsDescs),
+	}
 }
 
 func init() {
-	gadgetregistry.RegisterGadget(&Gadget{})
+	gadgetregistry.RegisterGadget(NewGadget())
 }

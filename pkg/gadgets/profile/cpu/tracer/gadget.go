@@ -27,27 +27,37 @@ const (
 	ParamKernelStack = "kernel-stack"
 )
 
-type Gadget struct{}
+type gadget struct {
+	*gadgets.GadgetWithParams
+}
 
-func (g *Gadget) Name() string {
+func (g *gadget) Name() string {
 	return "cpu"
 }
 
-func (g *Gadget) Category() string {
+func (g *gadget) Category() string {
 	return gadgets.CategoryProfile
 }
 
-func (g *Gadget) Type() gadgets.GadgetType {
+func (g *gadget) Type() gadgets.GadgetType {
 	return gadgets.TypeProfile
 }
 
-func (g *Gadget) Description() string {
+func (g *gadget) Description() string {
 	return "Analyze CPU performance by sampling stack traces"
 }
 
-func (g *Gadget) Params() params.ParamDescs {
+func (g *gadget) Parser() parser.Parser {
+	return parser.NewParser(types.GetColumns())
+}
+
+func (g *gadget) EventPrototype() any {
+	return &types.Report{}
+}
+
+func NewGadget() *gadget {
 	// TODO: this params could be combined into a single one
-	return params.ParamDescs{
+	paramDescs := &params.ParamDescs{
 		{
 			Key:          ParamUserStack,
 			Alias:        "U",
@@ -65,16 +75,11 @@ func (g *Gadget) Params() params.ParamDescs {
 			TypeHint:     params.TypeBool,
 		},
 	}
-}
-
-func (g *Gadget) Parser() parser.Parser {
-	return parser.NewParser[types.Report](types.GetColumns())
-}
-
-func (g *Gadget) EventPrototype() any {
-	return &types.Report{}
+	return &gadget{
+		GadgetWithParams: gadgets.NewGadgetWithParams(paramDescs),
+	}
 }
 
 func init() {
-	gadgetregistry.RegisterGadget(&Gadget{})
+	gadgetregistry.RegisterGadget(NewGadget())
 }

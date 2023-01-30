@@ -27,26 +27,36 @@ const (
 	ParamUnique    = "unique"
 )
 
-type Gadget struct{}
+type gadget struct {
+	*gadgets.GadgetWithParams
+}
 
-func (g *Gadget) Name() string {
+func (g *gadget) Name() string {
 	return "capabilities"
 }
 
-func (g *Gadget) Category() string {
+func (g *gadget) Category() string {
 	return gadgets.CategoryTrace
 }
 
-func (g *Gadget) Type() gadgets.GadgetType {
+func (g *gadget) Type() gadgets.GadgetType {
 	return gadgets.TypeTrace
 }
 
-func (g *Gadget) Description() string {
+func (g *gadget) Description() string {
 	return "Trace security capability checks"
 }
 
-func (g *Gadget) Params() params.ParamDescs {
-	return params.ParamDescs{
+func (g *gadget) Parser() parser.Parser {
+	return parser.NewParser(types.GetColumns())
+}
+
+func (g *gadget) EventPrototype() any {
+	return &types.Event{}
+}
+
+func NewGadget() *gadget {
+	paramsDescs := &params.ParamDescs{
 		{
 			Key:          ParamAuditOnly,
 			Title:        "Audit Only",
@@ -62,16 +72,11 @@ func (g *Gadget) Params() params.ParamDescs {
 			TypeHint:     params.TypeBool,
 		},
 	}
-}
-
-func (g *Gadget) Parser() parser.Parser {
-	return parser.NewParser[types.Event](types.GetColumns())
-}
-
-func (g *Gadget) EventPrototype() any {
-	return &types.Event{}
+	return &gadget{
+		GadgetWithParams: gadgets.NewGadgetWithParams(paramsDescs),
+	}
 }
 
 func init() {
-	gadgetregistry.RegisterGadget(&Gadget{})
+	gadgetregistry.RegisterGadget(NewGadget())
 }
