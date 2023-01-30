@@ -348,7 +348,6 @@ func (t *Tracer) Start() error {
 	t.colMap = statCols.GetColumnMap()
 
 	if err := t.start(); err != nil {
-		t.Stop()
 		return err
 	}
 

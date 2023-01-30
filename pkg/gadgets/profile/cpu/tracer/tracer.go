@@ -395,7 +395,6 @@ type TracerWrap struct {
 
 func (t *TracerWrap) Start() error {
 	if err := t.start(); err != nil {
-		t.Stop()
 		return err
 	}
 	return nil

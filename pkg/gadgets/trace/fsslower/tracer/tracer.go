@@ -274,7 +274,6 @@ func (t *Tracer) run() {
 
 func (t *Tracer) Start() error {
 	if err := t.start(); err != nil {
-		t.Stop()
 		return err
 	}
 	return nil

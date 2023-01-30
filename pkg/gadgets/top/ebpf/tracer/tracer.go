@@ -411,13 +411,11 @@ func (t *Tracer) SetEventHandlerArray(handler any) {
 
 func (t *Tracer) Start() error {
 	if err := t.start(); err != nil {
-		t.Stop()
 		return err
 	}
 
 	statCols, err := columns.NewColumns[types.Stats]()
 	if err != nil {
-		t.Stop()
 		return err
 	}
 	t.colMap = statCols.GetColumnMap()

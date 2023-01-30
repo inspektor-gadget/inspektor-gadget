@@ -161,7 +161,6 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, err
 
 func (t *Tracer) StartAlt() error {
 	if err := t.start(); err != nil {
-		t.Stop()
 		return err
 	}
 	return nil
