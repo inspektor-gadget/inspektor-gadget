@@ -447,7 +447,8 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, err
 	}
 
 	params := runner.GadgetParams()
-	tracer.config.UserStackOnly = params.Get(ParamUserStack).AsBool()
-	tracer.config.KernelStackOnly = params.Get(ParamKernelStack).AsBool()
+	stack := params.Get(ParamStack).AsString()
+	tracer.config.UserStackOnly = stack == ParamStackUser
+	tracer.config.KernelStackOnly = stack == ParamStackKernel
 	return tracer, nil
 }

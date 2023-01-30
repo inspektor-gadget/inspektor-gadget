@@ -15,6 +15,9 @@
 package tracer
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/inspektor-gadget/inspektor-gadget/internal/parser"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -23,9 +26,13 @@ import (
 )
 
 const (
-	ParamUserStack   = "user-stack"
-	ParamKernelStack = "kernel-stack"
+	ParamStack       = "stack"
+	ParamStackNone   = ""
+	ParamStackUser   = "user"
+	ParamStackKernel = "kernel"
 )
+
+var ParamPossibleStacks = []string{ParamStackUser, ParamStackKernel}
 
 type Gadget struct{}
 
@@ -46,24 +53,16 @@ func (g *Gadget) Description() string {
 }
 
 func (g *Gadget) Params() params.ParamDescs {
-	// TODO: this params could be combined into a single one
 	return params.ParamDescs{
 		{
-			Key:          ParamUserStack,
-			Alias:        "U",
-			Title:        "User Stack",
-			DefaultValue: "false",
-			Description:  "Show stacks from user space only (no kernel space stacks)",
-			TypeHint:     params.TypeBool,
-		},
-		{
-			Key:          ParamKernelStack,
-			Alias:        "K",
-			Title:        "Kernel Stack",
-			DefaultValue: "false",
-			Description:  "Show stacks from kernel space only (no user space stacks)",
-			TypeHint:     params.TypeBool,
-		},
+			Key:            ParamStack,
+			Alias:          "S",
+			Title:          "Stack Type",
+			DefaultValue:   ParamStackNone,
+			Description:    fmt.Sprintf("Show stack, possibles values are: %s", strings.Join(ParamPossibleStacks, ", ")),
+			PossibleValues: []string{ParamStackNone, ParamStackUser, ParamStackKernel}
+			TypeHint:       params.TypeString,
+		}
 	}
 }
 
