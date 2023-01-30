@@ -48,11 +48,13 @@ type Operator interface {
 	// Description is an optional description to show to the user
 	Description() string
 
-	// Params will return global params (required) for this operator
-	Params() params.ParamDescs
+	// GlobalParams will return global params (required) for this operator
+	GlobalParams() *params.Params
 
-	// PerGadgetParams will return params (required) per gadget instance of the operator
-	PerGadgetParams() params.ParamDescs
+	// NewGadgetParams returns a new instance of the gadget parameters. These hold
+	// also default values, descriptions, validators and so on. Used whenever a
+	// gadget is called somehow. Auto-creates parameters for cobra as well.
+	NewGadgetParams(id string) *params.Params
 
 	// Dependencies can list other allOperators that this operator depends on
 	Dependencies() []string
@@ -62,7 +64,7 @@ type Operator interface {
 	CanOperateOn(gadgets.Gadget) bool
 
 	// Init allows the operator to initialize itself
-	Init(params *params.Params) error
+	Init() error
 
 	// Close allows the operator to clean up stuff prior to exiting
 	Close() error
@@ -70,8 +72,7 @@ type Operator interface {
 	// Instantiate is called before a gadget is run (before PreGadgetRun) with this operator
 	// This must return something that implements operator as well.
 	// This is useful to create a context for an operator by wrapping it.
-	// Params given here are the ones returned by PerGadgetParams()
-	Instantiate(runner Runner, gadgetInstance any, perGadgetParams *params.Params) (OperatorInstance, error)
+	Instantiate(runner Runner, gadgetInstance any) (OperatorInstance, error)
 }
 
 type OperatorInstance interface {
@@ -117,9 +118,9 @@ type operatorWrapper struct {
 	initialized bool
 }
 
-func (e *operatorWrapper) Init(params *params.Params) (err error) {
+func (e *operatorWrapper) Init() (err error) {
 	e.initOnce.Do(func() {
-		err = e.Operator.Init(params)
+		err = e.Operator.Init()
 		e.initialized = true
 	})
 	return err
@@ -133,11 +134,11 @@ func Register(operator Operator) {
 	allOperators[operator.Name()] = operator
 }
 
-// ParamsCollection returns a collection of params of all registered allOperators
-func ParamsCollection() params.Collection {
+// GlobalParamCollection returns a collection of params of all registered allOperators
+func GlobalParamCollection() params.Collection {
 	pc := make(params.Collection)
 	for _, operator := range allOperators {
-		pc[operator.Name()] = operator.Params().ToParams()
+		pc[operator.Name()] = operator.GlobalParams()
 	}
 	return pc
 }
@@ -161,9 +162,9 @@ func GetOperatorsForGadget(gadget gadgets.Gadget) Operators {
 }
 
 // Init initializes all registered allOperators using their respective params
-func (e Operators) Init(pc params.Collection) error {
+func (e Operators) Init() error {
 	for _, operator := range e {
-		err := operator.Init(pc[operator.Name()])
+		err := operator.Init()
 		if err != nil {
 			return fmt.Errorf("initializing operator %q: %w", operator.Name(), err)
 		}
@@ -171,20 +172,20 @@ func (e Operators) Init(pc params.Collection) error {
 	return nil
 }
 
-// PerGadgetParamCollection returns a collection of parameters for all members of the operator collection
-func (e Operators) PerGadgetParamCollection() params.Collection {
+// NewGadgetParamsCollection returns a collection of parameters for all members of the operator collection
+func (e Operators) NewGadgetParamsCollection(id string) params.Collection {
 	pc := make(params.Collection)
 	for _, operator := range e {
-		pc[operator.Name()] = operator.PerGadgetParams().ToParams()
+		pc[operator.Name()] = operator.NewGadgetParams(id)
 	}
 	return pc
 }
 
 // PreGadgetRun calls PreGadgetRun on all members of the operator collection and replaces them with the returned
 // instance
-func (e Operators) PreGadgetRun(runner Runner, trace any, perGadgetParamCollection params.Collection) error {
+func (e Operators) PreGadgetRun(runner Runner, trace any) error {
 	for i, operator := range e {
-		operatorInstance, err := operator.Instantiate(runner, trace, perGadgetParamCollection[operator.Name()])
+		operatorInstance, err := operator.Instantiate(runner, trace)
 		if err != nil {
 			return fmt.Errorf("start trace on operator %q: %w", operator.Name(), err)
 		}
@@ -298,4 +299,31 @@ func SortOperators(operators Operators) (Operators, error) {
 	}
 
 	return result, nil
+}
+
+type OperatorWithGadgetParams struct {
+	gadgetParamsDescs      *params.ParamDescs
+	gadgetParamsCollection params.Collection
+}
+
+func NewOperatorWithGadgetParams(descs *params.ParamDescs) *OperatorWithGadgetParams {
+	if descs == nil {
+		descs = &params.ParamDescs{}
+	}
+	return &OperatorWithGadgetParams{
+		gadgetParamsDescs:      descs,
+		gadgetParamsCollection: make(params.Collection),
+	}
+}
+
+func (g *OperatorWithGadgetParams) NewGadgetParams(id string) *params.Params {
+	if _, ok := g.gadgetParamsCollection[id]; ok {
+		return nil
+	}
+	g.gadgetParamsCollection[id] = g.gadgetParamsDescs.ToParams()
+	return g.gadgetParamsCollection[id]
+}
+
+func (g *OperatorWithGadgetParams) GetGadgetParams(id string) *params.Params {
+	return g.gadgetParamsCollection[id]
 }

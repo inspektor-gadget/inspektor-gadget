@@ -20,10 +20,9 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/runtime"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
-func (r *Runtime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstantiate, operatorPerGadgetParamCollection params.Collection) error {
+func (r *Runtime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstantiate) error {
 	log := runner.Logger()
 
 	// Create gadget instance
@@ -46,7 +45,7 @@ func (r *Runtime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstanti
 	}()
 
 	// Install operators
-	err = runner.Operators().PreGadgetRun(runner, gadgetInstance, operatorPerGadgetParamCollection)
+	err = runner.Operators().PreGadgetRun(runner, gadgetInstance)
 	if err != nil {
 		return fmt.Errorf("starting operators: %w", err)
 	}

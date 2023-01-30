@@ -52,49 +52,32 @@ type Attacher interface {
 	DetachGeneric(*containercollection.Container) error
 }
 
-type LocalManager struct {
+type localManager struct {
+	operators.OperatorWithGadgetParams
+
 	localGadgetManager *localgadgetmanager.LocalGadgetManager
 	rc                 []*containerutils.RuntimeConfig
+
+	globalParams *params.Params
 }
 
-func (l *LocalManager) Name() string {
+func (l *localManager) Name() string {
 	return OperatorName
 }
 
-func (l *LocalManager) Description() string {
+func (l *localManager) Description() string {
 	return "Handles enrichment of container data and attaching/detaching to and from containers"
 }
 
-func (l *LocalManager) Dependencies() []string {
+func (l *localManager) Dependencies() []string {
 	return nil
 }
 
-func (l *LocalManager) Params() params.ParamDescs {
-	return params.ParamDescs{
-		{
-			Key:          Runtimes,
-			Alias:        "r",
-			DefaultValue: strings.Join(containerutils.AvailableRuntimes, ","),
-			Description: fmt.Sprintf("Container runtimes to be used separated by comma. Supported values are: %s",
-				strings.Join(containerutils.AvailableRuntimes, ", ")),
-			IsMandatory: true,
-			// PossibleValues: containerutils.AvailableRuntimes, // TODO
-		},
-	}
+func (l *localManager) GlobalParams() *params.Params {
+	return l.globalParams
 }
 
-func (l *LocalManager) PerGadgetParams() params.ParamDescs {
-	return params.ParamDescs{
-		{
-			Key:         ContainerName,
-			Alias:       "c",
-			Description: "Show only data from containers with that name",
-			IsMandatory: false,
-		},
-	}
-}
-
-func (l *LocalManager) CanOperateOn(gadget gadgets.Gadget) bool {
+func (l *localManager) CanOperateOn(gadget gadgets.Gadget) bool {
 	// We need to be able to get MountNSID and set ContainerInfo, so check for that first
 	_, canEnrichEvent := gadget.EventPrototype().(operators.KubernetesFromMountNSID)
 
@@ -122,9 +105,9 @@ func (l *LocalManager) CanOperateOn(gadget gadgets.Gadget) bool {
 	return (isMountNsMapSetter && canEnrichEvent) || isAttacher || isContainersMapSetter
 }
 
-func (l *LocalManager) Init(operatorParams *params.Params) error {
+func (l *localManager) Init() error {
 	rc := make([]*containerutils.RuntimeConfig, 0)
-	parts := operatorParams.Get(Runtimes).AsStringSlice()
+	parts := l.globalParams.Get(Runtimes).AsStringSlice()
 
 partsLoop:
 	for _, p := range parts {
@@ -167,13 +150,13 @@ partsLoop:
 	return nil
 }
 
-func (l *LocalManager) Close() error {
+func (l *localManager) Close() error {
 	l.localGadgetManager.Close()
 	return nil
 }
 
-type LocalManagerTrace struct {
-	*LocalManager
+type localManagerTrace struct {
+	*localManager
 	mountnsmap      *ebpf.Map
 	enrichEvents    bool
 	subscriptionKey string
@@ -181,19 +164,19 @@ type LocalManagerTrace struct {
 	// Keep a map to attached containers, so we can clean up properly
 	attachedContainers map[*containercollection.Container]struct{}
 	attacher           Attacher
-	perGadgetParams    *params.Params
+	gadgetParams       *params.Params
 	tracer             any
 	runner             operators.Runner
 }
 
-func (l *LocalManager) Instantiate(runner operators.Runner, tracer any, perGadgetParams *params.Params) (operators.OperatorInstance, error) {
+func (l *localManager) Instantiate(runner operators.Runner, tracer any) (operators.OperatorInstance, error) {
 	_, canEnrichEvent := runner.Gadget().EventPrototype().(operators.KubernetesFromMountNSID)
 
-	traceInstance := &LocalManagerTrace{
-		LocalManager:       l,
+	traceInstance := &localManagerTrace{
+		localManager:       l,
 		enrichEvents:       canEnrichEvent,
 		attachedContainers: make(map[*containercollection.Container]struct{}),
-		perGadgetParams:    perGadgetParams,
+		gadgetParams:       l.GetGadgetParams(runner.ID()),
 		tracer:             tracer,
 		runner:             runner,
 	}
@@ -201,13 +184,13 @@ func (l *LocalManager) Instantiate(runner operators.Runner, tracer any, perGadge
 	return traceInstance, nil
 }
 
-func (l *LocalManagerTrace) PreGadgetRun() error {
+func (l *localManagerTrace) PreGadgetRun() error {
 	log := l.runner.Logger()
 
 	// TODO: Improve filtering, see further details in
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
 	containerSelector := containercollection.ContainerSelector{
-		Name: l.perGadgetParams.Get(ContainerName).AsString(),
+		Name: l.gadgetParams.Get(ContainerName).AsString(),
 	}
 
 	if setter, ok := l.tracer.(MountNsMapSetter); ok {
@@ -280,8 +263,8 @@ func (l *LocalManagerTrace) PreGadgetRun() error {
 	return nil
 }
 
-func (l *LocalManagerTrace) PostGadgetRun() error {
-	l.LocalManager.PostGadgetRun()
+func (l *localManagerTrace) PostGadgetRun() error {
+	l.localManager.PostGadgetRun()
 
 	if l.mountnsmap != nil {
 		log.Debugf("calling RemoveMountNsMap()")
@@ -299,7 +282,7 @@ func (l *LocalManagerTrace) PostGadgetRun() error {
 	return nil
 }
 
-func (l *LocalManagerTrace) EnrichEvent(ev any) error {
+func (l *localManagerTrace) EnrichEvent(ev any) error {
 	if !l.enrichEvents {
 		return nil
 	}
@@ -317,7 +300,7 @@ func (l *LocalManagerTrace) EnrichEvent(ev any) error {
 	return nil
 }
 
-func (l *LocalManagerTrace) Enricher(next operators.EnricherFunc) operators.EnricherFunc {
+func (l *localManagerTrace) Enricher(next operators.EnricherFunc) operators.EnricherFunc {
 	if !l.enrichEvents {
 		return nil
 	}
@@ -335,22 +318,55 @@ func (l *LocalManagerTrace) Enricher(next operators.EnricherFunc) operators.Enri
 	}
 }
 
-func (l *LocalManager) PreGadgetRun() error {
+func (l *localManager) PreGadgetRun() error {
 	return nil
 }
 
-func (l *LocalManager) PostGadgetRun() error {
+func (l *localManager) PostGadgetRun() error {
 	return nil
 }
 
-func (l *LocalManager) EnrichEvent(a any) error {
+func (l *localManager) EnrichEvent(a any) error {
 	return nil
 }
 
-func (l *LocalManager) Enricher(operators.EnricherFunc) operators.EnricherFunc {
+func (l *localManager) Enricher(operators.EnricherFunc) operators.EnricherFunc {
 	return nil
+}
+
+func NewLocalManager() *localManager {
+	globalParamsDescs := &params.ParamDescs{
+		{
+			Key:          Runtimes,
+			Alias:        "r",
+			DefaultValue: strings.Join(containerutils.AvailableRuntimes, ","),
+			Description: fmt.Sprintf("Container runtimes to be used separated by comma. Supported values are: %s",
+				strings.Join(containerutils.AvailableRuntimes, ", ")),
+			IsMandatory: true,
+			// PossibleValues: containerutils.AvailableRuntimes, // TODO
+		},
+	}
+
+	gadgetParamsDescs := &params.ParamDescs{
+		{
+			Key:         ContainerName,
+			Alias:       "c",
+			Description: "Show only data from containers with that name",
+			IsMandatory: false,
+		},
+	}
+
+	return &localManager{
+		// The global params are unique to the local manager so we can
+		// instantiate it once in its whole lifecycle.
+		globalParams: globalParamsDescs.ToParams(),
+
+		// The gadget params needs to be instantiated for gadget run. Caller
+		// will use NewGadgetParams to do that.
+		OperatorWithGadgetParams: *operators.NewOperatorWithGadgetParams(gadgetParamsDescs),
+	}
 }
 
 func init() {
-	operators.Register(&LocalManager{})
+	operators.Register(NewLocalManager())
 }

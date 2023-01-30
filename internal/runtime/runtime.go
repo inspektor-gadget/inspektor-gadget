@@ -42,9 +42,5 @@ type Runtime interface {
 	Init(*params.Params) error
 	DeInit() error
 	Params() params.ParamDescs
-	RunGadget(
-		runner Runner,
-		runtimeParams *params.Params,
-		operatorPerGadgetParamCollection params.Collection,
-	) error
+	RunGadget(runner Runner, runtimeParams *params.Params) error
 }

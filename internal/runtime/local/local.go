@@ -35,11 +35,7 @@ func (r *Runtime) DeInit() error {
 	return nil
 }
 
-func (r *Runtime) RunGadget(
-	runner runtime.Runner,
-	runtimeParams *params.Params,
-	operatorPerGadgetParamCollection params.Collection,
-) error {
+func (r *Runtime) RunGadget(runner runtime.Runner, runtimeParams *params.Params) error {
 	logger := runner.Logger()
 
 	logger.Debugf("running with local runtime")
@@ -51,7 +47,7 @@ func (r *Runtime) RunGadget(
 
 	logger.Debugf("> Params: %+v", runtimeParams.ParamMap())
 
-	return r.runGadget(runner, gadgetInst, operatorPerGadgetParamCollection)
+	return r.runGadget(runner, gadgetInst)
 }
 
 func (r *Runtime) Params() params.ParamDescs {
