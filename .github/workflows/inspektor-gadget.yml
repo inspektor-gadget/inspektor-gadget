@@ -57,7 +57,7 @@ jobs:
     - name: Install debian packages
       uses: ./.github/actions/install-debian-packages
     - name: Lint
-      uses: golangci/golangci-lint-action@v3.3.1
+      uses: golangci/golangci-lint-action@v3.4.0
       with:
         # This version number must be kept in sync with Makefile lint one.
         version: v1.49.0
