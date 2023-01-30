@@ -18,11 +18,11 @@ pod/random created
 
 Using the profile cpu gadget, we can see the list of stack traces.
 The following command filters only for pods named "random", execute the command
-and interrupt it after ~30 seconds. The `-K` option is passed to show only the
+and interrupt it after ~30 seconds. The `-S kernel` option is passed to show only the
 kernel stack traces.
 
 ```bash
-$ kubectl gadget profile cpu --podname random -K
+$ kubectl gadget profile cpu --podname random -S kernel
 Capturing stack traces... Hit Ctrl-C to end.^C
 ```
 
@@ -58,7 +58,7 @@ Linux function `urandom_read`.
 Instead of waiting, you can use the `--timeout` argument:
 
 ```bash
-$ kubectl gadget profile cpu --timeout 5 --podname random -K
+$ kubectl gadget profile cpu --timeout 5 --podname random -S kernel
 Capturing stack traces...
 K8S.NODE         K8S.NAMESPACE    K8S.POD                        K8S.CONTAINER    PID     COMM             COUNT
 minikube         default          random                         random           340800  cat              1
@@ -146,13 +146,13 @@ $ docker run -d --rm --name random busybox cat /dev/urandom > /dev/null
 * Start `ig`:
 
 ```bash
-$ sudo ./ig profile cpu -K --containername random --runtimes docker
+$ sudo ./ig profile cpu -S kernel --containername random --runtimes docker
 ```
 
 * Observe the results:
 
 ```bash
-sudo ./ig profile cpu -K --containername random --runtimes docker
+sudo ./ig profile cpu -S kernel --containername random --runtimes docker
 Capturing stack traces... Hit Ctrl-C to end.^C
 RUNTIME.CONTAINERNAME                                                                        COMM             PID        COUNT
 random                                                                                       cat              641045     1

@@ -305,8 +305,9 @@ type TracerWrap struct {
 
 func (t *TracerWrap) Run(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
-	t.config.UserStackOnly = params.Get(ParamUserStack).AsBool()
-	t.config.KernelStackOnly = params.Get(ParamKernelStack).AsBool()
+	stack := params.Get(types.ProfileParamStack).AsString()
+	t.config.UserStackOnly = stack == types.ProfileParamStackUser
+	t.config.KernelStackOnly = stack == types.ProfileParamStackKernel
 
 	defer t.close()
 	if err := t.install(); err != nil {

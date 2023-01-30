@@ -95,12 +95,15 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	_, userStackOnly := trace.Spec.Parameters[types.ProfileUserParam]
-	_, kernelStackOnly := trace.Spec.Parameters[types.ProfileKernelParam]
+	paramStack, ok := trace.Spec.Parameters[types.ProfileParamStack]
+	if !ok {
+		paramStack = types.ProfileParamStackBoth
+	}
+
 	config := &tracer.Config{
 		MountnsMap:      mountNsMap,
-		UserStackOnly:   userStackOnly,
-		KernelStackOnly: kernelStackOnly,
+		UserStackOnly:   paramStack == types.ProfileParamStackUser,
+		KernelStackOnly: paramStack == types.ProfileParamStackKernel,
 	}
 
 	t.tracer, err = tracer.NewTracer(t.helpers, config)

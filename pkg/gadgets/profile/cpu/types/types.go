@@ -20,9 +20,13 @@ import (
 )
 
 const (
-	ProfileUserParam   = "user"
-	ProfileKernelParam = "kernel"
+	ProfileParamStack       = "stack"
+	ProfileParamStackBoth   = "both"
+	ProfileParamStackUser   = "user"
+	ProfileParamStackKernel = "kernel"
 )
+
+var ProfileParamPossibleStacks = []string{ProfileParamStackUser, ProfileParamStackKernel}
 
 type Report struct {
 	eventtypes.CommonData

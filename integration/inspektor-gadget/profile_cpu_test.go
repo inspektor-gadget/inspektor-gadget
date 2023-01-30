@@ -37,7 +37,7 @@ func TestProfileCpu(t *testing.T) {
 		WaitUntilTestPodReadyCommand(ns),
 		{
 			Name: "RunProfileCpuGadget",
-			Cmd:  fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -K --timeout 15 -o json", ns),
+			Cmd:  fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -S kernel --timeout 15 -o json", ns),
 			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &profilecpuTypes.Report{
 					CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
