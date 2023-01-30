@@ -544,13 +544,6 @@ jobs:
           sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  test"
           sudo apt-get update
           sudo apt-get install docker-ce
-      # For containerd, swap limit isn't propogated to memory controller of pod cgroup with
-      # memory.memsw.limit_in_bytes set to a large value, resulting in OOM not triggered.
-      # Disable swap to make things simpler for us
-      - name: Disable swap for ${{ matrix.runtime }}
-        if: matrix.runtime == 'containerd'
-        run: |
-          sudo swapoff -a
       - name: Run integration for container runtime ${{ matrix.runtime }}
         run: |
           set -o pipefail
