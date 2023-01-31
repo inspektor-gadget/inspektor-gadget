@@ -53,6 +53,7 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
+	seccompprofileapi "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -76,6 +77,7 @@ var (
 	printOnly           bool
 	quiet               bool
 	debug               bool
+	useSeccompProfile   bool
 	wait                bool
 	runtimesConfig      commonutils.RuntimesSocketPathConfig
 	nodeSelector        string
@@ -84,6 +86,10 @@ var (
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify"}
 
 var resourcesYAML = []string{resources.GadgetNamespace, resources.GadgetRBAC, resources.GadgetDaemonset, resources.TracesCustomResource}
+
+// We need to add the secomp profile creation after the namespace because it
+// lives in the gadget namespace.
+const resourcesSeccompIndex = 1
 
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
@@ -139,6 +145,11 @@ func init() {
 		"debug", "d",
 		false,
 		"show extra debug information")
+	deployCmd.PersistentFlags().BoolVarP(
+		&useSeccompProfile,
+		"use-seccomp-profile", "",
+		false,
+		"restrict gadget pod syscalls using a seccomp profile")
 	deployCmd.PersistentFlags().StringVarP(
 		&nodeSelector,
 		"node-selector", "",
@@ -163,6 +174,11 @@ func parseK8sYaml(content string) ([]runtime.Object, error) {
 	retVal := make([]runtime.Object, 0, len(sepYamlfiles))
 
 	sch := runtime.NewScheme()
+
+	if useSeccompProfile {
+		// For SeccompProfile Kind.
+		seccompprofileapi.AddToScheme(sch)
+	}
 
 	// For CustomResourceDefinition kind.
 	apiextv1.AddToScheme(sch)
@@ -338,6 +354,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("it's not possible to use --quiet and --debug together")
 	}
 
+	if useSeccompProfile {
+		resourcesYAML = append(resourcesYAML[:resourcesSeccompIndex], resourcesYAML...)
+		resourcesYAML[resourcesSeccompIndex] = resources.GadgetSeccompProfile
+	}
+
 	objects := make([]runtime.Object, 0)
 	for _, resource := range resourcesYAML {
 		objs, err := parseK8sYaml(resource)
@@ -388,6 +409,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
 				if serverVersion.LessThan(k8sversion.MustParseSemantic("v1.14.0")) {
 					delete(daemonSet.Spec.Template.Spec.NodeSelector, "kubernetes.io/os")
+				}
+			}
+
+			if useSeccompProfile {
+				path := "operator/gadget/profile.json"
+				daemonSet.Spec.Template.Spec.SecurityContext = &v1.PodSecurityContext{
+					SeccompProfile: &v1.SeccompProfile{
+						Type:             v1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: &path,
+					},
 				}
 			}
 
