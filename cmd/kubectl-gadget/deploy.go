@@ -19,6 +19,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"slices"
 	"strconv"
@@ -50,6 +51,7 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
+	seccompprofileapi "sigs.k8s.io/security-profiles-operator/api/seccompprofile/v1beta1"
 	"sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
@@ -84,6 +86,7 @@ var (
 	printOnly           bool
 	quiet               bool
 	debug               bool
+	seccompProfile      string
 	wait                bool
 	runtimesConfig      commonutils.RuntimesSocketPathConfig
 	nodeSelector        string
@@ -160,6 +163,11 @@ func init() {
 		false,
 		"show extra debug information")
 	deployCmd.PersistentFlags().StringVarP(
+		&seccompProfile,
+		"seccomp-profile", "",
+		"",
+		"restrict gadget pod syscalls using the given seccomp profile")
+	deployCmd.PersistentFlags().StringVarP(
 		&nodeSelector,
 		"node-selector", "",
 		"",
@@ -204,6 +212,11 @@ func parseK8sYaml(content string) ([]runtime.Object, error) {
 	retVal := make([]runtime.Object, 0, len(sepYamlfiles))
 
 	sch := runtime.NewScheme()
+
+	if seccompProfile != "" {
+		// For SeccompProfile Kind.
+		seccompprofileapi.AddToScheme(sch)
+	}
 
 	// For CustomResourceDefinition kind.
 	apiextv1.AddToScheme(sch)
@@ -404,6 +417,27 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 	objects = append(objects, traceObjects...)
 
+	if seccompProfile != "" {
+		content, err := os.ReadFile(seccompProfile)
+		if err != nil {
+			return fmt.Errorf("reading %s: %w", seccompProfile, err)
+		}
+
+		seccompProfileObject, err := parseK8sYaml(string(content))
+		if err != nil {
+			return err
+		}
+
+		if len(seccompProfileObject) > 1 {
+			return fmt.Errorf("created seccomp profile has several objects")
+		}
+
+		// We need to create the seccomp profile before the daemonset but after the
+		// namespace.
+		objects = append(objects[:1], objects...)
+		objects[1] = seccompProfileObject[0]
+	}
+
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
 		return fmt.Errorf("creating RESTConfig: %w", err)
@@ -456,6 +490,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				serverVersion := k8sversion.MustParseSemantic(serverInfo.String())
 				if serverVersion.LessThan(k8sversion.MustParseSemantic("v1.14.0")) {
 					delete(daemonSet.Spec.Template.Spec.NodeSelector, "kubernetes.io/os")
+				}
+			}
+
+			if seccompProfile != "" {
+				path := "operator/gadget/profile.json"
+				daemonSet.Spec.Template.Spec.SecurityContext = &v1.PodSecurityContext{
+					SeccompProfile: &v1.SeccompProfile{
+						Type:             v1.SeccompProfileTypeLocalhost,
+						LocalhostProfile: &path,
+					},
 				}
 			}
 
