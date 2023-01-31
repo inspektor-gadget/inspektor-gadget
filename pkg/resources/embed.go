@@ -24,8 +24,14 @@ var TracesCustomResource string
 //go:embed rbac/role.yaml
 var RbacRole string
 
-//go:embed manifests/deploy.yaml
-var GadgetDeployment string
+//go:embed manifests/namespace.yaml
+var GadgetNamespace string
+
+//go:embed manifests/rbac.yaml
+var GadgetRBAC string
+
+//go:embed manifests/daemonset.yaml
+var GadgetDaemonset string
 
 //go:embed seccomp-profile/profile.yaml
 var GadgetSeccompProfile string

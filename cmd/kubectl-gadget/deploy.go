@@ -83,6 +83,8 @@ var (
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify"}
 
+var resourcesYAML = []string{resources.GadgetNamespace, resources.GadgetRBAC, resources.GadgetDaemonset, resources.TracesCustomResource}
+
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
 
@@ -336,17 +338,15 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("it's not possible to use --quiet and --debug together")
 	}
 
-	objects, err := parseK8sYaml(resources.GadgetDeployment)
-	if err != nil {
-		return err
-	}
+	objects := make([]runtime.Object, 0)
+	for _, resource := range resourcesYAML {
+		objs, err := parseK8sYaml(resource)
+		if err != nil {
+			return fmt.Errorf("cannot parse file %q: %w", resource, err)
+		}
 
-	traceObjects, err := parseK8sYaml(resources.TracesCustomResource)
-	if err != nil {
-		return err
+		objects = append(objects, objs...)
 	}
-
-	objects = append(objects, traceObjects...)
 
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {

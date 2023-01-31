@@ -803,7 +803,7 @@ jobs:
         export IMAGE="${{ env.REGISTRY }}/${{ env.CONTAINER_REPO }}:${IMAGE_TAG}"
 
         # Use echo of cat to avoid printing a new line between files.
-        echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml)" > inspektor-gadget-${{ github.ref_name }}.yaml
+        echo "$(cat pkg/resources/manifests/{namespace,rbac,daemonset}.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml)" > inspektor-gadget-${{ github.ref_name }}.yaml
 
         perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${{ github.ref_name }}.yaml
     - name: Create Release
