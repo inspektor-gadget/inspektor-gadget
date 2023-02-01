@@ -70,8 +70,7 @@ func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T])
 			return value, fmt.Errorf("tried to compare %q to uint column %q", fs.value, column.Name)
 		}
 		value = reflect.ValueOf(number).Convert(column.Type())
-	case reflect.Float32,
-		reflect.Float64:
+	case reflect.Float32, reflect.Float64:
 		number, err := strconv.ParseFloat(fs.value, 64)
 		if err != nil {
 			return value, fmt.Errorf("tried to compare %q to float column %q", fs.value, column.Name)
