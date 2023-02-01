@@ -20,7 +20,6 @@ package gadgetrunner
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/operators"
@@ -50,17 +49,19 @@ func NewGadgetRunner(
 	id string,
 	runtime runtime.Runtime,
 	gadget gadgets.Gadget,
+	gadgetParams *params.Params,
 	parser parser.Parser,
 	logger logger.Logger,
 ) *GadgetRunner {
 	return &GadgetRunner{
-		ctx:       ctx,
-		id:        id,
-		gadget:    gadget,
-		runtime:   runtime,
-		parser:    parser,
-		logger:    logger,
-		operators: operators.GetOperatorsForGadget(gadget),
+		ctx:          ctx,
+		id:           id,
+		runtime:      runtime,
+		gadget:       gadget,
+		gadgetParams: gadgetParams,
+		parser:       parser,
+		logger:       logger,
+		operators:    operators.GetOperatorsForGadget(gadget),
 	}
 }
 
@@ -103,22 +104,4 @@ func (r *GadgetRunner) GetResult() ([]byte, error) {
 
 func (r *GadgetRunner) GadgetParams() *params.Params {
 	return r.gadgetParams
-}
-
-// RunGadget is the main function of GadgetRunner and controls the lifecycle of the gadget
-func (r *GadgetRunner) RunGadget(
-	operatorParamCollection params.Collection,
-	operatorPerGadgetParamCollection params.Collection,
-	gadgetParams *params.Params,
-) error {
-	r.gadgetParams = gadgetParams
-	err := r.operators.Init(operatorParamCollection)
-	if err != nil {
-		return fmt.Errorf("initializing operators: %w", err)
-	}
-	err = r.runtime.RunGadget(r, operatorPerGadgetParamCollection)
-	if err != nil {
-		return fmt.Errorf("running gadget: %w", err)
-	}
-	return nil
 }

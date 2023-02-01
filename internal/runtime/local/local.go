@@ -34,6 +34,10 @@ func (r *Runtime) Close() error {
 	return nil
 }
 
+func (r *Runtime) GlobalParamDescs() params.ParamDescs {
+	return nil
+}
+
 func (r *Runtime) RunGadget(
 	runner runtime.Runner,
 	operatorPerGadgetParamCollection params.Collection,
@@ -47,13 +51,7 @@ func (r *Runtime) RunGadget(
 		return errors.New("gadget not instantiable")
 	}
 
-	logger.Debugf("> Params: %+v", runtimeParams.ParamMap())
-
 	return r.runGadget(runner, gadgetInst, operatorPerGadgetParamCollection)
-}
-
-func (r *Runtime) GlobalParamDescs() params.ParamDescs {
-	return nil
 }
 
 func (r *Runtime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstantiate, operatorPerGadgetParamCollection params.Collection) error {

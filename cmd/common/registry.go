@@ -154,9 +154,14 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := runtime.Init(runtimeParams)
 			if err != nil {
-				return fmt.Errorf("init runtime: %w", err)
+				return fmt.Errorf("initializing runtime: %w", err)
 			}
 			defer runtime.Close()
+
+			err = operators.GetOperatorsForGadget(gadget).Init(operatorsParamsCollection)
+			if err != nil {
+				return fmt.Errorf("initializing operators: %w", err)
+			}
 
 			fe := console.NewFrontend()
 			defer fe.Close()
@@ -178,6 +183,7 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 				"",
 				runtime,
 				gadget,
+				gadgetParams,
 				parser,
 				log,
 			)
@@ -255,7 +261,7 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 			}
 
 			// Finally, hand over to runtime
-			return runner.RunGadget(operatorsParamsCollection, operatorsPerGadgetParamCollection, gadgetParams)
+			return runtime.RunGadget(runner, operatorsPerGadgetParamCollection)
 		},
 	}
 
