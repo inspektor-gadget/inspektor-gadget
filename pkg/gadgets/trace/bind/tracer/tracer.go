@@ -309,13 +309,13 @@ func (t *Tracer) SetEventHandler(handler any) {
 	t.eventCallback = nh
 }
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *Gadget) NewInstance(gadgetContext gadgets.GadgetContext) (gadgets.GadgetInstance, error) {
 	// TODO(Mauricio): Can't we use this way on all gadgets?
-	if runner == nil {
+	if gadgetContext == nil {
 		return &Tracer{}, nil
 	}
 
-	params := runner.GadgetParams()
+	params := gadgetContext.GadgetParams()
 
 	tracer := &Tracer{
 		config: &Config{

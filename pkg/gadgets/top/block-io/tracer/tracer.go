@@ -320,7 +320,7 @@ func (t *Tracer) SetMountNsMap(mntnsMap *ebpf.Map) {
 	t.config.MountnsMap = mntnsMap
 }
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *Gadget) NewInstance(gadgetContext gadgets.GadgetContext) (gadgets.GadgetInstance, error) {
 	tracer := &Tracer{
 		config: &Config{
 			MaxRows:  20,
@@ -329,11 +329,11 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, err
 		},
 		done: make(chan bool),
 	}
-	if runner == nil {
+	if gadgetContext == nil {
 		return tracer, nil
 	}
 
-	params := runner.GadgetParams()
+	params := gadgetContext.GadgetParams()
 	tracer.config.MaxRows = params.Get(gadgets.ParamMaxRows).AsInt()
 	tracer.config.SortBy = params.Get(gadgets.ParamSortBy).AsStringSlice()
 	tracer.config.Interval = time.Second * time.Duration(params.Get(gadgets.ParamInterval).AsInt())

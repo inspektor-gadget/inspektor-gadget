@@ -23,5 +23,5 @@ type GadgetInstantiate interface {
 
 	// NewInstance creates a new gadget tracer and returns it; the tracer should be allocated and configured but
 	// should not run any code that depends on cleanup
-	NewInstance(Runner) (GadgetInstance, error)
+	NewInstance(GadgetContext) (GadgetInstance, error)
 }

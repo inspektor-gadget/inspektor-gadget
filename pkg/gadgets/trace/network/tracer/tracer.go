@@ -71,7 +71,7 @@ type Tracer struct {
 	cache []*types.Event
 
 	eventCallback func(ev *types.Event)
-	runner        gadgets.Runner
+	gadgetContext gadgets.GadgetContext
 	cbmap         map[uint64]func(ev *types.Event)
 	cbmapMutex    sync.RWMutex
 }
@@ -348,13 +348,13 @@ func (t *Tracer) Close() {
 // --- Registry changes
 // TODO: This can be optimized a lot after using NewInstance() for everything
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *Gadget) NewInstance(gadgetContext gadgets.GadgetContext) (gadgets.GadgetInstance, error) {
 	tracer := &Tracer{
-		runner:      runner,
-		attachments: make(map[uint64]*attachment),
-		cbmap:       make(map[uint64]func(ev *types.Event)),
+		gadgetContext: gadgetContext,
+		attachments:   make(map[uint64]*attachment),
+		cbmap:         make(map[uint64]func(ev *types.Event)),
 	}
-	if runner == nil {
+	if gadgetContext == nil {
 		return tracer, nil
 	}
 
@@ -370,7 +370,7 @@ func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, err
 }
 
 func (t *Tracer) Start() error {
-	ctx := t.runner.Context()
+	ctx := t.gadgetContext.Context()
 	for {
 		if ctx.Err() != nil {
 			return nil
@@ -378,7 +378,7 @@ func (t *Tracer) Start() error {
 		// Pop, but we don't need the results as we're handing the events over to the callback in cbMap
 		_, err := t.Pop()
 		if err != nil {
-			t.runner.Logger().Debugf("start() returned with: %v", err)
+			t.gadgetContext.Logger().Debugf("start() returned with: %v", err)
 			return nil
 		}
 	}

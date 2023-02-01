@@ -254,15 +254,15 @@ func (t *Tracer) SetEventHandler(handler any) {
 	t.eventCallback = nh
 }
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
+func (g *Gadget) NewInstance(gadgetContext gadgets.GadgetContext) (gadgets.GadgetInstance, error) {
 	tracer := &Tracer{
 		config: &Config{},
 	}
-	if runner == nil {
+	if gadgetContext == nil {
 		return tracer, nil
 	}
 
-	params := runner.GadgetParams()
+	params := gadgetContext.GadgetParams()
 	tracer.config.TargetPid = params.Get(ParamPID).AsInt32()
 	tracer.config.FailedOnly = params.Get(ParamFailedOnly).AsBool()
 	tracer.config.KillOnly = params.Get(ParamKillOnly).AsBool()

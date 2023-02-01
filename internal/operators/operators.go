@@ -25,7 +25,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
-type Runner interface {
+type GadgetContext interface {
 	ID() string
 	Context() context.Context
 	Gadget() gadgets.Gadget
@@ -68,7 +68,7 @@ type Operator interface {
 	// This must return something that implements OperatorInstance.
 	// This is useful to create a context for an operator by wrapping it.
 	// Params given here are the ones returned by PerGadgetParams()
-	Instantiate(runner Runner, gadgetInstance any, perGadgetParams *params.Params) (OperatorInstance, error)
+	Instantiate(gadgetContext GadgetContext, gadgetInstance any, perGadgetParams *params.Params) (OperatorInstance, error)
 }
 
 type OperatorInstance interface {
@@ -176,11 +176,11 @@ type OperatorInstances []OperatorInstance
 
 // Instantiate calls Instantiate on all operators and returns a collection of the results.
 // It also calls PreGadgetRun on all instances.
-func (e Operators) Instantiate(runner Runner, trace any, perGadgetParamCollection params.Collection) (operatorInstances OperatorInstances, _ error) {
+func (e Operators) Instantiate(gadgetContext GadgetContext, trace any, perGadgetParamCollection params.Collection) (operatorInstances OperatorInstances, _ error) {
 	operatorInstances = make([]OperatorInstance, 0, len(e))
 
 	for _, operator := range e {
-		oi, err := operator.Instantiate(runner, trace, perGadgetParamCollection[operator.Name()])
+		oi, err := operator.Instantiate(gadgetContext, trace, perGadgetParamCollection[operator.Name()])
 		if err != nil {
 			return nil, fmt.Errorf("start trace on operator %q: %w", operator.Name(), err)
 		}

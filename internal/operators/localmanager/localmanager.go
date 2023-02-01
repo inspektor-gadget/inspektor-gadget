@@ -173,8 +173,8 @@ func (l *LocalManager) Close() error {
 	return nil
 }
 
-func (l *LocalManager) Instantiate(runner operators.Runner, tracer any, perGadgetParams *params.Params) (operators.OperatorInstance, error) {
-	_, canEnrichEvent := runner.Gadget().EventPrototype().(operators.ContainerInfoFromMountNSID)
+func (l *LocalManager) Instantiate(gadgetContext operators.GadgetContext, tracer any, perGadgetParams *params.Params) (operators.OperatorInstance, error) {
+	_, canEnrichEvent := gadgetContext.Gadget().EventPrototype().(operators.ContainerInfoFromMountNSID)
 
 	traceInstance := &localManagerTrace{
 		LocalManager:       l,
@@ -182,7 +182,7 @@ func (l *LocalManager) Instantiate(runner operators.Runner, tracer any, perGadge
 		attachedContainers: make(map[*containercollection.Container]struct{}),
 		perGadgetParams:    perGadgetParams,
 		tracer:             tracer,
-		runner:             runner,
+		gadgetContext:      gadgetContext,
 	}
 
 	return traceInstance, nil
@@ -199,7 +199,7 @@ type localManagerTrace struct {
 	attacher           Attacher
 	perGadgetParams    *params.Params
 	tracer             any
-	runner             operators.Runner
+	gadgetContext      operators.GadgetContext
 }
 
 func (l *localManagerTrace) Name() string {
@@ -207,7 +207,7 @@ func (l *localManagerTrace) Name() string {
 }
 
 func (l *localManagerTrace) PreGadgetRun() error {
-	log := l.runner.Logger()
+	log := l.gadgetContext.Logger()
 
 	// TODO: Improve filtering, see further details in
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.

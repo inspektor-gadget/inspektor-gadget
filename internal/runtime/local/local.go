@@ -39,30 +39,30 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 }
 
 func (r *Runtime) RunGadget(
-	runner runtime.Runner,
+	gadgetContext runtime.GadgetContext,
 	operatorPerGadgetParamCollection params.Collection,
 ) ([]byte, error) {
-	logger := runner.Logger()
+	logger := gadgetContext.Logger()
 
 	logger.Debugf("running with local runtime")
 
-	gadgetInst, ok := runner.Gadget().(gadgets.GadgetInstantiate)
+	gadgetInst, ok := gadgetContext.Gadget().(gadgets.GadgetInstantiate)
 	if !ok {
 		return []byte{}, errors.New("gadget not instantiable")
 	}
 
-	return r.runGadget(runner, gadgetInst, operatorPerGadgetParamCollection)
+	return r.runGadget(gadgetContext, gadgetInst, operatorPerGadgetParamCollection)
 }
 
 func (r *Runtime) runGadget(
-	runner runtime.Runner,
+	gadgetContext runtime.GadgetContext,
 	gadget gadgets.GadgetInstantiate,
 	operatorPerGadgetParamCollection params.Collection,
 ) (out []byte, err error) {
-	log := runner.Logger()
+	log := gadgetContext.Logger()
 
 	// Create gadget instance
-	gadgetInstance, err := gadget.NewInstance(runner)
+	gadgetInstance, err := gadget.NewInstance(gadgetContext)
 	if err != nil {
 		return out, fmt.Errorf("instantiating gadget: %w", err)
 	}
@@ -89,18 +89,18 @@ func (r *Runtime) runGadget(
 	}()
 
 	// Install operators
-	operatorInstances, err := runner.Operators().Instantiate(runner, gadgetInstance, operatorPerGadgetParamCollection)
+	operatorInstances, err := gadgetContext.Operators().Instantiate(gadgetContext, gadgetInstance, operatorPerGadgetParamCollection)
 	if err != nil {
 		return out, fmt.Errorf("instantiating operators: %w", err)
 	}
 	defer operatorInstances.Close()
-	log.Debugf("found %d operators", len(runner.Operators()))
+	log.Debugf("found %d operators", len(gadgetContext.Operators()))
 
 	if gadget.Type() == gadgets.TypeTraceIntervals {
 		// Enable interval pushes
-		interval := runner.GadgetParams().Get(gadgets.ParamInterval).AsInt()
+		interval := gadgetContext.GadgetParams().Get(gadgets.ParamInterval).AsInt()
 		log.Debugf("enabling snapshots every %d seconds", interval)
-		runner.Parser().EnableSnapshots(runner.Context(), time.Second, interval)
+		gadgetContext.Parser().EnableSnapshots(gadgetContext.Context(), time.Second, interval)
 	}
 
 	// Set event handler
@@ -108,8 +108,8 @@ func (r *Runtime) runGadget(
 		log.Debugf("set event handler")
 		switch gadget.Type() {
 		default:
-			setter.SetEventHandler(runner.Parser().EventHandlerFunc(operatorInstances.Enrich))
-			// setter.SetEventHandler(runner.Parser().EventHandlerFuncNew(operatorInstances.Enricher))
+			setter.SetEventHandler(gadgetContext.Parser().EventHandlerFunc(operatorInstances.Enrich))
+			// setter.SetEventHandler(gadgetContext.Parser().EventHandlerFuncNew(operatorInstances.Enricher))
 		}
 	}
 
@@ -118,11 +118,11 @@ func (r *Runtime) runGadget(
 		log.Debugf("set event handler for arrays")
 		switch gadget.Type() {
 		default:
-			setter.SetEventHandlerArray(runner.Parser().EventHandlerFuncArray(operatorInstances.Enrich))
-			// setter.SetEventHandlerArray(runner.Parser().EventHandlerFuncArrayNew(operatorInstances.Enricher))
+			setter.SetEventHandlerArray(gadgetContext.Parser().EventHandlerFuncArray(operatorInstances.Enrich))
+			// setter.SetEventHandlerArray(gadgetContext.Parser().EventHandlerFuncArrayNew(operatorInstances.Enricher))
 		case gadgets.TypeTraceIntervals:
-			setter.SetEventHandlerArray(runner.Parser().EventHandlerFuncSnapshot("main", operatorInstances.Enrich)) // TODO: "main" is the node
-			// setter.SetEventHandlerArray(runner.Parser().EventHandlerFuncSnapshotNew("main", operatorInstances.Enricher)) // TODO: "main" is the node
+			setter.SetEventHandlerArray(gadgetContext.Parser().EventHandlerFuncSnapshot("main", operatorInstances.Enrich)) // TODO: "main" is the node
+			// setter.SetEventHandlerArray(gadgetContext.Parser().EventHandlerFuncSnapshotNew("main", operatorInstances.Enricher)) // TODO: "main" is the node
 		}
 	}
 
@@ -130,7 +130,7 @@ func (r *Runtime) runGadget(
 	if setter, ok := gadgetInstance.(gadgets.EventEnricherSetter); ok {
 		log.Debugf("set event enricher")
 		setter.SetEventEnricher(operatorInstances.Enrich)
-		// setter.SetEventEnricher(runner.Operators().Enricher(func(a any) error {
+		// setter.SetEventEnricher(gadgetContext.Operators().Enricher(func(a any) error {
 		// 	return nil
 		// }))
 	}
@@ -161,7 +161,7 @@ func (r *Runtime) runGadget(
 
 	if gadget.Type() != gadgets.TypeOneShot {
 		// Wait for context to close
-		<-runner.Context().Done()
+		<-gadgetContext.Context().Done()
 	}
 
 	log.Debugf("stopping gadget")

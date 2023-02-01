@@ -13,10 +13,10 @@
 // limitations under the License.
 
 /*
-Package gadgetrunner handles initializing gadgets and installed operators before
+Package gadgetcontext handles initializing gadgets and installed operators before
 handing them over to a specified runtime.
 */
-package gadgetrunner
+package gadgetcontext
 
 import (
 	"context"
@@ -29,9 +29,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
-// GadgetRunner handles running gadgets by the gadget interface; it orchestrates the whole lifecycle of the gadget
+// GadgetContext handles running gadgets by the gadget interface; it orchestrates the whole lifecycle of the gadget
 // instance and communicates with gadget and runtime.
-type GadgetRunner struct {
+type GadgetContext struct {
 	ctx          context.Context
 	id           string
 	gadget       gadgets.Gadget
@@ -44,7 +44,7 @@ type GadgetRunner struct {
 	resultError  error
 }
 
-func NewGadgetRunner(
+func New(
 	ctx context.Context,
 	id string,
 	runtime runtime.Runtime,
@@ -52,8 +52,8 @@ func NewGadgetRunner(
 	gadgetParams *params.Params,
 	parser parser.Parser,
 	logger logger.Logger,
-) *GadgetRunner {
-	return &GadgetRunner{
+) *GadgetContext {
+	return &GadgetContext{
 		ctx:          ctx,
 		id:           id,
 		runtime:      runtime,
@@ -65,34 +65,34 @@ func NewGadgetRunner(
 	}
 }
 
-func (r *GadgetRunner) ID() string {
+func (r *GadgetContext) ID() string {
 	return r.id
 }
 
-func (r *GadgetRunner) Context() context.Context {
+func (r *GadgetContext) Context() context.Context {
 	return r.ctx
 }
 
-func (r *GadgetRunner) Parser() parser.Parser {
+func (r *GadgetContext) Parser() parser.Parser {
 	return r.parser
 }
 
-func (r *GadgetRunner) Runtime() runtime.Runtime {
+func (r *GadgetContext) Runtime() runtime.Runtime {
 	return r.runtime
 }
 
-func (r *GadgetRunner) Gadget() gadgets.Gadget {
+func (r *GadgetContext) Gadget() gadgets.Gadget {
 	return r.gadget
 }
 
-func (r *GadgetRunner) Operators() operators.Operators {
+func (r *GadgetContext) Operators() operators.Operators {
 	return r.operators
 }
 
-func (r *GadgetRunner) Logger() logger.Logger {
+func (r *GadgetContext) Logger() logger.Logger {
 	return r.logger
 }
 
-func (r *GadgetRunner) GadgetParams() *params.Params {
+func (r *GadgetContext) GadgetParams() *params.Params {
 	return r.gadgetParams
 }

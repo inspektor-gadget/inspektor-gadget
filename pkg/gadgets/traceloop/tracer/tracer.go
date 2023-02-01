@@ -79,7 +79,7 @@ type Tracer struct {
 	// The keys of this map are containerID.
 	readers sync.Map
 
-	runner gadgets.Runner
+	gadgetContext gadgets.GadgetContext
 }
 
 type syscallEvent struct {
@@ -561,14 +561,14 @@ func (t *Tracer) Start() error {
 	return nil
 }
 
-func (g *Gadget) NewInstance(runner gadgets.Runner) (gadgets.GadgetInstance, error) {
-	if runner == nil {
+func (g *Gadget) NewInstance(gadgetContext gadgets.GadgetContext) (gadgets.GadgetInstance, error) {
+	if gadgetContext == nil {
 		return &Tracer{}, nil
 	}
 
 	t, err := NewTracer(nil)
 	if t != nil {
-		t.runner = runner
+		t.gadgetContext = gadgetContext
 	}
 	return t, err
 }
@@ -583,7 +583,7 @@ func (t *Tracer) AttachGeneric(container *containercollection.Container, eventCa
 			for {
 				evs, err := t.Read(container.ID)
 				if err != nil {
-					t.runner.Logger().Debugf("error reading from container %s: %v", container.ID, err)
+					t.gadgetContext.Logger().Debugf("error reading from container %s: %v", container.ID, err)
 					return
 				}
 				for _, ev := range evs {

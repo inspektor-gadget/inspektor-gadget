@@ -21,7 +21,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
-type Runner interface {
+type GadgetContext interface {
 	ID() string
 	Context() context.Context
 	GadgetParams() *params.Params

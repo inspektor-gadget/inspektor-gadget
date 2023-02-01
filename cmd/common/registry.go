@@ -28,7 +28,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends/console"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	gadgetrunner "github.com/inspektor-gadget/inspektor-gadget/internal/gadget-runner"
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/internal/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/parser"
@@ -177,8 +177,7 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 
 			log := logger.DefaultLogger()
 
-			// Create new runner
-			runner := gadgetrunner.NewGadgetRunner(
+			gadgetContext := gadgetcontext.New(
 				ctx,
 				"",
 				runtime,
@@ -191,7 +190,7 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 			if parser == nil {
 				// This kind of gadgets return directly the result instead of
 				// using the parser
-				result, err := runtime.RunGadget(runner, operatorsPerGadgetParamCollection)
+				result, err := runtime.RunGadget(gadgetContext, operatorsPerGadgetParamCollection)
 				if err != nil {
 					return fmt.Errorf("running gadget: %w", err)
 				}
@@ -232,10 +231,9 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 				}
 			}
 
-			// Print errors to Stderr
 			formatter := parser.GetTextColumnsFormatter()
 			formatter.SetShowColumns(showColumns)
-			runner.Parser().SetErrorCallback(fe.Error)
+			parser.SetErrorCallback(fe.Error)
 
 			// Wire up callbacks before handing over to runtime depending on the output mode
 			switch outputMode {
@@ -246,11 +244,11 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 				//  TODO: This can be optimized later on
 				formatter.SetEnableExtraLines(true)
 
-				runner.Parser().SetEventCallback(formatter.EventHandlerFunc())
+				parser.SetEventCallback(formatter.EventHandlerFunc())
 				if gadget.Type().IsPeriodic() {
 					// In case of periodic outputting gadgets, this is done as full table output, and we need to
 					// clear the screen for every interval, that's why we add fe.Clear here
-					runner.Parser().SetEventCallback(formatter.EventHandlerFuncArray(
+					parser.SetEventCallback(formatter.EventHandlerFuncArray(
 						fe.Clear,
 						func() {
 							fe.Output(formatter.FormatHeader())
@@ -259,14 +257,14 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 					break
 				}
 				fe.Output(formatter.FormatHeader())
-				runner.Parser().SetEventCallback(formatter.EventHandlerFuncArray())
+				parser.SetEventCallback(formatter.EventHandlerFuncArray())
 			case utils.OutputModeJSON:
-				runner.Parser().SetEventCallback(printEventAsJSON)
+				parser.SetEventCallback(printEventAsJSON)
 			}
 
 			// Gadgets with parser don't return anything, they provide the
 			// output via the parser
-			_, err = runtime.RunGadget(runner, operatorsPerGadgetParamCollection)
+			_, err = runtime.RunGadget(gadgetContext, operatorsPerGadgetParamCollection)
 			if err != nil {
 				return fmt.Errorf("running gadget: %w", err)
 			}

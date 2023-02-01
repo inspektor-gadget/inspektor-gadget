@@ -24,7 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
-type Runner interface {
+type GadgetContext interface {
 	ID() string
 	Parser() parser.Parser
 	Gadget() gadgets.Gadget
@@ -41,7 +41,7 @@ type Runtime interface {
 	Close() error
 	GlobalParamDescs() params.ParamDescs
 	RunGadget(
-		runner Runner,
+		gadgetContext GadgetContext,
 		operatorPerGadgetParamCollection params.Collection,
 	) ([]byte, error)
 }
