@@ -31,8 +31,6 @@ type Runner interface {
 	Context() context.Context
 	Operators() operators.Operators
 	Logger() logger.Logger
-	SetResult([]byte, error)
-	GetResult() ([]byte, error)
 	GadgetParams() *params.Params
 }
 
@@ -45,5 +43,5 @@ type Runtime interface {
 	RunGadget(
 		runner Runner,
 		operatorPerGadgetParamCollection params.Collection,
-	) error
+	) ([]byte, error)
 }

@@ -41,26 +41,30 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 func (r *Runtime) RunGadget(
 	runner runtime.Runner,
 	operatorPerGadgetParamCollection params.Collection,
-) error {
+) ([]byte, error) {
 	logger := runner.Logger()
 
 	logger.Debugf("running with local runtime")
 
 	gadgetInst, ok := runner.Gadget().(gadgets.GadgetInstantiate)
 	if !ok {
-		return errors.New("gadget not instantiable")
+		return []byte{}, errors.New("gadget not instantiable")
 	}
 
 	return r.runGadget(runner, gadgetInst, operatorPerGadgetParamCollection)
 }
 
-func (r *Runtime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstantiate, operatorPerGadgetParamCollection params.Collection) error {
+func (r *Runtime) runGadget(
+	runner runtime.Runner,
+	gadget gadgets.GadgetInstantiate,
+	operatorPerGadgetParamCollection params.Collection,
+) (out []byte, err error) {
 	log := runner.Logger()
 
 	// Create gadget instance
 	gadgetInstance, err := gadget.NewInstance(runner)
 	if err != nil {
-		return fmt.Errorf("instantiate gadget: %w", err)
+		return out, fmt.Errorf("instantiating gadget: %w", err)
 	}
 
 	// Deferring getting results and closing to make sure operators got their chance to clean up properly beforehand
@@ -69,17 +73,25 @@ func (r *Runtime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstanti
 			log.Debugf("calling gadget.Close()")
 			closer.Close()
 		}
+
+		// No need to get results if gadget failed
+		if err != nil {
+			return
+		}
+
 		if results, ok := gadgetInstance.(gadgets.GadgetResult); ok {
-			res, err := results.Result()
-			log.Debugf("setting result")
-			runner.SetResult(res, err)
+			log.Debugf("getting result")
+			out, err = results.Result()
+			if err != nil {
+				err = fmt.Errorf("getting result: %w", err)
+			}
 		}
 	}()
 
 	// Install operators
 	operatorInstances, err := runner.Operators().Instantiate(runner, gadgetInstance, operatorPerGadgetParamCollection)
 	if err != nil {
-		return fmt.Errorf("starting operators: %w", err)
+		return out, fmt.Errorf("instantiating operators: %w", err)
 	}
 	defer operatorInstances.Close()
 	log.Debugf("found %d operators", len(runner.Operators()))
@@ -127,7 +139,7 @@ func (r *Runtime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstanti
 		log.Debugf("calling gadget.StartAlt()")
 		err := startstop.StartAlt()
 		if err != nil {
-			return fmt.Errorf("run gadget: %w", err)
+			return out, fmt.Errorf("starting gadget: %w", err)
 		}
 		defer func() {
 			log.Debugf("calling gadget.StopAlt()")
@@ -137,7 +149,7 @@ func (r *Runtime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstanti
 		log.Debugf("calling gadget.Start()")
 		err := startstop.Start()
 		if err != nil {
-			return fmt.Errorf("run gadget: %w", err)
+			return out, fmt.Errorf("starting gadget: %w", err)
 		}
 		defer func() {
 			log.Debugf("calling gadget.Stop()")
@@ -153,5 +165,5 @@ func (r *Runtime) runGadget(runner runtime.Runner, gadget gadgets.GadgetInstanti
 	}
 
 	log.Debugf("stopping gadget")
-	return nil
+	return out, nil
 }

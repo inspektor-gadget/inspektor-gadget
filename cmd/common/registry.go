@@ -158,7 +158,7 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 			}
 			defer runtime.Close()
 
-			err = operators.GetOperatorsForGadget(gadget).Init(operatorsParamsCollection)
+			err = validOperators.Init(operatorsParamsCollection)
 			if err != nil {
 				return fmt.Errorf("initializing operators: %w", err)
 			}
@@ -188,80 +188,90 @@ func buildCommandFromGadget(gadget gadgets.Gadget,
 				log,
 			)
 
-			if parser != nil {
-				// Add some custom params like filters that are available when using parser
-				if len(filters) > 0 {
-					err = parser.SetFilters(filters)
-					if err != nil {
-						return err // TODO: Wrap
-					}
-					gadgetParams.AddKeyValuePair("columns_filters", strings.Join(filters, ",")) // TODO: maybe encode?! difficult for CRs though
+			if parser == nil {
+				// This kind of gadgets return directly the result instead of
+				// using the parser
+				result, err := runtime.RunGadget(runner, operatorsPerGadgetParamCollection)
+				if err != nil {
+					return fmt.Errorf("running gadget: %w", err)
 				}
 
-				if gadget.Type().CanSort() {
-					sortBy := gadgetParams.Get(gadgets.ParamSortBy).AsStringSlice()
-					err := parser.SetSorting(sortBy)
-					if err != nil {
-						return err // TODO: Wrap
-					}
-				}
-
-				// Print errors to Stderr
-				formatter := parser.GetTextColumnsFormatter()
-				formatter.SetShowColumns(showColumns)
-				runner.Parser().SetErrorCallback(fe.Error)
-
-				// Wire up callbacks before handing over to runtime depending on the output mode
 				switch outputMode {
 				default:
-					formatter.SetEventCallback(fe.Output)
-
-					// Enable additional output, if the gadget supports it (e.g. profile/cpu)
-					//  TODO: This can be optimized later on
-					formatter.SetEnableExtraLines(true)
-
-					runner.Parser().SetEventCallback(formatter.EventHandlerFunc())
-					if gadget.Type().IsPeriodic() {
-						// In case of periodic outputting gadgets, this is done as full table output, and we need to
-						// clear the screen for every interval, that's why we add fe.Clear here
-						runner.Parser().SetEventCallback(formatter.EventHandlerFuncArray(
-							fe.Clear,
-							func() {
-								fe.Output(formatter.FormatHeader())
-							},
-						))
-						break
+					transformer, ok := gadget.(gadgets.GadgetOutputFormats)
+					if !ok {
+						return fmt.Errorf("gadget does not provide any output formats")
 					}
-					fe.Output(formatter.FormatHeader())
-					runner.Parser().SetEventCallback(formatter.EventHandlerFuncArray())
-				case utils.OutputModeJSON:
-					runner.Parser().SetEventCallback(printEventAsJSON)
-				}
-			} else {
-				defer func() {
-					res, err := runner.GetResult()
+					formats, defaultFormat := transformer.OutputFormats()
+					transformed, err := formats[defaultFormat].Transform(result)
 					if err != nil {
-						log.Error(logger.ErrorLevel, err.Error())
-						return
+						return fmt.Errorf("transforming gadget result: %w", err)
 					}
-					switch outputMode {
-					default:
-						transformer := gadget.(gadgets.GadgetOutputFormats)
-						formats, defaultFormat := transformer.OutputFormats()
-						transformed, err := formats[defaultFormat].Transform(res)
-						if err != nil {
-							log.Error(logger.ErrorLevel, err.Error())
-							return
-						}
-						fe.Output(string(transformed))
-					case utils.OutputModeJSON:
-						fe.Output(string(res))
-					}
-				}()
+					fe.Output(string(transformed))
+				case utils.OutputModeJSON:
+					fe.Output(string(result))
+				}
+
+				return nil
 			}
 
-			// Finally, hand over to runtime
-			return runtime.RunGadget(runner, operatorsPerGadgetParamCollection)
+			// Add some custom params like filters that are available when using parser
+			if len(filters) > 0 {
+				err = parser.SetFilters(filters)
+				if err != nil {
+					return err // TODO: Wrap
+				}
+				gadgetParams.AddKeyValuePair("columns_filters", strings.Join(filters, ",")) // TODO: maybe encode?! difficult for CRs though
+			}
+
+			if gadget.Type().CanSort() {
+				sortBy := gadgetParams.Get(gadgets.ParamSortBy).AsStringSlice()
+				err := parser.SetSorting(sortBy)
+				if err != nil {
+					return err // TODO: Wrap
+				}
+			}
+
+			// Print errors to Stderr
+			formatter := parser.GetTextColumnsFormatter()
+			formatter.SetShowColumns(showColumns)
+			runner.Parser().SetErrorCallback(fe.Error)
+
+			// Wire up callbacks before handing over to runtime depending on the output mode
+			switch outputMode {
+			default:
+				formatter.SetEventCallback(fe.Output)
+
+				// Enable additional output, if the gadget supports it (e.g. profile/cpu)
+				//  TODO: This can be optimized later on
+				formatter.SetEnableExtraLines(true)
+
+				runner.Parser().SetEventCallback(formatter.EventHandlerFunc())
+				if gadget.Type().IsPeriodic() {
+					// In case of periodic outputting gadgets, this is done as full table output, and we need to
+					// clear the screen for every interval, that's why we add fe.Clear here
+					runner.Parser().SetEventCallback(formatter.EventHandlerFuncArray(
+						fe.Clear,
+						func() {
+							fe.Output(formatter.FormatHeader())
+						},
+					))
+					break
+				}
+				fe.Output(formatter.FormatHeader())
+				runner.Parser().SetEventCallback(formatter.EventHandlerFuncArray())
+			case utils.OutputModeJSON:
+				runner.Parser().SetEventCallback(printEventAsJSON)
+			}
+
+			// Gadgets with parser don't return anything, they provide the
+			// output via the parser
+			_, err = runtime.RunGadget(runner, operatorsPerGadgetParamCollection)
+			if err != nil {
+				return fmt.Errorf("running gadget: %w", err)
+			}
+
+			return nil
 		},
 	}
 

@@ -93,15 +93,6 @@ func (r *GadgetRunner) Logger() logger.Logger {
 	return r.logger
 }
 
-func (r *GadgetRunner) SetResult(result []byte, resultError error) {
-	r.result = result
-	r.resultError = resultError
-}
-
-func (r *GadgetRunner) GetResult() ([]byte, error) {
-	return r.result, r.resultError
-}
-
 func (r *GadgetRunner) GadgetParams() *params.Params {
 	return r.gadgetParams
 }
