@@ -74,7 +74,7 @@ func (g *GadgetDesc) OutputFormats() (gadgets.OutputFormats, string) {
 }
 
 func init() {
-	gadgetregistry.RegisterGadget(&GadgetDesc{})
+	gadgetregistry.Register(&GadgetDesc{})
 }
 
 // --- moved from cmd/common/profile, should be removed there

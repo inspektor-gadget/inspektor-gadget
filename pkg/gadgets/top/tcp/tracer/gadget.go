@@ -72,5 +72,5 @@ func (g *GadgetDesc) SortByDefault() []string {
 }
 
 func init() {
-	gadgetregistry.RegisterGadget(&GadgetDesc{})
+	gadgetregistry.Register(&GadgetDesc{})
 }

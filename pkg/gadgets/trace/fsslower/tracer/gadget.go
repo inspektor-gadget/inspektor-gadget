@@ -77,5 +77,5 @@ func (g *GadgetDesc) EventPrototype() any {
 }
 
 func init() {
-	gadgetregistry.RegisterGadget(&GadgetDesc{})
+	gadgetregistry.Register(&GadgetDesc{})
 }
