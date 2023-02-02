@@ -29,7 +29,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends/console"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	cols "github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -60,7 +60,7 @@ func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, co
 
 	// Add all known gadgets to cobra in their respective categories
 	categories := gadgets.GetCategories()
-	for _, gadgetDesc := range gadgetregistry.GetGadgetDescs() {
+	for _, gadgetDesc := range gadgetregistry.GetAll() {
 		cmd, ok := lookup[gadgetDesc.Category()]
 		if !ok {
 			// Category not found, add it
