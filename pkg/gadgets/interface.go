@@ -125,3 +125,15 @@ type StartStopAltGadget interface {
 type CloseGadget interface {
 	Close()
 }
+
+type Gadget interface{}
+
+// GadgetInstantiate is the same interface as Gadget but adds one call to instantiate an actual
+// tracer
+type GadgetInstantiate interface {
+	GadgetDesc
+
+	// NewInstance creates a new gadget and returns it; the tracer should be allocated and configured but
+	// should not run any code that depends on cleanup
+	NewInstance(GadgetContext) (Gadget, error)
+}
