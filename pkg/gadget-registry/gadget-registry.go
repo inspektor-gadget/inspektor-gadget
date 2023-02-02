@@ -14,19 +14,27 @@
 
 package gadgetregistry
 
-import "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+import (
+	"fmt"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+)
 
 var gadgetRegistry = map[string]gadgets.GadgetDesc{}
 
-func RegisterGadget(gadget gadgets.GadgetDesc) {
-	gadgetRegistry[gadget.Category()+"/"+gadget.Name()] = gadget
+func Register(gadget gadgets.GadgetDesc) {
+	key := gadget.Category() + "/" + gadget.Name()
+	if _, ok := gadgetRegistry[key]; ok {
+		panic(fmt.Sprintf("Gadget %q already registered", key))
+	}
+	gadgetRegistry[key] = gadget
 }
 
-func GetGadget(category, name string) gadgets.GadgetDesc {
+func Get(category, name string) gadgets.GadgetDesc {
 	return gadgetRegistry[category+"/"+name]
 }
 
-func GetGadgetDescs() (gadgets []gadgets.GadgetDesc) {
+func GetAll() (gadgets []gadgets.GadgetDesc) {
 	for _, g := range gadgetRegistry {
 		gadgets = append(gadgets, g)
 	}
