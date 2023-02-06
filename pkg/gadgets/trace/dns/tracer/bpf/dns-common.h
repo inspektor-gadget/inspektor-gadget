@@ -5,8 +5,15 @@
 // https://datatracker.ietf.org/doc/html/rfc1034#section-3.1
 #define MAX_DNS_NAME 255
 
+#define TASK_COMM_LEN	16
+
 struct event_t {
 	__u64 timestamp;
+	__u64 mount_ns_id;
+	__u32 pid;
+	__u32 tid;
+	__u8 task[TASK_COMM_LEN];
+
 	union {
 		__u8 saddr_v6[16];
 		__u32 saddr_v4;

@@ -27,7 +27,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/"
+//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
 const (
 	BPFProgName     = "ig_trace_dns"
@@ -73,16 +73,19 @@ func NewTracer() (*Tracer, error) {
 		return event, nil
 	}
 
-	return &Tracer{
-		Tracer: networktracer.NewTracer(
-			spec,
-			BPFProgName,
-			BPFPerfMapName,
-			BPFSocketAttach,
-			types.Base,
-			parseAndEnrichDNSEvent,
-		),
-	}, nil
+	networkTracer, err := networktracer.NewTracer(
+		spec,
+		BPFProgName,
+		BPFPerfMapName,
+		BPFSocketAttach,
+		types.Base,
+		parseAndEnrichDNSEvent,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating network tracer: %w", err)
+	}
+
+	return &Tracer{Tracer: networkTracer}, nil
 }
 
 // pkt_type definitions:
@@ -229,8 +232,12 @@ func bpfEventToDNSEvent(bpfEvent *dnsEventT) (*types.Event, error) {
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
 		},
-	}
 
+		Pid:       bpfEvent.Pid,
+		Tid:       bpfEvent.Tid,
+		MountNsID: bpfEvent.MountNsId,
+		Comm:      gadgets.FromCString(bpfEvent.Task[:]),
+	}
 	event.Event.Timestamp = gadgets.WallTimeFromBootTime(bpfEvent.Timestamp)
 
 	event.ID = fmt.Sprintf("%.4x", bpfEvent.Id)

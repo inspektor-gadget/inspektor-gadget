@@ -35,6 +35,7 @@ func TestTraceSni(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tracesniTypes.Event{
 				Event: BuildBaseEvent(ns),
+				Comm:  "wget",
 				Name:  "inspektor-gadget.io",
 			}
 
@@ -44,6 +45,9 @@ func TestTraceSni(t *testing.T) {
 			normalize := func(e *tracesniTypes.Event) {
 				e.Timestamp = 0
 				e.Node = ""
+				e.MountNsID = 0
+				e.Pid = 0
+				e.Tid = 0
 			}
 
 			return ExpectAllToMatch(output, normalize, expectedEntry)

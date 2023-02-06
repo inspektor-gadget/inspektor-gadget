@@ -25,7 +25,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/"
+//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
 const (
 	BPFProgName         = "ig_trace_sni"
@@ -44,16 +44,19 @@ func NewTracer() (*Tracer, error) {
 		return nil, fmt.Errorf("failed to load asset: %w", err)
 	}
 
-	return &Tracer{
-		Tracer: networktracer.NewTracer(
-			spec,
-			BPFProgName,
-			BPFPerfMapName,
-			BPFSocketAttach,
-			types.Base,
-			parseSNIEvent,
-		),
-	}, nil
+	networkTracer, err := networktracer.NewTracer(
+		spec,
+		BPFProgName,
+		BPFPerfMapName,
+		BPFSocketAttach,
+		types.Base,
+		parseSNIEvent,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating network tracer: %w", err)
+	}
+
+	return &Tracer{Tracer: networkTracer}, nil
 }
 
 func parseSNIEvent(sample []byte, netns uint64) (*types.Event, error) {
@@ -64,11 +67,7 @@ func parseSNIEvent(sample []byte, netns uint64) (*types.Event, error) {
 
 	timestamp := gadgets.WallTimeFromBootTime(bpfEvent.Timestamp)
 
-	if len(sample) > TLSMaxServerNameLen {
-		sample = sample[:TLSMaxServerNameLen]
-	}
-
-	name := gadgets.FromCString(sample)
+	name := gadgets.FromCString(bpfEvent.Name[:])
 	if len(name) == 0 {
 		return nil, nil
 	}
@@ -78,6 +77,11 @@ func parseSNIEvent(sample []byte, netns uint64) (*types.Event, error) {
 			Type:      eventtypes.NORMAL,
 			Timestamp: timestamp,
 		},
+		Pid:       bpfEvent.Pid,
+		Tid:       bpfEvent.Tid,
+		MountNsID: bpfEvent.MountNsId,
+		Comm:      gadgets.FromCString(bpfEvent.Task[:]),
+
 		Name: name,
 	}
 

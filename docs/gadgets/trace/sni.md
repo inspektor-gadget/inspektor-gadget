@@ -14,7 +14,7 @@ we can run:
 
 ```bash
 $ kubectl gadget trace sni
-NODE             NAMESPACE        POD              NAME
+NODE               NAMESPACE          POD                PID        TID       COMM      NAME
 ```
 
 To generate some output for this example, let's create a demo pod in *another terminal*:
@@ -36,11 +36,12 @@ Location: https://github.com/ [following]
 Go back to *the first terminal* and see:
 
 ```
-NODE             NAMESPACE        POD              NAME
-minikube         default          ubuntu           wikimedia.org
-minikube         default          ubuntu           www.wikimedia.org
-minikube         default          ubuntu           www.github.com
-minikube         default          ubuntu           github.com
+NODE               NAMESPACE          POD                PID        TID       COMM      NAME
+minikube           default            ubuntu             3917791    3917791   wget      www.github.com
+minikube           default            ubuntu             3917791    3917791   wget      github.com
+minikube           default            ubuntu             3917812    3917812   wget      wikimedia.org
+minikube           default            ubuntu             3917812    3917812   wget      www.wikimedia.org
+
 ```
 
 We can see that each time our `wget` client connected to a different
@@ -61,8 +62,8 @@ pod "ubuntu" deleted
 Run the gadget in a terminal
 
 ```bash
-$ sudo local-gadget trace sni -c test-trace-sni
-CONTAINER                                                                                                 NAME
+$ sudo local-gadget trace sni -r docker -c test-trace-sni
+CONTAINER                              PID        TID        COMM             NAME
 ```
 
 Run a containers that establishs a TLS connection with a remote endpoint:
@@ -79,7 +80,7 @@ index.html           100% |*****************************************************
 The gadget will show that Server Name Indication used by the request.
 
 ```bash
-$ sudo local-gadget trace sni -c test-trace-sni
-CONTAINER                                                                                                 NAME
-test-trace-sni                                                                                            example.com
+$ sudo local-gadget trace sni -r docker -c test-trace-sni
+CONTAINER                              PID        TID        COMM             NAME
+test-trace-sni                         3944366    3944366    wget             example.com
 ```
