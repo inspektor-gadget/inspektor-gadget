@@ -252,7 +252,7 @@ jobs:
     # mode=max results in builder image layer of ~7GB because of btfhub files in a layer, which is too
     # large (gloabal limit 10GB) to work with GH caches. (TODO: if we can work with mode=max in future?)
     - name: Build gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
@@ -272,7 +272,7 @@ jobs:
     - name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image to registry
       id: publish-gadget-container-images
       if: github.event_name != 'pull_request'
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
@@ -369,7 +369,7 @@ jobs:
         container-image: ${{ env.CONTAINER_REPO }}
         co-re: false
     - name: Build example container
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v4
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/examples/${{ matrix.example }}/Dockerfile
