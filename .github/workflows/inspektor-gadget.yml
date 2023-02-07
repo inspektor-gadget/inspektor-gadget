@@ -86,6 +86,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         os: [linux, darwin, windows]
         arch: [amd64, arm64]
@@ -147,6 +148,7 @@ jobs:
     # level: 0
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         local-gadget-target: [local-gadget-linux-amd64, local-gadget-linux-arm64]
     steps:
@@ -195,6 +197,7 @@ jobs:
       digest-core-amd64: ${{ steps.published-gadget-container-images.outputs.core-amd64 }}
       digest-core-arm64: ${{ steps.published-gadget-container-images.outputs.core-arm64 }}
     strategy:
+      fail-fast: false
       matrix:
         type: [default, core]
         os: [ linux ]
@@ -305,6 +308,7 @@ jobs:
       contents: read
       packages: write
     strategy:
+      fail-fast: false
       matrix:
         type: [ default, core ]
     steps:
@@ -348,6 +352,7 @@ jobs:
       contents: read
       packages: write
     strategy:
+      fail-fast: false
       matrix:
         example: [runc-hook, kube-container-collection]
     steps:
@@ -598,6 +603,7 @@ jobs:
     if: needs.check-secrets.outputs.aks == 'true'
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         os-sku: [Ubuntu, Mariner]
         arch: [amd64, arm64]
@@ -714,6 +720,7 @@ jobs:
     needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images]
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         type: [default, core]
         driver: [none, docker]
