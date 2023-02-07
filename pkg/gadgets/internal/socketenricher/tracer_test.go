@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"reflect"
 	"testing"
 
 	"golang.org/x/sys/unix"
@@ -61,19 +62,19 @@ type sockOpt struct {
 	value int
 }
 
+type socketEnricherMapEntry struct {
+	Key   socketenricherSocketsKey
+	Value socketenricherSocketsValue
+}
+
 func TestSocketEnricherBind(t *testing.T) {
 	t.Parallel()
 
 	utilstest.RequireRoot(t)
 
-	type socketEnricherMapEntry struct {
-		Key   socketenricherSocketsKey
-		Value socketenricherSocketsValue
-	}
-
 	type testDefinition struct {
-		generateEvent func() (uint16, error)
-		validateEvent func(t *testing.T, info *utilstest.RunnerInfo, port uint16, entries []socketEnricherMapEntry)
+		generateEvent func() (uint16, int, error)
+		expectedEvent func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry
 	}
 
 	netns, err := containerutils.GetNetNs(os.Getpid())
@@ -94,7 +95,7 @@ func TestSocketEnricherBind(t *testing.T) {
 	for name, test := range map[string]testDefinition{
 		"udp": {
 			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_DGRAM, 0),
-			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherSocketsKey{
 						Netns:  uint32(netns),
@@ -108,11 +109,11 @@ func TestSocketEnricherBind(t *testing.T) {
 						Task:    stringToSlice("socketenricher."),
 					},
 				}
-			}),
+			},
 		},
 		"udp6": {
 			generateEvent: bindSocketFn("::", unix.AF_INET6, unix.SOCK_DGRAM, 0),
-			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherSocketsKey{
 						Netns:  uint32(netns),
@@ -126,11 +127,11 @@ func TestSocketEnricherBind(t *testing.T) {
 						Task:    stringToSlice("socketenricher."),
 					},
 				}
-			}),
+			},
 		},
 		"tcp": {
 			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_STREAM, 0),
-			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherSocketsKey{
 						Netns:  uint32(netns),
@@ -144,11 +145,11 @@ func TestSocketEnricherBind(t *testing.T) {
 						Task:    stringToSlice("socketenricher."),
 					},
 				}
-			}),
+			},
 		},
 		"tcp6": {
 			generateEvent: bindSocketFn("::", unix.AF_INET6, unix.SOCK_STREAM, 0),
-			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherSocketsKey{
 						Netns:  uint32(netns),
@@ -162,7 +163,7 @@ func TestSocketEnricherBind(t *testing.T) {
 						Task:    stringToSlice("socketenricher."),
 					},
 				}
-			}),
+			},
 		},
 	} {
 		test := test
@@ -179,56 +180,84 @@ func TestSocketEnricherBind(t *testing.T) {
 			t.Cleanup(tracer.Close)
 
 			var port uint16
+			var fd int
 
 			utilstest.RunWithRunner(t, runner, func() error {
 				var err error
-				port, err = test.generateEvent()
+				port, fd, err = test.generateEvent()
+
+				t.Cleanup(func() {
+					// cleanup only if it has not been already closed
+					if fd != -1 {
+						unix.Close(fd)
+					}
+				})
+
 				return err
 			})
 
-			iter := tracer.SocketsMap().Iterate()
-			var key socketenricherSocketsKey
-			var value socketenricherSocketsValue
-			var entries []socketEnricherMapEntry
-			for iter.Next(&key, &value) {
-				entries = append(entries, socketEnricherMapEntry{
-					Key:   key,
-					Value: value,
-				})
-			}
-			if err := iter.Err(); err != nil {
-				t.Fatal("Cannot iterate over socket enricher map:", err)
+			entries := socketsMapEntries(t, tracer, nil)
+
+			utilstest.ExpectAtLeastOneEvent(test.expectedEvent)(t, runner.Info, port, entries)
+
+			if fd != -1 {
+				unix.Close(fd)
+				// Disable t.Cleanup() above
+				fd = -1
 			}
 
-			if test.validateEvent != nil {
-				test.validateEvent(t, runner.Info, port, entries)
+			expected := test.expectedEvent(runner.Info, port)
+			entries = socketsMapEntries(t, tracer, func(e *socketEnricherMapEntry) bool {
+				return !reflect.DeepEqual(expected, e)
+			})
+			if len(entries) != 0 {
+				t.Fatalf("Entry not cleaned properly: %+v", entries)
 			}
 		})
 	}
 }
 
+func socketsMapEntries(t *testing.T, tracer *SocketEnricher, filter func(*socketEnricherMapEntry) bool) (entries []socketEnricherMapEntry) {
+	iter := tracer.SocketsMap().Iterate()
+	var key socketenricherSocketsKey
+	var value socketenricherSocketsValue
+	for iter.Next(&key, &value) {
+		entry := socketEnricherMapEntry{
+			Key:   key,
+			Value: value,
+		}
+		if filter != nil && filter(&entry) {
+			continue
+		}
+		entries = append(entries, entry)
+	}
+	if err := iter.Err(); err != nil {
+		t.Fatal("Cannot iterate over socket enricher map:", err)
+	}
+	return entries
+}
+
 // bindSocketFn returns a function that creates a socket, binds it and
 // returns the port the socket was bound to.
-func bindSocketFn(ipStr string, domain, typ int, port int) func() (uint16, error) {
-	return func() (uint16, error) {
+func bindSocketFn(ipStr string, domain, typ int, port int) func() (uint16, int, error) {
+	return func() (uint16, int, error) {
 		return bindSocket(ipStr, domain, typ, port)
 	}
 }
 
-func bindSocket(ipStr string, domain, typ int, port int) (uint16, error) {
+func bindSocket(ipStr string, domain, typ int, port int) (uint16, int, error) {
 	return bindSocketWithOpts(ipStr, domain, typ, port, nil)
 }
 
-func bindSocketWithOpts(ipStr string, domain, typ int, port int, opts []sockOpt) (uint16, error) {
+func bindSocketWithOpts(ipStr string, domain, typ int, port int, opts []sockOpt) (uint16, int, error) {
 	fd, err := unix.Socket(domain, typ, 0)
 	if err != nil {
-		return 0, err
+		return 0, -1, err
 	}
-	defer unix.Close(fd)
 
 	for _, opt := range opts {
 		if err := unix.SetsockoptInt(fd, opt.level, opt.opt, opt.value); err != nil {
-			return 0, fmt.Errorf("SetsockoptInt: %w", err)
+			return 0, -1, fmt.Errorf("SetsockoptInt: %w", err)
 		}
 	}
 
@@ -245,23 +274,23 @@ func bindSocketWithOpts(ipStr string, domain, typ int, port int, opts []sockOpt)
 		copy(sa6.Addr[:], ip.To16())
 		sa = sa6
 	} else {
-		return 0, fmt.Errorf("invalid IP address")
+		return 0, -1, fmt.Errorf("invalid IP address")
 	}
 
 	if err := unix.Bind(fd, sa); err != nil {
-		return 0, fmt.Errorf("Bind: %w", err)
+		return 0, -1, fmt.Errorf("Bind: %w", err)
 	}
 
 	sa2, err := unix.Getsockname(fd)
 	if err != nil {
-		return 0, fmt.Errorf("Getsockname: %w", err)
+		return 0, fd, fmt.Errorf("Getsockname: %w", err)
 	}
 
 	if ip.To4() != nil {
-		return uint16(sa2.(*unix.SockaddrInet4).Port), nil
+		return uint16(sa2.(*unix.SockaddrInet4).Port), fd, nil
 	} else if ip.To16() != nil {
-		return uint16(sa2.(*unix.SockaddrInet6).Port), nil
+		return uint16(sa2.(*unix.SockaddrInet6).Port), fd, nil
 	} else {
-		return 0, fmt.Errorf("invalid IP address")
+		return 0, fd, fmt.Errorf("invalid IP address")
 	}
 }
