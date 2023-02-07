@@ -43,8 +43,6 @@ unsigned long long load_word(void *skb,
 
 #define L4_OFF (ETH_HLEN + sizeof(struct iphdr))
 
-typedef __u32 ipv4_addr;
-
 struct sockets_key {
 	__u32 netns;
 	__u16 family;
