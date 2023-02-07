@@ -27,6 +27,7 @@ import (
 	filetop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/top/file"
 	tcptop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/top/tcp"
 	bindsnoop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/bind"
+	byob "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/byob"
 	capabilities "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/capabilities"
 	dns "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/dns"
 	execsnoop "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/trace/exec"
@@ -45,6 +46,7 @@ import (
 func TraceFactories() map[string]gadgets.TraceFactory {
 	return map[string]gadgets.TraceFactory{
 		"audit-seccomp":     auditseccomp.NewFactory(),
+		"byob":              byob.NewFactory(),
 		"bindsnoop":         bindsnoop.NewFactory(),
 		"biolatency":        biolatency.NewFactory(),
 		"biotop":            biotop.NewFactory(),
