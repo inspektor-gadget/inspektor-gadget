@@ -148,7 +148,7 @@ probe_release_entry(struct pt_regs *ctx, struct socket *socket)
 	struct sockets_key socket_key = {0,};
 
 	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
-
+	BPF_CORE_READ_INTO(&socket_key.family, sock, __sk_common.skc_family);
 	socket_key.proto = BPF_CORE_READ(sock, sk_protocol);
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
 
