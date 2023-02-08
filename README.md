@@ -224,7 +224,7 @@ Inspektor Gadget directly. End-users do not need this and can use
 
 ## Contributing
 
-Contributions are welcome, see [CONTRIBUTING](docs/CONTRIBUTING.md).
+Contributions are welcome, see [CONTRIBUTING](docs/devel/CONTRIBUTING.md).
 
 ## Discussions
 
