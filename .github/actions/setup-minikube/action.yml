@@ -1,0 +1,34 @@
+name: "Setup minikube environment"
+description: "Setup minikube environment with different runtimes"
+
+inputs:
+  runtime:
+    description: "The container runtime to use for minikube."
+    required: true
+  multi-node:
+    description: "Whether to run minikube with multiple nodes."
+    required: false
+    default: false
+
+runs:
+  using: "composite"
+  steps:
+    # https://github.com/kubernetes/minikube/issues/12928#issuecomment-1245458044
+    - name: Upgrade docker for ${{ inputs.runtime }}
+      shell: bash
+      if: inputs.runtime == 'cri-o'
+      run: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
+        sudo apt-get update
+        sudo apt-get install docker-ce
+    - name: Start minikube
+      shell: bash
+      run: |
+        make minikube-start-${{ inputs.runtime }}
+      env:
+        # When using multi-node, run the integration tests on two nodes.
+        # As GitHub Runner has only 2 CPU and 7 GB of DRAM, we cannot use a big
+        # number here
+        MINIKUBE_PARAMS: ${{ inputs.multi-node == 'true' && '-n 2' || '' }}
+

@@ -47,6 +47,6 @@ minikube-start: minikube-start-$(CONTAINER_RUNTIME)
 .PHONY: phony_explicit
 minikube-start-%: minikube-install
 	$(MINIKUBE) status -p minikube-$* -f {{.APIServer}} >/dev/null || \
-	$(MINIKUBE) start -p minikube-$* --driver=$(MINIKUBE_DRIVER) --kubernetes-version=$(KUBERNETES_VERSION) --container-runtime=$* --wait=all
+	$(MINIKUBE) start -p minikube-$* --driver=$(MINIKUBE_DRIVER) --kubernetes-version=$(KUBERNETES_VERSION) --container-runtime=$* --wait=all $${MINIKUBE_PARAMS}
 	$(MINIKUBE) profile minikube-$*
 
