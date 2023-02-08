@@ -33,7 +33,7 @@ update_sockets_map(struct sock *sock)
 	struct inet_sock *inet_sock = (struct inet_sock *)sock;
 	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
 	BPF_CORE_READ_INTO(&socket_key.family, sock, __sk_common.skc_family);
-	socket_key.proto = BPF_CORE_READ(sock, sk_protocol);
+	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
 
 	struct sockets_value socket_value = {0,};
@@ -149,7 +149,7 @@ probe_release_entry(struct pt_regs *ctx, struct socket *socket)
 
 	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
 	BPF_CORE_READ_INTO(&socket_key.family, sock, __sk_common.skc_family);
-	socket_key.proto = BPF_CORE_READ(sock, sk_protocol);
+	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
 
 	bpf_map_delete_elem(&sockets, &socket_key);
