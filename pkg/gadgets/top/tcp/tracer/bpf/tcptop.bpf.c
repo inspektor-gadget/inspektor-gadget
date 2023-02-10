@@ -12,7 +12,7 @@
 #define AF_INET		2	/* Internet IP Protocol 	*/
 #define AF_INET6	10	/* IP version 6			*/
 
-const volatile pid_t target_pid = -1;
+const volatile pid_t target_pid = 0;
 const volatile int target_family = -1;
 const volatile bool filter_by_mnt_ns = false;
 
@@ -40,7 +40,7 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 	u32 pid;
 
 	pid = bpf_get_current_pid_tgid() >> 32;
-	if (target_pid != -1 && target_pid != pid)
+	if (target_pid != 0 && target_pid != pid)
 		return 0;
 
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);

@@ -113,7 +113,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	maxRows := top.MaxRowsDefault
 	intervalSeconds := top.IntervalDefault
 	sortBy := types.SortByDefault
-	targetPid := int32(-1)
+	targetPid := int32(0)
 	targetFamily := int32(-1)
 
 	if trace.Spec.Parameters != nil {
