@@ -66,6 +66,21 @@ struct {
 	__uint(value_size, sizeof(u32));
 } mount_ns_filter SEC(".maps");
 
+struct syscall_context {
+	// Syscall id
+	// -1 for unknown syscall
+	u64 nr;
+
+	// We could add more fields for the arguments if desired
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(key_size, sizeof(u64));
+	__uint(value_size, sizeof(struct syscall_context));
+	__uint(max_entries, 1024);
+} current_syscall SEC(".maps");
+
 SEC("kprobe/cap_capable")
 int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred, struct user_namespace *targ_ns, int cap, int cap_opt)
 {
@@ -151,8 +166,64 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event.ret = PT_REGS_RC(ctx);
 	event.timestamp = bpf_ktime_get_boot_ns();
 
+	struct syscall_context *sc_ctx;
+	sc_ctx = bpf_map_lookup_elem(&current_syscall, &pid_tgid);
+	if (sc_ctx) {
+		event.syscall = sc_ctx->nr;
+	} else {
+		event.syscall = -1;
+	}
+
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
+	return 0;
+}
+
+/*
+ * Taken from:
+ * https://github.com/seccomp/libseccomp/blob/afbde6ddaec7c58c3b281d43b0b287269ffca9bd/src/syscalls.csv
+ */
+#if defined(__TARGET_ARCH_arm64)
+#define __NR_rt_sigreturn 139
+#define __NR_exit_group 94
+#define __NR_exit 93
+#elif defined(__TARGET_ARCH_x86)
+#define __NR_rt_sigreturn 15
+#define __NR_exit_group 231
+#define __NR_exit 60
+#else
+#error "The trace capabilities gadget is not supported on your architecture."
+#endif
+
+static inline int skip_exit_probe(int nr) {
+	return !!(nr == __NR_exit ||
+		nr == __NR_exit_group ||
+		nr == __NR_rt_sigreturn);
+}
+
+SEC("raw_tracepoint/sys_enter")
+int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
+{
+	u64 pid_tgid = bpf_get_current_pid_tgid();
+	struct pt_regs regs = {};
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+	struct syscall_context sc_ctx = {};
+
+	u64 nr = ctx->args[1];
+	sc_ctx.nr = nr;
+
+	// The sys_exit tracepoint is not called for some syscalls.
+	if (!skip_exit_probe(nr))
+		bpf_map_update_elem(&current_syscall, &pid_tgid, &sc_ctx, BPF_ANY);
+
+	return 0;
+}
+
+SEC("raw_tracepoint/sys_exit")
+int ig_cap_sys_exit(struct bpf_raw_tracepoint_args *ctx)
+{
+	u64 pid_tgid = bpf_get_current_pid_tgid();
+	bpf_map_delete_elem(&current_syscall, &pid_tgid);
 	return 0;
 }
 

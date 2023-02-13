@@ -27,6 +27,7 @@ type capabilitiesCapEvent struct {
 	Uid       uint32
 	CapOpt    int32
 	Ret       int32
+	Syscall   uint64
 	Task      [16]uint8
 }
 
@@ -77,18 +78,21 @@ type capabilitiesSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type capabilitiesProgramSpecs struct {
-	IgTraceCapE *ebpf.ProgramSpec `ebpf:"ig_trace_cap_e"`
-	IgTraceCapX *ebpf.ProgramSpec `ebpf:"ig_trace_cap_x"`
+	IgCapSysEnter *ebpf.ProgramSpec `ebpf:"ig_cap_sys_enter"`
+	IgCapSysExit  *ebpf.ProgramSpec `ebpf:"ig_cap_sys_exit"`
+	IgTraceCapE   *ebpf.ProgramSpec `ebpf:"ig_trace_cap_e"`
+	IgTraceCapX   *ebpf.ProgramSpec `ebpf:"ig_trace_cap_x"`
 }
 
 // capabilitiesMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type capabilitiesMapSpecs struct {
-	Events        *ebpf.MapSpec `ebpf:"events"`
-	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
-	Seen          *ebpf.MapSpec `ebpf:"seen"`
-	Start         *ebpf.MapSpec `ebpf:"start"`
+	CurrentSyscall *ebpf.MapSpec `ebpf:"current_syscall"`
+	Events         *ebpf.MapSpec `ebpf:"events"`
+	MountNsFilter  *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	Seen           *ebpf.MapSpec `ebpf:"seen"`
+	Start          *ebpf.MapSpec `ebpf:"start"`
 }
 
 // capabilitiesObjects contains all objects after they have been loaded into the kernel.
@@ -110,14 +114,16 @@ func (o *capabilitiesObjects) Close() error {
 //
 // It can be passed to loadCapabilitiesObjects or ebpf.CollectionSpec.LoadAndAssign.
 type capabilitiesMaps struct {
-	Events        *ebpf.Map `ebpf:"events"`
-	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
-	Seen          *ebpf.Map `ebpf:"seen"`
-	Start         *ebpf.Map `ebpf:"start"`
+	CurrentSyscall *ebpf.Map `ebpf:"current_syscall"`
+	Events         *ebpf.Map `ebpf:"events"`
+	MountNsFilter  *ebpf.Map `ebpf:"mount_ns_filter"`
+	Seen           *ebpf.Map `ebpf:"seen"`
+	Start          *ebpf.Map `ebpf:"start"`
 }
 
 func (m *capabilitiesMaps) Close() error {
 	return _CapabilitiesClose(
+		m.CurrentSyscall,
 		m.Events,
 		m.MountNsFilter,
 		m.Seen,
@@ -129,12 +135,16 @@ func (m *capabilitiesMaps) Close() error {
 //
 // It can be passed to loadCapabilitiesObjects or ebpf.CollectionSpec.LoadAndAssign.
 type capabilitiesPrograms struct {
-	IgTraceCapE *ebpf.Program `ebpf:"ig_trace_cap_e"`
-	IgTraceCapX *ebpf.Program `ebpf:"ig_trace_cap_x"`
+	IgCapSysEnter *ebpf.Program `ebpf:"ig_cap_sys_enter"`
+	IgCapSysExit  *ebpf.Program `ebpf:"ig_cap_sys_exit"`
+	IgTraceCapE   *ebpf.Program `ebpf:"ig_trace_cap_e"`
+	IgTraceCapX   *ebpf.Program `ebpf:"ig_trace_cap_x"`
 }
 
 func (p *capabilitiesPrograms) Close() error {
 	return _CapabilitiesClose(
+		p.IgCapSysEnter,
+		p.IgCapSysExit,
 		p.IgTraceCapE,
 		p.IgTraceCapX,
 	)

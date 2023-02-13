@@ -36,6 +36,7 @@ type Event struct {
 
 	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
 	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
+	Syscall   string `json:"syscall,omitempty" column:"syscall,template:syscall"`
 	UID       uint32 `json:"uid,omitempty" column:"uid,minWidth:6"`
 	Cap       int    `json:"cap,omitempty" column:"cap,width:3,fixed"`
 	CapName   string `json:"capName,omitempty" column:"capName,width:18,fixed"`
