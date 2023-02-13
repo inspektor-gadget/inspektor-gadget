@@ -76,6 +76,7 @@ var (
 	printOnly           bool
 	quiet               bool
 	debug               bool
+	debugPort           int
 	wait                bool
 	runtimesConfig      commonutils.RuntimesSocketPathConfig
 	nodeSelector        string
@@ -137,6 +138,11 @@ func init() {
 		"debug", "d",
 		false,
 		"show extra debug information")
+	deployCmd.PersistentFlags().IntVarP(
+		&debugPort,
+		"debug-port", "",
+		4040,
+		"port used to remote debug")
 	deployCmd.PersistentFlags().StringVarP(
 		&nodeSelector,
 		"node-selector", "",
@@ -421,6 +427,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					gadgetContainer.Env[i].Value = runtimesConfig.Crio
 				case utils.GadgetEnvironmentDockerSocketpath:
 					gadgetContainer.Env[i].Value = runtimesConfig.Docker
+				case "DEBUG_PORT":
+					gadgetContainer.Env[i].Value = strconv.Itoa(debugPort)
 				}
 			}
 
