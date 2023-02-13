@@ -134,6 +134,15 @@ gadget-%-container:
 	docker buildx build --target main -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
 		-f Dockerfiles/gadget-$*.Dockerfile .
 
+gadget-%-container-debug:
+	if $(ENABLE_BTFGEN) == "true" ; then \
+		./tools/getbtfhub.sh && \
+		$(MAKE) -f Makefile.btfgen BPFTOOL=$(HOME)/btfhub/tools/bin/bpftool.$(uname -m) \
+			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
+	fi
+	docker buildx build --target debug -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
+		--build-arg DEBUG=1 -f Dockerfiles/gadget-$*.Dockerfile .
+
 push-gadget-%-container:
 	docker push $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,)
 
@@ -201,7 +210,12 @@ lint:
 # minikube
 LIVENESS_PROBE ?= true
 .PHONY: minikube-deploy
-minikube-deploy: minikube-start gadget-default-container kubectl-gadget
+minikube-deploy: minikube-start gadget-default-container minikube-deploy-inner
+
+.PHONY: minikube-deploy-debug
+minikube-deploy-debug: minikube-start gadget-default-container-debug minikube-deploy-inner
+
+minikube-deploy-inner: kubectl-gadget
 	@echo "Image on the host:"
 	docker image list --format "table {{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.Size}}" |grep $(CONTAINER_REPO):$(IMAGE_TAG)
 	@echo
