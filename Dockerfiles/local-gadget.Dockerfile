@@ -19,6 +19,5 @@ RUN \
 	fi ; \
 	go build \
 		-ldflags "-X main.version=${VERSION} -extldflags '-static'" \
-		-tags 'withebpf' \
 		-o local-gadget-${GOOS}-${GOARCH} \
 		github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget

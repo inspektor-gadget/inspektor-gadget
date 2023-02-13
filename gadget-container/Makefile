@@ -10,7 +10,6 @@ TARGET_ARCH ?= $(shell go env GOHOSTARCH)
 gadgettracermanager:
 	mkdir -p bin
 	GO111MODULE=on CGO_ENABLED=1 GOOS=linux GOARCH=$(TARGET_ARCH) go build \
-		-tags withebpf \
 		-o bin/gadgettracermanager \
 		./gadgettracermanager/
 

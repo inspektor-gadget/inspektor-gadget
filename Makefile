@@ -111,6 +111,7 @@ kubectl-gadget-%: phony_explicit
 	export GO111MODULE=on CGO_ENABLED=0 && \
 	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
 	go build -ldflags $(LDFLAGS) \
+		-tags withoutebpf \
 		-o kubectl-gadget-$${GOOS}-$${GOARCH} \
 		github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget
 
@@ -164,8 +165,7 @@ gadgets-unit-tests:
 local-gadget-tests:
 	# Compile and execute in separate commands because Go might not be
 	# available in the root environment
-	go test -c ./pkg/local-gadget-manager \
-		-tags withebpf
+	go test -c ./pkg/local-gadget-manager
 	sudo ./local-gadget-manager.test -test.v -root-test $$LOCAL_GADGET_TESTS_PARAMS
 	rm -f ./local-gadget-manager.test
 
