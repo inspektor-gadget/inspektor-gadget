@@ -171,6 +171,9 @@ spec:
             value: "/run/docker.sock"
           - name: HOST_ROOT
             value: "/host"
+          # This port is used to remote debug through delve.
+          - name: DEBUG_PORT
+            value: "4040"
         securityContext:
           capabilities:
             add:
