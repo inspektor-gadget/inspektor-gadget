@@ -61,12 +61,12 @@ Let's use Inspektor Gadget to watch the capability checks:
 
 ```bash
 $ kubectl gadget trace capabilities --selector name=set-priority
-NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             UID     CAP  CAPNAME      AUDIT  VERDICT
-minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110385  nice             0       23   SYS_NICE     1      Deny
-minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110592  nice             0       23   SYS_NICE     1      Deny
-minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110764  nice             0       23   SYS_NICE     1      Deny
-minikube         default          set-priority-5646554d9d-pk4gg  set-priority     110965  nice             0       23   SYS_NICE     1      Deny
-minikube         default          set-priority-5646554d9d-pk4gg  set-priority     111134  nice             0       23   SYS_NICE     1      Deny
+NODE             NAMESPACE  POD                     CONTAINER     PID      COMM  SYSCALL      UID  CAP CAPNAME   AUDIT  VERDICT
+minikube-docker  default    set-priorit…495c8-t88x8 set-priority  2711127  nice  setpriority  0    23  SYS_NICE  1      Deny
+minikube-docker  default    set-priorit…495c8-t88x8 set-priority  2711260  nice  setpriority  0    23  SYS_NICE  1      Deny
+minikube-docker  default    set-priorit…495c8-t88x8 set-priority  2711457  nice  setpriority  0    23  SYS_NICE  1      Deny
+minikube-docker  default    set-priorit…495c8-t88x8 set-priority  2711619  nice  setpriority  0    23  SYS_NICE  1      Deny
+minikube-docker  default    set-priorit…495c8-t88x8 set-priority  2711815  nice  setpriority  0    23  SYS_NICE  1      Deny
 ^C
 Terminating...
 ```
@@ -79,6 +79,7 @@ did not use them:
 
 The meaning of the columns is:
 
+* `SYSCALL`: the system call that caused the capability to be exercised
 * `CAP`: capability number.
 * `CAPNAME`: capability name in a human friendly format.
 * `AUDIT`: whether the kernel should audit the security request or not.
@@ -112,40 +113,6 @@ spec:
 
 ```
 
-At this moment we have to make sure that we are allowed to grant `SYS_NICE` for new pods in the
-restricted pod security policy.
-
-```bash
-$ kubectl get psp
-NAME                       PRIV    CAPS               SELINUX    RUNASUSER   FSGROUP     SUPGROUP    READONLYROOTFS   VOLUMES
-nginx-ingress-controller   false   NET_BIND_SERVICE   RunAsAny   MustRunAs   MustRunAs   MustRunAs   false            configMap,secret
-privileged                 true    *                  RunAsAny   RunAsAny    RunAsAny    RunAsAny    false            *
-restricted                 false                      RunAsAny   MustRunAs   MustRunAs   MustRunAs   false            configMap, …
-```
-
-For privileged pods adding `SYS_NICE` would work, but not for the default pods.
-We can change that by editing the policy.
-
-```bash
-$ kubectl edit psp restricted  # opens the editor to add the below two lines
-spec:
-  allowPrivilegeEscalation: false
-  allowedCapabilities:  # <- add these two
-  - SYS_NICE            #    lines here
-  …
-
-```
-
-After saving we can verify that we are allowed to add new pods which grant `SYS_NICE`.
-
-```bash
-$ kubectl get psp
-NAME                       PRIV    CAPS               SELINUX    RUNASUSER   FSGROUP     SUPGROUP    READONLYROOTFS   VOLUMES
-nginx-ingress-controller   false   NET_BIND_SERVICE   RunAsAny   MustRunAs   MustRunAs   MustRunAs   false            configMap,secret
-privileged                 true    *                  RunAsAny   RunAsAny    RunAsAny    RunAsAny    false            *
-restricted                 false   SYS_NICE           RunAsAny   MustRunAs   MustRunAs   MustRunAs   false            configMap, …
-```
-
 Let's verify that our locked-down version works.
 
 ```bash
@@ -163,14 +130,12 @@ We can see the same checks but this time with the `Allow` verdict:
 
 ```bash
 $ kubectl gadget trace capabilities --selector name=set-priority
-NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             UID     CAP  CAPNAME      AUDIT  VERDICT
-minikube         default          set-priority-768db6dcf7-rp8gd  set-priority     10158   nice             0       23   SYS_NICE     1      Allow
-minikube         default          set-priority-768db6dcf7-rp8gd  set-priority     10365   nice             0       23   SYS_NICE     1      Allow
+NODE             NAMESPACE  POD                     CONTAINER     PID      COMM  SYSCALL      UID  CAP CAPNAME   AUDIT  VERDICT
+minikube-docker  default    set-priorit…66dff-nm5pt set-priority  2718069  nice  setpriority  0    23  SYS_NICE  1      Allow
+minikube-docker  default    set-priorit…66dff-nm5pt set-priority  2718291  nice  setpriority  0    23  SYS_NICE  1      Allow
+^C
+Terminating...
 ```
-
-You may include a kernel call stack for more context with `--print-stack`.  (If
-we see additional `SYS_ADMIN` checks we can ignore them since only priviledged
-pods have this capability and it's not a default capability.)
 
 You can now delete the pod you created:
 ```
@@ -179,4 +144,36 @@ $ kubectl delete -f docs/examples/app-set-priority-locked-down.yaml
 
 ### With local-gadget
 
-TODO
+Start local-gadget:
+
+```bash
+$ local-gadget trace capabilities -r docker -c test
+CONTAINER  PID      COMM     SYSCALL  UID  CAP CAPNAME      AUDIT  VERDICT
+```
+
+Start the test container exercising the capabilities:
+```bash
+$ docker run -ti --rm --name=test --privileged busybox
+/ # touch /aaa ; chown 1:1 /aaa ; chmod 400 /aaa
+/ # chroot /
+/ # mkdir /mnt ; mount -t tmpfs tmpfs /mnt
+/ # export PPID=$$;/bin/unshare -i sh -c "/bin/nsenter -i -t $PPID echo OK"
+OK
+```
+
+Observe the resulting trace:
+
+```
+CONTAINER  PID      COMM     SYSCALL  UID  CAP CAPNAME      AUDIT  VERDICT
+test       2609137  chown    chown    0    0   CHOWN        1      Allow
+test       2609137  chown    chown    0    0   CHOWN        1      Allow
+test       2609138  chmod    chmod    0    3   FOWNER       1      Allow
+test       2609138  chmod    chmod    0    4   FSETID       1      Allow
+test       2609138  chmod    chmod    0    4   FSETID       1      Allow
+test       2609694  chroot   chroot   0    18  SYS_CHROOT   1      Allow
+test       2610364  mount    mount    0    21  SYS_ADMIN    1      Allow
+test       2610364  mount    mount    0    21  SYS_ADMIN    1      Allow
+test       2633270  unshare  unshare  0    21  SYS_ADMIN    1      Allow
+test       2633270  nsenter  setns    0    21  SYS_ADMIN    1      Allow
+test       2633270  nsenter  setns    0    21  SYS_ADMIN    1      Allow
+```

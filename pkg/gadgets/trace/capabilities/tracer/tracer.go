@@ -27,6 +27,8 @@ import (
 	"github.com/cilium/ebpf/features"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+	libseccomp "github.com/seccomp/libseccomp-golang"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -45,6 +47,8 @@ type Tracer struct {
 	objs                 capabilitiesObjects
 	capEnterLink         link.Link
 	capExitLink          link.Link
+	tpSysEnter           link.Link
+	tpSysExit            link.Link
 	reader               *perf.Reader
 	enricher             gadgets.DataEnricherByMntNs
 	eventCallback        func(*types.Event)
@@ -115,6 +119,8 @@ func NewTracer(c *Config, enricher gadgets.DataEnricherByMntNs,
 func (t *Tracer) Stop() {
 	t.capEnterLink = gadgets.CloseLink(t.capEnterLink)
 	t.capExitLink = gadgets.CloseLink(t.capExitLink)
+	t.tpSysEnter = gadgets.CloseLink(t.tpSysEnter)
+	t.tpSysExit = gadgets.CloseLink(t.tpSysExit)
 
 	if t.reader != nil {
 		t.reader.Close()
@@ -163,6 +169,24 @@ func (t *Tracer) start() error {
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
+
+	tp, err := link.AttachRawTracepoint(link.RawTracepointOptions{
+		Name:    "sys_enter",
+		Program: t.objs.IgCapSysEnter,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to open tracepoint: %w", err)
+	}
+	t.tpSysEnter = tp
+
+	tp, err = link.AttachRawTracepoint(link.RawTracepointOptions{
+		Name:    "sys_exit",
+		Program: t.objs.IgCapSysExit,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to open tracepoint: %w", err)
+	}
+	t.tpSysEnter = tp
 
 	kprobe, err := link.Kprobe("cap_capable", t.objs.IgTraceCapE, nil)
 	if err != nil {
@@ -247,6 +271,12 @@ func (t *Tracer) run() {
 			verdict = "Allow"
 		}
 
+		syscall := ""
+		call1 := libseccomp.ScmpSyscall(bpfEvent.Syscall)
+		if name, err := call1.GetName(); err == nil {
+			syscall = name
+		}
+
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type:      eventtypes.NORMAL,
@@ -259,6 +289,7 @@ func (t *Tracer) run() {
 			Audit:     audit,
 			InsetID:   insetID,
 			Comm:      gadgets.FromCString(bpfEvent.Task[:]),
+			Syscall:   syscall,
 			CapName:   capabilityName,
 			Verdict:   verdict,
 		}

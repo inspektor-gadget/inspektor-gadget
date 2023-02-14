@@ -16,6 +16,7 @@ struct cap_event {
 	__u32	uid;
 	int	cap_opt;
 	int	ret;
+	__u64	syscall;
 	__u8	task[TASK_COMM_LEN];
 };
 

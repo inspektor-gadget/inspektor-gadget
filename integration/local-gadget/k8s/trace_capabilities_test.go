@@ -36,6 +36,7 @@ func TestTraceCapabilities(t *testing.T) {
 				Comm:    "nice",
 				CapName: "SYS_NICE",
 				Cap:     23,
+				Syscall: "setpriority",
 				Audit:   1,
 				Verdict: "Deny",
 			}
