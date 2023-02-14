@@ -41,7 +41,7 @@ func newTCPCmd() *cobra.Command {
 			return commonutils.WrapInErrParserCreate(err)
 		}
 
-		targetPid := int32(-1)
+		targetPid := int32(0)
 		if flags.FilteredPid != 0 {
 			targetPid = int32(flags.FilteredPid)
 		}
