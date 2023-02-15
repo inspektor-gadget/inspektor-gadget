@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/link"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -57,20 +56,7 @@ func (se *SocketEnricher) start() error {
 		return fmt.Errorf("failed to load asset: %w", err)
 	}
 
-	kernelSpec, err := btf.LoadKernelSpec()
-	if err != nil {
-		return fmt.Errorf("failed to load kernel spec: %w", err)
-	}
-	opts := &ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			// Optimization: only one copy of kernelSpec necessary
-			// for all kprobes.
-			// TODO: remove this once cilium/ebpf#920 is merged
-			//       https://github.com/cilium/ebpf/pull/920
-			KernelTypes: kernelSpec,
-		},
-	}
-	if err := spec.LoadAndAssign(&se.objs, opts); err != nil {
+	if err := spec.LoadAndAssign(&se.objs, nil); err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
