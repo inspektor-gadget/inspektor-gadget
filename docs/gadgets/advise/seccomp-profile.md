@@ -264,7 +264,10 @@ namespace "seccomp-demo" deleted
 
 ### With local-gadget
 
-TODO!
+The following animation shows a real world example of generating a seccomp
+profile for a `nginx` container:
+
+![Screencast of using advise seccomp-profile to generate a seccomp profile for an nginx container](local_gadget_seccomp_profile.gif)
 
 ### Troubleshooting
 
