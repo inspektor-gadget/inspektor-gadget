@@ -142,11 +142,6 @@ func printEvents(
 	}
 
 	for _, event := range newEvents {
-		// for now, ignore events on the host netns
-		if event.Container == "" {
-			continue
-		}
-
 		switch commonFlags.OutputMode {
 		case commonutils.OutputModeJSON:
 			b, err := json.Marshal(event)

@@ -195,10 +195,7 @@ func (t *Trace) update(trace *gadgetv1alpha1.Trace) bool {
 	t.enricher.Enrich(newEvents)
 
 	for _, event := range newEvents {
-		// for now, ignore events on the host netns
-		if event.Pod != "" {
-			t.publishEvent(trace, event)
-		}
+		t.publishEvent(trace, event)
 	}
 	return true
 }
