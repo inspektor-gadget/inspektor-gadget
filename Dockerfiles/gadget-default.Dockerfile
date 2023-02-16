@@ -20,9 +20,9 @@ RUN set -ex; \
 	echo 'deb http://deb.debian.org/debian bullseye-backports main' >> /etc/apt/sources.list && \
 	dpkg --add-architecture ${TARGETARCH} && \
 	apt-get update && \
-	apt-get install -y golang-1.18 libelf-dev:${TARGETARCH} \
+	apt-get install -y golang-1.19 libelf-dev:${TARGETARCH} \
 		pkg-config:${TARGETARCH} libseccomp-dev:${TARGETARCH} && \
-	ln -s /usr/lib/go-1.18/bin/go /bin/go && \
+	ln -s /usr/lib/go-1.19/bin/go /bin/go && \
 	if [ ${TARGETARCH} = 'arm64' ]; then \
 		apt-get install -y gcc-aarch64-linux-gnu; \
 	fi

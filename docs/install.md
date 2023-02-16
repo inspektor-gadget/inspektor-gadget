@@ -57,7 +57,7 @@ $ kubectl gadget version
 ### Compile from source
 
 To build Inspektor Gadget from source, you'll need to have a Golang version
-1.18 or higher installed.
+1.19 or higher installed.
 
 ```bash
 $ git clone https://github.com/inspektor-gadget/inspektor-gadget.git
