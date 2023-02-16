@@ -135,32 +135,19 @@ Gadget in some platforms.
 
 #### Minikube
 
-You should create the minikube cluster in different ways according to the gadget
-you want to use. If you want to use traceloop you should use the VM driver.
-Otherwise the docker driver is the recommented option.
+You can deploy Inspektor Gadget in `minikube`.
+We recommend to use the `docker` driver:
 
-
-##### Using a VM driver
-
-This option uses a VM driver (like Virtualbox or kvm2) and a custom minikube
-image that contains a more recent kernel version (5.4.40) and some features
-enabled to make eBPF programs work there. More details are available
-[here](https://github.com/kinvolk/cloud-native-bpf-workshop/blob/master/minikube.md#our-branch).
-
-```bash
-$ wget https://cloud-native-bpf-workshop-public.s3.eu-central-1.amazonaws.com/minikube.iso
-$ minikube start --driver=kvm2 --iso-url=file://$(pwd)/minikube.iso
-
-# Deploy Inspektor Gadget in the cluster as described above
-```
-
-##### Using the docker driver
-
-This option uses docker and hence the kernel of the host.
 
 ```bash
 $ minikube start --driver=docker
+# Deploy Inspektor Gadget in the cluster as described above
+```
 
+But can also use the `kvm` one:
+
+```bash
+$ minikube start --driver=kvm
 # Deploy Inspektor Gadget in the cluster as described above
 ```
 
