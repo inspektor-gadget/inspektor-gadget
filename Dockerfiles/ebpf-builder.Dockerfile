@@ -1,4 +1,4 @@
-FROM golang:1.18
+FROM golang:1.19
 # clang and llvm are needed by bpf2go.
 # gcc-multilib is needed for <asm/types.h>.
 # libelf-dev is needed to compile libbpf.
