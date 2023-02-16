@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,6 +37,8 @@ const (
 	comparisonTypeGte
 )
 
+type FilterSpecs[T any] []*FilterSpec[T]
+
 type FilterSpec[T any] struct {
 	value          string
 	refValue       any
@@ -70,8 +72,7 @@ func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T])
 			return value, fmt.Errorf("tried to compare %q to uint column %q", fs.value, column.Name)
 		}
 		value = reflect.ValueOf(number).Convert(column.Type())
-	case reflect.Float32,
-		reflect.Float64:
+	case reflect.Float32, reflect.Float64:
 		number, err := strconv.ParseFloat(fs.value, 64)
 		if err != nil {
 			return value, fmt.Errorf("tried to compare %q to float column %q", fs.value, column.Name)
@@ -170,6 +171,19 @@ func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*Filt
 	return fs, nil
 }
 
+// GetFiltersFromStrings prepares filters to FilterSpecs that can be used to match on several filters at once
+func GetFiltersFromStrings[T any](cols columns.ColumnMap[T], filters []string) (*FilterSpecs[T], error) {
+	filterSpecs := make(FilterSpecs[T], 0, len(filters))
+	for _, filter := range filters {
+		filterSpec, err := GetFilterFromString(cols, filter)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filter %q: %w", filter, err)
+		}
+		filterSpecs = append(filterSpecs, filterSpec)
+	}
+	return &filterSpecs, nil
+}
+
 func (fs *FilterSpec[T]) getComparisonFunc() func(*T) bool {
 	offset := fs.column.GetOffset()
 
@@ -246,6 +260,26 @@ func getComparisonFuncForComparisonType[OT constraints.Ordered, T any](ct compar
 			return false
 		}
 	}
+}
+
+// MatchAll matches a single entry against the FilterSpecs and returns true if all filters match
+func (fs *FilterSpecs[T]) MatchAll(entry *T) bool {
+	for _, filterSpec := range *fs {
+		if !filterSpec.Match(entry) {
+			return false
+		}
+	}
+	return true
+}
+
+// MatchAny matches a single entry against the FilterSpecs and returns true if any filter matches
+func (fs *FilterSpecs[T]) MatchAny(entry *T) bool {
+	for _, filterSpec := range *fs {
+		if filterSpec.Match(entry) {
+			return true
+		}
+	}
+	return false
 }
 
 // Match matches a single entry against the FilterSpec and returns true if it matches
