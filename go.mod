@@ -21,8 +21,8 @@ require (
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
-	golang.org/x/sys v0.2.0
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
+	golang.org/x/sys v0.5.0
+	golang.org/x/term v0.5.0
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.0
 	k8s.io/api v0.25.4
@@ -43,7 +43,6 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.1
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v20.10.20+incompatible
-	github.com/prometheus/client_golang v1.12.2
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 )
@@ -117,6 +116,7 @@ require (
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/prometheus/client_golang v1.12.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
@@ -134,9 +134,9 @@ require (
 	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
 	golang.org/x/tools v0.1.12 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
