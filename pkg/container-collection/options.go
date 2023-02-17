@@ -25,7 +25,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -468,15 +467,23 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 					labels[k] = v
 				}
 
-				containers := append([]v1.Container{}, pod.Spec.InitContainers...)
-				containers = append(containers, pod.Spec.Containers...)
-
-				for _, c := range containers {
+				containerNames := []string{}
+				for _, c := range pod.Spec.Containers {
+					containerNames = append(containerNames, c.Name)
+				}
+				for _, c := range pod.Spec.InitContainers {
+					containerNames = append(containerNames, c.Name)
+				}
+				for _, c := range pod.Spec.EphemeralContainers {
+					containerNames = append(containerNames, c.Name)
+				}
+			outerLoop:
+				for _, name := range containerNames {
 					for _, m := range container.OciConfig.Mounts {
-						pattern := fmt.Sprintf("pods/%s/containers/%s/", uid, c.Name)
+						pattern := fmt.Sprintf("pods/%s/containers/%s/", uid, name)
 						if strings.Contains(m.Source, pattern) {
-							containerName = c.Name
-							break
+							containerName = name
+							break outerLoop
 						}
 					}
 				}

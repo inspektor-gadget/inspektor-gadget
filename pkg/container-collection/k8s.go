@@ -84,6 +84,7 @@ func (k *K8sClient) GetNonRunningContainers(pod *v1.Pod) []string {
 
 	containerStatuses := append([]v1.ContainerStatus{}, pod.Status.InitContainerStatuses...)
 	containerStatuses = append(containerStatuses, pod.Status.ContainerStatuses...)
+	containerStatuses = append(containerStatuses, pod.Status.EphemeralContainerStatuses...)
 
 	for _, s := range containerStatuses {
 		if s.ContainerID != "" && s.State.Running == nil {
@@ -106,6 +107,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 
 	containerStatuses := append([]v1.ContainerStatus{}, pod.Status.InitContainerStatuses...)
 	containerStatuses = append(containerStatuses, pod.Status.ContainerStatuses...)
+	containerStatuses = append(containerStatuses, pod.Status.EphemeralContainerStatuses...)
 
 	for _, s := range containerStatuses {
 		if s.ContainerID == "" || s.State.Running == nil {
