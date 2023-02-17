@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -465,6 +466,11 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 	err = n.AddWatchContainerTermination(containerID, containerPID)
 	if err != nil {
 		log.Errorf("runc fanotify: container %s with pid %d terminated before we could watch it: %s", containerID, containerPID, err)
+		return true, nil
+	}
+
+	if containerPID > math.MaxUint32 {
+		log.Errorf("Container PID (%d) exceeds math.MaxUint32 (%d)", containerPID, math.MaxUint32)
 		return true, nil
 	}
 
