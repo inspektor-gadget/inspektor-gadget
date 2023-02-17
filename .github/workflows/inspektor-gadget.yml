@@ -345,6 +345,31 @@ jobs:
         name: ig-linux-${{ matrix.platform }}-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/ig-linux-${{ matrix.platform }}.tar.gz
 
+  build-gadget-container-deps:
+    # We only build this dependencies to check if they do not contain CWE.
+    name: Build gadget-container-deps
+    # level: 0
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+      id: go
+    - uses: github/codeql-action/init@v2
+      with:
+        tools: latest
+        languages: go
+    - name: Build gadget-container-deps
+      run: |
+        make -C gadget-container
+    - name: CWE checks for gadget-container-deps
+      uses: github/codeql-action/analyze@v2
+
   build-gadget-container-images:
     name: gadget img
     # level: 1
