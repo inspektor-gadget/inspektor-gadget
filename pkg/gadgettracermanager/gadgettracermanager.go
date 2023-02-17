@@ -203,20 +203,20 @@ func (g *GadgetTracerManager) DumpState(_ context.Context, req *pb.DumpStateRequ
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	out := "List of containers:\n"
+	containers := "List of containers:\n"
 	g.ContainerRange(func(c *containercollection.Container) {
-		out += fmt.Sprintf("%+v\n", c)
+		containers += fmt.Sprintf("%+v\n", c)
 	})
 
-	out += "List of tracers:\n"
-	out += g.tracerCollection.TracerDump()
+	traces := "List of tracers:\n"
+	traces += g.tracerCollection.TracerDump()
 
-	out += "List of stacks:\n"
+	stacks := "List of stacks:\n"
 	buf := make([]byte, 1<<20)
 	stacklen := runtime.Stack(buf, true)
-	out += fmt.Sprintf("%s\n", buf[:stacklen])
+	stacks += fmt.Sprintf("%s\n", buf[:stacklen])
 
-	return &pb.Dump{State: out}, nil
+	return &pb.Dump{Containers: containers, Traces: traces, Stacks: stacks}, nil
 }
 
 func NewServer(conf *Conf) (*GadgetTracerManager, error) {

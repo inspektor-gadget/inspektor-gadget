@@ -43,9 +43,9 @@ import (
 var (
 	controller          bool
 	serve               bool
-	dump                bool
 	liveness            bool
 	fallbackPodInformer bool
+	dump                string
 	hookMode            string
 	socketfile          string
 	method              string
@@ -76,7 +76,8 @@ func init() {
 	flag.StringVar(&containername, "containername", "", "container name to use in add-container")
 	flag.UintVar(&containerPid, "containerpid", 0, "container PID to use in add-container")
 
-	flag.BoolVar(&dump, "dump", false, "Dump state for debugging")
+	flag.StringVar(&dump, "dump", "", "Dump state for debugging specifying the items to print: containers, traces, stacks, all")
+
 	flag.BoolVar(&liveness, "liveness", false, "Execute as client and perform liveness probe")
 	flag.BoolVar(&fallbackPodInformer, "fallback-podinformer", true, "Use pod informer as a fallback for main hook")
 }
@@ -108,7 +109,7 @@ func main() {
 	var ctx context.Context
 	var cancel context.CancelFunc
 	var conn *grpc.ClientConn
-	if liveness || dump || method != "" {
+	if liveness || dump != "" || method != "" {
 		var err error
 		conn, err = grpc.Dial("unix://"+socketfile, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
@@ -184,13 +185,37 @@ func main() {
 		os.Exit(1)
 	}
 
-	if dump {
+	if dump != "" {
 		out, err := client.DumpState(ctx, &pb.DumpStateRequest{})
 		if err != nil {
 			log.Fatalf("%v", err)
 		}
-		fmt.Println(out.State)
-		os.Exit(0)
+		switch dump {
+		case "":
+			// break
+
+		case "containers":
+			fmt.Println(out.Containers)
+			os.Exit(0)
+
+		case "traces":
+			fmt.Println(out.Traces)
+			os.Exit(0)
+
+		case "stacks":
+			fmt.Println(out.Stacks)
+			os.Exit(0)
+
+		case "all":
+			fmt.Println(out.Containers, out.Traces, out.Stacks)
+			os.Exit(0)
+
+		default:
+			fmt.Printf("invalid method %q\n", method)
+			flag.PrintDefaults()
+			os.Exit(1)
+		}
+
 	}
 
 	if liveness {
