@@ -81,6 +81,15 @@ jobs:
             exit 1
           fi
 
+  dependencies-checks:
+    name: Dependencies checks
+    # level: 0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check if added dependencies do not contain CVE.
+        uses: actions/dependency-review-action@v3
+
   build-kubectl-gadget:
     name: Build kubectl-gadget
     # level: 0
