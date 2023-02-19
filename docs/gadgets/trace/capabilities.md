@@ -80,9 +80,9 @@ did not use them:
 The meaning of the columns is:
 
 * `SYSCALL`: the system call that caused the capability to be exercised
-* `CAP`: capability number.
-* `CAPNAME`: capability name in a human friendly format.
-* `AUDIT`: whether the kernel should audit the security request or not.
+* `CAP`: capability number
+* `CAPNAME`: capability name in a human friendly format
+* `AUDIT`: whether the kernel should audit the security request or not
 * `VERDICT`: whether the capability was present (allow) or not (deny)
 
 ```bash
@@ -140,6 +140,134 @@ Terminating...
 You can now delete the pod you created:
 ```
 $ kubectl delete -f docs/examples/app-set-priority-locked-down.yaml
+```
+
+#### Interpreting advanced columns
+
+Some columns are not displayed by default:
+* `caps`: the effective capability bitfield of the process
+* `capsnames`: same as caps in a human friendly format
+* `currentuserns`: the user namespace of the process
+* `targetuserns`: the user namespace that the kernel used to test the
+  capability.
+
+They can be useful to understand advanced usage of capabilities.
+Let's see two examples.
+
+```
+$ kubectl run -ti --rm --restart=Never \
+    --image busybox --privileged testcaps -- \
+    chroot /
+```
+
+```
+$ kubectl gadget trace capabilities \
+    -o custom-columns=comm,syscall,capName,verdict,targetuserns,currentuserns,caps,capsnames
+COMM             SYSCALL                      CAPNAME            VERDICT TARGETUSERNS        CURRENTUSERNS       CAPS                 CAPSNAMES
+chroot           chroot                       SYS_CHROOT         Allow   4026531837          4026531837          3fffffffff           chown,dac_override,dac_…
+```
+
+In this example, targetuserns and currentuserns are the same. This is
+necessarily the case for chroot because the kernel tests the capability
+in this way:
+```
+if (!ns_capable(current_user_ns(), CAP_SYS_CHROOT))
+```
+
+The effective capability bitfield is "3fffffffff".
+This can be decoded in this way:
+```shell
+$ capsh --decode=3fffffffff
+0x0000003fffffffff=cap_chown,cap_dac_override,cap_dac_read_search,cap_fowner,cap_fsetid,cap_kill,cap_setgid,cap_setuid,cap_setpcap,cap_linux_immutable,cap_net_bind_service,cap_net_broadcast,cap_net_admin,cap_net_raw,cap_ipc_lock,cap_ipc_owner,cap_sys_module,cap_sys_rawio,cap_sys_chroot,cap_sys_ptrace,cap_sys_pacct,cap_sys_admin,cap_sys_boot,cap_sys_nice,cap_sys_resource,cap_sys_time,cap_sys_tty_config,cap_mknod,cap_lease,cap_audit_write,cap_audit_control,cap_setfcap,cap_mac_override,cap_mac_admin,cap_syslog,cap_wake_alarm,cap_block_suspend,cap_audit_read
+```
+
+The effective capability set includes `CAP_SYS_CHROOT` and targetuserns and currentuserns are the same.
+Hence the verdict "Allow".
+
+It is also possible to see the list of capabilities in json:
+
+```
+$ kubectl gadget trace capabilities -o json | jq .
+{
+  "node": "minikube-docker",
+  "namespace": "default",
+  "pod": "testcaps",
+  "container": "testcaps",
+  "timestamp": 1677087968732237745,
+  "type": "normal",
+  "mountnsid": 4026533307,
+  "pid": 3277678,
+  "comm": "chroot",
+  "syscall": "chroot",
+  "cap": 18,
+  "capName": "SYS_CHROOT",
+  "audit": 1,
+  "verdict": "Allow",
+  "insetid": false,
+  "targetuserns": 4026531837,
+  "currentuserns": 4026531837,
+  "caps": 274877906943,
+  "capsNames": [
+    ...
+    "sys_rawio",
+    "sys_chroot",
+    "sys_ptrace",
+    ...
+  ]
+}
+```
+
+In the next example, we will create a new user namespace but without creating a new mount namespace.
+We will then attempt to create a new mount:
+
+```
+$ kubectl run -ti --rm --restart=Never \
+    --image busybox --privileged testcaps -- \
+    /bin/unshare -Urf /bin/mount -t tmpfs tmpfs /tmp
+```
+
+Let's have a look at the generated logs for the mount process:
+
+```
+$ kubectl gadget trace capabilities -o json | jq .
+{
+  "node": "minikube-docker",
+  "namespace": "default",
+  "pod": "testcaps",
+  "container": "testcaps",
+  "timestamp": 1677088257998618652,
+  "type": "normal",
+  "mountnsid": 4026533307,
+  "pid": 3287538,
+  "comm": "mount",
+  "syscall": "mount",
+  "cap": 21,
+  "capName": "SYS_ADMIN",
+  "audit": 1,
+  "verdict": "Deny",
+  "insetid": false,
+  "targetuserns": 4026531837,
+  "currentuserns": 4026533310,
+  "caps": 2199023255551,
+  "capsNames": [
+    ...
+    "sys_pacct",
+    "sys_admin",
+    "sys_boot",
+    ...
+  ]
+}
+```
+
+The capability set includes `CAP_SYS_ADMIN`.
+However, the verdict is "Deny".
+
+This can be explained by the interaction with user namespaces.
+The target and current user namespaces are different. This makes a difference
+because the kernel tests the capability with regard to the user
+namespaces owning the mount namespace, that is the parent user namespace:
+```
+if (!ns_capable(mnt_ns->user_ns, CAP_SYS_ADMIN) || ...
 ```
 
 ### With local-gadget

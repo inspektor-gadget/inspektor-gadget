@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -35,15 +36,19 @@ type Event struct {
 	eventtypes.Event
 	eventtypes.WithMountNsID
 
-	Pid     uint32 `json:"pid,omitempty" column:"pid,template:pid"`
-	Comm    string `json:"comm,omitempty" column:"comm,template:comm"`
-	Syscall string `json:"syscall,omitempty" column:"syscall,template:syscall"`
-	UID     uint32 `json:"uid,omitempty" column:"uid,minWidth:6"`
-	Cap     int    `json:"cap,omitempty" column:"cap,width:3,fixed"`
-	CapName string `json:"capName,omitempty" column:"capName,width:18,fixed"`
-	Audit   int    `json:"audit,omitempty" column:"audit,minWidth:5"`
-	Verdict string `json:"verdict,omitempty" column:"verdict,width:7,fixed"`
-	InsetID *bool  `json:"insetid,omitempty" column:"insetid,width:7,fixed,hide"`
+	Pid           uint32   `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm          string   `json:"comm,omitempty" column:"comm,template:comm"`
+	Syscall       string   `json:"syscall,omitempty" column:"syscall,template:syscall"`
+	UID           uint32   `json:"uid,omitempty" column:"uid,minWidth:6"`
+	Cap           int      `json:"cap,omitempty" column:"cap,width:3,fixed"`
+	CapName       string   `json:"capName,omitempty" column:"capName,width:18,fixed"`
+	Audit         int      `json:"audit,omitempty" column:"audit,minWidth:5"`
+	Verdict       string   `json:"verdict,omitempty" column:"verdict,width:7,fixed"`
+	InsetID       *bool    `json:"insetid,omitempty" column:"insetid,width:7,fixed,hide"`
+	TargetUserNs  uint64   `json:"targetuserns,omitempty" column:"targetuserns,template:ns"`
+	CurrentUserNs uint64   `json:"currentuserns,omitempty" column:"currentuserns,template:ns"`
+	Caps          uint64   `json:"caps,omitempty" column:"caps,hide"`
+	CapsNames     []string `json:"capsNames,omitempty" column:"capsnames,hide"`
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -57,6 +62,13 @@ func GetColumns() *columns.Columns[Event] {
 		return fmt.Sprintf("%t", *event.InsetID)
 	})
 
+	cols.MustSetExtractor("caps", func(event *Event) string {
+		return fmt.Sprintf("%x", event.Caps)
+	})
+
+	cols.MustSetExtractor("capsnames", func(event *Event) string {
+		return strings.Join(event.CapsNames, ",")
+	})
 	return cols
 }
 

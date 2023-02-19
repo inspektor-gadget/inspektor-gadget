@@ -45,6 +45,7 @@ type RunnerInfo struct {
 	Comm      string
 	UID       int
 	MountNsID uint64
+	UserNsID  uint64
 }
 
 // Runner is a helper type to execute tests in different conditions. It
@@ -125,12 +126,19 @@ func (r *Runner) runLoop() {
 		return
 	}
 
+	userNsID, err := getUserNamespaceInode()
+	if err != nil {
+		r.replies <- fmt.Errorf("getting user ns ID: %w", err)
+		return
+	}
+
 	r.Info = &RunnerInfo{
 		Pid:       os.Getpid(),
 		Tid:       unix.Gettid(),
 		Comm:      filepath.Base(comm),
 		UID:       r.config.UID,
 		MountNsID: mountnsid,
+		UserNsID:  userNsID,
 	}
 
 	// Indicate it's ready to process tasks
@@ -148,11 +156,11 @@ func createMntNamespace() (uint64, error) {
 	return getMntNamespaceInode()
 }
 
-func getMntNamespaceInode() (uint64, error) {
+func getNsInode(kind string) (uint64, error) {
 	pid := os.Getpid()
 	tid := unix.Gettid()
 
-	fileinfo, err := os.Stat(fmt.Sprintf("/proc/%d/task/%d/ns/mnt", pid, tid))
+	fileinfo, err := os.Stat(fmt.Sprintf("/proc/%d/task/%d/ns/%s", pid, tid, kind))
 	if err != nil {
 		return 0, err
 	}
@@ -161,4 +169,12 @@ func getMntNamespaceInode() (uint64, error) {
 		return 0, errors.New("not a syscall.Stat_t")
 	}
 	return stat.Ino, nil
+}
+
+func getMntNamespaceInode() (uint64, error) {
+	return getNsInode("mnt")
+}
+
+func getUserNamespaceInode() (uint64, error) {
+	return getNsInode("user")
 }

@@ -14,21 +14,27 @@ import (
 )
 
 type capabilitiesArgsT struct {
-	Cap    int32
-	CapOpt int32
+	CurrentUserns uint64
+	TargetUserns  uint64
+	CapEffective  uint64
+	Cap           int32
+	CapOpt        int32
 }
 
 type capabilitiesCapEvent struct {
-	Mntnsid   uint64
-	Timestamp uint64
-	Pid       uint32
-	Cap       int32
-	Tgid      uint32
-	Uid       uint32
-	CapOpt    int32
-	Ret       int32
-	Syscall   uint64
-	Task      [16]uint8
+	Mntnsid       uint64
+	CurrentUserns uint64
+	TargetUserns  uint64
+	CapEffective  uint64
+	Timestamp     uint64
+	Pid           uint32
+	Cap           int32
+	Tgid          uint32
+	Uid           uint32
+	CapOpt        int32
+	Ret           int32
+	Syscall       uint64
+	Task          [16]uint8
 }
 
 type capabilitiesUniqueKey struct {

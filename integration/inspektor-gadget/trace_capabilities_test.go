@@ -38,13 +38,17 @@ func TestTraceCapabilities(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tracecapabilitiesTypes.Event{
-				Event:   BuildBaseEvent(ns),
-				Comm:    "nice",
-				CapName: "SYS_NICE",
-				Cap:     23,
-				Syscall: "setpriority",
-				Audit:   1,
-				Verdict: "Deny",
+				Event:         BuildBaseEvent(ns),
+				Comm:          "nice",
+				CapName:       "SYS_NICE",
+				Cap:           23,
+				Syscall:       "setpriority",
+				Audit:         1,
+				Verdict:       "Deny",
+				CurrentUserNs: 1,
+				TargetUserNs:  1,
+				Caps:          1,
+				CapsNames:     []string{"x"},
 			}
 
 			normalize := func(e *tracecapabilitiesTypes.Event) {
@@ -55,6 +59,19 @@ func TestTraceCapabilities(t *testing.T) {
 				e.MountNsID = 0
 				// Do not check InsetID to avoid introducing dependency on the kernel version
 				e.InsetID = nil
+
+				if e.CurrentUserNs != 0 {
+					e.CurrentUserNs = 1
+				}
+				if e.TargetUserNs != 0 {
+					e.TargetUserNs = 1
+				}
+				if e.Caps > 0 {
+					e.Caps = 1
+				}
+				if len(e.CapsNames) != 0 {
+					e.CapsNames = []string{"x"}
+				}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

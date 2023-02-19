@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	libseccomp "github.com/seccomp/libseccomp-golang"
+	"github.com/syndtr/gocapability/capability"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
@@ -221,6 +222,17 @@ func kernelVersion(a, b, c int) uint32 {
 	return uint32((a << 16) + (b << 8) + c)
 }
 
+func capsNames(capsBitField uint64) (ret []string) {
+	// Ensure ret is not nil
+	ret = []string{}
+	for i := capability.Cap(0); i <= capability.CAP_LAST_CAP; i++ {
+		if (1<<uint(i))&capsBitField != 0 {
+			ret = append(ret, i.String())
+		}
+	}
+	return
+}
+
 func (t *Tracer) run() {
 	for {
 		record, err := t.reader.Read()
@@ -282,6 +294,8 @@ func (t *Tracer) run() {
 				Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
 			},
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.Mntnsid},
+			TargetUserNs:  bpfEvent.TargetUserns,
+			CurrentUserNs: bpfEvent.CurrentUserns,
 			Pid:           bpfEvent.Pid,
 			Cap:           int(bpfEvent.Cap),
 			UID:           bpfEvent.Uid,
@@ -291,6 +305,8 @@ func (t *Tracer) run() {
 			Syscall:       syscall,
 			CapName:       capabilityName,
 			Verdict:       verdict,
+			Caps:          bpfEvent.CapEffective,
+			CapsNames:     capsNames(bpfEvent.CapEffective),
 		}
 
 		if t.enricher != nil {
