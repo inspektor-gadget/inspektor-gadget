@@ -75,3 +75,5 @@ COPY hack/btfs /btfs/
 
 # Mitigate https://github.com/kubernetes/kubernetes/issues/106962.
 RUN rm -f /var/run
+
+ENV GADGET_IMAGE_FLAVOUR=default

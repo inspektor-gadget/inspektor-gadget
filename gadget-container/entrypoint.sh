@@ -30,11 +30,16 @@ KERNEL=$(uname -r)
 echo -n "Kernel detected: "
 echo $KERNEL
 
-echo -n "bcc detected: "
-dpkg-query --show libbcc | awk '{print $2}' || true
+# The gadget-core image does not provide bcc.
+if [ "$GADGET_IMAGE_FLAVOUR" = "default" ] ; then
+	echo -n "bcc detected: "
+	dpkg-query --show libbcc | awk '{print $2}' || true
+fi
 
 echo -n "Gadget image: "
 echo $GADGET_IMAGE
+
+echo "Gadget image flavour: ${GADGET_IMAGE_FLAVOUR}"
 
 echo "Deployment options:"
 env | grep '^INSPEKTOR_GADGET_OPTION_.*='
