@@ -41,7 +41,7 @@ type Event struct {
 	PodHostIP string            `json:"podHostIP,omitempty" column:"podhostip,template:ipaddr,hide"`
 	PodIP     string            `json:"podIP,omitempty" column:"podip,template:ipaddr,hide"`
 	PodOwner  string            `json:"podOwner,omitempty" column:"podowner,hide"`
-	PodLabels map[string]string `json:"podLabels,omitempty" column:"padlabels,hide"`
+	PodLabels map[string]string `json:"podLabels,omitempty" column:"podlabels,hide"`
 
 	/* Remote */
 	RemoteKind RemoteKind `json:"remoteKind,omitempty" column:"remoteKind,maxWidth:5,hide"`
