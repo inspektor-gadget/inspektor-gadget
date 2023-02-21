@@ -296,6 +296,42 @@ jobs:
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
+  scan-gadget-container-images:
+    name: Scan gadget container images
+    # level: 1
+    needs: build-gadget-container-images
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        type: [ default, core ]
+        os: [ linux ]
+        platform: [ amd64 ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set container repository and determine image tag
+        id: set-repo-determine-image-tag
+        uses: ./.github/actions/set-container-repo-and-determine-image-tag
+        with:
+          registry: ${{ env.REGISTRY }}
+          container-image: ${{ env.CONTAINER_REPO }}
+          co-re: ${{ matrix.type == 'core' }}
+      - name: Download gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+          path: ${{ github.workspace }}
+      - name: Scan gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image
+        uses: aquasecurity/trivy-action@8bd2f9fbda2109502356ff8a6a89da55b1ead252 # v0.9.1
+        with:
+          input: gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+          format: 'table'
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          # uncomment to ignore vulnerabilities
+          # ignore-unfixed: true
+          # ignore-policy: .github/trivy/ignore-policy.yaml
+
   publish-gadget-images-manifest:
     name: Publish gadget container images manifest
     # level: 1
