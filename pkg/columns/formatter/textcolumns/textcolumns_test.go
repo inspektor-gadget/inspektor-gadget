@@ -184,3 +184,61 @@ func TestWithTypeDefinition(t *testing.T) {
 		assert.Equal(t, string(entry.Name), formatter.FormatEntry(entry))
 	}
 }
+
+func TestTextColumnsFormatter_SetShownColumns(t *testing.T) {
+	type test struct {
+		name     string
+		setShown []string
+		expected []string
+		err      bool
+	}
+
+	tests := []test{
+		{
+			name:     "default",
+			setShown: nil,
+			expected: []string{"name", "age", "size", "balance", "canDance"},
+		},
+		{
+			name:     "empty",
+			setShown: []string{},
+			expected: []string{},
+		},
+		{
+			name:     "shown-columns-match",
+			setShown: []string{"name"},
+			expected: []string{"name"},
+		},
+		{
+			name:     "multipe-shown-columns-match",
+			setShown: []string{"name", "canDance"},
+			expected: []string{"name", "canDance"},
+		},
+		{
+			name:     "column-not-found",
+			setShown: []string{"foo"},
+			err:      true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			formatter := NewFormatter(testColumns)
+
+			err := formatter.SetShowColumns(test.setShown)
+			if test.err {
+				require.NotNil(t, err, "SetShowColumns should have failed")
+				return
+			}
+
+			require.Nil(t, err, "SetShowColumns failed: %s", err)
+
+			found := []string{}
+			for _, c := range formatter.showColumns {
+				found = append(found, c.col.Name)
+			}
+
+			require.Equal(t, test.expected, found, "shown columns doesn't match the expected ones")
+		})
+	}
+}

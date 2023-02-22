@@ -15,6 +15,7 @@
 package textcolumns
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -90,22 +91,28 @@ func (tf *TextColumnsFormatter[T]) SetShowDefaultColumns() {
 	tf.rebuild()
 }
 
-// SetShowColumns takes a comma separated list of column names that will be displayed when using the output methods
-func (tf *TextColumnsFormatter[T]) SetShowColumns(columns []string) {
+// SetShowColumns takes a list of column names that will be displayed when using the output methods
+// Returns an error if any of the columns is not available.
+func (tf *TextColumnsFormatter[T]) SetShowColumns(columns []string) error {
 	if columns == nil {
 		tf.SetShowDefaultColumns()
-		return
+		return nil
 	}
 
 	newColumns := make([]*Column[T], 0)
 	for _, c := range columns {
-		if column, ok := tf.columns[strings.ToLower(c)]; ok {
-			newColumns = append(newColumns, column)
+		column, ok := tf.columns[strings.ToLower(c)]
+		if !ok {
+			return fmt.Errorf("column %q is invalid", strings.ToLower(c))
 		}
+
+		newColumns = append(newColumns, column)
 	}
 	tf.showColumns = newColumns
 
 	tf.rebuild()
+
+	return nil
 }
 
 // SetAutoScale enables or disables the AutoScale option for the formatter. This will recalculate the widths.
