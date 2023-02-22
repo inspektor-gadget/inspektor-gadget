@@ -74,5 +74,7 @@ message DumpStateRequest {
 }
 
 message Dump {
-  string state = 1;
+  string containers = 1;
+  string traces = 2;
+  string stacks = 3;
 }
