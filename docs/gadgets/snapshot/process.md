@@ -5,6 +5,8 @@ description: >
   Gather information about running processes.
 ---
 
+![Screencast of snapshot process compared to calling kubectl exec ps](process.gif)
+
 The snapshot process gadget gathers information about running processes.
 
 ### On Kubernetes
