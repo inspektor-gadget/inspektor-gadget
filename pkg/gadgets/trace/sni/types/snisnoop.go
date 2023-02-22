@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,16 +16,18 @@ package types
 
 import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
+	eventtypes.WithNetNsID
 
-	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
-	Tid       uint32 `json:"tid,omitempty" column:"tid,template:pid"`
-	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
+	Pid  uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Tid  uint32 `json:"tid,omitempty" column:"tid,template:pid"`
+	Comm string `json:"comm,omitempty" column:"comm,template:comm"`
 
 	Name string `json:"name,omitempty" column:"name,width:30"`
 }
@@ -33,8 +35,11 @@ type Event struct {
 func GetColumns() *columns.Columns[Event] {
 	cols := columns.MustCreateColumns[Event]()
 
-	col, _ := cols.GetColumn("container")
-	col.Visible = false
+	// Hide container column for kubernetes environment
+	if environment.Environment == environment.Kubernetes {
+		col, _ := cols.GetColumn("container")
+		col.Visible = false
+	}
 
 	return cols
 }

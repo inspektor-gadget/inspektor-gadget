@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,14 +23,14 @@ import (
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
 
-	Pid       uint32   `json:"pid,omitempty" column:"pid,template:pid"`
-	Ppid      uint32   `json:"ppid,omitempty" column:"ppid,template:pid"`
-	Comm      string   `json:"comm,omitempty" column:"comm,template:comm"`
-	Retval    int      `json:"ret,omitempty" column:"ret,width:3,fixed"`
-	Args      []string `json:"args,omitempty" column:"args,width:40"`
-	UID       uint32   `json:"uid,omitempty" column:"uid,minWidth:10,hide"`
-	MountNsID uint64   `json:"mountnsid,omitempty" column:"mntns,template:ns"`
+	Pid    uint32   `json:"pid,omitempty" column:"pid,template:pid"`
+	Ppid   uint32   `json:"ppid,omitempty" column:"ppid,template:pid"`
+	Comm   string   `json:"comm,omitempty" column:"comm,template:comm"`
+	Retval int      `json:"ret,omitempty" column:"ret,width:3,fixed"`
+	Args   []string `json:"args,omitempty" column:"args,width:40"`
+	UID    uint32   `json:"uid,omitempty" column:"uid,minWidth:10,hide"`
 }
 
 func GetColumns() *columns.Columns[Event] {

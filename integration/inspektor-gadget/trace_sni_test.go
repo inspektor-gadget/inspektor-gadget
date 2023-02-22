@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ func TestTraceSni(t *testing.T) {
 				e.Timestamp = 0
 				e.Node = ""
 				e.MountNsID = 0
+				e.NetNsID = 0
 				e.Pid = 0
 				e.Tid = 0
 			}

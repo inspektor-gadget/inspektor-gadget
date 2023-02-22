@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
+// +build linux
+
 package tracer_test
 
 import (
@@ -24,11 +24,12 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-	"golang.org/x/sys/unix"
 )
 
 func TestBindTracerCreate(t *testing.T) {
@@ -85,14 +86,14 @@ func TestBindTracer(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					Pid:       uint32(info.Pid),
-					Comm:      info.Comm,
-					Protocol:  "TCP",
-					Addr:      "127.0.0.1",
-					Port:      port,
-					Options:   ".....",
-					Interface: "",
-					MountNsID: info.MountNsID,
+					Pid:           uint32(info.Pid),
+					Comm:          info.Comm,
+					Protocol:      "TCP",
+					Addr:          "127.0.0.1",
+					Port:          port,
+					Options:       ".....",
+					Interface:     "",
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
 			}),
 		},
@@ -117,14 +118,14 @@ func TestBindTracer(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					Pid:       uint32(info.Pid),
-					Comm:      info.Comm,
-					Protocol:  "TCP",
-					Addr:      "127.0.0.1",
-					Port:      port,
-					Options:   ".....",
-					Interface: "",
-					MountNsID: info.MountNsID,
+					Pid:           uint32(info.Pid),
+					Comm:          info.Comm,
+					Protocol:      "TCP",
+					Addr:          "127.0.0.1",
+					Port:          port,
+					Options:       ".....",
+					Interface:     "",
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
 			}),
 		},
@@ -550,11 +551,11 @@ func TestBindTracerMultipleMntNsIDsFilter(t *testing.T) {
 		return expectedEvents[i].mntNsID < expectedEvents[j].mntNsID
 	})
 	sort.Slice(events, func(i, j int) bool {
-		return events[i].MountNsID < events[j].MountNsID
+		return events[i].WithMountNsID.MountNsID < events[j].WithMountNsID.MountNsID
 	})
 
 	for i := 0; i < n-1; i++ {
-		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].MountNsID,
+		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].WithMountNsID.MountNsID,
 			"Captured event has bad MountNsID")
 
 		utilstest.Equal(t, expectedEvents[i].port, events[i].Port,

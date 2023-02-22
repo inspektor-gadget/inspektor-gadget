@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -61,6 +61,7 @@ func TestSnapshotSocket(t *testing.T) {
 					e.Node = ""
 					e.Container = ""
 					e.InodeNumber = 0
+					e.NetNsID = 0
 				}
 
 				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)

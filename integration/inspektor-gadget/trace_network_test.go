@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -91,6 +91,7 @@ func TestTraceNetwork(t *testing.T) {
 				e.Timestamp = 0
 				e.Node = ""
 				e.PodHostIP = ""
+				e.NetNsID = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

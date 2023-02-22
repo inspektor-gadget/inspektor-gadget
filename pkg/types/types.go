@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -76,6 +76,21 @@ type CommonData struct {
 	// Container where the event comes from, or empty for host-level or
 	// pod-level event
 	Container string `json:"container,omitempty" column:"container,template:container" columnTags:"kubernetes,runtime"`
+}
+
+func (c *CommonData) SetNode(node string) {
+	c.Node = node
+}
+
+func (c *CommonData) SetContainerInfo(pod, namespace, container string) {
+	c.Pod = pod
+	c.Namespace = namespace
+
+	// Container may have been enriched before by other means, so don't delete it here,
+	// if the incoming info is empty
+	if container != "" {
+		c.Container = container
+	}
 }
 
 const (
@@ -165,4 +180,20 @@ func EventString(i interface{}) string {
 		return fmt.Sprintf("error marshalling event: %s\n", err)
 	}
 	return string(b)
+}
+
+type WithMountNsID struct {
+	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
+}
+
+func (e *WithMountNsID) GetMountNSID() uint64 {
+	return e.MountNsID
+}
+
+type WithNetNsID struct {
+	NetNsID uint64 `json:"netnsid,omitempty" column:"netns,template:ns"`
+}
+
+func (e *WithNetNsID) GetNetNSID() uint64 {
+	return e.NetNsID
 }

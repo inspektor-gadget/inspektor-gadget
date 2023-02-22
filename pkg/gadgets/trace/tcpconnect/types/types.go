@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
 
 	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
 	UID       uint32 `json:"uid,omitempty" column:"uid,minWidth:6,hide"`
@@ -29,7 +30,6 @@ type Event struct {
 	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr"`
 	Daddr     string `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
 	Dport     uint16 `json:"dport,omitempty" column:"dport,template:ipport"`
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
 }
 
 func GetColumns() *columns.Columns[Event] {

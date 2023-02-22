@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/snapshot"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/top"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/trace"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
@@ -52,4 +53,8 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func init() {
+	environment.Environment = environment.Kubernetes
 }

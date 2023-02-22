@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ type SyscallParam struct {
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
 
 	CPU        uint16         `json:"cpu,omitempty" column:"cpu,width:3,fixed"`
 	Pid        uint32         `json:"pid,omitempty" column:"pid,template:pid"`
@@ -37,7 +38,6 @@ type Event struct {
 	Syscall    string         `json:"syscall,omitempty" column:"syscall,template:syscall"`
 	Parameters []SyscallParam `json:"parameters,omitempty" column:"params,width:40"`
 	Retval     int            `json:"ret,omitempty" column:"ret,width:3,fixed"`
-	MountNsID  uint64         `json:"mountnsid,omitempty" column:"mntns,template:ns"`
 }
 
 type TraceloopInfo struct {

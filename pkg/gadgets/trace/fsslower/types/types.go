@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,15 +25,15 @@ const (
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
 
-	MountNsID uint64 `json:"mountnsid,omitempty" column:"mntns,template:ns"`
-	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
-	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
-	Op        string `json:"op,omitempty" column:"T,width:1,fixed"`
-	Bytes     uint64 `json:"bytes,omitempty" column:"bytes,width:10,align:right"`
-	Offset    int64  `json:"offset,omitempty" column:"offset,width:10,align:right"`
-	Latency   uint64 `json:"latency,omitempty" column:"lat,width:10,align:right"`
-	File      string `json:"file,omitempty" column:"file,width:24,maxWidth:32"`
+	Pid     uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm    string `json:"comm,omitempty" column:"comm,template:comm"`
+	Op      string `json:"op,omitempty" column:"T,width:1,fixed"`
+	Bytes   uint64 `json:"bytes,omitempty" column:"bytes,width:10,align:right"`
+	Offset  int64  `json:"offset,omitempty" column:"offset,width:10,align:right"`
+	Latency uint64 `json:"latency,omitempty" column:"lat,width:10,align:right"`
+	File    string `json:"file,omitempty" column:"file,width:24,maxWidth:32"`
 }
 
 func GetColumns() *columns.Columns[Event] {

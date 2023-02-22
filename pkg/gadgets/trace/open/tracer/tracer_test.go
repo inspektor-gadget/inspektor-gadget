@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build linux
+// +build linux
 
 package tracer_test
 
@@ -93,14 +93,14 @@ func TestOpenTracer(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					MountNsID: info.MountNsID,
-					Pid:       uint32(info.Pid),
-					UID:       uint32(info.UID),
-					Comm:      info.Comm,
-					Fd:        fd,
-					Ret:       fd,
-					Err:       0,
-					Path:      "/dev/null",
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
+					Pid:           uint32(info.Pid),
+					UID:           uint32(info.UID),
+					Comm:          info.Comm,
+					Fd:            fd,
+					Ret:           fd,
+					Err:           0,
+					Path:          "/dev/null",
 				}
 			}),
 		},
@@ -125,14 +125,14 @@ func TestOpenTracer(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
-					MountNsID: info.MountNsID,
-					Pid:       uint32(info.Pid),
-					UID:       uint32(info.UID),
-					Comm:      info.Comm,
-					Fd:        fd,
-					Ret:       fd,
-					Err:       0,
-					Path:      "/dev/null",
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
+					Pid:           uint32(info.Pid),
+					UID:           uint32(info.UID),
+					Comm:          info.Comm,
+					Fd:            fd,
+					Ret:           fd,
+					Err:           0,
+					Path:          "/dev/null",
 				}
 			}),
 		},
@@ -291,11 +291,11 @@ func TestOpenTracerMultipleMntNsIDsFilter(t *testing.T) {
 		return expectedEvents[i].mntNsID < expectedEvents[j].mntNsID
 	})
 	sort.Slice(events, func(i, j int) bool {
-		return events[i].MountNsID < events[j].MountNsID
+		return events[i].WithMountNsID.MountNsID < events[j].WithMountNsID.MountNsID
 	})
 
 	for i := 0; i < n-1; i++ {
-		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].MountNsID,
+		utilstest.Equal(t, expectedEvents[i].mntNsID, events[i].WithMountNsID.MountNsID,
 			"Captured event has bad MountNsID")
 
 		utilstest.Equal(t, expectedEvents[i].fd, events[i].Fd,

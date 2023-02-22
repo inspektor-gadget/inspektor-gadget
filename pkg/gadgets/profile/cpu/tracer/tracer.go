@@ -1,7 +1,4 @@
-//go:build linux
-// +build linux
-
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build !withoutebpf
 
 package tracer
 
@@ -35,6 +34,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type key_t -cc clang profile ./bpf/profile.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -380,5 +380,73 @@ func (t *Tracer) start() error {
 		}
 	}
 
+	return nil
+}
+
+// ---
+
+// TracerWrap is required to implement interfaces
+type TracerWrap struct {
+	Tracer
+	enricherFunc  func(ev any) error
+	eventCallback func(ev *types.Report)
+}
+
+func (t *TracerWrap) Start() error {
+	if err := t.start(); err != nil {
+		t.Stop()
+		return err
+	}
+	return nil
+}
+
+func (t *TracerWrap) Stop() {
+	// TODO: Error handling on stop?
+	res, _ := t.Tracer.Stop()
+	var reports []*types.Report
+	json.Unmarshal([]byte(res), &reports)
+	for _, report := range reports {
+		t.eventCallback(report)
+	}
+}
+
+func (t *TracerWrap) SetEventHandler(handler any) {
+	nh, ok := handler.(func(ev *types.Report))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventCallback = nh
+}
+
+func (t *TracerWrap) SetEventEnricher(enricher func(ev any) error) {
+	t.enricherFunc = enricher
+	t.Tracer.enricher = t
+}
+
+func (t *TracerWrap) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
+	// TODO: This is ugly as it temporarily wraps and unwraps the event; should be changed in the original gadget code
+	//  after full migration to NewInstance()
+	wrap := &types.Report{CommonData: *event, MntnsID: mountnsid}
+	t.enricherFunc(wrap)
+	*event = wrap.CommonData
+}
+
+func (t *TracerWrap) SetMountNsMap(mountNsMap *ebpf.Map) {
+	t.Tracer.config.MountnsMap = mountNsMap
+}
+
+func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
+	tracer := &TracerWrap{
+		Tracer: Tracer{
+			config: &Config{},
+		},
+	}
+	return tracer, nil
+}
+
+func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+	t.config.UserStackOnly = params.Get(ParamUserStack).AsBool()
+	t.config.KernelStackOnly = params.Get(ParamKernelStack).AsBool()
 	return nil
 }

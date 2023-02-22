@@ -1,4 +1,4 @@
-// Copyright 2021 The Inspektor Gadget authors
+// Copyright 2021-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -39,6 +40,7 @@ var ProtocolsMap = map[string]Proto{
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithNetNsID
 
 	Protocol      string `json:"protocol" column:"protocol,maxWidth:8"`
 	LocalAddress  string `json:"localAddress" column:"localAddr,template:ipaddr,hide"`
@@ -52,8 +54,11 @@ type Event struct {
 func GetColumns() *columns.Columns[Event] {
 	cols := columns.MustCreateColumns[Event]()
 
-	col, _ := cols.GetColumn("container")
-	col.Visible = false
+	// Hide container column for kubernetes environment
+	if environment.Environment == environment.Kubernetes {
+		col, _ := cols.GetColumn("container")
+		col.Visible = false
+	}
 
 	cols.MustAddColumn(columns.Column[Event]{
 		Name:     "local",

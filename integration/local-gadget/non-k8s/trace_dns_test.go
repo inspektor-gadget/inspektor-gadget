@@ -99,6 +99,7 @@ func TestTraceDns(t *testing.T) {
 				e.ID = ""
 				e.Timestamp = 0
 				e.MountNsID = 0
+				e.NetNsID = 0
 				e.Pid = 0
 				e.Tid = 0
 

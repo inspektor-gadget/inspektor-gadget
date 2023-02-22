@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -32,6 +33,7 @@ const (
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithNetNsID
 
 	PktType string `json:"pktType,omitempty" column:"type,maxWidth:9"`
 	Proto   string `json:"proto,omitempty" column:"proto,maxWidth:5"`
@@ -77,8 +79,11 @@ func GetColumns() *columns.Columns[Event] {
 		},
 	})
 
-	col, _ := cols.GetColumn("container")
-	col.Visible = false
+	// Hide container column for kubernetes environment
+	if environment.Environment == environment.Kubernetes {
+		col, _ := cols.GetColumn("container")
+		col.Visible = false
+	}
 
 	return cols
 }
