@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"sync"
@@ -173,8 +174,14 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 				continue
 			}
 
+			pid := containerDetails.Pid
+			if pid > math.MaxUint32 {
+				log.Errorf("Container PID (%d) exceeds math.MaxUint32 (%d), skipping this container", pid, math.MaxUint32)
+				continue
+			}
+
 			var c Container
-			c.Pid = uint32(containerDetails.Pid)
+			c.Pid = uint32(pid)
 			enrichContainerWithContainerData(&containerDetails.ContainerData, &c)
 			cc.initialContainers = append(cc.initialContainers, &c)
 		}

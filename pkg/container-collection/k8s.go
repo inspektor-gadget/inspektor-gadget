@@ -17,6 +17,7 @@ package containercollection
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -126,13 +127,19 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 			continue
 		}
 
+		pid := containerData.Pid
+		if pid > math.MaxUint32 {
+			log.Errorf("Container PID (%d) exceeds math.MaxUint32 (%d), skipping this container", pid, math.MaxUint32)
+			continue
+		}
+
 		containerDef := Container{
 			ID:        idParts[1],
 			Namespace: pod.GetNamespace(),
 			Podname:   pod.GetName(),
 			Name:      s.Name,
 			Labels:    labels,
-			Pid:       uint32(containerData.Pid),
+			Pid:       uint32(pid),
 		}
 		containers = append(containers, containerDef)
 	}
