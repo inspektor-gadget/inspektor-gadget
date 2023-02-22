@@ -19,6 +19,9 @@ import (
 	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type testStruct struct {
@@ -49,64 +52,45 @@ func TestTextColumnsFormatter_FormatEntryAndTable(t *testing.T) {
 
 	t.Run("FormatEntry", func(t *testing.T) {
 		for i, entry := range testEntries {
-			if res := formatter.FormatEntry(entry); res != expected[i] {
-				t.Errorf("got %s, expected %s", res, expected[i])
-			}
+			assert.Equal(t, expected[i], formatter.FormatEntry(entry))
 		}
 	})
 
 	t.Run("FormatTable", func(t *testing.T) {
-		out := formatter.FormatTable(testEntries)
-		if out != strings.Join(append([]string{"NAME        AGE   SIZE  BALANCE CANDANCE", "————————————————————————————————————————"}, expected...), "\n") {
-			t.Errorf("got %s", out)
-		}
+		assert.Equal(t,
+			strings.Join(append([]string{"NAME        AGE   SIZE  BALANCE CANDANCE", "————————————————————————————————————————"}, expected...), "\n"),
+			formatter.FormatTable(testEntries),
+		)
 	})
 }
 
 func TestTextColumnsFormatter_FormatHeader(t *testing.T) {
 	formatter := NewFormatter(testColumns)
 
-	expected := "NAME        AGE   SIZE  BALANCE CANDANCE"
-	if res := formatter.FormatHeader(); res != expected {
-		t.Errorf("got %s, expected %s", res, expected)
-	}
+	assert.Equal(t, "NAME        AGE   SIZE  BALANCE CANDANCE", formatter.FormatHeader())
 
 	formatter.options.HeaderStyle = HeaderStyleLowercase
-	expected = "name        age   size  balance candance"
-	if res := formatter.FormatHeader(); res != expected {
-		t.Errorf("got %s, expected %s", res, expected)
-	}
+	assert.Equal(t, "name        age   size  balance candance", formatter.FormatHeader())
 
 	formatter.options.HeaderStyle = HeaderStyleNormal
-	expected = "name        age   size  balance canDance"
-	if res := formatter.FormatHeader(); res != expected {
-		t.Errorf("got %s, expected %s", res, expected)
-	}
+	assert.Equal(t, "name        age   size  balance canDance", formatter.FormatHeader())
 }
 
 func TestTextColumnsFormatter_FormatRowDivider(t *testing.T) {
 	formatter := NewFormatter(testColumns, WithRowDivider(DividerDash))
-	expected := "————————————————————————————————————————"
-	if res := formatter.FormatRowDivider(); res != expected {
-		t.Errorf("got %s, expected %s", res, expected)
-	}
+	assert.Equal(t, "————————————————————————————————————————", formatter.FormatRowDivider())
 }
 
 func TestTextColumnsFormatter_RecalculateWidths(t *testing.T) {
 	formatter := NewFormatter(testColumns, WithRowDivider(DividerDash))
 	maxWidth := 100
 	formatter.RecalculateWidths(maxWidth, true)
-	if clen := len([]rune(formatter.FormatHeader())); clen != 100 {
-		t.Errorf("expected header to have width of %d, got %d", maxWidth, clen)
-	}
-	if clen := len([]rune(formatter.FormatRowDivider())); clen != 100 {
-		t.Errorf("expected row divider to have width of %d, got %d", maxWidth, clen)
-	}
+	assert.Equal(t, 100, len([]rune(formatter.FormatHeader())), "bad header width")
+	assert.Equal(t, 100, len([]rune(formatter.FormatRowDivider())), "bad row divider width")
+
 	for _, e := range testEntries {
 		if e != nil {
-			if clen := len([]rune(formatter.FormatEntry(e))); clen != 100 {
-				t.Errorf("expected entry to have width of %d, got %d", maxWidth, clen)
-			}
+			assert.Equal(t, 100, len([]rune(formatter.FormatEntry(e))), "bad entry width")
 		}
 	}
 }
@@ -122,15 +106,9 @@ func TestTextColumnsFormatter_AdjustWidthsToContent(t *testing.T) {
 	*/
 	formatter := NewFormatter(testColumns, WithRowDivider(DividerDash))
 	formatter.AdjustWidthsToContent(testEntries, true, 0, false)
-	if cstr := formatter.FormatHeader(); cstr != "NAME   AGE SIZE BALANCE CANDANCE" {
-		t.Errorf("expected header does not match, got %s", cstr)
-	}
-	if cstr := formatter.FormatRowDivider(); cstr != "————————————————————————————————" {
-		t.Errorf("expected row divider does not match, got %s", cstr)
-	}
-	if cstr := formatter.FormatEntry(testEntries[0]); cstr != "Alice   32 1.74    1000 true    " {
-		t.Errorf("expected entry does not match, got %s", cstr)
-	}
+	assert.Equal(t, "NAME   AGE SIZE BALANCE CANDANCE", formatter.FormatHeader(), "header does not match")
+	assert.Equal(t, "————————————————————————————————", formatter.FormatRowDivider(), "row divider does not match")
+	assert.Equal(t, "Alice   32 1.74    1000 true    ", formatter.FormatEntry(testEntries[0]), "entry does not match")
 }
 
 func TestTextColumnsFormatter_AdjustWidthsToContentNoHeaders(t *testing.T) {
@@ -144,15 +122,9 @@ func TestTextColumnsFormatter_AdjustWidthsToContentNoHeaders(t *testing.T) {
 	*/
 	formatter := NewFormatter(testColumns, WithRowDivider(DividerDash))
 	formatter.AdjustWidthsToContent(testEntries, false, 0, false)
-	if cstr := formatter.FormatHeader(); cstr != "NAME   AGE SIZE BALANCE CAND…" {
-		t.Errorf("expected header does not match, got %s", cstr)
-	}
-	if cstr := formatter.FormatRowDivider(); cstr != "—————————————————————————————" {
-		t.Errorf("expected row divider does not match, got %s", cstr)
-	}
-	if cstr := formatter.FormatEntry(testEntries[0]); cstr != "Alice   32 1.74    1000 true " {
-		t.Errorf("expected entry does not match, got %s", cstr)
-	}
+	assert.Equal(t, "NAME   AGE SIZE BALANCE CAND…", formatter.FormatHeader(), "header does not match")
+	assert.Equal(t, "—————————————————————————————", formatter.FormatRowDivider(), "row divider does not match")
+	assert.Equal(t, "Alice   32 1.74    1000 true ", formatter.FormatEntry(testEntries[0]), "entry does not match")
 }
 
 func TestTextColumnsFormatter_AdjustWidthsMaxWidth(t *testing.T) {
@@ -166,15 +138,9 @@ func TestTextColumnsFormatter_AdjustWidthsMaxWidth(t *testing.T) {
 	*/
 	formatter := NewFormatter(testColumns, WithRowDivider(DividerDash))
 	formatter.AdjustWidthsToContent(testEntries, false, 9, true)
-	if cstr := formatter.FormatHeader(); cstr != "N… …  … …" {
-		t.Errorf("expected header does not match, got %s", cstr)
-	}
-	if cstr := formatter.FormatRowDivider(); cstr != "—————————" {
-		t.Errorf("expected row divider does not match, got %s", cstr)
-	}
-	if cstr := formatter.FormatEntry(testEntries[0]); cstr != "A… …  … …" {
-		t.Errorf("expected entry does not match, got %s", cstr)
-	}
+	assert.Equal(t, "N… …  … …", formatter.FormatHeader(), "header does not match")
+	assert.Equal(t, "—————————", formatter.FormatRowDivider(), "row divider does not match")
+	assert.Equal(t, "A… …  … …", formatter.FormatEntry(testEntries[0]), "entry does not match")
 }
 
 func TestWidthRestrictions(t *testing.T) {
@@ -187,21 +153,16 @@ func TestWidthRestrictions(t *testing.T) {
 		{"234567890123", "234567890123"},
 	}
 	cols, err := columns.NewColumns[testStruct]()
-	if err != nil {
-		t.Fatalf("error initializing")
-	}
+	require.Nil(t, err, "error initializing: %s", err)
+
 	formatter := NewFormatter(cols.GetColumnMap(), WithRowDivider(DividerDash), WithAutoScale(true))
 	t.Run("maxWidth", func(t *testing.T) {
 		formatter.RecalculateWidths(40, false)
-		if cstr := strings.TrimSpace(formatter.FormatEntry(entries[0])); cstr != "123456789… 123456789012" {
-			t.Errorf("expected entry does not match, got %s", cstr)
-		}
+		assert.Equal(t, "123456789… 123456789012", strings.TrimSpace(formatter.FormatEntry(entries[0])), "entry does not match")
 	})
 	t.Run("minWidth", func(t *testing.T) {
 		formatter.RecalculateWidths(1, false)
-		if cstr := strings.TrimSpace(formatter.FormatEntry(entries[0])); cstr != "1… …" {
-			t.Errorf("expected entry does not match, got %s", cstr)
-		}
+		assert.Equal(t, "1… …", strings.TrimSpace(formatter.FormatEntry(entries[0])), "entry does not match")
 	})
 }
 
@@ -215,14 +176,11 @@ func TestWithTypeDefinition(t *testing.T) {
 		{"234567890123"},
 	}
 	cols, err := columns.NewColumns[testStruct]()
-	if err != nil {
-		t.Fatalf("error initializing")
-	}
+	require.Nil(t, err, "error initializing: %s", err)
+
 	formatter := NewFormatter(cols.GetColumnMap(), WithAutoScale(false))
 	formatter.AdjustWidthsToContent(entries, false, 0, false)
 	for _, entry := range entries {
-		if formatter.FormatEntry(entry) != string(entry.Name) {
-			t.Errorf("expected %q, got %q", entry.Name, formatter.FormatEntry(entry))
-		}
+		assert.Equal(t, string(entry.Name), formatter.FormatEntry(entry))
 	}
 }
