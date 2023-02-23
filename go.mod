@@ -43,6 +43,7 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v20.10.20+incompatible
 	github.com/stretchr/testify v1.8.1
+	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
 	golang.org/x/sync v0.1.0
 	golang.org/x/text v0.7.0
 )

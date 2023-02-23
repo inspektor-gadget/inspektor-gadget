@@ -9,6 +9,9 @@
 
 struct cap_event {
 	__u64	mntnsid;
+	__u64	current_userns;
+	__u64	target_userns;
+	__u64   cap_effective;
 	__u64 timestamp;
 	__u32	pid;
 	int	cap;

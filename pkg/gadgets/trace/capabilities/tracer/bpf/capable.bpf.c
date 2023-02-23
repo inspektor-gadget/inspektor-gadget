@@ -30,6 +30,9 @@ const volatile bool unique = false;
 const struct cap_event *unusedcapevent __attribute__((unused));
 
 struct args_t {
+	u64 current_userns;
+	u64 target_userns;
+	u64 cap_effective;
 	int cap;
 	int cap_opt;
 };
@@ -78,7 +81,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(key_size, sizeof(u64));
 	__uint(value_size, sizeof(struct syscall_context));
-	__uint(max_entries, 1024);
+	__uint(max_entries, 1048576); // There can be many threads sleeping in some futex/poll syscalls
 } current_syscall SEC(".maps");
 
 SEC("kprobe/cap_capable")
@@ -94,6 +97,14 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred, struct user_namespace *t
 
 	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
 		return 0;
+
+	const struct cred *real_cred = BPF_CORE_READ(task, real_cred);
+	if (cred != real_cred) {
+		// the subjective credentials are in an overridden state with
+		// override_creds/revert_creds (e.g. during overlayfs cache or copyup)
+		// https://kernel.org/doc/html/v6.2-rc8/security/credentials.html#overriding-the-vfs-s-use-of-credentials
+		return 0;
+	}
 
 	pid_tgid = bpf_get_current_pid_tgid();
 	pid = pid_tgid >> 32;
@@ -127,8 +138,10 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred, struct user_namespace *t
 		bpf_map_update_elem(&seen, &key, &zero, 0);
 	}
 
-
 	struct args_t args = {};
+	args.current_userns = (u64) BPF_CORE_READ(task, real_cred, user_ns, ns.inum);
+	args.target_userns = (u64) BPF_CORE_READ(targ_ns, ns.inum);
+	BPF_CORE_READ_INTO(&args.cap_effective, task, real_cred, cap_effective.cap[0]);
 	args.cap = cap;
 	args.cap_opt = cap_opt;
 	bpf_map_update_elem(&start, &pid_tgid, &args, 0);
@@ -150,12 +163,13 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	if (!ap)
 		return 0;	/* missed entry */
 
-	bpf_map_delete_elem(&start, &pid_tgid);
-
 	task = (struct task_struct*) bpf_get_current_task();
 	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
 	struct cap_event event = {};
+	event.current_userns = ap->current_userns;
+	event.target_userns = ap->target_userns;
+	event.cap_effective = ap->cap_effective;
 	event.pid = pid_tgid >> 32;
 	event.tgid = pid_tgid;
 	event.cap = ap->cap;
@@ -175,6 +189,8 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	}
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+
+	bpf_map_delete_elem(&start, &pid_tgid);
 
 	return 0;
 }
@@ -208,6 +224,10 @@ int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 	struct pt_regs regs = {};
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 	struct syscall_context sc_ctx = {};
+
+	u64 mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+		return 0;
 
 	u64 nr = ctx->args[1];
 	sc_ctx.nr = nr;

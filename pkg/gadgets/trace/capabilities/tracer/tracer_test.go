@@ -84,7 +84,8 @@ func TestCapabilitiesTracer(t *testing.T) {
 			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, _ interface{}) *types.Event {
 				return &types.Event{
 					Event: eventtypes.Event{
-						Type: eventtypes.NORMAL,
+						Type:      eventtypes.NORMAL,
+						Timestamp: 1,
 					},
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Pid:           uint32(info.Pid),
@@ -96,6 +97,10 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Audit:         1,
 					InsetID:       &false_,
 					Verdict:       "Allow",
+					CurrentUserNs: info.UserNsID,
+					TargetUserNs:  info.UserNsID,
+					Caps:          0,
+					CapsNames:     []string{},
 				}
 			}),
 		},
@@ -118,7 +123,8 @@ func TestCapabilitiesTracer(t *testing.T) {
 			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, _ interface{}) *types.Event {
 				return &types.Event{
 					Event: eventtypes.Event{
-						Type: eventtypes.NORMAL,
+						Type:      eventtypes.NORMAL,
+						Timestamp: 1,
 					},
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Pid:           uint32(info.Pid),
@@ -130,6 +136,10 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Audit:         1,
 					InsetID:       &false_,
 					Verdict:       "Allow",
+					CurrentUserNs: info.UserNsID,
+					TargetUserNs:  info.UserNsID,
+					Caps:          0,
+					CapsNames:     []string{},
 				}
 			}),
 		},
@@ -143,7 +153,8 @@ func TestCapabilitiesTracer(t *testing.T) {
 			validateEvent: utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, _ interface{}) *types.Event {
 				return &types.Event{
 					Event: eventtypes.Event{
-						Type: eventtypes.NORMAL,
+						Type:      eventtypes.NORMAL,
+						Timestamp: 1,
 					},
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Pid:           uint32(info.Pid),
@@ -155,6 +166,10 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Audit:         1,
 					InsetID:       &false_,
 					Verdict:       "Allow",
+					CurrentUserNs: info.UserNsID,
+					TargetUserNs:  info.UserNsID,
+					Caps:          0,
+					CapsNames:     []string{},
 				}
 			}),
 		},
@@ -174,7 +189,8 @@ func TestCapabilitiesTracer(t *testing.T) {
 			validateEvent: utilstest.ExpectAtLeastOneEvent(func(info *utilstest.RunnerInfo, _ interface{}) *types.Event {
 				return &types.Event{
 					Event: eventtypes.Event{
-						Type: eventtypes.NORMAL,
+						Type:      eventtypes.NORMAL,
+						Timestamp: 1,
 					},
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Pid:           uint32(info.Pid),
@@ -186,6 +202,10 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Audit:         1,
 					InsetID:       &false_,
 					Verdict:       "Deny",
+					CurrentUserNs: info.UserNsID,
+					TargetUserNs:  info.UserNsID,
+					Caps:          0,
+					CapsNames:     []string{},
 				}
 			}),
 		},
@@ -278,7 +298,11 @@ func TestCapabilitiesTracer(t *testing.T) {
 			events := []types.Event{}
 			eventCallback := func(event *types.Event) {
 				// normalize
-				event.Timestamp = 0
+				if event.Timestamp != 0 {
+					event.Timestamp = 1
+				}
+				event.Caps = 0
+				event.CapsNames = []string{}
 
 				events = append(events, *event)
 			}
