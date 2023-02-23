@@ -19,24 +19,18 @@ import (
 	"fmt"
 	"strings"
 
-	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
 var KubernetesConfigFlags = genericclioptions.NewConfigFlags(false)
 
 func FlagInit(rootCmd *cobra.Command) {
-	cobra.OnInitialize(cobraInit)
 	KubernetesConfigFlags.AddFlags(rootCmd.PersistentFlags())
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-}
-
-func cobraInit() {
-	viper.AutomaticEnv()
 }
 
 // CommonFlags contains CLI flags common to several gadgets
