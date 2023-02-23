@@ -84,6 +84,8 @@ jobs:
   dependencies-checks:
     name: Dependencies checks
     # level: 0
+    # Only run this on PR.
+    if: ${{ github.event.pull_request }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
