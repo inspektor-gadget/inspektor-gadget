@@ -192,6 +192,10 @@ if you need further help.
 If you want to propose a new feature or do a big change in the architecture
 it's highly recommended to open an issue first to discuss it with the team.
 
+### Writing tests
+
+We use `github.com/stretchr/testify` to make tests less verbose.
+
 ## Planning
 
 Our planning is published through two different project boards:
