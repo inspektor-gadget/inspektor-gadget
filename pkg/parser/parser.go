@@ -47,6 +47,11 @@ type Parser interface {
 	// GetColumns returns the underlying columns definition (mainly used for serialization)
 	GetColumns() any
 
+	// VerifyColumnNames takes a list of column names and returns two lists, one containing the
+	// valid column names and another containing the invalid column names. Prefixes like "-" for
+	// descending sorting will be ignored.
+	VerifyColumnNames(columnNames []string) (valid []string, invalid []string)
+
 	// SetColumnFilters sets additional column filters that will be used whenever one of the other methods of this
 	// interface are called. This is for example used to filter columns with information on kubernetes in a non-k8s
 	// environment like local-gadget
@@ -234,6 +239,10 @@ func (p *parser[T]) GetDefaultColumns() []string {
 		cols = append(cols, column.Name)
 	}
 	return cols
+}
+
+func (p *parser[T]) VerifyColumnNames(columnNames []string) (valid []string, invalid []string) {
+	return p.columns.VerifyColumnNames(columnNames)
 }
 
 func (p *parser[T]) SetSorting(sortBy []string) error {

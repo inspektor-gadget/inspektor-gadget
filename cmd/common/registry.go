@@ -238,7 +238,15 @@ func buildCommandFromGadget(
 
 			formatter := parser.GetTextColumnsFormatter()
 			if outputModeParams != "" {
-				formatter.SetShowColumns(strings.Split(outputModeParams, ","))
+				valid, invalid := parser.VerifyColumnNames(strings.Split(outputModeParams, ","))
+
+				for _, c := range invalid {
+					log.Warnf("column %q not found", c)
+				}
+
+				if err := formatter.SetShowColumns(valid); err != nil {
+					return err
+				}
 			}
 			parser.SetLogCallback(fe.Logf)
 
