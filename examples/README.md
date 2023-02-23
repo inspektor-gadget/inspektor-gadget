@@ -31,7 +31,7 @@ or `local-gadget` directly.
       [top/file](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/pkg/gadgets/top/file)
       package to get a list of the files with a higher number of write
       operations on the host.
-    - [snapshot/basic/process](gadgets/snapshot/process/): shows how to use
+    - [snapshot/basic/process](gadgets/basic/snapshot/process/): shows how to use
       [snapshot/process](https://github.com/inspektor-gadget/inspektor-gadget/tree/main/pkg/gadgets/snapshot/process)
       package to get a list the running processes on the host.
   - [withfilter](gadgets/withfilter/): Examples showing how to create a
