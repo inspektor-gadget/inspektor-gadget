@@ -24,6 +24,7 @@ runs:
         name: kubectl-gadget-linux-amd64-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/
     - name: Integration tests
+      id: integration-tests
       shell: bash
       run: |
         tar zxvf /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
@@ -70,4 +71,4 @@ runs:
       uses: ./.github/actions/prepare-and-publish-test-reports
       with:
         test-log-file: integration.log
-
+        test-step-conclusion: ${{ steps.integration-tests.conclusion }}
