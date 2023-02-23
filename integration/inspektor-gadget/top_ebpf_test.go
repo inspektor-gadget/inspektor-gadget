@@ -48,7 +48,7 @@ func TestTopEbpf(t *testing.T) {
 				e.Container = ""
 				e.Namespace = ""
 				e.ProgramID = 0
-				e.Pids = nil
+				e.Processes = nil
 				e.CurrentRuntime = 0
 				e.CurrentRunCount = 0
 				e.CumulativeRuntime = 0
