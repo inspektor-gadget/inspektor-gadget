@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/docker/go-units"
@@ -52,21 +53,27 @@ func GetColumns() *columns.Columns[Stats] {
 	col.Visible = false
 
 	cols.MustSetExtractor("pid", func(stats *Stats) (ret string) {
-		if len(stats.Pids) > 0 {
-			return fmt.Sprint(stats.Pids[0].Pid)
+		pids := []string{}
+
+		for _, pid := range stats.Pids {
+			pids = append(pids, fmt.Sprint(pid.Pid))
 		}
-		return ""
+
+		return strings.Join(pids, ",")
 	})
 	cols.MustAddColumn(columns.Column[Stats]{
-		Name:     "comm",
-		MaxWidth: 16,
-		Visible:  true,
-		Order:    1000,
+		Name:    "comm",
+		Width:   16,
+		Visible: true,
+		Order:   1000,
 		Extractor: func(stats *Stats) string {
-			if len(stats.Pids) > 0 {
-				return fmt.Sprint(stats.Pids[0].Comm)
+			comms := []string{}
+
+			for _, comm := range stats.Pids {
+				comms = append(comms, comm.Comm)
 			}
-			return ""
+
+			return strings.Join(comms, ",")
 		},
 	})
 	cols.MustSetExtractor("runtime", func(stats *Stats) (ret string) {
