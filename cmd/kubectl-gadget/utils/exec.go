@@ -96,7 +96,7 @@ func ExecPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		return err
 	}
 
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 		Stdin:  nil,
 		Stdout: cmdStdout,
 		Stderr: cmdStderr,
