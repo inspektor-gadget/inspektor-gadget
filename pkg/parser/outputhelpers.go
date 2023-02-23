@@ -23,7 +23,7 @@ import (
 // TextColumnsFormatter is the interface used for outputHelper
 type TextColumnsFormatter interface {
 	FormatHeader() string
-	SetShowColumns([]string)
+	SetShowColumns([]string) error
 	TransformEvent(string) (string, error)
 	EventHandlerFunc() any
 	EventHandlerFuncArray(...func()) any
@@ -97,8 +97,8 @@ func (oh *outputHelper[T]) TransformEvent(line string) (string, error) {
 	return oh.FormatEntry(ev), nil
 }
 
-func (oh *outputHelper[T]) SetShowColumns(cols []string) {
-	oh.TextColumnsFormatter.SetShowColumns(cols)
+func (oh *outputHelper[T]) SetShowColumns(cols []string) error {
+	return oh.TextColumnsFormatter.SetShowColumns(cols)
 }
 
 func (oh *outputHelper[T]) SetEnableExtraLines(newVal bool) {
