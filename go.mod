@@ -6,7 +6,7 @@ require (
 	github.com/cilium/ebpf v0.10.0
 	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
 	github.com/containers/common v0.51.0
-	github.com/docker/docker v20.10.23+incompatible
+	github.com/docker/docker v23.0.1+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/giantswarm/crd-docs-generator v0.7.1
 	github.com/google/uuid v1.3.0
