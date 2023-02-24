@@ -24,7 +24,7 @@ require (
 	golang.org/x/term v0.5.0
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.1
-	k8s.io/api v0.25.4
+	k8s.io/api v0.26.1
 	k8s.io/apiextensions-apiserver v0.25.0
 	k8s.io/apimachinery v0.26.1
 	k8s.io/cli-runtime v0.25.4
