@@ -46,8 +46,28 @@ type TestStep interface {
 	Running() bool
 }
 
+type Option func(*runTestStepsOpts)
+
+type runTestStepsOpts struct {
+	cbBeforeCleanup func(t *testing.T)
+}
+
+func WithCbBeforeCleanup(f func(t *testing.T)) func(opts *runTestStepsOpts) {
+	return func(ops *runTestStepsOpts) {
+		ops.cbBeforeCleanup = f
+	}
+}
+
 // RunTestSteps is used to run a list of test steps with stopping/clean up logic.
-func RunTestSteps[S TestStep](steps []S, t *testing.T) {
+// executeBeforeCleanup is executed before calling the cleanup functions, it can be use for instance
+// to print extra logs when the test fails.
+func RunTestSteps[S TestStep](steps []S, t *testing.T, options ...Option) {
+	opts := &runTestStepsOpts{}
+
+	for _, option := range options {
+		option(opts)
+	}
+
 	// Defer all cleanup steps so we are sure to exit clean whatever
 	// happened
 	defer func() {
@@ -57,6 +77,10 @@ func RunTestSteps[S TestStep](steps []S, t *testing.T) {
 			}
 		}
 	}()
+
+	if opts.cbBeforeCleanup != nil {
+		defer opts.cbBeforeCleanup(t)
+	}
 
 	// Defer stopping commands
 	for _, step := range steps {

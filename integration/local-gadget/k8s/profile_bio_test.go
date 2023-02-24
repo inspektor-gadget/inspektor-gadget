@@ -45,5 +45,5 @@ func TestProfileBio(t *testing.T) {
 		profileBioCmd,
 	}
 
-	RunTestSteps(commands, t)
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn()))
 }
