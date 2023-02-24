@@ -597,6 +597,7 @@ jobs:
         with:
           runtime: ${{ matrix.runtime }}
       - name: Run integration for container runtime ${{ matrix.runtime }}
+        id: integration-tests
         run: |
           set -o pipefail
           make -C integration/local-gadget/k8s CONTAINER_RUNTIME=${{ matrix.runtime }} -o build test |& tee integration.log
@@ -606,6 +607,7 @@ jobs:
         uses: ./.github/actions/prepare-and-publish-test-reports
         with:
           test-log-file: integration.log
+          test-step-conclusion: ${{ steps.integration-tests.conclusion }}
 
   test-integration-non-k8s-local-gadget:
     name: Integration tests for local gadget with non-Kubernetes Containers
@@ -633,6 +635,7 @@ jobs:
           tar zxvf /home/runner/work/inspektor-gadget/local-gadget-linux-amd64.tar.gz
           mv local-gadget local-gadget-linux-amd64
       - name: Run integration for container runtime ${{ matrix.runtime }}
+        id: integration-tests
         run: |
           set -o pipefail
           make -C integration/local-gadget/non-k8s -o build test-${{ matrix.runtime }} |& tee integration.log
@@ -642,6 +645,7 @@ jobs:
         uses: ./.github/actions/prepare-and-publish-test-reports
         with:
           test-log-file: integration.log
+          test-step-conclusion: ${{ steps.integration-tests.conclusion }}
 
   test-integration-aks:
     name: Integration tests on AKS

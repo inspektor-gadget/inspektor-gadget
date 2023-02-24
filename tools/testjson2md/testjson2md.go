@@ -32,13 +32,20 @@ const (
 	// summaryLimitInBytes is the maximum size of the summary in bytes.
 	// https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#step-isolation-and-limits
 	summaryLimitInBytes = 1000000
+	// conclusion is the conclusion (success, failure, skipped and cancelled) indicating GitHub Action test step status.
+	// https://docs.github.com/en/actions/learn-github-actions/contexts#steps-context
+	conclusionSuccess   = "success"
+	conclusionFailure   = "failure"
+	conclusionSkipped   = "skipped"
+	conclusionCancelled = "cancelled"
 )
 
 var ErrInvalidContent = fmt.Errorf("invalid content")
 
 var (
-	inPath  = flag.String("in", "", "path to JSON file produced by go tool test2json")
-	outPath = flag.String("out", "", "path to output file")
+	inPath     = flag.String("in", "", "path to JSON file produced by go tool test2json")
+	outPath    = flag.String("out", "", "path to output file")
+	conclusion = flag.String("conclusion", "", "conclusion (success, failure, skipped and cancelled) indicating GitHub Action test step status")
 )
 
 func main() {
@@ -84,15 +91,24 @@ func markdownForContent(content report.DisplayContent) ([]byte, error) {
 		return nil, fmt.Errorf("checking failed tests: %w", ErrInvalidContent)
 	}
 
-	// set report status
-	reportStatus := ":green_circle:"
-	if len(content.Results["fail"]) > 0 {
-		reportStatus = ":red_circle:"
+	// set report status icon
+	var statusIcon string
+	switch *conclusion {
+	case conclusionFailure:
+		statusIcon = ":red_circle:"
+	case conclusionSkipped:
+		fallthrough
+	case conclusionCancelled:
+		statusIcon = ":white_circle:"
+	case conclusionSuccess:
+		fallthrough
+	default:
+		statusIcon = ":green_circle:"
 	}
 
 	// summary
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "### Test Report %s\n", reportStatus)
+	fmt.Fprintf(&buf, "### Test Report %s\n", statusIcon)
 	fmt.Fprintf(&buf, "#### Summary\n")
 	fmt.Fprintf(&buf, "| Total Tests | Passed :heavy_check_mark: | Failed :x: | Skipped :arrow_right_hook: |\n")
 	fmt.Fprintf(&buf, "| ----- | ---- | ---- | ---- |\n")
