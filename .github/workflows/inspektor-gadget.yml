@@ -85,10 +85,12 @@ jobs:
             exit 1
           fi
 
-  dependencies-checks:
-    name: Dependencies checks
+  pr-dependencies-checks:
+    name: PR dependencies checks
     # level: 0
-    # Only run this on PR.
+    # We need to run this action only on PR.
+    # Otherwise, for other cases like pushing to main, it will fail because it
+    # searches for base_ref and head_ref which only exists in PR context.
     if: ${{ github.event.pull_request }}
     runs-on: ubuntu-latest
     steps:
