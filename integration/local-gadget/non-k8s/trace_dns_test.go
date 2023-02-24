@@ -29,7 +29,7 @@ func TestTraceDns(t *testing.T) {
 
 	traceDNSCmd := &Command{
 		Name:         "TraceDns",
-		Cmd:          fmt.Sprintf("./local-gadget trace dns -o json --runtimes=docker -c %s", cn),
+		Cmd:          fmt.Sprintf("./local-gadget trace dns -o json -v --runtimes=docker -c %s", cn),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*dnsTypes.Event{
