@@ -121,13 +121,13 @@ func (t *Tracer) Stop() {
 	bpfstats.DisableBPFStats()
 }
 
-func getPidMapFromPids(pids []*piditer.PidIterEntry) map[uint32][]*types.PidInfo {
-	pidmap := make(map[uint32][]*types.PidInfo)
+func getPidMapFromPids(pids []*piditer.PidIterEntry) map[uint32][]*types.Process {
+	pidmap := make(map[uint32][]*types.Process)
 	for _, e := range pids {
 		if _, ok := pidmap[e.ProgID]; !ok {
-			pidmap[e.ProgID] = make([]*types.PidInfo, 0, 1)
+			pidmap[e.ProgID] = make([]*types.Process, 0, 1)
 		}
-		pidmap[e.ProgID] = append(pidmap[e.ProgID], &types.PidInfo{
+		pidmap[e.ProgID] = append(pidmap[e.ProgID], &types.Process{
 			Pid:  e.Pid,
 			Comm: e.Comm,
 		})
@@ -152,12 +152,12 @@ func getProgIDFromFile(fn string) (uint32, error) {
 	return 0, os.ErrNotExist
 }
 
-func getPidMapFromProcFs() (map[uint32][]*types.PidInfo, error) {
+func getPidMapFromProcFs() (map[uint32][]*types.Process, error) {
 	processes, err := os.ReadDir("/proc/")
 	if err != nil {
 		return nil, err
 	}
-	pidmap := make(map[uint32][]*types.PidInfo)
+	pidmap := make(map[uint32][]*types.Process)
 	for _, p := range processes {
 		if !p.IsDir() {
 			continue
@@ -174,10 +174,10 @@ func getPidMapFromProcFs() (map[uint32][]*types.PidInfo, error) {
 			if progID, err := getProgIDFromFile(filepath.Join("/proc", p.Name(), "fdinfo", fd.Name())); err == nil {
 				pid, _ := strconv.ParseUint(p.Name(), 10, 32)
 				if _, ok := pidmap[progID]; !ok {
-					pidmap[progID] = make([]*types.PidInfo, 0, 1)
+					pidmap[progID] = make([]*types.Process, 0, 1)
 				}
 				comm, _ := os.ReadFile(filepath.Join("/proc", p.Name(), "comm"))
-				pidmap[progID] = append(pidmap[progID], &types.PidInfo{
+				pidmap[progID] = append(pidmap[progID], &types.Process{
 					Pid:  uint32(pid),
 					Comm: strings.TrimSpace(string(comm)),
 				})
@@ -341,25 +341,25 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 
 	t.prevStats = curStats
 
-	var pidmap map[uint32][]*types.PidInfo
+	var processMap map[uint32][]*types.Process
 
 	if !t.useFallbackIterator {
 		pids, err = t.iter.DumpPids()
 		if err != nil {
 			return nil, fmt.Errorf("could not get pids for programs using iterator: %w", err)
 		}
-		pidmap = getPidMapFromPids(pids)
+		processMap = getPidMapFromPids(pids)
 	} else {
 		// Fallback...
-		pidmap, err = getPidMapFromProcFs()
+		processMap, err = getPidMapFromProcFs()
 		if err != nil {
 			return nil, fmt.Errorf("could not get pids for programs using fallback method: %w", err)
 		}
 	}
 
 	for i := range stats {
-		if tmpPids, ok := pidmap[stats[i].ProgramID]; ok {
-			stats[i].Pids = tmpPids
+		if tmpProcesses, ok := processMap[stats[i].ProgramID]; ok {
+			stats[i].Processes = tmpProcesses
 		}
 	}
 

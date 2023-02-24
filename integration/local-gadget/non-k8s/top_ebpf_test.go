@@ -38,7 +38,7 @@ func TestTopEbpf(t *testing.T) {
 
 			normalize := func(e *topebpfTypes.Stats) {
 				e.ProgramID = 0
-				e.Pids = nil
+				e.Processes = nil
 				e.CurrentRuntime = 0
 				e.CurrentRunCount = 0
 				e.CumulativeRuntime = 0

@@ -21,17 +21,23 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 var SortByDefault = []string{"-runtime", "-runcount"}
+
+type Process struct {
+	Pid  uint32 `json:"pid,omitempty"`
+	Comm string `json:"comm,omitempty"`
+}
 
 type Stats struct {
 	eventtypes.CommonData
 	ProgramID          uint32     `json:"progid" column:"progid"`
 	Type               string     `json:"type,omitempty" column:"type"`
 	Name               string     `json:"name,omitempty" column:"name"`
-	Pids               []*PidInfo `json:"pids,omitempty" column:"pid"`
+	Processes          []*Process `json:"processes,omitempty"`
 	CurrentRuntime     int64      `json:"currentRuntime,omitempty" column:"runtime,order:1001,align:right"`
 	CurrentRunCount    uint64     `json:"currentRunCount,omitempty" column:"runcount,order:1002,width:10"`
 	CumulativeRuntime  int64      `json:"cumulRuntime,omitempty" column:"cumulruntime,order:1003,hide"`
@@ -52,24 +58,33 @@ func GetColumns() *columns.Columns[Stats] {
 	col, _ = cols.GetColumn("container")
 	col.Visible = false
 
-	cols.MustSetExtractor("pid", func(stats *Stats) (ret string) {
-		pids := []string{}
-
-		for _, pid := range stats.Pids {
-			pids = append(pids, fmt.Sprint(pid.Pid))
-		}
-
-		return strings.Join(pids, ",")
-	})
 	cols.MustAddColumn(columns.Column[Stats]{
-		Name:    "comm",
-		Width:   16,
-		Visible: true,
-		Order:   1000,
+		Name:         "pid",
+		Width:        16,
+		EllipsisType: ellipsis.End,
+		Visible:      true,
+		Order:        999,
+		Extractor: func(stats *Stats) string {
+			pids := []string{}
+
+			for _, pid := range stats.Processes {
+				pids = append(pids, fmt.Sprint(pid.Pid))
+			}
+
+			return strings.Join(pids, ",")
+		},
+	})
+
+	cols.MustAddColumn(columns.Column[Stats]{
+		Name:         "comm",
+		Width:        16,
+		EllipsisType: ellipsis.End,
+		Visible:      true,
+		Order:        1000,
 		Extractor: func(stats *Stats) string {
 			comms := []string{}
 
-			for _, comm := range stats.Pids {
+			for _, comm := range stats.Processes {
 				comms = append(comms, comm.Comm)
 			}
 
@@ -90,9 +105,4 @@ func GetColumns() *columns.Columns[Stats] {
 	})
 
 	return cols
-}
-
-type PidInfo struct {
-	Pid  uint32 `json:"pid,omitempty"`
-	Comm string `json:"comm,omitempty"`
 }
