@@ -18,7 +18,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/vishvananda/netlink v1.2.1-beta.2
-	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
+	github.com/vishvananda/netns v0.0.4
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
 	golang.org/x/sys v0.5.0
 	golang.org/x/term v0.5.0
