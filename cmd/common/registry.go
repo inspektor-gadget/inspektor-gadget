@@ -191,12 +191,7 @@ func buildCommandFromGadget(
 			}
 
 			if parser == nil {
-				// This kind of gadgets return directly the result instead of
-				// using the parser
-				result, err := runtime.RunGadget(gadgetCtx)
-				if err != nil {
-					return fmt.Errorf("running gadget: %w", err)
-				}
+				var transformResult func(result []byte) ([]byte, error)
 
 				switch outputModeName {
 				default:
@@ -208,14 +203,27 @@ func buildCommandFromGadget(
 					if _, ok := formats[outputModeName]; !ok {
 						return fmt.Errorf("invalid output mode %q", outputModeName)
 					}
-					transformed, err := formats[outputModeName].Transform(result)
-					if err != nil {
-						return fmt.Errorf("transforming gadget result: %w", err)
-					}
-					fe.Output(string(transformed))
+
+					transformResult = formats[outputModeName].Transform
 				case OutputModeJSON:
-					fe.Output(string(result))
+					transformResult = func(result []byte) ([]byte, error) {
+						return result, nil
+					}
 				}
+
+				// This kind of gadgets return directly the result instead of
+				// using the parser
+				result, err := runtime.RunGadget(gadgetCtx)
+				if err != nil {
+					return fmt.Errorf("running gadget: %w", err)
+				}
+
+				transformed, err := transformResult(result)
+				if err != nil {
+					return fmt.Errorf("transforming result: %w", err)
+				}
+
+				fe.Output(string(transformed))
 
 				return nil
 			}
