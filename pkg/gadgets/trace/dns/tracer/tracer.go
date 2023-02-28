@@ -22,6 +22,8 @@ import (
 	"syscall"
 	"unsafe"
 
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -40,17 +42,30 @@ const (
 
 type Tracer struct {
 	*networktracer.Tracer[types.Event]
+	gadgetCtx   gadgets.GadgetContext
+	enableStats bool
+	requestCtr  instrument.Int64Counter
+	responseCtr instrument.Int64Counter
 }
 
 func NewTracer() (*Tracer, error) {
+	tracer := &Tracer{}
+	err := tracer.initTracer()
+	if err != nil {
+		return nil, err
+	}
+	return tracer, nil
+}
+
+func (t *Tracer) initTracer() error {
 	spec, err := loadDns()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load asset: %w", err)
+		return fmt.Errorf("failed to load asset: %w", err)
 	}
 
 	latencyCalc, err := newDNSLatencyCalculator()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	parseAndEnrichDNSEvent := func(rawSample []byte, netns uint64) (*types.Event, error) {
@@ -62,6 +77,16 @@ func NewTracer() (*Tracer, error) {
 		event, err := bpfEventToDNSEvent(bpfEvent, netns)
 		if err != nil {
 			return nil, err
+		}
+
+		if t.enableStats {
+			t.gadgetCtx.Logger().Debugf("logging stat")
+			switch bpfEvent.Qr {
+			case 0:
+				t.requestCtr.Add(t.gadgetCtx.Context(), 1)
+			case 1:
+				t.responseCtr.Add(t.gadgetCtx.Context(), 1)
+			}
 		}
 
 		// Derive latency from the query/response timestamps.
@@ -85,10 +110,11 @@ func NewTracer() (*Tracer, error) {
 		parseAndEnrichDNSEvent,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("creating network tracer: %w", err)
+		return fmt.Errorf("creating network tracer: %w", err)
 	}
 
-	return &Tracer{Tracer: networkTracer}, nil
+	t.Tracer = networkTracer
+	return nil
 }
 
 // pkt_type definitions:
@@ -297,11 +323,31 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	// TODO: Clean up
-	tracer, err := NewTracer()
+	err := t.initTracer()
 	if err != nil {
 		return err
 	}
-	t.Tracer = tracer.Tracer
+	t.gadgetCtx = gadgetCtx
 	return nil
+}
+
+func (t *Tracer) SetMetricsExporter(meter metric.Meter) {
+	t.gadgetCtx.Logger().Debugf("enabling stat collection")
+
+	requestCtr, err := meter.Int64Counter("request-count")
+	if err != nil {
+		t.gadgetCtx.Logger().Warnf("instantiate counter: %v", err)
+		return
+	}
+
+	responseCtr, err := meter.Int64Counter("response-count")
+	if err != nil {
+		t.gadgetCtx.Logger().Warnf("instantiate counter: %v", err)
+		return
+	}
+
+	t.requestCtr = requestCtr
+	t.responseCtr = responseCtr
+
+	t.enableStats = true
 }
