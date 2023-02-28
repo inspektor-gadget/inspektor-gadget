@@ -1,6 +1,6 @@
 ---
 title: Contributing
-weight: 100
+weight: 50
 description: >
   How to contribute to Inspektor Gadget.
 ---
@@ -10,7 +10,7 @@ Here you can learn how you can contribute to Inspektor Gadget.
 ## Getting started
 
 To better understand how the pieces fit together, we recommend reading the
-[architecture](architecture.md) documentation before starting to play with
+[architecture](../architecture.md) documentation before starting to play with
 Inspektor Gadget.
 
 ### Setup developer environment
@@ -86,7 +86,7 @@ Wrote /work/pkg/gadgettracermanager/containers-map/containersmap_bpfel.go
 
 ### Building Local Gadget
 
-Inspektor Gadget also provides the [`local-gadget`](local-gadget.md) tool to
+Inspektor Gadget also provides the [`local-gadget`](../local-gadget.md) tool to
 trace containers without Kubernetes. It can be built independently from the
 `kubectl-gadget` and the gadget container image.
 
@@ -102,7 +102,7 @@ For faster iteration, it's possible to make changes to Inspektor Gadget and
 test them on minikube locally without pushing container images to any
 registry.
 
-* Follow the specific [installation instructions](install.md#minikube) for minikube or use `make minikube-start` to start it.
+* Follow the specific [installation instructions](../install.md#minikube) for minikube or use `make minikube-start` to start it.
 * Deploy the locally modified version of Inspektor Gadget to an already
   running minikube cluster with `make minikube-deploy`.
 
@@ -163,7 +163,7 @@ $ make -C integration/local-gadget/non-k8s test-docker
 ### Continuous Integration
 
 Inspektor Gadget uses GitHub Actions as CI. Please check dedicated [CI
-documentation](ci.md) for details.
+documentation](../ci.md) for details.
 
 ## Contribution Guidelines
 
