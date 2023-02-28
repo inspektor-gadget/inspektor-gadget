@@ -79,15 +79,15 @@ func (l *Prometheus) ParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		{
 			Key:          ParamEnableMetrics,
-			Title:        "Enable Stats Export",
+			Title:        "Enable metrics export",
 			DefaultValue: "false",
-			Description:  "Enables collecting stats from the gadget and export it via Prometheus",
+			Description:  "Enables collecting metrics from the gadget and export it via Prometheus",
 			IsMandatory:  true,
 			TypeHint:     params.TypeBool,
 		},
 		{
 			Key:         ParamMetricsID,
-			Title:       "Stats Identifier",
+			Title:       "Metrics Identifier",
 			Description: "Will be used as part of the scope name for the metrics",
 		},
 	}
@@ -125,10 +125,8 @@ func (l *Prometheus) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	if err != nil {
 		return false
 	}
-	if _, ok := tempInstance.(SetMetricsExporter); !ok {
-		return false
-	}
-	return true
+	_, ok = tempInstance.(SetMetricsExporter)
+	return ok
 }
 
 func (l *Prometheus) Close() error {
