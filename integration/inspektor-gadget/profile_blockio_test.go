@@ -44,5 +44,5 @@ func TestProfileBlockIO(t *testing.T) {
 		},
 	}
 
-	RunTestSteps(commands, t)
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn()))
 }

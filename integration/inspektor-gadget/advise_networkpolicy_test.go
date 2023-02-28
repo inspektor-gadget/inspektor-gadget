@@ -135,5 +135,5 @@ spec:
 		},
 	}
 
-	RunTestSteps(commands, t)
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(nsServer, nsClient)))
 }

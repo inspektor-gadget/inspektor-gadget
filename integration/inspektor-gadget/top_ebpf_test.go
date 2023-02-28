@@ -68,5 +68,5 @@ func TestTopEbpf(t *testing.T) {
 		SleepForSecondsCommand(2),
 	}
 
-	RunTestSteps(commands, t)
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn()))
 }

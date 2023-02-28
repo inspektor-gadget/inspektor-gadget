@@ -67,5 +67,5 @@ func TestTraceBind(t *testing.T) {
 		DeleteTestNamespaceCommand(ns),
 	}
 
-	RunTestSteps(commands, t)
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 }

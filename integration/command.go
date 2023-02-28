@@ -250,18 +250,37 @@ func (c *Command) createExecCmd() {
 	c.command = cmd
 }
 
-// getInspektorGadgetLogs returns a string with the logs of the gadget pods
-func getInspektorGadgetLogs() string {
+// PrintLogsFn returns a function that print logs in case the test fails.
+func PrintLogsFn(namespaces ...string) func(t *testing.T) {
+	return func(t *testing.T) {
+		if !t.Failed() {
+			return
+		}
+
+		if DefaultTestComponent == InspektorGadgetTestComponent {
+			t.Logf("Inspektor Gadget pod logs:")
+			t.Logf(getPodLogs("gadget"))
+		}
+
+		for _, ns := range namespaces {
+			t.Logf("Logs in namespace %s:", ns)
+			t.Logf(getPodLogs(ns))
+		}
+	}
+}
+
+// getPodLogs returns a string with the logs of all pods in namespace ns
+func getPodLogs(ns string) string {
 	if DefaultTestComponent != InspektorGadgetTestComponent {
 		return ""
 	}
 
 	var sb strings.Builder
 	logCommands := []string{
-		"kubectl get pods -n gadget -o wide",
-		`for pod in $(kubectl get pods -n gadget -o name); do
-			kubectl logs -n gadget $pod;
-		done`,
+		fmt.Sprintf("kubectl get pods -n %s -o wide", ns),
+		fmt.Sprintf(`for pod in $(kubectl get pods -n %s -o name); do
+			kubectl logs -n %s $pod;
+		done`, ns, ns),
 	}
 
 	for _, c := range logCommands {
@@ -286,20 +305,20 @@ func (c *Command) verifyOutput() error {
 	if c.ExpectedRegexp != "" {
 		r := regexp.MustCompile(c.ExpectedRegexp)
 		if !r.MatchString(output) {
-			return fmt.Errorf("output didn't match the expected regexp: %s\n%s",
-				c.ExpectedRegexp, getInspektorGadgetLogs())
+			return fmt.Errorf("output didn't match the expected regexp: %s",
+				c.ExpectedRegexp)
 		}
 	}
 
 	if c.ExpectedString != "" && output != c.ExpectedString {
-		return fmt.Errorf("output didn't match the expected string: %s\n%v\n%s",
-			c.ExpectedString, pretty.Diff(c.ExpectedString, output), getInspektorGadgetLogs())
+		return fmt.Errorf("output didn't match the expected string: %s\n%v",
+			c.ExpectedString, pretty.Diff(c.ExpectedString, output))
 	}
 
 	if c.ExpectedOutputFn != nil {
 		if err := c.ExpectedOutputFn(output); err != nil {
-			return fmt.Errorf("verifying output with custom function: %w\n%s",
-				err, getInspektorGadgetLogs())
+			return fmt.Errorf("verifying output with custom function: %w",
+				err)
 		}
 	}
 
