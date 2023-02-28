@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/cilium/ebpf v0.10.0
-	github.com/containerd/nri v0.1.1-0.20210619071632-28f76457b672
+	github.com/containerd/nri v0.3.0
 	github.com/containers/common v0.51.0
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/docker/go-units v0.5.0
@@ -30,7 +30,7 @@ require (
 	k8s.io/cli-runtime v0.26.1
 	k8s.io/client-go v0.26.1
 	k8s.io/code-generator v0.26.1
-	k8s.io/cri-api v0.23.1
+	k8s.io/cri-api v0.25.3
 	sigs.k8s.io/controller-runtime v0.14.4
 	sigs.k8s.io/security-profiles-operator v0.3.1-0.20211122222133-6e12fe5f2daa
 	sigs.k8s.io/yaml v1.3.0
@@ -87,7 +87,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.2 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
