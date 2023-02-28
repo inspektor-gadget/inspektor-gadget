@@ -68,6 +68,7 @@ spec:
     podname: etcd-minikube
   runMode: Manual
   outputMode: Stream
+
 ```
 
 
