@@ -862,20 +862,26 @@ jobs:
     - name: Rename all artifacts to *-${{ github.ref_name }}.tar.gz
       shell: bash
       run: |
-        for i in *-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz; do
           mv $i $(dirname $i)/$(basename $i .tar.gz)-${{ github.ref_name }}.tar.gz
         done
     - name: Compute checksums for all artifacts
       shell: bash
       run: |
-        for i in *-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz inspektor-gadget-${{ github.ref_name }}.yaml; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz inspektor-gadget-${{ github.ref_name }}.yaml; do
           hash=$(sha256sum $i | cut -d' ' -f1)
           echo "${hash}  $(basename $i)" >> inspektor-gadget-${{ github.ref_name }}_checksums.txt
         done
-    - name: Upload Gadget Release *.tar.gz
+    - name: Upload kubectl-gadget binary
       uses: csexton/release-asset-action@v2
       with:
-        pattern: "*-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz"
+        pattern: "kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
+    - name: Upload IG *.tar.gz binary
+      uses: csexton/release-asset-action@v2
+      with:
+        pattern: "ig-*-*-tar-gz/ig-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload YAML
