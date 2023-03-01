@@ -166,7 +166,7 @@ ig-tests:
 	# Compile and execute in separate commands because Go might not be
 	# available in the root environment
 	go test -c ./pkg/ig-manager
-	sudo ./ig-manager.test -test.v -root-test $$LOCAL_GADGET_TESTS_PARAMS
+	sudo ./ig-manager.test -test.v -root-test $$IG_TESTS_PARAMS
 	rm -f ./ig-manager.test
 
 # INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g

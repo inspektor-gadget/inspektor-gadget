@@ -14,8 +14,8 @@ build:
 
 .PHONY: build-tests
 build-tests:
-	docker buildx build -t local-gadget-tests -f ./../../../Dockerfiles/local-gadget-tests.Dockerfile ../../../
-	docker run --rm --entrypoint cat local-gadget-tests local-gadget-integration.test > ./local-gadget-integration.test
+	docker buildx build -t ig-tests -f ./../../../Dockerfiles/ig-tests.Dockerfile ../../../
+	docker run --rm --entrypoint cat ig-tests ig-integration.test > ./ig-integration.test
 
 # test
 
@@ -30,7 +30,7 @@ test-all: $(TEST_TARGETS) test
 test: test-$(CONTAINER_RUNTIME)
 
 # INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g
-# INTEGRATION_TESTS_PARAMS="-test.run TestListContainers" CONTAINER_RUNTIME=containerd make -C integration/local-gadget/k8s test
+# INTEGRATION_TESTS_PARAMS="-test.run TestListContainers" CONTAINER_RUNTIME=containerd make -C integration/ig/k8s test
 .PHONY: phony_explicit
 test-%: build build-tests
 	export MINIKUBE_PROFILE=minikube-$* && \
@@ -39,10 +39,10 @@ test-%: build build-tests
 	echo "Preparing minikube with profile $${MINIKUBE_PROFILE} for testing ..." && \
 	$(MINIKUBE) cp ../../../ig-linux-amd64 $${MINIKUBE_PROFILE}:/bin/ig >/dev/null && \
 	$(MINIKUBE) ssh sudo chmod +x /bin/ig && \
-	$(MINIKUBE) cp local-gadget-integration.test $${MINIKUBE_PROFILE}:/bin/local-gadget-integration.test >/dev/null && \
-	$(MINIKUBE) ssh sudo chmod +x /bin/local-gadget-integration.test && \
-	rm local-gadget-integration.test && \
+	$(MINIKUBE) cp ig-integration.test $${MINIKUBE_PROFILE}:/bin/ig-integration.test >/dev/null && \
+	$(MINIKUBE) ssh sudo chmod +x /bin/ig-integration.test && \
+	rm ig-integration.test && \
 	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ln -sf /var/lib/minikube/binaries/$(KUBERNETES_VERSION)/kubectl /bin/kubectl" && \
 	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ln -sf /etc/kubernetes/admin.conf /root/.kube/config" && \
 	echo "Running test in minikube with profile $${MINIKUBE_PROFILE} ..." && \
-	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo local-gadget-integration.test -test.v -integration -container-runtime $* $${INTEGRATION_TESTS_PARAMS}"
+	$(MINIKUBE) -p $${MINIKUBE_PROFILE} ssh "sudo ig-integration.test -test.v -integration -container-runtime $* $${INTEGRATION_TESTS_PARAMS}"

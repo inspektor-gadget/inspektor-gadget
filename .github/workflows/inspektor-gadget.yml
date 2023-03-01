@@ -569,8 +569,8 @@ jobs:
 
         perl tools/check-readme.pl ./kubectl-gadget README.md
 
-  test-integration-k8s-local-gadget:
-    name: Integration tests for local gadget with Kubernetes Containers
+  test-integration-k8s-ig:
+    name: Integration tests for ig with Kubernetes Containers
     # level: 2
     needs: [ test-unit, test-ig, build-ig ]
     runs-on: ubuntu-latest
@@ -602,7 +602,7 @@ jobs:
         id: integration-tests
         run: |
           set -o pipefail
-          make -C integration/local-gadget/k8s CONTAINER_RUNTIME=${{ matrix.runtime }} -o build test |& tee integration.log
+          make -C integration/ig/k8s CONTAINER_RUNTIME=${{ matrix.runtime }} -o build test |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
         continue-on-error: true
@@ -611,8 +611,8 @@ jobs:
           test-log-file: integration.log
           test-step-conclusion: ${{ steps.integration-tests.conclusion }}
 
-  test-integration-non-k8s-local-gadget:
-    name: Integration tests for local gadget with non-Kubernetes Containers
+  test-integration-non-k8s-ig:
+    name: Integration tests for ig with non-Kubernetes Containers
     # level: 2
     needs: [ test-unit, test-ig, build-ig ]
     runs-on: ubuntu-latest
@@ -640,7 +640,7 @@ jobs:
         id: integration-tests
         run: |
           set -o pipefail
-          make -C integration/local-gadget/non-k8s -o build test-${{ matrix.runtime }} |& tee integration.log
+          make -C integration/ig/non-k8s -o build test-${{ matrix.runtime }} |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
         continue-on-error: true
@@ -825,8 +825,8 @@ jobs:
       - test-integration-aks
       - test-integration-aro
       - test-ig
-      - test-integration-k8s-local-gadget
-      - test-integration-non-k8s-local-gadget
+      - test-integration-k8s-ig
+      - test-integration-non-k8s-ig
       - check-readme-up-to-date
       - build-examples
       - build-gadgets-examples
