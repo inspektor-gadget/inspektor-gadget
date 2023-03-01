@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package localgadgetmanager
+package igmanager
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ import (
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 )
 
-type LocalGadgetManager struct {
+type IGManager struct {
 	containercollection.ContainerCollection
 
 	tracerCollection *tracercollection.TracerCollection
@@ -36,7 +36,7 @@ type LocalGadgetManager struct {
 	containersMap *containersmap.ContainersMap
 }
 
-func (l *LocalGadgetManager) ContainersMap() *ebpf.Map {
+func (l *IGManager) ContainersMap() *ebpf.Map {
 	if l.containersMap == nil {
 		return nil
 	}
@@ -44,7 +44,7 @@ func (l *LocalGadgetManager) ContainersMap() *ebpf.Map {
 	return l.containersMap.ContainersMap()
 }
 
-func (l *LocalGadgetManager) Dump() string {
+func (l *IGManager) Dump() string {
 	out := "List of containers:\n"
 	l.ContainerCollection.ContainerRange(func(c *containercollection.Container) {
 		out += fmt.Sprintf("%+v\n", c)
@@ -54,28 +54,28 @@ func (l *LocalGadgetManager) Dump() string {
 
 // We are not running multiple tracers per instance so the tracer ID doesn't
 // need to be unique and we can hide it from caller.
-const localGadgetTracerID = "local_gadget_tracer_id"
+const igTracerID = "ig_tracer_id"
 
-func (l *LocalGadgetManager) CreateMountNsMap(containerSelector containercollection.ContainerSelector) (*ebpf.Map, error) {
-	if err := l.tracerCollection.AddTracer(localGadgetTracerID, containerSelector); err != nil {
+func (l *IGManager) CreateMountNsMap(containerSelector containercollection.ContainerSelector) (*ebpf.Map, error) {
+	if err := l.tracerCollection.AddTracer(igTracerID, containerSelector); err != nil {
 		return nil, err
 	}
 
-	mountnsmap, err := l.tracerCollection.TracerMountNsMap(localGadgetTracerID)
+	mountnsmap, err := l.tracerCollection.TracerMountNsMap(igTracerID)
 	if err != nil {
-		l.tracerCollection.RemoveTracer(localGadgetTracerID)
+		l.tracerCollection.RemoveTracer(igTracerID)
 		return nil, err
 	}
 
 	return mountnsmap, nil
 }
 
-func (l *LocalGadgetManager) RemoveMountNsMap() error {
-	return l.tracerCollection.RemoveTracer(localGadgetTracerID)
+func (l *IGManager) RemoveMountNsMap() error {
+	return l.tracerCollection.RemoveTracer(igTracerID)
 }
 
-func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, error) {
-	l := &LocalGadgetManager{}
+func NewManager(runtimes []*containerutils.RuntimeConfig) (*IGManager, error) {
+	l := &IGManager{}
 
 	var err error
 	l.tracerCollection, err = tracercollection.NewTracerCollection(&l.ContainerCollection)
@@ -108,7 +108,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*LocalGadgetManager, 
 	return l, nil
 }
 
-func (l *LocalGadgetManager) Close() {
+func (l *IGManager) Close() {
 	l.ContainerCollection.Close()
 	if l.tracerCollection != nil {
 		l.tracerCollection.Close()

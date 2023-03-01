@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/containers"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/ig/containers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
@@ -44,7 +44,7 @@ func main() {
 	)
 
 	runtime := &local.Runtime{}
-	// columnFilters for local-gadget
+	// columnFilters for ig
 	columnFilters := []columns.ColumnFilter{columns.Or(columns.WithTag("runtime"), columns.WithNoTags())}
 	common.AddCommandsFromRegistry(rootCmd, runtime, columnFilters)
 

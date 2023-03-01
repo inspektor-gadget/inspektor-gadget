@@ -23,13 +23,13 @@ import (
 	"github.com/spf13/cobra"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/ig/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
+	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 )
 
-const localGadgetSubKey = "local-gadget-key"
+const igSubKey = "ig-key"
 
 func NewListContainersCmd() *cobra.Command {
 	var commonFlags utils.CommonFlags
@@ -39,11 +39,11 @@ func NewListContainersCmd() *cobra.Command {
 		Use:   "list-containers",
 		Short: "List all containers",
 		RunE: func(*cobra.Command, []string) error {
-			localGadgetManager, err := localgadgetmanager.NewManager(commonFlags.RuntimeConfigs)
+			igmanager, err := igmanager.NewManager(commonFlags.RuntimeConfigs)
 			if err != nil {
 				return commonutils.WrapInErrManagerInit(err)
 			}
-			defer localGadgetManager.Close()
+			defer igmanager.Close()
 
 			selector := containercollection.ContainerSelector{
 				Name: commonFlags.Containername,
@@ -54,7 +54,7 @@ func NewListContainersCmd() *cobra.Command {
 				if err != nil {
 					return commonutils.WrapInErrParserCreate(err)
 				}
-				containers := localGadgetManager.GetContainersBySelector(&selector)
+				containers := igmanager.GetContainersBySelector(&selector)
 
 				parser.Sort(containers, []string{"runtime", "name"})
 				if err = printContainers(parser, commonFlags, containers); err != nil {
@@ -72,8 +72,8 @@ func NewListContainersCmd() *cobra.Command {
 			if err != nil {
 				return commonutils.WrapInErrParserCreate(err)
 			}
-			containers := localGadgetManager.ContainerCollection.Subscribe(
-				localGadgetSubKey,
+			containers := igmanager.ContainerCollection.Subscribe(
+				igSubKey,
 				selector,
 				func(event containercollection.PubSubEvent) {
 					if err = printPubSubEvent(parser, commonFlags, &event); err != nil {
@@ -81,7 +81,7 @@ func NewListContainersCmd() *cobra.Command {
 					}
 				},
 			)
-			defer localGadgetManager.ContainerCollection.Unsubscribe(localGadgetSubKey)
+			defer igmanager.ContainerCollection.Unsubscribe(igSubKey)
 
 			if commonFlags.OutputMode != commonutils.OutputModeJSON {
 				fmt.Println(parser.BuildColumnsHeader())

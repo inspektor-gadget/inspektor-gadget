@@ -475,7 +475,7 @@ jobs:
       run: |
         make controller-tests
 
-  test-local-gadget:
+  test-ig:
     name: Unit tests for ig
     # level: 0
     runs-on: ubuntu-latest
@@ -515,7 +515,7 @@ jobs:
           fi
         fi
 
-        make local-gadget-tests
+        make ig-tests
 
   check-secrets:
     name: Check repo secrets
@@ -572,7 +572,7 @@ jobs:
   test-integration-k8s-local-gadget:
     name: Integration tests for local gadget with Kubernetes Containers
     # level: 2
-    needs: [ test-unit, test-local-gadget, build-ig ]
+    needs: [ test-unit, test-ig, build-ig ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -614,7 +614,7 @@ jobs:
   test-integration-non-k8s-local-gadget:
     name: Integration tests for local gadget with non-Kubernetes Containers
     # level: 2
-    needs: [ test-unit, test-local-gadget, build-ig ]
+    needs: [ test-unit, test-ig, build-ig ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -824,7 +824,7 @@ jobs:
       - test-integration-minikube
       - test-integration-aks
       - test-integration-aro
-      - test-local-gadget
+      - test-ig
       - test-integration-k8s-local-gadget
       - test-integration-non-k8s-local-gadget
       - check-readme-up-to-date

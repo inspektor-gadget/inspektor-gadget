@@ -20,4 +20,4 @@ RUN \
 	go build \
 		-ldflags "-X main.version=${VERSION} -extldflags '-static'" \
 		-o ig-${GOOS}-${GOARCH} \
-		github.com/inspektor-gadget/inspektor-gadget/cmd/local-gadget
+		github.com/inspektor-gadget/inspektor-gadget/cmd/ig

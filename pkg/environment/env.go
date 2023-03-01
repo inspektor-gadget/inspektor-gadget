@@ -14,7 +14,7 @@
 
 // Package environment is a temporary workaround to have a simple means of
 // knowing what environment we're running in. It's supposed to be set by the
-// main.go of local-gadget and kubectl-gadget respectively. Right now this
+// main.go of ig and kubectl-gadget respectively. Right now this
 // is only used to distinguish whether we can rely on and should show the contents
 // of the `container` column for network related gadgets.
 package environment

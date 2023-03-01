@@ -161,13 +161,13 @@ controller-tests: kube-apiserver etcd kubectl
 gadgets-unit-tests:
 	go test -test.v -exec sudo ./pkg/gadgets/...
 
-.PHONY: local-gadget-tests
-local-gadget-tests:
+.PHONY: ig-tests
+ig-tests:
 	# Compile and execute in separate commands because Go might not be
 	# available in the root environment
-	go test -c ./pkg/local-gadget-manager
-	sudo ./local-gadget-manager.test -test.v -root-test $$LOCAL_GADGET_TESTS_PARAMS
-	rm -f ./local-gadget-manager.test
+	go test -c ./pkg/ig-manager
+	sudo ./ig-manager.test -test.v -root-test $$LOCAL_GADGET_TESTS_PARAMS
+	rm -f ./ig-manager.test
 
 # INTEGRATION_TESTS_PARAMS can be used to pass additional parameters locally e.g
 # INTEGRATION_TESTS_PARAMS="-run TestTraceExec -no-deploy-ig -no-deploy-spo" make integration-tests

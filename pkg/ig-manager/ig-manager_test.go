@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package localgadgetmanager
+package igmanager
 
 import (
 	"context"
@@ -45,24 +45,24 @@ func TestBasic(t *testing.T) {
 		t.Skip("skipping test requiring root.")
 	}
 
-	localGadgetManager, err := NewManager(nil)
+	igManager, err := NewManager(nil)
 	if err != nil {
-		t.Fatalf("Failed to start local gadget manager: %s", err)
+		t.Fatalf("Failed to start ig manager: %s", err)
 	}
-	localGadgetManager.Close()
+	igManager.Close()
 }
 
 func TestContainersMap(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
 	}
-	localGadgetManager, err := NewManager(nil)
+	igManager, err := NewManager(nil)
 	if err != nil {
-		t.Fatalf("Failed to start local gadget manager: %s", err)
+		t.Fatalf("Failed to start ig manager: %s", err)
 	}
-	defer localGadgetManager.Close()
+	defer igManager.Close()
 
-	if m := localGadgetManager.ContainersMap(); m == nil {
+	if m := igManager.ContainersMap(); m == nil {
 		t.Fatal("container map is nil")
 	}
 }
@@ -71,13 +71,13 @@ func TestMountNsMap(t *testing.T) {
 	if !*rootTest {
 		t.Skip("skipping test requiring root.")
 	}
-	localGadgetManager, err := NewManager(nil)
+	igManager, err := NewManager(nil)
 	if err != nil {
-		t.Fatalf("Failed to start local gadget manager: %s", err)
+		t.Fatalf("Failed to start ig manager: %s", err)
 	}
-	defer localGadgetManager.Close()
+	defer igManager.Close()
 
-	m, err := localGadgetManager.CreateMountNsMap(containercollection.ContainerSelector{})
+	m, err := igManager.CreateMountNsMap(containercollection.ContainerSelector{})
 	if err != nil {
 		t.Fatalf("Failed to create mount namespace map: %s", err)
 	}
@@ -85,7 +85,7 @@ func TestMountNsMap(t *testing.T) {
 		t.Fatalf("mount namespace map is nil: %s", err)
 	}
 
-	err = localGadgetManager.RemoveMountNsMap()
+	err = igManager.RemoveMountNsMap()
 	if err != nil {
 		t.Fatalf("Failed to remove mount namespace map: %s", err)
 	}
@@ -134,16 +134,16 @@ func TestClose(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	for i := 0; i < 4; i++ {
-		localGadgetManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
+		igManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
 		if err != nil {
-			t.Fatalf("Failed to start local gadget manager: %s", err)
+			t.Fatalf("Failed to start ig manager: %s", err)
 		}
 
 		if i%2 == 0 {
 			testutils.RunDockerFailedContainer(context.Background(), t)
 		}
 
-		localGadgetManager.Close()
+		igManager.Close()
 	}
 
 	checkFdList(t, initialFdList, checkFdListAttempts, checkFdListInterval)
