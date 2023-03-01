@@ -124,11 +124,11 @@ $ export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
 $ make integration-tests
 ```
 
-### Integration tests for Local Gadget
+### Integration tests for `ig`
 
 #### Kubernetes
 
-The integration tests for local gadget uses minikube for testing different container runtimes.
+The integration tests for `ig` uses minikube for testing different container runtimes.
 The default minikube driver used for testing is `docker`. Currently supported
 container runtimes are `docker`, `containerd` and `cri-o`. You can start minikube using:
 
@@ -143,9 +143,9 @@ $ make MINIKUBE_DRIVER=kvm2 minikube-start
 And run the test using:
 
 ```bash
-$ make -C integration/local-gadget/k8s test-all
+$ make -C integration/ig/k8s test-all
 # for single container runtime e.g containerd
-$ make -C integration/local-gadget/k8s CONTAINER_RUNTIME=containerd test
+$ make -C integration/ig/k8s CONTAINER_RUNTIME=containerd test
 ```
 
 if no `CONTAINER_RUNTIME` is specified `docker` will be used as a default runtime.
@@ -157,7 +157,7 @@ with container runtime. The tests assume that you already have the desired conta
 runtime installed. Currently supported runtime is `docker` only, You can run the test using:
 
 ```bash
-$ make -C integration/local-gadget/non-k8s test-docker
+$ make -C integration/ig/non-k8s test-docker
 ```
 
 ### Continuous Integration
