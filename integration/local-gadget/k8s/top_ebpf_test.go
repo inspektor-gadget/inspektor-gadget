@@ -29,7 +29,7 @@ func TestTopEbpf(t *testing.T) {
 
 	topEbpfCmd := &Command{
 		Name:         "TopEbpf",
-		Cmd:          fmt.Sprintf("local-gadget top ebpf -o json --runtimes=%s -m 100", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig top ebpf -o json --runtimes=%s -m 100", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &types.Stats{

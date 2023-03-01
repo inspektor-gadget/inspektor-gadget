@@ -28,7 +28,7 @@ func TestTraceSignal(t *testing.T) {
 
 	traceSignalCmd := &Command{
 		Name:         "TraceSignal",
-		Cmd:          fmt.Sprintf("local-gadget trace signal -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace signal -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &signalTypes.Event{

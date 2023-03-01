@@ -28,7 +28,7 @@ func TestTraceSni(t *testing.T) {
 
 	traceSNICmd := &Command{
 		Name:         "TraceSNI",
-		Cmd:          fmt.Sprintf("local-gadget trace sni -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace sni -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &sniTypes.Event{

@@ -28,7 +28,7 @@ func TestTraceBind(t *testing.T) {
 
 	traceBindCmd := &Command{
 		Name:         "TraceBind",
-		Cmd:          fmt.Sprintf("local-gadget trace bind -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace bind -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &bindTypes.Event{

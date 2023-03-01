@@ -28,7 +28,7 @@ func TestFilterByContainerName(t *testing.T) {
 	cn := "test-filtered-container"
 	listContainersCmd := &Command{
 		Name: "RunFilterByContainerName",
-		Cmd:  fmt.Sprintf("./local-gadget list-containers -o json --runtimes=docker --containername=%s", cn),
+		Cmd:  fmt.Sprintf("./ig list-containers -o json --runtimes=docker --containername=%s", cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				Name:    cn,
@@ -73,7 +73,7 @@ func TestWatchContainers(t *testing.T) {
 	cn := "test-watched-container"
 	watchContainersCommand := &Command{
 		Name:         "RunWatchContainers",
-		Cmd:          fmt.Sprintf("./local-gadget list-containers -o json --watch --runtimes=docker -c %s", cn),
+		Cmd:          fmt.Sprintf("./ig list-containers -o json --watch --runtimes=docker -c %s", cn),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEvents := []*containercollection.PubSubEvent{

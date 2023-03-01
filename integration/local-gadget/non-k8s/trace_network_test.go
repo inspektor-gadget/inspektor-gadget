@@ -29,7 +29,7 @@ func TestTraceNetwork(t *testing.T) {
 
 	traceNetworkCmd := &Command{
 		Name:         "TraceNetwork",
-		Cmd:          fmt.Sprintf("./local-gadget trace network -o json --runtimes=docker -c %s", cn),
+		Cmd:          fmt.Sprintf("./ig trace network -o json --runtimes=docker -c %s", cn),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*networkTypes.Event{
@@ -70,7 +70,7 @@ func TestTraceNetwork(t *testing.T) {
 
 	testSteps := []TestStep{
 		traceNetworkCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
+		SleepForSecondsCommand(2), // wait to ensure ig has started
 		&DockerContainer{
 			Name:    cn,
 			Cmd:     "nginx && curl 127.0.0.1",

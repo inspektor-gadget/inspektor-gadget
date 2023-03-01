@@ -51,7 +51,7 @@ LDFLAGS := "-X main.version=$(VERSION) \
 build: manifests generate kubectl-gadget gadget-default-container
 
 .PHONY: all
-all: build local-gadget
+all: build ig
 
 # make does not allow implicit rules (with '%') to be phony so let's use
 # the 'phony_explicit' dependency to make implicit rules inherit the phony
@@ -66,29 +66,29 @@ ebpf-objects-outside-docker:
 	TARGET=arm64 go generate ./...
 	TARGET=amd64 go generate ./...
 
-# local-gadget
+# ig
 
-LOCAL_GADGET_TARGETS = \
-	local-gadget-linux-amd64 \
-	local-gadget-linux-arm64
+IG_TARGETS = \
+	ig-linux-amd64 \
+	ig-linux-arm64
 
-.PHONY: list-local-gadget-targets
-list-local-gadget-targets:
-	@echo $(LOCAL_GADGET_TARGETS)
+.PHONY: list-ig-targets
+list-ig-targets:
+	@echo $(IG_TARGETS)
 
-.PHONY: local-gadget-all
-local-gadget-all: $(LOCAL_GADGET_TARGETS) local-gadget
+.PHONY: ig-all
+ig-all: $(IG_TARGETS) ig
 
-local-gadget: local-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
-	cp local-gadget-$(GOHOSTOS)-$(GOHOSTARCH) local-gadget
+ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
+	cp ig-$(GOHOSTOS)-$(GOHOSTARCH) ig
 
-local-gadget-%: phony_explicit
-	echo Building local-gadget-$* && \
+ig-%: phony_explicit
+	echo Building ig-$* && \
 	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
 	docker buildx build -t local-gadget-$*-builder -f Dockerfiles/local-gadget.Dockerfile \
 		--build-arg GOOS=$${GOOS} --build-arg GOARCH=$${GOARCH} --build-arg VERSION=$(VERSION) . && \
-	docker run --rm --entrypoint cat local-gadget-$*-builder local-gadget-$* > local-gadget-$* && \
-	chmod +x local-gadget-$*
+	docker run --rm --entrypoint cat local-gadget-$*-builder ig-$* > ig-$* && \
+	chmod +x ig-$*
 
 KUBECTL_GADGET_TARGETS = \
 	kubectl-gadget-linux-amd64 \

@@ -28,7 +28,7 @@ func TestProfileCpu(t *testing.T) {
 
 	profileCPUCmd := &Command{
 		Name: "ProfileCpu",
-		Cmd:  fmt.Sprintf("local-gadget profile cpu -K -o json --runtimes=%s --timeout 10", *containerRuntime),
+		Cmd:  fmt.Sprintf("ig profile cpu -K -o json --runtimes=%s --timeout 10", *containerRuntime),
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &cpuprofileTypes.Report{
 				CommonData: BuildCommonData(ns),

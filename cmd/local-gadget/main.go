@@ -34,7 +34,7 @@ import (
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:   "local-gadget",
+		Use:   "ig",
 		Short: "Collection of gadgets for containers",
 	}
 

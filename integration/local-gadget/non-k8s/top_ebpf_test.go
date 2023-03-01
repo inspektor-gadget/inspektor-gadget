@@ -28,7 +28,7 @@ func TestTopEbpf(t *testing.T) {
 
 	topebpfCmd := &Command{
 		Name:         "TopEbpf",
-		Cmd:          "./local-gadget top ebpf -o json -m 100 --runtimes=docker",
+		Cmd:          "./ig top ebpf -o json -m 100 --runtimes=docker",
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &topebpfTypes.Stats{

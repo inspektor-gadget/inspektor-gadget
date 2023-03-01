@@ -29,7 +29,7 @@ func TestTopBlockIO(t *testing.T) {
 
 	topBlockIOCmd := &Command{
 		Name:         "TopBlockIO",
-		Cmd:          fmt.Sprintf("local-gadget top block-io -o json -m 999 --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig top block-io -o json -m 999 --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &types.Stats{

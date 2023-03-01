@@ -33,7 +33,7 @@ func TestTraceExec(t *testing.T) {
 
 	traceExecCmd := &Command{
 		Name:         "TraceExec",
-		Cmd:          fmt.Sprintf("local-gadget trace exec -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace exec -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*execTypes.Event{

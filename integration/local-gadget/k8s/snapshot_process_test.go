@@ -28,7 +28,7 @@ func TestSnapshotProcess(t *testing.T) {
 
 	snapshotProcessCmd := &Command{
 		Name:         "SnapshotProcess",
-		Cmd:          fmt.Sprintf("local-gadget snapshot process -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig snapshot process -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &types.Event{

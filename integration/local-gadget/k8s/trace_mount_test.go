@@ -30,7 +30,7 @@ func TestTraceMount(t *testing.T) {
 
 	traceMountCmd := &Command{
 		Name:         "TraceMount",
-		Cmd:          fmt.Sprintf("local-gadget trace mount -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace mount -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &mountTypes.Event{

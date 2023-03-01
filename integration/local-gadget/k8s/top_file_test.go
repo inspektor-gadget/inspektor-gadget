@@ -29,7 +29,7 @@ func TestTopFile(t *testing.T) {
 
 	topFileCmd := &Command{
 		Name:         "TopFile",
-		Cmd:          fmt.Sprintf("local-gadget top file -o json -m 999 --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig top file -o json -m 999 --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &types.Stats{

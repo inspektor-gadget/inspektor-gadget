@@ -10,7 +10,7 @@ phony_explicit:
 # build
 
 build:
-	make -C $(shell pwd)/../../.. local-gadget
+	make -C $(shell pwd)/../../.. ig
 
 .PHONY: build-tests
 build-tests:
@@ -37,8 +37,8 @@ test-%: build build-tests
 	echo "Checking minikube with profile $${MINIKUBE_PROFILE} is running ..." && \
 	$(MINIKUBE) status -p $${MINIKUBE_PROFILE} -f {{.APIServer}} >/dev/null || (echo "Error: $${MINIKUBE_PROFILE} not running, exiting ..." && exit 1) && \
 	echo "Preparing minikube with profile $${MINIKUBE_PROFILE} for testing ..." && \
-	$(MINIKUBE) cp ../../../local-gadget-linux-amd64 $${MINIKUBE_PROFILE}:/bin/local-gadget >/dev/null && \
-	$(MINIKUBE) ssh sudo chmod +x /bin/local-gadget && \
+	$(MINIKUBE) cp ../../../ig-linux-amd64 $${MINIKUBE_PROFILE}:/bin/ig >/dev/null && \
+	$(MINIKUBE) ssh sudo chmod +x /bin/ig && \
 	$(MINIKUBE) cp local-gadget-integration.test $${MINIKUBE_PROFILE}:/bin/local-gadget-integration.test >/dev/null && \
 	$(MINIKUBE) ssh sudo chmod +x /bin/local-gadget-integration.test && \
 	rm local-gadget-integration.test && \

@@ -29,7 +29,7 @@ func TestSnapshotProcess(t *testing.T) {
 
 	snapshotProcessCmd := &Command{
 		Name: "SnapshotProcess",
-		Cmd:  fmt.Sprintf("./local-gadget snapshot process -o json --runtimes=docker -c %s", cn),
+		Cmd:  fmt.Sprintf("./ig snapshot process -o json --runtimes=docker -c %s", cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &snapshotprocessTypes.Event{
 				Event: eventtypes.Event{

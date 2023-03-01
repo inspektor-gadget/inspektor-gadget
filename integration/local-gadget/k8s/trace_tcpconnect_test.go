@@ -28,7 +28,7 @@ func TestTraceTcpconnect(t *testing.T) {
 
 	tcpconnectCmd := &Command{
 		Name:         "StartTcpconnectGadget",
-		Cmd:          fmt.Sprintf("local-gadget trace tcpconnect -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace tcpconnect -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tcpconnectTypes.Event{

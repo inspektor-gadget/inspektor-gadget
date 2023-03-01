@@ -30,7 +30,7 @@ func TestTopTCP(t *testing.T) {
 
 	topTCPCmd := &Command{
 		Name:         "TopTCP",
-		Cmd:          fmt.Sprintf("local-gadget top tcp -o json -m 999 --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig top tcp -o json -m 999 --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &types.Stats{

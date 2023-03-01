@@ -26,7 +26,7 @@ func TestProfileBio(t *testing.T) {
 
 	profileBioCmd := &Command{
 		Name: "ProfileBio",
-		Cmd:  "local-gadget profile block-io -o json --timeout 10",
+		Cmd:  "ig profile block-io -o json --timeout 10",
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &bioprofileTypes.Report{
 				ValType: "usecs",

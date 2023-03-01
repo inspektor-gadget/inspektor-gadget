@@ -41,7 +41,7 @@ func TestTraceNetwork(t *testing.T) {
 
 	traceNetworkCmd := &Command{
 		Name:         "TraceNetwork",
-		Cmd:          fmt.Sprintf("local-gadget trace network -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace network -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			testPodIP, err := GetTestPodIP(ns, "test-pod")

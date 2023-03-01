@@ -28,7 +28,7 @@ func TestTraceOpen(t *testing.T) {
 
 	traceOpenCmd := &Command{
 		Name:         "TraceOpen",
-		Cmd:          fmt.Sprintf("local-gadget trace open -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace open -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &openTypes.Event{

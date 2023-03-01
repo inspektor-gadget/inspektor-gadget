@@ -28,7 +28,7 @@ func TestListContainers(t *testing.T) {
 
 	listContainersCmd := &Command{
 		Name: "RunListContainers",
-		Cmd:  fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s", *containerRuntime),
+		Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s", *containerRuntime),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				Name:      "test-pod",
@@ -86,7 +86,7 @@ func TestFilterByContainerName(t *testing.T) {
 
 	listContainersCmd := &Command{
 		Name: "RunFilterByContainerName",
-		Cmd:  fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s --containername=%s", *containerRuntime, cn),
+		Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s", *containerRuntime, cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				Name:      cn,
@@ -138,7 +138,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 
 	watchContainersCmd := &Command{
 		Name:         "RunWatchContainers",
-		Cmd:          fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
+		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEvent := &containercollection.PubSubEvent{
@@ -196,7 +196,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 
 	watchContainersCmd := &Command{
 		Name:         "RunWatchContainers",
-		Cmd:          fmt.Sprintf("local-gadget list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
+		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEvent := &containercollection.PubSubEvent{

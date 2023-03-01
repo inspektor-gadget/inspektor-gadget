@@ -28,7 +28,7 @@ func TestTraceOOMKill(t *testing.T) {
 
 	traceOOMKillCmd := &Command{
 		Name:         "TraceOomkill",
-		Cmd:          fmt.Sprintf("local-gadget trace oomkill -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace oomkill -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &oomkillTypes.Event{

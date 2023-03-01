@@ -28,7 +28,7 @@ func TestTraceCapabilities(t *testing.T) {
 
 	capabilitiesCmd := &Command{
 		Name:         "TraceCapabilities",
-		Cmd:          fmt.Sprintf("local-gadget trace capabilities -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace capabilities -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &capabilitiesTypes.Event{
