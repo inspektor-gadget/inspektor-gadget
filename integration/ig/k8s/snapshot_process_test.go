@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,49 +19,43 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 )
 
-func TestTopBlockIO(t *testing.T) {
+func TestSnapshotProcess(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-top-block-io")
+	ns := GenerateTestNamespaceName("test-snapshot-process")
 
-	topBlockIOCmd := &Command{
-		Name:         "TopBlockIO",
-		Cmd:          fmt.Sprintf("ig top block-io -o json -m 999 --runtimes=%s", *containerRuntime),
+	snapshotProcessCmd := &Command{
+		Name:         "SnapshotProcess",
+		Cmd:          fmt.Sprintf("ig snapshot process -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &types.Stats{
-				CommonData: eventtypes.CommonData{
-					Namespace: ns,
-					Pod:       "test-pod",
-				},
-				Comm:  "dd",
-				Write: true,
+			expectedEntry := &types.Event{
+				Event:   BuildBaseEvent(ns),
+				Command: "nc",
 			}
+			expectedEntry.Event.Container = ""
 
-			normalize := func(e *types.Stats) {
+			normalize := func(e *types.Event) {
+				e.Node = ""
 				e.Container = ""
 				e.Pid = 0
+				e.Tid = 0
+				e.ParentPid = 0
 				e.MountNsID = 0
-				e.Major = 0
-				e.Minor = 0
-				e.Bytes = 0
-				e.MicroSecs = 0
-				e.Operations = 0
 			}
 
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		topBlockIOCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096"),
+		BusyboxPodCommand(ns, "nc -l -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
+		snapshotProcessCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
 		DeleteTestNamespaceCommand(ns),
 	}
 

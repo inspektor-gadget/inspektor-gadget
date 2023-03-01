@@ -174,7 +174,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		watchContainersCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
+		SleepForSecondsCommand(2), // wait to ensure ig has started
 		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
 		WaitUntilPodReadyCommand(ns, cn),
 		DeleteTestNamespaceCommand(ns),

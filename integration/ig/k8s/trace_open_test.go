@@ -19,33 +19,28 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	capabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
+	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
 )
 
-func TestTraceCapabilities(t *testing.T) {
+func TestTraceOpen(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-capabilities")
+	ns := GenerateTestNamespaceName("test-trace-open")
 
-	capabilitiesCmd := &Command{
-		Name:         "TraceCapabilities",
-		Cmd:          fmt.Sprintf("ig trace capabilities -o json --runtimes=%s", *containerRuntime),
+	traceOpenCmd := &Command{
+		Name:         "TraceOpen",
+		Cmd:          fmt.Sprintf("ig trace open -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &capabilitiesTypes.Event{
-				Event:         BuildBaseEvent(ns),
-				Comm:          "nice",
-				CapName:       "SYS_NICE",
-				Cap:           23,
-				Syscall:       "setpriority",
-				Audit:         1,
-				Verdict:       "Deny",
-				CurrentUserNs: 1,
-				TargetUserNs:  1,
-				Caps:          1,
-				CapsNames:     []string{"x"},
+			expectedEntry := &openTypes.Event{
+				Event: BuildBaseEvent(ns),
+				Comm:  "cat",
+				Fd:    3,
+				Ret:   3,
+				Err:   0,
+				Path:  "/dev/null",
 			}
 
-			normalize := func(e *capabilitiesTypes.Event) {
+			normalize := func(e *openTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
@@ -53,24 +48,9 @@ func TestTraceCapabilities(t *testing.T) {
 				}
 
 				e.Timestamp = 0
+				e.MountNsID = 0
 				e.Pid = 0
 				e.UID = 0
-				e.MountNsID = 0
-				// Do not check InsetID to avoid introducing dependency on the kernel version
-				e.InsetID = nil
-
-				if e.CurrentUserNs != 0 {
-					e.CurrentUserNs = 1
-				}
-				if e.TargetUserNs != 0 {
-					e.TargetUserNs = 1
-				}
-				if e.Caps > 0 {
-					e.Caps = 1
-				}
-				if len(e.CapsNames) != 0 {
-					e.CapsNames = []string{"x"}
-				}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -79,9 +59,9 @@ func TestTraceCapabilities(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		capabilitiesCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "nice -n -20 echo"),
+		traceOpenCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		BusyboxPodRepeatCommand(ns, "cat /dev/null"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

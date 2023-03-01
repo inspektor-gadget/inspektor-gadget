@@ -19,28 +19,25 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	openTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
+	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
 )
 
-func TestTraceOpen(t *testing.T) {
+func TestTraceSignal(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-open")
+	ns := GenerateTestNamespaceName("test-trace-signal")
 
-	traceOpenCmd := &Command{
-		Name:         "TraceOpen",
-		Cmd:          fmt.Sprintf("ig trace open -o json --runtimes=%s", *containerRuntime),
+	traceSignalCmd := &Command{
+		Name:         "TraceSignal",
+		Cmd:          fmt.Sprintf("ig trace signal -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &openTypes.Event{
-				Event: BuildBaseEvent(ns),
-				Comm:  "cat",
-				Fd:    3,
-				Ret:   3,
-				Err:   0,
-				Path:  "/dev/null",
+			expectedEntry := &signalTypes.Event{
+				Event:  BuildBaseEvent(ns),
+				Comm:   "sh",
+				Signal: "SIGTERM",
 			}
 
-			normalize := func(e *openTypes.Event) {
+			normalize := func(e *signalTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
@@ -48,9 +45,10 @@ func TestTraceOpen(t *testing.T) {
 				}
 
 				e.Timestamp = 0
-				e.MountNsID = 0
 				e.Pid = 0
-				e.UID = 0
+				e.TargetPid = 0
+				e.Retval = 0
+				e.MountNsID = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -59,9 +57,9 @@ func TestTraceOpen(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		traceOpenCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "cat /dev/null"),
+		traceSignalCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		BusyboxPodRepeatCommand(ns, "sleep 3 & kill $!"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

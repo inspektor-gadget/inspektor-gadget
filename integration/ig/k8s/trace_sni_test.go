@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,50 +19,46 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	bindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
 )
 
-func TestTraceBind(t *testing.T) {
+func TestTraceSni(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-bind")
+	ns := GenerateTestNamespaceName("test-trace-sni")
 
-	traceBindCmd := &Command{
-		Name:         "TraceBind",
-		Cmd:          fmt.Sprintf("ig trace bind -o json --runtimes=%s", *containerRuntime),
+	traceSNICmd := &Command{
+		Name:         "TraceSNI",
+		Cmd:          fmt.Sprintf("ig trace sni -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &bindTypes.Event{
-				Event:    BuildBaseEvent(ns),
-				Comm:     "nc",
-				Protocol: "TCP",
-				Addr:     "::",
-				Port:     9090,
-				Options:  ".R...",
+			expectedEntry := &sniTypes.Event{
+				Event: BuildBaseEvent(ns),
+				Comm:  "wget",
+				Name:  "kubernetes.default.svc.cluster.local",
 			}
 
-			normalize := func(e *bindTypes.Event) {
+			normalize := func(e *sniTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
 					e.Container = "test-pod"
 				}
-
 				e.Timestamp = 0
-				e.Pid = 0
 				e.MountNsID = 0
+				e.NetNsID = 0
+				e.Pid = 0
+				e.Tid = 0
 			}
 
-			// Since we aren't doing any filtering in traceBindCmd we avoid using ExpectAllToMatch
-			// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/644
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		traceBindCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "nc -l -p 9090 -w 1"),
+		traceSNICmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		BusyboxPodRepeatCommand(ns, "wget --no-check-certificate -T 2 -q -O /dev/null https://kubernetes.default.svc.cluster.local"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

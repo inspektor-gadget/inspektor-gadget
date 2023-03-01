@@ -16,21 +16,20 @@ package main
 
 import (
 	"fmt"
-	"syscall"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestTopTCP(t *testing.T) {
+func TestTopBlockIO(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-top-tcp")
+	ns := GenerateTestNamespaceName("test-top-block-io")
 
-	topTCPCmd := &Command{
-		Name:         "TopTCP",
-		Cmd:          fmt.Sprintf("ig top tcp -o json -m 999 --runtimes=%s", *containerRuntime),
+	topBlockIOCmd := &Command{
+		Name:         "TopBlockIO",
+		Cmd:          fmt.Sprintf("ig top block-io -o json -m 999 --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &types.Stats{
@@ -38,20 +37,19 @@ func TestTopTCP(t *testing.T) {
 					Namespace: ns,
 					Pod:       "test-pod",
 				},
-				Comm:   "curl",
-				Family: syscall.AF_INET,
-				Dport:  80,
-				Saddr:  "127.0.0.1",
-				Daddr:  "127.0.0.1",
+				Comm:  "dd",
+				Write: true,
 			}
 
 			normalize := func(e *types.Stats) {
 				e.Container = ""
 				e.Pid = 0
 				e.MountNsID = 0
-				e.Sport = 0
-				e.Sent = 0
-				e.Received = 0
+				e.Major = 0
+				e.Minor = 0
+				e.Bytes = 0
+				e.MicroSecs = 0
+				e.Operations = 0
 			}
 
 			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
@@ -60,9 +58,9 @@ func TestTopTCP(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		topTCPCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
+		topBlockIOCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

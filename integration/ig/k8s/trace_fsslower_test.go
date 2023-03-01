@@ -63,7 +63,7 @@ func TestTraceFsslower(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		traceFsslowerCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
+		SleepForSecondsCommand(2), // wait to ensure ig has started
 		BusyboxPodCommand(ns, "echo 'this is foo' > foo && while true; do cat foo && sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),

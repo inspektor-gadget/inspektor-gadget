@@ -32,7 +32,7 @@ type TestComponent int
 
 const (
 	InspektorGadgetTestComponent TestComponent = iota
-	LocalGadgetTestComponent
+	IgTestComponent
 )
 
 // DefaultTestComponent indicates component under testing allowing component specific logic

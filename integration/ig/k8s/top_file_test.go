@@ -19,43 +19,51 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestSnapshotProcess(t *testing.T) {
+func TestTopFile(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-snapshot-process")
+	ns := GenerateTestNamespaceName("test-top-file")
 
-	snapshotProcessCmd := &Command{
-		Name:         "SnapshotProcess",
-		Cmd:          fmt.Sprintf("ig snapshot process -o json --runtimes=%s", *containerRuntime),
+	topFileCmd := &Command{
+		Name:         "TopFile",
+		Cmd:          fmt.Sprintf("ig top file -o json -m 999 --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &types.Event{
-				Event:   BuildBaseEvent(ns),
-				Command: "nc",
+			expectedEntry := &types.Stats{
+				CommonData: eventtypes.CommonData{
+					Namespace: ns,
+					Pod:       "test-pod",
+				},
+				// echo is built-in
+				Comm:     "sh",
+				Filename: "bar",
+				FileType: 'R',
 			}
-			expectedEntry.Event.Container = ""
 
-			normalize := func(e *types.Event) {
-				e.Node = ""
+			normalize := func(e *types.Stats) {
 				e.Container = ""
 				e.Pid = 0
 				e.Tid = 0
-				e.ParentPid = 0
 				e.MountNsID = 0
+				e.Reads = 0
+				e.ReadBytes = 0
+				e.Writes = 0
+				e.WriteBytes = 0
 			}
 
-			return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		BusyboxPodCommand(ns, "nc -l -p 9090"),
+		topFileCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		BusyboxPodRepeatCommand(ns, "echo foo > bar"),
 		WaitUntilTestPodReadyCommand(ns),
-		snapshotProcessCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
 		DeleteTestNamespaceCommand(ns),
 	}
 

@@ -1,4 +1,4 @@
-// Copyright 2022-2023 The Inspektor Gadget authors
+// Copyright 2022 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,35 +19,37 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	sniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
+	tcpconnectTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
 )
 
-func TestTraceSni(t *testing.T) {
+func TestTraceTcpconnect(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-sni")
+	ns := GenerateTestNamespaceName("test-trace-tcpconnect")
 
-	traceSNICmd := &Command{
-		Name:         "TraceSNI",
-		Cmd:          fmt.Sprintf("ig trace sni -o json --runtimes=%s", *containerRuntime),
+	tcpconnectCmd := &Command{
+		Name:         "StartTcpconnectGadget",
+		Cmd:          fmt.Sprintf("ig trace tcpconnect -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &sniTypes.Event{
-				Event: BuildBaseEvent(ns),
-				Comm:  "wget",
-				Name:  "kubernetes.default.svc.cluster.local",
+			expectedEntry := &tcpconnectTypes.Event{
+				Event:     BuildBaseEvent(ns),
+				Comm:      "curl",
+				IPVersion: 4,
+				Saddr:     "127.0.0.1",
+				Daddr:     "127.0.0.1",
+				Dport:     80,
 			}
 
-			normalize := func(e *sniTypes.Event) {
+			normalize := func(e *tcpconnectTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
 					e.Container = "test-pod"
 				}
+
 				e.Timestamp = 0
-				e.MountNsID = 0
-				e.NetNsID = 0
 				e.Pid = 0
-				e.Tid = 0
+				e.MountNsID = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -56,9 +58,9 @@ func TestTraceSni(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		traceSNICmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "wget --no-check-certificate -T 2 -q -O /dev/null https://kubernetes.default.svc.cluster.local"),
+		tcpconnectCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

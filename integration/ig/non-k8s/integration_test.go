@@ -26,7 +26,7 @@ import (
 var integration = flag.Bool("integration", false, "run integration tests")
 
 func init() {
-	DefaultTestComponent = LocalGadgetTestComponent
+	DefaultTestComponent = IgTestComponent
 }
 
 func TestMain(m *testing.M) {

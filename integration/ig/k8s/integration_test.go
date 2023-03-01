@@ -38,7 +38,7 @@ var (
 )
 
 func init() {
-	DefaultTestComponent = LocalGadgetTestComponent
+	DefaultTestComponent = IgTestComponent
 }
 
 func TestMain(m *testing.M) {

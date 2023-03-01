@@ -19,28 +19,28 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	tcpconnectTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
+	bindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
 )
 
-func TestTraceTcpconnect(t *testing.T) {
+func TestTraceBind(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-tcpconnect")
+	ns := GenerateTestNamespaceName("test-trace-bind")
 
-	tcpconnectCmd := &Command{
-		Name:         "StartTcpconnectGadget",
-		Cmd:          fmt.Sprintf("ig trace tcpconnect -o json --runtimes=%s", *containerRuntime),
+	traceBindCmd := &Command{
+		Name:         "TraceBind",
+		Cmd:          fmt.Sprintf("ig trace bind -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &tcpconnectTypes.Event{
-				Event:     BuildBaseEvent(ns),
-				Comm:      "curl",
-				IPVersion: 4,
-				Saddr:     "127.0.0.1",
-				Daddr:     "127.0.0.1",
-				Dport:     80,
+			expectedEntry := &bindTypes.Event{
+				Event:    BuildBaseEvent(ns),
+				Comm:     "nc",
+				Protocol: "TCP",
+				Addr:     "::",
+				Port:     9090,
+				Options:  ".R...",
 			}
 
-			normalize := func(e *tcpconnectTypes.Event) {
+			normalize := func(e *bindTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
@@ -52,15 +52,17 @@ func TestTraceTcpconnect(t *testing.T) {
 				e.MountNsID = 0
 			}
 
+			// Since we aren't doing any filtering in traceBindCmd we avoid using ExpectAllToMatch
+			// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/644
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
 		},
 	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		tcpconnectCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
+		traceBindCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		BusyboxPodRepeatCommand(ns, "nc -l -p 9090 -w 1"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

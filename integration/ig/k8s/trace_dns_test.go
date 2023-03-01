@@ -127,7 +127,7 @@ func TestTraceDns(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		traceDNSCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
+		SleepForSecondsCommand(2), // wait to ensure ig has started
 		BusyboxPodRepeatCommand(ns, strings.Join(nslookupCmds, " ; ")),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),

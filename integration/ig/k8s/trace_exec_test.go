@@ -19,25 +19,42 @@ import (
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
-	signalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
+	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 )
 
-func TestTraceSignal(t *testing.T) {
+func TestTraceExec(t *testing.T) {
 	t.Parallel()
-	ns := GenerateTestNamespaceName("test-trace-signal")
+	ns := GenerateTestNamespaceName("test-trace-exec")
 
-	traceSignalCmd := &Command{
-		Name:         "TraceSignal",
-		Cmd:          fmt.Sprintf("ig trace signal -o json --runtimes=%s", *containerRuntime),
+	cmd := "while true; do date ; /bin/sleep 0.1; done"
+	shArgs := []string{"/bin/sh", "-c", cmd}
+	dateArgs := []string{"/bin/date"}
+	sleepArgs := []string{"/bin/sleep", "0.1"}
+
+	traceExecCmd := &Command{
+		Name:         "TraceExec",
+		Cmd:          fmt.Sprintf("ig trace exec -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &signalTypes.Event{
-				Event:  BuildBaseEvent(ns),
-				Comm:   "sh",
-				Signal: "SIGTERM",
+			expectedEntries := []*execTypes.Event{
+				{
+					Event: BuildBaseEvent(ns),
+					Comm:  "sh",
+					Args:  shArgs,
+				},
+				{
+					Event: BuildBaseEvent(ns),
+					Comm:  "date",
+					Args:  dateArgs,
+				},
+				{
+					Event: BuildBaseEvent(ns),
+					Comm:  "sleep",
+					Args:  sleepArgs,
+				},
 			}
 
-			normalize := func(e *signalTypes.Event) {
+			normalize := func(e *execTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
@@ -46,20 +63,21 @@ func TestTraceSignal(t *testing.T) {
 
 				e.Timestamp = 0
 				e.Pid = 0
-				e.TargetPid = 0
+				e.Ppid = 0
+				e.UID = 0
 				e.Retval = 0
 				e.MountNsID = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
 		},
 	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		traceSignalCmd,
-		SleepForSecondsCommand(2), // wait to ensure local-gadget has started
-		BusyboxPodRepeatCommand(ns, "sleep 3 & kill $!"),
+		traceExecCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		BusyboxPodCommand(ns, cmd),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
