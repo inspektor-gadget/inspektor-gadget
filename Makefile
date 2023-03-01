@@ -85,9 +85,9 @@ ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 ig-%: phony_explicit
 	echo Building ig-$* && \
 	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
-	docker buildx build -t local-gadget-$*-builder -f Dockerfiles/local-gadget.Dockerfile \
+	docker buildx build -t ig-$*-builder -f Dockerfiles/ig.Dockerfile \
 		--build-arg GOOS=$${GOOS} --build-arg GOARCH=$${GOARCH} --build-arg VERSION=$(VERSION) . && \
-	docker run --rm --entrypoint cat local-gadget-$*-builder ig-$* > ig-$* && \
+	docker run --rm --entrypoint cat ig-$*-builder ig-$* > ig-$* && \
 	chmod +x ig-$*
 
 KUBECTL_GADGET_TARGETS = \
