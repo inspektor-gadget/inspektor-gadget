@@ -52,12 +52,12 @@ $ kubectl delete pod test-pod
 pod "test-pod" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 Start the gadget first
 
 ```bash
-$ sudo local-gadget trace bind -c test-trace-bind
+$ sudo ig trace bind -c test-trace-bind
 CONTAINER        PID     COMM             PROTO  ADDR             PORT    OPTS    IF
 ```
 
@@ -70,7 +70,7 @@ $ docker run -it --rm --name test-trace-bind busybox /bin/sh -c "nc -l -p 4242"
 The gadget will print the event on the first terminal:
 
 ```bash
-$ sudo local-gadget trace bind -c test-trace-bind
+$ sudo ig trace bind -c test-trace-bind
 CONTAINER        PID     COMM             PROTO  ADDR             PORT    OPTS    IF
 test-trace-bind  380299  nc               TCP    ::               4242    .R...   0
 ```
@@ -88,5 +88,5 @@ So, this command will print all (*i.e.* succeeded and failed) attempts to bind a
 ```bash
 $ kubectl gadget trace bind -i=false --pid 42 -P=4242,4343
 
-$ sudo local-gadget trace bind -i=false --pid 42 -P=4242,4343
+$ sudo ig trace bind -i=false --pid 42 -P=4242,4343
 ```

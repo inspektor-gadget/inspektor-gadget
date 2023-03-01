@@ -64,12 +64,12 @@ pod "busybox-0" deleted
 pod "busybox-1" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 Let's start the gadget in a terminal:
 
 ```bash
-$ sudo local-gadget trace mount -c test-trace-mount
+$ sudo ig trace mount -c test-trace-mount
 CONTAINER                         COMM             PID        TID        CALL
 ```
 
@@ -82,7 +82,7 @@ $ docker run --name test-trace-mount -it --rm busybox /bin/sh -c "mount /bar /fo
 The tool will show the different mount() calls that the container performed:
 
 ```bash
-$ sudo local-gadget trace mount -c test-trace-mount
+$ sudo ig trace mount -c test-trace-mount
 CONTAINER                         COMM             PID        TID        CALL
 test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "ext3", MS_SILENT, "") = -2
 test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "ext2", MS_SILENT, "") = -2

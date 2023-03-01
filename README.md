@@ -198,10 +198,10 @@ programs are and how Inspektor Gadget uses them is briefly explained here:
 
 You can read further details about the architecture [here](docs/architecture.md).
 
-## local-gadget
+## `ig`
 
 Inspektor Gadget can also be used without Kubernetes to trace containers with
-the [`local-gadget`](docs/local-gadget.md) tool.
+the [`ig`](docs/ig.md) tool.
 
 ## Kernel requirements
 
@@ -220,7 +220,7 @@ There are some examples in [this](./examples/) folder showing the usage
 of the Golang packages provided by Inspektor Gadget. These examples are
 designed for developers that want to use the Golang packages exposed by
 Inspektor Gadget directly. End-users do not need this and can use
-`kubectl-gadget` or `local-gadget` directly.
+`kubectl-gadget` or `ig` directly.
 
 ## Contributing
 

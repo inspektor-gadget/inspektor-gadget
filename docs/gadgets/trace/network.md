@@ -25,12 +25,12 @@ minikube         demo             shell                          OUTGOING  udp  
 minikube         demo             shell                          OUTGOING  tcp    80      endpoint 1.1.1.1
 ```
 
-### With local-gadget
+### With `ig`
 
 Let's start the gadget in a terminal:
 
 ```bash
-$ sudo local-gadget trace network -c test-container
+$ sudo ig trace network -c test-container
 CONTAINER                       TYPE      PROTO PORT  REMOTE
 ```
 
@@ -43,7 +43,7 @@ $ docker run --name test-container -ti --rm busybox /bin/sh -c "wget http://1.1.
 The tools will show the network activity:
 
 ```bash
-$ sudo local-gadget trace network -c test-container
+$ sudo ig trace network -c test-container
 CONTAINER                       TYPE      PROTO PORT  REMOTE
 demo                            OUTGOING  udp   53    192.168.67.1
 demo                            OUTGOING  tcp   80    1.1.1.1

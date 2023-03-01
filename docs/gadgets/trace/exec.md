@@ -65,12 +65,12 @@ Finally, we clean up our demo app.
 $ kubectl delete -f docs/examples/ds-myapp.yaml
 ```
 
-### With local-gadget
+### With `ig`
 
 Let's start the gadget in a terminal:
 
 ```bash
-$ sudo local-gadget trace exec -c test-trace-exec
+$ sudo ig trace exec -c test-trace-exec
 CONTAINER                                         PID        PPID       COMM             RET ARGS
 ```
 
@@ -83,7 +83,7 @@ $ docker run --name test-trace-exec -it --rm busybox /bin/sh -c 'while /bin/true
 The tool will show the different processes executed by the container:
 
 ```bash
-$ sudo local-gadget trace exec -c test-trace-exec
+$ sudo ig trace exec -c test-trace-exec
 CONTAINER                                         PID        PPID       COMM             RET ARGS
 test-trace-exec                                   99081      99062      sh               0   /bin/sh -c while /bin/true ; do whoami ; sleep 3 ; done
 test-trace-exec                                   99125      99081      true             0   /bin/true

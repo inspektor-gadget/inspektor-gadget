@@ -262,7 +262,7 @@ $ kubectl delete ns seccomp-demo
 namespace "seccomp-demo" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 TODO!
 

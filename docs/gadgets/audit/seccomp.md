@@ -82,7 +82,7 @@ default          mypod            mkdir            log
 default          mypod            unshare          kill_thread
 ```
 
-### With local-gadget
+### With `ig`
 
 * Prepare a Seccomp Profile.
 
@@ -103,7 +103,7 @@ default          mypod            unshare          kill_thread
 * Start the audit-seccomp gadget.
 
 ```bash
-$ sudo local-gadget audit seccomp -r docker
+$ sudo ig audit seccomp -r docker
 CONTAINER                                          PID        COMM             SYSCALL     CODE
 ```
 
@@ -118,7 +118,7 @@ Bad system call (core dumped)
 * Observe the syscalls logged by seccomp in the first terminal.
 
 ```bash
-$ sudo local-gadget audit seccomp -r docker
+$ sudo ig audit seccomp -r docker
 CONTAINER                                          PID        COMM             SYSCALL     CODE
 eager_mclean                                       231712     unshare          unshare     kill_thread
 ```

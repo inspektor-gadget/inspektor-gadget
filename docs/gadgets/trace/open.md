@@ -40,12 +40,12 @@ $ kubectl delete pod mypod
 ```
 
 
-### With local-gadget
+### With `ig`
 
 Let's start the gadget in a terminal:
 
 ```bash
-$ sudo local-gadget trace open -c test-trace-open
+$ sudo ig trace open -c test-trace-open
 CONTAINER                                                  PID        COMM             FD    ERR PATH
 ```
 
@@ -58,7 +58,7 @@ $ docker run --name test-trace-open -it --rm busybox /bin/sh -c 'while /bin/true
 The tool will show the different files opened by the container:
 
 ```bash
-$ sudo local-gadget trace open -c test-trace-open
+$ sudo ig trace open -c test-trace-open
 CONTAINER                                                  PID        COMM             FD    ERR PATH
 test-trace-open                                            630417     whoami           3     0   /etc/passwd
 test-trace-open                                            630954     whoami           3     0   /etc/passwd

@@ -270,12 +270,12 @@ namespaces owning the mount namespace, that is the parent user namespace:
 if (!ns_capable(mnt_ns->user_ns, CAP_SYS_ADMIN) || ...
 ```
 
-### With local-gadget
+### With `ig`
 
-Start local-gadget:
+Start `ig`:
 
 ```bash
-$ local-gadget trace capabilities -r docker -c test
+$ ig trace capabilities -r docker -c test
 CONTAINER  PID      COMM     SYSCALL  UID  CAP CAPNAME      AUDIT  VERDICT
 ```
 

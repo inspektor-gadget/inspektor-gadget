@@ -4,7 +4,7 @@ This folder contains some examples showing the usage of the Golang
 packages provided by Inspektor Gadget. These examples are designed for
 developers that want to use the Golang packages exposed by Inspektor
 Gadget directly. End-users do not need this and can use `kubectl-gadget`
-or `local-gadget` directly.
+or `ig` directly.
 
 - [runc-hook](runc-hook/): Use of the runcfanotify package to
   - receive notifications when a container starts or terminates

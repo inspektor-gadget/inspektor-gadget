@@ -1,25 +1,25 @@
 ---
-title: local-gadget
+title: `ig`
 weight: 80
 description: >
-  Description of the local-gadget tool.
+  Description of the `ig` tool.
 ---
 
 Inspektor Gadget relies on the Kubernetes API server to work. However, there are
 [some cases](#use-cases) where it is necessary, or preferred, to trace
 containers without passing through Kubernetes. In such scenarios, you can use
-the `local-gadget` tool, as it allows you to collect insights from the nodes to
+the `ig` tool, as it allows you to collect insights from the nodes to
 debug your Kubernetes containers without relying on Kubernetes itself, but on
-the container runtimes. It is important to remark that `local-gadget` can also
+the container runtimes. It is important to remark that `ig` can also
 be used to trace containers that were not created via Kubernetes.
 
-Some characteristics of the `local-gadget`:
+Some characteristics of the `ig`:
 - It uses eBPF as its underlying core technology.
 - Enriches the collected data with the Kubernetes metadata.
 - Easy to install as it is a single binary (statically linked).
 
-The architecture of `local-gadget` is described in the main
-[architecture](architecture.md#local-gadget) document.
+The architecture of `ig` is described in the main
+[architecture](architecture.md#ig) document.
 
 ## Use cases
 
@@ -29,7 +29,7 @@ The architecture of `local-gadget` is described in the main
 - In some cases, you might have root SSH access to the Kubernetes nodes of a
   cluster, but not to the `kubeconfig`.
 - If you are implementing an application that needs to get insights from the
-  Kubernetes node, you could include the `local-gadget` binary in your container
+  Kubernetes node, you could include the `ig` binary in your container
   image, and your app simply execs it. In such a case, it is suggested to use
   the JSON output format to ease the parsing.
 - Outside a Kubernetes environment, for observing and debugging standalone
@@ -37,26 +37,26 @@ The architecture of `local-gadget` is described in the main
 
 ## Installation
 
-The instruction to install `local-gadget` are available in the main
-[installation](install.md#installing-local-gadget) guide.
+The instruction to install `ig` are available in the main
+[installation](install.md#installing-ig) guide.
 
 ## Usage
 
-Currently, the `local-gadget` can trace containers managed by Docker regardless
+Currently, the `ig` can trace containers managed by Docker regardless
 of whether they were created via Kubernetes or not. In addition, it can also
 use the CRI to trace containers managed by containerd and CRI-O, meaning only
 the ones created via Kubernetes. Support for non-Kubernetes containers with
 containerd is coming, see issue
 [#734](https://github.com/inspektor-gadget/inspektor-gadget/issues/734).
 
-By default, the `local-gadget` will try to communicate with the Docker Engine
+By default, the `ig` will try to communicate with the Docker Engine
 API and the CRI API of containerd and CRI-O:
 
 ```bash
 $ docker run -d --name myContainer nginx:1.21
 95b814bb82b9e30dd935b03d04a7b00b6978ce018a6f55d6a9c7a824b31ec6b5
 
-$ sudo local-gadget list-containers
+$ sudo ig list-containers
 WARN[0000] Runtime enricher (cri-o): couldn't get current containers
 RUNTIME       ID               NAME
 containerd    7766d32caded4    calico-kube-controllers
@@ -71,20 +71,20 @@ containerd    a68bed42aa6b2    kube-scheduler
 docker        95b814bb82b9e    myContainer
 ```
 
-This output shows the containers `local-gadget` retrieved from Docker and
-containerd, while the warning message tells us that `local-gadget` tried to
+This output shows the containers `ig` retrieved from Docker and
+containerd, while the warning message tells us that `ig` tried to
 communicate with CRI-O but couldn't. In this case, it was because CRI-O was not
 running in the system where we executed the test. However, it could also happen
-if `local-gadget` uses a different UNIX socket path to communicate with the
-runtimes. To check which paths `local-gadget` is using, you can use the `--help`
+if `ig` uses a different UNIX socket path to communicate with the
+runtimes. To check which paths `ig` is using, you can use the `--help`
 flag:
 
 ```bash
-$ sudo local-gadget list-containers --help
+$ sudo ig list-containers --help
 List all containers
 
 Usage:
-  local-gadget list-containers [flags]
+  ig list-containers [flags]
 
 Flags:
   ...
@@ -100,7 +100,7 @@ If needed, we can also specify the runtimes to be used and their UNIX socket
 path:
 
 ```bash
-$ sudo local-gadget list-containers --runtimes docker --docker-socketpath /some/path/docker.sock
+$ sudo ig list-containers --runtimes docker --docker-socketpath /some/path/docker.sock
 RUNTIME    ID               NAME
 docker     95b814bb82b9e    myContainer
 ```
@@ -118,7 +118,7 @@ simplicity, they are not demonstrated in each command guide:
 For instance, for the `list-containers` command:
 
 ```bash
-$ sudo local-gadget list-containers -o json --containername etcd
+$ sudo ig list-containers -o json --containername etcd
 [
   {
     "runtime": "containerd",

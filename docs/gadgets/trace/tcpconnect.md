@@ -134,12 +134,12 @@ $ kubectl delete -f docs/examples/network-policy.yaml
 networkpolicy.networking.k8s.io "restrictive-network-policy" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 Start the gadget on a terminal.
 
 ```bash
-$ sudo local-gadget trace tcpconnect -c test-tcp-connect
+$ sudo ig trace tcpconnect -c test-tcp-connect
 ```
 
 Then, create a gadget that performs a TCP connection.
@@ -155,7 +155,7 @@ index.html           100% |*****************************************************
 The gadget will show the connection and related information to it.
 
 ```bash
-$ sudo local-gadget trace tcpconnect -c test-tcp-connect
+$ sudo ig trace tcpconnect -c test-tcp-connect
 CONTAINER        PID     COMM             IP  SADDR            DADDR            DPORT
 test-tcp-connect 503650  wget             4   172.17.0.3       93.184.216.34    80
 ```

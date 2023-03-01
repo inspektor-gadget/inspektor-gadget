@@ -67,6 +67,6 @@ namespace "oomkill-demo" deleted
 pod "test-pod" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 TODO

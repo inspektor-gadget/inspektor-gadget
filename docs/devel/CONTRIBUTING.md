@@ -84,14 +84,14 @@ go: downloading github.com/giantswarm/crd-docs-generator v0.7.1
 Wrote /work/pkg/gadgettracermanager/containers-map/containersmap_bpfel.go
 ```
 
-### Building Local Gadget
+### Building `ig`
 
-Inspektor Gadget also provides the [`local-gadget`](../local-gadget.md) tool to
+Inspektor Gadget also provides the [`ig`](../ig.md) tool to
 trace containers without Kubernetes. It can be built independently from the
 `kubectl-gadget` and the gadget container image.
 
 ```bash
-$ make local-gadget
+$ make ig
 ```
 
 ## Testing
@@ -152,7 +152,7 @@ if no `CONTAINER_RUNTIME` is specified `docker` will be used as a default runtim
 
 #### Non-Kubernetes
 
-The local-gadget integration tests for non-Kubernetes containers directly interact
+The `ig` integration tests for non-Kubernetes containers directly interact
 with container runtime. The tests assume that you already have the desired container
 runtime installed. Currently supported runtime is `docker` only, You can run the test using:
 

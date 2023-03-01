@@ -73,7 +73,7 @@ $ kubectl delete pod busybox
 pod "busybox" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 With the following container we can see that the gadget shows that a
 TCP connection was established.
@@ -81,7 +81,7 @@ TCP connection was established.
 Start the gadget:
 
 ```bash
-$ sudo local-gadget trace tcp -c test-trace-tcp
+$ sudo ig trace tcp -c test-trace-tcp
 ```
 
 Then, run a container that creates a TCP connection.
@@ -97,7 +97,7 @@ index.html           100% |index.html           100% |**************************
 The gadget will print that connection on the first terminal
 
 ```bash
-$ sudo local-gadget trace tcp -c test-trace-tcp
+$ sudo ig trace tcp -c test-trace-tcp
 CONTAINER        T  PID     COMM             IP  SADDR                  DADDR                  SPORT   DPORT
 test-trace-tcp   C  11039   wget             4   172.17.0.2             188.114.96.7           57560   443
 ```

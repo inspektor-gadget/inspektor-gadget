@@ -135,7 +135,7 @@ Finally, we need to clean up our pod:
 $ kubectl delete pod random
 ```
 
-### With local-gadget
+### With `ig`
 
 * Generate some kernel load:
 
@@ -143,16 +143,16 @@ $ kubectl delete pod random
 $ docker run -d --rm --name random busybox cat /dev/urandom > /dev/null
 ```
 
-* Start local-gadget:
+* Start `ig`:
 
 ```bash
-$ sudo ./local-gadget profile cpu -K --containername random --runtimes docker
+$ sudo ./ig profile cpu -K --containername random --runtimes docker
 ```
 
 * Observe the results:
 
 ```bash
-sudo ./local-gadget profile cpu -K --containername random --runtimes docker
+sudo ./ig profile cpu -K --containername random --runtimes docker
 Capturing stack traces... Hit Ctrl-C to end.^C
 CONTAINER                                                                                    COMM             PID        COUNT
 random                                                                                       cat              641045     1

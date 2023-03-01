@@ -72,6 +72,6 @@ $ kubectl delete ns test-socketcollector
 namespace "test-socketcollector" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
-The `snapshot socket` is not available on local-gadget yet. Please check https://github.com/inspektor-gadget/inspektor-gadget/issues/744.
+The `snapshot socket` is not available on `ig` yet. Please check https://github.com/inspektor-gadget/inspektor-gadget/issues/744.
