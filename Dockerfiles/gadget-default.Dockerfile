@@ -6,7 +6,7 @@ ARG BUILDER_IMAGE=debian:bullseye
 
 # BCC built from the gadget branch in the kinvolk/bcc fork.
 # See BCC section in docs/devel/CONTRIBUTING.md for further details.
-ARG BCC="quay.io/kinvolk/bcc:6c9f81ca85f4bb4d09ce80e347e65021788c0064-focal-release"
+ARG BCC="quay.io/kinvolk/bcc:gadget"
 
 FROM ${BCC} as bcc
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder

@@ -37,7 +37,7 @@ then verifies the program through static analysis, so that no memory corruption
 can happen and no out of bounds access can leak sensitive data.
 In eBPF no loops are allowed and the maximum number of instructions is limited,
 so that a eBPF program with logical bugs can not hang up the kernel.
-Read more on eBPF [here](https://lwn.net/Articles/740157/) and [here](http://www.brendangregg.com/ebpf.html).
+Read more on eBPF [here](https://lwn.net/Articles/740157/) and [here](https://www.brendangregg.com/ebpf.html).
 
 To trace pods, Inspektor Gadget attaches eBPF programs to kernel functions and
 the kernel will run them always when the functions are executed. Therefore, the
