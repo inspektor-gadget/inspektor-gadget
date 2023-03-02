@@ -75,7 +75,7 @@ func RunDockerContainer(ctx context.Context, t *testing.T, command string, optio
 	}
 
 	if opts.logs {
-		out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true})
+		out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 		if err != nil {
 			t.Fatalf("Failed to get container logs: %s", err)
 		}
