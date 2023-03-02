@@ -17,13 +17,15 @@ package main
 import (
 	_ "embed"
 	"flag"
+	"fmt"
 	"html/template"
 	"os"
 	"path/filepath"
 	"sort"
 
+	"github.com/giantswarm/crd-docs-generator/pkg/annotations"
+	"github.com/giantswarm/crd-docs-generator/pkg/config"
 	"github.com/giantswarm/crd-docs-generator/pkg/crd"
-	"github.com/giantswarm/crd-docs-generator/pkg/metadata"
 	"github.com/giantswarm/crd-docs-generator/pkg/output"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 
@@ -138,11 +140,23 @@ func main() {
 	}
 
 	for _, c := range getCrds() {
-		err = output.WritePage(
-			&c,
-			[]output.CRDAnnotationSupport{},
-			metadata.CRDItem{},
-			filepath.Join(repo, "pkg/resources/samples"),
+		exampleMap := make(map[string]string)
+		for _, v := range c.Spec.Versions {
+			version := v.Name
+
+			example, err := os.ReadFile(filepath.Join(repo, fmt.Sprintf("pkg/resources/samples/%s_%s_%s.yaml", c.Spec.Group, version, c.Spec.Names.Singular)))
+			if err != nil {
+				panic(err)
+			}
+
+			exampleMap[version] = string(example)
+		}
+
+		_, err = output.WritePage(
+			c,
+			[]annotations.CRDAnnotationSupport{},
+			config.CRDItem{},
+			exampleMap,
 			filepath.Join(repo, "docs/crds"),
 			"github.com/inspektor-gadget/inspektor-gadget",
 			"version-unknown",
