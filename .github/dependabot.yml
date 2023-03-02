@@ -13,7 +13,7 @@ updates:
     commit-message:
       prefix: "go:"
   - package-ecosystem: "docker"
-    directory: "/"
+    directory: "/Dockerfiles"
     schedule:
       interval: "daily"
     commit-message:
