@@ -32,16 +32,18 @@ type GadgetContext interface {
 	Context() context.Context
 	Operators() operators.Operators
 	Logger() logger.Logger
+	RuntimeParams() *params.Params
 	GadgetParams() *params.Params
 	OperatorsParamCollection() params.Collection
 	Timeout() time.Duration
 }
 
-// Runtime is the interface for gadget runtimes like kubectl-gadget, ig
-// or gadgettracermgr
+// Runtime is the interface for gadget runtimes. Runtimes are used to control the lifecycle of gadgets either locally
+// or remotely.
 type Runtime interface {
-	Init(*params.Params) error
+	Init(globalRuntimeParams *params.Params) error
 	Close() error
 	GlobalParamDescs() params.ParamDescs
+	ParamDescs() params.ParamDescs
 	RunGadget(gadgetCtx GadgetContext) ([]byte, error)
 }

@@ -39,6 +39,7 @@ type GadgetContext struct {
 	gadget                   gadgets.GadgetDesc
 	gadgetParams             *params.Params
 	runtime                  runtime.Runtime
+	runtimeParams            *params.Params
 	parser                   parser.Parser
 	operators                operators.Operators
 	operatorsParamCollection params.Collection
@@ -52,6 +53,7 @@ func New(
 	ctx context.Context,
 	id string,
 	runtime runtime.Runtime,
+	runtimeParams *params.Params,
 	gadget gadgets.GadgetDesc,
 	gadgetParams *params.Params,
 	operatorsParamCollection params.Collection,
@@ -66,6 +68,7 @@ func New(
 		cancel:                   cancel,
 		id:                       id,
 		runtime:                  runtime,
+		runtimeParams:            runtimeParams,
 		gadget:                   gadget,
 		gadgetParams:             gadgetParams,
 		parser:                   parser,
@@ -94,6 +97,10 @@ func (c *GadgetContext) Parser() parser.Parser {
 
 func (c *GadgetContext) Runtime() runtime.Runtime {
 	return c.runtime
+}
+
+func (c *GadgetContext) RuntimeParams() *params.Params {
+	return c.runtimeParams
 }
 
 func (c *GadgetContext) GadgetDesc() gadgets.GadgetDesc {
