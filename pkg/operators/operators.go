@@ -119,6 +119,13 @@ func (e *operatorWrapper) Init(params *params.Params) (err error) {
 	return err
 }
 
+func GetRaw(name string) Operator {
+	if op, ok := allOperators[name]; ok {
+		return op.(*operatorWrapper).Operator
+	}
+	return nil
+}
+
 // Register adds a new operator to the registry
 func Register(operator Operator) {
 	if _, ok := allOperators[operator.Name()]; ok {
