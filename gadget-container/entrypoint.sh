@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright 2019-2021 The Inspektor Gadget authors
+# Copyright 2019-2023 The Inspektor Gadget authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -171,5 +171,6 @@ echo "Starting the Gadget Tracer Manager..."
 # change directory before running gadgettracermanager
 cd /
 rm -f /run/gadgettracermanager.socket
+rm -f /run/gadgetservice.socket
 exec /bin/gadgettracermanager -serve -hook-mode=$GADGET_TRACER_MANAGER_HOOK_MODE \
     -controller -fallback-podinformer=$INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER
