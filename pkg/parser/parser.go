@@ -21,14 +21,17 @@ like filtering and sorting on them.
 package parser
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/filter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/snapshotcombiner"
 )
 
 type LogCallback func(severity logger.Level, fmt string, params ...any)
@@ -67,17 +70,22 @@ type Parser interface {
 	// enrichers and filters
 	EventHandlerFunc(enrichers ...func(any) error) any
 	EventHandlerFuncArray(enrichers ...func(any) error) any
+	EventHandlerFuncSnapshot(key string, enrichers ...func(any) error) any
 
 	// JSONHandlerFunc returns a function that accepts a JSON encoded event, unmarshal it into *T and pushes it
 	// downstream after applying enrichers and filters
 	JSONHandlerFunc(enrichers ...func(any) error) func([]byte)
-	JSONHandlerFuncArray(enrichers ...func(any) error) func([]byte)
+	JSONHandlerFuncArray(key string, enrichers ...func(any) error) func([]byte)
 
 	// SetEventCallback sets the downstream callback
 	SetEventCallback(eventCallback any)
 
 	// SetLogCallback sets the function to use to send log messages
 	SetLogCallback(logCallback LogCallback)
+
+	// EnableSnapshots initializes the snapshot combiner, which is able to aggregate snapshots from several sources
+	// and can return (optionally cached) results on demand; used for top gadgets
+	EnableSnapshots(ctx context.Context, t time.Duration, ttl int)
 }
 
 type parser[T any] struct {
@@ -89,6 +97,7 @@ type parser[T any] struct {
 	eventCallback      func(*T)
 	eventCallbackArray func([]*T)
 	logCallback        LogCallback
+	snapshotCombiner   *snapshotcombiner.SnapshotCombiner[T]
 	columnFilters      []columns.ColumnFilter
 }
 
@@ -97,6 +106,25 @@ func NewParser[T any](columns *columns.Columns[T]) Parser {
 		columns: columns,
 	}
 	return p
+}
+
+func (p *parser[T]) EnableSnapshots(ctx context.Context, interval time.Duration, ttl int) {
+	if p.eventCallbackArray == nil {
+		panic("EnableSnapshots needs EventCallbackArray set")
+	}
+	p.snapshotCombiner = snapshotcombiner.NewSnapshotCombiner[T](ttl)
+	go func() {
+		ticker := time.NewTicker(interval)
+		for {
+			select {
+			case <-ticker.C:
+				out, _ := p.snapshotCombiner.GetSnapshots()
+				p.eventCallbackArray(out)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 }
 
 func (p *parser[T]) SetColumnFilters(filters ...columns.ColumnFilter) {
@@ -170,6 +198,30 @@ func (p *parser[T]) eventHandlerArray(enrichers ...func(any) error) func([]*T) {
 	}
 }
 
+func (p *parser[T]) eventHandlerSnapshot(key string, enrichers ...func(any) error) func([]*T) {
+	return func(events []*T) {
+		for _, enricher := range enrichers {
+			for _, ev := range events {
+				enricher(ev)
+			}
+		}
+		if p.filterSpecs != nil {
+			filteredEvents := make([]*T, 0, len(events))
+			for _, event := range events {
+				if !p.filterSpecs.MatchAll(event) {
+					continue
+				}
+				filteredEvents = append(filteredEvents, event)
+			}
+			events = filteredEvents
+		}
+		if p.sortSpec != nil {
+			p.sortSpec.Sort(events)
+		}
+		p.snapshotCombiner.AddSnapshot(key, events)
+	}
+}
+
 func (p *parser[T]) writeLogMessage(severity logger.Level, fmt string, params ...any) {
 	if p.logCallback == nil {
 		return
@@ -190,8 +242,11 @@ func (p *parser[T]) JSONHandlerFunc(enrichers ...func(any) error) func([]byte) {
 	}
 }
 
-func (p *parser[T]) JSONHandlerFuncArray(enrichers ...func(any) error) func([]byte) {
+func (p *parser[T]) JSONHandlerFuncArray(key string, enrichers ...func(any) error) func([]byte) {
 	handler := p.eventHandlerArray(enrichers...)
+	if p.snapshotCombiner != nil {
+		handler = p.eventHandlerSnapshot(key, enrichers...)
+	}
 	return func(event []byte) {
 		var ev []*T
 		err := json.Unmarshal(event, &ev)
@@ -209,6 +264,10 @@ func (p *parser[T]) EventHandlerFunc(enrichers ...func(any) error) any {
 
 func (p *parser[T]) EventHandlerFuncArray(enrichers ...func(any) error) any {
 	return p.eventHandlerArray(enrichers...)
+}
+
+func (p *parser[T]) EventHandlerFuncSnapshot(key string, enrichers ...func(any) error) any {
+	return p.eventHandlerSnapshot(key, enrichers...)
 }
 
 func (p *parser[T]) GetTextColumnsFormatter(options ...textcolumns.Option) TextColumnsFormatter {
