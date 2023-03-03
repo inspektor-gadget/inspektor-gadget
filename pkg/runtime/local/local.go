@@ -25,7 +25,7 @@ import (
 
 type Runtime struct{}
 
-func (r *Runtime) Init(runtimeParams *params.Params) error {
+func (r *Runtime) Init(globalRuntimeParams *params.Params) error {
 	return nil
 }
 
@@ -34,6 +34,10 @@ func (r *Runtime) Close() error {
 }
 
 func (r *Runtime) GlobalParamDescs() params.ParamDescs {
+	return nil
+}
+
+func (r *Runtime) ParamDescs() params.ParamDescs {
 	return nil
 }
 
