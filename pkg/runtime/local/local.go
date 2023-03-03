@@ -18,12 +18,37 @@ import (
 	"errors"
 	"fmt"
 
+	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
-type Runtime struct{}
+type Runtime struct {
+	catalog *runtime.Catalog
+}
+
+func New() *Runtime {
+	return &Runtime{
+		catalog: prepareCatalog(),
+	}
+}
+
+func prepareCatalog() *runtime.Catalog {
+	gadgetInfos := make([]*runtime.GadgetInfo, 0)
+	for _, gadgetDesc := range gadgetregistry.GetAll() {
+		gadgetInfos = append(gadgetInfos, runtime.GadgetInfoFromGadgetDesc(gadgetDesc))
+	}
+	operatorInfos := make([]*runtime.OperatorInfo, 0)
+	for _, operator := range operators.GetAll() {
+		operatorInfos = append(operatorInfos, runtime.OperatorToOperatorInfo(operator))
+	}
+	return &runtime.Catalog{
+		Gadgets:   gadgetInfos,
+		Operators: operatorInfos,
+	}
+}
 
 func (r *Runtime) Init(globalRuntimeParams *params.Params) error {
 	return nil
@@ -124,4 +149,16 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) ([]byte, error) {
 		return out, nil
 	}
 	return nil, errors.New("gadget not runnable")
+}
+
+func (r *Runtime) GetCatalog() (*runtime.Catalog, error) {
+	return r.catalog, nil
+}
+
+func (r *Runtime) SetDefaultValue(key params.ValueHint, value string) {
+	panic("not supported, yet")
+}
+
+func (r *Runtime) GetDefaultValue(key params.ValueHint) (string, bool) {
+	return "", false
 }
