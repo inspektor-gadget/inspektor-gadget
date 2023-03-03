@@ -47,7 +47,7 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
-		ca-certificates jq wget xz-utils binutils && \
+		ca-certificates jq wget xz-utils binutils socat && \
 		rmdir /usr/src && ln -sf /host/usr/src /usr/src && \
 		rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
 
