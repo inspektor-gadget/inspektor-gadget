@@ -86,7 +86,7 @@ Flags:
 ...
 ```
 
-### With local-gadget
+### With `ig`
 
 Start a container that performs some write operations to a file:
 
@@ -97,7 +97,7 @@ $ docker run --rm --name test-top-file busybox /bin/sh -c 'while true; do echo f
 Start the gadget and it'll show those operations:
 
 ```bash
-$ sudo local-gadget top file -c test-top-file
+$ sudo ig top file -c test-top-file
 CONTAINER                              PID        COMM             READS                WRITES               RBYTES               WBYTES               T FILE
 test-top-file                          139255     sh               0                    1                    0B                   4B                   R bar
 ```

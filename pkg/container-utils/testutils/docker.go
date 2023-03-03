@@ -95,7 +95,7 @@ func RunDockerContainer(ctx context.Context, t *testing.T, command string, optio
 func RunDockerFailedContainer(ctx context.Context, t *testing.T) {
 	RunDockerContainer(ctx, t,
 		"/none",
-		WithName("test-local-gadget-failed-container"),
+		WithName("test-ig-failed-container"),
 		WithoutLogs(),
 		WithoutWait(),
 	)

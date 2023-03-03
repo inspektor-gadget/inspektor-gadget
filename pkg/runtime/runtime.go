@@ -35,7 +35,7 @@ type GadgetContext interface {
 	OperatorsParamCollection() params.Collection
 }
 
-// Runtime is the interface for gadget runtimes like kubectl-gadget, local-gadget
+// Runtime is the interface for gadget runtimes like kubectl-gadget, ig
 // or gadgettracermgr
 type Runtime interface {
 	Init(*params.Params) error

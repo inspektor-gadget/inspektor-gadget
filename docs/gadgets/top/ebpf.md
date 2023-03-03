@@ -72,7 +72,7 @@ minikube         8        CGroupSKB                                             
 ...
 ```
 
-### With local-gadget
+### With `ig`
 
 Run any tool that uses eBPF, for instance, [iovisor/bcc `execsnoop`](https://github.com/iovisor/bcc/blob/v0.26.0/libbpf-tools/execsnoop.bpf.c): from BCC. Please note that it can be run on the host directly.
 
@@ -88,9 +88,9 @@ docker-init      167857 142428   0 /usr/bin/docker-init --version
 Start the `top ebpf` gadget in another terminal. It'll show the programs installed by the tool above.
 
 ```bash
-$ sudo local-gadget top ebpf
+$ sudo ig top ebpf
 PROGID     TYPE                      NAME                     PID                      COMM                          RUNTIME RUNCOUNT                   MAPMEMORY MAPCOUNT
-1102       Tracing                   ig_top_ebpf_it           167925                   local-gadget                299.054µs 5534                            4KiB 1
+1102       Tracing                   ig_top_ebpf_it           167925                   ig                          299.054µs 5534                            4KiB 1
 1097       TracePoint                tracepoint__sys          167850                   execsnoop                    25.055µs 2                           75.48MiB 3
 1099       TracePoint                tracepoint__sys          167850                   execsnoop                    23.629µs 2                           75.48MiB 4
 ```

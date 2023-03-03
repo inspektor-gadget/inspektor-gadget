@@ -133,7 +133,7 @@ $ kubectl delete ns test-biolatency
 namespace "test-biolatency" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 * Generate some io load:
 
@@ -141,16 +141,16 @@ namespace "test-biolatency" deleted
 $ docker run -d --rm --name stresstest polinux/stress stress --io 10
 ```
 
-* Start local-gadget:
+* Start `ig`:
 
 ```bash
-$ sudo ./local-gadget profile block-io
+$ sudo ./ig profile block-io
 ```
 
 * Observe the results:
 
 ```bash
-$ sudo ./local-gadget profile block-io
+$ sudo ./ig profile block-io
 Tracing block device I/O... Hit Ctrl-C to end.^C
      usecs               : count    distribution
          1 -> 1          : 0        |                                        |

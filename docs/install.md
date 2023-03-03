@@ -18,7 +18,7 @@ description: >
     + [Minikube](#minikube)
 - [Uninstalling from the cluster](#uninstalling-from-the-cluster)
 - [Version skew policy](#version-skew-policy)
-- [Installing local-gadget](#installing-local-gadget)
+- [Installing `ig`](#installing-ig)
   * [Install a specific release](#install-a-specific-release-1)
   * [Compile from source](#compile-from-source-1)
 <!-- /toc -->
@@ -168,9 +168,9 @@ possible that different versions work well together, we don't provide
 any guarantee in those cases. We'll visit this policy again once we
 approach to the v1.0 release.
 
-## Installing local-gadget
+## Installing `ig`
 
-The [`local-gadget`](local-gadget.md) tool can be built and installed
+The [`ig`](ig.md) tool can be built and installed
 independently. The result is a single binary (statically linked) that can be
 copied to a Kubernetes node or any host to trace its containers.
 
@@ -182,16 +182,17 @@ It is possible to download the asset for a given release and platform from the
 For instance, to download the latest release for linux-amd64:
 
 ```bash
-$ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/latest/download/local-gadget-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - local-gadget
-$ local-gadget version
+$ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/latest/download/ig-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - ig
+$ ig version
 ```
 
 ### Compile from source
 
-`local-gadget` is built using a Docker container, so you don't have to worry
+`ig` is built using a Docker container, so you don't have to worry
 about installing dependencies:
 
 ```bash
-$ make local-gadget
-$ sudo cp local-gadget /usr/local/bin/
+$ make ig
+$ sudo cp ig /usr/local/bin/
 ```
+

@@ -160,14 +160,14 @@ jobs:
         name: kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
 
-  build-local-gadget:
-    name: Build local-gadget
+  build-ig:
+    name: Build ig
     # level: 0
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        local-gadget-target: [local-gadget-linux-amd64, local-gadget-linux-arm64]
+        ig-target: [ig-linux-amd64, ig-linux-arm64]
     steps:
     - uses: actions/checkout@v3
     - name: Setup go
@@ -180,24 +180,24 @@ jobs:
       # ALERT This action must be run after code was checkout otherwise it will
       # not find this file.
       uses: ./.github/actions/install-debian-packages
-    - name: Build ${{ matrix.local-gadget-target }}
+    - name: Build ${{ matrix.ig-target }}
       run: |
-        make ${{ matrix.local-gadget-target }}
+        make ${{ matrix.ig-target }}
 
         # Prepare assets for release and actions artifacts
-        platform=$(echo ${{ matrix.local-gadget-target }} | cut -d- -f3-4)
+        platform=$(echo ${{ matrix.ig-target }} | cut -d- -f3-4)
         mkdir $platform
-        cp ${{ matrix.local-gadget-target }} $platform/local-gadget
+        cp ${{ matrix.ig-target }} $platform/ig
         cp LICENSE $platform/
         tar --sort=name --owner=root:0 --group=root:0 \
-          -czf ${{ matrix.local-gadget-target }}.tar.gz -C $platform \
-          local-gadget LICENSE
+          -czf ${{ matrix.ig-target }}.tar.gz -C $platform \
+          ig LICENSE
         rm -rf $platform
-    - name: Add ${{ matrix.local-gadget-target }}.tar.gz as artifact.
+    - name: Add ${{ matrix.ig-target }}.tar.gz as artifact.
       uses: actions/upload-artifact@master
       with:
-        name: ${{ matrix.local-gadget-target }}-tar-gz
-        path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.local-gadget-target }}.tar.gz
+        name: ${{ matrix.ig-target }}-tar-gz
+        path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.ig-target }}.tar.gz
 
   build-gadget-container-images:
     name: Build gadget container images
@@ -475,8 +475,8 @@ jobs:
       run: |
         make controller-tests
 
-  test-local-gadget:
-    name: Unit tests for local-gadget
+  test-ig:
+    name: Unit tests for ig
     # level: 0
     runs-on: ubuntu-latest
     steps:
@@ -489,7 +489,7 @@ jobs:
       id: go
     - name: Install debian packages
       uses: ./.github/actions/install-debian-packages
-    - name: Unit tests for local-gadget (as root)
+    - name: Unit tests for ig (as root)
       run: |
         KERNEL=$(uname -r)
         ARCH=$(uname -m)
@@ -515,7 +515,7 @@ jobs:
           fi
         fi
 
-        make local-gadget-tests
+        make ig-tests
 
   check-secrets:
     name: Check repo secrets
@@ -569,10 +569,10 @@ jobs:
 
         perl tools/check-readme.pl ./kubectl-gadget README.md
 
-  test-integration-k8s-local-gadget:
-    name: Integration tests for local gadget with Kubernetes Containers
+  test-integration-k8s-ig:
+    name: Integration tests for ig with Kubernetes Containers
     # level: 2
-    needs: [ test-unit, test-local-gadget, build-local-gadget ]
+    needs: [ test-unit, test-ig, build-ig ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -585,15 +585,15 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
-      - name: Get local-gadget-linux-amd64.tar.gz from artifact.
+      - name: Get ig-linux-amd64.tar.gz from artifact.
         uses: actions/download-artifact@v3
         with:
-          name: local-gadget-linux-amd64-tar-gz
+          name: ig-linux-amd64-tar-gz
           path: /home/runner/work/inspektor-gadget/
-      - name: Unpack local-gadget-linux-amd64.tar.gz
+      - name: Unpack ig-linux-amd64.tar.gz
         run: |
-          tar zxvf /home/runner/work/inspektor-gadget/local-gadget-linux-amd64.tar.gz
-          mv local-gadget local-gadget-linux-amd64
+          tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
+          mv ig ig-linux-amd64
       - name: Setup minikube
         uses: ./.github/actions/setup-minikube
         with:
@@ -602,7 +602,7 @@ jobs:
         id: integration-tests
         run: |
           set -o pipefail
-          make -C integration/local-gadget/k8s CONTAINER_RUNTIME=${{ matrix.runtime }} -o build test |& tee integration.log
+          make -C integration/ig/k8s CONTAINER_RUNTIME=${{ matrix.runtime }} -o build test |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
         continue-on-error: true
@@ -611,10 +611,10 @@ jobs:
           test-log-file: integration.log
           test-step-conclusion: ${{ steps.integration-tests.conclusion }}
 
-  test-integration-non-k8s-local-gadget:
-    name: Integration tests for local gadget with non-Kubernetes Containers
+  test-integration-non-k8s-ig:
+    name: Integration tests for ig with non-Kubernetes Containers
     # level: 2
-    needs: [ test-unit, test-local-gadget, build-local-gadget ]
+    needs: [ test-unit, test-ig, build-ig ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -627,20 +627,20 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
-      - name: Get local-gadget-linux-amd64.tar.gz from artifact.
+      - name: Get ig-linux-amd64.tar.gz from artifact.
         uses: actions/download-artifact@v3
         with:
-          name: local-gadget-linux-amd64-tar-gz
+          name: ig-linux-amd64-tar-gz
           path: /home/runner/work/inspektor-gadget/
-      - name: Unpack local-gadget-linux-amd64.tar.gz
+      - name: Unpack ig-linux-amd64.tar.gz
         run: |
-          tar zxvf /home/runner/work/inspektor-gadget/local-gadget-linux-amd64.tar.gz
-          mv local-gadget local-gadget-linux-amd64
+          tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
+          mv ig ig-linux-amd64
       - name: Run integration for container runtime ${{ matrix.runtime }}
         id: integration-tests
         run: |
           set -o pipefail
-          make -C integration/local-gadget/non-k8s -o build test-${{ matrix.runtime }} |& tee integration.log
+          make -C integration/ig/non-k8s -o build test-${{ matrix.runtime }} |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
         continue-on-error: true
@@ -652,7 +652,7 @@ jobs:
   test-integration-aks:
     name: Integration tests on AKS
     # level: 2
-    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images, publish-gadget-images-manifest]
+    needs: [check-secrets, test-unit, build-kubectl-gadget, build-ig, build-gadget-container-images, publish-gadget-images-manifest]
     if: needs.check-secrets.outputs.aks == 'true'
     runs-on: ubuntu-latest
     strategy:
@@ -727,7 +727,7 @@ jobs:
   test-integration-aro:
     name: Integration tests on ARO
     # level: 2
-    needs: [check-secrets, test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images, publish-gadget-images-manifest]
+    needs: [check-secrets, test-unit, build-kubectl-gadget, build-ig, build-gadget-container-images, publish-gadget-images-manifest]
     # Run this job only if an ARO cluster is available on repo secrets. See
     # docs/ci.md for further details.
     if: needs.check-secrets.outputs.aro == 'true'
@@ -770,7 +770,7 @@ jobs:
   test-integration-minikube:
     name: Integration tests
     # level: 1
-    needs: [test-unit, build-kubectl-gadget, build-local-gadget, build-gadget-container-images]
+    needs: [test-unit, build-kubectl-gadget, build-ig, build-gadget-container-images]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -824,9 +824,9 @@ jobs:
       - test-integration-minikube
       - test-integration-aks
       - test-integration-aro
-      - test-local-gadget
-      - test-integration-k8s-local-gadget
-      - test-integration-non-k8s-local-gadget
+      - test-ig
+      - test-integration-k8s-ig
+      - test-integration-non-k8s-ig
       - check-readme-up-to-date
       - build-examples
       - build-gadgets-examples
@@ -862,20 +862,26 @@ jobs:
     - name: Rename all artifacts to *-${{ github.ref_name }}.tar.gz
       shell: bash
       run: |
-        for i in *-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz; do
           mv $i $(dirname $i)/$(basename $i .tar.gz)-${{ github.ref_name }}.tar.gz
         done
     - name: Compute checksums for all artifacts
       shell: bash
       run: |
-        for i in *-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz inspektor-gadget-${{ github.ref_name }}.yaml; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz inspektor-gadget-${{ github.ref_name }}.yaml; do
           hash=$(sha256sum $i | cut -d' ' -f1)
           echo "${hash}  $(basename $i)" >> inspektor-gadget-${{ github.ref_name }}_checksums.txt
         done
-    - name: Upload Gadget Release *.tar.gz
+    - name: Upload kubectl-gadget binary
       uses: csexton/release-asset-action@v2
       with:
-        pattern: "*-gadget-*-*-tar-gz/*-gadget-*-*.tar.gz"
+        pattern: "kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
+    - name: Upload IG *.tar.gz binary
+      uses: csexton/release-asset-action@v2
+      with:
+        pattern: "ig-*-*-tar-gz/ig-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload YAML

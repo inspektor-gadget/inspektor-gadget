@@ -27,7 +27,7 @@ import (
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	localgadgetmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/local-gadget-manager"
+	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
@@ -49,8 +49,8 @@ type Attacher interface {
 }
 
 type LocalManager struct {
-	localGadgetManager *localgadgetmanager.LocalGadgetManager
-	rc                 []*containerutils.RuntimeConfig
+	igManager *igmanager.IGManager
+	rc        []*containerutils.RuntimeConfig
 }
 
 func (l *LocalManager) Name() string {
@@ -157,16 +157,16 @@ partsLoop:
 
 	l.rc = rc
 
-	localGadgetManager, err := localgadgetmanager.NewManager(l.rc)
+	igManager, err := igmanager.NewManager(l.rc)
 	if err != nil {
 		return commonutils.WrapInErrManagerInit(err)
 	}
-	l.localGadgetManager = localGadgetManager
+	l.igManager = igManager
 	return nil
 }
 
 func (l *LocalManager) Close() error {
-	l.localGadgetManager.Close()
+	l.igManager.Close()
 	return nil
 }
 
@@ -216,7 +216,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 
 	if setter, ok := l.gadgetInstance.(MountNsMapSetter); ok {
 		// Create mount namespace map to filter by containers
-		mountnsmap, err := l.manager.localGadgetManager.CreateMountNsMap(containerSelector)
+		mountnsmap, err := l.manager.igManager.CreateMountNsMap(containerSelector)
 		if err != nil {
 			return commonutils.WrapInErrManagerCreateMountNsMap(err)
 		}
@@ -259,7 +259,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 		l.subscriptionKey = id.String()
 
 		log.Debugf("add subscription")
-		containers := l.manager.localGadgetManager.Subscribe(
+		containers := l.manager.igManager.Subscribe(
 			l.subscriptionKey,
 			containerSelector,
 			func(event containercollection.PubSubEvent) {
@@ -284,11 +284,11 @@ func (l *localManagerTrace) PreGadgetRun() error {
 func (l *localManagerTrace) PostGadgetRun() error {
 	if l.mountnsmap != nil {
 		log.Debugf("calling RemoveMountNsMap()")
-		l.manager.localGadgetManager.RemoveMountNsMap()
+		l.manager.igManager.RemoveMountNsMap()
 	}
 	if l.subscriptionKey != "" {
 		log.Debugf("calling Unsubscribe()")
-		l.manager.localGadgetManager.Unsubscribe(l.subscriptionKey)
+		l.manager.igManager.Unsubscribe(l.subscriptionKey)
 
 		// emit detach for all remaining containers
 		for container := range l.attachedContainers {
@@ -300,10 +300,10 @@ func (l *localManagerTrace) PostGadgetRun() error {
 
 func (l *localManagerTrace) enrich(ev any) {
 	if event, canEnrichEventFromMountNs := ev.(operators.ContainerInfoFromMountNSID); canEnrichEventFromMountNs {
-		l.manager.localGadgetManager.ContainerCollection.EnrichEventByMntNs(event)
+		l.manager.igManager.ContainerCollection.EnrichEventByMntNs(event)
 	}
 	if event, canEnrichEventFromNetNs := ev.(operators.ContainerInfoFromNetNSID); canEnrichEventFromNetNs {
-		l.manager.localGadgetManager.ContainerCollection.EnrichEventByNetNs(event)
+		l.manager.igManager.ContainerCollection.EnrichEventByNetNs(event)
 	}
 }
 

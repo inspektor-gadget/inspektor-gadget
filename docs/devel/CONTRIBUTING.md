@@ -84,14 +84,14 @@ go: downloading github.com/giantswarm/crd-docs-generator v0.7.1
 Wrote /work/pkg/gadgettracermanager/containers-map/containersmap_bpfel.go
 ```
 
-### Building Local Gadget
+### Building `ig`
 
-Inspektor Gadget also provides the [`local-gadget`](../local-gadget.md) tool to
+Inspektor Gadget also provides the [`ig`](../ig.md) tool to
 trace containers without Kubernetes. It can be built independently from the
 `kubectl-gadget` and the gadget container image.
 
 ```bash
-$ make local-gadget
+$ make ig
 ```
 
 ## Testing
@@ -124,11 +124,11 @@ $ export KUBECONFIG=... # not needed if valid config in $HOME/.kube/config
 $ make integration-tests
 ```
 
-### Integration tests for Local Gadget
+### Integration tests for `ig`
 
 #### Kubernetes
 
-The integration tests for local gadget uses minikube for testing different container runtimes.
+The integration tests for `ig` uses minikube for testing different container runtimes.
 The default minikube driver used for testing is `docker`. Currently supported
 container runtimes are `docker`, `containerd` and `cri-o`. You can start minikube using:
 
@@ -143,21 +143,21 @@ $ make MINIKUBE_DRIVER=kvm2 minikube-start
 And run the test using:
 
 ```bash
-$ make -C integration/local-gadget/k8s test-all
+$ make -C integration/ig/k8s test-all
 # for single container runtime e.g containerd
-$ make -C integration/local-gadget/k8s CONTAINER_RUNTIME=containerd test
+$ make -C integration/ig/k8s CONTAINER_RUNTIME=containerd test
 ```
 
 if no `CONTAINER_RUNTIME` is specified `docker` will be used as a default runtime.
 
 #### Non-Kubernetes
 
-The local-gadget integration tests for non-Kubernetes containers directly interact
+The `ig` integration tests for non-Kubernetes containers directly interact
 with container runtime. The tests assume that you already have the desired container
 runtime installed. Currently supported runtime is `docker` only, You can run the test using:
 
 ```bash
-$ make -C integration/local-gadget/non-k8s test-docker
+$ make -C integration/ig/non-k8s test-docker
 ```
 
 ### Continuous Integration

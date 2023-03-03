@@ -82,7 +82,7 @@ $ kubectl delete ns demo
 namespace "demo" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 Create a container that runs sleep inside:
 
@@ -93,7 +93,7 @@ $ docker run --name test-snapshot-process -it --rm busybox /bin/sh -c 'sleep 100
 Run the snapshot process gadget, it'll print all process in the container:
 
 ```bash
-$ sudo ./local-gadget snapshot process -c test-snapshot-process
+$ sudo ./ig snapshot process -c test-snapshot-process
 CONTAINER             COMM  PID
 test-snapshot-process sleep 100003
 ```

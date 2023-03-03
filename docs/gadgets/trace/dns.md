@@ -56,6 +56,6 @@ $ kubectl delete ns demo
 namespace "demo" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 TODO

@@ -57,12 +57,12 @@ $ kubectl delete pod ubuntu
 pod "ubuntu" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 Run the gadget in a terminal
 
 ```bash
-$ sudo local-gadget trace sni -r docker -c test-trace-sni
+$ sudo ig trace sni -r docker -c test-trace-sni
 CONTAINER                              PID        TID        COMM             NAME
 ```
 
@@ -80,7 +80,7 @@ index.html           100% |*****************************************************
 The gadget will show that Server Name Indication used by the request.
 
 ```bash
-$ sudo local-gadget trace sni -r docker -c test-trace-sni
+$ sudo ig trace sni -r docker -c test-trace-sni
 CONTAINER                              PID        TID        COMM             NAME
 test-trace-sni                         3944366    3944366    wget             example.com
 ```

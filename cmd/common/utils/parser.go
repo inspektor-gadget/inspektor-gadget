@@ -86,7 +86,7 @@ func (p *BaseParser[E]) BuildColumnsHeader() string {
 		if p.SeparateWithTabs {
 			// In this case, the generated header is expected to be printed
 			// using a tabwriter. See example of usage on the snapshot gadgets
-			// or the list-containers command of local-gadget.
+			// or the list-containers command of ig.
 			sb.WriteString(strings.ToUpper(col) + "\t")
 		} else {
 			// Additional space is needed when field is larger than the

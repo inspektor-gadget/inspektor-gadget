@@ -69,6 +69,6 @@ That's all, let's delete our example pod
 $ kubectl delete pod mypod
 ```
 
-### With local-gadget
+### With `ig`
 
 TODO

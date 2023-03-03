@@ -54,7 +54,7 @@ type Parser interface {
 
 	// SetColumnFilters sets additional column filters that will be used whenever one of the other methods of this
 	// interface are called. This is for example used to filter columns with information on kubernetes in a non-k8s
-	// environment like local-gadget
+	// environment like ig
 	SetColumnFilters(...columns.ColumnFilter)
 
 	// SetSorting sets what sorting should be applied when calling SortEntries() // TODO

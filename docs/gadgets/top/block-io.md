@@ -49,7 +49,7 @@ $ kubectl delete pod test-pod
 pod "test-pod" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 Start a container that performs some IO activity:
 
@@ -60,7 +60,7 @@ $ docker run --rm --name test-top-block-io busybox /bin/sh -c'while true; do dd 
 Start the gadget on another terminal and you'll see the activity produced by the `test-top-block-io` container.
 
 ```bash
-$ sudo local-gadget top block-io -c test-top-block-io
+$ sudo ig top block-io -c test-top-block-io
 CONTAINER                               PID         COMM                  R/W MAJOR                MINOR                BYTES                TIME                 OPS
 test-top-block-io                       63666       sync                  W   253                  0                    24576                428                  5
 test-top-block-io                       63715       dd                    W   253                  0                    2097152              4816                 5

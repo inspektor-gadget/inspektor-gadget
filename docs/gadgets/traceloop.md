@@ -123,7 +123,7 @@ $ kubectl gadget traceloop show 9c691a53cd43a0
 ...
 ```
 
-### With local-gadget
+### With `ig`
 
 Start a container in interactive mode:
 
@@ -135,7 +135,7 @@ $ docker run -it --rm --name test-traceloop busybox /bin/sh
 Start traceloop in another terminal:
 
 ```bash
-$ sudo local-gadget traceloop -c test-traceloop
+$ sudo ig traceloop -c test-traceloop
 ```
 
 Run a command inside the container
@@ -149,7 +149,7 @@ $ docker run -it --rm --name test-traceloop busybox /bin/sh
 Press Ctrl+C on the gadget terminal, it'll print the systemcalls performed by the container:
 
 ```bash
-$ sudo local-gadget traceloop -c test-traceloop
+$ sudo ig traceloop -c test-traceloop
 Tracing syscalls... Hit Ctrl-C to end
 ^C
 CPU PID        COMM             NAME                                       PARAMS                                                                                        RET

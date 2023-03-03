@@ -68,12 +68,12 @@ $ kubectl delete pod debian
 pod "debian" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 Start the gadget on a terminal.
 
 ```bash
-$ sudo local-gadget trace signal -c test-trace-signal
+$ sudo ig trace signal -c test-trace-signal
 ```
 
 Run a container and run sleep in the background, then will it:
@@ -90,7 +90,7 @@ $ docker run -it --rm --name test-trace-signal busybox /bin/sh
 The gadget will show that sh killed a process.
 
 ```bash
-$ sudo local-gadget trace signal -c test-trace-signal
+$ sudo ig trace signal -c test-trace-signal
 CONTAINER                  PID        COMM          SIGNAL      TPID       RET
 test-trace-signal          11131      sh            SIGKILL     11162      0
 test-trace-signal          11131      sh            SIGHUP      11131      0

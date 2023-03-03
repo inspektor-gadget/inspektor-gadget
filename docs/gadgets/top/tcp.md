@@ -49,7 +49,7 @@ $ kubectl delete pod test-pod
 pod "test-pod" deleted
 ```
 
-### With local-gadget
+### With `ig`
 
 Start a container that runs `nginx` and access it locally:
 
@@ -60,7 +60,7 @@ $ docker run --rm --name test-top-tcp nginx /bin/sh -c 'nginx; while true; do cu
 Start the gadget, it'll show the different connections created the localhost:
 
 ```bash
-$ sudo local-gadget top tcp -c test-top-tcp
+$ sudo ig top tcp -c test-top-tcp
 CONTAINER                                              PID         COMM             IP LOCAL                 REMOTE                SENT                 RECV
 test-top-tcp                                           564780      nginx            4  127.0.0.1:80          127.0.0.1:35904       238B                 73B
 test-top-tcp                                           564813      curl             4  127.0.0.1:35904       127.0.0.1:80          73B                  853B

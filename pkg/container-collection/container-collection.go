@@ -17,7 +17,7 @@
 // various criteria.
 //
 // It is used by the Gadget Tracer Manager to keep track of containers part of
-// Kubernetes pods and by Local Gadget Manager to keep track of containers on a
+// Kubernetes pods and by IG Manager to keep track of containers on a
 // Linux system.
 package containercollection
 
