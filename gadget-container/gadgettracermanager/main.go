@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,32 +36,35 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
+	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 )
 
 var (
-	controller          bool
-	serve               bool
-	liveness            bool
-	fallbackPodInformer bool
-	dump                string
-	hookMode            string
-	socketfile          string
-	method              string
-	label               string
-	tracerid            string
-	containerID         string
-	namespace           string
-	podname             string
-	containername       string
-	containerPid        uint
+	controller              bool
+	serve                   bool
+	liveness                bool
+	fallbackPodInformer     bool
+	dump                    string
+	hookMode                string
+	socketfile              string
+	gadgetServiceSocketFile string
+	method                  string
+	label                   string
+	tracerid                string
+	containerID             string
+	namespace               string
+	podname                 string
+	containername           string
+	containerPid            uint
 )
 
 var clientTimeout = 2 * time.Second
 
 func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
+	flag.StringVar(&gadgetServiceSocketFile, "service-socketfile", "/run/gadgetservice.socket", "Socket file for gadget service")
 	flag.StringVar(&hookMode, "hook-mode", "auto", "how to get containers start/stop notifications (podinformer, fanotify, auto, none)")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
@@ -279,10 +282,19 @@ func main() {
 			go startController(node, tracerManager)
 		}
 
+		service := gadgetservice.NewService(log.StandardLogger())
+		go func() {
+			err := service.Run("unix", gadgetServiceSocketFile)
+			if err != nil {
+				log.Fatalf("failed to start Gadget Service: %v", err)
+			}
+		}()
+
 		exitSignal := make(chan os.Signal, 1)
 		signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
 		<-exitSignal
 
+		service.Close()
 		tracerManager.Close()
 	}
 }
