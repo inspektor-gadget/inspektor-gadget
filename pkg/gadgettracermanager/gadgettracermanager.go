@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,14 +26,16 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 	log "github.com/sirupsen/logrus"
 
+	ocispec "github.com/opencontainers/runtime-spec/specs-go"
+
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	containersmap "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/containers-map"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
-	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 type GadgetTracerManager struct {
@@ -298,7 +300,18 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 		return nil, err
 	}
 
+	// Dirty hack
+	op := operators.GetRaw("KubeManager")
+	if setter, ok := op.(SetGadgetTracerMgr); ok {
+		setter.SetGadgetTracerMgr(g)
+	}
 	return g, nil
+}
+
+// SetGadgetTracerMgr is an interface that is implemented by KubeManager to be able
+// to set a reference to GadgetTracerManager
+type SetGadgetTracerMgr interface {
+	SetGadgetTracerMgr(*GadgetTracerManager)
 }
 
 type Conf struct {
