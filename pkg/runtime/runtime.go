@@ -38,6 +38,46 @@ type GadgetContext interface {
 	Timeout() time.Duration
 }
 
+// GadgetResult contains the (optional) payload and error of a gadget run for a node
+type GadgetResult struct {
+	Payload []byte
+	Error   error
+}
+
+type CombinedGadgetResult map[string]*GadgetResult
+
+func (r CombinedGadgetResult) Err() error {
+	c := &combinedErrors{}
+	for _, result := range r {
+		if result != nil && result.Error != nil {
+			c.errs = append(c.errs, result.Error)
+		}
+	}
+	if len(c.errs) > 0 {
+		return c
+	}
+	return nil
+}
+
+type combinedErrors struct {
+	errs []error
+}
+
+func (e *combinedErrors) Error() string {
+	var b []byte
+	for i, err := range e.errs {
+		if i > 0 {
+			b = append(b, '\n')
+		}
+		b = append(b, err.Error()...)
+	}
+	return string(b)
+}
+
+func (e *combinedErrors) Unwrap() []error {
+	return e.errs
+}
+
 // Runtime is the interface for gadget runtimes. Runtimes are used to control the lifecycle of gadgets either locally
 // or remotely.
 type Runtime interface {
@@ -45,7 +85,7 @@ type Runtime interface {
 	Close() error
 	GlobalParamDescs() params.ParamDescs
 	ParamDescs() params.ParamDescs
-	RunGadget(gadgetCtx GadgetContext) ([]byte, error)
+	RunGadget(gadgetCtx GadgetContext) (CombinedGadgetResult, error)
 	GetCatalog() (*Catalog, error)
 	SetDefaultValue(params.ValueHint, string)
 	GetDefaultValue(params.ValueHint) (string, bool)
