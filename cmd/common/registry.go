@@ -228,17 +228,30 @@ func buildCommandFromGadget(
 
 				// This kind of gadgets return directly the result instead of
 				// using the parser
-				result, err := runtime.RunGadget(gadgetCtx)
+				results, err := runtime.RunGadget(gadgetCtx)
 				if err != nil {
 					return fmt.Errorf("running gadget: %w", err)
 				}
 
-				transformed, err := transformResult(result)
-				if err != nil {
-					return fmt.Errorf("transforming result: %w", err)
+				for node, result := range results {
+					transformed, err := transformResult(result.Payload)
+					if err != nil {
+						gadgetCtx.Logger().Warnf("transform result for %q failed: %v", node, err)
+						continue
+					}
+					results[node].Payload = transformed
 				}
 
-				fe.Output(string(transformed))
+				if len(results) == 1 {
+					// still need to iterate as we don't necessarily know the key
+					for _, result := range results {
+						fe.Output(string(result.Payload))
+					}
+				} else {
+					for key, result := range results {
+						fe.Output(fmt.Sprintf("%s: %s", key, string(result.Payload)))
+					}
+				}
 
 				return nil
 			}
