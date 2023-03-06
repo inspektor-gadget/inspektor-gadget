@@ -28,7 +28,7 @@ import (
 
 type GadgetContext interface {
 	ID() string
-	Context() context.Context
+	Context() (context.Context, context.CancelFunc)
 	GadgetDesc() gadgets.GadgetDesc
 	Logger() logger.Logger
 }

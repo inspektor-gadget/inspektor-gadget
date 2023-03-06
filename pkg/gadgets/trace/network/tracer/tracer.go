@@ -366,8 +366,9 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	return nil
 }
 
-func (t *Tracer) Start() error {
-	ctx := t.gadgetCtx.Context()
+func (t *Tracer) Run() error {
+	ctx, cancel := t.gadgetCtx.Context()
+	defer cancel()
 	for {
 		if ctx.Err() != nil {
 			return nil
@@ -379,9 +380,6 @@ func (t *Tracer) Start() error {
 			return nil
 		}
 	}
-}
-
-func (t *Tracer) Stop() {
 }
 
 func (t *Tracer) SetEventHandler(handler any) {

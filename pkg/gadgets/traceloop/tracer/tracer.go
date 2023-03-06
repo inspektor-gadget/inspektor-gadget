@@ -17,6 +17,7 @@
 package tracer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -79,6 +80,8 @@ type Tracer struct {
 	readers sync.Map
 
 	gadgetCtx     gadgets.GadgetContext
+	ctx           context.Context
+	cancel        context.CancelFunc
 	eventCallback func(event *types.Event)
 	waitGroup     sync.WaitGroup
 }
@@ -571,6 +574,7 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	t.gadgetCtx = gadgetCtx
+	t.ctx, t.cancel = gadgetCtx.Context()
 	return t.init()
 }
 
@@ -592,7 +596,7 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 	go func() {
 		defer t.waitGroup.Done()
 		for {
-			if t.gadgetCtx.Context().Err() != nil {
+			if t.ctx.Err() != nil {
 				return
 			}
 			evs, err := t.Read(container.ID)
@@ -615,6 +619,7 @@ func (t *Tracer) DetachContainer(container *containercollection.Container) error
 
 func (t *Tracer) Close() {
 	// Wait for running reads before closing
+	t.cancel()
 	t.waitGroup.Wait()
 	t.Stop()
 }

@@ -16,6 +16,7 @@ package runtime
 
 import (
 	"context"
+	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -28,11 +29,12 @@ type GadgetContext interface {
 	ID() string
 	Parser() parser.Parser
 	GadgetDesc() gadgets.GadgetDesc
-	Context() context.Context
+	Context() (context.Context, context.CancelFunc)
 	Operators() operators.Operators
 	Logger() logger.Logger
 	GadgetParams() *params.Params
 	OperatorsParamCollection() params.Collection
+	Timeout() time.Duration
 }
 
 // Runtime is the interface for gadget runtimes like kubectl-gadget, ig

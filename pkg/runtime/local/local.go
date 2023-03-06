@@ -140,11 +140,14 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (out []byte, err er
 		}
 	}
 
+	ctx, cancel := gadgetCtx.Context()
+	defer cancel()
+
 	log.Debugf("running")
 
 	if gadget.Type() != gadgets.TypeOneShot {
 		// Wait for context to close
-		<-gadgetCtx.Context().Done()
+		<-ctx.Done()
 	}
 
 	log.Debugf("stopping gadget")

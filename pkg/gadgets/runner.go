@@ -23,7 +23,7 @@ import (
 
 type GadgetContext interface {
 	ID() string
-	Context() context.Context
+	Context() (context.Context, context.CancelFunc)
 	GadgetParams() *params.Params
 	Logger() logger.Logger
 }
