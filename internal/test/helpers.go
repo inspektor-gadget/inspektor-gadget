@@ -77,7 +77,7 @@ func RequireKernelVersion(t testing.TB, expectedVersion *kernel.VersionInfo) {
 	}
 }
 
-func NewRunnerWithTest(t *testing.T, config *RunnerConfig) *Runner {
+func NewRunnerWithTest(t testing.TB, config *RunnerConfig) *Runner {
 	t.Helper()
 
 	runner, err := NewRunner(config)
@@ -90,7 +90,7 @@ func NewRunnerWithTest(t *testing.T, config *RunnerConfig) *Runner {
 	return runner
 }
 
-func RunWithRunner(t *testing.T, runner *Runner, f func() error) {
+func RunWithRunner(t testing.TB, runner *Runner, f func() error) {
 	t.Helper()
 
 	if err := runner.Run(f); err != nil {
