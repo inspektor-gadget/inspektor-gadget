@@ -205,6 +205,19 @@ func GetTestPodIP(ns string, podname string) (string, error) {
 	return ip[1 : len(ip)-1], nil
 }
 
+func GetServiceIP(ns string, svcname string) (string, error) {
+	cmd := exec.Command("kubectl", "-n", ns, "get", "svc", svcname, "-o", "jsonpath='{.spec.clusterIP}'")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	r, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("%w: %s", err, stderr.String())
+	}
+
+	ip := string(r)
+	return ip[1 : len(ip)-1], nil
+}
+
 func CheckNamespace(ns string) bool {
 	cmd := exec.Command("kubectl", "get", "ns", ns)
 	return cmd.Run() == nil

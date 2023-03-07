@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	tracednsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
@@ -28,6 +29,11 @@ func TestTraceDns(t *testing.T) {
 
 	t.Parallel()
 
+	dnsServer, err := GetServiceIP("kube-system", "kube-dns")
+	if err != nil {
+		t.Fatalf("Error getting kube-dns service IP: %v", err)
+	}
+
 	traceDNSCmd := &Command{
 		Name:         "StartTraceDnsGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace dns -n %s -o json", ns),
@@ -38,18 +44,18 @@ func TestTraceDns(t *testing.T) {
 					Event:      BuildBaseEvent(ns),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeQuery,
-					Nameserver: "8.8.4.4",
+					Nameserver: dnsServer,
 					PktType:    "OUTGOING",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "kubernetes.default.svc.cluster.local.",
 					QType:      "A",
 				},
 				{
 					Event:      BuildBaseEvent(ns),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeResponse,
-					Nameserver: "8.8.4.4",
+					Nameserver: dnsServer,
 					PktType:    "HOST",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "kubernetes.default.svc.cluster.local.",
 					QType:      "A",
 					Rcode:      "NoError",
 					Latency:    1,
@@ -58,18 +64,18 @@ func TestTraceDns(t *testing.T) {
 					Event:      BuildBaseEvent(ns),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeQuery,
-					Nameserver: "8.8.4.4",
+					Nameserver: dnsServer,
 					PktType:    "OUTGOING",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "kubernetes.default.svc.cluster.local.",
 					QType:      "A",
 				},
 				{
 					Event:      BuildBaseEvent(ns),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeResponse,
-					Nameserver: "8.8.4.4",
+					Nameserver: dnsServer,
 					PktType:    "HOST",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "kubernetes.default.svc.cluster.local.",
 					QType:      "AAAA",
 					Rcode:      "NoError",
 					Latency:    1,
@@ -100,12 +106,15 @@ func TestTraceDns(t *testing.T) {
 		},
 	}
 
+	nslookupCmds := []string{
+		fmt.Sprintf("nslookup -type=a %s %s", "kubernetes.default.svc.cluster.local.", dnsServer),
+		fmt.Sprintf("nslookup -type=aaaa %s %s", "kubernetes.default.svc.cluster.local.", dnsServer),
+	}
+
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		traceDNSCmd,
-		BusyboxPodRepeatCommand(ns,
-			"nslookup -type=a inspektor-gadget.io. 8.8.4.4 ;"+
-				"nslookup -type=aaaa inspektor-gadget.io. 8.8.4.4"),
+		BusyboxPodRepeatCommand(ns, strings.Join(nslookupCmds, " ; ")),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}
