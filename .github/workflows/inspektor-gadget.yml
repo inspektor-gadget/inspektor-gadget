@@ -46,6 +46,27 @@ jobs:
       uses: gaurav-nelson/github-action-markdown-link-check@v1
       with:
         use-quiet-mode: 'yes'
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          docs:
+            - 'docs/**'
+    - name: Setup Hugo
+      if: steps.filter.outputs.docs == 'true'
+      uses: peaceiris/actions-hugo@v2
+      with:
+        hugo-version: '0.89.0'
+        extended: true
+    - name: Check website build
+      if: steps.filter.outputs.docs == 'true'
+      run: |
+        cd $RUNNER_TEMP
+        git clone https://github.com/inspektor-gadget/website/
+        cd website
+        mkdir -p external-docs/
+        ln -s $GITHUB_WORKSPACE external-docs/inspektor-gadget.git_mainlatest
+        make
 
   lint:
     name: Lint
