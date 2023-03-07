@@ -56,8 +56,8 @@ To be able to use the gadget afterwards, we need to register the newly created G
 We usually do it like this inside the init function of the file that holds your GadgetDesc:
 
 ```go
-func init() {  
-   gadgetregistry.Register(&GadgetDesc{})  
+func init() {
+   gadgetregistry.Register(&GadgetDesc{})
 }
 ```
 
@@ -104,12 +104,12 @@ your events. This function expects you to send events/data of the type you retur
 implementation, so you first need to cast it to that form. This is how such a method can look like on your gadget:
 
 ```go
-func (g *Gadget) SetEventHandler(handler any) {  
-   nh, ok := handler.(func(ev *types.Event))  
-   if !ok {  
-      panic("event handler invalid")  
-   }  
-   g.eventCallback = nh  
+func (g *Gadget) SetEventHandler(handler any) {
+   nh, ok := handler.(func(ev *types.Event))
+   if !ok {
+      panic("event handler invalid")
+   }
+   g.eventCallback = nh
 }
 ```
 
