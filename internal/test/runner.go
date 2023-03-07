@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"syscall"
 
+	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 )
 
@@ -34,18 +35,22 @@ import (
 type RunnerConfig struct {
 	// User ID to run under
 	UID int
+
+	// HostNetwork prevents the runner from creating a new network namespace
+	HostNetwork bool
 }
 
 // RunnerInfo contains information about the runner and it's used by the
 // tests to verify that the generated events have the correct value for
 // fields like PID, UID and MountNsID.
 type RunnerInfo struct {
-	Pid       int
-	Tid       int
-	Comm      string
-	UID       int
-	MountNsID uint64
-	UserNsID  uint64
+	Pid         int
+	Tid         int
+	Comm        string
+	UID         int
+	MountNsID   uint64
+	NetworkNsID uint64
+	UserNsID    uint64
 }
 
 // Runner is a helper type to execute tests in different conditions. It
@@ -108,6 +113,21 @@ func (r *Runner) runLoop() {
 		return
 	}
 
+	var netnsid uint64
+	if r.config.HostNetwork {
+		netnsid, err = getNetNamespaceInode()
+		if err != nil {
+			r.replies <- fmt.Errorf("getting network namespace: %w", err)
+			return
+		}
+	} else {
+		netnsid, err = createNetNamespace()
+		if err != nil {
+			r.replies <- fmt.Errorf("creating network namespace: %w", err)
+			return
+		}
+	}
+
 	if r.config.UID != 0 {
 		// syscall.Setuid() can't be used here because it'll
 		// change the UID of all threads and we only need to
@@ -133,12 +153,13 @@ func (r *Runner) runLoop() {
 	}
 
 	r.Info = &RunnerInfo{
-		Pid:       os.Getpid(),
-		Tid:       unix.Gettid(),
-		Comm:      filepath.Base(comm),
-		UID:       r.config.UID,
-		MountNsID: mountnsid,
-		UserNsID:  userNsID,
+		Pid:         os.Getpid(),
+		Tid:         unix.Gettid(),
+		Comm:        filepath.Base(comm),
+		UID:         r.config.UID,
+		MountNsID:   mountnsid,
+		NetworkNsID: netnsid,
+		UserNsID:    userNsID,
 	}
 
 	// Indicate it's ready to process tasks
@@ -154,6 +175,19 @@ func createMntNamespace() (uint64, error) {
 		return 0, err
 	}
 	return getMntNamespaceInode()
+}
+
+func createNetNamespace() (uint64, error) {
+	if err := unix.Unshare(syscall.CLONE_NEWNET); err != nil {
+		return 0, err
+	}
+
+	// We cannot test without the loopback interface
+	if err := netlink.LinkSetUp(&netlink.Device{LinkAttrs: netlink.LinkAttrs{Name: "lo"}}); err != nil {
+		return 0, err
+	}
+
+	return getNetNamespaceInode()
 }
 
 func getNsInode(kind string) (uint64, error) {
@@ -173,6 +207,10 @@ func getNsInode(kind string) (uint64, error) {
 
 func getMntNamespaceInode() (uint64, error) {
 	return getNsInode("mnt")
+}
+
+func getNetNamespaceInode() (uint64, error) {
+	return getNsInode("net")
 }
 
 func getUserNamespaceInode() (uint64, error) {
