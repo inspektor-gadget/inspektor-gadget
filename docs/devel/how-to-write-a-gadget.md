@@ -2,7 +2,7 @@
 title: How to write a Gadget?
 weight: 100
 description: >
-How to write a Gadget?
+  How to write a Gadget?
 ---
 
 So you want to write a Gadget for Inspektor Gadget? Great!

@@ -1,8 +1,8 @@
 ---
-title: `ig`
+title: ig
 weight: 80
 description: >
-  Description of the `ig` tool.
+  Description of the ig tool.
 ---
 
 Inspektor Gadget relies on the Kubernetes API server to work. However, there are
