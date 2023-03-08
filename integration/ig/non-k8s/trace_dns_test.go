@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -42,9 +43,9 @@ func TestTraceDns(t *testing.T) {
 					},
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Comm:       "nslookup",
-					Nameserver: "8.8.4.4",
+					Nameserver: "127.0.0.1",
 					PktType:    "OUTGOING",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "fake.test.com.",
 					QType:      "A",
 				},
 				{
@@ -56,9 +57,9 @@ func TestTraceDns(t *testing.T) {
 					},
 					Qr:         dnsTypes.DNSPktTypeResponse,
 					Comm:       "nslookup",
-					Nameserver: "8.8.4.4",
+					Nameserver: "127.0.0.1",
 					PktType:    "HOST",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "fake.test.com.",
 					QType:      "A",
 					Rcode:      "NoError",
 					Latency:    1,
@@ -72,9 +73,9 @@ func TestTraceDns(t *testing.T) {
 					},
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Comm:       "nslookup",
-					Nameserver: "8.8.4.4",
+					Nameserver: "127.0.0.1",
 					PktType:    "OUTGOING",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "fake.test.com.",
 					QType:      "AAAA",
 				},
 				{
@@ -86,9 +87,9 @@ func TestTraceDns(t *testing.T) {
 					},
 					Qr:         dnsTypes.DNSPktTypeResponse,
 					Comm:       "nslookup",
-					Nameserver: "8.8.4.4",
+					Nameserver: "127.0.0.1",
 					PktType:    "HOST",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "fake.test.com.",
 					QType:      "AAAA",
 					Rcode:      "NoError",
 					Latency:    1,
@@ -113,13 +114,19 @@ func TestTraceDns(t *testing.T) {
 		},
 	}
 
+	dnsCmds := []string{
+		"/dnstester & sleep 2", // wait to ensure dns server is running
+		"nslookup -type=a fake.test.com. 127.0.0.1",
+		"nslookup -type=aaaa fake.test.com. 127.0.0.1",
+	}
+
 	testSteps := []TestStep{
 		traceDNSCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
 		&DockerContainer{
-			Name: cn,
-			Cmd: "nslookup -type=a inspektor-gadget.io. 8.8.4.4 ; " +
-				"nslookup -type=aaaa inspektor-gadget.io. 8.8.4.4",
+			Name:    cn,
+			Cmd:     strings.Join(dnsCmds, " ; "),
+			Options: NewDockerOptions(WithDockerImage("ghcr.io/inspektor-gadget/dnstester:latest")),
 		},
 	}
 
