@@ -167,6 +167,16 @@ func buildCommandFromGadget(
 
 			// Handle timeout parameter by adding a timeout to the context
 			if timeout != 0 {
+				if gadgetDesc.Type().IsPeriodic() {
+					interval := gadgetParams.Get(gadgets.ParamInterval).AsInt()
+					if timeout < interval {
+						return fmt.Errorf("timeout must be greater than interval")
+					}
+					if timeout%interval != 0 {
+						return fmt.Errorf("timeout must be a multiple of interval")
+					}
+				}
+
 				tmpCtx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 				defer cancel()
 				ctx = tmpCtx
