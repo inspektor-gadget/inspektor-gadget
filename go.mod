@@ -23,7 +23,7 @@ require (
 	golang.org/x/sys v0.6.0
 	golang.org/x/term v0.6.0
 	google.golang.org/grpc v1.53.0
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.29.0
 	k8s.io/api v0.26.2
 	k8s.io/apiextensions-apiserver v0.26.2
 	k8s.io/apimachinery v0.26.2
@@ -41,7 +41,6 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.1
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v23.0.1+incompatible
-	github.com/prometheus/client_golang v1.14.0
 	github.com/stretchr/testify v1.8.2
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
 	golang.org/x/sync v0.1.0
@@ -103,6 +102,7 @@ require (
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
