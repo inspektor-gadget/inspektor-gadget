@@ -29,9 +29,16 @@ func TestTraceDns(t *testing.T) {
 
 	t.Parallel()
 
-	dnsServer, err := GetServiceIP("kube-system", "kube-dns")
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand("dnstester", "ghcr.io/inspektor-gadget/dnstester:latest", ns, "", ""),
+		WaitUntilPodReadyCommand(ns, "dnstester"),
+	}
+
+	RunTestSteps(commandsPreTest, t)
+	dnsServer, err := GetTestPodIP(ns, "dnstester")
 	if err != nil {
-		t.Fatalf("Error getting kube-dns service IP: %v", err)
+		t.Fatalf("failed to get pod ip: %v", err)
 	}
 
 	traceDNSCmd := &Command{
@@ -46,7 +53,7 @@ func TestTraceDns(t *testing.T) {
 					Qr:         tracednsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
 					PktType:    "OUTGOING",
-					DNSName:    "kubernetes.default.svc.cluster.local.",
+					DNSName:    "fake.test.com.",
 					QType:      "A",
 				},
 				{
@@ -55,7 +62,7 @@ func TestTraceDns(t *testing.T) {
 					Qr:         tracednsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,
 					PktType:    "HOST",
-					DNSName:    "kubernetes.default.svc.cluster.local.",
+					DNSName:    "fake.test.com.",
 					QType:      "A",
 					Rcode:      "NoError",
 					Latency:    1,
@@ -66,7 +73,7 @@ func TestTraceDns(t *testing.T) {
 					Qr:         tracednsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
 					PktType:    "OUTGOING",
-					DNSName:    "kubernetes.default.svc.cluster.local.",
+					DNSName:    "fake.test.com.",
 					QType:      "A",
 				},
 				{
@@ -75,7 +82,7 @@ func TestTraceDns(t *testing.T) {
 					Qr:         tracednsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,
 					PktType:    "HOST",
-					DNSName:    "kubernetes.default.svc.cluster.local.",
+					DNSName:    "fake.test.com.",
 					QType:      "AAAA",
 					Rcode:      "NoError",
 					Latency:    1,
@@ -107,8 +114,8 @@ func TestTraceDns(t *testing.T) {
 	}
 
 	nslookupCmds := []string{
-		fmt.Sprintf("nslookup -type=a %s %s", "kubernetes.default.svc.cluster.local.", dnsServer),
-		fmt.Sprintf("nslookup -type=aaaa %s %s", "kubernetes.default.svc.cluster.local.", dnsServer),
+		fmt.Sprintf("nslookup -type=a fake.test.com. %s", dnsServer),
+		fmt.Sprintf("nslookup -type=aaaa fake.test.com. %s", dnsServer),
 	}
 
 	commands := []*Command{

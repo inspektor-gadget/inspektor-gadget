@@ -7,3 +7,5 @@ RUN go build -o /dnstester /go/src/github.com/inspektor-gadget/inspektor-gadget/
 # Final image
 FROM alpine:3.14
 COPY --from=builder /dnstester /dnstester
+
+CMD ["/dnstester"]
