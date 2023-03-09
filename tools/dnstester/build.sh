@@ -2,5 +2,4 @@
 
 set -e
 
-docker build -t ghcr.io/inspektor-gadget/dnstester:latest -f Dockerfile .
-docker push ghcr.io/inspektor-gadget/dnstester:latest
+docker buildx build --platform=linux/amd64,linux/arm64 -t ghcr.io/inspektor-gadget/dnstester:latest -f Dockerfile --push .
