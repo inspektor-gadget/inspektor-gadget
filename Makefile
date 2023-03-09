@@ -161,6 +161,12 @@ controller-tests: kube-apiserver etcd kubectl
 gadgets-unit-tests:
 	go test -test.v -exec sudo ./pkg/gadgets/...
 
+# IG_BENCHMARKS_GADGET_REGEX can be used to select gadgets to test
+# IG_BENCHMARKS_GADGET_REGEX='trace-[ds]n[si]' make gadgets-benchmarks
+.PHONY: gadgets-benchmarks
+gadgets-benchmarks:
+	go test -exec 'sudo -E' -bench=. -run=Benchmark ./pkg/gadgets/... ./internal/benchmarks/...
+
 .PHONY: ig-tests
 ig-tests:
 	# Compile and execute in separate commands because Go might not be
