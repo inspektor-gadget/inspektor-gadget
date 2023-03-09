@@ -27,6 +27,11 @@ func TestTraceDns(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-trace-dns")
 
+	dnsServer, err := GetServiceIP("kube-system", "kube-dns")
+	if err != nil {
+		t.Fatalf("Error getting kube-dns service IP: %v", err)
+	}
+
 	traceDNSCmd := &Command{
 		Name:         "TraceDns",
 		Cmd:          fmt.Sprintf("ig trace dns -o json --runtimes=%s", *containerRuntime),
@@ -37,18 +42,18 @@ func TestTraceDns(t *testing.T) {
 					Event:      BuildBaseEvent(ns),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
-					Nameserver: "8.8.4.4",
+					Nameserver: dnsServer,
 					PktType:    "OUTGOING",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "kubernetes.default.svc.cluster.local.",
 					QType:      "A",
 				},
 				{
 					Event:      BuildBaseEvent(ns),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,
-					Nameserver: "8.8.4.4",
+					Nameserver: dnsServer,
 					PktType:    "HOST",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "kubernetes.default.svc.cluster.local.",
 					QType:      "A",
 					Rcode:      "NoError",
 					Latency:    1,
@@ -57,18 +62,18 @@ func TestTraceDns(t *testing.T) {
 					Event:      BuildBaseEvent(ns),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
-					Nameserver: "8.8.4.4",
+					Nameserver: dnsServer,
 					PktType:    "OUTGOING",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "kubernetes.default.svc.cluster.local.",
 					QType:      "AAAA",
 				},
 				{
 					Event:      BuildBaseEvent(ns),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,
-					Nameserver: "8.8.4.4",
+					Nameserver: dnsServer,
 					PktType:    "HOST",
-					DNSName:    "inspektor-gadget.io.",
+					DNSName:    "kubernetes.default.svc.cluster.local.",
 					QType:      "AAAA",
 					Rcode:      "NoError",
 					Latency:    1,
@@ -77,18 +82,18 @@ func TestTraceDns(t *testing.T) {
 					Event:      BuildBaseEvent(ns),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
-					Nameserver: "8.8.4.4",
+					Nameserver: dnsServer,
 					PktType:    "OUTGOING",
-					DNSName:    "nodomain.inspektor-gadget.io.",
+					DNSName:    "kubernetes.default.svc.cluster.local.",
 					QType:      "A",
 				},
 				{
 					Event:      BuildBaseEvent(ns),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,
-					Nameserver: "8.8.4.4",
+					Nameserver: dnsServer,
 					PktType:    "HOST",
-					DNSName:    "nodomain.inspektor-gadget.io.",
+					DNSName:    "nodomain.kubernetes.default.svc.cluster.local.",
 					QType:      "A",
 					Rcode:      "NXDomain",
 					Latency:    1,
@@ -119,9 +124,9 @@ func TestTraceDns(t *testing.T) {
 	}
 
 	nslookupCmds := []string{
-		"nslookup -type=a inspektor-gadget.io. 8.8.4.4",
-		"nslookup -type=aaaa inspektor-gadget.io. 8.8.4.4",
-		"nslookup -type=a nodomain.inspektor-gadget.io. 8.8.4.4",
+		fmt.Sprintf("nslookup -type=a %s %s", "kubernetes.default.svc.cluster.local.", dnsServer),
+		fmt.Sprintf("nslookup -type=aaaa %s %s", "kubernetes.default.svc.cluster.local.", dnsServer),
+		fmt.Sprintf("nslookup -type=a nodomain.%s %s", "kubernetes.default.svc.cluster.local.", dnsServer),
 	}
 
 	commands := []*Command{
