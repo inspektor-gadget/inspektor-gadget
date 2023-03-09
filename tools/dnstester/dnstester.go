@@ -27,17 +27,21 @@ func main() {
 
 		var rr dns.RR
 		var err error
-		switch r.Question[0].Qtype {
-		case dns.TypeA:
-			rr, err = dns.NewRR("fake.test.com. A 127.0.0.1")
-		case dns.TypeAAAA:
-			rr, err = dns.NewRR("fake.test.com. AAAA ::1")
-		}
-		if err != nil {
-			log.Fatalf("Failed to create RR %s\n", err)
+		if r.Question[0].Name == "fake.test.com." {
+			switch r.Question[0].Qtype {
+			case dns.TypeA:
+				rr, err = dns.NewRR("fake.test.com. A 127.0.0.1")
+			case dns.TypeAAAA:
+				rr, err = dns.NewRR("fake.test.com. AAAA ::1")
+			}
+			if err != nil {
+				log.Fatalf("Failed to create RR %s\n", err)
+			}
+			m.Answer = append(m.Answer, rr)
+		} else {
+			m.SetRcode(r, dns.RcodeNameError)
 		}
 
-		m.Answer = append(m.Answer, rr)
 		if err = w.WriteMsg(m); err != nil {
 			log.Fatalf("Failed to write msg %s\n", err)
 		}
