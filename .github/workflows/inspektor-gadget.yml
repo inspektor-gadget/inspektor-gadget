@@ -548,6 +548,65 @@ jobs:
       run: |
         make controller-tests
 
+  benchmarks:
+    name: Benchmarks
+    # level: 0
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+      id: go
+    - name: Install debian packages
+      uses: ./.github/actions/install-debian-packages
+    - name: Show repository setup
+      run: |
+        echo "github.event_name: ${{ github.event_name }}"
+        echo "github.event.pull_request.head.repo.full_name: ${{ github.event.pull_request.head.repo.full_name }}"
+        echo "github.repository: ${{ github.repository }}"
+    - name: Run benchmarks
+      run: go test -exec sudo -bench=. -run=Benchmark ./pkg/gadgets/... ./internal/benchmarks/... | tee output.txt
+    #- name: Download previous benchmark data
+    #  uses: actions/cache@v1
+    #  with:
+    #    path: ./cache
+    #    key: ${{ runner.os }}-benchmark
+    - name: Store benchmark result
+      uses: benchmark-action/github-action-benchmark@v1
+      # Disable push from forks or PR from forks.
+      # $BENCHMARKS_TOKEN will not be available in those cases.
+      if: |
+        (github.event_name == 'push' &&
+          github.repository == 'inspektor-gadget/inspektor-gadget') ||
+        (github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == 'inspektor-gadget/inspektor-gadget')
+      with:
+        name: Gadget benchmarks
+        # What benchmark tool the output.txt came from
+        tool: 'go'
+        # Where the output from the benchmark tool is stored
+        output-file-path: output.txt
+        # Where the previous data file is stored
+        # external-data-json-path: ./cache/benchmark-data.json
+        # Workflow will fail when an alert happens
+        fail-on-alert: false
+        # GitHub API token to make a commit comment
+        github-token: ${{ secrets.BENCHMARKS_TOKEN }}
+        # Enable alert commit comment
+        comment-on-alert: true
+        # Enable Job Summary for PRs
+        # summary-always: true
+        # Mention people in the commit comment
+        alert-comment-cc-users: '@alban'
+        # Push and deploy GitHub pages branch automatically
+        auto-push: ${{ github.repository == 'inspektor-gadget/inspektor-gadget' }}
+        gh-pages-branch: gh-pages
+        gh-repository: github.com/inspektor-gadget/ig-benchmarks
+        benchmark-data-dir-path: dev/bench
+
   test-ig:
     name: Unit tests for ig
     # level: 0

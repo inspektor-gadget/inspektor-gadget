@@ -161,6 +161,12 @@ controller-tests: kube-apiserver etcd kubectl
 gadgets-unit-tests:
 	go test -test.v -exec sudo ./pkg/gadgets/...
 
+# Individual tests can be selected with a command such as:
+# go test -exec sudo -bench='^BenchmarkAllGadgetsWithContainers$/^container10$/trace-tcpconnect' -run=Benchmark ./internal/benchmarks/...
+.PHONY: gadgets-benchmarks
+gadgets-benchmarks:
+	go test -exec sudo -bench=. -run=Benchmark ./pkg/gadgets/... ./internal/benchmarks/...
+
 .PHONY: ig-tests
 ig-tests:
 	# Compile and execute in separate commands because Go might not be
