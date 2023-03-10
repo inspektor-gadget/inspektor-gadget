@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -62,9 +63,7 @@ var (
 
 type containerRingReader struct {
 	perfReader *perf.Reader
-	// This is indexed by ring index, i.e. CPU number.
-	previousHeadPos []uint64
-	mntnsID         uint64
+	mntnsID    uint64
 }
 
 type Tracer struct {
@@ -204,7 +203,7 @@ func (t *Tracer) Attach(containerID string, mntnsID uint64) error {
 	}
 
 	// 2. Use this inner Map to create the perf reader.
-	perfReader, err := perf.NewReaderWithOptions(innerBuffer, gadgets.PerfBufferPages*os.Getpagesize(), perf.ReaderOptions{WriteBackward: true, OverWritable: true})
+	perfReader, err := perf.NewReaderWithOptions(innerBuffer, gadgets.PerfBufferPages*os.Getpagesize(), perf.ReaderOptions{Overwritable: true})
 	if err != nil {
 		innerBuffer.Close()
 
@@ -221,9 +220,8 @@ func (t *Tracer) Attach(containerID string, mntnsID uint64) error {
 	}
 
 	t.readers.Store(containerID, &containerRingReader{
-		perfReader:      perfReader,
-		previousHeadPos: make([]uint64, getRingsNumber(perfReader)),
-		mntnsID:         mntnsID,
+		perfReader: perfReader,
+		mntnsID:    mntnsID,
 	})
 
 	return nil
@@ -241,6 +239,51 @@ func timestampFromEvent(event *syscallEvent) eventtypes.Time {
 		return gadgets.WallTimeFromBootTime(event.monotonicTimestamp)
 	}
 	return gadgets.WallTimeFromBootTime(event.bootTimestamp)
+}
+
+// Copied/pasted/adapted from kernel macro round_up:
+// https://elixir.bootlin.com/linux/v6.0/source/include/linux/math.h#L25
+func roundUp(x, y uintptr) uintptr {
+	return ((x - 1) | (y - 1)) + 1
+}
+
+// The kernel aligns size of perf event with the following snippet:
+// void perf_prepare_sample(...)
+//
+//	{
+//		//...
+//		size = round_up(sum + sizeof(u32), sizeof(u64));
+//		raw->size = size - sizeof(u32);
+//		frag->pad = raw->size - sum;
+//		// ...
+//	}
+//
+// (https://elixir.bootlin.com/linux/v6.0/source/kernel/events/core.c#L7353)
+// In the case of our structure of interest (i.e. struct_syscall_event_t and
+// struct_syscall_event_cont_t), their size will be increased by 4, here is
+// an example for struct_syscall_event_t which size is 88:
+// size = round_up(sum + sizeof(u32), sizeof(u64))
+//
+//	= round_up(88 + 4, 8)
+//	= round_up(92, 8)
+//	= 96
+//
+// raw->size = size - sizeof(u32)
+//
+//	= 96 - 4
+//	= 92
+//
+// So, 4 bytes will be added as padding at the end of the event and the size we
+// will read getting perfEventSample will be 92 instead of 88.
+func alignSize(structSize uintptr) uintptr {
+	var ret uintptr
+	var foo uint64
+	var bar uint32
+
+	ret = roundUp(structSize+unsafe.Sizeof(bar), unsafe.Sizeof(foo))
+	ret = ret - unsafe.Sizeof(bar)
+
+	return ret
 }
 
 func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
@@ -265,7 +308,34 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 		return nil, nil
 	}
 
-	err := readOverWritable(reader, func(record perf.Record, size uint32) error {
+	err := reader.perfReader.Pause()
+	if err != nil {
+		return nil, err
+	}
+
+	reader.perfReader.SetDeadline(time.Now())
+
+	records := make([]*perf.Record, 0)
+	for {
+		record, err := reader.perfReader.Read()
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				break
+			} else {
+				return nil, err
+			}
+		}
+		records = append(records, &record)
+	}
+
+	err = reader.perfReader.Resume()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, record := range records {
+		size := len(record.RawSample)
+
 		var sysEvent *traceloopSyscallEventT
 		var sysEventCont *traceloopSyscallEventContT
 
@@ -303,11 +373,9 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				typeMap = &syscallExitEventsMap
 			default:
 				// Rather than returning an error, we skip this event.
-				// Indeed, I suspect this is caused because we copy the buffer while
-				// it is being written, so we will get uncomplete data, thus it is
-				// better to skip this event.
 				log.Debugf("type %d is not a valid type for syscallEvent, received data are: %v", event.typ, record.RawSample)
-				return nil
+
+				continue
 			}
 
 			if _, ok := (*typeMap)[event.monotonicTimestamp]; !ok {
@@ -346,16 +414,6 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 		default:
 			log.Debugf("size %d does not correspond to any expected element, which are %d and %d; received data are: %v", size, unsafe.Sizeof(sysEvent), unsafe.Sizeof(sysEventCont), record.RawSample)
 		}
-
-		return nil
-	})
-	if err != nil {
-		if errors.Is(err, perf.ErrClosed) {
-			// nothing to do, we're done
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("reading backward over writable perf ring buffer: %w", err)
 	}
 
 	// Let's try to publish the events we gathered.
