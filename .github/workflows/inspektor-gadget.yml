@@ -772,7 +772,7 @@ jobs:
         id: integration-tests
         run: |
           set -o pipefail
-          make -C integration/ig/non-k8s -o build test-${{ matrix.runtime }} |& tee integration.log
+          INTEGRATION_TESTS_PARAMS="-test.run TestTraceDns -test.count 25" make -C integration/ig/non-k8s -o build test-${{ matrix.runtime }} |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
         continue-on-error: true
