@@ -180,10 +180,8 @@ func init() {
 	operators.Register(&TestOperatorInstance{})
 }
 
-func BenchmarkAllGadgetsManyContainers(b *testing.B) {
+func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 	utilstest.RequireRoot(b)
-
-	const containerCount = 100
 
 	// Prepare runtime
 	runtime := &local.Runtime{}
@@ -193,81 +191,86 @@ func BenchmarkAllGadgetsManyContainers(b *testing.B) {
 	}
 	defer runtime.Close()
 
-	// Prepare fake containers
-	runnerConfig := &utilstest.RunnerConfig{}
-	var containers []*containercollection.Container
-	for i := 0; i < containerCount; i++ {
-		runner := utilstest.NewRunnerWithTest(b, runnerConfig)
-		container := &containercollection.Container{
-			ID:    fmt.Sprintf("container%d", i),
-			Mntns: runner.Info.MountNsID,
-			Netns: runner.Info.NetworkNsID,
-			Pid:   uint32(runner.Info.Tid),
-		}
-		containers = append(containers, container)
-	}
-
-	allGadgets := gadgetregistry.GetAll()
-
-	for _, gadgetDesc := range allGadgets {
-		gadgetDesc := gadgetDesc
-
-		// Skip unwanted gadgets
-		categoryAndName := fmt.Sprintf("%s-%s", gadgetDesc.Category(), gadgetDesc.Name())
-		skipRegex := os.Getenv("IG_BENCHMARKS_GADGET_REGEX")
-		if skipRegex != "" {
-			matched, _ := regexp.Match(skipRegex, []byte(categoryAndName))
-			if !matched {
-				continue
+	containerCounts := []int{0, 1, 10, 100}
+	for _, containerCount := range containerCounts {
+		b.Run(fmt.Sprintf("container%d", containerCount), func(b *testing.B) {
+			// Prepare fake containers
+			runnerConfig := &utilstest.RunnerConfig{}
+			var containers []*containercollection.Container
+			for i := 0; i < containerCount; i++ {
+				runner := utilstest.NewRunnerWithTest(b, runnerConfig)
+				container := &containercollection.Container{
+					ID:    fmt.Sprintf("container%d", i),
+					Mntns: runner.Info.MountNsID,
+					Netns: runner.Info.NetworkNsID,
+					Pid:   uint32(runner.Info.Tid),
+				}
+				containers = append(containers, container)
 			}
-		}
 
-		if _, ok := gadgetDesc.(gadgets.GadgetInstantiate); !ok {
-			continue
-		}
+			allGadgets := gadgetregistry.GetAll()
 
-		validOperators := operators.GetOperatorsForGadget(gadgetDesc)
-		operatorsParamCollection := validOperators.ParamCollection()
+			for _, gadgetDesc := range allGadgets {
+				gadgetDesc := gadgetDesc
 
-		err = validOperators.Init(nil)
-		if err != nil {
-			b.Fatalf("initializing operators: %s", err)
-		}
-		defer validOperators.Close()
-
-		b.Run(categoryAndName, func(b *testing.B) {
-			for n := 0; n < b.N; n++ {
-				ctx, cancel := context.WithTimeout(context.TODO(), 0)
-				ctx = context.WithValue(ctx, TestOperatorContext("containers"), containers)
-				ctx = context.WithValue(ctx, TestOperatorContext("testing.TB"), b)
-
-				paramDescs := gadgetDesc.ParamDescs()
-
-				parser := gadgetDesc.Parser()
-				if parser != nil {
-					parser.SetEventCallback(func(any) {})
-					paramDescs = append(paramDescs, gadgets.GadgetParams(gadgetDesc, parser)...)
+				// Skip unwanted gadgets
+				categoryAndName := fmt.Sprintf("%s-%s", gadgetDesc.Category(), gadgetDesc.Name())
+				skipRegex := os.Getenv("IG_BENCHMARKS_GADGET_REGEX")
+				if skipRegex != "" {
+					matched, _ := regexp.Match(skipRegex, []byte(categoryAndName))
+					if !matched {
+						continue
+					}
 				}
 
-				gadgetParams := paramDescs.ToParams()
+				if _, ok := gadgetDesc.(gadgets.GadgetInstantiate); !ok {
+					continue
+				}
 
-				gadgetCtx := gadgetcontext.New(
-					ctx,
-					"",
-					runtime,
-					gadgetDesc,
-					gadgetParams,
-					operatorsParamCollection,
-					parser,
-					logger.DefaultLogger(),
-				)
+				validOperators := operators.GetOperatorsForGadget(gadgetDesc)
+				operatorsParamCollection := validOperators.ParamCollection()
 
-				_, err := runtime.RunGadget(gadgetCtx)
+				err = validOperators.Init(nil)
 				if err != nil {
-					b.Fatalf("running gadget: %s", err)
+					b.Fatalf("initializing operators: %s", err)
 				}
+				defer validOperators.Close()
 
-				cancel()
+				b.Run(categoryAndName, func(b *testing.B) {
+					for n := 0; n < b.N; n++ {
+						ctx, cancel := context.WithTimeout(context.TODO(), 0)
+						ctx = context.WithValue(ctx, TestOperatorContext("containers"), containers)
+						ctx = context.WithValue(ctx, TestOperatorContext("testing.TB"), b)
+
+						paramDescs := gadgetDesc.ParamDescs()
+
+						parser := gadgetDesc.Parser()
+						if parser != nil {
+							parser.SetEventCallback(func(any) {})
+							paramDescs = append(paramDescs, gadgets.GadgetParams(gadgetDesc, parser)...)
+						}
+
+						gadgetParams := paramDescs.ToParams()
+
+						gadgetCtx := gadgetcontext.New(
+							ctx,
+							"",
+							runtime,
+							gadgetDesc,
+							gadgetParams,
+							operatorsParamCollection,
+							parser,
+							logger.DefaultLogger(),
+						)
+
+						_, err := runtime.RunGadget(gadgetCtx)
+						if err != nil {
+							b.Fatalf("running gadget: %s", err)
+						}
+
+						cancel()
+					}
+				})
 			}
 		})
 	}
