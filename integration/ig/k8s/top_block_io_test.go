@@ -23,47 +23,82 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
+	expectedOutputFn := func(output string) error {
+		expectedEntry := &types.Stats{
+			CommonData: eventtypes.CommonData{
+				Namespace: ns,
+				Pod:       "test-pod",
+			},
+			Comm:  "dd",
+			Write: true,
+		}
+
+		normalize := func(e *types.Stats) {
+			e.Container = ""
+			e.Pid = 0
+			e.MountNsID = 0
+			e.Major = 0
+			e.Minor = 0
+			e.Bytes = 0
+			e.MicroSecs = 0
+			e.Operations = 0
+		}
+
+		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+	}
+
+	return &Command{
+		Name:             "TopBlockIO",
+		ExpectedOutputFn: expectedOutputFn,
+		Cmd:              cmd,
+		StartAndStop:     startAndStop,
+	}
+}
+
 func TestTopBlockIO(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-block-io")
 
-	topBlockIOCmd := &Command{
-		Name:         "TopBlockIO",
-		Cmd:          fmt.Sprintf("ig top block-io -o json -m 999 --runtimes=%s", *containerRuntime),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &types.Stats{
-				CommonData: eventtypes.CommonData{
-					Namespace: ns,
-					Pod:       "test-pod",
-				},
-				Comm:  "dd",
-				Write: true,
-			}
-
-			normalize := func(e *types.Stats) {
-				e.Container = ""
-				e.Pid = 0
-				e.MountNsID = 0
-				e.Major = 0
-				e.Minor = 0
-				e.Bytes = 0
-				e.MicroSecs = 0
-				e.Operations = 0
-			}
-
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
+	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
-		topBlockIOCmd,
-		SleepForSecondsCommand(2), // wait to ensure ig has started
-		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096"),
+		// Adding an additional sleep time to generate less events and avoid
+		// interference with other tests. See TestTopFile for more details.
+		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096; sleep 0.2"),
 		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
 	}
+	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
-	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	t.Cleanup(func() {
+		commandsPostTest := []*Command{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("StartAndStop", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("ig top block-io -o json -m 999 --runtimes=%s", *containerRuntime)
+		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, true)
+		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("ig top block-io -o json -m 999 --runtimes=%s --timeout %d",
+			*containerRuntime, timeout)
+		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false)
+		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("Interval=Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("ig top block-io -o json -m 999 --runtimes=%s --timeout %d --interval %d",
+			*containerRuntime, timeout, timeout)
+		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false)
+		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
 }

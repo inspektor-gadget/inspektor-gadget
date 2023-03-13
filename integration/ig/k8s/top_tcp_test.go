@@ -24,48 +24,81 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
+	expectedOutputFn := func(output string) error {
+		expectedEntry := &types.Stats{
+			CommonData: eventtypes.CommonData{
+				Namespace: ns,
+				Pod:       "test-pod",
+			},
+			Comm:   "curl",
+			Family: syscall.AF_INET,
+			Dport:  80,
+			Saddr:  "127.0.0.1",
+			Daddr:  "127.0.0.1",
+		}
+
+		normalize := func(e *types.Stats) {
+			e.Container = ""
+			e.Pid = 0
+			e.MountNsID = 0
+			e.Sport = 0
+			e.Sent = 0
+			e.Received = 0
+		}
+
+		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+	}
+
+	return &Command{
+		Name:             "TopTCP",
+		ExpectedOutputFn: expectedOutputFn,
+		Cmd:              cmd,
+		StartAndStop:     startAndStop,
+	}
+}
+
 func TestTopTCP(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-tcp")
 
-	topTCPCmd := &Command{
-		Name:         "TopTCP",
-		Cmd:          fmt.Sprintf("ig top tcp -o json -m 999 --runtimes=%s", *containerRuntime),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &types.Stats{
-				CommonData: eventtypes.CommonData{
-					Namespace: ns,
-					Pod:       "test-pod",
-				},
-				Comm:   "curl",
-				Family: syscall.AF_INET,
-				Dport:  80,
-				Saddr:  "127.0.0.1",
-				Daddr:  "127.0.0.1",
-			}
-
-			normalize := func(e *types.Stats) {
-				e.Container = ""
-				e.Pid = 0
-				e.MountNsID = 0
-				e.Sport = 0
-				e.Sent = 0
-				e.Received = 0
-			}
-
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
+	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
-		topTCPCmd,
-		SleepForSecondsCommand(2), // wait to ensure ig has started
 		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
 	}
+	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
-	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	t.Cleanup(func() {
+		commandsPostTest := []*Command{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("StartAndStop", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("ig top tcp -o json -m 999 --runtimes=%s", *containerRuntime)
+		topTCPCmd := newTopTCPCmd(ns, cmd, true)
+		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("ig top tcp -o json -m 999 --runtimes=%s --timeout %d",
+			*containerRuntime, timeout)
+		topTCPCmd := newTopTCPCmd(ns, cmd, false)
+		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("Interval=Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("ig top tcp -o json -m 999 --runtimes=%s --timeout %d --interval %d",
+			*containerRuntime, timeout, timeout)
+		topTCPCmd := newTopTCPCmd(ns, cmd, false)
+		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
 }
