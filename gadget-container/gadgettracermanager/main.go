@@ -38,6 +38,8 @@ import (
 
 	// This is a blank include that actually imports all gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
+	// The script gadget is designed only to work in k8s, hence it's not part of all-gadgets
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"

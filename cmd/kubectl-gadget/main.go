@@ -29,6 +29,8 @@ import (
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
+	// The script is not included in the all gadgets package.
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
 )
 
 // common params for all gadgets
