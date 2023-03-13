@@ -36,6 +36,11 @@ const (
 	K8sDistroMinikubeGH = "minikube-github"
 )
 
+const (
+	DefaultImageFlavour = "default"
+	CoreImageFlavour    = "core"
+)
+
 const securityProfileOperatorNamespace = "security-profiles-operator"
 
 var (
@@ -48,6 +53,7 @@ var (
 
 	// image such as ghcr.io/inspektor-gadget/inspektor-gadget:latest
 	image          = flag.String("image", "", "gadget container image")
+	imageFlavour   = flag.String("image-flavour", DefaultImageFlavour, "gadget container image flavour.")
 	dnsTesterImage = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
 
 	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
@@ -109,6 +115,14 @@ func testMain(m *testing.M) int {
 		if !found {
 			fmt.Fprintf(os.Stderr, "Error: invalid argument '-k8s-distro': %q. Valid values: %s\n",
 				*k8sDistro, strings.Join(supportedK8sDistros, ", "))
+			return -1
+		}
+	}
+
+	if *imageFlavour != "" {
+		if *imageFlavour != DefaultImageFlavour && *imageFlavour != CoreImageFlavour {
+			fmt.Fprintf(os.Stderr, "Error: invalid argument '-image-flavour': %q. Valid values: %s, %s\n",
+				*imageFlavour, DefaultImageFlavour, CoreImageFlavour)
 			return -1
 		}
 	}

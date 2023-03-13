@@ -8,6 +8,10 @@ inputs:
   image_tag:
     description: 'The image tag used as inspektor gadget deployment image tag.'
     required: true
+  image_flavour:
+    description: 'The image flavour used.'
+    required: true
+    default: "default"
   kubernetes_distribution:
     description: 'The kubernetes distribution used to select distro specific config in tests.'
     required: true
@@ -67,6 +71,7 @@ runs:
           CONTAINER_REPO=${{ inputs.container_repo }} \
           IMAGE_TAG=${{ inputs.image_tag }} \
           DNSTESTER_IMAGE=${{ inputs.dnstester_image }} \
+          IMAGE_FLAVOUR=${{ inputs.image_flavour }} \
           -o kubectl-gadget integration-tests |& tee integration.log & wait $!
         echo "IntegrationTestsJob: Done"
     - name: Prepare and publish test reports
