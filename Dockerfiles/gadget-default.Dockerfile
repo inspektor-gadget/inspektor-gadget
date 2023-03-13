@@ -7,7 +7,7 @@
 # It's the default image that is deployed in Inspektor Gadget.
 
 ARG BUILDER_IMAGE=golang:1.19-bullseye
-ARG BASE_IMAGE=debian:bullseye-slim
+ARG BASE_IMAGE=busybox:glibc
 
 # bpftrace upstream image
 ARG BPFTRACE="ghcr.io/inspektor-gadget/bpftrace"
