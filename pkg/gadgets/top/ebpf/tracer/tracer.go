@@ -210,7 +210,7 @@ func getMemoryUsage(m *ebpf.Map) (uint64, error) {
 	return 0, fmt.Errorf("could not find memlock in fdinfo")
 }
 
-func (t *Tracer) nextStats() ([]*types.Stats, error) {
+func (t *Tracer) NextStats() ([]*types.Stats, error) {
 	stats := make([]*types.Stats, 0)
 
 	var err error
@@ -369,6 +369,9 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 }
 
 func (t *Tracer) run() {
+	if t.config.Interval == 0 {
+		return
+	}
 	timer := time.NewTicker(t.config.Interval)
 	go func() {
 		for {
@@ -376,7 +379,7 @@ func (t *Tracer) run() {
 			case <-t.done:
 				return
 			case <-timer.C:
-				stats, err := t.nextStats()
+				stats, err := t.NextStats()
 				if err != nil {
 					t.eventCallback(&top.Event[types.Stats]{
 						Error: fmt.Sprintf("could not get next stats: %s", err),
@@ -385,7 +388,7 @@ func (t *Tracer) run() {
 				}
 
 				n := len(stats)
-				if n > t.config.MaxRows {
+				if t.config.MaxRows != 0 && n > t.config.MaxRows {
 					n = t.config.MaxRows
 				}
 				t.eventCallback(&top.Event[types.Stats]{Stats: stats[:n]})
