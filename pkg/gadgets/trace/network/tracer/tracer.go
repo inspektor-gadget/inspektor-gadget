@@ -24,6 +24,7 @@ import (
 	"net"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/cilium/ebpf"
 	log "github.com/sirupsen/logrus"
@@ -385,16 +386,21 @@ func (t *Tracer) install() error {
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
-	for {
-		if t.ctx.Err() != nil {
-			return nil
-		}
+	ctx := t.gadgetCtx.Context()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
-		// Pop, but we don't need the results as we're handing the events over
-		// to the callback in cbMap
-		_, err := t.Pop()
-		if err != nil {
-			return err
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			// Pop, but we don't need the results as we're handing the events over to the callback
+			_, err := t.Pop()
+			if err != nil {
+				t.gadgetCtx.Logger().Debugf("pop() returned with: %v", err)
+				return nil
+			}
 		}
 	}
 }
