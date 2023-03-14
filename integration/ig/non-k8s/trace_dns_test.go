@@ -118,6 +118,7 @@ func TestTraceDns(t *testing.T) {
 		"/dnstester & sleep 2", // wait to ensure dns server is running
 		"nslookup -type=a fake.test.com. 127.0.0.1",
 		"nslookup -type=aaaa fake.test.com. 127.0.0.1",
+		"sleep 2", // give time to the tracer to capture events before the container is done
 	}
 
 	testSteps := []TestStep{
