@@ -231,3 +231,38 @@ minikube-deploy: minikube-start gadget-default-container kubectl-gadget
 .PHONY: btfgen
 btfgen:
 	+make -f Makefile.btfgen
+
+.PHONY: help
+help:
+	@echo  'Building targets:'
+	@echo  '  all		  		- Build all targets marked with [*]'
+	@echo  '* ig		  		- Build the ig cli tool'
+	@echo  '  ig-all	  		- Build the ig cli tool for all architectures'
+	@echo  '* build		  		- Build all targets marked with [o]'
+	@echo  'o manifests			- Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects'
+	@echo  'o generate			- Generate client API code and DeepCopy related code'
+	@echo  'o kubectl-gadget		- Build the kubectl plugin'
+	@echo  '  kubectl-gadget-all		- Build the kubectl plugin for all architectures'
+	@echo  'o gadget-default-container	- Build the gadget container default image'
+	@echo  '  gadget-container-all		- Build all flavors of the gadget container image'
+	@echo  '  ebpf-objects			- Build eBPF objects file inside docker'
+	@echo  '  ebpf-objects-outside-docker	- Build eBPF objects file on host'
+	@echo  '  btfgen			- Build BTF files'
+	@echo  '  list-ig-targets		- List ig available architectures'
+	@echo  '  list-kubectl-gadget-targets	- List kubectl plugin available architectures'
+	@echo  ''
+	@echo  'Testing targets:'
+	@echo  '  test				- Run unit tests'
+	@echo  '  controller-tests		- Run controllers unit tests'
+	@echo  '  ig-tests			- Run ig manager unit tests'
+	@echo  '  gadgets-unit-tests		- Run gadget unit tests'
+	@echo  '  integration-tests		- Run integration tests'
+	@echo  ''
+	@echo  'Installing targets:'
+	@echo  '  install/kubectl-gadget	- Build kubectl plugin and install it in ~/.local/bin'
+	@echo  ''
+	@echo  'Development targets:'
+	@echo  '  lint				- Lint the code'
+	@echo  '  generate-documentation	- Generate documentation for gadgets and trace CRD'
+	@echo  '  minikube-start		- Start a kubernetes cluster using minikube with the docker driver'
+	@echo  '  minikube-deploy		- Build and deploy the gadget container on minikube with docker driver, the cluster is started if it does not exist'
