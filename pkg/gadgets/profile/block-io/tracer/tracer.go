@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/moby/moby/pkg/parsers/kernel"
 
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
 )
@@ -44,7 +45,7 @@ type Tracer struct {
 func NewTracer() (*Tracer, error) {
 	t := &Tracer{}
 
-	if err := t.start(); err != nil {
+	if err := t.install(); err != nil {
 		t.Stop()
 		return nil, err
 	}
@@ -89,26 +90,35 @@ func getReport(histMap *ebpf.Map) (types.Report, error) {
 }
 
 func (t *Tracer) Stop() (string, error) {
+	defer t.close()
+
+	result, err := t.collectResult()
+	if err != nil {
+		return "", err
+	}
+	return string(result), nil
+}
+
+func (t *Tracer) collectResult() ([]byte, error) {
+	if t.objs.Hists == nil {
+		return nil, nil
+	}
+	report, err := getReport(t.objs.Hists)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(report)
+}
+
+func (t *Tracer) close() {
 	t.blockRqCompleteLink = gadgets.CloseLink(t.blockRqCompleteLink)
 	t.blockRqInsertLink = gadgets.CloseLink(t.blockRqInsertLink)
 	t.blockRqIssueLink = gadgets.CloseLink(t.blockRqIssueLink)
 
-	defer t.objs.Close()
-
-	if t.objs.Hists == nil {
-		return "", nil
-	}
-	report, err := getReport(t.objs.Hists)
-	if err != nil {
-		return "", err
-	}
-
-	output, err := json.Marshal(report)
-
-	return string(output), err
+	t.objs.Close()
 }
 
-func (t *Tracer) start() error {
+func (t *Tracer) install() error {
 	var spec *ebpf.CollectionSpec
 
 	version, err := kernel.GetKernelVersion()
@@ -158,22 +168,16 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 	return t, nil
 }
 
-func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	return nil
-}
-
-func (t *Tracer) StartAlt() error {
-	if err := t.start(); err != nil {
-		t.Stop()
-		return err
+func (t *Tracer) RunWithResult(gadgetCtx gadgets.GadgetContext) ([]byte, error) {
+	defer t.close()
+	if err := t.install(); err != nil {
+		return nil, fmt.Errorf("installing tracer: %w", err)
 	}
-	return nil
-}
 
-func (t *Tracer) StopAlt() {
-	t.result, t.err = t.Stop()
-}
+	ctx, cancel := gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
+	defer cancel()
 
-func (t *Tracer) Result() ([]byte, error) {
-	return []byte(t.result), t.err
+	<-ctx.Done()
+
+	return t.collectResult()
 }

@@ -121,6 +121,7 @@ func getUDPIter() (*link.Iter, error) {
 	return it, nil
 }
 
+// RunCollector is currently exported so it can be called from Collect()
 func (t *Tracer) RunCollector(pid uint32, podname, namespace, node string) ([]*socketcollectortypes.Event, error) {
 	sockets := []*socketcollectortypes.Event{}
 	err := netnsenter.NetnsEnter(int(pid), func() error {
@@ -221,19 +222,6 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 	}, nil
 }
 
-func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	params := gadgetCtx.GadgetParams()
-	protoParam := params.Get(ParamProto)
-	protocols := protoParam.AsString()
-	if err := protoParam.Validate(protocols); err != nil {
-		return err
-	}
-
-	t.protocols, _ = socketcollectortypes.ProtocolsMap[protocols]
-
-	return nil
-}
-
 func (t *Tracer) AttachContainer(container *containercollection.Container) error {
 	if _, ok := t.visitedNamespaces[container.Netns]; ok {
 		return nil
@@ -255,7 +243,6 @@ func (t *Tracer) SetEventHandlerArray(handler any) {
 }
 
 // CloseIters is currently exported so it can be called from Collect()
-// TODO: move this directly in Run() once PR#1408 is completed
 func (t *Tracer) CloseIters() {
 	for _, it := range t.iters {
 		it.Close()
@@ -286,7 +273,14 @@ func (t *Tracer) openIters() error {
 	return nil
 }
 
-func (t *Tracer) Run() error {
+func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	protoParam := gadgetCtx.GadgetParams().Get(ParamProto)
+	protocols := protoParam.AsString()
+	if err := protoParam.Validate(protocols); err != nil {
+		return err
+	}
+	t.protocols, _ = socketcollectortypes.ProtocolsMap[protocols]
+
 	defer t.CloseIters()
 	if err := t.openIters(); err != nil {
 		return fmt.Errorf("installing tracer: %w", err)
@@ -299,7 +293,7 @@ func (t *Tracer) Run() error {
 		// the netns to avoid retrieving it again in RunCollector.
 		sockets, err := t.RunCollector(pid, "", "", "")
 		if err != nil {
-			return fmt.Errorf("collecting sockets in netns %d: %w", netns, err)
+			return fmt.Errorf("snapshotting sockets in netns %d: %w", netns, err)
 		}
 		allSockets = append(allSockets, sockets...)
 	}

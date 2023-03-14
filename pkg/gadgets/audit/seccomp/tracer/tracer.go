@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -61,15 +62,17 @@ func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
 		eventCallback: eventCallback,
 	}
 
-	if err := t.start(); err != nil {
+	if err := t.install(); err != nil {
 		t.Close()
 		return nil, err
 	}
 
+	go t.run()
+
 	return t, nil
 }
 
-func (t *Tracer) start() error {
+func (t *Tracer) install() error {
 	spec, err := loadAuditseccomp()
 	if err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
@@ -110,8 +113,6 @@ func (t *Tracer) start() error {
 	if err != nil {
 		return fmt.Errorf("failed to attach kprobe: %w", err)
 	}
-
-	go t.run()
 
 	return nil
 }
@@ -158,6 +159,8 @@ func (t *Tracer) run() {
 	}
 }
 
+// Close closes the tracer
+// TODO: Unexport this function when the refactoring is done
 func (t *Tracer) Close() {
 	t.progLink = gadgets.CloseLink(t.progLink)
 	if t.reader != nil {
@@ -168,11 +171,18 @@ func (t *Tracer) Close() {
 
 // ---
 
-func (t *Tracer) Start() error {
-	if err := t.start(); err != nil {
-		t.Stop()
-		return err
+func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	defer t.Close()
+	if err := t.install(); err != nil {
+		return fmt.Errorf("installing tracer: %w", err)
 	}
+
+	ctx, cancel := gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
+	defer cancel()
+
+	go t.run()
+	<-ctx.Done()
+
 	return nil
 }
 
@@ -188,16 +198,9 @@ func (t *Tracer) SetEventHandler(handler any) {
 	t.eventCallback = nh
 }
 
-func (t *Tracer) Stop() {
-}
-
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 	t := &Tracer{
 		config: &Config{},
 	}
 	return t, nil
-}
-
-func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	return nil
 }

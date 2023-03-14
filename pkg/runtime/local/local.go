@@ -37,7 +37,7 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 	return nil
 }
 
-func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (out []byte, err error) {
+func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) ([]byte, error) {
 	log := gadgetCtx.Logger()
 
 	log.Debugf("running with local runtime")
@@ -52,39 +52,26 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (out []byte, err er
 	// Create gadget instance
 	gadgetInstance, err := gadget.NewInstance()
 	if err != nil {
-		return out, fmt.Errorf("instantiating gadget: %w", err)
+		return nil, fmt.Errorf("instantiating gadget: %w", err)
 	}
 
-	err = gadgetInstance.Init(gadgetCtx)
-	if err != nil {
-		return out, fmt.Errorf("initializing gadget: %w", err)
-	}
-
-	// Deferring getting results and closing to make sure operators got their chance to clean up properly beforehand
-	defer func() {
-		if closer, ok := gadgetInstance.(gadgets.CloseGadget); ok {
-			log.Debugf("calling gadget.Close()")
-			closer.Close()
-		}
-
-		// No need to get results if gadget failed
+	// Initialize gadgets, if needed
+	if initClose, ok := gadgetInstance.(gadgets.InitCloseGadget); ok {
+		log.Debugf("calling gadget.Init()")
+		err = initClose.Init(gadgetCtx)
 		if err != nil {
-			return
+			return nil, fmt.Errorf("initializing gadget: %w", err)
 		}
-
-		if results, ok := gadgetInstance.(gadgets.GadgetResult); ok {
-			log.Debugf("getting result")
-			out, err = results.Result()
-			if err != nil {
-				err = fmt.Errorf("getting result: %w", err)
-			}
-		}
-	}()
+		defer func() {
+			log.Debugf("calling gadget.Close()")
+			initClose.Close()
+		}()
+	}
 
 	// Install operators
 	operatorInstances, err := gadgetCtx.Operators().Instantiate(gadgetCtx, gadgetInstance, operatorsParamCollection)
 	if err != nil {
-		return out, fmt.Errorf("instantiating operators: %w", err)
+		return nil, fmt.Errorf("instantiating operators: %w", err)
 	}
 	log.Debugf("found %d operators", len(gadgetCtx.Operators()))
 
@@ -106,47 +93,31 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (out []byte, err er
 		setter.SetEventEnricher(operatorInstances.Enrich)
 	}
 
+	log.Debug("calling operator.PreGadgetRun()")
 	err = operatorInstances.PreGadgetRun()
 	if err != nil {
 		return nil, fmt.Errorf("gadget prerun: %w", err)
 	}
-	defer operatorInstances.PostGadgetRun()
+	defer func() {
+		log.Debug("calling operator.PostGadgetRun()")
+		operatorInstances.PostGadgetRun()
+	}()
 
-	if startstop, ok := gadgetInstance.(gadgets.StartStopAltGadget); ok {
-		log.Debugf("calling gadget.StartAlt()")
-		err := startstop.StartAlt()
-		if err != nil {
-			return out, fmt.Errorf("starting gadget: %w", err)
-		}
-		defer func() {
-			log.Debugf("calling gadget.StopAlt()")
-			startstop.StopAlt()
-		}()
-	} else if startstop, ok := gadgetInstance.(gadgets.StartStopGadget); ok {
-		log.Debugf("calling gadget.Start()")
-		err := startstop.Start()
-		if err != nil {
-			return out, fmt.Errorf("starting gadget: %w", err)
-		}
-		defer func() {
-			log.Debugf("calling gadget.Stop()")
-			startstop.Stop()
-		}()
-	} else if run, ok := gadgetInstance.(gadgets.RunGadget); ok {
+	if run, ok := gadgetInstance.(gadgets.RunGadget); ok {
 		log.Debugf("calling gadget.Run()")
-		err := run.Run()
+		err := run.Run(gadgetCtx)
 		if err != nil {
-			return out, fmt.Errorf("running gadget: %w", err)
+			return nil, fmt.Errorf("running gadget: %w", err)
 		}
+		return nil, nil
 	}
-
-	log.Debugf("running")
-
-	if gadget.Type() != gadgets.TypeOneShot {
-		// Wait for context to close
-		<-gadgetCtx.Context().Done()
+	if runWithResult, ok := gadgetInstance.(gadgets.RunWithResultGadget); ok {
+		log.Debugf("calling gadget.RunWithResult()")
+		out, err := runWithResult.RunWithResult(gadgetCtx)
+		if err != nil {
+			return nil, fmt.Errorf("running (with result) gadget: %w", err)
+		}
+		return out, nil
 	}
-
-	log.Debugf("stopping gadget")
-	return out, nil
+	return nil, errors.New("gadget not runnable")
 }

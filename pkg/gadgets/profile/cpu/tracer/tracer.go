@@ -32,6 +32,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -69,7 +70,7 @@ func NewTracer(enricher gadgets.DataEnricherByMntNs, config *Config) (*Tracer, e
 		config:   config,
 	}
 
-	if err := t.start(); err != nil {
+	if err := t.install(); err != nil {
 		t.Stop()
 		return nil, err
 	}
@@ -263,28 +264,36 @@ func getReport(t *Tracer, kAllSyms []kernelSymbol, stack *ebpf.Map, keyCount key
 }
 
 func (t *Tracer) Stop() (string, error) {
-	reports := []types.Report{}
+	defer t.close()
 
-	defer func() {
-		t.objs.Close()
-
-		for _, fd := range t.perfFds {
-			// Disable perf event.
-			err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_DISABLE, 0)
-			if err != nil {
-				log.Errorf("Failed to disable perf fd: %v", err)
-			}
-
-			err = unix.Close(fd)
-			if err != nil {
-				log.Errorf("Failed to close perf fd: %v", err)
-			}
-		}
-	}()
-
-	keysCounts, err := t.readCountsMap()
+	result, err := t.collectResult()
 	if err != nil {
 		return "", err
+	}
+	return string(result), nil
+}
+
+func (t *Tracer) close() {
+	t.objs.Close()
+
+	for _, fd := range t.perfFds {
+		// Disable perf event.
+		err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_DISABLE, 0)
+		if err != nil {
+			log.Errorf("Failed to disable perf fd: %v", err)
+		}
+
+		err = unix.Close(fd)
+		if err != nil {
+			log.Errorf("Failed to close perf fd: %v", err)
+		}
+	}
+}
+
+func (t *Tracer) collectResult() ([]byte, error) {
+	keysCounts, err := t.readCountsMap()
+	if err != nil {
+		return nil, err
 	}
 
 	sort.Slice(keysCounts, func(i, j int) bool {
@@ -296,24 +305,23 @@ func (t *Tracer) Stop() (string, error) {
 
 	kAllSyms, err := readKernelSymbols()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	for _, keyVal := range keysCounts {
+	reports := make([]types.Report, len(keysCounts))
+	for i, keyVal := range keysCounts {
 		report, err := getReport(t, kAllSyms, t.objs.profileMaps.Stackmap, keyVal)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		reports = append(reports, report)
+		reports[i] = report
 	}
 
-	output, err := json.Marshal(reports)
-
-	return string(output), err
+	return json.Marshal(reports)
 }
 
-func (t *Tracer) start() error {
+func (t *Tracer) install() error {
 	spec, err := loadProfile()
 	if err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
@@ -392,22 +400,35 @@ type TracerWrap struct {
 	eventCallback func(ev *types.Report)
 }
 
-func (t *TracerWrap) Start() error {
-	if err := t.start(); err != nil {
-		t.Stop()
-		return err
-	}
-	return nil
-}
+func (t *TracerWrap) Run(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+	t.config.UserStackOnly = params.Get(ParamUserStack).AsBool()
+	t.config.KernelStackOnly = params.Get(ParamKernelStack).AsBool()
 
-func (t *TracerWrap) Stop() {
-	// TODO: Error handling on stop?
-	res, _ := t.Tracer.Stop()
+	defer t.close()
+	if err := t.install(); err != nil {
+		return fmt.Errorf("installing tracer: %w", err)
+	}
+
+	ctx, cancel := gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
+	defer cancel()
+
+	<-ctx.Done()
+
+	res, err := t.collectResult()
+	if err != nil {
+		return fmt.Errorf("collecting result: %w", err)
+	}
+
 	var reports []*types.Report
-	json.Unmarshal([]byte(res), &reports)
+	if err = json.Unmarshal(res, &reports); err != nil {
+		return fmt.Errorf("unmarshaling report: %w", err)
+	}
 	for _, report := range reports {
 		t.eventCallback(report)
 	}
+
+	return nil
 }
 
 func (t *TracerWrap) SetEventHandler(handler any) {
@@ -442,11 +463,4 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 		},
 	}
 	return tracer, nil
-}
-
-func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	params := gadgetCtx.GadgetParams()
-	t.config.UserStackOnly = params.Get(ParamUserStack).AsBool()
-	t.config.KernelStackOnly = params.Get(ParamKernelStack).AsBool()
-	return nil
 }

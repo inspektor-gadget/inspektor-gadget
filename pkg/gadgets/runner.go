@@ -16,6 +16,7 @@ package gadgets
 
 import (
 	"context"
+	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -26,4 +27,5 @@ type GadgetContext interface {
 	Context() context.Context
 	GadgetParams() *params.Params
 	Logger() logger.Logger
+	Timeout() time.Duration
 }

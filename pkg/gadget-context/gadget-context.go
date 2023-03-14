@@ -20,6 +20,7 @@ package gadgetcontext
 
 import (
 	"context"
+	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -43,6 +44,7 @@ type GadgetContext struct {
 	logger                   logger.Logger
 	result                   []byte
 	resultError              error
+	timeout                  time.Duration
 }
 
 func New(
@@ -54,6 +56,7 @@ func New(
 	operatorsParamCollection params.Collection,
 	parser parser.Parser,
 	logger logger.Logger,
+	timeout time.Duration,
 ) *GadgetContext {
 	return &GadgetContext{
 		ctx:                      ctx,
@@ -65,6 +68,7 @@ func New(
 		logger:                   logger,
 		operators:                operators.GetOperatorsForGadget(gadget),
 		operatorsParamCollection: operatorsParamCollection,
+		timeout:                  timeout,
 	}
 }
 
@@ -102,4 +106,15 @@ func (r *GadgetContext) GadgetParams() *params.Params {
 
 func (r *GadgetContext) OperatorsParamCollection() params.Collection {
 	return r.operatorsParamCollection
+}
+
+func (r *GadgetContext) Timeout() time.Duration {
+	return r.timeout
+}
+
+func WithTimeoutOrCancel(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout == 0 {
+		return context.WithCancel(ctx)
+	}
+	return context.WithTimeout(ctx, timeout)
 }

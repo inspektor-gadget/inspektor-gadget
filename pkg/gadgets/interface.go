@@ -66,10 +66,6 @@ type GadgetDesc interface {
 	EventPrototype() any
 }
 
-type GadgetResult interface {
-	Result() ([]byte, error)
-}
-
 type OutputFormats map[string]OutputFormat
 
 // OutputFormat can hold alternative output formats for a gadget. Whenever
@@ -108,33 +104,46 @@ type EventEnricherSetter interface {
 	SetEventEnricher(func(ev any) error)
 }
 
-type StartStopGadget interface {
-	Start() error
-	Stop()
-}
-
-// RunGadget is an alternative to StartStopGadget that expects the result to be emitted using the EventHandler
-// as well but doesn't need to be stopped (manually)
+// RunGadget is an interface that will be implemented by gadgets that are run in
+// the background and emit events as soon as they occur.
 type RunGadget interface {
-	Run() error
+	// Run is expected to run the gadget and emits the events using the
+	// EventHandler. This function is expected to be blocking and return only
+	// when the context is done, after which the gadget should clean up all
+	// resources. Notice that this function will be called after operators are
+	// installed.
+	Run(GadgetContext) error
 }
 
-// StartStopAltGadget is an alternative interface to StartStop, as some gadgets
-// already have the Start() and Stop() functions defined, but with a different signature
-// After we've migrated to the interfaces, the gadgets should be altered to use the
-// Start/Stop signatures of the above StartStopGadget interface.
-type StartStopAltGadget interface {
-	StartAlt() error
-	StopAlt()
+// RunWithResultGadget is an alternative to RunGadget that returns the result
+// of the gadget only at the end of its execution.
+type RunWithResultGadget interface {
+	// RunWithResult follows the same rules as Run() but instead of using an
+	// EventHandler to emit the events, it returns the result of the gadget as a
+	// byte array after the context is done.
+	RunWithResult(GadgetContext) ([]byte, error)
 }
 
-type CloseGadget interface {
+// InitCloseGadget is an optional interface that can be implemented by gadgets
+// that needs to be initialized before the operators are installed. An example
+// of this is when the gadget needs to be kept up-to-date with the containers
+// that need to be traced, as the operators will start sending notifications of
+// this as soon as it is installed. So, the gadget needs to be initialized and
+// ready to receive those notifications before the operators are installed.
+type InitCloseGadget interface {
+	// Init is expected to initialize the gadget. It will be called right before
+	// the operators are installed, and also before Run() is called (which is
+	// done after the operators are installed, see the Gadget interface).
+	Init(GadgetContext) error
+
+	// Close is expected to clean up all the resources allocated by the gadget.
+	// It will be called after Run() returns and after the operators have been
+	// uninstalled.
+	// TODO: We should pass the gadget context to Close().
 	Close()
 }
 
-type Gadget interface {
-	Init(GadgetContext) error
-}
+type Gadget any
 
 // GadgetInstantiate is the same interface as Gadget but adds one call to instantiate an actual
 // tracer

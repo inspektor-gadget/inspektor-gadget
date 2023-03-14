@@ -271,12 +271,6 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 	return tracer, nil
 }
 
-func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	params := gadgetCtx.GadgetParams()
-	t.config.ShowThreads = params.Get(ParamThreads).AsBool()
-	return nil
-}
-
 func (t *Tracer) SetEventHandlerArray(handler any) {
 	nh, ok := handler.(func(ev []*processcollectortypes.Event))
 	if !ok {
@@ -289,10 +283,12 @@ func (t *Tracer) SetMountNsMap(mntnsMap *ebpf.Map) {
 	t.config.MountnsMap = mntnsMap
 }
 
-func (t *Tracer) Run() error {
+func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	t.config.ShowThreads = gadgetCtx.GadgetParams().Get(ParamThreads).AsBool()
+
 	processes, err := RunCollector(t.config, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("running snapshotter: %w", err)
 	}
 	t.eventHandler(processes)
 	return nil

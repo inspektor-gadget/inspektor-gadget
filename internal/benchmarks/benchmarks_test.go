@@ -263,6 +263,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 							operatorsParamCollection,
 							parser,
 							logger.DefaultLogger(),
+							0,
 						)
 
 						_, err := runtime.RunGadget(gadgetCtx)
