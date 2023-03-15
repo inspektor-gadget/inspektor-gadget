@@ -306,13 +306,10 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 		return fmt.Errorf("installing tracer: %w", err)
 	}
 
-	ctx, cancel := gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
-	defer cancel()
-
 	// TODO: Rework this to be able to stop the gadget when an error occurs in
 	// run(). Notice it is the same for most of gadgets in the trace category.
 	go t.run()
-	<-ctx.Done()
+	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
 
 	return nil
 }

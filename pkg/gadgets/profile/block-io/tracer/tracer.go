@@ -174,10 +174,7 @@ func (t *Tracer) RunWithResult(gadgetCtx gadgets.GadgetContext) ([]byte, error) 
 		return nil, fmt.Errorf("installing tracer: %w", err)
 	}
 
-	ctx, cancel := gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
-	defer cancel()
-
-	<-ctx.Done()
+	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
 
 	return t.collectResult()
 }

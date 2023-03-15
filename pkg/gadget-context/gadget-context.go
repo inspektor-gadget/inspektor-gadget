@@ -72,44 +72,44 @@ func New(
 	}
 }
 
-func (r *GadgetContext) ID() string {
-	return r.id
+func (c *GadgetContext) ID() string {
+	return c.id
 }
 
-func (r *GadgetContext) Context() context.Context {
-	return r.ctx
+func (c *GadgetContext) Context() context.Context {
+	return c.ctx
 }
 
-func (r *GadgetContext) Parser() parser.Parser {
-	return r.parser
+func (c *GadgetContext) Parser() parser.Parser {
+	return c.parser
 }
 
-func (r *GadgetContext) Runtime() runtime.Runtime {
-	return r.runtime
+func (c *GadgetContext) Runtime() runtime.Runtime {
+	return c.runtime
 }
 
-func (r *GadgetContext) GadgetDesc() gadgets.GadgetDesc {
-	return r.gadget
+func (c *GadgetContext) GadgetDesc() gadgets.GadgetDesc {
+	return c.gadget
 }
 
-func (r *GadgetContext) Operators() operators.Operators {
-	return r.operators
+func (c *GadgetContext) Operators() operators.Operators {
+	return c.operators
 }
 
-func (r *GadgetContext) Logger() logger.Logger {
-	return r.logger
+func (c *GadgetContext) Logger() logger.Logger {
+	return c.logger
 }
 
-func (r *GadgetContext) GadgetParams() *params.Params {
-	return r.gadgetParams
+func (c *GadgetContext) GadgetParams() *params.Params {
+	return c.gadgetParams
 }
 
-func (r *GadgetContext) OperatorsParamCollection() params.Collection {
-	return r.operatorsParamCollection
+func (c *GadgetContext) OperatorsParamCollection() params.Collection {
+	return c.operatorsParamCollection
 }
 
-func (r *GadgetContext) Timeout() time.Duration {
-	return r.timeout
+func (c *GadgetContext) Timeout() time.Duration {
+	return c.timeout
 }
 
 func WithTimeoutOrCancel(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
@@ -117,4 +117,10 @@ func WithTimeoutOrCancel(ctx context.Context, timeout time.Duration) (context.Co
 		return context.WithCancel(ctx)
 	}
 	return context.WithTimeout(ctx, timeout)
+}
+
+func WaitForTimeoutOrDone(c gadgets.GadgetContext) {
+	ctx, cancel := WithTimeoutOrCancel(c.Context(), c.Timeout())
+	defer cancel()
+	<-ctx.Done()
 }

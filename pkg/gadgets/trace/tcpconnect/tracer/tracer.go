@@ -207,11 +207,8 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 		return fmt.Errorf("installing tracer: %w", err)
 	}
 
-	ctx, cancel := gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
-	defer cancel()
-
 	go t.run()
-	<-ctx.Done()
+	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
 
 	return nil
 }
