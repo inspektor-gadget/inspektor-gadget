@@ -160,6 +160,68 @@ runtime installed. Currently supported runtime is `docker` only, You can run the
 $ make -C integration/ig/non-k8s test-docker
 ```
 
+### Benchmarks
+
+You can run the different benchmark tests with:
+
+```bash
+$ make gadgets-benchmarks
+```
+
+Or you can run an individual test with:
+
+```bash
+$ go test -exec sudo \
+    -bench='BenchmarkAllGadgetsWithContainers/container10$/trace-tcpconnect' \
+    -run=Benchmark \
+    ./internal/benchmarks/...
+```
+
+Records of previous benchmarks are available [here](https://inspektor-gadget.github.io/ig-benchmarks/dev/bench/index.html).
+See details in the [CI documentation (benchmarks)](../ci.md#benchmarks).
+
+#### Explaining performance improvements in a PR
+
+If you want to contribute a performance improvement, it is useful to use benchmarks to explain the impact on
+performances. I will use the example of an improvement on the networking gadgets from
+[#1430](https://github.com/inspektor-gadget/inspektor-gadget/pull/1430):
+
+* Run the benchmarks both on the `main` and the feature branches and saving the output in two files.
+```bash
+$ git checkout main
+$ go test -exec sudo \
+    -bench='^BenchmarkAllGadgetsWithContainers$/^container100$/trace-(dns|sni)' \
+    -run=Benchmark \
+    ./internal/benchmarks/... \
+    -count 10 | tee main.bench
+$ git checkout myfeature
+$ go test -exec sudo \
+    -bench='^BenchmarkAllGadgetsWithContainers$/^container100$/trace-(dns|sni)' \
+    -run=Benchmark \
+    ./internal/benchmarks/... \
+    -count 10 | tee patched.bench
+```
+
+Please use `-count` to gather a statistically significant sample of results.
+The [benchstat's documentation](https://pkg.go.dev/golang.org/x/perf/cmd/benchstat) recommends 10 times.
+
+* Compare the results with `benchstat`:
+```bash
+$ go install golang.org/x/perf/cmd/benchstat@latest # if not already installed
+$ benchstat main.bench patched.bench
+goos: linux
+goarch: amd64
+pkg: github.com/inspektor-gadget/inspektor-gadget/internal/benchmarks
+cpu: Intel(R) Core(TM) i7-6500U CPU @ 2.50GHz
+                                                  │ main.bench  │           patched.bench            │
+                                                  │   sec/op    │   sec/op    vs base                │
+AllGadgetsWithContainers/container100/trace-dns-4   2.941 ±  3%   1.489 ± 4%  -49.38% (p=0.000 n=10)
+AllGadgetsWithContainers/container100/trace-sni-4   4.440 ± 19%   1.495 ± 6%  -66.34% (p=0.000 n=10)
+geomean                                             3.613         1.492       -58.72%
+```
+
+* Include the commands used and the output of `benchstat` in your pull request description
+
 ### Continuous Integration
 
 Inspektor Gadget uses GitHub Actions as CI. Please check dedicated [CI
