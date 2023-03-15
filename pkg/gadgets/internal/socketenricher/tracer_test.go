@@ -20,14 +20,12 @@ package socketenricher
 import (
 	"fmt"
 	"net"
-	"os"
 	"reflect"
 	"testing"
 
 	"golang.org/x/sys/unix"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
-	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 )
 
 func TestSocketEnricherCreate(t *testing.T) {
@@ -77,11 +75,6 @@ func TestSocketEnricherBind(t *testing.T) {
 		expectedEvent func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry
 	}
 
-	netns, err := containerutils.GetNetNs(os.Getpid())
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	stringToSlice := func(s string) (ret [16]int8) {
 		for i := 0; i < 16; i++ {
 			if i >= len(s) {
@@ -98,7 +91,7 @@ func TestSocketEnricherBind(t *testing.T) {
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherSocketsKey{
-						Netns:  uint32(netns),
+						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET,
 						Proto:  unix.IPPROTO_UDP,
 						Port:   port,
@@ -116,7 +109,7 @@ func TestSocketEnricherBind(t *testing.T) {
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherSocketsKey{
-						Netns:  uint32(netns),
+						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET6,
 						Proto:  unix.IPPROTO_UDP,
 						Port:   port,
@@ -134,7 +127,7 @@ func TestSocketEnricherBind(t *testing.T) {
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherSocketsKey{
-						Netns:  uint32(netns),
+						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET,
 						Proto:  unix.IPPROTO_TCP,
 						Port:   port,
@@ -152,7 +145,7 @@ func TestSocketEnricherBind(t *testing.T) {
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
 				return &socketEnricherMapEntry{
 					Key: socketenricherSocketsKey{
-						Netns:  uint32(netns),
+						Netns:  uint32(info.NetworkNsID),
 						Family: unix.AF_INET6,
 						Proto:  unix.IPPROTO_TCP,
 						Port:   port,

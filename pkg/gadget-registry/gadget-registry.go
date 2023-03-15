@@ -16,6 +16,7 @@ package gadgetregistry
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
@@ -38,5 +39,12 @@ func GetAll() (gadgets []gadgets.GadgetDesc) {
 	for _, g := range gadgetRegistry {
 		gadgets = append(gadgets, g)
 	}
+
+	// Return gadgets in deterministic order
+	sort.Slice(gadgets, func(i, j int) bool {
+		a := fmt.Sprintf("%s-%s", gadgets[i].Category(), gadgets[i].Name())
+		b := fmt.Sprintf("%s-%s", gadgets[j].Category(), gadgets[j].Name())
+		return a < b
+	})
 	return
 }
