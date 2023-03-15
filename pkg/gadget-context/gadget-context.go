@@ -34,6 +34,7 @@ import (
 // instance and communicates with gadget and runtime.
 type GadgetContext struct {
 	ctx                      context.Context
+	cancel                   context.CancelFunc
 	id                       string
 	gadget                   gadgets.GadgetDesc
 	gadgetParams             *params.Params
@@ -58,8 +59,11 @@ func New(
 	logger logger.Logger,
 	timeout time.Duration,
 ) *GadgetContext {
+	gCtx, cancel := context.WithCancel(ctx)
+
 	return &GadgetContext{
-		ctx:                      ctx,
+		ctx:                      gCtx,
+		cancel:                   cancel,
 		id:                       id,
 		runtime:                  runtime,
 		gadget:                   gadget,
@@ -78,6 +82,10 @@ func (c *GadgetContext) ID() string {
 
 func (c *GadgetContext) Context() context.Context {
 	return c.ctx
+}
+
+func (c *GadgetContext) Cancel() {
+	c.cancel()
 }
 
 func (c *GadgetContext) Parser() parser.Parser {

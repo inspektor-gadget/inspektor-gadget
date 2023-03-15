@@ -192,6 +192,7 @@ func buildCommandFromGadget(
 				logger.DefaultLogger(),
 				timeoutDuration,
 			)
+			defer gadgetCtx.Cancel()
 
 			outputModeInfo := strings.SplitN(outputMode, "=", 2)
 			outputModeName := outputModeInfo[0]

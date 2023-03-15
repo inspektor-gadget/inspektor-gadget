@@ -271,6 +271,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 							b.Fatalf("running gadget: %s", err)
 						}
 
+						gadgetCtx.Cancel()
 						cancel()
 					}
 				})
