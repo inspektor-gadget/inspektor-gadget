@@ -62,6 +62,14 @@ func (t Time) String() string {
 	return time.Unix(0, int64(t)).Format("2006-01-02T15:04:05.000000000Z07:00")
 }
 
+type RemoteKind string
+
+const (
+	RemoteKindPod     RemoteKind = "pod"
+	RemoteKindService RemoteKind = "svc"
+	RemoteKindOther   RemoteKind = "other"
+)
+
 type CommonData struct {
 	// Node where the event comes from
 	Node string `json:"node,omitempty" column:"node,template:node" columnTags:"kubernetes"`
