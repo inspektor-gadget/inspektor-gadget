@@ -110,5 +110,6 @@ func _IterUDPv4Close(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed iterudpv4_bpfel.o
 var _IterUDPv4Bytes []byte

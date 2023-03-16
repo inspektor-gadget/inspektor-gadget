@@ -1,11 +1,13 @@
 FROM golang:1.19
-# clang and llvm are needed by bpf2go.
 # gcc-multilib is needed for <asm/types.h>.
 # libelf-dev is needed to compile libbpf.
+# lsb-release wget software-properties-common gnupg are needed by llvm.sh script
 RUN apt-get update \
-	&& apt-get install -y clang-11 llvm-11 gcc-multilib libelf-dev \
-	&& update-alternatives --install /usr/local/bin/llvm-strip llvm-strip $(which llvm-strip-11) 100 \
-	&& update-alternatives --install /usr/local/bin/clang clang $(which clang-11) 100
+	&& apt-get install -y gcc-multilib libelf-dev lsb-release wget software-properties-common gnupg
+# install clang 15
+RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 15 \
+	&& update-alternatives --install /usr/local/bin/llvm-strip llvm-strip $(which llvm-strip-15) 100 \
+	&& update-alternatives --install /usr/local/bin/clang clang $(which clang-15) 100
 # Let's install libbpf.
 RUN git clone -b v0.8.1 https://github.com/libbpf/libbpf.git \
 	&& cd libbpf/src \

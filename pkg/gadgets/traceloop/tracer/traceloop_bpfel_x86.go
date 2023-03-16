@@ -148,5 +148,6 @@ func _TraceloopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed traceloop_bpfel_x86.o
 var _TraceloopBytes []byte

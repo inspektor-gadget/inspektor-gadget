@@ -117,5 +117,6 @@ func _ContainersmapClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed containersmap_bpfel.o
 var _ContainersmapBytes []byte

@@ -127,5 +127,6 @@ func _OomkillClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed oomkill_bpfel_x86.o
 var _OomkillBytes []byte

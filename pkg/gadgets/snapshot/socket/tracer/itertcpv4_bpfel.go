@@ -110,5 +110,6 @@ func _IterTCPv4Close(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed itertcpv4_bpfel.o
 var _IterTCPv4Bytes []byte

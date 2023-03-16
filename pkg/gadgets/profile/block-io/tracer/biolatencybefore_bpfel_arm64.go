@@ -133,5 +133,6 @@ func _BiolatencyBeforeClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed biolatencybefore_bpfel_arm64.o
 var _BiolatencyBeforeBytes []byte

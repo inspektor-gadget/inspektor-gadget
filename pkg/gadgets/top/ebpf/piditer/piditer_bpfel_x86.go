@@ -116,5 +116,6 @@ func _PiditerClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed piditer_bpfel_x86.o
 var _PiditerBytes []byte

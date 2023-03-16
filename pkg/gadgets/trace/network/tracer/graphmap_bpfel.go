@@ -119,5 +119,6 @@ func _GraphmapClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed graphmap_bpfel.o
 var _GraphmapBytes []byte

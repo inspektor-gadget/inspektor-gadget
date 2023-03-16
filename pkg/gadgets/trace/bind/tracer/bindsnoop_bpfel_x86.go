@@ -148,5 +148,6 @@ func _BindsnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed bindsnoop_bpfel_x86.o
 var _BindsnoopBytes []byte
