@@ -23,6 +23,7 @@ import (
 func main() {
 	dns.Handle(".", dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
 		m := new(dns.Msg)
+		m.Compress = true
 		m.SetReply(r)
 
 		var rr dns.RR
