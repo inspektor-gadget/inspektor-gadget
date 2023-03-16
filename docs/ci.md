@@ -197,3 +197,19 @@ By default, each of this cluster features
 [3 nodes](https://learn.microsoft.com/en-us/cli/azure/aks?view=azure-cli-latest#az-aks-create).
 Once created, the integration tests will be run on these clusters.
 Finally, the clusters are deleted, whatsoever is the result of the tests.
+
+## Benchmarks
+
+Inspektor Gadget has
+[benchmark tests](https://github.com/inspektor-gadget/inspektor-gadget/blob/main/internal/benchmarks/benchmarks_test.go)
+that are automatically executed and published by
+[github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark). You can see the results on:
+
+https://inspektor-gadget.github.io/ig-benchmarks/dev/bench/index.html
+
+This requires a GitHub API token (secret `BENCHMARKS_TOKEN`) configured with read and write access to two repositories:
+- [inspektor-gadget/inspektor-gadget](https://github.com/inspektor-gadget/inspektor-gadget): required to allow the bot to post comments
+- [inspektor-gadget/ig-benchmarks](https://github.com/inspektor-gadget/ig-benchmarks/tree/gh-pages), see the `gh-pages` branch.
+
+The GitHub Action is disabled for pushes on forks or PR from forks, so the result page will not be updated by forks.
+In this way, forks can still use other parts of the CI without failing, even without the `BENCHMARKS_TOKEN` secret.
