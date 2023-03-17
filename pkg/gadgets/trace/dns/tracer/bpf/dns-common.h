@@ -35,4 +35,9 @@ struct event_t {
 	__u8 name[MAX_DNS_NAME];
 };
 
+struct key_t {
+	__u64 mount_ns_id;
+	__u16 id;
+};
+
 #endif

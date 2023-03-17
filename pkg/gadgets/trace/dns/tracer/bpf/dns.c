@@ -24,6 +24,17 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 } events SEC(".maps");
 
+/*
+ * This map is used to store all queries to we write the response and
+ * corresponding query at the same in perf buffer.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct key_t);
+	__type(value, struct event_t);
+	__uint(max_entries, 1024);
+} queries_map SEC(".maps");
+
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
 union dnsflags {
 	struct {
@@ -143,7 +154,33 @@ int ig_trace_dns(struct __sk_buff *skb)
 		__builtin_memcpy(&event.task,  skb_val->task, sizeof(event.task));
 	}
 
-	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+	struct key_t key = {0,};
+
+	key.mount_ns_id = event.mount_ns_id;
+	key.id = event.id;
+
+	if (!event.qr) {
+		int err;
+
+		// Store the query in queries map.
+		err = bpf_map_update_elem(&queries_map, &key, &event, BPF_NOEXIST);
+		if (err != 0)
+			return 1;
+	} else {
+		struct event_t *query;
+
+		query = bpf_map_lookup_elem(&queries_map, &key);
+		if (query != NULL) {
+			// A query was found for this response, we need to send both of them to
+			// perf buffer, but we need to first send the query, then the response.
+			// So, we can effectively compute the latency in userspace.
+			// TODO: Should we compute latency here?
+			bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, query, sizeof(*query));
+			bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+
+			bpf_map_delete_elem(&queries_map, &key);
+		}
+	}
 
 	return 0;
 }
