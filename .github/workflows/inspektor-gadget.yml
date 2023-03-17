@@ -746,7 +746,7 @@ jobs:
   test-integration-non-k8s-ig:
     name: Integration tests for ig with non-Kubernetes Containers
     # level: 2
-    needs: [ test-unit, test-ig, build-ig ]
+    needs: [ build-ig ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

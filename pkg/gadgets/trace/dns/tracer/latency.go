@@ -18,6 +18,7 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
+	log "github.com/sirupsen/logrus"
 )
 
 const dnsLatencyCacheSize int = 1024
@@ -47,6 +48,7 @@ func newDNSLatencyCalculator() (*dnsLatencyCalculator, error) {
 
 func (c *dnsLatencyCalculator) storeDNSQueryTimestamp(netns uint64, id uint16, timestamp uint64) {
 	// Store the timestamp of the query so we can calculate the latency once the response arrives.
+	log.Infof("Adding: {%d, %d} = %d", netns, id, timestamp)
 	c.queryCache.Add(dnsQueryKey{netns, id}, timestamp)
 }
 
@@ -55,6 +57,7 @@ func (c *dnsLatencyCalculator) calculateDNSResponseLatency(netns uint64, id uint
 	key := dnsQueryKey{netns, id}
 	reqTS, ok := c.queryCache.Get(key)
 	if !ok {
+		log.Warnf("No value for key: {%d, %d}", netns, id)
 		// Either an invalid ID or we evicted the query from the map to free space.
 		return 0
 	}
@@ -62,11 +65,15 @@ func (c *dnsLatencyCalculator) calculateDNSResponseLatency(netns uint64, id uint
 	c.queryCache.Remove(key)
 
 	if reqTS > timestamp {
+		log.Warnf("%d > %d", reqTS, timestamp)
 		// Should never happen assuming timestamps are monotonic, but handle it just in case.
 		return 0
 	}
 
-	return time.Duration(timestamp - reqTS)
+	duration := time.Duration(timestamp - reqTS)
+	log.Infof("return duration: %d", duration)
+
+	return duration
 }
 
 func (c *dnsLatencyCalculator) numOutstandingQueries() int {

@@ -64,6 +64,8 @@ func NewTracer() (*Tracer, error) {
 			return nil, err
 		}
 
+		event.Latency = 42
+
 		// Derive latency from the query/response timestamps.
 		// Filter by packet type (OUTGOING for queries and HOST for responses) to exclude cases where
 		// the packet is forwarded between containers in the host netns.
