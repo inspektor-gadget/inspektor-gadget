@@ -230,8 +230,11 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	}
 
 	bpf_debug_printk("Perf event output: sc.id: %d; sc.comm: %s; sizeof(sc): %d\n", sc.id, sc.comm, sizeof(sc));
-	bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc,
+	ret = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc,
 			      sizeof(sc));
+	if (ret != 0) {
+		bpf_error_printk("Problem outputting perf event: %d", ret);
+	}
 
 	// Avoid using probe_at_sys_exit for exit() and exit_group() because sys_exit
 	// would not be called and the map would not be cleaned up and would get full.
@@ -298,7 +301,10 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 			sc_cont.failed = true;
 
 		bpf_debug_printk("Perf event output: sc_cont.index: %d; sizeof(sc_cont): %d\n", sc_cont.index, sizeof(sc_cont));
-		bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc_cont, sizeof(sc_cont));
+		ret = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc_cont, sizeof(sc_cont));
+		if (ret != 0) {
+			bpf_error_printk("Problem outputting continued perf event: %d", ret);
+		}
 	}
 
 end:
