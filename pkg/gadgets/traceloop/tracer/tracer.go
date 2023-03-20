@@ -607,7 +607,7 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 			}
 			evs, err := t.Read(container.ID)
 			if err != nil {
-				t.gadgetCtx.Logger().Debugf("error reading from container %s: %v", container.ID, err)
+				t.gadgetCtx.Logger().Errorf("error reading from container %s: %v", container.ID, err)
 				return
 			}
 			for _, ev := range evs {
