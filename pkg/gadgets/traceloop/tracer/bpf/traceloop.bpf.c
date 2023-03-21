@@ -104,7 +104,7 @@ struct {
 	__uint(max_entries, 1024);
 } regs_map SEC(".maps");
 
-static inline int skip_exit_probe(int nr) {
+static __always_inline int skip_exit_probe(int nr) {
 	return !!(nr == __NR_exit ||
 		nr == __NR_exit_group ||
 		nr == __NR_rt_sigreturn);
@@ -114,7 +114,7 @@ static inline int skip_exit_probe(int nr) {
  * Highly inspired from ksnoop.bpf.c:
  * https://github.com/iovisor/bcc/blob/f90126bb3770ea1bdd915ff3b47e451c6dde5c40/libbpf-tools/ksnoop.bpf.c#L280
  */
-static inline u64 get_arg(struct pt_regs *regs, int i)
+static __always_inline u64 get_arg(struct pt_regs *regs, int i)
 {
 	switch(i) {
 	case 1:
@@ -314,7 +314,7 @@ end:
  * So, this function should be expanded with the code of the architecture we
  * support.
  */
-static inline int syscall_get_nr(struct pt_regs *regs)
+static __always_inline int syscall_get_nr(struct pt_regs *regs)
 {
 #if defined(__TARGET_ARCH_arm64)
 	return regs->syscallno;

@@ -56,7 +56,7 @@ static unsigned long sock_i_ino(const struct sock *sk)
  * This function receives arguments as they are stored
  * in the different socket structure, i.e. network-byte order.
  */
-static inline void socket_bpf_seq_print(struct seq_file *seq,
+static __always_inline void socket_bpf_seq_print(struct seq_file *seq,
                 const char* protocol, const __be32 src,
                 const __u16 srcp, const __be32 dest,
                 const __u16 destp, const unsigned char state, long ino)

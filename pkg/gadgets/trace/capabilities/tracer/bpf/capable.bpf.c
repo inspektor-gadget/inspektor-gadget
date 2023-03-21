@@ -211,7 +211,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 #error "The trace capabilities gadget is not supported on your architecture."
 #endif
 
-static inline int skip_exit_probe(int nr) {
+static __always_inline int skip_exit_probe(int nr) {
 	return !!(nr == __NR_exit ||
 		nr == __NR_exit_group ||
 		nr == __NR_rt_sigreturn);
