@@ -73,6 +73,7 @@ listed in the following table:
 | `trace sni`              | U.U                     |                         |
 | `trace tcp`              | 4.15 (BCC only)         |                         |
 | `trace tcpconnect`       | 4.15 (BCC), 5.8 (CO-RE) | `KPROBES`, `KRETPROBES` |
+| `trace tcpdrop`          | 5.17 (CO-RE only)       |                         |
 | `traceloop`              | 4.15                    | `KPROBES`               |
 
 If the kernel version is U.U, it means we do not have this information at the

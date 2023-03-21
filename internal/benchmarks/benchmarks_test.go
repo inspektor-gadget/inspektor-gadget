@@ -58,6 +58,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/tracer"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpdrop/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
