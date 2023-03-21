@@ -29,7 +29,7 @@ struct {
 // Parses the provided SKB at the given offset for SNI information. If parsing
 // succeeds, the SNI information is written to the out array. Returns the
 // number of characters in the SNI field or 0 if SNI couldn't be parsed.
-static inline int parse_sni(struct __sk_buff *skb, int data_offset, char *out)
+static __always_inline int parse_sni(struct __sk_buff *skb, int data_offset, char *out)
 {
   // Verify TLS content type.
   __u8 content_type;

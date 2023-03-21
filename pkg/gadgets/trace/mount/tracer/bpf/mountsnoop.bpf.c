@@ -43,7 +43,7 @@ struct {
 // TODO: have to use "inline" to avoid this error:
 // bpf/mountsnoop.bpf.c:41:12: error: defined with too many args
 // static int probe_entry(const char *src, const char *dest, const char *fs,
-static inline int probe_entry(const char *src, const char *dest, const char *fs,
+static __always_inline int probe_entry(const char *src, const char *dest, const char *fs,
 		       __u64 flags, const char *data, enum op op)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
