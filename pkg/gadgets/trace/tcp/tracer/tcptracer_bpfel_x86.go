@@ -166,5 +166,6 @@ func _TcptracerClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed tcptracer_bpfel_x86.o
 var _TcptracerBytes []byte

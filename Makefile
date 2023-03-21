@@ -20,6 +20,8 @@ ARCH ?= $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's
 # This version number must be kept in sync with CI workflow lint one.
 LINTER_VERSION ?= v1.49.0
 
+EBPF_BUILDER ?= ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder
+
 # Adds a '-dirty' suffix to version string if there are uncommitted changes
 changes := $(shell git status --porcelain)
 ifeq ($(changes),)
@@ -60,7 +62,8 @@ all: build ig
 phony_explicit:
 
 ebpf-objects:
-	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) -v $(shell pwd):/work ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder
+	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) \
+		-v $(shell pwd):/work $(EBPF_BUILDER)
 
 ebpf-objects-outside-docker:
 	TARGET=arm64 go generate ./...

@@ -164,5 +164,6 @@ func _SocketenricherClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed socketenricher_bpfel_arm64.o
 var _SocketenricherBytes []byte

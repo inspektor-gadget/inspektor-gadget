@@ -129,5 +129,6 @@ func _AuditseccompClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed auditseccomp_bpfel_x86.o
 var _AuditseccompBytes []byte

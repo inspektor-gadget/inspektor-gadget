@@ -136,5 +136,6 @@ func _ExecsnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed execsnoop_bpfel_arm64.o
 var _ExecsnoopBytes []byte

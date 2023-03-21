@@ -157,5 +157,6 @@ func _MountsnoopClose(closers ...io.Closer) error {
 }
 
 // Do not access this directly.
+//
 //go:embed mountsnoop_bpfel.o
 var _MountsnoopBytes []byte
