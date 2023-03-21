@@ -35,6 +35,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 
 	// TODO: Move!
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
 )
 

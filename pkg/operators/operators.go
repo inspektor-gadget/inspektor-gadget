@@ -103,6 +103,13 @@ type ContainerInfoSetters interface {
 	SetNode(string)
 }
 
+type ContainerInfoGetters interface {
+	GetNode() string
+	GetPod() string
+	GetNamespace() string
+	GetContainer() string
+}
+
 var allOperators = map[string]Operator{}
 
 type operatorWrapper struct {

@@ -101,6 +101,22 @@ func (c *CommonData) SetContainerInfo(pod, namespace, container string) {
 	}
 }
 
+func (c *CommonData) GetNode() string {
+	return c.Node
+}
+
+func (c *CommonData) GetPod() string {
+	return c.Pod
+}
+
+func (c *CommonData) GetNamespace() string {
+	return c.Namespace
+}
+
+func (c *CommonData) GetContainer() string {
+	return c.Container
+}
+
 const (
 	// Indicates a generic event produced by a gadget. Gadgets extend
 	// the base event to contain the specific data the gadget provides

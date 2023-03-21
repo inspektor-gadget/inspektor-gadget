@@ -47,6 +47,42 @@ type Event struct {
 	RemoteLabels    map[string]string `json:"remoteLabels,omitempty" column:"remotelabels,hide"`
 }
 
+func (e *Event) SetPodOwner(s string) {
+	e.PodOwner = s
+}
+
+func (e *Event) SetPodHostIP(s string) {
+	e.PodHostIP = s
+}
+
+func (e *Event) SetPodIP(s string) {
+	e.PodIP = s
+}
+
+func (e *Event) SetPodLabels(l map[string]string) {
+	e.PodLabels = l
+}
+
+func (e *Event) GetRemoteIP() string {
+	return e.RemoteAddr
+}
+
+func (e *Event) SetRemoteName(name string) {
+	e.RemoteName = name
+}
+
+func (e *Event) SetRemoteNamespace(s string) {
+	e.RemoteNamespace = s
+}
+
+func (e *Event) SetRemoteKind(k eventtypes.RemoteKind) {
+	e.RemoteKind = k
+}
+
+func (e *Event) SetRemotePodLabels(l map[string]string) {
+	e.RemoteLabels = l
+}
+
 func GetColumns() *columns.Columns[Event] {
 	cols := columns.MustCreateColumns[Event]()
 
