@@ -21,8 +21,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	log "github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -55,8 +59,104 @@ type KubeNetworkInformation interface {
 	SetRemotePodLabels(map[string]string)
 }
 
-type KubeIPResolver struct {
+// TODO: Generalize this. Will be useful for other gadgets/operators too
+type k8sInventoryCache struct {
 	clientset *kubernetes.Clientset
+
+	pods atomic.Pointer[v1.PodList]
+	svcs atomic.Pointer[v1.ServiceList]
+
+	exit           chan struct{}
+	ticker         *time.Ticker
+	tickerDuration time.Duration
+
+	useCount      int
+	useCountMutex sync.Mutex
+}
+
+func newCache(tickerDuration time.Duration) (*k8sInventoryCache, error) {
+	clientset, err := k8sutil.NewClientset("")
+	if err != nil {
+		return nil, fmt.Errorf("creating new k8s clientset: %w", err)
+	}
+
+	return &k8sInventoryCache{
+		clientset:      clientset,
+		tickerDuration: tickerDuration,
+	}, nil
+}
+
+func (cache *k8sInventoryCache) loop() {
+	for {
+		select {
+		case <-cache.exit:
+			return
+		case <-cache.ticker.C:
+			cache.update()
+		}
+	}
+}
+
+func (cache *k8sInventoryCache) Close() {
+	if cache.exit != nil {
+		close(cache.exit)
+	}
+	if cache.ticker != nil {
+		cache.ticker.Stop()
+	}
+}
+
+func (cache *k8sInventoryCache) Start() {
+	cache.useCountMutex.Lock()
+	defer cache.useCountMutex.Unlock()
+
+	// No uses before us, we are the first one
+	if cache.useCount == 0 {
+		cache.update()
+		cache.exit = make(chan struct{})
+		cache.ticker = time.NewTicker(cache.tickerDuration)
+		go cache.loop()
+	}
+	cache.useCount++
+}
+
+func (cache *k8sInventoryCache) Stop() {
+	cache.useCountMutex.Lock()
+	defer cache.useCountMutex.Unlock()
+
+	// We are the last user, stop everything
+	if cache.useCount == 1 {
+		cache.Close()
+	}
+	cache.useCount--
+}
+
+func (cache *k8sInventoryCache) update() {
+	pods, err := cache.clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Errorf("listing pods: %v", err)
+		return
+	}
+	cache.pods.Store(pods)
+
+	svcs, err := cache.clientset.CoreV1().Services("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Errorf("listing services: %s", err)
+		return
+	}
+	cache.svcs.Store(svcs)
+}
+
+func (cache *k8sInventoryCache) GetPods() *v1.PodList {
+	return cache.pods.Load()
+}
+
+func (cache *k8sInventoryCache) GetSvcs() *v1.ServiceList {
+	return cache.svcs.Load()
+}
+
+type KubeIPResolver struct {
+	k8sInventory *k8sInventoryCache
 }
 
 func (k *KubeIPResolver) Name() string {
@@ -90,15 +190,16 @@ func (k *KubeIPResolver) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 }
 
 func (k *KubeIPResolver) Init(params *params.Params) error {
-	clientset, err := k8sutil.NewClientset("")
+	k8sInventory, err := newCache(1 * time.Second)
 	if err != nil {
-		return fmt.Errorf("creating new k8s clientset: %w", err)
+		return fmt.Errorf("creating new k8sInventoryCache: %w", err)
 	}
-	k.clientset = clientset
+	k.k8sInventory = k8sInventory
 	return nil
 }
 
 func (k *KubeIPResolver) Close() error {
+	k.k8sInventory.Close()
 	return nil
 }
 
@@ -121,10 +222,12 @@ func (m *KubeIPResolverInstance) Name() string {
 }
 
 func (m *KubeIPResolverInstance) PreGadgetRun() error {
+	m.manager.k8sInventory.Start()
 	return nil
 }
 
 func (m *KubeIPResolverInstance) PostGadgetRun() error {
+	m.manager.k8sInventory.Stop()
 	return nil
 }
 
@@ -132,17 +235,9 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 	additionalInfo, _ := ev.(KubeNetworkInformation)
 	containerInfo, _ := ev.(operators.ContainerInfoGetters)
 
-	// TODO: Cache these kind of stuff for some seconds?
-	// Pods("").Watch does not work, since pod.Status is not updated live
-	// 			-> Old IPs
-	pods, err := m.manager.clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		log.Errorf("listing pods: %v", err)
-		return
-	}
-
 	additionalInfo.SetRemoteKind(types.RemoteKindOther)
 
+	pods := m.manager.k8sInventory.GetPods()
 	foundLocal := false
 	foundRemote := false
 	remoteIP := additionalInfo.GetRemoteIP()
@@ -185,11 +280,7 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 		return
 	}
 
-	svcs, err := m.manager.clientset.CoreV1().Services("").List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		log.Errorf("listing services: %s", err)
-		return
-	}
+	svcs := m.manager.k8sInventory.GetSvcs()
 
 	for _, svc := range svcs.Items {
 		if svc.Spec.ClusterIP == remoteIP {
