@@ -17,6 +17,7 @@
 package tracer
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -30,6 +31,7 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
@@ -74,6 +76,8 @@ type Tracer struct {
 
 	eventCallback func(ev *types.Event)
 	gadgetCtx     gadgets.GadgetContext
+	ctx           context.Context
+	cancel        context.CancelFunc
 }
 
 func NewTracer(enricher gadgets.DataEnricherByNetNs) (_ *Tracer, err error) {
@@ -337,6 +341,10 @@ func (t *Tracer) Detach(pid uint32) error {
 }
 
 func (t *Tracer) Close() {
+	if t.cancel != nil {
+		t.cancel()
+	}
+
 	for key, l := range t.attachments {
 		t.releaseAttachment(key, l)
 	}
@@ -354,8 +362,18 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	// Load the eBPF map
+	if err := t.install(); err != nil {
+		t.Close()
+		return fmt.Errorf("installing tracer: %w", err)
+	}
+
 	t.gadgetCtx = gadgetCtx
+	t.ctx, t.cancel = gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
+	return nil
+}
+
+func (t *Tracer) install() error {
+	// Load the eBPF map
 	specMap, err := loadGraphmap()
 	if err != nil {
 		return fmt.Errorf("failed to load asset: %w", err)
@@ -366,22 +384,19 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	return nil
 }
 
-func (t *Tracer) Start() error {
-	ctx := t.gadgetCtx.Context()
+func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	for {
-		if ctx.Err() != nil {
+		if t.ctx.Err() != nil {
 			return nil
 		}
-		// Pop, but we don't need the results as we're handing the events over to the callback in cbMap
+
+		// Pop, but we don't need the results as we're handing the events over
+		// to the callback in cbMap
 		_, err := t.Pop()
 		if err != nil {
-			t.gadgetCtx.Logger().Debugf("pop() returned with: %v", err)
-			return nil
+			return err
 		}
 	}
-}
-
-func (t *Tracer) Stop() {
 }
 
 func (t *Tracer) SetEventHandler(handler any) {

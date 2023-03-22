@@ -26,6 +26,7 @@ import (
 	libseccomp "github.com/seccomp/libseccomp-golang"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
 
@@ -55,7 +56,7 @@ type Tracer struct {
 func NewTracer() (*Tracer, error) {
 	t := &Tracer{}
 
-	if err := t.start(); err != nil {
+	if err := t.install(); err != nil {
 		t.Close()
 		return nil, err
 	}
@@ -63,7 +64,7 @@ func NewTracer() (*Tracer, error) {
 	return t, nil
 }
 
-func (t *Tracer) start() error {
+func (t *Tracer) install() error {
 	spec, err := loadSeccomp()
 	if err != nil {
 		return fmt.Errorf("failed to load asset: %w", err)
@@ -124,6 +125,8 @@ func (t *Tracer) Delete(mntns uint64) {
 	t.objs.SyscallsPerMntns.Delete(mntns)
 }
 
+// Close closes the tracer
+// TODO: Unexport this function when the refactoring is done
 func (t *Tracer) Close() {
 	t.progLink = gadgets.CloseLink(t.progLink)
 	t.objs.Close()
@@ -138,19 +141,18 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 	return t, nil
 }
 
-func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	return nil
-}
-
-func (t *Tracer) Stop() {
-}
-
-func (t *Tracer) Start() error {
-	if err := t.start(); err != nil {
-		t.Stop()
-		return err
+func (t *Tracer) RunWithResult(gadgetCtx gadgets.GadgetContext) ([]byte, error) {
+	defer t.Close()
+	if err := t.install(); err != nil {
+		return nil, fmt.Errorf("installing tracer: %w", err)
 	}
-	return nil
+
+	// Notice this Tracer starts collecting data for all containers as soon as
+	// it is installed, and uses the attach/detach mechanism to know which
+	// containers to report data from.
+	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
+
+	return t.collectResult()
 }
 
 func (t *Tracer) AttachContainer(container *containercollection.Container) error {
@@ -168,7 +170,7 @@ func (t *Tracer) DetachContainer(container *containercollection.Container) error
 	return nil
 }
 
-func (t *Tracer) Result() ([]byte, error) {
+func (t *Tracer) collectResult() ([]byte, error) {
 	out := make(map[string][]string)
 	for container, result := range t.containers {
 		out[container.Name] = result

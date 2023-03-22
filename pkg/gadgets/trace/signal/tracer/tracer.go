@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -74,15 +75,23 @@ func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
 		eventCallback: eventCallback,
 	}
 
-	if err := t.start(); err != nil {
-		t.Stop()
+	if err := t.install(); err != nil {
+		t.close()
 		return nil, err
 	}
+
+	go t.run()
 
 	return t, nil
 }
 
+// Stop stops the tracer
+// TODO: Remove after refactoring
 func (t *Tracer) Stop() {
+	t.close()
+}
+
+func (t *Tracer) close() {
 	t.enterKillLink = gadgets.CloseLink(t.enterKillLink)
 	t.exitKillLink = gadgets.CloseLink(t.exitKillLink)
 
@@ -101,7 +110,7 @@ func (t *Tracer) Stop() {
 	t.objs.Close()
 }
 
-func (t *Tracer) start() error {
+func (t *Tracer) install() error {
 	spec, err := loadSigsnoop()
 	if err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
@@ -183,8 +192,6 @@ func (t *Tracer) start() error {
 		return fmt.Errorf("error creating perf ring buffer: %w", err)
 	}
 
-	go t.run()
-
 	return nil
 }
 
@@ -233,11 +240,21 @@ func (t *Tracer) run() {
 
 // --- Registry changes
 
-func (t *Tracer) Start() error {
-	if err := t.start(); err != nil {
-		t.Stop()
-		return err
+func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+	t.config.TargetPid = params.Get(ParamPID).AsInt32()
+	t.config.FailedOnly = params.Get(ParamFailedOnly).AsBool()
+	t.config.KillOnly = params.Get(ParamKillOnly).AsBool()
+	t.config.TargetSignal = params.Get(ParamTargetSignal).AsString()
+
+	defer t.close()
+	if err := t.install(); err != nil {
+		return fmt.Errorf("installing tracer: %w", err)
 	}
+
+	go t.run()
+	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
+
 	return nil
 }
 
@@ -258,13 +275,4 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 		config: &Config{},
 	}
 	return tracer, nil
-}
-
-func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	params := gadgetCtx.GadgetParams()
-	t.config.TargetPid = params.Get(ParamPID).AsInt32()
-	t.config.FailedOnly = params.Get(ParamFailedOnly).AsBool()
-	t.config.KillOnly = params.Get(ParamKillOnly).AsBool()
-	t.config.TargetSignal = params.Get(ParamTargetSignal).AsString()
-	return nil
 }

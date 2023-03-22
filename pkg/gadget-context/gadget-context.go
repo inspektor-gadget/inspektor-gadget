@@ -20,6 +20,7 @@ package gadgetcontext
 
 import (
 	"context"
+	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -33,6 +34,7 @@ import (
 // instance and communicates with gadget and runtime.
 type GadgetContext struct {
 	ctx                      context.Context
+	cancel                   context.CancelFunc
 	id                       string
 	gadget                   gadgets.GadgetDesc
 	gadgetParams             *params.Params
@@ -43,6 +45,7 @@ type GadgetContext struct {
 	logger                   logger.Logger
 	result                   []byte
 	resultError              error
+	timeout                  time.Duration
 }
 
 func New(
@@ -54,9 +57,13 @@ func New(
 	operatorsParamCollection params.Collection,
 	parser parser.Parser,
 	logger logger.Logger,
+	timeout time.Duration,
 ) *GadgetContext {
+	gCtx, cancel := context.WithCancel(ctx)
+
 	return &GadgetContext{
-		ctx:                      ctx,
+		ctx:                      gCtx,
+		cancel:                   cancel,
 		id:                       id,
 		runtime:                  runtime,
 		gadget:                   gadget,
@@ -65,41 +72,63 @@ func New(
 		logger:                   logger,
 		operators:                operators.GetOperatorsForGadget(gadget),
 		operatorsParamCollection: operatorsParamCollection,
+		timeout:                  timeout,
 	}
 }
 
-func (r *GadgetContext) ID() string {
-	return r.id
+func (c *GadgetContext) ID() string {
+	return c.id
 }
 
-func (r *GadgetContext) Context() context.Context {
-	return r.ctx
+func (c *GadgetContext) Context() context.Context {
+	return c.ctx
 }
 
-func (r *GadgetContext) Parser() parser.Parser {
-	return r.parser
+func (c *GadgetContext) Cancel() {
+	c.cancel()
 }
 
-func (r *GadgetContext) Runtime() runtime.Runtime {
-	return r.runtime
+func (c *GadgetContext) Parser() parser.Parser {
+	return c.parser
 }
 
-func (r *GadgetContext) GadgetDesc() gadgets.GadgetDesc {
-	return r.gadget
+func (c *GadgetContext) Runtime() runtime.Runtime {
+	return c.runtime
 }
 
-func (r *GadgetContext) Operators() operators.Operators {
-	return r.operators
+func (c *GadgetContext) GadgetDesc() gadgets.GadgetDesc {
+	return c.gadget
 }
 
-func (r *GadgetContext) Logger() logger.Logger {
-	return r.logger
+func (c *GadgetContext) Operators() operators.Operators {
+	return c.operators
 }
 
-func (r *GadgetContext) GadgetParams() *params.Params {
-	return r.gadgetParams
+func (c *GadgetContext) Logger() logger.Logger {
+	return c.logger
 }
 
-func (r *GadgetContext) OperatorsParamCollection() params.Collection {
-	return r.operatorsParamCollection
+func (c *GadgetContext) GadgetParams() *params.Params {
+	return c.gadgetParams
+}
+
+func (c *GadgetContext) OperatorsParamCollection() params.Collection {
+	return c.operatorsParamCollection
+}
+
+func (c *GadgetContext) Timeout() time.Duration {
+	return c.timeout
+}
+
+func WithTimeoutOrCancel(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout == 0 {
+		return context.WithCancel(ctx)
+	}
+	return context.WithTimeout(ctx, timeout)
+}
+
+func WaitForTimeoutOrDone(c gadgets.GadgetContext) {
+	ctx, cancel := WithTimeoutOrCancel(c.Context(), c.Timeout())
+	defer cancel()
+	<-ctx.Done()
 }

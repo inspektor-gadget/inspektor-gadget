@@ -29,6 +29,7 @@ import (
 	libseccomp "github.com/seccomp/libseccomp-golang"
 	"github.com/syndtr/gocapability/capability"
 
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -108,15 +109,23 @@ func NewTracer(c *Config, enricher gadgets.DataEnricherByMntNs,
 		eventCallback: eventCallback,
 	}
 
-	if err := t.start(); err != nil {
-		t.Stop()
+	if err := t.install(); err != nil {
+		t.close()
 		return nil, err
 	}
+
+	go t.run()
 
 	return t, nil
 }
 
+// Stop stops the tracer
+// TODO: Remove after refactoring
 func (t *Tracer) Stop() {
+	t.close()
+}
+
+func (t *Tracer) close() {
 	t.capEnterLink = gadgets.CloseLink(t.capEnterLink)
 	t.capExitLink = gadgets.CloseLink(t.capExitLink)
 	t.tpSysEnter = gadgets.CloseLink(t.tpSysEnter)
@@ -129,7 +138,7 @@ func (t *Tracer) Stop() {
 	t.objs.Close()
 }
 
-func (t *Tracer) start() error {
+func (t *Tracer) install() error {
 	runningKernelVersion, err := features.LinuxVersionCode()
 	if err != nil {
 		return fmt.Errorf("error getting kernel version: %w", err)
@@ -206,8 +215,6 @@ func (t *Tracer) start() error {
 	}
 	t.reader = reader
 
-	go t.run()
-
 	return nil
 }
 
@@ -238,6 +245,7 @@ func (t *Tracer) run() {
 		record, err := t.reader.Read()
 		if err != nil {
 			if errors.Is(err, perf.ErrClosed) {
+				// nothing to do, we're done
 				return
 			}
 
@@ -319,11 +327,19 @@ func (t *Tracer) run() {
 
 // --- Registry changes
 
-func (t *Tracer) Start() error {
-	if err := t.start(); err != nil {
-		t.Stop()
-		return err
+func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+	t.config.Unique = params.Get(ParamUnique).AsBool()
+	t.config.AuditOnly = params.Get(ParamAuditOnly).AsBool()
+
+	defer t.close()
+	if err := t.install(); err != nil {
+		return fmt.Errorf("installing tracer: %w", err)
 	}
+
+	go t.run()
+	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
+
 	return nil
 }
 
@@ -344,11 +360,4 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 		config: &Config{},
 	}
 	return tracer, nil
-}
-
-func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	params := gadgetCtx.GadgetParams()
-	t.config.Unique = params.Get(ParamUnique).AsBool()
-	t.config.AuditOnly = params.Get(ParamAuditOnly).AsBool()
-	return nil
 }

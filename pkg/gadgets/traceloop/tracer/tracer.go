@@ -17,6 +17,7 @@
 package tracer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -32,6 +33,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -79,6 +81,8 @@ type Tracer struct {
 	readers sync.Map
 
 	gadgetCtx     gadgets.GadgetContext
+	ctx           context.Context
+	cancel        context.CancelFunc
 	eventCallback func(event *types.Event)
 	waitGroup     sync.WaitGroup
 }
@@ -107,14 +111,14 @@ func NewTracer(enricher gadgets.DataEnricherByMntNs) (*Tracer, error) {
 	t := &Tracer{
 		enricher: enricher,
 	}
-	err := t.init()
-	if err != nil {
+	if err := t.install(); err != nil {
+		t.close()
 		return nil, err
 	}
 	return t, nil
 }
 
-func (t *Tracer) init() error {
+func (t *Tracer) install() error {
 	spec, err := loadTraceloop()
 	if err != nil {
 		return fmt.Errorf("loading ebpf program: %w", err)
@@ -149,13 +153,6 @@ func (t *Tracer) init() error {
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
-	defer func() {
-		// So we are sure to clean everything before exiting in case of error.
-		if err != nil {
-			t.Stop()
-		}
-	}()
-
 	t.enterLink, err = link.AttachRawTracepoint(link.RawTracepointOptions{
 		Name:    "sys_enter",
 		Program: t.objs.IgTraceloopE,
@@ -177,7 +174,13 @@ func (t *Tracer) init() error {
 	return nil
 }
 
+// Stop stops the tracer
+// TODO: Remove after refactoring
 func (t *Tracer) Stop() {
+	t.close()
+}
+
+func (t *Tracer) close() {
 	t.enterLink = gadgets.CloseLink(t.enterLink)
 	t.exitLink = gadgets.CloseLink(t.exitLink)
 
@@ -570,8 +573,15 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	if err := t.install(); err != nil {
+		t.close()
+		return fmt.Errorf("installing tracer: %w", err)
+	}
+
+	// Context must be created before the first call to AttachContainer
 	t.gadgetCtx = gadgetCtx
-	return t.init()
+	t.ctx, t.cancel = gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
+	return nil
 }
 
 func (t *Tracer) SetEventHandler(handler any) {
@@ -592,7 +602,7 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 	go func() {
 		defer t.waitGroup.Done()
 		for {
-			if t.gadgetCtx.Context().Err() != nil {
+			if t.ctx.Err() != nil {
 				return
 			}
 			evs, err := t.Read(container.ID)
@@ -613,8 +623,13 @@ func (t *Tracer) DetachContainer(container *containercollection.Container) error
 	return t.Detach(container.Mntns)
 }
 
+func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	<-t.ctx.Done()
+	return nil
+}
+
 func (t *Tracer) Close() {
-	// Wait for running reads before closing
 	t.waitGroup.Wait()
-	t.Stop()
+	t.cancel()
+	t.close()
 }

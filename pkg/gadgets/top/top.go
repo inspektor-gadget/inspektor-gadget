@@ -15,6 +15,9 @@
 package top
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	columnssort "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/sort"
 )
@@ -35,4 +38,19 @@ type Event[T any] struct {
 
 func SortStats[T any](stats []*T, sortBy []string, colMap *columns.ColumnMap[T]) {
 	columnssort.SortEntries(*colMap, stats, sortBy)
+}
+
+// ComputeIterations returns the number of iterations to perform to get the
+// desired timeout. It returns zero if timeout is zero.
+func ComputeIterations(interval, timeout time.Duration) (int, error) {
+	if timeout <= 0 {
+		return 0, nil
+	}
+	if timeout < interval {
+		return 0, fmt.Errorf("timeout must be greater than interval")
+	}
+	if timeout%interval != 0 {
+		return 0, fmt.Errorf("timeout must be a multiple of interval")
+	}
+	return int(timeout / interval), nil
 }

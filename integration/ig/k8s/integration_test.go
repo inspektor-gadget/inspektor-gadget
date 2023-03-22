@@ -28,6 +28,7 @@ const (
 	ContainerRuntimeDocker     = "docker"
 	ContainerRuntimeContainerd = "containerd"
 	ContainerRuntimeCRIO       = "cri-o"
+	timeout                    = 10
 )
 
 var supportedContainerRuntimes = []string{ContainerRuntimeDocker, ContainerRuntimeContainerd, ContainerRuntimeCRIO}

@@ -263,6 +263,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 							operatorsParamCollection,
 							parser,
 							logger.DefaultLogger(),
+							0,
 						)
 
 						_, err := runtime.RunGadget(gadgetCtx)
@@ -270,6 +271,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 							b.Fatalf("running gadget: %s", err)
 						}
 
+						gadgetCtx.Cancel()
 						cancel()
 					}
 				})

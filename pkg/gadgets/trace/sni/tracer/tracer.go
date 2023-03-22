@@ -17,10 +17,12 @@
 package tracer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"unsafe"
 
+	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
@@ -38,27 +40,20 @@ const (
 
 type Tracer struct {
 	*networktracer.Tracer[types.Event]
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func NewTracer() (*Tracer, error) {
-	spec, err := loadSnisnoop()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load asset: %w", err)
+	t := &Tracer{}
+
+	if err := t.install(); err != nil {
+		t.Close()
+		return nil, fmt.Errorf("installing tracer: %w", err)
 	}
 
-	networkTracer, err := networktracer.NewTracer(
-		spec,
-		BPFProgName,
-		BPFPerfMapName,
-		BPFSocketAttach,
-		types.Base,
-		parseSNIEvent,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("creating network tracer: %w", err)
-	}
-
-	return &Tracer{Tracer: networkTracer}, nil
+	return t, nil
 }
 
 func parseSNIEvent(sample []byte, netns uint64) (*types.Event, error) {
@@ -98,11 +93,45 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
-	// TODO: Clean up
-	tracer, err := NewTracer()
-	if err != nil {
-		return err
+	if err := t.install(); err != nil {
+		t.Close()
+		return fmt.Errorf("installing tracer: %w", err)
 	}
-	t.Tracer = tracer.Tracer
+
+	t.ctx, t.cancel = gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
 	return nil
+}
+
+func (t *Tracer) install() error {
+	spec, err := loadSnisnoop()
+	if err != nil {
+		return fmt.Errorf("failed to load asset: %w", err)
+	}
+
+	networkTracer, err := networktracer.NewTracer(
+		spec,
+		BPFProgName,
+		BPFPerfMapName,
+		BPFSocketAttach,
+		types.Base,
+		parseSNIEvent,
+	)
+	if err != nil {
+		return fmt.Errorf("creating network tracer: %w", err)
+	}
+	t.Tracer = networkTracer
+	return nil
+}
+
+func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	<-t.ctx.Done()
+	return nil
+}
+
+func (t *Tracer) Close() {
+	if t.cancel != nil {
+		t.cancel()
+	}
+
+	t.Tracer.Close()
 }

@@ -15,7 +15,6 @@
 package common
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -165,11 +164,21 @@ func buildCommandFromGadget(
 
 			ctx := fe.GetContext()
 
+			timeoutDuration := time.Duration(0)
+
 			// Handle timeout parameter by adding a timeout to the context
 			if timeout != 0 {
-				tmpCtx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
-				defer cancel()
-				ctx = tmpCtx
+				if gadgetDesc.Type().IsPeriodic() {
+					interval := gadgetParams.Get(gadgets.ParamInterval).AsInt()
+					if timeout < interval {
+						return fmt.Errorf("timeout must be greater than interval")
+					}
+					if timeout%interval != 0 {
+						return fmt.Errorf("timeout must be a multiple of interval")
+					}
+				}
+
+				timeoutDuration = time.Duration(timeout) * time.Second
 			}
 
 			gadgetCtx := gadgetcontext.New(
@@ -181,7 +190,9 @@ func buildCommandFromGadget(
 				operatorsParamCollection,
 				parser,
 				logger.DefaultLogger(),
+				timeoutDuration,
 			)
+			defer gadgetCtx.Cancel()
 
 			outputModeInfo := strings.SplitN(outputMode, "=", 2)
 			outputModeName := outputModeInfo[0]
