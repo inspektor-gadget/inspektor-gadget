@@ -240,6 +240,9 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	if (!skip_exit_probe(nr))
 		bpf_map_update_elem(&probe_at_sys_exit, &pid, &remembered, BPF_ANY);
 
+	// We need to unroll this loop to make this work on kernels 5.4.0-x on ubuntu, see
+	// https://github.com/inspektor-gadget/inspektor-gadget/issues/1465 for more details.
+	#pragma unroll
 	for (i = 0; i < SYSCALL_ARGS; i++) {
 		__u64 arg_len = syscall_def->args_len[i];
 
