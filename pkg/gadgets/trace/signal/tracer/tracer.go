@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -275,4 +277,27 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 		config: &Config{},
 	}
 	return tracer, nil
+}
+
+func signalStringToInt(signal string) (int32, error) {
+	// There are three possibilities:
+	// 1. Either user did not give a signal, thus the argument is empty string.
+	// 2. Or signal begins with SIG.
+	// 3. Or signal is a string which contains an integer.
+	if signal == "" {
+		return 0, nil
+	}
+
+	if strings.HasPrefix(signal, "SIG") {
+		signalNum := unix.SignalNum(signal)
+		if signalNum == 0 {
+			return 0, fmt.Errorf("no signal found for %q", signal)
+		}
+
+		return int32(signalNum), nil
+	}
+
+	signalNum, err := strconv.ParseInt(signal, 10, 32)
+
+	return int32(signalNum), err
 }
