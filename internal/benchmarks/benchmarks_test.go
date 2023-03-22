@@ -34,8 +34,8 @@ import (
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 
 	// TODO: find out why those gadgets don't work in the tests
-	//_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/tracer"
-	//_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/tracer"
+	// _ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/tracer"
+	// _ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/tracer"
 
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/advise/seccomp/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/tracer"
@@ -191,7 +191,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 	utilstest.RequireRoot(b)
 
 	// Prepare runtime
-	runtime := &local.Runtime{}
+	runtime := local.New()
 	err := runtime.Init(nil)
 	if err != nil {
 		b.Fatalf("initializing runtime: %s", err)
@@ -258,6 +258,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 							ctx,
 							"",
 							runtime,
+							runtime.ParamDescs().ToParams(),
 							gadgetDesc,
 							gadgetParams,
 							operatorsParamCollection,
