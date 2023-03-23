@@ -27,6 +27,15 @@ const (
 	ParamMaxRows  = "max-rows"
 )
 
+const (
+	K8SNodeName      params.ValueHint = "k8s:node"
+	K8SNodeList      params.ValueHint = "k8s:node-list"
+	K8SPodName       params.ValueHint = "k8s:pod"
+	K8SNamespace     params.ValueHint = "k8s:namespace"
+	K8SContainerName params.ValueHint = "k8s:container"
+	K8SLabels        params.ValueHint = "k8s:labels"
+)
+
 // DefaultSort can be implemented in addition to the Gadget interface, to specify the default sorting columns
 type DefaultSort interface {
 	SortByDefault() []string

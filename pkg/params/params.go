@@ -74,6 +74,12 @@ type ParamDesc struct {
 	// matching validator automatically; if unset, a value of "string" is assumed
 	TypeHint TypeHint `json:"type"`
 
+	// ValueHint can give a hint on what content is expected here - for example, it can be
+	// used to hint that the param expects a kubernetes namespace, a list of nodes and so on.
+	// This is helpful for frontends to provide autocompletion/selections or set defaults
+	// accordingly.
+	ValueHint ValueHint `json:"valueHint"`
+
 	// PossibleValues holds all possible values for this parameter and will be considered
 	// when validating
 	PossibleValues []string `json:"possibleValues"`
