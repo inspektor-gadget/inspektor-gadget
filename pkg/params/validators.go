@@ -51,6 +51,8 @@ var typeHintValidators = map[TypeHint]ParamValidator{
 	TypeUint64: ValidateUint(64),
 }
 
+type ValueHint string
+
 type ParamValidator func(value string) error
 
 func ValidateInt(bitsize int) func(string) error {
