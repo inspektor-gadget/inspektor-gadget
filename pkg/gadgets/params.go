@@ -23,7 +23,7 @@ import (
 
 const (
 	ParamInterval = "interval"
-	ParamSortBy   = "sort-by"
+	ParamSortBy   = "sort"
 	ParamMaxRows  = "max-rows"
 )
 
@@ -42,8 +42,8 @@ type DefaultSort interface {
 }
 
 // GadgetParams returns params specific to the gadgets' type - for example, it returns
-// sort-by parameter and max rows for gadgets with sortable results, and interval parameters
-// when the gadget is to be called periodically
+// parameters for 'sort' and 'max-rows' for gadgets with sortable results, and 'interval'
+// for periodically called gadgets
 func GadgetParams(gadget GadgetDesc, parser parser.Parser) params.ParamDescs {
 	p := params.ParamDescs{}
 	if gadget.Type().IsPeriodic() {
