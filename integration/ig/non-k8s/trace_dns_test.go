@@ -127,7 +127,7 @@ func TestTraceDns(t *testing.T) {
 		&DockerContainer{
 			Name:    cn,
 			Cmd:     strings.Join(dnsCmds, " ; "),
-			Options: NewDockerOptions(WithDockerImage("ghcr.io/inspektor-gadget/dnstester:latest")),
+			Options: NewDockerOptions(WithDockerImage(*dnsTesterImage)),
 		},
 	}
 

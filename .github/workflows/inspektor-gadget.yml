@@ -4,6 +4,7 @@ env:
   CONTAINER_REPO: ${{ github.repository }}
   GO_VERSION: 1.19.6
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
+  DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:latest
 concurrency:
   group: ${{ github.ref }}
   # We do not want to cancel job in progress on main to be sure to catch new
@@ -419,8 +420,9 @@ jobs:
   build-helper-images:
     # level: 0
     name: Build helper images
-    if: github.repository == 'inspektor-gadget/inspektor-gadget'
     runs-on: ubuntu-latest
+    outputs:
+      dnstester_image: ${{ steps.image-tag.outputs.dnstester || env.DEFAULT_DNSTESTER_IMAGE }}
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -452,21 +454,28 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Set container repository and determine image tag
+      if: steps.filter.outputs.pattern == 'true'
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
       with:
         registry: ${{ env.REGISTRY }}
-        container-image: inspektor-gadget/${{ matrix.image.name }}
+        container-image: ${{ github.repository_owner }}/${{ matrix.image.name }}
         co-re: false
     - name: Build ${{ matrix.image.name }} image
+      id: build-image
       if: steps.filter.outputs.pattern == 'true'
       uses: docker/build-push-action@v4
       with:
         context: ${{ matrix.image.dockerfile-dir }}
         file: ${{ matrix.image.dockerfile-dir }}/Dockerfile
-        push: true
+        push: ${{ vars.PUSH_HELPERS == 'ENABLE_PUSH_HELPERS' }}
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         platforms: ${{ matrix.image.platform }}
+    - name: Save ${{ matrix.image.name }} image tag output
+      id: image-tag
+      if: steps.build-image.outputs.digest != ''
+      run: |
+        echo "${{ matrix.image.name }}=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}" >> $GITHUB_OUTPUT
 
   build-examples:
     name: Build examples
@@ -704,7 +713,7 @@ jobs:
   test-integration-k8s-ig:
     name: Integration tests for ig with Kubernetes Containers
     # level: 2
-    needs: [ test-unit, test-ig, build-ig ]
+    needs: [ test-unit, test-ig, build-ig, build-helper-images ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -734,7 +743,10 @@ jobs:
         id: integration-tests
         run: |
           set -o pipefail
-          make -C integration/ig/k8s CONTAINER_RUNTIME=${{ matrix.runtime }} -o build test |& tee integration.log
+          make -C integration/ig/k8s \
+            CONTAINER_RUNTIME=${{ matrix.runtime }} \
+            DNSTESTER_IMAGE=${{ needs.build-helper-images.outputs.dnstester_image }} \
+            -o build test |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
         continue-on-error: true
@@ -746,7 +758,7 @@ jobs:
   test-integration-non-k8s-ig:
     name: Integration tests for ig with non-Kubernetes Containers
     # level: 2
-    needs: [ test-unit, test-ig, build-ig ]
+    needs: [ test-unit, test-ig, build-ig, build-helper-images ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -772,7 +784,9 @@ jobs:
         id: integration-tests
         run: |
           set -o pipefail
-          make -C integration/ig/non-k8s -o build test-${{ matrix.runtime }} |& tee integration.log
+          make -C integration/ig/non-k8s \
+            DNSTESTER_IMAGE=${{ needs.build-helper-images.outputs.dnstester_image }} \
+            -o build test-${{ matrix.runtime }} |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}
         if: always()
         continue-on-error: true
@@ -902,7 +916,7 @@ jobs:
   test-integration-minikube:
     name: Integration tests
     # level: 1
-    needs: [test-unit, build-kubectl-gadget, build-ig, build-gadget-container-images]
+    needs: [test-unit, build-kubectl-gadget, build-ig, build-gadget-container-images, build-helper-images ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -945,6 +959,7 @@ jobs:
         kubernetes_architecture: "amd64"
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        dnstester_image: ${{ needs.build-helper-images.outputs.dnstester_image }}
 
   release:
     name: Release

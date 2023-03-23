@@ -47,7 +47,8 @@ var (
 	integration = flag.Bool("integration", false, "run integration tests")
 
 	// image such as ghcr.io/inspektor-gadget/inspektor-gadget:latest
-	image = flag.String("image", "", "gadget container image")
+	image          = flag.String("image", "", "gadget container image")
+	dnsTesterImage = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
 
 	doNotDeployIG  = flag.Bool("no-deploy-ig", false, "don't deploy Inspektor Gadget")
 	doNotDeploySPO = flag.Bool("no-deploy-spo", false, "don't deploy the Security Profiles Operator (SPO)")

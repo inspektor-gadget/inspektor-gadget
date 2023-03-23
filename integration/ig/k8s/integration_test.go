@@ -36,6 +36,7 @@ var supportedContainerRuntimes = []string{ContainerRuntimeDocker, ContainerRunti
 var (
 	integration      = flag.Bool("integration", false, "run integration tests")
 	containerRuntime = flag.String("container-runtime", "", "allows to do validation for expected runtime in the tests")
+	dnsTesterImage   = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
 )
 
 func init() {
