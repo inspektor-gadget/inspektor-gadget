@@ -89,11 +89,6 @@ func TestTraceDns(t *testing.T) {
 				},
 			}
 
-			// DNS gadget doesn't provide container data. Remove it.
-			for _, entry := range expectedEntries {
-				entry.Container = ""
-			}
-
 			normalize := func(e *tracednsTypes.Event) {
 				e.Timestamp = 0
 				e.Node = ""
