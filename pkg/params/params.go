@@ -175,7 +175,9 @@ func (p *ParamDescs) Get(key string) *ParamDesc {
 func (p DescCollection) ToParams() Collection {
 	coll := make(Collection)
 	for key, param := range p {
-		coll[key] = param.ToParams()
+		if param != nil {
+			coll[key] = param.ToParams()
+		}
 	}
 	return coll
 }
