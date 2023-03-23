@@ -52,6 +52,10 @@ func (g *GadgetDesc) EventPrototype() any {
 	return &types.Event{}
 }
 
+func (g *GadgetDesc) SkipParams() []params.ValueHint {
+	return []params.ValueHint{gadgets.K8SContainerName}
+}
+
 func init() {
 	gadgetregistry.Register(&GadgetDesc{})
 }

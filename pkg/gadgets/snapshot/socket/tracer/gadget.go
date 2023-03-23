@@ -80,6 +80,10 @@ func (g *GadgetDesc) SortByDefault() []string {
 	}
 }
 
+func (g *GadgetDesc) SkipParams() []params.ValueHint {
+	return []params.ValueHint{gadgets.K8SContainerName}
+}
+
 func init() {
 	gadgetregistry.Register(&GadgetDesc{})
 }
