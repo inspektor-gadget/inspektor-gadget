@@ -36,13 +36,29 @@ func TestSnapshotSocket(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*Command{
+	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "nc -l 0.0.0.0 -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
+	}
+	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+
+	t.Cleanup(func() {
+		commandsPostTest := []*Command{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	nodeName, err := GetPodNode(ns, "test-pod")
+	if err != nil {
+		t.Fatalf("getting test-pod node: %s", err)
+	}
+
+	commands := []*Command{
 		{
 			Name: "RunSnapshotSocketGadget",
-			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json", ns),
+			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json --node %s", ns, nodeName),
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &snapshotsocketTypes.Event{
 					Event:         BuildBaseEvent(ns),
@@ -53,12 +69,12 @@ func TestSnapshotSocket(t *testing.T) {
 					RemotePort:    0,
 					Status:        "LISTEN",
 				}
+				expectedEntry.Node = nodeName
 
 				// Socket gadget doesn't provide container data yet. See issue #744.
 				expectedEntry.Container = ""
 
 				normalize := func(e *snapshotsocketTypes.Event) {
-					e.Node = ""
 					e.Container = ""
 					e.InodeNumber = 0
 					e.NetNsID = 0
@@ -67,8 +83,6 @@ func TestSnapshotSocket(t *testing.T) {
 				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
 			},
 		},
-		DeleteTestNamespaceCommand(ns),
 	}
-
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 }
