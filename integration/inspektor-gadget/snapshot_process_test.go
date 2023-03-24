@@ -28,21 +28,37 @@ func TestSnapshotProcess(t *testing.T) {
 
 	t.Parallel()
 
-	commands := []*Command{
+	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "nc -l -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
+	}
+	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+
+	t.Cleanup(func() {
+		commandsPostTest := []*Command{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	nodeName, err := GetPodNode(ns, "test-pod")
+	if err != nil {
+		t.Fatalf("getting test-pod node: %s", err)
+	}
+
+	commands := []*Command{
 		{
 			Name: "RunProcessCollectorGadget",
-			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot process -n %s -o json", ns),
+			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot process -n %s -o json --node %s", ns, nodeName),
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &snapshotprocessTypes.Event{
 					Event:   BuildBaseEvent(ns),
 					Command: "nc",
 				}
+				expectedEntry.Node = nodeName
 
 				normalize := func(e *snapshotprocessTypes.Event) {
-					e.Node = ""
 					e.Pid = 0
 					e.Tid = 0
 					e.ParentPid = 0
@@ -52,8 +68,6 @@ func TestSnapshotProcess(t *testing.T) {
 				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
 			},
 		},
-		DeleteTestNamespaceCommand(ns),
 	}
-
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 }
