@@ -333,12 +333,6 @@ func TestValidateSlice(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name:          "empty_slice_error",
-			value:         "",
-			validator:     errFn,
-			expectedError: true,
-		},
-		{
 			name:          "slice_with_2_elements_no_error",
 			value:         "foo,bar",
 			validator:     noErrFn,
@@ -360,6 +354,30 @@ func TestValidateSlice(t *testing.T) {
 
 				return nil
 			},
+			expectedError: true,
+		},
+		{
+			name:          "empty_slice_with_ValidateUintRange_no_error",
+			value:         "",
+			validator:     ValidateUintRange(1, 10),
+			expectedError: false,
+		},
+		{
+			name:          "slice_with_1_element_with_ValidateUintRange_no_error",
+			value:         "4",
+			validator:     ValidateUintRange(1, 10),
+			expectedError: false,
+		},
+		{
+			name:          "slice_with_2_elements_with_ValidateUintRange_no_error",
+			value:         "5,2",
+			validator:     ValidateUintRange(1, 10),
+			expectedError: false,
+		},
+		{
+			name:          "slice_with_3_elements_with_ValidateUintRange_error",
+			value:         "5,2,11",
+			validator:     ValidateUintRange(1, 10),
 			expectedError: true,
 		},
 	}
