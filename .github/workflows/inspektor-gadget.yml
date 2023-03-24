@@ -1238,7 +1238,7 @@ jobs:
       run: |
         for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz inspektor-gadget-${{ github.ref_name }}.yaml ig_packages/*; do
           hash=$(sha256sum $i | cut -d' ' -f1)
-          echo "${hash}  $(basename $i)" >> inspektor-gadget-${{ github.ref_name }}_checksums.txt
+          echo "${hash}  $(basename $i)" >> SHA256SUMS
         done
     - name: Upload kubectl-gadget binary
       uses: csexton/release-asset-action@v2
@@ -1261,7 +1261,7 @@ jobs:
     - name: Upload checksums file
       uses: csexton/release-asset-action@v2
       with:
-        file: inspektor-gadget-${{ github.ref_name }}_checksums.txt
+        file: SHA256SUMS
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload IG distributions packages
