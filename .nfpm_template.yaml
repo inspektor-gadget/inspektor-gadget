@@ -1,0 +1,20 @@
+# nfpm configuration file used as template.
+# all "IG_" will be replaced by proper values in the release pipeline.
+name: "ig"
+arch: "IG_ARCH"
+platform: "linux"
+version: "IG_VERSION"
+section: "devel"
+replaces:
+- ig
+provides:
+- ig
+maintainer: "The Inspektor Gadget Authors <hello@inspektor-gadget.io>"
+description: |
+  Introspecting and debugging Linux containers using eBPF "gadgets"
+vendor: "Inspektor Gadget"
+homepage: "https://www.inspektor-gadget.io/"
+license: "Apache and GPL"
+contents:
+- src: IG_PATH
+  dst: /usr/bin/ig

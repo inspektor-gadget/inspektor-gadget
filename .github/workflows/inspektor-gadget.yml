@@ -991,6 +991,38 @@ jobs:
         name: Release ${{ github.ref }}
     - name: Get all artifacts.
       uses: actions/download-artifact@v3
+    - name: Setup go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+      id: go
+    - name: Build ig distributions packages
+      run: |
+        go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+        mkdir ig_packages
+        for ig_archive in ig-*-*-tar-gz/ig-*-*.tar.gz; do
+          cp .nfpm_template.yaml nfpm.yaml
+
+          mkdir archive_output
+          tar zxvf $ig_archive -C archive_output
+          export path=$(find archive_output -name 'ig')
+
+          # Fill the template file with corresponding information.
+          export arch=$(echo $ig_archive | cut -d'-' -f3)
+          perl -pi -e 's/IG_ARCH/$ENV{arch}/; s/IG_VERSION/${{ github.ref_name }}/; s/IG_PATH/$ENV{path}/' nfpm.yaml
+
+          # Build the packages
+          for distro in apk deb rpm archlinux; do
+            package=$(nfpm package -p $distro | grep 'created package' | cut -d':' -f2)
+
+            mv $package ig_packages
+          done
+
+          rm -r archive_output
+          rm nfpm.yaml
+        done
     - name: Rename all artifacts to *-${{ github.ref_name }}.tar.gz
       shell: bash
       run: |
@@ -1000,7 +1032,7 @@ jobs:
     - name: Compute checksums for all artifacts
       shell: bash
       run: |
-        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz inspektor-gadget-${{ github.ref_name }}.yaml; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz inspektor-gadget-${{ github.ref_name }}.yaml ig_packages/*; do
           hash=$(sha256sum $i | cut -d' ' -f1)
           echo "${hash}  $(basename $i)" >> inspektor-gadget-${{ github.ref_name }}_checksums.txt
         done
@@ -1026,6 +1058,12 @@ jobs:
       uses: csexton/release-asset-action@v2
       with:
         file: inspektor-gadget-${{ github.ref_name }}_checksums.txt
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
+    - name: Upload IG distributions packages
+      uses: csexton/release-asset-action@v2
+      with:
+        pattern: "ig_packages/ig*"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Update new version in krew-index
