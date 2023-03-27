@@ -1069,7 +1069,7 @@ jobs:
     - name: Update new version in krew-index
       # We only update version in krew-index for effective release.
       if: github.repository == 'inspektor-gadget/inspektor-gadget' && !endsWith(github.ref_name, 'rc')
-      uses: rajatjindal/krew-release-bot@v0.0.43
+      uses: rajatjindal/krew-release-bot@v0.0.46
       with:
         workdir: /home/runner/work/inspektor-gadget/inspektor-gadget
         krew_template_file: .krew.yaml
