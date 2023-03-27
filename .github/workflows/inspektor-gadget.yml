@@ -992,7 +992,7 @@ jobs:
     - name: Get all artifacts.
       uses: actions/download-artifact@v3
     - name: Setup go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v4
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
