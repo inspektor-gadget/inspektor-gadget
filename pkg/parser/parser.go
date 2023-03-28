@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -85,6 +86,13 @@ type Parser interface {
 	// EnableSnapshots initializes the snapshot combiner, which is able to aggregate snapshots from several sources
 	// and can return (optionally cached) results on demand; used for top gadgets
 	EnableSnapshots(ctx context.Context, t time.Duration, ttl int)
+
+	// EnableCombiner initializes the event combiner, which aggregates events from all sources; used for snapshot gadgets.
+	// Events are released by calling Flush().
+	EnableCombiner()
+
+	// Flush sends the events downstream that were collected after EnableCombiner() was called.
+	Flush()
 }
 
 type parser[T any] struct {
@@ -98,6 +106,11 @@ type parser[T any] struct {
 	logCallback        LogCallback
 	snapshotCombiner   *snapshotcombiner.SnapshotCombiner[T]
 	columnFilters      []columns.ColumnFilter
+
+	// event combiner related fields
+	eventCombinerEnabled bool
+	combinedEvents       []*T
+	mu                   sync.Mutex
 }
 
 func NewParser[T any](columns *columns.Columns[T]) Parser {
@@ -124,6 +137,19 @@ func (p *parser[T]) EnableSnapshots(ctx context.Context, interval time.Duration,
 			}
 		}
 	}()
+}
+
+func (p *parser[T]) EnableCombiner() {
+	if p.eventCallbackArray == nil {
+		panic("eventCallbackArray has to be set before using EnableCombiner()")
+	}
+
+	p.eventCombinerEnabled = true
+	p.combinedEvents = []*T{}
+}
+
+func (p *parser[T]) Flush() {
+	p.eventCallbackArray(p.combinedEvents)
 }
 
 func (p *parser[T]) SetColumnFilters(filters ...columns.ColumnFilter) {
@@ -155,9 +181,9 @@ func (p *parser[T]) SetEventCallback(eventCallback any) {
 	}
 }
 
-func (p *parser[T]) eventHandler(enrichers ...func(any) error) func(*T) {
-	if p.eventCallback == nil {
-		panic("set event callback before getting the eventHandler from parser")
+func (p *parser[T]) eventHandler(cb func(*T), enrichers ...func(any) error) func(*T) {
+	if cb == nil {
+		panic("cb can't be nil in eventHandler from parser")
 	}
 	return func(ev *T) {
 		for _, enricher := range enrichers {
@@ -166,13 +192,13 @@ func (p *parser[T]) eventHandler(enrichers ...func(any) error) func(*T) {
 		if p.filterSpecs != nil && !p.filterSpecs.MatchAll(ev) {
 			return
 		}
-		p.eventCallback(ev)
+		cb(ev)
 	}
 }
 
-func (p *parser[T]) eventHandlerArray(enrichers ...func(any) error) func([]*T) {
-	if p.eventCallbackArray == nil {
-		panic("set event callback before getting the eventHandlerArray from parser")
+func (p *parser[T]) eventHandlerArray(cb func([]*T), enrichers ...func(any) error) func([]*T) {
+	if cb == nil {
+		panic("cb can't be nil in eventHandlerArray from parser")
 	}
 	return func(events []*T) {
 		for _, enricher := range enrichers {
@@ -193,31 +219,7 @@ func (p *parser[T]) eventHandlerArray(enrichers ...func(any) error) func([]*T) {
 		if p.sortSpec != nil {
 			p.sortSpec.Sort(events)
 		}
-		p.eventCallbackArray(events)
-	}
-}
-
-func (p *parser[T]) eventHandlerSnapshot(key string, enrichers ...func(any) error) func([]*T) {
-	return func(events []*T) {
-		for _, enricher := range enrichers {
-			for _, ev := range events {
-				enricher(ev)
-			}
-		}
-		if p.filterSpecs != nil {
-			filteredEvents := make([]*T, 0, len(events))
-			for _, event := range events {
-				if !p.filterSpecs.MatchAll(event) {
-					continue
-				}
-				filteredEvents = append(filteredEvents, event)
-			}
-			events = filteredEvents
-		}
-		if p.sortSpec != nil {
-			p.sortSpec.Sort(events)
-		}
-		p.snapshotCombiner.AddSnapshot(key, events)
+		cb(events)
 	}
 }
 
@@ -228,8 +230,27 @@ func (p *parser[T]) writeLogMessage(severity logger.Level, fmt string, params ..
 	p.logCallback(severity, fmt, params)
 }
 
+func (p *parser[T]) combineEventsArrayCallback(events []*T) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.combinedEvents = append(p.combinedEvents, events...)
+}
+
+func (p *parser[T]) combineEventsCallback(event *T) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.combinedEvents = append(p.combinedEvents, event)
+}
+
 func (p *parser[T]) JSONHandlerFunc(enrichers ...func(any) error) func([]byte) {
-	handler := p.eventHandler(enrichers...)
+	cb := p.eventCallback
+	if p.eventCombinerEnabled {
+		cb = p.combineEventsCallback
+	}
+
+	handler := p.eventHandler(cb, enrichers...)
 	return func(event []byte) {
 		ev := new(T)
 		err := json.Unmarshal(event, ev)
@@ -242,10 +263,17 @@ func (p *parser[T]) JSONHandlerFunc(enrichers ...func(any) error) func([]byte) {
 }
 
 func (p *parser[T]) JSONHandlerFuncArray(key string, enrichers ...func(any) error) func([]byte) {
-	handler := p.eventHandlerArray(enrichers...)
-	if p.snapshotCombiner != nil {
-		handler = p.eventHandlerSnapshot(key, enrichers...)
+	cb := p.eventCallbackArray
+	if p.eventCombinerEnabled {
+		cb = p.combineEventsArrayCallback
+	} else if p.snapshotCombiner != nil {
+		cb = func(events []*T) {
+			p.snapshotCombiner.AddSnapshot(key, events)
+		}
 	}
+
+	handler := p.eventHandlerArray(cb, enrichers...)
+
 	return func(event []byte) {
 		var ev []*T
 		err := json.Unmarshal(event, &ev)
@@ -258,11 +286,11 @@ func (p *parser[T]) JSONHandlerFuncArray(key string, enrichers ...func(any) erro
 }
 
 func (p *parser[T]) EventHandlerFunc(enrichers ...func(any) error) any {
-	return p.eventHandler(enrichers...)
+	return p.eventHandler(p.eventCallback, enrichers...)
 }
 
 func (p *parser[T]) EventHandlerFuncArray(enrichers ...func(any) error) any {
-	return p.eventHandlerArray(enrichers...)
+	return p.eventHandlerArray(p.eventCallbackArray, enrichers...)
 }
 
 func (p *parser[T]) GetTextColumnsFormatter(options ...textcolumns.Option) TextColumnsFormatter {
