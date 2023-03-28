@@ -1,3 +1,5 @@
+DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
+
 # build
 build:
 	make -C $(shell pwd)/../../.. ig
@@ -8,5 +10,5 @@ build:
 test-docker: build
 	cp ../../../ig-linux-amd64 ig
 	go test -c -o ./ig-docker-integration.test ./...
-	sudo ./ig-docker-integration.test -test.v -integration $${INTEGRATION_TESTS_PARAMS}
+	sudo ./ig-docker-integration.test -test.v -integration -dnstester-image $(DNSTESTER_IMAGE) $${INTEGRATION_TESTS_PARAMS}
 	rm -f ./ig-docker-integration.test ./ig

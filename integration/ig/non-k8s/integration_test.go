@@ -23,7 +23,10 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
-var integration = flag.Bool("integration", false, "run integration tests")
+var (
+	integration    = flag.Bool("integration", false, "run integration tests")
+	dnsTesterImage = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
+)
 
 func init() {
 	DefaultTestComponent = IgTestComponent

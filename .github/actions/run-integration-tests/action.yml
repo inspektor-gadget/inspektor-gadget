@@ -14,6 +14,9 @@ inputs:
   kubernetes_architecture:
     description: 'The CPU architecture used to select arch specific config in tests.'
     required: true
+  dnstester_image:
+    description: 'The image used for the dnstester.'
+    default: 'ghcr.io/inspektor-gadget/dnstester:latest'
 
 runs:
   using: "composite"
@@ -63,6 +66,7 @@ runs:
           KUBERNETES_ARCHITECTURE=${{ inputs.kubernetes_architecture }} \
           CONTAINER_REPO=${{ inputs.container_repo }} \
           IMAGE_TAG=${{ inputs.image_tag }} \
+          DNSTESTER_IMAGE=${{ inputs.dnstester_image }} \
           -o kubectl-gadget integration-tests |& tee integration.log & wait $!
         echo "IntegrationTestsJob: Done"
     - name: Prepare and publish test reports

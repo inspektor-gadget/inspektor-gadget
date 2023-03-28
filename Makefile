@@ -22,6 +22,8 @@ LINTER_VERSION ?= v1.49.0
 
 EBPF_BUILDER ?= ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder
 
+DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
+
 # Adds a '-dirty' suffix to version string if there are uncommitted changes
 changes := $(shell git status --porcelain)
 ifeq ($(changes),)
@@ -190,6 +192,7 @@ integration-tests: kubectl-gadget
 			-k8s-distro $(KUBERNETES_DISTRIBUTION) \
 			-k8s-arch $(KUBERNETES_ARCHITECTURE) \
 			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
+			-dnstester-image $(DNSTESTER_IMAGE) \
 			$$INTEGRATION_TESTS_PARAMS
 
 .PHONY: generate-documentation
