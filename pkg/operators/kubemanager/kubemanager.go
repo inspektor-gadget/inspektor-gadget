@@ -30,6 +30,7 @@ import (
 )
 
 const (
+	OperatorName       = "KubeManager"
 	ParamContainerName = "containername"
 	ParamSelector      = "selector"
 	ParamAllNamespaces = "all-namespaces"
@@ -56,7 +57,7 @@ func (k *KubeManager) SetGadgetTracerMgr(g *gadgettracermanager.GadgetTracerMana
 }
 
 func (k *KubeManager) Name() string {
-	return "KubeManager"
+	return OperatorName
 }
 
 func (k *KubeManager) Description() string {
