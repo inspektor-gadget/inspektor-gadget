@@ -41,13 +41,13 @@ type Event struct {
 
 	ID         string        `json:"id,omitempty" column:"id,width:4,fixed,hide"`
 	Qr         DNSPktType    `json:"qr,omitempty" column:"qr,width:2,fixed"`
-	Nameserver string        `json:"nameserver,omitempty" column:"nameserver,template:ipaddr"`
+	Nameserver string        `json:"nameserver,omitempty" column:"nameserver,template:ipaddr,hide"`
 	PktType    string        `json:"pktType,omitempty" column:"type,minWidth:7,maxWidth:9"`
 	QType      string        `json:"qtype,omitempty" column:"qtype,minWidth:5,maxWidth:10"`
 	DNSName    string        `json:"name,omitempty" column:"name,width:30"`
 	Rcode      string        `json:"rcode,omitempty" column:"rcode,minWidth:8"`
 	Latency    time.Duration `json:"latency,omitempty" column:"latency,hide"`
-	NumAnswers int           `json:"numAnswers,omitempty" column:"numAnswers,hide" columnDesc:"Number of addresses contained in the response."`
+	NumAnswers int           `json:"numAnswers,omitempty" column:"numAnswers,width:8,maxWidth:8" columnDesc:"Number of addresses contained in the response."`
 	Addresses  []string      `json:"addresses,omitempty" column:"addresses,width:32,hide" columnDesc:"Addresses in the response. Maximum 8 are reported. Only available if the response is compressed."`
 }
 
