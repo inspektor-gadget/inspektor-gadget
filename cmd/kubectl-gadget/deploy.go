@@ -1,4 +1,4 @@
-// Copyright 2019-2021 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,12 +25,7 @@ import (
 	"strings"
 	"time"
 
-	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 	"github.com/spf13/cobra"
-
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -54,6 +49,12 @@ import (
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 	"sigs.k8s.io/yaml"
+
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
+	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
 
 var deployCmd = &cobra.Command{
@@ -531,6 +532,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			fmt.Println(getEvents(k8sClient))
 		}
 		return err
+	}
+
+	info("Retrieving Gadget Catalog...\n")
+	err = grpcruntime.New(true).UpdateCatalog()
+	if err != nil {
+		fmt.Printf("> failed: %v\n", err)
 	}
 
 	info("Inspektor Gadget successfully deployed\n")
