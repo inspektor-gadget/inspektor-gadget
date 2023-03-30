@@ -18,14 +18,39 @@ import (
 	"errors"
 	"fmt"
 
+	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
-type Runtime struct{}
+type Runtime struct {
+	catalog *runtime.Catalog
+}
 
-func (r *Runtime) Init(runtimeParams *params.Params) error {
+func New() *Runtime {
+	return &Runtime{
+		catalog: prepareCatalog(),
+	}
+}
+
+func prepareCatalog() *runtime.Catalog {
+	gadgetInfos := make([]*runtime.GadgetInfo, 0)
+	for _, gadgetDesc := range gadgetregistry.GetAll() {
+		gadgetInfos = append(gadgetInfos, runtime.GadgetInfoFromGadgetDesc(gadgetDesc))
+	}
+	operatorInfos := make([]*runtime.OperatorInfo, 0)
+	for _, operator := range operators.GetAll() {
+		operatorInfos = append(operatorInfos, runtime.OperatorToOperatorInfo(operator))
+	}
+	return &runtime.Catalog{
+		Gadgets:   gadgetInfos,
+		Operators: operatorInfos,
+	}
+}
+
+func (r *Runtime) Init(globalRuntimeParams *params.Params) error {
 	return nil
 }
 
@@ -37,7 +62,11 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 	return nil
 }
 
-func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) ([]byte, error) {
+func (r *Runtime) ParamDescs() params.ParamDescs {
+	return nil
+}
+
+func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
 	log := gadgetCtx.Logger()
 
 	log.Debugf("running with local runtime")
@@ -117,7 +146,19 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("running (with result) gadget: %w", err)
 		}
-		return out, nil
+		return runtime.CombinedGadgetResult{"": &runtime.GadgetResult{Payload: out}}, nil
 	}
 	return nil, errors.New("gadget not runnable")
+}
+
+func (r *Runtime) GetCatalog() (*runtime.Catalog, error) {
+	return r.catalog, nil
+}
+
+func (r *Runtime) SetDefaultValue(key params.ValueHint, value string) {
+	panic("not supported, yet")
+}
+
+func (r *Runtime) GetDefaultValue(key params.ValueHint) (string, bool) {
+	return "", false
 }

@@ -51,6 +51,8 @@ var typeHintValidators = map[TypeHint]ParamValidator{
 	TypeUint64: ValidateUint(64),
 }
 
+type ValueHint string
+
 type ParamValidator func(value string) error
 
 func ValidateInt(bitsize int) func(string) error {
@@ -109,6 +111,10 @@ func ValidateUintRange(min, max uint64) func(value string) error {
 
 func ValidateSlice(validator ParamValidator) func(value string) error {
 	return func(value string) error {
+		// No value to validate
+		if len(value) == 0 {
+			return nil
+		}
 		for i, val := range strings.Split(value, ",") {
 			if err := validator(val); err != nil {
 				return fmt.Errorf("entry #%d (%q): %w", i+1, val, err)

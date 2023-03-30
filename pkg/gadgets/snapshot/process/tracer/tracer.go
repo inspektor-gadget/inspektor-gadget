@@ -112,7 +112,7 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 	}
 	defer file.Close()
 
-	var events []*processcollectortypes.Event
+	events := []*processcollectortypes.Event{}
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -226,7 +226,7 @@ func runProcfsCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([
 		return nil, err
 	}
 
-	var events []*processcollectortypes.Event
+	events := []*processcollectortypes.Event{}
 
 	for _, item := range items {
 		if !item.IsDir() {

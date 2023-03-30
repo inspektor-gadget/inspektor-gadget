@@ -58,22 +58,7 @@ func NewFrontend() frontends.Frontend {
 }
 
 func (f *frontend) Logf(severity logger.Level, fmt string, params ...any) {
-	switch severity {
-	case logger.PanicLevel:
-		f.log.Panicf(fmt, params)
-	case logger.FatalLevel:
-		f.log.Fatalf(fmt, params)
-	case logger.ErrorLevel:
-		f.log.Errorf(fmt, params)
-	case logger.WarnLevel:
-		f.log.Warnf(fmt, params)
-	case logger.InfoLevel:
-		f.log.Infof(fmt, params)
-	case logger.DebugLevel:
-		f.log.Debugf(fmt, params)
-	case logger.TraceLevel:
-		f.log.Tracef(fmt, params)
-	}
+	f.log.Logf(severity, fmt, params...)
 }
 
 func (f *frontend) Clear() {

@@ -23,14 +23,6 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type RemoteKind string
-
-const (
-	RemoteKindPod     RemoteKind = "pod"
-	RemoteKindService RemoteKind = "svc"
-	RemoteKindOther   RemoteKind = "other"
-)
-
 type Event struct {
 	eventtypes.Event
 	eventtypes.WithNetNsID
@@ -46,13 +38,49 @@ type Event struct {
 	PodLabels map[string]string `json:"podLabels,omitempty" column:"podlabels,hide"`
 
 	/* Remote */
-	RemoteKind RemoteKind `json:"remoteKind,omitempty" column:"remoteKind,maxWidth:5,hide"`
-	RemoteAddr string     `json:"remoteAddr,omitempty" column:"remoteAddr,template:ipaddr,hide"`
+	RemoteKind eventtypes.RemoteKind `json:"remoteKind,omitempty" column:"remoteKind,maxWidth:5,hide"`
+	RemoteAddr string                `json:"remoteAddr,omitempty" column:"remoteAddr,template:ipaddr,hide"`
 
 	/* if RemoteKind = RemoteKindPod or RemoteKindService */
 	RemoteName      string            `json:"remoteName,omitempty" column:"remotename,hide"`
 	RemoteNamespace string            `json:"remoteNamespace,omitempty" column:"remotens,hide"`
 	RemoteLabels    map[string]string `json:"remoteLabels,omitempty" column:"remotelabels,hide"`
+}
+
+func (e *Event) SetPodOwner(s string) {
+	e.PodOwner = s
+}
+
+func (e *Event) SetPodHostIP(s string) {
+	e.PodHostIP = s
+}
+
+func (e *Event) SetPodIP(s string) {
+	e.PodIP = s
+}
+
+func (e *Event) SetPodLabels(l map[string]string) {
+	e.PodLabels = l
+}
+
+func (e *Event) GetRemoteIP() string {
+	return e.RemoteAddr
+}
+
+func (e *Event) SetRemoteName(name string) {
+	e.RemoteName = name
+}
+
+func (e *Event) SetRemoteNamespace(s string) {
+	e.RemoteNamespace = s
+}
+
+func (e *Event) SetRemoteKind(k eventtypes.RemoteKind) {
+	e.RemoteKind = k
+}
+
+func (e *Event) SetRemotePodLabels(l map[string]string) {
+	e.RemoteLabels = l
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -67,11 +95,11 @@ func GetColumns() *columns.Columns[Event] {
 		EllipsisType: ellipsis.Start,
 		Extractor: func(e *Event) string {
 			switch e.RemoteKind {
-			case RemoteKindPod:
+			case eventtypes.RemoteKindPod:
 				return fmt.Sprintf("pod %s/%s", e.RemoteNamespace, e.RemoteName)
-			case RemoteKindService:
+			case eventtypes.RemoteKindService:
 				return fmt.Sprintf("svc %s/%s", e.RemoteNamespace, e.RemoteName)
-			case RemoteKindOther:
+			case eventtypes.RemoteKindOther:
 				return fmt.Sprintf("endpoint %s", e.RemoteAddr)
 			default:
 				return e.RemoteAddr

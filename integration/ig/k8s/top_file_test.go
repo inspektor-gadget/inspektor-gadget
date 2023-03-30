@@ -85,7 +85,7 @@ func TestTopFile(t *testing.T) {
 	t.Run("StartAndStop", func(t *testing.T) {
 		t.Parallel()
 
-		cmd := fmt.Sprintf("ig top file -o json --sort-by -writes,-wbytes -m 999 --runtimes=%s", *containerRuntime)
+		cmd := fmt.Sprintf("ig top file -o json --sort -writes,-wbytes -m 999 --runtimes=%s", *containerRuntime)
 		topFileCmd := newTopFileCmd(ns, cmd, true)
 		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
@@ -93,7 +93,7 @@ func TestTopFile(t *testing.T) {
 	t.Run("Timeout", func(t *testing.T) {
 		t.Parallel()
 
-		cmd := fmt.Sprintf("ig top file -o json --sort-by -writes,-wbytes -m 999 --runtimes=%s --timeout %d",
+		cmd := fmt.Sprintf("ig top file -o json --sort -writes,-wbytes -m 999 --runtimes=%s --timeout %d",
 			*containerRuntime, timeout)
 		topFileCmd := newTopFileCmd(ns, cmd, false)
 		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
@@ -102,7 +102,7 @@ func TestTopFile(t *testing.T) {
 	t.Run("Interval=Timeout", func(t *testing.T) {
 		t.Parallel()
 
-		cmd := fmt.Sprintf("ig top file -o json --sort-by -writes,-wbytes -m 999 --runtimes=%s --timeout %d --interval %d",
+		cmd := fmt.Sprintf("ig top file -o json --sort -writes,-wbytes -m 999 --runtimes=%s --timeout %d --interval %d",
 			*containerRuntime, timeout, timeout)
 		topFileCmd := newTopFileCmd(ns, cmd, false)
 		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))

@@ -15,6 +15,7 @@
 package common
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -43,38 +44,48 @@ const (
 
 // AddCommandsFromRegistry adds all gadgets known by the registry as cobra commands as a subcommand to their categories
 func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, columnFilters []cols.ColumnFilter) {
-	runtimeParams := runtime.GlobalParamDescs().ToParams()
+	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
 
 	// Build lookup
 	lookup := make(map[string]*cobra.Command)
 
-	// Add runtime flags
-	addFlags(rootCmd, runtimeParams)
+	// Add global runtime flags
+	addFlags(rootCmd, runtimeGlobalParams, nil, runtime)
 
 	// Add operator global flags
-	operatorsParamsCollection := operators.GlobalParamsCollection()
-	for _, operatorParams := range operatorsParamsCollection {
-		addFlags(rootCmd, operatorParams)
+	operatorsGlobalParamsCollection := operators.GlobalParamsCollection()
+	for _, operatorParams := range operatorsGlobalParamsCollection {
+		addFlags(rootCmd, operatorParams, nil, runtime)
 	}
 
 	// Add all known gadgets to cobra in their respective categories
 	categories := gadgets.GetCategories()
-	for _, gadgetDesc := range gadgetregistry.GetAll() {
+	catalog, _ := runtime.GetCatalog()
+	if catalog == nil {
+		return
+	}
+
+	for _, gadgetInfo := range catalog.Gadgets {
+		gadgetDesc := gadgetregistry.Get(gadgetInfo.Category, gadgetInfo.Name)
+		if gadgetDesc == nil {
+			// This only happens, if the gadget is only known to the remote side. In this case, let's skip for now. In
+			// the future, we could at least support raw output for these unknown gadgets.
+			continue
+		}
+
 		categoryCmd := rootCmd
-		if gadgetDesc.Category() != gadgets.CategoryNone {
-			cmd, ok := lookup[gadgetDesc.Category()]
+		if gadgetInfo.Category != gadgets.CategoryNone {
+			cmd, ok := lookup[gadgetInfo.Category]
 			if !ok {
-				// Category not found, add it
-				categoryDescription, ok := categories[gadgetDesc.Category()]
-				if !ok {
-					panic(fmt.Errorf("category unknown: %q", gadgetDesc.Category()))
-				}
+				// Category not found, add it - if a gadget category is unknown, we'll still add it, even if we don't
+				// have a description.
+				categoryDescription := categories[gadgetInfo.Category]
 				cmd = &cobra.Command{
-					Use:   gadgetDesc.Category(),
+					Use:   gadgetInfo.Category,
 					Short: categoryDescription,
 				}
 				rootCmd.AddCommand(cmd)
-				lookup[gadgetDesc.Category()] = cmd
+				lookup[gadgetInfo.Category] = cmd
 			}
 			categoryCmd = cmd
 		}
@@ -82,8 +93,9 @@ func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, co
 			gadgetDesc,
 			columnFilters,
 			runtime,
-			runtimeParams,
-			operatorsParamsCollection,
+			runtimeGlobalParams,
+			operatorsGlobalParamsCollection,
+			gadgetInfo.OperatorParamsCollection.ToParams(),
 		))
 	}
 }
@@ -112,13 +124,19 @@ func buildCommandFromGadget(
 	gadgetDesc gadgets.GadgetDesc,
 	columnFilters []cols.ColumnFilter,
 	runtime runtime.Runtime,
-	runtimeParams *params.Params,
+	runtimeGlobalParams *params.Params,
+	operatorsGlobalParamsCollection params.Collection,
 	operatorsParamsCollection params.Collection,
 ) *cobra.Command {
 	var outputMode string
 	var verbose bool
 	var filters []string
 	var timeout int
+
+	var skipParams []params.ValueHint
+	if skipParamsInterface, ok := gadgetDesc.(gadgets.GadgetDescSkipParams); ok {
+		skipParams = skipParamsInterface.SkipParams()
+	}
 
 	outputFormats := gadgets.OutputFormats{}
 	defaultOutputFormat := ""
@@ -129,12 +147,17 @@ func buildCommandFromGadget(
 		parser.SetColumnFilters(columnFilters...)
 	}
 
+	// Instantiate runtime params
+	runtimeParams := runtime.ParamDescs().ToParams()
+
 	// Instantiate gadget params - this is important, because the params get filled out by cobra
 	gadgetParams := gadgetDesc.ParamDescs().ToParams()
 
-	// Get per gadget operator params
+	// Get per gadget operators
 	validOperators := operators.GetOperatorsForGadget(gadgetDesc)
-	operatorsParamCollection := validOperators.ParamCollection()
+
+	// TODO: Combine remote operator params with locally available ones
+	//  Example use case: setting default namespace for kubernetes
 
 	cmd := &cobra.Command{
 		Use:          gadgetDesc.Name(),
@@ -147,13 +170,13 @@ func buildCommandFromGadget(
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := runtime.Init(runtimeParams)
+			err := runtime.Init(runtimeGlobalParams)
 			if err != nil {
 				return fmt.Errorf("initializing runtime: %w", err)
 			}
 			defer runtime.Close()
 
-			err = validOperators.Init(operatorsParamsCollection)
+			err = validOperators.Init(operatorsGlobalParamsCollection)
 			if err != nil {
 				return fmt.Errorf("initializing operators: %w", err)
 			}
@@ -185,9 +208,10 @@ func buildCommandFromGadget(
 				ctx,
 				"",
 				runtime,
+				runtimeParams,
 				gadgetDesc,
 				gadgetParams,
-				operatorsParamCollection,
+				operatorsParamsCollection,
 				parser,
 				logger.DefaultLogger(),
 				timeoutDuration,
@@ -223,20 +247,42 @@ func buildCommandFromGadget(
 				}
 
 				// This kind of gadgets return directly the result instead of
-				// using the parser
-				result, err := runtime.RunGadget(gadgetCtx)
-				if err != nil {
-					return fmt.Errorf("running gadget: %w", err)
+				// using the parser. We allow partial results, so error is only
+				// returned after handling those results.
+				results, err := runtime.RunGadget(gadgetCtx)
+
+				for node, result := range results {
+					if result.Error != nil {
+						continue
+					}
+					transformed, err := transformResult(result.Payload)
+					if err != nil {
+						gadgetCtx.Logger().Warnf("transform result for %q failed: %v", node, err)
+						continue
+					}
+					results[node].Payload = transformed
 				}
 
-				transformed, err := transformResult(result)
-				if err != nil {
-					return fmt.Errorf("transforming result: %w", err)
+				if len(results) == 1 {
+					// still need to iterate as we don't necessarily know the key
+					for _, result := range results {
+						fe.Output(string(result.Payload))
+					}
+				} else {
+					format := "%s: %s"
+					for _, result := range results {
+						// Check, whether we have a multi-line payload and adjust the output accordingly
+						if bytes.Contains(result.Payload, []byte("\n")) {
+							format = "\n---\n%s:\n%s"
+							break
+						}
+					}
+					for key, result := range results {
+						fe.Output(fmt.Sprintf(format, key, string(result.Payload)))
+					}
 				}
 
-				fe.Output(string(transformed))
-
-				return nil
+				return err
 			}
 
 			// Add filters if requested
@@ -406,17 +452,29 @@ func buildCommandFromGadget(
 	// Add params matching the gadget type
 	gadgetParams.Add(*gadgets.GadgetParams(gadgetDesc, parser).ToParams()...)
 
-	// Add gadget flags
-	addFlags(cmd, gadgetParams)
+	// Add runtime flags
+	addFlags(cmd, runtimeParams, skipParams, runtime)
 
-	// Add per-gadget operator flags
-	for _, operatorParams := range operatorsParamCollection {
-		addFlags(cmd, operatorParams)
+	// Add gadget flags
+	addFlags(cmd, gadgetParams, skipParams, runtime)
+
+	// Add operator flags
+	for _, operatorParams := range operatorsParamsCollection {
+		addFlags(cmd, operatorParams, skipParams, runtime)
 	}
 	return cmd
 }
 
-func addFlags(cmd *cobra.Command, params *params.Params) {
+func mustSkip(skipParams []params.ValueHint, valueHint params.ValueHint) bool {
+	for _, param := range skipParams {
+		if param == valueHint {
+			return true
+		}
+	}
+	return false
+}
+
+func addFlags(cmd *cobra.Command, params *params.Params, skipParams []params.ValueHint, runtime runtime.Runtime) {
 	defer func() {
 		if err := recover(); err != nil {
 			panic(fmt.Sprintf("registering params for command %q: %v", cmd.Use, err))
@@ -424,6 +482,18 @@ func addFlags(cmd *cobra.Command, params *params.Params) {
 	}()
 	for _, p := range *params {
 		desc := p.Description
+
+		if p.ValueHint != "" {
+			if mustSkip(skipParams, p.ValueHint) {
+				// don't expose this parameter
+				continue
+			}
+
+			// Try to get a value from the runtime
+			if value, hasValue := runtime.GetDefaultValue(p.ValueHint); hasValue {
+				p.Set(value)
+			}
+		}
 
 		if p.PossibleValues != nil {
 			desc += " [" + strings.Join(p.PossibleValues, ", ") + "]"

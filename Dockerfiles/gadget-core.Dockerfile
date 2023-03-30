@@ -46,14 +46,14 @@ FROM ${BASE_IMAGE}
 # available on the base image
 RUN set -ex; \
 	if command -v tdnf; then \
-		tdnf install -y libseccomp wget util-linux; \
+		tdnf install -y libseccomp wget util-linux socat; \
 	elif command -v yum; then \
-		yum install -y libseccomp wget util-linux; \
+		yum install -y libseccomp wget util-linux socat; \
 	elif command -v apt-get; then \
 		apt-get update && \
-		apt-get install -y seccomp wget util-linux; \
+		apt-get install -y seccomp wget util-linux socat; \
 	elif command -v apk; then \
-		apk add gcompat libseccomp wget util-linux; \
+		apk add gcompat libseccomp wget util-linux socat; \
 	fi && \
 	(rmdir /usr/src || true) && ln -sf /host/usr/src /usr/src && \
 	rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime

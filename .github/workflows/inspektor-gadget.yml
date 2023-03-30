@@ -691,25 +691,6 @@ jobs:
             echo "aks=false" >> $GITHUB_OUTPUT
           fi
 
-  check-readme-up-to-date:
-    name: Check that README is up to date
-    # level: 1
-    needs: build-kubectl-gadget
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Get kubectl-gadget-linux-amd64.tar.gz from artifact.
-      uses: actions/download-artifact@v3
-      with:
-        name: kubectl-gadget-linux-amd64-tar-gz
-        path: /home/runner/work/inspektor-gadget/
-    - name: Check that README is up to date
-      shell: bash
-      run: |
-        tar zxvf /home/runner/work/inspektor-gadget/kubectl-gadget-linux-amd64.tar.gz
-
-        perl tools/check-readme.pl ./kubectl-gadget README.md
-
   test-integration-k8s-ig:
     name: Integration tests for ig with Kubernetes Containers
     # level: 2
@@ -960,6 +941,14 @@ jobs:
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         dnstester_image: ${{ needs.build-helper-images.outputs.dnstester_image }}
+    - if: ${{ matrix.type == 'default' && matrix.runtime == 'docker' }}
+      name: Check that README is up-to-date
+      # We do this check here, as we need to run kubectl-gadget against a deployed installation to
+      # be able to download a populated catalog. But we only do it for default/docker, as it's not
+      # necessary to check it more than once.
+      shell: bash
+      run: |
+        perl tools/check-readme.pl ./kubectl-gadget README.md
 
   release:
     name: Release
@@ -974,7 +963,6 @@ jobs:
       - test-ig
       - test-integration-k8s-ig
       - test-integration-non-k8s-ig
-      - check-readme-up-to-date
       - build-examples
       - build-gadgets-examples
     runs-on: ubuntu-latest

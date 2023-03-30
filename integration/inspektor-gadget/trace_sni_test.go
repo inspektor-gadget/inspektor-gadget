@@ -39,9 +39,6 @@ func TestTraceSni(t *testing.T) {
 				Name:  "inspektor-gadget.io",
 			}
 
-			// SNI gadget doesn't provide container data. Remove it.
-			expectedEntry.Container = ""
-
 			normalize := func(e *tracesniTypes.Event) {
 				e.Timestamp = 0
 				e.Node = ""

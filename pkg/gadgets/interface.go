@@ -66,6 +66,16 @@ type GadgetDesc interface {
 	EventPrototype() any
 }
 
+// Optional extensions to GadgetDesc
+
+// GadgetDescSkipParams / SkipParams() can define params that a gadget, runtime or operators never can use in
+// combination with this gadget. Currently, this is used to not allow to specify for example a container name
+// when the gadget is working inside the kubernetes environment and using the netns (as results could be ambiguous in
+// that case).
+type GadgetDescSkipParams interface {
+	SkipParams() []params.ValueHint
+}
+
 type OutputFormats map[string]OutputFormat
 
 // OutputFormat can hold alternative output formats for a gadget. Whenever

@@ -51,7 +51,7 @@ func main() {
 		newVersionCmd(),
 	)
 
-	runtime := &local.Runtime{}
+	runtime := local.New()
 	// columnFilters for ig
 	columnFilters := []columns.ColumnFilter{columns.Or(columns.WithTag("runtime"), columns.WithNoTags())}
 	common.AddCommandsFromRegistry(rootCmd, runtime, columnFilters)

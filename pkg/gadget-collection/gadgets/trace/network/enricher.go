@@ -25,6 +25,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type Enricher struct {
@@ -64,7 +65,7 @@ func enrich(event *types.Event, pods *corev1.PodList, svcs *corev1.ServiceList) 
 			continue
 		}
 		if pod.Status.PodIP == event.RemoteAddr {
-			event.RemoteKind = types.RemoteKindPod
+			event.RemoteKind = eventtypes.RemoteKindPod
 			event.RemoteNamespace = pod.Namespace
 			event.RemoteName = pod.Name
 			event.RemoteLabels = pod.Labels
@@ -88,7 +89,7 @@ func enrich(event *types.Event, pods *corev1.PodList, svcs *corev1.ServiceList) 
 	if event.RemoteKind == "" {
 		for _, svc := range svcs.Items {
 			if svc.Spec.ClusterIP == event.RemoteAddr {
-				event.RemoteKind = types.RemoteKindService
+				event.RemoteKind = eventtypes.RemoteKindService
 				event.RemoteNamespace = svc.Namespace
 				event.RemoteName = svc.Name
 				event.RemoteLabels = svc.Spec.Selector
@@ -98,7 +99,7 @@ func enrich(event *types.Event, pods *corev1.PodList, svcs *corev1.ServiceList) 
 	}
 
 	if event.RemoteKind == "" {
-		event.RemoteKind = types.RemoteKindOther
+		event.RemoteKind = eventtypes.RemoteKindOther
 	}
 }
 

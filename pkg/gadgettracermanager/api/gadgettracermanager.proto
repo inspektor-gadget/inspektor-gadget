@@ -78,3 +78,63 @@ message Dump {
   string traces = 2;
   string stacks = 3;
 }
+
+message GadgetRunRequest {
+  // name of the gadget as returned by gadgetDesc.Name()
+  string gadgetName = 1;
+
+  // category of the gadget as returned by gadgetDesc.Category()
+  string gadgetCategory = 2;
+
+  // params is a combined map of all params a gadget could need (including those
+  // of runtime and operators, which need specific prefixes, see implementation in
+  // pkg/runtime/grpc)
+  map<string, string> params = 3;
+
+  // a list of nodes the gadget should run on; if not specified, it should run
+  // on all nodes
+  repeated string nodes = 10;
+
+  // if set to true, the gadget service should forward the request to each node
+  // from the nodes list (or each node it knows, if the list is empty) and combine
+  // their output
+  bool fanOut = 11;
+
+  // sets the requested log level (see pkg/logger/logger.go)
+  uint32 logLevel = 12;
+
+  // time that a gadget should run; use 0, if the gadget should run until it's being
+  // stopped or done
+  int64 timeout = 13;
+}
+
+message GadgetStopRequest {
+}
+
+message GadgetEvent {
+  // Types are specified in consts.go. Upper 16 bits are used for log severity levels
+  uint32 type = 1;
+  uint32 seq = 2;
+  bytes payload = 3;
+}
+
+message GadgetControlRequest {
+  oneof Event {
+      GadgetRunRequest runRequest = 1;
+      GadgetStopRequest stopRequest = 2;
+  }
+}
+
+message InfoRequest {
+  string version = 1;
+}
+
+message InfoResponse {
+  string version = 1;
+  bytes catalog = 2;
+}
+
+service GadgetManager {
+  rpc GetInfo(InfoRequest) returns (InfoResponse) {}
+  rpc RunGadget(stream GadgetControlRequest) returns (stream GadgetEvent) {}
+}

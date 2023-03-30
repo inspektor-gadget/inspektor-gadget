@@ -16,18 +16,19 @@ package main
 
 import (
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/advise"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/audit"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/profile"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/snapshot"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/top"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/trace"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
-
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
+
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 )
 
 // common params for all gadgets
@@ -38,18 +39,46 @@ var rootCmd = &cobra.Command{
 	Short: "Collection of gadgets for Kubernetes developers",
 }
 
+var catalogSkipCommands = []string{"deploy", "undeploy", "version"}
+
 func init() {
 	utils.FlagInit(rootCmd)
-
-	rootCmd.AddCommand(advise.NewAdviseCmd())
-	rootCmd.AddCommand(audit.NewAuditCmd())
-	rootCmd.AddCommand(profile.NewProfileCmd())
-	rootCmd.AddCommand(snapshot.NewSnapshotCmd())
-	rootCmd.AddCommand(top.NewTopCmd())
-	rootCmd.AddCommand(trace.NewTraceCmd())
 }
 
 func main() {
+	// grpcruntime.New() will try to fetch a catalog from the cluster by
+	// default. Make sure we don't do this when certain commands are run
+	// (as they just don't need it or imply that there are no nodes to
+	// contact, yet).
+	skipCatalog := false
+	for _, arg := range os.Args[1:] {
+		for _, skipCmd := range catalogSkipCommands {
+			if strings.ToLower(arg) == skipCmd {
+				skipCatalog = true
+			}
+		}
+	}
+
+	runtime := grpcruntime.New(skipCatalog)
+
+	namespace, _ := utils.GetNamespace()
+	runtime.SetDefaultValue(gadgets.K8SNamespace, namespace)
+
+	// columnFilters for kubectl-gadget
+	columnFilters := []columns.ColumnFilter{columns.Or(columns.WithTag("kubernetes"), columns.WithNoTags())}
+	common.AddCommandsFromRegistry(rootCmd, runtime, columnFilters)
+
+	// Advise category is still being handled by CRs for now
+	rootCmd.AddCommand(advise.NewAdviseCmd())
+
+	rootCmd.AddCommand(&cobra.Command{
+		Use:   "update-catalog",
+		Short: "Download a new gadget catalog from the nodes to have it in sync with this client",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runtime.UpdateCatalog()
+		},
+	})
+
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}

@@ -103,6 +103,13 @@ type ContainerInfoSetters interface {
 	SetNode(string)
 }
 
+type ContainerInfoGetters interface {
+	GetNode() string
+	GetPod() string
+	GetNamespace() string
+	GetContainer() string
+}
+
 var allOperators = map[string]Operator{}
 
 type operatorWrapper struct {
@@ -117,6 +124,13 @@ func (e *operatorWrapper) Init(params *params.Params) (err error) {
 		e.initialized = true
 	})
 	return err
+}
+
+func GetRaw(name string) Operator {
+	if op, ok := allOperators[name]; ok {
+		return op.(*operatorWrapper).Operator
+	}
+	return nil
 }
 
 // Register adds a new operator to the registry

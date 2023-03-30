@@ -88,18 +88,19 @@ Usage:
   kubectl-gadget [command]
 
 Available Commands:
-  advise      Recommend system configurations based on collected information
-  audit       Audit a subsystem
-  completion  Generate the autocompletion script for the specified shell
-  deploy      Deploy Inspektor Gadget on the cluster
-  help        Help about any command
-  profile     Profile different subsystems
-  snapshot    Take a snapshot of a subsystem and print it
-  top         Gather, sort and periodically report events according to a given criteria
-  trace       Trace and print system events
-  traceloop   Get strace-like logs of a container from the past
-  undeploy    Undeploy Inspektor Gadget from cluster
-  version     Show version
+  advise         Recommend system configurations based on collected information
+  audit          Audit a subsystem
+  completion     Generate the autocompletion script for the specified shell
+  deploy         Deploy Inspektor Gadget on the cluster
+  help           Help about any command
+  profile        Profile different subsystems
+  snapshot       Take a snapshot of a subsystem and print it
+  top            Gather, sort and periodically report events according to a given criteria
+  trace          Trace and print system events
+  traceloop      Get strace-like logs of a container from the past
+  undeploy       Undeploy Inspektor Gadget from cluster
+  update-catalog Download a new gadget catalog from the nodes to have it in sync with this client
+  version        Show version
 
 ...
 ```
@@ -170,7 +171,7 @@ Usage:
   kubectl-gadget trace [command]
 
 Available Commands:
-  bind         Trace the kernel functions performing socket binding
+  bind         Trace socket bindings
   capabilities Trace security capability checks
   dns          Trace DNS requests
   exec         Trace new processes
