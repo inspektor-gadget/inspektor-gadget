@@ -158,6 +158,14 @@ func (e Event) GetBaseEvent() *Event {
 	return &e
 }
 
+func (e *Event) GetType() EventType {
+	return e.Type
+}
+
+func (e *Event) GetMessage() string {
+	return e.Message
+}
+
 func Err(msg string) Event {
 	return Event{
 		CommonData: CommonData{

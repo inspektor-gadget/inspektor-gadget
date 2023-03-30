@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 // TextColumnsFormatter is the interface used for outputHelper
@@ -33,6 +35,11 @@ type TextColumnsFormatter interface {
 
 type ExtraLines interface {
 	ExtraLines() []string
+}
+
+type ErrorGetter interface {
+	GetType() types.EventType
+	GetMessage() string
 }
 
 // outputHelpers hides all information about underlying types from the application
@@ -59,6 +66,23 @@ func (oh *outputHelper[T]) EventHandlerFunc() any {
 		panic("set event callback before getting the EventHandlerFunc from TextColumnsFormatter")
 	}
 	return func(ev *T) {
+		if getter, ok := any(ev).(ErrorGetter); ok {
+			switch getter.GetType() {
+			case types.ERR:
+				oh.parser.writeLogMessage(logger.ErrorLevel, getter.GetMessage())
+				return
+			case types.WARN:
+				oh.parser.writeLogMessage(logger.WarnLevel, getter.GetMessage())
+				return
+			case types.DEBUG:
+				oh.parser.writeLogMessage(logger.DebugLevel, getter.GetMessage())
+				return
+			case types.INFO:
+				oh.parser.writeLogMessage(logger.InfoLevel, getter.GetMessage())
+				return
+			}
+		}
+
 		oh.forwardEvent(ev)
 	}
 }

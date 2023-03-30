@@ -227,7 +227,7 @@ func (p *parser[T]) writeLogMessage(severity logger.Level, fmt string, params ..
 	if p.logCallback == nil {
 		return
 	}
-	p.logCallback(severity, fmt, params)
+	p.logCallback(severity, fmt, params...)
 }
 
 func (p *parser[T]) combineEventsArrayCallback(events []*T) {
