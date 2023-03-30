@@ -59,3 +59,9 @@ namespace "demo" deleted
 ### With `ig`
 
 TODO
+
+### Limitations
+
+- The gadget is only able to capture up to 8 addresses on a DNS response. The event contains a
+  `NumAnswers` field that can be used to check if the addresses reported were truncated.
+- Addresses on a response are only captured if it is [compressed](https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.4).
