@@ -99,7 +99,11 @@ type ContainerInfoFromNetNSID interface {
 }
 
 type ContainerInfoSetters interface {
+	NodeSetter
 	SetContainerInfo(pod, namespace, container string)
+}
+
+type NodeSetter interface {
 	SetNode(string)
 }
 
