@@ -68,6 +68,20 @@ func (g *GadgetDesc) SortByDefault() []string {
 	return []string{"node", "namespace", "pod", "container", "comm", "pid", "tid", "ppid"}
 }
 
+func (g *GadgetDesc) OutputFormats() (gadgets.OutputFormats, string) {
+	return gadgets.OutputFormats{
+		"tree": gadgets.OutputFormat{
+			Name:          "Tree",
+			Description:   "Displays process snapshot as tree",
+			TransformType: gadgets.TransformTypeArray,
+			TransformArray: func(data any) ([]byte, error) {
+				_ = data.([]*types.Event)
+				return []byte("formatted tree"), nil
+			},
+		},
+	}, ""
+}
+
 func init() {
 	gadgetregistry.Register(&GadgetDesc{})
 }
