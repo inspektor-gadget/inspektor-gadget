@@ -17,6 +17,8 @@ package local
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -51,6 +53,10 @@ func prepareCatalog() *runtime.Catalog {
 }
 
 func (r *Runtime) Init(globalRuntimeParams *params.Params) error {
+	if os.Geteuid() != 0 {
+		return fmt.Errorf("%s must be run as root to be able to run eBPF programs", filepath.Base(os.Args[0]))
+	}
+
 	return nil
 }
 
