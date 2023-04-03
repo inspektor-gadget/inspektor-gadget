@@ -78,13 +78,24 @@ type GadgetDescSkipParams interface {
 
 type OutputFormats map[string]OutputFormat
 
+type TransformType int
+
+const (
+	TransformTypeResult = iota
+	TransformTypeSingle
+	TransformTypeArray
+)
+
 // OutputFormat can hold alternative output formats for a gadget. Whenever
 // such a format is used, the result of the gadget will be passed to the Transform()
 // function and returned to the user.
 type OutputFormat struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Transform   func([]byte) ([]byte, error)
+	Name                   string                       `json:"name"`
+	Description            string                       `json:"description"`
+	TransformType          TransformType                `json:"transformType"`
+	RequiresCombinedResult bool                         `json:"requiresCombinedResult"`
+	Transform              func([]byte) ([]byte, error) `json:"-"`
+	TransformArray         func(any) ([]byte, error)    `json:"-"`
 }
 
 // Append appends the OutputFormats given in other to of
