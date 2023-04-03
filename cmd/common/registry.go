@@ -226,7 +226,7 @@ func buildCommandFromGadget(
 			}
 
 			if parser == nil {
-				var transformResult func(result []byte) ([]byte, error)
+				var transformResult func(any) ([]byte, error)
 
 				switch outputModeName {
 				default:
@@ -241,8 +241,9 @@ func buildCommandFromGadget(
 
 					transformResult = formats[outputModeName].Transform
 				case OutputModeJSON:
-					transformResult = func(result []byte) ([]byte, error) {
-						return result, nil
+					transformResult = func(result any) ([]byte, error) {
+						r, _ := result.([]byte)
+						return r, nil
 					}
 				}
 
@@ -318,7 +319,30 @@ func buildCommandFromGadget(
 			// Wire up callbacks before handing over to runtime depending on the output mode
 			switch outputModeName {
 			default:
-				return fmt.Errorf("invalid output mode %q", outputModeName)
+				transformer, ok := gadgetDesc.(gadgets.GadgetOutputFormats)
+				if !ok {
+					return fmt.Errorf("gadget does not provide output formats")
+				}
+				formats, _ := transformer.OutputFormats()
+				if _, ok := formats[outputModeName]; !ok {
+					return fmt.Errorf("invalid output mode %q", outputModeName)
+				}
+
+				format := formats[outputModeName]
+
+				if format.RequiresCombinedResult {
+					parser.EnableCombiner()
+				}
+
+				transformResult := format.Transform
+				parser.SetEventCallback(func(ev any) {
+					transformed, err := transformResult(ev)
+					if err != nil {
+						fe.Logf(logger.WarnLevel, "could not transform event: %v", err)
+						return
+					}
+					fe.Output(string(transformed))
+				})
 			case OutputModeColumns:
 				formatter.SetEventCallback(fe.Output)
 
