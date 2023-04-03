@@ -86,6 +86,7 @@ func (l *LocalManager) ParamDescs() params.ParamDescs {
 			Alias:       "c",
 			Description: "Show only data from containers with that name",
 			IsMandatory: false,
+			ValueHint:   gadgets.LocalContainer,
 		},
 	}
 }
