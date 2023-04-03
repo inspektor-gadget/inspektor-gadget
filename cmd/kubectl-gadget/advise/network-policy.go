@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -94,11 +95,16 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) error {
 		TraceOutputState: gadgetv1alpha1.TraceStateStarted,
 		CommonFlags:      &params,
 	}
+
+	var mu sync.Mutex
+
 	count := 0
 	transform := func(line string) string {
 		line = strings.Replace(line, "\r", "\n", -1)
+		mu.Lock()
 		w.Write([]byte(line))
 		w.Flush()
+		mu.Unlock()
 		count += 1
 		if outputFileName != "-" {
 			fmt.Printf("\033[2K\rRecording %d events into file %q...", count, outputFileName)
