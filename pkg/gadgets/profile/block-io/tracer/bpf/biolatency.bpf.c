@@ -18,6 +18,8 @@ const volatile bool targ_ms = false;
 const volatile bool filter_dev = false;
 const volatile __u32 targ_dev = 0;
 
+extern int LINUX_KERNEL_VERSION __kconfig;
+
 struct {
 	__uint(type, BPF_MAP_TYPE_CGROUP_ARRAY);
 	__type(key, u32);
@@ -68,11 +70,15 @@ int ig_profio_ins(u64 *ctx)
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
 		return 0;
 
-#ifdef KERNEL_BEFORE_5_11
-	return trace_rq_start((void *)ctx[1], false);
-#else /* !KERNEL_BEFORE_5_11 */
-	return trace_rq_start((void *)ctx[0], false);
-#endif /* !KERNEL_BEFORE_5_11 */
+	/**
+	 * commit a54895fa (v5.11-rc1) changed tracepoint argument list
+	 * from TP_PROTO(struct request_queue *q, struct request *rq)
+	 * to TP_PROTO(struct request *rq)
+	 */
+	if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0))
+		return trace_rq_start((void *)ctx[1], false);
+	else
+		return trace_rq_start((void *)ctx[0], false);
 }
 
 SEC("raw_tp/block_rq_issue")
@@ -81,11 +87,15 @@ int ig_profio_iss(u64 *ctx)
 	if (filter_cg && !bpf_current_task_under_cgroup(&cgroup_map, 0))
 		return 0;
 
-#ifdef KERNEL_BEFORE_5_11
-	return trace_rq_start((void *)ctx[1], true);
-#else /* !KERNEL_BEFORE_5_11 */
-	return trace_rq_start((void *)ctx[0], true);
-#endif /* !KERNEL_BEFORE_5_11 */
+	/**
+	 * commit a54895fa (v5.11-rc1) changed tracepoint argument list
+	 * from TP_PROTO(struct request_queue *q, struct request *rq)
+	 * to TP_PROTO(struct request *rq)
+	 */
+	if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 11, 0))
+		return trace_rq_start((void *)ctx[1], true);
+	else
+		return trace_rq_start((void *)ctx[0], true);
 }
 
 SEC("raw_tp/block_rq_complete")
