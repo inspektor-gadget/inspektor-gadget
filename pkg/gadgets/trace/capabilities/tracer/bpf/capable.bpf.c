@@ -26,6 +26,8 @@ const volatile u32 linux_version_code = 0;
 const volatile bool audit_only = false;
 const volatile bool unique = false;
 
+extern int LINUX_KERNEL_VERSION __kconfig;
+
 // we need this to make sure the compiler doesn't remove our struct
 const struct cap_event *unusedcapevent __attribute__((unused));
 
@@ -109,7 +111,7 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred, struct user_namespace *t
 		return 0;
 
 	if (audit_only) {
-		if (linux_version_code >= KERNEL_VERSION(5, 1, 0)) {
+		if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(5, 1, 0)) {
 			if (cap_opt & CAP_OPT_NOAUDIT)
 				return 0;
 		} else {
@@ -163,10 +165,17 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event.cap = ap->cap;
 	event.uid = bpf_get_current_uid_gid();
 	event.mntnsid = gadget_get_mntns_id();
-	event.cap_opt = ap->cap_opt;
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.ret = PT_REGS_RC(ctx);
 	event.timestamp = bpf_ktime_get_boot_ns();
+
+	if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(5, 1, 0)) {
+		event.audit = (ap->cap_opt & CAP_OPT_NOAUDIT) == 0;
+		event.insetid = (ap->cap_opt & CAP_OPT_INSETID) != 0;
+	} else {
+		event.audit = ap->cap_opt;
+		event.insetid = -1;
+	}
 
 	struct syscall_context *sc_ctx;
 	sc_ctx = bpf_map_lookup_elem(&current_syscall, &pid_tgid);
