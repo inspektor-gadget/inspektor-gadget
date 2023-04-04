@@ -18,6 +18,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 )
 
+func (cc *ContainerCollection) EnrichEventWithNode(event operators.ContainerNodeSetter) {
+	event.SetNode(cc.nodeName)
+}
+
 func (cc *ContainerCollection) EnrichEventByMntNs(event operators.ContainerInfoFromMountNSID) {
 	event.SetNode(cc.nodeName)
 
