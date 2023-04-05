@@ -14,7 +14,9 @@
 
 // Package kubeipresolver provides an operator that enriches events by looking
 // up IP addresses in Kubernetes resources such as pods and services. It is
-// currently only used by the 'trace network' gadget.
+// currently used by the following gadgets:
+// - trace network
+// - trace tcpdrop
 package kubeipresolver
 
 import (

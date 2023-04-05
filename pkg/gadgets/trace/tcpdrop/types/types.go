@@ -20,45 +20,53 @@ import (
 )
 
 type Event struct {
-	// Can't use eventtypes.Event because this gadget doesn't support filtering by containers
-
-	// Timestamp in nanoseconds since January 1, 1970 UTC. An int64 is big
-	// enough to represent time between the year 1678 and 2262.
-	Timestamp eventtypes.Time `json:"timestamp,omitempty" column:"timestamp,template:timestamp,stringer"`
-
-	// Type indicates the kind of this event
-	Type eventtypes.EventType `json:"type"`
-
-	// Message when Type is ERR, WARN, DEBUG or INFO
-	Message string `json:"message,omitempty"`
-
-	// Node where the event comes from
-	Node string `json:"node,omitempty" column:"node,template:node" columnTags:"kubernetes"`
+	eventtypes.Event
+	eventtypes.WithMountNsID
+	eventtypes.WithNetNsID
 
 	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
 	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
 	IPVersion int    `json:"ipversion,omitempty" column:"ip,width:2,fixed"`
-	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr"`
-	Daddr     string `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
-	Sport     uint16 `json:"sport,omitempty" column:"sport,template:ipport"`
-	Dport     uint16 `json:"dport,omitempty" column:"dport,template:ipport"`
-	State     string `json:"state,omitempty" column:"state,minWidth:9,maxWidth:12"`
-	Tcpflags  string `json:"tcpflags,omitempty" column:"tcpflags,minWidth:7,maxWidth:31"`
-	Reason    string `json:"reason,omitempty" column:"reason,minWidth:14,maxWidth:23"`
+
+	Saddr string `json:"saddr,omitempty" column:"saddr,template:ipaddr"`
+	Daddr string `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
+
+	Sport    uint16 `json:"sport,omitempty" column:"sport,template:ipport"`
+	Dport    uint16 `json:"dport,omitempty" column:"dport,template:ipport"`
+	State    string `json:"state,omitempty" column:"state,minWidth:9,maxWidth:12"`
+	Tcpflags string `json:"tcpflags,omitempty" column:"tcpflags,minWidth:7,maxWidth:31"`
+	Reason   string `json:"reason,omitempty" column:"reason,minWidth:14,maxWidth:23"`
+
+	/* Source IP resolved by kubeipresolver  */
+	SrcKind      eventtypes.RemoteKind `json:"srcKind,omitempty" column:"srcKind,maxWidth:5"`
+	SrcNamespace string                `json:"srcNamespace,omitempty" column:"srcns"`
+	SrcName      string                `json:"srcName,omitempty" column:"srcname"`
+
+	/* Destination IP resolved by kubeipresolver  */
+	DstKind      eventtypes.RemoteKind `json:"dstKind,omitempty" column:"dstKind,maxWidth:5"`
+	DstNamespace string                `json:"dstNamespace,omitempty" column:"dstns"`
+	DstName      string                `json:"dstName,omitempty" column:"dstname"`
 }
 
-// Implement the ErrorGetter interface. TODO: Remove once we use eventtypes.Event again.
-
-func (ev *Event) GetType() eventtypes.EventType {
-	return ev.Type
+func (e *Event) SetLocalPodDetails(owner, hostIP, podIP string, labels map[string]string) {
+	// Unused
 }
 
-func (ev *Event) GetMessage() string {
-	return ev.Message
+func (e *Event) GetRemoteIPs() []string {
+	return []string{e.Saddr, e.Daddr}
 }
 
-func (ev *Event) SetNode(node string) {
-	ev.Node = node
+func (e *Event) SetEndpointsDetails(endpoints []eventtypes.EndpointDetails) {
+	if len(endpoints) != 2 {
+		return
+	}
+	e.SrcName = endpoints[0].Name
+	e.SrcNamespace = endpoints[0].Namespace
+	e.SrcKind = endpoints[0].Kind
+
+	e.DstName = endpoints[1].Name
+	e.DstNamespace = endpoints[1].Namespace
+	e.DstKind = endpoints[1].Kind
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -67,7 +75,6 @@ func GetColumns() *columns.Columns[Event] {
 
 func Base(ev eventtypes.Event) *Event {
 	return &Event{
-		Type:    ev.Type,
-		Message: ev.Message,
+		Event: ev,
 	}
 }

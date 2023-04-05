@@ -31,15 +31,18 @@ import (
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpdrop/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tcpbits"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type event tcpdrop ./bpf/tcpdrop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type event tcpdrop ./bpf/tcpdrop.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I../../../internal/socketenricher/bpf
 
 type Tracer struct {
-	dropReasons map[int]string
+	socketEnricher *socketenricher.SocketEnricher
+	dropReasons    map[int]string
 
 	eventCallback func(*types.Event)
 
@@ -79,6 +82,10 @@ func (t *Tracer) close() {
 		t.reader.Close()
 	}
 
+	if t.socketEnricher != nil {
+		t.socketEnricher.Close()
+	}
+
 	t.objs.Close()
 }
 
@@ -111,6 +118,11 @@ func (t *Tracer) install() error {
 		return err
 	}
 
+	t.socketEnricher, err = socketenricher.NewSocketEnricher()
+	if err != nil {
+		return err
+	}
+
 	spec, err := loadTcpdrop()
 	if err != nil {
 		return fmt.Errorf("loading ebpf program: %w", err)
@@ -119,6 +131,10 @@ func (t *Tracer) install() error {
 	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
 
 	opts := ebpf.CollectionOptions{}
+
+	mapReplacements := map[string]*ebpf.Map{}
+	mapReplacements[networktracer.SocketsMapName] = t.socketEnricher.SocketsMap()
+	opts.MapReplacements = mapReplacements
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
 		return fmt.Errorf("loading ebpf program: %w", err)
@@ -168,19 +184,19 @@ func (t *Tracer) run() {
 		}
 
 		event := types.Event{
-			Type:      eventtypes.NORMAL,
-			Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
-			// mount namespace not actually related to the container that created the connection
-			// Dropping the mount namespace ID for now
-			// TODO: add a way to get the mount namespace ID of the container that created the connection
-			// WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MntnsId},
-			Pid:      bpfEvent.Pid,
-			Comm:     gadgets.FromCString(bpfEvent.Comm[:]),
-			Dport:    gadgets.Htons(bpfEvent.Dport),
-			Sport:    gadgets.Htons(bpfEvent.Sport),
-			State:    tcpbits.TCPState(bpfEvent.State),
-			Tcpflags: tcpbits.TCPFlags(bpfEvent.Tcpflags),
-			Reason:   reason,
+			Event: eventtypes.Event{
+				Type:      eventtypes.NORMAL,
+				Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
+			},
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.ProcSocket.MountNsId},
+			WithNetNsID:   eventtypes.WithNetNsID{NetNsID: uint64(bpfEvent.Netns)},
+			Pid:           bpfEvent.ProcSocket.Pid,
+			Comm:          gadgets.FromCString(bpfEvent.ProcSocket.Task[:]),
+			Dport:         gadgets.Htons(bpfEvent.Dport),
+			Sport:         gadgets.Htons(bpfEvent.Sport),
+			State:         tcpbits.TCPState(bpfEvent.State),
+			Tcpflags:      tcpbits.TCPFlags(bpfEvent.Tcpflags),
+			Reason:        reason,
 		}
 
 		if bpfEvent.Af == unix.AF_INET {
