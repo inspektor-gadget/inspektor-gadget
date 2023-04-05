@@ -601,19 +601,15 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 	}
 	go func() {
 		defer t.waitGroup.Done()
-		for {
-			if t.ctx.Err() != nil {
-				return
-			}
-			evs, err := t.Read(container.ID)
-			if err != nil {
-				t.gadgetCtx.Logger().Errorf("error reading from container %s: %v", container.ID, err)
-				return
-			}
-			for _, ev := range evs {
-				ev.SetContainerInfo(container.Podname, container.Namespace, container.Name)
-				t.eventCallback(ev)
-			}
+		<-t.ctx.Done()
+		evs, err := t.Read(container.ID)
+		if err != nil {
+			t.gadgetCtx.Logger().Debugf("error reading from container %s: %v", container.ID, err)
+			return
+		}
+		for _, ev := range evs {
+			ev.SetContainerInfo(container.Podname, container.Namespace, container.Name)
+			t.eventCallback(ev)
 		}
 	}()
 	return nil
@@ -625,11 +621,11 @@ func (t *Tracer) DetachContainer(container *containercollection.Container) error
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	<-t.ctx.Done()
+	t.waitGroup.Wait()
 	return nil
 }
 
 func (t *Tracer) Close() {
-	t.waitGroup.Wait()
 	t.cancel()
 	t.close()
 }
