@@ -2,7 +2,7 @@
 # This image contains CO-RE and BCC-based gadgets. Its base image is the
 # BCC image. It's the default image that is deployed in Inspektor Gadget.
 
-ARG BUILDER_IMAGE=debian:bullseye
+ARG BUILDER_IMAGE=golang:1.19
 
 # BCC built from the gadget branch in the kinvolk/bcc fork.
 # See BCC section in docs/devel/CONTRIBUTING.md for further details.
@@ -15,14 +15,10 @@ ARG TARGETARCH
 # We need a cross compiler and libraries for TARGETARCH due to CGO.
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
-	apt-get update && \
-	apt-get install -y gcc make ca-certificates git && \
-	echo 'deb http://deb.debian.org/debian bullseye-backports main' >> /etc/apt/sources.list && \
 	dpkg --add-architecture ${TARGETARCH} && \
 	apt-get update && \
-	apt-get install -y golang-1.19 libelf-dev:${TARGETARCH} \
+	apt-get install -y gcc make ca-certificates git libelf-dev:${TARGETARCH} \
 		pkg-config:${TARGETARCH} libseccomp-dev:${TARGETARCH} && \
-	ln -s /usr/lib/go-1.19/bin/go /bin/go && \
 	if [ ${TARGETARCH} = 'arm64' ]; then \
 		apt-get install -y gcc-aarch64-linux-gnu; \
 	fi
