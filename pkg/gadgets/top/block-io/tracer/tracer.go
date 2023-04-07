@@ -28,6 +28,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -168,6 +169,10 @@ func (t *Tracer) install() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
+		var ve *ebpf.VerifierError
+		if errors.As(err, &ve) {
+			log.Debugf("Verifier error: %+v\n", ve)
+		}
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 

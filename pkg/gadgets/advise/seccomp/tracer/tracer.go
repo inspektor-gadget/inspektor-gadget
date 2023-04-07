@@ -18,12 +18,14 @@ package tracer
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	libseccomp "github.com/seccomp/libseccomp-golang"
+	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
@@ -71,6 +73,10 @@ func (t *Tracer) install() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
+		var ve *ebpf.VerifierError
+		if errors.As(err, &ve) {
+			log.Debugf("Verifier error: %+v\n", ve)
+		}
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 

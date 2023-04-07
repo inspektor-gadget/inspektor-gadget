@@ -350,6 +350,10 @@ func (t *Tracer) install() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
+		var ve *ebpf.VerifierError
+		if errors.As(err, &ve) {
+			log.Debugf("Verifier error: %+v\n", ve)
+		}
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 

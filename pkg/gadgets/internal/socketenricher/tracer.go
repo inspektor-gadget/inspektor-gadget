@@ -15,10 +15,12 @@
 package socketenricher
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
@@ -57,6 +59,10 @@ func (se *SocketEnricher) start() error {
 	}
 
 	if err := spec.LoadAndAssign(&se.objs, nil); err != nil {
+		var ve *ebpf.VerifierError
+		if errors.As(err, &ve) {
+			log.Debugf("Verifier error: %+v\n", ve)
+		}
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
