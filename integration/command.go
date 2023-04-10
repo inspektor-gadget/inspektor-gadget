@@ -287,7 +287,7 @@ func getPodLogs(ns string) string {
 		cmd := exec.Command("/bin/sh", "-xc", c)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			sb.WriteString(fmt.Sprintf("Error: failed to run log command: %s\n", cmd.String()))
+			sb.WriteString(fmt.Sprintf("Error: failed to run log command: %s, %s\n", cmd.String(), err))
 			continue
 		}
 		sb.WriteString(string(output))

@@ -133,8 +133,8 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 	return func(cc *ContainerCollection) error {
 		runtimeClient, err := containerutils.NewContainerRuntimeClient(runtime)
 		if err != nil {
-			log.Warnf("Runtime enricher (%s): failed to initialize container runtime",
-				runtime.Name)
+			log.Warnf("Runtime enricher (%s): failed to initialize container runtime: %s",
+				runtime.Name, err)
 			return err
 		}
 
@@ -155,8 +155,8 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		// Enrich already running containers
 		containers, err := runtimeClient.GetContainers()
 		if err != nil {
-			log.Warnf("Runtime enricher (%s): couldn't get current containers",
-				runtime.Name)
+			log.Warnf("Runtime enricher (%s): couldn't get current containers: %s",
+				runtime.Name, err)
 
 			return nil
 		}
