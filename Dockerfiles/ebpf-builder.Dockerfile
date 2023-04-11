@@ -1,4 +1,4 @@
-FROM golang:1.19
+FROM golang:1.20
 # gcc-multilib is needed for <asm/types.h>.
 # libelf-dev is needed to compile libbpf.
 # lsb-release wget software-properties-common gnupg are needed by llvm.sh script
