@@ -126,9 +126,10 @@ func (k *KubeManager) Dependencies() []string {
 func (k *KubeManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	// We need to be able to get MountNSID or NetNSID, and set ContainerInfo, so
 	// check for that first
+	_, canEnrichEventWithNode := gadget.EventPrototype().(operators.ContainerNodeSetter)
 	_, canEnrichEventFromMountNs := gadget.EventPrototype().(operators.ContainerInfoFromMountNSID)
 	_, canEnrichEventFromNetNs := gadget.EventPrototype().(operators.ContainerInfoFromNetNSID)
-	canEnrichEvent := canEnrichEventFromMountNs || canEnrichEventFromNetNs
+	canEnrichEvent := canEnrichEventWithNode || canEnrichEventFromMountNs || canEnrichEventFromNetNs
 
 	// Secondly, we need to be able to inject the ebpf map onto the tracer
 	gi, ok := gadget.(gadgets.GadgetInstantiate)
@@ -145,12 +146,13 @@ func (k *KubeManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	_, isAttacher := instance.(Attacher)
 
 	log.Debugf("> canEnrichEvent: %v", canEnrichEvent)
+	log.Debugf(" > canEnrichEventWithNode: %v", canEnrichEventWithNode)
 	log.Debugf(" > canEnrichEventFromMountNs: %v", canEnrichEventFromMountNs)
 	log.Debugf(" > canEnrichEventFromNetNs: %v", canEnrichEventFromNetNs)
 	log.Debugf("> isMountNsMapSetter: %v", isMountNsMapSetter)
 	log.Debugf("> isAttacher: %v", isAttacher)
 
-	return (isMountNsMapSetter && canEnrichEvent) || isAttacher
+	return isMountNsMapSetter || canEnrichEvent || isAttacher
 }
 
 func (k *KubeManager) Init(params *params.Params) error {
@@ -162,9 +164,10 @@ func (k *KubeManager) Close() error {
 }
 
 func (k *KubeManager) Instantiate(gadgetContext operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
+	_, canEnrichEventWithNode := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerNodeSetter)
 	_, canEnrichEventFromMountNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromMountNSID)
 	_, canEnrichEventFromNetNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromNetNSID)
-	canEnrichEvent := canEnrichEventFromMountNs || canEnrichEventFromNetNs
+	canEnrichEvent := canEnrichEventWithNode || canEnrichEventFromMountNs || canEnrichEventFromNetNs
 
 	traceInstance := &KubeManagerInstance{
 		id:             uuid.New().String(),
@@ -310,6 +313,9 @@ func (m *KubeManagerInstance) PostGadgetRun() error {
 }
 
 func (m *KubeManagerInstance) enrich(ev any) {
+	if event, canEnrichEventWithNode := ev.(operators.ContainerNodeSetter); canEnrichEventWithNode {
+		m.manager.gadgetTracerManager.ContainerCollection.EnrichEventWithNode(event)
+	}
 	if event, canEnrichEventFromMountNs := ev.(operators.ContainerInfoFromMountNSID); canEnrichEventFromMountNs {
 		m.manager.gadgetTracerManager.ContainerCollection.EnrichEventByMntNs(event)
 	}

@@ -28,6 +28,7 @@ const (
 )
 
 const (
+	LocalContainer   params.ValueHint = "local:container"
 	K8SNodeName      params.ValueHint = "k8s:node"
 	K8SNodeList      params.ValueHint = "k8s:node-list"
 	K8SPodName       params.ValueHint = "k8s:pod"
