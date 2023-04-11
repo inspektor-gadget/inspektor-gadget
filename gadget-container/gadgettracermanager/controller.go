@@ -29,9 +29,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
-	// tcpdrop is only available in all-gadgets and not gadget-collection
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
-
 	gadgetkinvolkiov1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/controllers"
 	gadgetcollection "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection"

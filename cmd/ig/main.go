@@ -25,13 +25,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 
-	// This is a blank include that actually imports all gadgets - needs to be moved into another package; TODO
-	// This includes traceloop which is only available via gadget-collection
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection"
-
 	// This is a blank include that actually imports all gadgets
-	// This includes tcpdrop which is only available via all-gadgets
+	// TODO: traceloop is imported separately because it is not in all-gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/tracer"
 
 	// Another blank import for the used operator
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
