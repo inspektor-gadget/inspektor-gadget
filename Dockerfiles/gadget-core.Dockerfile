@@ -5,7 +5,7 @@
 # and is designed to be used on systems that support BTF
 # (CONFIG_DEBUG_INFO_BTF).
 
-ARG BUILDER_IMAGE=debian:bullseye
+ARG BUILDER_IMAGE=golang:1.19
 ARG BASE_IMAGE=alpine:3.14
 
 # Prepare and build gadget artifacts in a container
@@ -15,14 +15,10 @@ ARG TARGETARCH
 # We need a cross compiler and libraries for TARGETARCH due to CGO.
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
-	apt-get update && \
-	apt-get install -y gcc make ca-certificates git && \
-	echo 'deb http://deb.debian.org/debian bullseye-backports main' >> /etc/apt/sources.list && \
 	dpkg --add-architecture ${TARGETARCH} && \
 	apt-get update && \
-	apt-get install -y golang-1.19 libelf-dev:${TARGETARCH} \
+	apt-get install -y gcc make ca-certificates git libelf-dev:${TARGETARCH} \
 		pkg-config:${TARGETARCH} libseccomp-dev:${TARGETARCH} && \
-	ln -s /usr/lib/go-1.19/bin/go /bin/go && \
 	if [ ${TARGETARCH} = 'arm64' ]; then \
 		apt-get install -y gcc-aarch64-linux-gnu; \
 	fi
