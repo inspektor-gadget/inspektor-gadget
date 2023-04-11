@@ -20,12 +20,15 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 type Tracer struct {
 	cmd    *exec.Cmd
 	stdout *bytes.Buffer
 	stderr *bytes.Buffer
+	logger logger.Logger
 }
 
 func NewTracer() (*Tracer, error) {

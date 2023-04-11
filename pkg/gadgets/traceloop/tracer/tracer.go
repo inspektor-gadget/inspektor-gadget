@@ -38,6 +38,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -85,6 +86,7 @@ type Tracer struct {
 	cancel        context.CancelFunc
 	eventCallback func(event *types.Event)
 	waitGroup     sync.WaitGroup
+	logger        logger.Logger
 }
 
 type syscallEvent struct {
@@ -110,6 +112,7 @@ type syscallEventContinued struct {
 func NewTracer(enricher gadgets.DataEnricherByMntNs) (*Tracer, error) {
 	t := &Tracer{
 		enricher: enricher,
+		logger:   log.StandardLogger(),
 	}
 	if err := t.install(); err != nil {
 		t.close()
@@ -150,6 +153,10 @@ func (t *Tracer) install() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
+		var ve *ebpf.VerifierError
+		if errors.As(err, &ve) && t.logger != nil {
+			t.logger.Debugf("Verifier error: %+v\n", ve)
+		}
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
@@ -650,6 +657,7 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	t.logger = gadgetCtx.Logger()
 	if err := t.install(); err != nil {
 		t.close()
 		return fmt.Errorf("installing tracer: %w", err)

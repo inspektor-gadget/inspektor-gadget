@@ -32,6 +32,7 @@ import (
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	processcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -77,7 +78,7 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 	}
 	objs := processCollectorObjects{}
 
-	if err := gadgets.LoadeBPFSpec(config.MountnsMap, spec, consts, &objs); err != nil {
+	if err := gadgets.LoadeBPFSpec(config.MountnsMap, spec, consts, &objs, nil); err != nil {
 		return nil, fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
@@ -259,6 +260,7 @@ func runProcfsCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([
 type Tracer struct {
 	config       *Config
 	eventHandler func(ev []*processcollectortypes.Event)
+	logger       logger.Logger
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {

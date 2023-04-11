@@ -23,11 +23,13 @@ import (
 	"net"
 
 	"github.com/cilium/ebpf/link"
+	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	socketcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -45,6 +47,7 @@ type Tracer struct {
 	visitedNamespaces map[uint64]uint32
 	protocols         socketcollectortypes.Proto
 	eventHandler      func([]*socketcollectortypes.Event)
+	logger            logger.Logger
 }
 
 func parseIPv4(ipU32 uint32) string {
@@ -205,6 +208,7 @@ func NewTracer(protocols socketcollectortypes.Proto) (*Tracer, error) {
 		visitedNamespaces: make(map[uint64]uint32),
 		protocols:         protocols,
 		iters:             make(map[socketcollectortypes.Proto]*link.Iter),
+		logger:            log.StandardLogger(),
 	}
 
 	if err := tracer.openIters(); err != nil {

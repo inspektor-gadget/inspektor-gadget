@@ -26,7 +26,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	log "github.com/sirupsen/logrus"
 )
 
 //go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
@@ -43,10 +45,11 @@ type Tracer struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+	logger logger.Logger
 }
 
 func NewTracer() (*Tracer, error) {
-	t := &Tracer{}
+	t := &Tracer{logger: log.StandardLogger()}
 
 	if err := t.install(); err != nil {
 		t.Close()
@@ -93,6 +96,7 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	t.logger = gadgetCtx.Logger()
 	if err := t.install(); err != nil {
 		t.Close()
 		return fmt.Errorf("installing tracer: %w", err)

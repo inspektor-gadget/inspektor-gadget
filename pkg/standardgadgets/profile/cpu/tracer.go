@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/tracer"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 type Tracer struct {
@@ -33,6 +34,7 @@ type Tracer struct {
 	stdout            *bytes.Buffer
 	stderr            *bytes.Buffer
 	mountnsMapPinPath string
+	logger            logger.Logger
 }
 
 func NewTracer(config *tracer.Config) (*Tracer, error) {

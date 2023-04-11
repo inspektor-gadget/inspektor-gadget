@@ -32,6 +32,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -48,6 +49,7 @@ type Tracer struct {
 	objs     profileObjects
 	perfFds  []int
 	config   *Config
+	logger   logger.Logger
 }
 
 const (
@@ -65,6 +67,7 @@ func NewTracer(enricher gadgets.DataEnricherByMntNs, config *Config) (*Tracer, e
 	t := &Tracer{
 		enricher: enricher,
 		config:   config,
+		logger:   log.StandardLogger(),
 	}
 
 	if err := t.install(); err != nil {
@@ -252,7 +255,7 @@ func (t *Tracer) install() error {
 		"user_stacks_only":   t.config.UserStackOnly,
 	}
 
-	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs, t.logger); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
@@ -304,6 +307,7 @@ type TracerWrap struct {
 }
 
 func (t *TracerWrap) Run(gadgetCtx gadgets.GadgetContext) error {
+	t.logger = gadgetCtx.Logger()
 	params := gadgetCtx.GadgetParams()
 	t.config.UserStackOnly = params.Get(ParamUserStack).AsBool()
 	t.config.KernelStackOnly = params.Get(ParamKernelStack).AsBool()

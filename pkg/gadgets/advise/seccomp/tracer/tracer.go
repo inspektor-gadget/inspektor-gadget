@@ -18,16 +18,19 @@ package tracer
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	libseccomp "github.com/seccomp/libseccomp-golang"
+	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang seccomp ./bpf/seccomp.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -51,10 +54,11 @@ type Tracer struct {
 	// We keep references to mountns of containers we attach to, so we
 	// can collect information afterwards
 	containers map[*containercollection.Container][]string
+	logger     logger.Logger
 }
 
 func NewTracer() (*Tracer, error) {
-	t := &Tracer{}
+	t := &Tracer{logger: log.StandardLogger()}
 
 	if err := t.install(); err != nil {
 		t.Close()
@@ -71,6 +75,10 @@ func (t *Tracer) install() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
+		var ve *ebpf.VerifierError
+		if errors.As(err, &ve) && t.logger != nil {
+			t.logger.Debugf("Verifier error: %+v\n", ve)
+		}
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 

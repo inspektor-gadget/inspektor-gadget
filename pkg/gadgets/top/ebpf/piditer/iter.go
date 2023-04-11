@@ -26,13 +26,15 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -type pid_iter_entry piditer ./bpf/pid_iter.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type PidIter struct {
-	objs piditerObjects
-	iter *link.Iter
+	objs   piditerObjects
+	iter   *link.Iter
+	logger logger.Logger
 }
 
 type PidIterEntry struct {

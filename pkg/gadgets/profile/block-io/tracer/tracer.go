@@ -18,16 +18,19 @@ package tracer
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	log "github.com/sirupsen/logrus"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type hist -type hist_key -cc clang biolatency ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
@@ -37,10 +40,11 @@ type Tracer struct {
 	blockRqCompleteLink link.Link
 	blockRqInsertLink   link.Link
 	blockRqIssueLink    link.Link
+	logger              logger.Logger
 }
 
 func NewTracer() (*Tracer, error) {
-	t := &Tracer{}
+	t := &Tracer{logger: log.StandardLogger()}
 
 	if err := t.install(); err != nil {
 		t.Stop()
@@ -100,6 +104,10 @@ func (t *Tracer) install() error {
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
+		var ve *ebpf.VerifierError
+		if errors.As(err, &ve) && t.logger != nil {
+			t.logger.Debugf("Verifier error: %+v\n", ve)
+		}
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 

@@ -31,6 +31,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpretrans/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tcpbits"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -45,6 +46,7 @@ type Tracer struct {
 	objs              tcpretransObjects
 	retransmitSkbLink link.Link
 	reader            *perf.Reader
+	logger            logger.Logger
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
@@ -52,6 +54,7 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	t.logger = gadgetCtx.Logger()
 	defer t.close()
 	if err := t.install(); err != nil {
 		return fmt.Errorf("installing tracer: %w", err)
@@ -106,6 +109,10 @@ func (t *Tracer) install() error {
 	opts.MapReplacements = mapReplacements
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
+		var ve *ebpf.VerifierError
+		if errors.As(err, &ve) && t.logger != nil {
+			t.logger.Debugf("Verifier error: %+v\n", ve)
+		}
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 

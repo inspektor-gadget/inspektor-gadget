@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -35,6 +36,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/piditer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 type Config struct {
@@ -61,6 +63,7 @@ type Tracer struct {
 	startStats map[string]programStats
 	prevStats  map[string]programStats
 	colMap     columns.ColumnMap[types.Stats]
+	logger     logger.Logger
 }
 
 func NewTracer(config *Config, enricher gadgets.DataNodeEnricher,
@@ -72,6 +75,7 @@ func NewTracer(config *Config, enricher gadgets.DataNodeEnricher,
 		eventCallback: eventCallback,
 		done:          make(chan bool),
 		prevStats:     make(map[string]programStats),
+		logger:        log.StandardLogger(),
 	}
 
 	if err := t.install(); err != nil {
@@ -418,6 +422,7 @@ func (t *Tracer) run(ctx context.Context) error {
 // --- Registry changes
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	t.logger = gadgetCtx.Logger()
 	if err := t.init(gadgetCtx); err != nil {
 		return fmt.Errorf("initializing tracer: %w", err)
 	}

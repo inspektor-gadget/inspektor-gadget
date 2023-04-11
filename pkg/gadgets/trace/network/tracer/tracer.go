@@ -35,6 +35,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -79,12 +80,14 @@ type Tracer struct {
 	gadgetCtx     gadgets.GadgetContext
 	ctx           context.Context
 	cancel        context.CancelFunc
+	logger        logger.Logger
 }
 
 func NewTracer(enricher gadgets.DataEnricherByNetNs) (_ *Tracer, err error) {
 	t := &Tracer{
 		attachments: make(map[uint64]*attachment),
 		enricher:    enricher,
+		logger:      log.StandardLogger(),
 	}
 	defer func() {
 		if err != nil {
@@ -363,6 +366,7 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	t.logger = gadgetCtx.Logger()
 	if err := t.install(); err != nil {
 		t.Close()
 		return fmt.Errorf("installing tracer: %w", err)

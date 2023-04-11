@@ -25,6 +25,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 type Config struct {
@@ -34,6 +35,7 @@ type Config struct {
 type Tracer struct {
 	eventCallback func(ev *types.Event)
 	config        Config
+	logger        logger.Logger
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {

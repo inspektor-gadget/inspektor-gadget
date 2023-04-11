@@ -25,11 +25,13 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
+	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -53,6 +55,7 @@ type Tracer struct {
 	ipv6Entry link.Link
 	ipv6Exit  link.Link
 	reader    *perf.Reader
+	logger    logger.Logger
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
@@ -62,6 +65,7 @@ func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
 		config:        config,
 		enricher:      enricher,
 		eventCallback: eventCallback,
+		logger:        log.StandardLogger(),
 	}
 
 	if err := t.install(); err != nil {
@@ -115,7 +119,7 @@ func (t *Tracer) install() error {
 		"ignore_errors":  t.config.IgnoreErrors,
 	}
 
-	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs, t.logger); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
@@ -277,6 +281,7 @@ func (t *Tracer) run() {
 // --- Registry changes
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	t.logger = gadgetCtx.Logger()
 	params := gadgetCtx.GadgetParams()
 	t.config.TargetPid = params.Get(ParamPID).AsInt32()
 	t.config.TargetPorts = params.Get(ParamPorts).AsUint16Slice()

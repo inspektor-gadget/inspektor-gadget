@@ -25,11 +25,13 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -54,6 +56,7 @@ type Tracer struct {
 	eventCallback func(*top.Event[types.Stats])
 	done          chan bool
 	colMap        columns.ColumnMap[types.Stats]
+	logger        logger.Logger
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
@@ -64,6 +67,7 @@ func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
 		enricher:      enricher,
 		eventCallback: eventCallback,
 		done:          make(chan bool),
+		logger:        log.StandardLogger(),
 	}
 
 	if err := t.install(); err != nil {
@@ -109,7 +113,7 @@ func (t *Tracer) install() error {
 		"regular_file_only": !t.config.AllFiles,
 	}
 
-	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs, t.logger); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
@@ -242,6 +246,7 @@ func (t *Tracer) run(ctx context.Context) error {
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	t.logger = gadgetCtx.Logger()
 	if err := t.init(gadgetCtx); err != nil {
 		return fmt.Errorf("initializing tracer: %w", err)
 	}
