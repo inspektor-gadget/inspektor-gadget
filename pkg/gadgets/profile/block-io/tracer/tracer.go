@@ -38,8 +38,6 @@ type Tracer struct {
 	blockRqCompleteLink link.Link
 	blockRqInsertLink   link.Link
 	blockRqIssueLink    link.Link
-	result              string
-	err                 error
 }
 
 func NewTracer() (*Tracer, error) {
