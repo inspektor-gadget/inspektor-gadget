@@ -168,10 +168,8 @@ func (t *Tracer) run() {
 		}
 
 		event := types.Event{
-			Event: eventtypes.Event{
-				Type:      eventtypes.NORMAL,
-				Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
-			},
+			Type:      eventtypes.NORMAL,
+			Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
 			// mount namespace not actually related to the container that created the connection
 			// Dropping the mount namespace ID for now
 			// TODO: add a way to get the mount namespace ID of the container that created the connection

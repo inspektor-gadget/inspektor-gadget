@@ -20,7 +20,20 @@ import (
 )
 
 type Event struct {
-	eventtypes.Event
+	// Can't use eventtypes.Event because this gadget doesn't support filtering by containers
+
+	// Timestamp in nanoseconds since January 1, 1970 UTC. An int64 is big
+	// enough to represent time between the year 1678 and 2262.
+	Timestamp eventtypes.Time `json:"timestamp,omitempty" column:"timestamp,template:timestamp,stringer"`
+
+	// Type indicates the kind of this event
+	Type eventtypes.EventType `json:"type"`
+
+	// Message when Type is ERR, WARN, DEBUG or INFO
+	Message string `json:"message,omitempty"`
+
+	// Node where the event comes from
+	Node string `json:"node,omitempty" column:"node,template:node" columnTags:"kubernetes"`
 
 	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
 	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
@@ -34,22 +47,27 @@ type Event struct {
 	Reason    string `json:"reason,omitempty" column:"reason,minWidth:14,maxWidth:23"`
 }
 
+// Implement the ErrorGetter interface. TODO: Remove once we use eventtypes.Event again.
+
+func (ev *Event) GetType() eventtypes.EventType {
+	return ev.Type
+}
+
+func (ev *Event) GetMessage() string {
+	return ev.Message
+}
+
+func (ev *Event) SetNode(node string) {
+	ev.Node = node
+}
+
 func GetColumns() *columns.Columns[Event] {
-	tcpdropColumns := columns.MustCreateColumns[Event]()
-
-	// Container related columns are not meaningful for tcpdrop gadget because events can come from different contexts
-	col, _ := tcpdropColumns.GetColumn("namespace")
-	col.Visible = false
-	col, _ = tcpdropColumns.GetColumn("pod")
-	col.Visible = false
-	col, _ = tcpdropColumns.GetColumn("container")
-	col.Visible = false
-
-	return tcpdropColumns
+	return columns.MustCreateColumns[Event]()
 }
 
 func Base(ev eventtypes.Event) *Event {
 	return &Event{
-		Event: ev,
+		Type:    ev.Type,
+		Message: ev.Message,
 	}
 }
