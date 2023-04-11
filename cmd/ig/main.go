@@ -15,7 +15,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -37,13 +36,6 @@ func main() {
 	rootCmd := &cobra.Command{
 		Use:   "ig",
 		Short: "Collection of gadgets for containers",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if os.Geteuid() != 0 {
-				return fmt.Errorf("%s must be run as root to be able to run eBPF programs", os.Args[0])
-			}
-
-			return nil
-		},
 	}
 
 	rootCmd.AddCommand(
