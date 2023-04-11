@@ -3,7 +3,7 @@ module github.com/inspektor-gadget/inspektor-gadget
 go 1.19
 
 require (
-	github.com/cilium/ebpf v0.0.0-20230320181651-5ea5368f9823
+	github.com/cilium/ebpf v0.10.0
 	github.com/containerd/nri v0.3.0
 	github.com/containers/common v0.52.0
 	github.com/docker/docker v23.0.3+incompatible
