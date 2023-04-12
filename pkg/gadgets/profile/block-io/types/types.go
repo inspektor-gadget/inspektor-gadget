@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,19 @@
 
 package types
 
-type Data struct {
-	Count         uint64 `json:"count"`
-	IntervalStart uint64 `json:"intervalStart"`
-	IntervalEnd   uint64 `json:"intervalEnd,omitempty"`
-}
+import (
+	histogram "github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
+)
 
 type Report struct {
-	ValType string `json:"valType,omitempty"`
-	Data    []Data `json:"data,omitempty"`
-	Time    string `json:"ts,omitempty"`
+	*histogram.Histogram `json:",inline"`
+}
+
+func NewReport(unit histogram.Unit, slots []uint32) *Report {
+	return &Report{
+		Histogram: &histogram.Histogram{
+			Unit:      unit,
+			Intervals: histogram.NewIntervalsFromExp2Slots(slots),
+		},
+	}
 }

@@ -17,7 +17,6 @@ package tracer
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -71,7 +70,7 @@ func (g *GadgetDesc) OutputFormats() (gadgets.OutputFormats, string) {
 				if err != nil {
 					return nil, err
 				}
-				return []byte(reportToString(report)), nil
+				return []byte(report.String()), nil
 			},
 		},
 	}, "report"
@@ -79,59 +78,4 @@ func (g *GadgetDesc) OutputFormats() (gadgets.OutputFormats, string) {
 
 func init() {
 	gadgetregistry.Register(&GadgetDesc{})
-}
-
-// --- moved from cmd/common/profile, should be removed there
-
-// starsToString prints a line of the histogram.
-// It is a golang translation of iovisor/bcc print_stars():
-// https://github.com/iovisor/bcc/blob/13b5563c11f7722a61a17c6ca0a1a387d2fa7788/libbpf-tools/trace_helpers.c#L878-L893
-func starsToString(val, valMax, width uint64) string {
-	if valMax == 0 {
-		return strings.Repeat(" ", int(width))
-	}
-
-	stars := val * width / valMax
-	spaces := width - stars
-
-	var sb strings.Builder
-	sb.WriteString(strings.Repeat("*", int(stars)))
-	sb.WriteString(strings.Repeat(" ", int(spaces)))
-
-	return sb.String()
-}
-
-// reportToString prints a histogram from a types.Report.
-// It is a golang adaption of iovisor/bcc print_log2_hist():
-// https://github.com/iovisor/bcc/blob/13b5563c11f7722a61a17c6ca0a1a387d2fa7788/libbpf-tools/trace_helpers.c#L895-L932
-func reportToString(report types.Report) string {
-	if len(report.Data) == 0 {
-		return ""
-	}
-
-	valMax := uint64(0)
-	for _, data := range report.Data {
-		if data.Count > valMax {
-			valMax = data.Count
-		}
-	}
-
-	// reportEntries maximum value is C.MAX_SLOTS which is 27, so we take the
-	// value when idx_max <= 32.
-	spaceBefore := 5
-	spaceAfter := 19
-	width := 10
-	stars := 40
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%*s%-*s : count    distribution\n", spaceBefore,
-		"", spaceAfter, report.ValType))
-
-	for _, data := range report.Data {
-		sb.WriteString(fmt.Sprintf("%*d -> %-*d : %-8d |%s|\n", width,
-			data.IntervalStart, width, data.IntervalEnd, data.Count,
-			starsToString(data.Count, valMax, uint64(stars))))
-	}
-
-	return sb.String()
 }
