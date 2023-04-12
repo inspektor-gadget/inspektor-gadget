@@ -35,6 +35,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
@@ -286,8 +287,17 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 	jsonArrayHandler := func([]byte) {}
 
 	if parser != nil {
-		jsonHandler = parser.JSONHandlerFunc()
-		jsonArrayHandler = parser.JSONHandlerFuncArray(pod.node)
+		var enrichers []func(any) error
+		ev := gadgetCtx.GadgetDesc().EventPrototype()
+		if _, ok := ev.(operators.NodeSetter); ok {
+			enrichers = append(enrichers, func(ev any) error {
+				ev.(operators.NodeSetter).SetNode(pod.node)
+				return nil
+			})
+		}
+
+		jsonHandler = parser.JSONHandlerFunc(enrichers...)
+		jsonArrayHandler = parser.JSONHandlerFuncArray(pod.node, enrichers...)
 	}
 
 	doneChan := make(chan error)

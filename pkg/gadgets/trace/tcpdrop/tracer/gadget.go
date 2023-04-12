@@ -52,18 +52,6 @@ func (g *GadgetDesc) EventPrototype() any {
 	return &types.Event{}
 }
 
-func (g *GadgetDesc) SkipParams() []params.ValueHint {
-	return []params.ValueHint{
-		// ig parameters
-		gadgets.LocalContainer,
-		// kubectl-gadget parameters
-		gadgets.K8SPodName,
-		gadgets.K8SNamespace,
-		gadgets.K8SContainerName,
-		gadgets.K8SLabels,
-	}
-}
-
 func init() {
 	gadgetregistry.Register(&GadgetDesc{})
 }
