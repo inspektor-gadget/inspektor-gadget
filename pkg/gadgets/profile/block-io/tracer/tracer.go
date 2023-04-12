@@ -82,6 +82,12 @@ func getReport(histMap *ebpf.Map) (types.Report, error) {
 		})
 	}
 
+	// The element data[:indexMax] is the last element with a non-zero value.
+	// So, we need to use data[:indexMax+1] to include it.
+	if indexMax > 0 {
+		indexMax++
+	}
+
 	report.Data = data[:indexMax]
 
 	return report, nil
