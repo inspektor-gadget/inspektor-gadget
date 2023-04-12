@@ -30,6 +30,7 @@ import (
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/labels"
 	traceloopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -118,7 +119,7 @@ func runTraceloopStart(cmd *cobra.Command, args []string) error {
 		// This label permits us to differentiate between the global and long lived
 		// tracer and the short lived ones used to collect information.
 		AdditionalLabels: map[string]string{
-			"type": "global",
+			labels.LabelType: labels.LabelGlobal,
 		},
 	})
 	if err != nil {
@@ -130,7 +131,7 @@ func runTraceloopStart(cmd *cobra.Command, args []string) error {
 
 func runTraceloopStop(cmd *cobra.Command, args []string) error {
 	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
-		LabelSelector: "gadgetName=traceloop,type=global",
+		LabelSelector: fmt.Sprintf("gadgetName=traceloop,%s=%s", labels.LabelType, labels.LabelGlobal),
 	})
 	if err != nil {
 		return err
@@ -158,7 +159,7 @@ func runTraceloopStop(cmd *cobra.Command, args []string) error {
 
 func runTraceloopList(cmd *cobra.Command, args []string) error {
 	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
-		LabelSelector: "gadgetName=traceloop,type=global",
+		LabelSelector: fmt.Sprintf("gadgetName=traceloop,%s=%s", labels.LabelType, labels.LabelGlobal),
 	})
 	if err != nil {
 		return err
@@ -214,7 +215,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
 	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
-		LabelSelector: "gadgetName=traceloop,type=global",
+		LabelSelector: fmt.Sprintf("gadgetName=traceloop,%s=%s", labels.LabelType, labels.LabelGlobal),
 	})
 	if err != nil {
 		return err
@@ -319,7 +320,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) error {
 				"containerID": containerID,
 			},
 			AdditionalLabels: map[string]string{
-				"type": "collecting",
+				labels.LabelType: labels.LabelCollecting,
 			},
 		})
 		if err != nil {
@@ -349,7 +350,7 @@ func runTraceloopDelete(cmd *cobra.Command, args []string) error {
 	id := args[0]
 
 	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
-		LabelSelector: "gadgetName=traceloop,type=global",
+		LabelSelector: fmt.Sprintf("gadgetName=traceloop,%s=%s", labels.LabelType, labels.LabelGlobal),
 	})
 	if err != nil {
 		return err
