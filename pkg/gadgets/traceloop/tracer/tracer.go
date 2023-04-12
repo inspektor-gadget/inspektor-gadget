@@ -477,18 +477,21 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				paramValue := fmt.Sprintf(format, enterEvent.args[i])
 				log.Debugf("\t\tevent paramValue: %q", paramValue)
 
+				var paramContent *string
+
 				for _, syscallContEvent := range syscallContinuedEventsMap[enterTimestamp] {
 					if syscallContEvent.index == i {
-						paramValue = syscallContEvent.param
-						log.Debugf("\t\t\tevent paramValue: %q", paramValue)
+						paramContent = &syscallContEvent.param
+						log.Debugf("\t\t\tevent paramContent: %q", *paramContent)
 
 						break
 					}
 				}
 
 				event.Parameters[i] = types.SyscallParam{
-					Name:  paramName,
-					Value: paramValue,
+					Name:    paramName,
+					Value:   paramValue,
+					Content: paramContent,
 				}
 			}
 

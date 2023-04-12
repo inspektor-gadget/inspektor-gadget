@@ -23,8 +23,9 @@ import (
 )
 
 type SyscallParam struct {
-	Name  string `json:"name,omitempty"`
-	Value string `json:"value,omitempty"`
+	Name    string  `json:"name,omitempty"`
+	Value   string  `json:"value,omitempty"`
+	Content *string `json:"content,omitempty"`
 }
 
 type Event struct {
@@ -54,7 +55,11 @@ func GetColumns() *columns.Columns[Event] {
 		var sb strings.Builder
 
 		for idx, p := range event.Parameters {
-			sb.WriteString(fmt.Sprintf("%s=%s", p.Name, p.Value))
+			value := p.Value
+			if p.Content != nil {
+				value = *p.Content
+			}
+			sb.WriteString(fmt.Sprintf("%s=%s", p.Name, value))
 
 			if idx < len(event.Parameters)-1 {
 				sb.WriteString(", ")
