@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -286,6 +287,23 @@ func alignSize(structSize uintptr) uintptr {
 	return ret
 }
 
+// Convert a return value to corresponding error number if meaningful.
+// See man syscalls:
+// Note:
+// system calls indicate a failure by returning a negative error
+// number to the caller on architectures without a separate error
+// register/flag, as noted in syscall(2); when this happens, the
+// wrapper function negates the returned error number (to make it
+// positive), copies it to errno, and returns -1 to the caller of
+// the wrapper.
+func retToStr(ret int) string {
+	errNo := int64(ret)
+	if errNo >= -4095 && errNo <= -1 {
+		return fmt.Sprintf("-1 (%s)", syscall.Errno(-errNo).Error())
+	}
+	return fmt.Sprintf("%d", ret)
+}
+
 func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 	syscallContinuedEventsMap := make(map[uint64][]*syscallEventContinued)
 	syscallEnterEventsMap := make(map[uint64][]*syscallEvent)
@@ -484,6 +502,10 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 					t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 				}
 
+				// As there is no exit events for these syscalls,
+				// then there is no return value.
+				event.Retval = "X"
+
 				log.Debugf("%v", event)
 				events = append(events, event)
 
@@ -492,7 +514,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 			exitTimestampEvents, ok := syscallExitEventsMap[enterTimestamp]
 			if !ok {
-				log.Errorf("no exit event for timestamp %d", enterTimestamp)
+				log.Debugf("no exit event for timestamp %d", enterTimestamp)
 
 				continue
 			}
@@ -502,7 +524,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 					continue
 				}
 
-				event.Retval = exitEvent.retval
+				event.Retval = retToStr(exitEvent.retval)
 
 				delete(syscallEnterEventsMap, enterTimestamp)
 				delete(syscallExitEventsMap, enterTimestamp)
@@ -541,6 +563,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				Comm:          enterEvent.comm,
 				WithMountNsID: eventtypes.WithMountNsID{MountNsID: enterEvent.mountNsID},
 				Syscall:       syscallName,
+				Retval:        "unfinished",
 			}
 
 			if t.enricher != nil {
@@ -567,7 +590,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				Comm:          exitEvent.comm,
 				WithMountNsID: eventtypes.WithMountNsID{MountNsID: exitEvent.mountNsID},
 				Syscall:       syscallName,
-				Retval:        exitEvent.retval,
+				Retval:        retToStr(exitEvent.retval),
 			}
 
 			if t.enricher != nil {

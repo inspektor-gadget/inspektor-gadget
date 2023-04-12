@@ -16,7 +16,6 @@ package types
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -37,7 +36,7 @@ type Event struct {
 	Comm       string         `json:"comm,omitempty" column:"comm,template:comm"`
 	Syscall    string         `json:"syscall,omitempty" column:"syscall,template:syscall"`
 	Parameters []SyscallParam `json:"parameters,omitempty" column:"params,width:40"`
-	Retval     int            `json:"ret,omitempty" column:"ret,width:3,fixed"`
+	Retval     string         `json:"ret,omitempty" column:"ret,width:3"`
 }
 
 type TraceloopInfo struct {
@@ -64,19 +63,13 @@ func GetColumns() *columns.Columns[Event] {
 
 		return sb.String()
 	})
-	cols.SetExtractor("ret", func(event *Event) (ret string) {
-		// There is no exit event for exit(), exit_group() and rt_sigreturn().
-		if event.Syscall == "exit" || event.Syscall == "exit_group" || event.Syscall == "rt_sigreturn" {
-			return "X"
-		}
-		return strconv.Itoa(event.Retval)
-	})
 
 	// We hide these fields to gain some places for the parameters.
 	// Indeed, namespace, podname and containername are printed by the list
 	// subcommand.
-	// They can be printed later nonetheless, for example by using
-	// -o custom-columns.
+	// They can be printed later nonetheless with the following code snippet:
+	// column, _ := columns.GetColumn("pod")
+	// column.Visible = true
 	columns := []string{"node", "namespace", "pod", "container"}
 	for _, name := range columns {
 		column, ok := cols.GetColumn(name)
