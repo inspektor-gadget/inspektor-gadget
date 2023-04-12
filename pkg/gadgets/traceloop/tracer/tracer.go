@@ -419,11 +419,6 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 	// Let's try to publish the events we gathered.
 	for enterTimestamp, enterTimestampEvents := range syscallEnterEventsMap {
 		for _, enterEvent := range enterTimestampEvents {
-			syscallName, err := syscallGetName(enterEvent.id)
-			if err != nil {
-				return nil, fmt.Errorf("getting name of syscall number %d: %w", enterEvent.id, err)
-			}
-
 			event := &types.Event{
 				Event: eventtypes.Event{
 					Type:      eventtypes.NORMAL,
@@ -433,7 +428,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				Pid:           enterEvent.pid,
 				Comm:          enterEvent.comm,
 				WithMountNsID: eventtypes.WithMountNsID{MountNsID: enterEvent.mountNsID},
-				Syscall:       syscallName,
+				Syscall:       syscallGetName(enterEvent.id),
 			}
 
 			syscallDeclaration, err := getSyscallDeclaration(syscallsDeclarations, event.Syscall)
@@ -525,22 +520,16 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 	log.Debugf("len(events): %d; len(syscallEnterEventsMap): %d; len(syscallExitEventsMap): %d; len(syscallContinuedEventsMap): %d\n", len(events), len(syscallEnterEventsMap), len(syscallExitEventsMap), len(syscallContinuedEventsMap))
 
-	// For strange reason, even though we use the same timestamp for enter and
-	// exit events, it is possible there are some incomplete events (i.e. enter event
-	// without exit and vice versa).
-	// Rather than dropping them, we just add them to the events to be published
-	// but they will be incomplete.
-	// One possible reason would be that the buffer is full and so it only remains
-	// some exit events and not the corresponding enter/
+	// It is possible there are some incomplete events for two mains reasons:
+	// 1. Traceloop was started in the middle of a syscall, then we will only get
+	//    the exit but not the enter.
+	// 2. The buffer is full and so it only remains some exit events and not the
+	//    corresponding enter.
+	// Rather than dropping these incomplete events, we just add them to the
+	// events to be published.
 	for _, enterTimestampEvents := range syscallEnterEventsMap {
 		for _, enterEvent := range enterTimestampEvents {
-			syscallName, err := syscallGetName(enterEvent.id)
-			if err != nil {
-				// It is best effort, so just long and continue in case of troubles.
-				log.Errorf("incomplete enter event: getting name of syscall number %d: %v", enterEvent.id, err)
-
-				continue
-			}
+			syscallName := syscallGetName(enterEvent.id)
 
 			incompleteEnterEvent := &types.Event{
 				Event: eventtypes.Event{
@@ -566,12 +555,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 	for _, exitTimestampEvents := range syscallExitEventsMap {
 		for _, exitEvent := range exitTimestampEvents {
-			syscallName, err := syscallGetName(exitEvent.id)
-			if err != nil {
-				log.Errorf("incomplete exit event: getting name of syscall number %d: %v", exitEvent.id, err)
-
-				continue
-			}
+			syscallName := syscallGetName(exitEvent.id)
 
 			incompleteExitEvent := &types.Event{
 				Event: eventtypes.Event{

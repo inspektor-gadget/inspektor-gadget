@@ -40,15 +40,17 @@ type syscallDeclaration struct {
 	params []param
 }
 
-func syscallGetName(nr uint16) (string, error) {
+func syscallGetName(nr uint16) string {
 	call := libseccomp.ScmpSyscall(nr)
 
 	name, err := call.GetName()
+	// Just do like strace (https://man7.org/linux/man-pages/man1/strace.1.html):
+	// Syscalls unknown to strace are printed raw
 	if err != nil {
-		return "", fmt.Errorf("cannot get name of syscall number %d: %w", nr, err)
+		return fmt.Sprintf("syscall_%x", nr)
 	}
 
-	return name, nil
+	return name
 }
 
 // TODO Find all syscalls which take a char * as argument and add them there.
