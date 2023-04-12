@@ -117,6 +117,13 @@ func (c *CommonData) GetContainer() string {
 	return c.Container
 }
 
+type EndpointDetails struct {
+	Namespace string
+	Name      string
+	Kind      RemoteKind
+	PodLabels map[string]string
+}
+
 const (
 	// Indicates a generic event produced by a gadget. Gadgets extend
 	// the base event to contain the specific data the gadget provides

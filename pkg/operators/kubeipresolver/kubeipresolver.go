@@ -43,20 +43,11 @@ const (
 )
 
 // KubeNetworkInformation is for now a specific interface for `trace network` gadget
-// TODO: More granular and "shareable" interfaces
 type KubeNetworkInformation interface {
-	// Local/Host
-	SetPodOwner(string)
-	SetPodHostIP(string)
-	SetPodIP(string)
-	SetPodLabels(map[string]string)
+	SetLocalPodDetails(owner, hostIP, podIP string, labels map[string]string)
 
-	// Remote
-	GetRemoteIP() string
-	SetRemoteName(string)
-	SetRemoteNamespace(string)
-	SetRemoteKind(types.RemoteKind)
-	SetRemotePodLabels(map[string]string)
+	GetRemoteIPs() []string
+	SetEndpointsDetails(endpoints []types.EndpointDetails)
 }
 
 // TODO: Generalize this. Will be useful for other gadgets/operators too
@@ -235,62 +226,69 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 	additionalInfo, _ := ev.(KubeNetworkInformation)
 	containerInfo, _ := ev.(operators.ContainerInfoGetters)
 
-	additionalInfo.SetRemoteKind(types.RemoteKindOther)
-
 	pods := m.manager.k8sInventory.GetPods()
 	foundLocal := false
-	foundRemote := false
-	remoteIP := additionalInfo.GetRemoteIP()
+	foundRemote := 0
+	remoteIPs := additionalInfo.GetRemoteIPs()
+	endpoints := make([]types.EndpointDetails, len(remoteIPs))
+	for j := range endpoints {
+		// initialize to this default value if we don't find a match
+		endpoints[j].Kind = types.RemoteKindOther
+	}
 
 	for i, pod := range pods.Items {
-		if foundLocal && foundRemote {
-			return
+		if foundLocal && foundRemote == len(remoteIPs) {
+			break
 		}
 
 		if pod.Namespace == containerInfo.GetNamespace() && pod.Name == containerInfo.GetPod() {
 			foundLocal = true
-			additionalInfo.SetPodIP(pod.Status.PodIP)
-			additionalInfo.SetPodHostIP(pod.Status.HostIP)
-			additionalInfo.SetPodLabels(pod.Labels)
-
+			owner := ""
 			// When the pod belongs to Deployment, ReplicaSet or DaemonSet, find the
 			// shorter name without the random suffix. That will be used to
 			// generate the network policy name.
 			if pods.Items[i].OwnerReferences != nil {
 				nameItems := strings.Split(pods.Items[i].Name, "-")
 				if len(nameItems) > 2 {
-					additionalInfo.SetPodOwner(strings.Join(nameItems[:len(nameItems)-2], "-"))
+					owner = strings.Join(nameItems[:len(nameItems)-2], "-")
 				}
 			}
+			additionalInfo.SetLocalPodDetails(owner, pod.Status.HostIP, pod.Status.PodIP, pod.Labels)
 		}
 
 		if pod.Spec.HostNetwork {
 			continue
 		}
-		if pod.Status.PodIP == remoteIP {
-			foundRemote = true
-			additionalInfo.SetRemoteKind(types.RemoteKindPod)
-			additionalInfo.SetRemoteName(pod.Name)
-			additionalInfo.SetRemoteNamespace(pod.Namespace)
-			additionalInfo.SetRemotePodLabels(pod.Labels)
+
+		for j, remoteIP := range remoteIPs {
+			if pod.Status.PodIP == remoteIP {
+				foundRemote++
+				endpoints[j].Kind = types.RemoteKindPod
+				endpoints[j].Name = pod.Name
+				endpoints[j].Namespace = pod.Namespace
+				endpoints[j].PodLabels = pod.Labels
+			}
 		}
 	}
-
-	if foundRemote {
+	if foundRemote == len(remoteIPs) {
+		additionalInfo.SetEndpointsDetails(endpoints)
 		return
 	}
 
 	svcs := m.manager.k8sInventory.GetSvcs()
 
 	for _, svc := range svcs.Items {
-		if svc.Spec.ClusterIP == remoteIP {
-			additionalInfo.SetRemoteKind(types.RemoteKindService)
-			additionalInfo.SetRemoteName(svc.Name)
-			additionalInfo.SetRemoteNamespace(svc.Namespace)
-			additionalInfo.SetRemotePodLabels(svc.Labels)
-			break
+		for j, remoteIP := range remoteIPs {
+			if svc.Spec.ClusterIP == remoteIP {
+				endpoints[j].Kind = types.RemoteKindService
+				endpoints[j].Name = svc.Name
+				endpoints[j].Namespace = svc.Namespace
+				endpoints[j].PodLabels = svc.Labels
+			}
 		}
 	}
+
+	additionalInfo.SetEndpointsDetails(endpoints)
 }
 
 func (m *KubeIPResolverInstance) EnrichEvent(ev any) error {

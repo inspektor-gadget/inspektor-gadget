@@ -47,40 +47,25 @@ type Event struct {
 	RemoteLabels    map[string]string `json:"remoteLabels,omitempty" column:"remotelabels,hide"`
 }
 
-func (e *Event) SetPodOwner(s string) {
-	e.PodOwner = s
+func (e *Event) SetLocalPodDetails(owner, hostIP, podIP string, labels map[string]string) {
+	e.PodOwner = owner
+	e.PodHostIP = hostIP
+	e.PodIP = podIP
+	e.PodLabels = labels
 }
 
-func (e *Event) SetPodHostIP(s string) {
-	e.PodHostIP = s
+func (e *Event) GetRemoteIPs() []string {
+	return []string{e.RemoteAddr}
 }
 
-func (e *Event) SetPodIP(s string) {
-	e.PodIP = s
-}
-
-func (e *Event) SetPodLabels(l map[string]string) {
-	e.PodLabels = l
-}
-
-func (e *Event) GetRemoteIP() string {
-	return e.RemoteAddr
-}
-
-func (e *Event) SetRemoteName(name string) {
-	e.RemoteName = name
-}
-
-func (e *Event) SetRemoteNamespace(s string) {
-	e.RemoteNamespace = s
-}
-
-func (e *Event) SetRemoteKind(k eventtypes.RemoteKind) {
-	e.RemoteKind = k
-}
-
-func (e *Event) SetRemotePodLabels(l map[string]string) {
-	e.RemoteLabels = l
+func (e *Event) SetEndpointsDetails(endpoints []eventtypes.EndpointDetails) {
+	if len(endpoints) == 0 {
+		return
+	}
+	e.RemoteName = endpoints[0].Name
+	e.RemoteNamespace = endpoints[0].Namespace
+	e.RemoteLabels = endpoints[0].PodLabels
+	e.RemoteKind = endpoints[0].Kind
 }
 
 func GetColumns() *columns.Columns[Event] {
