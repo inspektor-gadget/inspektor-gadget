@@ -47,11 +47,16 @@ The `-o` or `--output` flag lets us decide the format for the output the
 gadget will generate. The default `columns` output shows some of the
 information gathered, arranged in text columns on the console.
 
-This can be overridden with either `json` or `custom-columns`.
+This can be overridden with:
+- `json`
+- `jsonpretty`
+- `yaml`
+- `columns`
 
 ### JSON Output
 
 Passing `-o json` will print all the information gathered in JSON format.
+Each entry is printed on a single line, so the output can be easily parsed line by line.
 
 For example:
 ```bash
@@ -73,9 +78,18 @@ $ kubectl gadget trace tcp -A -o json | jq
 }
 ```
 
+### JSON Pretty Output
+
+Passing `-o jsonpretty` will print all the information gathered in JSON format but with indentation making it easier to read.
+
+### YAML Output
+
+Passing `-o yaml` will print all the information gathered in YAML format.
+Each entry is preceded by the end of directives markers (`---`).
+
 ### Custom Columns
 
-Using `-o custom-columns=column1,column2` we can choose which columns to
+Using `-o columns=column1,column2` we can choose which columns to
 print. We can use the JSON output to know the names of all the available
 columns for a given gadget.
 
@@ -84,7 +98,7 @@ running out of memory, we can choose to only print the PID and command of
 the killed process:
 
 ```bash
-$ kubectl gadget trace oomkill -A -o custom-columns=kpid,kcomm
+$ kubectl gadget trace oomkill -A -o columns=kpid,kcomm
 KPID   KCOMM
 15182  tail
 ```
