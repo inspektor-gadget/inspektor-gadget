@@ -3,7 +3,7 @@
 #ifndef SOCKETS_MAP_H
 #define SOCKETS_MAP_H
 
-#ifndef SOCKETS_MAP_IMPLEMENTATION
+#ifdef GADGET_TYPE_NETWORKING
 
 #include <linux/if_ether.h>
 #include <linux/ip.h>
@@ -32,6 +32,8 @@
 #define AF_INET		2	/* Internet IP Protocol 	*/
 #endif
 
+#ifdef GADGET_TYPE_NETWORKING
+
 const volatile __u32 current_netns = 0;
 
 unsigned long long load_byte(void *skb,
@@ -42,8 +44,8 @@ unsigned long long load_word(void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.word");
 
 #define L4_OFF (ETH_HLEN + sizeof(struct iphdr))
+#endif
 
-typedef __u32 ipv4_addr;
 
 struct sockets_key {
 	__u32 netns;
@@ -69,6 +71,7 @@ struct {
 	__type(value, struct sockets_value);
 } sockets SEC(".maps");
 
+#ifdef GADGET_TYPE_NETWORKING
 static __always_inline struct sockets_value *
 gadget_socket_lookup(struct __sk_buff *skb)
 {
@@ -99,5 +102,27 @@ gadget_socket_lookup(struct __sk_buff *skb)
 
 	return bpf_map_lookup_elem(&sockets, &key);
 }
+#endif
+
+#ifdef GADGET_TYPE_TRACING
+static __always_inline struct sockets_value *
+gadget_socket_lookup(struct sock *sk, __u32 netns)
+{
+	struct sockets_key key = {0,};
+	key.netns = netns;
+	key.family = BPF_CORE_READ(sk, __sk_common.skc_family);
+	key.proto = BPF_CORE_READ_BITFIELD_PROBED(sk, sk_protocol);
+	if (key.proto != IPPROTO_TCP && key.proto != IPPROTO_UDP)
+		return 0;
+
+	BPF_CORE_READ_INTO(&key.port, sk, __sk_common.skc_dport);
+	struct inet_sock *sockp = (struct inet_sock *)sk;
+	BPF_CORE_READ_INTO(&key.port, sockp, inet_sport);
+	// inet_sock.inet_sport is in network byte order
+	key.port = bpf_ntohs(key.port);
+
+	return bpf_map_lookup_elem(&sockets, &key);
+}
+#endif
 
 #endif

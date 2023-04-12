@@ -9,7 +9,6 @@
 
 #include <bpf/bpf_helpers.h>
 
-#define SOCKETS_MAP_IMPLEMENTATION
 #include "sockets-map.h"
 
 #define MAX_ENTRIES	10240
