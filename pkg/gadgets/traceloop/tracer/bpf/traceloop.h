@@ -54,6 +54,8 @@ struct syscall_event_cont_t {
 	__u8 failed;
 };
 
+_Static_assert(sizeof(struct syscall_event_cont_t) != sizeof(struct syscall_event_t), "syscall_event_t and syscall_event_cont_t must not have the same size as size is used to differentiate between them while reading from perf buffers");
+
 struct syscall_def_t {
 	__u64 args_len[SYSCALL_ARGS];
 };
