@@ -18,7 +18,6 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -525,7 +524,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	})
 
 	if err != nil {
-		if errors.Is(err, utilwait.ErrWaitTimeout) && debug {
+		if utilwait.Interrupted(err) && debug {
 			fmt.Println("DUMP PODS:")
 			fmt.Println(getGadgetPodsDebug(k8sClient))
 			fmt.Println("DUMP EVENTS:")
