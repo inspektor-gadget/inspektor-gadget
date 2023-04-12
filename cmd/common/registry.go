@@ -24,6 +24,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	k8syaml "sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends/console"
@@ -38,8 +39,10 @@ import (
 )
 
 const (
-	OutputModeColumns = "columns"
-	OutputModeJSON    = "json"
+	OutputModeColumns    = "columns"
+	OutputModeJSON       = "json"
+	OutputModeJSONPretty = "jsonpretty"
+	OutputModeYAML       = "yaml"
 )
 
 // AddCommandsFromRegistry adds all gadgets known by the registry as cobra commands as a subcommand to their categories
@@ -244,6 +247,10 @@ func buildCommandFromGadget(
 					transformResult = func(result []byte) ([]byte, error) {
 						return result, nil
 					}
+				case OutputModeJSONPretty:
+					printEventAsJSONPrettyFn(fe)
+				case OutputModeYAML:
+					printEventAsYAMLFn(fe)
 				}
 
 				// This kind of gadgets return directly the result instead of
@@ -346,6 +353,10 @@ func buildCommandFromGadget(
 				parser.SetEventCallback(formatter.EventHandlerFuncArray())
 			case OutputModeJSON:
 				parser.SetEventCallback(printEventAsJSONFn(fe))
+			case OutputModeJSONPretty:
+				parser.SetEventCallback(printEventAsJSONPrettyFn(fe))
+			case OutputModeYAML:
+				parser.SetEventCallback(printEventAsYAMLFn(fe))
 			}
 
 			// Gadgets with parser don't return anything, they provide the
@@ -430,6 +441,21 @@ func buildCommandFromGadget(
                              see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
 `,
 		)
+
+		outputFormats.Append(gadgets.OutputFormats{
+			OutputModeJSONPretty: {
+				Name:        "JSON Prettified",
+				Description: "The output of the gadget is returned as prettified JSON",
+				Transform:   nil,
+			},
+		})
+		outputFormats.Append(gadgets.OutputFormats{
+			OutputModeYAML: {
+				Name:        "YAML",
+				Description: "The output of the gadget is returned as YAML",
+				Transform:   nil,
+			},
+		})
 	}
 
 	// Add alternative output formats available in the gadgets
@@ -516,5 +542,27 @@ func printEventAsJSONFn(fe frontends.Frontend) func(ev any) {
 			return
 		}
 		fe.Output(string(d))
+	}
+}
+
+func printEventAsJSONPrettyFn(fe frontends.Frontend) func(ev any) {
+	return func(ev any) {
+		d, err := json.MarshalIndent(ev, "", "  ")
+		if err != nil {
+			fe.Logf(logger.WarnLevel, "marshalling %+v: %s", ev, err)
+			return
+		}
+		fe.Output(string(d))
+	}
+}
+
+func printEventAsYAMLFn(fe frontends.Frontend) func(ev any) {
+	return func(ev any) {
+		d, err := k8syaml.Marshal(ev)
+		if err != nil {
+			fe.Logf(logger.WarnLevel, "marshalling %+v: %s", ev, err)
+			return
+		}
+		fe.Output("---\n" + string(d))
 	}
 }
