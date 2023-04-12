@@ -30,8 +30,9 @@ import (
 const syscallsPath = `/sys/kernel/debug/tracing/events/syscalls/`
 
 type param struct {
-	position int
-	name     string
+	position  int
+	name      string
+	isPointer bool
 }
 
 type syscallDeclaration struct {
@@ -111,6 +112,8 @@ func parseLine(l string, idx int) (*param, error) {
 	// start from 8th index, hence we subtract that from idx to get position
 	// of the parameter to the syscall
 	cParam.position = idx - 8
+
+	cParam.isPointer = strings.Contains(mp["type"], "*")
 
 	return &cParam, nil
 }
@@ -227,6 +230,13 @@ func getSyscallDeclaration(syscallsDeclarations map[string]syscallDeclaration, s
 
 func (s syscallDeclaration) getParameterCount() uint8 {
 	return uint8(len(s.params))
+}
+
+func (s syscallDeclaration) paramIsPointer(paramNumber uint8) (bool, error) {
+	if int(paramNumber) >= len(s.params) {
+		return false, fmt.Errorf("param number %d out of bounds for syscall %q", paramNumber, s.name)
+	}
+	return s.params[paramNumber].isPointer, nil
 }
 
 func (s syscallDeclaration) getParameterName(paramNumber uint8) (string, error) {

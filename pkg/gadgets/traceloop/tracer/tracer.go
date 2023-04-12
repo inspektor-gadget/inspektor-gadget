@@ -452,7 +452,16 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				}
 				log.Debugf("\t\tevent paramName: %q", paramName)
 
-				paramValue := fmt.Sprintf("%d", enterEvent.args[i])
+				isPointer, err := syscallDeclaration.paramIsPointer(i)
+				if err != nil {
+					return nil, fmt.Errorf("checking syscall parameter is a pointer: %w", err)
+				}
+
+				format := "%d"
+				if isPointer {
+					format = "0x%x"
+				}
+				paramValue := fmt.Sprintf(format, enterEvent.args[i])
 				log.Debugf("\t\tevent paramValue: %q", paramValue)
 
 				for _, syscallContEvent := range syscallContinuedEventsMap[enterTimestamp] {
