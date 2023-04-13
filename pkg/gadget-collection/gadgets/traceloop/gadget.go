@@ -33,13 +33,18 @@ import (
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 )
 
+type containerSlim struct {
+	mntnsid  uint64
+	detached bool
+}
+
 type Trace struct {
 	client  client.Client
 	helpers gadgets.GadgetHelpers
 
 	started bool
 
-	containerIDs map[string]uint64
+	containerIDs map[string]*containerSlim
 
 	trace *gadgetv1alpha1.Trace
 }
@@ -183,7 +188,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	// The output will contain an array of types.TraceloopInfo.
 	// So, to avoid problems, we initialize it to be a JSON array.
 	trace.Status.Output = "[]"
-	t.containerIDs = make(map[string]uint64, 0)
+	t.containerIDs = make(map[string]*containerSlim, 0)
 
 	genKey := func(container *containercollection.Container) string {
 		return container.Namespace + "/" + container.Podname
@@ -203,7 +208,9 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			return err
 		}
 
-		t.containerIDs[containerID] = mntNsID
+		t.containerIDs[containerID] = &containerSlim{
+			mntnsid: mntNsID,
+		}
 		log.Debugf("tracer attached for %q (%d)", key, mntNsID)
 
 		var infos []types.TraceloopInfo
@@ -254,6 +261,15 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		traceUnique.Unlock()
 		if err != nil {
 			log.Errorf("failed to detach tracer: %s", err)
+
+			return
+		}
+
+		_, ok := t.containerIDs[container.ID]
+		if ok {
+			t.containerIDs[container.ID].detached = true
+		} else {
+			log.Errorf("trace does not know about container with ID %q", container.ID)
 
 			return
 		}
@@ -375,7 +391,7 @@ func (t *Trace) Delete(trace *gadgetv1alpha1.Trace) {
 	}
 
 	containerID := trace.Spec.Parameters["containerID"]
-	mntNsID, ok := t.containerIDs[containerID]
+	container, ok := t.containerIDs[containerID]
 	if !ok {
 		ids := make([]string, len(t.containerIDs))
 		i := 0
@@ -401,7 +417,9 @@ func (t *Trace) Delete(trace *gadgetv1alpha1.Trace) {
 	// First, we need to detach the perf buffer.
 	// We do not check the returned error because if the container was deleted it
 	// was already detached.
-	_ = traceUnique.tracer.Detach(mntNsID)
+	if !container.detached {
+		_ = traceUnique.tracer.Detach(container.mntnsid)
+	}
 
 	// Then we can remove it.
 	err := traceUnique.tracer.Delete(containerID)
