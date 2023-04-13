@@ -1,0 +1,54 @@
+metrics:
+  - name: executed_processes
+    type: counter
+    category: trace
+    gadget: exec
+    labels:
+      - namespace
+      - pod
+      - container
+    #selector:
+    # - "comm:cat"
+
+
+#  counters:
+#    - name: "mymetric_root_executions"
+#      category: "trace"
+#      gadget: "exec"
+#      selector:
+#        - "uid:0"
+#      labels:
+#        - "comm"
+#        - "uid"
+#    # number of tries to open non existing files by command
+#    - name: "mymetric_openfiles_enoent"
+#      category: "trace"
+#      gadget: "open"
+#      selector:
+#        - "err:2"
+#      labels:
+#        - "comm"
+#    # dns requests
+#    - name: "mymetric_failed_dns_requests"
+#      category: "trace"
+#      gadget: "dns"
+#      selector:
+#        - "qr:R"
+#        - "rcode:!NoError"
+#      labels:
+#        - "container"
+#        - "qtype"
+
+
+
+#  - name: "mymetric_process"
+#    category: "snapshot"
+#    gadget: "process"
+#    type: "gauge"
+#    selector:
+#      #- "namespace:default"
+#      #- "container:shell"
+#    labels:
+#      - "namespace"
+#      #- "container"
+#      #- "comm"
