@@ -15,6 +15,9 @@
 package tracer
 
 import (
+	"fmt"
+	"strings"
+
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
@@ -62,6 +65,29 @@ func (g *GadgetDesc) Parser() parser.Parser {
 
 func (g *GadgetDesc) EventPrototype() any {
 	return &types.Event{}
+}
+
+func (g *GadgetDesc) OutputFormats() (gadgets.OutputFormats, string) {
+	return gadgets.OutputFormats{
+		"tree": gadgets.OutputFormat{
+			Name:        "Tree",
+			Description: "A pstree like output",
+			Transform: func(data any) ([]byte, error) {
+				processes, ok := data.([]*types.Event)
+				if !ok {
+					return nil, fmt.Errorf("type must be []*types.Event and is: %T", data)
+				}
+
+				var builder strings.Builder
+				err := types.WriteTree(&builder, processes)
+				if err != nil {
+					return nil, err
+				}
+
+				return []byte(builder.String()), nil
+			},
+		},
+	}, "columns"
 }
 
 func (g *GadgetDesc) SortByDefault() []string {

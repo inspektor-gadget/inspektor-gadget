@@ -61,9 +61,13 @@ func (g *GadgetDesc) OutputFormats() (gadgets.OutputFormats, string) {
 		"report": gadgets.OutputFormat{
 			Name:        "Report",
 			Description: "A histogram showing the I/O time distribution",
-			Transform: func(data []byte) ([]byte, error) {
+			Transform: func(data any) ([]byte, error) {
 				var report types.Report
-				err := json.Unmarshal(data, &report)
+				b, ok := data.([]byte)
+				if !ok {
+					return nil, fmt.Errorf("type must be []byte and is: %T", data)
+				}
+				err := json.Unmarshal(b, &report)
 				if err != nil {
 					return nil, err
 				}

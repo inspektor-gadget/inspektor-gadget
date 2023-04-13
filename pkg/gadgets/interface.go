@@ -82,9 +82,10 @@ type OutputFormats map[string]OutputFormat
 // such a format is used, the result of the gadget will be passed to the Transform()
 // function and returned to the user.
 type OutputFormat struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Transform   func([]byte) ([]byte, error)
+	Name                   string                    `json:"name"`
+	Description            string                    `json:"description"`
+	RequiresCombinedResult bool                      `json:"requiresCombinedResult"`
+	Transform              func(any) ([]byte, error) `json:"-"`
 }
 
 // Append appends the OutputFormats given in other to of
