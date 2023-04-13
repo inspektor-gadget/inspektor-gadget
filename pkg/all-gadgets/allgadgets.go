@@ -20,6 +20,7 @@ import (
 
 	// script can't be added because it's designed only to work in kubectl-gadget for the time
 	// being
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/prometheus/tracer"
 
 	// Audit Category
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/tracer"

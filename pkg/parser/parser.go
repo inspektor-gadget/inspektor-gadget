@@ -24,8 +24,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/filter"
@@ -36,6 +39,12 @@ import (
 )
 
 type LogCallback func(severity logger.Level, fmt string, params ...any)
+
+type GaugeVal struct {
+	Attrs      []attribute.KeyValue
+	Int64Val   int64
+	Float64Val float64
+}
 
 // Parser is the (untyped) interface used for parser
 type Parser interface {
@@ -94,6 +103,26 @@ type Parser interface {
 
 	// Flush sends the events downstream that were collected after EnableCombiner() was called.
 	Flush()
+
+	// Things related to Prometheus. TODO: move to a separate interface / file?
+
+	// AttrsGetter returns a function that accepts an instance of type *T and returns a list of
+	// attributes for cols.
+	AttrsGetter(cols []string) (func(any) []attribute.KeyValue, error)
+
+	// AggregateEntries receives an array of *T and aggregates them according to cols.
+	AggregateEntries(cols []string, entries any, field string, isInt bool) (map[string]*GaugeVal, error)
+
+	// GetColKind returns the reflect.Kind of the column with the given name
+	GetColKind(colName string) (reflect.Kind, error)
+
+	// ColIntGetter returns a function that accepts an instance of type *T and returns the value
+	// of the column as an int64.
+	ColIntGetter(colName string) (func(any) int64, error)
+
+	// ColFloatGetter returns a function that accepts an instance of type *T and returns the
+	// value of the column as an float64.
+	ColFloatGetter(colName string) (func(any) float64, error)
 }
 
 type parser[T any] struct {
@@ -357,4 +386,164 @@ func (p *parser[T]) SetFilters(filters []string) error {
 	p.filters = filters
 	p.filterSpecs = filterSpecs
 	return nil
+}
+
+// Prometheus related stuff
+
+func (p *parser[T]) AttrsGetter(colNames []string) (func(any) []attribute.KeyValue, error) {
+	columnMap := p.columns.GetColumnMap()
+
+	keys := []attribute.Key{}
+	getters := []func(*T) attribute.Value{}
+
+	for _, colName := range colNames {
+		col, ok := columnMap.GetColumn(colName)
+		if !ok {
+			return nil, fmt.Errorf("unknown column: %s", colName)
+		}
+
+		var getter func(*T) attribute.Value
+
+		switch col.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			f := columns.GetFieldAsNumberFunc[int64, T](col)
+			getter = func(a *T) attribute.Value {
+				return attribute.Int64Value(f(a))
+			}
+		case reflect.Float32, reflect.Float64:
+			f := columns.GetFieldAsNumberFunc[float64, T](col)
+			getter = func(a *T) attribute.Value {
+				return attribute.Float64Value(f(a))
+			}
+		case reflect.String:
+			getter = func(a *T) attribute.Value {
+				ff := columns.GetFieldFunc[string, T](col)
+				return attribute.StringValue(ff(a))
+			}
+		case reflect.Bool:
+			getter = func(a *T) attribute.Value {
+				ff := columns.GetFieldFunc[bool, T](col)
+				return attribute.BoolValue(ff(a))
+			}
+		default:
+			return nil, fmt.Errorf("unsupported column type: %s", col.Kind())
+		}
+
+		keys = append(keys, attribute.Key(col.Name))
+		getters = append(getters, getter)
+	}
+
+	return func(ev any) []attribute.KeyValue {
+		attrs := []attribute.KeyValue{}
+
+		for i, key := range keys {
+			attr := attribute.KeyValue{
+				Key:   key,
+				Value: getters[i](ev.(*T)),
+			}
+			attrs = append(attrs, attr)
+		}
+
+		return attrs
+	}, nil
+}
+
+func attrsToString(kvs []attribute.KeyValue) string {
+	ret := ""
+	for _, kv := range kvs {
+		ret += fmt.Sprintf("%s=%s,", kv.Key, kv.Value.Emit())
+	}
+
+	return ret
+}
+
+func (p *parser[T]) AggregateEntries(cols []string, entries any, field string, isInt bool) (map[string]*GaugeVal, error) {
+	gauges := make(map[string]*GaugeVal)
+	attrsGetter, err := p.AttrsGetter(cols)
+	if err != nil {
+		return nil, err
+	}
+
+	intFieldGetter := func(any) int64 {
+		return 1
+	}
+
+	floatFieldGetter := func(any) float64 {
+		return 1.0
+	}
+
+	if field != "" {
+		if isInt {
+			intFieldGetter, err = p.ColIntGetter(field)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			floatFieldGetter, err = p.ColFloatGetter(field)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	for _, entry := range entries.([]*T) {
+		attrs := attrsGetter(entry)
+		key := attrsToString(attrs)
+		gauge, ok := gauges[key]
+		if !ok {
+			gauge = &GaugeVal{
+				Attrs: attrs,
+			}
+			gauges[key] = gauge
+		}
+		if isInt {
+			gauge.Int64Val += intFieldGetter(entry)
+		} else {
+			gauge.Float64Val += floatFieldGetter(entry)
+		}
+	}
+
+	return gauges, nil
+}
+
+func (p *parser[T]) GetColKind(colName string) (reflect.Kind, error) {
+	columnMap := p.columns.GetColumnMap()
+
+	col, ok := columnMap.GetColumn(colName)
+	if !ok {
+		return reflect.Invalid, fmt.Errorf("colunm %s not found", colName)
+	}
+
+	return col.Kind(), nil
+}
+
+func (p *parser[T]) ColIntGetter(colName string) (func(any) int64, error) {
+	columnMap := p.columns.GetColumnMap()
+
+	col, ok := columnMap.GetColumn(colName)
+	if !ok {
+		return nil, fmt.Errorf("column %s not found", colName)
+	}
+
+	f := columns.GetFieldAsNumberFunc[int64, T](col)
+
+	return func(a any) int64 {
+		return f(a.(*T))
+	}, nil
+}
+
+func (p *parser[T]) ColFloatGetter(colName string) (func(any) float64, error) {
+	columnMap := p.columns.GetColumnMap()
+
+	col, ok := columnMap.GetColumn(colName)
+	if !ok {
+		return nil, fmt.Errorf("colunm %s not found", colName)
+	}
+
+	f := columns.GetFieldAsNumberFunc[float64, T](col)
+
+	return func(a any) float64 {
+		return f(a.(*T))
+	}, nil
 }
