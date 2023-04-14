@@ -59,7 +59,6 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			Title:          "Protocol",
 			DefaultValue:   "all",
 			Description:    fmt.Sprintf("Show only sockets using this protocol (%s)", strings.Join(protocols, ", ")),
-			IsMandatory:    true,
 			PossibleValues: protocols,
 		},
 	}
