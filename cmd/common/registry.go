@@ -550,6 +550,9 @@ func addFlags(cmd *cobra.Command, params *params.Params, skipParams []params.Val
 		}
 
 		flag := cmd.PersistentFlags().VarPF(p, p.Key, p.Alias, desc)
+		if p.IsMandatory {
+			cmd.MarkPersistentFlagRequired(p.Key)
+		}
 
 		// Allow passing a boolean flag as --foo instead of having to use --foo=true
 		if p.IsBoolFlag() {
