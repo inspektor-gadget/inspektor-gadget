@@ -57,6 +57,7 @@ Explore the following documentation to find out which tools can help you in your
 	- [`tcp`](docs/gadgets/trace/tcp.md)
 	- [`tcpconnect`](docs/gadgets/trace/tcpconnect.md)
 	- [`tcpdrop`](docs/gadgets/trace/tcpdrop.md)
+- [`script`](docs/gadgets/script.md)
 - [`traceloop`](docs/gadgets/traceloop.md)
 
 ## Installation
@@ -95,6 +96,7 @@ Available Commands:
   deploy         Deploy Inspektor Gadget on the cluster
   help           Help about any command
   profile        Profile different subsystems
+  script         Run a bpftrace-compatible scripts
   snapshot       Take a snapshot of a subsystem and print it
   top            Gather, sort and periodically report events according to a given criteria
   trace          Trace and print system events

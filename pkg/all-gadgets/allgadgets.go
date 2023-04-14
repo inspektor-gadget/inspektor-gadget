@@ -18,6 +18,9 @@ import (
 	// Advise Category & traceloop are missing for now. They will be added after
 	// refactoring the CR handling. Currently, they are still handled by CRs.
 
+	// script can't be added because it's designed only to work in kubectl-gadget for the time
+	// being
+
 	// Audit Category
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/tracer"
 

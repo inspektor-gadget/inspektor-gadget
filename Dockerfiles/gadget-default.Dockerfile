@@ -8,7 +8,11 @@ ARG BUILDER_IMAGE=golang:1.19
 # See BCC section in docs/devel/CONTRIBUTING.md for further details.
 ARG BCC="quay.io/kinvolk/bcc:gadget"
 
+# bpftrace upstream image
+ARG BPFTRACE="quay.io/iovisor/bpftrace:v0.17.0"
+
 FROM ${BCC} as bcc
+FROM ${BPFTRACE} as bpftrace
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
 
 ARG TARGETARCH
@@ -68,6 +72,13 @@ COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
 
 # BTF files
 COPY hack/btfs /btfs/
+
+# bpftrace binary
+# TODO: this work because both bcc and bpftrace are based on the same ubuntu version:
+# https://github.com/kinvolk/bcc/blob/72b4247d7333df499a727987fde4e7903fc344d0/.github/workflows/publish.yml#L28
+# https://github.com/iovisor/bpftrace/blob/cd8c1b188df149277c09ebfb208de623a1aeaebb/docker/Dockerfile.focal#L1
+# We should consider building bpftrace ourselves to avoid this issue.
+COPY --from=bpftrace /usr/bin/bpftrace /usr/bin/bpftrace
 
 # Mitigate https://github.com/kubernetes/kubernetes/issues/106962.
 RUN rm -f /var/run
