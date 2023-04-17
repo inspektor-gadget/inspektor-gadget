@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -41,6 +42,11 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	if flavour != "default" {
 		return fmt.Errorf("script is not supported on the %q flavour of the container image. Only \"default\" is supported for now",
 			flavour)
+	}
+
+	if runtime.GOARCH != "amd64" {
+		return fmt.Errorf("script is not supported on the %q architecture. Only \"amd64\" is supported for now",
+			runtime.GOARCH)
 	}
 
 	params := gadgetCtx.GadgetParams()
