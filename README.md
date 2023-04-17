@@ -48,6 +48,7 @@ Explore the following documentation to find out which tools can help you in your
 	- [`tcp`](docs/gadgets/top/tcp.md)
 - `trace`:
 	- [`bind`](docs/gadgets/trace/bind.md)
+	- [`byob`](docs/gadgets/trace/byob.md)
 	- [`capabilities`](docs/gadgets/trace/capabilities.md)
 	- [`dns`](docs/gadgets/trace/dns.md)
 	- [`exec`](docs/gadgets/trace/exec.md)
@@ -180,6 +181,7 @@ Usage:
 
 Available Commands:
   bind         Trace socket bindings
+  byob         Trace with your own BPF program
   capabilities Trace security capability checks
   dns          Trace DNS requests
   exec         Trace new processes

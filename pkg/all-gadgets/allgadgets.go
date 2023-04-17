@@ -41,6 +41,7 @@ import (
 
 	// Trace Category
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/tracer"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/byob/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
