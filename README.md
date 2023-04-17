@@ -62,6 +62,7 @@ Explore the following documentation to find out which tools can help you in your
 	- [`tcpdrop`](docs/gadgets/trace/tcpdrop.md)
 	- [`tcpretrans`](docs/gadgets/trace/tcpretrans.md)
 - [`prometheus`](docs/gadgets/prometheus.md)
+- [`run`](docs/gadgets/run.md)
 - [`script`](docs/gadgets/script.md)
 - [`traceloop`](docs/gadgets/traceloop.md)
 
@@ -102,6 +103,7 @@ Available Commands:
   help           Help about any command
   profile        Profile different subsystems
   prometheus     Expose metrics using prometheus
+  run            Run an eBPF program
   script         Run a bpftrace-compatible scripts
   snapshot       Take a snapshot of a subsystem and print it
   top            Gather, sort and periodically report events according to a given criteria
