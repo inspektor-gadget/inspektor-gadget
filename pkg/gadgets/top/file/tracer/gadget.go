@@ -47,7 +47,6 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			Title:        "Show all files",
 			DefaultValue: "false",
 			Description:  "include non-regular file types (sockets, FIFOs, etc)",
-			IsMandatory:  true,
 			TypeHint:     params.TypeBool,
 		},
 	}
