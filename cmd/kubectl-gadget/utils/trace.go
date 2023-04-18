@@ -657,7 +657,7 @@ func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Tra
 	}
 
 	if err != nil {
-		if !errors.Is(err, wait.ErrWaitTimeout) {
+		if !wait.Interrupted(err) {
 			return nil, err
 		}
 
