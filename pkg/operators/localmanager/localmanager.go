@@ -234,6 +234,9 @@ func (l *localManagerTrace) Name() string {
 func (l *localManagerTrace) PreGadgetRun() error {
 	log := l.gadgetCtx.Logger()
 
+	id := uuid.New()
+	l.subscriptionKey = id.String()
+
 	// TODO: Improve filtering, see further details in
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
 	containerSelector := containercollection.ContainerSelector{
@@ -242,7 +245,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 
 	if setter, ok := l.gadgetInstance.(MountNsMapSetter); ok {
 		// Create mount namespace map to filter by containers
-		mountnsmap, err := l.manager.igManager.CreateMountNsMap(containerSelector)
+		mountnsmap, err := l.manager.igManager.CreateMountNsMap(l.subscriptionKey, containerSelector)
 		if err != nil {
 			return commonutils.WrapInErrManagerCreateMountNsMap(err)
 		}
@@ -286,9 +289,6 @@ func (l *localManagerTrace) PreGadgetRun() error {
 				container.Name, container.Pid, container.Mntns, container.Netns)
 		}
 
-		id := uuid.New()
-		l.subscriptionKey = id.String()
-
 		log.Debugf("add subscription")
 		containers := l.manager.igManager.Subscribe(
 			l.subscriptionKey,
@@ -315,7 +315,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 func (l *localManagerTrace) PostGadgetRun() error {
 	if l.mountnsmap != nil {
 		log.Debugf("calling RemoveMountNsMap()")
-		l.manager.igManager.RemoveMountNsMap()
+		l.manager.igManager.RemoveMountNsMap(l.subscriptionKey)
 	}
 	if l.subscriptionKey != "" {
 		log.Debugf("calling Unsubscribe()")

@@ -52,26 +52,22 @@ func (l *IGManager) Dump() string {
 	return out
 }
 
-// We are not running multiple tracers per instance so the tracer ID doesn't
-// need to be unique and we can hide it from caller.
-const igTracerID = "ig_tracer_id"
-
-func (l *IGManager) CreateMountNsMap(containerSelector containercollection.ContainerSelector) (*ebpf.Map, error) {
-	if err := l.tracerCollection.AddTracer(igTracerID, containerSelector); err != nil {
+func (l *IGManager) CreateMountNsMap(id string, containerSelector containercollection.ContainerSelector) (*ebpf.Map, error) {
+	if err := l.tracerCollection.AddTracer(id, containerSelector); err != nil {
 		return nil, err
 	}
 
-	mountnsmap, err := l.tracerCollection.TracerMountNsMap(igTracerID)
+	mountnsmap, err := l.tracerCollection.TracerMountNsMap(id)
 	if err != nil {
-		l.tracerCollection.RemoveTracer(igTracerID)
+		l.tracerCollection.RemoveTracer(id)
 		return nil, err
 	}
 
 	return mountnsmap, nil
 }
 
-func (l *IGManager) RemoveMountNsMap() error {
-	return l.tracerCollection.RemoveTracer(igTracerID)
+func (l *IGManager) RemoveMountNsMap(id string) error {
+	return l.tracerCollection.RemoveTracer(id)
 }
 
 func NewManager(runtimes []*containerutils.RuntimeConfig) (*IGManager, error) {
