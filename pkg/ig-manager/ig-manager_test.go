@@ -77,7 +77,9 @@ func TestMountNsMap(t *testing.T) {
 	}
 	defer igManager.Close()
 
-	m, err := igManager.CreateMountNsMap(containercollection.ContainerSelector{})
+	id := "foo"
+
+	m, err := igManager.CreateMountNsMap(id, containercollection.ContainerSelector{})
 	if err != nil {
 		t.Fatalf("Failed to create mount namespace map: %s", err)
 	}
@@ -85,7 +87,7 @@ func TestMountNsMap(t *testing.T) {
 		t.Fatalf("mount namespace map is nil: %s", err)
 	}
 
-	err = igManager.RemoveMountNsMap()
+	err = igManager.RemoveMountNsMap(id)
 	if err != nil {
 		t.Fatalf("Failed to remove mount namespace map: %s", err)
 	}
