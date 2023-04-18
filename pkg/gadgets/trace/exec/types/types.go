@@ -43,6 +43,12 @@ func GetColumns() *columns.Columns[Event] {
 	return execColumns
 }
 
+func (e *Event) MarshalJSON() (res []byte, err error) {
+	cols := GetColumns()
+	res, err = eventtypes.MarshalJSONFunc(cols, e)
+	return
+}
+
 func Base(ev eventtypes.Event) *Event {
 	return &Event{
 		Event: ev,

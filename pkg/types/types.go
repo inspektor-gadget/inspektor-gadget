@@ -17,6 +17,8 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -157,6 +159,48 @@ type Event struct {
 
 	// Message when Type is ERR, WARN, DEBUG or INFO
 	Message string `json:"message,omitempty"`
+}
+
+func MarshalJSONFunc(columns any, e any) (res []byte, err error) {
+	v := reflect.ValueOf(e)
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+	rt := v.Type()
+
+	res = append(res, '{')
+
+	numField := v.NumField()
+	for i := 0; i < numField; i++ {
+		ft := rt.Field(i)
+		f := v.Field(i)
+
+		jsonName := strings.Split(ft.Tag.Get("json"), ",")[0] // use split to ignore tag "options"
+
+		var b []byte
+		if f.Kind() == reflect.Struct {
+			b, err = MarshalJSONFunc(nil, f.Interface())
+		} else {
+			b, err = json.Marshal(f.Interface())
+		}
+		if err != nil {
+			return
+		}
+		if jsonName != "" {
+			res = append(res, fmt.Sprintf("%q:", jsonName)...)
+			res = append(res, b...)
+		} else {
+			b = b[1 : len(b)-1] // remove the first and last character
+			res = append(res, b...)
+		}
+
+		if i < numField-1 {
+			res = append(res, ',')
+		}
+	}
+	res = append(res, '}')
+
+	return
 }
 
 // GetBaseEvent is needed to implement commonutils.BaseElement and
