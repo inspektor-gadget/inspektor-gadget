@@ -27,8 +27,8 @@ require (
 	k8s.io/api v0.27.1
 	k8s.io/apiextensions-apiserver v0.27.0
 	k8s.io/apimachinery v0.27.1
-	k8s.io/cli-runtime v0.26.3
-	k8s.io/client-go v0.27.0
+	k8s.io/cli-runtime v0.27.1
+	k8s.io/client-go v0.27.1
 	k8s.io/code-generator v0.27.0
 	sigs.k8s.io/controller-runtime v0.14.6
 	sigs.k8s.io/security-profiles-operator v0.7.1
@@ -64,7 +64,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/giantswarm/microerror v0.4.0 // indirect
-	github.com/go-errors/errors v1.0.1 // indirect
+	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/zapr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
@@ -135,8 +135,8 @@ require (
 	k8s.io/kube-openapi v0.0.0-20230308215209-15aac26d736a // indirect
 	k8s.io/utils v0.0.0-20230220204549-a5ecb0141aa5 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/kustomize/api v0.12.1 // indirect
-	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
+	sigs.k8s.io/kustomize/api v0.13.2 // indirect
+	sigs.k8s.io/kustomize/kyaml v0.14.1 // indirect
 	sigs.k8s.io/release-utils v0.7.3 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
