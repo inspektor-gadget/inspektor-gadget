@@ -26,6 +26,8 @@ DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
 
 IMAGE_FLAVOUR ?= "default"
 
+PLATFORMS ?= "linux/amd64,linux/arm64"
+
 # Adds a '-dirty' suffix to version string if there are uncommitted changes
 changes := $(shell git status --porcelain)
 ifeq ($(changes),)
@@ -133,6 +135,8 @@ GADGET_CONTAINERS = \
 
 gadget-container-all: $(GADGET_CONTAINERS)
 
+cross-gadget-container-all: $(foreach container,$(GADGET_CONTAINERS),$(addprefix cross-,$(container)))
+
 gadget-%-container:
 	if $(ENABLE_BTFGEN) == "true" ; then \
 		./tools/getbtfhub.sh && \
@@ -142,6 +146,15 @@ gadget-%-container:
 	docker buildx build -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
 		-f Dockerfiles/gadget-$*.Dockerfile .
 
+cross-gadget-%-container:
+	if $(ENABLE_BTFGEN) == "true" ; then \
+		./tools/getbtfhub.sh && \
+		$(MAKE) -f Makefile.btfgen BPFTOOL=$(HOME)/btfhub/tools/bin/bpftool.$(uname -m) \
+			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
+	fi
+	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
+		-f Dockerfiles/gadget-$*.Dockerfile .
+
 push-gadget-%-container:
 	docker push $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,)
 
@@ -149,6 +162,11 @@ push-gadget-%-container:
 .PHONY: kubectl-gadget-container
 kubectl-gadget-container:
 	docker buildx build -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
+	--build-arg IMAGE_TAG=$(IMAGE_TAG) .
+
+.PHONY: cross-kubectl-gadget-container
+cross-kubectl-gadget-container:
+	docker buildx build --platform=$(PLATFORMS) -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
 	--build-arg IMAGE_TAG=$(IMAGE_TAG) .
 
 # tests
@@ -262,6 +280,7 @@ help:
 	@echo  'o gadget-default-container	- Build the gadget container default image'
 	@echo  '  gadget-core-container		- Build the gadget container CO-RE image'
 	@echo  '  gadget-container-all		- Build all flavors of the gadget container image'
+	@echo  '  cross-gadget-container-all	- Build all flavors of the gadget container image for all supported architectures'
 	@echo  '  ebpf-objects			- Build eBPF objects file inside docker'
 	@echo  '  ebpf-objects-outside-docker	- Build eBPF objects file on host'
 	@echo  '  btfgen			- Build BTF files'
