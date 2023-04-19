@@ -49,7 +49,11 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	else
 		parent_pid = parent->pid;
 
-	BPF_SEQ_PRINTF(seq, "%d %d %d %llu %s\n", task->tgid, task->pid, parent_pid, mntns_id, task->comm);
+	__u32 uid = task->cred->uid.val;
+	__u32 gid = task->cred->gid.val;
+
+	BPF_SEQ_PRINTF(seq, "%d %d %d %llu %d %d %s\n",
+		task->tgid, task->pid, parent_pid, mntns_id, uid, gid, task->comm);
 
 	return 0;
 }

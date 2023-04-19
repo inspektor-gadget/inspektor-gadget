@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -119,20 +120,21 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 		var command string
 		var tgid, pid, parentPid int
 		var mntnsid uint64
+		var uid, gid uint32
 
 		text := scanner.Text()
-		matchedElems, err := fmt.Sscanf(text, "%d %d %d %d", &tgid, &pid, &parentPid, &mntnsid)
+		matchedElems, err := fmt.Sscanf(text, "%d %d %d %d %d %d", &tgid, &pid, &parentPid, &mntnsid, &uid, &gid)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse process information: %w", err)
 		}
-		if matchedElems != 4 {
+		if matchedElems != 6 {
 			return nil, fmt.Errorf("failed to parse process information, expected 4 integers had %d", matchedElems)
 		}
-		textSplit := strings.SplitN(text, " ", 5)
-		if len(textSplit) != 5 {
+		textSplit := strings.SplitN(text, " ", 7)
+		if len(textSplit) != 7 {
 			return nil, fmt.Errorf("failed to parse process information, expected 5 matched elements had %d", len(textSplit))
 		}
-		command = textSplit[4]
+		command = textSplit[6]
 
 		event := processcollectortypes.Event{
 			Event: eventtypes.Event{
@@ -140,6 +142,8 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 			},
 			Pid:           tgid,
 			Tid:           pid,
+			Uid:           uid,
+			Gid:           gid,
 			Command:       command,
 			ParentPid:     parentPid,
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: mntnsid},
@@ -174,12 +178,21 @@ func getTidEvent(config *Config, enricher gadgets.DataEnricherByMntNs, pid, tid 
 		}
 	}
 
+	info, err := os.Lstat(fmt.Sprintf("/proc/%d/task/%d", pid, tid))
+	if err != nil {
+		return nil, fmt.Errorf("getting user of process: %w", err)
+	}
+
+	stat := info.Sys().(*syscall.Stat_t)
+
 	event := &processcollectortypes.Event{
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
 		},
 		Tid:           tid,
 		Pid:           pid,
+		Uid:           stat.Uid,
+		Gid:           stat.Gid,
 		Command:       comm,
 		WithMountNsID: eventtypes.WithMountNsID{MountNsID: mntnsid},
 	}

@@ -35,6 +35,8 @@ type Event struct {
 	Command   string `json:"comm" column:"comm,template:comm"`
 	Pid       int    `json:"pid" column:"pid,template:pid"`
 	Tid       int    `json:"tid" column:"tid,template:pid,hide"`
+	Uid       uint32 `json:"uid" column:"uid,template:uid"`
+	Gid       uint32 `json:"gid" column:"gid,template:gid"`
 	ParentPid int    `json:"ppid" column:"ppid,template:pid,hide"`
 }
 
