@@ -19,19 +19,64 @@ NODE            PID    COMM            IP SADDR       DADDR   SPORT DPORT STATE 
 - In terminal 2, start a pod and configure the network emulator to drop 25% of the packets:
 
 ```bash
+$ kubectl create service nodeport nginx --tcp=80:80
+$ kubectl create deployment nginx --image=nginx
 $ kubectl run -ti --privileged --image ubuntu shell -- bash
 root@shell:/# apt-get update
 root@shell:/# apt install -y iproute2 curl
 root@shell:/# tc qdisc add dev eth0 root netem drop 25%
-root@shell:/# curl 1.1.1.1
+root@shell:/# curl nginx
 ```
 
 - The results in terminal 1 will show that some packets are dropped by the network emulator qdisc:
 
 ```
-NODE            PID    COMM            IP SADDR       DADDR   SPORT DPORT STATE     TCPFLAGS REASON
-minikube-docker 556165 curl            4  10.244.0.10 1.1.1.1 37244 80    FIN_WAIT1 FIN|ACK  QDISC_DROP
-minikube-docker 1007   irq/130-iwlwifi 4  10.244.0.10 1.1.1.1 37244 80    FIN_WAIT2 ACK      QDISC_DROP
+NODE             NAMESPACE  POD    CONTAINER  PID     COMM  IP SRC                    DST                        STATE        TCPFLAGS  REASON
+minikube-docker  default    shell  shell      0             4  p/default/shell:45979  s/kube-system/kube-dns:53  ESTABLISHED  FIN       QDISC_DROP
+minikube-docker  default    shell  shell      406293  curl  4  p/default/shell:34482  s/default/nginx:80         ESTABLISHED  ACK       QDISC_DROP
+```
+
+The network emulator uses a random generator to drop 25% of the packets.
+The results may vary.
+
+The gadget tries its best to link the dropped packets to the process which generated it.
+In some cases, this information might be missing.
+
+The source and destination addresses are written in condensed form.
+It is possible to see more detailed information by reading specific columns or using the json or yaml ouput:
+
+```
+$ kubectl gadget trace tcpdrop \
+    -o columns=node,namespace,pod,container,pid,comm,ip,saddr,sport,srcKind,srcns,srcname,daddr,dport,dstKind,dstns,dstname,state,tcpflags,reason
+```
+
+```
+$ kubectl gadget trace tcpdrop -o yaml
+---
+comm: curl
+container: shell
+daddr: 10.99.5.39
+dport: 80
+dstKind: svc
+dstName: nginx
+dstNamespace: default
+ipversion: 4
+mountnsid: 4026533845
+namespace: default
+netnsid: 4026533672
+node: minikube-docker
+pid: 412491
+pod: shell
+reason: QDISC_DROP
+saddr: 10.244.0.10
+sport: 53260
+srcKind: pod
+srcName: shell
+srcNamespace: default
+state: ESTABLISHED
+tcpflags: ACK
+timestamp: 1681911565379499967
+type: normal
 ```
 
 ### With `ig`
@@ -40,7 +85,7 @@ minikube-docker 1007   irq/130-iwlwifi 4  10.244.0.10 1.1.1.1 37244 80    FIN_WA
 
 ```bash
 $ sudo ig trace tcpdrop -r docker
-PID    COMM            IP SADDR      DADDR   SPORT DPORT STATE       TCPFLAGS REASON
+CONTAINER  PID     COMM  IP SRC               DST          STATE        TCPFLAGS  REASON
 ```
 
 - In terminal 2, start a container, configure the network emulator to drop 25% of the packets, and download a web page:
@@ -56,9 +101,8 @@ The container needs NET_ADMIN capability to manage network interfaces
 - The results in terminal 1 will show that some packets are dropped by the network emulator qdisc:
 
 ```
-PID    COMM            IP SADDR      DADDR   SPORT DPORT STATE       TCPFLAGS REASON
-561424 wget            4  172.17.0.2 1.1.1.1 39450 80    SYN_SENT    SYN      QDISC_DROP
-1007   irq/130-iwlwifi 4  172.17.0.2 1.1.1.1 39450 80    ESTABLISHED ACK      QDISC_DROP
+CONTAINER  PID     COMM  IP SRC               DST          STATE        TCPFLAGS  REASON
+netem      456426  wget  4  172.17.0.2:35790  1.1.1.1:443  ESTABLISHED  ACK       QDISC_DROP
 ```
 
 The following section tells us that QDISC_DROP means the packet was "dropped by qdisc when packet outputting (failed to enqueue to current qdisc)".
