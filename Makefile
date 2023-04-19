@@ -94,7 +94,7 @@ ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 ig-%: phony_explicit
 	echo Building ig-$* && \
 	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
-	docker buildx build -t ig-$*-builder -f Dockerfiles/ig.Dockerfile \
+	docker build -t ig-$*-builder -f Dockerfiles/ig.Dockerfile \
 		--build-arg GOOS=$${GOOS} --build-arg GOARCH=$${GOARCH} --build-arg VERSION=$(VERSION) . && \
 	docker run --rm --entrypoint cat ig-$*-builder ig-$* > ig-$* && \
 	chmod +x ig-$*
@@ -143,7 +143,7 @@ gadget-%-container:
 		$(MAKE) -f Makefile.btfgen BPFTOOL=$(HOME)/btfhub/tools/bin/bpftool.$(uname -m) \
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
 	fi
-	docker buildx build -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
+	docker build -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
 		-f Dockerfiles/gadget-$*.Dockerfile .
 
 cross-gadget-%-container:
@@ -161,7 +161,7 @@ push-gadget-%-container:
 # kubectl-gadget container image
 .PHONY: kubectl-gadget-container
 kubectl-gadget-container:
-	docker buildx build -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
+	docker build -t kubectl-gadget -f Dockerfiles/kubectl-gadget.Dockerfile \
 	--build-arg IMAGE_TAG=$(IMAGE_TAG) .
 
 .PHONY: cross-kubectl-gadget-container
