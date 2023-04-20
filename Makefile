@@ -92,12 +92,13 @@ ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 	cp ig-$(GOHOSTOS)-$(GOHOSTARCH) ig
 
 ig-%: phony_explicit
-	echo Building ig-$* && \
-	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
-	docker build -t ig-$*-builder -f Dockerfiles/ig.Dockerfile \
-		--build-arg GOOS=$${GOOS} --build-arg GOARCH=$${GOARCH} --build-arg VERSION=$(VERSION) . && \
-	docker run --rm --entrypoint cat ig-$*-builder ig-$* > ig-$* && \
-	chmod +x ig-$*
+	echo Building $@
+	docker buildx build --load --platform=$(subst -,/,$*) -t $@ -f Dockerfiles/ig.Dockerfile \
+		--build-arg VERSION=$(VERSION) . ;\
+	docker create --name ig-$*-container $@
+	docker cp ig-$*-container:/usr/bin/$@ $@
+	docker rm ig-$*-container
+	chmod +x $@
 
 KUBECTL_GADGET_TARGETS = \
 	kubectl-gadget-linux-amd64 \
