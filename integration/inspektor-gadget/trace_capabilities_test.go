@@ -55,7 +55,7 @@ func TestTraceCapabilities(t *testing.T) {
 				e.Timestamp = 0
 				e.Node = ""
 				e.Pid = 0
-				e.UID = 0
+				e.Uid = 0
 				e.MountNsID = 0
 				// Do not check InsetID to avoid introducing dependency on the kernel version
 				e.InsetID = nil

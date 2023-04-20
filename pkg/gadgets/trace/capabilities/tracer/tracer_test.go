@@ -89,7 +89,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					},
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Pid:           uint32(info.Pid),
-					UID:           uint32(info.UID),
+					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
 					Syscall:       "fchownat",
 					CapName:       "CHOWN",
@@ -128,7 +128,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					},
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Pid:           uint32(info.Pid),
-					UID:           uint32(info.UID),
+					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
 					Syscall:       "fchownat",
 					CapName:       "CHOWN",
@@ -158,7 +158,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					},
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Pid:           uint32(info.Pid),
-					UID:           uint32(info.UID),
+					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
 					Syscall:       "bind",
 					CapName:       "NET_BIND_SERVICE",
@@ -179,7 +179,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
 				}
 			},
-			runnerConfig: &utilstest.RunnerConfig{UID: 1245},
+			runnerConfig: &utilstest.RunnerConfig{Uid: 1245},
 			generateEvent: func() error {
 				if err := chown(); err == nil {
 					return fmt.Errorf("chwon should have failed")
@@ -194,7 +194,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					},
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Pid:           uint32(info.Pid),
-					UID:           uint32(info.UID),
+					Uid:           uint32(info.Uid),
 					Comm:          info.Comm,
 					Syscall:       "fchownat",
 					CapName:       "CHOWN",

@@ -64,7 +64,7 @@ func TestTraceExec(t *testing.T) {
 				e.Timestamp = 0
 				e.Pid = 0
 				e.Ppid = 0
-				e.UID = 0
+				e.Uid = 0
 				e.Retval = 0
 				e.MountNsID = 0
 			}

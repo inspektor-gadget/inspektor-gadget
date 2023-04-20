@@ -24,7 +24,7 @@ type Event struct {
 	eventtypes.WithMountNsID
 
 	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
-	UID       uint32 `json:"uid,omitempty" column:"uid,minWidth:6,hide"`
+	Uid       uint32 `json:"uid,omitempty" column:"uid,minWidth:6,hide"`
 	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
 	IPVersion int    `json:"ipversion,omitempty" column:"ip,width:2,fixed"`
 	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr"`

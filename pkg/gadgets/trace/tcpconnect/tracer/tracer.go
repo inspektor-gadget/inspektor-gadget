@@ -177,7 +177,7 @@ func (t *Tracer) run() {
 			},
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MntnsId},
 			Pid:           bpfEvent.Pid,
-			UID:           bpfEvent.Uid,
+			Uid:           bpfEvent.Uid,
 			Comm:          gadgets.FromCString(bpfEvent.Task[:]),
 			Dport:         gadgets.Htons(bpfEvent.Dport),
 		}

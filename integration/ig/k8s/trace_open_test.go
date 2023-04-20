@@ -50,7 +50,7 @@ func TestTraceOpen(t *testing.T) {
 				e.Timestamp = 0
 				e.MountNsID = 0
 				e.Pid = 0
-				e.UID = 0
+				e.Uid = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
