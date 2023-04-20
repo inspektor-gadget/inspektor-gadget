@@ -150,7 +150,7 @@ func (k *KubeManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	log.Debugf("> isMountNsMapSetter: %v", isMountNsMapSetter)
 	log.Debugf("> isAttacher: %v", isAttacher)
 
-	return (isMountNsMapSetter && canEnrichEvent) || isAttacher
+	return isMountNsMapSetter || canEnrichEvent || isAttacher
 }
 
 func (k *KubeManager) Init(params *params.Params) error {

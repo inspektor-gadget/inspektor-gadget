@@ -13,21 +13,30 @@ import (
 )
 
 type tcpdropEvent struct {
-	Saddr     [16]uint8
-	Daddr     [16]uint8
-	Pid       uint32
-	_         [4]byte
-	MntnsId   uint64
-	Comm      [16]uint8
-	Timestamp uint64
-	Af        uint32
-	Dport     uint16
-	Sport     uint16
-	State     uint8
-	Tcpflags  uint8
-	_         [2]byte
-	Reason    uint32
-	_         [8]byte
+	Saddr       [16]uint8
+	Daddr       [16]uint8
+	Timestamp   uint64
+	Af          uint32
+	Dport       uint16
+	Sport       uint16
+	State       uint8
+	Tcpflags    uint8
+	_           [2]byte
+	Reason      uint32
+	Netns       uint32
+	_           [4]byte
+	ProcCurrent struct {
+		MountNsId uint64
+		Pid       uint32
+		Tid       uint32
+		Task      [16]uint8
+	}
+	ProcSocket struct {
+		MountNsId uint64
+		Pid       uint32
+		Tid       uint32
+		Task      [16]uint8
+	}
 }
 
 // loadTcpdrop returns the embedded CollectionSpec for tcpdrop.
@@ -78,7 +87,8 @@ type tcpdropProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpdropMapSpecs struct {
-	Events *ebpf.MapSpec `ebpf:"events"`
+	Events  *ebpf.MapSpec `ebpf:"events"`
+	Sockets *ebpf.MapSpec `ebpf:"sockets"`
 }
 
 // tcpdropObjects contains all objects after they have been loaded into the kernel.
@@ -100,12 +110,14 @@ func (o *tcpdropObjects) Close() error {
 //
 // It can be passed to loadTcpdropObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpdropMaps struct {
-	Events *ebpf.Map `ebpf:"events"`
+	Events  *ebpf.Map `ebpf:"events"`
+	Sockets *ebpf.Map `ebpf:"sockets"`
 }
 
 func (m *tcpdropMaps) Close() error {
 	return _TcpdropClose(
 		m.Events,
+		m.Sockets,
 	)
 }
 

@@ -11,6 +11,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
+#define GADGET_TYPE_NETWORKING
 #include <sockets-map.h>
 
 #include "snisnoop.h"
