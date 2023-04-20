@@ -37,6 +37,7 @@ require (
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/gogo/protobuf v1.3.2
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/kr/pretty v0.3.1
@@ -45,7 +46,7 @@ require (
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
 	golang.org/x/sync v0.1.0
 	golang.org/x/text v0.9.0
-	k8s.io/cri-api v0.25.8
+	k8s.io/cri-api v0.27.1
 )
 
 require (
@@ -70,7 +71,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/btree v1.0.1 // indirect
