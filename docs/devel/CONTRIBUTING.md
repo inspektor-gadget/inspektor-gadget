@@ -18,6 +18,7 @@ Inspektor Gadget.
 - [Fork](https://github.com/inspektor-gadget/inspektor-gadget/fork) and clone this repo:
     - `git clone git@github.com:your_account/inspektor-gadget.git`.
 - Install [Docker](https://docs.docker.com/get-docker/), [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx) and [Golang](https://golang.org/doc/install).
+- To be able to cross build our different container images, you will also need [`qemu-user-static`](https://github.com/multiarch/qemu-user-static).
 
 ## Building the code
 
