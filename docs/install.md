@@ -188,7 +188,7 @@ $ ig version
 
 ### Compile from source
 
-`ig` is built using a Docker container, so you don't have to worry
+`ig` is built using a Docker container relying on [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx), so you don't have to worry
 about installing dependencies:
 
 ```bash
