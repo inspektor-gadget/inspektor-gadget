@@ -4,6 +4,7 @@
 !cmd
 !gadget-container
 !pkg
+!internal/thirdparty
 !tools
 !Makefile*
 !*.mk

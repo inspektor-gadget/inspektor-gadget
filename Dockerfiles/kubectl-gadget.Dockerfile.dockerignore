@@ -3,6 +3,7 @@
 !go.sum
 !cmd
 !pkg
+!internal/thirdparty
 !tools
 !Makefile
 !*.mk

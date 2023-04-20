@@ -4,6 +4,7 @@
 !gadget-container
 !hack/btfs
 !pkg
+!internal/thirdparty
 !tools
 !Makefile*
 !*.mk

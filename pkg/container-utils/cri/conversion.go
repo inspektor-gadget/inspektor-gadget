@@ -1,5 +1,6 @@
 /*
 Copyright 2021 The Kubernetes Authors.
+Copyright 2023 The Inspektor Gadget authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +25,8 @@ import (
 	"unsafe"
 
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
-	"k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+
+	"github.com/inspektor-gadget/inspektor-gadget/internal/thirdparty/k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 func fromV1alpha2ListContainersResponse(from *v1alpha2.ListContainersResponse) *runtimeapi.ListContainersResponse {
