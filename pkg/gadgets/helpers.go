@@ -119,6 +119,17 @@ func IPStringFromBytes(ipBytes [16]byte, ipType int) string {
 	}
 }
 
+func IPVerFromAF(af uint32) int {
+	switch af {
+	case unix.AF_INET:
+		return 4
+	case unix.AF_INET6:
+		return 6
+	default:
+		return 0
+	}
+}
+
 var timeDiff time.Duration
 
 func init() {
