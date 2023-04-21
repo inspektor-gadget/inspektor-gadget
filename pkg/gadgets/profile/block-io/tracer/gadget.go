@@ -91,22 +91,12 @@ func starsToString(val, valMax, width uint64) string {
 		return strings.Repeat(" ", int(width))
 	}
 
-	minVal := uint64(0)
-	if val < valMax {
-		minVal = val
-	} else {
-		minVal = valMax
-	}
-
-	stars := minVal * width / valMax
+	stars := val * width / valMax
 	spaces := width - stars
 
 	var sb strings.Builder
 	sb.WriteString(strings.Repeat("*", int(stars)))
 	sb.WriteString(strings.Repeat(" ", int(spaces)))
-	if val > valMax {
-		sb.WriteByte('+')
-	}
 
 	return sb.String()
 }
