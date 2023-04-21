@@ -1,6 +1,8 @@
 TAG := `git describe --tags --always`
 VERSION :=
 
+GOLANG_VERSION=go1.19
+
 CONTAINER_REPO ?= ghcr.io/inspektor-gadget/inspektor-gadget
 IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
@@ -41,6 +43,14 @@ ifeq ($(pvpath),)
 	PV :=
 else
 	PV := | $(pvpath)
+endif
+
+ifneq ($(shell go help > /dev/null; echo $$?), 0)
+$(warning "You need to have golang version $(GOLANG_VERSION) installed to build kubectl_gadget")
+endif
+
+ifneq ($(shell docker buildx --help > /dev/null; echo $$?), 0)
+$(warning 'You need to have docker and docker buildx installed to build ig and container images')
 endif
 
 # export variables that are used in Makefile.btfgen as well.

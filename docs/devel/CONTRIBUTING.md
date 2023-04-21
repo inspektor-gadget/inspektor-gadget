@@ -38,7 +38,7 @@ kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
 
 Inspektor Gadget provides two different container images:
 - gadget-default: Contains CO-RE and BCC gadgets
-- gadget-core: Containes only CO-RE gadgets that are integrated with the gadget tracer manager
+- gadget-core: Contains only CO-RE gadgets that are integrated with the gadget tracer manager
   * traceloop gadget is not included, it will be included once
     [#371](https://github.com/inspektor-gadget/inspektor-gadget/issues/371) is
     fixed.
