@@ -6,17 +6,20 @@
 
 struct event {
 	union {
-		__u32 saddr_v4;
 		__u8 saddr_v6[16];
+		__u32 saddr_v4;
 	};
 	union {
-		__u32 daddr_v4;
 		__u8 daddr_v6[16];
+		__u32 daddr_v4;
 	};
-	char comm[TASK_COMM_LEN];
-	__u64 delta_us;
-	__u64 ts_us;
+	__u8 comm[TASK_COMM_LEN];
+	__u64 timestamp;
+	__u64 mntns_id;
+	__u64 delta;
+	// tgid and pid from kernel point of view
 	__u32 tgid;
+	__u32 pid;
 	int af;
 	__u16 lport;
 	__u16 dport;
