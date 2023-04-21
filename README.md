@@ -56,6 +56,7 @@ Explore the following documentation to find out which tools can help you in your
 	- [`sni`](docs/gadgets/trace/sni.md)
 	- [`tcp`](docs/gadgets/trace/tcp.md)
 	- [`tcpconnect`](docs/gadgets/trace/tcpconnect.md)
+	- [`tcpconnlat`](docs/gadgets/trace/tcpconnlat.md)
 	- [`tcpdrop`](docs/gadgets/trace/tcpdrop.md)
 - [`script`](docs/gadgets/script.md)
 - [`traceloop`](docs/gadgets/traceloop.md)
@@ -187,6 +188,7 @@ Available Commands:
   sni          Trace Server Name Indication (SNI) from TLS requests
   tcp          Trace TCP connect, accept and close
   tcpconnect   Trace connect system calls
+  tcpconnlat   Trace TCP connects and show connection latency
   tcpdrop      Trace TCP kernel-dropped packets/segments
 
 ...
