@@ -1,0 +1,8 @@
+services:
+  ig:
+    image: ${DESKTOP_PLUGIN_IMAGE}
+    privileged: true
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host

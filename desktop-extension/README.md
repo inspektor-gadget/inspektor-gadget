@@ -1,0 +1,2 @@
+# Inspektor Gadget Desktop Extension
+

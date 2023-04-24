@@ -1,0 +1,19 @@
+{
+  "icon": "icon.svg",
+  "vm": {
+    "composefile": "docker-compose.yaml",
+    "exposes": {
+        "socket": "ig-desktop-extension.sock"
+    }
+  },
+  "ui": {
+    "dashboard-tab": {
+      "title": "Inspektor Gadget",
+      "src": "index.html",
+      "root": "/ui",
+      "backend": {
+        "socket": "ig-desktop-extension.sock"
+      }
+    }
+  }
+}
