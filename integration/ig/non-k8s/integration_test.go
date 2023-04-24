@@ -28,7 +28,7 @@ var (
 	// flags
 	integration    = flag.Bool("integration", false, "run integration tests")
 	dnsTesterImage = flag.String("dnstester-image", "ghcr.io/inspektor-gadget/dnstester:latest", "dnstester container image")
-	runtime        = flag.String("runtime", "docker", "which runtime to use (docker)")
+	runtime        = flag.String("runtime", "docker", "which runtime to use (docker, containerd)")
 )
 
 func init() {

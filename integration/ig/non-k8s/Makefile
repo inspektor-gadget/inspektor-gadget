@@ -9,6 +9,7 @@ build:
 # test
 
 TEST_TARGETS = \
+	test-containerd \
 	test-docker
 
 .PHONY: test-all
