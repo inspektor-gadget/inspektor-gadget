@@ -114,10 +114,7 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk, struct s
 		return 0;
 	}
 
-	struct net_device *dev = BPF_CORE_READ(skb, dev);
-	if (dev != NULL)
-		event.netns = BPF_CORE_READ(dev, nd_net.net, ns.inum);
-
+	BPF_CORE_READ_INTO(&event.netns, sk, __sk_common.skc_net.net, ns.inum);
     struct sockets_value *skb_val = gadget_socket_lookup(sk, event.netns);
 	if (skb_val != NULL) {
 		event.proc_socket.mount_ns_id = skb_val->mntns;
