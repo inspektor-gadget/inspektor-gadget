@@ -29,10 +29,6 @@ func TestScript(t *testing.T) {
 		t.Skip("Skipping script test because it's only supported in the default image")
 	}
 
-	if *k8sArch != "amd64" {
-		t.Skip("Skipping script test because it's only supported in amd64")
-	}
-
 	t.Parallel()
 
 	prog := `kretprobe:inet_bind { printf("fofofofof %s\n", comm); }`

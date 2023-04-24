@@ -9,7 +9,7 @@ ARG BUILDER_IMAGE=golang:1.19
 ARG BCC="quay.io/kinvolk/bcc:gadget"
 
 # bpftrace upstream image
-ARG BPFTRACE="quay.io/iovisor/bpftrace:v0.17.0"
+ARG BPFTRACE="ghcr.io/inspektor-gadget/bpftrace"
 
 FROM ${BCC} as bcc
 FROM ${BPFTRACE} as bpftrace
@@ -47,9 +47,9 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
-		ca-certificates jq wget xz-utils binutils socat && \
-		rmdir /usr/src && ln -sf /host/usr/src /usr/src && \
-		rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
+		ca-certificates jq wget xz-utils binutils socat libclang-11-dev libelf-dev llvm-11-dev && \
+	rmdir /usr/src && ln -sf /host/usr/src /usr/src && \
+	rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
 
 COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
 
