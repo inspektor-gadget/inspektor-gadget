@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -408,4 +409,9 @@ func (p *Param) AsInt64Slice() []int64 {
 	}
 
 	return out
+}
+
+func (p *Param) AsDuration() time.Duration {
+	d, _ := time.ParseDuration(p.value)
+	return d
 }
