@@ -12,7 +12,7 @@ GO_BUILD=$(STATIC_FLAGS) go build -trimpath -ldflags=$(LDFLAGS)
 .PHONY: bin
 bin:
 	mkdir -p bin
-	$(GO_BUILD) -o bin/service ./service
+	$(GO_BUILD) -o bin/ig-service ./service
 
 build-extension: ## Build service image to be deployed as a desktop extension
 	docker build --tag=$(IMAGE):$(TAG) .

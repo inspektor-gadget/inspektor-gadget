@@ -10,6 +10,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/giantswarm/crd-docs-generator v0.11.0
 	github.com/google/uuid v1.3.0
+	github.com/labstack/echo v3.3.10+incompatible
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.8
 	github.com/opencontainers/runtime-spec v1.1.0-rc.3
@@ -93,8 +94,11 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/labstack/gommon v0.4.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.0 // indirect
@@ -118,6 +122,8 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasttemplate v1.2.1 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.16.0 // indirect
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
