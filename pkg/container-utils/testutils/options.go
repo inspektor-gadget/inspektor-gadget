@@ -15,8 +15,9 @@
 package testutils
 
 const (
-	DefaultContainerName  = "test-container"
-	DefaultContainerImage = "docker.io/library/busybox"
+	DefaultContainerName     = "test-container"
+	DefaultContainerImage    = "docker.io/library/busybox"
+	DefaultContainerImageTag = "latest"
 )
 
 type Option func(*containerOptions)
@@ -24,6 +25,7 @@ type Option func(*containerOptions)
 type containerOptions struct {
 	name           string
 	image          string
+	imageTag       string
 	seccompProfile string
 	wait           bool
 	logs           bool
@@ -32,11 +34,12 @@ type containerOptions struct {
 
 func defaultContainerOptions() *containerOptions {
 	return &containerOptions{
-		name:    DefaultContainerName,
-		image:   DefaultContainerImage,
-		logs:    true,
-		wait:    true,
-		removal: true,
+		name:     DefaultContainerName,
+		image:    DefaultContainerImage,
+		imageTag: DefaultContainerImageTag,
+		logs:     true,
+		wait:     true,
+		removal:  true,
 	}
 }
 
@@ -49,6 +52,12 @@ func WithName(name string) Option {
 func WithImage(image string) Option {
 	return func(opts *containerOptions) {
 		opts.image = image
+	}
+}
+
+func WithImageTag(tag string) Option {
+	return func(opts *containerOptions) {
+		opts.imageTag = tag
 	}
 }
 
