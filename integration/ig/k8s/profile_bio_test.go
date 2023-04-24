@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	bioprofileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
 )
 
 func TestProfileBio(t *testing.T) {
@@ -28,13 +29,10 @@ func TestProfileBio(t *testing.T) {
 		Name: "ProfileBio",
 		Cmd:  "ig profile block-io -o json --timeout 10",
 		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &bioprofileTypes.Report{
-				ValType: "usecs",
-			}
+			expectedEntry := bioprofileTypes.NewReport(histogram.UnitMicroseconds, nil)
 
 			normalize := func(e *bioprofileTypes.Report) {
-				e.Data = nil
-				e.Time = ""
+				e.Intervals = nil
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

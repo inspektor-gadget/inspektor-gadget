@@ -28,6 +28,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type hist -type hist_key -cc clang biolatency ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -38,8 +39,6 @@ type Tracer struct {
 	blockRqCompleteLink link.Link
 	blockRqInsertLink   link.Link
 	blockRqIssueLink    link.Link
-	result              string
-	err                 error
 }
 
 func NewTracer() (*Tracer, error) {
@@ -53,40 +52,18 @@ func NewTracer() (*Tracer, error) {
 	return t, nil
 }
 
-func getReport(histMap *ebpf.Map) (types.Report, error) {
-	report := types.Report{
-		ValType: "usecs",
-	}
-
+func getReport(histMap *ebpf.Map) (*types.Report, error) {
 	key := biolatencyHistKey{}
-
-	err := histMap.NextKey(nil, unsafe.Pointer(&key))
-	if err != nil {
-		return types.Report{}, fmt.Errorf("error getting next key: %w", err)
+	if err := histMap.NextKey(nil, unsafe.Pointer(&key)); err != nil {
+		return nil, fmt.Errorf("getting next key: %w", err)
 	}
 
 	hist := biolatencyHist{}
 	if err := histMap.Lookup(key, unsafe.Pointer(&hist)); err != nil {
-		return types.Report{}, err
+		return nil, fmt.Errorf("getting histogram: %w", err)
 	}
 
-	data := []types.Data{}
-	indexMax := 0
-	for i, val := range hist.Slots {
-		if val > 0 {
-			indexMax = i
-		}
-
-		data = append(data, types.Data{
-			Count:         uint64(val),
-			IntervalStart: (uint64(1) << (i + 1)) >> 1,
-			IntervalEnd:   (uint64(1) << (i + 1)) - 1,
-		})
-	}
-
-	report.Data = data[:indexMax]
-
-	return report, nil
+	return types.NewReport(histogram.UnitMicroseconds, hist.Slots[:]), nil
 }
 
 func (t *Tracer) Stop() (string, error) {
