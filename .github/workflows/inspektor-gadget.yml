@@ -736,7 +736,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [ docker ]
+        runtime: [ docker, containerd ]
     steps:
       - uses: actions/checkout@v3
       - name: Setup go
