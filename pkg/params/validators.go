@@ -18,37 +18,40 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type TypeHint string
 
 const (
-	TypeBool   TypeHint = "bool"
-	TypeString TypeHint = "string"
-	TypeInt    TypeHint = "int"
-	TypeInt8   TypeHint = "int8"
-	TypeInt16  TypeHint = "int16"
-	TypeInt32  TypeHint = "int32"
-	TypeInt64  TypeHint = "int64"
-	TypeUint   TypeHint = "uint"
-	TypeUint8  TypeHint = "uint8"
-	TypeUint16 TypeHint = "uint16"
-	TypeUint32 TypeHint = "uint32"
-	TypeUint64 TypeHint = "uint64"
+	TypeBool     TypeHint = "bool"
+	TypeString   TypeHint = "string"
+	TypeInt      TypeHint = "int"
+	TypeInt8     TypeHint = "int8"
+	TypeInt16    TypeHint = "int16"
+	TypeInt32    TypeHint = "int32"
+	TypeInt64    TypeHint = "int64"
+	TypeUint     TypeHint = "uint"
+	TypeUint8    TypeHint = "uint8"
+	TypeUint16   TypeHint = "uint16"
+	TypeUint32   TypeHint = "uint32"
+	TypeUint64   TypeHint = "uint64"
+	TypeDuration TypeHint = "duration"
 )
 
 var typeHintValidators = map[TypeHint]ParamValidator{
-	TypeBool:   ValidateBool,
-	TypeInt:    ValidateInt(strconv.IntSize),
-	TypeInt8:   ValidateInt(8),
-	TypeInt16:  ValidateInt(16),
-	TypeInt32:  ValidateInt(32),
-	TypeInt64:  ValidateInt(64),
-	TypeUint:   ValidateUint(strconv.IntSize),
-	TypeUint8:  ValidateUint(8),
-	TypeUint16: ValidateUint(16),
-	TypeUint32: ValidateUint(32),
-	TypeUint64: ValidateUint(64),
+	TypeBool:     ValidateBool,
+	TypeInt:      ValidateInt(strconv.IntSize),
+	TypeInt8:     ValidateInt(8),
+	TypeInt16:    ValidateInt(16),
+	TypeInt32:    ValidateInt(32),
+	TypeInt64:    ValidateInt(64),
+	TypeUint:     ValidateUint(strconv.IntSize),
+	TypeUint8:    ValidateUint(8),
+	TypeUint16:   ValidateUint(16),
+	TypeUint32:   ValidateUint(32),
+	TypeUint64:   ValidateUint(64),
+	TypeDuration: ValidateDuration,
 }
 
 type ValueHint string
@@ -122,4 +125,9 @@ func ValidateSlice(validator ParamValidator) func(value string) error {
 		}
 		return nil
 	}
+}
+
+func ValidateDuration(value string) error {
+	_, err := time.ParseDuration(value)
+	return err
 }
