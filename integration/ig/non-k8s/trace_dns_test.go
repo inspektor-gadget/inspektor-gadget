@@ -30,7 +30,7 @@ func TestTraceDns(t *testing.T) {
 
 	traceDNSCmd := &Command{
 		Name:         "TraceDns",
-		Cmd:          fmt.Sprintf("./ig trace dns -o json --runtimes=docker -c %s", cn),
+		Cmd:          fmt.Sprintf("./ig trace dns -o json --runtimes=%s -c %s", *runtime, cn),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*dnsTypes.Event{
@@ -128,11 +128,11 @@ func TestTraceDns(t *testing.T) {
 	testSteps := []TestStep{
 		traceDNSCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		&DockerContainer{
+		containerFactory.NewContainer(ContainerSpec{
 			Name:    cn,
 			Cmd:     strings.Join(dnsCmds, " ; "),
-			Options: NewDockerOptions(WithDockerImage(*dnsTesterImage)),
-		},
+			Options: NewContainerOptions(WithContainerImage(*dnsTesterImage)),
+		}),
 	}
 
 	RunTestSteps(testSteps, t)

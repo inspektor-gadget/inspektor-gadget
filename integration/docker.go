@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,19 +21,23 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 )
 
+type DockerManager struct{}
+
+func (*DockerManager) NewContainer(spec ContainerSpec) ContainerInterface {
+	return &DockerContainer{
+		ContainerSpec: spec,
+	}
+}
+
 // DockerContainer implements TestStep for docker containers
 type DockerContainer struct {
-	Name         string
-	Cmd          string
-	Options      []dockerOption
-	Cleanup      bool
-	StartAndStop bool
+	ContainerSpec
 
 	started bool
 }
 
 func (d *DockerContainer) Run(t *testing.T) {
-	opts := append(optionsFromDockerOptions(d.Options), testutils.WithName(d.Name))
+	opts := append(optionsFromContainerOptions(d.Options), testutils.WithName(d.Name))
 	testutils.RunDockerContainer(context.Background(), t, d.Cmd, opts...)
 }
 
@@ -42,7 +46,7 @@ func (d *DockerContainer) Start(t *testing.T) {
 		t.Logf("Warn(%s): trying to start already running container\n", d.Name)
 		return
 	}
-	opts := append(optionsFromDockerOptions(d.Options), testutils.WithName(d.Name), testutils.WithoutRemoval(), testutils.WithoutWait())
+	opts := append(optionsFromContainerOptions(d.Options), testutils.WithName(d.Name), testutils.WithoutRemoval(), testutils.WithoutWait())
 	testutils.RunDockerContainer(context.Background(), t, d.Cmd, opts...)
 	d.started = true
 }
@@ -62,29 +66,4 @@ func (d *DockerContainer) IsStartAndStop() bool {
 
 func (d *DockerContainer) Running() bool {
 	return d.started
-}
-
-// dockerOption wraps testutils.Option to allow certain values only
-type dockerOption struct {
-	opt testutils.Option
-}
-
-func NewDockerOptions(opts ...dockerOption) []dockerOption {
-	return opts
-}
-
-func optionsFromDockerOptions(dockerOptions []dockerOption) []testutils.Option {
-	var opts []testutils.Option
-	for _, do := range dockerOptions {
-		opts = append(opts, do.opt)
-	}
-	return opts
-}
-
-func WithDockerImage(image string) dockerOption {
-	return dockerOption{opt: testutils.WithImage(image)}
-}
-
-func WithDockerSeccompProfile(profile string) dockerOption {
-	return dockerOption{opt: testutils.WithSeccompProfile(profile)}
 }
