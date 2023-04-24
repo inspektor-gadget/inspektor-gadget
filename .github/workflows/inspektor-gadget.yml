@@ -899,6 +899,7 @@ jobs:
         run: |
           set -o pipefail
           make -C integration/ig/non-k8s \
+            CONTAINER_RUNTIME=${{ matrix.runtime }} \
             DNSTESTER_IMAGE=${{ needs.build-helper-images.outputs.dnstester_image }} \
             -o build test-${{ matrix.runtime }} |& tee integration.log
       - name: Prepare and publish test report for container runtime ${{ matrix.runtime }}

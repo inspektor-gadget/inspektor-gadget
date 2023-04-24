@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,11 +28,11 @@ func TestFilterByContainerName(t *testing.T) {
 	cn := "test-filtered-container"
 	listContainersCmd := &Command{
 		Name: "RunFilterByContainerName",
-		Cmd:  fmt.Sprintf("./ig list-containers -o json --runtimes=docker --containername=%s", cn),
+		Cmd:  fmt.Sprintf("./ig list-containers -o json --runtimes=%s --containername=%s", *runtime, cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				Name:    cn,
-				Runtime: "docker",
+				Runtime: *runtime,
 			}
 
 			normalize := func(c *containercollection.Container) {
@@ -55,11 +55,11 @@ func TestFilterByContainerName(t *testing.T) {
 	}
 
 	testSteps := []TestStep{
-		&DockerContainer{
+		containerFactory.NewContainer(ContainerSpec{
 			Name:         cn,
 			Cmd:          "sleep inf",
 			StartAndStop: true,
-		},
+		}),
 		SleepForSecondsCommand(2),
 		listContainersCmd,
 	}
@@ -73,7 +73,7 @@ func TestWatchContainers(t *testing.T) {
 	cn := "test-watched-container"
 	watchContainersCommand := &Command{
 		Name:         "RunWatchContainers",
-		Cmd:          fmt.Sprintf("./ig list-containers -o json --watch --runtimes=docker -c %s", cn),
+		Cmd:          fmt.Sprintf("./ig list-containers -o json --watch --runtimes=%s -c %s", *runtime, cn),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEvents := []*containercollection.PubSubEvent{
@@ -81,14 +81,14 @@ func TestWatchContainers(t *testing.T) {
 					Type: containercollection.EventTypeAddContainer,
 					Container: &containercollection.Container{
 						Name:    cn,
-						Runtime: "docker",
+						Runtime: *runtime,
 					},
 				},
 				{
 					Type: containercollection.EventTypeRemoveContainer,
 					Container: &containercollection.Container{
 						Name:    cn,
-						Runtime: "docker",
+						Runtime: *runtime,
 					},
 				},
 			}
@@ -116,10 +116,10 @@ func TestWatchContainers(t *testing.T) {
 	testSteps := []TestStep{
 		watchContainersCommand,
 		SleepForSecondsCommand(2),
-		&DockerContainer{
+		containerFactory.NewContainer(ContainerSpec{
 			Name: cn,
 			Cmd:  "echo I am short lived container",
-		},
+		}),
 	}
 
 	RunTestSteps(testSteps, t)

@@ -29,7 +29,7 @@ func TestSnapshotProcess(t *testing.T) {
 
 	snapshotProcessCmd := &Command{
 		Name: "SnapshotProcess",
-		Cmd:  fmt.Sprintf("./ig snapshot process -o json --runtimes=docker -c %s", cn),
+		Cmd:  fmt.Sprintf("./ig snapshot process -o json --runtimes=%s -c %s", *runtime, cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &snapshotprocessTypes.Event{
 				Event: eventtypes.Event{
@@ -53,11 +53,11 @@ func TestSnapshotProcess(t *testing.T) {
 	}
 
 	testSteps := []TestStep{
-		&DockerContainer{
+		containerFactory.NewContainer(ContainerSpec{
 			Name:         cn,
 			Cmd:          "nc -l -p 9090",
 			StartAndStop: true,
-		},
+		}),
 		snapshotProcessCmd,
 	}
 
