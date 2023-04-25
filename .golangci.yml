@@ -15,6 +15,10 @@ issues:
     - text: "ST1000: at least one file in a package should have a package comment"
       linters:
         - stylecheck
+    # Ignore rule about ID vs Id: https://github.com/golang/lint/issues/89
+    - text: "ST1003:"
+      linters:
+        - stylecheck
 
 linters:
   disable-all: true

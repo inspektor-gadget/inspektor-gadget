@@ -88,7 +88,7 @@ func TestExecTracer(t *testing.T) {
 					},
 					Pid:           uint32(catPid),
 					Ppid:          uint32(info.Pid),
-					UID:           uint32(info.UID),
+					Uid:           uint32(info.Uid),
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Retval:        0,
 					Comm:          "cat",
@@ -119,7 +119,7 @@ func TestExecTracer(t *testing.T) {
 					},
 					Pid:           uint32(catPid),
 					Ppid:          uint32(info.Pid),
-					UID:           uint32(info.UID),
+					Uid:           uint32(info.Uid),
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Retval:        0,
 					Comm:          "cat",
@@ -133,14 +133,14 @@ func TestExecTracer(t *testing.T) {
 					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
 				}
 			},
-			runnerConfig:  &utilstest.RunnerConfig{UID: unprivilegedUID},
+			runnerConfig:  &utilstest.RunnerConfig{Uid: unprivilegedUID},
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
 				if len(events) != 1 {
 					t.Fatalf("One event expected")
 				}
 
-				utilstest.Equal(t, uint32(info.UID), events[0].UID,
+				utilstest.Equal(t, uint32(info.Uid), events[0].Uid,
 					"Event has bad UID")
 			},
 		},
