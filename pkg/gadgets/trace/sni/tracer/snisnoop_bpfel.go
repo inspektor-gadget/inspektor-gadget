@@ -33,6 +33,7 @@ type snisnoopSocketsValue struct {
 	Mntns   uint64
 	PidTgid uint64
 	Task    [16]int8
+	Sock    uint64
 }
 
 // loadSnisnoop returns the embedded CollectionSpec for snisnoop.

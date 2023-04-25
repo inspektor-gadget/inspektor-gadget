@@ -40,7 +40,7 @@ update_sockets_map(struct sock *sock)
 	socket_value.mntns = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	socket_value.pid_tgid = bpf_get_current_pid_tgid();
 	bpf_get_current_comm(&socket_value.task, sizeof(socket_value.task));
-
+	socket_value.sock = (__u64) sock;
 	bpf_map_update_elem(&sockets, &socket_key, &socket_value, BPF_ANY);
 }
 
@@ -136,7 +136,7 @@ enter_udp_sendmsg(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg, size
 // - for both UDP and TCP
 // - for both IPv4 and IPv6
 static __always_inline int
-probe_release_entry(struct pt_regs *ctx, struct socket *socket)
+probe_release_entry(struct pt_regs *ctx, struct socket *socket, __u16 family)
 {
 	struct sock *sock;
 	struct inet_sock *inet_sock;
@@ -146,10 +146,21 @@ probe_release_entry(struct pt_regs *ctx, struct socket *socket)
 
 	struct sockets_key socket_key = {0,};
 
-	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
 	BPF_CORE_READ_INTO(&socket_key.family, sock, __sk_common.skc_family);
+	// The kernel function inet6_release() calls inet_release() and we have a kprobe on both, so beware if it is called
+	// in the right context.
+	if (socket_key.family != family)
+		return 0;
+
+	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
+
 	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
+
+	struct sockets_value *socket_value = bpf_map_lookup_elem(&sockets, &socket_key);
+	if (socket_value != NULL && socket_value->sock != (__u64) sock) {
+		return 0;
+	}
 
 	bpf_map_delete_elem(&sockets, &socket_key);
 	return 0;
@@ -218,13 +229,13 @@ int BPF_KPROBE(ig_udp6_sendmsg, struct sock *sk, struct msghdr *msg, size_t len)
 SEC("kprobe/inet_release")
 int BPF_KPROBE(ig_free_ipv4_e, struct socket *socket)
 {
-	return probe_release_entry(ctx, socket);
+	return probe_release_entry(ctx, socket, AF_INET);
 }
 
 SEC("kprobe/inet6_release")
 int BPF_KPROBE(ig_free_ipv6_e, struct socket *socket)
 {
-	return probe_release_entry(ctx, socket);
+	return probe_release_entry(ctx, socket, AF_INET6);
 }
 
 char _license[] SEC("license") = "GPL";
