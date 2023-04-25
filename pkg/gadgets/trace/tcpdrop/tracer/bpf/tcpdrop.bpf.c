@@ -127,15 +127,6 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk, struct s
 	return 0;
 }
 
-// enum skb_drop_reason is defined in the following file:
-// https://raw.githubusercontent.com/torvalds/linux/v6.2/include/net/dropreason.h
-// Here we only need SKB_DROP_REASON_NOT_SPECIFIED
-enum skb_drop_reason {
-	SKB_NOT_DROPPED_YET = 0,
-	SKB_CONSUMED,
-	SKB_DROP_REASON_NOT_SPECIFIED
-};
-
 SEC("tracepoint/skb/kfree_skb")
 int ig_tcpdrop(struct kfree_skb_ctx *ctx)
 {
