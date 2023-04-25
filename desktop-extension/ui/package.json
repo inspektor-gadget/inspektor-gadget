@@ -1,0 +1,46 @@
+{
+	"name": "ig-desktop",
+	"version": "0.1.0",
+	"private": true,
+	"homepage": ".",
+	"dependencies": {
+		"@docker/docker-mui-theme": "<0.1.0",
+		"@docker/extension-api-client": "0.2.3",
+		"@emotion/react": "^11.9.0",
+		"@emotion/styled": "^11.8.1",
+		"@mui/icons-material": "^5.10.16",
+		"@mui/lab": "^5.0.0-alpha.114",
+		"@mui/material": "^5.6.1",
+		"@mui/x-data-grid": "^5.17.14",
+		"@types/js-yaml": "^4.0.5",
+		"@uiw/react-textarea-code-editor": "^2.0.6",
+		"js-yaml": "^4.1.0",
+		"react": "^17.0.2",
+		"react-dom": "^17.0.2",
+		"react-scripts": "5.0.1",
+		"tailwind-merge": "^1.8.1"
+	},
+	"scripts": {
+		"start": "react-scripts start",
+		"build": "react-scripts build",
+		"test": "react-scripts test",
+		"eject": "react-scripts eject"
+	},
+	"eslintConfig": {
+		"extends": [
+			"react-app",
+			"react-app/jest"
+		]
+	},
+	"devDependencies": {
+		"@docker/extension-api-client-types": "0.2.3",
+		"@types/jest": "^29.0.3",
+		"@types/node": "^18.7.18",
+		"@types/react-dom": "^17.0.2",
+		"autoprefixer": "^10.4.13",
+		"postcss": "^8.4.20",
+		"prettier": "^2.8.1",
+		"tailwindcss": "^3.2.4",
+		"typescript": "^4.8.3"
+	}
+}
