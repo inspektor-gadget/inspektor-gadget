@@ -29,6 +29,7 @@ type Event struct {
 	IPVersion int    `json:"ipversion,omitempty" column:"ip,width:2,fixed"`
 	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr"`
 	Daddr     string `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
+	Sport     uint16 `json:"sport,omitempty" column:"sport,template:ipport"`
 	Dport     uint16 `json:"dport,omitempty" column:"dport,template:ipport"`
 }
 

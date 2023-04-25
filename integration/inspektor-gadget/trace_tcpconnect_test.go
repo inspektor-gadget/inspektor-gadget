@@ -46,6 +46,7 @@ func TestTraceTcpconnect(t *testing.T) {
 				e.Timestamp = 0
 				e.Node = ""
 				e.Pid = 0
+				e.Sport = 0
 				e.MountNsID = 0
 			}
 

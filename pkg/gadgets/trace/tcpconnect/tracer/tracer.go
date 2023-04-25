@@ -184,6 +184,7 @@ func (t *Tracer) run() {
 			Daddr:         gadgets.IPStringFromBytes(bpfEvent.DaddrV6, ipversion),
 			Dport:         gadgets.Htons(bpfEvent.Dport),
 			IPVersion:     ipversion,
+			Sport:         bpfEvent.Sport,
 		}
 
 		if t.enricher != nil {

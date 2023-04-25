@@ -21,7 +21,7 @@ type tcpconnectEvent struct {
 	Pid       uint32
 	Uid       uint32
 	Dport     uint16
-	_         [2]byte
+	Sport     uint16
 	MntnsId   uint64
 }
 

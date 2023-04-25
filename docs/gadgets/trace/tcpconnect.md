@@ -30,9 +30,9 @@ In our trace tcpconnect gadget terminal we can now see the logged connection:
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod
 Tracing connect ... Hit Ctrl-C to end
-NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            DPORT
-ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          80
-ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          443
+NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            SPORT    DPORT
+ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          40724    80
+ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          33728    443
 ```
 
 If the pod was started as part of a deployment, the name of the pod is not known
@@ -93,11 +93,11 @@ Switching to the gadget trace tcpconnnect terminal, we see the same connections 
 
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod  # (still running in old terminal)
-NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            DPORT
-ip-10-0-30-247   default          mypod            mypod           9386                wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
-ip-10-0-30-247   default          mypod            mypod           9386                wget         4  10.2.232.47      1.1.1.1          443 # (previous output)
-ip-10-0-30-247   default          mypod            mypod           16547               wget         4  10.2.232.51      1.1.1.1          80
-ip-10-0-30-247   default          mypod            mypod           16547               wget         4  10.2.232.51      1.1.1.1          443
+NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            SPORT    DPORT
+ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          40724    80   # (previous output)
+ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          33728    443  # (previous output)
+ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          40676    80
+ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          40630    443
 ```
 
 But what if the pod would connect to other IP addresses which we disallowed?
@@ -116,12 +116,12 @@ there is no redirect visible to port 443:
 
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod  # (still running in old terminal)
-NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            DPORT
-ip-10-0-30-247   default          mypod            mypod           9386   wget         4  10.2.232.47      1.1.1.1          80  # (previous output)
-ip-10-0-30-247   default          mypod            mypod           9386   wget         4  10.2.232.47      1.1.1.1          443 # (previous output)
-ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          80  # (previous output)
-ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          443 # (previous output)
-ip-10-0-30-247   default          mypod            mypod           17418  wget         4  10.2.232.50      1.0.0.1          80
+NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            SPORT    DPORT
+ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          40724    80   # (previous output)
+ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          33728    443  # (previous output)
+ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          40676    80   # (previous output)
+ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          40630    443  # (previous output)
+ip-10-0-30-247   default          mypod            mypod           17418  wget         4  10.2.232.50      1.0.0.1          40688    80
 ```
 
 We created a tailored network policy for our (original) demo pod by observing its connection behavior :)
@@ -156,6 +156,6 @@ The gadget will show the connection and related information to it.
 
 ```bash
 $ sudo ig trace tcpconnect -c test-tcp-connect
-CONTAINER        PID     COMM             IP  SADDR            DADDR            DPORT
-test-tcp-connect 503650  wget             4   172.17.0.3       93.184.216.34    80
+CONTAINER        PID     COMM             IP  SADDR            DADDR            SPORT    DPORT
+test-tcp-connect 503650  wget             4   172.17.0.3       93.184.216.34    40658    80
 ```
