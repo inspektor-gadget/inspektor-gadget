@@ -35,6 +35,8 @@ func init() {
 	columns.MustRegisterTemplate("container", "width:30")
 	columns.MustRegisterTemplate("comm", "maxWidth:16")
 	columns.MustRegisterTemplate("pid", "minWidth:7")
+	columns.MustRegisterTemplate("uid", "minWidth:8")
+	columns.MustRegisterTemplate("gid", "minWidth:8")
 	columns.MustRegisterTemplate("ns", "width:12,hide")
 
 	// For IPs (IPv4+IPv6):

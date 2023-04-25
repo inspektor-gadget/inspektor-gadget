@@ -22,7 +22,7 @@ There is not any running process in the `demo` namespace now:
 
 ```bash
 $ kubectl gadget snapshot process -n demo
-NODE    NAMESPACE    POD    CONTAINER    COMM    PID
+NODE                NAMESPACE           POD                 CONTAINER           COMM       PID       UID       GID
 ```
 
 Create a pod on the `demo` namespace using the `nginx` image:
@@ -38,16 +38,16 @@ After the pod is running, we can try to get the list of running processes again:
 
 ```bash
 $ kubectl gadget snapshot process -n demo
-NODE        NAMESPACE    POD      CONTAINER    COMM     PID
-minikube    demo         mypod    mypod        nginx    582294
-minikube    demo         mypod    mypod        nginx    582333
-minikube    demo         mypod    mypod        nginx    582334
-minikube    demo         mypod    mypod        nginx    582335
-minikube    demo         mypod    mypod        nginx    582336
-minikube    demo         mypod    mypod        nginx    582337
-minikube    demo         mypod    mypod        nginx    582338
-minikube    demo         mypod    mypod        nginx    582339
-minikube    demo         mypod    mypod        nginx    582340
+NODE                NAMESPACE           POD                 CONTAINER           COMM       PID       UID       GID
+ubuntu-hirsute      demo                mypod               mypod               nginx      411928    0         0
+ubuntu-hirsute      demo                mypod               mypod               nginx      411964    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411965    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411966    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411967    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411968    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411969    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411970    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411971    101       101
 ```
 
 We can see the different `nginx` process started within the container.
@@ -55,24 +55,24 @@ We can see the different `nginx` process started within the container.
 Execute an instance of `sleep` on the pod:
 
 ```bash
-$ kubectl -n demo exec  mypod -- /bin/sh -c "sleep 1000 &"
+$ kubectl -n demo exec mypod -- /bin/sh -c "sleep 1000 &"
 ```
 
 Now there is an additional `sleep` processes running in `mypod`:
 
 ```bash
 $ kubectl gadget snapshot process -n demo
-NODE        NAMESPACE    POD      CONTAINER    COMM     PID
-minikube    demo         mypod    mypod        nginx    582294
-minikube    demo         mypod    mypod        nginx    582333
-minikube    demo         mypod    mypod        nginx    582334
-minikube    demo         mypod    mypod        nginx    582335
-minikube    demo         mypod    mypod        nginx    582336
-minikube    demo         mypod    mypod        nginx    582337
-minikube    demo         mypod    mypod        nginx    582338
-minikube    demo         mypod    mypod        nginx    582339
-minikube    demo         mypod    mypod        nginx    582340
-minikube    demo         mypod    mypod        sleep    584294
+NODE                NAMESPACE           POD                 CONTAINER           COMM       PID       UID       GID
+ubuntu-hirsute      demo                mypod               mypod               nginx      411928    0         0
+ubuntu-hirsute      demo                mypod               mypod               nginx      411964    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411965    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411966    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411967    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411968    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411969    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411970    101       101
+ubuntu-hirsute      demo                mypod               mypod               nginx      411971    101       101
+ubuntu-hirsute      demo                mypod               mypod               sleep      412550    0         0
 ```
 
 Delete the demo test namespace:
@@ -93,7 +93,7 @@ $ docker run --name test-snapshot-process -it --rm busybox /bin/sh -c 'sleep 100
 Run the snapshot process gadget, it'll print all process in the container:
 
 ```bash
-$ sudo ./ig snapshot process -c test-snapshot-process
-CONTAINER             COMM  PID
-test-snapshot-process sleep 100003
+$ sudo ig snapshot process -c test-snapshot-process
+CONTAINER                                                    COMM             PID                  UID        GID
+test-snapshot-process                                        sh               329491               0          0
 ```
