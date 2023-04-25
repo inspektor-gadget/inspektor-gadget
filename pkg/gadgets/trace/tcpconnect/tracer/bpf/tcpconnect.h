@@ -40,6 +40,7 @@ struct event {
 	__u16 dport;
 	__u16 sport;
 	__u64 mntns_id;
+	__u64 latency;
 };
 
 #endif /* __TCPCONNECT_H */

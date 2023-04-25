@@ -17,6 +17,8 @@ const volatile uid_t filter_uid = -1;
 const volatile pid_t filter_pid = 0;
 const volatile bool do_count = 0;
 const volatile bool filter_by_mnt_ns = false;
+const volatile bool calculate_latency = false;
+const volatile __u64 targ_min_latency_ns = 0;
 
 /* Define here, because there are conflicts with include files */
 #define AF_INET		2
@@ -25,12 +27,33 @@ const volatile bool filter_by_mnt_ns = false;
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));
 
+// sockets_per_process keeps track of the sockets between:
+// - kprobe enter_tcp_connect
+// - kretprobe exit_tcp_connect
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);
-	__type(key, u32);
+	__type(key, u32); // tid
 	__type(value, struct sock *);
-} sockets SEC(".maps");
+} sockets_per_process SEC(".maps");
+
+struct piddata {
+	char comm[TASK_COMM_LEN];
+	u64 ts;
+	u32 pid;
+	u32 tid;
+	u64 mntns_id;
+};
+
+// sockets_latency keeps track of sockets to calculate the latency between:
+// - enter_tcp_connect (where the socket is added in the map)
+// - handle_tcp_rcv_state_process (where the socket is removed from the map)
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 4096);
+	__type(key, struct sock *);
+	__type(value, struct piddata);
+} sockets_latency SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -59,7 +82,6 @@ struct {
 	__uint(value_size, sizeof(u32));
 } mount_ns_filter SEC(".maps");
 
-
 static __always_inline bool filter_port(__u16 port)
 {
 	int i;
@@ -85,6 +107,9 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
 	__u32 uid;
+	struct task_struct *task;
+	u64 mntns_id;
+	struct piddata piddata = {};
 
 	if (filter_pid && pid != filter_pid)
 		return 0;
@@ -93,7 +118,22 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 	if (filter_uid != (uid_t) -1 && uid != filter_uid)
 		return 0;
 
-	bpf_map_update_elem(&sockets, &tid, &sk, 0);
+	if (calculate_latency) {
+		task = (struct task_struct*)bpf_get_current_task();
+		mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+
+		if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+			return 0;
+
+		bpf_get_current_comm(&piddata.comm, sizeof(piddata.comm));
+		piddata.ts = bpf_ktime_get_ns();
+		piddata.tid = tid;
+		piddata.pid = pid;
+		piddata.mntns_id = mntns_id;
+		bpf_map_update_elem(&sockets_latency, &sk, &piddata, 0);
+	} else {
+		bpf_map_update_elem(&sockets_per_process, &tid, &sk, 0);
+	}
 	return 0;
 }
 
@@ -182,7 +222,7 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, int ip_ver)
 	u64 mntns_id;
 	__u16 dport;
 
-	skpp = bpf_map_lookup_elem(&sockets, &tid);
+	skpp = bpf_map_lookup_elem(&sockets_per_process, &tid);
 	if (!skpp)
 		return 0;
 
@@ -214,8 +254,58 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, int ip_ver)
 	}
 
 end:
-	bpf_map_delete_elem(&sockets, &tid);
+	bpf_map_delete_elem(&sockets_per_process, &tid);
 	return 0;
+}
+
+static __always_inline int cleanup_sockets_latency_map(const struct sock *sk)
+{
+	bpf_map_delete_elem(&sockets_latency, &sk);
+	return 0;
+}
+
+static __always_inline int handle_tcp_rcv_state_process(void *ctx, struct sock *sk)
+{
+	struct piddata *piddatap;
+	struct event event = {};
+	u64 ts;
+
+	if (BPF_CORE_READ(sk, __sk_common.skc_state) != TCP_SYN_SENT)
+		return 0;
+
+	piddatap = bpf_map_lookup_elem(&sockets_latency, &sk);
+	if (!piddatap)
+		return 0;
+
+	ts = bpf_ktime_get_ns();
+	if (ts < piddatap->ts)
+		goto cleanup;
+
+	event.latency = ts - piddatap->ts;
+	if (targ_min_latency_ns && event.latency < targ_min_latency_ns)
+		goto cleanup;
+	__builtin_memcpy(&event.task, piddatap->comm,
+			sizeof(event.task));
+	event.pid = piddatap->pid;
+	event.mntns_id = piddatap->mntns_id;
+	event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+	event.dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
+	event.af = BPF_CORE_READ(sk, __sk_common.skc_family);
+	if (event.af == AF_INET) {
+		event.saddr_v4 = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+		event.daddr_v4 = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+	} else {
+		BPF_CORE_READ_INTO(&event.saddr_v6, sk,
+				__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+		BPF_CORE_READ_INTO(&event.daddr_v6, sk,
+				__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+	}
+	event.timestamp = bpf_ktime_get_boot_ns();
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
+			&event, sizeof(event));
+
+cleanup:
+	return cleanup_sockets_latency_map(sk);
 }
 
 SEC("kprobe/tcp_v4_connect")
@@ -224,6 +314,7 @@ int BPF_KPROBE(ig_tcpc_v4_co_e, struct sock *sk)
 	return enter_tcp_connect(ctx, sk);
 }
 
+// This kretprobe is only attached if calculate_latency is false
 SEC("kretprobe/tcp_v4_connect")
 int BPF_KRETPROBE(ig_tcpc_v4_co_x, int ret)
 {
@@ -236,10 +327,26 @@ int BPF_KPROBE(ig_tcpc_v6_co_e, struct sock *sk)
 	return enter_tcp_connect(ctx, sk);
 }
 
+// This kretprobe is only attached if calculate_latency is false
 SEC("kretprobe/tcp_v6_connect")
 int BPF_KRETPROBE(ig_tcpc_v6_co_x, int ret)
 {
 	return exit_tcp_connect(ctx, ret, 6);
+}
+
+// This kprobe is only attached if calculate_latency is true
+SEC("kprobe/tcp_rcv_state_process")
+int BPF_KPROBE(ig_tcp_rsp, struct sock *sk)
+{
+	return handle_tcp_rcv_state_process(ctx, sk);
+}
+
+// tcp_destroy_sock is fired for ipv4 and ipv6.
+// This tracepoint is only attached if calculate_latency is true
+SEC("tracepoint/tcp/tcp_destroy_sock")
+int ig_tcp_destroy(struct trace_event_raw_tcp_event_sk *ctx)
+{
+	return cleanup_sockets_latency_map(ctx->skaddr);
 }
 
 char LICENSE[] SEC("license") = "GPL";

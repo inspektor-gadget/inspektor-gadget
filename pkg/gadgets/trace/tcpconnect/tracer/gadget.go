@@ -22,6 +22,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
+const (
+	ParamMin     = "min"
+	ParamLatency = "latency"
+)
+
 type GadgetDesc struct{}
 
 func (g *GadgetDesc) Name() string {
@@ -41,7 +46,22 @@ func (g *GadgetDesc) Description() string {
 }
 
 func (g *GadgetDesc) ParamDescs() params.ParamDescs {
-	return nil
+	return params.ParamDescs{
+		{
+			Key:          ParamMin,
+			Title:        "min",
+			DefaultValue: "0",
+			Description:  "Show only connect events with higher latency than min",
+			TypeHint:     params.TypeDuration,
+		},
+		{
+			Key:          ParamLatency,
+			Title:        "lat",
+			DefaultValue: "false",
+			Description:  "Calculate connection latency",
+			TypeHint:     params.TypeBool,
+		},
+	}
 }
 
 func (g *GadgetDesc) Parser() parser.Parser {

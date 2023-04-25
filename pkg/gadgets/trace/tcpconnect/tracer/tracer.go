@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -35,7 +36,9 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -type event tcpconnect ./bpf/tcpconnect.bpf.c -- -I./bpf/ -I../../../../${TARGET}
 
 type Config struct {
-	MountnsMap *ebpf.Map
+	MountnsMap       *ebpf.Map
+	CalculateLatency bool
+	MinLatency       time.Duration
 }
 
 type Tracer struct {
@@ -43,12 +46,14 @@ type Tracer struct {
 	enricher      gadgets.DataEnricherByMntNs
 	eventCallback func(*types.Event)
 
-	objs        tcpconnectObjects
-	v4EnterLink link.Link
-	v4ExitLink  link.Link
-	v6EnterLink link.Link
-	v6ExitLink  link.Link
-	reader      *perf.Reader
+	objs                   tcpconnectObjects
+	v4EnterLink            link.Link
+	v4ExitLink             link.Link
+	v6EnterLink            link.Link
+	v6ExitLink             link.Link
+	tcpDestroySockLink     link.Link
+	tcpRvcStateProcessLink link.Link
+	reader                 *perf.Reader
 }
 
 func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
@@ -81,6 +86,8 @@ func (t *Tracer) close() {
 	t.v4ExitLink = gadgets.CloseLink(t.v4ExitLink)
 	t.v6EnterLink = gadgets.CloseLink(t.v6EnterLink)
 	t.v6ExitLink = gadgets.CloseLink(t.v6ExitLink)
+	t.tcpDestroySockLink = gadgets.CloseLink(t.tcpDestroySockLink)
+	t.tcpRvcStateProcessLink = gadgets.CloseLink(t.tcpRvcStateProcessLink)
 
 	t.objs.Close()
 }
@@ -103,7 +110,9 @@ func (t *Tracer) install() error {
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filterByMntNs,
+		"filter_by_mnt_ns":    filterByMntNs,
+		"targ_min_latency_ns": t.config.MinLatency,
+		"calculate_latency":   t.config.CalculateLatency,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
@@ -123,19 +132,31 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
-	t.v4ExitLink, err = link.Kretprobe("tcp_v4_connect", t.objs.IgTcpcV4CoX, nil)
-	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
-	}
-
 	t.v6EnterLink, err = link.Kprobe("tcp_v6_connect", t.objs.IgTcpcV6CoE, nil)
 	if err != nil {
 		return fmt.Errorf("error attaching program: %w", err)
 	}
 
-	t.v6ExitLink, err = link.Kretprobe("tcp_v6_connect", t.objs.IgTcpcV6CoX, nil)
-	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+	if !t.config.CalculateLatency {
+		t.v4ExitLink, err = link.Kretprobe("tcp_v4_connect", t.objs.IgTcpcV4CoX, nil)
+		if err != nil {
+			return fmt.Errorf("error attaching program: %w", err)
+		}
+
+		t.v6ExitLink, err = link.Kretprobe("tcp_v6_connect", t.objs.IgTcpcV6CoX, nil)
+		if err != nil {
+			return fmt.Errorf("error attaching program: %w", err)
+		}
+	} else {
+		t.tcpDestroySockLink, err = link.Tracepoint("tcp", "tcp_destroy_sock", t.objs.IgTcpDestroy, nil)
+		if err != nil {
+			return fmt.Errorf("error attaching program: %w", err)
+		}
+
+		t.tcpRvcStateProcessLink, err = link.Kprobe("tcp_rcv_state_process", t.objs.IgTcpRsp, nil)
+		if err != nil {
+			return fmt.Errorf("attaching program: %w", err)
+		}
 	}
 
 	reader, err := perf.NewReader(t.objs.tcpconnectMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
@@ -185,6 +206,7 @@ func (t *Tracer) run() {
 			Dport:         gadgets.Htons(bpfEvent.Dport),
 			IPVersion:     ipversion,
 			Sport:         bpfEvent.Sport,
+			Latency:       time.Duration(int64(bpfEvent.Latency)),
 		}
 
 		if t.enricher != nil {
@@ -198,6 +220,10 @@ func (t *Tracer) run() {
 // --- Registry changes
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+	t.config.CalculateLatency = params.Get(ParamLatency).AsBool()
+	t.config.MinLatency = params.Get(ParamMin).AsDuration()
+
 	defer t.close()
 	if err := t.install(); err != nil {
 		return fmt.Errorf("installing tracer: %w", err)

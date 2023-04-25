@@ -15,6 +15,8 @@
 package types
 
 import (
+	"time"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -23,18 +25,25 @@ type Event struct {
 	eventtypes.Event
 	eventtypes.WithMountNsID
 
-	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
-	Uid       uint32 `json:"uid,omitempty" column:"uid,minWidth:6,hide"`
-	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
-	IPVersion int    `json:"ipversion,omitempty" column:"ip,width:2,fixed"`
-	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr"`
-	Daddr     string `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
-	Sport     uint16 `json:"sport,omitempty" column:"sport,template:ipport"`
-	Dport     uint16 `json:"dport,omitempty" column:"dport,template:ipport"`
+	Pid       uint32        `json:"pid,omitempty" column:"pid,template:pid"`
+	Uid       uint32        `json:"uid,omitempty" column:"uid,minWidth:6,hide"`
+	Comm      string        `json:"comm,omitempty" column:"comm,template:comm"`
+	IPVersion int           `json:"ipversion,omitempty" column:"ip,width:2,fixed"`
+	Saddr     string        `json:"saddr,omitempty" column:"saddr,template:ipaddr"`
+	Daddr     string        `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
+	Sport     uint16        `json:"sport,omitempty" column:"sport,template:ipport"`
+	Dport     uint16        `json:"dport,omitempty" column:"dport,template:ipport"`
+	Latency   time.Duration `json:"latency,omitempty" column:"latency,minWidth:8"`
 }
 
 func GetColumns() *columns.Columns[Event] {
-	return columns.MustCreateColumns[Event]()
+	cols := columns.MustCreateColumns[Event]()
+
+	cols.MustSetExtractor("latency", func(event *Event) string {
+		return event.Latency.String()
+	})
+
+	return cols
 }
 
 func Base(ev eventtypes.Event) *Event {
