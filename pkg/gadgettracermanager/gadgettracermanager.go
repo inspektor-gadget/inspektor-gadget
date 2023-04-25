@@ -89,7 +89,7 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 	g.mu.Unlock()
 
 	if ch == nil {
-		return errors.New("channel is nil, ranging over it will make us wait forever")
+		return errors.New("tracer was removed before we could subscribe to its stream")
 	}
 
 	for l := range ch {

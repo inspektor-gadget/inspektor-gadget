@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -286,6 +287,23 @@ func alignSize(structSize uintptr) uintptr {
 	return ret
 }
 
+// Convert a return value to corresponding error number if meaningful.
+// See man syscalls:
+// Note:
+// system calls indicate a failure by returning a negative error
+// number to the caller on architectures without a separate error
+// register/flag, as noted in syscall(2); when this happens, the
+// wrapper function negates the returned error number (to make it
+// positive), copies it to errno, and returns -1 to the caller of
+// the wrapper.
+func retToStr(ret int) string {
+	errNo := int64(ret)
+	if errNo >= -4095 && errNo <= -1 {
+		return fmt.Sprintf("-1 (%s)", syscall.Errno(-errNo).Error())
+	}
+	return fmt.Sprintf("%d", ret)
+}
+
 func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 	syscallContinuedEventsMap := make(map[uint64][]*syscallEventContinued)
 	syscallEnterEventsMap := make(map[uint64][]*syscallEvent)
@@ -419,11 +437,6 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 	// Let's try to publish the events we gathered.
 	for enterTimestamp, enterTimestampEvents := range syscallEnterEventsMap {
 		for _, enterEvent := range enterTimestampEvents {
-			syscallName, err := syscallGetName(enterEvent.id)
-			if err != nil {
-				return nil, fmt.Errorf("getting name of syscall number %d: %w", enterEvent.id, err)
-			}
-
 			event := &types.Event{
 				Event: eventtypes.Event{
 					Type:      eventtypes.NORMAL,
@@ -433,7 +446,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				Pid:           enterEvent.pid,
 				Comm:          enterEvent.comm,
 				WithMountNsID: eventtypes.WithMountNsID{MountNsID: enterEvent.mountNsID},
-				Syscall:       syscallName,
+				Syscall:       syscallGetName(enterEvent.id),
 			}
 
 			syscallDeclaration, err := getSyscallDeclaration(syscallsDeclarations, event.Syscall)
@@ -452,21 +465,33 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				}
 				log.Debugf("\t\tevent paramName: %q", paramName)
 
-				paramValue := fmt.Sprintf("%d", enterEvent.args[i])
+				isPointer, err := syscallDeclaration.paramIsPointer(i)
+				if err != nil {
+					return nil, fmt.Errorf("checking syscall parameter is a pointer: %w", err)
+				}
+
+				format := "%d"
+				if isPointer {
+					format = "0x%x"
+				}
+				paramValue := fmt.Sprintf(format, enterEvent.args[i])
 				log.Debugf("\t\tevent paramValue: %q", paramValue)
+
+				var paramContent *string
 
 				for _, syscallContEvent := range syscallContinuedEventsMap[enterTimestamp] {
 					if syscallContEvent.index == i {
-						paramValue = syscallContEvent.param
-						log.Debugf("\t\t\tevent paramValue: %q", paramValue)
+						paramContent = &syscallContEvent.param
+						log.Debugf("\t\t\tevent paramContent: %q", *paramContent)
 
 						break
 					}
 				}
 
 				event.Parameters[i] = types.SyscallParam{
-					Name:  paramName,
-					Value: paramValue,
+					Name:    paramName,
+					Value:   paramValue,
+					Content: paramContent,
 				}
 			}
 
@@ -480,6 +505,10 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 					t.enricher.EnrichByMntNs(&event.CommonData, event.MountNsID)
 				}
 
+				// As there is no exit events for these syscalls,
+				// then there is no return value.
+				event.Retval = "X"
+
 				log.Debugf("%v", event)
 				events = append(events, event)
 
@@ -488,7 +517,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 			exitTimestampEvents, ok := syscallExitEventsMap[enterTimestamp]
 			if !ok {
-				log.Errorf("no exit event for timestamp %d", enterTimestamp)
+				log.Debugf("no exit event for timestamp %d", enterTimestamp)
 
 				continue
 			}
@@ -498,7 +527,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 					continue
 				}
 
-				event.Retval = exitEvent.retval
+				event.Retval = retToStr(exitEvent.retval)
 
 				delete(syscallEnterEventsMap, enterTimestamp)
 				delete(syscallExitEventsMap, enterTimestamp)
@@ -516,22 +545,16 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 	log.Debugf("len(events): %d; len(syscallEnterEventsMap): %d; len(syscallExitEventsMap): %d; len(syscallContinuedEventsMap): %d\n", len(events), len(syscallEnterEventsMap), len(syscallExitEventsMap), len(syscallContinuedEventsMap))
 
-	// For strange reason, even though we use the same timestamp for enter and
-	// exit events, it is possible there are some incomplete events (i.e. enter event
-	// without exit and vice versa).
-	// Rather than dropping them, we just add them to the events to be published
-	// but they will be incomplete.
-	// One possible reason would be that the buffer is full and so it only remains
-	// some exit events and not the corresponding enter/
+	// It is possible there are some incomplete events for two mains reasons:
+	// 1. Traceloop was started in the middle of a syscall, then we will only get
+	//    the exit but not the enter.
+	// 2. The buffer is full and so it only remains some exit events and not the
+	//    corresponding enter.
+	// Rather than dropping these incomplete events, we just add them to the
+	// events to be published.
 	for _, enterTimestampEvents := range syscallEnterEventsMap {
 		for _, enterEvent := range enterTimestampEvents {
-			syscallName, err := syscallGetName(enterEvent.id)
-			if err != nil {
-				// It is best effort, so just long and continue in case of troubles.
-				log.Errorf("incomplete enter event: getting name of syscall number %d: %v", enterEvent.id, err)
-
-				continue
-			}
+			syscallName := syscallGetName(enterEvent.id)
 
 			incompleteEnterEvent := &types.Event{
 				Event: eventtypes.Event{
@@ -543,6 +566,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				Comm:          enterEvent.comm,
 				WithMountNsID: eventtypes.WithMountNsID{MountNsID: enterEvent.mountNsID},
 				Syscall:       syscallName,
+				Retval:        "unfinished",
 			}
 
 			if t.enricher != nil {
@@ -557,12 +581,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 
 	for _, exitTimestampEvents := range syscallExitEventsMap {
 		for _, exitEvent := range exitTimestampEvents {
-			syscallName, err := syscallGetName(exitEvent.id)
-			if err != nil {
-				log.Errorf("incomplete exit event: getting name of syscall number %d: %v", exitEvent.id, err)
-
-				continue
-			}
+			syscallName := syscallGetName(exitEvent.id)
 
 			incompleteExitEvent := &types.Event{
 				Event: eventtypes.Event{
@@ -574,7 +593,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 				Comm:          exitEvent.comm,
 				WithMountNsID: eventtypes.WithMountNsID{MountNsID: exitEvent.mountNsID},
 				Syscall:       syscallName,
-				Retval:        exitEvent.retval,
+				Retval:        retToStr(exitEvent.retval),
 			}
 
 			if t.enricher != nil {
