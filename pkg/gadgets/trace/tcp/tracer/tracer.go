@@ -25,7 +25,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
-	"golang.org/x/sys/unix"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -197,6 +196,8 @@ func (t *Tracer) run() {
 
 		bpfEvent := (*tcptracerEvent)(unsafe.Pointer(&record.RawSample[0]))
 
+		ipversion := gadgets.IPVerFromAF(bpfEvent.Af)
+
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type:      eventtypes.NORMAL,
@@ -205,18 +206,12 @@ func (t *Tracer) run() {
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MntnsId},
 			Pid:           bpfEvent.Pid,
 			Comm:          gadgets.FromCString(bpfEvent.Task[:]),
-			Dport:         gadgets.Htons(bpfEvent.Dport),
+			Saddr:         gadgets.IPStringFromBytes(bpfEvent.Saddr, ipversion),
+			Daddr:         gadgets.IPStringFromBytes(bpfEvent.Daddr, ipversion),
 			Sport:         gadgets.Htons(bpfEvent.Sport),
+			Dport:         gadgets.Htons(bpfEvent.Dport),
+			IPVersion:     ipversion,
 		}
-
-		if bpfEvent.Af == unix.AF_INET {
-			event.IPVersion = 4
-		} else if bpfEvent.Af == unix.AF_INET6 {
-			event.IPVersion = 6
-		}
-
-		event.Saddr = gadgets.IPStringFromBytes(bpfEvent.Saddr, event.IPVersion)
-		event.Daddr = gadgets.IPStringFromBytes(bpfEvent.Daddr, event.IPVersion)
 
 		switch bpfEvent.Type {
 		case tcptracerEventTypeTCP_EVENT_TYPE_CONNECT:
