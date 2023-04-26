@@ -7,6 +7,7 @@
 
 #include "biotop.h"
 #include "maps.bpf.h"
+#include "core_fixes.bpf.h"
 
 const volatile bool filter_by_mnt_ns = false;
 
@@ -90,6 +91,7 @@ int BPF_KPROBE(ig_topio_done, struct request *req, u64 now)
 
 	struct start_req_t *startp;
 	unsigned int cmd_flags;
+	struct gendisk *disk;
 	struct who_t *whop;
 	u64 delta_us;
 
@@ -103,8 +105,9 @@ int BPF_KPROBE(ig_topio_done, struct request *req, u64 now)
 	/* setup info_t key */
 	cmd_flags = BPF_CORE_READ(req, cmd_flags);
 
-	info.major = BPF_CORE_READ(req, rq_disk, major);
-	info.minor = BPF_CORE_READ(req, rq_disk, first_minor);
+	disk = get_disk(req);
+	info.major = BPF_CORE_READ(disk, major);
+	info.minor = BPF_CORE_READ(disk, first_minor);
 	info.rwflag = !!((cmd_flags & REQ_OP_MASK) == REQ_OP_WRITE);
 
 	whop = bpf_map_lookup_elem(&whobyreq, &req);

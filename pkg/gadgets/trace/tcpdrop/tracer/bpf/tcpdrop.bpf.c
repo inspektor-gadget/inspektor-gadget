@@ -32,18 +32,6 @@ struct {
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-// This struct is defined according to the following format file:
-// /sys/kernel/tracing/events/skb/kfree_skb/format
-struct kfree_skb_ctx {
-	/* The first 8 bytes are not allowed to read */
-	unsigned long pad;
-
-	void *skbaddr;
-	void *location;
-	unsigned short protocol;
-	int reason;
-};
-
 // This struct is the same as struct tcphdr in vmlinux.h but with flags defined as single field instead of bitfield
 struct tcphdr_with_flags {
 	__be16 source;
@@ -115,29 +103,20 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk, struct s
 	}
 
 	BPF_CORE_READ_INTO(&event.netns, sk, __sk_common.skc_net.net, ns.inum);
-    struct sockets_value *skb_val = gadget_socket_lookup(sk, event.netns);
+	struct sockets_value *skb_val = gadget_socket_lookup(sk, event.netns);
 	if (skb_val != NULL) {
 		event.proc_socket.mount_ns_id = skb_val->mntns;
 		event.proc_socket.pid = skb_val->pid_tgid >> 32;
 		event.proc_socket.tid = (__u32)skb_val->pid_tgid;
 		__builtin_memcpy(&event.proc_socket.task,  skb_val->task, sizeof(event.proc_socket.task));
-    }
+	}
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 	return 0;
 }
 
-// enum skb_drop_reason is defined in the following file:
-// https://raw.githubusercontent.com/torvalds/linux/v6.2/include/net/dropreason.h
-// Here we only need SKB_DROP_REASON_NOT_SPECIFIED
-enum skb_drop_reason {
-	SKB_NOT_DROPPED_YET = 0,
-	SKB_CONSUMED,
-	SKB_DROP_REASON_NOT_SPECIFIED
-};
-
 SEC("tracepoint/skb/kfree_skb")
-int ig_tcpdrop(struct kfree_skb_ctx *ctx)
+int ig_tcpdrop(struct trace_event_raw_kfree_skb *ctx)
 {
 	struct sk_buff *skb = ctx->skbaddr;
 	struct sock *sk = BPF_CORE_READ(skb, sk);

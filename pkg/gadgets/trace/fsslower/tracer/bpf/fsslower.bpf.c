@@ -110,7 +110,7 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	event.delta_us = delta_ns / 1000;
 	event.end_ns = end_ns;
 	event.offset = datap->start;
-	if (op != FSYNC)
+	if (op != F_FSYNC)
 		event.size = size;
 	else
 		event.size = datap->end - datap->start;
@@ -139,7 +139,7 @@ int BPF_KPROBE(ig_fssl_read_e, struct kiocb *iocb)
 SEC("kretprobe/dummy_file_read")
 int BPF_KRETPROBE(ig_fssl_read_x, ssize_t ret)
 {
-	return probe_exit(ctx, READ, ret);
+	return probe_exit(ctx, F_READ, ret);
 }
 
 SEC("kprobe/dummy_file_write")
@@ -154,7 +154,7 @@ int BPF_KPROBE(ig_fssl_wr_e, struct kiocb *iocb)
 SEC("kretprobe/dummy_file_write")
 int BPF_KRETPROBE(ig_fssl_wr_x, ssize_t ret)
 {
-	return probe_exit(ctx, WRITE, ret);
+	return probe_exit(ctx, F_WRITE, ret);
 }
 
 SEC("kprobe/dummy_file_open")
@@ -166,7 +166,7 @@ int BPF_KPROBE(ig_fssl_open_e, struct inode *inode, struct file *file)
 SEC("kretprobe/dummy_file_open")
 int BPF_KRETPROBE(ig_fssl_open_x)
 {
-	return probe_exit(ctx, OPEN, 0);
+	return probe_exit(ctx, F_OPEN, 0);
 }
 
 SEC("kprobe/dummy_file_sync")
@@ -178,7 +178,7 @@ int BPF_KPROBE(ig_fssl_sync_e, struct file *file, loff_t start, loff_t end)
 SEC("kretprobe/dummy_file_sync")
 int BPF_KRETPROBE(ig_fssl_sync_x)
 {
-	return probe_exit(ctx, FSYNC, 0);
+	return probe_exit(ctx, F_FSYNC, 0);
 }
 
 // Comment out the fentry/fexit functions as we don't support them yet.
