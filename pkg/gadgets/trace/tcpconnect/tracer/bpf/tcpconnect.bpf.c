@@ -10,13 +10,13 @@
 
 #include "maps.bpf.h"
 #include "tcpconnect.h"
+#include "mntns_filter.h"
 
 const volatile int filter_ports[MAX_PORTS];
 const volatile int filter_ports_len = 0;
 const volatile uid_t filter_uid = -1;
 const volatile pid_t filter_pid = 0;
 const volatile bool do_count = 0;
-const volatile bool filter_by_mnt_ns = false;
 const volatile bool calculate_latency = false;
 const volatile __u64 targ_min_latency_ns = 0;
 
@@ -75,13 +75,6 @@ struct {
 	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
-
 static __always_inline bool filter_port(__u16 port)
 {
 	int i;
@@ -107,7 +100,6 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
 	__u32 uid;
-	struct task_struct *task;
 	u64 mntns_id;
 	struct piddata piddata = {};
 
@@ -119,10 +111,9 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 		return 0;
 
 	if (calculate_latency) {
-		task = (struct task_struct*)bpf_get_current_task();
-		mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+		mntns_id = gadget_get_mntns_id();
 
-		if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+		if (gadget_should_discard_mntns_id(mntns_id))
 			return 0;
 
 		bpf_get_current_comm(&piddata.comm, sizeof(piddata.comm));
@@ -215,7 +206,6 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, int ip_ver)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
-	struct task_struct *task;
 	__u32 tid = pid_tgid;
 	struct sock **skpp;
 	struct sock *sk;
@@ -235,11 +225,10 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, int ip_ver)
 	if (filter_port(dport))
 		goto end;
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
-		return 0;
+	if (gadget_should_discard_mntns_id(mntns_id))
+		goto end;
 
 	if (do_count) {
 		if (ip_ver == 4)

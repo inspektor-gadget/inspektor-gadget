@@ -60,7 +60,7 @@ type processCollectorProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type processCollectorMapSpecs struct {
-	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
 }
 
 // processCollectorObjects contains all objects after they have been loaded into the kernel.
@@ -82,12 +82,12 @@ func (o *processCollectorObjects) Close() error {
 //
 // It can be passed to loadProcessCollectorObjects or ebpf.CollectionSpec.LoadAndAssign.
 type processCollectorMaps struct {
-	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
 }
 
 func (m *processCollectorMaps) Close() error {
 	return _ProcessCollectorClose(
-		m.MountNsFilter,
+		m.GadgetMntnsFilterMap,
 	)
 }
 

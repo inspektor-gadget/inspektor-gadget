@@ -5,12 +5,12 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 #include "fsslower.h"
+#include "mntns_filter.h"
 
 #define MAX_ENTRIES	8192
 
 const volatile pid_t target_pid = 0;
 const volatile __u64 min_lat_ns = 0;
-const volatile bool filter_by_mnt_ns = false;
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));
@@ -35,20 +35,12 @@ struct {
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
-
 static int probe_entry(struct file *fp, loff_t start, loff_t end)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
 	struct data data;
-	struct task_struct *task;
 	u64 mntns_id;
 
 	if (!fp)
@@ -59,10 +51,9 @@ static int probe_entry(struct file *fp, loff_t start, loff_t end)
 	//if (target_pid && target_pid != pid)
 	//	return 0;
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	data.ts = bpf_ktime_get_ns();
@@ -84,16 +75,14 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	struct event event = {};
 	struct dentry *dentry;
 	struct file *fp;
-	struct task_struct *task;
 	u64 mntns_id;
 
 	//if (target_pid && target_pid != pid)
 	//	return 0;
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	datap = bpf_map_lookup_elem(&starts, &tid);

@@ -78,8 +78,8 @@ type tcptopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcptopMapSpecs struct {
-	IpMap         *ebpf.MapSpec `ebpf:"ip_map"`
-	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
+	IpMap                *ebpf.MapSpec `ebpf:"ip_map"`
 }
 
 // tcptopObjects contains all objects after they have been loaded into the kernel.
@@ -101,14 +101,14 @@ func (o *tcptopObjects) Close() error {
 //
 // It can be passed to loadTcptopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcptopMaps struct {
-	IpMap         *ebpf.Map `ebpf:"ip_map"`
-	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
+	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
+	IpMap                *ebpf.Map `ebpf:"ip_map"`
 }
 
 func (m *tcptopMaps) Close() error {
 	return _TcptopClose(
+		m.GadgetMntnsFilterMap,
 		m.IpMap,
-		m.MountNsFilter,
 	)
 }
 

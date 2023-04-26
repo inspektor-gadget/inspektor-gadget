@@ -4,11 +4,11 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include "mountsnoop.h"
+#include "mntns_filter.h"
 
 #define MAX_ENTRIES 10240
 
 const volatile pid_t target_pid = 0;
-const volatile bool filter_by_mnt_ns = false;
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));
@@ -33,13 +33,6 @@ struct {
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
-
 // TODO: have to use "inline" to avoid this error:
 // bpf/mountsnoop.bpf.c:41:12: error: defined with too many args
 // static int probe_entry(const char *src, const char *dest, const char *fs,
@@ -49,14 +42,12 @@ static __always_inline int probe_entry(const char *src, const char *dest, const 
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
-	struct task_struct *task;
 	struct arg arg = {};
 	u64 mntns_id;
 
-	task = (struct task_struct*) bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	if (target_pid && target_pid != pid)
@@ -81,14 +72,12 @@ static int probe_exit(void *ctx, int ret)
 	__u32 tid = (__u32)pid_tgid;
 	struct arg *argp;
 	struct event *eventp;
-	struct task_struct *task;
 	int zero = 0;
 	u64 mntns_id;
 
-	task = (struct task_struct*) bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	argp = bpf_map_lookup_elem(&args, &tid);
@@ -105,7 +94,7 @@ static int probe_exit(void *ctx, int ret)
 	eventp->flags = argp->flags;
 	eventp->pid = pid;
 	eventp->tid = tid;
-	eventp->mnt_ns = BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	eventp->mnt_ns = mntns_id;
 	eventp->ret = ret;
 	eventp->op = argp->op;
 	bpf_get_current_comm(&eventp->comm, sizeof(eventp->comm));

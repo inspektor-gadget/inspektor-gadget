@@ -7,6 +7,7 @@
 #include <bpf/bpf_endian.h>
 
 #include "tcptop.h"
+#include "mntns_filter.h"
 
 /* Taken from kernel include/linux/socket.h. */
 #define AF_INET		2	/* Internet IP Protocol 	*/
@@ -14,7 +15,6 @@
 
 const volatile pid_t target_pid = 0;
 const volatile int target_family = -1;
-const volatile bool filter_by_mnt_ns = false;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -23,18 +23,10 @@ struct {
 	__type(value, struct traffic_t);
 } ip_map SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
-
 static int probe_ip(bool receiving, struct sock *sk, size_t size)
 {
 	struct ip_key_t ip_key = {};
 	struct traffic_t *trafficp;
-	struct task_struct *task;
 	u64 mntns_id;
 	u16 family;
 	u32 pid;
@@ -51,10 +43,9 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 	if (family != AF_INET && family != AF_INET6)
 		return 0;
 
-	task = (struct task_struct*) bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	ip_key.pid = pid;

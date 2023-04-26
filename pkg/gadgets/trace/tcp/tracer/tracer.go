@@ -32,7 +32,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type event -type event_type tcptracer ./bpf/tcptracer.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type event -type event_type tcptracer ./bpf/tcptracer.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
 
 type Config struct {
 	MountnsMap *ebpf.Map
@@ -110,11 +110,11 @@ func (t *Tracer) install() error {
 
 	if t.config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_filter"] = t.config.MountnsMap
+		mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filterByMntNs,
+		gadgets.FilterByMntNsName: filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {

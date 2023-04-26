@@ -33,7 +33,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -type bind_event bindsnoop ./bpf/bindsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -type bind_event bindsnoop ./bpf/bindsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
 
 type Config struct {
 	MountnsMap   *ebpf.Map
@@ -106,7 +106,7 @@ func (t *Tracer) install() error {
 
 	if t.config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_filter"] = t.config.MountnsMap
+		mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
 	}
 
 	filterByPort := false
@@ -120,10 +120,10 @@ func (t *Tracer) install() error {
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filterByMntNs,
-		"target_pid":       t.config.TargetPid,
-		"filter_by_port":   filterByPort,
-		"ignore_errors":    t.config.IgnoreErrors,
+		gadgets.FilterByMntNsName: filterByMntNs,
+		"target_pid":              t.config.TargetPid,
+		"filter_by_port":          filterByPort,
+		"ignore_errors":           t.config.IgnoreErrors,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {

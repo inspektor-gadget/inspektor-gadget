@@ -5,6 +5,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include "opensnoop.h"
+#include "mntns_filter.h"
 
 #define TASK_RUNNING	0
 
@@ -13,7 +14,6 @@ const volatile pid_t targ_pid = 0;
 const volatile pid_t targ_tgid = 0;
 const volatile uid_t targ_uid = INVALID_UID;
 const volatile bool targ_failed = false;
-const volatile bool filter_by_mnt_ns = false;
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));
@@ -31,13 +31,6 @@ struct {
 	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
-
 static __always_inline bool valid_uid(uid_t uid) {
 	return uid != INVALID_UID;
 }
@@ -45,7 +38,6 @@ static __always_inline bool valid_uid(uid_t uid) {
 static __always_inline
 bool trace_allowed(u32 tgid, u32 pid)
 {
-	struct task_struct *task;
 	u64 mntns_id;
 	u32 uid;
 
@@ -61,10 +53,9 @@ bool trace_allowed(u32 tgid, u32 pid)
 		}
 	}
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return false;
 
 	return true;
@@ -113,7 +104,6 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 	struct args_t *ap;
 	int ret;
 	u32 pid = bpf_get_current_pid_tgid();
-	struct task_struct *task;
 	u64 mntns_id;
 
 	ap = bpf_map_lookup_elem(&start, &pid);
@@ -123,10 +113,9 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 	if (targ_failed && ret >= 0)
 		goto cleanup;	/* want failed only */
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	/* event data */

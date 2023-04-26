@@ -10,10 +10,10 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 #include "tcptracer.h"
+#include "mntns_filter.h"
 
 const volatile uid_t filter_uid = -1;
 const volatile pid_t filter_pid = 0;
-const volatile bool filter_by_mnt_ns = false;
 
 /* Define here, because there are conflicts with include files */
 #define AF_INET		2
@@ -68,13 +68,6 @@ struct {
 	__uint(key_size, sizeof(u32));
 	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
 
 static __always_inline bool
 fill_tuple(struct tuple_key_t *tuple, struct sock *sk, int family)
@@ -153,7 +146,7 @@ filter_event(struct sock *sk, __u32 uid, __u32 pid, __u64 mntns_id)
 	if (family != AF_INET && family != AF_INET6)
 		return true;
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return true;
 
 	if (filter_pid && pid != filter_pid)
@@ -173,11 +166,9 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 	__u32 tid = pid_tgid;
 	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 uid = uid_gid;
-	struct task_struct *task;
 	__u64 mntns_id;
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
 	if (filter_event(sk, uid, pid, mntns_id))
 		return 0;
@@ -259,12 +250,10 @@ int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 	__u32 uid = uid_gid;
 	struct tuple_key_t tuple = {};
 	struct event event = {};
-	struct task_struct *task;
 	u16 family;
 	__u64 mntns_id;
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
 	if (filter_event(sk, uid, pid, mntns_id))
 		return 0;
@@ -336,17 +325,15 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 	__u32 pid = pid_tgid >> 32;
 	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 uid = uid_gid;
-	struct task_struct *task;
 	__u16 sport, family;
 	struct event event = {};
 	struct tuple_key_t t = {};
 	u64 mntns_id;
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-
 	if (!sk)
 		return 0;
+
+	mntns_id = gadget_get_mntns_id();
 
 	if (filter_event(sk, uid, pid, mntns_id))
 		return 0;

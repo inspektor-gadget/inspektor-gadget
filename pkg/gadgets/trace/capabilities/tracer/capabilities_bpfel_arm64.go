@@ -93,11 +93,11 @@ type capabilitiesProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type capabilitiesMapSpecs struct {
-	CurrentSyscall *ebpf.MapSpec `ebpf:"current_syscall"`
-	Events         *ebpf.MapSpec `ebpf:"events"`
-	MountNsFilter  *ebpf.MapSpec `ebpf:"mount_ns_filter"`
-	Seen           *ebpf.MapSpec `ebpf:"seen"`
-	Start          *ebpf.MapSpec `ebpf:"start"`
+	CurrentSyscall       *ebpf.MapSpec `ebpf:"current_syscall"`
+	Events               *ebpf.MapSpec `ebpf:"events"`
+	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
+	Seen                 *ebpf.MapSpec `ebpf:"seen"`
+	Start                *ebpf.MapSpec `ebpf:"start"`
 }
 
 // capabilitiesObjects contains all objects after they have been loaded into the kernel.
@@ -119,18 +119,18 @@ func (o *capabilitiesObjects) Close() error {
 //
 // It can be passed to loadCapabilitiesObjects or ebpf.CollectionSpec.LoadAndAssign.
 type capabilitiesMaps struct {
-	CurrentSyscall *ebpf.Map `ebpf:"current_syscall"`
-	Events         *ebpf.Map `ebpf:"events"`
-	MountNsFilter  *ebpf.Map `ebpf:"mount_ns_filter"`
-	Seen           *ebpf.Map `ebpf:"seen"`
-	Start          *ebpf.Map `ebpf:"start"`
+	CurrentSyscall       *ebpf.Map `ebpf:"current_syscall"`
+	Events               *ebpf.Map `ebpf:"events"`
+	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
+	Seen                 *ebpf.Map `ebpf:"seen"`
+	Start                *ebpf.Map `ebpf:"start"`
 }
 
 func (m *capabilitiesMaps) Close() error {
 	return _CapabilitiesClose(
 		m.CurrentSyscall,
 		m.Events,
-		m.MountNsFilter,
+		m.GadgetMntnsFilterMap,
 		m.Seen,
 		m.Start,
 	)

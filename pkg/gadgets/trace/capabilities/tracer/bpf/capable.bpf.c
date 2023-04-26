@@ -10,6 +10,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include "capable.h"
+#include "mntns_filter.h"
 
 // include/linux/security.h
 #ifndef CAP_OPT_NOAUDIT
@@ -21,7 +22,6 @@
 
 const volatile pid_t my_pid = -1;
 const volatile pid_t targ_pid = -1;
-const volatile bool filter_by_mnt_ns = false;
 const volatile u32 linux_version_code = 0;
 const volatile bool audit_only = false;
 const volatile bool unique = false;
@@ -62,13 +62,6 @@ struct {
 	__type(value, u64);
 } seen SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
-
 struct syscall_context {
 	// Syscall id
 	// -1 for unknown syscall
@@ -95,7 +88,7 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred, struct user_namespace *t
 	task = (struct task_struct*) bpf_get_current_task();
 	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	const struct cred *real_cred = BPF_CORE_READ(task, real_cred);
@@ -154,17 +147,12 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 {
 	__u64 pid_tgid;
 	struct args_t *ap;
-	u64 mntns_id;
-	struct task_struct *task;
 	int ret;
 
 	pid_tgid = bpf_get_current_pid_tgid();
 	ap = bpf_map_lookup_elem(&start, &pid_tgid);
 	if (!ap)
 		return 0;	/* missed entry */
-
-	task = (struct task_struct*) bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
 	struct cap_event event = {};
 	event.current_userns = ap->current_userns;
@@ -174,7 +162,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event.tgid = pid_tgid;
 	event.cap = ap->cap;
 	event.uid = bpf_get_current_uid_gid();
-	event.mntnsid = mntns_id;
+	event.mntnsid = gadget_get_mntns_id();
 	event.cap_opt = ap->cap_opt;
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.ret = PT_REGS_RC(ctx);
@@ -222,11 +210,11 @@ int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 {
 	u64 pid_tgid = bpf_get_current_pid_tgid();
 	struct pt_regs regs = {};
-	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 	struct syscall_context sc_ctx = {};
 
-	u64 mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	u64 mntns_id = gadget_get_mntns_id();
+
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	u64 nr = ctx->args[1];

@@ -35,7 +35,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang processCollector ./bpf/process-collector.bpf.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang processCollector ./bpf/process-collector.bpf.c -- -I../../../../${TARGET} -I ../../../common/ -Werror -O2 -g -c -x c
 
 type Config struct {
 	MountnsMap  *ebpf.Map
@@ -77,12 +77,12 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 
 	if config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_filter"] = config.MountnsMap
+		mapReplacements[gadgets.MntNsFilterMapName] = config.MountnsMap
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filterByMntNs,
-		"show_threads":     config.ShowThreads,
+		gadgets.FilterByMntNsName: filterByMntNs,
+		"show_threads":            config.ShowThreads,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {

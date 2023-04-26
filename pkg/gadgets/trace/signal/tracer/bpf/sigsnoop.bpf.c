@@ -4,13 +4,13 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include "sigsnoop.h"
+#include "mntns_filter.h"
 
 #define MAX_ENTRIES	10240
 
 const volatile pid_t filtered_pid = 0;
 const volatile int target_signal = 0;
 const volatile bool failed_only = false;
-const volatile bool filter_by_mnt_ns = false;
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));
@@ -28,24 +28,16 @@ struct {
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
-
 static int probe_entry(pid_t tpid, int sig)
 {
 	struct event event = {};
 	__u64 pid_tgid;
 	__u32 pid, tid;
 	u64 mntns_id;
-	struct task_struct *task;
 
-	task = (struct task_struct *) bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	mntns_id = gadget_get_mntns_id();
+
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	if (target_signal && sig != target_signal)
@@ -143,11 +135,10 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 	__u64 pid_tgid;
 	__u32 pid;
 	u64 mntns_id;
-	struct task_struct *task;
 
-	task = (struct task_struct *) bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	mntns_id = gadget_get_mntns_id();
+
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	if (failed_only && ret == 0)
