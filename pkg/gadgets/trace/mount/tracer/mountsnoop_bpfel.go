@@ -19,7 +19,6 @@ type mountsnoopEvent struct {
 	Tid       uint32
 	MountNsId uint64
 	Timestamp uint64
-	MntNs     uint32
 	Ret       int32
 	Comm      [16]uint8
 	Fs        [8]uint8
@@ -27,7 +26,6 @@ type mountsnoopEvent struct {
 	Dest      [4096]uint8
 	Data      [512]uint8
 	Op        mountsnoopOp
-	_         [4]byte
 }
 
 type mountsnoopOp uint32

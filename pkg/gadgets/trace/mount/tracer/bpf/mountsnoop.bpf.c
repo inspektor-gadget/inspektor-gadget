@@ -75,11 +75,6 @@ static int probe_exit(void *ctx, int ret)
 	int zero = 0;
 	u64 mntns_id;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
-		return 0;
-
 	argp = bpf_map_lookup_elem(&args, &tid);
 	if (!argp)
 		return 0;
@@ -88,13 +83,12 @@ static int probe_exit(void *ctx, int ret)
 	if (!eventp)
 		return 0;
 
-	eventp->mount_ns_id = mntns_id;
+	eventp->mount_ns_id = gadget_get_mntns_id();
 	eventp->timestamp = bpf_ktime_get_boot_ns();
 	eventp->delta = bpf_ktime_get_ns() - argp->ts;
 	eventp->flags = argp->flags;
 	eventp->pid = pid;
 	eventp->tid = tid;
-	eventp->mnt_ns = mntns_id;
 	eventp->ret = ret;
 	eventp->op = argp->op;
 	bpf_get_current_comm(&eventp->comm, sizeof(eventp->comm));

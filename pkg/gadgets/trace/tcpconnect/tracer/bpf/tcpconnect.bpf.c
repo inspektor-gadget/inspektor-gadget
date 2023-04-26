@@ -99,8 +99,8 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
+	__u64 mntns_id;
 	__u32 uid;
-	u64 mntns_id;
 	struct piddata piddata = {};
 
 	if (filter_pid && pid != filter_pid)
@@ -110,12 +110,12 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 	if (filter_uid != (uid_t) -1 && uid != filter_uid)
 		return 0;
 
+	mntns_id = gadget_get_mntns_id();
+
+	if (gadget_should_discard_mntns_id(mntns_id))
+		return 0;
+
 	if (calculate_latency) {
-		mntns_id = gadget_get_mntns_id();
-
-		if (gadget_should_discard_mntns_id(mntns_id))
-			return 0;
-
 		bpf_get_current_comm(&piddata.comm, sizeof(piddata.comm));
 		piddata.ts = bpf_ktime_get_ns();
 		piddata.tid = tid;
@@ -225,17 +225,14 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, int ip_ver)
 	if (filter_port(dport))
 		goto end;
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
-		goto end;
-
 	if (do_count) {
 		if (ip_ver == 4)
 			count_v4(sk, dport);
 		else
 			count_v6(sk, dport);
 	} else {
+		mntns_id = gadget_get_mntns_id();
+
 		if (ip_ver == 4)
 			trace_v4(ctx, pid, sk, dport, mntns_id);
 		else

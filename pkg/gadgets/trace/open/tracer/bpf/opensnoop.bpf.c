@@ -113,11 +113,6 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 	if (targ_failed && ret >= 0)
 		goto cleanup;	/* want failed only */
 
-	mntns_id = gadget_get_mntns_id();
-
-	if (gadget_should_discard_mntns_id(mntns_id))
-		return 0;
-
 	/* event data */
 	event.pid = bpf_get_current_pid_tgid() >> 32;
 	event.uid = bpf_get_current_uid_gid();
@@ -125,7 +120,7 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 	bpf_probe_read_user_str(&event.fname, sizeof(event.fname), ap->fname);
 	event.flags = ap->flags;
 	event.ret = ret;
-	event.mntns_id = mntns_id;
+	event.mntns_id = gadget_get_mntns_id();
 	event.timestamp = bpf_ktime_get_boot_ns();
 
 	/* emit event */
