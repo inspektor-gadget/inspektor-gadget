@@ -197,7 +197,7 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, int ip_ver)
 	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
 	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
-		return 0;
+		goto end;
 
 	if (do_count) {
 		if (ip_ver == 4)
