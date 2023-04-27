@@ -109,6 +109,12 @@ registry.
 
 ### Unit tests
 
+#### Requirements
+
+For running unit tests, the following additional requirements need to be installed and configured on your system: 
+- gcc compiler
+- `pkg-config` and `libseccomp-dev` libraries
+
 You can run the different unit tests with:
 
 ```bash
