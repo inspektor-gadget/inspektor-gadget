@@ -46,11 +46,10 @@ func getTestCol(t *testing.T) *columns.Columns[testData] {
 	cols.MustSetExtractor("extractor", func(t *testData) string {
 		return fmt.Sprint(t.Extractor)
 	})
-	cols.MustAddColumn(columns.Column[testData]{
+	cols.MustAddColumn(columns.Attributes{
 		Name: "virtual_column",
-		Extractor: func(*testData) string {
-			return ""
-		},
+	}, func(*testData) string {
+		return ""
 	})
 
 	return cols

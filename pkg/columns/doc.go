@@ -74,12 +74,11 @@ Say that for example you have a struct with a (by default) not printable member 
 
 You can do that by adding a virtual column:
 
-	cols.AddColumn(columns.ColumnInfo[Event]{
+	cols.AddColumn(columns.Attributes{
 		Name:  "foo",
 		Width: 14,
-		Extractor: func(e *Event) string {
-			return string(e.Foo)
-		},
+	}, func(e *Event) string {
+		return string(e.Foo)
 	})
 
 This will convert the []byte to a string before printing it.

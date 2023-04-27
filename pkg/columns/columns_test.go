@@ -362,37 +362,33 @@ func TestVirtualColumns(t *testing.T) {
 
 	cols := expectColumnsSuccess[testStruct](t)
 
-	err := cols.AddColumn(Column[testStruct]{
+	err := cols.AddColumn(Attributes{
 		Name: "vcol",
-	})
+	}, nil)
 	if err == nil {
 		t.Errorf("Expected error when adding column without extractor func")
 	}
 
-	err = cols.AddColumn(Column[testStruct]{
-		Extractor: func(_ *testStruct) string {
-			return ""
-		},
+	err = cols.AddColumn(Attributes{}, func(_ *testStruct) string {
+		return ""
 	})
 	if err == nil {
 		t.Errorf("Expected error when adding column without name")
 	}
 
-	err = cols.AddColumn(Column[testStruct]{
+	err = cols.AddColumn(Attributes{
 		Name: "stringfield",
-		Extractor: func(_ *testStruct) string {
-			return ""
-		},
+	}, func(_ *testStruct) string {
+		return ""
 	})
 	if err == nil {
 		t.Errorf("Expected error when adding column with already existing name")
 	}
 
-	err = cols.AddColumn(Column[testStruct]{
+	err = cols.AddColumn(Attributes{
 		Name: "foobar",
-		Extractor: func(t *testStruct) string {
-			return "FooBar"
-		},
+	}, func(t *testStruct) string {
+		return "FooBar"
 	})
 	if err != nil {
 		t.Errorf("could not add virtual column")
