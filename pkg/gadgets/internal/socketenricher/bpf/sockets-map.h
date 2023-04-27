@@ -32,6 +32,10 @@
 #define AF_INET		2	/* Internet IP Protocol 	*/
 #endif
 
+#ifndef AF_INET6
+#define AF_INET6 10      /* IP version 6                 */
+#endif
+
 #ifdef GADGET_TYPE_NETWORKING
 
 const volatile __u32 current_netns = 0;
@@ -61,6 +65,7 @@ struct sockets_value {
 	__u64 mntns;
 	__u64 pid_tgid;
 	char task[TASK_COMM_LEN];
+	__u64 sock;
 };
 
 #define MAX_SOCKETS	16384

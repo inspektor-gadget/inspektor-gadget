@@ -219,6 +219,10 @@ func socketsMapEntries(t *testing.T, tracer *SocketEnricher, filter func(*socket
 			Key:   key,
 			Value: value,
 		}
+
+		// Normalize
+		entry.Value.Sock = 0
+
 		if filter != nil && filter(&entry) {
 			continue
 		}

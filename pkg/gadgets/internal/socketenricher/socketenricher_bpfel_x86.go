@@ -24,6 +24,7 @@ type socketenricherSocketsValue struct {
 	Mntns   uint64
 	PidTgid uint64
 	Task    [16]int8
+	Sock    uint64
 }
 
 // loadSocketenricher returns the embedded CollectionSpec for socketenricher.
