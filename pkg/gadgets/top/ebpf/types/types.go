@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -58,38 +59,36 @@ func GetColumns() *columns.Columns[Stats] {
 	col, _ = cols.GetColumn("container")
 	col.Visible = false
 
-	cols.MustAddColumn(columns.Column[Stats]{
+	cols.MustAddColumn(columns.Attributes{
 		Name:         "pid",
 		Width:        16,
 		EllipsisType: ellipsis.End,
 		Visible:      true,
 		Order:        999,
-		Extractor: func(stats *Stats) string {
-			pids := []string{}
+	}, func(stats *Stats) string {
+		pids := []string{}
 
-			for _, pid := range stats.Processes {
-				pids = append(pids, fmt.Sprint(pid.Pid))
-			}
+		for _, pid := range stats.Processes {
+			pids = append(pids, fmt.Sprint(pid.Pid))
+		}
 
-			return strings.Join(pids, ",")
-		},
+		return strings.Join(pids, ",")
 	})
 
-	cols.MustAddColumn(columns.Column[Stats]{
+	cols.MustAddColumn(columns.Attributes{
 		Name:         "comm",
 		Width:        16,
 		EllipsisType: ellipsis.End,
 		Visible:      true,
 		Order:        1000,
-		Extractor: func(stats *Stats) string {
-			comms := []string{}
+	}, func(stats *Stats) string {
+		comms := []string{}
 
-			for _, comm := range stats.Processes {
-				comms = append(comms, comm.Comm)
-			}
+		for _, comm := range stats.Processes {
+			comms = append(comms, comm.Comm)
+		}
 
-			return strings.Join(comms, ",")
-		},
+		return strings.Join(comms, ",")
 	})
 	cols.MustSetExtractor("runtime", func(stats *Stats) (ret string) {
 		return fmt.Sprint(time.Duration(stats.CurrentRuntime))

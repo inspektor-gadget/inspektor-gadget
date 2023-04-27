@@ -43,24 +43,23 @@ type Event struct {
 func GetColumns() *columns.Columns[Event] {
 	cols := columns.MustCreateColumns[Event]()
 
-	cols.MustAddColumn(columns.Column[Event]{
+	cols.MustAddColumn(columns.Attributes{
 		Name:    "call",
 		Width:   80,
 		Visible: true,
 		Order:   1000,
-		Extractor: func(e *Event) string {
-			switch e.Operation {
-			case "mount":
-				format := `mount("%s", "%s", "%s", %s, "%s") = %d`
-				return fmt.Sprintf(format, e.Source, e.Target, e.Fs, strings.Join(e.Flags, " | "),
-					e.Data, e.Retval)
-			case "umount":
-				format := `umount("%s", %s) = %d`
-				return fmt.Sprintf(format, e.Target, strings.Join(e.Flags, " | "), e.Retval)
-			}
+	}, func(e *Event) string {
+		switch e.Operation {
+		case "mount":
+			format := `mount("%s", "%s", "%s", %s, "%s") = %d`
+			return fmt.Sprintf(format, e.Source, e.Target, e.Fs, strings.Join(e.Flags, " | "),
+				e.Data, e.Retval)
+		case "umount":
+			format := `umount("%s", %s) = %d`
+			return fmt.Sprintf(format, e.Target, strings.Join(e.Flags, " | "), e.Retval)
+		}
 
-			return ""
-		},
+		return ""
 	})
 
 	cols.MustSetExtractor("flags", func(event *Event) string {

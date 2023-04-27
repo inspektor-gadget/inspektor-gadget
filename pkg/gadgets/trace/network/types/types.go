@@ -71,25 +71,24 @@ func (e *Event) SetEndpointsDetails(endpoints []eventtypes.EndpointDetails) {
 func GetColumns() *columns.Columns[Event] {
 	cols := columns.MustCreateColumns[Event]()
 
-	cols.MustAddColumn(columns.Column[Event]{
+	cols.MustAddColumn(columns.Attributes{
 		Name:         "remote",
 		Width:        32,
 		MinWidth:     21,
 		Visible:      true,
 		Order:        1000,
 		EllipsisType: ellipsis.Start,
-		Extractor: func(e *Event) string {
-			switch e.RemoteKind {
-			case eventtypes.RemoteKindPod:
-				return fmt.Sprintf("pod %s/%s", e.RemoteNamespace, e.RemoteName)
-			case eventtypes.RemoteKindService:
-				return fmt.Sprintf("svc %s/%s", e.RemoteNamespace, e.RemoteName)
-			case eventtypes.RemoteKindOther:
-				return fmt.Sprintf("endpoint %s", e.RemoteAddr)
-			default:
-				return e.RemoteAddr
-			}
-		},
+	}, func(e *Event) string {
+		switch e.RemoteKind {
+		case eventtypes.RemoteKindPod:
+			return fmt.Sprintf("pod %s/%s", e.RemoteNamespace, e.RemoteName)
+		case eventtypes.RemoteKindService:
+			return fmt.Sprintf("svc %s/%s", e.RemoteNamespace, e.RemoteName)
+		case eventtypes.RemoteKindOther:
+			return fmt.Sprintf("endpoint %s", e.RemoteAddr)
+		default:
+			return e.RemoteAddr
+		}
 	})
 
 	// Hide container column for kubernetes environment

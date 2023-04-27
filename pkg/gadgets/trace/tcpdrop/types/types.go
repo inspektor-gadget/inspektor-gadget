@@ -77,42 +77,40 @@ func GetColumns() *columns.Columns[Event] {
 	cols := columns.MustCreateColumns[Event]()
 
 	// Virtual column for the source and destination endpoints
-	err := cols.AddColumn(columns.Column[Event]{
-		Name: "src",
-		Extractor: func(e *Event) string {
-			switch e.SrcKind {
-			case eventtypes.RemoteKindPod:
-				return "p/" + e.SrcNamespace + "/" + e.SrcName + ":" + fmt.Sprint(e.Sport)
-			case eventtypes.RemoteKindService:
-				return "s/" + e.SrcNamespace + "/" + e.SrcName + ":" + fmt.Sprint(e.Sport)
-			case eventtypes.RemoteKindOther:
-				return "o/" + e.Saddr + ":" + fmt.Sprint(e.Sport)
-			}
-			return e.Saddr + ":" + fmt.Sprint(e.Sport)
-		},
+	err := cols.AddColumn(columns.Attributes{
+		Name:    "src",
 		Visible: true,
 		Width:   30,
 		Order:   2000,
+	}, func(e *Event) string {
+		switch e.SrcKind {
+		case eventtypes.RemoteKindPod:
+			return "p/" + e.SrcNamespace + "/" + e.SrcName + ":" + fmt.Sprint(e.Sport)
+		case eventtypes.RemoteKindService:
+			return "s/" + e.SrcNamespace + "/" + e.SrcName + ":" + fmt.Sprint(e.Sport)
+		case eventtypes.RemoteKindOther:
+			return "o/" + e.Saddr + ":" + fmt.Sprint(e.Sport)
+		}
+		return e.Saddr + ":" + fmt.Sprint(e.Sport)
 	})
 	if err != nil {
 		panic(err)
 	}
-	err = cols.AddColumn(columns.Column[Event]{
-		Name: "dst",
-		Extractor: func(e *Event) string {
-			switch e.DstKind {
-			case eventtypes.RemoteKindPod:
-				return "p/" + e.DstNamespace + "/" + e.DstName + ":" + fmt.Sprint(e.Dport)
-			case eventtypes.RemoteKindService:
-				return "s/" + e.DstNamespace + "/" + e.DstName + ":" + fmt.Sprint(e.Dport)
-			case eventtypes.RemoteKindOther:
-				return "o/" + e.Daddr + ":" + fmt.Sprint(e.Dport)
-			}
-			return e.Daddr + ":" + fmt.Sprint(e.Dport)
-		},
+	err = cols.AddColumn(columns.Attributes{
+		Name:    "dst",
 		Visible: true,
 		Width:   30,
 		Order:   3000,
+	}, func(e *Event) string {
+		switch e.DstKind {
+		case eventtypes.RemoteKindPod:
+			return "p/" + e.DstNamespace + "/" + e.DstName + ":" + fmt.Sprint(e.Dport)
+		case eventtypes.RemoteKindService:
+			return "s/" + e.DstNamespace + "/" + e.DstName + ":" + fmt.Sprint(e.Dport)
+		case eventtypes.RemoteKindOther:
+			return "o/" + e.Daddr + ":" + fmt.Sprint(e.Dport)
+		}
+		return e.Daddr + ":" + fmt.Sprint(e.Dport)
 	})
 	if err != nil {
 		panic(err)
