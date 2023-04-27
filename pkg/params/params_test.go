@@ -17,6 +17,7 @@ package params
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -167,6 +168,24 @@ func TestParamAs(t *testing.T) {
 			value:    "",
 			expected: []int64{},
 			getter:   func(p *Param) any { return p.AsInt64Slice() },
+		},
+		{
+			name:     "Duration()_1s",
+			value:    "1s",
+			expected: time.Duration(time.Second),
+			getter:   func(p *Param) any { return p.AsDuration() },
+		},
+		{
+			name:     "Duration()_5m",
+			value:    "5m",
+			expected: time.Duration(5 * time.Minute),
+			getter:   func(p *Param) any { return p.AsDuration() },
+		},
+		{
+			name:     "Duration()_half_hour",
+			value:    "0.5h",
+			expected: time.Duration(30 * time.Minute),
+			getter:   func(p *Param) any { return p.AsDuration() },
 		},
 	}
 

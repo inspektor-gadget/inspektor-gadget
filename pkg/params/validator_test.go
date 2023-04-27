@@ -394,3 +394,56 @@ func TestValidateSlice(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateDuration(t *testing.T) {
+	type test struct {
+		name          string
+		value         string
+		expectedError bool
+	}
+
+	tests := []test{
+		{
+			name:          "1s_no_error",
+			value:         "1s",
+			expectedError: false,
+		},
+		{
+			name:          "1m_no_error",
+			value:         "1m",
+			expectedError: false,
+		},
+		{
+			name:          "empty_error",
+			value:         "",
+			expectedError: true,
+		},
+		{
+			name:          "bad_input_0",
+			value:         "-",
+			expectedError: true,
+		},
+		{
+			name:          "bad_input_1",
+			value:         "asdafaf",
+			expectedError: true,
+		},
+		{
+			name:          "bad_unit",
+			value:         "1sad",
+			expectedError: true,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateDuration(test.value)
+			if test.expectedError {
+				require.Error(t, err)
+			} else {
+				require.Nil(t, err)
+			}
+		})
+	}
+}

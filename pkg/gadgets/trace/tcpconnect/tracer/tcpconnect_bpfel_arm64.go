@@ -21,8 +21,9 @@ type tcpconnectEvent struct {
 	Pid       uint32
 	Uid       uint32
 	Dport     uint16
-	_         [2]byte
+	Sport     uint16
 	MntnsId   uint64
+	Latency   uint64
 }
 
 type tcpconnectIpv4FlowKey struct {
@@ -36,6 +37,14 @@ type tcpconnectIpv6FlowKey struct {
 	Saddr [16]uint8
 	Daddr [16]uint8
 	Dport uint16
+}
+
+type tcpconnectPiddata struct {
+	Comm    [16]int8
+	Ts      uint64
+	Pid     uint32
+	Tid     uint32
+	MntnsId uint64
 }
 
 // loadTcpconnect returns the embedded CollectionSpec for tcpconnect.
@@ -79,21 +88,24 @@ type tcpconnectSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpconnectProgramSpecs struct {
-	IgTcpcV4CoE *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_e"`
-	IgTcpcV4CoX *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_x"`
-	IgTcpcV6CoE *ebpf.ProgramSpec `ebpf:"ig_tcpc_v6_co_e"`
-	IgTcpcV6CoX *ebpf.ProgramSpec `ebpf:"ig_tcpc_v6_co_x"`
+	IgTcpDestroy *ebpf.ProgramSpec `ebpf:"ig_tcp_destroy"`
+	IgTcpRsp     *ebpf.ProgramSpec `ebpf:"ig_tcp_rsp"`
+	IgTcpcV4CoE  *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_e"`
+	IgTcpcV4CoX  *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_x"`
+	IgTcpcV6CoE  *ebpf.ProgramSpec `ebpf:"ig_tcpc_v6_co_e"`
+	IgTcpcV6CoX  *ebpf.ProgramSpec `ebpf:"ig_tcpc_v6_co_x"`
 }
 
 // tcpconnectMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpconnectMapSpecs struct {
-	Events        *ebpf.MapSpec `ebpf:"events"`
-	Ipv4Count     *ebpf.MapSpec `ebpf:"ipv4_count"`
-	Ipv6Count     *ebpf.MapSpec `ebpf:"ipv6_count"`
-	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
-	Sockets       *ebpf.MapSpec `ebpf:"sockets"`
+	Events            *ebpf.MapSpec `ebpf:"events"`
+	Ipv4Count         *ebpf.MapSpec `ebpf:"ipv4_count"`
+	Ipv6Count         *ebpf.MapSpec `ebpf:"ipv6_count"`
+	MountNsFilter     *ebpf.MapSpec `ebpf:"mount_ns_filter"`
+	SocketsLatency    *ebpf.MapSpec `ebpf:"sockets_latency"`
+	SocketsPerProcess *ebpf.MapSpec `ebpf:"sockets_per_process"`
 }
 
 // tcpconnectObjects contains all objects after they have been loaded into the kernel.
@@ -115,11 +127,12 @@ func (o *tcpconnectObjects) Close() error {
 //
 // It can be passed to loadTcpconnectObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpconnectMaps struct {
-	Events        *ebpf.Map `ebpf:"events"`
-	Ipv4Count     *ebpf.Map `ebpf:"ipv4_count"`
-	Ipv6Count     *ebpf.Map `ebpf:"ipv6_count"`
-	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
-	Sockets       *ebpf.Map `ebpf:"sockets"`
+	Events            *ebpf.Map `ebpf:"events"`
+	Ipv4Count         *ebpf.Map `ebpf:"ipv4_count"`
+	Ipv6Count         *ebpf.Map `ebpf:"ipv6_count"`
+	MountNsFilter     *ebpf.Map `ebpf:"mount_ns_filter"`
+	SocketsLatency    *ebpf.Map `ebpf:"sockets_latency"`
+	SocketsPerProcess *ebpf.Map `ebpf:"sockets_per_process"`
 }
 
 func (m *tcpconnectMaps) Close() error {
@@ -128,7 +141,8 @@ func (m *tcpconnectMaps) Close() error {
 		m.Ipv4Count,
 		m.Ipv6Count,
 		m.MountNsFilter,
-		m.Sockets,
+		m.SocketsLatency,
+		m.SocketsPerProcess,
 	)
 }
 
@@ -136,14 +150,18 @@ func (m *tcpconnectMaps) Close() error {
 //
 // It can be passed to loadTcpconnectObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpconnectPrograms struct {
-	IgTcpcV4CoE *ebpf.Program `ebpf:"ig_tcpc_v4_co_e"`
-	IgTcpcV4CoX *ebpf.Program `ebpf:"ig_tcpc_v4_co_x"`
-	IgTcpcV6CoE *ebpf.Program `ebpf:"ig_tcpc_v6_co_e"`
-	IgTcpcV6CoX *ebpf.Program `ebpf:"ig_tcpc_v6_co_x"`
+	IgTcpDestroy *ebpf.Program `ebpf:"ig_tcp_destroy"`
+	IgTcpRsp     *ebpf.Program `ebpf:"ig_tcp_rsp"`
+	IgTcpcV4CoE  *ebpf.Program `ebpf:"ig_tcpc_v4_co_e"`
+	IgTcpcV4CoX  *ebpf.Program `ebpf:"ig_tcpc_v4_co_x"`
+	IgTcpcV6CoE  *ebpf.Program `ebpf:"ig_tcpc_v6_co_e"`
+	IgTcpcV6CoX  *ebpf.Program `ebpf:"ig_tcpc_v6_co_x"`
 }
 
 func (p *tcpconnectPrograms) Close() error {
 	return _TcpconnectClose(
+		p.IgTcpDestroy,
+		p.IgTcpRsp,
 		p.IgTcpcV4CoE,
 		p.IgTcpcV4CoX,
 		p.IgTcpcV6CoE,
