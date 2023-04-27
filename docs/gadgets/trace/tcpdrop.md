@@ -9,14 +9,14 @@ The trace tcpdrop gadget traces TCP packets dropped by the kernel.
 
 ### On Kubernetes
 
-- In terminal 1, start the trace tcpdrop gadget:
+In terminal 1, start the trace tcpdrop gadget:
 
 ```bash
 $ kubectl gadget trace tcpdrop
 NODE            PID    COMM            IP SADDR       DADDR   SPORT DPORT STATE     TCPFLAGS REASON
 ```
 
-- In terminal 2, start a pod and configure the network emulator to drop 25% of the packets:
+In terminal 2, start a pod and configure the network emulator to drop 25% of the packets:
 
 ```bash
 $ kubectl create service nodeport nginx --tcp=80:80
@@ -28,7 +28,7 @@ root@shell:/# tc qdisc add dev eth0 root netem drop 25%
 root@shell:/# curl nginx
 ```
 
-- The results in terminal 1 will show that some packets are dropped by the network emulator qdisc:
+The results in terminal 1 will show that some packets are dropped by the network emulator qdisc:
 
 ```
 NODE             NAMESPACE  POD    CONTAINER  PID     COMM  IP SRC                    DST                        STATE        TCPFLAGS  REASON
@@ -81,14 +81,14 @@ type: normal
 
 ### With `ig`
 
-- In terminal 1, start the trace tcpdrop gadget:
+In terminal 1, start the trace tcpdrop gadget:
 
 ```bash
 $ sudo ig trace tcpdrop -r docker
 CONTAINER  PID     COMM  IP SRC               DST          STATE        TCPFLAGS  REASON
 ```
 
-- In terminal 2, start a container, configure the network emulator to drop 25% of the packets, and download a web page:
+In terminal 2, start a container, configure the network emulator to drop 25% of the packets, and download a web page:
 
 ```bash
 $ docker run -ti --rm --cap-add NET_ADMIN --name=netem wbitt/network-multitool -- /bin/bash
@@ -98,7 +98,7 @@ $ docker run -ti --rm --cap-add NET_ADMIN --name=netem wbitt/network-multitool -
 
 The container needs NET_ADMIN capability to manage network interfaces
 
-- The results in terminal 1 will show that some packets are dropped by the network emulator qdisc:
+The results in terminal 1 will show that some packets are dropped by the network emulator qdisc:
 
 ```
 CONTAINER  PID     COMM  IP SRC               DST          STATE        TCPFLAGS  REASON
