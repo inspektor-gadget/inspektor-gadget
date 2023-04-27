@@ -41,7 +41,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/kr/pretty v0.3.1
-	github.com/moby/moby v23.0.4+incompatible
+	github.com/moby/moby v23.0.5+incompatible
 	github.com/stretchr/testify v1.8.2
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
 	golang.org/x/sync v0.1.0
