@@ -42,8 +42,8 @@ type Parser interface {
 	// GetTextColumnsFormatter returns the default formatter for this columns instance
 	GetTextColumnsFormatter(options ...textcolumns.Option) TextColumnsFormatter
 
-	// GetColumnNamesAndDescription returns a map of column names to their respective descriptions
-	GetColumnNamesAndDescription() map[string]string
+	// GetColumnAttributes returns a map of column names to their respective attributes
+	GetColumnAttributes() []columns.Attributes
 
 	// GetDefaultColumns returns a list of columns that are visible by default; optionally, hiddenTags will
 	// hide columns that contain any of the given tags
@@ -301,10 +301,10 @@ func (p *parser[T]) GetTextColumnsFormatter(options ...textcolumns.Option) TextC
 	}
 }
 
-func (p *parser[T]) GetColumnNamesAndDescription() map[string]string {
-	out := make(map[string]string)
+func (p *parser[T]) GetColumnAttributes() []columns.Attributes {
+	out := make([]columns.Attributes, 0)
 	for _, column := range p.columns.GetOrderedColumns(p.columnFilters...) {
-		out[column.Name] = column.Description
+		out = append(out, column.Attributes)
 	}
 	return out
 }
