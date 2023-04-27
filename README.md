@@ -57,6 +57,7 @@ Explore the following documentation to find out which tools can help you in your
 	- [`tcp`](docs/gadgets/trace/tcp.md)
 	- [`tcpconnect`](docs/gadgets/trace/tcpconnect.md)
 	- [`tcpdrop`](docs/gadgets/trace/tcpdrop.md)
+	- [`tcpretrans`](docs/gadgets/trace/tcpretrans.md)
 - [`script`](docs/gadgets/script.md)
 - [`traceloop`](docs/gadgets/traceloop.md)
 
@@ -188,6 +189,7 @@ Available Commands:
   tcp          Trace TCP connect, accept and close
   tcpconnect   Trace connect system calls
   tcpdrop      Trace TCP kernel-dropped packets/segments
+  tcpretrans   Trace TCP retransmissions
 
 ...
 ```

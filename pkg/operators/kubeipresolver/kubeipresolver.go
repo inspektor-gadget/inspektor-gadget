@@ -17,6 +17,7 @@
 // currently used by the following gadgets:
 // - trace network
 // - trace tcpdrop
+// - trace tcpretrans
 package kubeipresolver
 
 import (
