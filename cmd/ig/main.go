@@ -47,7 +47,7 @@ func main() {
 
 	runtime := local.New()
 	// columnFilters for ig
-	columnFilters := []columns.ColumnFilter{columns.Or(columns.WithTag("runtime"), columns.WithNoTags())}
+	columnFilters := []columns.ColumnFilter{columns.WithoutExceptTag("kubernetes", "runtime")}
 	common.AddCommandsFromRegistry(rootCmd, runtime, columnFilters)
 
 	if err := rootCmd.Execute(); err != nil {
