@@ -988,12 +988,13 @@ jobs:
         echo "$(cat pkg/resources/manifests/deploy.yaml) $(cat pkg/resources/crd/bases/gadget.kinvolk.io_traces.yaml)" > inspektor-gadget-${{ github.ref_name }}.yaml
 
         perl -pi -e 's@(image:) ".+\"@$1 "$ENV{IMAGE}"@; s@"latest"@"$ENV{IMAGE_TAG}"@;' inspektor-gadget-${{ github.ref_name }}.yaml
-    - name: Create Release
+    - name: Create Draft Release
       id: create_release
       uses: softprops/action-gh-release@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         name: Release ${{ github.ref }}
+        draft: true
     - name: Get all artifacts.
       uses: actions/download-artifact@v3
     - name: Setup go
@@ -1071,10 +1072,3 @@ jobs:
         pattern: "ig_packages/ig*"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
-    - name: Update new version in krew-index
-      # We only update version in krew-index for effective release.
-      if: github.repository == 'inspektor-gadget/inspektor-gadget' && !endsWith(github.ref_name, 'rc')
-      uses: rajatjindal/krew-release-bot@v0.0.46
-      with:
-        workdir: /home/runner/work/inspektor-gadget/inspektor-gadget
-        krew_template_file: .krew.yaml

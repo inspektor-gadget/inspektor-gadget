@@ -1,0 +1,17 @@
+name: Inspektor Gadget Release
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Update new version in krew-index
+      if: github.repository == 'inspektor-gadget/inspektor-gadget'
+      uses: rajatjindal/krew-release-bot@v0.0.46
+      with:
+        workdir: /home/runner/work/inspektor-gadget/inspektor-gadget
+        krew_template_file: .krew.yaml
