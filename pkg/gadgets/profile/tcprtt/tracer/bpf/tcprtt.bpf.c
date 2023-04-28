@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2021 Wenbo Zhang
-#include <vmlinux.h>
+// Copyright (c) 2023 The Inspektor Gadget authors
+#include <vmlinux/vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
@@ -11,7 +12,6 @@
 
 const volatile bool targ_laddr_hist = false;
 const volatile bool targ_raddr_hist = false;
-const volatile bool targ_show_ext = false;
 const volatile __u16 targ_sport = 0;
 const volatile __u16 targ_dport = 0;
 const volatile __u32 targ_saddr = 0;
@@ -23,7 +23,7 @@ const volatile bool targ_ms = false;
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);
-	__type(key, u64);
+	__type(key, u32);
 	__type(value, struct hist);
 } hists SEC(".maps");
 
@@ -34,8 +34,8 @@ static int handle_tcp_rcv_established(struct sock *sk)
 	const struct inet_sock *inet = (struct inet_sock *)(sk);
 	struct tcp_sock *ts;
 	struct hist *histp;
-	u64 key, slot;
-	u32 srtt;
+	u64 slot;
+	u32 srtt, key;
 
 	if (targ_sport && targ_sport != BPF_CORE_READ(inet, inet_sport))
 		return 0;
@@ -63,23 +63,22 @@ static int handle_tcp_rcv_established(struct sock *sk)
 	if (slot >= MAX_SLOTS)
 		slot = MAX_SLOTS - 1;
 	__sync_fetch_and_add(&histp->slots[slot], 1);
-	if (targ_show_ext) {
-		__sync_fetch_and_add(&histp->latency, srtt);
-		__sync_fetch_and_add(&histp->cnt, 1);
-	}
+	__sync_fetch_and_add(&histp->latency, srtt);
+	__sync_fetch_and_add(&histp->cnt, 1);
 	return 0;
 }
 
-SEC("fentry/tcp_rcv_established")
-int BPF_PROG(tcp_rcv, struct sock *sk)
+SEC("kprobe/tcp_rcv_established")
+int BPF_KPROBE(ig_tcprcvest_kp, struct sock *sk)
 {
 	return handle_tcp_rcv_established(sk);
 }
 
-SEC("kprobe/tcp_rcv_established")
-int BPF_KPROBE(tcp_rcv_kprobe, struct sock *sk)
-{
-	return handle_tcp_rcv_established(sk);
-}
+// Enable once https://github.com/inspektor-gadget/inspektor-gadget/issues/1566 is fixed.
+// SEC("fentry/tcp_rcv_established")
+// int BPF_PROG(ig_tcprcvest_fe, struct sock *sk)
+// {
+// 	return handle_tcp_rcv_established(sk);
+// }
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";

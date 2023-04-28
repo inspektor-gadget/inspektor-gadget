@@ -19,6 +19,7 @@ package gadgets
 import (
 	"encoding/binary"
 	"fmt"
+	"net"
 	"net/netip"
 	"sync"
 	"time"
@@ -126,6 +127,20 @@ func IPStringFromBytes(ipBytes [16]byte, ipType int) string {
 	default:
 		return ""
 	}
+}
+
+// IPStringToUint32 converts an IP address (IPv4 only) string to a uint32
+// in big-endian.
+func IPStringToUint32(ipAddr string) (uint32, error) {
+	// Notice ipAddr is already expressed in big-endian and net.ParseIP stores
+	// it in a byte array in big-endian too.
+	ip := net.ParseIP(ipAddr).To4()
+	if ip == nil {
+		return 0, fmt.Errorf("invalid IP address: %s", ipAddr)
+	}
+	// Convert the byte array to a uint32 keeping the big-endian order. We don't
+	// use binary.[BigEndian|LittleEndian].Uint32() to make this code portable.
+	return *(*uint32)(unsafe.Pointer(&ip[0])), nil
 }
 
 func IPVerFromAF(af uint32) int {
