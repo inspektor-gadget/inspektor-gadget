@@ -26,6 +26,7 @@ type TypeHint string
 const (
 	TypeBool     TypeHint = "bool"
 	TypeString   TypeHint = "string"
+	TypeBytes    TypeHint = "bytes"
 	TypeInt      TypeHint = "int"
 	TypeInt8     TypeHint = "int8"
 	TypeInt16    TypeHint = "int16"

@@ -363,6 +363,10 @@ func (p *Param) AsString() string {
 	return p.value
 }
 
+func (p *Param) AsBytes() []byte {
+	return []byte(p.value)
+}
+
 func (p *Param) AsStringSlice() []string {
 	if p.value == "" {
 		return []string{}
