@@ -105,30 +105,13 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	mapReplacements := map[string]*ebpf.Map{}
-	filterByMntNs := false
-
-	if t.config.MountnsMap != nil {
-		filterByMntNs = true
-		mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
-	}
-
 	consts := map[string]interface{}{
-		gadgets.FilterByMntNsName: filterByMntNs,
-		"target_pid":              t.config.TargetPid,
-		"target_family":           t.config.TargetFamily,
+		"target_pid":    t.config.TargetPid,
+		"target_family": t.config.TargetFamily,
 	}
 
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("error RewriteConstants: %w", err)
-	}
-
-	opts := ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
-	}
-
-	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
+		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
 	t.tcpSendmsgLink, err = link.Kprobe("tcp_sendmsg", t.objs.IgToptcpSdmsg, nil)

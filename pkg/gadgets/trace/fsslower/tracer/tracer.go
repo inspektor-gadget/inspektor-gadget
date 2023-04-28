@@ -149,31 +149,12 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
-
-	mapReplacements := map[string]*ebpf.Map{}
-	filterByMntNs := false
-
-	if t.config.MountnsMap != nil {
-		filterByMntNs = true
-		mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
-	}
-
 	consts := map[string]interface{}{
-		gadgets.FilterByMntNsName: filterByMntNs,
-		"min_lat_ns":              uint64(t.config.MinLatency * 1000 * 1000),
+		"min_lat_ns": uint64(t.config.MinLatency * 1000 * 1000),
 	}
 
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("error RewriteConstants: %w", err)
-	}
-
-	opts := ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
-	}
-
-	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
+		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
 	// choose a configuration based on the filesystem type passed
