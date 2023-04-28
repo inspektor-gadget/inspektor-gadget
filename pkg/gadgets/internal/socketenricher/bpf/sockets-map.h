@@ -40,11 +40,11 @@
 
 const volatile __u32 current_netns = 0;
 
-unsigned long long load_byte(void *skb,
+unsigned long long load_byte(const void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.byte");
-unsigned long long load_half(void *skb,
+unsigned long long load_half(const void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.half");
-unsigned long long load_word(void *skb,
+unsigned long long load_word(const void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.word");
 
 #define L4_OFF (ETH_HLEN + sizeof(struct iphdr))
@@ -78,7 +78,7 @@ struct {
 
 #ifdef GADGET_TYPE_NETWORKING
 static __always_inline struct sockets_value *
-gadget_socket_lookup(struct __sk_buff *skb)
+gadget_socket_lookup(const struct __sk_buff *skb)
 {
 	// Only IPv4 is supported for now
 	if (load_half(skb, offsetof(struct ethhdr, h_proto)) != ETH_P_IP)
@@ -111,7 +111,7 @@ gadget_socket_lookup(struct __sk_buff *skb)
 
 #ifdef GADGET_TYPE_TRACING
 static __always_inline struct sockets_value *
-gadget_socket_lookup(struct sock *sk, __u32 netns)
+gadget_socket_lookup(const struct sock *sk, __u32 netns)
 {
 	struct sockets_key key = {0,};
 	key.netns = netns;
