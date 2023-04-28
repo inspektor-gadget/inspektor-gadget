@@ -88,3 +88,7 @@ func WithDockerImage(image string) dockerOption {
 func WithDockerSeccompProfile(profile string) dockerOption {
 	return dockerOption{opt: testutils.WithSeccompProfile(profile)}
 }
+
+func WithDockerPrivileged() dockerOption {
+	return dockerOption{opt: testutils.WithPrivileged()}
+}

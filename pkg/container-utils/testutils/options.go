@@ -28,6 +28,7 @@ type containerOptions struct {
 	wait           bool
 	logs           bool
 	removal        bool
+	privileged     bool
 }
 
 func defaultContainerOptions() *containerOptions {
@@ -73,5 +74,11 @@ func WithoutRemoval() Option {
 func WithoutLogs() Option {
 	return func(opts *containerOptions) {
 		opts.logs = false
+	}
+}
+
+func WithPrivileged() Option {
+	return func(opts *containerOptions) {
+		opts.privileged = true
 	}
 }

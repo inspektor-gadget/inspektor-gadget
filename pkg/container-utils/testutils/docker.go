@@ -47,8 +47,13 @@ func RunDockerContainer(ctx context.Context, t *testing.T, command string, optio
 	io.Copy(io.Discard, reader)
 
 	hostConfig := &container.HostConfig{}
+
 	if opts.seccompProfile != "" {
 		hostConfig.SecurityOpt = []string{fmt.Sprintf("seccomp=%s", opts.seccompProfile)}
+	}
+
+	if opts.privileged {
+		hostConfig.Privileged = true
 	}
 
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
