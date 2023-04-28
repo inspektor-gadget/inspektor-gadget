@@ -18,6 +18,7 @@ package gadgets
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net/netip"
 	"sync"
 	"time"
@@ -231,4 +232,44 @@ func FixBpfKtimeGetBootNs(programSpecs map[string]*ebpf.ProgramSpec) {
 	for _, s := range programSpecs {
 		removeBpfKtimeGetBootNs(s)
 	}
+}
+
+// LoadeBPFSpec is a helper to load an eBPF spec from gadgets.
+// It replaces filter map and calls the necessary functions to load
+// Maps and Programs into the kernel
+func LoadeBPFSpec(
+	mountnsMap *ebpf.Map,
+	spec *ebpf.CollectionSpec,
+	consts map[string]interface{},
+	objs interface{},
+) error {
+	FixBpfKtimeGetBootNs(spec.Programs)
+
+	mapReplacements := map[string]*ebpf.Map{}
+	filterByMntNs := false
+
+	if mountnsMap != nil {
+		filterByMntNs = true
+		mapReplacements[MntNsFilterMapName] = mountnsMap
+	}
+
+	if consts == nil {
+		consts = map[string]interface{}{}
+	}
+
+	consts[FilterByMntNsName] = filterByMntNs
+
+	if err := spec.RewriteConstants(consts); err != nil {
+		return fmt.Errorf("RewriteConstants: %w", err)
+	}
+
+	opts := ebpf.CollectionOptions{
+		MapReplacements: mapReplacements,
+	}
+
+	if err := spec.LoadAndAssign(objs, &opts); err != nil {
+		return fmt.Errorf("loading maps and programs: %w", err)
+	}
+
+	return nil
 }
