@@ -174,7 +174,7 @@ This measures the time from any connection to the response packet, even if the r
 
 When this option is used, the event is only shown when the server replies or the socket is removed.
 
-### On Kubernetes
+#### On Kubernetes
 
 Start the gadget on a terminal:
 
@@ -228,7 +228,7 @@ ubuntu-hirsute   default          myclientpod      myclientpod      366036    cu
 ubuntu-hirsute   default          myclientpod      myclientpod      366040    curl     4  172.16.118.147  10.109.132.206  33490 80    79.54ms
 ```
 
-### With `ig`
+#### With `ig`
 
 Start the trace tcpconnect gadget on a first terminal:
 

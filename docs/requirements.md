@@ -56,6 +56,7 @@ listed in the following table:
 | `audit seccomp`          | 5.4 (CO-RE only)        | `KPROBES`               |
 | `profile block-io`       | 4.15 (BCC), U.U (CO-RE) |                         |
 | `profile cpu`            | (BCC only)              |                         |
+| `profile tcprtt`         | U.U (CO-RE only)        | `KPROBES`               |
 | `snapshot process`       | 5.10 (CO-RE only)       |                         |
 | `snapshot socket`        | 5.10 (CO-RE only)       |                         |
 | `top block-io`           | (CO-RE only)            | `KPROBES`               |

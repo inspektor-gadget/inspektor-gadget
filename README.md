@@ -37,6 +37,7 @@ Explore the following documentation to find out which tools can help you in your
 - `profile`:
 	- [`block-io`](docs/gadgets/profile/block-io.md)
 	- [`cpu`](docs/gadgets/profile/cpu.md)
+	- [`tcprtt`](docs/gadgets/profile/tcprtt.md)
 - `snapshot`:
 	- [`process`](docs/gadgets/snapshot/process.md)
 	- [`socket`](docs/gadgets/snapshot/socket.md)
@@ -144,6 +145,7 @@ Usage:
 Available Commands:
   block-io    Analyze block I/O performance through a latency distribution
   cpu         Analyze CPU performance by sampling stack traces
+  tcprtt      Analyze TCP connections through an Round-Trip Time (RTT) distribution
 
 ...
 $ kubectl gadget snapshot --help
