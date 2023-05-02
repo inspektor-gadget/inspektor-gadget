@@ -21,7 +21,7 @@ In terminal 2, start a pod and configure the network emulator to drop 25% of the
 ```bash
 $ kubectl create service nodeport nginx --tcp=80:80
 $ kubectl create deployment nginx --image=nginx
-$ kubectl run -ti --privileged --image ubuntu shell -- bash
+$ kubectl run --rm -ti --privileged --image ubuntu shell -- bash
 root@shell:/# apt-get update
 root@shell:/# apt install -y iproute2 curl
 root@shell:/# tc qdisc add dev eth0 root netem drop 25%
