@@ -15,14 +15,9 @@
 package piditer
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -30,6 +25,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -type pid_iter_entry piditer ./bpf/pid_iter.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -45,57 +41,7 @@ type PidIterEntry struct {
 	Comm   string
 }
 
-var (
-	addrLock        sync.Mutex
-	bpfProgFopsAddr uint64
-	triedGetAddr    bool
-
-	iterEntrySize = int(unsafe.Sizeof(piditerPidIterEntry{}))
-)
-
-// getBpfProgFopsAddr reads the address of bpf_prog_fops from /proc/kallsyms. It
-// only does this on first call and caches the address.
-func getBpfProgFopsAddr() (uint64, error) {
-	addrLock.Lock()
-	defer addrLock.Unlock()
-
-	if triedGetAddr {
-		if bpfProgFopsAddr == 0 {
-			return 0, os.ErrNotExist
-		}
-		return bpfProgFopsAddr, nil
-	}
-
-	triedGetAddr = true
-
-	file, err := os.Open("/proc/kallsyms")
-	if err != nil {
-		return 0, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		fields := strings.Fields(line)
-		if len(fields) < 3 {
-			continue
-		}
-
-		if fields[2] == "bpf_prog_fops" {
-			addr, err := strconv.ParseUint(fields[0], 16, 64)
-			if err != nil {
-				return 0, err
-			}
-
-			// cache addr
-			bpfProgFopsAddr = addr
-			return bpfProgFopsAddr, nil
-		}
-	}
-	return 0, os.ErrNotExist
-}
+var iterEntrySize = int(unsafe.Sizeof(piditerPidIterEntry{}))
 
 func NewTracer() (iter *PidIter, err error) {
 	p := &PidIter{}
@@ -108,21 +54,12 @@ func NewTracer() (iter *PidIter, err error) {
 		}
 	}()
 
-	addr, err := getBpfProgFopsAddr()
-	if err != nil {
-		return nil, fmt.Errorf("could not get address for bpf_prog_fops")
-	}
-
 	spec, err := loadPiditer()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	consts := map[string]interface{}{
-		"bpf_prog_fops_addr": addr,
-	}
-
-	if err = spec.RewriteConstants(consts); err != nil {
+	if err := kallsyms.SpecUpdateAddresses(spec, []string{"bpf_prog_fops"}); err != nil {
 		return nil, fmt.Errorf("error RewriteConstants: %w", err)
 	}
 
