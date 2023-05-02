@@ -6,11 +6,11 @@
 #include <bpf/bpf_tracing.h>
 #endif /* __TARGET_ARCH_arm64 */
 #include "execsnoop.h"
+#include "mntns_filter.h"
 
 const volatile bool ignore_failed = true;
 const volatile uid_t targ_uid = INVALID_UID;
 const volatile int max_args = DEFAULT_MAXARGS;
-const volatile bool filter_by_mnt_ns = false;
 
 static const struct event empty_event = {};
 
@@ -26,13 +26,6 @@ struct {
 	__uint(key_size, sizeof(u32));
 	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
 
 static __always_inline bool valid_uid(uid_t uid) {
 	return uid != INVALID_UID;
@@ -65,7 +58,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	task = (struct task_struct*)bpf_get_current_task();
 	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	id = bpf_get_current_pid_tgid();

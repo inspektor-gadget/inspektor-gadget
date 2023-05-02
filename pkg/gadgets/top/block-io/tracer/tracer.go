@@ -152,11 +152,11 @@ func (t *Tracer) install() error {
 
 	if t.config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_filter"] = t.config.MountnsMap
+		mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filterByMntNs,
+		gadgets.FilterByMntNsName: filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {

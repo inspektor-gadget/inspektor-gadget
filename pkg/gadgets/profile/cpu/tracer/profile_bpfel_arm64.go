@@ -70,9 +70,9 @@ type profileProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type profileMapSpecs struct {
-	Counts        *ebpf.MapSpec `ebpf:"counts"`
-	MountNsFilter *ebpf.MapSpec `ebpf:"mount_ns_filter"`
-	Stackmap      *ebpf.MapSpec `ebpf:"stackmap"`
+	Counts               *ebpf.MapSpec `ebpf:"counts"`
+	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
+	Stackmap             *ebpf.MapSpec `ebpf:"stackmap"`
 }
 
 // profileObjects contains all objects after they have been loaded into the kernel.
@@ -94,15 +94,15 @@ func (o *profileObjects) Close() error {
 //
 // It can be passed to loadProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type profileMaps struct {
-	Counts        *ebpf.Map `ebpf:"counts"`
-	MountNsFilter *ebpf.Map `ebpf:"mount_ns_filter"`
-	Stackmap      *ebpf.Map `ebpf:"stackmap"`
+	Counts               *ebpf.Map `ebpf:"counts"`
+	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
+	Stackmap             *ebpf.Map `ebpf:"stackmap"`
 }
 
 func (m *profileMaps) Close() error {
 	return _ProfileClose(
 		m.Counts,
-		m.MountNsFilter,
+		m.GadgetMntnsFilterMap,
 		m.Stackmap,
 	)
 }

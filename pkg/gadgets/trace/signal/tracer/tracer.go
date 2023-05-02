@@ -37,7 +37,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event sigsnoop ./bpf/sigsnoop.bpf.c -- -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event sigsnoop ./bpf/sigsnoop.bpf.c -- -I../../../../${TARGET} -I ../../../common/
 
 type Config struct {
 	MountnsMap   *ebpf.Map
@@ -125,7 +125,7 @@ func (t *Tracer) install() error {
 
 	if t.config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_filter"] = t.config.MountnsMap
+		mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
 	}
 
 	signal, err := signalStringToInt(t.config.TargetSignal)
@@ -134,10 +134,10 @@ func (t *Tracer) install() error {
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filterByMntNs,
-		"filtered_pid":     t.config.TargetPid,
-		"target_signal":    signal,
-		"failed_only":      t.config.FailedOnly,
+		gadgets.FilterByMntNsName: filterByMntNs,
+		"filtered_pid":            t.config.TargetPid,
+		"target_signal":           signal,
+		"failed_only":             t.config.FailedOnly,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {

@@ -32,7 +32,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type event -cc clang auditseccomp ./bpf/audit-seccomp.bpf.c -- -I./bpf/ -I../../../../ -I../../../../${TARGET} -D__KERNEL__
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type event -cc clang auditseccomp ./bpf/audit-seccomp.bpf.c -- -I./bpf/ -I../../../../ -I../../../../${TARGET} -D__KERNEL__ -I ../../../common/
 
 type Tracer struct {
 	config        *Config
@@ -85,11 +85,11 @@ func (t *Tracer) install() error {
 
 	if t.config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_filter"] = t.config.MountnsMap
+		mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
 	}
 
 	consts := map[string]interface{}{
-		"filter_by_mnt_ns": filterByMntNs,
+		gadgets.FilterByMntNsName: filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {

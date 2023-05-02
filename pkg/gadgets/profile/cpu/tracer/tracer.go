@@ -38,7 +38,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type key_t -cc clang profile ./bpf/profile.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type key_t -cc clang profile ./bpf/profile.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
 
 type Config struct {
 	MountnsMap      *ebpf.Map
@@ -332,13 +332,13 @@ func (t *Tracer) install() error {
 
 	if t.config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_filter"] = t.config.MountnsMap
+		mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
 	}
 
 	consts := map[string]interface{}{
-		"kernel_stacks_only": t.config.KernelStackOnly,
-		"user_stacks_only":   t.config.UserStackOnly,
-		"filter_by_mnt_ns":   filterByMntNs,
+		"kernel_stacks_only":      t.config.KernelStackOnly,
+		"user_stacks_only":        t.config.UserStackOnly,
+		gadgets.FilterByMntNsName: filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {

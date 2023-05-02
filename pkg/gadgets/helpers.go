@@ -43,6 +43,14 @@ const (
 	// bpf_ktime_get_boot_ns()'s func id as defined in Linux API
 	// https://github.com/torvalds/linux/blob/v6.2-rc1/include/uapi/linux/bpf.h#L5614
 	BpfKtimeGetBootNsFuncID = 125
+
+	// Constant used to enable filtering by mount namespace inode id in eBPF.
+	// Keep in syn with variable defined in pkg/gadgets/common/mntns_filter.h.
+	FilterByMntNsName = "gadget_filter_by_mntns"
+
+	// Name of the map that stores the mount namespace inode id to filter on.
+	// Keep in syn with name used in pkg/gadgets/common/mntns_filter.h.
+	MntNsFilterMapName = "gadget_mntns_filter_map"
 )
 
 // CloseLink closes l if it's not nil and returns nil

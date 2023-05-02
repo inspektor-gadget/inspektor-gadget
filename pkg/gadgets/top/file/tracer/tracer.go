@@ -33,7 +33,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type file_stat -type file_id -cc clang filetop ./bpf/filetop.bpf.c -- -I./bpf/ -I../../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type file_stat -type file_id -cc clang filetop ./bpf/filetop.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
 
 type Config struct {
 	MountnsMap *ebpf.Map
@@ -109,13 +109,13 @@ func (t *Tracer) install() error {
 
 	if t.config.MountnsMap != nil {
 		filterByMntNs = true
-		mapReplacements["mount_ns_filter"] = t.config.MountnsMap
+		mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
 	}
 
 	consts := map[string]interface{}{
-		"target_pid":        uint32(t.config.TargetPid),
-		"regular_file_only": !t.config.AllFiles,
-		"filter_by_mnt_ns":  filterByMntNs,
+		"target_pid":              uint32(t.config.TargetPid),
+		"regular_file_only":       !t.config.AllFiles,
+		gadgets.FilterByMntNsName: filterByMntNs,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {

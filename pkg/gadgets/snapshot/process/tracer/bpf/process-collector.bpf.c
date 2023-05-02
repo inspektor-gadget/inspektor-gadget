@@ -12,14 +12,8 @@
 #include <vmlinux/vmlinux.h>
 #include <bpf/bpf_helpers.h>
 
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
+#include "mntns_filter.h"
 
-const volatile bool filter_by_mnt_ns = false;
 const volatile bool show_threads = false;
 
 SEC("iter/task")
@@ -40,7 +34,7 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 
 	__u64 mntns_id = task->nsproxy->mnt_ns->ns.inum;
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	parent = task->real_parent;

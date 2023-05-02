@@ -29,7 +29,6 @@ struct event {
 	__u32 tid;
 	__u64 mount_ns_id;
 	__u64 timestamp;
-	unsigned int mnt_ns;
 	int ret;
 	__u8 comm[TASK_COMM_LEN];
 	__u8 fs[FS_NAME_LEN];

@@ -6,9 +6,9 @@
 #include <bpf/bpf_tracing.h>
 #include "profile.h"
 #include "maps.bpf.h"
+#include "mntns_filter.h"
 
 const volatile bool kernel_stacks_only = false;
-const volatile bool filter_by_mnt_ns = false;
 const volatile bool user_stacks_only = false;
 const volatile bool include_idle = false;
 const volatile pid_t targ_pid = -1;
@@ -28,13 +28,6 @@ struct {
 	__type(value, sizeof(u64));
 	__uint(max_entries, MAX_ENTRIES);
 } counts SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
 
 /*
  * If PAGE_OFFSET macro is not available in vmlinux.h, determine ip whose MSB
@@ -77,10 +70,9 @@ int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 	if (targ_tid != -1 && targ_tid != tid)
 		return 0;
 
-	task = (struct task_struct*) bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	key.pid = pid;

@@ -10,13 +10,7 @@
 #include <bpf/bpf_tracing.h>
 
 #include "audit-seccomp.h"
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, __u64);
-	__type(value, __u32);
-	__uint(max_entries, 1024);
-} mount_ns_filter SEC(".maps");
+#include "mntns_filter.h"
 
 /* The stack is limited, so use a map to build the event */
 struct {
@@ -30,20 +24,17 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 } events SEC(".maps");
 
-const volatile bool filter_by_mnt_ns = false;
-
 SEC("kprobe/audit_seccomp")
 int ig_audit_secc(struct pt_regs *ctx)
 {
 	unsigned long syscall = PT_REGS_PARM1(ctx);
 	int code = PT_REGS_PARM3(ctx);
 
-	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-	__u64 mntns_id = BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	__u64 mntns_id = gadget_get_mntns_id();
 	if (mntns_id == 0)
 		return 0;
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	__u32 zero = 0;

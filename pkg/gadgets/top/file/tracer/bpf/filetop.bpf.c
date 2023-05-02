@@ -6,12 +6,12 @@
 #include <bpf/bpf_tracing.h>
 #include "filetop.h"
 #include "stat.h"
+#include "mntns_filter.h"
 
 #define MAX_ENTRIES	10240
 
 const volatile pid_t target_pid = 0;
 const volatile bool regular_file_only = true;
-const volatile bool filter_by_mnt_ns = false;
 static struct file_stat zero_value = {};
 
 struct {
@@ -20,13 +20,6 @@ struct {
 	__type(key, struct file_id);
 	__type(value, struct file_stat);
 } entries SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(u64));
-	__uint(value_size, sizeof(u32));
-} mount_ns_filter SEC(".maps");
 
 static void get_file_path(struct file *file, __u8 *buf, size_t size)
 {
@@ -44,16 +37,14 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count, enu
 	int mode;
 	struct file_id key = {};
 	struct file_stat *valuep;
-	struct task_struct *task;
 	u64 mntns_id;
 
 	if (target_pid && target_pid != pid)
 		return 0;
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	mntns_id = gadget_get_mntns_id();
 
-	if (filter_by_mnt_ns && !bpf_map_lookup_elem(&mount_ns_filter, &mntns_id))
+	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	mode = BPF_CORE_READ(file, f_inode, i_mode);
