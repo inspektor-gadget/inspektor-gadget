@@ -22,6 +22,7 @@ import (
 	"net"
 	"reflect"
 	"testing"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 
@@ -166,15 +167,18 @@ func TestSocketEnricherBind(t *testing.T) {
 
 			runner := utilstest.NewRunnerWithTest(t, nil)
 
-			tracer, err := NewSocketEnricher()
+			// We will test 2 scenarios with 2 different tracers:
+			// 1. earlyTracer will be started before the event is generated
+			// 2. lateTracer will be started after the event is generated
+			earlyTracer, err := NewSocketEnricher()
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Cleanup(tracer.Close)
+			t.Cleanup(earlyTracer.Close)
 
+			// Generate the event in the fake container
 			var port uint16
 			var fd int
-
 			utilstest.RunWithRunner(t, runner, func() error {
 				var err error
 				port, fd, err = test.generateEvent()
@@ -189,28 +193,75 @@ func TestSocketEnricherBind(t *testing.T) {
 				return err
 			})
 
-			entries := socketsMapEntries(t, tracer, nil)
+			// Start the late tracer after the event has been generated
+			lateTracer, err := NewSocketEnricher()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(lateTracer.Close)
 
+			earlyNormalize := func(entry *socketEnricherMapEntry) {
+				entry.Value.Sock = 0
+			}
+			lateNormalize := func(entry *socketEnricherMapEntry) {
+				earlyNormalize(entry)
+
+				// Remove tid: the late tracer cannot distinguish between threads
+				entry.Value.PidTgid = 0xffffffff00000000 & entry.Value.PidTgid
+
+				// Our fake container is just a thread in a different MountNsID
+				// But the late tracer cannot distinguish threads.
+				if entry.Value.Mntns > 0 {
+					entry.Value.Mntns = 1
+				}
+			}
+
+			t.Logf("Testing if early tracer noticed the event")
+			entries := socketsMapEntries(t, earlyTracer, earlyNormalize, nil)
 			utilstest.ExpectAtLeastOneEvent(test.expectedEvent)(t, runner.Info, port, entries)
 
+			t.Logf("Testing if late tracer noticed the event")
+			entries2 := socketsMapEntries(t, lateTracer, lateNormalize, nil)
+			expectedEvent2 := func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+				e := test.expectedEvent(info, port)
+				lateNormalize(e)
+				return e
+			}
+			utilstest.ExpectAtLeastOneEvent(expectedEvent2)(t, runner.Info, port, entries2)
+
+			t.Logf("Close socket in order to check for cleanup")
 			if fd != -1 {
 				unix.Close(fd)
 				// Disable t.Cleanup() above
 				fd = -1
 			}
 
-			expected := test.expectedEvent(runner.Info, port)
-			entries = socketsMapEntries(t, tracer, func(e *socketEnricherMapEntry) bool {
+			filter := func(e *socketEnricherMapEntry) bool {
+				expected := test.expectedEvent(runner.Info, port)
 				return !reflect.DeepEqual(expected, e)
-			})
+			}
+
+			t.Logf("Testing if entry is cleaned properly in early tracer")
+			entries = socketsMapEntries(t, earlyTracer, earlyNormalize, filter)
 			if len(entries) != 0 {
 				t.Fatalf("Entry not cleaned properly: %+v", entries)
+			}
+
+			t.Logf("Testing if entry is cleaned properly in late tracer")
+			entries2 = socketsMapEntries(t, lateTracer, lateNormalize, filter)
+			if len(entries2) != 0 {
+				t.Fatalf("Entry for late tracer not cleaned properly: %+v", entries2)
 			}
 		})
 	}
 }
 
-func socketsMapEntries(t *testing.T, tracer *SocketEnricher, filter func(*socketEnricherMapEntry) bool) (entries []socketEnricherMapEntry) {
+func socketsMapEntries(
+	t *testing.T,
+	tracer *SocketEnricher,
+	normalize func(entry *socketEnricherMapEntry),
+	filter func(*socketEnricherMapEntry) bool,
+) (entries []socketEnricherMapEntry) {
 	iter := tracer.SocketsMap().Iterate()
 	var key socketenricherSocketsKey
 	var value socketenricherSocketsValue
@@ -220,8 +271,7 @@ func socketsMapEntries(t *testing.T, tracer *SocketEnricher, filter func(*socket
 			Value: value,
 		}
 
-		// Normalize
-		entry.Value.Sock = 0
+		normalize(&entry)
 
 		if filter != nil && filter(&entry) {
 			continue
@@ -246,7 +296,30 @@ func bindSocket(ipStr string, domain, typ int, port int) (uint16, int, error) {
 	return bindSocketWithOpts(ipStr, domain, typ, port, nil)
 }
 
+func setProcessName(name string) error {
+	bytes := append([]byte(name), 0)
+	return unix.Prctl(unix.PR_SET_NAME, uintptr(unsafe.Pointer(&bytes[0])), 0, 0, 0)
+}
+
 func bindSocketWithOpts(ipStr string, domain, typ int, port int, opts []sockOpt) (uint16, int, error) {
+	// The process name is usually based on the package name
+	// ("socketenricher.") but it could be changed (e.g. running tests in the
+	// Goland IDE environment). Make sure the tests work regardless of the
+	// environment.
+	//
+	// Example how to test this:
+	//
+	//	$ go test -c ./pkg/gadgets/internal/socketenricher/...
+	//	$ sudo ./socketenricher.test
+	//	PASS
+	//	$ mv socketenricher.test se.test
+	//	$ sudo ./se.test
+	//	FAIL
+	err := setProcessName("socketenricher.")
+	if err != nil {
+		return 0, -1, fmt.Errorf("setProcessName: %w", err)
+	}
+
 	fd, err := unix.Socket(domain, typ, 0)
 	if err != nil {
 		return 0, -1, err
