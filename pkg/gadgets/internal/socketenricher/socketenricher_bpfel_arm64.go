@@ -74,6 +74,7 @@ type socketenricherProgramSpecs struct {
 	IgBindIpv6X   *ebpf.ProgramSpec `ebpf:"ig_bind_ipv6_x"`
 	IgFreeIpv4E   *ebpf.ProgramSpec `ebpf:"ig_free_ipv4_e"`
 	IgFreeIpv6E   *ebpf.ProgramSpec `ebpf:"ig_free_ipv6_e"`
+	IgSocketsIt   *ebpf.ProgramSpec `ebpf:"ig_sockets_it"`
 	IgTcpcV4CoE   *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_e"`
 	IgTcpcV4CoX   *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_x"`
 	IgTcpcV6CoE   *ebpf.ProgramSpec `ebpf:"ig_tcpc_v6_co_e"`
@@ -130,6 +131,7 @@ type socketenricherPrograms struct {
 	IgBindIpv6X   *ebpf.Program `ebpf:"ig_bind_ipv6_x"`
 	IgFreeIpv4E   *ebpf.Program `ebpf:"ig_free_ipv4_e"`
 	IgFreeIpv6E   *ebpf.Program `ebpf:"ig_free_ipv6_e"`
+	IgSocketsIt   *ebpf.Program `ebpf:"ig_sockets_it"`
 	IgTcpcV4CoE   *ebpf.Program `ebpf:"ig_tcpc_v4_co_e"`
 	IgTcpcV4CoX   *ebpf.Program `ebpf:"ig_tcpc_v4_co_x"`
 	IgTcpcV6CoE   *ebpf.Program `ebpf:"ig_tcpc_v6_co_e"`
@@ -146,6 +148,7 @@ func (p *socketenricherPrograms) Close() error {
 		p.IgBindIpv6X,
 		p.IgFreeIpv4E,
 		p.IgFreeIpv6E,
+		p.IgSocketsIt,
 		p.IgTcpcV4CoE,
 		p.IgTcpcV4CoX,
 		p.IgTcpcV6CoE,

@@ -16,11 +16,13 @@ package socketenricher
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang socketenricher ./bpf/sockets-map.bpf.c -- -I./bpf/ -I../../../ -I../../../${TARGET}
@@ -51,10 +53,13 @@ func NewSocketEnricher() (*SocketEnricher, error) {
 }
 
 func (se *SocketEnricher) start() error {
+
 	spec, err := loadSocketenricher()
 	if err != nil {
 		return fmt.Errorf("failed to load asset: %w", err)
 	}
+
+	kallsyms.SpecUpdateAddresses(spec, []string{"socket_file_ops"})
 
 	if err := spec.LoadAndAssign(&se.objs, nil); err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
@@ -137,6 +142,25 @@ func (se *SocketEnricher) start() error {
 		return fmt.Errorf("error opening ipv6 release kprobe: %w", err)
 	}
 	se.links = append(se.links, l)
+
+	// get initial sockets
+	socketsIter, err := link.AttachIter(link.IterOptions{
+		Program: se.objs.IgSocketsIt,
+	})
+	if err != nil {
+		return fmt.Errorf("attach BPF iterator: %w", err)
+	}
+	defer socketsIter.Close()
+
+	file, err := socketsIter.Open()
+	if err != nil {
+		return fmt.Errorf("open BPF iterator: %w", err)
+	}
+	defer file.Close()
+	_, err = io.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("read BPF iterator: %w", err)
+	}
 
 	return nil
 }
