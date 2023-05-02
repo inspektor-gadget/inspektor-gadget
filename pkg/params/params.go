@@ -20,8 +20,12 @@ frameworks like cobra for use in CLI or a webinterface using JSON.
 package params
 
 import (
+	"bytes"
+	"compress/zlib"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -238,16 +242,64 @@ func (p *Params) ValidateStringMap(cfg map[string]string) error {
 	return nil
 }
 
+func compressAndB64Encode(s string) string {
+	// Create a new zlib.Writer, which will write to a bytes.Buffer
+	var b bytes.Buffer
+	w := zlib.NewWriter(&b)
+
+	// Write the contents of the file to the zlib.Writer
+	if _, err := io.Copy(w, strings.NewReader(s)); err != nil {
+		panic("failed to copy file to zlib.Writer")
+	}
+	// Close the zlib.Writer to ensure that all data has been written
+	if err := w.Close(); err != nil {
+		panic("failed to close zlib.Writer")
+	}
+	return base64.StdEncoding.EncodeToString(b.Bytes())
+}
+
+func b64DecodeAndDecompress(s string) ([]byte, error) {
+	sDec, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("decoding string: %w", err)
+	}
+	reader := bytes.NewReader(sDec)
+	gzreader, err := zlib.NewReader(reader)
+	if err != nil {
+		return nil, fmt.Errorf("creating new zlib reader: %w", err)
+	}
+	bytes, err := io.ReadAll(gzreader)
+	if err != nil {
+		return nil, fmt.Errorf("reading from zlib reader:: %w", err)
+	}
+	return bytes, nil
+}
+
 func (p *Params) CopyToMap(target map[string]string, prefix string) {
 	for _, param := range *p {
-		target[prefix+param.Key] = param.String()
+		if param.TypeHint == TypeBytes {
+			target[prefix+param.Key] = compressAndB64Encode(param.String())
+		} else {
+			target[prefix+param.Key] = param.String()
+		}
 	}
 }
 
 func (p *Params) CopyFromMap(source map[string]string, prefix string) error {
 	for k, v := range source {
 		if strings.HasPrefix(k, prefix) {
-			err := p.Set(strings.TrimPrefix(k, prefix), v)
+			param := p.Get(strings.TrimPrefix(k, prefix))
+			if param == nil {
+				continue
+			}
+			if param.TypeHint == TypeBytes {
+				bytes, err := b64DecodeAndDecompress(v)
+				if err != nil {
+					return err
+				}
+				v = string(bytes)
+			}
+			err := param.Set(v)
 			if err != nil && !errors.Is(err, ErrNotFound) {
 				return err
 			}
