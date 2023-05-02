@@ -25,34 +25,22 @@ $ git pull origin
 
 Double check that the latest commit is the right one to make the release.
 
-2. Tag a release canditate version
+2. Tag the new version.
 
 ```bash
-$ git tag v0.x.0-rc
+$ git tag v0.x.0
 ```
 
 3. Push tag to remote
 
 ```bash
-$ git push origin v0.x.0-rc
+$ git push origin v0.x.0
 ```
 
 4. Verify that the CI for the tag passed
 
-5. Tag the real release
-
-```bash
-$ git push origin v0.x.0
-```
-
-6. Push tag for real release
-
-```bash
-$ git push origin v0.x.0
-```
-
-7. Once the CI is done, go to https://github.com/inspektor-gadget/inspektor-gadget/releases and edit
-   the created release. Then click `Generate release notes` and update them to match the format used
+5. Once the CI is done, go to https://github.com/inspektor-gadget/inspektor-gadget/releases and edit
+   the created draft release. Then click `Generate release notes` and update them to match the format used
    for other releases:
 
 ```
@@ -64,11 +52,13 @@ $ git push origin v0.x.0
 ### Testing and Continue Integration
 ```
 
-8. Verify that the CI created a pull request in
-   [krew-index](https://github.com/kubernetes-sigs/krew-index/pulls) and that it was merged
-   automatically be the bot
+6. Once satisfied with the release notes, publish the draft release as public release.
 
-9. Send an announcement on the [#inspektor-gadget](https://kubernetes.slack.com/archives/CSYL75LF6) Slack channel
+7. Verify that the CI created a pull request in
+   [krew-index](https://github.com/kubernetes-sigs/krew-index/pulls) and that it was merged
+   automatically by the bot
+
+8. Send an announcement on the [#inspektor-gadget](https://kubernetes.slack.com/archives/CSYL75LF6) Slack channel
 
 ## Troubleshooting a failed release
 
