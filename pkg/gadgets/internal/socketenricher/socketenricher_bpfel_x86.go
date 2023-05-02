@@ -21,10 +21,11 @@ type socketenricherSocketsKey struct {
 }
 
 type socketenricherSocketsValue struct {
-	Mntns   uint64
-	PidTgid uint64
-	Task    [16]int8
-	Sock    uint64
+	Mntns             uint64
+	PidTgid           uint64
+	Task              [16]int8
+	Sock              uint64
+	DeletionTimestamp uint64
 }
 
 // loadSocketenricher returns the embedded CollectionSpec for socketenricher.
@@ -74,6 +75,7 @@ type socketenricherProgramSpecs struct {
 	IgBindIpv6X   *ebpf.ProgramSpec `ebpf:"ig_bind_ipv6_x"`
 	IgFreeIpv4E   *ebpf.ProgramSpec `ebpf:"ig_free_ipv4_e"`
 	IgFreeIpv6E   *ebpf.ProgramSpec `ebpf:"ig_free_ipv6_e"`
+	IgSkCleanup   *ebpf.ProgramSpec `ebpf:"ig_sk_cleanup"`
 	IgSocketsIt   *ebpf.ProgramSpec `ebpf:"ig_sockets_it"`
 	IgTcpcV4CoE   *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_e"`
 	IgTcpcV4CoX   *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_x"`
@@ -131,6 +133,7 @@ type socketenricherPrograms struct {
 	IgBindIpv6X   *ebpf.Program `ebpf:"ig_bind_ipv6_x"`
 	IgFreeIpv4E   *ebpf.Program `ebpf:"ig_free_ipv4_e"`
 	IgFreeIpv6E   *ebpf.Program `ebpf:"ig_free_ipv6_e"`
+	IgSkCleanup   *ebpf.Program `ebpf:"ig_sk_cleanup"`
 	IgSocketsIt   *ebpf.Program `ebpf:"ig_sockets_it"`
 	IgTcpcV4CoE   *ebpf.Program `ebpf:"ig_tcpc_v4_co_e"`
 	IgTcpcV4CoX   *ebpf.Program `ebpf:"ig_tcpc_v4_co_x"`
@@ -148,6 +151,7 @@ func (p *socketenricherPrograms) Close() error {
 		p.IgBindIpv6X,
 		p.IgFreeIpv4E,
 		p.IgFreeIpv6E,
+		p.IgSkCleanup,
 		p.IgSocketsIt,
 		p.IgTcpcV4CoE,
 		p.IgTcpcV4CoX,

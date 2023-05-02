@@ -130,6 +130,34 @@ int ig_sockets_it(struct bpf_iter__task_file *ctx)
 	return 0;
 }
 
+// This iterator is called from a Go Ticker to remove expired sockets
+SEC("iter/bpf_map_elem")
+int ig_sk_cleanup(struct bpf_iter__bpf_map_elem *ctx)
+{
+	struct seq_file *seq = ctx->meta->seq;
+	__u32 seq_num = ctx->meta->seq_num;
+	struct bpf_map *map = ctx->map;
+	struct sockets_key *socket_key = ctx->key;
+	struct sockets_key tmp_key;
+	struct sockets_value *socket_value = ctx->value;
+
+	if (!socket_key || !socket_value)
+		return 0;
+
+	__u64 now = bpf_ktime_get_boot_ns();
+	__u64 deletion_timestamp = socket_value->deletion_timestamp;
+	__u64 socket_expiration_ns = 1000ULL*1000ULL*1000ULL*5ULL; // 5 seconds
+
+	if (deletion_timestamp != 0 && deletion_timestamp + socket_expiration_ns < now) {
+		// The socket is expired, remove it from the map.
+		__builtin_memcpy(&tmp_key, socket_key, sizeof(struct sockets_key));
+		bpf_map_delete_elem(&sockets, &tmp_key);
+		return 0;
+	}
+
+	return 0;
+}
+
 // probe_bind_entry & probe_bind_exit are used:
 // - server side
 // - for both UDP and TCP
@@ -244,11 +272,17 @@ probe_release_entry(struct pt_regs *ctx, struct socket *socket, __u16 family)
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
 
 	struct sockets_value *socket_value = bpf_map_lookup_elem(&sockets, &socket_key);
-	if (socket_value != NULL && socket_value->sock != (__u64) sock) {
+	if (socket_value == NULL)
 		return 0;
-	}
 
-	bpf_map_delete_elem(&sockets, &socket_key);
+	if (socket_value->sock != (__u64) sock)
+		return 0;
+
+	if (socket_value->deletion_timestamp == 0) {
+		// bpf timers are only available in Linux 5.15.
+		// Use bpf iterators (Linux 5.8) controlled from userspace instead.
+		socket_value->deletion_timestamp = bpf_ktime_get_boot_ns();
+	}
 	return 0;
 }
 

@@ -66,6 +66,7 @@ struct sockets_value {
 	__u64 pid_tgid;
 	char task[TASK_COMM_LEN];
 	__u64 sock;
+	__u64 deletion_timestamp;
 };
 
 #define MAX_SOCKETS	16384
