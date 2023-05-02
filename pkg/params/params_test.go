@@ -380,3 +380,28 @@ func TestParamDefaultValue(t *testing.T) {
 	param.Set("bar")
 	require.Equal(t, "bar", param.String())
 }
+
+func TestBytesHandling(t *testing.T) {
+	// Test if a param of type Bytes gets compressed and decompressed correctly
+	const testString = "test123"
+	const testStringCompressed = "eJwqSS0uMTQyBgQAAP//CsoCVw=="
+	params := Params{
+		&Param{
+			ParamDesc: &ParamDesc{
+				Key:      "bytes",
+				TypeHint: TypeBytes,
+			},
+		},
+	}
+
+	// Compress
+	params[0].Set(testString)
+	testMap := map[string]string{}
+	params.CopyToMap(testMap, "")
+	require.Equal(t, testStringCompressed, testMap["bytes"], "compression + B64 encoding failed")
+
+	// Decompress
+	params[0].Set("")
+	params.CopyFromMap(testMap, "")
+	require.Equal(t, testString, string(params[0].AsBytes()), "decompression + B64 decoding failed")
+}
