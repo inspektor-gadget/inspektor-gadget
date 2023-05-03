@@ -37,6 +37,9 @@ const (
 	OperatorInstanceName = "LocalManagerTrace"
 	Runtimes             = "runtimes"
 	ContainerName        = "containername"
+	DockerSocketPath     = "docker-socketpath"
+	ContainerdSocketPath = "containerd-socketpath"
+	CrioSocketPath       = "crio-socketpath"
 )
 
 type MountNsMapSetter interface {
@@ -74,6 +77,21 @@ func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
 			Description: fmt.Sprintf("Container runtimes to be used separated by comma. Supported values are: %s",
 				strings.Join(containerutils.AvailableRuntimes, ", ")),
 			// PossibleValues: containerutils.AvailableRuntimes, // TODO
+		},
+		{
+			Key:          DockerSocketPath,
+			DefaultValue: runtimeclient.DockerDefaultSocketPath,
+			Description:  "Docker Engine API Unix socket path",
+		},
+		{
+			Key:          ContainerdSocketPath,
+			DefaultValue: runtimeclient.ContainerdDefaultSocketPath,
+			Description:  "Containerd CRI Unix socket path",
+		},
+		{
+			Key:          CrioSocketPath,
+			DefaultValue: runtimeclient.CrioDefaultSocketPath,
+			Description:  "CRI-O CRI Unix socket path",
 		},
 	}
 }
@@ -130,11 +148,11 @@ partsLoop:
 
 		switch runtimeName {
 		case runtimeclient.DockerName:
-			// socketPath = commonFlags.RuntimesSocketPathConfig.Docker
+			socketPath = operatorParams.Get(DockerSocketPath).AsString()
 		case runtimeclient.ContainerdName:
-			// socketPath = commonFlags.RuntimesSocketPathConfig.Containerd
+			socketPath = operatorParams.Get(ContainerdSocketPath).AsString()
 		case runtimeclient.CrioName:
-			// socketPath = commonFlags.RuntimesSocketPathConfig.Crio
+			socketPath = operatorParams.Get(CrioSocketPath).AsString()
 		default:
 			return commonutils.WrapInErrInvalidArg("--runtime / -r",
 				fmt.Errorf("runtime %q is not supported", p))
