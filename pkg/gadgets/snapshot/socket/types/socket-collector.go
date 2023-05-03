@@ -41,8 +41,16 @@ var ProtocolsMap = map[string]Proto{
 type Event struct {
 	eventtypes.Event
 	eventtypes.WithNetNsID
+	eventtypes.WithMountNsID
+
+	Command   string `json:"comm" column:"comm,template:comm"`
+	Pid       int    `json:"pid" column:"pid,template:pid"`
+	Uid       uint32 `json:"uid" column:"uid,template:uid,hide"`
+	Gid       uint32 `json:"gid" column:"gid,template:gid,hide"`
+	ParentPid int    `json:"ppid" column:"ppid,template:pid,hide"`
 
 	Protocol      string `json:"protocol" column:"protocol,maxWidth:8"`
+	IPVersion     int    `json:"ipversion,omitempty" column:"ip,width:2,fixed"`
 	LocalAddress  string `json:"localAddress" column:"localAddr,template:ipaddr,hide"`
 	LocalPort     uint16 `json:"localPort" column:"localPort,template:ipport,hide"`
 	RemoteAddress string `json:"remoteAddress" column:"remoteAddr,template:ipaddr,hide"`

@@ -18,8 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
-
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer"
@@ -68,20 +66,12 @@ func (f *TraceFactory) Operations() map[gadgetv1alpha1.Operation]gadgets.TraceOp
 }
 
 func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
-	if trace.Spec.Filter != nil && trace.Spec.Filter.ContainerName != "" {
-		log.Warningf("Gadget %s: Container name filter is not applicable in this gadget, ignoring it!",
-			trace.Spec.Gadget)
-	}
-
-	selector := gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter)
-	filteredContainers := t.helpers.GetContainersBySelector(selector)
-	if len(filteredContainers) == 0 {
-		trace.Status.OperationWarning = "No container matches the requested filter"
-		trace.Status.State = gadgetv1alpha1.TraceStateCompleted
+	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
+	mountNsMap, err := t.helpers.TracerMountNsMap(traceName)
+	if err != nil {
+		trace.Status.OperationError = fmt.Sprintf("failed to find tracer's mount ns map: %s", err)
 		return
 	}
-
-	allSockets := []*socketcollectortypes.Event{}
 
 	protocol := socketcollectortypes.ALL
 	if trace.Spec.Parameters != nil {
@@ -95,49 +85,23 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 		}
 	}
 
-	// Given that the socket-collector tracer works per network namespace and
-	// all the containers inside a namespace/pod share the network namespace,
-	// we only need to run the tracer with one valid PID per namespace/pod
-	visitedPods := make(map[string]struct{})
-
 	socketTracer, err := tracer.NewTracer(protocol)
 	if err != nil {
 		trace.Status.OperationError = err.Error()
 		return
 	}
-	defer socketTracer.CloseIters()
 
-	for _, container := range filteredContainers {
-		key := container.Namespace + "/" + container.Podname
-		if _, ok := visitedPods[key]; !ok {
-			// Make the whole gadget fail if there is a container without PID
-			// because it would be an inconsistency that has to be notified
-			if container.Pid == 0 {
-				trace.Status.OperationError = fmt.Sprintf("aborting! The following container does not have PID %+v", container)
-				return
-			}
+	socketTracer.SetMountNsMap(mountNsMap)
 
-			// The stored value does not matter, we are just keeping
-			// track of the visited Pods per Namespace
-			visitedPods[key] = struct{}{}
-
-			log.Debugf("Gadget %s: Using PID %d to retrieve network namespace of Pod %q in Namespace %q",
-				trace.Spec.Gadget, container.Pid, container.Podname, container.Namespace)
-
-			podSockets, err := socketTracer.RunCollector(container.Pid, container.Podname,
-				container.Namespace, trace.Spec.Node)
-			if err != nil {
-				trace.Status.OperationError = err.Error()
-				return
-			}
-
-			allSockets = append(allSockets, podSockets...)
-		}
+	events, err := socketTracer.RunCollector()
+	if err != nil {
+		trace.Status.OperationError = err.Error()
+		return
 	}
 
-	output, err := json.MarshalIndent(allSockets, "", " ")
+	output, err := json.MarshalIndent(events, "", " ")
 	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf("failed marshalling sockets: %s", err)
+		trace.Status.OperationError = fmt.Sprintf("failed marshalling processes: %s", err)
 		return
 	}
 

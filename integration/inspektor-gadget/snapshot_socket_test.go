@@ -62,6 +62,8 @@ func TestSnapshotSocket(t *testing.T) {
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &snapshotsocketTypes.Event{
 					Event:         BuildBaseEvent(ns),
+					Command:       "nc",
+					IPVersion:     4,
 					Protocol:      "TCP",
 					LocalAddress:  "0.0.0.0",
 					LocalPort:     9090,
@@ -71,13 +73,11 @@ func TestSnapshotSocket(t *testing.T) {
 				}
 				expectedEntry.Node = nodeName
 
-				// Socket gadget doesn't provide container data yet. See issue #744.
-				expectedEntry.Container = ""
-
 				normalize := func(e *snapshotsocketTypes.Event) {
-					e.Container = ""
 					e.InodeNumber = 0
 					e.NetNsID = 0
+					e.MountNsID = 0
+					e.ParentPid = 0
 				}
 
 				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
