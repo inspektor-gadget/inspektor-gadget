@@ -72,31 +72,15 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
-	mapReplacements := map[string]*ebpf.Map{}
-	filterByMntNs := false
-
-	if config.MountnsMap != nil {
-		filterByMntNs = true
-		mapReplacements[gadgets.MntNsFilterMapName] = config.MountnsMap
-	}
-
 	consts := map[string]interface{}{
-		gadgets.FilterByMntNsName: filterByMntNs,
-		"show_threads":            config.ShowThreads,
+		"show_threads": config.ShowThreads,
 	}
-
-	if err := spec.RewriteConstants(consts); err != nil {
-		return nil, fmt.Errorf("error RewriteConstants: %w", err)
-	}
-
 	objs := processCollectorObjects{}
-	opts := ebpf.CollectionOptions{
-		MapReplacements: mapReplacements,
+
+	if err := gadgets.LoadeBPFSpec(config.MountnsMap, spec, consts, &objs); err != nil {
+		return nil, fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
-	if err := spec.LoadAndAssign(&objs, &opts); err != nil {
-		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
-	}
 	defer objs.Close()
 
 	dumpTaskIter, err := link.AttachIter(link.IterOptions{
