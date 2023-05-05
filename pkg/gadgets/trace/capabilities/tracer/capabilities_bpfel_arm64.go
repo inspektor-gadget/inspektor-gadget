@@ -30,8 +30,10 @@ type capabilitiesCapEvent struct {
 	Cap           int32
 	Tgid          uint32
 	Uid           uint32
-	CapOpt        int32
 	Ret           int32
+	Audit         int32
+	Insetid       int32
+	_             [4]byte
 	Syscall       uint64
 	Task          [16]uint8
 }

@@ -23,7 +23,6 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/features"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	libseccomp "github.com/seccomp/libseccomp-golang"
@@ -44,16 +43,15 @@ type Config struct {
 }
 
 type Tracer struct {
-	config               *Config
-	objs                 capabilitiesObjects
-	capEnterLink         link.Link
-	capExitLink          link.Link
-	tpSysEnter           link.Link
-	tpSysExit            link.Link
-	reader               *perf.Reader
-	enricher             gadgets.DataEnricherByMntNs
-	eventCallback        func(*types.Event)
-	runningKernelVersion uint32
+	config        *Config
+	objs          capabilitiesObjects
+	capEnterLink  link.Link
+	capExitLink   link.Link
+	tpSysEnter    link.Link
+	tpSysExit     link.Link
+	reader        *perf.Reader
+	enricher      gadgets.DataEnricherByMntNs
+	eventCallback func(*types.Event)
 }
 
 var capabilitiesNames = map[int32]string{
@@ -139,21 +137,14 @@ func (t *Tracer) close() {
 }
 
 func (t *Tracer) install() error {
-	runningKernelVersion, err := features.LinuxVersionCode()
-	if err != nil {
-		return fmt.Errorf("error getting kernel version: %w", err)
-	}
-	t.runningKernelVersion = runningKernelVersion
-
 	spec, err := loadCapabilities()
 	if err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
 	}
 
 	consts := map[string]interface{}{
-		"linux_version_code": runningKernelVersion,
-		"audit_only":         t.config.AuditOnly,
-		"unique":             t.config.Unique,
+		"audit_only": t.config.AuditOnly,
+		"unique":     t.config.Unique,
 	}
 
 	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
@@ -199,17 +190,6 @@ func (t *Tracer) install() error {
 	return nil
 }
 
-// kernelVersion returns a uint32 corresponding to the kernel version.
-// This function is go translation of KERNEL_VERSION macro:
-// https://elixir.bootlin.com/linux/v5.18/source/tools/lib/bpf/bpf_helpers.h#L61
-func kernelVersion(a, b, c int) uint32 {
-	if c > 255 {
-		c = 255
-	}
-
-	return uint32((a << 16) + (b << 8) + c)
-}
-
 func capsNames(capsBitField uint64) (ret []string) {
 	// Ensure ret is not nil
 	ret = []string{}
@@ -219,6 +199,10 @@ func capsNames(capsBitField uint64) (ret []string) {
 		}
 	}
 	return
+}
+
+func boolPointer(b bool) *bool {
+	return &b
 }
 
 func (t *Tracer) run() {
@@ -245,27 +229,6 @@ func (t *Tracer) run() {
 			capabilityName = fmt.Sprintf("UNKNOWN (%d)", capability)
 		}
 
-		capOpt := int(bpfEvent.CapOpt)
-
-		var audit int
-		true_ := true
-		false_ := false
-		var insetID *bool
-
-		if t.runningKernelVersion >= kernelVersion(5, 1, 0) {
-			audit = 0
-			if (capOpt & 0b10) == 0 {
-				audit = 1
-			}
-
-			insetID = &false_
-			if (capOpt & 0b100) != 0 {
-				insetID = &true_
-			}
-		} else {
-			audit = capOpt
-		}
-
 		verdict := "Deny"
 		if bpfEvent.Ret == 0 {
 			verdict = "Allow"
@@ -275,6 +238,13 @@ func (t *Tracer) run() {
 		call1 := libseccomp.ScmpSyscall(bpfEvent.Syscall)
 		if name, err := call1.GetName(); err == nil {
 			syscall = name
+		}
+
+		var insetID *bool
+		if bpfEvent.Insetid == 0 {
+			insetID = boolPointer(false)
+		} else if bpfEvent.Insetid > 0 {
+			insetID = boolPointer(true)
 		}
 
 		event := types.Event{
@@ -288,7 +258,7 @@ func (t *Tracer) run() {
 			Pid:           bpfEvent.Pid,
 			Cap:           int(bpfEvent.Cap),
 			Uid:           bpfEvent.Uid,
-			Audit:         audit,
+			Audit:         int(bpfEvent.Audit),
 			InsetID:       insetID,
 			Comm:          gadgets.FromCString(bpfEvent.Task[:]),
 			Syscall:       syscall,
