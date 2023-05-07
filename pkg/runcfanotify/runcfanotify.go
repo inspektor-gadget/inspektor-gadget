@@ -416,6 +416,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 	if err != nil {
 		return false, err
 	}
+	path = filepath.Join(hostRoot, path)
 
 	// Consider files identical if they have the same device/inode,
 	// even if the paths differ due to symlinks (for example,
