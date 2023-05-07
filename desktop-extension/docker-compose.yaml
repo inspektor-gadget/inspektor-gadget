@@ -7,6 +7,8 @@ services:
     pid: host
     volumes:
       - /:/host
+      # fanotify /run/containerd/io.containerd.runtime.v2.task/moby/d29.../init.pid
+      - /run:/run
     environment:
       HOST_ROOT: /host
 
