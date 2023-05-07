@@ -45,6 +45,12 @@ COPY --from=client-builder /ui/build ui
 #COPY desktop-extension/bin/ig-service /bin/ig-service
 COPY --from=builder /backend/desktop-extension/bin/ig-service /bin
 
+# For debugging
+COPY ig /bin/ig
+
 ENV HOST_ROOT=/host
+ENV INSPEKTOR_GADGET_DOCKER_SOCKETPATH=/host/var/run/docker.sock
+ENV INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH=/host/run/containerd/containerd.sock
+
 RUN mkdir -p /run/guest-services/
 CMD /bin/ig-service -socket /run/guest-services/ig-desktop-extension.sock
