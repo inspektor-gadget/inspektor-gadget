@@ -2,24 +2,27 @@
 FROM golang:1.19-alpine AS builder
 ENV CGO_ENABLED=0
 WORKDIR /backend
-COPY service/go.* ./
+COPY go.* ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go mod download
-COPY service/. .
+COPY ./pkg ./pkg
+COPY ./cmd ./cmd
+COPY ./internal ./internal
+COPY ./desktop-extension ./desktop-extension
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -trimpath -ldflags="-s -w" -o bin/ig-service
+    pwd;ls -l ;go build -trimpath -ldflags="-s -w" -o bin/ig-service ./desktop-extension/ig-service
 
 # Building Javascript
 FROM --platform=$BUILDPLATFORM node:18.9-alpine3.15 AS client-builder
 WORKDIR /ui
-COPY ui/package.json /ui/package.json
-COPY ui/package-lock.json /ui/package-lock.json
+COPY desktop-extension/ui/package.json /ui/package.json
+COPY desktop-extension/ui/package-lock.json /ui/package-lock.json
 RUN --mount=type=cache,target=/usr/src/app/.npm \
     npm set cache /usr/src/app/.npm && \
     npm ci
-COPY ui /ui
+COPY desktop-extension/ui /ui
 RUN npm run build
 
 
@@ -35,11 +38,13 @@ LABEL org.opencontainers.image.title="inspektor-gadget" \
     com.docker.extension.additional-urls="" \
     com.docker.extension.changelog=""
 
-COPY docker-compose.yaml .
-COPY metadata.json .
-COPY icon.svg .
+COPY desktop-extension/docker-compose.yaml .
+COPY desktop-extension/metadata.json .
+COPY desktop-extension/icon.svg .
 COPY --from=client-builder /ui/build ui
-COPY bin/ig-service /bin/ig-service
-COPY --from=builder /backend/bin/ig-service /
+#COPY desktop-extension/bin/ig-service /bin/ig-service
+COPY --from=builder /backend/desktop-extension/bin/ig-service /bin
 
+ENV HOST_ROOT=/host
+RUN mkdir -p /run/guest-services/
 CMD /bin/ig-service -socket /run/guest-services/ig-desktop-extension.sock

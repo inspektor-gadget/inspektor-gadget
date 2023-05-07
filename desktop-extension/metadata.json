@@ -10,7 +10,7 @@
     "dashboard-tab": {
       "title": "Inspektor Gadget",
       "src": "index.html",
-      "root": "/ui",
+      "root": "ui",
       "backend": {
         "socket": "ig-desktop-extension.sock"
       }
