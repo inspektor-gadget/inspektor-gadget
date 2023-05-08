@@ -17,12 +17,9 @@
 package tracer
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 	"time"
 	"unsafe"
 
@@ -33,6 +30,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -101,46 +99,6 @@ func (t *Tracer) close() {
 	t.objs.Close()
 }
 
-// readKernelSymbols reads /proc/kallsyms and returns a map of string (values
-// are useless).
-func readKernelSymbols() (map[string]int, error) {
-	symbols := make(map[string]int)
-
-	file, err := os.Open("/proc/kallsyms")
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		fields := strings.Fields(line)
-		if len(fields) < 3 {
-			continue
-		}
-
-		// The kernel function is the third field in /proc/kallsyms line:
-		// 0000000000000000 t acpi_video_unregister_backlight      [video]
-		// First is the symbol address and second is described in man nm.
-		symbols[fields[2]] = 0
-	}
-
-	err = scanner.Err()
-	if err != nil {
-		return nil, err
-	}
-
-	return symbols, nil
-}
-
-// isKernelSymbol tests if given sym is within kernelSymbols.
-func isKernelSymbol(sym string, kernelSymbols map[string]int) bool {
-	_, ok := kernelSymbols[sym]
-	return ok
-}
-
 func (t *Tracer) install() error {
 	spec, err := loadBiotop()
 	if err != nil {
@@ -151,7 +109,7 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
-	kernelSymbols, err := readKernelSymbols()
+	kernelSymbols, err := kallsyms.NewKAllSyms()
 	if err != nil {
 		return fmt.Errorf("failed to load kernel symbols: %w", err)
 	}
@@ -161,12 +119,12 @@ func (t *Tracer) install() error {
 	// which was included in kernel 5.16.
 	// So let's be future proof and check if these symbols do not exist.
 	blkAccountIoStartFunction := "__blk_account_io_start"
-	if !isKernelSymbol(blkAccountIoStartFunction, kernelSymbols) {
+	if !kernelSymbols.SymbolExists(blkAccountIoStartFunction) {
 		blkAccountIoStartFunction = "blk_account_io_start"
 	}
 
 	blkAccountIoDoneFunction := "__blk_account_io_done"
-	if !isKernelSymbol(blkAccountIoDoneFunction, kernelSymbols) {
+	if !kernelSymbols.SymbolExists(blkAccountIoDoneFunction) {
 		blkAccountIoDoneFunction = "blk_account_io_done"
 	}
 

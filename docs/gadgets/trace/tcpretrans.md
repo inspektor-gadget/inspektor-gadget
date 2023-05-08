@@ -13,7 +13,7 @@ In terminal 1, start the trace tcpretrans gadget:
 
 ```bash
 $ kubectl gadget trace tcpretrans
-NODE             NAMESPACE  POD                CONTAINER  PID     COMM  IP SRC                DST                STATE     TCPFLAGS
+NODE            NAMESPACE POD                   CONTAINER PID     COMM  IP SRC                    DST                   STATE     TCPFLAGS
 ```
 
 In terminal 2, start a pod and configure the network emulator to drop 25% of the packets. This will cause TCP retransmissions:
@@ -21,7 +21,7 @@ In terminal 2, start a pod and configure the network emulator to drop 25% of the
 ```bash
 $ kubectl create service nodeport nginx --tcp=80:80
 $ kubectl create deployment nginx --image=nginx
-$ kubectl run -ti --privileged --image ubuntu shell -- bash
+$ kubectl run --rm -ti --privileged --image ubuntu shell -- bash
 root@shell:/# apt-get update
 root@shell:/# apt install -y iproute2 curl
 root@shell:/# tc qdisc add dev eth0 root netem drop 25%
@@ -31,9 +31,9 @@ root@shell:/# curl nginx
 The results in terminal 1 will show that some TCP transmissions cause by the dropped packets:
 
 ```
-NODE             NAMESPACE  POD                CONTAINER  PID     COMM  IP SRC                DST                STATE     TCPFLAGS
-minikube-docker  default    shell              shell      4190671 curl  4  p/default/shell:48 s/default/nginx:80 SYN_SENT  SYN
-minikube-docker  default    nginx-8f4…5b-j6ljr nginx      0             4  p/default/nginx-8f p/default/shell:48 ESTABLIS… PSH|ACK
+NODE            NAMESPACE POD                   CONTAINER PID     COMM  IP SRC                    DST                   STATE     TCPFLAGS
+minikube-docker default   shell                 shell     2952537 curl  4  p/default/shell:45742  s/default/nginx:80    FIN_WAIT1 FIN|ACK
+minikube-docker default   nginx-8f458dc5b-55b8n nginx     2839908 nginx 4  p/default/nginx-8f458d p/default/shell:45742 LAST_ACK  FIN|ACK
 ```
 
 ### With `ig`

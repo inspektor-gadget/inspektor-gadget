@@ -16,11 +16,15 @@ package socketenricher
 
 import (
 	"fmt"
+	"io"
+	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang socketenricher ./bpf/sockets-map.bpf.c -- -I./bpf/ -I../../../ -I../../../${TARGET}
@@ -33,6 +37,9 @@ import (
 type SocketEnricher struct {
 	objs  socketenricherObjects
 	links []link.Link
+
+	closeOnce sync.Once
+	done      chan bool
 }
 
 func (se *SocketEnricher) SocketsMap() *ebpf.Map {
@@ -55,6 +62,8 @@ func (se *SocketEnricher) start() error {
 	if err != nil {
 		return fmt.Errorf("failed to load asset: %w", err)
 	}
+
+	kallsyms.SpecUpdateAddresses(spec, []string{"socket_file_ops"})
 
 	if err := spec.LoadAndAssign(&se.objs, nil); err != nil {
 		return fmt.Errorf("failed to load ebpf program: %w", err)
@@ -138,10 +147,76 @@ func (se *SocketEnricher) start() error {
 	}
 	se.links = append(se.links, l)
 
+	// get initial sockets
+	socketsIter, err := link.AttachIter(link.IterOptions{
+		Program: se.objs.IgSocketsIt,
+	})
+	if err != nil {
+		return fmt.Errorf("attach BPF iterator: %w", err)
+	}
+	defer socketsIter.Close()
+
+	file, err := socketsIter.Open()
+	if err != nil {
+		return fmt.Errorf("open BPF iterator: %w", err)
+	}
+	defer file.Close()
+	_, err = io.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("read BPF iterator: %w", err)
+	}
+
+	cleanupIter, err := link.AttachIter(link.IterOptions{
+		Program: se.objs.IgSkCleanup,
+		Map:     se.objs.Sockets,
+	})
+	if err != nil {
+		return fmt.Errorf("attach BPF iterator for cleanups: %w", err)
+	}
+	se.links = append(se.links, cleanupIter)
+
+	se.done = make(chan bool)
+	go se.cleanupDeletedSockets(cleanupIter)
+
+	return nil
+}
+
+func (se *SocketEnricher) cleanupDeletedSockets(cleanupIter *link.Iter) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-se.done:
+			return
+		case <-ticker.C:
+			err := se.cleanupDeletedSocketsNow(cleanupIter)
+			if err != nil {
+				fmt.Printf("socket enricher: %v\n", err)
+			}
+		}
+	}
+}
+
+func (se *SocketEnricher) cleanupDeletedSocketsNow(cleanupIter *link.Iter) error {
+	file, err := cleanupIter.Open()
+	if err != nil {
+		return fmt.Errorf("open BPF iterator: %w", err)
+	}
+	defer file.Close()
+	_, err = io.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("read BPF iterator: %w", err)
+	}
 	return nil
 }
 
 func (se *SocketEnricher) Close() {
+	se.closeOnce.Do(func() {
+		if se.done != nil {
+			close(se.done)
+		}
+	})
+
 	for _, l := range se.links {
 		gadgets.CloseLink(l)
 	}

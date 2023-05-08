@@ -17,15 +17,11 @@
 package tracer
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"runtime"
 	"sort"
-	"strconv"
-	"strings"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -35,6 +31,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -130,84 +127,7 @@ func (t *Tracer) readCountsMap() ([]keyCount, error) {
 	return keysCounts, nil
 }
 
-type kernelSymbol struct {
-	addr uint64
-	name string
-}
-
-// readKernelSymbols reads /proc/kallsyms and a slice of kernelSymbols.
-func readKernelSymbols() ([]kernelSymbol, error) {
-	symbols := []kernelSymbol{}
-
-	file, err := os.Open("/proc/kallsyms")
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		fields := strings.Fields(line)
-		if len(fields) < 3 {
-			continue
-		}
-
-		addr, err := strconv.ParseUint(fields[0], 16, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		// The kernel function is the third field in /proc/kallsyms line:
-		// 0000000000000000 t acpi_video_unregister_backlight      [video]
-		// First is the symbol address and second is described in man nm.
-		symbols = append(symbols, kernelSymbol{
-			addr: addr,
-			name: fields[2],
-		})
-	}
-
-	err = scanner.Err()
-	if err != nil {
-		return nil, err
-	}
-
-	return symbols, nil
-}
-
-// findKernelSymbol tries to find the kernel symbol corresponding to the given
-// instruction pointer.
-// For example, if instruction pointer is 0x1004 and there is a symbol which
-// address is 0x1000, this function will return the name of this symbol.
-// If no symbol is found, it returns "[unknown]".
-func findKernelSymbol(kAllSyms []kernelSymbol, ip uint64) string {
-	// Go translation of iovisor/bcc ksyms__map_addr():
-	// https://github.com/iovisor/bcc/blob/c65446b765c9f7df7e357ee9343192de8419234a/libbpf-tools/trace_helpers.c#L149
-	end := len(kAllSyms) - 1
-	var addr uint64
-	start := 0
-
-	for start < end {
-		mid := start + (end-start+1)/2
-
-		addr = kAllSyms[mid].addr
-
-		if addr <= ip {
-			start = mid
-		} else {
-			end = mid - 1
-		}
-	}
-
-	if start == end && kAllSyms[start].addr <= addr {
-		return kAllSyms[start].name
-	}
-
-	return "[unknown]"
-}
-
-func getReport(t *Tracer, kAllSyms []kernelSymbol, stack *ebpf.Map, keyCount keyCount) (types.Report, error) {
+func getReport(t *Tracer, kAllSyms *kallsyms.KAllSyms, stack *ebpf.Map, keyCount keyCount) (types.Report, error) {
 	kernelInstructionPointers := [perfMaxStackDepth]uint64{}
 	userInstructionPointers := [perfMaxStackDepth]uint64{}
 	v := keyCount.value
@@ -245,7 +165,7 @@ func getReport(t *Tracer, kAllSyms []kernelSymbol, stack *ebpf.Map, keyCount key
 			break
 		}
 
-		kernelSymbols = append(kernelSymbols, findKernelSymbol(kAllSyms, ip))
+		kernelSymbols = append(kernelSymbols, kAllSyms.LookupByInstructionPointer(ip))
 	}
 
 	report := types.Report{
@@ -303,7 +223,7 @@ func (t *Tracer) collectResult() ([]byte, error) {
 		return keysCounts[i].value != keysCounts[j].value
 	})
 
-	kAllSyms, err := readKernelSymbols()
+	kAllSyms, err := kallsyms.NewKAllSyms()
 	if err != nil {
 		return nil, err
 	}
