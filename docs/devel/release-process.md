@@ -60,6 +60,16 @@ $ git push origin v0.x.0
 
 8. Send an announcement on the [#inspektor-gadget](https://kubernetes.slack.com/archives/CSYL75LF6) Slack channel
 
+## Post release tasks
+
+- Check if the [milestone for the release](https://github.com/inspektor-gadget/inspektor-gadget/milestones) still
+  contain open issues. If so, move them as appropriate. Close the milestone.
+
+- Update the [Inspektor Gadget website](https://inspektor-gadget.io/) ([example for v0.16.0](https://github.com/inspektor-gadget/website/pull/14)).
+
+- Update the [Inspektor Gadget Addon in Minikube](https://github.com/kubernetes/minikube/pull/15869). This includes the
+  yaml files and the container image version.
+
 ## Troubleshooting a failed release
 
 ### The CI process for the tag failed
