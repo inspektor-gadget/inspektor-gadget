@@ -49,7 +49,7 @@ export function App() {
         </FormControl>
       <Stack direction="row" alignItems="start" spacing={2} sx={{ mt: 4 }}>
         <Button variant="contained" onClick={fetchAndDisplayResponse}>
-          Call IGX
+          Call Gadget
         </Button>
 
         <TextField
