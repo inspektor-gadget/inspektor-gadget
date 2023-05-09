@@ -100,6 +100,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*IGManager, error) {
 		containercollection.WithMultipleContainerRuntimesEnrichment(runtimes),
 		containercollection.WithRuncFanotify(),
 		containercollection.WithTracerCollection(l.tracerCollection),
+		containercollection.WithInitialContainerOCIConfigEnrichment(),
 	)
 	if err != nil {
 		return nil, err
