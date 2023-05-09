@@ -27,6 +27,7 @@ import (
 	// Profile Category
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/tracer"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/tcprtt/tracer"
 
 	// Snapshot Category
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"

@@ -40,6 +40,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/advise/seccomp/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/tracer"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/tcprtt/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/tracer"

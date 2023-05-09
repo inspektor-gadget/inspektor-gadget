@@ -28,11 +28,11 @@ import (
 	"github.com/kr/pretty"
 )
 
-type TestComponent int
+type TestComponent string
 
 const (
-	InspektorGadgetTestComponent TestComponent = iota
-	IgTestComponent
+	InspektorGadgetTestComponent TestComponent = "$KUBECTL_GADGET"
+	IgTestComponent              TestComponent = "ig"
 )
 
 // DefaultTestComponent indicates component under testing allowing component specific logic
