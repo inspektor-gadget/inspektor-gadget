@@ -993,7 +993,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        name: Release ${{ github.ref }}
+        name: Release ${{ github.ref_name }}
         draft: true
     - name: Get all artifacts.
       uses: actions/download-artifact@v3
