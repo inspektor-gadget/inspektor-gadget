@@ -6,7 +6,7 @@ container_repo="${registry}/gadget"
 
 function prepare {
 	IMAGE_TAG=${image_tag} CONTAINER_REPO=$container_repo make -C .. gadget-default-container
-	IMAGE_TAG=${image_tag} CONTAINER_REPO=$container_repo make -C .. push-gadget-container
+	IMAGE_TAG=${image_tag} CONTAINER_REPO=$container_repo make -C .. push-gadget-default-container
 }
 
 function prepare_csv_file {
