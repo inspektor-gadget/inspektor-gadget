@@ -266,7 +266,7 @@ snapshotters.
   type: gauge
   category: snapshot
   gadget: process
-  aggregate:
+  labels:
     - k8s.namespace
     - k8s.pod
     - k8s.container
@@ -276,7 +276,7 @@ snapshotters.
   type: gauge
   category: snapshot
   gadget: socket
-  aggregate:
+  labels:
     - k8s.namespace
     - k8s.pod
     - k8s.container
