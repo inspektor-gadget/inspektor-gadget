@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "properties": {
+    "config": {
+      "type": "object",
+      "required": [
+        "hookMode",
+        "fallbackPodInformer",
+        "containerdSocketPath",
+        "crioSocketPath",
+        "dockerSocketPath",
+        "experimental"
+      ],
+      "properties": {
+        "hookMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "crio",
+            "podinformer",
+            "nri",
+            "fanotify",
+            "fanotify+ebpf"
+          ]
+        },
+        "fallbackPodInformer": {
+          "type": "boolean"
+        },
+        "containerdSocketPath": {
+          "type": "string"
+        },
+        "crioSocketPath": {
+          "type": "string"
+        },
+        "dockerSocketPath": {
+          "type": "string"
+        },
+        "experimental": {
+          "type": "boolean"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "required": [
+        "repository",
+        "pullPolicy"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
