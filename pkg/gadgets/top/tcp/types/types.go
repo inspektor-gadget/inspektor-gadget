@@ -49,7 +49,7 @@ type Stats struct {
 
 	Pid       int32  `json:"pid,omitempty" column:"pid,template:pid"`
 	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
-	IPVersion uint16 `json:"ipversion,omitempty" column:"ip,maxWidth:2"`
+	IPVersion uint16 `json:"ipversion,omitempty" column:"ip,template:ipversion"`
 	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr,hide"`
 	Daddr     string `json:"daddr,omitempty" column:"daddr,template:ipaddr,hide"`
 	Sport     uint16 `json:"sport,omitempty" column:"sport,template:ipport,hide"`

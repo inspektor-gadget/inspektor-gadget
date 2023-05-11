@@ -44,6 +44,7 @@ func init() {
 	// Max: 0000:0000:0000:0000:0000:ffff:XXX.XXX.XXX.XXX (IPv4-mapped IPv6 address) = 45
 	columns.MustRegisterTemplate("ipaddr", "minWidth:15,maxWidth:45")
 	columns.MustRegisterTemplate("ipport", "minWidth:type")
+	columns.MustRegisterTemplate("ipversion", "width:2,fixed")
 
 	// For system calls as the longest is sched_rr_get_interval_time64 with 28
 	// characters:

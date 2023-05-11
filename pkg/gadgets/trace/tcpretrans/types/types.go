@@ -29,7 +29,7 @@ type Event struct {
 	Pid  uint32 `json:"pid,omitempty" column:"pid,template:pid,order:1000"`
 	Comm string `json:"comm,omitempty" column:"comm,template:comm,order:1001"`
 
-	IPVersion int `json:"ipversion,omitempty" column:"ip,width:2,fixed,order:1005"`
+	IPVersion int `json:"ipversion,omitempty" column:"ip,template:ipversion,order:1005"`
 
 	Saddr string `json:"saddr,omitempty" column:"saddr,template:ipaddr,hide,order:2001"`
 	Sport uint16 `json:"sport,omitempty" column:"sport,template:ipport,hide,order:2002"`
