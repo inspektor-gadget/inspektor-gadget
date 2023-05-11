@@ -31,11 +31,11 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 				Namespace: ns,
 				Pod:       "test-pod",
 			},
-			Comm:   "curl",
-			Family: syscall.AF_INET,
-			Dport:  80,
-			Saddr:  "127.0.0.1",
-			Daddr:  "127.0.0.1",
+			Comm:      "curl",
+			IPVersion: syscall.AF_INET,
+			Dport:     80,
+			Saddr:     "127.0.0.1",
+			Daddr:     "127.0.0.1",
 		}
 
 		normalize := func(e *types.Stats) {

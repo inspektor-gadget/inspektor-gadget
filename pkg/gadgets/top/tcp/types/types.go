@@ -47,22 +47,22 @@ type Stats struct {
 	eventtypes.CommonData
 	eventtypes.WithMountNsID
 
-	Pid      int32  `json:"pid,omitempty" column:"pid,template:pid"`
-	Comm     string `json:"comm,omitempty" column:"comm,template:comm"`
-	Family   uint16 `json:"family,omitempty" column:"ip,maxWidth:2"`
-	Saddr    string `json:"saddr,omitempty" column:"saddr,template:ipaddr,hide"`
-	Daddr    string `json:"daddr,omitempty" column:"daddr,template:ipaddr,hide"`
-	Sport    uint16 `json:"sport,omitempty" column:"sport,template:ipport,hide"`
-	Dport    uint16 `json:"dport,omitempty" column:"dport,template:ipport,hide"`
-	Sent     uint64 `json:"sent,omitempty" column:"sent,order:1002"`
-	Received uint64 `json:"received,omitempty" column:"recv,order:1003"`
+	Pid       int32  `json:"pid,omitempty" column:"pid,template:pid"`
+	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
+	IPVersion uint16 `json:"ipversion,omitempty" column:"ip,maxWidth:2"`
+	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr,hide"`
+	Daddr     string `json:"daddr,omitempty" column:"daddr,template:ipaddr,hide"`
+	Sport     uint16 `json:"sport,omitempty" column:"sport,template:ipport,hide"`
+	Dport     uint16 `json:"dport,omitempty" column:"dport,template:ipport,hide"`
+	Sent      uint64 `json:"sent,omitempty" column:"sent,order:1002"`
+	Received  uint64 `json:"received,omitempty" column:"recv,order:1003"`
 }
 
 func GetColumns() *columns.Columns[Stats] {
 	cols := columns.MustCreateColumns[Stats]()
 
 	cols.MustSetExtractor("ip", func(stats *Stats) (ret string) {
-		if stats.Family == syscall.AF_INET {
+		if stats.IPVersion == syscall.AF_INET {
 			return "4"
 		}
 		return "6"
