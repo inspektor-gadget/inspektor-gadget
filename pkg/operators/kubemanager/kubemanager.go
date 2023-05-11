@@ -15,6 +15,7 @@
 package kubemanager
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -244,6 +245,11 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 			log.Debugf("calling gadget.AttachContainer()")
 			err := attacher.AttachContainer(container)
 			if err != nil {
+				var ve *ebpf.VerifierError
+				if errors.As(err, &ve) {
+					m.gadgetCtx.Logger().Debugf("start tracing container %q: verifier error: %+v\n", container.Name, ve)
+				}
+
 				log.Warnf("start tracing container %q: %s", container.Name, err)
 				return
 			}
