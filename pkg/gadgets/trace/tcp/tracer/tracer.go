@@ -186,11 +186,19 @@ func (t *Tracer) run() {
 			Uid:           bpfEvent.Uid,
 			Gid:           bpfEvent.Gid,
 			Comm:          gadgets.FromCString(bpfEvent.Task[:]),
-			Saddr:         gadgets.IPStringFromBytes(bpfEvent.Saddr, ipversion),
-			Daddr:         gadgets.IPStringFromBytes(bpfEvent.Daddr, ipversion),
-			Sport:         gadgets.Htons(bpfEvent.Sport),
-			Dport:         gadgets.Htons(bpfEvent.Dport),
-			IPVersion:     ipversion,
+			SrcEndpoint: eventtypes.L4Endpoint{
+				L3Endpoint: eventtypes.L3Endpoint{
+					Addr: gadgets.IPStringFromBytes(bpfEvent.Saddr, ipversion),
+				},
+				Port: gadgets.Htons(bpfEvent.Sport),
+			},
+			DstEndpoint: eventtypes.L4Endpoint{
+				L3Endpoint: eventtypes.L3Endpoint{
+					Addr: gadgets.IPStringFromBytes(bpfEvent.Daddr, ipversion),
+				},
+				Port: gadgets.Htons(bpfEvent.Dport),
+			},
+			IPVersion: ipversion,
 		}
 
 		switch bpfEvent.Type {

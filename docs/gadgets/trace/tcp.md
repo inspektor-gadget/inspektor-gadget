@@ -13,34 +13,35 @@ connect, accept and close events related to TCP connections.
 First, we need to create one pod:
 
 ```bash
-$ kubectl run busybox --image busybox:latest sleep inf
-pod/busybox created
+$ kubectl run bb --image busybox:latest sleep inf
+pod/bb created
 ```
 
 You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget trace tcp
-NODE             NAMESPACE        POD              CONTAINER        T PID    COMM             IP  SADDR            DADDR            SPORT   DPORT
+NODE                NAMESPACE           POD                 CONTAINER           T PID        COMM       IP SRC                DST               
 ```
 
 Indeed, it is waiting for TCP connection to be established in the `default` namespace (you can use `-A` to monitor all namespaces and then be sure to not miss any event).
 So, in *another terminal*, `exec` a container and run this `wget`:
 
 ```bash
-$ kubectl exec -ti busybox -- wget https://www.kinvolk.io
-Connecting to www.kinvolk.io (188.114.97.3:443)
+$ kubectl exec -ti bb -- wget https://www.kinvolk.io
+Connecting to www.kinvolk.io (188.114.96.3:443)
 wget: note: TLS certificate validation not implemented
 saving to 'index.html'
-index.html           100% |*************************************************************************************************| 42627  0:00:00 ETA
+index.html           100% |************************************************************************************************| 47748  0:00:00 ETA
 'index.html' saved
+
 ```
 
 Go back to *the first terminal* and see:
 
 ```bash
-NODE             NAMESPACE        POD              CONTAINER        T PID    COMM             IP  SADDR            DADDR            SPORT   DPORT
-minikube         <>               <>               <>               C 16266  wget             4   172.17.0.3       188.114.97.3     34878   443
+NODE                NAMESPACE           POD                 CONTAINER           T PID        COMM       IP SRC                DST               
+minikube-docker     default             bb                  bb                  C 253124     wget       4  p/default/bb:50192 o/188.114.96.3:443
 ```
 
 The printed lines correspond to TCP connection established with the socket.
@@ -54,14 +55,12 @@ Here is the full legend of all the fields:
 * `PID`: The PID which established the TCP connection.
 * `COMM`: The command corresponding to the PID.
 * `IP`: The IP version (either 4 or 6).
-* `SADDR`: The source IP address.
-* `DADDR`: The destination IP address.
-* `SPORT`: The source port.
-* `DPORT`: The destination port.
+* `SRC`: The source IP address, pod namespace + pod name or service name together with the port
+* `DST`: The destination IP address, pod namespace + pod name or service name together with the port
 
-So, the above line should be read like this: "Command `wget`, with PID 19981, established a TCP connection through IP version 4, using the `connect()` system call, from address 172.17.0.3 and port 16266 towards address 188.114.97.3 and port 433"
+So, the above line should be read like this: "Command `wget`, with PID 253124, established a TCP connection through IP version 4, using the `connect()` system call, from the `busybox` container on port 50192 towards address 188.114.96.3 and port 433"
 
-Note that, IP 188.114.97.3 corresponds to `kinvolk.io` while port 443 is the port generally used for HTTPS.
+Note that, IP 188.114.96.3 corresponds to `kinvolk.io` while port 443 is the port generally used for HTTPS.
 
 #### Clean everything
 
@@ -88,9 +87,10 @@ Then, run a container that creates a TCP connection.
 
 ```bash
 $ docker run -it --rm --name test-trace-tcp busybox /bin/sh -c "wget https://www.example.com"
-Connecting to www.kinvolk.io (188.114.96.7:443)
+Connecting to www.example.com (93.184.216.34:443)
+wget: note: TLS certificate validation not implemented
 saving to 'index.html'
-index.html           100% |index.html           100% |**********************************| 36362  0:00:00 ETA
+index.html           100% |********************************|  1256  0:00:00 ETA
 'index.html' saved
 ```
 
@@ -98,6 +98,6 @@ The gadget will print that connection on the first terminal
 
 ```bash
 $ sudo ig trace tcp -c test-trace-tcp
-CONTAINER        T  PID     COMM             IP  SADDR                  DADDR                  SPORT   DPORT
-test-trace-tcp   C  11039   wget             4   172.17.0.2             188.114.96.7           57560   443
+CONTAINER                 T PID        COMM          IP SRC                      DST                     
+test-trace-tcp            C 269349     wget          4  172.17.0.2:46502         93.184.216.34:443 
 ```
