@@ -3,6 +3,7 @@
 set -e
 
 MINIKUBE_PATH='/tmp/minikube'
+WEBSITE_PATH='/tmp/website'
 
 function do_pr {
 	local branch
@@ -99,6 +100,30 @@ function minikube {
 	popd
 }
 
+function website {
+	local human
+
+	if [ $# -lt 1 ]; then
+		echo "${FUNCNAME[0]} needs one argument: the github_account" 1>&2
+
+		exit 1
+	fi
+
+	human=$1
+
+	export release="$(git describe --tags)"
+
+	pushd $WEBSITE_PATH
+
+	perl -pi -e 's/v\d+\.\d+\.\d+/$ENV{release}/' config.yaml
+
+	do_pr "add-docs-${release}" "add ${release} docs" "$release" 'main' 'origin' "$human"
+
+	unset release
+
+	popd
+}
+
 if [ $# -lt 2 ]; then
 	echo "$0 needs two arguments: the release_yaml_path and github_account" 1>&2
 
@@ -112,3 +137,4 @@ if [ -z "${GH_TOKEN}" ]; then
 fi
 
 minikube $1 $2
+website $2
