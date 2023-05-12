@@ -29,10 +29,13 @@ type Event struct {
 	Gid       uint32 `json:"gid" column:"gid,template:gid,hide"`
 	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
 	IPVersion int    `json:"ipversion,omitempty" column:"ip,template:ipversion"`
-	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr"`
-	Daddr     string `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
-	Sport     uint16 `json:"sport,omitempty" column:"sport,template:ipport"`
-	Dport     uint16 `json:"dport,omitempty" column:"dport,template:ipport"`
+
+	SrcEndpoint eventtypes.L4Endpoint `json:"src,omitempty" column:"src"`
+	DstEndpoint eventtypes.L4Endpoint `json:"dst,omitempty" column:"dst"`
+}
+
+func (e *Event) GetEndpoints() []*eventtypes.L3Endpoint {
+	return []*eventtypes.L3Endpoint{&e.SrcEndpoint.L3Endpoint, &e.DstEndpoint.L3Endpoint}
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -52,6 +55,27 @@ func GetColumns() *columns.Columns[Event] {
 
 		return "U"
 	})
+
+	eventtypes.MustAddVirtualL4EndpointColumn(
+		tcpColumns,
+		columns.Attributes{
+			Name:    "src",
+			Visible: true,
+			Width:   30,
+			Order:   2000,
+		},
+		func(e *Event) eventtypes.L4Endpoint { return e.SrcEndpoint },
+	)
+	eventtypes.MustAddVirtualL4EndpointColumn(
+		tcpColumns,
+		columns.Attributes{
+			Name:    "dst",
+			Visible: true,
+			Width:   30,
+			Order:   3000,
+		},
+		func(e *Event) eventtypes.L4Endpoint { return e.DstEndpoint },
+	)
 
 	return tcpColumns
 }

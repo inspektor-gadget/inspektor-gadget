@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	tracetcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -37,17 +38,27 @@ func TestTraceTcp(t *testing.T) {
 				Event:     BuildBaseEvent(ns),
 				Comm:      "curl",
 				IPVersion: 4,
-				Dport:     80,
 				Operation: "connect",
-				Saddr:     "127.0.0.1",
-				Daddr:     "127.0.0.1",
+				SrcEndpoint: eventtypes.L4Endpoint{
+					L3Endpoint: eventtypes.L3Endpoint{
+						Addr: "127.0.0.1",
+						Kind: eventtypes.EndpointKindRaw,
+					},
+				},
+				DstEndpoint: eventtypes.L4Endpoint{
+					L3Endpoint: eventtypes.L3Endpoint{
+						Addr: "127.0.0.1",
+						Kind: eventtypes.EndpointKindRaw,
+					},
+					Port: 80,
+				},
 			}
 
 			normalize := func(e *tracetcpTypes.Event) {
 				e.Timestamp = 0
 				e.Node = ""
 				e.Pid = 0
-				e.Sport = 0
+				e.SrcEndpoint.Port = 0
 				e.MountNsID = 0
 			}
 
