@@ -174,7 +174,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			Comm:          gadgets.FromCString(key.Name[:]),
 			Sport:         key.Lport,
 			Dport:         key.Dport,
-			Family:        key.Family,
+			IPVersion:     key.Family,
 			Sent:          val.Sent,
 			Received:      val.Received,
 		}

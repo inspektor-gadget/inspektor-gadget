@@ -38,7 +38,7 @@ func TestTopTcp(t *testing.T) {
 				CommonData: BuildCommonData(ns),
 				Comm:       "curl",
 				Dport:      80,
-				Family:     syscall.AF_INET,
+				IPVersion:  syscall.AF_INET,
 				Saddr:      "127.0.0.1",
 				Daddr:      "127.0.0.1",
 			}

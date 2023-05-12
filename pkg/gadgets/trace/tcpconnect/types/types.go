@@ -28,7 +28,7 @@ type Event struct {
 	Pid       uint32        `json:"pid,omitempty" column:"pid,template:pid"`
 	Uid       uint32        `json:"uid,omitempty" column:"uid,minWidth:6,hide"`
 	Comm      string        `json:"comm,omitempty" column:"comm,template:comm"`
-	IPVersion int           `json:"ipversion,omitempty" column:"ip,width:2,fixed"`
+	IPVersion int           `json:"ipversion,omitempty" column:"ip,template:ipversion"`
 	Saddr     string        `json:"saddr,omitempty" column:"saddr,template:ipaddr"`
 	Daddr     string        `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
 	Sport     uint16        `json:"sport,omitempty" column:"sport,template:ipport"`
