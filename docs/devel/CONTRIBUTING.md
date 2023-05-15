@@ -229,6 +229,71 @@ geomean                                             3.613         1.492       -5
 
 * Include the commands used and the output of `benchstat` in your pull request description
 
+#### Profiling benchmarks
+
+You can run the different benchmark tests while using the
+[bcc profile tool](https://github.com/iovisor/bcc/blob/master/tools/profile_example.txt).
+To be able to see the symbols in the profile, you need to build the binary with
+`-ldflags="-s=false"`.
+
+```bash
+$ go test -exec sudo \
+    -ldflags="-s=false" \
+    -bench='^BenchmarkAllGadgetsWithContainers$/^container100$/snapshot-socket' \
+    -run=Benchmark \
+    ./internal/benchmarks/... \
+    -count 100
+```
+
+Example of output showing a stack trace including both the userspace and kernel parts:
+
+```bash
+$ sudo /usr/share/bcc/tools/profile -p $(pidof benchmarks.test)
+    b'established_get_first'
+    b'established_get_first'
+    b'tcp_seek_last_pos'
+    b'bpf_iter_tcp_batch'
+    b'bpf_iter_tcp_seq_next'
+    b'bpf_seq_read'
+    b'vfs_read'
+    b'ksys_read'
+    b'do_syscall_64'
+    b'entry_SYSCALL_64_after_hwframe'
+    runtime/internal/syscall.Syscall6
+    syscall.Syscall
+    syscall.read
+    internal/poll.(*FD).Read
+    os.(*File).Read
+    bufio.(*Scanner).Scan
+    github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer.(*Tracer).RunCollector.func1
+    github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter.NetnsEnter
+    github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer.(*Tracer).RunCollector
+    github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer.(*Tracer).Run
+    github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local.(*Runtime).RunGadget
+    github.com/inspektor-gadget/inspektor-gadget/internal/benchmarks.BenchmarkAllGadgetsWithContainers.func1.1
+    testing.(*B).runN
+    testing.(*B).launch
+    testing.(*B).doBench.func1
+    runtime.goexit.abi0
+    -                benchmarks.test (3452330)
+        22
+```
+
+It is also possible to use [pprof](https://pkg.go.dev/runtime/pprof) to profile
+the benchmarks with the `-cpuprofile` and `-memprofile` flags.
+
+```bash
+go test \
+    -cpuprofile cpu.prof -memprofile mem.prof \
+    -exec sudo \
+    -ldflags="-s=false" \
+    -bench='^BenchmarkAllGadgetsWithContainers$/^container100$/snapshot-socket' \
+    -run=Benchmark ./internal/benchmarks/... \
+    -count 5
+$ go tool pprof -top cpu.prof
+$ go tool pprof -top mem.prof
+```
+
 ### Continuous Integration
 
 Inspektor Gadget uses GitHub Actions as CI. Please check dedicated [CI
