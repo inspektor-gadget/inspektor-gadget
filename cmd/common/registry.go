@@ -552,7 +552,7 @@ func addFlags(cmd *cobra.Command, params *params.Params, skipParams []params.Val
 			desc += " [" + strings.Join(p.PossibleValues, ", ") + "]"
 		}
 
-		flag := cmd.PersistentFlags().VarPF(p, p.Key, p.Alias, desc)
+		flag := cmd.PersistentFlags().VarPF(&Param{p}, p.Key, p.Alias, desc)
 		if p.IsMandatory {
 			cmd.MarkPersistentFlagRequired(p.Key)
 		}
