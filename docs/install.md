@@ -135,19 +135,23 @@ Gadget in some platforms.
 
 #### Minikube
 
-You can deploy Inspektor Gadget in `minikube`.
-We recommend to use the `docker` driver:
+You can deploy Inspektor Gadget in `minikube` in different ways:
+- Manually, using the `kubectl gadget deploy` command as described above.
+- Using the [Inspektor Gadget Addon](https://minikube.sigs.k8s.io/docs/handbook/addons/inspektor-gadget/) available
+  since [minikube v1.31.0](https://github.com/kubernetes/minikube/releases)
+ (unreleased as of today).
 
+We recommend to use the `docker` driver:
 
 ```bash
 $ minikube start --driver=docker
 # Deploy Inspektor Gadget in the cluster as described above
 ```
 
-But can also use the `kvm` one:
+But can also use the `kvm2` one:
 
 ```bash
-$ minikube start --driver=kvm
+$ minikube start --driver=kvm2
 # Deploy Inspektor Gadget in the cluster as described above
 ```
 
