@@ -138,13 +138,21 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 			return err
 		}
 
-		// Add the enricher for future containers even if enriching the current
-		// containers fails. We do it because the runtime could be temporarily
-		// unavailable and once it is up, we will start receiving the
-		// notifications for its containers thus we will be able to enrich them.
-		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			return containerRuntimeEnricher(runtime.Name, runtimeClient, container)
-		})
+		switch runtime.Name {
+		case runtimeclient.PodmanName:
+			// Podman only supports runtime enrichment for initial containers otherwise it will deadlock.
+			// As a consequence, we need to ensure that new podman containers will be enriched with all
+			// the information via other enrichers e.g. see RuncNotifier.futureContainers implementation
+			// to see how container name is enriched.
+		default:
+			// Add the enricher for future containers even if enriching the current
+			// containers fails. We do it because the runtime could be temporarily
+			// unavailable and once it is up, we will start receiving the
+			// notifications for its containers thus we will be able to enrich them.
+			cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
+				return containerRuntimeEnricher(runtime.Name, runtimeClient, container)
+			})
+		}
 
 		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
 			if err := runtimeClient.Close(); err != nil {
@@ -539,6 +547,7 @@ func WithRuncFanotify() ContainerCollectionOption {
 					ID:        notif.ContainerID,
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
+					Name:      notif.ContainerName,
 				}
 				cc.AddContainer(container)
 			case runcfanotify.EventTypeRemoveContainer:
@@ -630,6 +639,10 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			if container.OciConfig == nil || container.IsEnriched() {
 				return true
+			}
+
+			if cm, ok := container.OciConfig.Annotations["io.container.manager"]; ok && cm == "libpod" {
+				container.Runtime = runtimeclient.PodmanName
 			}
 
 			resolver, err := ociannotations.NewResolverFromAnnotations(container.OciConfig.Annotations)

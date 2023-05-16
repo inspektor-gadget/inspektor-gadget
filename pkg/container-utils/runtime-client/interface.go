@@ -25,6 +25,9 @@ const (
 	CrioName              = "cri-o"
 	CrioDefaultSocketPath = "/run/crio/crio.sock"
 
+	PodmanName              = "podman"
+	PodmanDefaultSocketPath = "/run/podman/podman.sock"
+
 	ContainerdName              = "containerd"
 	ContainerdDefaultSocketPath = "/run/containerd/containerd.sock"
 

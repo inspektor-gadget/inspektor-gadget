@@ -28,8 +28,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 // ContainerCollection holds a set of containers. It can be embedded as an
@@ -161,7 +162,6 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 func (cc *ContainerCollection) AddContainer(container *Container) {
 	for _, enricher := range cc.containerEnrichers {
 		ok := enricher(container)
-
 		// Enrichers can decide to drop a container
 		if !ok {
 			return

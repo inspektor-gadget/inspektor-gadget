@@ -421,6 +421,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					gadgetContainer.Env[i].Value = runtimesConfig.Crio
 				case utils.GadgetEnvironmentDockerSocketpath:
 					gadgetContainer.Env[i].Value = runtimesConfig.Docker
+				case utils.GadgetEnvironmentPodmanSocketpath:
+					gadgetContainer.Env[i].Value = runtimesConfig.Podman
 				}
 			}
 

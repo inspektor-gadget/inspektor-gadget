@@ -65,6 +65,8 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 				socketPath = commonFlags.RuntimesSocketPathConfig.Containerd
 			case runtimeclient.CrioName:
 				socketPath = commonFlags.RuntimesSocketPathConfig.Crio
+			case runtimeclient.PodmanName:
+				socketPath = commonFlags.RuntimesSocketPathConfig.Podman
 			default:
 				return commonutils.WrapInErrInvalidArg("--runtime / -r",
 					fmt.Errorf("runtime %q is not supported", p))

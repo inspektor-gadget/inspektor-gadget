@@ -40,6 +40,7 @@ const (
 	DockerSocketPath     = "docker-socketpath"
 	ContainerdSocketPath = "containerd-socketpath"
 	CrioSocketPath       = "crio-socketpath"
+	PodmanSocketPath     = "podman-socketpath"
 )
 
 type MountNsMapSetter interface {
@@ -92,6 +93,11 @@ func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
 			Key:          CrioSocketPath,
 			DefaultValue: runtimeclient.CrioDefaultSocketPath,
 			Description:  "CRI-O CRI Unix socket path",
+		},
+		{
+			Key:          PodmanSocketPath,
+			DefaultValue: runtimeclient.PodmanDefaultSocketPath,
+			Description:  "Podman Unix socket path",
 		},
 	}
 }
@@ -153,6 +159,8 @@ partsLoop:
 			socketPath = operatorParams.Get(ContainerdSocketPath).AsString()
 		case runtimeclient.CrioName:
 			socketPath = operatorParams.Get(CrioSocketPath).AsString()
+		case runtimeclient.PodmanName:
+			socketPath = operatorParams.Get(PodmanSocketPath).AsString()
 		default:
 			return commonutils.WrapInErrInvalidArg("--runtime / -r",
 				fmt.Errorf("runtime %q is not supported", p))
