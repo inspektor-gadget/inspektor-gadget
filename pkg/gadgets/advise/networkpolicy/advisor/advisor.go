@@ -283,6 +283,10 @@ func (a *NetworkPolicyAdvisor) GeneratePolicies() {
 		if e.PktType != "HOST" && e.PktType != "OUTGOING" {
 			continue
 		}
+		// ignore events on the host netns
+		if e.HostNetwork {
+			continue
+		}
 
 		// Kubernetes Network Policies can't block traffic from a pod's
 		// own resident node. Therefore we must not generate a network

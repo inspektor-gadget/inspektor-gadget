@@ -371,9 +371,14 @@ func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netns
 	event.Node = cc.nodeName
 
 	containers := cc.LookupContainersByNetns(netnsid)
-	if len(containers) == 0 || containers[0].HostNetwork {
+	if len(containers) == 0 {
 		return
 	}
+	if containers[0].HostNetwork {
+		event.HostNetwork = true
+		return
+	}
+
 	if len(containers) == 1 {
 		event.Container = containers[0].Name
 		event.Pod = containers[0].Podname

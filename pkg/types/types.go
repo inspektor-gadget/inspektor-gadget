@@ -87,6 +87,9 @@ type CommonData struct {
 	// Container where the event comes from, or empty for host-level or
 	// pod-level event
 	Container string `json:"container,omitempty" column:"container,template:container" columnTags:"kubernetes,runtime"`
+
+	// HostNetwork is true if the container uses the host network namespace
+	HostNetwork bool `json:"hostNetwork,omitempty" column:"hostnetwork,hide"`
 }
 
 func (c *CommonData) SetNode(node string) {
