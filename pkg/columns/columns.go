@@ -187,13 +187,14 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintpt
 		}
 
 		column := &Column[T]{
-			EllipsisType: c.options.DefaultEllipsis,
-			Alignment:    c.options.DefaultAlignment,
-			Visible:      true,
-			Precision:    2,
-			offset:       offset + f.Offset,
-
-			Order: len(c.ColumnMap) * 10,
+			Attributes: Attributes{
+				EllipsisType: c.options.DefaultEllipsis,
+				Alignment:    c.options.DefaultAlignment,
+				Visible:      true,
+				Precision:    2,
+				Order:        len(c.ColumnMap) * 10,
+			},
+			offset: offset + f.Offset,
 		}
 
 		if sub == nil {
@@ -279,18 +280,22 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintpt
 
 // AddColumn adds a virtual column to the table. This virtual column requires at least a
 // name and an Extractor
-func (c *Columns[T]) AddColumn(column Column[T]) error {
-	if column.Name == "" {
+func (c *Columns[T]) AddColumn(attributes Attributes, extractor func(*T) string) error {
+	if attributes.Name == "" {
 		return errors.New("no name set for column")
+	}
+	if extractor == nil {
+		return fmt.Errorf("no extractor set for column %q", attributes.Name)
+	}
+
+	column := Column[T]{
+		Attributes: attributes,
+		Extractor:  extractor,
 	}
 
 	columnName := strings.ToLower(column.Name)
 	if _, ok := c.ColumnMap[columnName]; ok {
 		return fmt.Errorf("column already exists: %q", columnName)
-	}
-
-	if column.Extractor == nil {
-		return fmt.Errorf("no extractor set for column %q", column.Name)
 	}
 
 	c.ColumnMap[columnName] = &column
@@ -309,8 +314,8 @@ func (c *Columns[T]) AddColumn(column Column[T]) error {
 }
 
 // MustAddColumn adds a new column and panics if it cannot successfully do so
-func (c *Columns[T]) MustAddColumn(column Column[T]) {
-	err := c.AddColumn(column)
+func (c *Columns[T]) MustAddColumn(attributes Attributes, extractor func(*T) string) {
+	err := c.AddColumn(attributes, extractor)
 	if err != nil {
 		panic(err)
 	}

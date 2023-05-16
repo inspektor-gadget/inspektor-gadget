@@ -310,17 +310,36 @@ func buildCommandFromGadget(
 			}
 
 			formatter := parser.GetTextColumnsFormatter()
-			if outputModeParams != "" {
-				valid, invalid := parser.VerifyColumnNames(strings.Split(outputModeParams, ","))
 
-				for _, c := range invalid {
-					log.Warnf("column %q not found", c)
-				}
+			requestedStandardColumns := outputModeParams == ""
+			requestedColumns := strings.Split(outputModeParams, ",")
 
-				if err := formatter.SetShowColumns(valid); err != nil {
-					return err
+			// If the standard columns are requested, hide columns that would be empty without specific features
+			// (bool params) enabled
+			if requestedStandardColumns {
+				var hiddenTags []string
+				if gadgetParams != nil {
+					for _, param := range *gadgetParams {
+						if param.TypeHint == params.TypeBool {
+							if !param.AsBool() {
+								hiddenTags = append(hiddenTags, "param:"+strings.ToLower(param.Key))
+							}
+						}
+					}
 				}
+				requestedColumns = parser.GetDefaultColumns(hiddenTags...)
 			}
+
+			valid, invalid := parser.VerifyColumnNames(requestedColumns)
+
+			for _, c := range invalid {
+				log.Warnf("column %q not found", c)
+			}
+
+			if err := formatter.SetShowColumns(valid); err != nil {
+				return err
+			}
+
 			parser.SetLogCallback(fe.Logf)
 
 			// Wire up callbacks before handing over to runtime depending on the output mode
@@ -428,25 +447,43 @@ func buildCommandFromGadget(
 			Description: "The output of the gadget is formatted in human readable columns.\n  You can optionally specify the columns to output using '-o columns=col1,col2,col3' etc.",
 		}
 
-		defaultOutputFormat = "columns=" + strings.Join(parser.GetDefaultColumns(), ",")
+		defaultOutputFormat = "columns"
+
+		paramTags := make(map[string]string)
+		if gadgetParams != nil {
+			for _, param := range *gadgetParams {
+				if param.TypeHint == params.TypeBool {
+					paramTags["param:"+strings.ToLower(param.Key)] = param.Key
+				}
+			}
+		}
+		hasAnyTag := func(columnTags []string) (string, bool) {
+			for _, columnTag := range columnTags {
+				if key, ok := paramTags[columnTag]; ok {
+					return key, true
+				}
+			}
+			return "", false
+		}
 
 		var out strings.Builder
 		fmt.Fprintf(&out, "\n    Available columns:\n")
 
-		columnNamesAndDescriptions := parser.GetColumnNamesAndDescription()
-		columnNames := make([]string, 0, len(columnNamesAndDescriptions))
-		for columnName := range columnNamesAndDescriptions {
-			columnNames = append(columnNames, columnName)
-		}
-		sort.Strings(columnNames)
-		for _, columnName := range columnNames {
-			description := columnNamesAndDescriptions[columnName]
-			if description == "" {
-				fmt.Fprintf(&out, "      %s\n", columnName)
-				continue
+		columnAttributes := parser.GetColumnAttributes()
+		sort.Slice(columnAttributes, func(i, j int) bool {
+			return columnAttributes[i].Name < columnAttributes[j].Name
+		})
+		for _, attrs := range columnAttributes {
+			fmt.Fprintf(&out, "      %s", attrs.Name)
+			if attrs.Description != "" {
+				fmt.Fprintf(&out, "%s", attrs.Description)
 			}
-			fmt.Fprintf(&out, "      %s: %s\n", columnName, description)
+			if paramKey, ok := hasAnyTag(attrs.Tags); ok {
+				fmt.Fprintf(&out, " (requires --%s)", paramKey)
+			}
+			fmt.Fprintf(&out, "\n")
 		}
+		fmt.Fprintf(&out, "    Default columns: %s\n", strings.Join(parser.GetDefaultColumns(), ","))
 
 		of.Description += out.String()
 

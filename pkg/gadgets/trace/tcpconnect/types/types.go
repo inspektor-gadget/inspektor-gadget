@@ -33,7 +33,7 @@ type Event struct {
 	Daddr     string        `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
 	Sport     uint16        `json:"sport,omitempty" column:"sport,template:ipport"`
 	Dport     uint16        `json:"dport,omitempty" column:"dport,template:ipport"`
-	Latency   time.Duration `json:"latency,omitempty" column:"latency,minWidth:8"`
+	Latency   time.Duration `json:"latency,omitempty" column:"latency,minWidth:8,align:right" columnTags:"param:latency"`
 }
 
 func GetColumns() *columns.Columns[Event] {

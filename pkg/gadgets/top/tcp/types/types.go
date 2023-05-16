@@ -74,25 +74,23 @@ func GetColumns() *columns.Columns[Stats] {
 		return fmt.Sprint(units.BytesSize(float64(stats.Received)))
 	})
 
-	cols.MustAddColumn(columns.Column[Stats]{
+	cols.MustAddColumn(columns.Attributes{
 		Name:     "local",
 		MinWidth: 21, // 15(ipv4) + 1(:) + 5(port)
 		MaxWidth: 51, // 45(ipv4 mapped ipv6) + 1(:) + 5(port)
 		Visible:  true,
 		Order:    1000,
-		Extractor: func(s *Stats) string {
-			return fmt.Sprintf("%s:%d", s.Saddr, s.Sport)
-		},
+	}, func(s *Stats) string {
+		return fmt.Sprintf("%s:%d", s.Saddr, s.Sport)
 	})
-	cols.MustAddColumn(columns.Column[Stats]{
+	cols.MustAddColumn(columns.Attributes{
 		Name:     "remote",
 		MinWidth: 21, // 15(ipv4) + 1(:) + 5(port)
 		MaxWidth: 51, // 45(ipv4 mapped ipv6) + 1(:) + 5(port)
 		Visible:  true,
 		Order:    1000,
-		Extractor: func(s *Stats) string {
-			return fmt.Sprintf("%s:%d", s.Daddr, s.Dport)
-		},
+	}, func(s *Stats) string {
+		return fmt.Sprintf("%s:%d", s.Daddr, s.Dport)
 	})
 
 	return cols

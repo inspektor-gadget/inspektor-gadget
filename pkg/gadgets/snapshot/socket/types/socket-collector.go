@@ -60,26 +60,24 @@ func GetColumns() *columns.Columns[Event] {
 		col.Visible = false
 	}
 
-	cols.MustAddColumn(columns.Column[Event]{
+	cols.MustAddColumn(columns.Attributes{
 		Name:     "local",
 		MinWidth: 21, // 15(ipv4) + 1(:) + 5(port)
 		MaxWidth: 51, // 45(ipv4 mapped ipv6) + 1(:) + 5(port)
 		Visible:  true,
 		Order:    1000,
-		Extractor: func(e *Event) string {
-			return fmt.Sprintf("%s:%d", e.LocalAddress, e.LocalPort)
-		},
+	}, func(e *Event) string {
+		return fmt.Sprintf("%s:%d", e.LocalAddress, e.LocalPort)
 	})
 
-	cols.MustAddColumn(columns.Column[Event]{
+	cols.MustAddColumn(columns.Attributes{
 		Name:     "remote",
 		MinWidth: 21, // 15(ipv4) + 1(:) + 5(port)
 		MaxWidth: 51, // 45(ipv4 mapped ipv6) + 1(:) + 5(port)
 		Visible:  true,
 		Order:    1001,
-		Extractor: func(e *Event) string {
-			return fmt.Sprintf("%s:%d", e.RemoteAddress, e.RemotePort)
-		},
+	}, func(e *Event) string {
+		return fmt.Sprintf("%s:%d", e.RemoteAddress, e.RemotePort)
 	})
 
 	return cols

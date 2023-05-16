@@ -67,7 +67,7 @@ func main() {
 	runtime.SetDefaultValue(gadgets.K8SNamespace, namespace)
 
 	// columnFilters for kubectl-gadget
-	columnFilters := []columns.ColumnFilter{columns.Or(columns.WithTag("kubernetes"), columns.WithNoTags())}
+	columnFilters := []columns.ColumnFilter{columns.WithoutExceptTag("runtime", "kubernetes")}
 	common.AddCommandsFromRegistry(rootCmd, runtime, columnFilters)
 
 	// Advise category is still being handled by CRs for now

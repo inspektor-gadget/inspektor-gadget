@@ -40,13 +40,12 @@ type subField struct {
 	isPtr bool
 }
 
-type Column[T any] struct {
+type Attributes struct {
 	Name         string                // Name of the column; case-insensitive for most use cases
 	Width        int                   // Width to reserve for this column
 	MinWidth     int                   // MinWidth will be the minimum width this column will be scaled to when using auto-scaling
 	MaxWidth     int                   // MaxWidth will be the maximum width this column will be scaled to when using auto-scaling
 	Alignment    Alignment             // Alignment of this column (left or right)
-	Extractor    func(*T) string       // Extractor to be used; this can be defined to transform the output before retrieving the actual value
 	Visible      bool                  // Visible defines whether a column is to be shown by default
 	GroupType    GroupType             // GroupType defines the aggregation method used when grouping this column
 	EllipsisType ellipsis.EllipsisType // EllipsisType defines how to abbreviate this column if the value needs more space than is available
@@ -55,6 +54,11 @@ type Column[T any] struct {
 	Description  string                // Description can hold a short description of the field that can be used to aid the user
 	Order        int                   // Order defines the default order in which columns are shown
 	Tags         []string              // Tags can be used to dynamically include or exclude columns
+}
+
+type Column[T any] struct {
+	Attributes
+	Extractor func(*T) string // Extractor to be used; this can be defined to transform the output before retrieving the actual value
 
 	offset        uintptr
 	fieldIndex    int          // used for the main struct
@@ -63,6 +67,10 @@ type Column[T any] struct {
 	columnType    reflect.Type // cached type info from reflection
 	useTemplate   bool         // if a template has been set, this will be true
 	template      string       // defines the template that will be used. Non-typed templates will be applied first.
+}
+
+func (ci *Column[T]) GetAttributes() *Attributes {
+	return &ci.Attributes
 }
 
 func (ci *Column[T]) getWidthFromType() int {
@@ -317,7 +325,7 @@ func (ci *Column[T]) Type() reflect.Type {
 }
 
 func (ci *Column[T]) HasTag(tag string) bool {
-	for _, curTag := range ci.Tags {
+	for _, curTag := range ci.Attributes.Tags {
 		if curTag == tag {
 			return true
 		}
@@ -326,7 +334,7 @@ func (ci *Column[T]) HasTag(tag string) bool {
 }
 
 func (ci *Column[T]) HasNoTags() bool {
-	if len(ci.Tags) == 0 {
+	if len(ci.Attributes.Tags) == 0 {
 		return true
 	}
 	return false

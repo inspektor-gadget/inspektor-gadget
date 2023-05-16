@@ -86,11 +86,20 @@ func WithTag(tag string) ColumnFilter {
 	}
 }
 
-// WithoutTag makes sure that all returned columns contain none of the given tag
+// WithoutTag makes sure that all returned columns don't contain the given tag
 func WithoutTag(tag string) ColumnFilter {
 	tag = strings.ToLower(tag)
 	return func(matcher ColumnMatcher) bool {
 		return !matcher.HasTag(tag)
+	}
+}
+
+// WithoutExceptTag makes sure that all returned columns don't contain the given
+// tag, except when it also includes the exception given
+func WithoutExceptTag(tag, exception string) ColumnFilter {
+	tag = strings.ToLower(tag)
+	return func(matcher ColumnMatcher) bool {
+		return !matcher.HasTag(tag) || matcher.HasTag(exception)
 	}
 }
 
