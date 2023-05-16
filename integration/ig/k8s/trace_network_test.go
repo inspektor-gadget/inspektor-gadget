@@ -52,6 +52,9 @@ func TestTraceNetwork(t *testing.T) {
 			expectedEntries := []*networkTypes.Event{
 				{
 					Event:      BuildBaseEvent(ns),
+					Comm:       "wget",
+					Uid:        0,
+					Gid:        0,
 					PktType:    "OUTGOING",
 					Proto:      "tcp",
 					RemoteAddr: nginxIP,
@@ -66,6 +69,9 @@ func TestTraceNetwork(t *testing.T) {
 							Container: "nginx-pod",
 						},
 					},
+					Comm:       "nginx",
+					Uid:        101, // default nginx user
+					Gid:        101,
 					PktType:    "HOST",
 					Proto:      "tcp",
 					RemoteAddr: testPodIP,
@@ -75,7 +81,10 @@ func TestTraceNetwork(t *testing.T) {
 
 			normalize := func(e *networkTypes.Event) {
 				e.Timestamp = 0
+				e.MountNsID = 0
 				e.NetNsID = 0
+				e.Pid = 0
+				e.Tid = 0
 
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
