@@ -25,7 +25,15 @@ import (
 
 type Event struct {
 	eventtypes.Event
+	eventtypes.WithMountNsID
 	eventtypes.WithNetNsID
+
+	Pid  uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Tid  uint32 `json:"tid,omitempty" column:"tid,template:pid"`
+	Comm string `json:"comm,omitempty" column:"comm,template:comm"`
+
+	Uid uint32 `json:"uid" column:"uid,template:uid,hide"`
+	Gid uint32 `json:"gid" column:"gid,template:gid,hide"`
 
 	PktType string `json:"pktType,omitempty" column:"type,maxWidth:9"`
 	Proto   string `json:"proto,omitempty" column:"proto,maxWidth:5"`

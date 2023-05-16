@@ -1,43 +1,26 @@
-// SPDX-License-Identifier: GPL-2.0
-/* Copyright (c) 2022 The Inspektor Gadget authors */
-
-// Avoid CO-RE:
-// CO-RE relocations: relocate struct#35["iphdr"]: target struct#49626["iphdr"]: target struct#49626["iphdr"]: field "ihl" is a bitfield: not supported
-//
-// #include <vmlinux/vmlinux.h>
+// SPDX-License-Identifier: (GPL-2.0 WITH Linux-syscall-note) OR Apache-2.0
+/* Copyright (c) 2023 The Inspektor Gadget authors */
 
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
-#include <linux/if_packet.h>
 #include <linux/ip.h>
 #include <linux/in.h>
-#include <linux/tcp.h>
 #include <linux/udp.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
-#include "graph.h"
+#define GADGET_TYPE_NETWORKING
+#include <sockets-map.h>
 
-#include "graphmap.h"
+#include "network.h"
 
-#ifndef ETH_P_IP
-#define ETH_P_IP	0x0800
-#endif
+// we need this to make sure the compiler doesn't remove our struct
+const struct event_t *unusedevent __attribute__((unused));
 
-#ifndef ETH_HLEN
-#define ETH_HLEN	14
-#endif
-
-#ifndef PACKET_HOST
-#define PACKET_HOST		0		/* To us		*/
-#endif
-
-#ifndef PACKET_OUTGOING
-#define PACKET_OUTGOING		4		/* Outgoing of any type */
-#endif
-
-const volatile u64 container_netns = 0;
+struct {
+	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+} events SEC(".maps");
 
 SEC("socket1")
 int ig_trace_net(struct __sk_buff *skb)
@@ -64,7 +47,7 @@ int ig_trace_net(struct __sk_buff *skb)
 	// multiply this value by 4 to get the header size in bytes.
 	__u8 ip_header_len = iph.ihl * 4;
 	int l4_off = ip_off + ip_header_len;
-	u16 port;
+	__u16 port;
 
 	if (iph.protocol == IPPROTO_TCP) {
 		// Read the TCP header.
@@ -99,19 +82,26 @@ int ig_trace_net(struct __sk_buff *skb)
 		return 0;
 	}
 
-	struct graph_key_t key = {};
-	key.container_netns	= container_netns;
-	key.pkt_type		= skb->pkt_type;
-	key.proto		= iph.protocol;
-	key.port		= port;
-	if (skb->pkt_type == PACKET_HOST) {
-		key.ip		= iph.saddr;
-	} else {
-		key.ip		= iph.daddr;
-	}
-	u64 timestamp = bpf_ktime_get_boot_ns();
+	struct event_t event = {};
+	__builtin_memset(&event, 0, sizeof(event));
+	event.timestamp = bpf_ktime_get_boot_ns();
+	event.pkt_type = skb->pkt_type;
+	event.proto = iph.protocol;
+	event.port = port;
+	event.ip = skb->pkt_type == PACKET_HOST ? iph.saddr : iph.daddr;
 
-	bpf_map_update_elem(&graphmap, &key, &timestamp, BPF_NOEXIST);
+	// Enrich event with process metadata
+	struct sockets_value *skb_val = gadget_socket_lookup(skb);
+	if (skb_val != NULL) {
+		event.mount_ns_id = skb_val->mntns;
+		event.pid = skb_val->pid_tgid >> 32;
+		event.tid = (__u32)skb_val->pid_tgid;
+		__builtin_memcpy(&event.task,  skb_val->task, sizeof(event.task));
+		event.uid = (__u32) skb_val->uid_gid;
+		event.gid = (__u32) (skb_val->uid_gid >> 32);
+	}
+
+	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
 
 	return 0;
 }
