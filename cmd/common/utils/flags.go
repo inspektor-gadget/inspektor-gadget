@@ -99,6 +99,7 @@ type RuntimesSocketPathConfig struct {
 	Docker     string
 	Containerd string
 	Crio       string
+	Podman     string
 }
 
 func AddRuntimesSocketPathFlags(command *cobra.Command, config *RuntimesSocketPathConfig) {
@@ -121,5 +122,12 @@ func AddRuntimesSocketPathFlags(command *cobra.Command, config *RuntimesSocketPa
 		"crio-socketpath", "",
 		runtimeclient.CrioDefaultSocketPath,
 		"CRI-O CRI Unix socket path",
+	)
+
+	command.PersistentFlags().StringVarP(
+		&config.Podman,
+		"podman-socketpath", "",
+		runtimeclient.PodmanDefaultSocketPath,
+		"Podman Unix socket path",
 	)
 }

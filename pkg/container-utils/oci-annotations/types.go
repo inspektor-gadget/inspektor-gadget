@@ -49,7 +49,7 @@ func NewResolver(runtime string) (Resolver, error) {
 
 // NewResolverFromAnnotations creates a Resolver by detecting runtime from annotations
 func NewResolverFromAnnotations(annotations map[string]string) (Resolver, error) {
-	if cm := annotations[crioContainerManagerAnnotation]; cm != "" {
+	if cm := annotations[crioContainerManagerAnnotation]; cm == "cri-o" {
 		return crioResolver{}, nil
 	}
 	if _, isContainerd := annotations[containerdContainerTypeAnnotation]; isContainerd {

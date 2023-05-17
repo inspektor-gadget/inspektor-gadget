@@ -31,7 +31,7 @@ func TestTraceFsslower(t *testing.T) {
 
 	traceFsslowerCmd := &Command{
 		Name:         "TraceFsslower",
-		Cmd:          fmt.Sprintf("ig trace fsslower -f %s -m 0 -o json", fsType),
+		Cmd:          fmt.Sprintf("ig trace fsslower -f %s --runtimes=%s -m 0 -o json", fsType, *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &fsslowerTypes.Event{
