@@ -98,6 +98,33 @@ insert_socket_from_iter(struct sock *sock, struct task_struct *task)
 	bpf_map_update_elem(&sockets, &socket_key, &socket_value, flags);
 }
 
+static __always_inline int
+remove_socket(struct sock *sock)
+{
+	struct inet_sock *inet_sock = (struct inet_sock *)sock;
+	struct sockets_key socket_key = {0,};
+
+	BPF_CORE_READ_INTO(&socket_key.family, sock, __sk_common.skc_family);
+	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
+
+	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
+	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
+
+	struct sockets_value *socket_value = bpf_map_lookup_elem(&sockets, &socket_key);
+	if (socket_value == NULL)
+		return 0;
+
+	if (socket_value->sock != (__u64) sock)
+		return 0;
+
+	if (socket_value->deletion_timestamp == 0) {
+		// bpf timers are only available in Linux 5.15.
+		// Use bpf iterators (Linux 5.8) controlled from userspace instead.
+		socket_value->deletion_timestamp = bpf_ktime_get_boot_ns();
+	}
+	return 0;
+}
+
 // This iterates on all the sockets (from all tasks) and updates the sockets
 // map. This is useful to get the initial sockets that were already opened
 // before the socket enricher was attached.
@@ -205,8 +232,12 @@ static __always_inline int
 enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
-
 	bpf_map_update_elem(&start, &pid_tgid, &sk, 0);
+
+	// Add socket to the map before the connection is established, so that
+	// early SYN packets can be enriched.
+	insert_current_socket(sk);
+
 	return 0;
 }
 
@@ -222,14 +253,11 @@ exit_tcp_connect(struct pt_regs *ctx, int ret)
 	if (!skpp)
 		return 0;
 
-	if (ret)
-		goto cleanup;
-
 	sk = *skpp;
 
-	insert_current_socket(sk);
+	if (ret)
+		remove_socket(sk);
 
-cleanup:
 	bpf_map_delete_elem(&start, &pid_tgid);
 	return 0;
 }
@@ -253,37 +281,15 @@ static __always_inline int
 probe_release_entry(struct pt_regs *ctx, struct socket *socket, __u16 family)
 {
 	struct sock *sock;
-	struct inet_sock *inet_sock;
 
 	sock = BPF_CORE_READ(socket, sk);
-	inet_sock = (struct inet_sock *)sock;
 
-	struct sockets_key socket_key = {0,};
-
-	BPF_CORE_READ_INTO(&socket_key.family, sock, __sk_common.skc_family);
 	// The kernel function inet6_release() calls inet_release() and we have a kprobe on both, so beware if it is called
 	// in the right context.
-	if (socket_key.family != family)
+	if (BPF_CORE_READ(sock, __sk_common.skc_family) != family)
 		return 0;
 
-	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
-
-	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
-	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
-
-	struct sockets_value *socket_value = bpf_map_lookup_elem(&sockets, &socket_key);
-	if (socket_value == NULL)
-		return 0;
-
-	if (socket_value->sock != (__u64) sock)
-		return 0;
-
-	if (socket_value->deletion_timestamp == 0) {
-		// bpf timers are only available in Linux 5.15.
-		// Use bpf iterators (Linux 5.8) controlled from userspace instead.
-		socket_value->deletion_timestamp = bpf_ktime_get_boot_ns();
-	}
-	return 0;
+	return remove_socket(sock);
 }
 
 SEC("kprobe/inet_bind")
@@ -310,26 +316,14 @@ int BPF_KRETPROBE(ig_bind_ipv6_x)
 	return probe_bind_exit(ctx, 6);
 }
 
-SEC("kprobe/tcp_v4_connect")
-int BPF_KPROBE(ig_tcpc_v4_co_e, struct sock *sk)
+SEC("kprobe/tcp_connect")
+int BPF_KPROBE(ig_tcp_co_e, struct sock *sk)
 {
 	return enter_tcp_connect(ctx, sk);
 }
 
-SEC("kretprobe/tcp_v4_connect")
-int BPF_KRETPROBE(ig_tcpc_v4_co_x, int ret)
-{
-	return exit_tcp_connect(ctx, ret);
-}
-
-SEC("kprobe/tcp_v6_connect")
-int BPF_KPROBE(ig_tcpc_v6_co_e, struct sock *sk)
-{
-	return enter_tcp_connect(ctx, sk);
-}
-
-SEC("kretprobe/tcp_v6_connect")
-int BPF_KRETPROBE(ig_tcpc_v6_co_x, int ret)
+SEC("kretprobe/tcp_connect")
+int BPF_KRETPROBE(ig_tcp_co_x, int ret)
 {
 	return exit_tcp_connect(ctx, ret);
 }

@@ -97,27 +97,15 @@ func (se *SocketEnricher) start() error {
 	se.links = append(se.links, l)
 
 	// connect
-	l, err = link.Kprobe("tcp_v4_connect", se.objs.IgTcpcV4CoE, nil)
+	l, err = link.Kprobe("tcp_connect", se.objs.IgTcpCoE, nil)
 	if err != nil {
-		return fmt.Errorf("attaching connect ipv4 kprobe: %w", err)
+		return fmt.Errorf("attaching connect kprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
-	l, err = link.Kretprobe("tcp_v4_connect", se.objs.IgTcpcV4CoX, nil)
+	l, err = link.Kretprobe("tcp_connect", se.objs.IgTcpCoX, nil)
 	if err != nil {
-		return fmt.Errorf("attaching connect ipv4 kretprobe: %w", err)
-	}
-	se.links = append(se.links, l)
-
-	l, err = link.Kprobe("tcp_v6_connect", se.objs.IgTcpcV6CoE, nil)
-	if err != nil {
-		return fmt.Errorf("attaching ipv6 connect kprobe: %w", err)
-	}
-	se.links = append(se.links, l)
-
-	l, err = link.Kretprobe("tcp_v6_connect", se.objs.IgTcpcV6CoX, nil)
-	if err != nil {
-		return fmt.Errorf("attaching ipv6 connect kretprobe: %w", err)
+		return fmt.Errorf("attaching connect kretprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
