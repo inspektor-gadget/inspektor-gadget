@@ -22,6 +22,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
+const (
+	ParamCwd = "cwd"
+)
+
 type GadgetDesc struct{}
 
 func (g *GadgetDesc) Name() string {
@@ -41,7 +45,14 @@ func (g *GadgetDesc) Description() string {
 }
 
 func (g *GadgetDesc) ParamDescs() params.ParamDescs {
-	return nil
+	return params.ParamDescs{
+		{
+			Key:          ParamCwd,
+			Title:        "Show current working directory",
+			DefaultValue: "false",
+			TypeHint:     params.TypeBool,
+		},
+	}
 }
 
 func (g *GadgetDesc) Parser() parser.Parser {

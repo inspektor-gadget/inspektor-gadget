@@ -36,7 +36,7 @@ func TestTraceExec(t *testing.T) {
 
 	traceExecCmd := &Command{
 		Name:         "TraceExec",
-		Cmd:          fmt.Sprintf("ig trace exec -o json --runtimes=%s", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace exec -o json --runtimes=%s --cwd", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
@@ -48,6 +48,7 @@ func TestTraceExec(t *testing.T) {
 					),
 					Comm: "sh",
 					Args: shArgs,
+					Cwd:  "/",
 				},
 				{
 					Event: BuildBaseEvent(ns,
@@ -58,6 +59,7 @@ func TestTraceExec(t *testing.T) {
 					Args: dateArgs,
 					Uid:  1000,
 					Gid:  1111,
+					Cwd:  "/",
 				},
 				{
 					Event: BuildBaseEvent(ns,
@@ -68,6 +70,7 @@ func TestTraceExec(t *testing.T) {
 					Args: sleepArgs,
 					Uid:  1000,
 					Gid:  1111,
+					Cwd:  "/",
 				},
 			}
 
