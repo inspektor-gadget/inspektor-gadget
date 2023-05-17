@@ -121,7 +121,7 @@ jobs:
         uses: actions/dependency-review-action@v3
 
   build-kubectl-gadget:
-    name: Build kubectl-gadget
+    name: kubectl-gadget
     # level: 0
     runs-on: ubuntu-latest
     strategy:
@@ -183,7 +183,7 @@ jobs:
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
 
   build-ig:
-    name: Build ig
+    name: ig
     # level: 0
     runs-on: ubuntu-latest
     strategy:
@@ -222,7 +222,7 @@ jobs:
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.ig-target }}.tar.gz
 
   build-gadget-container-images:
-    name: Build gadget container images
+    name: gadget img
     # level: 0
     runs-on: ubuntu-latest
     permissions:
@@ -336,7 +336,7 @@ jobs:
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   scan-gadget-container-images:
-    name: Scan gadget container images
+    name: Scan gadget img
     # level: 1
     needs: build-gadget-container-images
     runs-on: ubuntu-latest
@@ -372,7 +372,7 @@ jobs:
           # ignore-policy: .github/trivy/ignore-policy.yaml
 
   publish-gadget-images-manifest:
-    name: Publish gadget container images manifest
+    name: Publish gadget img manifest
     # level: 1
     if: github.event_name != 'pull_request'
     needs: build-gadget-container-images
@@ -419,7 +419,7 @@ jobs:
 
   build-helper-images:
     # level: 0
-    name: Build helper images
+    name: helper images
     runs-on: ubuntu-latest
     outputs:
       dnstester_image: ${{ steps.image-tag.outputs.dnstester || env.DEFAULT_DNSTESTER_IMAGE }}
@@ -478,7 +478,7 @@ jobs:
         echo "${{ matrix.image.name }}=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}" >> $GITHUB_OUTPUT
 
   build-examples:
-    name: Build examples
+    name: example
     # level: 0
     runs-on: ubuntu-latest
     permissions:
@@ -517,7 +517,7 @@ jobs:
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}-${{ matrix.example }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
 
   build-gadgets-examples:
-    name: Build Gadgets examples
+    name: Gadgets examples
     # level: 0
     runs-on: ubuntu-latest
     steps:
@@ -692,7 +692,7 @@ jobs:
           fi
 
   test-integration-k8s-ig:
-    name: Integration tests for ig with Kubernetes Containers
+    name: Test ig w/ k8s
     # level: 2
     needs: [ test-unit, test-ig, build-ig, build-helper-images ]
     runs-on: ubuntu-latest
@@ -737,7 +737,7 @@ jobs:
           test-step-conclusion: ${{ steps.integration-tests.conclusion }}
 
   test-integration-non-k8s-ig:
-    name: Integration tests for ig with non-Kubernetes Containers
+    name: Test ig w/o k8s
     # level: 2
     needs: [ test-unit, test-ig, build-ig, build-helper-images ]
     runs-on: ubuntu-latest
@@ -896,7 +896,7 @@ jobs:
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
 
   test-integration-minikube:
-    name: Integration tests
+    name: Integr. tests
     # level: 1
     needs: [test-unit, build-kubectl-gadget, build-ig, build-gadget-container-images, build-helper-images ]
     runs-on: ubuntu-latest
