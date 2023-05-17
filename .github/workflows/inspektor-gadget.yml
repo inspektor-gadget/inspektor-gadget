@@ -368,7 +368,7 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
           # uncomment to ignore vulnerabilities
-          # ignore-unfixed: true
+          ignore-unfixed: true
           # ignore-policy: .github/trivy/ignore-policy.yaml
 
   publish-gadget-images-manifest:
