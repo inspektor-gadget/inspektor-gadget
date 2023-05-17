@@ -105,7 +105,7 @@ spec:
     spec:
       serviceAccount: gadget
       hostPID: true
-      hostNetwork: true
+      hostNetwork: false
       nodeSelector:
         kubernetes.io/os: "linux"
       containers:

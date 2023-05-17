@@ -57,7 +57,7 @@ spec:
     spec:
       serviceAccount: runc-hook
       hostPID: true
-      hostNetwork: true
+      hostNetwork: false
       containers:
       - name: gadget
         terminationMessagePolicy: FallbackToLogsOnError

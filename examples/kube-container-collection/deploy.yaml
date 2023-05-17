@@ -60,7 +60,7 @@ spec:
     spec:
       serviceAccount: gadget-container-collection
       hostPID: true
-      hostNetwork: true
+      hostNetwork: false
       containers:
       - name: gadget
         terminationMessagePolicy: FallbackToLogsOnError
