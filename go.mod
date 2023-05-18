@@ -141,12 +141,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-// avoid reports on CVE-2021-3121
-replace (
-	github.com/gogo/protobuf v1.1.1 => github.com/gogo/protobuf v1.3.2
-	github.com/gogo/protobuf v1.2.1 => github.com/gogo/protobuf v1.3.2
-	github.com/gogo/protobuf v1.3.0 => github.com/gogo/protobuf v1.3.2
-	github.com/gogo/protobuf v1.3.1 => github.com/gogo/protobuf v1.3.2
-)
-
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3
