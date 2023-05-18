@@ -115,9 +115,10 @@ const (
 )
 
 const (
-	containerLabelK8sPodName      = "io.kubernetes.pod.name"
-	containerLabelK8sPodNamespace = "io.kubernetes.pod.namespace"
-	containerLabelK8sPodUID       = "io.kubernetes.pod.uid"
+	containerLabelK8sContainerName = "io.kubernetes.container.name"
+	containerLabelK8sPodName       = "io.kubernetes.pod.name"
+	containerLabelK8sPodNamespace  = "io.kubernetes.pod.namespace"
+	containerLabelK8sPodUID        = "io.kubernetes.pod.uid"
 )
 
 // ContainerRuntimeClient defines the interface to communicate with the
@@ -155,6 +156,9 @@ func ParseContainerID(expectedRuntime, containerID string) (string, error) {
 }
 
 func EnrichWithK8sMetadata(container *ContainerData, labels map[string]string) {
+	if containerName, ok := labels[containerLabelK8sContainerName]; ok {
+		container.K8s.Container = containerName
+	}
 	if podName, ok := labels[containerLabelK8sPodName]; ok {
 		container.K8s.Pod = podName
 	}
