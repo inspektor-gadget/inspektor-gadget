@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestColumnMap(t *testing.T) {
@@ -27,12 +30,8 @@ func TestColumnMap(t *testing.T) {
 	}
 	cols := expectColumnsSuccess[testStruct](t)
 	columnMap := cols.GetColumnMap()
-	if _, ok := columnMap["stringfield"]; !ok {
-		t.Errorf("Expected stringfield in column map")
-	}
-	if _, ok := columnMap["intfield"]; !ok {
-		t.Errorf("Expected intfield in column map")
-	}
+	assert.Contains(t, columnMap, "stringfield")
+	assert.Contains(t, columnMap, "intfield")
 }
 
 func TestEmptyStruct(t *testing.T) {
@@ -41,10 +40,7 @@ func TestEmptyStruct(t *testing.T) {
 		IntField    int
 	}
 	cols := expectColumnsSuccess[testStruct](t)
-	columnMap := cols.GetColumnMap()
-	if len(columnMap) != 0 {
-		t.Errorf("Expected empty column map")
-	}
+	require.Empty(t, cols.GetColumnMap())
 }
 
 func TestFieldsWithTypeDefinition(t *testing.T) {
@@ -61,12 +57,8 @@ func TestFieldsWithTypeDefinition(t *testing.T) {
 	}
 
 	cols := expectColumnsSuccess[testStruct](t)
-	if expectColumn(t, cols, "stringField").Get(testVar).Interface() != testVar.StringField {
-		t.Errorf("expected stringField to contain %q", testVar.StringField)
-	}
-	if expectColumn(t, cols, "intField").Get(testVar).Interface() != testVar.IntField {
-		t.Errorf("expected intField to contain %q", testVar.IntField)
-	}
+	assert.Equal(t, expectColumn(t, cols, "stringField").Get(testVar).Interface(), testVar.StringField)
+	assert.Equal(t, expectColumn(t, cols, "intField").Get(testVar).Interface(), testVar.IntField)
 }
 
 func TestGetColumnNames(t *testing.T) {
@@ -74,16 +66,10 @@ func TestGetColumnNames(t *testing.T) {
 		StringField string `column:"stringField,order:500"`
 		IntField    int    `column:"intField,order:200"`
 	}
-	ocols := expectColumnsSuccess[testStruct](t).GetColumnNames()
-	if len(ocols) != 2 {
-		t.Fatalf("Expected two columns")
-	}
-	if ocols[0] != "intField" {
-		t.Errorf("Expected first entry to be intField")
-	}
-	if ocols[1] != "stringField" {
-		t.Errorf("Expected second entry to be stringField")
-	}
+	cols := expectColumnsSuccess[testStruct](t).GetColumnNames()
+	require.Len(t, cols, 2)
+	assert.Equal(t, cols[0], "intField")
+	assert.Equal(t, cols[1], "stringField")
 }
 
 func TestGetSortedColumns(t *testing.T) {
@@ -91,16 +77,10 @@ func TestGetSortedColumns(t *testing.T) {
 		StringField string `column:"stringField,order:500"`
 		IntField    int    `column:"intField,order:200"`
 	}
-	ocols := expectColumnsSuccess[testStruct](t).GetOrderedColumns()
-	if len(ocols) != 2 {
-		t.Fatalf("Expected two columns")
-	}
-	if ocols[0].Name != "intField" {
-		t.Errorf("Expected first entry to be intField")
-	}
-	if ocols[1].Name != "stringField" {
-		t.Errorf("Expected second entry to be stringField")
-	}
+	cols := expectColumnsSuccess[testStruct](t).GetOrderedColumns()
+	require.Len(t, cols, 2)
+	assert.Equal(t, cols[0].Name, "intField")
+	assert.Equal(t, cols[1].Name, "stringField")
 }
 
 func TestGetters(t *testing.T) {
@@ -130,160 +110,95 @@ func TestGetters(t *testing.T) {
 
 	// String tests
 	col := expectColumn(t, cols, "StRiNgFiElD")
-	if col.Kind() != reflect.String {
-		t.Errorf("Expected Kind() to be reflect.String")
-	}
+	require.Equal(t, col.Kind(), reflect.String)
 	_, ok := col.Get(nil).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
+	require.True(t, ok, "type should be string")
 	str, ok := col.Get(&testStruct{StringField: "demo"}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
-	if str != "demo" {
-		t.Errorf("Expected returned value to be string 'demo'")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "demo")
+
 	// Raw access should return the same
 	str, ok = col.GetRaw(&testStruct{StringField: "demo"}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
-	if str != "demo" {
-		t.Errorf("Expected returned value to be string 'demo'")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "demo")
 
 	// Int tests
 	col = expectColumn(t, cols, "InTfIeLd")
 
 	i, ok := col.Get(&testStruct{IntField: 5}).Interface().(int)
-	if !ok {
-		t.Errorf("Expected returned value to be of type int")
-	}
-	if i != 5 {
-		t.Errorf("Expected returned value to be int with value 5")
-	}
+	require.True(t, ok, "type should be int")
+	assert.Equal(t, i, 5)
 
 	_, ok = cols.GetColumn("uNkNoWn")
-	if ok {
-		t.Errorf("Expected no column")
-	}
+	require.False(t, ok, "no column should be present")
 
 	// Embedded string tests
 	col = expectColumn(t, cols, "embeddedstring")
 
 	_, ok = col.Get(nil).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
+	require.True(t, ok, "type should be string")
 	str, ok = col.Get(&testStruct{embeddedStruct: embeddedStruct{EmbeddedString: "demo"}}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
-	if str != "demo" {
-		t.Errorf("Expected returned value to be string 'demo'")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "demo")
 
 	// Reflection access
 	refStruct := reflect.ValueOf(&testStruct{embeddedStruct: embeddedStruct{EmbeddedString: "demo"}})
 	str, ok = col.GetRef(refStruct).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string, got %+v", col.GetRef(refStruct).Interface())
-	}
-	if str != "demo" {
-		t.Errorf("Expected returned value to be string 'demo'")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "demo")
 
 	// Embedded (via pointer) string tests
 	col = expectColumn(t, cols, "embeddedstring2")
 
 	_, ok = col.Get(nil).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
+	require.True(t, ok, "type should be string")
 	str, ok = col.Get(&testStruct{embeddedPtrStruct: &embeddedPtrStruct{EmbeddedString2: "demo"}}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
-	if str != "demo" {
-		t.Errorf("Expected returned value to be string 'demo'")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "demo")
 
 	str, ok = col.Get(&testStruct{}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string, got %+v", col.Get(&testStruct{}).Interface())
-	}
-	if str != "" {
-		t.Errorf("Expected returned value to be an empty string")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "")
 
 	// Embedded named structs (via pointer) string tests
 	col = expectColumn(t, cols, "ptrStructString")
 
 	_, ok = col.Get(nil).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
+	require.True(t, ok, "type should be string")
 	str, ok = col.Get(&testStruct{PointerStruct: &ptrStruct{EmbeddedString: "demo"}}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
-	if str != "demo" {
-		t.Errorf("Expected returned value to be string 'demo'")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "demo")
 
 	str, ok = col.Get(&testStruct{}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string, got %+v", col.Get(&testStruct{}).Interface())
-	}
-	if str != "" {
-		t.Errorf("Expected returned value to be an empty string")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "")
 
 	// Embedded named structs (without pointer) string tests
 	col = expectColumn(t, cols, "normalStructString")
 
 	_, ok = col.Get(nil).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
+	require.True(t, ok, "type should be string")
 	str, ok = col.Get(&testStruct{NormalStruct: normalStruct{EmbeddedString: "demo"}}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
-	if str != "demo" {
-		t.Errorf("Expected returned value to be string 'demo'")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "demo")
 
 	str, ok = col.Get(&testStruct{}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string, got %+v", col.Get(&testStruct{}).Interface())
-	}
-	if str != "" {
-		t.Errorf("Expected returned value to be an empty string")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "")
 
 	// Not-Embedded named structs (with pointer) string tests
 	col = expectColumn(t, cols, "ptrStruct")
 
 	tmpPtrStruct, ok := col.Get(&testStruct{NotEmbeddedPtrStruct: &ptrStruct{EmbeddedString: "demo"}}).Interface().(*ptrStruct)
-	if !ok {
-		t.Errorf("Expected returned value to be of type *ptrStruct")
-	}
-	if tmpPtrStruct.EmbeddedString != "demo" {
-		t.Errorf("Expected returned value to be string 'demo'")
-	}
+	require.True(t, ok, "type should be *ptrStruct")
+	assert.Equal(t, tmpPtrStruct.EmbeddedString, "demo")
 
 	// Not-Embedded named structs (without pointer) string tests
 	col = expectColumn(t, cols, "normalStruct")
 
 	tmpNormalStruct, ok := col.Get(&testStruct{NotEmbeddedNormalStruct: normalStruct{EmbeddedString: "demo"}}).Interface().(normalStruct)
-	if !ok {
-		t.Errorf("Expected returned value to be of type normalStruct")
-	}
-	if tmpNormalStruct.EmbeddedString != "demo" {
-		t.Errorf("Expected returned value to be string 'demo'")
-	}
+	require.True(t, ok, "type should be normalStruct")
+	assert.Equal(t, tmpNormalStruct.EmbeddedString, "demo")
 }
 
 func TestInvalidType(t *testing.T) {
@@ -309,25 +224,17 @@ func TestExtractor(t *testing.T) {
 		StringField string `column:"stringField"`
 	}
 	cols := expectColumnsSuccess[testStruct](t)
-
-	err := cols.SetExtractor("sTrInGfIeLd", func(t *testStruct) string {
+	assert.NoError(t, cols.SetExtractor("sTrInGfIeLd", func(t *testStruct) string {
 		return "empty"
-	})
-	if err != nil {
-		t.Errorf("could not set extractor: %v", err)
-	}
-
-	err = cols.SetExtractor("unknown", func(t *testStruct) string {
+	}))
+	assert.Error(t, cols.SetExtractor("unknown", func(t *testStruct) string {
 		return "empty"
-	})
-	if err == nil {
-		t.Errorf("Expected error when setting extractor on non-existing field")
-	}
-
-	err = cols.SetExtractor("sTrInGfIeLd", nil)
-	if err == nil {
-		t.Errorf("Expected error when setting nil-extractor")
-	}
+	}), "should return error when trying to set extractor for non-existent field")
+	assert.Error(
+		t,
+		cols.SetExtractor("sTrInGfIeLd", nil),
+		"should return error when no extractor has been set",
+	)
 }
 
 type Uint32 uint32
@@ -346,13 +253,8 @@ func TestStringer(t *testing.T) {
 	ts := &testStruct{StringerField: 12345}
 
 	val, ok := col.Get(ts).Interface().(string)
-	if !ok {
-		t.Fatalf("expected type string")
-	}
-	expected := "12345-from-stringer"
-	if val != expected {
-		t.Errorf("expected %q from stringer, got %q", expected, val)
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, val, "12345-from-stringer")
 }
 
 func TestVirtualColumns(t *testing.T) {
@@ -362,68 +264,42 @@ func TestVirtualColumns(t *testing.T) {
 
 	cols := expectColumnsSuccess[testStruct](t)
 
-	err := cols.AddColumn(Attributes{
+	assert.Error(t, cols.AddColumn(Attributes{
 		Name: "vcol",
-	}, nil)
-	if err == nil {
-		t.Errorf("Expected error when adding column without extractor func")
-	}
+	}, nil), "should return error when adding a column without extractor func")
 
-	err = cols.AddColumn(Attributes{}, func(_ *testStruct) string {
+	assert.Error(t, cols.AddColumn(Attributes{}, func(_ *testStruct) string {
 		return ""
-	})
-	if err == nil {
-		t.Errorf("Expected error when adding column without name")
-	}
+	}), "should return error when adding a column without name")
 
-	err = cols.AddColumn(Attributes{
+	assert.Error(t, cols.AddColumn(Attributes{
 		Name: "stringfield",
 	}, func(_ *testStruct) string {
 		return ""
-	})
-	if err == nil {
-		t.Errorf("Expected error when adding column with already existing name")
-	}
+	}), "should return error when adding a column with already existing name")
 
-	err = cols.AddColumn(Attributes{
+	assert.NoError(t, cols.AddColumn(Attributes{
 		Name: "foobar",
 	}, func(t *testStruct) string {
 		return "FooBar"
-	})
-	if err != nil {
-		t.Errorf("could not add virtual column")
-	}
+	}))
 
 	col := expectColumn(t, cols, "foobar")
 	_, ok := col.Get(nil).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
+	require.True(t, ok, "type should be string")
 	str, ok := col.Get(&testStruct{}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
-	if str != "FooBar" {
-		t.Errorf("Expected returned value to be string 'FooBar'")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "FooBar")
 
 	// Test GetRef also
 	str, ok = col.GetRef(reflect.ValueOf(&testStruct{})).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
-	if str != "FooBar" {
-		t.Errorf("Expected returned value to be string 'FooBar'")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "FooBar")
 
 	// Raw access should return an empty string
 	str, ok = col.GetRaw(&testStruct{}).Interface().(string)
-	if !ok {
-		t.Errorf("Expected returned value to be of type string")
-	}
-	if str != "" {
-		t.Errorf("Expected empty string when calling GetRaw() on a virtual column")
-	}
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, str, "", "should be empty on a virtual column")
 }
 
 func TestVerifyColumnNames(t *testing.T) {
@@ -435,10 +311,37 @@ func TestVerifyColumnNames(t *testing.T) {
 	cols := expectColumnsSuccess[testStruct](t)
 
 	valid, invalid := cols.VerifyColumnNames([]string{"-stringField", "intField", "notExistingField", "notExistingField2"})
-	if len(valid) != 2 {
-		t.Errorf("Expected VerifyColumnNames to return 2 valid entries")
+	assert.Len(t, valid, 2)
+	assert.Len(t, invalid, 2)
+}
+
+func TestEmbeddedStructs(t *testing.T) {
+	type embeddedStructUnnamed struct {
+		foo int `column:"foo"`
 	}
-	if len(invalid) != 2 {
-		t.Errorf("Expected VerifyColumnNames to return 2 invalid entries")
+	type embeddedStructNamed struct {
+		foo int `column:"foo"`
 	}
+	type testStruct struct {
+		embeddedStructUnnamed
+		embeddedStructNamed `column:"named" columnTags:"abc,def"`
+	}
+
+	cols := MustCreateColumns[testStruct]()
+
+	_, found := cols.GetColumn("embeddedStructUnnamed.foo")
+	assert.False(t, found)
+
+	fooCol, found := cols.GetColumn("foo")
+	require.True(t, found)
+	assert.Equal(t, fooCol.Name, "foo")
+
+	_, found = cols.GetColumn("embeddedStructNamed.foo")
+	assert.False(t, found)
+
+	fooCol, found = cols.GetColumn("named.foo")
+	require.True(t, found)
+	assert.Equal(t, fooCol.Name, "named.foo")
+
+	assert.Contains(t, fooCol.Tags, "def", "tags from parent should be inherited")
 }

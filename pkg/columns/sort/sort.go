@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ func (csc *ColumnSorterCollection[T]) Sort(entries []*T) {
 
 	for _, s := range csc.sorters {
 		var sortFunc func(i, j int) bool
-		offs := s.column.GetOffset()
 		order := s.order
 
 		kind := s.column.Kind()
@@ -49,31 +48,31 @@ func (csc *ColumnSorterCollection[T]) Sort(entries []*T) {
 
 		switch kind {
 		case reflect.Int:
-			sortFunc = getLessFunc[int, T](entries, offs, order)
+			sortFunc = getLessFunc[int, T](entries, s.column, order)
 		case reflect.Int8:
-			sortFunc = getLessFunc[int8, T](entries, offs, order)
+			sortFunc = getLessFunc[int8, T](entries, s.column, order)
 		case reflect.Int16:
-			sortFunc = getLessFunc[int16, T](entries, offs, order)
+			sortFunc = getLessFunc[int16, T](entries, s.column, order)
 		case reflect.Int32:
-			sortFunc = getLessFunc[int32, T](entries, offs, order)
+			sortFunc = getLessFunc[int32, T](entries, s.column, order)
 		case reflect.Int64:
-			sortFunc = getLessFunc[int64, T](entries, offs, order)
+			sortFunc = getLessFunc[int64, T](entries, s.column, order)
 		case reflect.Uint:
-			sortFunc = getLessFunc[uint, T](entries, offs, order)
+			sortFunc = getLessFunc[uint, T](entries, s.column, order)
 		case reflect.Uint8:
-			sortFunc = getLessFunc[uint8, T](entries, offs, order)
+			sortFunc = getLessFunc[uint8, T](entries, s.column, order)
 		case reflect.Uint16:
-			sortFunc = getLessFunc[uint16, T](entries, offs, order)
+			sortFunc = getLessFunc[uint16, T](entries, s.column, order)
 		case reflect.Uint32:
-			sortFunc = getLessFunc[uint32, T](entries, offs, order)
+			sortFunc = getLessFunc[uint32, T](entries, s.column, order)
 		case reflect.Uint64:
-			sortFunc = getLessFunc[uint64, T](entries, offs, order)
+			sortFunc = getLessFunc[uint64, T](entries, s.column, order)
 		case reflect.Float32:
-			sortFunc = getLessFunc[float32, T](entries, offs, order)
+			sortFunc = getLessFunc[float32, T](entries, s.column, order)
 		case reflect.Float64:
-			sortFunc = getLessFunc[float64, T](entries, offs, order)
+			sortFunc = getLessFunc[float64, T](entries, s.column, order)
 		case reflect.String:
-			sortFunc = getLessFunc[string, T](entries, offs, order)
+			sortFunc = getLessFunc[string, T](entries, s.column, order)
 		default:
 			continue
 		}
@@ -122,7 +121,8 @@ func SortEntries[T any](cols columns.ColumnMap[T], entries []*T, sortBy []string
 	coll.Sort(entries)
 }
 
-func getLessFunc[OT constraints.Ordered, T any](array []*T, offs uintptr, order columns.Order) func(i, j int) bool {
+func getLessFunc[OT constraints.Ordered, T any](array []*T, column columns.ColumnInternals, order columns.Order) func(i, j int) bool {
+	fieldFunc := columns.GetFieldFunc[OT, T](column)
 	return func(i, j int) bool {
 		if array[i] == nil {
 			return false
@@ -130,7 +130,7 @@ func getLessFunc[OT constraints.Ordered, T any](array []*T, offs uintptr, order 
 		if array[j] == nil {
 			return true
 		}
-		return !(columns.GetField[OT](array[i], offs) < columns.GetField[OT](array[j], offs)) != order
+		return !(fieldFunc(array[i]) < fieldFunc(array[j])) != order
 	}
 }
 
@@ -142,7 +142,7 @@ func CanSortBy[T any](cols columns.ColumnMap[T], sortBy []string) bool {
 	return len(valid) == len(sortBy)
 }
 
-// FilterSortableColumns returns returns two lists, one containing the valid column names
+// FilterSortableColumns returns two lists, one containing the valid column names
 // and another containing the invalid column names.
 func FilterSortableColumns[T any](cols columns.ColumnMap[T], sortBy []string) ([]string, []string) {
 	valid := make([]string, 0, len(sortBy))

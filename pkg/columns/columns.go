@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ func NewColumns[T any](options ...Option) (*Columns[T], error) {
 		options:   opts,
 	}
 
-	err := columns.iterateFields(t, nil, 0)
+	err := columns.iterateFields(t, nil, 0, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("trying to initialize columns on type %s: %w", t.String(), err)
 	}
@@ -152,7 +152,7 @@ func (c ColumnMap[T]) VerifyColumnNames(columnNames []string) (valid []string, i
 	return
 }
 
-func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintptr) error {
+func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintptr, prefix string, tags []string) error {
 	isPtr := false
 	if t.Kind() == reflect.Pointer {
 		if t.Elem().Kind() != reflect.Struct {
@@ -165,11 +165,64 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintpt
 		f := t.Field(i)
 
 		tag := f.Tag.Get("column")
+		// tagSet := len(tag) > 0
+
+		column := &Column[T]{
+			Attributes: Attributes{
+				EllipsisType: c.options.DefaultEllipsis,
+				Alignment:    c.options.DefaultAlignment,
+				Visible:      true,
+				Precision:    2,
+				Order:        len(c.ColumnMap) * 10,
+			},
+			offset: offset + f.Offset,
+		}
+
+		// store kind for faster lookups if required
+		column.kind = f.Type.Kind()
+		column.columnType = f.Type
+		column.rawColumnType = f.Type
+
+		// read information from tag
+		err := column.fromTag(tag)
+		if err != nil {
+			return fmt.Errorf("parsing tag for %q on field %q: %w", t.Name(), f.Name, err)
+		}
+
+		// add optional tags
+		if tags := f.Tag.Get("columnTags"); tags != "" {
+			column.Tags = strings.Split(strings.ToLower(tags), ",")
+		}
+		column.Tags = append(column.Tags, tags...)
+
+		// Apply prefixes to name
+		column.Name = prefix + column.Name
 
 		// If this field is a pointer to a struct or a struct, try to embed it unless a "noembed" tag is set
 		if f.Type.Kind() == reflect.Struct || (f.Type.Kind() == reflect.Pointer && f.Type.Elem().Kind() == reflect.Struct) {
 			if !strings.Contains(tag, ",noembed") {
-				err := c.iterateFields(f.Type, append(append([]subField{}, sub...), subField{i, isPtr}), offset+f.Offset)
+				newOffset := offset + f.Offset
+				if f.Type.Kind() == reflect.Pointer {
+					newOffset = 0 // offset of the struct pointed to will begin at zero again
+				}
+				newPrefix := prefix
+
+				// If not explicit name was set for this field, don't inherit a new prefix
+				if column.explicitName {
+					newPrefix = column.Name + "."
+				}
+				err := c.iterateFields(
+					f.Type,
+					append(append([]subField{}, sub...), subField{
+						index:       i,
+						offset:      offset + f.Offset,
+						parentIsPtr: isPtr,
+						isPtr:       f.Type.Kind() == reflect.Pointer,
+					}),
+					newOffset,
+					newPrefix,
+					append(tags, column.Tags...),
+				)
 				if err != nil {
 					return err
 				}
@@ -186,32 +239,11 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintpt
 			tag = f.Name
 		}
 
-		column := &Column[T]{
-			Attributes: Attributes{
-				EllipsisType: c.options.DefaultEllipsis,
-				Alignment:    c.options.DefaultAlignment,
-				Visible:      true,
-				Precision:    2,
-				Order:        len(c.ColumnMap) * 10,
-			},
-			offset: offset + f.Offset,
-		}
-
 		if sub == nil {
 			column.fieldIndex = i
 		} else {
 			// Nested structs
-			column.subFieldIndex = append(append([]subField{}, sub...), subField{i, isPtr})
-		}
-
-		// store kind for faster lookups if required
-		column.kind = f.Type.Kind()
-		column.columnType = f.Type
-
-		// read information from tag
-		err := column.fromTag(tag)
-		if err != nil {
-			return fmt.Errorf("parsing tag for %q on field %q: %w", t.Name(), f.Name, err)
+			column.subFieldIndex = append(append([]subField{}, sub...), subField{i, offset + f.Offset, isPtr, false})
 		}
 
 		if column.useTemplate {
@@ -262,11 +294,6 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintpt
 		// add optional description
 		column.Description = f.Tag.Get("columnDesc")
 
-		// add optional tags
-		if tags := f.Tag.Get("columnTags"); tags != "" {
-			column.Tags = strings.Split(strings.ToLower(tags), ",")
-		}
-
 		lowerName := strings.ToLower(column.Name)
 		if _, ok := c.ColumnMap[lowerName]; ok {
 			return fmt.Errorf("duplicate column %q for %q", lowerName, t.Name())
@@ -310,6 +337,7 @@ func (c *Columns[T]) AddColumn(attributes Attributes, extractor func(*T) string)
 	// virtual columns
 	column.kind = reflect.String
 	column.columnType = stringType
+	column.rawColumnType = stringType
 	return nil
 }
 
@@ -344,9 +372,55 @@ func (c *Columns[T]) MustSetExtractor(columnName string, extractor func(*T) stri
 	}
 }
 
-// GetField is a helper to retrieve a value of type OT from a struct of type T given an offset
-func GetField[OT any, T any](entry *T, offset uintptr) OT {
-	// Keep the pointer arithmetic on one line. See:
-	// https://go101.org/article/unsafe.html#pattern-convert-to-uintptr-and-back
-	return *(*OT)(unsafe.Add(unsafe.Pointer(entry), offset))
+// ColumnInternals is a non-generic interface to return internal values of columns like offsets
+// for faster access.
+type ColumnInternals interface {
+	getOffset() uintptr
+	getSubFields() []subField
+	IsVirtual() bool
+}
+
+// GetFieldFunc returns a helper function to access the value of type OT of a struct T
+// without using reflection. It differentiates between direct members of the struct and
+// members of embedded structs. If any of the embedded structs is a nil-pointer, the
+// default value of OT will be returned
+func GetFieldFunc[OT any, T any](column ColumnInternals) func(entry *T) OT {
+	if column.IsVirtual() {
+		var tempVar OT
+		switch any(tempVar).(type) {
+		case string:
+			return func(entry *T) OT {
+				return any(column.(*Column[T]).Extractor(entry)).(OT)
+			}
+		default:
+			panic(fmt.Sprintf("trying to get type %T from virtual column, expected string", tempVar))
+		}
+	}
+	sub := column.getSubFields()
+	offset := column.getOffset()
+	subLen := len(sub)
+	if subLen == 0 {
+		return func(entry *T) OT {
+			// Keep the pointer arithmetic on one line. See:
+			// https://go101.org/article/unsafe.html#pattern-convert-to-uintptr-and-back
+			return *(*OT)(unsafe.Add(unsafe.Pointer(entry), offset))
+		}
+	}
+
+	return func(entry *T) OT {
+		start := unsafe.Pointer(entry)
+		for i := 0; i < subLen-1; i++ {
+			if sub[i].isPtr {
+				start = unsafe.Add(start, sub[i].offset) // now pointing at the pointer
+				start = unsafe.Pointer(*(*uintptr)(start))
+				if start == nil {
+					// If we at any time hit a nil-pointer, we return the default
+					// value of type OT
+					var defaultValue OT
+					return defaultValue
+				}
+			}
+		}
+		return *(*OT)(unsafe.Add(start, (sub)[subLen-1].offset))
+	}
 }
