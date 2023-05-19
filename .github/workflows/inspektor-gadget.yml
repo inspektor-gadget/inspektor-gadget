@@ -347,14 +347,6 @@ jobs:
         os: [ linux ]
         platform: [ amd64 ]
     steps:
-      - uses: actions/checkout@v3
-      - name: Set container repository and determine image tag
-        id: set-repo-determine-image-tag
-        uses: ./.github/actions/set-container-repo-and-determine-image-tag
-        with:
-          registry: ${{ env.REGISTRY }}
-          container-image: ${{ env.CONTAINER_REPO }}
-          co-re: ${{ matrix.type == 'core' }}
       - name: Download gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
         uses: actions/download-artifact@v3
         with:
