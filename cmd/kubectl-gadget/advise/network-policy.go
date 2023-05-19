@@ -84,7 +84,7 @@ func newWriter(file string) (*bufio.Writer, func(), error) {
 func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) error {
 	w, closure, err := newWriter(outputFileName)
 	if err != nil {
-		return fmt.Errorf("failed to create file %q: %w", outputFileName, err)
+		return fmt.Errorf("creating file %q: %w", outputFileName, err)
 	}
 	defer closure()
 
@@ -135,17 +135,17 @@ func runNetworkPolicyReport(cmd *cobra.Command, args []string) error {
 
 	w, closure, err := newWriter(outputFileName)
 	if err != nil {
-		return fmt.Errorf("failed to create file %q: %w", outputFileName, err)
+		return fmt.Errorf("creating file %q: %w", outputFileName, err)
 	}
 	defer closure()
 
 	_, err = w.Write([]byte(adv.FormatPolicies()))
 	if err != nil {
-		return fmt.Errorf("failed to write file %q: %w", outputFileName, err)
+		return fmt.Errorf("writing file %q: %w", outputFileName, err)
 	}
 	err = w.Flush()
 	if err != nil {
-		return fmt.Errorf("failed to flush file %q: %w", outputFileName, err)
+		return fmt.Errorf("flushing file %q: %w", outputFileName, err)
 	}
 
 	return nil

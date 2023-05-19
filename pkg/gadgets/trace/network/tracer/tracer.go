@@ -96,10 +96,10 @@ func NewTracer(enricher gadgets.DataEnricherByNetNs) (_ *Tracer, err error) {
 	// Load the eBPF map
 	specMap, err := loadGraphmap()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load asset: %w", err)
+		return nil, fmt.Errorf("loading asset: %w", err)
 	}
 	if err := specMap.LoadAndAssign(&t.networkGraphMapObjects, &ebpf.CollectionOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
+		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	return t, nil
@@ -131,7 +131,7 @@ func (t *Tracer) Attach(pid uint32) (err error) {
 
 	spec, err := loadGraph()
 	if err != nil {
-		return fmt.Errorf("failed to load asset: %w", err)
+		return fmt.Errorf("loading asset: %w", err)
 	}
 
 	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
@@ -141,7 +141,7 @@ func (t *Tracer) Attach(pid uint32) (err error) {
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("error RewriteConstants: %w", err)
+		return fmt.Errorf("rewriting constants: %w", err)
 	}
 
 	if err := spec.LoadAndAssign(
@@ -152,11 +152,11 @@ func (t *Tracer) Attach(pid uint32) (err error) {
 			},
 		},
 	); err != nil {
-		return fmt.Errorf("failed to create BPF collection: %w", err)
+		return fmt.Errorf("creating BPF collection: %w", err)
 	}
 
 	if a.sockFd, err = rawsock.OpenRawSock(pid); err != nil {
-		return fmt.Errorf("failed to open raw socket: %w", err)
+		return fmt.Errorf("opening raw socket: %w", err)
 	}
 
 	if err := syscall.SetsockoptInt(
@@ -164,7 +164,7 @@ func (t *Tracer) Attach(pid uint32) (err error) {
 		syscall.SOL_SOCKET, BPFSocketAttach,
 		a.networkGraphObjects.graphPrograms.IgTraceNet.FD(),
 	); err != nil {
-		return fmt.Errorf("failed to attach BPF program: %w", err)
+		return fmt.Errorf("attaching BPF program: %w", err)
 	}
 
 	t.attachments[netns] = a
@@ -265,7 +265,7 @@ func (t *Tracer) Pop() (events []*types.Event, err error) {
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("error in BPF batch operation: %w", err)
+			return nil, fmt.Errorf("BPF batch operation: %w", err)
 		}
 	}
 
@@ -281,11 +281,11 @@ func (t *Tracer) Pop() (events []*types.Event, err error) {
 		// case, this is not a problem since we're deleting everything
 		// unconditionally.
 		if err := graphmap.Delete(key); err != nil {
-			return nil, fmt.Errorf("error deleting key: %w", err)
+			return nil, fmt.Errorf("deleting key: %w", err)
 		}
 	}
 	if err := entries.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating on map: %w", err)
+		return nil, fmt.Errorf("iterating on map: %w", err)
 	}
 	return events, nil
 }
@@ -377,10 +377,10 @@ func (t *Tracer) install() error {
 	// Load the eBPF map
 	specMap, err := loadGraphmap()
 	if err != nil {
-		return fmt.Errorf("failed to load asset: %w", err)
+		return fmt.Errorf("loading asset: %w", err)
 	}
 	if err := specMap.LoadAndAssign(&t.networkGraphMapObjects, &ebpf.CollectionOptions{}); err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 	return nil
 }

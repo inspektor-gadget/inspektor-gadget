@@ -93,7 +93,7 @@ func (t *Tracer) install() error {
 	var err error
 	spec, err := loadMountsnoop()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, nil, &t.objs); err != nil {
@@ -102,27 +102,27 @@ func (t *Tracer) install() error {
 
 	t.mountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_mount", t.objs.IgMountE, nil)
 	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
+		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
 
 	t.mountExitLink, err = link.Tracepoint("syscalls", "sys_exit_mount", t.objs.IgMountX, nil)
 	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
+		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
 
 	t.umountEnterLink, err = link.Tracepoint("syscalls", "sys_enter_umount", t.objs.IgUmountE, nil)
 	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
+		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
 
 	t.umountExitLink, err = link.Tracepoint("syscalls", "sys_exit_umount", t.objs.IgUmountX, nil)
 	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
+		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
 
 	t.reader, err = perf.NewReader(t.objs.mountsnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("error creating perf ring buffer: %w", err)
+		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 
 	return nil

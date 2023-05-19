@@ -73,7 +73,7 @@ func NewColumns[T any](options ...Option) (*Columns[T], error) {
 
 	err := columns.iterateFields(t, nil, 0)
 	if err != nil {
-		return nil, fmt.Errorf("error trying to initialize columns on type %s: %w", t.String(), err)
+		return nil, fmt.Errorf("trying to initialize columns on type %s: %w", t.String(), err)
 	}
 
 	return columns, nil
@@ -211,22 +211,22 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintpt
 		// read information from tag
 		err := column.fromTag(tag)
 		if err != nil {
-			return fmt.Errorf("error parsing tag for %q on field %q: %w", t.Name(), f.Name, err)
+			return fmt.Errorf("parsing tag for %q on field %q: %w", t.Name(), f.Name, err)
 		}
 
 		if column.useTemplate {
 			tpl, ok := getTemplate(column.template)
 			if !ok {
-				return fmt.Errorf("error applying template %q for %q on field %q: template not found", column.template, t.Name(), f.Name)
+				return fmt.Errorf("applying template %q for %q on field %q: template not found", column.template, t.Name(), f.Name)
 			}
 			if err := column.parseTagInfo(strings.Split(tpl, ",")); err != nil {
-				return fmt.Errorf("error applying template %q for %q on field %q: %w", column.template, t.Name(), f.Name, err)
+				return fmt.Errorf("applying template %q for %q on field %q: %w", column.template, t.Name(), f.Name, err)
 			}
 
 			// re-apply information from field tag to overwrite template settings
 			err = column.fromTag(tag)
 			if err != nil {
-				return fmt.Errorf("error parsing tag for %q on field %q: %w", t.Name(), f.Name, err)
+				return fmt.Errorf("parsing tag for %q on field %q: %w", t.Name(), f.Name, err)
 			}
 		}
 
@@ -328,7 +328,7 @@ func (c *Columns[T]) SetExtractor(columnName string, extractor func(*T) string) 
 	}
 	column, ok := c.ColumnMap[strings.ToLower(columnName)]
 	if !ok {
-		return fmt.Errorf("could not set extractor for unknown field %q", columnName)
+		return fmt.Errorf("field %q not found", columnName)
 	}
 	column.kind = reflect.String
 	column.Extractor = extractor

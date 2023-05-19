@@ -67,11 +67,11 @@ func NewTracer() (*Tracer, error) {
 func (t *Tracer) install() error {
 	spec, err := loadSeccomp()
 	if err != nil {
-		return fmt.Errorf("failed to load asset: %w", err)
+		return fmt.Errorf("loading asset: %w", err)
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	t.objs.SyscallsPerMntns.Update(uint64(0), [syscallsMapValueSize]byte{}, ebpf.UpdateAny)
@@ -81,7 +81,7 @@ func (t *Tracer) install() error {
 		Program: t.objs.IgSeccompE,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to open tracepoint: %w", err)
+		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
 
 	return nil

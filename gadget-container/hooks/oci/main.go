@@ -63,12 +63,12 @@ func main() {
 	// Parse state from stdin
 	stateBuf, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		panic(fmt.Errorf("cannot read stdin: %w", err))
+		panic(fmt.Errorf("reading stdin: %w", err))
 	}
 
 	ociStateID, ociStatePid, err := containerutils.ParseOCIState(stateBuf)
 	if err != nil {
-		panic(fmt.Errorf("cannot parse stdin: %w\n%s", err, string(stateBuf)))
+		panic(fmt.Errorf("parsing stdin: %w\n%s", err, string(stateBuf)))
 	}
 
 	// Validate state
@@ -115,34 +115,34 @@ func main() {
 				ppidStr = strings.TrimSuffix(ppidStr, "\n")
 				ppid, err = strconv.Atoi(ppidStr)
 				if err != nil {
-					panic(fmt.Errorf("cannot parse ppid (%q): %w", ppidStr, err))
+					panic(fmt.Errorf("parsing ppid (%q): %w", ppidStr, err))
 				}
 				break
 			}
 		}
 	} else {
-		panic(fmt.Errorf("cannot parse /proc/PID/status: %w", err))
+		panic(fmt.Errorf("parsing /proc/PID/status: %w", err))
 	}
 	cmdline, err := os.ReadFile(filepath.Join("/proc", fmt.Sprintf("%d", ppid), "cmdline"))
 	if err != nil {
-		panic(fmt.Errorf("cannot read /proc/PID/cmdline: %w", err))
+		panic(fmt.Errorf("reading /proc/PID/cmdline: %w", err))
 	}
 	cmdline = bytes.ReplaceAll(cmdline, []byte{0}, []byte("\n"))
 	r := regexp.MustCompile("--bundle\n([^\n]*)\n")
 	matches := r.FindStringSubmatch(string(cmdline))
 	if len(matches) != 2 {
-		panic(fmt.Errorf("cannot find bundle in %q: matches=%+v", string(cmdline), matches))
+		panic(fmt.Errorf("finding bundle in %q: matches=%+v", string(cmdline), matches))
 	}
 	bundle := matches[1]
 	bundleConfig, err := os.ReadFile(filepath.Join(bundle, "config.json"))
 	if err != nil {
-		panic(fmt.Errorf("cannot read config.json from bundle directory %q: %w", bundle, err))
+		panic(fmt.Errorf("reading config.json from bundle directory %q: %w", bundle, err))
 	}
 
 	ociSpec := &ocispec.Spec{}
 	err = json.Unmarshal(bundleConfig, ociSpec)
 	if err != nil {
-		panic(fmt.Errorf("cannot parse config.json: %w\n%s", err, string(bundleConfig)))
+		panic(fmt.Errorf("parsing config.json: %w\n%s", err, string(bundleConfig)))
 	}
 
 	_, err = client.AddContainer(ctx, &pb.ContainerDefinition{

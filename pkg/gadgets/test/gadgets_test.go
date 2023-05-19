@@ -131,7 +131,7 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 		for i := 0; i < iterations; i++ {
 			r, err := utilstest.NewRunner(&utilstest.RunnerConfig{})
 			if err != nil {
-				return fmt.Errorf("failed to create runner: %w", err)
+				return fmt.Errorf("creating runner: %w", err)
 			}
 
 			container := &containercollection.Container{
@@ -144,7 +144,7 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 			cc.AddContainer(container)
 
 			if err := r.Run(f); err != nil {
-				return fmt.Errorf("failed to run command: %w", err)
+				return fmt.Errorf("running command: %w", err)
 			}
 
 			r.Close()
@@ -212,7 +212,7 @@ func TestEventEnrichmentRaceCondition(t *testing.T) {
 		for i := 0; i < iterations; i++ {
 			r, err := utilstest.NewRunner(&utilstest.RunnerConfig{})
 			if err != nil {
-				return fmt.Errorf("failed to create runner: %w", err)
+				return fmt.Errorf("creating runner: %w", err)
 			}
 
 			container := &containercollection.Container{
@@ -229,7 +229,7 @@ func TestEventEnrichmentRaceCondition(t *testing.T) {
 			go func() { cc.RemoveContainer(container.ID) }()
 
 			if err := r.Run(f); err != nil {
-				return fmt.Errorf("failed to run command: %w", err)
+				return fmt.Errorf("running command: %w", err)
 			}
 
 			r.Close()

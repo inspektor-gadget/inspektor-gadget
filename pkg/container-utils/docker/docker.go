@@ -77,7 +77,7 @@ func listContainers(c *DockerClient, filter *dockerfilters.Args) ([]dockertypes.
 
 	containers, err := c.client.ContainerList(context.Background(), opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list containers with options %+v: %w",
+		return nil, fmt.Errorf("listing containers with options %+v: %w",
 			opts, err)
 	}
 

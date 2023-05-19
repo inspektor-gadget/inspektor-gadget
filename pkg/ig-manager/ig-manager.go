@@ -89,7 +89,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*IGManager, error) {
 
 	l.containersMap, err = containersmap.NewContainersMap("")
 	if err != nil {
-		return nil, fmt.Errorf("error creating containers map: %w", err)
+		return nil, fmt.Errorf("creating containers map: %w", err)
 	}
 
 	err = l.ContainerCollection.Initialize(

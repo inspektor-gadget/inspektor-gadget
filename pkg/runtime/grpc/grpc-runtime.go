@@ -255,7 +255,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 
 	conn, err := grpc.DialContext(dialCtx, "", dialOpt, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
-		return nil, fmt.Errorf("could not dial gadget pod on node %q: %w", pod.node, err)
+		return nil, fmt.Errorf("dialing gadget pod on node %q: %w", pod.node, err)
 	}
 	defer conn.Close()
 	client := pb.NewGadgetManagerClient(conn)

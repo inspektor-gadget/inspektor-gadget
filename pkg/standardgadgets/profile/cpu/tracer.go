@@ -38,7 +38,7 @@ type Tracer struct {
 func NewTracer(config *tracer.Config) (*Tracer, error) {
 	mountNsMapPinPath := filepath.Join(gadgets.PinPath, uuid.New().String())
 	if err := config.MountnsMap.Pin(mountNsMapPinPath); err != nil {
-		return nil, fmt.Errorf("failed to pin tracer's mount ns map: %w", err)
+		return nil, fmt.Errorf("pinning tracer's mount ns map: %w", err)
 	}
 
 	cmd := exec.Command("/usr/share/bcc/tools/profile", "--json",

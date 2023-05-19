@@ -219,7 +219,7 @@ func Info(msg string) Event {
 func EventString(i interface{}) string {
 	b, err := json.Marshal(i)
 	if err != nil {
-		return fmt.Sprintf("error marshalling event: %s\n", err)
+		return fmt.Sprintf("error marshaling event: %s\n", err)
 	}
 	return string(b)
 }

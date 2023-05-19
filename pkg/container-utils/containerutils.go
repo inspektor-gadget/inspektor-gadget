@@ -106,12 +106,12 @@ func ParseOCIState(stateBuf []byte) (id string, pid int, err error) {
 		fix := regexp.MustCompile(`(?ms)^(.*),"annotations":.*$`)
 		matches := fix.FindStringSubmatch(string(stateBuf))
 		if len(matches) != 2 {
-			err = fmt.Errorf("cannot parse OCI state: matches=%+v\n %w\n%s", matches, err, string(stateBuf))
+			err = fmt.Errorf("parsing OCI state: matches=%+v\n %w\n%s", matches, err, string(stateBuf))
 			return
 		}
 		err = json.Unmarshal([]byte(matches[1]+"}"), ociState)
 		if err != nil {
-			err = fmt.Errorf("cannot parse OCI state: %w\n%s", err, string(stateBuf))
+			err = fmt.Errorf("parsing OCI state: %w\n%s", err, string(stateBuf))
 			return
 		}
 	}

@@ -385,7 +385,7 @@ func (c *Command) RunWithoutTest() error {
 		c.Name, c.stderr.String(), c.stdout.String())
 
 	if err != nil {
-		return fmt.Errorf("failed to run command(%s): %w", c.Name, err)
+		return fmt.Errorf("running command(%s): %w", c.Name, err)
 	}
 
 	if err = c.verifyOutput(); err != nil {
@@ -407,7 +407,7 @@ func (c *Command) StartWithoutTest() error {
 	fmt.Printf("Start command(%s): %s\n", c.Name, c.Cmd)
 	err := c.command.Start()
 	if err != nil {
-		return fmt.Errorf("failed to start command(%s): %w", c.Name, err)
+		return fmt.Errorf("starting command(%s): %w", c.Name, err)
 	}
 
 	c.started = true
@@ -429,7 +429,7 @@ func (c *Command) WaitWithoutTest() error {
 		c.Name, c.stderr.String(), c.stdout.String())
 
 	if err != nil {
-		return fmt.Errorf("failed to wait for command(%s): %w", c.Name, err)
+		return fmt.Errorf("waiting for command(%s): %w", c.Name, err)
 	}
 
 	c.started = false
@@ -444,7 +444,7 @@ func (c *Command) KillWithoutTest() error {
 	fmt.Printf("Kill command(%s)\n", c.Name)
 
 	if err := c.kill(); err != nil {
-		return fmt.Errorf("failed to kill command(%s): %w", c.Name, err)
+		return fmt.Errorf("killing command(%s): %w", c.Name, err)
 	}
 
 	return nil

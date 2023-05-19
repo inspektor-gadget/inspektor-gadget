@@ -105,7 +105,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	eventCallback := func(event *types.Event) {
 		r, err := json.Marshal(event)
 		if err != nil {
-			log.Warnf("Gadget %s: error marshalling event: %s", trace.Spec.Gadget, err)
+			log.Warnf("Gadget %s: error marshaling event: %s", trace.Spec.Gadget, err)
 			return
 		}
 		t.helpers.PublishEvent(traceName, string(r))

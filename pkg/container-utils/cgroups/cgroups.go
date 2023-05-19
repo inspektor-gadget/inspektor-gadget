@@ -30,7 +30,7 @@ func CgroupPathV2AddMountpoint(path string) (string, error) {
 	if _, err := os.Stat(pathWithMountpoint); os.IsNotExist(err) {
 		pathWithMountpoint = filepath.Join("/sys/fs/cgroup", path)
 		if _, err := os.Stat(pathWithMountpoint); os.IsNotExist(err) {
-			return "", fmt.Errorf("cannot access cgroup %q: %w", path, err)
+			return "", fmt.Errorf("accessing cgroup %q: %w", path, err)
 		}
 	}
 	return pathWithMountpoint, nil
@@ -74,7 +74,7 @@ func GetCgroupPaths(pid int) (string, string, error) {
 			}
 		}
 	} else {
-		return "", "", fmt.Errorf("cannot parse cgroup: %w", err)
+		return "", "", fmt.Errorf("parsing cgroup: %w", err)
 	}
 
 	if cgroupPathV1 == "/" {
@@ -86,7 +86,7 @@ func GetCgroupPaths(pid int) (string, string, error) {
 	}
 
 	if cgroupPathV2 == "" && cgroupPathV1 == "" {
-		return "", "", fmt.Errorf("cannot find cgroup path in /proc/PID/cgroup")
+		return "", "", fmt.Errorf("cgroup path not found in /proc/PID/cgroup")
 	}
 
 	return cgroupPathV1, cgroupPathV2, nil

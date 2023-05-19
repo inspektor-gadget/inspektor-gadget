@@ -96,7 +96,7 @@ func (t *Tracer) install() error {
 	var err error
 	spec, err := loadTcpconnect()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	consts := map[string]interface{}{
@@ -110,39 +110,39 @@ func (t *Tracer) install() error {
 
 	t.v4EnterLink, err = link.Kprobe("tcp_v4_connect", t.objs.IgTcpcV4CoE, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	t.v6EnterLink, err = link.Kprobe("tcp_v6_connect", t.objs.IgTcpcV6CoE, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	if !t.config.CalculateLatency {
 		t.v4ExitLink, err = link.Kretprobe("tcp_v4_connect", t.objs.IgTcpcV4CoX, nil)
 		if err != nil {
-			return fmt.Errorf("error attaching program: %w", err)
+			return fmt.Errorf("attaching kretprobe: %w", err)
 		}
 
 		t.v6ExitLink, err = link.Kretprobe("tcp_v6_connect", t.objs.IgTcpcV6CoX, nil)
 		if err != nil {
-			return fmt.Errorf("error attaching program: %w", err)
+			return fmt.Errorf("attaching kretprobe: %w", err)
 		}
 	} else {
 		t.tcpDestroySockLink, err = link.Tracepoint("tcp", "tcp_destroy_sock", t.objs.IgTcpDestroy, nil)
 		if err != nil {
-			return fmt.Errorf("error attaching program: %w", err)
+			return fmt.Errorf("attaching tracepoint: %w", err)
 		}
 
 		t.tcpRvcStateProcessLink, err = link.Kprobe("tcp_rcv_state_process", t.objs.IgTcpRsp, nil)
 		if err != nil {
-			return fmt.Errorf("attaching program: %w", err)
+			return fmt.Errorf("attaching kprobe: %w", err)
 		}
 	}
 
 	reader, err := perf.NewReader(t.objs.tcpconnectMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("error creating perf ring buffer: %w", err)
+		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 	t.reader = reader
 

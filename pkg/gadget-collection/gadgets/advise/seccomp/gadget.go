@@ -285,7 +285,7 @@ func getSeccompProfileNsName(
 		client.InNamespace(traceNs),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve SeccompProfiles in %q: %w", traceNs, err)
+		return nil, fmt.Errorf("retrieving SeccompProfiles in %q: %w", traceNs, err)
 	}
 	profileName := getSeccompProfileNextName(profileList.Items, podname)
 
@@ -306,7 +306,7 @@ func generateSeccompPolicy(client client.Client, trace *gadgetv1alpha1.Trace, sy
 		podname,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get the profile name: %w", err)
+		return nil, fmt.Errorf("getting the profile name: %w", err)
 	}
 
 	r := syscallNamesToSeccompPolicy(profileName, syscallNames)

@@ -96,7 +96,7 @@ func (t *Tracer) close() {
 func (t *Tracer) install() error {
 	spec, err := loadBindsnoop()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	filterByPort := false
@@ -121,27 +121,27 @@ func (t *Tracer) install() error {
 
 	t.ipv4Entry, err = link.Kprobe("inet_bind", t.objs.IgBindIpv4E, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv4 kprobe: %w", err)
+		return fmt.Errorf("attaching ipv4 kprobe: %w", err)
 	}
 
 	t.ipv4Exit, err = link.Kretprobe("inet_bind", t.objs.IgBindIpv4X, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv4 kprobe: %w", err)
+		return fmt.Errorf("attaching ipv4 kprobe: %w", err)
 	}
 
 	t.ipv6Entry, err = link.Kprobe("inet6_bind", t.objs.IgBindIpv6E, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv6 kprobe: %w", err)
+		return fmt.Errorf("attaching ipv6 kprobe: %w", err)
 	}
 
 	t.ipv6Exit, err = link.Kretprobe("inet6_bind", t.objs.IgBindIpv6X, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv6 kprobe: %w", err)
+		return fmt.Errorf("attaching ipv6 kprobe: %w", err)
 	}
 
 	t.reader, err = perf.NewReader(t.objs.bindsnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("error creating perf ring buffer: %w", err)
+		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 
 	return nil

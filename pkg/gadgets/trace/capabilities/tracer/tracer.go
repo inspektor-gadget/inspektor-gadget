@@ -139,7 +139,7 @@ func (t *Tracer) close() {
 func (t *Tracer) install() error {
 	spec, err := loadCapabilities()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	consts := map[string]interface{}{
@@ -156,7 +156,7 @@ func (t *Tracer) install() error {
 		Program: t.objs.IgCapSysEnter,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to open tracepoint: %w", err)
+		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
 	t.tpSysEnter = tp
 
@@ -165,25 +165,25 @@ func (t *Tracer) install() error {
 		Program: t.objs.IgCapSysExit,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to open tracepoint: %w", err)
+		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
 	t.tpSysEnter = tp
 
 	kprobe, err := link.Kprobe("cap_capable", t.objs.IgTraceCapE, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 	t.capEnterLink = kprobe
 
 	kretprobe, err := link.Kretprobe("cap_capable", t.objs.IgTraceCapX, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kretprobe: %w", err)
+		return fmt.Errorf("attaching kretprobe: %w", err)
 	}
 	t.capExitLink = kretprobe
 
 	reader, err := perf.NewReader(t.objs.capabilitiesMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("error creating perf ring buffer: %w", err)
+		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 	t.reader = reader
 

@@ -145,7 +145,7 @@ func TestGroupSum(t *testing.T) {
 
 	cols, err := columns.NewColumns[testStruct]()
 	if err != nil {
-		t.Errorf("failed to initialize: %v", err)
+		t.Errorf("Failed to initialize: %v", err)
 	}
 
 	cmap := cols.GetColumnMap()

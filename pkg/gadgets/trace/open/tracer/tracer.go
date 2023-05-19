@@ -93,7 +93,7 @@ func (t *Tracer) close() {
 func (t *Tracer) install() error {
 	spec, err := loadOpensnoop()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, nil, &t.objs); err != nil {
@@ -104,34 +104,34 @@ func (t *Tracer) install() error {
 	if runtime.GOARCH != "arm64" {
 		openEnter, err := link.Tracepoint("syscalls", "sys_enter_open", t.objs.IgOpenE, nil)
 		if err != nil {
-			return fmt.Errorf("error opening tracepoint: %w", err)
+			return fmt.Errorf("attaching tracepoint: %w", err)
 		}
 		t.openEnterLink = openEnter
 	}
 
 	openAtEnter, err := link.Tracepoint("syscalls", "sys_enter_openat", t.objs.IgOpenatE, nil)
 	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
+		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
 	t.openAtEnterLink = openAtEnter
 
 	if runtime.GOARCH != "arm64" {
 		openExit, err := link.Tracepoint("syscalls", "sys_exit_open", t.objs.IgOpenX, nil)
 		if err != nil {
-			return fmt.Errorf("error opening tracepoint: %w", err)
+			return fmt.Errorf("attaching tracepoint: %w", err)
 		}
 		t.openExitLink = openExit
 	}
 
 	openAtExit, err := link.Tracepoint("syscalls", "sys_exit_openat", t.objs.IgOpenatX, nil)
 	if err != nil {
-		return fmt.Errorf("error opening tracepoint: %w", err)
+		return fmt.Errorf("attaching tracepoint: %w", err)
 	}
 	t.openAtExitLink = openAtExit
 
 	reader, err := perf.NewReader(t.objs.opensnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("error creating perf ring buffer: %w", err)
+		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 	t.reader = reader
 

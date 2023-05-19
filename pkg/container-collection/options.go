@@ -220,12 +220,12 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 	return func(cc *ContainerCollection) error {
 		k8sClient, err := NewK8sClient(nodeName)
 		if err != nil {
-			return fmt.Errorf("failed to create Kubernetes client: %w", err)
+			return fmt.Errorf("creating Kubernetes client: %w", err)
 		}
 
 		podInformer, err := NewPodInformer(nodeName)
 		if err != nil {
-			return fmt.Errorf("failed to create pod informer: %w", err)
+			return fmt.Errorf("creating pod informer: %w", err)
 		}
 
 		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
@@ -329,13 +329,13 @@ func WithInitialKubernetesContainers(nodeName string) ContainerCollectionOption 
 	return func(cc *ContainerCollection) error {
 		k8sClient, err := NewK8sClient(nodeName)
 		if err != nil {
-			return fmt.Errorf("failed to create Kubernetes client: %w", err)
+			return fmt.Errorf("creating Kubernetes client: %w", err)
 		}
 		defer k8sClient.Close()
 
 		containers, err := k8sClient.ListContainers()
 		if err != nil {
-			return fmt.Errorf("failed to list containers: %w", err)
+			return fmt.Errorf("listing containers: %w", err)
 		}
 
 		for _, container := range containers {
@@ -410,7 +410,7 @@ func getOwnerReferences(dynamicClient dynamic.Interface,
 ) ([]metav1.OwnerReference, error) {
 	gv, err := schema.ParseGroupVersion(resGroupVersion)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse %s/%s groupVersion %s: %w",
+		return nil, fmt.Errorf("parsing %s/%s groupVersion %s: %w",
 			resNamespace, resName, resGroupVersion, err)
 	}
 
@@ -425,7 +425,7 @@ func getOwnerReferences(dynamicClient dynamic.Interface,
 		Namespace(resNamespace).
 		Get(context.TODO(), resName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("cannot fetch %s/%s %s/%s: %w",
+		return nil, fmt.Errorf("fetching %s/%s %s/%s: %w",
 			resKind, resGroupVersion, resNamespace, resName, err)
 	}
 
@@ -441,12 +441,12 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 			var err error
 			kubeconfig, err = rest.InClusterConfig()
 			if err != nil {
-				return fmt.Errorf("couldn't get Kubernetes config: %w", err)
+				return fmt.Errorf("getting Kubernetes config: %w", err)
 			}
 		}
 		clientset, err := kubernetes.NewForConfig(kubeconfig)
 		if err != nil {
-			return fmt.Errorf("couldn't get Kubernetes client: %w", err)
+			return fmt.Errorf("getting Kubernetes client: %w", err)
 		}
 
 		// Future containers
@@ -555,7 +555,7 @@ func WithRuncFanotify() ContainerCollectionOption {
 			}
 		})
 		if err != nil {
-			return fmt.Errorf("cannot start runc fanotify: %w", err)
+			return fmt.Errorf("starting runc fanotify: %w", err)
 		}
 
 		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {

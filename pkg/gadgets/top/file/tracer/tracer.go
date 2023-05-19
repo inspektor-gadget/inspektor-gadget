@@ -101,7 +101,7 @@ func (t *Tracer) close() {
 func (t *Tracer) install() error {
 	spec, err := loadFiletop()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	consts := map[string]interface{}{
@@ -115,13 +115,13 @@ func (t *Tracer) install() error {
 
 	kpread, err := link.Kprobe("vfs_read", t.objs.IgTopfileRdE, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 	t.readLink = kpread
 
 	kpwrite, err := link.Kprobe("vfs_write", t.objs.IgTopfileWrE, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 	t.writeLink = kpwrite
 
@@ -160,7 +160,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			return stats, nil
 		}
-		return nil, fmt.Errorf("error getting next key: %w", err)
+		return nil, fmt.Errorf("getting next key: %w", err)
 	}
 
 	for {
@@ -193,7 +193,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			if errors.Is(err, ebpf.ErrKeyNotExist) {
 				break
 			}
-			return nil, fmt.Errorf("error getting next key: %w", err)
+			return nil, fmt.Errorf("getting next key: %w", err)
 		}
 	}
 

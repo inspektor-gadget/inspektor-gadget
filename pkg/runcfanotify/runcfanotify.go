@@ -542,7 +542,7 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 	err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_ACCESS_PERM|unix.FAN_EVENT_ON_CHILD, unix.AT_FDCWD, pidFileDir)
 	if err != nil {
 		pidFileDirNotify.File.Close()
-		return fmt.Errorf("cannot mark %s: %w", pidFileDir, err)
+		return fmt.Errorf("marking %s: %w", pidFileDir, err)
 	}
 
 	// watchPidFileIterate() will read config.json and it might be in the
@@ -556,7 +556,7 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 	err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
 	if err != nil {
 		pidFileDirNotify.File.Close()
-		return fmt.Errorf("cannot ignore %s: %w", configJSONPath, err)
+		return fmt.Errorf("ignoring %s: %w", configJSONPath, err)
 	}
 
 	n.wg.Add(1)

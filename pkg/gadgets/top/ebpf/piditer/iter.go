@@ -56,24 +56,24 @@ func NewTracer() (iter *PidIter, err error) {
 
 	spec, err := loadPiditer()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
+		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	if err := kallsyms.SpecUpdateAddresses(spec, []string{"bpf_prog_fops"}); err != nil {
-		return nil, fmt.Errorf("error RewriteConstants: %w", err)
+		return nil, fmt.Errorf("updating ksyms: %w", err)
 	}
 
 	opts := ebpf.CollectionOptions{}
 
 	if err = spec.LoadAndAssign(&p.objs, &opts); err != nil {
-		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
+		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	p.iter, err = link.AttachIter(link.IterOptions{
 		Program: p.objs.IgTopEbpfIt,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to attach iter: %w", err)
+		return nil, fmt.Errorf("attaching iter: %w", err)
 	}
 
 	return p, nil
@@ -84,7 +84,7 @@ func NewTracer() (iter *PidIter, err error) {
 func (p *PidIter) DumpPids() ([]*PidIterEntry, error) {
 	rc, err := p.iter.Open()
 	if err != nil {
-		return nil, fmt.Errorf("failed to open iter: %w", err)
+		return nil, fmt.Errorf("opening iter: %w", err)
 	}
 	defer rc.Close()
 

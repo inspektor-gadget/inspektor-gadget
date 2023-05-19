@@ -90,7 +90,7 @@ func parseStatus(proto string, statusUint uint8) (string, error) {
 func getTCPIter() (*link.Iter, error) {
 	objs := iterTCPv4Objects{}
 	if err := loadIterTCPv4Objects(&objs, nil); err != nil {
-		return nil, fmt.Errorf("failed to load TCP BPF objects: %w", err)
+		return nil, fmt.Errorf("loading TCP BPF objects: %w", err)
 	}
 	defer objs.Close()
 
@@ -98,7 +98,7 @@ func getTCPIter() (*link.Iter, error) {
 		Program: objs.IgSnapTcp4,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to attach TCP BPF iterator: %w", err)
+		return nil, fmt.Errorf("attaching TCP BPF iterator: %w", err)
 	}
 
 	return it, nil
@@ -107,7 +107,7 @@ func getTCPIter() (*link.Iter, error) {
 func getUDPIter() (*link.Iter, error) {
 	objs := iterUDPv4Objects{}
 	if err := loadIterUDPv4Objects(&objs, nil); err != nil {
-		return nil, fmt.Errorf("failed to load UDP BPF objects: %w", err)
+		return nil, fmt.Errorf("loading UDP BPF objects: %w", err)
 	}
 	defer objs.Close()
 
@@ -115,7 +115,7 @@ func getUDPIter() (*link.Iter, error) {
 		Program: objs.IgSnapUdp4,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to attach UDP BPF iterator: %w", err)
+		return nil, fmt.Errorf("attaching UDP BPF iterator: %w", err)
 	}
 
 	return it, nil
@@ -132,7 +132,7 @@ func (t *Tracer) RunCollector(pid uint32, podname, namespace, node string) ([]*s
 
 			reader, err := it.Open()
 			if err != nil {
-				return fmt.Errorf("failed to open BPF iterator: %w", err)
+				return fmt.Errorf("opening BPF iterator: %w", err)
 			}
 			defer reader.Close()
 
@@ -149,7 +149,7 @@ func (t *Tracer) RunCollector(pid uint32, podname, namespace, node string) ([]*s
 				len, err := fmt.Sscanf(scanner.Text(), "%s %08X %04X %08X %04X %02X %d",
 					&proto, &src, &srcp, &dest, &destp, &hexStatus, &inodeNumber)
 				if err != nil || len != 7 {
-					return fmt.Errorf("failed to parse sockets information: %w", err)
+					return fmt.Errorf("parsing sockets information: %w", err)
 				}
 
 				status, err = parseStatus(proto, hexStatus)
@@ -186,7 +186,7 @@ func (t *Tracer) RunCollector(pid uint32, podname, namespace, node string) ([]*s
 			}
 
 			if err := scanner.Err(); err != nil {
-				return fmt.Errorf("failed reading output of BPF iterator: %w", err)
+				return fmt.Errorf("reading output of BPF iterator: %w", err)
 			}
 		}
 		return nil

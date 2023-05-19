@@ -69,7 +69,7 @@ func RunCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*proc
 func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*processcollectortypes.Event, error) {
 	spec, err := loadProcessCollector()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load ebpf program: %w", err)
+		return nil, fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	consts := map[string]interface{}{
@@ -87,13 +87,13 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 		Program: objs.IgSnapProc,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to attach BPF iterator: %w", err)
+		return nil, fmt.Errorf("attaching BPF iterator: %w", err)
 	}
 	defer dumpTaskIter.Close()
 
 	file, err := dumpTaskIter.Open()
 	if err != nil {
-		return nil, fmt.Errorf("failed to open BPF iterator: %w", err)
+		return nil, fmt.Errorf("opening BPF iterator: %w", err)
 	}
 	defer file.Close()
 
@@ -109,14 +109,14 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 		text := scanner.Text()
 		matchedElems, err := fmt.Sscanf(text, "%d %d %d %d %d %d", &tgid, &pid, &parentPid, &mntnsid, &uid, &gid)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse process information: %w", err)
+			return nil, fmt.Errorf("parsing process information: %w", err)
 		}
 		if matchedElems != 6 {
-			return nil, fmt.Errorf("failed to parse process information, expected 4 integers had %d", matchedElems)
+			return nil, fmt.Errorf("parsing process information, expected 4 integers had %d", matchedElems)
 		}
 		textSplit := strings.SplitN(text, " ", 7)
 		if len(textSplit) != 7 {
-			return nil, fmt.Errorf("failed to parse process information, expected 5 matched elements had %d", len(textSplit))
+			return nil, fmt.Errorf("parsing process information, expected 5 matched elements had %d", len(textSplit))
 		}
 		command = textSplit[6]
 

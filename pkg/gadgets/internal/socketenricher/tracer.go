@@ -60,13 +60,13 @@ func NewSocketEnricher() (*SocketEnricher, error) {
 func (se *SocketEnricher) start() error {
 	spec, err := loadSocketenricher()
 	if err != nil {
-		return fmt.Errorf("failed to load asset: %w", err)
+		return fmt.Errorf("loading asset: %w", err)
 	}
 
 	kallsyms.SpecUpdateAddresses(spec, []string{"socket_file_ops"})
 
 	if err := spec.LoadAndAssign(&se.objs, nil); err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	var l link.Link
@@ -74,76 +74,76 @@ func (se *SocketEnricher) start() error {
 	// bind
 	l, err = link.Kprobe("inet_bind", se.objs.IgBindIpv4E, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv4 kprobe: %w", err)
+		return fmt.Errorf("attaching ipv4 kprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	l, err = link.Kretprobe("inet_bind", se.objs.IgBindIpv4X, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv4 kretprobe: %w", err)
+		return fmt.Errorf("attaching ipv4 kretprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	l, err = link.Kprobe("inet6_bind", se.objs.IgBindIpv6E, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv6 kprobe: %w", err)
+		return fmt.Errorf("attaching ipv6 kprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	l, err = link.Kretprobe("inet6_bind", se.objs.IgBindIpv6X, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv6 kretprobe: %w", err)
+		return fmt.Errorf("attaching ipv6 kretprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	// connect
 	l, err = link.Kprobe("tcp_v4_connect", se.objs.IgTcpcV4CoE, nil)
 	if err != nil {
-		return fmt.Errorf("error opening connect ipv4 kprobe: %w", err)
+		return fmt.Errorf("attaching connect ipv4 kprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	l, err = link.Kretprobe("tcp_v4_connect", se.objs.IgTcpcV4CoX, nil)
 	if err != nil {
-		return fmt.Errorf("error opening connect ipv4 kretprobe: %w", err)
+		return fmt.Errorf("attaching connect ipv4 kretprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	l, err = link.Kprobe("tcp_v6_connect", se.objs.IgTcpcV6CoE, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv6 connect kprobe: %w", err)
+		return fmt.Errorf("attaching ipv6 connect kprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	l, err = link.Kretprobe("tcp_v6_connect", se.objs.IgTcpcV6CoX, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv6 connect kretprobe: %w", err)
+		return fmt.Errorf("attaching ipv6 connect kretprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	// udp_sendmsg
 	l, err = link.Kprobe("udp_sendmsg", se.objs.IgUdpSendmsg, nil)
 	if err != nil {
-		return fmt.Errorf("error opening udp_sendmsg ipv4 kprobe: %w", err)
+		return fmt.Errorf("attaching udp_sendmsg ipv4 kprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	l, err = link.Kprobe("udpv6_sendmsg", se.objs.IgUdp6Sendmsg, nil)
 	if err != nil {
-		return fmt.Errorf("error opening udpv6_sendmsg ipv6 kprobe: %w", err)
+		return fmt.Errorf("attaching udpv6_sendmsg ipv6 kprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	// release
 	l, err = link.Kprobe("inet_release", se.objs.IgFreeIpv4E, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv4 release kprobe: %w", err)
+		return fmt.Errorf("attaching ipv4 release kprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 
 	l, err = link.Kprobe("inet6_release", se.objs.IgFreeIpv6E, nil)
 	if err != nil {
-		return fmt.Errorf("error opening ipv6 release kprobe: %w", err)
+		return fmt.Errorf("attaching ipv6 release kprobe: %w", err)
 	}
 	se.links = append(se.links, l)
 

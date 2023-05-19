@@ -113,7 +113,7 @@ func (tc *TracerCollection) AddTracer(id string, containerSelector containercoll
 		var err error
 		mntnsSetMap, err = ebpf.NewMap(mntnsSpec)
 		if err != nil {
-			return fmt.Errorf("error creating mntnsset map: %w", err)
+			return fmt.Errorf("creating mntnsset map: %w", err)
 		}
 
 		tc.containerCollection.ContainerRangeWithSelector(&containerSelector, func(c *containercollection.Container) {
@@ -135,12 +135,12 @@ func (tc *TracerCollection) AddTracer(id string, containerSelector containercoll
 
 func (tc *TracerCollection) RemoveTracer(id string) error {
 	if id == "" {
-		return fmt.Errorf("cannot remove tracer: id not set")
+		return fmt.Errorf("container id not set")
 	}
 
 	t, ok := tc.tracers[id]
 	if !ok {
-		return fmt.Errorf("cannot remove tracer: unknown tracer %q", id)
+		return fmt.Errorf("unknown tracer %q", id)
 	}
 
 	if t.mntnsSetMap != nil {

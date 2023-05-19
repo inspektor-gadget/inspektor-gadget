@@ -94,7 +94,7 @@ func TestPrintTraceFeedback(t *testing.T) {
 	}
 
 	out = runprintTraceFeedback("MyPrefix", m, 1)
-	expected := "MyPrefix: failed to run gadget on node \"node\": Err/Warn Message\n"
+	expected := "MyPrefix: running gadget on node \"node\": Err/Warn Message\n"
 	if expected != out {
 		t.Fatalf("'%v' != '%v'", out, expected)
 	}
@@ -107,7 +107,7 @@ func TestPrintTraceFeedback(t *testing.T) {
 	}
 	out = runprintTraceFeedback("MyPrefix2", m, 3)
 	for node, msg := range m {
-		expected = fmt.Sprintf("MyPrefix2: failed to run gadget on node \"%s\": %s", node, msg)
+		expected = fmt.Sprintf("MyPrefix2: running gadget on node \"%s\": %s", node, msg)
 		if !strings.Contains(out, expected) {
 			t.Fatalf("Output '%v' does not contain '%v'", out, expected)
 		}
@@ -115,7 +115,7 @@ func TestPrintTraceFeedback(t *testing.T) {
 
 	// It should print all the messages because even if they are all the same,
 	// there was a node that didn't report an error. Therefore, the final error
-	// message can say "failed to run gadget on all nodes" but only on the ones
+	// message can say "running gadget on all nodes" but only on the ones
 	// that it really failed.
 	m = map[string]string{
 		"node2": "Err/Warn Message 2",
@@ -123,7 +123,7 @@ func TestPrintTraceFeedback(t *testing.T) {
 	}
 	out = runprintTraceFeedback("MyPrefix3", m, 3)
 	for node, msg := range m {
-		expected = fmt.Sprintf("MyPrefix3: failed to run gadget on node \"%s\": %s", node, msg)
+		expected = fmt.Sprintf("MyPrefix3: running gadget on node \"%s\": %s", node, msg)
 		if !strings.Contains(out, expected) {
 			t.Fatalf("Output '%v' does not contain '%v'", out, expected)
 		}
@@ -136,7 +136,7 @@ func TestPrintTraceFeedback(t *testing.T) {
 		"node3": "Err/Warn Message",
 	}
 	out = runprintTraceFeedback("MyPrefix4", m, 3)
-	expected = "MyPrefix4: failed to run gadget on all nodes: Err/Warn Message\n"
+	expected = "MyPrefix4: running gadget on all nodes: Err/Warn Message\n"
 	if expected != out {
 		t.Fatalf("'%v' != '%v'", out, expected)
 	}

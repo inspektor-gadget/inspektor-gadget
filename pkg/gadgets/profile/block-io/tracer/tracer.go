@@ -96,11 +96,11 @@ func (t *Tracer) close() {
 func (t *Tracer) install() error {
 	spec, err := loadBiolatency()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	blockRqCompleteLink, err := link.AttachRawTracepoint(link.RawTracepointOptions{Name: "block_rq_complete", Program: t.objs.IgProfioDone})

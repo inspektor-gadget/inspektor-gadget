@@ -96,11 +96,11 @@ func NewStandardTracer[E Event](config *StandardTracerConfig[E]) (*StandardTrace
 
 	pipe, err := t.cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("error getting pipe: %w", err)
+		return nil, fmt.Errorf("getting pipe: %w", err)
 	}
 
 	if err := t.cmd.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start command: %w", err)
+		return nil, fmt.Errorf("starting command: %w", err)
 	}
 
 	go t.run(pipe)
@@ -110,7 +110,7 @@ func NewStandardTracer[E Event](config *StandardTracerConfig[E]) (*StandardTrace
 
 func (t *StandardTracer[E]) stop() error {
 	if err := t.cmd.Process.Signal(syscall.SIGINT); err != nil {
-		return fmt.Errorf("failed to interrupt gadget process: %w", err)
+		return fmt.Errorf("interrupting gadget process: %w", err)
 	}
 
 	timer := time.NewTimer(2 * time.Second)
@@ -122,7 +122,7 @@ func (t *StandardTracer[E]) stop() error {
 	}
 
 	if err := t.cmd.Wait(); err != nil {
-		return fmt.Errorf("failed to wait for gadget process: %w", err)
+		return fmt.Errorf("waiting for gadget process: %w", err)
 	}
 
 	if t.mountNsMapPinPath != "" {

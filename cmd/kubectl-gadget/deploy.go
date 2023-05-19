@@ -176,7 +176,7 @@ func parseK8sYaml(content string) ([]runtime.Object, error) {
 		decode := serializer.NewCodecFactory(sch).UniversalDeserializer().Decode
 		obj, _, err := decode([]byte(f), nil, nil)
 		if err != nil {
-			return nil, fmt.Errorf("error while decoding YAML object: %w", err)
+			return nil, fmt.Errorf("decoding YAML object: %w", err)
 		}
 
 		retVal = append(retVal, obj)
@@ -215,7 +215,7 @@ func createOrUpdateResource(client dynamic.Interface, mapper meta.RESTMapper, ob
 
 	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert object to untrusctured: %w", err)
+		return nil, fmt.Errorf("converting object to untrusctured: %w", err)
 	}
 
 	unstruct := &unstructured.Unstructured{Object: unstructuredObj}
@@ -238,7 +238,7 @@ func createOrUpdateResource(client dynamic.Interface, mapper meta.RESTMapper, ob
 		FieldManager: "kubectl-gadget",
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create %q: %w", groupVersionKind.Kind, err)
+		return nil, fmt.Errorf("creating %q: %w", groupVersionKind.Kind, err)
 	}
 
 	return obj, nil
@@ -350,7 +350,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
-		return fmt.Errorf("failed to create RESTConfig: %w", err)
+		return fmt.Errorf("creating RESTConfig: %w", err)
 	}
 
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
@@ -361,7 +361,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("failed to create dynamic client: %w", err)
+		return fmt.Errorf("creating dynamic client: %w", err)
 	}
 
 	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
@@ -458,7 +458,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			var appliedGadgetDS appsv1.DaemonSet
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &appliedGadgetDS)
 			if err != nil {
-				return fmt.Errorf("failed to convert data: %w", err)
+				return fmt.Errorf("converting data: %w", err)
 			}
 
 			// If the spec of the DaemonSet is the same just return

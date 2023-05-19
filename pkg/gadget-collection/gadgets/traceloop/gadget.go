@@ -365,7 +365,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 	traceName := gadgets.TraceName(trace.ObjectMeta.Namespace, trace.ObjectMeta.Name)
 	r, err := json.Marshal(events)
 	if err != nil {
-		log.Warnf("Gadget %s: error marshalling event: %s", trace.Spec.Gadget, err)
+		log.Warnf("Gadget %s: error marshaling event: %s", trace.Spec.Gadget, err)
 		return
 	}
 	// HACK Traceloop is really particular as it cannot use Status output because

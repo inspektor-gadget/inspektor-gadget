@@ -111,7 +111,7 @@ func (t *Tracer) install() error {
 
 	t.retransmitSkbLink, err = link.Tracepoint("tcp", "tcp_retransmit_skb", t.objs.IgTcpretrans, nil)
 	if err != nil {
-		return fmt.Errorf("opening tracepoint tcp_retransmit_skb: %w", err)
+		return fmt.Errorf("attaching tracepoint tcp_retransmit_skb: %w", err)
 	}
 
 	reader, err := perf.NewReader(t.objs.tcpretransMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())

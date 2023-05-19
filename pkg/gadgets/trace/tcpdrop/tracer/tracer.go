@@ -141,7 +141,7 @@ func (t *Tracer) install() error {
 
 	t.kfreeSkbLink, err = link.Tracepoint("skb", "kfree_skb", t.objs.IgTcpdrop, nil)
 	if err != nil {
-		return fmt.Errorf("opening tracepoint kfree_skb: %w", err)
+		return fmt.Errorf("attaching tracepoint kfree_skb: %w", err)
 	}
 
 	reader, err := perf.NewReader(t.objs.tcpdropMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())

@@ -89,7 +89,7 @@ func newAttachment(
 		}
 
 		if err := spec.RewriteConstants(consts); err != nil {
-			return nil, fmt.Errorf("RewriteConstants while attaching to pid %d: %w", pid, err)
+			return nil, fmt.Errorf("rewriting constants while attaching to pid %d: %w", pid, err)
 		}
 
 		mapReplacements := map[string]*ebpf.Map{}
@@ -99,26 +99,26 @@ func newAttachment(
 
 	a.collection, err = ebpf.NewCollectionWithOptions(spec, opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create BPF collection: %w", err)
+		return nil, fmt.Errorf("creating BPF collection: %w", err)
 	}
 
 	a.perfRd, err = perf.NewReader(a.collection.Maps[bpfPerfMapName], gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get a perf reader: %w", err)
+		return nil, fmt.Errorf("getting a perf reader: %w", err)
 	}
 
 	prog, ok := a.collection.Programs[bpfProgName]
 	if !ok {
-		return nil, fmt.Errorf("failed to find BPF program %q", bpfProgName)
+		return nil, fmt.Errorf("BPF program %q not found", bpfProgName)
 	}
 
 	a.sockFd, err = rawsock.OpenRawSock(pid)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open raw socket: %w", err)
+		return nil, fmt.Errorf("opening raw socket: %w", err)
 	}
 
 	if err := syscall.SetsockoptInt(a.sockFd, syscall.SOL_SOCKET, bpfSocketAttach, prog.FD()); err != nil {
-		return nil, fmt.Errorf("failed to attach BPF program: %w", err)
+		return nil, fmt.Errorf("attaching BPF program: %w", err)
 	}
 
 	return a, nil

@@ -252,7 +252,7 @@ func parseExtraInfo(extraInfo map[string]string,
 		var infoContent InfoContent
 		err := json.Unmarshal([]byte(info), &infoContent)
 		if err != nil {
-			return fmt.Errorf("failed extracting pid from container status reply: %w", err)
+			return fmt.Errorf("extracting pid from container status reply: %w", err)
 		}
 
 		// Set the PID value.
@@ -271,7 +271,7 @@ func parseExtraInfo(extraInfo map[string]string,
 		var err error
 		pid, err = strconv.Atoi(pidStr)
 		if err != nil {
-			return fmt.Errorf("failed to parse pid %q: %w", pidStr, err)
+			return fmt.Errorf("parsing pid %q: %w", pidStr, err)
 		}
 
 		// Extract the runtime spec (may not exist).
@@ -281,7 +281,7 @@ func parseExtraInfo(extraInfo map[string]string,
 			runtimeSpec = &RuntimeSpecContent{}
 			err := json.Unmarshal([]byte(runtimeSpecStr), runtimeSpec)
 			if err != nil {
-				return fmt.Errorf("failed extracting runtime spec from container status reply: %w", err)
+				return fmt.Errorf("extracting runtime spec from container status reply: %w", err)
 			}
 		}
 	}

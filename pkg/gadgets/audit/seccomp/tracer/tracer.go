@@ -75,7 +75,7 @@ func NewTracer(config *Config, enricher gadgets.DataEnricherByMntNs,
 func (t *Tracer) install() error {
 	spec, err := loadAuditseccomp()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, nil, &t.objs); err != nil {
@@ -84,12 +84,12 @@ func (t *Tracer) install() error {
 
 	t.reader, err = perf.NewReader(t.objs.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("failed to get a perf reader: %w", err)
+		return fmt.Errorf("getting a perf reader: %w", err)
 	}
 
 	t.progLink, err = link.Kprobe("audit_seccomp", t.objs.IgAuditSecc, nil)
 	if err != nil {
-		return fmt.Errorf("failed to attach kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	return nil

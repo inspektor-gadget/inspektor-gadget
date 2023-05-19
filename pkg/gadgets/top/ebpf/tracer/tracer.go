@@ -198,7 +198,7 @@ func getPidMapFromProcFs() (map[uint32][]*types.Process, error) {
 func getMemoryUsage(m *ebpf.Map) (uint64, error) {
 	f, err := os.Open(fmt.Sprintf("/proc/self/fdinfo/%d", m.FD()))
 	if err != nil {
-		return 0, fmt.Errorf("could not read fdinfo: %w", err)
+		return 0, fmt.Errorf("reading fdinfo: %w", err)
 	}
 	defer f.Close()
 
@@ -209,13 +209,13 @@ func getMemoryUsage(m *ebpf.Map) (uint64, error) {
 			if len(lineSplit) == 2 {
 				size, err := strconv.ParseUint(lineSplit[1], 10, 64)
 				if err != nil {
-					return 0, fmt.Errorf("could not read memlock: %w", err)
+					return 0, fmt.Errorf("reading memlock: %w", err)
 				}
 				return size, nil
 			}
 		}
 	}
-	return 0, fmt.Errorf("could not find memlock in fdinfo")
+	return 0, fmt.Errorf("finding memlock in fdinfo")
 }
 
 func (t *Tracer) nextStats() ([]*types.Stats, error) {
@@ -242,7 +242,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			if errors.Is(err, os.ErrNotExist) {
 				break
 			}
-			return nil, fmt.Errorf("could not get next map ID: %w", err)
+			return nil, fmt.Errorf("getting next map ID: %w", err)
 		}
 		if nextMapID <= curMapID {
 			break
@@ -266,7 +266,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			if errors.Is(err, os.ErrNotExist) {
 				break
 			}
-			return nil, fmt.Errorf("could not get next program ID: %w", err)
+			return nil, fmt.Errorf("getting next program ID: %w", err)
 		}
 		if nextID <= curID {
 			break
@@ -354,14 +354,14 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 	if !t.useFallbackIterator {
 		pids, err = t.iter.DumpPids()
 		if err != nil {
-			return nil, fmt.Errorf("could not get pids for programs using iterator: %w", err)
+			return nil, fmt.Errorf("getting pids for programs using iterator: %w", err)
 		}
 		processMap = getPidMapFromPids(pids)
 	} else {
 		// Fallback...
 		processMap, err = getPidMapFromProcFs()
 		if err != nil {
-			return nil, fmt.Errorf("could not get pids for programs using fallback method: %w", err)
+			return nil, fmt.Errorf("getting pids for programs using fallback method: %w", err)
 		}
 	}
 

@@ -83,7 +83,7 @@ func loadRemoteGadgetCatalog() (*runtime.Catalog, error) {
 
 	conn, err := grpc.DialContext(ctx, "", dialOpt, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
-		return nil, fmt.Errorf("could not dial gadget pod on node %q: %w", pod.node, err)
+		return nil, fmt.Errorf("dialing gadget pod on node %q: %w", pod.node, err)
 	}
 	client := pb.NewGadgetManagerClient(conn)
 	defer conn.Close()
