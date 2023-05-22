@@ -1,0 +1,11 @@
+metrics:
+  - name: executed_processes
+    type: counter
+    category: trace
+    gadget: exec
+    labels:
+      - namespace
+      - pod
+      - container
+    selector:
+      - "comm:cat"
