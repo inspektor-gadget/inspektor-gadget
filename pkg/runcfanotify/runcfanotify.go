@@ -26,7 +26,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
@@ -108,10 +107,9 @@ type RuncNotifier struct {
 
 	// set to true when RuncNotifier is closed
 	closed bool
+	done   chan bool
 
 	wg sync.WaitGroup
-
-	pipeFds []int
 }
 
 // runcPaths is the list of paths where runc could be installed. Depending on
@@ -126,30 +124,6 @@ var runcPaths = []string{
 	"/usr/lib/cri-o-runc/sbin/runc",
 	"/run/torcx/unpack/docker/bin/runc",
 	"/usr/bin/crun",
-}
-
-// true if the SYS_PIDFD_OPEN syscall is available
-var pidfdOpenAvailable bool
-
-func init() {
-	pid := uintptr(os.Getpid())
-	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, pid, 0, 0)
-	if errno == unix.ENOSYS {
-		log.Debug("SYS_PIDFD_OPEN is not available")
-		pidfdOpenAvailable = false
-		return
-	}
-
-	if errno != 0 {
-		pidfdOpenAvailable = false
-		log.Debugf("probing SYS_PIDFD_OPEN failed with: %s", errno)
-		return
-	}
-
-	unix.Close(int(pidfd))
-
-	log.Debug("SYS_PIDFD_OPEN is available")
-	pidfdOpenAvailable = true
 }
 
 // initFanotify initializes the fanotify API with the flags we need
@@ -181,7 +155,7 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 		callback:         callback,
 		containers:       make(map[string]*runcContainer),
 		futureContainers: make(map[string]*futureContainer),
-		pipeFds:          []int{-1, -1},
+		done:             make(chan bool),
 	}
 
 	runcBinaryNotify, err := initFanotify()
@@ -215,16 +189,7 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	}
 
 	n.wg.Add(2)
-	if pidfdOpenAvailable {
-		if err := unix.Pipe2(n.pipeFds, unix.O_NONBLOCK); err != nil {
-			runcBinaryNotify.File.Close()
-			return nil, fmt.Errorf("creating pipe: %w", err)
-		}
-
-		go n.watchContainersTermination()
-	} else {
-		go n.watchContainersTerminationFallback()
-	}
+	go n.watchContainersTermination()
 	go n.watchRunc()
 
 	return n, nil
@@ -258,131 +223,47 @@ func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containe
 		pid: containerPID,
 	}
 
-	if !pidfdOpenAvailable {
-		return nil
-	}
-
-	pidfd, _, errno := unix.Syscall(unix.SYS_PIDFD_OPEN, uintptr(containerPID), 0, 0)
-	if errno != 0 {
-		return fmt.Errorf("pidfd_open returned %w", errno)
-	}
-
-	n.containers[containerID].pidfd = int(pidfd)
-
-	n.awakeWatchContainersTermination()
-
 	return nil
 }
 
-// awakeWatchContainersTermination writes to the pipe so
-// watchContainersTermination() unblocks waiting on poll() and can
-// update the list of the watched containers or return if the
-// runcnotifier instance was closed
-func (n *RuncNotifier) awakeWatchContainersTermination() {
-	if n.pipeFds[1] != -1 {
-		f := []byte{0}
-		unix.Write(n.pipeFds[1], f)
-	}
-}
-
-// watchContainerTermination waits until the container terminates using
-// pidfd_open (Linux >= 5.3), then sends a notification.
+// watchContainerTermination waits until the container terminates
 func (n *RuncNotifier) watchContainersTermination() {
-	// Index used in the array of file descriptor we monitor
-	const pipeIndex = 0
-
 	defer n.wg.Done()
 
-	pipeFdR := n.pipeFds[0]
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
 	for {
-		if n.closed {
-			// close all pidfds
-			for _, c := range n.containers {
-				unix.Close(c.pidfd)
-			}
+		select {
+		case <-n.done:
 			return
-		}
+		case <-ticker.C:
 
-		n.containersMu.Lock()
-
-		fds := make([]unix.PollFd, len(n.containers)+1)
-		// array to create a relation between the fd position and the container
-		containersByIndex := make([]*runcContainer, len(n.containers)+1)
-
-		i := 0
-
-		fds[pipeIndex].Fd = int32(pipeFdR)
-		fds[pipeIndex].Events = unix.POLLIN
-
-		for _, c := range n.containers {
-			fds[i+1].Fd = int32(c.pidfd)
-			fds[i+1].Events = unix.POLLIN
-
-			containersByIndex[i+1] = c
-			i++
-		}
-		n.containersMu.Unlock()
-
-		count, err := unix.Poll(fds, -1)
-		if err != nil && !errors.Is(err, unix.EINTR) {
-			log.Errorf("error polling pidfds: %s", err)
-			return
-		}
-
-		if count == 0 {
-			continue
-		}
-
-		for i, fd := range fds {
-			if fd.Revents == 0 {
-				continue
+			if n.closed {
+				return
 			}
 
-			// if this is the pipe, read and continue processing
-			if i == pipeIndex {
-				r := make([]byte, 1)
-				unix.Read(int(fd.Fd), r)
-				continue
-			}
-
-			c := containersByIndex[i]
-
-			n.callback(ContainerEvent{
-				Type:         EventTypeRemoveContainer,
-				ContainerID:  c.id,
-				ContainerPID: uint32(c.pid),
-			})
-
-			unix.Close(c.pidfd)
-
-			n.containersMu.Lock()
-			delete(n.containers, c.id)
-			n.containersMu.Unlock()
-		}
-	}
-}
-
-// watchContainerTerminationFallback waits until the container terminates
-// *without* using pidfd_open so it works on older kernels, then sends a notification.
-func (n *RuncNotifier) watchContainersTerminationFallback() {
-	defer n.wg.Done()
-
-	for {
-		if n.closed {
-			return
-		}
-		time.Sleep(1 * time.Second)
-
-		for _, c := range n.containers {
-			process, err := os.FindProcess(c.pid)
-			if err == nil {
-				// no signal is sent: signal 0 just check for the
-				// existence of the process
-				err = process.Signal(syscall.Signal(0))
-			}
-
+			dirEntries, err := os.ReadDir(hostRoot + "/proc")
 			if err != nil {
+				log.Errorf("reading /proc: %s", err)
+				return
+			}
+			pids := make(map[int]bool)
+			for _, entry := range dirEntries {
+				pid, err := strconv.Atoi(entry.Name())
+				if err != nil {
+					// entry is not a process directory. Ignore.
+					continue
+				}
+				pids[pid] = true
+			}
+
+			for _, c := range n.containers {
+				if pids[c.pid] {
+					// container still running
+					continue
+				}
+
 				n.callback(ContainerEvent{
 					Type:         EventTypeRemoveContainer,
 					ContainerID:  c.id,
@@ -793,12 +674,7 @@ func (n *RuncNotifier) watchRuncIterate() (bool, error) {
 
 func (n *RuncNotifier) Close() {
 	n.closed = true
-	n.awakeWatchContainersTermination()
-	for _, fd := range n.pipeFds {
-		if fd != -1 {
-			unix.Close(fd)
-		}
-	}
+	close(n.done)
 	n.runcBinaryNotify.File.Close()
 	n.wg.Wait()
 }
