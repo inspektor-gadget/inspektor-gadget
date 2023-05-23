@@ -72,6 +72,9 @@ type Container struct {
 	// events from it.
 	// This is only used when cachedContainers are enabled through WithTracerCollection().
 	mntNsFd int
+
+	// functions to be called when Container is released
+	cleanUpFuncs []func()
 }
 
 type ContainerSelector struct {

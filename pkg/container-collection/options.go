@@ -698,6 +698,9 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 		cc.cacheDelay = 2 * time.Second
 		cc.cachedContainers = &sync.Map{}
 
+		// container.cleanUpFuncs is called either at cc.RemoveContainer() or at cc.Close()
+		var cleanupMu sync.Mutex
+
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			path := fmt.Sprintf("/proc/%d/ns/mnt", container.Pid)
 			fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC, 0)
@@ -708,7 +711,29 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 			}
 
 			container.mntNsFd = fd
+
+			container.cleanUpFuncs = append(container.cleanUpFuncs, func() {
+				cleanupMu.Lock()
+				defer cleanupMu.Unlock()
+
+				if container.mntNsFd == -1 {
+					return
+				}
+				unix.Close(container.mntNsFd)
+				container.mntNsFd = -1
+			})
 			return true
+		})
+
+		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
+			cc.cachedContainers.Range(func(key, value interface{}) bool {
+				c := value.(*Container)
+				for _, f := range c.cleanUpFuncs {
+					f()
+				}
+				cc.cachedContainers.Delete(key)
+				return true
+			})
 		})
 
 		if cc.pubsub == nil {

@@ -26,8 +26,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -146,8 +144,13 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 	if cc.cachedContainers != nil {
 		cc.cachedContainers.Store(id, v)
 		time.AfterFunc(cc.cacheDelay, func() {
-			cc.cachedContainers.Delete(id)
-			unix.Close(container.mntNsFd)
+			value, loaded := cc.cachedContainers.LoadAndDelete(id)
+			if loaded {
+				c := value.(*Container)
+				for _, f := range c.cleanUpFuncs {
+					f()
+				}
+			}
 		})
 	}
 
@@ -422,11 +425,22 @@ func (cc *ContainerCollection) Close() {
 		panic("ContainerCollection is not initialized or has been closed")
 	}
 
+	// TODO: it's not clear if we want/can allow to re-initialize
+	// this instance yet, so we don't set cc.initialized = false.
+	cc.closed = true
+
 	for _, f := range cc.cleanUpFuncs {
 		f()
 	}
 
-	// TODO: it's not clear if we want/can allow to re-initialize
-	// this instance yet, so we don't set cc.initialized = false.
-	cc.closed = true
+	// Similar to RemoveContainer() on all containers but without publishing
+	// events.
+	cc.containers.Range(func(key, value interface{}) bool {
+		c := value.(*Container)
+		for _, f := range c.cleanUpFuncs {
+			f()
+		}
+		cc.containers.Delete(c)
+		return true
+	})
 }
