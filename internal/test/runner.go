@@ -36,6 +36,9 @@ type RunnerConfig struct {
 	// User ID to run under
 	Uid int
 
+	// Group ID to run under
+	Gid int
+
 	// HostNetwork prevents the runner from creating a new network namespace
 	HostNetwork bool
 }
@@ -48,6 +51,7 @@ type RunnerInfo struct {
 	Tid         int
 	Comm        string
 	Uid         int
+	Gid         int
 	MountNsID   uint64
 	NetworkNsID uint64
 	UserNsID    uint64
@@ -129,11 +133,18 @@ func (r *Runner) runLoop() {
 	}
 
 	if r.config.Uid != 0 {
-		// syscall.Setuid() can't be used here because it'll
-		// change the UID of all threads and we only need to
+		var errno syscall.Errno
+		// syscall.Set{u,g}id() can't be used here because it'll
+		// change the {U,G}ID of all threads and we only need to
 		// change the one of this thread.
 		// https://github.com/golang/go/commit/d1b1145cace8b968307f9311ff611e4bb810710c
-		_, _, errno := syscall.Syscall(syscall.SYS_SETUID, uintptr(r.config.Uid), 0, 0)
+		_, _, errno = syscall.Syscall(syscall.SYS_SETGID, uintptr(r.config.Gid), 0, 0)
+		if errno != 0 {
+			r.replies <- fmt.Errorf("setting gid: %w", err)
+			return
+		}
+
+		_, _, errno = syscall.Syscall(syscall.SYS_SETUID, uintptr(r.config.Uid), 0, 0)
 		if errno != 0 {
 			r.replies <- fmt.Errorf("setting uid: %w", err)
 			return
@@ -157,6 +168,7 @@ func (r *Runner) runLoop() {
 		Tid:         unix.Gettid(),
 		Comm:        filepath.Base(comm),
 		Uid:         r.config.Uid,
+		Gid:         r.config.Gid,
 		MountNsID:   mountnsid,
 		NetworkNsID: netnsid,
 		UserNsID:    userNsID,
