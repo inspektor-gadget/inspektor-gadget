@@ -104,7 +104,7 @@ spec:
         inspektor-gadget.kinvolk.io/option-hook-mode: "auto"
     spec:
       serviceAccount: gadget
-      hostPID: true
+      hostPID: false
       hostNetwork: false
       nodeSelector:
         kubernetes.io/os: "linux"
