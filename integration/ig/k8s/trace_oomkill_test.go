@@ -32,8 +32,10 @@ func TestTraceOOMKill(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &oomkillTypes.Event{
-				Event:      BuildBaseEvent(ns),
-				KilledComm: "tail",
+				Event:        BuildBaseEvent(ns),
+				KilledComm:   "tail",
+				TriggeredUid: 1000,
+				TriggeredGid: 2000,
 			}
 			expectedEntry.Container = "test-pod-container"
 
@@ -73,7 +75,7 @@ spec:
         memory: "128Mi"
     command: ["/bin/sh", "-c"]
     args:
-    - while true; do tail /dev/zero; done
+    - setuidgid 1000:2000 sh -c "while true; do tail /dev/zero; done"
 `, ns)
 
 	commands := []*Command{

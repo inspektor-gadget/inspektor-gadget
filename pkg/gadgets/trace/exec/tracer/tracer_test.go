@@ -61,6 +61,7 @@ func TestExecTracer(t *testing.T) {
 	utilstest.RequireRoot(t)
 
 	const unprivilegedUID = int(1435)
+	const unprivilegedGID = int(6789)
 
 	manyArgs := []string{}
 	// 19 is DEFAULT_MAXARGS - 1 (-1 because args[0] is on the first position).
@@ -127,13 +128,16 @@ func TestExecTracer(t *testing.T) {
 				}
 			}),
 		},
-		"event_has_UID_of_user_generating_event": {
+		"event_has_UID_and_GID_of_user_generating_event": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
 				return &tracer.Config{
 					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
 				}
 			},
-			runnerConfig:  &utilstest.RunnerConfig{Uid: unprivilegedUID},
+			runnerConfig: &utilstest.RunnerConfig{
+				Uid: unprivilegedUID,
+				Gid: unprivilegedGID,
+			},
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
 				if len(events) != 1 {
@@ -142,6 +146,9 @@ func TestExecTracer(t *testing.T) {
 
 				utilstest.Equal(t, uint32(info.Uid), events[0].Uid,
 					"Event has bad UID")
+
+				utilstest.Equal(t, uint32(info.Gid), events[0].Gid,
+					"Event has bad GID")
 			},
 		},
 		"truncates_captured_args_in_trace_to_maximum_possible_length": {

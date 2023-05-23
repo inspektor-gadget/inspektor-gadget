@@ -46,7 +46,7 @@ struct pid_comm_t {
 	u64 pid;
 	char comm[TASK_COMM_LEN];
 	u64 mntns_id;
-	u32 uid;
+	u64 uid_gid;
 };
 
 struct {
@@ -116,12 +116,13 @@ fill_tuple(struct tuple_key_t *tuple, struct sock *sk, int family)
 
 static __always_inline void
 fill_event(struct tuple_key_t *tuple, struct event *event, __u32 pid,
-	   __u32 uid, __u16 family, __u8 type, __u64 mntns_id)
+	   __u64 uid_gid, __u16 family, __u8 type, __u64 mntns_id)
 {
 	event->ts_us = bpf_ktime_get_ns() / 1000;
 	event->type = type;
 	event->pid = pid;
-	event->uid = uid;
+	event->uid = (__u32) uid_gid;
+	event->gid = (__u32) (uid_gid >> 32);;
 	event->af = family;
 	event->netns = tuple->netns;
 	event->mntns_id = mntns_id;
@@ -184,7 +185,6 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, __u16 family)
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
 	__u64 uid_gid = bpf_get_current_uid_gid();
-	__u32 uid = uid_gid;
 	struct tuple_key_t tuple = {};
 	struct pid_comm_t pid_comm = {};
 	struct sock **skpp;
@@ -206,7 +206,7 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, __u16 family)
 	task = (struct task_struct*)bpf_get_current_task();
 
 	pid_comm.pid = pid;
-	pid_comm.uid = uid;
+	pid_comm.uid_gid = uid_gid;
 	pid_comm.mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	bpf_get_current_comm(&pid_comm.comm, sizeof(pid_comm.comm));
 
@@ -272,7 +272,7 @@ int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 	if (!fill_tuple(&tuple, sk, family))
 		return 0;
 
-	fill_event(&tuple, &event, pid, uid, family, TCP_EVENT_TYPE_CLOSE, mntns_id);
+	fill_event(&tuple, &event, pid, uid_gid, family, TCP_EVENT_TYPE_CLOSE, mntns_id);
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();
 
@@ -305,7 +305,7 @@ int BPF_KPROBE(ig_tcp_state, struct sock *sk, int state)
 	if (!p)
 		return 0; /* missed entry */
 
-	fill_event(&tuple, &event, p->pid, p->uid, family, TCP_EVENT_TYPE_CONNECT, p->mntns_id);
+	fill_event(&tuple, &event, p->pid, p->uid_gid, family, TCP_EVENT_TYPE_CONNECT, p->mntns_id);
 	__builtin_memcpy(&event.task, p->comm, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();
 
@@ -347,7 +347,7 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 	if (t.saddr_v6 == 0 || t.daddr_v6 == 0 || t.dport == 0 || t.sport == 0)
 		return 0;
 
-	fill_event(&t, &event, pid, uid, family, TCP_EVENT_TYPE_ACCEPT, mntns_id);
+	fill_event(&t, &event, pid, uid_gid, family, TCP_EVENT_TYPE_ACCEPT, mntns_id);
 
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();

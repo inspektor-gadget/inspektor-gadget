@@ -148,6 +148,7 @@ SEC("kretprobe/cap_capable")
 int BPF_KRETPROBE(ig_trace_cap_x)
 {
 	__u64 pid_tgid;
+	__u64 uid_gid = bpf_get_current_uid_gid();
 	struct args_t *ap;
 	int ret;
 
@@ -163,7 +164,8 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event.pid = pid_tgid >> 32;
 	event.tgid = pid_tgid;
 	event.cap = ap->cap;
-	event.uid = bpf_get_current_uid_gid();
+	event.uid = (u32) uid_gid;
+	event.gid = (u32) (uid_gid >> 32);
 	event.mntnsid = gadget_get_mntns_id();
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.ret = PT_REGS_RC(ctx);

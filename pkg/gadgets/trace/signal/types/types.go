@@ -30,6 +30,8 @@ type Event struct {
 	Signal    string `json:"signal,omitempty" column:"signal,minWidth:6,maxWidth:11,ellipsis:start"`
 	TargetPid uint32 `json:"tpid,omitempty" column:"tpid,template:pid"`
 	Retval    int    `json:"ret,omitempty" column:"ret,width:3,fixed"`
+	Uid       uint32 `json:"uid" column:"uid,template:uid,hide"`
+	Gid       uint32 `json:"gid" column:"gid,template:gid,hide"`
 }
 
 func GetColumns() *columns.Columns[Event] {

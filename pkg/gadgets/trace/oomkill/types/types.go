@@ -27,6 +27,8 @@ type Event struct {
 	KilledComm    string `json:"kcomm,omitempty" column:"kcomm,template:comm"`
 	Pages         uint64 `json:"pages,omitempty" column:"pages,width:6"`
 	TriggeredPid  uint32 `json:"tpid,omitempty" column:"tpid,template:pid"`
+	TriggeredUid  uint32 `json:"tuid" column:"tuid,template:uid,hide"`
+	TriggeredGid  uint32 `json:"tgid" column:"tgid,template:gid,hide"`
 	TriggeredComm string `json:"tcomm,omitempty" column:"tcomm,template:comm"`
 }
 

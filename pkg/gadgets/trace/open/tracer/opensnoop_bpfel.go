@@ -16,6 +16,8 @@ type opensnoopEvent struct {
 	Timestamp uint64
 	Pid       uint32
 	Uid       uint32
+	Gid       uint32
+	_         [4]byte
 	MntnsId   uint64
 	Ret       int32
 	Flags     int32

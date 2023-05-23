@@ -18,6 +18,7 @@ struct event {
 	__u32 pid;
 	__u32 ppid;
 	__u32 uid;
+	__u32 gid;
 	int retval;
 	int args_count;
 	unsigned int args_size;

@@ -22,11 +22,12 @@ type tcptracerEvent struct {
 	Af        uint32
 	Pid       uint32
 	Uid       uint32
+	Gid       uint32
 	Netns     uint32
 	Dport     uint16
 	Sport     uint16
 	Type      tcptracerEventType
-	_         [3]byte
+	_         [15]byte
 }
 
 type tcptracerEventType uint8

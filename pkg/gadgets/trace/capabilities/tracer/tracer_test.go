@@ -66,6 +66,9 @@ func TestCapabilitiesTracer(t *testing.T) {
 	// Needs kernel >= 5.1.0 because it introduced the InsetID field.
 	utilstest.RequireKernelVersion(t, &kernel.VersionInfo{Kernel: 5, Major: 1, Minor: 0})
 
+	const unprivilegedUID = int(1234)
+	const unprivilegedGID = int(5678)
+
 	false_ := false
 
 	type testDefinition struct {
@@ -182,7 +185,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 			runnerConfig: &utilstest.RunnerConfig{Uid: 1245},
 			generateEvent: func() error {
 				if err := chown(); err == nil {
-					return fmt.Errorf("chwon should have failed")
+					return fmt.Errorf("chown should have failed")
 				}
 				return nil
 			},
@@ -287,6 +290,33 @@ func TestCapabilitiesTracer(t *testing.T) {
 				if nfound > 1 {
 					t.Fatalf("Capability not unique: found %d times", nfound)
 				}
+			},
+		},
+		"event_has_UID_and_GID_of_user_generating_event": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			runnerConfig: &utilstest.RunnerConfig{
+				Uid: unprivilegedUID,
+				Gid: unprivilegedGID,
+			},
+			generateEvent: func() error {
+				if err := chown(); err == nil {
+					return fmt.Errorf("chown should have failed")
+				}
+				return nil
+			},
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ interface{}, events []types.Event) {
+				if len(events) != 1 {
+					t.Fatalf("Two events expected. %d received", len(events))
+				}
+
+				utilstest.Equal(t, uint32(info.Uid), events[0].Uid,
+					"Event has bad UID")
+				utilstest.Equal(t, uint32(info.Gid), events[0].Gid,
+					"Event has bad GID")
 			},
 		},
 	} {

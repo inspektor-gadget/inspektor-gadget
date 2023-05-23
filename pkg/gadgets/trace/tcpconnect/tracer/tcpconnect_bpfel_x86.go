@@ -20,8 +20,10 @@ type tcpconnectEvent struct {
 	Af        uint32
 	Pid       uint32
 	Uid       uint32
+	Gid       uint32
 	Dport     uint16
 	Sport     uint16
+	_         [4]byte
 	MntnsId   uint64
 	Latency   uint64
 }

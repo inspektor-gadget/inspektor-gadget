@@ -56,6 +56,7 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
+	__u64 uid_gid = bpf_get_current_uid_gid();
 	u64 mntns_id;
 	struct socket **socketp, *socket;
 	struct inet_sock *inet_sock;
@@ -101,6 +102,8 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	event.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	event.mount_ns_id = mntns_id;
 	event.timestamp = bpf_ktime_get_boot_ns();
+	event.uid = (u32) uid_gid;
+	event.gid = (u32) (uid_gid >> 32);
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	if (ver == 4) {
 		event.ver = ver;

@@ -38,12 +38,14 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	pid_t pid, tgid;
 	struct event *event;
 	struct task_struct *task;
-	uid_t uid = (u32)bpf_get_current_uid_gid();
 	unsigned int ret;
 	const char **args = (const char **)(ctx->args[1]);
 	const char *argp;
 	int i;
 	u64 mntns_id;
+	u64 uid_gid = bpf_get_current_uid_gid();
+	u32 uid = (u32) uid_gid;
+	u32 gid = (u32) (uid_gid >> 32);
 
 	if (valid_uid(targ_uid) && targ_uid != uid)
 		return 0;
@@ -67,6 +69,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	event->timestamp = bpf_ktime_get_boot_ns();
 	event->pid = tgid;
 	event->uid = uid;
+	event->gid = gid;
 	event->ppid = (pid_t)BPF_CORE_READ(task, real_parent, tgid);
 	event->args_count = 0;
 	event->args_size = 0;

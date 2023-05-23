@@ -16,6 +16,8 @@ type snisnoopEventT struct {
 	MountNsId uint64
 	Pid       uint32
 	Tid       uint32
+	Uid       uint32
+	Gid       uint32
 	Task      [16]uint8
 	Name      [128]uint8
 	Timestamp uint64

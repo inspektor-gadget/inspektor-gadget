@@ -23,6 +23,7 @@ int BPF_KPROBE(ig_oom_kill, struct oom_control *oc, const char *message)
 {
 	struct data_t data;
 	u64 mntns_id;
+	u64 uid_gid = bpf_get_current_uid_gid();
 
 	mntns_id = (u64) BPF_CORE_READ(oc, chosen, nsproxy, mnt_ns, ns.inum);
 
@@ -30,6 +31,8 @@ int BPF_KPROBE(ig_oom_kill, struct oom_control *oc, const char *message)
 		return 0;
 
 	data.fpid = bpf_get_current_pid_tgid() >> 32;
+	data.fuid = (u32) uid_gid;
+	data.fgid = (u32) (uid_gid >> 32);
 	data.tpid = BPF_CORE_READ(oc, chosen, tgid);
 	data.pages = BPF_CORE_READ(oc, totalpages);
 	bpf_get_current_comm(&data.fcomm, sizeof(data.fcomm));

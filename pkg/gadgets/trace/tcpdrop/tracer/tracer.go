@@ -192,6 +192,8 @@ func (t *Tracer) run() {
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.ProcSocket.MountNsId},
 			WithNetNsID:   eventtypes.WithNetNsID{NetNsID: uint64(bpfEvent.Netns)},
 			Pid:           bpfEvent.ProcSocket.Pid,
+			Uid:           bpfEvent.ProcSocket.Uid,
+			Gid:           bpfEvent.ProcSocket.Gid,
 			Comm:          gadgets.FromCString(bpfEvent.ProcSocket.Task[:]),
 			Saddr:         gadgets.IPStringFromBytes(bpfEvent.Saddr, ipversion),
 			Daddr:         gadgets.IPStringFromBytes(bpfEvent.Daddr, ipversion),

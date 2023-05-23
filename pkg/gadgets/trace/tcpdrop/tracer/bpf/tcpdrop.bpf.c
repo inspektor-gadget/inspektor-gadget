@@ -58,6 +58,7 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk, struct s
 	struct inet_sock *sockp = (struct inet_sock *)sk;
 	struct task_struct *task = (struct task_struct*) bpf_get_current_task();
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
+	__u64 uid_gid = bpf_get_current_uid_gid();
 
 	struct event event = {};
 	event.timestamp = bpf_ktime_get_boot_ns();
@@ -68,6 +69,8 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk, struct s
 	event.proc_current.pid = pid_tgid >> 32;
 	event.proc_current.tid = (__u32)pid_tgid;
 	event.proc_current.mount_ns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	event.proc_current.uid = (u32) uid_gid;
+	event.proc_current.gid = (u32) (uid_gid >> 32);
 	bpf_probe_read_kernel(&event.tcpflags, sizeof(event.tcpflags), &tcphdr->flags);
 
 	BPF_CORE_READ_INTO(&event.dport, sk, __sk_common.skc_dport);
@@ -109,6 +112,8 @@ static __always_inline int __trace_tcp_drop(void *ctx, struct sock *sk, struct s
 		event.proc_socket.pid = skb_val->pid_tgid >> 32;
 		event.proc_socket.tid = (__u32)skb_val->pid_tgid;
 		__builtin_memcpy(&event.proc_socket.task,  skb_val->task, sizeof(event.proc_socket.task));
+		event.proc_socket.uid = (__u32) skb_val->uid_gid;
+		event.proc_socket.gid = (__u32) (skb_val->uid_gid >> 32);
 	}
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));

@@ -9,6 +9,8 @@ struct event {
 	__u32 tpid;
 	__u64 mntns_id;
 	__u64 timestamp;
+	__u32 uid;
+	__u32 gid;
 	int sig;
 	int ret;
 	__u8 comm[TASK_COMM_LEN];

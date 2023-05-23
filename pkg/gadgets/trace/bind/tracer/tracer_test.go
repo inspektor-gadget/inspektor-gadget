@@ -67,6 +67,7 @@ func TestBindTracer(t *testing.T) {
 	utilstest.RequireRoot(t)
 
 	const unprivilegedUID = int(1435)
+	const unprivilegedGID = int(6789)
 
 	type testDefinition struct {
 		getTracerConfig func(info *utilstest.RunnerInfo) *tracer.Config
@@ -321,6 +322,29 @@ func TestBindTracer(t *testing.T) {
 				if len(events) != 1 {
 					t.Fatalf("Wrong number of events received %d, expected 1", len(events))
 				}
+			},
+		},
+		"event_has_UID_and_GID_of_user_generating_event": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			runnerConfig: &utilstest.RunnerConfig{
+				Uid: unprivilegedUID,
+				Gid: unprivilegedGID,
+			},
+			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_STREAM, 0),
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ uint16, events []types.Event) {
+				if len(events) != 1 {
+					t.Fatalf("One event expected")
+				}
+
+				utilstest.Equal(t, uint32(info.Uid), events[0].Uid,
+					"Event has bad UID")
+
+				utilstest.Equal(t, uint32(info.Gid), events[0].Gid,
+					"Event has bad GID")
 			},
 		},
 	} {

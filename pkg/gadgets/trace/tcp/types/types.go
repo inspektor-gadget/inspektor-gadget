@@ -25,6 +25,8 @@ type Event struct {
 
 	Operation string `json:"operation,omitempty" column:"t,width:1,fixed"`
 	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Uid       uint32 `json:"uid" column:"uid,template:uid,hide"`
+	Gid       uint32 `json:"gid" column:"gid,template:gid,hide"`
 	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
 	IPVersion int    `json:"ipversion,omitempty" column:"ip,template:ipversion"`
 	Saddr     string `json:"saddr,omitempty" column:"saddr,template:ipaddr"`

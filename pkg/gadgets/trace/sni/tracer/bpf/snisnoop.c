@@ -180,6 +180,8 @@ int ig_trace_sni(struct __sk_buff *skb)
 		event.pid = skb_val->pid_tgid >> 32;
 		event.tid = (__u32)skb_val->pid_tgid;
 		__builtin_memcpy(&event.task,  skb_val->task, sizeof(event.task));
+		event.uid = (__u32) skb_val->uid_gid;
+		event.gid = (__u32) (skb_val->uid_gid >> 32);
 	}
 
 	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
