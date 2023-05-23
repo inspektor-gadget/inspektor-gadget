@@ -56,7 +56,7 @@ spec:
         k8s-app: runc-hook
     spec:
       serviceAccount: runc-hook
-      hostPID: true
+      hostPID: false
       hostNetwork: false
       containers:
       - name: gadget

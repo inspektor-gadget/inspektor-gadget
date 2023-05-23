@@ -59,7 +59,7 @@ spec:
         k8s-app: gadget-container-collection
     spec:
       serviceAccount: gadget-container-collection
-      hostPID: true
+      hostPID: false
       hostNetwork: false
       containers:
       - name: gadget
