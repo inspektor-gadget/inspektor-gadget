@@ -92,6 +92,23 @@ jobs:
         # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648
         args: "--out-${NO_FUTURE}format colored-line-number"
 
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
+
+    container:
+      image: returntocorp/semgrep
+
+    # Skip any PR created by dependabot to avoid permission issues:
+    if: (github.actor != 'dependabot[bot]')
+
+    steps:
+      # Fetch project source with GitHub Actions Checkout.
+      - uses: actions/checkout@v3
+      # Run the "semgrep ci" command on the command line of the docker image.
+      - run: cd $GITHUB_WORKSPACE && semgrep ci --config $GITHUB_WORKSPACE/.semgrep_rules.yaml
+
+
   ebpf-objects-checks:
     name: eBPF Object checks
     # level: 0
@@ -951,6 +968,7 @@ jobs:
       - documentation-checks
       - ebpf-objects-checks
       - lint
+      - semgrep
       - test-integration-minikube
       - test-integration-aks
       - test-integration-aro
