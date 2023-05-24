@@ -51,14 +51,16 @@ func TestTraceNetwork(t *testing.T) {
 
 			expectedEntries := []*networkTypes.Event{
 				{
-					Event:      BuildBaseEvent(ns),
-					Comm:       "wget",
-					Uid:        0,
-					Gid:        0,
-					PktType:    "OUTGOING",
-					Proto:      "tcp",
-					RemoteAddr: nginxIP,
-					Port:       80,
+					Event:   BuildBaseEvent(ns),
+					Comm:    "wget",
+					Uid:     0,
+					Gid:     0,
+					PktType: "OUTGOING",
+					Proto:   "tcp",
+					Port:    80,
+					DstEndpoint: eventtypes.L3Endpoint{
+						Addr: nginxIP,
+					},
 				},
 				{
 					Event: eventtypes.Event{
@@ -69,13 +71,15 @@ func TestTraceNetwork(t *testing.T) {
 							Container: "nginx-pod",
 						},
 					},
-					Comm:       "nginx",
-					Uid:        101, // default nginx user
-					Gid:        101,
-					PktType:    "HOST",
-					Proto:      "tcp",
-					RemoteAddr: testPodIP,
-					Port:       80,
+					Comm:    "nginx",
+					Uid:     101, // default nginx user
+					Gid:     101,
+					PktType: "HOST",
+					Proto:   "tcp",
+					Port:    80,
+					DstEndpoint: eventtypes.L3Endpoint{
+						Addr: testPodIP,
+					},
 				},
 			}
 

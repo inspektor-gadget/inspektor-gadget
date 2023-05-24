@@ -40,13 +40,15 @@ func TestTraceNetwork(t *testing.T) {
 							Container: cn,
 						},
 					},
-					Comm:       "curl",
-					Uid:        0,
-					Gid:        0,
-					PktType:    "OUTGOING",
-					Proto:      "tcp",
-					Port:       80,
-					RemoteAddr: "127.0.0.1",
+					Comm:    "curl",
+					Uid:     0,
+					Gid:     0,
+					PktType: "OUTGOING",
+					Proto:   "tcp",
+					Port:    80,
+					DstEndpoint: eventtypes.L3Endpoint{
+						Addr: "127.0.0.1",
+					},
 				},
 				{
 					Event: eventtypes.Event{
@@ -55,13 +57,15 @@ func TestTraceNetwork(t *testing.T) {
 							Container: cn,
 						},
 					},
-					Comm:       "nginx",
-					Uid:        0, // different nginx cmdline seems to cause different uid
-					Gid:        0,
-					PktType:    "HOST",
-					Proto:      "tcp",
-					Port:       80,
-					RemoteAddr: "127.0.0.1",
+					Comm:    "nginx",
+					Uid:     0, // different nginx cmdline seems to cause different uid
+					Gid:     0,
+					PktType: "HOST",
+					Proto:   "tcp",
+					Port:    80,
+					DstEndpoint: eventtypes.L3Endpoint{
+						Addr: "127.0.0.1",
+					},
 				},
 			}
 
