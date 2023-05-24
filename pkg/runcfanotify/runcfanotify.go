@@ -229,7 +229,7 @@ func (n *RuncNotifier) watchContainersTermination() {
 				return
 			}
 
-			dirEntries, err := os.ReadDir(hostRoot + "/proc")
+			dirEntries, err := os.ReadDir(host.HostProcFs)
 			if err != nil {
 				log.Errorf("reading /proc: %s", err)
 				return
