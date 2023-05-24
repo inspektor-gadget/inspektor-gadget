@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -38,6 +39,7 @@ import (
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData, container *Container) {
@@ -702,7 +704,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 		var cleanupMu sync.Mutex
 
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			path := fmt.Sprintf("/proc/%d/ns/mnt", container.Pid)
+			path := filepath.Join(host.HostProcFs, fmt.Sprint(container.Pid), "ns", "mnt")
 			fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 			if err != nil {
 				log.Warnf("WithTracerCollection: failed to open mntns reference for container %s: %s",
