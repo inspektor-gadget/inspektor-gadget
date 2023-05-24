@@ -183,6 +183,8 @@ func (t *Tracer) run() {
 			Ret:           ret,
 			Fd:            fd,
 			Err:           errval,
+			FlagsRaw:      bpfEvent.Flags,
+			Flags:         DecodeFlags(bpfEvent.Flags),
 			Path:          gadgets.FromCString(bpfEvent.Fname[:]),
 		}
 

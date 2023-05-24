@@ -23,14 +23,16 @@ type Event struct {
 	eventtypes.Event
 	eventtypes.WithMountNsID
 
-	Pid  uint32 `json:"pid,omitempty" column:"pid,minWidth:7"`
-	Uid  uint32 `json:"uid" column:"uid,template:uid,hide"`
-	Gid  uint32 `json:"gid" column:"gid,template:gid,hide"`
-	Comm string `json:"comm,omitempty" column:"comm,maxWidth:16"`
-	Fd   int    `json:"fd,omitempty" column:"fd,minWidth:2,width:3"`
-	Ret  int    `json:"ret,omitempty" column:"ret,width:3,fixed,hide"`
-	Err  int    `json:"err,omitempty" column:"err,width:3,fixed"`
-	Path string `json:"path,omitempty" column:"path,minWidth:24,width:32"`
+	Pid      uint32   `json:"pid,omitempty" column:"pid,minWidth:7"`
+	Uid      uint32   `json:"uid,omitempty" column:"uid,minWidth:10,hide"`
+	Gid      uint32   `json:"gid" column:"gid,template:gid,hide"`
+	Comm     string   `json:"comm,omitempty" column:"comm,maxWidth:16"`
+	Fd       int      `json:"fd,omitempty" column:"fd,minWidth:2,width:3"`
+	Ret      int      `json:"ret,omitempty" column:"ret,width:3,fixed,hide"`
+	Err      int      `json:"err,omitempty" column:"err,width:3,fixed"`
+	Flags    []string `json:"flags,omitempty" column:"flags,width:24,hide"`
+	FlagsRaw int32    `json:"flagsRaw,omitempty"`
+	Path     string   `json:"path,omitempty" column:"path,minWidth:24,width:32"`
 }
 
 func GetColumns() *columns.Columns[Event] {
