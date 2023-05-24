@@ -21,9 +21,10 @@ type opensnoopEvent struct {
 	MntnsId   uint64
 	Ret       int32
 	Flags     int32
+	Mode      uint16
 	Comm      [16]uint8
 	Fname     [255]uint8
-	_         [1]byte
+	_         [7]byte
 }
 
 // loadOpensnoop returns the embedded CollectionSpec for opensnoop.

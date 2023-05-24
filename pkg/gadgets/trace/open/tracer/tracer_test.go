@@ -103,6 +103,7 @@ func TestOpenTracer(t *testing.T) {
 					Err:           0,
 					Path:          "/dev/null",
 					Flags:         []string{"O_RDONLY"},
+					Mode:          "----------",
 				}
 			}),
 		},
@@ -136,6 +137,7 @@ func TestOpenTracer(t *testing.T) {
 					Err:           0,
 					Path:          "/dev/null",
 					Flags:         []string{"O_RDONLY"},
+					Mode:          "----------",
 				}
 			}),
 		},
