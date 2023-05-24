@@ -49,8 +49,7 @@ const (
 type KubeNetworkInformation interface {
 	SetLocalPodDetails(owner, hostIP, podIP string, labels map[string]string)
 
-	GetRemoteIPs() []string
-	SetEndpointsDetails(endpoints []types.EndpointDetails)
+	GetEndpoints() []*types.L3Endpoint
 }
 
 // TODO: Generalize this. Will be useful for other gadgets/operators too
@@ -232,15 +231,14 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 	pods := m.manager.k8sInventory.GetPods()
 	foundLocal := false
 	foundRemote := 0
-	remoteIPs := additionalInfo.GetRemoteIPs()
-	endpoints := make([]types.EndpointDetails, len(remoteIPs))
+	endpoints := additionalInfo.GetEndpoints()
 	for j := range endpoints {
 		// initialize to this default value if we don't find a match
-		endpoints[j].Kind = types.RemoteKindOther
+		endpoints[j].Kind = types.EndpointKindRaw
 	}
 
 	for i, pod := range pods.Items {
-		if foundLocal && foundRemote == len(remoteIPs) {
+		if foundLocal && foundRemote == len(endpoints) {
 			break
 		}
 
@@ -263,35 +261,32 @@ func (m *KubeIPResolverInstance) enrich(ev any) {
 			continue
 		}
 
-		for j, remoteIP := range remoteIPs {
-			if pod.Status.PodIP == remoteIP {
+		for j, endpoint := range endpoints {
+			if pod.Status.PodIP == endpoint.Addr {
 				foundRemote++
-				endpoints[j].Kind = types.RemoteKindPod
+				endpoints[j].Kind = types.EndpointKindPod
 				endpoints[j].Name = pod.Name
 				endpoints[j].Namespace = pod.Namespace
 				endpoints[j].PodLabels = pod.Labels
 			}
 		}
 	}
-	if foundRemote == len(remoteIPs) {
-		additionalInfo.SetEndpointsDetails(endpoints)
+	if foundRemote == len(endpoints) {
 		return
 	}
 
 	svcs := m.manager.k8sInventory.GetSvcs()
 
 	for _, svc := range svcs.Items {
-		for j, remoteIP := range remoteIPs {
-			if svc.Spec.ClusterIP == remoteIP {
-				endpoints[j].Kind = types.RemoteKindService
+		for j, endpoint := range endpoints {
+			if svc.Spec.ClusterIP == endpoint.Addr {
+				endpoints[j].Kind = types.EndpointKindService
 				endpoints[j].Name = svc.Name
 				endpoints[j].Namespace = svc.Namespace
 				endpoints[j].PodLabels = svc.Labels
 			}
 		}
 	}
-
-	additionalInfo.SetEndpointsDetails(endpoints)
 }
 
 func (m *KubeIPResolverInstance) EnrichEvent(ev any) error {

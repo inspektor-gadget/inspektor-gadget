@@ -13,7 +13,7 @@ In terminal 1, start the trace tcpdrop gadget:
 
 ```bash
 $ kubectl gadget trace tcpdrop
-NODE            PID    COMM            IP SADDR       DADDR   SPORT DPORT STATE     TCPFLAGS REASON
+NODE             NAMESPACE  POD    CONTAINER  PID     COMM  IP SRC                    DST                        STATE        TCPFLAGS  REASON
 ```
 
 In terminal 2, start a pod and configure the network emulator to drop 25% of the packets:
@@ -47,7 +47,7 @@ It is possible to see more detailed information by reading specific columns or u
 
 ```
 $ kubectl gadget trace tcpdrop \
-    -o columns=node,namespace,pod,container,pid,comm,ip,saddr,sport,srcKind,srcns,srcname,daddr,dport,dstKind,dstns,dstname,state,tcpflags,reason
+    -o columns=node,namespace,pod,container,pid,comm,ip,src.addr,src.port,src.kind,src.ns,src.name,dst.addr,dst.port,dst.kind,dst.ns,dst.name,state,tcpflags,reason
 ```
 
 ```
@@ -55,12 +55,15 @@ $ kubectl gadget trace tcpdrop -o yaml
 ---
 comm: curl
 container: shell
-daddr: 10.99.5.39
-dport: 80
+dst:
+  addr: 10.101.116.61
+  kind: svc
+  namespace: default
+  podlabels:
+    app: nginx
+  podname: nginx
+  port: 80
 gid: 0
-dstKind: svc
-dstName: nginx
-dstNamespace: default
 ipversion: 4
 mountnsid: 4026533845
 namespace: default
@@ -69,11 +72,14 @@ node: minikube-docker
 pid: 412491
 pod: shell
 reason: QDISC_DROP
-saddr: 10.244.0.10
-sport: 53260
-srcKind: pod
-srcName: shell
-srcNamespace: default
+src:
+  addr: 10.244.0.91
+  kind: pod
+  namespace: default
+  podlabels:
+    run: shell
+  podname: shell
+  port: 35802
 state: ESTABLISHED
 tcpflags: ACK
 timestamp: 1681911565379499967

@@ -50,18 +50,20 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 			Cmd:  fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --timeout 5 --output - | tee ./networktrace-client.log`, nsClient),
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &networkTypes.Event{
-					Event:           BuildBaseEvent(nsClient),
-					Comm:            "nc",
-					Uid:             0,
-					Gid:             0,
-					PktType:         "OUTGOING",
-					Proto:           "tcp",
-					PodLabels:       map[string]string{"run": "test-pod"},
-					Port:            9090,
-					RemoteKind:      eventtypes.RemoteKindService,
-					RemoteNamespace: nsServer,
-					RemoteName:      "test-pod",
-					RemoteLabels:    map[string]string{"run": "test-pod"},
+					Event:     BuildBaseEvent(nsClient),
+					Comm:      "nc",
+					Uid:       0,
+					Gid:       0,
+					PktType:   "OUTGOING",
+					Proto:     "tcp",
+					PodLabels: map[string]string{"run": "test-pod"},
+					Port:      9090,
+					DstEndpoint: eventtypes.L3Endpoint{
+						Kind:      eventtypes.EndpointKindService,
+						Namespace: nsServer,
+						Name:      "test-pod",
+						PodLabels: map[string]string{"run": "test-pod"},
+					},
 				}
 
 				expectedEntry.Container = ""
@@ -73,7 +75,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.Pid = 0
 					e.Tid = 0
 					e.PodIP = ""
-					e.RemoteAddr = ""
+					e.DstEndpoint.Addr = ""
 					e.PodHostIP = ""
 					e.NetNsID = 0
 					e.MountNsID = 0
@@ -103,17 +105,19 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 				}
 
 				expectedEntry := &networkTypes.Event{
-					Event:           BuildBaseEvent(nsServer),
-					Uid:             0,
-					Gid:             0,
-					PktType:         "HOST",
-					Proto:           "tcp",
-					PodLabels:       map[string]string{"run": "test-pod"},
-					Port:            9090,
-					RemoteKind:      eventtypes.RemoteKindPod,
-					RemoteNamespace: nsClient,
-					RemoteName:      "test-pod",
-					RemoteLabels:    map[string]string{"run": "test-pod"},
+					Event:     BuildBaseEvent(nsServer),
+					Uid:       0,
+					Gid:       0,
+					PktType:   "HOST",
+					Proto:     "tcp",
+					PodLabels: map[string]string{"run": "test-pod"},
+					Port:      9090,
+					DstEndpoint: eventtypes.L3Endpoint{
+						Kind:      eventtypes.EndpointKindPod,
+						Namespace: nsClient,
+						Name:      "test-pod",
+						PodLabels: map[string]string{"run": "test-pod"},
+					},
 				}
 
 				expectedEntry.Container = ""
@@ -125,7 +129,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.Pid = 0
 					e.Tid = 0
 					e.PodIP = ""
-					e.RemoteAddr = ""
+					e.DstEndpoint.Addr = ""
 					e.PodHostIP = ""
 					e.NetNsID = 0
 					e.MountNsID = 0

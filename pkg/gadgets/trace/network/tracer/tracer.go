@@ -106,10 +106,12 @@ func parseNetEvent(sample []byte, netns uint64) (*types.Event, error) {
 			Type:      eventtypes.NORMAL,
 			Timestamp: timestamp,
 		},
-		PktType:    pktTypeString(int(bpfEvent.PktType)),
-		Proto:      protoString(int(bpfEvent.Proto)),
-		Port:       gadgets.Htons(bpfEvent.Port),
-		RemoteAddr: ip.String(),
+		PktType: pktTypeString(int(bpfEvent.PktType)),
+		Proto:   protoString(int(bpfEvent.Proto)),
+		Port:    gadgets.Htons(bpfEvent.Port),
+		DstEndpoint: eventtypes.L3Endpoint{
+			Addr: ip.String(),
+		},
 
 		Pid:           bpfEvent.Pid,
 		Tid:           bpfEvent.Tid,
