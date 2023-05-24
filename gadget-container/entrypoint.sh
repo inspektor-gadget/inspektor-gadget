@@ -30,6 +30,21 @@ KERNEL=$(uname -r)
 echo -n "Kernel detected: "
 echo $KERNEL
 
+echo "/proc/self/cgroup"
+cat /proc/self/cgroup
+
+echo "/host/proc/self/cgroup"
+cat /host/proc/self/cgroup
+
+echo "/host/proc/1/cgroup"
+cat /host/proc/1/cgroup
+
+echo /host/proc/self/ns
+ls -l /host/proc/self/ns
+
+echo /proc/self/ns
+ls -l /proc/self/ns
+
 # The gadget-core image does not provide bcc.
 if [ "$GADGET_IMAGE_FLAVOUR" = "default" ] ; then
 	echo -n "bcc detected: "
