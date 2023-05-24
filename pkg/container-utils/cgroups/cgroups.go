@@ -23,6 +23,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 func CgroupPathV2AddMountpoint(path string) (string, error) {
@@ -54,7 +56,7 @@ func GetCgroupID(pathWithMountpoint string) (uint64, error) {
 func GetCgroupPaths(pid int) (string, string, error) {
 	cgroupPathV1 := ""
 	cgroupPathV2 := ""
-	if cgroupFile, err := os.Open(filepath.Join("/proc", fmt.Sprintf("%d", pid), "cgroup")); err == nil {
+	if cgroupFile, err := os.Open(filepath.Join(host.HostProcFs, fmt.Sprint(pid), "cgroup")); err == nil {
 		defer cgroupFile.Close()
 		reader := bufio.NewReader(cgroupFile)
 		for {

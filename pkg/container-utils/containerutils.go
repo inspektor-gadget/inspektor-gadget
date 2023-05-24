@@ -31,6 +31,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/docker"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/podman"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 var AvailableRuntimes = []string{
@@ -78,7 +79,7 @@ func NewContainerRuntimeClient(runtime *RuntimeConfig) (runtimeclient.ContainerR
 }
 
 func getNamespaceInode(pid int, nsType string) (uint64, error) {
-	fileinfo, err := os.Stat(filepath.Join("/proc", fmt.Sprintf("%d", pid), "ns", nsType))
+	fileinfo, err := os.Stat(filepath.Join(host.HostProcFs, fmt.Sprint(pid), "ns", nsType))
 	if err != nil {
 		return 0, err
 	}

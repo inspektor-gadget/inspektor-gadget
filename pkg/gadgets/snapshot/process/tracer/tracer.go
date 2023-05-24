@@ -33,6 +33,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	processcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang processCollector ./bpf/process-collector.bpf.c -- -I../../../../${TARGET} -I ../../../common/ -Werror -O2 -g -c -x c
@@ -40,12 +41,6 @@ import (
 type Config struct {
 	MountnsMap  *ebpf.Map
 	ShowThreads bool
-}
-
-var hostRoot string
-
-func init() {
-	hostRoot = os.Getenv("HOST_ROOT")
 }
 
 func RunCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*processcollectortypes.Event, error) {
@@ -146,8 +141,7 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 func getTidEvent(config *Config, enricher gadgets.DataEnricherByMntNs, pid, tid int) (*processcollectortypes.Event, error) {
 	var val uint32
 
-	commBytes, _ := os.ReadFile(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/comm", tid)))
-	comm := strings.TrimRight(string(commBytes), "\n")
+	comm := host.GetProcComm(tid)
 	mntnsid, err := containerutils.GetMntNs(tid)
 	if err != nil {
 		return nil, err
@@ -162,7 +156,8 @@ func getTidEvent(config *Config, enricher gadgets.DataEnricherByMntNs, pid, tid 
 		}
 	}
 
-	info, err := os.Lstat(fmt.Sprintf("/proc/%d/task/%d", pid, tid))
+	taskPath := filepath.Join(host.HostProcFs, fmt.Sprint(pid), "task", fmt.Sprint(tid))
+	info, err := os.Lstat(taskPath)
 	if err != nil {
 		return nil, fmt.Errorf("getting user of process: %w", err)
 	}
@@ -191,7 +186,8 @@ func getTidEvent(config *Config, enricher gadgets.DataEnricherByMntNs, pid, tid 
 func getPidEvents(config *Config, enricher gadgets.DataEnricherByMntNs, pid int) ([]*processcollectortypes.Event, error) {
 	var events []*processcollectortypes.Event
 
-	items, err := os.ReadDir(filepath.Join(hostRoot, fmt.Sprintf("/proc/%d/task/", pid)))
+	taskPath := filepath.Join(host.HostProcFs, fmt.Sprint(pid), "task")
+	items, err := os.ReadDir(taskPath)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +214,7 @@ func getPidEvents(config *Config, enricher gadgets.DataEnricherByMntNs, pid int)
 }
 
 func runProcfsCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*processcollectortypes.Event, error) {
-	items, err := os.ReadDir(filepath.Join(hostRoot, "/proc/"))
+	items, err := os.ReadDir(host.HostProcFs)
 	if err != nil {
 		return nil, err
 	}

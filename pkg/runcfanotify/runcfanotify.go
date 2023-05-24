@@ -33,6 +33,8 @@ import (
 	"github.com/s3rj1k/go-fanotify/fanotify"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 type EventType int
@@ -41,12 +43,6 @@ const (
 	EventTypeAddContainer EventType = iota
 	EventTypeRemoveContainer
 )
-
-var hostRoot string
-
-func init() {
-	hostRoot = os.Getenv("HOST_ROOT")
-}
 
 // ContainerEvent is the notification for container creation or termination
 type ContainerEvent struct {
@@ -193,7 +189,7 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	runcMonitored := false
 
 	for _, r := range runcPaths {
-		runcPath := filepath.Join(hostRoot, r)
+		runcPath := filepath.Join(host.HostRoot, r)
 
 		log.Debugf("Runcfanotify: trying runc at %s", runcPath)
 
@@ -228,16 +224,6 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 	go n.watchRunc()
 
 	return n, nil
-}
-
-func commFromPid(pid int) string {
-	comm, _ := os.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
-	return strings.TrimSuffix(string(comm), "\n")
-}
-
-func cmdlineFromPid(pid int) []string {
-	cmdline, _ := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
-	return strings.Split(string(cmdline), "\x00")
 }
 
 // AddWatchContainerTermination watches a container for termination and
@@ -436,7 +422,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 	if err != nil {
 		return false, err
 	}
-	path = filepath.Join(hostRoot, path)
+	path = filepath.Join(host.HostRoot, path)
 
 	// Consider files identical if they have the same device/inode,
 	// even if the paths differ due to symlinks (for example,
@@ -668,12 +654,12 @@ func (n *RuncNotifier) parseOCIRuntime(comm string, cmdlineArr []string) {
 		}
 		if cmdlineArr[i] == "--bundle" && i+1 < len(cmdlineArr) {
 			i++
-			bundleDir = filepath.Join(hostRoot, cmdlineArr[i])
+			bundleDir = filepath.Join(host.HostRoot, cmdlineArr[i])
 			continue
 		}
 		if cmdlineArr[i] == "--pid-file" && i+1 < len(cmdlineArr) {
 			i++
-			pidFile = filepath.Join(hostRoot, cmdlineArr[i])
+			pidFile = filepath.Join(host.HostRoot, cmdlineArr[i])
 			continue
 		}
 		if cmdlineArr[i] != "" {
@@ -770,8 +756,8 @@ func (n *RuncNotifier) watchRuncIterate() (bool, error) {
 	//   1. from containerd-shim (or similar)
 	//   2. from runc, by this re-execution.
 	// This filter skips the first one and handles the second one.
-	comm := commFromPid(pid)
-	cmdlineArr := cmdlineFromPid(pid)
+	comm := host.GetProcComm(pid)
+	cmdlineArr := host.GetProcCmdline(pid)
 
 	if len(cmdlineArr) == 0 {
 		return false, nil
