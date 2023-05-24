@@ -150,3 +150,5 @@ replace (
 )
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3
+
+replace github.com/vishvananda/netns => github.com/alban/netns v0.0.5-0.20230524182144-71bb9f1bb18d
