@@ -221,6 +221,11 @@ jobs:
       uses: ./.github/actions/install-debian-packages
     - name: Build ${{ matrix.ig-target }}
       run: |
+        if [ "${{ matrix.ig-target}}" = 'ig-linux-arm64' ]; then
+          sudo apt-get update
+          sudo apt-get install qemu-user-static
+        fi
+
         make ${{ matrix.ig-target }}
 
         # Prepare assets for release and actions artifacts
