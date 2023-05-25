@@ -1,0 +1,7 @@
+rules:
+  - id: bad-error-wrap-wording
+    patterns:
+      - pattern-regex: fmt\.Errorf\(".?([Ff]ailed|[]Uu]nable|[Cc]ould|([Ee]rror)|([Cc]an[ ]?not))
+    message: Phrases "fail", "failed", "unable", "could not", "cannot", "can not" should not be used when wrapping errors. Use verb in continuous form instead!
+    languages: [go]
+    severity: ERROR
