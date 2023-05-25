@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cilium/ebpf"
+
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -142,6 +144,10 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 		log.Debugf("calling gadget.Run()")
 		err := run.Run(gadgetCtx)
 		if err != nil {
+			var ve *ebpf.VerifierError
+			if errors.As(err, &ve) {
+				gadgetCtx.Logger().Debugf("running gadget: verifier error: %+v\n", ve)
+			}
 			return nil, fmt.Errorf("running gadget: %w", err)
 		}
 		return nil, nil
