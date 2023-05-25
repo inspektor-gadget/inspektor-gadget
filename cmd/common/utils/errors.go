@@ -28,11 +28,11 @@ var (
 // Kubernetes client
 
 func WrapInErrSetupK8sClient(err error) error {
-	return fmt.Errorf("failed to set up Kubernetes client: %w", err)
+	return fmt.Errorf("setting up Kubernetes client: %w", err)
 }
 
 func WrapInErrListNodes(err error) error {
-	return fmt.Errorf("failed to list nodes: %w", err)
+	return fmt.Errorf("listing nodes: %w", err)
 }
 
 func WrapInErrListPods(err error) error {
@@ -64,31 +64,31 @@ func WrapInErrGadgetTracerCreateAndRun(err error) error {
 // Gadget operations
 
 func WrapInErrRunGadget(err error) error {
-	return fmt.Errorf("failed to run gadget: %w", err)
+	return fmt.Errorf("running gadget: %w", err)
 }
 
 func WrapInErrRunGadgetOnNode(node string, err error) error {
-	return fmt.Errorf("failed to run gadget on node %q: %w", node, err)
+	return fmt.Errorf("running gadget on node %q: %w", node, err)
 }
 
 func WrapInErrRunGadgetOnAllNode(err error) error {
-	return fmt.Errorf("failed to run gadget on all nodes: %w", err)
+	return fmt.Errorf("running gadget on all nodes: %w", err)
 }
 
 func WrapInErrStopGadget(err error) error {
-	return fmt.Errorf("failed to stop gadget: %w", err)
+	return fmt.Errorf("stopping gadget: %w", err)
 }
 
 func WrapInErrGenGadgetOutput(err error) error {
-	return fmt.Errorf("failed to generate gadget's output: %w", err)
+	return fmt.Errorf("generating gadget's output: %w", err)
 }
 
 func WrapInErrGetGadgetOutput(err error) error {
-	return fmt.Errorf("failed to get gadget's output: %w", err)
+	return fmt.Errorf("getting gadget's output: %w", err)
 }
 
 func WrapInErrListGadgetTraces(err error) error {
-	return fmt.Errorf("failed to list the running traces: %w", err)
+	return fmt.Errorf("listing the running traces: %w", err)
 }
 
 // Arguments
@@ -112,9 +112,9 @@ func WrapInErrInvalidArg(arg string, err error) error {
 // JSON parsing
 
 func WrapInErrUnmarshalOutput(err error, output string) error {
-	return fmt.Errorf("failed to unmarshal output: %w\n%s", err, output)
+	return fmt.Errorf("unmarshaling output: %w\n%s", err, output)
 }
 
 func WrapInErrMarshalOutput(err error) error {
-	return fmt.Errorf("failed to marshal output: %w", err)
+	return fmt.Errorf("marshaling output: %w", err)
 }

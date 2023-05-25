@@ -98,7 +98,7 @@ func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*Filt
 	// Get column to group
 	column, ok := cols.GetColumn(filterInfo[0])
 	if !ok {
-		return nil, fmt.Errorf("could not apply filter: column %q not found", filterInfo[0])
+		return nil, fmt.Errorf("applying filter: column %q not found", filterInfo[0])
 	}
 
 	fs := &FilterSpec[T]{
@@ -122,7 +122,7 @@ func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*Filt
 		fs.value = filterRule
 		re, err := regexp.Compile(fs.value)
 		if err != nil {
-			return nil, fmt.Errorf("could not compile regular expression %q: %w", fs.value, err)
+			return nil, fmt.Errorf("compiling regular expression %q: %w", fs.value, err)
 		}
 		fs.regex = re
 	} else if strings.HasPrefix(filterRule, ">=") {
@@ -301,7 +301,7 @@ func FilterEntries[T any](cols columns.ColumnMap[T], entries []*T, filters []str
 	for _, filter := range filters {
 		fs, err := GetFilterFromString(cols, filter)
 		if err != nil {
-			return nil, fmt.Errorf("could not apply filter %q: %w", filter, err)
+			return nil, fmt.Errorf("applying filter %q: %w", filter, err)
 		}
 
 		outEntries = make([]*T, 0)

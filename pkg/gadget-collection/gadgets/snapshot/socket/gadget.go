@@ -137,7 +137,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 
 	output, err := json.MarshalIndent(allSockets, "", " ")
 	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf("failed marshalling sockets: %s", err)
+		trace.Status.OperationError = fmt.Sprintf("failed marshaling sockets: %s", err)
 		return
 	}
 

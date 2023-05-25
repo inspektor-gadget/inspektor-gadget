@@ -83,7 +83,7 @@ func (a *NetworkPolicyAdvisor) LoadBuffer(buf []byte) error {
 		line++
 		err = json.Unmarshal([]byte(text), &event)
 		if err != nil {
-			return fmt.Errorf("cannot parse line %d: %w", line, err)
+			return fmt.Errorf("parsing line %d: %w", line, err)
 		}
 		events = append(events, event)
 	}

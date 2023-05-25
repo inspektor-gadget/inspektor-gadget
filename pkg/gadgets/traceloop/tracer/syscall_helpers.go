@@ -216,7 +216,7 @@ func gatherSyscallsDeclarations() (map[string]syscallDeclaration, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error walking %q: %w", syscallsPath, err)
+		return nil, fmt.Errorf("walking %q: %w", syscallsPath, err)
 	}
 	return cSyscalls, nil
 }

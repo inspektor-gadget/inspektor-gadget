@@ -200,7 +200,7 @@ func (t *Tracer) Attach(containerID string, mntnsID uint64) error {
 	// 1. Create inner Map as perf buffer.
 	innerBuffer, err := ebpf.NewMap(innerBufferSpec)
 	if err != nil {
-		return fmt.Errorf("error creating inner map: %w", err)
+		return fmt.Errorf("creating inner map: %w", err)
 	}
 
 	// 2. Use this inner Map to create the perf reader.
@@ -208,7 +208,7 @@ func (t *Tracer) Attach(containerID string, mntnsID uint64) error {
 	if err != nil {
 		innerBuffer.Close()
 
-		return fmt.Errorf("error creating perf ring buffer: %w", err)
+		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 
 	// 3. Add the inner map's file descriptor to outer map.
@@ -217,7 +217,7 @@ func (t *Tracer) Attach(containerID string, mntnsID uint64) error {
 		innerBuffer.Close()
 		perfReader.Close()
 
-		return fmt.Errorf("error adding perf buffer to map with mntnsID %d: %w", mntnsID, err)
+		return fmt.Errorf("adding perf buffer to map with mntnsID %d: %w", mntnsID, err)
 	}
 
 	t.readers.Store(containerID, &containerRingReader{
@@ -624,7 +624,7 @@ func (t *Tracer) Read(containerID string) ([]*types.Event, error) {
 func (t *Tracer) Detach(mntnsID uint64) error {
 	err := t.objs.MapOfPerfBuffers.Delete(mntnsID)
 	if err != nil {
-		return fmt.Errorf("error removing perf buffer from map with mntnsID %d", mntnsID)
+		return fmt.Errorf("removing perf buffer from map with mntnsID %d", mntnsID)
 	}
 
 	return nil

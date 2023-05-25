@@ -171,12 +171,12 @@ func GetTraceClient() (*clientset.Clientset, error) {
 func getTraceClient() (*clientset.Clientset, error) {
 	config, err := KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to creating RESTConfig: %w", err)
+		return nil, fmt.Errorf("creating RESTConfig: %w", err)
 	}
 
 	traceClient, err := clientset.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set up trace client: %w", err)
+		return nil, fmt.Errorf("setting up trace client: %w", err)
 	}
 
 	return traceClient, err
@@ -282,7 +282,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 				deleteTraces(traceClient, traceID)
 			}
 
-			return fmt.Errorf("failed to create trace on node %q: %w", pod.Spec.NodeName, err)
+			return fmt.Errorf("creating trace on node %q: %w", pod.Spec.NodeName, err)
 		}
 	}
 
@@ -318,7 +318,7 @@ func updateTraceOperation(trace *gadgetv1alpha1.Trace, operation string) error {
 
 	patchBytes, err := json.Marshal(patch)
 	if err != nil {
-		return fmt.Errorf("failed to marshal the operation annotations: %w", err)
+		return fmt.Errorf("marshaling the operation annotations: %w", err)
 	}
 
 	_, err = traceClient.GadgetV1alpha1().Traces("gadget").Patch(
@@ -442,7 +442,7 @@ func getTraceListFromID(traceID string) (*gadgetv1alpha1.TraceList, error) {
 
 	traces, err := GetTraceListFromOptions(listTracesOptions)
 	if err != nil {
-		return traces, fmt.Errorf("failed to get traces from traceID %q: %w", traceID, err)
+		return traces, fmt.Errorf("getting traces from traceID %q: %w", traceID, err)
 	}
 
 	if len(traces.Items) == 0 {
@@ -925,7 +925,7 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 
 	traceID, err := CreateTrace(config)
 	if err != nil {
-		return fmt.Errorf("error creating trace: %w", err)
+		return fmt.Errorf("creating trace: %w", err)
 	}
 
 	defer DeleteTrace(traceID)
@@ -946,7 +946,7 @@ func RunTraceStreamCallback(config *TraceConfig, callback func(line string, node
 
 	traceID, err := CreateTrace(config)
 	if err != nil {
-		return fmt.Errorf("error creating trace: %w", err)
+		return fmt.Errorf("creating trace: %w", err)
 	}
 
 	defer DeleteTrace(traceID)
@@ -979,7 +979,7 @@ func RunTraceAndPrintStatusOutput(
 
 	traceID, err := CreateTrace(config)
 	if err != nil {
-		return fmt.Errorf("error creating trace: %w", err)
+		return fmt.Errorf("creating trace: %w", err)
 	}
 
 	defer DeleteTrace(traceID)
@@ -1082,7 +1082,7 @@ func ListTracesByGadgetName(gadget string) ([]gadgetv1alpha1.Trace, error) {
 
 	traces, err := GetTraceListFromOptions(listTracesOptions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get traces by gadget name: %w", err)
+		return nil, fmt.Errorf("getting traces by gadget name: %w", err)
 	}
 
 	return traces.Items, nil

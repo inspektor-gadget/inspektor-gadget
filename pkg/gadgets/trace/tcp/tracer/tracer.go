@@ -100,7 +100,7 @@ func (t *Tracer) close() {
 func (t *Tracer) install() error {
 	spec, err := loadTcptracer()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, nil, &t.objs); err != nil {
@@ -109,43 +109,43 @@ func (t *Tracer) install() error {
 
 	t.tcpv4connectEnterLink, err = link.Kprobe("tcp_v4_connect", t.objs.IgTcpV4CoE, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	t.tcpv4connectExitLink, err = link.Kretprobe("tcp_v4_connect", t.objs.IgTcpV4CoX, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	t.tcpv6connectEnterLink, err = link.Kprobe("tcp_v6_connect", t.objs.IgTcpV6CoE, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	t.tcpv6connectExitLink, err = link.Kretprobe("tcp_v6_connect", t.objs.IgTcpV6CoX, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	// TODO: rename function in ebpf program
 	t.tcpCloseEnterLink, err = link.Kprobe("tcp_close", t.objs.IgTcpClose, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	t.tcpSetStateEnterLink, err = link.Kprobe("tcp_set_state", t.objs.IgTcpState, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	t.inetCskAcceptExitLink, err = link.Kretprobe("inet_csk_accept", t.objs.IgTcpAccept, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	reader, err := perf.NewReader(t.objs.tcptracerMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("error creating perf ring buffer: %w", err)
+		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 	t.reader = reader
 

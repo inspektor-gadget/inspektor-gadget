@@ -102,7 +102,7 @@ func (t *Tracer) close() {
 func (t *Tracer) install() error {
 	spec, err := loadBiotop()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, nil, &t.objs); err != nil {
@@ -111,7 +111,7 @@ func (t *Tracer) install() error {
 
 	kernelSymbols, err := kallsyms.NewKAllSyms()
 	if err != nil {
-		return fmt.Errorf("failed to load kernel symbols: %w", err)
+		return fmt.Errorf("loading kernel symbols: %w", err)
 	}
 
 	// __blk_account_io_start and __blk_account_io_done were inlined in:
@@ -130,17 +130,17 @@ func (t *Tracer) install() error {
 
 	t.ioStartLink, err = link.Kprobe(blkAccountIoStartFunction, t.objs.IgTopioStart, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	t.startRequestLink, err = link.Kprobe("blk_mq_start_request", t.objs.IgTopioReq, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	t.doneLink, err = link.Kprobe(blkAccountIoDoneFunction, t.objs.IgTopioDone, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	return nil
@@ -178,7 +178,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			return stats, nil
 		}
-		return nil, fmt.Errorf("error getting next key: %w", err)
+		return nil, fmt.Errorf("getting next key: %w", err)
 	}
 
 	for {
@@ -210,7 +210,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			if errors.Is(err, ebpf.ErrKeyNotExist) {
 				break
 			}
-			return nil, fmt.Errorf("error getting next key: %w", err)
+			return nil, fmt.Errorf("getting next key: %w", err)
 		}
 	}
 

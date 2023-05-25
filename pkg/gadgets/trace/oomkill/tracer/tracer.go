@@ -83,7 +83,7 @@ func (t *Tracer) close() {
 func (t *Tracer) install() error {
 	spec, err := loadOomkill()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, nil, &t.objs); err != nil {
@@ -92,13 +92,13 @@ func (t *Tracer) install() error {
 
 	kprobe, err := link.Kprobe("oom_kill_process", t.objs.IgOomKill, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 	t.oomLink = kprobe
 
 	reader, err := perf.NewReader(t.objs.oomkillMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("error creating perf ring buffer: %w", err)
+		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 	t.reader = reader
 

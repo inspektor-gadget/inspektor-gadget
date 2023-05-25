@@ -146,7 +146,7 @@ func (t *Tracer) install() error {
 
 	spec, err := loadFsslower()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	consts := map[string]interface{}{
@@ -166,46 +166,46 @@ func (t *Tracer) install() error {
 	// read
 	t.readEnterLink, err = link.Kprobe(fsConf.read, t.objs.IgFsslReadE, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 	t.readExitLink, err = link.Kretprobe(fsConf.read, t.objs.IgFsslReadX, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("attaching kretprobe: %w", err)
 	}
 
 	// write
 	t.writeEnterLink, err = link.Kprobe(fsConf.write, t.objs.IgFsslWrE, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 	t.writeExitLink, err = link.Kretprobe(fsConf.write, t.objs.IgFsslWrX, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("attaching kretprobe: %w", err)
 	}
 
 	// open
 	t.openEnterLink, err = link.Kprobe(fsConf.open, t.objs.IgFsslOpenE, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 	t.openExitLink, err = link.Kretprobe(fsConf.open, t.objs.IgFsslOpenX, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("attaching kretprobe: %w", err)
 	}
 
 	// sync
 	t.syncEnterLink, err = link.Kprobe(fsConf.fsync, t.objs.IgFsslSyncE, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 	t.syncExitLink, err = link.Kretprobe(fsConf.fsync, t.objs.IgFsslSyncX, nil)
 	if err != nil {
-		return fmt.Errorf("error attaching program: %w", err)
+		return fmt.Errorf("attaching kretprobe: %w", err)
 	}
 
 	t.reader, err = perf.NewReader(t.objs.fsslowerMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
 	if err != nil {
-		return fmt.Errorf("error creating perf ring buffer: %w", err)
+		return fmt.Errorf("creating perf ring buffer: %w", err)
 	}
 	return nil
 }

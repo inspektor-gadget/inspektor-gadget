@@ -275,7 +275,7 @@ func LoadeBPFSpec(
 	consts[FilterByMntNsName] = filterByMntNs
 
 	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("RewriteConstants: %w", err)
+		return fmt.Errorf("rewriting constants: %w", err)
 	}
 
 	opts := ebpf.CollectionOptions{

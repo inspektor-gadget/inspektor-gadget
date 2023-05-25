@@ -324,7 +324,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) error {
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("error creating trace: %w", err)
+			return fmt.Errorf("creating trace: %w", err)
 		}
 
 		utils.SigHandler(&traceID, params.OutputMode != commonutils.OutputModeJSON)
@@ -410,7 +410,7 @@ func runTraceloopDelete(cmd *cobra.Command, args []string) error {
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("error creating trace: %w", err)
+			return fmt.Errorf("creating trace: %w", err)
 		}
 
 		defer utils.DeleteTrace(traceID)

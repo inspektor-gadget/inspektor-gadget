@@ -41,7 +41,7 @@ type testData struct {
 func getTestCol(t *testing.T) *columns.Columns[testData] {
 	cols, err := columns.NewColumns[testData]()
 	if err != nil {
-		t.Errorf("failed to initialize: %v", err)
+		t.Errorf("Failed to initialize %v", err)
 	}
 	cols.MustSetExtractor("extractor", func(t *testData) string {
 		return fmt.Sprint(t.Extractor)

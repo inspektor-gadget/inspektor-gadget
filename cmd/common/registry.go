@@ -605,7 +605,7 @@ func printEventAsJSONFn(fe frontends.Frontend) func(ev any) {
 	return func(ev any) {
 		d, err := json.Marshal(ev)
 		if err != nil {
-			fe.Logf(logger.WarnLevel, "marshalling %+v: %s", ev, err)
+			fe.Logf(logger.WarnLevel, "marshaling %+v: %s", ev, err)
 			return
 		}
 		fe.Output(string(d))
@@ -616,7 +616,7 @@ func printEventAsJSONPrettyFn(fe frontends.Frontend) func(ev any) {
 	return func(ev any) {
 		d, err := json.MarshalIndent(ev, "", "  ")
 		if err != nil {
-			fe.Logf(logger.WarnLevel, "marshalling %+v: %s", ev, err)
+			fe.Logf(logger.WarnLevel, "marshaling %+v: %s", ev, err)
 			return
 		}
 		fe.Output(string(d))
@@ -627,7 +627,7 @@ func printEventAsYAMLFn(fe frontends.Frontend) func(ev any) {
 	return func(ev any) {
 		d, err := k8syaml.Marshal(ev)
 		if err != nil {
-			fe.Logf(logger.WarnLevel, "marshalling %+v: %s", ev, err)
+			fe.Logf(logger.WarnLevel, "marshaling %+v: %s", ev, err)
 			return
 		}
 		fe.Output("---\n" + string(d))

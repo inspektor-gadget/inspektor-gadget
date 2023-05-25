@@ -53,7 +53,7 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 
 	node, err := clientset.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get node %w", err)
+		return nil, fmt.Errorf("getting node %w", err)
 	}
 
 	// Get a runtime client to talk to the container runtime handling pods in

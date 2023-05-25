@@ -102,7 +102,7 @@ func (t *Tracer) close() {
 func (t *Tracer) install() error {
 	spec, err := loadTcptop()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	consts := map[string]interface{}{
@@ -116,12 +116,12 @@ func (t *Tracer) install() error {
 
 	t.tcpSendmsgLink, err = link.Kprobe("tcp_sendmsg", t.objs.IgToptcpSdmsg, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	t.tcpCleanupRbufLink, err = link.Kprobe("tcp_cleanup_rbuf", t.objs.IgToptcpClean, nil)
 	if err != nil {
-		return fmt.Errorf("error opening kprobe: %w", err)
+		return fmt.Errorf("attaching kprobe: %w", err)
 	}
 
 	return nil
@@ -159,7 +159,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			return stats, nil
 		}
-		return nil, fmt.Errorf("error getting next key: %w", err)
+		return nil, fmt.Errorf("getting next key: %w", err)
 	}
 
 	for {
@@ -199,7 +199,7 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			if errors.Is(err, ebpf.ErrKeyNotExist) {
 				break
 			}
-			return nil, fmt.Errorf("error getting next key: %w", err)
+			return nil, fmt.Errorf("getting next key: %w", err)
 		}
 	}
 

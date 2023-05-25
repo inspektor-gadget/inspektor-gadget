@@ -84,7 +84,7 @@ func GroupEntries[T any](columns columns.ColumnMap[T], entries []*T, groupBy []s
 		// Get column to group
 		column, ok := columns.GetColumn(groupName)
 		if !ok {
-			return nil, fmt.Errorf("could not group by %q: column not found", groupName)
+			return nil, fmt.Errorf("grouping by %q: column not found", groupName)
 		}
 
 		// Create a new map with key matching the group key

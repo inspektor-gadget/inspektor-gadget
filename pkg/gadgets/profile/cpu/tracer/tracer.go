@@ -96,7 +96,7 @@ func (t *Tracer) readCountsMap() ([]keyCount, error) {
 			if errors.Is(err, ebpf.ErrKeyNotExist) {
 				break
 			}
-			return nil, fmt.Errorf("error getting next key: %w", err)
+			return nil, fmt.Errorf("getting next key: %w", err)
 		}
 
 		var value uint64
@@ -244,7 +244,7 @@ func (t *Tracer) collectResult() ([]byte, error) {
 func (t *Tracer) install() error {
 	spec, err := loadProfile()
 	if err != nil {
-		return fmt.Errorf("failed to load ebpf program: %w", err)
+		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
 	consts := map[string]interface{}{
@@ -275,19 +275,19 @@ func (t *Tracer) install() error {
 			unix.PERF_FLAG_FD_CLOEXEC,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to create the perf fd: %w", err)
+			return fmt.Errorf("creating the perf fd: %w", err)
 		}
 
 		t.perfFds = append(t.perfFds, fd)
 
 		// Attach program to perf event.
 		if err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_SET_BPF, t.objs.IgProfCpu.FD()); err != nil {
-			return fmt.Errorf("failed to attach eBPF program to perf fd: %w", err)
+			return fmt.Errorf("attaching eBPF program to perf fd: %w", err)
 		}
 
 		// Start perf event.
 		if err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_ENABLE, 0); err != nil {
-			return fmt.Errorf("failed to enable perf fd: %w", err)
+			return fmt.Errorf("enabling perf fd: %w", err)
 		}
 	}
 

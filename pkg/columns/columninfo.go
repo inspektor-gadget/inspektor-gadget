@@ -171,7 +171,7 @@ func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 			switch params[1] {
 			case "sum":
 				if !ci.columnType.ConvertibleTo(reflect.TypeOf(int(0))) {
-					return fmt.Errorf("cannot use sum on field %q of kind %q", ci.Name, ci.kind.String())
+					return fmt.Errorf("invalid use of sum on field %q of kind %q", ci.Name, ci.kind.String())
 				}
 				ci.GroupType = GroupTypeSum
 			default:

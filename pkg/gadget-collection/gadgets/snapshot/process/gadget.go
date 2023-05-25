@@ -105,7 +105,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 
 	output, err := json.MarshalIndent(events, "", " ")
 	if err != nil {
-		trace.Status.OperationError = fmt.Sprintf("failed marshalling processes: %s", err)
+		trace.Status.OperationError = fmt.Sprintf("failed marshaling processes: %s", err)
 		return
 	}
 

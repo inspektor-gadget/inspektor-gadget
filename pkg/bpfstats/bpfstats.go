@@ -66,7 +66,7 @@ func EnableBPFStats() error {
 		// Use fallback method
 		err = os.WriteFile(filepath.Join(os.Getenv("HOST_ROOT"), "/proc/sys/kernel/bpf_stats_enabled"), []byte("1"), 0o644)
 		if err != nil {
-			return fmt.Errorf("could not enable stat collection: %w", err)
+			return fmt.Errorf("enabling stat collection: %w", err)
 		}
 		method = MethodSysctl
 	} else {
@@ -101,12 +101,12 @@ func DisableBPFStats() error {
 		err := statsSock.Close()
 		statsSock = nil
 		if err != nil {
-			return fmt.Errorf("could not disable stat collection using BPF(): %w", err)
+			return fmt.Errorf("disabling stat collection using BPF(): %w", err)
 		}
 	case MethodSysctl:
 		err := os.WriteFile(filepath.Join(os.Getenv("HOST_ROOT"), "/proc/sys/kernel/bpf_stats_enabled"), []byte("0"), 0o644)
 		if err != nil {
-			return fmt.Errorf("could not disable stat collection using sysctl: %w", err)
+			return fmt.Errorf("disabling stat collection using sysctl: %w", err)
 		}
 	}
 

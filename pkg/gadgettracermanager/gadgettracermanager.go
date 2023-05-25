@@ -72,7 +72,7 @@ func (g *GadgetTracerManager) RemoveTracer(tracerID string) error {
 
 func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.GadgetTracerManager_ReceiveStreamServer) error {
 	if tracerID.Id == "" {
-		return fmt.Errorf("cannot find tracer: Id not set")
+		return fmt.Errorf("tracer Id not set")
 	}
 
 	g.mu.Lock()
@@ -80,7 +80,7 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 	gadgetStream, err := g.tracerCollection.Stream(tracerID.Id)
 	if err != nil {
 		g.mu.Unlock()
-		return fmt.Errorf("cannot find stream for tracer %q", tracerID.Id)
+		return fmt.Errorf("stream for tracer %q not found", tracerID.Id)
 	}
 
 	ch := gadgetStream.Subscribe()
@@ -126,7 +126,7 @@ func (g *GadgetTracerManager) PublishEvent(tracerID string, line string) error {
 
 	stream, err := g.tracerCollection.Stream(tracerID)
 	if err != nil {
-		return fmt.Errorf("cannot find stream for tracer %q", tracerID)
+		return fmt.Errorf("stream for tracer %q not found", tracerID)
 	}
 
 	stream.Publish(line)
@@ -153,7 +153,7 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 	defer g.mu.Unlock()
 
 	if containerDefinition.Id == "" {
-		return nil, fmt.Errorf("cannot add container: container id not set")
+		return nil, fmt.Errorf("container id not set")
 	}
 	if g.ContainerCollection.GetContainer(containerDefinition.Id) != nil {
 		return nil, fmt.Errorf("container with id %s already exists", containerDefinition.Id)
@@ -174,7 +174,7 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 		containerConfig := &ocispec.Spec{}
 		err := json.Unmarshal([]byte(containerDefinition.OciConfig), containerConfig)
 		if err != nil {
-			return nil, fmt.Errorf("cannot unmarshal container config: %w", err)
+			return nil, fmt.Errorf("unmarshaling container config: %w", err)
 		}
 		container.OciConfig = containerConfig
 	}
@@ -189,12 +189,12 @@ func (g *GadgetTracerManager) RemoveContainer(_ context.Context, containerDefini
 	defer g.mu.Unlock()
 
 	if containerDefinition.Id == "" {
-		return nil, fmt.Errorf("cannot remove container: Id not set")
+		return nil, fmt.Errorf("container Id not set")
 	}
 
 	c := g.ContainerCollection.GetContainer(containerDefinition.Id)
 	if c == nil {
-		return nil, fmt.Errorf("cannot remove container: unknown container %q", containerDefinition.Id)
+		return nil, fmt.Errorf("unknown container %q", containerDefinition.Id)
 	}
 
 	g.ContainerCollection.RemoveContainer(containerDefinition.Id)
@@ -248,7 +248,7 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 
 		var err error
 		if g.containersMap, err = containersmap.NewContainersMap(gadgets.PinPath); err != nil {
-			return nil, fmt.Errorf("error creating containers map: %w", err)
+			return nil, fmt.Errorf("creating containers map: %w", err)
 		}
 
 		opts = append(opts, containercollection.WithPubSub(g.containersMap.ContainersMapUpdater()))

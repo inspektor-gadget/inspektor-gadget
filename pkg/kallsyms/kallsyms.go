@@ -203,7 +203,7 @@ func specUpdateAddresses(
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("RewriteConstants: %w", err)
+		return fmt.Errorf("rewriting constants: %w", err)
 	}
 
 	return nil

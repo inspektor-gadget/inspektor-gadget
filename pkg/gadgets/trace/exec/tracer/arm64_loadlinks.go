@@ -27,13 +27,13 @@ import (
 func loadExecsnoopLinks(objs execsnoopObjects) (link.Link, link.Link, error) {
 	enter, err := link.Kprobe("do_execveat_common.isra.0", objs.IgExecveatE, nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error opening tracepoint: %w", err)
+		return nil, nil, fmt.Errorf("attaching tracepoint: %w", err)
 	}
 
 	exit, err := link.Kretprobe("do_execveat_common.isra.0", objs.IgExecveatX, nil)
 	if err != nil {
 		gadgets.CloseLink(enter)
-		return nil, nil, fmt.Errorf("error opening tracepoint: %w", err)
+		return nil, nil, fmt.Errorf("attaching tracepoint: %w", err)
 	}
 
 	return enter, exit, nil

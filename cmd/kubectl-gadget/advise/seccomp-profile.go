@@ -148,7 +148,7 @@ func getSeccompProfilesName(traceID string) ([]string, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("unable to create manager: %w", err)
+		return nil, fmt.Errorf("creating manager: %w", err)
 	}
 
 	// Get a client on seccompprofile.
@@ -157,7 +157,7 @@ func getSeccompProfilesName(traceID string) ([]string, error) {
 	profilesList := &seccompprofile.SeccompProfileList{}
 	err = cli.List(context.TODO(), profilesList, client.MatchingLabels{utils.GlobalTraceID: traceID})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list seccomp profiles: %w", err)
+		return nil, fmt.Errorf("listing seccomp profiles: %w", err)
 	}
 
 	var profilesName []string

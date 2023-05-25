@@ -278,7 +278,7 @@ func TestFilters(t *testing.T) {
 
 	filter, err := GetFilterFromString(cmap, "int8:1")
 	if err != nil {
-		t.Errorf("failed to get filter: %v", err)
+		t.Errorf("getting filter: %v", err)
 	}
 	if filter.Match(nil) {
 		t.Errorf("Matching nil on non-negated filter should result in false")

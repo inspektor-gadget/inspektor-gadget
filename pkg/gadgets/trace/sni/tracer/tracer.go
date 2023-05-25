@@ -105,7 +105,7 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 func (t *Tracer) install() error {
 	spec, err := loadSnisnoop()
 	if err != nil {
-		return fmt.Errorf("failed to load asset: %w", err)
+		return fmt.Errorf("loading asset: %w", err)
 	}
 
 	networkTracer, err := networktracer.NewTracer(

@@ -63,7 +63,7 @@ func init() {
 func runUndeploy(cmd *cobra.Command, args []string) error {
 	traceClient, err := utils.GetTraceClient()
 	if err != nil {
-		return fmt.Errorf("failed to get trace client: %w", err)
+		return fmt.Errorf("getting trace client: %w", err)
 	}
 
 	k8sClient, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
@@ -73,12 +73,12 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
-		return fmt.Errorf("failed to create RESTConfig: %w", err)
+		return fmt.Errorf("creating RESTConfig: %w", err)
 	}
 
 	crdClient, err := clientset.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("failed to set up CRD client: %w", err)
+		return fmt.Errorf("setting up CRD client: %w", err)
 	}
 
 	errs := []string{}
@@ -241,7 +241,7 @@ again:
 
 out:
 	if len(errs) > 0 {
-		return fmt.Errorf("error removing Inspektor Gadget:\n%s", strings.Join(errs, "\n"))
+		return fmt.Errorf("removing Inspektor Gadget:\n%s", strings.Join(errs, "\n"))
 	}
 
 	if undeployWait {
