@@ -7,7 +7,7 @@ description: >
 
 The `traceloop` gadget is used to trace system calls issued by containers.
 
-### On kubernetes
+### On Kubernetes
 
 #### Start traceloop
 

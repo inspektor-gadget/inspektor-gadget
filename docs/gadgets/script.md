@@ -5,7 +5,7 @@ description: >
   Run bpftrace-compatible scripts using Inspektor Gadget.
 ---
 
-### On kubernetes
+### On Kubernetes
 
 The script gadget allows to run [bpftrace](https://github.com/iovisor/bpftrace)-compatible scripts
 on a Kubernetes cluster. To get more information about bpftrace and its features please check the
