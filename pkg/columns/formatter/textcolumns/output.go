@@ -45,8 +45,7 @@ func (tf *TextColumnsFormatter[T]) setFormatter(column *Column[T]) {
 		column.formatter = func(v interface{}) string {
 			return tf.buildFixedString(strconv.FormatUint(reflect.ValueOf(v).Uint(), 10), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
 		}
-	case reflect.Float32,
-		reflect.Float64:
+	case reflect.Float32, reflect.Float64:
 		column.formatter = func(v interface{}) string {
 			return tf.buildFixedString(strconv.FormatFloat(reflect.ValueOf(v).Float(), 'f', column.col.Precision, 64), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
 		}

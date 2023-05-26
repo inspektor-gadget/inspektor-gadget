@@ -185,44 +185,44 @@ func GetFiltersFromStrings[T any](cols columns.ColumnMap[T], filters []string) (
 }
 
 func (fs *FilterSpec[T]) getComparisonFunc() func(*T) bool {
-	offset := fs.column.GetOffset()
-
 	switch fs.column.Kind() {
 	case reflect.Int:
-		return getComparisonFuncForComparisonType[int, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[int, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Int8:
-		return getComparisonFuncForComparisonType[int8, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[int8, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Int16:
-		return getComparisonFuncForComparisonType[int16, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[int16, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Int32:
-		return getComparisonFuncForComparisonType[int32, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[int32, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Int64:
-		return getComparisonFuncForComparisonType[int64, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[int64, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Uint:
-		return getComparisonFuncForComparisonType[uint, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[uint, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Uint8:
-		return getComparisonFuncForComparisonType[uint8, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[uint8, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Uint16:
-		return getComparisonFuncForComparisonType[uint16, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[uint16, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Uint32:
-		return getComparisonFuncForComparisonType[uint32, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[uint32, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Uint64:
-		return getComparisonFuncForComparisonType[uint64, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[uint64, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.String:
 		if fs.comparisonType == comparisonTypeRegex {
+			ff := columns.GetFieldFunc[string, T](fs.column)
 			return func(entry *T) bool {
-				return fs.regex.MatchString(columns.GetField[string](entry, fs.column.GetOffset())) != fs.negate
+				return fs.regex.MatchString(ff(entry)) != fs.negate
 			}
 		}
-		return getComparisonFuncForComparisonType[string, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[string, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Float32:
-		return getComparisonFuncForComparisonType[float32, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[float32, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Float64:
-		return getComparisonFuncForComparisonType[float64, T](fs.comparisonType, fs.negate, offset, fs.refValue)
+		return getComparisonFuncForComparisonType[float64, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Bool:
 		if fs.comparisonType == comparisonTypeMatch {
+			ff := columns.GetFieldFunc[bool, T](fs.column)
 			return func(entry *T) bool {
-				return columns.GetField[bool](entry, offset) == fs.refValue.(bool)
+				return ff(entry) == fs.refValue.(bool)
 			}
 		}
 		fallthrough
@@ -233,27 +233,28 @@ func (fs *FilterSpec[T]) getComparisonFunc() func(*T) bool {
 	}
 }
 
-func getComparisonFuncForComparisonType[OT constraints.Ordered, T any](ct comparisonType, negate bool, offset uintptr, refValue any) func(a *T) bool {
+func getComparisonFuncForComparisonType[OT constraints.Ordered, T any](ct comparisonType, negate bool, column *columns.Column[T], refValue any) func(a *T) bool {
+	ff := columns.GetFieldFunc[OT, T](column)
 	switch ct {
 	case comparisonTypeMatch:
 		return func(a *T) bool {
-			return columns.GetField[OT](a, offset) == refValue.(OT) != negate
+			return ff(a) == refValue.(OT) != negate
 		}
 	case comparisonTypeGt:
 		return func(a *T) bool {
-			return columns.GetField[OT](a, offset) > refValue.(OT) != negate
+			return ff(a) > refValue.(OT) != negate
 		}
 	case comparisonTypeGte:
 		return func(a *T) bool {
-			return columns.GetField[OT](a, offset) >= refValue.(OT) != negate
+			return ff(a) >= refValue.(OT) != negate
 		}
 	case comparisonTypeLt:
 		return func(a *T) bool {
-			return columns.GetField[OT](a, offset) < refValue.(OT) != negate
+			return ff(a) < refValue.(OT) != negate
 		}
 	case comparisonTypeLte:
 		return func(a *T) bool {
-			return columns.GetField[OT](a, offset) <= refValue.(OT) != negate
+			return ff(a) <= refValue.(OT) != negate
 		}
 	default:
 		return func(a *T) bool {

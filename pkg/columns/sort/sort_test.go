@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,8 +26,14 @@ import (
 type testEmbedded struct {
 	EmbeddedInt int `column:"embeddedInt"`
 }
+
+type testEmbeddedPtr struct {
+	EmbeddedPtrInt int `column:"embeddedPtrInt"`
+}
+
 type testData struct {
 	testEmbedded
+	*testEmbeddedPtr
 	Int       int     `column:"int"`
 	Uint      uint    `column:"uint"`
 	String    string  `column:"string"`
@@ -58,15 +64,15 @@ func getTestCol(t *testing.T) *columns.Columns[testData] {
 func TestSorter(t *testing.T) {
 	testEntries := []*testData{
 		nil,
-		{Int: 1, Uint: 2, String: "c", Float32: 3, Float64: 4, Group: "b", testEmbedded: testEmbedded{EmbeddedInt: 7}, Extractor: 1},
+		{Int: 1, Uint: 2, String: "c", Float32: 3, Float64: 4, Group: "b", testEmbedded: testEmbedded{EmbeddedInt: 7}, testEmbeddedPtr: &testEmbeddedPtr{EmbeddedPtrInt: 7}, Extractor: 1},
 		nil,
-		{Int: 2, Uint: 3, String: "d", Float32: 4, Float64: 5, Group: "b", testEmbedded: testEmbedded{EmbeddedInt: 6}, Extractor: 2},
+		{Int: 2, Uint: 3, String: "d", Float32: 4, Float64: 5, Group: "b", testEmbedded: testEmbedded{EmbeddedInt: 6}, testEmbeddedPtr: &testEmbeddedPtr{EmbeddedPtrInt: 6}, Extractor: 2},
 		nil,
-		{Int: 3, Uint: 4, String: "e", Float32: 5, Float64: 1, Group: "a", testEmbedded: testEmbedded{EmbeddedInt: 5}, Extractor: 3},
+		{Int: 3, Uint: 4, String: "e", Float32: 5, Float64: 1, Group: "a", testEmbedded: testEmbedded{EmbeddedInt: 5}, testEmbeddedPtr: nil, Extractor: 3},
 		nil,
-		{Int: 4, Uint: 5, String: "a", Float32: 1, Float64: 2, Group: "a", testEmbedded: testEmbedded{EmbeddedInt: 4}, Extractor: 4},
+		{Int: 4, Uint: 5, String: "a", Float32: 1, Float64: 2, Group: "a", testEmbedded: testEmbedded{EmbeddedInt: 4}, testEmbeddedPtr: &testEmbeddedPtr{EmbeddedPtrInt: 4}, Extractor: 4},
 		nil,
-		{Int: 5, Uint: 1, String: "b", Float32: 2, Float64: 3, Group: "c", testEmbedded: testEmbedded{EmbeddedInt: 3}, Extractor: 5},
+		{Int: 5, Uint: 1, String: "b", Float32: 2, Float64: 3, Group: "c", testEmbedded: testEmbedded{EmbeddedInt: 3}, testEmbeddedPtr: &testEmbeddedPtr{EmbeddedPtrInt: 3}, Extractor: 5},
 		nil,
 	}
 
@@ -147,9 +153,15 @@ func TestSorter(t *testing.T) {
 	}
 
 	shuffle()
-	SortEntries(cmap, testEntries, []string{"embeddedInt"})
-	if testEntries[0].EmbeddedInt != 3 {
-		t.Errorf("expected embedded value to be a 3")
+	SortEntries(cmap, testEntries, []string{"-embeddedInt"})
+	if testEntries[0].EmbeddedInt != 7 {
+		t.Errorf("expected embedded value to be a 7")
+	}
+
+	shuffle()
+	SortEntries(cmap, testEntries, []string{"-embeddedPtrInt"})
+	if testEntries[0].EmbeddedPtrInt != 7 {
+		t.Errorf("expected embedded ptr value to be a 7")
 	}
 
 	shuffle()

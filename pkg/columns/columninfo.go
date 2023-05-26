@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,12 +36,15 @@ const (
 )
 
 type subField struct {
-	index int
-	isPtr bool
+	index       int     // number of the referenced field inside the struct
+	offset      uintptr // offset of the referenced field inside the struct
+	parentIsPtr bool    // true, if the referenced field is a member of a pointer type
+	isPtr       bool    // true, if the referenced field is a pointer type
 }
 
 type Attributes struct {
-	Name         string                // Name of the column; case-insensitive for most use cases
+	Name         string                // Name of the column; case-insensitive for most use cases; includes inherited prefixes
+	RawName      string                // Name of the columns without inherited prefixes
 	Width        int                   // Width to reserve for this column
 	MinWidth     int                   // MinWidth will be the minimum width this column will be scaled to when using auto-scaling
 	MaxWidth     int                   // MaxWidth will be the maximum width this column will be scaled to when using auto-scaling
@@ -60,11 +63,13 @@ type Column[T any] struct {
 	Attributes
 	Extractor func(*T) string // Extractor to be used; this can be defined to transform the output before retrieving the actual value
 
-	offset        uintptr
+	explicitName  bool         // true, if the name has been set explicitly
+	offset        uintptr      // offset to the field (relative to root non-ptr struct)
 	fieldIndex    int          // used for the main struct
 	subFieldIndex []subField   // used for embedded structs
 	kind          reflect.Kind // cached kind info from reflection
 	columnType    reflect.Type // cached type info from reflection
+	rawColumnType reflect.Type // cached type info from reflection
 	useTemplate   bool         // if a template has been set, this will be true
 	template      string       // defines the template that will be used. Non-typed templates will be applied first.
 }
@@ -121,6 +126,10 @@ func (ci *Column[T]) getWidth(params []string) (int, error) {
 func (ci *Column[T]) fromTag(tag string) error {
 	tagInfo := strings.Split(tag, ",")
 	ci.Name = tagInfo[0]
+	ci.RawName = ci.Name
+	if len(ci.Name) > 0 {
+		ci.explicitName = true
+	}
 	return ci.parseTagInfo(tagInfo[1:])
 }
 
@@ -265,8 +274,12 @@ func (ci *Column[T]) Get(entry *T) reflect.Value {
 	return ci.getRawField(v)
 }
 
-func (ci *Column[T]) GetOffset() uintptr {
+func (ci *Column[T]) getOffset() uintptr {
 	return ci.offset
+}
+
+func (ci *Column[T]) getSubFields() []subField {
+	return ci.subFieldIndex
 }
 
 // GetRef returns the reflected value of an already reflected entry for the current column; expects v to be valid or
@@ -283,7 +296,7 @@ func (ci *Column[T]) GetRef(v reflect.Value) reflect.Value {
 // structs via pointers and the embedded value is nil, it will also return the zero value of the underlying type.
 func (ci *Column[T]) GetRaw(entry *T) reflect.Value {
 	if entry == nil || ci.fieldIndex == virtualIndex {
-		return reflect.Zero(ci.Type())
+		return reflect.Zero(ci.RawType())
 	}
 	v := reflect.ValueOf(entry)
 	return ci.getRawField(v)
@@ -300,7 +313,7 @@ func (ci *Column[T]) getRawField(v reflect.Value) reflect.Value {
 }
 
 func (ci *Column[T]) getFieldRec(v reflect.Value, sub []subField) reflect.Value {
-	if sub[0].isPtr {
+	if sub[0].parentIsPtr {
 		if v.IsNil() {
 			// Return the (empty) default value for this type
 			return reflect.Zero(ci.Type())
@@ -320,12 +333,18 @@ func (ci *Column[T]) Kind() reflect.Kind {
 }
 
 // Type returns the underlying type of the column
+// (reflect.String, if a custom extractor is used)
 func (ci *Column[T]) Type() reflect.Type {
 	return ci.columnType
 }
 
+// RawType returns the underlying type of the column
+func (ci *Column[T]) RawType() reflect.Type {
+	return ci.rawColumnType
+}
+
 func (ci *Column[T]) HasTag(tag string) bool {
-	for _, curTag := range ci.Attributes.Tags {
+	for _, curTag := range ci.Tags {
 		if curTag == tag {
 			return true
 		}
@@ -334,7 +353,7 @@ func (ci *Column[T]) HasTag(tag string) bool {
 }
 
 func (ci *Column[T]) HasNoTags() bool {
-	if len(ci.Attributes.Tags) == 0 {
+	if len(ci.Tags) == 0 {
 		return true
 	}
 	return false

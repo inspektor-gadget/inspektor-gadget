@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,27 +17,37 @@ package filter
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 )
 
 func TestFilters(t *testing.T) {
+	type embeddedData struct {
+		Int  int `column:"embeddedInt"`
+		Uint int `column:"embeddedUint"`
+	}
 	type testData struct {
-		Int         int      `column:"int,align:right,width:6"`
-		Int8        int8     `column:"int8,align:right,width:6"`
-		Int16       int16    `column:"int16,align:right,width:6"`
-		Int32       int32    `column:"int32,align:right,width:6"`
-		Int64       int64    `column:"int64,align:right,width:6"`
-		Uint        uint     `column:"uint,align:right,width:6"`
-		Uint8       uint8    `column:"uint8,align:right,width:6"`
-		Uint16      uint16   `column:"uint16,align:right,width:6"`
-		Uint32      uint32   `column:"uint32,align:right,width:6"`
-		Uint64      uint64   `column:"uint64,align:right,width:6"`
-		String      string   `column:"string"`
-		Dummy       string   // This a dummy field that we can expose using a virtual field
-		Time        int64    `column:"time,align:right,width:24,group:sum"`
-		Float32     float32  `column:"float32"`
-		Float64     float64  `column:"float64"`
-		Unsupported struct{} `column:"unsupported"`
+		Int              int           `column:"int,align:right,width:6"`
+		Int8             int8          `column:"int8,align:right,width:6"`
+		Int16            int16         `column:"int16,align:right,width:6"`
+		Int32            int32         `column:"int32,align:right,width:6"`
+		Int64            int64         `column:"int64,align:right,width:6"`
+		Uint             uint          `column:"uint,align:right,width:6"`
+		Uint8            uint8         `column:"uint8,align:right,width:6"`
+		Uint16           uint16        `column:"uint16,align:right,width:6"`
+		Uint32           uint32        `column:"uint32,align:right,width:6"`
+		Uint64           uint64        `column:"uint64,align:right,width:6"`
+		String           string        `column:"string"`
+		Dummy            string        // This a dummy field that we can expose using a virtual field
+		Time             int64         `column:"time,align:right,width:24,group:sum"`
+		Float32          float32       `column:"float32"`
+		Float64          float64       `column:"float64"`
+		Unsupported      struct{}      `column:"unsupported"`
+		EmbeddedDirect   embeddedData  `column:"embeddedDirectStruct"`
+		EmbeddedPtr      *embeddedData `column:"embeddedPtrStruct"`
+		EmbeddedEmptyPtr *embeddedData `column:"embeddedEmptyPtrStruct"`
 	}
 
 	type filterTest struct {
@@ -49,79 +59,94 @@ func TestFilters(t *testing.T) {
 
 	filterEntries := []*testData{
 		{
-			String:  "",
-			Int:     7,
-			Int8:    7,
-			Int16:   7,
-			Int32:   7,
-			Int64:   7,
-			Uint:    7,
-			Uint8:   7,
-			Uint16:  7,
-			Uint32:  7,
-			Uint64:  7,
-			Float32: 7,
-			Float64: 7,
+			String:         "",
+			Dummy:          "",
+			Int:            7,
+			Int8:           7,
+			Int16:          7,
+			Int32:          7,
+			Int64:          7,
+			Uint:           7,
+			Uint8:          7,
+			Uint16:         7,
+			Uint32:         7,
+			Uint64:         7,
+			Float32:        7,
+			Float64:        7,
+			EmbeddedDirect: embeddedData{Int: 7, Uint: 7},
+			EmbeddedPtr:    &embeddedData{Int: 7, Uint: 7},
 		},
 		{
-			String:  "Demo 123",
-			Int:     1,
-			Int8:    1,
-			Int16:   1,
-			Int32:   1,
-			Int64:   1,
-			Uint:    1,
-			Uint8:   1,
-			Uint16:  1,
-			Uint32:  1,
-			Uint64:  1,
-			Float32: 1,
-			Float64: 1,
+			String:         "Demo 123",
+			Dummy:          "Demo 123",
+			Int:            1,
+			Int8:           1,
+			Int16:          1,
+			Int32:          1,
+			Int64:          1,
+			Uint:           1,
+			Uint8:          1,
+			Uint16:         1,
+			Uint32:         1,
+			Uint64:         1,
+			Float32:        1,
+			Float64:        1,
+			EmbeddedDirect: embeddedData{Int: 1, Uint: 1},
+			EmbeddedPtr:    &embeddedData{Int: 1, Uint: 1},
 		},
 		{
-			String:  "Demo 234",
-			Int:     2,
-			Int8:    2,
-			Int16:   2,
-			Int32:   2,
-			Int64:   2,
-			Uint:    2,
-			Uint8:   2,
-			Uint16:  2,
-			Uint32:  2,
-			Uint64:  2,
-			Float32: 2,
-			Float64: 2,
+			String:         "Demo 234",
+			Dummy:          "Demo 234",
+			Int:            2,
+			Int8:           2,
+			Int16:          2,
+			Int32:          2,
+			Int64:          2,
+			Uint:           2,
+			Uint8:          2,
+			Uint16:         2,
+			Uint32:         2,
+			Uint64:         2,
+			Float32:        2,
+			Float64:        2,
+			EmbeddedDirect: embeddedData{Int: 2, Uint: 2},
+			EmbeddedPtr:    &embeddedData{Int: 2, Uint: 2},
 		},
 		{
-			String:  "Demo 234",
-			Int:     3,
-			Int8:    3,
-			Int16:   3,
-			Int32:   3,
-			Int64:   3,
-			Uint:    3,
-			Uint8:   3,
-			Uint16:  3,
-			Uint32:  3,
-			Uint64:  3,
-			Float32: 3,
-			Float64: 3,
+			String:         "Demo 234",
+			Dummy:          "Demo 234",
+			Int:            3,
+			Int8:           3,
+			Int16:          3,
+			Int32:          3,
+			Int64:          3,
+			Uint:           3,
+			Uint8:          3,
+			Uint16:         3,
+			Uint32:         3,
+			Uint64:         3,
+			Float32:        3,
+			Float64:        3,
+			EmbeddedDirect: embeddedData{Int: 3, Uint: 3},
+			EmbeddedPtr:    &embeddedData{Int: 3, Uint: 3},
 		},
 		{
-			String:  "Foobar",
-			Int:     2,
-			Int8:    2,
-			Int16:   2,
-			Int32:   2,
-			Int64:   2,
-			Uint:    2,
-			Uint8:   2,
-			Uint16:  2,
-			Uint32:  2,
-			Uint64:  2,
-			Float32: 2,
-			Float64: 2,
+			String:         "Foobar",
+			Dummy:          "Foobar",
+			Int:            2,
+			Int8:           2,
+			Int16:          2,
+			Int32:          2,
+			Int64:          2,
+			Uint:           2,
+			Uint8:          2,
+			Uint16:         2,
+			Uint32:         2,
+			Uint64:         2,
+			Float32:        2,
+			Float64:        2,
+			EmbeddedDirect: embeddedData{Int: 2, Uint: 2},
+			EmbeddedPtr:    &embeddedData{Int: 2, Uint: 2},
 		},
 		nil,
 	}
@@ -244,56 +269,66 @@ func TestFilters(t *testing.T) {
 		{filterString: "float64:>1", expectedCount: 4, expectError: false, description: "match on float64, gt"},
 		{filterString: "float64:>=1", expectedCount: 5, expectError: false, description: "match on float64, gte"},
 
+		{filterString: "embeddedDirectStruct.embeddedInt:", expectedCount: 0, expectError: true, description: "match on embedded int, empty string"},
+		{filterString: "embeddedDirectStruct.embeddedInt:1", expectedCount: 1, expectError: false, description: "match on embedded int, exact match"},
+		{filterString: "embeddedDirectStruct.embeddedInt:~1", expectedCount: 0, expectError: true, description: "match on embedded int, wrong comparison type"},
+		{filterString: "embeddedDirectStruct.embeddedInt:!1", expectedCount: 4, expectError: false, description: "match on embedded int, negated"},
+		{filterString: "embeddedDirectStruct.embeddedInt:<2", expectedCount: 1, expectError: false, description: "match on embedded int, lt"},
+		{filterString: "embeddedDirectStruct.embeddedInt:<=1", expectedCount: 1, expectError: false, description: "match on embedded int, lte"},
+		{filterString: "embeddedDirectStruct.embeddedInt:>1", expectedCount: 4, expectError: false, description: "match on embedded int, gt"},
+		{filterString: "embeddedDirectStruct.embeddedInt:>=1", expectedCount: 5, expectError: false, description: "match on embedded int, gte"},
+
+		{filterString: "embeddedPtrStruct.embeddedInt:", expectedCount: 0, expectError: true, description: "match on embedded int (using ptr), empty string"},
+		{filterString: "embeddedPtrStruct.embeddedInt:1", expectedCount: 1, expectError: false, description: "match on embedded int (using ptr), exact match"},
+		{filterString: "embeddedPtrStruct.embeddedInt:~1", expectedCount: 0, expectError: true, description: "match on embedded int (using ptr), wrong comparison type"},
+		{filterString: "embeddedPtrStruct.embeddedInt:!1", expectedCount: 4, expectError: false, description: "match on embedded int (using ptr), negated"},
+		{filterString: "embeddedPtrStruct.embeddedInt:<2", expectedCount: 1, expectError: false, description: "match on embedded int (using ptr), lt"},
+		{filterString: "embeddedPtrStruct.embeddedInt:<=1", expectedCount: 1, expectError: false, description: "match on embedded int (using ptr), lte"},
+		{filterString: "embeddedPtrStruct.embeddedInt:>1", expectedCount: 4, expectError: false, description: "match on embedded int (using ptr), gt"},
+		{filterString: "embeddedPtrStruct.embeddedInt:>=1", expectedCount: 5, expectError: false, description: "match on embedded int (using ptr), gte"},
+
+		{filterString: "embeddedDirectStruct.embeddedUint:1", expectedCount: 1, expectError: false, description: "match on uint with second embedded field, exact match"},
+		{filterString: "embeddedPtrStruct.embeddedUint:1", expectedCount: 1, expectError: false, description: "match on uint with second embedded field (using ptr), exact match"},
+
+		{filterString: "embeddedEmptyPtrStruct.embeddedInt:0", expectedCount: 5, expectError: false, description: "match on embedded int in nil pointer, exact match (testing defaults)"},
+
 		{filterString: "unsupported:1", expectedCount: 0, expectError: true, description: "unsupported field"},
+
+		{filterString: "virtual:Demo 123", expectedCount: 1, expectError: false, description: "exact match on virtual column"},
 	}
 
 	cols, err := columns.NewColumns[testData]()
-	if err != nil {
-		t.Errorf("Failed to initialize: %v", err)
-	}
+	require.NoError(t, err)
+
+	cols.MustAddColumn(columns.Attributes{Name: "virtual"}, func(t *testData) string {
+		return t.Dummy
+	})
 
 	cmap := cols.GetColumnMap()
 
 	t.Run("test empty input", func(t *testing.T) {
 		res, err := FilterEntries(cmap, nil, []string{""})
-		if err != nil || res != nil {
-			t.Errorf("Expected returned entries and err to be nil")
-		}
+		assert.NoError(t, err)
+		assert.Nil(t, res)
 	})
 
 	for _, filterTest := range filterTests {
 		t.Run(filterTest.description, func(t *testing.T) {
 			out, err := FilterEntries(cmap, filterEntries, []string{filterTest.filterString})
-			if err != nil && !filterTest.expectError {
-				t.Errorf("Unexpected error: %v", err)
-			}
-			if err == nil && filterTest.expectError {
-				t.Errorf("Expected error")
-			}
-			if len(out) != filterTest.expectedCount {
-				t.Errorf("Expected %d entries, got %d", filterTest.expectedCount, len(out))
-			}
+			assert.False(t, err != nil && !filterTest.expectError)
+			assert.False(t, err == nil && filterTest.expectError)
+			assert.Len(t, out, filterTest.expectedCount)
 		})
 	}
 
 	filter, err := GetFilterFromString(cmap, "int8:1")
-	if err != nil {
-		t.Errorf("getting filter: %v", err)
-	}
-	if filter.Match(nil) {
-		t.Errorf("Matching nil on non-negated filter should result in false")
-	}
+	require.NoError(t, err)
+	assert.False(t, filter.Match(nil), "matching nil on non-negated filter should return false")
 
 	t.Run("multiple filters", func(t *testing.T) {
 		out, err := FilterEntries(cmap, filterEntries, []string{"int:1", "int8:1", "string:Demo 123"})
-		if err != nil {
-			t.Errorf("Unexpected error: %v", err)
-		}
-		if len(out) != 1 {
-			t.Fatalf("Expected %d entries, got %d", 1, len(out))
-		}
-		if out[0].Int != 1 {
-			t.Errorf("Expected another entry")
-		}
+		require.NoError(t, err)
+		require.Len(t, out, 1)
+		assert.Equal(t, out[0].Int, 1)
 	})
 }
