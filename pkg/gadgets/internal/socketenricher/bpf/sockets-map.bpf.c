@@ -48,6 +48,7 @@ insert_current_socket(struct sock *sock)
 	struct task_struct *task = (struct task_struct*) bpf_get_current_task();
 	socket_value.mntns = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	socket_value.pid_tgid = bpf_get_current_pid_tgid();
+	socket_value.uid_gid = bpf_get_current_uid_gid();
 	bpf_get_current_comm(&socket_value.task, sizeof(socket_value.task));
 	socket_value.sock = (__u64) sock;
 
@@ -63,6 +64,11 @@ insert_socket_from_iter(struct sock *sock, struct task_struct *task)
 	struct sockets_value socket_value = {0,};
 	// use given task
 	socket_value.pid_tgid = ((u64)task->tgid) << 32 | task->pid;
+	// The VFS code might temporary substitute task->cred by other creds during overlayfs
+	// copyup. In this case, we want the real creds of the process, not the creds temporarily
+	// substituted by VFS overlayfs copyup.
+	// https://kernel.org/doc/html/v6.2-rc8/security/credentials.html#overriding-the-vfs-s-use-of-credentials
+	socket_value.uid_gid = ((u64)task->real_cred->gid.val) << 32 | task->real_cred->uid.val;
 	__builtin_memcpy(&socket_value.task, task->comm, sizeof(socket_value.task));
 	socket_value.mntns = (u64) task->nsproxy->mnt_ns->ns.inum;
 	socket_value.sock = (__u64) sock;

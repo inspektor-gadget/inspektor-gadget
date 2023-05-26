@@ -72,6 +72,7 @@ func TestSocketEnricherBind(t *testing.T) {
 	utilstest.RequireRoot(t)
 
 	type testDefinition struct {
+		runnerConfig  *utilstest.RunnerConfig
 		generateEvent func() (uint16, int, error)
 		expectedEvent func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry
 	}
@@ -159,13 +160,33 @@ func TestSocketEnricherBind(t *testing.T) {
 				}
 			},
 		},
+		"tcp_uid_gid": {
+			runnerConfig:  &utilstest.RunnerConfig{Uid: 1000, Gid: 1111},
+			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_STREAM, 0),
+			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+				return &socketEnricherMapEntry{
+					Key: socketenricherSocketsKey{
+						Netns:  uint32(info.NetworkNsID),
+						Family: unix.AF_INET,
+						Proto:  unix.IPPROTO_TCP,
+						Port:   port,
+					},
+					Value: socketenricherSocketsValue{
+						Mntns:   info.MountNsID,
+						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
+						UidGid:  uint64(1111)<<32 + uint64(1000),
+						Task:    stringToSlice("socketenricher."),
+					},
+				}
+			},
+		},
 	} {
 		test := test
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			runner := utilstest.NewRunnerWithTest(t, nil)
+			runner := utilstest.NewRunnerWithTest(t, test.runnerConfig)
 
 			// We will test 2 scenarios with 2 different tracers:
 			// 1. earlyTracer will be started before the event is generated
@@ -214,6 +235,11 @@ func TestSocketEnricherBind(t *testing.T) {
 				if entry.Value.Mntns > 0 {
 					entry.Value.Mntns = 1
 				}
+
+				// We're not able to test uid and gid in the late tracer because our
+				// fake container is just another thread running on the same process
+				// and that tracer cannot distinguish threads.
+				entry.Value.UidGid = 0
 			}
 
 			t.Logf("Testing if early tracer noticed the event")

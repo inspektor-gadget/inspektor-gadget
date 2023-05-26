@@ -44,6 +44,7 @@ type dnsSocketsKey struct {
 type dnsSocketsValue struct {
 	Mntns             uint64
 	PidTgid           uint64
+	UidGid            uint64
 	Task              [16]int8
 	Sock              uint64
 	DeletionTimestamp uint64
