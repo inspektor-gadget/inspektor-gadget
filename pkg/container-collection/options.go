@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
+	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
@@ -539,6 +540,9 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 // WithRuncFanotify uses fanotify to detect when containers are created and add
 // them in the ContainerCollection.
 //
+// This requires execution in the host pid namespace. For this reason, it is
+// preferable to use WithContainerFanotifyEbpf() instead.
+//
 // ContainerCollection.Initialize(WithRuncFanotify())
 func WithRuncFanotify() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
@@ -569,6 +573,49 @@ func WithRuncFanotify() ContainerCollectionOption {
 			err := runcNotifier.AddWatchContainerTermination(container.ID, int(container.Pid))
 			if err != nil {
 				log.Errorf("runc fanotify enricher: failed to watch container %s: %s", container.ID, err)
+				return false
+			}
+			return true
+		})
+		return nil
+	}
+}
+
+// WithContainerFanotifyEbpf uses fanotify and eBPF to detect when containers
+// are created and add them in the ContainerCollection.
+//
+// This works either in the host pid namespace or in a container pid namespace.
+//
+// ContainerCollection.Initialize(WithContainerFanotifyEbpf())
+func WithContainerFanotifyEbpf() ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		containerNotifier, err := containerhook.NewContainerNotifier(func(notif containerhook.ContainerEvent) {
+			switch notif.Type {
+			case containerhook.EventTypeAddContainer:
+				container := &Container{
+					ID:        notif.ContainerID,
+					Pid:       notif.ContainerPID,
+					OciConfig: notif.ContainerConfig,
+					Name:      notif.ContainerName,
+				}
+				cc.AddContainer(container)
+			case containerhook.EventTypeRemoveContainer:
+				cc.RemoveContainer(notif.ContainerID)
+			}
+		})
+		if err != nil {
+			return fmt.Errorf("starting container fanotify: %w", err)
+		}
+
+		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
+			containerNotifier.Close()
+		})
+
+		// Future containers
+		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
+			err := containerNotifier.AddWatchContainerTermination(container.ID, int(container.Pid))
+			if err != nil {
+				log.Errorf("container fanotify enricher: failed to watch container %s: %s", container.ID, err)
 				return false
 			}
 			return true
