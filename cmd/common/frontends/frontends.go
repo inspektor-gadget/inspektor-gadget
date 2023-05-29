@@ -23,6 +23,7 @@ import (
 type Frontend interface {
 	Output(payload string)
 	Logf(severity logger.Level, fmt string, params ...any)
+	IsTerminal() bool
 	Clear()
 	Close()
 	GetContext() context.Context
