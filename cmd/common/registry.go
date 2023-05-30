@@ -388,8 +388,10 @@ func buildCommandFromGadget(
 					))
 
 					// Print first header while we wait for input
-					fe.Clear()
-					fe.Output(formatter.FormatHeader())
+					if fe.IsTerminal() {
+						fe.Clear()
+						fe.Output(formatter.FormatHeader())
+					}
 					break
 				}
 				fe.Output(formatter.FormatHeader())

@@ -67,6 +67,10 @@ func (f *frontend) Clear() {
 	}
 }
 
+func (f *frontend) IsTerminal() bool {
+	return f.isTerminal
+}
+
 func (f *frontend) Output(payload string) {
 	fmt.Fprintln(os.Stdout, payload)
 }
