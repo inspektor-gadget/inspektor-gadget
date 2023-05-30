@@ -254,6 +254,11 @@ func buildCommandFromGadget(
 					printEventAsYAMLFn(fe)
 				}
 
+				gType := gadgetDesc.Type()
+				if timeout == 0 && gType != gadgets.TypeTrace && gType != gadgets.TypeTraceIntervals {
+					gadgetCtx.Logger().Info("Running. Press Ctrl + C to finish")
+				}
+
 				// This kind of gadgets return directly the result instead of
 				// using the parser. We allow partial results, so error is only
 				// returned after handling those results.

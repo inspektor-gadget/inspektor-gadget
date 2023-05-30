@@ -21,6 +21,8 @@ import (
 	"sort"
 	"strings"
 	"unsafe"
+
+	"golang.org/x/exp/constraints"
 )
 
 type ColumnMap[T any] map[string]*Column[T]
@@ -422,5 +424,76 @@ func GetFieldFunc[OT any, T any](column ColumnInternals) func(entry *T) OT {
 			}
 		}
 		return *(*OT)(unsafe.Add(start, (sub)[subLen-1].offset))
+	}
+}
+
+// GetFieldAsNumberFunc returns a helper function to access a field of struct T as a number.
+func GetFieldAsNumberFunc[OT constraints.Integer | constraints.Float, T any](column ColumnInternals) func(entry *T) OT {
+	switch column.(*Column[T]).Kind() {
+	default:
+		var defaultValue OT
+		return func(entry *T) OT {
+			return defaultValue
+		}
+	case reflect.Int:
+		ff := GetFieldFunc[int, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Int8:
+		ff := GetFieldFunc[int8, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Int16:
+		ff := GetFieldFunc[int16, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Int32:
+		ff := GetFieldFunc[int32, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Int64:
+		ff := GetFieldFunc[int32, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Uint:
+		ff := GetFieldFunc[uint, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Uint8:
+		ff := GetFieldFunc[uint8, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Uint16:
+		ff := GetFieldFunc[uint16, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Uint32:
+		ff := GetFieldFunc[uint32, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Uint64:
+		ff := GetFieldFunc[uint32, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Float32:
+		ff := GetFieldFunc[float32, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
+	case reflect.Float64:
+		ff := GetFieldFunc[float64, T](column)
+		return func(entry *T) OT {
+			return OT(ff(entry))
+		}
 	}
 }

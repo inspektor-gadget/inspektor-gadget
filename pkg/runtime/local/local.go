@@ -110,7 +110,10 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 	if err != nil {
 		return nil, fmt.Errorf("instantiating operators: %w", err)
 	}
-	log.Debugf("found %d operators", len(gadgetCtx.Operators()))
+	log.Debugf("found %d operators: ", len(gadgetCtx.Operators()))
+	for _, operator := range gadgetCtx.Operators() {
+		log.Debugf("  %s", operator.Name())
+	}
 
 	// Set event handler
 	if setter, ok := gadgetInstance.(gadgets.EventHandlerSetter); ok {
