@@ -23,6 +23,7 @@ func Test_crioResolver(t *testing.T) {
 		crioPodUIDAnnotation:        "test-pod-uid",
 		crioContainerNameAnnotation: "test-container-name",
 		crioContainerTypeAnnotation: "test-container-type",
+		crioContainerImageName:      "test-container-image-name",
 	}
 
 	resolver := crioResolver{}
@@ -38,4 +39,5 @@ func Test_crioResolver(t *testing.T) {
 	assert(resolver.PodUID(annotations), "test-pod-uid")
 	assert(resolver.ContainerName(annotations), "test-container-name")
 	assert(resolver.ContainerType(annotations), "test-container-type")
+	assert(resolver.ContainerImageName(annotations), "test-container-image-name")
 }
