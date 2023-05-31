@@ -19,9 +19,11 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
+	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containersmap "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 )
@@ -88,7 +90,7 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*IGManager, error) {
 		return nil, fmt.Errorf("creating containers map: %w", err)
 	}
 
-	err = l.ContainerCollection.Initialize(
+	opts := []containercollection.ContainerCollectionOption{
 		containercollection.WithPubSub(l.containersMap.ContainersMapUpdater()),
 		containercollection.WithOCIConfigEnrichment(),
 		containercollection.WithCgroupEnrichment(),
@@ -96,7 +98,14 @@ func NewManager(runtimes []*containerutils.RuntimeConfig) (*IGManager, error) {
 		containercollection.WithMultipleContainerRuntimesEnrichment(runtimes),
 		containercollection.WithRuncFanotify(),
 		containercollection.WithTracerCollection(l.tracerCollection),
-	)
+	}
+
+	if !log.IsLevelEnabled(log.DebugLevel) && isDefaultContainerRuntimeConfig(runtimes) {
+		warnings := []containercollection.ContainerCollectionOption{containercollection.WithDisableContainerRuntimeWarnings()}
+		opts = append(warnings, opts...)
+	}
+
+	err = l.ContainerCollection.Initialize(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -112,4 +121,31 @@ func (l *IGManager) Close() {
 	if l.containersMap != nil {
 		l.containersMap.Close()
 	}
+}
+
+func isDefaultContainerRuntimeConfig(runtimes []*containerutils.RuntimeConfig) bool {
+	if len(runtimes) != len(containerutils.AvailableRuntimes) {
+		return false
+	}
+
+	var customSocketPath bool
+	for _, runtime := range runtimes {
+		switch runtime.Name {
+		case runtimeclient.DockerName:
+			customSocketPath = runtime.SocketPath != runtimeclient.DockerDefaultSocketPath
+		case runtimeclient.ContainerdName:
+			customSocketPath = runtime.SocketPath != runtimeclient.ContainerdDefaultSocketPath
+		case runtimeclient.CrioName:
+			customSocketPath = runtime.SocketPath != runtimeclient.CrioDefaultSocketPath
+		case runtimeclient.PodmanName:
+			customSocketPath = runtime.SocketPath != runtimeclient.PodmanDefaultSocketPath
+		default:
+			customSocketPath = true
+		}
+		if customSocketPath {
+			return false
+		}
+	}
+
+	return true
 }

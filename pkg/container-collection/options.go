@@ -87,6 +87,14 @@ func containerRuntimeEnricher(
 	return true
 }
 
+// WithDisableContainerRuntimeWarnings disables the warnings about container runtime.
+func WithDisableContainerRuntimeWarnings() ContainerCollectionOption {
+	return func(cc *ContainerCollection) error {
+		cc.disableContainerRuntimeWarnings = true
+		return nil
+	}
+}
+
 // WithMultipleContainerRuntimesEnrichment is a wrapper for
 // WithContainerRuntimeEnrichment() to allow caller to add multiple runtimes in
 // one single call.
@@ -124,8 +132,10 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 	return func(cc *ContainerCollection) error {
 		runtimeClient, err := containerutils.NewContainerRuntimeClient(runtime)
 		if err != nil {
-			log.Warnf("Runtime enricher (%s): failed to initialize container runtime: %s",
-				runtime.Name, err)
+			if !cc.disableContainerRuntimeWarnings {
+				log.Warnf("Runtime enricher (%s): failed to initialize container runtime: %s",
+					runtime.Name, err)
+			}
 			return err
 		}
 
@@ -154,9 +164,10 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		// Enrich already running containers
 		containers, err := runtimeClient.GetContainers()
 		if err != nil {
-			log.Warnf("Runtime enricher (%s): couldn't get current containers: %s",
-				runtime.Name, err)
-
+			if !cc.disableContainerRuntimeWarnings {
+				log.Warnf("Runtime enricher (%s): couldn't get current containers: %s",
+					runtime.Name, err)
+			}
 			return nil
 		}
 		for _, container := range containers {
