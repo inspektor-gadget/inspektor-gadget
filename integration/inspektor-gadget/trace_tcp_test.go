@@ -56,7 +56,7 @@ func TestTraceTcp(t *testing.T) {
 
 			normalize := func(e *tracetcpTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
+				e.K8s.Node = ""
 				e.Pid = 0
 				e.SrcEndpoint.Port = 0
 				e.MountNsID = 0

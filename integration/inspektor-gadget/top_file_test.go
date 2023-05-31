@@ -34,12 +34,13 @@ func newTopFileCmd(ns, cmd string, startAndStop bool) *Command {
 		}
 
 		normalize := func(e *topfileTypes.Stats) {
-			e.Node = ""
 			e.Writes = 0
 			e.WriteBytes = 0
 			e.Pid = 0
 			e.Tid = 0
 			e.MountNsID = 0
+
+			e.K8s.Node = ""
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

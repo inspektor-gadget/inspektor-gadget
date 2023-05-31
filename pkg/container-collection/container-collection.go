@@ -423,11 +423,11 @@ func (cc *ContainerCollection) ContainerRangeWithSelector(
 }
 
 func (cc *ContainerCollection) EnrichNode(event *eventtypes.CommonData) {
-	event.Node = cc.nodeName
+	event.K8s.Node = cc.nodeName
 }
 
 func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
-	event.Node = cc.nodeName
+	event.K8s.Node = cc.nodeName
 
 	container := cc.LookupContainerByMntns(mountnsid)
 	if container == nil && cc.cachedContainers != nil {
@@ -435,14 +435,14 @@ func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mount
 	}
 
 	if container != nil {
-		event.Container = container.K8s.ContainerName
-		event.Pod = container.K8s.PodName
-		event.Namespace = container.K8s.Namespace
+		event.K8s.ContainerName = container.K8s.ContainerName
+		event.K8s.PodName = container.K8s.PodName
+		event.K8s.Namespace = container.K8s.Namespace
 	}
 }
 
 func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netnsid uint64) {
-	event.Node = cc.nodeName
+	event.K8s.Node = cc.nodeName
 
 	containers := cc.LookupContainersByNetns(netnsid)
 	if len(containers) == 0 && cc.cachedContainers != nil {
@@ -452,20 +452,20 @@ func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netns
 		return
 	}
 	if containers[0].HostNetwork {
-		event.HostNetwork = true
+		event.K8s.HostNetwork = true
 		return
 	}
 
 	if len(containers) == 1 {
-		event.Container = containers[0].K8s.ContainerName
-		event.Pod = containers[0].K8s.PodName
-		event.Namespace = containers[0].K8s.Namespace
+		event.K8s.ContainerName = containers[0].K8s.ContainerName
+		event.K8s.PodName = containers[0].K8s.PodName
+		event.K8s.Namespace = containers[0].K8s.Namespace
 		return
 	}
 	if containers[0].K8s.PodName != "" && containers[0].K8s.Namespace != "" {
 		// Kubernetes containers within the same pod.
-		event.Pod = containers[0].K8s.PodName
-		event.Namespace = containers[0].K8s.Namespace
+		event.K8s.PodName = containers[0].K8s.PodName
+		event.K8s.Namespace = containers[0].K8s.Namespace
 	}
 	// else {
 	// 	TODO: Non-Kubernetes containers sharing the same network namespace.

@@ -20,7 +20,9 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	k8sTypes "k8s.io/apimachinery/pkg/types"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestSelector(t *testing.T) {
@@ -36,7 +38,7 @@ func TestSelector(t *testing.T) {
 			selector:    &ContainerSelector{},
 			container: &Container{
 				K8s: K8sMetadata{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace:     "this-namespace",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
@@ -49,7 +51,7 @@ func TestSelector(t *testing.T) {
 			match:       true,
 			selector: &ContainerSelector{
 				K8sSelector: K8sSelector{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace:     "this-namespace",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
@@ -62,7 +64,7 @@ func TestSelector(t *testing.T) {
 			},
 			container: &Container{
 				K8s: K8sMetadata{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace:     "this-namespace",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
@@ -80,7 +82,7 @@ func TestSelector(t *testing.T) {
 			match:       false,
 			selector: &ContainerSelector{
 				K8sSelector: K8sSelector{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace: "this-namespace",
 						PodName:   "this-pod",
 					},
@@ -88,7 +90,7 @@ func TestSelector(t *testing.T) {
 			},
 			container: &Container{
 				K8s: K8sMetadata{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace:     "this-namespace",
 						PodName:       "a-misnamed-pod",
 						ContainerName: "this-container",
@@ -101,7 +103,7 @@ func TestSelector(t *testing.T) {
 			match:       false,
 			selector: &ContainerSelector{
 				K8sSelector: K8sSelector{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace:     "this-namespace",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
@@ -114,7 +116,7 @@ func TestSelector(t *testing.T) {
 			},
 			container: &Container{
 				K8s: K8sMetadata{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace:     "this-namespace",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
@@ -131,7 +133,7 @@ func TestSelector(t *testing.T) {
 			match:       false,
 			selector: &ContainerSelector{
 				K8sSelector: K8sSelector{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace: "ns1,ns2,ns3",
 						PodName:   "this-pod",
 					},
@@ -139,7 +141,7 @@ func TestSelector(t *testing.T) {
 			},
 			container: &Container{
 				K8s: K8sMetadata{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace:     "this-namespace",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
@@ -152,7 +154,7 @@ func TestSelector(t *testing.T) {
 			match:       true,
 			selector: &ContainerSelector{
 				K8sSelector: K8sSelector{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace: "ns1,ns2,ns3",
 						PodName:   "this-pod",
 					},
@@ -160,7 +162,7 @@ func TestSelector(t *testing.T) {
 			},
 			container: &Container{
 				K8s: K8sMetadata{
-					BasicK8sMetadata: BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace:     "ns2",
 						PodName:       "this-pod",
 						ContainerName: "this-container",
@@ -199,13 +201,13 @@ func TestContainerResolver(t *testing.T) {
 			CgroupPath: "/none",
 			CgroupID:   1,
 			K8s: K8sMetadata{
-				BasicK8sMetadata: BasicK8sMetadata{
+				BasicK8sMetadata: types.BasicK8sMetadata{
 					Namespace:     "this-namespace",
 					PodName:       "my-pod",
 					ContainerName: fmt.Sprintf("container%d", i),
 				},
 				ownerReference: &metav1.OwnerReference{
-					UID: types.UID(fmt.Sprintf("abcde%d", i)),
+					UID: k8sTypes.UID(fmt.Sprintf("abcde%d", i)),
 				},
 			},
 		})
@@ -318,7 +320,7 @@ func TestContainerResolver(t *testing.T) {
 			ContainerID: "abcde0-different",
 		},
 		K8s: K8sMetadata{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace:     "another-namespace",
 				PodName:       "my-pod",
 				ContainerName: "container0",
@@ -369,7 +371,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up containers in 'this-namespace'
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace: "this-namespace",
 			},
 		},
@@ -387,7 +389,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up containers in 'this-namespace' and 'my-pod'
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace: "this-namespace",
 				PodName:   "my-pod",
 			},
@@ -406,7 +408,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up containers named 'container0' anywhere
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				ContainerName: "container0",
 			},
 		},
@@ -424,7 +426,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up containers named 'container0' in 'my-pod' but any namespace
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				PodName:       "my-pod",
 				ContainerName: "container0",
 			},
@@ -443,7 +445,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up container0 in 'this-namespace' and 'my-pod'
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace:     "this-namespace",
 				PodName:       "my-pod",
 				ContainerName: "container0",
@@ -461,7 +463,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up container0 in 'another-namespace' and 'my-pod'
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace:     "another-namespace",
 				PodName:       "my-pod",
 				ContainerName: "container0",
@@ -479,7 +481,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up container2 in 'this-namespace' and 'my-pod'
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace:     "this-namespace",
 				PodName:       "my-pod",
 				ContainerName: "container2",
@@ -497,7 +499,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up a non-existent container
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace:     "this-namespace",
 				PodName:       "my-pod",
 				ContainerName: "non-existent",
@@ -511,7 +513,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up containers in a non-existent pod
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace: "this-namespace",
 				PodName:   "non-existent",
 			},
@@ -524,7 +526,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up containers in a non-existent pod
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace:     "this-namespace",
 				PodName:       "non-existent",
 				ContainerName: "container0",
@@ -538,7 +540,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up containers in a non-existent namespace
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace: "non-existent",
 			},
 		},
@@ -550,7 +552,7 @@ func TestContainerResolver(t *testing.T) {
 	// Look up containers in a non-existent namespace
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
 		K8sSelector: K8sSelector{
-			BasicK8sMetadata: BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace:     "non-existent",
 				PodName:       "my-pod",
 				ContainerName: "container0",

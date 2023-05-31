@@ -27,8 +27,12 @@ func newTopFileCmd(ns string, cmd string, startAndStop bool) *Command {
 	expectedOutputFn := func(output string) error {
 		expectedEntry := &types.Stats{
 			CommonData: eventtypes.CommonData{
-				Namespace: ns,
-				Pod:       "test-pod",
+				K8s: eventtypes.K8sMetadata{
+					BasicK8sMetadata: eventtypes.BasicK8sMetadata{
+						Namespace: ns,
+						PodName:   "test-pod",
+					},
+				},
 			},
 			// echo is built-in
 			Comm:     "sh",
@@ -37,7 +41,7 @@ func newTopFileCmd(ns string, cmd string, startAndStop bool) *Command {
 		}
 
 		normalize := func(e *types.Stats) {
-			e.Container = ""
+			e.K8s.ContainerName = ""
 			e.Pid = 0
 			e.Tid = 0
 			e.MountNsID = 0

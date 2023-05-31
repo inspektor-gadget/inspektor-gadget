@@ -59,8 +59,9 @@ func TestRunTraceOpen(t *testing.T) {
 			}
 
 			normalize := func(e *types.Event) {
+				e.K8s.Node = ""
+
 				e.Timestamp = 0
-				e.Node = ""
 				e.MountNsID = 0
 				e.RawData = nil
 				data := e.Data.(map[string]interface{})

@@ -35,11 +35,11 @@ func TestSnapshotProcess(t *testing.T) {
 				Event:   BuildBaseEvent(ns),
 				Command: "nc",
 			}
-			expectedEntry.Event.Container = ""
+			expectedEntry.Event.K8s.ContainerName = ""
 
 			normalize := func(e *types.Event) {
-				e.Node = ""
-				e.Container = ""
+				e.K8s.Node = ""
+				e.K8s.ContainerName = ""
 				e.Pid = 0
 				e.Tid = 0
 				e.ParentPid = 0

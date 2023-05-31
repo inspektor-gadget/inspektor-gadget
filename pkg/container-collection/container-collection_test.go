@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	types "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type fakeTracerMapsUpdater struct {
@@ -146,7 +146,7 @@ func TestWithTracerCollection(t *testing.T) {
 			Netns: runner.Info.NetworkNsID,
 			Pid:   uint32(runner.Info.Pid),
 			K8s: K8sMetadata{
-				BasicK8sMetadata: BasicK8sMetadata{
+				BasicK8sMetadata: types.BasicK8sMetadata{
 					ContainerName: fmt.Sprintf("name%d", i),
 					Namespace:     fmt.Sprintf("namespace%d", i),
 					PodName:       fmt.Sprintf("pod%d", i),
@@ -162,9 +162,13 @@ func TestWithTracerCollection(t *testing.T) {
 		for i := 0; i < nContainers; i++ {
 			ev := types.CommonData{}
 			expected := types.CommonData{
-				Namespace: containers[i].K8s.Namespace,
-				Pod:       containers[i].K8s.PodName,
-				Container: containers[i].K8s.ContainerName,
+				K8s: types.K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     containers[i].K8s.Namespace,
+						PodName:       containers[i].K8s.PodName,
+						ContainerName: containers[i].K8s.ContainerName,
+					},
+				},
 			}
 
 			cc.EnrichByMntNs(&ev, containers[i].Mntns)
@@ -177,9 +181,13 @@ func TestWithTracerCollection(t *testing.T) {
 		for i := 0; i < nContainers; i++ {
 			ev := types.CommonData{}
 			expected := types.CommonData{
-				Namespace: containers[i].K8s.Namespace,
-				Pod:       containers[i].K8s.PodName,
-				Container: containers[i].K8s.ContainerName,
+				K8s: types.K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     containers[i].K8s.Namespace,
+						PodName:       containers[i].K8s.PodName,
+						ContainerName: containers[i].K8s.ContainerName,
+					},
+				},
 			}
 
 			cc.EnrichByNetNs(&ev, containers[i].Netns)

@@ -75,13 +75,13 @@ func TestSnapshotSocket(t *testing.T) {
 					},
 					Status: "LISTEN",
 				}
-				expectedEntry.Node = nodeName
+				expectedEntry.K8s.Node = nodeName
 
 				// Socket gadget doesn't provide container data yet. See issue #744.
-				expectedEntry.Container = ""
+				expectedEntry.K8s.ContainerName = ""
 
 				normalize := func(e *snapshotsocketTypes.Event) {
-					e.Container = ""
+					e.K8s.ContainerName = ""
 					e.InodeNumber = 0
 					e.NetNsID = 0
 				}

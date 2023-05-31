@@ -42,7 +42,7 @@ func TestProfileCpu(t *testing.T) {
 				}
 
 				normalize := func(e *profilecpuTypes.Report) {
-					e.Node = ""
+					e.K8s.Node = ""
 					e.Pid = 0
 					e.UserStack = nil
 					e.KernelStack = nil

@@ -74,9 +74,13 @@ func TestTraceNetwork(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Namespace: ns,
-							Pod:       "nginx-pod",
-							Container: "nginx-pod",
+							K8s: eventtypes.K8sMetadata{
+								BasicK8sMetadata: eventtypes.BasicK8sMetadata{
+									Namespace:     ns,
+									PodName:       "nginx-pod",
+									ContainerName: "nginx-pod",
+								},
+							},
 						},
 					},
 					Comm:      "nginx",
@@ -99,7 +103,7 @@ func TestTraceNetwork(t *testing.T) {
 
 			normalize := func(e *tracenetworkTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
+				e.K8s.Node = ""
 				e.PodHostIP = ""
 				e.MountNsID = 0
 				e.NetNsID = 0

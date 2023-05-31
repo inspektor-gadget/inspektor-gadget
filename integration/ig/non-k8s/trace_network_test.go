@@ -37,7 +37,11 @@ func TestTraceNetwork(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Container: cn,
+							K8s: eventtypes.K8sMetadata{
+								BasicK8sMetadata: eventtypes.BasicK8sMetadata{
+									ContainerName: cn,
+								},
+							},
 						},
 					},
 					Comm:    "curl",
@@ -54,7 +58,11 @@ func TestTraceNetwork(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Container: cn,
+							K8s: eventtypes.K8sMetadata{
+								BasicK8sMetadata: eventtypes.BasicK8sMetadata{
+									ContainerName: cn,
+								},
+							},
 						},
 					},
 					Comm:    "nginx",

@@ -98,7 +98,9 @@ func (g *GadgetTracerManager) ReceiveStream(tracerID *pb.TracerID, stream pb.Gad
 			ev := eventtypes.Event{
 				Type: eventtypes.ERR,
 				CommonData: eventtypes.CommonData{
-					Node: g.nodeName,
+					K8s: eventtypes.K8sMetadata{
+						Node: g.nodeName,
+					},
 				},
 				Message: "events lost in gadget tracer manager",
 			}
@@ -166,7 +168,7 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 		},
 		Pid: containerDefinition.Pid,
 		K8s: containercollection.K8sMetadata{
-			BasicK8sMetadata: containercollection.BasicK8sMetadata{
+			BasicK8sMetadata: eventtypes.BasicK8sMetadata{
 				Namespace:     containerDefinition.Namespace,
 				PodName:       containerDefinition.Podname,
 				ContainerName: containerDefinition.Name,

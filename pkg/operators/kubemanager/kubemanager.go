@@ -28,6 +28,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -209,7 +210,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 
 	containerSelector := containercollection.ContainerSelector{
 		K8sSelector: containercollection.K8sSelector{
-			BasicK8sMetadata: containercollection.BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace:     m.params.Get(ParamNamespace).AsString(),
 				PodName:       m.params.Get(ParamPodName).AsString(),
 				ContainerName: m.params.Get(ParamContainerName).AsString(),

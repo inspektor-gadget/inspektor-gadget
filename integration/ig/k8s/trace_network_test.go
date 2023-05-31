@@ -66,9 +66,13 @@ func TestTraceNetwork(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Namespace: ns,
-							Pod:       "nginx-pod",
-							Container: "nginx-pod",
+							K8s: eventtypes.K8sMetadata{
+								BasicK8sMetadata: eventtypes.BasicK8sMetadata{
+									Namespace:     ns,
+									PodName:       "nginx-pod",
+									ContainerName: "nginx-pod",
+								},
+							},
 						},
 					},
 					Comm:    "nginx",
@@ -93,10 +97,10 @@ func TestTraceNetwork(t *testing.T) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
-					if e.Pod == "nginx-pod" {
-						e.Container = "nginx-pod"
-					} else if e.Pod == "test-pod" {
-						e.Container = "test-pod"
+					if e.K8s.PodName == "nginx-pod" {
+						e.K8s.ContainerName = "nginx-pod"
+					} else if e.K8s.PodName == "test-pod" {
+						e.K8s.ContainerName = "test-pod"
 					}
 				}
 			}

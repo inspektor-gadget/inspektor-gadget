@@ -43,7 +43,7 @@ func TestTraceSni(t *testing.T) {
 
 			normalize := func(e *tracesniTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
+				e.K8s.Node = ""
 				e.MountNsID = 0
 				e.NetNsID = 0
 				e.Pid = 0

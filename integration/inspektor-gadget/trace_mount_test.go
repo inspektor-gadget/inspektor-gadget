@@ -44,7 +44,7 @@ func TestTraceMount(t *testing.T) {
 
 			normalize := func(e *tracemountTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
+				e.K8s.Node = ""
 				e.Pid = 0
 				e.Tid = 0
 				e.MountNsID = 0

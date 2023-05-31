@@ -62,7 +62,7 @@ func TestTraceExec(t *testing.T) {
 
 			normalize := func(e *traceexecTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
+				e.K8s.Node = ""
 				e.Pid = 0
 				e.Ppid = 0
 				e.LoginUid = 0

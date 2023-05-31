@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestListContainers(t *testing.T) {
@@ -32,7 +33,7 @@ func TestListContainers(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
-					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						ContainerName: "test-pod",
 						PodName:       "test-pod",
 						Namespace:     ns,
@@ -96,7 +97,7 @@ func TestFilterByContainerName(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
-					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						ContainerName: cn,
 						PodName:       cn,
 						Namespace:     ns,
@@ -157,7 +158,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
 					K8s: containercollection.K8sMetadata{
-						BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						BasicK8sMetadata: types.BasicK8sMetadata{
 							ContainerName: cn,
 							PodName:       cn,
 							Namespace:     ns,
@@ -221,7 +222,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 				Type: containercollection.EventTypeRemoveContainer,
 				Container: &containercollection.Container{
 					K8s: containercollection.K8sMetadata{
-						BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						BasicK8sMetadata: types.BasicK8sMetadata{
 							ContainerName: cn,
 							PodName:       cn,
 							Namespace:     ns,
@@ -288,15 +289,15 @@ func TestPodWithSecurityContext(t *testing.T) {
 			expectedEvent := &containercollection.PubSubEvent{
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
-					Runtime: containercollection.RuntimeMetadata{
-						RuntimeName: *containerRuntime,
-					},
 					K8s: containercollection.K8sMetadata{
-						BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						BasicK8sMetadata: types.BasicK8sMetadata{
 							ContainerName: cn,
 							PodName:       po,
 							Namespace:     ns,
 						},
+					},
+					Runtime: containercollection.RuntimeMetadata{
+						RuntimeName: *containerRuntime,
 					},
 				},
 			}
@@ -313,9 +314,9 @@ func TestPodWithSecurityContext(t *testing.T) {
 				e.Container.CgroupV2 = ""
 				e.Timestamp = ""
 
+				e.Container.Runtime.ContainerID = ""
 				e.Container.K8s.PodLabels = nil
 				e.Container.K8s.PodUID = ""
-				e.Container.Runtime.ContainerID = ""
 			}
 
 			return ExpectAllToMatch(output, normalize, expectedEvent)

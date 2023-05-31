@@ -32,11 +32,6 @@ func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
 		}
 
 		normalize := func(e *topebpfTypes.Stats) {
-			e.Node = ""
-			e.Namespace = ""
-			e.Pod = ""
-			e.Container = ""
-			e.Namespace = ""
 			e.ProgramID = 0
 			e.Processes = nil
 			e.CurrentRuntime = 0
@@ -49,6 +44,12 @@ func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
 			e.MapCount = 0
 			e.TotalCpuUsage = 0
 			e.PerCpuUsage = 0
+
+			e.K8s.Node = ""
+			e.K8s.Namespace = ""
+			e.K8s.PodName = ""
+			e.K8s.ContainerName = ""
+			e.K8s.Namespace = ""
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

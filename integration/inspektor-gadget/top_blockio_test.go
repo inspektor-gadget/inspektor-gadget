@@ -31,7 +31,6 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 		}
 
 		normalize := func(e *topblockioTypes.Stats) {
-			e.Node = ""
 			e.Major = 0
 			e.Minor = 0
 			e.MicroSecs = 0
@@ -39,6 +38,8 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 			e.Pid = 0
 			e.Operations = 0
 			e.Bytes = 0
+
+			e.K8s.Node = ""
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
