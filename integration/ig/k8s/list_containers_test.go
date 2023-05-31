@@ -32,9 +32,11 @@ func TestListContainers(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
-					ContainerName: "test-pod",
-					PodName:       "test-pod",
-					Namespace:     ns,
+					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						ContainerName: "test-pod",
+						PodName:       "test-pod",
+						Namespace:     ns,
+					},
 				},
 				Runtime: containercollection.RuntimeMetadata{
 					RuntimeName: *containerRuntime,
@@ -94,9 +96,11 @@ func TestFilterByContainerName(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
-					ContainerName: cn,
-					PodName:       cn,
-					Namespace:     ns,
+					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						ContainerName: cn,
+						PodName:       cn,
+						Namespace:     ns,
+					},
 				},
 				Runtime: containercollection.RuntimeMetadata{
 					RuntimeName: *containerRuntime,
@@ -153,9 +157,11 @@ func TestWatchCreatedContainers(t *testing.T) {
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
 					K8s: containercollection.K8sMetadata{
-						ContainerName: cn,
-						PodName:       cn,
-						Namespace:     ns,
+						BasicK8sMetadata: containercollection.BasicK8sMetadata{
+							ContainerName: cn,
+							PodName:       cn,
+							Namespace:     ns,
+						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						RuntimeName: *containerRuntime,
@@ -215,9 +221,11 @@ func TestWatchDeletedContainers(t *testing.T) {
 				Type: containercollection.EventTypeRemoveContainer,
 				Container: &containercollection.Container{
 					K8s: containercollection.K8sMetadata{
-						ContainerName: cn,
-						PodName:       cn,
-						Namespace:     ns,
+						BasicK8sMetadata: containercollection.BasicK8sMetadata{
+							ContainerName: cn,
+							PodName:       cn,
+							Namespace:     ns,
+						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						RuntimeName: *containerRuntime,
@@ -284,9 +292,11 @@ func TestPodWithSecurityContext(t *testing.T) {
 						RuntimeName: *containerRuntime,
 					},
 					K8s: containercollection.K8sMetadata{
-						ContainerName: cn,
-						PodName:       po,
-						Namespace:     ns,
+						BasicK8sMetadata: containercollection.BasicK8sMetadata{
+							ContainerName: cn,
+							PodName:       po,
+							Namespace:     ns,
+						},
 					},
 				},
 			}

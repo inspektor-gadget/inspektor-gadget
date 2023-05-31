@@ -555,7 +555,9 @@ func WithRuncFanotify() ContainerCollectionOption {
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
 					K8s: K8sMetadata{
-						ContainerName: notif.ContainerName,
+						BasicK8sMetadata: BasicK8sMetadata{
+							ContainerName: notif.ContainerName,
+						},
 					},
 				}
 				cc.AddContainer(container)
@@ -597,7 +599,9 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 			case containerhook.EventTypeAddContainer:
 				container := &Container{
 					K8s: K8sMetadata{
-						ContainerName: notif.ContainerName,
+						BasicK8sMetadata: BasicK8sMetadata{
+							ContainerName: notif.ContainerName,
+						},
 					},
 					Runtime: RuntimeMetadata{
 						ContainerID: notif.ContainerID,

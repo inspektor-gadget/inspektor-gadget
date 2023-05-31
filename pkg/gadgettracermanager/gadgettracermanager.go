@@ -166,10 +166,12 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 		},
 		Pid: containerDefinition.Pid,
 		K8s: containercollection.K8sMetadata{
-			Namespace:     containerDefinition.Namespace,
-			PodName:       containerDefinition.Podname,
-			ContainerName: containerDefinition.Name,
-			PodLabels:     map[string]string{},
+			BasicK8sMetadata: containercollection.BasicK8sMetadata{
+				Namespace:     containerDefinition.Namespace,
+				PodName:       containerDefinition.Podname,
+				ContainerName: containerDefinition.Name,
+			},
+			PodLabels: map[string]string{},
 		},
 	}
 	for _, l := range containerDefinition.Labels {

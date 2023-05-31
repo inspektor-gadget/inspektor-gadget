@@ -208,14 +208,18 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 	}
 
 	containerSelector := containercollection.ContainerSelector{
-		Namespace: m.params.Get(ParamNamespace).AsString(),
-		Podname:   m.params.Get(ParamPodName).AsString(),
-		Name:      m.params.Get(ParamContainerName).AsString(),
-		Labels:    labels,
+		K8sSelector: containercollection.K8sSelector{
+			BasicK8sMetadata: containercollection.BasicK8sMetadata{
+				Namespace:     m.params.Get(ParamNamespace).AsString(),
+				PodName:       m.params.Get(ParamPodName).AsString(),
+				ContainerName: m.params.Get(ParamContainerName).AsString(),
+			},
+			PodLabels: labels,
+		},
 	}
 
 	if m.params.Get(ParamAllNamespaces).AsBool() {
-		containerSelector.Namespace = ""
+		containerSelector.K8sSelector.Namespace = ""
 	}
 
 	if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {

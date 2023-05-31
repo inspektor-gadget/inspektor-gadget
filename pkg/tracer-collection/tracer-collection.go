@@ -169,10 +169,10 @@ func (tc *TracerCollection) TracerDump() (out string) {
 	for i, t := range tc.tracers {
 		out += fmt.Sprintf("%v -> %q/%q (%s) Labels: \n",
 			i,
-			t.containerSelector.Namespace,
-			t.containerSelector.Podname,
-			t.containerSelector.Name)
-		for k, v := range t.containerSelector.Labels {
+			t.containerSelector.K8sSelector.Namespace,
+			t.containerSelector.K8sSelector.PodName,
+			t.containerSelector.K8sSelector.ContainerName)
+		for k, v := range t.containerSelector.K8sSelector.PodLabels {
 			out += fmt.Sprintf("                  %v: %v\n", k, v)
 		}
 		out += "        Matches:\n"

@@ -83,19 +83,6 @@ func (c *Container) close() {
 	}
 }
 
-type K8sMetadata struct {
-	Namespace string            `json:"namespace,omitempty"`
-	PodName   string            `json:"podName,omitempty"`
-	PodLabels map[string]string `json:"podLabels,omitempty"`
-	PodUID    string            `json:"podUID,omitempty"`
-	// ContainerName is tagged as "runtime" because we are temporarily using the k8s
-	// container name as the container name for "ig list-containers" because the
-	// ContainerName struct does not have the runtime container name field.
-	ContainerName string `json:"containerName,omitempty" column:"container,template:container" columnTags:"runtime"`
-
-	ownerReference *metav1.OwnerReference
-}
-
 type RuntimeMetadata struct {
 	// Container RuntimeName Name (docker, containerd, cri-o, ...)
 	RuntimeName string `json:"runtimeName,omitempty" column:"runtimeName,minWidth:5,maxWidth:10"`
@@ -104,11 +91,30 @@ type RuntimeMetadata struct {
 	ContainerID string `json:"containerId,omitempty" column:"ContainerId,width:13,maxWidth:64"`
 }
 
+type BasicK8sMetadata struct {
+	Namespace string `json:"namespace,omitempty"`
+	PodName   string `json:"podName,omitempty"`
+	// ContainerName is tagged as "runtime" because we are temporarily using the k8s
+	// container name as the container name for "ig list-containers" because the
+	// ContainerName struct does not have the runtime container name field.
+	ContainerName string `json:"containerName,omitempty" column:"container,template:container" columnTags:"runtime"`
+}
+
+type K8sMetadata struct {
+	BasicK8sMetadata `json:",inline"`
+	PodLabels        map[string]string `json:"podLabels,omitempty"`
+	PodUID           string            `json:"podUID,omitempty"`
+
+	ownerReference *metav1.OwnerReference
+}
+
+type K8sSelector struct {
+	BasicK8sMetadata
+	PodLabels map[string]string
+}
+
 type ContainerSelector struct {
-	Namespace string
-	Podname   string
-	Labels    map[string]string
-	Name      string
+	K8sSelector K8sSelector
 }
 
 // GetOwnerReference returns the owner reference information of the

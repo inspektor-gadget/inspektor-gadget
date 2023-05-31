@@ -46,7 +46,11 @@ func NewListContainersCmd() *cobra.Command {
 			defer igmanager.Close()
 
 			selector := containercollection.ContainerSelector{
-				Name: commonFlags.Containername,
+				K8sSelector: containercollection.K8sSelector{
+					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						ContainerName: commonFlags.Containername,
+					},
+				},
 			}
 
 			if !optionWatch {
