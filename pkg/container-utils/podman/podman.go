@@ -87,10 +87,12 @@ func (p *PodmanClient) listContainers(containerID string) ([]*runtimeclient.Cont
 	ret := make([]*runtimeclient.ContainerData, len(containers))
 	for i, c := range containers {
 		ret[i] = &runtimeclient.ContainerData{
-			ID:      c.ID,
-			Name:    c.Names[0],
-			State:   containerStatusStateToRuntimeClientState(c.State),
-			Runtime: runtimeclient.PodmanName,
+			Runtime: runtimeclient.RuntimeContainerData{
+				ID:        c.ID,
+				Container: c.Names[0],
+				State:     containerStatusStateToRuntimeClientState(c.State),
+				Runtime:   runtimeclient.PodmanName,
+			},
 		}
 	}
 	return ret, nil
@@ -142,10 +144,12 @@ func (p *PodmanClient) GetContainerDetails(containerID string) (*runtimeclient.C
 
 	return &runtimeclient.ContainerDetailsData{
 		ContainerData: runtimeclient.ContainerData{
-			ID:      container.ID,
-			Name:    container.Name,
-			State:   containerStatusStateToRuntimeClientState(container.State.Status),
-			Runtime: runtimeclient.PodmanName,
+			Runtime: runtimeclient.RuntimeContainerData{
+				ID:        container.ID,
+				Container: container.Name,
+				State:     containerStatusStateToRuntimeClientState(container.State.Status),
+				Runtime:   runtimeclient.PodmanName,
+			},
 		},
 		Pid:         container.State.Pid,
 		CgroupsPath: container.State.CgroupPath,

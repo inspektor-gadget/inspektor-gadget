@@ -46,18 +46,18 @@ import (
 
 func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData, container *Container) {
 	// Runtime
-	container.Runtime.ContainerID = containerData.ID
-	container.Runtime.RuntimeName = containerData.Runtime
+	container.Runtime.ContainerID = containerData.Runtime.ID
+	container.Runtime.RuntimeName = containerData.Runtime.Runtime
 
 	// Kubernetes
-	container.K8s.Namespace = containerData.PodNamespace
-	container.K8s.PodName = containerData.PodName
-	container.K8s.PodUID = containerData.PodUID
+	container.K8s.Namespace = containerData.K8s.Namespace
+	container.K8s.PodName = containerData.K8s.PodName
+	container.K8s.PodUID = containerData.K8s.PodUID
 
 	// Notice we are temporarily using the runtime container name as the
 	// Kubernetes container name because the Container struct doesn't have that
 	// field, and we don't support filtering by runtime container name yet.
-	container.K8s.ContainerName = containerData.Name
+	container.K8s.ContainerName = containerData.Runtime.Container
 }
 
 func containerRuntimeEnricher(
@@ -173,16 +173,16 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 			return nil
 		}
 		for _, container := range containers {
-			if container.State != runtimeclient.StateRunning {
+			if container.Runtime.State != runtimeclient.StateRunning {
 				log.Debugf("Runtime enricher(%s): Skip container %q (ID: %s): not running",
-					runtime.Name, container.Name, container.ID)
+					runtime.Name, container.Runtime.Container, container.Runtime.ID)
 				continue
 			}
 
-			containerDetails, err := runtimeClient.GetContainerDetails(container.ID)
+			containerDetails, err := runtimeClient.GetContainerDetails(container.Runtime.ID)
 			if err != nil {
 				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find container: %s",
-					runtime.Name, container.Name, container.ID, err)
+					runtime.Name, container.Runtime.Container, container.Runtime.ID, err)
 				continue
 			}
 
