@@ -42,7 +42,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v24.0.2+incompatible
-	github.com/prometheus/client_golang v1.15.0
+	github.com/prometheus/client_golang v1.15.1
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
 	go.opentelemetry.io/otel v1.14.0
