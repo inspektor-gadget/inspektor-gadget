@@ -25,6 +25,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	netTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/tracer"
 	netTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -113,12 +115,27 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
+	// TODO: Don't access the operator directly
+	// - update cmd/kubectl-gadget/advise/network-policy.go to use the gRPC interface instead of the CR one
+	// - delete this file pkg/gadget-collection/gadgets/trace/network/gadget.go
+	op := operators.GetRaw(kubeipresolver.OperatorName).(*kubeipresolver.KubeIPResolver)
+	op.Init(nil)
+	inst, err := op.Instantiate(nil, nil, nil)
+	if err == nil {
+		inst.PreGadgetRun()
+	}
+
 	eventCallback := func(container *containercollection.Container, event *netTypes.Event) {
 		// Enrich event with data from container
 		event.Node = trace.Spec.Node
 		if !container.HostNetwork {
 			event.Namespace = container.Namespace
 			event.Pod = container.Podname
+		}
+
+		// Use KubeIPResolver to enrich event based on Namespace/Pod and IP.
+		if inst != nil {
+			inst.EnrichEvent(event)
 		}
 
 		t.publishEvent(trace, event)
