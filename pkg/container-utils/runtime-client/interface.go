@@ -18,6 +18,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -37,16 +39,21 @@ const (
 
 var ErrPauseContainer = errors.New("it is a pause container")
 
-// ContainerData contains container information returned from the container
-// runtime clients.
-type ContainerData struct {
+type K8sContainerData struct {
+	types.BasicK8sMetadata
+
+	// Unique identifier of pod running the container.
+	PodUID string
+}
+
+type RuntimeContainerData struct {
 	// ID is the container ID without the container runtime prefix. For
 	// instance, "cri-o://" for CRI-O.
 	ID string
 
-	// Name is the container name. In the case the container runtime response
-	// with multiples, Name contains only the first element.
-	Name string
+	// Container is the container name. In the case the container runtime response
+	// with multiples, Container contains only the first element.
+	Container string
 
 	// Current state of the container.
 	State string
@@ -55,15 +62,16 @@ type ContainerData struct {
 	// is useful to distinguish who is the "owner" of each container in a list
 	// of containers collected from multiples runtimes.
 	Runtime string
+}
 
-	// Unique identifier of pod running the container.
-	PodUID string
+// ContainerData contains container information returned from the container
+// runtime clients.
+type ContainerData struct {
+	// Runtime contains all the metadata returned by the container runtime.
+	Runtime RuntimeContainerData
 
-	// Name of the pod running the container.
-	PodName string
-
-	// Namespace of the pod running the container.
-	PodNamespace string
+	// K8s contains the Kubernetes metadata of the container.
+	K8s K8sContainerData
 }
 
 // ContainerDetailsData contains container extra information returned from the
@@ -148,12 +156,12 @@ func ParseContainerID(expectedRuntime, containerID string) (string, error) {
 
 func EnrichWithK8sMetadata(container *ContainerData, labels map[string]string) {
 	if podName, ok := labels[containerLabelK8sPodName]; ok {
-		container.PodName = podName
+		container.K8s.Pod = podName
 	}
 	if podNamespace, ok := labels[containerLabelK8sPodNamespace]; ok {
-		container.PodNamespace = podNamespace
+		container.K8s.Namespace = podNamespace
 	}
 	if podUID, ok := labels[containerLabelK8sPodUID]; ok {
-		container.PodUID = podUID
+		container.K8s.PodUID = podUID
 	}
 }
