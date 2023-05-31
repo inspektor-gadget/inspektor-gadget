@@ -3,6 +3,7 @@
 set -e
 
 MINIKUBE_PATH='/tmp/minikube'
+VSCODE_PATH='/tmp/vscode-aks-tools'
 WEBSITE_PATH='/tmp/website'
 
 function do_pr {
@@ -100,6 +101,30 @@ function minikube {
 	popd
 }
 
+function vscode {
+	local human
+
+	if [ $# -lt 1 ]; then
+		echo "${FUNCNAME[0]} needs one argument: the github_account" 1>&2
+
+		exit 1
+	fi
+
+	human=$1
+
+	export release="$(git describe --tags)"
+
+	pushd $VSCODE_PATH
+
+	perl -pi -e 's/v\d+\.\d+\.\d+/$ENV{release}/' package.json
+
+	do_pr "update-kubectl-gadget-${release}" "Update config to use kubectl-gadget ${release}" 'master' 'origin' "$human"
+
+	unset release
+
+	popd
+}
+
 function website {
 	local human
 
@@ -138,3 +163,4 @@ fi
 
 minikube $1 $2
 website $2
+vscode $2
