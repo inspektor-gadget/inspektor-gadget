@@ -47,7 +47,7 @@ The printed lined corresponds to the killing of the `perl` process by the OOM ki
 Here is the full legend of all the fields:
 
 * `KPID`: The PID of the process killed by the OOM killer (KilledPID).
-* `KOMM`: The command of the process killed by the OOM killer (KilledCommand).
+* `KCOMM`: The command of the process killed by the OOM killer (KilledCommand).
 * `PAGES`: The number of pages the killed process had. A page is 4096 bytes on majority of operating system.
 * `TPID`: The PID of the process which triggered the OOM killer (TriggeredPID).
 * `TCOMM`: The command of the process which triggered the OOM killer (TriggeredCommand).
