@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	otelmetric "go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
@@ -239,7 +238,7 @@ func createCounter(
 			if fieldGetter != nil {
 				incr = fieldGetter(ev)
 			}
-			otelCounter.Add(ctx, incr, attrs...)
+			otelCounter.Add(ctx, incr, otelmetric.WithAttributes(attrs...))
 		}
 	} else {
 		otelCounter, err := meter.Float64Counter(counter.Name)
@@ -262,7 +261,7 @@ func createCounter(
 			if fieldGetter != nil {
 				incr = fieldGetter(ev)
 			}
-			otelCounter.Add(ctx, incr, attrs...)
+			otelCounter.Add(ctx, incr, otelmetric.WithAttributes(attrs...))
 		}
 	}
 
@@ -327,8 +326,8 @@ func createGauge(
 		}
 	}
 
-	var intGauge instrument.Int64ObservableGauge
-	var floatGauge instrument.Float64ObservableGauge
+	var intGauge otelmetric.Int64ObservableGauge
+	var floatGauge otelmetric.Float64ObservableGauge
 
 	// gauges are asynchronous: they are updated in the callback when otel asks for it.
 	if isInt {
@@ -357,10 +356,11 @@ func createGauge(
 		}
 
 		for _, gauge := range gauges {
+			attrs := otelmetric.WithAttributes(gauge.Attrs...)
 			if isInt {
-				obs.ObserveInt64(intGauge, gauge.Int64Val, gauge.Attrs...)
+				obs.ObserveInt64(intGauge, gauge.Int64Val, attrs)
 			} else {
-				obs.ObserveFloat64(floatGauge, gauge.Float64Val, gauge.Attrs...)
+				obs.ObserveFloat64(floatGauge, gauge.Float64Val, attrs)
 			}
 		}
 

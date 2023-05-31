@@ -282,10 +282,10 @@ func TestMetrics(t *testing.T) {
 			},
 			expectedInt64Counters: map[string]map[string]int64{
 				"counter_aggregate_by_uid_and_comm": {
-					"uid=0,comm=cat,":    2,
-					"uid=1000,comm=cat,": 1,
-					"uid=0,comm=ping,":   1,
-					"uid=1000,comm=ls,":  1,
+					"comm=cat,uid=0,":    2,
+					"comm=cat,uid=1000,": 1,
+					"comm=ping,uid=0,":   1,
+					"comm=ls,uid=1000,":  1,
 				},
 			},
 		},
