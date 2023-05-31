@@ -16,8 +16,11 @@ build:
 
 .PHONY: build-tests
 build-tests:
-	docker buildx build -t ig-tests -f ./../../../Dockerfiles/ig-tests.Dockerfile ../../../
-	docker run --rm --entrypoint cat ig-tests ig-integration.test > ./ig-integration.test
+	docker buildx build --load -t ig-tests -f ./../../../Dockerfiles/ig-tests.Dockerfile ../../../
+	docker create --name ig-tests-container ig-tests
+	docker cp ig-tests-container:/usr/bin/ig-integration.test ig-integration.test
+	docker rm ig-tests-container
+	chmod +x ig-integration.test
 
 # test
 
