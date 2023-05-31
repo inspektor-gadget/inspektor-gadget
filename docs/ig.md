@@ -13,7 +13,7 @@ debug your Kubernetes containers without relying on Kubernetes itself, but on
 the container runtimes. It is important to remark that `ig` can also
 be used to trace containers that were not created via Kubernetes.
 
-Some characteristics of the `ig`:
+Some characteristics of `ig`:
 - It uses eBPF as its underlying core technology.
 - Enriches the collected data with the Kubernetes metadata.
 - Easy to install as it is a single binary (statically linked).
@@ -42,14 +42,14 @@ The instruction to install `ig` are available in the main
 
 ## Usage
 
-Currently, the `ig` can trace containers managed by Docker regardless
+Currently, `ig` can trace containers managed by Docker regardless
 of whether they were created via Kubernetes or not. In addition, it can also
 use the CRI to trace containers managed by containerd and CRI-O, meaning only
 the ones created via Kubernetes. Support for non-Kubernetes containers with
 containerd is coming, see issue
 [#734](https://github.com/inspektor-gadget/inspektor-gadget/issues/734).
 
-By default, the `ig` will try to communicate with the Docker Engine
+By default, `ig` will try to communicate with the Docker Engine
 API and the CRI API of containerd and CRI-O:
 
 ```bash
