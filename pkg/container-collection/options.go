@@ -552,7 +552,9 @@ func WithRuncFanotify() ContainerCollectionOption {
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
 					K8s: K8sMetadata{
-						Container: notif.ContainerName,
+						BasicK8sMetadata: BasicK8sMetadata{
+							Container: notif.ContainerName,
+						},
 					},
 				}
 				cc.AddContainer(container)

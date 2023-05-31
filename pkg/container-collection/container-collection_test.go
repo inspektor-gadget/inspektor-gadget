@@ -76,9 +76,11 @@ func TestWithTracerCollection(t *testing.T) {
 			Mntns: runner.Info.MountNsID,
 			Pid:   uint32(runner.Info.Pid),
 			K8s: K8sMetadata{
-				Container: fmt.Sprintf("name%d", i),
-				Namespace: fmt.Sprintf("namespace%d", i),
-				Pod:       fmt.Sprintf("pod%d", i),
+				BasicK8sMetadata: BasicK8sMetadata{
+					Container: fmt.Sprintf("name%d", i),
+					Namespace: fmt.Sprintf("namespace%d", i),
+					Pod:       fmt.Sprintf("pod%d", i),
+				},
 			},
 		}
 		cc.AddContainer(containers[i])

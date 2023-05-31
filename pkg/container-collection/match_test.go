@@ -36,9 +36,11 @@ func TestSelector(t *testing.T) {
 			selector:    &ContainerSelector{},
 			container: &Container{
 				K8s: K8sMetadata{
-					Namespace: "this-namespace",
-					Pod:       "this-pod",
-					Container: "this-container",
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "this-namespace",
+						Pod:       "this-pod",
+						Container: "this-container",
+					},
 				},
 			},
 		},
@@ -46,19 +48,25 @@ func TestSelector(t *testing.T) {
 			description: "Selector with all filters",
 			match:       true,
 			selector: &ContainerSelector{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
-				Labels: map[string]string{
-					"key1": "value1",
-					"key2": "value2",
+				K8sSelector: K8sSelector{
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "this-namespace",
+						Pod:       "this-pod",
+						Container: "this-container",
+					},
+					Labels: map[string]string{
+						"key1": "value1",
+						"key2": "value2",
+					},
 				},
 			},
 			container: &Container{
 				K8s: K8sMetadata{
-					Namespace: "this-namespace",
-					Pod:       "this-pod",
-					Container: "this-container",
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "this-namespace",
+						Pod:       "this-pod",
+						Container: "this-container",
+					},
 					Labels: map[string]string{
 						"unrelated-label": "here",
 						"key1":            "value1",
@@ -71,14 +79,20 @@ func TestSelector(t *testing.T) {
 			description: "Podname does not match",
 			match:       false,
 			selector: &ContainerSelector{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
+				K8sSelector: K8sSelector{
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "this-namespace",
+						Pod:       "this-pod",
+					},
+				},
 			},
 			container: &Container{
 				K8s: K8sMetadata{
-					Namespace: "this-namespace",
-					Pod:       "a-misnamed-pod",
-					Container: "this-container",
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "this-namespace",
+						Pod:       "a-misnamed-pod",
+						Container: "this-container",
+					},
 				},
 			},
 		},
@@ -86,19 +100,25 @@ func TestSelector(t *testing.T) {
 			description: "One label doesn't match",
 			match:       false,
 			selector: &ContainerSelector{
-				Namespace: "this-namespace",
-				Podname:   "this-pod",
-				Name:      "this-container",
-				Labels: map[string]string{
-					"key1": "value1",
-					"key2": "value2",
+				K8sSelector: K8sSelector{
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "this-namespace",
+						Pod:       "this-pod",
+						Container: "this-container",
+					},
+					Labels: map[string]string{
+						"key1": "value1",
+						"key2": "value2",
+					},
 				},
 			},
 			container: &Container{
 				K8s: K8sMetadata{
-					Namespace: "this-namespace",
-					Pod:       "this-pod",
-					Container: "this-container",
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "this-namespace",
+						Pod:       "this-pod",
+						Container: "this-container",
+					},
 					Labels: map[string]string{
 						"key1": "value1",
 						"key2": "something-else",
@@ -110,14 +130,20 @@ func TestSelector(t *testing.T) {
 			description: "Several namespaces without match",
 			match:       false,
 			selector: &ContainerSelector{
-				Namespace: "ns1,ns2,ns3",
-				Podname:   "this-pod",
+				K8sSelector: K8sSelector{
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "ns1,ns2,ns3",
+						Pod:       "this-pod",
+					},
+				},
 			},
 			container: &Container{
 				K8s: K8sMetadata{
-					Namespace: "this-namespace",
-					Pod:       "this-pod",
-					Container: "this-container",
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "this-namespace",
+						Pod:       "this-pod",
+						Container: "this-container",
+					},
 				},
 			},
 		},
@@ -125,14 +151,20 @@ func TestSelector(t *testing.T) {
 			description: "Several namespaces with match",
 			match:       true,
 			selector: &ContainerSelector{
-				Namespace: "ns1,ns2,ns3",
-				Podname:   "this-pod",
+				K8sSelector: K8sSelector{
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "ns1,ns2,ns3",
+						Pod:       "this-pod",
+					},
+				},
 			},
 			container: &Container{
 				K8s: K8sMetadata{
-					Namespace: "ns2",
-					Pod:       "this-pod",
-					Container: "this-container",
+					BasicK8sMetadata: BasicK8sMetadata{
+						Namespace: "ns2",
+						Pod:       "this-pod",
+						Container: "this-container",
+					},
 				},
 			},
 		},
@@ -167,9 +199,11 @@ func TestContainerResolver(t *testing.T) {
 			CgroupPath: "/none",
 			CgroupID:   1,
 			K8s: K8sMetadata{
-				Namespace: "this-namespace",
-				Pod:       "my-pod",
-				Container: fmt.Sprintf("container%d", i),
+				BasicK8sMetadata: BasicK8sMetadata{
+					Namespace: "this-namespace",
+					Pod:       "my-pod",
+					Container: fmt.Sprintf("container%d", i),
+				},
 				ownerReference: &metav1.OwnerReference{
 					UID: types.UID(fmt.Sprintf("abcde%d", i)),
 				},
@@ -284,9 +318,11 @@ func TestContainerResolver(t *testing.T) {
 			ID: "abcde0-different",
 		},
 		K8s: K8sMetadata{
-			Namespace: "another-namespace",
-			Pod:       "my-pod",
-			Container: "container0",
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "another-namespace",
+				Pod:       "my-pod",
+				Container: "container0",
+			},
 			Labels: map[string]string{
 				"key1": "value1",
 				"key2": "value2",
@@ -296,8 +332,10 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up containers with label 'key1=value1'
 	selectedContainers := cc.GetContainersBySelector(&ContainerSelector{
-		Labels: map[string]string{
-			"key1": "value1",
+		K8sSelector: K8sSelector{
+			Labels: map[string]string{
+				"key1": "value1",
+			},
 		},
 	})
 	if len(selectedContainers) != 1 {
@@ -310,16 +348,18 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up containers with label 'key1=value1' and 'key2=value2'
 	selector := ContainerSelector{
-		Labels: map[string]string{
-			"key1": "value1",
-			"key2": "value2",
+		K8sSelector: K8sSelector{
+			Labels: map[string]string{
+				"key1": "value1",
+				"key2": "value2",
+			},
 		},
 	}
 	selectedContainers = cc.GetContainersBySelector(&selector)
 	if len(selectedContainers) != 1 {
 		t.Fatalf("Error while looking up containers by multiple labels: invalid number of matches")
 	}
-	for sk, sv := range selector.Labels {
+	for sk, sv := range selector.K8sSelector.Labels {
 		if v, found := selectedContainers[0].K8s.Labels[sk]; !found || v != sv {
 			t.Fatalf("Error while looking up containers by multiple labels: unexpected container %+v",
 				selectedContainers[0])
@@ -328,7 +368,11 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up containers in 'this-namespace'
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Namespace: "this-namespace",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "this-namespace",
+			},
+		},
 	})
 	if len(selectedContainers) != 2 {
 		t.Fatalf("Error while looking up containers by namespace: invalid number of matches")
@@ -342,8 +386,12 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up containers in 'this-namespace' and 'my-pod'
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Namespace: "this-namespace",
-		Podname:   "my-pod",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "this-namespace",
+				Pod:       "my-pod",
+			},
+		},
 	})
 	if len(selectedContainers) != 2 {
 		t.Fatalf("Error while looking up containers by namespace and pod: invalid number of matches")
@@ -357,7 +405,11 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up containers named 'container0' anywhere
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Name: "container0",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Container: "container0",
+			},
+		},
 	})
 	if len(selectedContainers) != 2 {
 		t.Fatalf("Error while looking up containers by name: invalid number of matches")
@@ -371,8 +423,12 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up containers named 'container0' in 'my-pod' but any namespace
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Podname: "my-pod",
-		Name:    "container0",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Pod:       "my-pod",
+				Container: "container0",
+			},
+		},
 	})
 	if len(selectedContainers) != 2 {
 		t.Fatalf("Error while looking up containers by name and pod: invalid number of matches")
@@ -386,9 +442,13 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up container0 in 'this-namespace' and 'my-pod'
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Namespace: "this-namespace",
-		Podname:   "my-pod",
-		Name:      "container0",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "this-namespace",
+				Pod:       "my-pod",
+				Container: "container0",
+			},
+		},
 	})
 	if len(selectedContainers) != 1 {
 		t.Fatalf("Error while looking up specific container: invalid number of matches")
@@ -400,9 +460,13 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up container0 in 'another-namespace' and 'my-pod'
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Namespace: "another-namespace",
-		Podname:   "my-pod",
-		Name:      "container0",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "another-namespace",
+				Pod:       "my-pod",
+				Container: "container0",
+			},
+		},
 	})
 	if len(selectedContainers) != 1 {
 		t.Fatalf("Error while looking up specific container: invalid number of matches")
@@ -414,9 +478,13 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up container2 in 'this-namespace' and 'my-pod'
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Namespace: "this-namespace",
-		Podname:   "my-pod",
-		Name:      "container2",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "this-namespace",
+				Pod:       "my-pod",
+				Container: "container2",
+			},
+		},
 	})
 	if len(selectedContainers) != 1 {
 		t.Fatalf("Error while looking up specific container: invalid number of matches")
@@ -428,9 +496,13 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up a non-existent container
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Namespace: "this-namespace",
-		Podname:   "my-pod",
-		Name:      "non-existent",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "this-namespace",
+				Pod:       "my-pod",
+				Container: "non-existent",
+			},
+		},
 	})
 	if len(selectedContainers) != 0 {
 		t.Fatalf("Error while looking up a non-existent container")
@@ -438,8 +510,12 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up containers in a non-existent pod
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Namespace: "this-namespace",
-		Podname:   "non-existent",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "this-namespace",
+				Pod:       "non-existent",
+			},
+		},
 	})
 	if len(selectedContainers) != 0 {
 		t.Fatalf("Error while looking up containers in a non-existent pod")
@@ -447,9 +523,13 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up containers in a non-existent pod
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Namespace: "this-namespace",
-		Podname:   "non-existent",
-		Name:      "container0",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "this-namespace",
+				Pod:       "non-existent",
+				Container: "container0",
+			},
+		},
 	})
 	if len(selectedContainers) != 0 {
 		t.Fatalf("Error while looking up containers in a non-existent namespace")
@@ -457,7 +537,11 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up containers in a non-existent namespace
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Namespace: "non-existent",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "non-existent",
+			},
+		},
 	})
 	if len(selectedContainers) != 0 {
 		t.Fatalf("Error while looking up containers in a non-existent namespace")
@@ -465,9 +549,13 @@ func TestContainerResolver(t *testing.T) {
 
 	// Look up containers in a non-existent namespace
 	selectedContainers = cc.GetContainersBySelector(&ContainerSelector{
-		Namespace: "non-existent",
-		Podname:   "my-pod",
-		Name:      "container0",
+		K8sSelector: K8sSelector{
+			BasicK8sMetadata: BasicK8sMetadata{
+				Namespace: "non-existent",
+				Pod:       "my-pod",
+				Container: "container0",
+			},
+		},
 	})
 	if len(selectedContainers) != 0 {
 		t.Fatalf("Error while looking up containers in a non-existent namespace")

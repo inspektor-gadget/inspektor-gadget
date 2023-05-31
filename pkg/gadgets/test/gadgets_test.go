@@ -71,7 +71,11 @@ func createTestEnv(
 	t.Cleanup(cc.Close)
 
 	containerSelector := containercollection.ContainerSelector{
-		Name: containerName,
+		K8sSelector: containercollection.K8sSelector{
+			BasicK8sMetadata: containercollection.BasicK8sMetadata{
+				Container: containerName,
+			},
+		},
 	}
 	if err := tc.AddTracer(traceName, containerSelector); err != nil {
 		t.Fatalf("error adding tracer: %s", err)
@@ -141,7 +145,9 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 				Mntns: r.Info.MountNsID,
 				Pid:   uint32(r.Info.Tid),
 				K8s: containercollection.K8sMetadata{
-					Container: name,
+					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						Container: name,
+					},
 				},
 			}
 
@@ -226,7 +232,9 @@ func TestEventEnrichmentRaceCondition(t *testing.T) {
 				Mntns: r.Info.MountNsID,
 				Pid:   uint32(r.Info.Tid),
 				K8s: containercollection.K8sMetadata{
-					Container: name,
+					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						Container: name,
+					},
 				},
 			}
 

@@ -32,9 +32,11 @@ func TestListContainers(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
-					Container: "test-pod",
-					Pod:       "test-pod",
-					Namespace: ns,
+					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						Container: "test-pod",
+						Pod:       "test-pod",
+						Namespace: ns,
+					},
 				},
 				Runtime: containercollection.RuntimeMetadata{
 					Runtime: *containerRuntime,
@@ -94,9 +96,11 @@ func TestFilterByContainerName(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
-					Container: cn,
-					Pod:       cn,
-					Namespace: ns,
+					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						Container: cn,
+						Pod:       cn,
+						Namespace: ns,
+					},
 				},
 				Runtime: containercollection.RuntimeMetadata{
 					Runtime: *containerRuntime,
@@ -153,9 +157,11 @@ func TestWatchCreatedContainers(t *testing.T) {
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
 					K8s: containercollection.K8sMetadata{
-						Container: cn,
-						Pod:       cn,
-						Namespace: ns,
+						BasicK8sMetadata: containercollection.BasicK8sMetadata{
+							Container: cn,
+							Pod:       cn,
+							Namespace: ns,
+						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						Runtime: *containerRuntime,
@@ -215,9 +221,11 @@ func TestWatchDeletedContainers(t *testing.T) {
 				Type: containercollection.EventTypeRemoveContainer,
 				Container: &containercollection.Container{
 					K8s: containercollection.K8sMetadata{
-						Container: cn,
-						Pod:       cn,
-						Namespace: ns,
+						BasicK8sMetadata: containercollection.BasicK8sMetadata{
+							Container: cn,
+							Pod:       cn,
+							Namespace: ns,
+						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						Runtime: *containerRuntime,

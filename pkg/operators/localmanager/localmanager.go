@@ -240,7 +240,11 @@ func (l *localManagerTrace) PreGadgetRun() error {
 	// TODO: Improve filtering, see further details in
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
 	containerSelector := containercollection.ContainerSelector{
-		Name: l.params.Get(ContainerName).AsString(),
+		K8sSelector: containercollection.K8sSelector{
+			BasicK8sMetadata: containercollection.BasicK8sMetadata{
+				Container: l.params.Get(ContainerName).AsString(),
+			},
+		},
 	}
 
 	if setter, ok := l.gadgetInstance.(MountNsMapSetter); ok {

@@ -32,7 +32,9 @@ func TestFilterByContainerName(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
-					Container: cn,
+					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						Container: cn,
+					},
 				},
 				Runtime: containercollection.RuntimeMetadata{
 					Runtime: "docker",
@@ -85,7 +87,9 @@ func TestWatchContainers(t *testing.T) {
 					Type: containercollection.EventTypeAddContainer,
 					Container: &containercollection.Container{
 						K8s: containercollection.K8sMetadata{
-							Container: cn,
+							BasicK8sMetadata: containercollection.BasicK8sMetadata{
+								Container: cn,
+							},
 						},
 						Runtime: containercollection.RuntimeMetadata{
 							Runtime: "docker",
@@ -96,7 +100,9 @@ func TestWatchContainers(t *testing.T) {
 					Type: containercollection.EventTypeRemoveContainer,
 					Container: &containercollection.Container{
 						K8s: containercollection.K8sMetadata{
-							Container: cn,
+							BasicK8sMetadata: containercollection.BasicK8sMetadata{
+								Container: cn,
+							},
 						},
 						Runtime: containercollection.RuntimeMetadata{
 							Runtime: "docker",
