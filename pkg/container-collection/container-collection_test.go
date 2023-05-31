@@ -33,9 +33,9 @@ func (f *fakeTracerMapsUpdater) TracerMapsUpdater() FuncNotify {
 	return func(event PubSubEvent) {
 		switch event.Type {
 		case EventTypeAddContainer:
-			f.containers[event.Container.ID] = event.Container
+			f.containers[event.Container.Runtime.ID] = event.Container
 		case EventTypeRemoveContainer:
-			delete(f.containers, event.Container.ID)
+			delete(f.containers, event.Container.Runtime.ID)
 		}
 	}
 }
@@ -70,7 +70,9 @@ func TestWithTracerCollection(t *testing.T) {
 		runners[i] = runner
 
 		containers[i] = &Container{
-			ID:    fmt.Sprintf("id%d", i),
+			Runtime: RuntimeMetadata{
+				ID: fmt.Sprintf("id%d", i),
+			},
 			Mntns: runner.Info.MountNsID,
 			Pid:   uint32(runner.Info.Pid),
 			K8s: K8sMetadata{
@@ -102,7 +104,7 @@ func TestWithTracerCollection(t *testing.T) {
 	// Enrich by MountNs should work
 	verifyEnrich()
 
-	cc.RemoveContainer(containers[0].ID)
+	cc.RemoveContainer(containers[0].Runtime.ID)
 
 	// Pubsub events should be triggered immediately after container removal
 	require.Equal(t, nContainers-1, len(f.containers), "number of containers should be equal")

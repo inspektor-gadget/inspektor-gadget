@@ -36,7 +36,9 @@ func TestListContainers(t *testing.T) {
 					Pod:       "test-pod",
 					Namespace: ns,
 				},
-				Runtime: *containerRuntime,
+				Runtime: containercollection.RuntimeMetadata{
+					Runtime: *containerRuntime,
+				},
 			}
 
 			normalize := func(c *containercollection.Container) {
@@ -46,7 +48,7 @@ func TestListContainers(t *testing.T) {
 					c.K8s.Container = "test-pod"
 				}
 
-				c.ID = ""
+				c.Runtime.ID = ""
 				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
@@ -96,11 +98,13 @@ func TestFilterByContainerName(t *testing.T) {
 					Pod:       cn,
 					Namespace: ns,
 				},
-				Runtime: *containerRuntime,
+				Runtime: containercollection.RuntimeMetadata{
+					Runtime: *containerRuntime,
+				},
 			}
 
 			normalize := func(c *containercollection.Container) {
-				c.ID = ""
+				c.Runtime.ID = ""
 				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
@@ -153,12 +157,14 @@ func TestWatchCreatedContainers(t *testing.T) {
 						Pod:       cn,
 						Namespace: ns,
 					},
-					Runtime: *containerRuntime,
+					Runtime: containercollection.RuntimeMetadata{
+						Runtime: *containerRuntime,
+					},
 				},
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.ID = ""
+				e.Container.Runtime.ID = ""
 				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
@@ -213,12 +219,14 @@ func TestWatchDeletedContainers(t *testing.T) {
 						Pod:       cn,
 						Namespace: ns,
 					},
-					Runtime: *containerRuntime,
+					Runtime: containercollection.RuntimeMetadata{
+						Runtime: *containerRuntime,
+					},
 				},
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.ID = ""
+				e.Container.Runtime.ID = ""
 				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""

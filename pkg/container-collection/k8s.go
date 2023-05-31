@@ -134,7 +134,9 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 		}
 
 		containerDef := Container{
-			ID:  idParts[1],
+			Runtime: RuntimeMetadata{
+				ID: idParts[1],
+			},
 			Pid: uint32(pid),
 			K8s: K8sMetadata{
 				Namespace: pod.GetNamespace(),

@@ -107,7 +107,7 @@ func (cm *ContainersMap) addContainerInMap(c *containercollection.Container) {
 
 	val := common.Container{}
 
-	copyToC(&val.ContainerID, c.ID)
+	copyToC(&val.ContainerID, c.Runtime.ID)
 	copyToC(&val.Namespace, c.K8s.Namespace)
 	copyToC(&val.Pod, c.K8s.Pod)
 	copyToC(&val.Container, c.K8s.Container)

@@ -13,7 +13,8 @@ debug your Kubernetes containers without relying on Kubernetes itself, but on
 the container runtimes. It is important to remark that `ig` can also
 be used to trace containers that were not created via Kubernetes.
 
-Some characteristics of `ig`:
+Some characteristics of the `ig`:
+
 - It uses eBPF as its underlying core technology.
 - Enriches the collected data with the Kubernetes metadata.
 - Easy to install as it is a single binary (statically linked).
@@ -58,7 +59,7 @@ $ docker run -d --name myContainer nginx:1.21
 
 $ sudo ig list-containers
 WARN[0000] Runtime enricher (cri-o): couldn't get current containers
-RUNTIME       ID               NAME
+RUNTIME       ID               CONTAINER
 containerd    7766d32caded4    calico-kube-controllers
 containerd    2e3e4968b456f    calico-node
 containerd    d3be7741b94ff    coredns
@@ -121,14 +122,16 @@ For instance, for the `list-containers` command:
 $ sudo ig list-containers -o json --containername etcd
 [
   {
-    "runtime": "containerd"
+    "runtimeMetadata": {
+      "runtime": "containerd"
+      "id": "fef9c7f66e0d68c554b7ea48cc3ef4e77c553957807de7f05ad0210a05d8c215",
+    },
     "k8sMetadata": {
       "namespace": "kube-system",
       "pod": "etcd-master",
       "container": "etcd",
       "podUID": "87a960e902bbb19289771a77e4b07353"
     },
-    "id": "fef9c7f66e0d68c554b7ea48cc3ef4e77c553957807de7f05ad0210a05d8c215",
     "pid": 1611,
     "mntns": 4026532270,
     "netns": 4026531992,

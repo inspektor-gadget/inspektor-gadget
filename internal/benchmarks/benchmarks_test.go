@@ -210,7 +210,9 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 			for i := 0; i < containerCount; i++ {
 				runner := utilstest.NewRunnerWithTest(b, runnerConfig)
 				container := &containercollection.Container{
-					ID:    fmt.Sprintf("container%d", i),
+					Runtime: containercollection.RuntimeMetadata{
+						ID: fmt.Sprintf("container%d", i),
+					},
 					Mntns: runner.Info.MountNsID,
 					Netns: runner.Info.NetworkNsID,
 					Pid:   uint32(runner.Info.Tid),

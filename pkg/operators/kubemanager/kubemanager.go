@@ -254,7 +254,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 				return
 			}
 
-			m.attachedContainers[container.ID] = container
+			m.attachedContainers[container.Runtime.ID] = container
 
 			log.Debugf("tracer attached: container %q pid %d mntns %d netns %d",
 				container.K8s.Container, container.Pid, container.Mntns, container.Netns)
@@ -262,7 +262,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 
 		detachContainerFunc := func(container *containercollection.Container) {
 			log.Debugf("calling gadget.Detach()")
-			delete(m.attachedContainers, container.ID)
+			delete(m.attachedContainers, container.Runtime.ID)
 
 			err := attacher.DetachContainer(container)
 			if err != nil {
@@ -280,7 +280,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 			m.id,
 			containerSelector,
 			func(event containercollection.PubSubEvent) {
-				log.Debugf("%s: %s", event.Type.String(), event.Container.ID)
+				log.Debugf("%s: %s", event.Type.String(), event.Container.Runtime.ID)
 				switch event.Type {
 				case containercollection.EventTypeAddContainer:
 					attachContainerFunc(event.Container)

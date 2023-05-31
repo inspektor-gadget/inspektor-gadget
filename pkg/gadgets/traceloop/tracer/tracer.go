@@ -671,7 +671,7 @@ func (t *Tracer) SetEventHandler(handler any) {
 
 func (t *Tracer) AttachContainer(container *containercollection.Container) error {
 	t.waitGroup.Add(1)
-	err := t.Attach(container.ID, container.Mntns)
+	err := t.Attach(container.Runtime.ID, container.Mntns)
 	if err != nil {
 		t.waitGroup.Done()
 		return err
@@ -679,9 +679,9 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 	go func() {
 		defer t.waitGroup.Done()
 		<-t.ctx.Done()
-		evs, err := t.Read(container.ID)
+		evs, err := t.Read(container.Runtime.ID)
 		if err != nil {
-			t.gadgetCtx.Logger().Debugf("error reading from container %s: %v", container.ID, err)
+			t.gadgetCtx.Logger().Debugf("error reading from container %s: %v", container.Runtime.ID, err)
 			return
 		}
 		for _, ev := range evs {

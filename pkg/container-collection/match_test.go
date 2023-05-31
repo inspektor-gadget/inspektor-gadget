@@ -159,7 +159,9 @@ func TestContainerResolver(t *testing.T) {
 	// Add 3 Containers
 	for i := 0; i < 3; i++ {
 		cc.AddContainer(&Container{
-			ID:         fmt.Sprintf("abcde%d", i),
+			Runtime: RuntimeMetadata{
+				ID: fmt.Sprintf("abcde%d", i),
+			},
 			Mntns:      55555 + uint64(i),
 			Pid:        uint32(100 + i),
 			CgroupPath: "/none",
@@ -278,7 +280,9 @@ func TestContainerResolver(t *testing.T) {
 
 	// Add new container with same pod and container name of container0 but in different namespace
 	cc.AddContainer(&Container{
-		ID: "abcde0-different",
+		Runtime: RuntimeMetadata{
+			ID: "abcde0-different",
+		},
 		K8s: K8sMetadata{
 			Namespace: "another-namespace",
 			Pod:       "my-pod",

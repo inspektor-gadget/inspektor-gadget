@@ -112,7 +112,7 @@ initialContainersLoop:
 			}
 		}
 
-		cc.containers.Store(container.ID, container)
+		cc.containers.Store(container.Runtime.ID, container)
 		if cc.pubsub != nil {
 			cc.pubsub.Publish(EventTypeAddContainer, container)
 		}
@@ -172,7 +172,7 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 		}
 	}
 
-	_, loaded := cc.containers.LoadOrStore(container.ID, container)
+	_, loaded := cc.containers.LoadOrStore(container.Runtime.ID, container)
 	if loaded {
 		return
 	}

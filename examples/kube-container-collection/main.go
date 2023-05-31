@@ -80,7 +80,7 @@ func publishEvent(c *containercollection.Container, reason, message string) {
 func callback(notif containercollection.PubSubEvent) {
 	switch notif.Type {
 	case containercollection.EventTypeAddContainer:
-		fmt.Printf("Container added: %v pid %d\n", notif.Container.ID, notif.Container.Pid)
+		fmt.Printf("Container added: %v pid %d\n", notif.Container.Runtime.ID, notif.Container.Pid)
 		if notif.Container.OciConfig != nil {
 			config, err := json.Marshal(notif.Container.OciConfig)
 			if err != nil {
@@ -92,7 +92,7 @@ func callback(notif containercollection.PubSubEvent) {
 			publishEvent(notif.Container, "ContainerConfigNotFound", "")
 		}
 	case containercollection.EventTypeRemoveContainer:
-		fmt.Printf("Container removed: %v pid %d\n", notif.Container.ID, notif.Container.Pid)
+		fmt.Printf("Container removed: %v pid %d\n", notif.Container.Runtime.ID, notif.Container.Pid)
 	default:
 		return
 	}
