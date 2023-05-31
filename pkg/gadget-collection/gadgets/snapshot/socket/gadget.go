@@ -108,7 +108,7 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 	defer socketTracer.CloseIters()
 
 	for _, container := range filteredContainers {
-		key := container.Namespace + "/" + container.Podname
+		key := container.K8s.Namespace + "/" + container.K8s.PodName
 		if _, ok := visitedPods[key]; !ok {
 			// Make the whole gadget fail if there is a container without PID
 			// because it would be an inconsistency that has to be notified
@@ -122,10 +122,10 @@ func (t *Trace) Collect(trace *gadgetv1alpha1.Trace) {
 			visitedPods[key] = struct{}{}
 
 			log.Debugf("Gadget %s: Using PID %d to retrieve network namespace of Pod %q in Namespace %q",
-				trace.Spec.Gadget, container.Pid, container.Podname, container.Namespace)
+				trace.Spec.Gadget, container.Pid, container.K8s.PodName, container.K8s.Namespace)
 
-			podSockets, err := socketTracer.RunCollector(container.Pid, container.Podname,
-				container.Namespace, trace.Spec.Node)
+			podSockets, err := socketTracer.RunCollector(container.Pid, container.K8s.PodName,
+				container.K8s.Namespace, trace.Spec.Node)
 			if err != nil {
 				trace.Status.OperationError = err.Error()
 				return

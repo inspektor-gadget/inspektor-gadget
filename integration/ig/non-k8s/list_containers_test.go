@@ -31,7 +31,9 @@ func TestFilterByContainerName(t *testing.T) {
 		Cmd:  fmt.Sprintf("./ig list-containers -o json --runtimes=%s --containername=%s", *runtime, cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
-				Name:    cn,
+				K8s: containercollection.K8sMetadata{
+					ContainerName: cn,
+				},
 				Runtime: *runtime,
 			}
 
@@ -46,8 +48,8 @@ func TestFilterByContainerName(t *testing.T) {
 				c.CgroupID = 0
 				c.CgroupV1 = ""
 				c.CgroupV2 = ""
-				c.Labels = nil
-				c.PodUID = ""
+				c.K8s.PodLabels = nil
+				c.K8s.PodUID = ""
 			}
 
 			return ExpectAllInArrayToMatch(output, normalize, expectedContainer)
@@ -80,14 +82,18 @@ func TestWatchContainers(t *testing.T) {
 				{
 					Type: containercollection.EventTypeAddContainer,
 					Container: &containercollection.Container{
-						Name:    cn,
+						K8s: containercollection.K8sMetadata{
+							ContainerName: cn,
+						},
 						Runtime: *runtime,
 					},
 				},
 				{
 					Type: containercollection.EventTypeRemoveContainer,
 					Container: &containercollection.Container{
-						Name:    cn,
+						K8s: containercollection.K8sMetadata{
+							ContainerName: cn,
+						},
 						Runtime: *runtime,
 					},
 				},
@@ -104,8 +110,8 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.CgroupID = 0
 				e.Container.CgroupV1 = ""
 				e.Container.CgroupV2 = ""
-				e.Container.Labels = nil
-				e.Container.PodUID = ""
+				e.Container.K8s.PodLabels = nil
+				e.Container.K8s.PodUID = ""
 				e.Timestamp = ""
 			}
 

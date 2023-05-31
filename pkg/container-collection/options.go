@@ -49,14 +49,14 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 	container.Runtime = containerData.Runtime
 
 	// Kubernetes
-	container.Namespace = containerData.PodNamespace
-	container.Podname = containerData.PodName
-	container.PodUID = containerData.PodUID
+	container.K8s.Namespace = containerData.PodNamespace
+	container.K8s.PodName = containerData.PodName
+	container.K8s.PodUID = containerData.PodUID
 
 	// Notice we are temporarily using the runtime container name as the
 	// Kubernetes container name because the Container struct doesn't have that
 	// field, and we don't support filtering by runtime container name yet.
-	container.Name = containerData.Name
+	container.K8s.ContainerName = containerData.Name
 }
 
 func containerRuntimeEnricher(
@@ -297,7 +297,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 								continue // container is already there. All good!
 							}
 							log.Warnf("container %s/%s/%s wasn't detected by the main hook! The fallback pod informer will add it.",
-								container.Namespace, container.Podname, container.Name)
+								container.K8s.Namespace, container.K8s.PodName, container.K8s.ContainerName)
 						}
 						cc.AddContainer(&newContainer)
 					}
@@ -313,7 +313,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 func WithHost() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		newContainer := Container{}
-		newContainer.Name = "host"
+		newContainer.K8s.ContainerName = "host"
 		newContainer.CgroupID = 1
 		newContainer.Pid = 1
 		newContainer.HostNetwork = true
@@ -453,7 +453,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			if container.Podname != "" {
+			if container.K8s.PodName != "" {
 				return true
 			}
 
@@ -519,14 +519,14 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 				}
 			}
 
-			container.Namespace = namespace
-			container.Podname = podname
-			container.PodUID = podUID
-			container.Name = containerName
-			container.Labels = labels
+			container.K8s.Namespace = namespace
+			container.K8s.PodName = podname
+			container.K8s.PodUID = podUID
+			container.K8s.ContainerName = containerName
+			container.K8s.PodLabels = labels
 
 			// drop pause containers
-			if container.Podname != "" && containerName == "" {
+			if container.K8s.PodName != "" && containerName == "" {
 				return false
 			}
 
@@ -552,7 +552,9 @@ func WithRuncFanotify() ContainerCollectionOption {
 					ID:        notif.ContainerID,
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
-					Name:      notif.ContainerName,
+					K8s: K8sMetadata{
+						ContainerName: notif.ContainerName,
+					},
 				}
 				cc.AddContainer(container)
 			case runcfanotify.EventTypeRemoveContainer:
@@ -595,7 +597,9 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 					ID:        notif.ContainerID,
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
-					Name:      notif.ContainerName,
+					K8s: K8sMetadata{
+						ContainerName: notif.ContainerName,
+					},
 				}
 				cc.AddContainer(container)
 			case containerhook.EventTypeRemoveContainer:
@@ -716,16 +720,16 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 			// enrich the container
 			container.Runtime = resolver.Runtime()
 			if name := resolver.ContainerName(container.OciConfig.Annotations); name != "" {
-				container.Name = name
+				container.K8s.ContainerName = name
 			}
 			if podName := resolver.PodName(container.OciConfig.Annotations); podName != "" {
-				container.Podname = podName
+				container.K8s.PodName = podName
 			}
 			if podNamespace := resolver.PodNamespace(container.OciConfig.Annotations); podNamespace != "" {
-				container.Namespace = podNamespace
+				container.K8s.Namespace = podNamespace
 			}
 			if podUID := resolver.PodUID(container.OciConfig.Annotations); podUID != "" {
-				container.PodUID = podUID
+				container.K8s.PodUID = podUID
 			}
 
 			return true

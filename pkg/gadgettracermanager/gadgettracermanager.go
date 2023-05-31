@@ -29,7 +29,7 @@ import (
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
+	containerhook "github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	containersmap "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/containers-map"
@@ -161,15 +161,17 @@ func (g *GadgetTracerManager) AddContainer(_ context.Context, containerDefinitio
 	}
 
 	container := containercollection.Container{
-		ID:        containerDefinition.Id,
-		Pid:       containerDefinition.Pid,
-		Namespace: containerDefinition.Namespace,
-		Podname:   containerDefinition.Podname,
-		Name:      containerDefinition.Name,
-		Labels:    map[string]string{},
+		ID:  containerDefinition.Id,
+		Pid: containerDefinition.Pid,
+		K8s: containercollection.K8sMetadata{
+			Namespace:     containerDefinition.Namespace,
+			PodName:       containerDefinition.Podname,
+			ContainerName: containerDefinition.Name,
+			PodLabels:     map[string]string{},
+		},
 	}
 	for _, l := range containerDefinition.Labels {
-		container.Labels[l.Key] = l.Value
+		container.K8s.PodLabels[l.Key] = l.Value
 	}
 	if containerDefinition.OciConfig != "" {
 		containerConfig := &ocispec.Spec{}
