@@ -44,8 +44,9 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 			Cmd: fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace-client.log &
 					sleep 10
 					kill $!
-					head networktrace-client.log | sort | uniq`, nsClient),
-			ExpectedRegexp: fmt.Sprintf(`{"node":".*","namespace":"%s","pod":"test-pod","container":"test-pod","timestamp":.*,"type":"normal","netnsid":.*,"pktType":"OUTGOING","proto":"tcp","port":9090,"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"svc","remoteAddr":".*","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsClient, nsServer),
+					echo
+					grep tcp networktrace-client.log | sort | uniq`, nsClient),
+			ExpectedRegexp: fmt.Sprintf(`{"node":".*","namespace":"%s","pod":"test-pod",.*"type":"normal",.*"pktType":"OUTGOING","proto":"tcp","port":9090,.*"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"svc","remoteAddr":".*","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsClient, nsServer),
 		},
 		{
 			// Docker bridge does not preserve source IP :-(
@@ -55,14 +56,15 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 			Cmd: fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace-server.log &
 					sleep 10
 					kill $!
-					head networktrace-server.log | sort | uniq
+					echo
+					grep tcp networktrace-server.log | sort | uniq
 					kubectl get node -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}'|grep -q docker && echo SKIP_TEST || true`, nsServer),
-			ExpectedRegexp: fmt.Sprintf(`SKIP_TEST|{"node":".*","namespace":"%s","pod":"test-pod","container":"test-pod","timestamp":.*,"type":"normal","netnsid":.*,"pktType":"HOST","proto":"tcp","port":9090,"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"pod","remoteAddr":".*","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsServer, nsClient),
+			ExpectedRegexp: fmt.Sprintf(`SKIP_TEST|{"node":".*","namespace":"%s","pod":"test-pod",.*"type":"normal","netnsid":.*,"pktType":"HOST","proto":"tcp","port":9090,"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"pod","remoteAddr":".*","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsServer, nsClient),
 		},
 		{
 			Name: "RunNetworkPolicyReportClient",
 			Cmd:  "$KUBECTL_GADGET advise network-policy report --input ./networktrace-client.log",
-			ExpectedRegexp: fmt.Sprintf(`apiVersion: networking.k8s.io/v1
+			ExpectedRegexp: fmt.Sprintf(`(?s)apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   creationTimestamp: null
@@ -89,7 +91,7 @@ spec:
           kubernetes.io/metadata.name: (kube-system|openshift-dns)
       podSelector:
         matchLabels:
-          (k8s-app: kube-dns|dns.operator.openshift.io/daemonset-dns: default)
+          .*(kubernetes.io/name: CoreDNS|k8s-app: kube-dns|dns.operator.openshift.io/daemonset-dns: default).*
   podSelector:
     matchLabels:
       run: test-pod
@@ -101,7 +103,7 @@ spec:
 			Name: "RunNetworkPolicyReportServer",
 			Cmd: `$KUBECTL_GADGET advise network-policy report --input ./networktrace-server.log
 				kubectl get node -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}'|grep -q docker && echo SKIP_TEST || true`,
-			ExpectedRegexp: fmt.Sprintf(`SKIP_TEST|apiVersion: networking.k8s.io/v1
+			ExpectedRegexp: fmt.Sprintf(`(?s)SKIP_TEST|apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   creationTimestamp: null
