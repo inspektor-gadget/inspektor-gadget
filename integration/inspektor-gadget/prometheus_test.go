@@ -52,8 +52,8 @@ metadata:
 data:
   prometheus.yml: |
     global:
-      scrape_interval: 10s
-      evaluation_interval: 10s
+      scrape_interval: 1s
+      evaluation_interval: 1s
 
     scrape_configs:
      - job_name: "gadget"
@@ -108,8 +108,8 @@ EOF
 				StartAndStop: true,
 			},
 			SleepForSecondsCommand(2),
-			BusyboxPodCommand(ns, "for i in $(seq 1 100); do cat /dev/null; done"),
-			SleepForSecondsCommand(30), // wait for prometheus to scrape
+			BusyboxPodCommand(ns, "for i in $(seq 1 100); do cat /dev/null; done; sleep 2"),
+			SleepForSecondsCommand(5), // wait for prometheus to scrape
 			{
 				Name: "ValidatePrometheusMetrics",
 				Cmd:  fmt.Sprintf("kubectl exec -n %s prometheus -- wget -qO- http://localhost:9090/api/v1/query?query=executed_processes_total", ns),
