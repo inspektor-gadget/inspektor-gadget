@@ -154,6 +154,7 @@ cross-gadget-%-container:
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
 	fi
 	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
+		--push \
 		-f Dockerfiles/gadget-$*.Dockerfile .
 
 push-gadget-%-container:
