@@ -685,7 +685,7 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 			return
 		}
 		for _, ev := range evs {
-			ev.SetContainerInfo(container.Podname, container.Namespace, container.Name)
+			ev.SetContainerInfo(container.K8s.Pod, container.K8s.Namespace, container.K8s.Container)
 			t.eventCallback(ev)
 		}
 	}()

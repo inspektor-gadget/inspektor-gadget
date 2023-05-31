@@ -23,17 +23,17 @@ import (
 // ContainerSelectorMatches tells if a container matches the criteria in a
 // container selector.
 func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
-	if s.Namespace != "" && !slices.Contains(strings.Split(s.Namespace, ","), c.Namespace) {
+	if s.Namespace != "" && !slices.Contains(strings.Split(s.Namespace, ","), c.K8s.Namespace) {
 		return false
 	}
-	if s.Podname != "" && s.Podname != c.Podname {
+	if s.Podname != "" && s.Podname != c.K8s.Pod {
 		return false
 	}
-	if s.Name != "" && s.Name != c.Name {
+	if s.Name != "" && s.Name != c.K8s.Container {
 		return false
 	}
 	for sk, sv := range s.Labels {
-		if cv, ok := c.Labels[sk]; !ok || cv != sv {
+		if cv, ok := c.K8s.Labels[sk]; !ok || cv != sv {
 			return false
 		}
 	}

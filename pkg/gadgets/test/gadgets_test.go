@@ -136,9 +136,11 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 
 			container := &containercollection.Container{
 				ID:    uuid.New().String(),
-				Name:  name,
 				Mntns: r.Info.MountNsID,
 				Pid:   uint32(r.Info.Tid),
+				K8s: containercollection.K8sMetadata{
+					Container: name,
+				},
 			}
 
 			cc.AddContainer(container)
@@ -217,9 +219,11 @@ func TestEventEnrichmentRaceCondition(t *testing.T) {
 
 			container := &containercollection.Container{
 				ID:    uuid.New().String(),
-				Name:  name,
 				Mntns: r.Info.MountNsID,
 				Pid:   uint32(r.Info.Tid),
+				K8s: containercollection.K8sMetadata{
+					Container: name,
+				},
 			}
 
 			cc.AddContainer(container)

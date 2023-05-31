@@ -265,28 +265,28 @@ func (l *localManagerTrace) PreGadgetRun() error {
 			if err != nil {
 				var ve *ebpf.VerifierError
 				if errors.As(err, &ve) {
-					l.gadgetCtx.Logger().Debugf("start tracing container %q: verifier error: %+v\n", container.Name, ve)
+					l.gadgetCtx.Logger().Debugf("start tracing container %q: verifier error: %+v\n", container.K8s.Container, ve)
 				}
 
-				log.Warnf("start tracing container %q: %s", container.Name, err)
+				log.Warnf("start tracing container %q: %s", container.K8s.Container, err)
 				return
 			}
 
 			l.attachedContainers[container] = struct{}{}
 
 			log.Debugf("tracer attached: container %q pid %d mntns %d netns %d",
-				container.Name, container.Pid, container.Mntns, container.Netns)
+				container.K8s.Container, container.Pid, container.Mntns, container.Netns)
 		}
 
 		detachContainerFunc := func(container *containercollection.Container) {
 			log.Debugf("calling gadget.DetachContainer()")
 			err := attacher.DetachContainer(container)
 			if err != nil {
-				log.Warnf("stop tracing container %q: %s", container.Name, err)
+				log.Warnf("stop tracing container %q: %s", container.K8s.Container, err)
 				return
 			}
 			log.Debugf("tracer detached: container %q pid %d mntns %d netns %d",
-				container.Name, container.Pid, container.Mntns, container.Netns)
+				container.K8s.Container, container.Pid, container.Mntns, container.Netns)
 		}
 
 		log.Debugf("add subscription")

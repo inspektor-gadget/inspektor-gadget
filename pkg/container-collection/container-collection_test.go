@@ -70,12 +70,14 @@ func TestWithTracerCollection(t *testing.T) {
 		runners[i] = runner
 
 		containers[i] = &Container{
-			ID:        fmt.Sprintf("id%d", i),
-			Name:      fmt.Sprintf("name%d", i),
-			Namespace: fmt.Sprintf("namespace%d", i),
-			Podname:   fmt.Sprintf("pod%d", i),
-			Mntns:     runner.Info.MountNsID,
-			Pid:       uint32(runner.Info.Pid),
+			ID:    fmt.Sprintf("id%d", i),
+			Mntns: runner.Info.MountNsID,
+			Pid:   uint32(runner.Info.Pid),
+			K8s: K8sMetadata{
+				Container: fmt.Sprintf("name%d", i),
+				Namespace: fmt.Sprintf("namespace%d", i),
+				Pod:       fmt.Sprintf("pod%d", i),
+			},
 		}
 		cc.AddContainer(containers[i])
 	}
@@ -86,9 +88,9 @@ func TestWithTracerCollection(t *testing.T) {
 		for i := 0; i < nContainers; i++ {
 			ev := types.CommonData{}
 			expected := types.CommonData{
-				Namespace: containers[i].Namespace,
-				Pod:       containers[i].Podname,
-				Container: containers[i].Name,
+				Namespace: containers[i].K8s.Namespace,
+				Pod:       containers[i].K8s.Pod,
+				Container: containers[i].K8s.Container,
 			}
 
 			cc.EnrichByMntNs(&ev, containers[i].Mntns)

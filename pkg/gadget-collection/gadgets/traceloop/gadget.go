@@ -191,7 +191,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	t.containerIDs = make(map[string]*containerSlim, 0)
 
 	genKey := func(container *containercollection.Container) string {
-		return container.Namespace + "/" + container.Podname
+		return container.K8s.Namespace + "/" + container.K8s.Pod
 	}
 
 	attachContainerFunc := func(container *containercollection.Container) error {
@@ -222,9 +222,9 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		}
 
 		infos = append(infos, types.TraceloopInfo{
-			Namespace:     container.Namespace,
-			Podname:       container.Podname,
-			Containername: container.Name,
+			Namespace:     container.K8s.Namespace,
+			Podname:       container.K8s.Pod,
+			Containername: container.K8s.Container,
 			ContainerID:   containerID,
 		})
 

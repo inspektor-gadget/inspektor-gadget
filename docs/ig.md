@@ -121,7 +121,13 @@ For instance, for the `list-containers` command:
 $ sudo ig list-containers -o json --containername etcd
 [
   {
-    "runtime": "containerd",
+    "runtime": "containerd"
+    "k8sMetadata": {
+      "namespace": "kube-system",
+      "pod": "etcd-master",
+      "container": "etcd",
+      "podUID": "87a960e902bbb19289771a77e4b07353"
+    },
     "id": "fef9c7f66e0d68c554b7ea48cc3ef4e77c553957807de7f05ad0210a05d8c215",
     "pid": 1611,
     "mntns": 4026532270,
@@ -130,10 +136,6 @@ $ sudo ig list-containers -o json --containername etcd
     "cgroupID": 854,
     "cgroupV1": "/system.slice/containerd.service/kubepods-burstable-pod87a960e902bbb19289771a77e4b07353.slice:cri-containerd:fef9c7f66e0d68c554b7ea48cc3ef4e77c553957807de7f05ad0210a05d8c215",
     "cgroupV2": "/system.slice/containerd.service",
-    "namespace": "kube-system",
-    "podname": "etcd-master",
-    "name": "etcd",
-    "podUID": "87a960e902bbb19289771a77e4b07353"
   }
 ]
 ```

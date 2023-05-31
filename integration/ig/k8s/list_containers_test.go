@@ -31,17 +31,19 @@ func TestListContainers(t *testing.T) {
 		Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s", *containerRuntime),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
-				Name:      "test-pod",
-				Podname:   "test-pod",
-				Runtime:   *containerRuntime,
-				Namespace: ns,
+				K8s: containercollection.K8sMetadata{
+					Container: "test-pod",
+					Pod:       "test-pod",
+					Namespace: ns,
+				},
+				Runtime: *containerRuntime,
 			}
 
 			normalize := func(c *containercollection.Container) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
-					c.Name = "test-pod"
+					c.K8s.Container = "test-pod"
 				}
 
 				c.ID = ""
@@ -54,8 +56,8 @@ func TestListContainers(t *testing.T) {
 				c.CgroupID = 0
 				c.CgroupV1 = ""
 				c.CgroupV2 = ""
-				c.Labels = nil
-				c.PodUID = ""
+				c.K8s.Labels = nil
+				c.K8s.PodUID = ""
 			}
 
 			return ExpectEntriesInArrayToMatch(output, normalize, expectedContainer)
@@ -89,10 +91,12 @@ func TestFilterByContainerName(t *testing.T) {
 		Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s", *containerRuntime, cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
-				Name:      cn,
-				Podname:   cn,
-				Runtime:   *containerRuntime,
-				Namespace: ns,
+				K8s: containercollection.K8sMetadata{
+					Container: cn,
+					Pod:       cn,
+					Namespace: ns,
+				},
+				Runtime: *containerRuntime,
 			}
 
 			normalize := func(c *containercollection.Container) {
@@ -106,8 +110,8 @@ func TestFilterByContainerName(t *testing.T) {
 				c.CgroupID = 0
 				c.CgroupV1 = ""
 				c.CgroupV2 = ""
-				c.Labels = nil
-				c.PodUID = ""
+				c.K8s.Labels = nil
+				c.K8s.PodUID = ""
 			}
 
 			return ExpectAllInArrayToMatch(output, normalize, expectedContainer)
@@ -144,10 +148,12 @@ func TestWatchCreatedContainers(t *testing.T) {
 			expectedEvent := &containercollection.PubSubEvent{
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
-					Name:      cn,
-					Podname:   cn,
-					Runtime:   *containerRuntime,
-					Namespace: ns,
+					K8s: containercollection.K8sMetadata{
+						Container: cn,
+						Pod:       cn,
+						Namespace: ns,
+					},
+					Runtime: *containerRuntime,
 				},
 			}
 
@@ -162,8 +168,8 @@ func TestWatchCreatedContainers(t *testing.T) {
 				e.Container.CgroupID = 0
 				e.Container.CgroupV1 = ""
 				e.Container.CgroupV2 = ""
-				e.Container.Labels = nil
-				e.Container.PodUID = ""
+				e.Container.K8s.Labels = nil
+				e.Container.K8s.PodUID = ""
 				e.Timestamp = ""
 			}
 
@@ -202,10 +208,12 @@ func TestWatchDeletedContainers(t *testing.T) {
 			expectedEvent := &containercollection.PubSubEvent{
 				Type: containercollection.EventTypeRemoveContainer,
 				Container: &containercollection.Container{
-					Name:      cn,
-					Podname:   cn,
-					Runtime:   *containerRuntime,
-					Namespace: ns,
+					K8s: containercollection.K8sMetadata{
+						Container: cn,
+						Pod:       cn,
+						Namespace: ns,
+					},
+					Runtime: *containerRuntime,
 				},
 			}
 
@@ -220,8 +228,8 @@ func TestWatchDeletedContainers(t *testing.T) {
 				e.Container.CgroupID = 0
 				e.Container.CgroupV1 = ""
 				e.Container.CgroupV2 = ""
-				e.Container.Labels = nil
-				e.Container.PodUID = ""
+				e.Container.K8s.Labels = nil
+				e.Container.K8s.PodUID = ""
 				e.Timestamp = ""
 			}
 

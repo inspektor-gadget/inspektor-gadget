@@ -134,12 +134,14 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 		}
 
 		containerDef := Container{
-			ID:        idParts[1],
-			Namespace: pod.GetNamespace(),
-			Podname:   pod.GetName(),
-			Name:      s.Name,
-			Labels:    labels,
-			Pid:       uint32(pid),
+			ID:  idParts[1],
+			Pid: uint32(pid),
+			K8s: K8sMetadata{
+				Namespace: pod.GetNamespace(),
+				Pod:       pod.GetName(),
+				Container: s.Name,
+				Labels:    labels,
+			},
 		}
 		containers = append(containers, containerDef)
 	}

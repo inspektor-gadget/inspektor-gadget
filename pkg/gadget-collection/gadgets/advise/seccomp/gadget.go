@@ -341,13 +341,13 @@ func (t *Trace) containerTerminated(trace *gadgetv1alpha1.Trace, event container
 	// The container has terminated. Cleanup the BPF hash map
 	traceSingleton.tracer.Delete(event.Container.Mntns)
 
-	namespacedName := fmt.Sprintf("%s/%s", event.Container.Namespace, event.Container.Podname)
+	namespacedName := fmt.Sprintf("%s/%s", event.Container.K8s.Namespace, event.Container.K8s.Pod)
 
 	// This field was fetched when the container was created
 	ownerReference := getContainerOwnerReference(event.Container)
 
-	r, err := generateSeccompPolicy(t.client, trace, syscallNames, event.Container.Podname,
-		event.Container.Name, namespacedName, ownerReference)
+	r, err := generateSeccompPolicy(t.client, trace, syscallNames, event.Container.K8s.Pod,
+		event.Container.K8s.Container, namespacedName, ownerReference)
 	if err != nil {
 		log.Errorf("Trace %s: %v", traceName, err)
 		return
@@ -381,7 +381,7 @@ func getContainerOwnerReference(c *containercollection.Container) *metav1.OwnerR
 	ownerRef, err := c.GetOwnerReference()
 	if err != nil {
 		log.Warnf("Failed to get owner reference of %s/%s/%s: %s",
-			c.Namespace, c.Podname, c.Name, err)
+			c.K8s.Namespace, c.K8s.Pod, c.K8s.Container, err)
 	}
 	return ownerRef
 }

@@ -32,6 +32,9 @@ type Container struct {
 	// Container Runtime
 	Runtime string `json:"runtime,omitempty" column:"runtime,minWidth:5,maxWidth:10" columnTags:"runtime"`
 
+	// K8s contains the Kubernetes metadata of the container.
+	K8s K8sMetadata `json:"k8s,omitempty" column:"k8s" columnTags:"kubernetes"`
+
 	// ID is the container id, typically a 64 hexadecimal string
 	ID string `json:"id,omitempty" column:"id,width:13,maxWidth:64" columnTags:"runtime"`
 
@@ -58,15 +61,6 @@ type Container struct {
 	CgroupV1 string `json:"cgroupV1,omitempty"`
 	CgroupV2 string `json:"cgroupV2,omitempty"`
 
-	// Kubernetes metadata
-	Namespace string            `json:"namespace,omitempty"`
-	Podname   string            `json:"podname,omitempty"`
-	Name      string            `json:"name,omitempty" column:"name,width:30" columnTags:"runtime"`
-	Labels    map[string]string `json:"labels,omitempty"`
-	PodUID    string            `json:"podUID,omitempty"`
-
-	ownerReference *metav1.OwnerReference
-
 	// We keep an open file descriptor of the containers mount namespace to be sure the kernel
 	// doesn't reuse the inode id before we get rid of this container. This logic avoids a race
 	// condition when the mnt ns inode id is reused by a new container and we erroneously pick
@@ -76,6 +70,19 @@ type Container struct {
 
 	// when the container was removed. Useful for prunning cached containers.
 	deletionTimestamp time.Time
+}
+
+type K8sMetadata struct {
+	Namespace string `json:"namespace,omitempty"`
+	Pod       string `json:"pod,omitempty"`
+	// Container is tagged as "runtime" because we are temporarily using the k8s
+	// container name as the container name for "ig list-containers" because the
+	// Container struct does not have the runtime container name field.
+	Container string            `json:"container,omitempty" column:"container,template:container" columnTags:"runtime"`
+	Labels    map[string]string `json:"labels,omitempty"`
+	PodUID    string            `json:"podUID,omitempty"`
+
+	ownerReference *metav1.OwnerReference
 }
 
 type ContainerSelector struct {
@@ -91,8 +98,8 @@ type ContainerSelector struct {
 // enrich" this information because this operation is expensive and this
 // information is only needed in some cases.
 func (c *Container) GetOwnerReference() (*metav1.OwnerReference, error) {
-	if c.ownerReference != nil {
-		return c.ownerReference, nil
+	if c.K8s.ownerReference != nil {
+		return c.K8s.ownerReference, nil
 	}
 
 	kubeconfig, err := rest.InClusterConfig()
@@ -110,7 +117,7 @@ func (c *Container) GetOwnerReference() (*metav1.OwnerReference, error) {
 		return nil, fmt.Errorf("enriching owner reference: %w", err)
 	}
 
-	return c.ownerReference, nil
+	return c.K8s.ownerReference, nil
 }
 
 func ownerReferenceEnrichment(
@@ -120,8 +127,8 @@ func ownerReferenceEnrichment(
 ) error {
 	resGroupVersion := "v1"
 	resKind := "pods"
-	resName := container.Podname
-	resNamespace := container.Namespace
+	resName := container.K8s.Pod
+	resNamespace := container.K8s.Namespace
 
 	var highestOwnerRef *metav1.OwnerReference
 
@@ -160,7 +167,7 @@ func ownerReferenceEnrichment(
 
 	// Update container's owner reference (If any)
 	if highestOwnerRef != nil {
-		container.ownerReference = &metav1.OwnerReference{
+		container.K8s.ownerReference = &metav1.OwnerReference{
 			APIVersion: highestOwnerRef.APIVersion,
 			Kind:       highestOwnerRef.Kind,
 			Name:       highestOwnerRef.Name,
@@ -176,5 +183,5 @@ func GetColumns() *columns.Columns[Container] {
 }
 
 func (c *Container) IsEnriched() bool {
-	return c.Name != "" && c.Podname != "" && c.Namespace != "" && c.PodUID != "" && c.Runtime != ""
+	return c.K8s.Container != "" && c.K8s.Pod != "" && c.K8s.Namespace != "" && c.K8s.PodUID != "" && c.Runtime != ""
 }
