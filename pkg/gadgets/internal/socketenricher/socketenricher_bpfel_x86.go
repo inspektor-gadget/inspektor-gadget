@@ -77,10 +77,8 @@ type socketenricherProgramSpecs struct {
 	IgFreeIpv6E   *ebpf.ProgramSpec `ebpf:"ig_free_ipv6_e"`
 	IgSkCleanup   *ebpf.ProgramSpec `ebpf:"ig_sk_cleanup"`
 	IgSocketsIt   *ebpf.ProgramSpec `ebpf:"ig_sockets_it"`
-	IgTcpcV4CoE   *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_e"`
-	IgTcpcV4CoX   *ebpf.ProgramSpec `ebpf:"ig_tcpc_v4_co_x"`
-	IgTcpcV6CoE   *ebpf.ProgramSpec `ebpf:"ig_tcpc_v6_co_e"`
-	IgTcpcV6CoX   *ebpf.ProgramSpec `ebpf:"ig_tcpc_v6_co_x"`
+	IgTcpCoE      *ebpf.ProgramSpec `ebpf:"ig_tcp_co_e"`
+	IgTcpCoX      *ebpf.ProgramSpec `ebpf:"ig_tcp_co_x"`
 	IgUdp6Sendmsg *ebpf.ProgramSpec `ebpf:"ig_udp6_sendmsg"`
 	IgUdpSendmsg  *ebpf.ProgramSpec `ebpf:"ig_udp_sendmsg"`
 }
@@ -135,10 +133,8 @@ type socketenricherPrograms struct {
 	IgFreeIpv6E   *ebpf.Program `ebpf:"ig_free_ipv6_e"`
 	IgSkCleanup   *ebpf.Program `ebpf:"ig_sk_cleanup"`
 	IgSocketsIt   *ebpf.Program `ebpf:"ig_sockets_it"`
-	IgTcpcV4CoE   *ebpf.Program `ebpf:"ig_tcpc_v4_co_e"`
-	IgTcpcV4CoX   *ebpf.Program `ebpf:"ig_tcpc_v4_co_x"`
-	IgTcpcV6CoE   *ebpf.Program `ebpf:"ig_tcpc_v6_co_e"`
-	IgTcpcV6CoX   *ebpf.Program `ebpf:"ig_tcpc_v6_co_x"`
+	IgTcpCoE      *ebpf.Program `ebpf:"ig_tcp_co_e"`
+	IgTcpCoX      *ebpf.Program `ebpf:"ig_tcp_co_x"`
 	IgUdp6Sendmsg *ebpf.Program `ebpf:"ig_udp6_sendmsg"`
 	IgUdpSendmsg  *ebpf.Program `ebpf:"ig_udp_sendmsg"`
 }
@@ -153,10 +149,8 @@ func (p *socketenricherPrograms) Close() error {
 		p.IgFreeIpv6E,
 		p.IgSkCleanup,
 		p.IgSocketsIt,
-		p.IgTcpcV4CoE,
-		p.IgTcpcV4CoX,
-		p.IgTcpcV6CoE,
-		p.IgTcpcV6CoX,
+		p.IgTcpCoE,
+		p.IgTcpCoX,
 		p.IgUdp6Sendmsg,
 		p.IgUdpSendmsg,
 	)
