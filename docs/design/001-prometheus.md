@@ -348,9 +348,8 @@ are evaluated, i.e., aggregated and filtered according to the user's configurati
 This option is defined to be flexible rather than performant. For metrics with high throughput, users should use
 the metrics collection backed by eBPF (see below).
 
-The implementation is based on the existing parser that uses reflection underneath, a PoC is
-implemented in
-[https://github.com/inspektor-gadget/inspektor-gadget/tree/mauricio/experiments/prometheus](https://github.com/inspektor-gadget/inspektor-gadget/tree/mauricio/experiments/prometheus)
+The implementation is based on the existing parser that uses reflection underneath. It was
+implemented in https://github.com/inspektor-gadget/inspektor-gadget/pull/1620.
 
 ### Collection in eBPF
 
