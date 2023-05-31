@@ -39,11 +39,11 @@ func TestTraceOOMKill(t *testing.T) {
 				TriggeredUid: 1000,
 				TriggeredGid: 2000,
 			}
-			expectedEntry.Container = "test-pod-container"
+			expectedEntry.K8s.Container = "test-pod-container"
 
 			normalize := func(e *traceoomkillTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
+				e.K8s.Node = ""
 				e.KilledPid = 0
 				e.Pages = 0
 				e.TriggeredPid = 0

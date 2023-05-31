@@ -103,7 +103,7 @@ func TestTraceDns(t *testing.T) {
 
 			normalize := func(e *tracednsTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
+				e.K8s.Node = ""
 				e.ID = ""
 				e.MountNsID = 0
 				e.NetNsID = 0

@@ -26,9 +26,10 @@ import (
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	execTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
+	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const traceName = "trace_exec"
@@ -88,16 +89,16 @@ func main() {
 	defer containerCollection.Close()
 
 	// Define a callback to be called each time there is an event.
-	eventCallback := func(event *types.Event) {
+	eventCallback := func(event *execTypes.Event) {
 		fmt.Printf("A new %q process with pid %d was executed in container %q\n",
-			event.Comm, event.Pid, event.Container)
+			event.Comm, event.Pid, event.K8s.Container)
 	}
 
 	// Create a tracer instance. This is the glue piece that allows
 	// this example to filter events by containers.
 	containerSelector := containercollection.ContainerSelector{
 		K8sSelector: containercollection.K8sSelector{
-			BasicK8sMetadata: containercollection.BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Container: containerName,
 			},
 		},
@@ -117,7 +118,7 @@ func main() {
 	}
 
 	// Create the tracer
-	tracer, err := tracer.NewTracer(&tracer.Config{MountnsMap: mountnsmap}, containerCollection, eventCallback)
+	tracer, err := execTracer.NewTracer(&execTracer.Config{MountnsMap: mountnsmap}, containerCollection, eventCallback)
 	if err != nil {
 		fmt.Printf("error creating tracer: %s\n", err)
 		return

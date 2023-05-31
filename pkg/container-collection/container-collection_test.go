@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	types "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type fakeTracerMapsUpdater struct {
@@ -76,7 +76,7 @@ func TestWithTracerCollection(t *testing.T) {
 			Mntns: runner.Info.MountNsID,
 			Pid:   uint32(runner.Info.Pid),
 			K8s: K8sMetadata{
-				BasicK8sMetadata: BasicK8sMetadata{
+				BasicK8sMetadata: types.BasicK8sMetadata{
 					Container: fmt.Sprintf("name%d", i),
 					Namespace: fmt.Sprintf("namespace%d", i),
 					Pod:       fmt.Sprintf("pod%d", i),
@@ -92,9 +92,13 @@ func TestWithTracerCollection(t *testing.T) {
 		for i := 0; i < nContainers; i++ {
 			ev := types.CommonData{}
 			expected := types.CommonData{
-				Namespace: containers[i].K8s.Namespace,
-				Pod:       containers[i].K8s.Pod,
-				Container: containers[i].K8s.Container,
+				K8s: types.K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace: containers[i].K8s.Namespace,
+						Pod:       containers[i].K8s.Pod,
+						Container: containers[i].K8s.Container,
+					},
+				},
 			}
 
 			cc.EnrichByMntNs(&ev, containers[i].Mntns)

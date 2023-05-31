@@ -44,7 +44,7 @@ func TestTopTcp(t *testing.T) {
 			}
 
 			normalize := func(e *toptcpTypes.Stats) {
-				e.Node = ""
+				e.K8s.Node = ""
 				e.MountNsID = 0
 				e.Pid = 0
 				e.Sport = 0

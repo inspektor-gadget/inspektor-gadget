@@ -64,12 +64,10 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					RemoteLabels:    map[string]string{"run": "test-pod"},
 				}
 
-				expectedEntry.Container = ""
+				expectedEntry.K8s.Container = ""
 
 				normalize := func(e *networkTypes.Event) {
-					e.Container = ""
 					e.Timestamp = 0
-					e.Node = ""
 					e.Pid = 0
 					e.Tid = 0
 					e.PodIP = ""
@@ -77,6 +75,9 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.PodHostIP = ""
 					e.NetNsID = 0
 					e.MountNsID = 0
+
+					e.K8s.Node = ""
+					e.K8s.Container = ""
 				}
 
 				return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -116,12 +117,10 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					RemoteLabels:    map[string]string{"run": "test-pod"},
 				}
 
-				expectedEntry.Container = ""
+				expectedEntry.K8s.Container = ""
 
 				normalize := func(e *networkTypes.Event) {
-					e.Container = ""
 					e.Timestamp = 0
-					e.Node = ""
 					e.Pid = 0
 					e.Tid = 0
 					e.PodIP = ""
@@ -129,6 +128,9 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.PodHostIP = ""
 					e.NetNsID = 0
 					e.MountNsID = 0
+
+					e.K8s.Node = ""
+					e.K8s.Container = ""
 				}
 
 				return ExpectEntriesToMatch(output, normalize, expectedEntry)

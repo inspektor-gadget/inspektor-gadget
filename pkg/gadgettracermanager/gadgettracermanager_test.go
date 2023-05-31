@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestTracer(t *testing.T) {
@@ -33,7 +34,7 @@ func TestTracer(t *testing.T) {
 			fmt.Sprintf("my_tracer_id%d", i),
 			containercollection.ContainerSelector{
 				K8sSelector: containercollection.K8sSelector{
-					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace: fmt.Sprintf("this-namespace%d", i),
 					},
 				},
@@ -53,7 +54,7 @@ func TestTracer(t *testing.T) {
 		fmt.Sprintf("my_tracer_id%d", 0),
 		containercollection.ContainerSelector{
 			K8sSelector: containercollection.K8sSelector{
-				BasicK8sMetadata: containercollection.BasicK8sMetadata{
+				BasicK8sMetadata: types.BasicK8sMetadata{
 					Namespace: fmt.Sprintf("this-namespace%d", 0),
 				},
 			},

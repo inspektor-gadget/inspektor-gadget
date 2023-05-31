@@ -27,6 +27,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const igSubKey = "ig-key"
@@ -47,7 +48,7 @@ func NewListContainersCmd() *cobra.Command {
 
 			selector := containercollection.ContainerSelector{
 				K8sSelector: containercollection.K8sSelector{
-					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Container: commonFlags.Containername,
 					},
 				},

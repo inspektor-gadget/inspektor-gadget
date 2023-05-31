@@ -169,9 +169,13 @@ func (t *Tracer) RunCollector(pid uint32, podname, namespace, node string) ([]*s
 						// TODO: This can be removed as events will be enriched
 						//  by the eventHandler
 						CommonData: eventtypes.CommonData{
-							Node:      node,
-							Namespace: namespace,
-							Pod:       podname,
+							K8s: eventtypes.K8sMetadata{
+								Node: node,
+								BasicK8sMetadata: eventtypes.BasicK8sMetadata{
+									Namespace: namespace,
+									Pod:       podname,
+								},
+							},
 						},
 					},
 					Protocol:      proto,

@@ -43,7 +43,7 @@ func TestTopFile(t *testing.T) {
 			}
 
 			normalize := func(e *topfileTypes.Stats) {
-				e.Node = ""
+				e.K8s.Node = ""
 				e.Writes = 0
 				e.WriteBytes = 0
 				e.Pid = 0

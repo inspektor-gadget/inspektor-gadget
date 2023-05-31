@@ -41,7 +41,7 @@ func TestTraceSni(t *testing.T) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
-					e.Container = "test-pod"
+					e.K8s.Container = "test-pod"
 				}
 				e.Timestamp = 0
 				e.MountNsID = 0

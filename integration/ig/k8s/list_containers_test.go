@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestListContainers(t *testing.T) {
@@ -32,7 +33,7 @@ func TestListContainers(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
-					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Container: "test-pod",
 						Pod:       "test-pod",
 						Namespace: ns,
@@ -96,7 +97,7 @@ func TestFilterByContainerName(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
-					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Container: cn,
 						Pod:       cn,
 						Namespace: ns,
@@ -157,7 +158,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
 					K8s: containercollection.K8sMetadata{
-						BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						BasicK8sMetadata: types.BasicK8sMetadata{
 							Container: cn,
 							Pod:       cn,
 							Namespace: ns,
@@ -221,7 +222,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 				Type: containercollection.EventTypeRemoveContainer,
 				Container: &containercollection.Container{
 					K8s: containercollection.K8sMetadata{
-						BasicK8sMetadata: containercollection.BasicK8sMetadata{
+						BasicK8sMetadata: types.BasicK8sMetadata{
 							Container: cn,
 							Pod:       cn,
 							Namespace: ns,

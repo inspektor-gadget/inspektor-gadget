@@ -31,6 +31,7 @@ import (
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -241,7 +242,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
 	containerSelector := containercollection.ContainerSelector{
 		K8sSelector: containercollection.K8sSelector{
-			BasicK8sMetadata: containercollection.BasicK8sMetadata{
+			BasicK8sMetadata: types.BasicK8sMetadata{
 				Container: l.params.Get(ContainerName).AsString(),
 			},
 		},

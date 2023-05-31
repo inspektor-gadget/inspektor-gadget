@@ -41,7 +41,7 @@ func TestTraceSignal(t *testing.T) {
 
 			normalize := func(e *tracesignalTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
+				e.K8s.Node = ""
 				e.Pid = 0
 				e.TargetPid = 0
 				e.Retval = 0

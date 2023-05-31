@@ -44,7 +44,7 @@ func TestTopBlockIO(t *testing.T) {
 			}
 
 			normalize := func(e *topblockioTypes.Stats) {
-				e.Node = ""
+				e.K8s.Node = ""
 				e.Major = 0
 				e.Minor = 0
 				e.MicroSecs = 0

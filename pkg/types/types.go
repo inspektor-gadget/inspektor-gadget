@@ -73,54 +73,58 @@ const (
 	RemoteKindOther   RemoteKind = "other"
 )
 
-type CommonData struct {
-	// Node where the event comes from
-	Node string `json:"node,omitempty" column:"node,template:node" columnTags:"kubernetes"`
+type BasicK8sMetadata struct {
+	Namespace string `json:"namespace,omitempty" column:"namespace,template:namespace"`
+	Pod       string `json:"pod,omitempty" column:"pod,template:pod"`
+	// Container is tagged also as "runtime" because we are temporarily using
+	// the k8s container name as the container name for "ig list-containers"
+	// given that we don't have a runtime container name field yet.
+	Container string `json:"container,omitempty" column:"container,template:container" columnTags:"runtime"`
+}
 
-	// Pod namespace where the event comes from, or empty for host-level
-	// event
-	Namespace string `json:"namespace,omitempty" column:"namespace,template:namespace" columnTags:"kubernetes"`
+type K8sMetadata struct {
+	Node string `json:"node,omitempty" column:"node,template:node"`
 
-	// Pod where the event comes from, or empty for host-level event
-	Pod string `json:"pod,omitempty" column:"pod,template:pod" columnTags:"kubernetes"`
-
-	// Container where the event comes from, or empty for host-level or
-	// pod-level event
-	Container string `json:"container,omitempty" column:"container,template:container" columnTags:"kubernetes,runtime"`
+	BasicK8sMetadata `json:",inline"`
 
 	// HostNetwork is true if the container uses the host network namespace
 	HostNetwork bool `json:"hostNetwork,omitempty" column:"hostnetwork,hide"`
 }
 
+type CommonData struct {
+	// K8s contains the common data for k8s events
+	K8s K8sMetadata `json:"k8sMetadata,omitempty" columnTags:"kubernetes"`
+}
+
 func (c *CommonData) SetNode(node string) {
-	c.Node = node
+	c.K8s.Node = node
 }
 
 func (c *CommonData) SetContainerInfo(pod, namespace, container string) {
-	c.Pod = pod
-	c.Namespace = namespace
+	c.K8s.Pod = pod
+	c.K8s.Namespace = namespace
 
 	// Container may have been enriched before by other means, so don't delete it here,
 	// if the incoming info is empty
 	if container != "" {
-		c.Container = container
+		c.K8s.Container = container
 	}
 }
 
 func (c *CommonData) GetNode() string {
-	return c.Node
+	return c.K8s.Node
 }
 
 func (c *CommonData) GetPod() string {
-	return c.Pod
+	return c.K8s.Pod
 }
 
 func (c *CommonData) GetNamespace() string {
-	return c.Namespace
+	return c.K8s.Namespace
 }
 
 func (c *CommonData) GetContainer() string {
-	return c.Container
+	return c.K8s.Container
 }
 
 type EndpointDetails struct {
@@ -182,7 +186,9 @@ func (e *Event) GetMessage() string {
 func Err(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			K8s: K8sMetadata{
+				Node: node,
+			},
 		},
 		Type:    ERR,
 		Message: msg,
@@ -192,7 +198,9 @@ func Err(msg string) Event {
 func Warn(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			K8s: K8sMetadata{
+				Node: node,
+			},
 		},
 		Type:    WARN,
 		Message: msg,
@@ -202,7 +210,9 @@ func Warn(msg string) Event {
 func Debug(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			K8s: K8sMetadata{
+				Node: node,
+			},
 		},
 		Type:    DEBUG,
 		Message: msg,
@@ -212,7 +222,9 @@ func Debug(msg string) Event {
 func Info(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			K8s: K8sMetadata{
+				Node: node,
+			},
 		},
 		Type:    INFO,
 		Message: msg,

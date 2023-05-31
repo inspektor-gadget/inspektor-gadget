@@ -44,7 +44,7 @@ func TestTraceTcpconnect(t *testing.T) {
 
 			normalize := func(e *tracetcpconnectTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
+				e.K8s.Node = ""
 				e.Pid = 0
 				e.Sport = 0
 				e.MountNsID = 0
@@ -88,7 +88,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 
 			normalize := func(e *tracetcpconnectTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
+				e.K8s.Node = ""
 				e.Pid = 0
 				e.Sport = 0
 				e.MountNsID = 0

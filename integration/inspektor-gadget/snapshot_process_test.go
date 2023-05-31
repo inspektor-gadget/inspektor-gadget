@@ -56,7 +56,7 @@ func TestSnapshotProcess(t *testing.T) {
 					Event:   BuildBaseEvent(ns),
 					Command: "nc",
 				}
-				expectedEntry.Node = nodeName
+				expectedEntry.K8s.Node = nodeName
 
 				normalize := func(e *snapshotprocessTypes.Event) {
 					e.Pid = 0

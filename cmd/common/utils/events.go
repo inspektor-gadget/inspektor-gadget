@@ -40,14 +40,14 @@ func HandleSpecialEvent(e *eventtypes.Event, verbose bool) {
 		fallthrough
 	case eventtypes.INFO:
 		msgSyntax := ""
-		if e.Node != "" {
-			msgSyntax = "node " + e.Node
+		if e.K8s.Node != "" {
+			msgSyntax = "node " + e.K8s.Node
 
-			if e.Namespace != "" && e.Pod != "" {
-				msgSyntax = msgSyntax + ", pod " + e.Namespace + "/" + e.Pod
+			if e.K8s.Namespace != "" && e.K8s.Pod != "" {
+				msgSyntax = msgSyntax + ", pod " + e.K8s.Namespace + "/" + e.K8s.Pod
 			}
 		} else {
-			msgSyntax = "container " + e.Container
+			msgSyntax = "container " + e.K8s.Container
 		}
 
 		fmt.Fprintf(os.Stderr, "%s: %s: %s\n", e.Type, msgSyntax, e.Message)

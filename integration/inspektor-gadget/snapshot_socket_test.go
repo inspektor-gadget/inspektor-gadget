@@ -69,13 +69,13 @@ func TestSnapshotSocket(t *testing.T) {
 					RemotePort:    0,
 					Status:        "LISTEN",
 				}
-				expectedEntry.Node = nodeName
+				expectedEntry.K8s.Node = nodeName
 
 				// Socket gadget doesn't provide container data yet. See issue #744.
-				expectedEntry.Container = ""
+				expectedEntry.K8s.Container = ""
 
 				normalize := func(e *snapshotsocketTypes.Event) {
-					e.Container = ""
+					e.K8s.Container = ""
 					e.InodeNumber = 0
 					e.NetNsID = 0
 				}

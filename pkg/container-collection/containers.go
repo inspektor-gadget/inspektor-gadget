@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 // Container represents a container with its metadata.
@@ -77,25 +78,16 @@ type RuntimeMetadata struct {
 	ID string `json:"id,omitempty" column:"id,width:13,maxWidth:64"`
 }
 
-type BasicK8sMetadata struct {
-	Namespace string `json:"namespace,omitempty"`
-	Pod       string `json:"pod,omitempty"`
-	// Container is tagged as "runtime" because we are temporarily using the k8s
-	// container name as the container name for "ig list-containers" because the
-	// Container struct does not have the runtime container name field.
-	Container string `json:"container,omitempty" column:"container,template:container" columnTags:"runtime"`
-}
-
 type K8sMetadata struct {
-	BasicK8sMetadata `json:",inline"`
-	Labels           map[string]string `json:"labels,omitempty"`
-	PodUID           string            `json:"podUID,omitempty"`
+	types.BasicK8sMetadata `json:",inline"`
+	Labels                 map[string]string `json:"labels,omitempty"`
+	PodUID                 string            `json:"podUID,omitempty"`
 
 	ownerReference *metav1.OwnerReference
 }
 
 type K8sSelector struct {
-	BasicK8sMetadata
+	types.BasicK8sMetadata
 	Labels map[string]string
 }
 

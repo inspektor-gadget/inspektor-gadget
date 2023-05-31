@@ -181,10 +181,14 @@ func ExpectEntriesInMultipleArrayToMatch[T any](output string, normalize func(*T
 
 func BuildCommonData(namespace string) eventtypes.CommonData {
 	return eventtypes.CommonData{
-		Namespace: namespace,
-		// Pod and Container name are defined by BusyboxPodCommand.
-		Pod:       "test-pod",
-		Container: "test-pod",
+		K8s: eventtypes.K8sMetadata{
+			BasicK8sMetadata: eventtypes.BasicK8sMetadata{
+				Namespace: namespace,
+				// Pod and Container name are defined by BusyboxPodCommand.
+				Pod:       "test-pod",
+				Container: "test-pod",
+			},
+		},
 		// TODO: Include the Node
 	}
 }

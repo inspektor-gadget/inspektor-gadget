@@ -37,13 +37,13 @@ func TestTraceOOMKill(t *testing.T) {
 				TriggeredUid: 1000,
 				TriggeredGid: 2000,
 			}
-			expectedEntry.Container = "test-pod-container"
+			expectedEntry.K8s.Container = "test-pod-container"
 
 			normalize := func(e *oomkillTypes.Event) {
 				// TODO: Handle it once we support getting K8s container name for docker
 				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
 				if *containerRuntime == ContainerRuntimeDocker {
-					e.Container = "test-pod-container"
+					e.K8s.Container = "test-pod-container"
 				}
 
 				e.Timestamp = 0

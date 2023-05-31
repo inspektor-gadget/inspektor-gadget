@@ -107,7 +107,7 @@ func treeToStringBuilder(node *processTree, builder *strings.Builder, depth int)
 func WriteTree(output io.Writer, processes []*Event) error {
 	containers := make(map[string][]*Event, len(processes))
 	for _, process := range processes {
-		containers[process.Container] = append(containers[process.Container], process)
+		containers[process.K8s.Container] = append(containers[process.K8s.Container], process)
 	}
 
 	for _, container := range containers {
@@ -116,13 +116,13 @@ func WriteTree(output io.Writer, processes []*Event) error {
 			return err
 		}
 
-		if tree.process.Namespace != "" {
-			fmt.Fprintf(output, "%s/", tree.process.Namespace)
+		if tree.process.K8s.Namespace != "" {
+			fmt.Fprintf(output, "%s/", tree.process.K8s.Namespace)
 		}
-		if tree.process.Pod != "" && tree.process.Pod != tree.process.Container {
-			fmt.Fprintf(output, "%s/", tree.process.Pod)
+		if tree.process.K8s.Pod != "" && tree.process.K8s.Pod != tree.process.K8s.Container {
+			fmt.Fprintf(output, "%s/", tree.process.K8s.Pod)
 		}
-		fmt.Fprintln(output, tree.process.Container)
+		fmt.Fprintln(output, tree.process.K8s.Container)
 
 		fmt.Fprint(output, tree)
 	}

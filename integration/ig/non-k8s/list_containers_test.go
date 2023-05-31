@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestFilterByContainerName(t *testing.T) {
@@ -32,7 +33,7 @@ func TestFilterByContainerName(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
-					BasicK8sMetadata: containercollection.BasicK8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
 						Container: cn,
 					},
 				},
@@ -87,7 +88,7 @@ func TestWatchContainers(t *testing.T) {
 					Type: containercollection.EventTypeAddContainer,
 					Container: &containercollection.Container{
 						K8s: containercollection.K8sMetadata{
-							BasicK8sMetadata: containercollection.BasicK8sMetadata{
+							BasicK8sMetadata: types.BasicK8sMetadata{
 								Container: cn,
 							},
 						},
@@ -100,7 +101,7 @@ func TestWatchContainers(t *testing.T) {
 					Type: containercollection.EventTypeRemoveContainer,
 					Container: &containercollection.Container{
 						K8s: containercollection.K8sMetadata{
-							BasicK8sMetadata: containercollection.BasicK8sMetadata{
+							BasicK8sMetadata: types.BasicK8sMetadata{
 								Container: cn,
 							},
 						},

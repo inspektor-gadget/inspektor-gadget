@@ -42,11 +42,11 @@ func TestTopEbpf(t *testing.T) {
 			}
 
 			normalize := func(e *topebpfTypes.Stats) {
-				e.Node = ""
-				e.Namespace = ""
-				e.Pod = ""
-				e.Container = ""
-				e.Namespace = ""
+				e.K8s.Node = ""
+				e.K8s.Namespace = ""
+				e.K8s.Pod = ""
+				e.K8s.Container = ""
+				e.K8s.Namespace = ""
 				e.ProgramID = 0
 				e.Processes = nil
 				e.CurrentRuntime = 0

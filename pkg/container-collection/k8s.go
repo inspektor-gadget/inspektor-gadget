@@ -30,6 +30,7 @@ import (
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type K8sClient struct {
@@ -139,7 +140,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 			},
 			Pid: uint32(pid),
 			K8s: K8sMetadata{
-				BasicK8sMetadata: BasicK8sMetadata{
+				BasicK8sMetadata: types.BasicK8sMetadata{
 					Namespace: pod.GetNamespace(),
 					Pod:       pod.GetName(),
 					Container: s.Name,

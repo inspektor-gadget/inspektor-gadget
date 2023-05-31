@@ -349,11 +349,11 @@ func (cc *ContainerCollection) ContainerRangeWithSelector(
 }
 
 func (cc *ContainerCollection) EnrichNode(event *eventtypes.CommonData) {
-	event.Node = cc.nodeName
+	event.K8s.Node = cc.nodeName
 }
 
 func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
-	event.Node = cc.nodeName
+	event.K8s.Node = cc.nodeName
 
 	container := lookupContainerByMntns(&cc.containers, mountnsid)
 	if container == nil && cc.cachedContainers != nil {
@@ -361,34 +361,34 @@ func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mount
 	}
 
 	if container != nil {
-		event.Container = container.K8s.Container
-		event.Pod = container.K8s.Pod
-		event.Namespace = container.K8s.Namespace
+		event.K8s.Container = container.K8s.Container
+		event.K8s.Pod = container.K8s.Pod
+		event.K8s.Namespace = container.K8s.Namespace
 	}
 }
 
 func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netnsid uint64) {
-	event.Node = cc.nodeName
+	event.K8s.Node = cc.nodeName
 
 	containers := cc.LookupContainersByNetns(netnsid)
 	if len(containers) == 0 {
 		return
 	}
 	if containers[0].HostNetwork {
-		event.HostNetwork = true
+		event.K8s.HostNetwork = true
 		return
 	}
 
 	if len(containers) == 1 {
-		event.Container = containers[0].K8s.Container
-		event.Pod = containers[0].K8s.Pod
-		event.Namespace = containers[0].K8s.Namespace
+		event.K8s.Container = containers[0].K8s.Container
+		event.K8s.Pod = containers[0].K8s.Pod
+		event.K8s.Namespace = containers[0].K8s.Namespace
 		return
 	}
 	if containers[0].K8s.Pod != "" && containers[0].K8s.Namespace != "" {
 		// Kubernetes containers within the same pod.
-		event.Pod = containers[0].K8s.Pod
-		event.Namespace = containers[0].K8s.Namespace
+		event.K8s.Pod = containers[0].K8s.Pod
+		event.K8s.Namespace = containers[0].K8s.Namespace
 	}
 	// else {
 	// 	TODO: Non-Kubernetes containers sharing the same network namespace.

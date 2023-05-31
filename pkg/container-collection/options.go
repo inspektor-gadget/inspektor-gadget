@@ -39,6 +39,7 @@ import (
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -552,7 +553,7 @@ func WithRuncFanotify() ContainerCollectionOption {
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
 					K8s: K8sMetadata{
-						BasicK8sMetadata: BasicK8sMetadata{
+						BasicK8sMetadata: types.BasicK8sMetadata{
 							Container: notif.ContainerName,
 						},
 					},
@@ -741,7 +742,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 								unix.Close(c.mntNsFd)
 								c.mntNsFd = 0
 							}
-							cc.cachedContainers.Delete(c.ID)
+							cc.cachedContainers.Delete(c.Runtime.ID)
 						}
 
 						return true

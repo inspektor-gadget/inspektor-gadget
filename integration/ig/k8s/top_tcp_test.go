@@ -28,8 +28,12 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 	expectedOutputFn := func(output string) error {
 		expectedEntry := &types.Stats{
 			CommonData: eventtypes.CommonData{
-				Namespace: ns,
-				Pod:       "test-pod",
+				K8s: eventtypes.K8sMetadata{
+					BasicK8sMetadata: eventtypes.BasicK8sMetadata{
+						Namespace: ns,
+						Pod:       "test-pod",
+					},
+				},
 			},
 			Comm:      "curl",
 			IPVersion: syscall.AF_INET,
@@ -39,7 +43,7 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 		}
 
 		normalize := func(e *types.Stats) {
-			e.Container = ""
+			e.K8s.Container = ""
 			e.Pid = 0
 			e.MountNsID = 0
 			e.Sport = 0

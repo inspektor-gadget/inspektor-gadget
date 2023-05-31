@@ -126,7 +126,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	eventCallback := func(event *netTypes.Event) {
 		// Enrich event but only with the fields required for the advise network-policy gadget.
-		event.Node = trace.Spec.Node
+		event.K8s.Node = trace.Spec.Node
 		if t.helpers != nil {
 			t.helpers.EnrichByNetNs(&event.CommonData, event.WithNetNsID.NetNsID)
 		}
