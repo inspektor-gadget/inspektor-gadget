@@ -69,6 +69,7 @@ func TestTraceExec(t *testing.T) {
 				e.Pid = 0
 				e.Ppid = 0
 				e.LoginUid = 0
+				e.SessionId = 0
 				e.Retval = 0
 				e.MountNsID = 0
 			}
