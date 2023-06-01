@@ -26,7 +26,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
-	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	execTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
 	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
@@ -78,8 +77,8 @@ func main() {
 		// runtime. docker and containerd in this case.
 		containercollection.WithMultipleContainerRuntimesEnrichment(
 			[]*containerutils.RuntimeConfig{
-				{Name: runtimeclient.DockerName},
-				{Name: runtimeclient.ContainerdName},
+				{Name: types.RuntimeNameDocker},
+				{Name: types.RuntimeNameContainerd},
 			}),
 	}
 

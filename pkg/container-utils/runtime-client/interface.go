@@ -24,17 +24,10 @@ import (
 
 const (
 	// Make sure to keep these settings in sync with pkg/resources/manifests/deploy.yaml
-	CrioName              = "cri-o"
-	CrioDefaultSocketPath = "/run/crio/crio.sock"
-
-	PodmanName              = "podman"
-	PodmanDefaultSocketPath = "/run/podman/podman.sock"
-
-	ContainerdName              = "containerd"
+	CrioDefaultSocketPath       = "/run/crio/crio.sock"
+	PodmanDefaultSocketPath     = "/run/podman/podman.sock"
 	ContainerdDefaultSocketPath = "/run/containerd/containerd.sock"
-
-	DockerName              = "docker"
-	DockerDefaultSocketPath = "/run/docker.sock"
+	DockerDefaultSocketPath     = "/run/docker.sock"
 )
 
 var ErrPauseContainer = errors.New("it is a pause container")
@@ -47,21 +40,10 @@ type K8sContainerData struct {
 }
 
 type RuntimeContainerData struct {
-	// ID is the container ID without the container runtime prefix. For
-	// instance, "cri-o://" for CRI-O.
-	ID string
-
-	// Container is the container name. In the case the container runtime response
-	// with multiples, Container contains only the first element.
-	Container string
+	types.BasicRuntimeMetadata
 
 	// Current state of the container.
 	State string
-
-	// Runtime is the name of the runtime (e.g. docker, cri-o, containerd). It
-	// is useful to distinguish who is the "owner" of each container in a list
-	// of containers collected from multiples runtimes.
-	Runtime string
 }
 
 // ContainerData contains container information returned from the container
@@ -141,11 +123,11 @@ type ContainerRuntimeClient interface {
 	Close() error
 }
 
-func ParseContainerID(expectedRuntime, containerID string) (string, error) {
+func ParseContainerID(expectedRuntime types.RuntimeName, containerID string) (string, error) {
 	// If ID contains a prefix, it must match the format "<runtime>://<ID>"
 	split := strings.SplitN(containerID, "://", 2)
 	if len(split) == 2 {
-		if split[0] != expectedRuntime {
+		if types.String2RuntimeName(split[0]) != expectedRuntime {
 			return "", fmt.Errorf("invalid container runtime %q, it should be %q",
 				containerID, expectedRuntime)
 		}

@@ -32,12 +32,13 @@ import (
 
 	runtimeV1alpha2 "github.com/inspektor-gadget/inspektor-gadget/internal/thirdparty/k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 // CRIClient implements the ContainerRuntimeClient interface using the CRI
 // plugin interface to communicate with the different container runtimes.
 type CRIClient struct {
-	Name        string
+	Name        types.RuntimeName
 	SocketPath  string
 	ConnTimeout time.Duration
 
@@ -46,7 +47,7 @@ type CRIClient struct {
 	clientV1alpha2 runtimeV1alpha2.RuntimeServiceClient
 }
 
-func NewCRIClient(name, socketPath string, timeout time.Duration) (CRIClient, error) {
+func NewCRIClient(name types.RuntimeName, socketPath string, timeout time.Duration) (CRIClient, error) {
 	conn, err := grpc.Dial(
 		socketPath,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -191,17 +192,19 @@ func (c *CRIClient) useV1alpha2() bool {
 
 // parseContainerDetailsData parses the container status and extra information
 // returned by ContainerStatus() into a ContainerDetailsData structure.
-func parseContainerDetailsData(runtimeName string, containerStatus *runtime.ContainerStatus,
+func parseContainerDetailsData(runtimeName types.RuntimeName, containerStatus *runtime.ContainerStatus,
 	extraInfo map[string]string,
 ) (*runtimeclient.ContainerDetailsData, error) {
 	// Create container details structure to be filled.
 	containerDetailsData := &runtimeclient.ContainerDetailsData{
 		ContainerData: runtimeclient.ContainerData{
 			Runtime: runtimeclient.RuntimeContainerData{
-				ID:        containerStatus.Id,
-				Container: strings.TrimPrefix(containerStatus.GetMetadata().Name, "/"),
-				State:     containerStatusStateToRuntimeClientState(containerStatus.GetState()),
-				Runtime:   runtimeName,
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID:   containerStatus.Id,
+					ContainerName: strings.TrimPrefix(containerStatus.GetMetadata().Name, "/"),
+					RuntimeName:   runtimeName,
+				},
+				State: containerStatusStateToRuntimeClientState(containerStatus.GetState()),
 			},
 		},
 	}
@@ -332,13 +335,15 @@ func containerStatusStateToRuntimeClientState(containerStatusState runtime.Conta
 	return
 }
 
-func CRIContainerToContainerData(runtimeName string, container *runtime.Container) *runtimeclient.ContainerData {
+func CRIContainerToContainerData(runtimeName types.RuntimeName, container *runtime.Container) *runtimeclient.ContainerData {
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
-			ID:        container.Id,
-			Container: strings.TrimPrefix(container.GetMetadata().Name, "/"),
-			State:     containerStatusStateToRuntimeClientState(container.GetState()),
-			Runtime:   runtimeName,
+			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+				ContainerID:   container.Id,
+				ContainerName: strings.TrimPrefix(container.GetMetadata().Name, "/"),
+				RuntimeName:   runtimeName,
+			},
+			State: containerStatusStateToRuntimeClientState(container.GetState()),
 		},
 	}
 

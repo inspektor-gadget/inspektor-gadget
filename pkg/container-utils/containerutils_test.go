@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,7 @@ func TestNewContainerRuntimeClient(t *testing.T) {
 	nonExistingSocketPath := filepath.Join(t.TempDir(), "non-existing-socket")
 	for _, runtime := range AvailableRuntimes {
 		rc := RuntimeConfig{
-			Name:       runtime,
+			Name:       types.RuntimeName(runtime),
 			SocketPath: nonExistingSocketPath,
 		}
 		c, err := NewContainerRuntimeClient(&rc)

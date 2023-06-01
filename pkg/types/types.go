@@ -75,6 +75,49 @@ const (
 	EndpointKindRaw     EndpointKind = "raw"
 )
 
+type RuntimeName string
+
+func (r RuntimeName) String() string {
+	return string(r)
+}
+
+const (
+	RuntimeNameDocker     RuntimeName = "docker"
+	RuntimeNameContainerd RuntimeName = "containerd"
+	RuntimeNameCrio       RuntimeName = "cri-o"
+	RuntimeNamePodman     RuntimeName = "podman"
+	RuntimeNameUnknown    RuntimeName = "unknown"
+)
+
+func String2RuntimeName(name string) RuntimeName {
+	switch name {
+	case string(RuntimeNameDocker):
+		return RuntimeNameDocker
+	case string(RuntimeNameContainerd):
+		return RuntimeNameContainerd
+	case string(RuntimeNameCrio):
+		return RuntimeNameCrio
+	case string(RuntimeNamePodman):
+		return RuntimeNamePodman
+	}
+	return RuntimeNameUnknown
+}
+
+type BasicRuntimeMetadata struct {
+	// RuntimeName is the name of the container runtime. It is useful to distinguish
+	// who is the "owner" of each container in a list of containers collected
+	// from multiple runtimes.
+	RuntimeName RuntimeName `json:"runtimeName,omitempty" column:"runtimeName,minWidth:5,maxWidth:12,hide"`
+
+	// ContainerID is the container ContainerID without the container runtime prefix. For
+	// instance, without the "cri-o://" for CRI-O.
+	ContainerID string `json:"containerId,omitempty" column:"containerId,width:13,maxWidth:64,hide"`
+
+	// ContainerName is the container name. In the case the container runtime
+	// response with multiple containers, ContainerName contains only the first element.
+	ContainerName string `json:"containerName,omitempty" column:"containerName,template:container"`
+}
+
 type BasicK8sMetadata struct {
 	Namespace string `json:"namespace,omitempty" column:"namespace,template:namespace"`
 	PodName   string `json:"podName,omitempty" column:"pod,template:pod"`
@@ -95,8 +138,13 @@ type K8sMetadata struct {
 }
 
 type CommonData struct {
-	// K8s contains the common data for k8s events
-	K8s K8sMetadata `json:"k8sMetadata,omitempty" columnTags:"kubernetes"`
+	// Runtime contains the container runtime metadata of the container
+	// that generated the event
+	Runtime BasicRuntimeMetadata `json:"runtime,omitempty" column:"runtime" columnTags:"runtime"`
+
+	// K8s contains the Kubernetes metadata of the object that generated the
+	// event
+	K8s K8sMetadata `json:"k8s,omitempty" columnTags:"kubernetes"`
 }
 
 func (c *CommonData) SetNode(node string) {

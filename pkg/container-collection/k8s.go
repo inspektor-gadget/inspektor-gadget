@@ -62,7 +62,7 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 	list := strings.SplitN(node.Status.NodeInfo.ContainerRuntimeVersion, "://", 2)
 	runtimeClient, err := containerutils.NewContainerRuntimeClient(
 		&containerutils.RuntimeConfig{
-			Name: list[0],
+			Name: types.String2RuntimeName(list[0]),
 		})
 	if err != nil {
 		return nil, err
@@ -150,7 +150,9 @@ func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 
 		containerDef := Container{
 			Runtime: RuntimeMetadata{
-				ContainerID: id,
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: id,
+				},
 			},
 			Pid: uint32(pid),
 			K8s: K8sMetadata{

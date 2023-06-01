@@ -48,7 +48,9 @@ func BenchmarkCreateContainerCollection(b *testing.B) {
 		cc := ContainerCollection{}
 		cc.AddContainer(&Container{
 			Runtime: RuntimeMetadata{
-				ContainerID: fmt.Sprint(n),
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: fmt.Sprint(n),
+				},
 			},
 			Mntns: uint64(n),
 		})
@@ -65,7 +67,9 @@ func BenchmarkLookupContainerByMntns(b *testing.B) {
 	for n := 0; n < TestContainerCount; n++ {
 		cc.AddContainer(&Container{
 			Runtime: RuntimeMetadata{
-				ContainerID: fmt.Sprint(n),
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: fmt.Sprint(n),
+				},
 			},
 			Mntns: uint64(n),
 		})
@@ -90,7 +94,9 @@ func BenchmarkLookupContainerByNetns(b *testing.B) {
 	for n := 0; n < TestContainerCount; n++ {
 		cc.AddContainer(&Container{
 			Runtime: RuntimeMetadata{
-				ContainerID: fmt.Sprint(n),
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: fmt.Sprint(n),
+				},
 			},
 			Netns: uint64(n),
 		})
@@ -140,7 +146,9 @@ func TestWithTracerCollection(t *testing.T) {
 
 		containers[i] = &Container{
 			Runtime: RuntimeMetadata{
-				ContainerID: fmt.Sprintf("id%d", i),
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: fmt.Sprintf("id%d", i),
+				},
 			},
 			Mntns: runner.Info.MountNsID,
 			Netns: runner.Info.NetworkNsID,

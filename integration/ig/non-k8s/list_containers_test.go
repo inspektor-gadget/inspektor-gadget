@@ -38,7 +38,9 @@ func TestFilterByContainerName(t *testing.T) {
 					},
 				},
 				Runtime: containercollection.RuntimeMetadata{
-					RuntimeName: *runtime,
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						RuntimeName: types.String2RuntimeName(*runtime),
+					},
 				},
 			}
 
@@ -93,7 +95,9 @@ func TestWatchContainers(t *testing.T) {
 							},
 						},
 						Runtime: containercollection.RuntimeMetadata{
-							RuntimeName: *runtime,
+							BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+								RuntimeName: types.String2RuntimeName(*runtime),
+							},
 						},
 					},
 				},
@@ -106,7 +110,9 @@ func TestWatchContainers(t *testing.T) {
 							},
 						},
 						Runtime: containercollection.RuntimeMetadata{
-							RuntimeName: *runtime,
+							BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+								RuntimeName: types.String2RuntimeName(*runtime),
+							},
 						},
 					},
 				},

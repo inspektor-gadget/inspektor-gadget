@@ -85,11 +85,7 @@ func (c *Container) close() {
 }
 
 type RuntimeMetadata struct {
-	// Container RuntimeName Name (docker, containerd, cri-o, ...)
-	RuntimeName string `json:"runtimeName,omitempty" column:"runtimeName,minWidth:5,maxWidth:10"`
-
-	// ContainerID is the container id, typically a 64 hexadecimal string
-	ContainerID string `json:"containerId,omitempty" column:"ContainerId,width:13,maxWidth:64"`
+	types.BasicRuntimeMetadata `json:",inline"`
 }
 
 type K8sMetadata struct {
@@ -196,7 +192,16 @@ func ownerReferenceEnrichment(
 }
 
 func GetColumns() *columns.Columns[Container] {
-	return columns.MustCreateColumns[Container]()
+	cols := columns.MustCreateColumns[Container]()
+
+	// Display the runtime name and container ID when listing containers
+	col, _ := cols.GetColumn("runtime.containerId")
+	col.Visible = true
+
+	col, _ = cols.GetColumn("runtime.runtimeName")
+	col.Visible = true
+
+	return cols
 }
 
 func (c *Container) IsEnriched() bool {

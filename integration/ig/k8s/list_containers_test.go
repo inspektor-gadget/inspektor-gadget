@@ -40,7 +40,9 @@ func TestListContainers(t *testing.T) {
 					},
 				},
 				Runtime: containercollection.RuntimeMetadata{
-					RuntimeName: *containerRuntime,
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						RuntimeName: types.String2RuntimeName(*containerRuntime),
+					},
 				},
 			}
 
@@ -104,7 +106,9 @@ func TestFilterByContainerName(t *testing.T) {
 					},
 				},
 				Runtime: containercollection.RuntimeMetadata{
-					RuntimeName: *containerRuntime,
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						RuntimeName: types.String2RuntimeName(*containerRuntime),
+					},
 				},
 			}
 
@@ -165,7 +169,9 @@ func TestWatchCreatedContainers(t *testing.T) {
 						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
-						RuntimeName: *containerRuntime,
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							RuntimeName: types.String2RuntimeName(*containerRuntime),
+						},
 					},
 				},
 			}
@@ -229,7 +235,9 @@ func TestWatchDeletedContainers(t *testing.T) {
 						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
-						RuntimeName: *containerRuntime,
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							RuntimeName: types.String2RuntimeName(*containerRuntime),
+						},
 					},
 				},
 			}
@@ -297,7 +305,9 @@ func TestPodWithSecurityContext(t *testing.T) {
 						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
-						RuntimeName: *containerRuntime,
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							RuntimeName: types.RuntimeName(*containerRuntime),
+						},
 					},
 				},
 			}

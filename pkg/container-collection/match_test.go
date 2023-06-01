@@ -194,7 +194,9 @@ func TestContainerResolver(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		cc.AddContainer(&Container{
 			Runtime: RuntimeMetadata{
-				ContainerID: fmt.Sprintf("abcde%d", i),
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: fmt.Sprintf("abcde%d", i),
+				},
 			},
 			Mntns:      55555 + uint64(i),
 			Pid:        uint32(100 + i),
@@ -317,7 +319,9 @@ func TestContainerResolver(t *testing.T) {
 	// Add new container with same pod and container name of container0 but in different namespace
 	cc.AddContainer(&Container{
 		Runtime: RuntimeMetadata{
-			ContainerID: "abcde0-different",
+			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+				ContainerID: "abcde0-different",
+			},
 		},
 		K8s: K8sMetadata{
 			BasicK8sMetadata: types.BasicK8sMetadata{

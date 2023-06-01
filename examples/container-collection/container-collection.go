@@ -22,7 +22,7 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
-	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func main() {
@@ -54,8 +54,8 @@ func main() {
 		// (It's needed to have the name of the container in this example).
 		containercollection.WithMultipleContainerRuntimesEnrichment(
 			[]*containerutils.RuntimeConfig{
-				{Name: runtimeclient.DockerName},
-				{Name: runtimeclient.ContainerdName},
+				{Name: types.RuntimeNameDocker},
+				{Name: types.RuntimeNameContainerd},
 			}),
 	}
 

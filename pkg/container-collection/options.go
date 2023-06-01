@@ -46,8 +46,8 @@ import (
 
 func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData, container *Container) {
 	// Runtime
-	container.Runtime.ContainerID = containerData.Runtime.ID
-	container.Runtime.RuntimeName = containerData.Runtime.Runtime
+	container.Runtime.ContainerID = containerData.Runtime.ContainerID
+	container.Runtime.RuntimeName = containerData.Runtime.RuntimeName
 
 	// Kubernetes
 	container.K8s.Namespace = containerData.K8s.Namespace
@@ -57,11 +57,11 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 	// Notice we are temporarily using the runtime container name as the
 	// Kubernetes container name because the Container struct doesn't have that
 	// field, and we don't support filtering by runtime container name yet.
-	container.K8s.ContainerName = containerData.Runtime.Container
+	container.K8s.ContainerName = containerData.Runtime.ContainerName
 }
 
 func containerRuntimeEnricher(
-	runtimeName string,
+	runtimeName types.RuntimeName,
 	runtimeClient runtimeclient.ContainerRuntimeClient,
 	container *Container,
 ) bool {
@@ -142,7 +142,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		}
 
 		switch runtime.Name {
-		case runtimeclient.PodmanName:
+		case types.RuntimeNamePodman:
 			// Podman only supports runtime enrichment for initial containers otherwise it will deadlock.
 			// As a consequence, we need to ensure that new podman containers will be enriched with all
 			// the information via other enrichers e.g. see RuncNotifier.futureContainers implementation
@@ -175,14 +175,14 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		for _, container := range containers {
 			if container.Runtime.State != runtimeclient.StateRunning {
 				log.Debugf("Runtime enricher(%s): Skip container %q (ID: %s): not running",
-					runtime.Name, container.Runtime.Container, container.Runtime.ID)
+					runtime.Name, container.Runtime.ContainerName, container.Runtime.ContainerID)
 				continue
 			}
 
-			containerDetails, err := runtimeClient.GetContainerDetails(container.Runtime.ID)
+			containerDetails, err := runtimeClient.GetContainerDetails(container.Runtime.ContainerID)
 			if err != nil {
 				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find container: %s",
-					runtime.Name, container.Runtime.Container, container.Runtime.ID, err)
+					runtime.Name, container.Runtime.ContainerName, container.Runtime.ContainerID, err)
 				continue
 			}
 
@@ -551,7 +551,9 @@ func WithRuncFanotify() ContainerCollectionOption {
 			case runcfanotify.EventTypeAddContainer:
 				container := &Container{
 					Runtime: RuntimeMetadata{
-						ContainerID: notif.ContainerID,
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							ContainerID: notif.ContainerID,
+						},
 					},
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
@@ -605,7 +607,9 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 						},
 					},
 					Runtime: RuntimeMetadata{
-						ContainerID: notif.ContainerID,
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							ContainerID: notif.ContainerID,
+						},
 					},
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
@@ -710,7 +714,7 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 			}
 
 			if cm, ok := container.OciConfig.Annotations["io.container.manager"]; ok && cm == "libpod" {
-				container.Runtime.RuntimeName = runtimeclient.PodmanName
+				container.Runtime.RuntimeName = types.RuntimeNamePodman
 			}
 
 			resolver, err := ociannotations.NewResolverFromAnnotations(container.OciConfig.Annotations)

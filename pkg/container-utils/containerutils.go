@@ -31,42 +31,43 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/docker"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/podman"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 var AvailableRuntimes = []string{
-	runtimeclient.DockerName,
-	runtimeclient.ContainerdName,
-	runtimeclient.CrioName,
-	runtimeclient.PodmanName,
+	types.RuntimeNameDocker.String(),
+	types.RuntimeNameContainerd.String(),
+	types.RuntimeNameCrio.String(),
+	types.RuntimeNamePodman.String(),
 }
 
 type RuntimeConfig struct {
-	Name       string
+	Name       types.RuntimeName
 	SocketPath string
 }
 
 func NewContainerRuntimeClient(runtime *RuntimeConfig) (runtimeclient.ContainerRuntimeClient, error) {
 	switch runtime.Name {
-	case runtimeclient.DockerName:
+	case types.RuntimeNameDocker:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_DOCKER_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = envsp
 		}
 		return docker.NewDockerClient(socketPath)
-	case runtimeclient.ContainerdName:
+	case types.RuntimeNameContainerd:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = envsp
 		}
 		return containerd.NewContainerdClient(socketPath)
-	case runtimeclient.CrioName:
+	case types.RuntimeNameCrio:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CRIO_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = envsp
 		}
 		return crio.NewCrioClient(socketPath)
-	case runtimeclient.PodmanName:
+	case types.RuntimeNamePodman:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_PODMAN_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = envsp
