@@ -151,6 +151,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 							Container: cn,
 							Pod:       pod,
 							Namespace: ns,
+							ImageName: "docker.io/library/busybox:latest",
 						},
 					},
 					Runtime: containercollection.RuntimeMetadata{

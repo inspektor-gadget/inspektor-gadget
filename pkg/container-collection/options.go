@@ -697,6 +697,9 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 			if podUID := resolver.PodUID(container.OciConfig.Annotations); podUID != "" {
 				container.K8s.PodUID = podUID
 			}
+			if imageName := resolver.ContainerImageName(container.OciConfig.Annotations); imageName != "" {
+				container.ImageName = imageName
+			}
 
 			return true
 		})

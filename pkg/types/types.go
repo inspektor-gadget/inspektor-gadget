@@ -124,6 +124,7 @@ type BasicK8sMetadata struct {
 	Namespace string `json:"namespace,omitempty" column:"namespace,template:namespace"`
 	Pod       string `json:"pod,omitempty" column:"pod,template:pod"`
 	Container string `json:"container,omitempty" column:"container,template:container"`
+	ImageName string `json:"imageName,omitempty"`
 }
 
 func (b *BasicK8sMetadata) IsEnriched() bool {
