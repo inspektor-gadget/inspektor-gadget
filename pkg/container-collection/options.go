@@ -702,6 +702,7 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 func isEnrichedWithOCIConfigInfo(container *Container) bool {
 	return container.OciConfig != nil &&
 		container.Runtime.RuntimeName != "" &&
+		container.Runtime.ContainerImageName != "" &&
 		container.K8s.ContainerName != "" &&
 		container.K8s.PodName != "" &&
 		container.K8s.Namespace != "" &&
@@ -746,6 +747,9 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 			}
 			if podUID := resolver.PodUID(container.OciConfig.Annotations); podUID != "" {
 				container.K8s.PodUID = podUID
+			}
+			if imageName := resolver.ContainerImageName(container.OciConfig.Annotations); imageName != "" {
+				container.Runtime.ContainerImageName = imageName
 			}
 
 			return true

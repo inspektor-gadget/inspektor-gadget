@@ -155,8 +155,9 @@ func TestWatchCreatedContainers(t *testing.T) {
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-							RuntimeName:   types.String2RuntimeName(*containerRuntime),
-							ContainerName: cn,
+							RuntimeName:        types.String2RuntimeName(*containerRuntime),
+							ContainerName:      cn,
+							ContainerImageName: "docker.io/library/busybox:latest",
 						},
 					},
 				},
