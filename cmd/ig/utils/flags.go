@@ -20,7 +20,7 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
-	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -55,17 +55,17 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 
 	partsLoop:
 		for _, p := range parts {
-			runtimeName := strings.TrimSpace(p)
+			runtimeName := types.String2RuntimeName(strings.TrimSpace(p))
 			socketPath := ""
 
 			switch runtimeName {
-			case runtimeclient.DockerName:
+			case types.RuntimeNameDocker:
 				socketPath = commonFlags.RuntimesSocketPathConfig.Docker
-			case runtimeclient.ContainerdName:
+			case types.RuntimeNameContainerd:
 				socketPath = commonFlags.RuntimesSocketPathConfig.Containerd
-			case runtimeclient.CrioName:
+			case types.RuntimeNameCrio:
 				socketPath = commonFlags.RuntimesSocketPathConfig.Crio
-			case runtimeclient.PodmanName:
+			case types.RuntimeNamePodman:
 				socketPath = commonFlags.RuntimesSocketPathConfig.Podman
 			default:
 				return commonutils.WrapInErrInvalidArg("--runtime / -r",

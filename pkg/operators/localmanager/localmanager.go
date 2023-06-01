@@ -151,17 +151,17 @@ func (l *LocalManager) Init(operatorParams *params.Params) error {
 
 partsLoop:
 	for _, p := range parts {
-		runtimeName := strings.TrimSpace(p)
+		runtimeName := types.String2RuntimeName(strings.TrimSpace(p))
 		socketPath := ""
 
 		switch runtimeName {
-		case runtimeclient.DockerName:
+		case types.RuntimeNameDocker:
 			socketPath = operatorParams.Get(DockerSocketPath).AsString()
-		case runtimeclient.ContainerdName:
+		case types.RuntimeNameContainerd:
 			socketPath = operatorParams.Get(ContainerdSocketPath).AsString()
-		case runtimeclient.CrioName:
+		case types.RuntimeNameCrio:
 			socketPath = operatorParams.Get(CrioSocketPath).AsString()
-		case runtimeclient.PodmanName:
+		case types.RuntimeNamePodman:
 			socketPath = operatorParams.Get(PodmanSocketPath).AsString()
 		default:
 			return commonutils.WrapInErrInvalidArg("--runtime / -r",
@@ -299,7 +299,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 			l.subscriptionKey,
 			containerSelector,
 			func(event containercollection.PubSubEvent) {
-				log.Debugf("%s: %s", event.Type.String(), event.Container.Runtime.ID)
+				log.Debugf("%s: %s", event.Type.String(), event.Container.Runtime.ContainerID)
 				switch event.Type {
 				case containercollection.EventTypeAddContainer:
 					attachContainerFunc(event.Container)

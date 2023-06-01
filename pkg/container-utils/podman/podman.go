@@ -26,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -88,10 +89,12 @@ func (p *PodmanClient) listContainers(containerID string) ([]*runtimeclient.Cont
 	for i, c := range containers {
 		ret[i] = &runtimeclient.ContainerData{
 			Runtime: runtimeclient.RuntimeContainerData{
-				ID:        c.ID,
-				Container: c.Names[0],
-				State:     containerStatusStateToRuntimeClientState(c.State),
-				Runtime:   runtimeclient.PodmanName,
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: c.ID,
+					Container:   c.Names[0],
+					Runtime:     types.RuntimeNamePodman,
+				},
+				State: containerStatusStateToRuntimeClientState(c.State),
 			},
 		}
 	}
@@ -145,10 +148,12 @@ func (p *PodmanClient) GetContainerDetails(containerID string) (*runtimeclient.C
 	return &runtimeclient.ContainerDetailsData{
 		ContainerData: runtimeclient.ContainerData{
 			Runtime: runtimeclient.RuntimeContainerData{
-				ID:        container.ID,
-				Container: container.Name,
-				State:     containerStatusStateToRuntimeClientState(container.State.Status),
-				Runtime:   runtimeclient.PodmanName,
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: container.ID,
+					Container:   container.Name,
+					Runtime:     types.RuntimeNamePodman,
+				},
+				State: containerStatusStateToRuntimeClientState(container.State.Status),
 			},
 		},
 		Pid:         container.State.Pid,

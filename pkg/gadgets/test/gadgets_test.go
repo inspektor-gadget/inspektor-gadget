@@ -141,7 +141,9 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 
 			container := &containercollection.Container{
 				Runtime: containercollection.RuntimeMetadata{
-					ID: uuid.New().String(),
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerID: uuid.New().String(),
+					},
 				},
 				Mntns: r.Info.MountNsID,
 				Pid:   uint32(r.Info.Tid),
@@ -164,7 +166,7 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 			// container after it's notified. Notice that the container hooks are not blocking
 			// on the remove events, hence when we get the notification the container is already
 			// gone.
-			time.AfterFunc(1*time.Millisecond, func() { cc.RemoveContainer(container.Runtime.ID) })
+			time.AfterFunc(1*time.Millisecond, func() { cc.RemoveContainer(container.Runtime.ContainerID) })
 		}
 
 		return nil
@@ -228,7 +230,9 @@ func TestEventEnrichmentRaceCondition(t *testing.T) {
 
 			container := &containercollection.Container{
 				Runtime: containercollection.RuntimeMetadata{
-					ID: uuid.New().String(),
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerID: uuid.New().String(),
+					},
 				},
 				Mntns: r.Info.MountNsID,
 				Pid:   uint32(r.Info.Tid),
@@ -243,7 +247,7 @@ func TestEventEnrichmentRaceCondition(t *testing.T) {
 			// Remove the container right after it generates the command. Running this
 			// after r.Run() will be too late, so let's do in a different goroutine to
 			// have some time.
-			go func() { cc.RemoveContainer(container.Runtime.ID) }()
+			go func() { cc.RemoveContainer(container.Runtime.ContainerID) }()
 
 			if err := r.Run(f); err != nil {
 				return fmt.Errorf("running command: %w", err)

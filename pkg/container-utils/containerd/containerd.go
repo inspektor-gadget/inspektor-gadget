@@ -19,6 +19,7 @@ import (
 
 	criclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cri"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -34,7 +35,7 @@ func NewContainerdClient(socketPath string) (runtimeclient.ContainerRuntimeClien
 		socketPath = runtimeclient.ContainerdDefaultSocketPath
 	}
 
-	criClient, err := criclient.NewCRIClient(runtimeclient.ContainerdName, socketPath, DefaultTimeout)
+	criClient, err := criclient.NewCRIClient(types.RuntimeNameContainerd, socketPath, DefaultTimeout)
 	if err != nil {
 		return nil, err
 	}

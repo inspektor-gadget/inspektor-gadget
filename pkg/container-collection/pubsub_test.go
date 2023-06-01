@@ -16,6 +16,8 @@ package containercollection
 
 import (
 	"testing"
+
+	types "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestPubSub(t *testing.T) {
@@ -40,7 +42,9 @@ func TestPubSub(t *testing.T) {
 		EventTypeRemoveContainer,
 		&Container{
 			Runtime: RuntimeMetadata{
-				ID: "container1",
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: "container1",
+				},
 			},
 		},
 	)
@@ -52,7 +56,7 @@ func TestPubSub(t *testing.T) {
 	if event.Type != EventTypeRemoveContainer {
 		t.Fatalf("Failed to receive correct event of type EVENT_TYPE_REMOVE_CONTAINER")
 	}
-	if event.Container.Runtime.ID != "container1" {
+	if event.Container.Runtime.ContainerID != "container1" {
 		t.Fatalf("Failed to receive correct event")
 	}
 
@@ -61,7 +65,9 @@ func TestPubSub(t *testing.T) {
 		EventTypeRemoveContainer,
 		&Container{
 			Runtime: RuntimeMetadata{
-				ID: "container2",
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: "container2",
+				},
 			},
 		},
 	)
@@ -78,7 +84,9 @@ func TestPubSubVerifyPointerToContainer(t *testing.T) {
 
 	c := &Container{
 		Runtime: RuntimeMetadata{
-			ID: "container1",
+			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+				ContainerID: "container1",
+			},
 		},
 	}
 

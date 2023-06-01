@@ -40,7 +40,9 @@ func TestListContainers(t *testing.T) {
 					},
 				},
 				Runtime: containercollection.RuntimeMetadata{
-					Runtime: *containerRuntime,
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						Runtime: types.String2RuntimeName(*containerRuntime),
+					},
 				},
 			}
 
@@ -51,7 +53,7 @@ func TestListContainers(t *testing.T) {
 					c.K8s.Container = "test-pod"
 				}
 
-				c.Runtime.ID = ""
+				c.Runtime.ContainerID = ""
 				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
@@ -104,12 +106,14 @@ func TestFilterByContainerName(t *testing.T) {
 					},
 				},
 				Runtime: containercollection.RuntimeMetadata{
-					Runtime: *containerRuntime,
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						Runtime: types.String2RuntimeName(*containerRuntime),
+					},
 				},
 			}
 
 			normalize := func(c *containercollection.Container) {
-				c.Runtime.ID = ""
+				c.Runtime.ContainerID = ""
 				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
@@ -165,13 +169,15 @@ func TestWatchCreatedContainers(t *testing.T) {
 						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
-						Runtime: *containerRuntime,
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							Runtime: types.String2RuntimeName(*containerRuntime),
+						},
 					},
 				},
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.Runtime.ID = ""
+				e.Container.Runtime.ContainerID = ""
 				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
@@ -229,13 +235,15 @@ func TestWatchDeletedContainers(t *testing.T) {
 						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
-						Runtime: *containerRuntime,
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							Runtime: types.String2RuntimeName(*containerRuntime),
+						},
 					},
 				},
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.Runtime.ID = ""
+				e.Container.Runtime.ContainerID = ""
 				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""

@@ -52,8 +52,8 @@ func TestNewResolver(t *testing.T) {
 				t.Errorf("NewResolver() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if err == nil && !reflect.DeepEqual(got.Runtime(), tt.want) {
-				t.Errorf("NewResolverFromAnnotations().Runtime() got = %v, want %v", got, tt.want)
+			if err == nil && !reflect.DeepEqual(got.Runtime().String(), tt.want) {
+				t.Errorf("NewResolverFromAnnotations().Runtime() got = %v, want %v", got.Runtime(), tt.want)
 			}
 		})
 	}
@@ -92,8 +92,8 @@ func TestNewResolverFromAnnotations(t *testing.T) {
 				t.Errorf("NewResolverFromAnnotations() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if err == nil && !reflect.DeepEqual(got.Runtime(), tt.want) {
-				t.Errorf("NewResolverFromAnnotations().Runtime() got = %v, want %v", got, tt.want)
+			if err == nil && !reflect.DeepEqual(got.Runtime().String(), tt.want) {
+				t.Errorf("NewResolverFromAnnotations().Runtime() got = %s, want %s", got.Runtime(), tt.want)
 			}
 		})
 	}

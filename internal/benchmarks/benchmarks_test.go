@@ -32,6 +32,7 @@ import (
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	// TODO: find out why those gadgets don't work in the tests
 	// _ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/block-io/tracer"
@@ -211,7 +212,9 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 				runner := utilstest.NewRunnerWithTest(b, runnerConfig)
 				container := &containercollection.Container{
 					Runtime: containercollection.RuntimeMetadata{
-						ID: fmt.Sprintf("container%d", i),
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							ContainerID: fmt.Sprintf("container%d", i),
+						},
 					},
 					Mntns: runner.Info.MountNsID,
 					Netns: runner.Info.NetworkNsID,

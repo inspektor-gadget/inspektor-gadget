@@ -45,7 +45,7 @@ import (
 
 func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData, container *Container) {
 	// Runtime
-	container.Runtime.ID = containerData.Runtime.ID
+	container.Runtime.ContainerID = containerData.Runtime.ContainerID
 	container.Runtime.Runtime = containerData.Runtime.Runtime
 
 	// Kubernetes
@@ -60,7 +60,7 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 }
 
 func containerRuntimeEnricher(
-	runtimeName string,
+	runtimeName types.RuntimeName,
 	runtimeClient runtimeclient.ContainerRuntimeClient,
 	container *Container,
 ) bool {
@@ -69,7 +69,7 @@ func containerRuntimeEnricher(
 	if container.IsEnriched() {
 		return true
 	}
-	containerData, err := runtimeClient.GetContainer(container.Runtime.ID)
+	containerData, err := runtimeClient.GetContainer(container.Runtime.ContainerID)
 	if err != nil {
 		// Temporary dropping pause container. See issue
 		// https://github.com/inspektor-gadget/inspektor-gadget/issues/1095.
@@ -141,7 +141,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		}
 
 		switch runtime.Name {
-		case runtimeclient.PodmanName:
+		case types.RuntimeNamePodman:
 			// Podman only supports runtime enrichment for initial containers otherwise it will deadlock.
 			// As a consequence, we need to ensure that new podman containers will be enriched with all
 			// the information via other enrichers e.g. see RuncNotifier.futureContainers implementation
@@ -174,14 +174,14 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		for _, container := range containers {
 			if container.Runtime.State != runtimeclient.StateRunning {
 				log.Debugf("Runtime enricher(%s): Skip container %q (ID: %s): not running",
-					runtime.Name, container.Runtime.Container, container.Runtime.ID)
+					runtime.Name, container.Runtime.Container, container.Runtime.ContainerID)
 				continue
 			}
 
-			containerDetails, err := runtimeClient.GetContainerDetails(container.Runtime.ID)
+			containerDetails, err := runtimeClient.GetContainerDetails(container.Runtime.ContainerID)
 			if err != nil {
 				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find container: %s",
-					runtime.Name, container.Runtime.Container, container.Runtime.ID, err)
+					runtime.Name, container.Runtime.Container, container.Runtime.ContainerID, err)
 				continue
 			}
 
@@ -283,7 +283,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 					for _, container := range containers {
 						// The container is already registered, there is not any chance the
 						// PID will change, so ignore it.
-						if _, ok := containerIDs[container.Runtime.ID]; ok {
+						if _, ok := containerIDs[container.Runtime.ContainerID]; ok {
 							continue
 						}
 
@@ -292,7 +292,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 						newContainer := Container{}
 						newContainer = container
 						if fallbackMode {
-							if cc.GetContainer(container.Runtime.ID) != nil {
+							if cc.GetContainer(container.Runtime.ContainerID) != nil {
 								continue // container is already there. All good!
 							}
 							log.Warnf("container %s/%s/%s wasn't detected by the main hook! The fallback pod informer will add it.",
@@ -300,7 +300,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 						}
 						cc.AddContainer(&newContainer)
 
-						containerIDs[container.Runtime.ID] = struct{}{}
+						containerIDs[container.Runtime.ContainerID] = struct{}{}
 					}
 				}
 			}
@@ -548,7 +548,9 @@ func WithRuncFanotify() ContainerCollectionOption {
 			case runcfanotify.EventTypeAddContainer:
 				container := &Container{
 					Runtime: RuntimeMetadata{
-						ID: notif.ContainerID,
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							ContainerID: notif.ContainerID,
+						},
 					},
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
@@ -573,9 +575,9 @@ func WithRuncFanotify() ContainerCollectionOption {
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			err := runcNotifier.AddWatchContainerTermination(container.Runtime.ID, int(container.Pid))
+			err := runcNotifier.AddWatchContainerTermination(container.Runtime.ContainerID, int(container.Pid))
 			if err != nil {
-				log.Errorf("runc fanotify enricher: failed to watch container %s: %s", container.Runtime.ID, err)
+				log.Errorf("runc fanotify enricher: failed to watch container %s: %s", container.Runtime.ContainerID, err)
 				return false
 			}
 			return true
@@ -590,13 +592,13 @@ func WithCgroupEnrichment() ContainerCollectionOption {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			pid := int(container.Pid)
 			if pid == 0 {
-				log.Errorf("cgroup enricher: failed to enrich container %s with pid zero", container.Runtime.ID)
+				log.Errorf("cgroup enricher: failed to enrich container %s with pid zero", container.Runtime.ContainerID)
 				return true
 			}
 
 			cgroupPathV1, cgroupPathV2, err := cgroups.GetCgroupPaths(pid)
 			if err != nil {
-				log.Errorf("cgroup enricher: failed to get cgroup paths on container %s: %s", container.Runtime.ID, err)
+				log.Errorf("cgroup enricher: failed to get cgroup paths on container %s: %s", container.Runtime.ContainerID, err)
 				return true
 			}
 			cgroupPathV2WithMountpoint, _ := cgroups.CgroupPathV2AddMountpoint(cgroupPathV2)
@@ -625,20 +627,20 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			pid := int(container.Pid)
 			if pid == 0 {
-				log.Errorf("namespace enricher: failed to enrich container %s with pid zero", container.Runtime.ID)
+				log.Errorf("namespace enricher: failed to enrich container %s with pid zero", container.Runtime.ContainerID)
 				return true
 			}
 
 			mntns, err := containerutils.GetMntNs(pid)
 			if err != nil {
-				log.Errorf("namespace enricher: failed to get mnt namespace on container %s: %s", container.Runtime.ID, err)
+				log.Errorf("namespace enricher: failed to get mnt namespace on container %s: %s", container.Runtime.ContainerID, err)
 				return true
 			}
 			container.Mntns = mntns
 
 			netns, err := containerutils.GetNetNs(pid)
 			if err != nil {
-				log.Errorf("namespace enricher: failed to get net namespace on container %s: %s", container.Runtime.ID, err)
+				log.Errorf("namespace enricher: failed to get net namespace on container %s: %s", container.Runtime.ContainerID, err)
 				return true
 			}
 			container.Netns = netns
@@ -658,7 +660,7 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 			}
 
 			if cm, ok := container.OciConfig.Annotations["io.container.manager"]; ok && cm == "libpod" {
-				container.Runtime.Runtime = runtimeclient.PodmanName
+				container.Runtime.Runtime = types.RuntimeNamePodman
 			}
 
 			resolver, err := ociannotations.NewResolverFromAnnotations(container.OciConfig.Annotations)
@@ -760,7 +762,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 			fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 			if err != nil {
 				log.Warnf("WithTracerCollection: failed to open mntns reference for container %s: %s",
-					container.Runtime.ID, err)
+					container.Runtime.ContainerID, err)
 				return false
 			}
 

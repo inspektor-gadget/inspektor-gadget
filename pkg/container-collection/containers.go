@@ -71,11 +71,7 @@ type Container struct {
 }
 
 type RuntimeMetadata struct {
-	// Container Runtime Name (docker, containerd, cri-o, ...)
-	Runtime string `json:"runtime,omitempty" column:"runtime,minWidth:5,maxWidth:10"`
-
-	// ID is the container id, typically a 64 hexadecimal string
-	ID string `json:"id,omitempty" column:"id,width:13,maxWidth:64"`
+	types.BasicRuntimeMetadata `json:",inline"`
 }
 
 type K8sMetadata struct {

@@ -14,6 +14,8 @@
 
 package ociannotations
 
+import "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+
 const (
 	// cri-o container annotations to get container information
 	// https://github.com/containers/podman/blob/main/pkg/annotations/annotations.go
@@ -48,6 +50,6 @@ func (crioResolver) PodNamespace(annotations map[string]string) string {
 	return annotations[crioPodNamespaceAnnotation]
 }
 
-func (crioResolver) Runtime() string {
-	return "cri-o"
+func (crioResolver) Runtime() types.RuntimeName {
+	return types.RuntimeNameCrio
 }
