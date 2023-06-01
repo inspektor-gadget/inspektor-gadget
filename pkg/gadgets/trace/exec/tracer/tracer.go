@@ -95,9 +95,14 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
-	t.enterLink, t.exitLink, err = loadExecsnoopLinks(t.objs)
+	t.enterLink, err = link.Tracepoint("syscalls", "sys_enter_execve", t.objs.IgExecveE, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("attaching enter tracepoint: %w", err)
+	}
+
+	t.exitLink, err = loadExecsnoopExitLink(t.objs)
+	if err != nil {
+		return fmt.Errorf("attaching exit tracepoint: %w", err)
 	}
 
 	reader, err := perf.NewReader(t.objs.execsnoopMaps.Events, gadgets.PerfBufferPages*os.Getpagesize())
