@@ -322,10 +322,16 @@ func TestEmbeddedStructs(t *testing.T) {
 	type embeddedStructNamed struct {
 		foo int `column:"foo"`
 	}
+	type embeddedStructNamedWithTemplate struct {
+		foo int `column:"foo,template:bar"`
+	}
 	type testStruct struct {
 		embeddedStructUnnamed
-		embeddedStructNamed `column:"named" columnTags:"abc,def"`
+		embeddedStructNamed             `column:"named" columnTags:"abc,def"`
+		embeddedStructNamedWithTemplate `column:"withTemplate" columnTags:"ghi"`
 	}
+
+	assert.NoError(t, RegisterTemplate("bar", "width:123"))
 
 	cols := MustCreateColumns[testStruct]()
 
@@ -344,4 +350,15 @@ func TestEmbeddedStructs(t *testing.T) {
 	assert.Equal(t, fooCol.Name, "named.foo")
 
 	assert.Contains(t, fooCol.Tags, "def", "tags from parent should be inherited")
+
+	_, found = cols.GetColumn("embeddedStructNamedWithTemplate.foo")
+	assert.False(t, found)
+
+	fooCol, found = cols.GetColumn("withTemplate.foo")
+	require.True(t, found)
+	assert.Equal(t, fooCol.Name, "withTemplate.foo")
+
+	assert.Contains(t, fooCol.Tags, "ghi", "tags from parent should be inherited")
+
+	expectColumnValue(t, expectColumn(t, cols, "withTemplate.foo"), "Width", 123)
 }

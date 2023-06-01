@@ -125,8 +125,13 @@ func (ci *Column[T]) getWidth(params []string) (int, error) {
 
 func (ci *Column[T]) fromTag(tag string) error {
 	tagInfo := strings.Split(tag, ",")
-	ci.Name = tagInfo[0]
-	ci.RawName = ci.Name
+	// Don't overwrite the name if it has been already set. This prevents an
+	// already computed name (for example, with a prefix) from being overwritten
+	// when applying a template.
+	if ci.Name == "" {
+		ci.Name = tagInfo[0]
+		ci.RawName = ci.Name
+	}
 	if len(ci.Name) > 0 {
 		ci.explicitName = true
 	}
