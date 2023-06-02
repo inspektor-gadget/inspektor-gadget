@@ -16,25 +16,8 @@
 
 package tracer
 
-import (
-	"fmt"
+import "github.com/cilium/ebpf/link"
 
-	"github.com/cilium/ebpf/link"
-
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-)
-
-func loadExecsnoopLinks(objs execsnoopObjects) (link.Link, link.Link, error) {
-	enter, err := link.Kprobe("do_execveat_common.isra.0", objs.IgExecveatE, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("attaching tracepoint: %w", err)
-	}
-
-	exit, err := link.Kretprobe("do_execveat_common.isra.0", objs.IgExecveatX, nil)
-	if err != nil {
-		gadgets.CloseLink(enter)
-		return nil, nil, fmt.Errorf("attaching tracepoint: %w", err)
-	}
-
-	return enter, exit, nil
+func loadExecsnoopExitLink(objs execsnoopObjects) (link.Link, error) {
+	return link.Kretprobe("do_execveat_common.isra.0", objs.IgExecveatX, nil)
 }
