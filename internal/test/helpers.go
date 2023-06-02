@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/google/go-cmp/cmp"
 	"github.com/moby/moby/pkg/parsers/kernel"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 )
 
@@ -42,16 +43,12 @@ func CreateMntNsFilterMap(t testing.TB, mountNsIDs ...uint64) *ebpf.Map {
 		MaxEntries: 1024,
 	}
 	m, err := ebpf.NewMap(mntnsSpec)
-	if err != nil {
-		t.Fatalf("Failed to create eBPF map: %s", err)
-	}
+	require.Nil(t, err, "Failed to create eBPF map: %s", err)
 	t.Cleanup(func() { m.Close() })
 
 	for _, mountnsid := range mountNsIDs {
-		if err := m.Put(mountnsid, one); err != nil {
-			m.Close()
-			t.Fatalf("Failed to update eBPF map: %s", err)
-		}
+		err := m.Put(mountnsid, one)
+		require.Nil(t, err, "Failed to update eBPF map: %s", err)
 	}
 
 	return m
@@ -68,9 +65,7 @@ func RequireRoot(t testing.TB) {
 
 func RequireKernelVersion(t testing.TB, expectedVersion *kernel.VersionInfo) {
 	version, err := kernel.GetKernelVersion()
-	if err != nil {
-		t.Fatalf("Failed to get kernel version: %s", err)
-	}
+	require.Nil(t, err, "Failed to get kernel version: %s", err)
 
 	if kernel.CompareKernelVersion(*version, *expectedVersion) < 0 {
 		t.Skipf("Test requires kernel %s", expectedVersion)
@@ -81,9 +76,7 @@ func NewRunnerWithTest(t testing.TB, config *RunnerConfig) *Runner {
 	t.Helper()
 
 	runner, err := NewRunner(config)
-	if err != nil {
-		t.Fatalf("Creating runner: %s", err)
-	}
+	require.Nil(t, err, "Creating runner: %s", err)
 
 	t.Cleanup(runner.Close)
 
@@ -93,18 +86,15 @@ func NewRunnerWithTest(t testing.TB, config *RunnerConfig) *Runner {
 func RunWithRunner(t testing.TB, runner *Runner, f func() error) {
 	t.Helper()
 
-	if err := runner.Run(f); err != nil {
-		t.Fatalf("Error generating event: %s", err)
-	}
+	err := runner.Run(f)
+	require.Nil(t, err, "Error generating event: %s", err)
 }
 
 type ValidateEventType[Event any, Extra any] func(*testing.T, *RunnerInfo, Extra, []Event)
 
 // ExpectNoEvent doesn't expect any event to be captured by the tracer.
 func ExpectNoEvent[Event any, Extra any](t *testing.T, _ *RunnerInfo, _ Extra, events []Event) {
-	if len(events) != 0 {
-		t.Fatalf("No events are expected")
-	}
+	require.Empty(t, events, "No events are expected")
 }
 
 // ExpectAtLeastOneEvent expects that at least one of the captures events matches.
@@ -132,22 +122,14 @@ func ExpectOneEvent[Event any, Extra any](getEvent func(info *RunnerInfo, extra 
 	return func(t *testing.T, info *RunnerInfo, extra Extra, events []Event) {
 		expectedEvent := getEvent(info, extra)
 
-		if len(events) != 1 {
-			t.Fatalf("One event expected, found: %d", len(events))
-		}
-
-		if !reflect.DeepEqual(expectedEvent, &events[0]) {
-			t.Fatalf("Event doesn't match:\n%s",
-				cmp.Diff(expectedEvent, &events[0]))
-		}
+		require.Len(t, events, 1, "One event is expected")
+		require.Equal(t, expectedEvent, &events[0], "Event doesn't match")
 	}
 }
 
 // Equal compares if two values are the same.
+// Deprecated: Use require.Equal instead.
 func Equal[T comparable](t *testing.T, expected, actual T, message string) {
 	t.Helper()
-
-	if expected != actual {
-		t.Errorf("%s: want: %v; got: %v", message, expected, actual)
-	}
+	require.Equal(t, expected, actual, message)
 }
