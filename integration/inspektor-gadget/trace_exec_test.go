@@ -32,13 +32,6 @@ func TestTraceExec(t *testing.T) {
 	shArgs := []string{"/bin/sh", "-c", cmd}
 	dateArgs := []string{"/bin/date"}
 	sleepArgs := []string{"/bin/sleep", "0.1"}
-	// on arm64, trace exec uses kprobe and it cannot trace the arguments:
-	// 243759db6b19 ("pkg/gadgets: Use kprobe for execsnoop on arm64.")
-	if *k8sArch == "arm64" {
-		shArgs = nil
-		dateArgs = nil
-		sleepArgs = nil
-	}
 
 	traceExecCmd := &Command{
 		Name:         "StartTraceExecGadget",
