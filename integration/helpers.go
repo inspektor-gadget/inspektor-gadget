@@ -24,9 +24,13 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
+
+var cmpIgnoreUnexported = cmpopts.IgnoreUnexported(containercollection.Container{})
 
 func parseMultiJSONOutput[T any](output string, normalize func(*T)) ([]*T, error) {
 	ret := []*T{}
@@ -96,7 +100,7 @@ func expectAllToMatch[T any](entries []*T, expectedEntry *T) error {
 	for _, entry := range entries {
 		if !reflect.DeepEqual(expectedEntry, entry) {
 			return fmt.Errorf("unexpected output entry:\n%s",
-				cmp.Diff(expectedEntry, entry))
+				cmp.Diff(expectedEntry, entry, cmpIgnoreUnexported))
 		}
 	}
 	return nil
