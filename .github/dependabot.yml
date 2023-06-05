@@ -4,17 +4,24 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
+      # Il est cinq heures, Paris s'éveille !
+      time: "05:00"
+      timezone: "Europe/Paris"
     commit-message:
       prefix: "ci:"
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "daily"
+      time: "05:00"
+      timezone: "Europe/Paris"
     commit-message:
       prefix: "go:"
   - package-ecosystem: "docker"
     directory: "/Dockerfiles"
     schedule:
       interval: "daily"
+      time: "05:00"
+      timezone: "Europe/Paris"
     commit-message:
       prefix: "Dockerfiles:"
