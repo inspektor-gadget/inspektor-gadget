@@ -33,6 +33,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	processcollectortypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -86,15 +87,14 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 	}
 	defer dumpTaskIter.Close()
 
-	file, err := dumpTaskIter.Open()
+	buf, err := bpfiterns.Read(dumpTaskIter)
 	if err != nil {
-		return nil, fmt.Errorf("opening BPF iterator: %w", err)
+		return nil, fmt.Errorf("reading iterator: %w", err)
 	}
-	defer file.Close()
 
 	events := []*processcollectortypes.Event{}
 
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(strings.NewReader(string(buf)))
 	for scanner.Scan() {
 		var command string
 		var tgid, pid, parentPid int

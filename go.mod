@@ -37,6 +37,8 @@ require (
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/godbus/dbus/v5 v5.1.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/go-cmp v0.5.9
 	github.com/hashicorp/golang-lru/v2 v2.0.3
