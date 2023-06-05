@@ -19,12 +19,12 @@ type execsnoopEvent struct {
 	Ppid      uint32
 	Uid       uint32
 	Gid       uint32
+	Loginuid  uint32
 	Retval    int32
 	ArgsCount int32
 	ArgsSize  uint32
 	Comm      [16]uint8
 	Args      [7680]uint8
-	_         [4]byte
 }
 
 // loadExecsnoop returns the embedded CollectionSpec for execsnoop.

@@ -18,7 +18,9 @@
 package test
 
 import (
+	"os"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/cilium/ebpf"
@@ -70,6 +72,17 @@ func RequireKernelVersion(t testing.TB, expectedVersion *kernel.VersionInfo) {
 	if kernel.CompareKernelVersion(*version, *expectedVersion) < 0 {
 		t.Skipf("Test requires kernel %s", expectedVersion)
 	}
+}
+
+func ReadFileAsUint32(t testing.TB, path string) uint32 {
+	t.Helper()
+
+	loginuidBytes, err := os.ReadFile(path)
+	require.Nil(t, err, "Failed to read %q: %s", err)
+	ret, err := strconv.ParseUint(string(loginuidBytes), 10, 32)
+	require.Nil(t, err, "Failed to parse %q: %s", string(loginuidBytes), err)
+
+	return uint32(ret)
 }
 
 func NewRunnerWithTest(t testing.TB, config *RunnerConfig) *Runner {

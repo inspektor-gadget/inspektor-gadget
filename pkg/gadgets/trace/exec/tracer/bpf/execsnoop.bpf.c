@@ -70,6 +70,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	event->pid = tgid;
 	event->uid = uid;
 	event->gid = gid;
+	event->loginuid = BPF_CORE_READ(task, loginuid.val);
 	event->ppid = (pid_t)BPF_CORE_READ(task, real_parent, tgid);
 	event->args_count = 0;
 	event->args_size = 0;
