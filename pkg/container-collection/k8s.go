@@ -137,11 +137,6 @@ func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 			continue
 		}
 
-		id := trimRuntimePrefix(s.ContainerID)
-		if id == "" {
-			continue
-		}
-
 		pid := containerData.Pid
 		if pid > math.MaxUint32 {
 			log.Errorf("Container PID (%d) exceeds math.MaxUint32 (%d), skipping this container", pid, math.MaxUint32)
@@ -150,9 +145,7 @@ func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 
 		containerDef := Container{
 			Runtime: RuntimeMetadata{
-				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-					ContainerID: id,
-				},
+				BasicRuntimeMetadata: containerData.Runtime.BasicRuntimeMetadata,
 			},
 			Pid: uint32(pid),
 			K8s: K8sMetadata{
