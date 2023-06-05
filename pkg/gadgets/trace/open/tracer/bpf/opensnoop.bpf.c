@@ -104,6 +104,7 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 	struct args_t *ap;
 	int ret;
 	u32 pid = bpf_get_current_pid_tgid();
+	u64 uid_gid = bpf_get_current_uid_gid();
 	u64 mntns_id;
 
 	ap = bpf_map_lookup_elem(&start, &pid);
@@ -115,7 +116,8 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 
 	/* event data */
 	event.pid = bpf_get_current_pid_tgid() >> 32;
-	event.uid = bpf_get_current_uid_gid();
+	event.uid = (u32) uid_gid;
+	event.gid = (u32) (uid_gid >> 32);
 	bpf_get_current_comm(&event.comm, sizeof(event.comm));
 	bpf_probe_read_user_str(&event.fname, sizeof(event.fname), ap->fname);
 	event.flags = ap->flags;

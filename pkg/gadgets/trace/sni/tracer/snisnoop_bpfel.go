@@ -16,6 +16,8 @@ type snisnoopEventT struct {
 	MountNsId uint64
 	Pid       uint32
 	Tid       uint32
+	Uid       uint32
+	Gid       uint32
 	Task      [16]uint8
 	Name      [128]uint8
 	Timestamp uint64
@@ -32,6 +34,7 @@ type snisnoopSocketsKey struct {
 type snisnoopSocketsValue struct {
 	Mntns             uint64
 	PidTgid           uint64
+	UidGid            uint64
 	Task              [16]int8
 	Sock              uint64
 	DeletionTimestamp uint64

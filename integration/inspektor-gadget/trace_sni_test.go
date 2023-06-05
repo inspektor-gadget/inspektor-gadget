@@ -37,6 +37,8 @@ func TestTraceSni(t *testing.T) {
 				Event: BuildBaseEvent(ns),
 				Comm:  "wget",
 				Name:  "inspektor-gadget.io",
+				Uid:   1000,
+				Gid:   1111,
 			}
 
 			normalize := func(e *tracesniTypes.Event) {
@@ -55,7 +57,7 @@ func TestTraceSni(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		traceSniCmd,
-		BusyboxPodRepeatCommand(ns, "wget --no-check-certificate -T 2 -q -O /dev/null https://inspektor-gadget.io"),
+		BusyboxPodRepeatCommand(ns, "setuidgid 1000:1111 wget --no-check-certificate -T 2 -q -O /dev/null https://inspektor-gadget.io"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

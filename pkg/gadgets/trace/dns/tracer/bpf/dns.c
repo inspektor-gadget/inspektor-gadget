@@ -191,6 +191,8 @@ output_dns_event(struct __sk_buff *skb, union dnsflags flags, __u32 name_len, __
 		event->pid = skb_val->pid_tgid >> 32;
 		event->tid = (__u32)skb_val->pid_tgid;
 		__builtin_memcpy(&event->task,  skb_val->task, sizeof(event->task));
+		event->uid = (__u32) skb_val->uid_gid;
+		event->gid = (__u32) (skb_val->uid_gid >> 32);
 	}
 
 	event->ancount = ancount;

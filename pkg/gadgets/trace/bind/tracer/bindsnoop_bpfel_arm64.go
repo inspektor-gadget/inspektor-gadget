@@ -19,6 +19,8 @@ type bindsnoopBindEvent struct {
 	TsUs       uint64
 	Pid        uint32
 	BoundDevIf uint32
+	Uid        uint32
+	Gid        uint32
 	Ret        int32
 	Port       uint16
 	Proto      uint16

@@ -37,7 +37,7 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 {
 	struct inet_sock *sockp;
 	struct task_struct *task;
-	__u64 pid_tgid;
+	__u64 pid_tgid, uid_gid;
 	struct event event = {};
 	struct tcp_skb_cb *tcb;
 
@@ -50,6 +50,7 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 	sockp = (struct inet_sock *)sk;
 	task = (struct task_struct*) bpf_get_current_task();
 	pid_tgid = bpf_get_current_pid_tgid();
+	uid_gid = bpf_get_current_uid_gid();
 
 	event.timestamp = bpf_ktime_get_boot_ns();
 	event.af = BPF_CORE_READ(sk, __sk_common.skc_family);
@@ -59,6 +60,8 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 	event.proc_current.pid = pid_tgid >> 32;
 	event.proc_current.tid = (__u32)pid_tgid;
 	event.proc_current.mount_ns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	event.proc_current.uid = (u32) uid_gid;
+	event.proc_current.gid = (u32) (uid_gid >> 32);
 
 	// The tcp_retransmit_skb tracepoint is fired with a skb that does not
 	// contain the TCP header because the TCP header is built on a cloned skb
@@ -109,6 +112,8 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 		event.proc_socket.pid = skb_val->pid_tgid >> 32;
 		event.proc_socket.tid = (__u32)skb_val->pid_tgid;
 		__builtin_memcpy(&event.proc_socket.task,  skb_val->task, sizeof(event.proc_socket.task));
+		event.proc_socket.uid = (__u32) skb_val->uid_gid;
+		event.proc_socket.gid = (__u32) (skb_val->uid_gid >> 32);
 	}
 
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));

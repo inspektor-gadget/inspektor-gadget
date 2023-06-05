@@ -17,6 +17,8 @@ type dnsEventT struct {
 	MountNsId   uint64
 	Pid         uint32
 	Tid         uint32
+	Uid         uint32
+	Gid         uint32
 	Task        [16]uint8
 	SaddrV6     [16]uint8
 	DaddrV6     [16]uint8
@@ -44,6 +46,7 @@ type dnsSocketsKey struct {
 type dnsSocketsValue struct {
 	Mntns             uint64
 	PidTgid           uint64
+	UidGid            uint64
 	Task              [16]int8
 	Sock              uint64
 	DeletionTimestamp uint64

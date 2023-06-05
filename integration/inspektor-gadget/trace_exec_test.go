@@ -28,7 +28,7 @@ func TestTraceExec(t *testing.T) {
 
 	t.Parallel()
 
-	cmd := "while true; do date ; /bin/sleep 0.1; done"
+	cmd := "setuidgid 1000:1111 sh -c 'while true; do date ; /bin/sleep 0.1; done'"
 	shArgs := []string{"/bin/sh", "-c", cmd}
 	dateArgs := []string{"/bin/date"}
 	sleepArgs := []string{"/bin/sleep", "0.1"}
@@ -48,11 +48,15 @@ func TestTraceExec(t *testing.T) {
 					Event: BuildBaseEvent(ns),
 					Comm:  "date",
 					Args:  dateArgs,
+					Uid:   1000,
+					Gid:   1111,
 				},
 				{
 					Event: BuildBaseEvent(ns),
 					Comm:  "sleep",
 					Args:  sleepArgs,
+					Uid:   1000,
+					Gid:   1111,
 				},
 			}
 
@@ -61,7 +65,6 @@ func TestTraceExec(t *testing.T) {
 				e.Node = ""
 				e.Pid = 0
 				e.Ppid = 0
-				e.Uid = 0
 				e.Retval = 0
 				e.MountNsID = 0
 			}

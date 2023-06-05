@@ -41,6 +41,8 @@ func TestTraceBind(t *testing.T) {
 				Port:      9090,
 				Options:   ".R...",
 				Interface: "",
+				Uid:       1000,
+				Gid:       1111,
 			}
 
 			normalize := func(e *tracebindTypes.Event) {
@@ -57,7 +59,7 @@ func TestTraceBind(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		traceBindCmd,
-		BusyboxPodRepeatCommand(ns, "nc -l -p 9090 -w 1"),
+		BusyboxPodRepeatCommand(ns, "setuidgid 1000:1111 nc -l -p 9090 -w 1"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

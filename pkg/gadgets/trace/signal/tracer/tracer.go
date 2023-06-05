@@ -211,6 +211,8 @@ func (t *Tracer) run() {
 			Retval:        int(bpfEvent.Ret),
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MntnsId},
 			Comm:          gadgets.FromCString(bpfEvent.Comm[:]),
+			Uid:           bpfEvent.Uid,
+			Gid:           bpfEvent.Gid,
 		}
 
 		if t.enricher != nil {

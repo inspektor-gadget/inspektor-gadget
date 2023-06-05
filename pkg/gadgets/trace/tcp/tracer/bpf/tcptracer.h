@@ -36,6 +36,7 @@ struct event {
 	__u32 af; // AF_INET or AF_INET6
 	__u32 pid;
 	__u32 uid;
+	__u32 gid;
 	__u32 netns;
 	__u16 dport;
 	__u16 sport;

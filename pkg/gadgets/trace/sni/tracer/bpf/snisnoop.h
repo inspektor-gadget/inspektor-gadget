@@ -40,6 +40,8 @@ struct event_t {
 	__u64 mount_ns_id;
 	__u32 pid;
 	__u32 tid;
+	__u32 uid;
+	__u32 gid;
 	__u8 task[TASK_COMM_LEN];
 	__u8 name[TLS_MAX_SERVER_NAME_LEN];
 	__u64 timestamp;

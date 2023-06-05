@@ -53,6 +53,8 @@ func TestTraceDns(t *testing.T) {
 					PktType:    "OUTGOING",
 					DNSName:    "fake.test.com.",
 					QType:      "A",
+					Uid:        1000,
+					Gid:        1111,
 				},
 				{
 					Event:      BuildBaseEvent(ns),
@@ -66,6 +68,8 @@ func TestTraceDns(t *testing.T) {
 					Latency:    1,
 					NumAnswers: 1,
 					Addresses:  []string{"127.0.0.1"},
+					Uid:        1000,
+					Gid:        1111,
 				},
 				{
 					Event:      BuildBaseEvent(ns),
@@ -75,6 +79,8 @@ func TestTraceDns(t *testing.T) {
 					PktType:    "OUTGOING",
 					DNSName:    "fake.test.com.",
 					QType:      "AAAA",
+					Uid:        1000,
+					Gid:        1111,
 				},
 				{
 					Event:      BuildBaseEvent(ns),
@@ -88,6 +94,8 @@ func TestTraceDns(t *testing.T) {
 					Latency:    1,
 					NumAnswers: 1,
 					Addresses:  []string{"::1"},
+					Uid:        1000,
+					Gid:        1111,
 				},
 				{
 					Event:      BuildBaseEvent(ns),
@@ -97,6 +105,8 @@ func TestTraceDns(t *testing.T) {
 					PktType:    "OUTGOING",
 					DNSName:    "fake.test.com.",
 					QType:      "A",
+					Uid:        1000,
+					Gid:        1111,
 				},
 				{
 					Event:      BuildBaseEvent(ns),
@@ -109,6 +119,8 @@ func TestTraceDns(t *testing.T) {
 					Rcode:      "NXDomain",
 					Latency:    1,
 					NumAnswers: 0,
+					Uid:        1000,
+					Gid:        1111,
 				},
 			}
 
@@ -136,9 +148,9 @@ func TestTraceDns(t *testing.T) {
 	}
 
 	nslookupCmds := []string{
-		fmt.Sprintf("nslookup -type=a fake.test.com. %s", dnsServer),
-		fmt.Sprintf("nslookup -type=aaaa fake.test.com. %s", dnsServer),
-		fmt.Sprintf("nslookup -type=a nodomain.fake.test.com. %s", dnsServer),
+		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=a fake.test.com. %s", dnsServer),
+		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=aaaa fake.test.com. %s", dnsServer),
+		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=a nodomain.fake.test.com. %s", dnsServer),
 	}
 
 	commands := []*Command{

@@ -17,6 +17,8 @@ type sigsnoopEvent struct {
 	Tpid      uint32
 	MntnsId   uint64
 	Timestamp uint64
+	Uid       uint32
+	Gid       uint32
 	Sig       int32
 	Ret       int32
 	Comm      [16]uint8

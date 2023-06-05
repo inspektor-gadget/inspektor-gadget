@@ -97,16 +97,16 @@ static __always_inline int
 enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
+	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
 	__u64 mntns_id;
-	__u32 uid;
+	__u32 uid = (u32) uid_gid;;
 	struct piddata piddata = {};
 
 	if (filter_pid && pid != filter_pid)
 		return 0;
 
-	uid = bpf_get_current_uid_gid();
 	if (filter_uid != (uid_t) -1 && uid != filter_uid)
 		return 0;
 
@@ -164,9 +164,12 @@ trace_v4(struct pt_regs *ctx, pid_t pid, struct sock *sk, __u16 dport, __u64 mnt
 {
 	struct event event = {};
 
+	__u64 uid_gid = bpf_get_current_uid_gid();
+
 	event.af = AF_INET;
 	event.pid = pid;
-	event.uid = bpf_get_current_uid_gid();
+	event.uid = (u32) uid_gid;
+	event.gid = (u32) (uid_gid >> 32);
 	BPF_CORE_READ_INTO(&event.saddr_v4, sk, __sk_common.skc_rcv_saddr);
 	BPF_CORE_READ_INTO(&event.daddr_v4, sk, __sk_common.skc_daddr);
 	event.dport = dport;
@@ -184,9 +187,12 @@ trace_v6(struct pt_regs *ctx, pid_t pid, struct sock *sk, __u16 dport, __u64 mnt
 {
 	struct event event = {};
 
+	__u64 uid_gid = bpf_get_current_uid_gid();
+
 	event.af = AF_INET6;
 	event.pid = pid;
-	event.uid = bpf_get_current_uid_gid();
+	event.uid = (u32) uid_gid;
+	event.gid = (u32) (uid_gid >> 32);
 	event.mntns_id = mntns_id;
 	BPF_CORE_READ_INTO(&event.saddr_v6, sk,
 			   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);

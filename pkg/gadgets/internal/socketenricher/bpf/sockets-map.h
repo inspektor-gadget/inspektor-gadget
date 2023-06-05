@@ -76,6 +76,7 @@ struct sockets_key {
 struct sockets_value {
 	__u64 mntns;
 	__u64 pid_tgid;
+	__u64 uid_gid;
 	char task[TASK_COMM_LEN];
 	__u64 sock;
 	__u64 deletion_timestamp;

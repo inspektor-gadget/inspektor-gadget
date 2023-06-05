@@ -38,6 +38,8 @@ func TestTraceOpen(t *testing.T) {
 				Ret:   3,
 				Err:   0,
 				Path:  "/dev/null",
+				Uid:   1000,
+				Gid:   1111,
 			}
 
 			normalize := func(e *openTypes.Event) {
@@ -50,7 +52,6 @@ func TestTraceOpen(t *testing.T) {
 				e.Timestamp = 0
 				e.MountNsID = 0
 				e.Pid = 0
-				e.Uid = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -61,7 +62,7 @@ func TestTraceOpen(t *testing.T) {
 		CreateTestNamespaceCommand(ns),
 		traceOpenCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		BusyboxPodRepeatCommand(ns, "cat /dev/null"),
+		BusyboxPodRepeatCommand(ns, "setuidgid 1000:1111 cat /dev/null"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),
 	}

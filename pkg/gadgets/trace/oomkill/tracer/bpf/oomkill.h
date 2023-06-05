@@ -6,6 +6,8 @@
 
 struct data_t {
 	__u32 fpid;
+	__u32 fuid;
+	__u32 fgid;
 	__u32 tpid;
 	__u64 pages;
 	__u64 mount_ns_id;

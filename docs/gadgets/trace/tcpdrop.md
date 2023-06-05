@@ -57,6 +57,7 @@ comm: curl
 container: shell
 daddr: 10.99.5.39
 dport: 80
+gid: 0
 dstKind: svc
 dstName: nginx
 dstNamespace: default
@@ -77,6 +78,7 @@ state: ESTABLISHED
 tcpflags: ACK
 timestamp: 1681911565379499967
 type: normal
+uid: 0
 ```
 
 ### With `ig`

@@ -16,6 +16,7 @@ struct event {
 	/* user terminology for pid: */
 	__u32 pid;
 	__u32 uid;
+	__u32 gid;
 	__u64 mntns_id;
 	int ret;
 	int flags;

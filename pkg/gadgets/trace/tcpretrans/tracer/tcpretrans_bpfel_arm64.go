@@ -29,12 +29,16 @@ type tcpretransEvent struct {
 		MountNsId uint64
 		Pid       uint32
 		Tid       uint32
+		Uid       uint32
+		Gid       uint32
 		Task      [16]uint8
 	}
 	ProcSocket struct {
 		MountNsId uint64
 		Pid       uint32
 		Tid       uint32
+		Uid       uint32
+		Gid       uint32
 		Task      [16]uint8
 	}
 }

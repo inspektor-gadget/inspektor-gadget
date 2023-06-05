@@ -258,6 +258,7 @@ func (t *Tracer) run() {
 			Pid:           bpfEvent.Pid,
 			Cap:           int(bpfEvent.Cap),
 			Uid:           bpfEvent.Uid,
+			Gid:           bpfEvent.Gid,
 			Audit:         int(bpfEvent.Audit),
 			InsetID:       insetID,
 			Comm:          gadgets.FromCString(bpfEvent.Task[:]),

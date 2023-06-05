@@ -74,6 +74,7 @@ func TestOpenTracer(t *testing.T) {
 	utilstest.RequireRoot(t)
 
 	const unprivilegedUID = int(1435)
+	const unprivilegedGID = int(6789)
 
 	type testDefinition struct {
 		getTracerConfig func(info *utilstest.RunnerInfo) *tracer.Config
@@ -136,13 +137,16 @@ func TestOpenTracer(t *testing.T) {
 				}
 			}),
 		},
-		"event_has_UID_of_user_generating_event": {
+		"event_has_UID_and_GID_of_user_generating_event": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
 				return &tracer.Config{
 					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
 				}
 			},
-			runnerConfig:  &utilstest.RunnerConfig{Uid: unprivilegedUID},
+			runnerConfig: &utilstest.RunnerConfig{
+				Uid: unprivilegedUID,
+				Gid: unprivilegedGID,
+			},
 			generateEvent: generateEvent,
 			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
 				if len(events) != 1 {
@@ -151,6 +155,9 @@ func TestOpenTracer(t *testing.T) {
 
 				utilstest.Equal(t, uint32(info.Uid), events[0].Uid,
 					"Captured event has bad UID")
+
+				utilstest.Equal(t, uint32(info.Gid), events[0].Gid,
+					"Captured event event has bad GID")
 			},
 		},
 		"event_has_correct_error": {

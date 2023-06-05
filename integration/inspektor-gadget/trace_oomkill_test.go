@@ -23,7 +23,7 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
-func TestTraceOomkill(t *testing.T) {
+func TestTraceOOMKill(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-trace-oomkill")
 
 	t.Parallel()
@@ -34,8 +34,10 @@ func TestTraceOomkill(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &traceoomkillTypes.Event{
-				Event:      BuildBaseEvent(ns),
-				KilledComm: "tail",
+				Event:        BuildBaseEvent(ns),
+				KilledComm:   "tail",
+				TriggeredUid: 1000,
+				TriggeredGid: 2000,
 			}
 			expectedEntry.Container = "test-pod-container"
 
@@ -70,7 +72,7 @@ spec:
         memory: "128Mi"
     command: ["/bin/sh", "-c"]
     args:
-    - while true; do tail /dev/zero; done
+    - setuidgid 1000:2000 sh -c "while true; do tail /dev/zero; done"
 `, ns)
 
 	commands := []*Command{

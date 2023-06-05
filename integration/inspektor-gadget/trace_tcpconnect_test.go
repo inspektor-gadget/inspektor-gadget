@@ -104,6 +104,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		traceTcpconnectCmd,
+		// TODO: can't use setuidgid because it's not available on the nginx image
 		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
 		DeleteTestNamespaceCommand(ns),

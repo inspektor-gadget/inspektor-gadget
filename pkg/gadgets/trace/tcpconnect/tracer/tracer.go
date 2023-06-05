@@ -181,6 +181,7 @@ func (t *Tracer) run() {
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MntnsId},
 			Pid:           bpfEvent.Pid,
 			Uid:           bpfEvent.Uid,
+			Gid:           bpfEvent.Gid,
 			Comm:          gadgets.FromCString(bpfEvent.Task[:]),
 			Saddr:         gadgets.IPStringFromBytes(bpfEvent.SaddrV6, ipversion),
 			Daddr:         gadgets.IPStringFromBytes(bpfEvent.DaddrV6, ipversion),

@@ -61,6 +61,7 @@ static int probe_entry(pid_t tpid, int sig)
 static int probe_exit(void *ctx, int ret)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
+	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 tid = (__u32)pid_tgid;
 	struct event *eventp;
 
@@ -73,6 +74,8 @@ static int probe_exit(void *ctx, int ret)
 
 	eventp->ret = ret;
 	eventp->timestamp = bpf_ktime_get_boot_ns();
+	eventp->uid = (u32) uid_gid;
+	eventp->gid = (u32) (uid_gid >> 32);
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, eventp, sizeof(*eventp));
 
 cleanup:
@@ -135,6 +138,7 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 	__u64 pid_tgid;
 	__u32 pid;
 	u64 mntns_id;
+	__u64 uid_gid = bpf_get_current_uid_gid();
 
 	mntns_id = gadget_get_mntns_id();
 
@@ -157,6 +161,8 @@ int ig_sig_generate(struct trace_event_raw_signal_generate *ctx)
 	event.mntns_id = mntns_id;
 	event.sig = sig;
 	event.ret = ret;
+	event.uid = (u32) uid_gid;
+	event.gid = (u32) (uid_gid >> 32);
 	bpf_get_current_comm(event.comm, sizeof(event.comm));
 	event.timestamp = bpf_ktime_get_boot_ns();
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));

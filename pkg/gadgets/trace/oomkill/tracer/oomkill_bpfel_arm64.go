@@ -14,6 +14,8 @@ import (
 
 type oomkillDataT struct {
 	Fpid      uint32
+	Fuid      uint32
+	Fgid      uint32
 	Tpid      uint32
 	Pages     uint64
 	MountNsId uint64

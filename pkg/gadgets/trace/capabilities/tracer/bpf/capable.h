@@ -33,6 +33,7 @@ struct cap_event {
 	int	cap;
 	__u32	tgid;
 	__u32	uid;
+	__u32	gid;
 	int	ret;
 	int	audit;
 	int	insetid;

@@ -127,6 +127,8 @@ func (t *Tracer) run() {
 				Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
 			},
 			TriggeredPid:  bpfEvent.Fpid,
+			TriggeredUid:  bpfEvent.Fuid,
+			TriggeredGid:  bpfEvent.Fgid,
 			TriggeredComm: gadgets.FromCString(bpfEvent.Fcomm[:]),
 			KilledPid:     bpfEvent.Tpid,
 			KilledComm:    gadgets.FromCString(bpfEvent.Tcomm[:]),
