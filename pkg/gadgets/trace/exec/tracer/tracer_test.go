@@ -77,6 +77,7 @@ func TestExecTracer(t *testing.T) {
 	}
 
 	loginuid := utilstest.ReadFileAsUint32(t, "/proc/self/loginuid")
+	sessionid := utilstest.ReadFileAsUint32(t, "/proc/self/sessionid")
 
 	for name, test := range map[string]testDefinition{
 		"captures_all_events_with_no_filters_configured": {
@@ -93,6 +94,7 @@ func TestExecTracer(t *testing.T) {
 					Ppid:          uint32(info.Pid),
 					Uid:           uint32(info.Uid),
 					LoginUid:      loginuid,
+					SessionId:     sessionid,
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Retval:        0,
 					Comm:          "cat",
@@ -125,6 +127,7 @@ func TestExecTracer(t *testing.T) {
 					Ppid:          uint32(info.Pid),
 					Uid:           uint32(info.Uid),
 					LoginUid:      loginuid,
+					SessionId:     sessionid,
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 					Retval:        0,
 					Comm:          "cat",

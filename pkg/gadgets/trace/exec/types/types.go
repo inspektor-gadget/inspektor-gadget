@@ -25,14 +25,15 @@ type Event struct {
 	eventtypes.Event
 	eventtypes.WithMountNsID
 
-	Pid      uint32   `json:"pid,omitempty" column:"pid,template:pid"`
-	Ppid     uint32   `json:"ppid,omitempty" column:"ppid,template:pid"`
-	Comm     string   `json:"comm,omitempty" column:"comm,template:comm"`
-	Retval   int      `json:"ret,omitempty" column:"ret,width:3,fixed"`
-	Args     []string `json:"args,omitempty" column:"args,width:40"`
-	Uid      uint32   `json:"uid" column:"uid,template:uid,hide"`
-	Gid      uint32   `json:"gid" column:"gid,template:gid,hide"`
-	LoginUid uint32   `json:"loginuid" column:"loginuid,template:uid,hide"`
+	Pid       uint32   `json:"pid,omitempty" column:"pid,template:pid"`
+	Ppid      uint32   `json:"ppid,omitempty" column:"ppid,template:pid"`
+	Comm      string   `json:"comm,omitempty" column:"comm,template:comm"`
+	Retval    int      `json:"ret,omitempty" column:"ret,width:3,fixed"`
+	Args      []string `json:"args,omitempty" column:"args,width:40"`
+	Uid       uint32   `json:"uid" column:"uid,template:uid,hide"`
+	Gid       uint32   `json:"gid" column:"gid,template:gid,hide"`
+	LoginUid  uint32   `json:"loginuid" column:"loginuid,template:uid,hide"`
+	SessionId uint32   `json:"sessionid" column:"sessionid,minWidth:10,hide"`
 }
 
 func GetColumns() *columns.Columns[Event] {
