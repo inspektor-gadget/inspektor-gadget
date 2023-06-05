@@ -70,6 +70,9 @@ type ContainerCollection struct {
 
 	// functions to be called on Close()
 	cleanUpFuncs []func()
+
+	// disableContainerRuntimeWarnings is used to disable warnings about container runtimes.
+	disableContainerRuntimeWarnings bool
 }
 
 // ContainerCollectionOption are options to pass to

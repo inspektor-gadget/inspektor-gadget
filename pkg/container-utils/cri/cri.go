@@ -75,7 +75,7 @@ func NewCRIClient(name, socketPath string, timeout time.Duration) (CRIClient, er
 		cc.client = nil
 		cc.clientV1alpha2 = runtimeV1alpha2.NewRuntimeServiceClient(conn)
 	} else {
-		log.Warnf("Failed to determine CRI API version: %v using v1", err)
+		log.Debugf("Failed to determine CRI API version: %v using v1", err)
 	}
 
 	return cc, nil
