@@ -123,11 +123,6 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 			continue
 		}
 
-		idParts := strings.SplitN(s.ContainerID, "//", 2)
-		if len(idParts) != 2 {
-			continue
-		}
-
 		pid := containerData.Pid
 		if pid > math.MaxUint32 {
 			log.Errorf("Container PID (%d) exceeds math.MaxUint32 (%d), skipping this container", pid, math.MaxUint32)
@@ -136,9 +131,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 
 		containerDef := Container{
 			Runtime: RuntimeMetadata{
-				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-					ContainerID: idParts[1],
-				},
+				BasicRuntimeMetadata: containerData.Runtime.BasicRuntimeMetadata,
 			},
 			Pid: uint32(pid),
 			K8s: K8sMetadata{
