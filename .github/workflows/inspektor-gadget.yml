@@ -631,6 +631,51 @@ jobs:
         gh-repository: github.com/inspektor-gadget/ig-benchmarks
         benchmark-data-dir-path: dev/bench
 
+  package-helm-charts:
+    name: Lint and package Helm charts
+    # level: 0
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set container repository and determine image tag
+      id: set-repo-determine-image-tag
+      uses: ./.github/actions/set-container-repo-and-determine-image-tag
+      with:
+        registry: ${{ env.REGISTRY }}
+        container-image: ${{ env.CONTAINER_REPO }}
+        co-re: false
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    # chart version needs to be semver compliant so we remove the leading 'v'
+    - name: Set Chart Version for release
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        echo "CHART_VERSION=${TAG#v}" >> $GITHUB_ENV
+    - name: Lint Helm charts
+      run: |
+        export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        make -C charts lint
+    - name: Detect changes for deploy.yaml
+      run: |
+        make generate-manifests
+        changes="$(git status --porcelain)"
+        if [ -n "$changes" ] ; then
+          echo "$changes"
+          exit 1
+        fi
+    - name: Package Helm charts
+      run: |
+        export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        make -C charts package
+    - name: Upload Helm charts
+      uses: actions/upload-artifact@master
+      with:
+        name: gadget-charts-tgz
+        path: charts/bin/*.tgz
+
   test-ig:
     name: Unit tests for ig
     # level: 0
@@ -1000,6 +1045,7 @@ jobs:
       - test-integration-non-k8s-ig
       - build-examples
       - build-gadgets-examples
+      - package-helm-charts
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1103,5 +1149,11 @@ jobs:
       uses: csexton/release-asset-action@v2
       with:
         pattern: "ig_packages/ig*"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
+    - name: Upload Inpektor Gadget Helm Charts
+      uses: csexton/release-asset-action@v2
+      with:
+        pattern: "gadget-charts-tgz/gadget-*.tgz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
