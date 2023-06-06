@@ -33,7 +33,6 @@ function do_pr {
 	git add -u .
 	git commit -s -m "$msg"
 
-	gh auth login --with-token
 	gh pr create \
 		--body "$(printf "$(cat << EOF
 Hi.
