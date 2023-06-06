@@ -1,4 +1,10 @@
 name: Inspektor Gadget Release
+env:
+  # To be able to gh auth login --with-token, GH_TOKEN should be set in env:
+  # $ gh auth login --help
+  # ...
+  # To use gh in GitHub Actions, add `GH_TOKEN: ${{ github.token }}` to "env".
+  GH_TOKEN: ${{ github.token }}
 on:
   release:
     types: [published]
@@ -15,3 +21,28 @@ jobs:
       with:
         workdir: /home/runner/work/inspektor-gadget/inspektor-gadget
         krew_template_file: .krew.yaml
+
+  post_release:
+    name: Post Release Tasks
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Upgrading minikube, vscode-aks-tools and website
+      if: github.repository == 'inspektor-gadget/inspektor-gadget'
+      run: |
+        sudo apt update && sudo apt install -y curl jq git perl wget
+
+        git config --global user.name "${{ github.actor }}"
+        git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+        git clone https://github.com/inspektor-gadget/minikube.git /tmp/minikube
+        git clone https://github.com/inspektor-gadget/website.git /tmp/website
+        git clone https://github.com/inspektor-gadget/vscode-aks-tools.git /tmp/vscode-aks-tools
+
+        release_yaml='inspektor-gadget-${{ github.ref }}.yaml'
+        wget -O "/tmp/${release_yaml}" "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${{ github.ref }}/$release_yaml"
+        release_yaml="/tmp/${release_yaml}"
+
+        cd tools
+        bash post_release.sh $release_yaml ${{ github.actor }}
