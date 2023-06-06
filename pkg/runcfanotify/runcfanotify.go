@@ -51,7 +51,9 @@ type ContainerEvent struct {
 	// ContainerID is the container id, typically a 64 hexadecimal string
 	ContainerID string
 
-	// ContainerName is the container name, typically two words with an underscore
+	// ContainerName is the container name given by the container runtime,
+	// typically two words with an underscore. Notice it might be different from
+	// the one given by Kubernetes.
 	ContainerName string
 
 	// ContainerPID is the process id of the container

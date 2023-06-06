@@ -749,7 +749,7 @@ func (n *ContainerNotifier) watchRuntimeIterate() (bool, error) {
 
 	switch calleeComm {
 	case "conmon":
-		// Calling sequence: podman -> conmon -> runc/crun
+		// Calling sequence: crio/podman -> conmon -> runc/crun
 		n.parseConmonCmdline(cmdlineArr)
 	case "runc", "crun":
 		n.parseOCIRuntime(calleeComm, cmdlineArr)
