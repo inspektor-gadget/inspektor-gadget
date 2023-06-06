@@ -5,6 +5,7 @@ env:
   GO_VERSION: 1.19.6
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
   DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:latest
+  GH_TOKEN: ${{ github.token }}
 concurrency:
   group: ${{ github.ref }}
   # We do not want to cancel job in progress on main to be sure to catch new
@@ -25,6 +26,31 @@ permissions: read-all
 # Jobs of level N depend of, at least, one job on level N - 1 expect job whom
 # level is 0.
 jobs:
+  post_release:
+    name: Post Release Tasks
+    #needs: release
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Upgrading minikube, vscode-aks-tools and website
+      if: github.repository == 'inspektor-gadget/inspektor-gadget'
+      run: |
+        sudo apt update && sudo apt install -y curl jq git perl wget
+
+        git config --global user.name "${{ github.actor }}"
+        git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+        git clone https://github.com/inspektor-gadget/minikube.git /tmp/minikube
+        git clone https://github.com/inspektor-gadget/website.git /tmp/website
+        git clone https://github.com/inspektor-gadget/vscode-aks-tools.git /tmp/vscode-aks-tools
+
+        release_yaml='inspektor-gadget-v0.17.0.yaml'
+        wget -O "/tmp/${release_yaml}" "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/v0.17.0/$release_yaml"
+        release_yaml="/tmp/${release_yaml}"
+
+        cd tools
+        bash post_release.sh $release_yaml ${{ github.actor }}
+
   documentation-checks:
     name: Documentation checks
     # level: 0

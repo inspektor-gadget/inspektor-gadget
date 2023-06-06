@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex;
 
 MINIKUBE_PATH='/tmp/minikube'
 VSCODE_PATH='/tmp/vscode-aks-tools'
@@ -86,7 +86,7 @@ function minikube {
 
 	cp ig-* $MINIKUBE_PATH/deploy/addons/inspektor-gadget
 
-	export release="$(git describe --tags)"
+	export release="v0.17.0"
 	export hash=$(get_digest $release)
 
 	pushd $MINIKUBE_PATH
@@ -112,7 +112,7 @@ function vscode {
 
 	human=$1
 
-	export release="$(git describe --tags)"
+	export release="v0.17.0"
 
 	pushd $VSCODE_PATH
 
@@ -136,7 +136,7 @@ function website {
 
 	human=$1
 
-	export release="$(git describe --tags)"
+	export release="v0.17.0"
 
 	pushd $WEBSITE_PATH
 
