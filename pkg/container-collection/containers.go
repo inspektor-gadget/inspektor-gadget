@@ -17,6 +17,7 @@ package containercollection
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,6 +73,9 @@ type Container struct {
 	// events from it.
 	// This is only used when cachedContainers are enabled through WithTracerCollection().
 	mntNsFd int
+
+	// when the container was removed. Useful for prunning cached containers.
+	deletionTimestamp time.Time
 }
 
 type ContainerSelector struct {

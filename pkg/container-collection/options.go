@@ -711,6 +711,43 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 		cc.cacheDelay = 2 * time.Second
 		cc.cachedContainers = &sync.Map{}
 
+		// This functions cleans up the container cache
+		go func() {
+			ticker := time.NewTicker(5 * time.Second)
+
+			for {
+				select {
+				case <-ticker.C:
+					cc.mu.Lock()
+
+					if cc.closed {
+						cc.mu.Unlock()
+						return
+					}
+
+					now := time.Now()
+
+					cc.cachedContainers.Range(func(key, value interface{}) bool {
+						c := value.(*Container)
+
+						if now.Sub(c.deletionTimestamp) > cc.cacheDelay {
+							if c.mntNsFd != 0 {
+								unix.Close(c.mntNsFd)
+								c.mntNsFd = 0
+							}
+							cc.cachedContainers.Delete(c.ID)
+						}
+
+						return true
+					})
+
+					cc.mu.Unlock()
+				case <-cc.done:
+					return
+				}
+			}
+		}()
+
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			path := filepath.Join(host.HostProcFs, fmt.Sprint(container.Pid), "ns", "mnt")
 			fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC, 0)
@@ -722,6 +759,19 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 
 			container.mntNsFd = fd
 			return true
+		})
+
+		cc.cleanUpFuncs = append(cc.cleanUpFuncs, func() {
+			// clean up functions are called with the mutex held
+			cc.cachedContainers.Range(func(key, value interface{}) bool {
+				c := value.(*Container)
+				if c.mntNsFd != 0 {
+					unix.Close(c.mntNsFd)
+					c.mntNsFd = 0
+				}
+				cc.cachedContainers.Delete(key)
+				return true
+			})
 		})
 
 		if cc.pubsub == nil {

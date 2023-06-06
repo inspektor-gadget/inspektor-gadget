@@ -110,9 +110,9 @@ func TestWithTracerCollection(t *testing.T) {
 	// Enrich by MountNs should work 1 second after removing container
 	verifyEnrich()
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(6 * time.Second)
 
-	// Enrich by MountNs should **not** work after removing container more than 2 seconds ago
+	// Enrich by MountNs should **not** work after removing container more than 6 seconds ago
 	ev := types.CommonData{}
 	expected := types.CommonData{}
 	cc.EnrichByMntNs(&ev, containers[0].Mntns)

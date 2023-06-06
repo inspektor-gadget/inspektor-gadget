@@ -186,7 +186,7 @@ controller-tests: kube-apiserver etcd kubectl
 
 .PHONY: gadgets-unit-tests
 gadgets-unit-tests:
-	go test -test.v -exec sudo ./pkg/gadgets/...
+	go test -test.v -exec sudo ./...
 
 # Individual tests can be selected with a command such as:
 # go test -exec sudo -ldflags="-s=false" -bench='^BenchmarkAllGadgetsWithContainers$/^container100$/snapshot-socket' -run=Benchmark ./internal/benchmarks/... -count 10

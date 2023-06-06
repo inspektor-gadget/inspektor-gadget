@@ -27,7 +27,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -38,6 +37,8 @@ import (
 // interface. For this reason, some methods are namespaced with 'Container' to
 // make this clear.
 type ContainerCollection struct {
+	mu sync.Mutex
+
 	// Keys:   containerID string
 	// Values: container   Container
 	containers sync.Map
@@ -67,6 +68,7 @@ type ContainerCollection struct {
 
 	// closed tells if Close() has been called.
 	closed bool
+	done   chan struct{}
 
 	// functions to be called on Close()
 	cleanUpFuncs []func()
@@ -83,6 +85,8 @@ type ContainerCollectionOption func(*ContainerCollection) error
 // useful when ContainerCollection is embedded as an anonymous struct because
 // we don't use a contructor in that case.
 func (cc *ContainerCollection) Initialize(options ...ContainerCollectionOption) error {
+	cc.done = make(chan struct{})
+
 	if cc.initialized {
 		panic("Initialize already called")
 	}
@@ -147,11 +151,8 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 	// Save the container in the cache as enrichers might need the container some time after it
 	// has been removed.
 	if cc.cachedContainers != nil {
+		container.deletionTimestamp = time.Now()
 		cc.cachedContainers.Store(id, v)
-		time.AfterFunc(cc.cacheDelay, func() {
-			cc.cachedContainers.Delete(id)
-			unix.Close(container.mntNsFd)
-		})
 	}
 
 	// Remove the container from the collection after publishing the event as
@@ -421,15 +422,32 @@ func (cc *ContainerCollection) Unsubscribe(key interface{}) {
 }
 
 func (cc *ContainerCollection) Close() {
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
+
+	close(cc.done)
+
 	if !cc.initialized || cc.closed {
 		panic("ContainerCollection is not initialized or has been closed")
-	}
-
-	for _, f := range cc.cleanUpFuncs {
-		f()
 	}
 
 	// TODO: it's not clear if we want/can allow to re-initialize
 	// this instance yet, so we don't set cc.initialized = false.
 	cc.closed = true
+
+	for _, f := range cc.cleanUpFuncs {
+		f()
+	}
+
+	// Similar to RemoveContainer() on all containers but without publishing
+	// events.
+	cc.containers.Range(func(key, value interface{}) bool {
+		c := value.(*Container)
+		if c.mntNsFd != 0 {
+			unix.Close(c.mntNsFd)
+			c.mntNsFd = 0
+		}
+		cc.containers.Delete(c)
+		return true
+	})
 }
