@@ -113,6 +113,7 @@ type ContainerInfoGetters interface {
 	GetPod() string
 	GetNamespace() string
 	GetContainer() string
+	GetImageName() string
 }
 
 var allOperators = map[string]Operator{}

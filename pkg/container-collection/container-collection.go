@@ -364,6 +364,7 @@ func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mount
 		event.K8s.Container = container.K8s.Container
 		event.K8s.Pod = container.K8s.Pod
 		event.K8s.Namespace = container.K8s.Namespace
+		event.K8s.ImageName = container.K8s.ImageName
 
 		event.Runtime.Runtime = container.Runtime.Runtime
 		event.Runtime.Container = container.Runtime.Container
@@ -387,6 +388,7 @@ func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netns
 		event.K8s.Container = containers[0].K8s.Container
 		event.K8s.Pod = containers[0].K8s.Pod
 		event.K8s.Namespace = containers[0].K8s.Namespace
+		event.K8s.ImageName = containers[0].K8s.ImageName
 
 		event.Runtime.Runtime = containers[0].Runtime.Runtime
 		event.Runtime.Container = containers[0].Runtime.Container

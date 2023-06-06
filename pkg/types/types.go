@@ -33,6 +33,7 @@ func init() {
 	columns.MustRegisterTemplate("namespace", "width:30")
 	columns.MustRegisterTemplate("pod", "width:30,ellipsis:middle")
 	columns.MustRegisterTemplate("container", "width:30")
+	columns.MustRegisterTemplate("imageName", "width:30")
 	columns.MustRegisterTemplate("comm", "maxWidth:16")
 	columns.MustRegisterTemplate("pid", "minWidth:7")
 	columns.MustRegisterTemplate("uid", "minWidth:8")
@@ -138,6 +139,9 @@ type K8sMetadata struct {
 
 	// HostNetwork is true if the container uses the host network namespace
 	HostNetwork bool `json:"hostNetwork,omitempty" column:"hostnetwork,hide"`
+
+	// Name of the container image where the event comes from
+	ImageName string `json:"imageName,omitempty" column:"imageName,template:imageName" columnTags:"kubernetes,runtime"`
 }
 
 type CommonData struct {
@@ -157,6 +161,7 @@ func (c *CommonData) SetNode(node string) {
 func (c *CommonData) SetContainerMetadata(k8s *BasicK8sMetadata, runtime *BasicRuntimeMetadata, setContainerName bool) {
 	c.K8s.Pod = k8s.Pod
 	c.K8s.Namespace = k8s.Namespace
+	c.K8s.ImageName = k8s.ImageName
 
 	// In some cases, we don't have enough information to determine the exact
 	// container where the event happened.
@@ -183,6 +188,10 @@ func (c *CommonData) GetNamespace() string {
 
 func (c *CommonData) GetContainer() string {
 	return c.K8s.Container
+}
+
+func (c *CommonData) GetImageName() string {
+	return c.K8s.ImageName
 }
 
 type EndpointDetails struct {
