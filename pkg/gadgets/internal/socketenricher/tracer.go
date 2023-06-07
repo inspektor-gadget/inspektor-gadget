@@ -16,7 +16,6 @@ package socketenricher
 
 import (
 	"fmt"
-	"io"
 	"sync"
 	"time"
 
@@ -25,6 +24,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
+	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang socketenricher ./bpf/sockets-map.bpf.c -- -I./bpf/ -I../../../ -I../../../${TARGET}
@@ -144,12 +144,7 @@ func (se *SocketEnricher) start() error {
 	}
 	defer socketsIter.Close()
 
-	file, err := socketsIter.Open()
-	if err != nil {
-		return fmt.Errorf("open BPF iterator: %w", err)
-	}
-	defer file.Close()
-	_, err = io.ReadAll(file)
+	_, err = bpfiterns.Read(socketsIter)
 	if err != nil {
 		return fmt.Errorf("read BPF iterator: %w", err)
 	}
@@ -186,16 +181,10 @@ func (se *SocketEnricher) cleanupDeletedSockets(cleanupIter *link.Iter) {
 }
 
 func (se *SocketEnricher) cleanupDeletedSocketsNow(cleanupIter *link.Iter) error {
-	file, err := cleanupIter.Open()
-	if err != nil {
-		return fmt.Errorf("open BPF iterator: %w", err)
-	}
-	defer file.Close()
-	_, err = io.ReadAll(file)
-	if err != nil {
-		return fmt.Errorf("read BPF iterator: %w", err)
-	}
-	return nil
+	// No need to change pidns for this iterator because cleanupIter is an
+	// iterator on a map, not on tasks.
+	_, err := bpfiterns.ReadOnCurrentPidNs(cleanupIter)
+	return err
 }
 
 func (se *SocketEnricher) Close() {

@@ -15,17 +15,15 @@
 package piditer
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
+	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -type pid_iter_entry piditer ./bpf/pid_iter.bpf.c -- -I./bpf/ -I../../../../${TARGET}
@@ -82,36 +80,24 @@ func NewTracer() (iter *PidIter, err error) {
 // DumpPids returns an array of PidIterEntry containing information
 // on which pid (and comm) has an open fd to which eBPF Program ID.
 func (p *PidIter) DumpPids() ([]*PidIterEntry, error) {
-	rc, err := p.iter.Open()
+	buf, err := bpfiterns.Read(p.iter)
 	if err != nil {
-		return nil, fmt.Errorf("opening iter: %w", err)
+		return nil, fmt.Errorf("reading iter: %w", err)
 	}
-	defer rc.Close()
+
+	n := len(buf)
+	if n%iterEntrySize != 0 {
+		return nil, fmt.Errorf("invalid format: %d", n)
+	}
 
 	res := make([]*PidIterEntry, 0)
-
-	buf := make([]byte, 4096/iterEntrySize*iterEntrySize)
-	for {
-		n, err := io.ReadFull(rc, buf)
-		if err != nil {
-			if errors.Is(err, unix.EAGAIN) {
-				continue
-			}
-		}
-		if n == 0 {
-			break
-		}
-		if n%iterEntrySize != 0 {
-			return nil, fmt.Errorf("invalid format: %d", n)
-		}
-		for i := 0; i < n/iterEntrySize; i++ {
-			entry := (*piditerPidIterEntry)(unsafe.Pointer(&buf[i*iterEntrySize]))
-			res = append(res, &PidIterEntry{
-				ProgID: entry.Id,
-				Pid:    entry.Pid,
-				Comm:   gadgets.FromCString(entry.Comm[:]),
-			})
-		}
+	for i := 0; i < n/iterEntrySize; i++ {
+		entry := (*piditerPidIterEntry)(unsafe.Pointer(&buf[i*iterEntrySize]))
+		res = append(res, &PidIterEntry{
+			ProgID: entry.Id,
+			Pid:    entry.Pid,
+			Comm:   gadgets.FromCString(entry.Comm[:]),
+		})
 	}
 
 	return res, nil
