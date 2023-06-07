@@ -22,154 +22,39 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"sync"
-	"syscall"
-	"time"
+	"unsafe"
 
-	"github.com/cilium/ebpf"
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
-
-	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/rawsock"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang graphmap ./bpf/graphmap.c -- $CLANG_OS_FLAGS -I./bpf/"
-
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang graph ./bpf/graph.c -- $CLANG_OS_FLAGS -I./bpf/"
+//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t network ./bpf/network.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
 const (
+	BPFProgName     = "ig_trace_net"
+	BPFPerfMapName  = "events"
 	BPFSocketAttach = 50
 )
 
-type attachment struct {
-	networkGraphObjects graphObjects
-
-	sockFd int
-
-	// users keeps track of the users' pid that have called Attach(). This can
-	// happen for two reasons:
-	// 1. several containers in a pod (sharing the netns)
-	// 2. pods with networkHost=true
-	// In both cases, we want to attach the BPF program only once.
-	users map[uint32]struct{}
-}
-
 type Tracer struct {
-	// networkGraphMapObjects contains the eBPF map used by the per-netns eBPF programs
-	networkGraphMapObjects graphmapObjects
+	*networktracer.Tracer[types.Event]
 
-	// key: network namespace inode number
-	// value: Tracelet
-	attachments map[uint64]*attachment
-
-	enricher gadgets.DataEnricherByNetNs
-
-	// Cache to store already enriched events from terminated (detached)
-	// containers.
-	sync.Mutex
-	cache []*types.Event
-
-	eventCallback func(ev *types.Event)
-	gadgetCtx     gadgets.GadgetContext
-	ctx           context.Context
-	cancel        context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-func NewTracer(enricher gadgets.DataEnricherByNetNs) (_ *Tracer, err error) {
-	t := &Tracer{
-		attachments: make(map[uint64]*attachment),
-		enricher:    enricher,
-	}
-	defer func() {
-		if err != nil {
-			// bpf2go objects can safely be closed even when not initialized
-			t.networkGraphMapObjects.Close()
-		}
-	}()
+func NewTracer() (_ *Tracer, err error) {
+	t := &Tracer{}
 
-	// Load the eBPF map
-	specMap, err := loadGraphmap()
-	if err != nil {
-		return nil, fmt.Errorf("loading asset: %w", err)
-	}
-	if err := specMap.LoadAndAssign(&t.networkGraphMapObjects, &ebpf.CollectionOptions{}); err != nil {
-		return nil, fmt.Errorf("loading ebpf program: %w", err)
+	if err := t.install(); err != nil {
+		t.Close()
+		return nil, fmt.Errorf("installing tracer: %w", err)
 	}
 
 	return t, nil
-}
-
-func (t *Tracer) Attach(pid uint32) (err error) {
-	netns, err := containerutils.GetNetNs(int(pid))
-	if err != nil {
-		return fmt.Errorf("getting network namespace of pid %d: %w", pid, err)
-	}
-	if a, ok := t.attachments[netns]; ok {
-		a.users[pid] = struct{}{}
-		return nil
-	}
-
-	a := &attachment{
-		users:  map[uint32]struct{}{pid: {}},
-		sockFd: -1,
-	}
-	defer func() {
-		if err != nil {
-			// bpf2go objects can safely be closed even when not initialized
-			a.networkGraphObjects.Close()
-			if a.sockFd != -1 {
-				unix.Close(a.sockFd)
-			}
-		}
-	}()
-
-	spec, err := loadGraph()
-	if err != nil {
-		return fmt.Errorf("loading asset: %w", err)
-	}
-
-	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
-
-	consts := map[string]interface{}{
-		"container_netns": netns,
-	}
-
-	if err := spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
-	}
-
-	if err := spec.LoadAndAssign(
-		&a.networkGraphObjects,
-		&ebpf.CollectionOptions{
-			MapReplacements: map[string]*ebpf.Map{
-				"graphmap": t.networkGraphMapObjects.graphmapMaps.Graphmap,
-			},
-		},
-	); err != nil {
-		return fmt.Errorf("creating BPF collection: %w", err)
-	}
-
-	if a.sockFd, err = rawsock.OpenRawSock(pid); err != nil {
-		return fmt.Errorf("opening raw socket: %w", err)
-	}
-
-	if err := syscall.SetsockoptInt(
-		a.sockFd,
-		syscall.SOL_SOCKET, BPFSocketAttach,
-		a.networkGraphObjects.graphPrograms.IgTraceNet.FD(),
-	); err != nil {
-		return fmt.Errorf("attaching BPF program: %w", err)
-	}
-
-	t.attachments[netns] = a
-
-	return nil
 }
 
 func pktTypeString(pktType int) string {
@@ -205,161 +90,43 @@ func protoString(proto int) string {
 	return protoStr
 }
 
-func (t *Tracer) Pop() (events []*types.Event, err error) {
-	defer func() {
-		if err != nil {
-			return
-		}
-
-		l := len(t.cache)
-		if l == 0 {
-			return
-		}
-
-		log.Debugf("appending %d elements to the resulting events from cache", l)
-
-		t.Lock()
-		defer t.Unlock()
-		events = append(events, t.cache...)
-		t.cache = nil
-	}()
-
-	convertKeyToEvent := func(key graphmapGraphKeyT, val uint64) *types.Event {
-		ip := make(net.IP, 4)
-		binary.BigEndian.PutUint32(ip, gadgets.Htonl(key.Ip))
-		e := &types.Event{
-			Event: eventtypes.Event{
-				Type:      eventtypes.NORMAL,
-				Timestamp: gadgets.WallTimeFromBootTime(val),
-			},
-			PktType:     pktTypeString(int(key.PktType)),
-			Proto:       protoString(int(key.Proto)),
-			Port:        gadgets.Htons(key.Port),
-			RemoteAddr:  ip.String(),
-			WithNetNsID: eventtypes.WithNetNsID{NetNsID: key.ContainerNetns},
-		}
-
-		if t.enricher != nil {
-			t.enricher.EnrichByNetNs(&e.CommonData, key.ContainerNetns)
-		} else {
-			t.eventCallback(e)
-		}
-		return e
+func parseNetEvent(sample []byte, netns uint64) (*types.Event, error) {
+	bpfEvent := (*networkEventT)(unsafe.Pointer(&sample[0]))
+	if len(sample) < int(unsafe.Sizeof(*bpfEvent)) {
+		return nil, errors.New("invalid sample size")
 	}
 
-	graphmap := t.networkGraphMapObjects.graphmapMaps.Graphmap
+	timestamp := gadgets.WallTimeFromBootTime(bpfEvent.Timestamp)
 
-	for {
-		nextKey := graphmapGraphKeyT{}
-		deleteKeys := make([]graphmapGraphKeyT, 256)
-		deleteValues := make([]uint64, 256)
-		count, err := graphmap.BatchLookupAndDelete(nil, &nextKey, deleteKeys, deleteValues, nil)
-		for i := 0; i < count; i++ {
-			events = append(events, convertKeyToEvent(deleteKeys[i], deleteValues[i]))
-		}
-		if errors.Is(err, ebpf.ErrKeyNotExist) {
-			return events, nil
-		}
-		if errors.Is(err, ebpf.ErrNotSupported) {
-			// Fallback to iteration & deletion without batch
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("BPF batch operation: %w", err)
-		}
+	ip := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, gadgets.Htonl(bpfEvent.Ip))
+
+	event := types.Event{
+		Event: eventtypes.Event{
+			Type:      eventtypes.NORMAL,
+			Timestamp: timestamp,
+		},
+		PktType:    pktTypeString(int(bpfEvent.PktType)),
+		Proto:      protoString(int(bpfEvent.Proto)),
+		Port:       gadgets.Htons(bpfEvent.Port),
+		RemoteAddr: ip.String(),
+
+		Pid:           bpfEvent.Pid,
+		Tid:           bpfEvent.Tid,
+		Uid:           bpfEvent.Uid,
+		Gid:           bpfEvent.Gid,
+		WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MountNsId},
+		WithNetNsID:   eventtypes.WithNetNsID{NetNsID: netns},
+		Comm:          gadgets.FromCString(bpfEvent.Task[:]),
 	}
 
-	key := graphmapGraphKeyT{}
-	val := uint64(0)
-	entries := graphmap.Iterate()
-
-	for entries.Next(&key, &val) {
-		events = append(events, convertKeyToEvent(key, val))
-
-		// Deleting an entry during the iteration causes the iteration
-		// to restart from the first key in the hash map. But in this
-		// case, this is not a problem since we're deleting everything
-		// unconditionally.
-		if err := graphmap.Delete(key); err != nil {
-			return nil, fmt.Errorf("deleting key: %w", err)
-		}
-	}
-	if err := entries.Err(); err != nil {
-		return nil, fmt.Errorf("iterating on map: %w", err)
-	}
-	return events, nil
-}
-
-func (t *Tracer) releaseAttachment(netns uint64, a *attachment) {
-	unix.Close(a.sockFd)
-	a.networkGraphObjects.Close()
-	delete(t.attachments, netns)
-}
-
-func (t *Tracer) populateCache() error {
-	events, err := t.Pop()
-	if err != nil {
-		return fmt.Errorf("popping events: %w", err)
-	}
-
-	l := len(events)
-	if l == 0 {
-		return nil
-	}
-
-	log.Debugf("caching %d events", l)
-
-	t.Lock()
-	defer t.Unlock()
-	t.cache = append(t.cache, events...)
-
-	return nil
-}
-
-func (t *Tracer) Detach(pid uint32) error {
-	for netns, a := range t.attachments {
-		if _, ok := a.users[pid]; ok {
-			delete(a.users, pid)
-			if len(a.users) == 0 {
-				t.releaseAttachment(netns, a)
-			}
-
-			// Before returning, read and enrich the events in the GraphMap to
-			// ensure EnrichByNetNs() is still able to retrieve the metadata of
-			// the container that is being detached. Otherwise, by the time
-			// Pop() will be called, the container might have been already
-			// deleted, and EnrichByNetNs() won't be able to enrich its events
-			// anymore.
-			if err := t.populateCache(); err != nil {
-				log.Errorf("caching events while detaching pid %d: %v", pid, err)
-			}
-
-			return nil
-		}
-	}
-
-	return fmt.Errorf("pid %d is not attached", pid)
-}
-
-func (t *Tracer) Close() {
-	if t.cancel != nil {
-		t.cancel()
-	}
-
-	for key, l := range t.attachments {
-		t.releaseAttachment(key, l)
-	}
-	t.networkGraphMapObjects.Close()
+	return &event, nil
 }
 
 // --- Registry changes
-// TODO: This can be optimized a lot after using NewInstance() for everything
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
-	tracer := &Tracer{
-		attachments: make(map[uint64]*attachment),
-	}
-	return tracer, nil
+	return &Tracer{}, nil
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
@@ -368,55 +135,40 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 		return fmt.Errorf("installing tracer: %w", err)
 	}
 
-	t.gadgetCtx = gadgetCtx
 	t.ctx, t.cancel = gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
 	return nil
 }
 
 func (t *Tracer) install() error {
-	// Load the eBPF map
-	specMap, err := loadGraphmap()
+	spec, err := loadNetwork()
 	if err != nil {
 		return fmt.Errorf("loading asset: %w", err)
 	}
-	if err := specMap.LoadAndAssign(&t.networkGraphMapObjects, &ebpf.CollectionOptions{}); err != nil {
-		return fmt.Errorf("loading ebpf program: %w", err)
+
+	networkTracer, err := networktracer.NewTracer(
+		spec,
+		BPFProgName,
+		BPFPerfMapName,
+		BPFSocketAttach,
+		types.Base,
+		parseNetEvent,
+	)
+	if err != nil {
+		return fmt.Errorf("creating network tracer: %w", err)
 	}
+	t.Tracer = networkTracer
 	return nil
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
-	ctx := t.gadgetCtx.Context()
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+	<-t.ctx.Done()
+	return nil
+}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-			// Pop, but we don't need the results as we're handing the events over to the callback
-			_, err := t.Pop()
-			if err != nil {
-				t.gadgetCtx.Logger().Debugf("pop() returned with: %v", err)
-				return nil
-			}
-		}
+func (t *Tracer) Close() {
+	if t.cancel != nil {
+		t.cancel()
 	}
-}
 
-func (t *Tracer) SetEventHandler(handler any) {
-	nh, ok := handler.(func(ev *types.Event))
-	if !ok {
-		panic("event handler invalid")
-	}
-	t.eventCallback = nh
-}
-
-func (t *Tracer) AttachContainer(container *containercollection.Container) error {
-	return t.Attach(container.Pid)
-}
-
-func (t *Tracer) DetachContainer(container *containercollection.Container) error {
-	return t.Detach(container.Pid)
+	t.Tracer.Close()
 }

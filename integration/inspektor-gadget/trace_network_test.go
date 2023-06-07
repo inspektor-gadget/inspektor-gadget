@@ -54,6 +54,9 @@ func TestTraceNetwork(t *testing.T) {
 			expectedEntries := []*tracenetworkTypes.Event{
 				{
 					Event:           BuildBaseEvent(ns),
+					Comm:            "wget",
+					Uid:             0,
+					Gid:             0,
 					PktType:         "OUTGOING",
 					Proto:           "tcp",
 					PodIP:           testPodIP,
@@ -74,6 +77,9 @@ func TestTraceNetwork(t *testing.T) {
 							Container: "nginx-pod",
 						},
 					},
+					Comm:            "nginx",
+					Uid:             101, // default nginx user
+					Gid:             101,
 					PktType:         "HOST",
 					Proto:           "tcp",
 					PodIP:           nginxIP,
@@ -91,7 +97,10 @@ func TestTraceNetwork(t *testing.T) {
 				e.Timestamp = 0
 				e.Node = ""
 				e.PodHostIP = ""
+				e.MountNsID = 0
 				e.NetNsID = 0
+				e.Pid = 0
+				e.Tid = 0
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
