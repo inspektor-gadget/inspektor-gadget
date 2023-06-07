@@ -96,16 +96,22 @@ func ReadOnHostPidNs(iter *link.Iter) ([]byte, error) {
 		return nil, fmt.Errorf("empty /proc/self symlink")
 	}
 
-	tmpPinDir, err := os.MkdirTemp(host.HostRoot+"/sys/fs/bpf", "ig-iter-")
+	// Create a temporary directory in the host bpffs
+	bpfFS := "/sys/fs/bpf"
+	tmpPinDir, err := os.MkdirTemp(host.HostRoot+bpfFS, "ig-iter-")
 	if err != nil {
 		return nil, fmt.Errorf("creating temporary directory in bpffs: %w", err)
 	}
+	defer os.RemoveAll(tmpPinDir)
+
+	// Prepare the pin path from the container and host point of view
 	pinPath := filepath.Join(tmpPinDir, "iter")
+	pinPathHost := filepath.Join(bpfFS, filepath.Base(tmpPinDir), "iter")
+
 	err = iter.Pin(pinPath)
 	if err != nil {
 		return nil, fmt.Errorf("pinning iterator: %w", err)
 	}
-	defer os.RemoveAll(tmpPinDir)
 
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -143,7 +149,7 @@ func ReadOnHostPidNs(iter *link.Iter) ([]byte, error) {
 		systemdDbus.PropExecStart([]string{
 			"/bin/sh",
 			"-c",
-			fmt.Sprintf("cat %s > %s", pinPath, writerPath),
+			fmt.Sprintf("cat %s > %s", pinPathHost, writerPath),
 		}, true),
 	}
 
