@@ -159,6 +159,10 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 		log.Debugf("calling gadget.RunWithResult()")
 		out, err := runWithResult.RunWithResult(gadgetCtx)
 		if err != nil {
+			var ve *ebpf.VerifierError
+			if errors.As(err, &ve) {
+				gadgetCtx.Logger().Debugf("running (with result) gadget: verifier error: %+v\n", ve)
+			}
 			return nil, fmt.Errorf("running (with result) gadget: %w", err)
 		}
 		return runtime.CombinedGadgetResult{"": &runtime.GadgetResult{Payload: out}}, nil
