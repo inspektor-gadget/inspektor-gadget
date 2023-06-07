@@ -129,6 +129,23 @@ func IPStringFromBytes(ipBytes [16]byte, ipType int) string {
 	}
 }
 
+// IPStringToByteArray converts an IP address (IPv6 only) string to a uint32
+// in big-endian.
+func IPStringToByteArray(ipAddr string) ([16]byte, error) {
+	addr, err := netip.ParseAddr(ipAddr)
+	if err != nil {
+		return [16]byte{}, fmt.Errorf("invalid IP address: %s", ipAddr)
+	}
+
+	if !addr.Is6() {
+		return [16]byte{}, fmt.Errorf("IP address is not IPv6: %s", addr)
+	}
+
+	// This function ensures us the order is big endian:
+	// https://cs.opensource.google/go/go/+/refs/tags/go1.20.5:src/net/netip/netip.go;drc=dc98ccd836da7d22a5d270b9778fb055826fa07b;l=676
+	return addr.As16(), nil
+}
+
 // IPStringToUint32 converts an IP address (IPv4 only) string to a uint32
 // in big-endian.
 func IPStringToUint32(ipAddr string) (uint32, error) {
