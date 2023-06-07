@@ -241,10 +241,8 @@ func (l *localManagerTrace) PreGadgetRun() error {
 	// TODO: Improve filtering, see further details in
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
 	containerSelector := containercollection.ContainerSelector{
-		K8sSelector: containercollection.K8sSelector{
-			BasicK8sMetadata: types.BasicK8sMetadata{
-				Container: l.params.Get(ContainerName).AsString(),
-			},
+		Runtime: containercollection.RuntimeSelector{
+			Container: l.params.Get(ContainerName).AsString(),
 		},
 	}
 

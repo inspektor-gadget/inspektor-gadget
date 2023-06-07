@@ -32,20 +32,15 @@ func TestFilterByContainerName(t *testing.T) {
 		Cmd:  fmt.Sprintf("./ig list-containers -o json --runtimes=docker --containername=%s", cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
-				K8s: containercollection.K8sMetadata{
-					BasicK8sMetadata: types.BasicK8sMetadata{
-						Container: cn,
-					},
-				},
 				Runtime: containercollection.RuntimeMetadata{
 					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-						Runtime: types.RuntimeNameDocker,
+						Runtime:   types.RuntimeNameDocker,
+						Container: cn,
 					},
 				},
 			}
 
 			normalize := func(c *containercollection.Container) {
-				c.Runtime.ContainerID = ""
 				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
@@ -55,8 +50,10 @@ func TestFilterByContainerName(t *testing.T) {
 				c.CgroupID = 0
 				c.CgroupV1 = ""
 				c.CgroupV2 = ""
+
 				c.K8s.Labels = nil
 				c.K8s.PodUID = ""
+				c.Runtime.ContainerID = ""
 			}
 
 			return ExpectAllInArrayToMatch(output, normalize, expectedContainer)
@@ -89,14 +86,10 @@ func TestWatchContainers(t *testing.T) {
 				{
 					Type: containercollection.EventTypeAddContainer,
 					Container: &containercollection.Container{
-						K8s: containercollection.K8sMetadata{
-							BasicK8sMetadata: types.BasicK8sMetadata{
-								Container: cn,
-							},
-						},
 						Runtime: containercollection.RuntimeMetadata{
 							BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-								Runtime: types.RuntimeNameDocker,
+								Runtime:   types.RuntimeNameDocker,
+								Container: cn,
 							},
 						},
 					},
@@ -104,14 +97,10 @@ func TestWatchContainers(t *testing.T) {
 				{
 					Type: containercollection.EventTypeRemoveContainer,
 					Container: &containercollection.Container{
-						K8s: containercollection.K8sMetadata{
-							BasicK8sMetadata: types.BasicK8sMetadata{
-								Container: cn,
-							},
-						},
 						Runtime: containercollection.RuntimeMetadata{
 							BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-								Runtime: types.RuntimeNameDocker,
+								Runtime:   types.RuntimeNameDocker,
+								Container: cn,
 							},
 						},
 					},
@@ -119,7 +108,6 @@ func TestWatchContainers(t *testing.T) {
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.Runtime.ContainerID = ""
 				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
@@ -129,9 +117,11 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.CgroupID = 0
 				e.Container.CgroupV1 = ""
 				e.Container.CgroupV2 = ""
+				e.Timestamp = ""
+
 				e.Container.K8s.Labels = nil
 				e.Container.K8s.PodUID = ""
-				e.Timestamp = ""
+				e.Container.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEvents...)

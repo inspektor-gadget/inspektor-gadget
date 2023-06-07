@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	tracecapabilitiesTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -53,7 +54,6 @@ func TestTraceCapabilities(t *testing.T) {
 
 			normalize := func(e *tracecapabilitiesTypes.Event) {
 				e.Timestamp = 0
-				e.K8s.Node = ""
 				e.Pid = 0
 				e.Uid = 0
 				e.MountNsID = 0
@@ -72,6 +72,10 @@ func TestTraceCapabilities(t *testing.T) {
 				if len(e.CapsNames) != 0 {
 					e.CapsNames = []string{"x"}
 				}
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	snapshotsocketTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -75,9 +76,12 @@ func TestSnapshotSocket(t *testing.T) {
 				expectedEntry.K8s.Container = ""
 
 				normalize := func(e *snapshotsocketTypes.Event) {
-					e.K8s.Container = ""
 					e.InodeNumber = 0
 					e.NetNsID = 0
+
+					e.K8s.Container = ""
+					// TODO: Verify container runtime and container name
+					e.Runtime = types.BasicRuntimeMetadata{}
 				}
 
 				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)

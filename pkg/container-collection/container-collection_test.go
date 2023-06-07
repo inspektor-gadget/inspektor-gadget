@@ -72,6 +72,8 @@ func TestWithTracerCollection(t *testing.T) {
 		containers[i] = &Container{
 			Runtime: RuntimeMetadata{
 				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					Runtime:     types.RuntimeNameDocker,
+					Container:   fmt.Sprintf("name%d", i),
 					ContainerID: fmt.Sprintf("id%d", i),
 				},
 			},
@@ -94,6 +96,11 @@ func TestWithTracerCollection(t *testing.T) {
 		for i := 0; i < nContainers; i++ {
 			ev := types.CommonData{}
 			expected := types.CommonData{
+				Runtime: types.BasicRuntimeMetadata{
+					Runtime:     containers[i].Runtime.Runtime,
+					Container:   containers[i].Runtime.Container,
+					ContainerID: containers[i].Runtime.ContainerID,
+				},
 				K8s: types.K8sMetadata{
 					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace: containers[i].K8s.Namespace,

@@ -151,3 +151,15 @@ func EnrichWithK8sMetadata(container *ContainerData, labels map[string]string) {
 		container.K8s.PodUID = podUID
 	}
 }
+
+// IsEnrichedWithK8sMetadata returns true if the container already contains
+// the Kubernetes metadata a container runtime client is able to provide.
+func IsEnrichedWithK8sMetadata(k8s types.BasicK8sMetadata) bool {
+	return k8s.IsEnriched()
+}
+
+// IsEnrichedWithRuntimeMetadata returns true if the container already contains
+// the runtime metadata a container runtime client is able to provide.
+func IsEnrichedWithRuntimeMetadata(runtime types.BasicRuntimeMetadata) bool {
+	return runtime.IsEnriched()
+}

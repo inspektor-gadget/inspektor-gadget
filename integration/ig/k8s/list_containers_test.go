@@ -23,97 +23,33 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func TestListContainers(t *testing.T) {
-	t.Parallel()
-	ns := GenerateTestNamespaceName("test-list-containers")
-
-	listContainersCmd := &Command{
+func newListContainerTestStep(
+	cmd string,
+	cn, pod, podUID, ns, runtime, runtimeContainerName string,
+	verifyOutput func(string, func(*containercollection.Container), *containercollection.Container) error,
+) *Command {
+	return &Command{
 		Name: "RunListContainers",
-		Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s", *containerRuntime),
-		ExpectedOutputFn: func(output string) error {
-			expectedContainer := &containercollection.Container{
-				K8s: containercollection.K8sMetadata{
-					BasicK8sMetadata: types.BasicK8sMetadata{
-						Container: "test-pod",
-						Pod:       "test-pod",
-						Namespace: ns,
-					},
-				},
-				Runtime: containercollection.RuntimeMetadata{
-					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-						Runtime: types.String2RuntimeName(*containerRuntime),
-					},
-				},
-			}
-
-			normalize := func(c *containercollection.Container) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					c.K8s.Container = "test-pod"
-				}
-
-				c.Runtime.ContainerID = ""
-				c.Pid = 0
-				c.OciConfig = nil
-				c.Bundle = ""
-				c.Mntns = 0
-				c.Netns = 0
-				c.CgroupPath = ""
-				c.CgroupID = 0
-				c.CgroupV1 = ""
-				c.CgroupV2 = ""
-				c.K8s.Labels = nil
-				c.K8s.PodUID = ""
-			}
-
-			return ExpectEntriesInArrayToMatch(output, normalize, expectedContainer)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		BusyboxPodCommand(ns, "sleep inf"),
-		WaitUntilTestPodReadyCommand(ns),
-		listContainersCmd,
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
-}
-
-func TestFilterByContainerName(t *testing.T) {
-	t.Parallel()
-	cn := "test-filtered-container"
-	ns := GenerateTestNamespaceName(cn)
-
-	// TODO: Handle it once we support getting K8s container name for docker
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-	if *containerRuntime == ContainerRuntimeDocker {
-		t.Skip("Skip TestFilterByContainerName on docker since we don't propagate the Kubernetes pod container name")
-	}
-
-	listContainersCmd := &Command{
-		Name: "RunFilterByContainerName",
-		Cmd:  fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s", *containerRuntime, cn),
+		Cmd:  cmd,
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
 				K8s: containercollection.K8sMetadata{
 					BasicK8sMetadata: types.BasicK8sMetadata{
 						Container: cn,
-						Pod:       cn,
+						Pod:       pod,
 						Namespace: ns,
 					},
+					PodUID: podUID,
 				},
 				Runtime: containercollection.RuntimeMetadata{
 					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-						Runtime: types.String2RuntimeName(*containerRuntime),
+						Runtime:   types.String2RuntimeName(runtime),
+						Container: runtimeContainerName,
 					},
 				},
 			}
 
 			normalize := func(c *containercollection.Container) {
-				c.Runtime.ContainerID = ""
 				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
@@ -123,39 +59,88 @@ func TestFilterByContainerName(t *testing.T) {
 				c.CgroupID = 0
 				c.CgroupV1 = ""
 				c.CgroupV2 = ""
+
 				c.K8s.Labels = nil
-				c.K8s.PodUID = ""
+				c.Runtime.ContainerID = ""
 			}
 
-			return ExpectAllInArrayToMatch(output, normalize, expectedContainer)
+			return verifyOutput(output, normalize, expectedContainer)
 		},
 	}
+}
+
+func TestListContainers(t *testing.T) {
+	t.Parallel()
+
+	cn := "test-list-containers"
+	pod := cn
+	ns := GenerateTestNamespaceName(pod)
+
+	t.Cleanup(func() {
+		commandsPostTest := []*Command{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
 		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
-		WaitUntilPodReadyCommand(ns, cn),
-		listContainersCmd,
-		DeleteTestNamespaceCommand(ns),
+		WaitUntilPodReadyCommand(ns, pod),
+	}
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+
+	podUID, err := GetPodUID(ns, pod)
+	if err != nil {
+		t.Fatalf("getting pod UID: %s", err)
 	}
 
-	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	// Containerd name the container with the Kubernetes container name, while
+	// Docker uses a composed name.
+	runtimeContainerName := cn
+	if *containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO {
+		// Test container shouldn't have been restarted, so append "0".
+		runtimeContainerName = "k8s_" + cn + "_" + pod + "_" + ns + "_" + podUID + "_" + "0"
+	}
+
+	t.Run("ListAll", func(t *testing.T) {
+		t.Parallel()
+
+		listContainerTestStep := newListContainerTestStep(
+			fmt.Sprintf("ig list-containers -o json --runtimes=%s", *containerRuntime),
+			cn, pod, podUID, ns, *containerRuntime, runtimeContainerName,
+			func(o string, f func(*containercollection.Container), c *containercollection.Container) error {
+				return ExpectEntriesInArrayToMatch(o, f, c)
+			},
+		)
+		RunTestSteps([]*Command{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("FilteredList", func(t *testing.T) {
+		t.Parallel()
+
+		listContainerTestStep := newListContainerTestStep(
+			fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s", *containerRuntime, runtimeContainerName),
+			cn, pod, podUID, ns, *containerRuntime, runtimeContainerName,
+			func(o string, f func(*containercollection.Container), c *containercollection.Container) error {
+				return ExpectAllInArrayToMatch(o, f, c)
+			},
+		)
+		RunTestSteps([]*Command{listContainerTestStep}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
 }
 
 func TestWatchCreatedContainers(t *testing.T) {
 	t.Parallel()
-	cn := "test-created-container"
-	ns := GenerateTestNamespaceName(cn)
 
-	// TODO: Handle it once we support getting K8s container name for docker
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-	if *containerRuntime == ContainerRuntimeDocker {
-		t.Skip("Skip TestWatchContainers on docker since we don't propagate the Kubernetes pod container name")
-	}
+	cn := "test-created-containers"
+	pod := cn
+	ns := GenerateTestNamespaceName(pod)
 
 	watchContainersCmd := &Command{
-		Name:         "RunWatchContainers",
-		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
+		Name: "RunWatchContainers",
+		// TODO: Filter by namespace once we support it.
+		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --watch", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEvent := &containercollection.PubSubEvent{
@@ -164,86 +149,20 @@ func TestWatchCreatedContainers(t *testing.T) {
 					K8s: containercollection.K8sMetadata{
 						BasicK8sMetadata: types.BasicK8sMetadata{
 							Container: cn,
-							Pod:       cn,
+							Pod:       pod,
 							Namespace: ns,
 						},
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-							Runtime: types.String2RuntimeName(*containerRuntime),
-						},
-					},
-				},
-			}
-
-			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.Runtime.ContainerID = ""
-				e.Container.Pid = 0
-				e.Container.OciConfig = nil
-				e.Container.Bundle = ""
-				e.Container.Mntns = 0
-				e.Container.Netns = 0
-				e.Container.CgroupPath = ""
-				e.Container.CgroupID = 0
-				e.Container.CgroupV1 = ""
-				e.Container.CgroupV2 = ""
-				e.Container.K8s.Labels = nil
-				e.Container.K8s.PodUID = ""
-				e.Timestamp = ""
-			}
-
-			return ExpectAllToMatch(output, normalize, expectedEvent)
-		},
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
-		watchContainersCmd,
-		SleepForSecondsCommand(2), // wait to ensure ig has started
-		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
-		WaitUntilPodReadyCommand(ns, cn),
-		DeleteTestNamespaceCommand(ns),
-	}
-
-	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
-}
-
-func TestWatchDeletedContainers(t *testing.T) {
-	t.Parallel()
-	cn := "test-deleted-container"
-	ns := GenerateTestNamespaceName(cn)
-
-	// TODO: Handle it once we support getting K8s container name for docker
-	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-	if *containerRuntime == ContainerRuntimeDocker {
-		t.Skip("Skip TestWatchContainers on docker since we don't propagate the Kubernetes pod container name")
-	}
-
-	watchContainersCmd := &Command{
-		Name:         "RunWatchContainers",
-		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEvent := &containercollection.PubSubEvent{
-				Type: containercollection.EventTypeRemoveContainer,
-				Container: &containercollection.Container{
-					K8s: containercollection.K8sMetadata{
-						BasicK8sMetadata: types.BasicK8sMetadata{
+							Runtime:   types.String2RuntimeName(*containerRuntime),
 							Container: cn,
-							Pod:       cn,
-							Namespace: ns,
-						},
-					},
-					Runtime: containercollection.RuntimeMetadata{
-						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-							Runtime: types.String2RuntimeName(*containerRuntime),
 						},
 					},
 				},
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.Runtime.ContainerID = ""
 				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
@@ -253,9 +172,22 @@ func TestWatchDeletedContainers(t *testing.T) {
 				e.Container.CgroupID = 0
 				e.Container.CgroupV1 = ""
 				e.Container.CgroupV2 = ""
+				e.Timestamp = ""
+
 				e.Container.K8s.Labels = nil
 				e.Container.K8s.PodUID = ""
-				e.Timestamp = ""
+				e.Container.Runtime.ContainerID = ""
+
+				// Docker and CRI-O uses a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the expected container name.
+				// TODO: Create a test for this once we support filtering by k8s
+				// container name. See
+				// https://github.com/inspektor-gadget/inspektor-gadget/issues/1403.
+				if e.Container.Runtime.Runtime == ContainerRuntimeDocker ||
+					e.Container.Runtime.Runtime == ContainerRuntimeCRIO {
+					e.Container.Runtime.Container = cn
+				}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEvent)
@@ -264,12 +196,85 @@ func TestWatchDeletedContainers(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
-		PodCommand(cn, "busybox", ns, `["sleep", "inf"]`, ""),
-		WaitUntilPodReadyCommand(ns, cn),
+		watchContainersCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		PodCommand(pod, "busybox", ns, `["sleep", "inf"]`, ""),
+		WaitUntilPodReadyCommand(ns, pod),
+		DeleteTestNamespaceCommand(ns),
+	}
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+}
+
+func TestWatchDeletedContainers(t *testing.T) {
+	t.Parallel()
+
+	cn := "test-deleted-container"
+	pod := cn
+	ns := GenerateTestNamespaceName(pod)
+
+	watchContainersCmd := &Command{
+		Name:         "RunWatchContainers",
+		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --watch", *containerRuntime),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEvent := &containercollection.PubSubEvent{
+				Type: containercollection.EventTypeRemoveContainer,
+				Container: &containercollection.Container{
+					K8s: containercollection.K8sMetadata{
+						BasicK8sMetadata: types.BasicK8sMetadata{
+							Container: cn,
+							Pod:       pod,
+							Namespace: ns,
+						},
+					},
+					Runtime: containercollection.RuntimeMetadata{
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							Runtime:   types.String2RuntimeName(*containerRuntime),
+							Container: cn,
+						},
+					},
+				},
+			}
+
+			normalize := func(e *containercollection.PubSubEvent) {
+				e.Container.Runtime.ContainerID = ""
+				e.Container.Pid = 0
+				e.Container.OciConfig = nil
+				e.Container.Bundle = ""
+				e.Container.Mntns = 0
+				e.Container.Netns = 0
+				e.Container.CgroupPath = ""
+				e.Container.CgroupID = 0
+				e.Container.CgroupV1 = ""
+				e.Container.CgroupV2 = ""
+				e.Container.K8s.Labels = nil
+				e.Container.K8s.PodUID = ""
+				e.Timestamp = ""
+
+				// Docker and CRI-O uses a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the expected container name.
+				// TODO: Create a test for this once we support filtering by k8s
+				// container name. See
+				// https://github.com/inspektor-gadget/inspektor-gadget/issues/1403.
+				if e.Container.Runtime.Runtime == ContainerRuntimeDocker ||
+					e.Container.Runtime.Runtime == ContainerRuntimeCRIO {
+					e.Container.Runtime.Container = cn
+				}
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEvent)
+		},
+	}
+
+	commands := []*Command{
+		CreateTestNamespaceCommand(ns),
+		PodCommand(pod, "busybox", ns, `["sleep", "inf"]`, ""),
+		WaitUntilPodReadyCommand(ns, pod),
 		watchContainersCmd,
 		{
 			Name: "DeletePod",
-			Cmd:  fmt.Sprintf("kubectl delete pod %s -n %s", cn, ns),
+			Cmd:  fmt.Sprintf("kubectl delete pod %s -n %s", pod, ns),
 		},
 		DeleteTestNamespaceCommand(ns),
 	}

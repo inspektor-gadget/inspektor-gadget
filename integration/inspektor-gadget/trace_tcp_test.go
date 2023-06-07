@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	tracetcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcp/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -45,10 +46,13 @@ func TestTraceTcp(t *testing.T) {
 
 			normalize := func(e *tracetcpTypes.Event) {
 				e.Timestamp = 0
-				e.K8s.Node = ""
 				e.Pid = 0
 				e.Sport = 0
 				e.MountNsID = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			fmt.Printf("output: %s\n", output)

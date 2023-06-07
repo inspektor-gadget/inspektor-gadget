@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -38,19 +39,19 @@ func TestTraceExec(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*execTypes.Event{
 				{
-					Event: BuildBaseEvent(ns),
+					Event: BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
 					Comm:  "sh",
 					Args:  shArgs,
 				},
 				{
-					Event: BuildBaseEvent(ns),
+					Event: BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
 					Comm:  "date",
 					Args:  dateArgs,
 					Uid:   1000,
 					Gid:   1111,
 				},
 				{
-					Event: BuildBaseEvent(ns),
+					Event: BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
 					Comm:  "sleep",
 					Args:  sleepArgs,
 					Uid:   1000,
@@ -59,10 +60,13 @@ func TestTraceExec(t *testing.T) {
 			}
 
 			normalize := func(e *execTypes.Event) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					e.K8s.Container = "test-pod"
+				// Docker and CRI-O uses a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the exact expected container name.
+				prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+				if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+					strings.HasPrefix(e.Runtime.Container, prefixContainerName) {
+					e.Runtime.Container = "test-pod"
 				}
 
 				e.Timestamp = 0
@@ -72,6 +76,8 @@ func TestTraceExec(t *testing.T) {
 				e.SessionId = 0
 				e.Retval = 0
 				e.MountNsID = 0
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

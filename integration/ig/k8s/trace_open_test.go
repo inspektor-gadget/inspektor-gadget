@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -32,7 +33,7 @@ func TestTraceOpen(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &openTypes.Event{
-				Event: BuildBaseEvent(ns),
+				Event: BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
 				Comm:  "cat",
 				Fd:    3,
 				Ret:   3,
@@ -45,15 +46,20 @@ func TestTraceOpen(t *testing.T) {
 			}
 
 			normalize := func(e *openTypes.Event) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					e.K8s.Container = "test-pod"
+				// Docker and CRI-O uses a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the exact expected container name.
+				prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+				if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+					strings.HasPrefix(e.Runtime.Container, prefixContainerName) {
+					e.Runtime.Container = "test-pod"
 				}
 
 				e.Timestamp = 0
 				e.MountNsID = 0
 				e.Pid = 0
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

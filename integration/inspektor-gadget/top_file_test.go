@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	topfileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -43,12 +44,15 @@ func TestTopFile(t *testing.T) {
 			}
 
 			normalize := func(e *topfileTypes.Stats) {
-				e.K8s.Node = ""
 				e.Writes = 0
 				e.WriteBytes = 0
 				e.Pid = 0
 				e.Tid = 0
 				e.MountNsID = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

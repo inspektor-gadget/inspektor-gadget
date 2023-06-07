@@ -59,17 +59,17 @@ $ docker run -d --name myContainer nginx:1.21
 
 $ sudo ig list-containers
 WARN[0000] Runtime enricher (cri-o): couldn't get current containers
-RUNTIME       ID               CONTAINER
-containerd    7766d32caded4    calico-kube-controllers
-containerd    2e3e4968b456f    calico-node
-containerd    d3be7741b94ff    coredns
-containerd    e7be3e4dc1bb4    coredns
-containerd    fb4fe41921f30    etcd
-containerd    136e7944d2077    kube-apiserver
-containerd    ad8709a2c2ded    kube-controller-manager
-containerd    66cf05654a47f    kube-proxy
-containerd    a68bed42aa6b2    kube-scheduler
-docker        95b814bb82b9e    myContainer
+RUNTIME.RUNTIME RUNTIME.CONTAINERID RUNTIME.CONTAINER
+containerd      7766d32caded4       calico-kube-controllers
+containerd      2e3e4968b456f       calico-node
+containerd      d3be7741b94ff       coredns
+containerd      e7be3e4dc1bb4       coredns
+containerd      fb4fe41921f30       etcd
+containerd      136e7944d2077       kube-apiserver
+containerd      ad8709a2c2ded       kube-controller-manager
+containerd      66cf05654a47f       kube-proxy
+containerd      a68bed42aa6b2       kube-scheduler
+docker          95b814bb82b9e       myContainer
 ```
 
 This output shows the containers `ig` retrieved from Docker and
@@ -92,7 +92,9 @@ Flags:
       --containerd-socketpath string   containerd CRI Unix socket path (default "/run/containerd/containerd.sock")
       --crio-socketpath string         CRI-O CRI Unix socket path (default "/run/crio/crio.sock")
       --docker-socketpath string       Docker Engine API Unix socket path (default "/run/docker.sock")
-  -r, --runtimes string                Container runtimes to be used separated by comma. Supported values are: docker, containerd, cri-o (default "docker,containerd,cri-o")
+      --podman-socketpath string       Podman Unix socket path (default "/run/podman/podman.sock")
+  ...
+  -r, --runtimes string                Container runtimes to be used separated by comma. Supported values are: docker, containerd, cri-o, podman (default "docker,containerd,cri-o,podman")
   -w, --watch                          After listing the containers, watch for new containers
   ...
 ```
@@ -102,8 +104,8 @@ path:
 
 ```bash
 $ sudo ig list-containers --runtimes docker --docker-socketpath /some/path/docker.sock
-RUNTIME    ID               NAME
-docker     95b814bb82b9e    myContainer
+RUNTIME.RUNTIME RUNTIME.CONTAINERID RUNTIME.CONTAINER
+docker          95b814bb82b9e       myContainer
 ```
 
 ### Common features
@@ -122,14 +124,15 @@ For instance, for the `list-containers` command:
 $ sudo ig list-containers -o json --containername etcd
 [
   {
-    "runtimeMetadata": {
-      "runtime": "containerd"
-      "id": "fef9c7f66e0d68c554b7ea48cc3ef4e77c553957807de7f05ad0210a05d8c215",
+    "runtime": {
+      "name": "containerd"
+      "containerId": "fef9c7f66e0d68c554b7ea48cc3ef4e77c553957807de7f05ad0210a05d8c215",
+      "containerName": "etcd",
     },
-    "k8sMetadata": {
+    "k8s": {
       "namespace": "kube-system",
-      "pod": "etcd-master",
-      "container": "etcd",
+      "podName": "etcd-master",
+      "containerName": "etcd",
       "podUID": "87a960e902bbb19289771a77e4b07353"
     },
     "pid": 1611,

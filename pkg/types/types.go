@@ -113,18 +113,21 @@ type BasicRuntimeMetadata struct {
 
 	// Container is the container name. In the case the container runtime
 	// response with multiples, Container contains only the first element.
-	// TODO: Info not yet available. We are temporarily using the k8s container
-	// name as the container name for "ig list-containers". Hide it for now.
-	Container string `json:"container,omitempty" column:"runtimeContainerName,template:container,hide"`
+	Container string `json:"container,omitempty" column:"container,template:container"`
+}
+
+func (b *BasicRuntimeMetadata) IsEnriched() bool {
+	return b.Runtime != RuntimeNameUnknown && b.Runtime != "" && b.ContainerID != "" && b.Container != ""
 }
 
 type BasicK8sMetadata struct {
 	Namespace string `json:"namespace,omitempty" column:"namespace,template:namespace"`
 	Pod       string `json:"pod,omitempty" column:"pod,template:pod"`
-	// Container is tagged also as "runtime" because we are temporarily using
-	// the k8s container name as the container name for "ig list-containers"
-	// given that we don't have a runtime container name field yet.
-	Container string `json:"container,omitempty" column:"container,template:container" columnTags:"runtime"`
+	Container string `json:"container,omitempty" column:"container,template:container"`
+}
+
+func (b *BasicK8sMetadata) IsEnriched() bool {
+	return b.Namespace != "" && b.Pod != "" && b.Container != ""
 }
 
 type K8sMetadata struct {
@@ -150,14 +153,18 @@ func (c *CommonData) SetNode(node string) {
 	c.K8s.Node = node
 }
 
-func (c *CommonData) SetContainerInfo(pod, namespace, container string) {
-	c.K8s.Pod = pod
-	c.K8s.Namespace = namespace
+func (c *CommonData) SetContainerMetadata(k8s *BasicK8sMetadata, runtime *BasicRuntimeMetadata, setContainerName bool) {
+	c.K8s.Pod = k8s.Pod
+	c.K8s.Namespace = k8s.Namespace
 
-	// Container may have been enriched before by other means, so don't delete it here,
-	// if the incoming info is empty
-	if container != "" {
-		c.K8s.Container = container
+	// In some cases, we don't have enough information to determine the exact
+	// container where the event happened.
+	if setContainerName {
+		c.K8s.Container = k8s.Container
+
+		c.Runtime.Runtime = runtime.Runtime
+		c.Runtime.Container = runtime.Container
+		c.Runtime.ContainerID = runtime.ContainerID
 	}
 }
 

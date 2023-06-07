@@ -47,16 +47,13 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 	// Runtime
 	container.Runtime.ContainerID = containerData.Runtime.ContainerID
 	container.Runtime.Runtime = containerData.Runtime.Runtime
+	container.Runtime.Container = containerData.Runtime.Container
 
 	// Kubernetes
 	container.K8s.Namespace = containerData.K8s.Namespace
 	container.K8s.Pod = containerData.K8s.Pod
 	container.K8s.PodUID = containerData.K8s.PodUID
-
-	// Notice we are temporarily using the runtime container name as the
-	// Kubernetes container name because the Container struct doesn't have that
-	// field, and we don't support filtering by runtime container name yet.
-	container.K8s.Container = containerData.Runtime.Container
+	container.K8s.Container = containerData.K8s.Container
 }
 
 func containerRuntimeEnricher(
@@ -64,11 +61,13 @@ func containerRuntimeEnricher(
 	runtimeClient runtimeclient.ContainerRuntimeClient,
 	container *Container,
 ) bool {
-	// Is container already enriched? Notice that, at this point, the container
-	// was already enriched with the PID by the hook.
-	if container.IsEnriched() {
+	// If the container is already enriched with the metadata a runtime client
+	// is able to provide, skip it.
+	if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) &&
+		runtimeclient.IsEnrichedWithRuntimeMetadata(container.Runtime.BasicRuntimeMetadata) {
 		return true
 	}
+
 	containerData, err := runtimeClient.GetContainer(container.Runtime.ContainerID)
 	if err != nil {
 		// Temporary dropping pause container. See issue
@@ -647,11 +646,23 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 	}
 }
 
+// isEnrichedWithOCIConfigInfo returns true if container is enriched with the
+// metadata from OCI config that WithOCIConfigEnrichment is able to provide.
+// Keep in sync with what WithOCIConfigEnrichment does.
+func isEnrichedWithOCIConfigInfo(container *Container) bool {
+	return container.OciConfig != nil &&
+		container.Runtime.Runtime != "" &&
+		container.K8s.Container != "" &&
+		container.K8s.Pod != "" &&
+		container.K8s.Namespace != "" &&
+		container.K8s.PodUID != ""
+}
+
 // WithOCIConfigEnrichment enriches container using provided OCI config
 func WithOCIConfigEnrichment() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			if container.OciConfig == nil || container.IsEnriched() {
+			if container.OciConfig == nil || isEnrichedWithOCIConfigInfo(container) {
 				return true
 			}
 
@@ -672,7 +683,7 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 				return false
 			}
 
-			// enrich the container
+			// Enrich the container. Keep in sync with isEnrichedWithOCIConfigInfo.
 			container.Runtime.Runtime = resolver.Runtime()
 			if name := resolver.ContainerName(container.OciConfig.Annotations); name != "" {
 				container.K8s.Container = name
@@ -740,7 +751,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 								unix.Close(c.mntNsFd)
 								c.mntNsFd = 0
 							}
-							cc.cachedContainers.Delete(c.Runtime.ID)
+							cc.cachedContainers.Delete(c.Runtime.ContainerID)
 						}
 
 						return true

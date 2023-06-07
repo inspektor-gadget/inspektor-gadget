@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	toptcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -44,12 +45,15 @@ func TestTopTcp(t *testing.T) {
 			}
 
 			normalize := func(e *toptcpTypes.Stats) {
-				e.K8s.Node = ""
 				e.MountNsID = 0
 				e.Pid = 0
 				e.Sport = 0
 				e.Sent = 0
 				e.Received = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

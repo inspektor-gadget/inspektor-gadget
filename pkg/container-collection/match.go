@@ -32,11 +32,13 @@ func ContainerSelectorMatches(s *ContainerSelector, c *Container) bool {
 	if s.K8sSelector.Container != "" && s.K8sSelector.Container != c.K8s.Container {
 		return false
 	}
+	if s.Runtime.Container != "" && s.Runtime.Container != c.Runtime.Container {
+		return false
+	}
 	for sk, sv := range s.K8sSelector.Labels {
 		if cv, ok := c.K8s.Labels[sk]; !ok || cv != sv {
 			return false
 		}
 	}
-
 	return true
 }

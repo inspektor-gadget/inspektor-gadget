@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -31,22 +32,26 @@ func TestProfileCpu(t *testing.T) {
 		Cmd:  fmt.Sprintf("ig profile cpu -K -o json --runtimes=%s --timeout 10", *containerRuntime),
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &cpuprofileTypes.Report{
-				CommonData: BuildCommonData(ns),
+				CommonData: BuildCommonData(ns, WithRuntimeMetadata(*containerRuntime)),
 				Comm:       "sh",
 			}
 
 			normalize := func(e *cpuprofileTypes.Report) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					e.K8s.Container = "test-pod"
+				// Docker and CRI-O uses a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the exact expected container name.
+				prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+				if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+					strings.HasPrefix(e.Runtime.Container, prefixContainerName) {
+					e.Runtime.Container = "test-pod"
 				}
 
-				e.K8s.Node = ""
 				e.Pid = 0
 				e.UserStack = nil
 				e.KernelStack = nil
 				e.Count = 0
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

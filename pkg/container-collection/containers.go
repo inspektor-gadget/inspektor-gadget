@@ -87,8 +87,14 @@ type K8sSelector struct {
 	Labels map[string]string
 }
 
+type RuntimeSelector struct {
+	// TODO: Support filtering by all the fields in BasicRuntimeMetadata
+	Container string
+}
+
 type ContainerSelector struct {
 	K8sSelector K8sSelector
+	Runtime     RuntimeSelector
 }
 
 // GetOwnerReference returns the owner reference information of the
@@ -179,8 +185,4 @@ func ownerReferenceEnrichment(
 
 func GetColumns() *columns.Columns[Container] {
 	return columns.MustCreateColumns[Container]()
-}
-
-func (c *Container) IsEnriched() bool {
-	return c.K8s.Container != "" && c.K8s.Pod != "" && c.K8s.Namespace != "" && c.K8s.PodUID != "" && c.Runtime.Runtime != ""
 }

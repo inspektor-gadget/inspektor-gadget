@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	topebpfTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	"github.com/cilium/ebpf"
 
@@ -42,11 +43,6 @@ func TestTopEbpf(t *testing.T) {
 			}
 
 			normalize := func(e *topebpfTypes.Stats) {
-				e.K8s.Node = ""
-				e.K8s.Namespace = ""
-				e.K8s.Pod = ""
-				e.K8s.Container = ""
-				e.K8s.Namespace = ""
 				e.ProgramID = 0
 				e.Processes = nil
 				e.CurrentRuntime = 0
@@ -57,6 +53,10 @@ func TestTopEbpf(t *testing.T) {
 				e.TotalRunCount = 0
 				e.MapMemory = 0
 				e.MapCount = 0
+
+				e.K8s = types.K8sMetadata{}
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

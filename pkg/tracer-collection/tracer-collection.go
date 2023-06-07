@@ -69,8 +69,9 @@ func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 	return func(event containercollection.PubSubEvent) {
 		switch event.Type {
 		case containercollection.EventTypeAddContainer:
-			// Skip the pause container
-			if event.Container.K8s.Container == "" {
+			// Skip the pause container, only if it is not a standalone
+			// container (ig use-case)
+			if event.Container.K8s.Container == "" && event.Container.Runtime.Container == "" {
 				return
 			}
 
