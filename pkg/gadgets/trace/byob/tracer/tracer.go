@@ -22,8 +22,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -65,8 +67,9 @@ type Tracer struct {
 	ringbufReader *ringbuf.Reader
 	perfReader    *perf.Reader
 
-	mapSizes map[string]uint32
-	links    []link.Link
+	mapSizes  map[string]uint32
+	links     []link.Link
+	linksIter []*link.Iter
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
@@ -180,9 +183,6 @@ func (t *Tracer) installTracer() error {
 			}
 		}
 	}
-	if t.printMap == "" {
-		return fmt.Errorf("no BPF map with 'print_' prefix found")
-	}
 
 	// Load the ebpf objects
 	opts := ebpf.CollectionOptions{
@@ -200,18 +200,19 @@ func (t *Tracer) installTracer() error {
 		}
 		return fmt.Errorf("create BPF collection: %w", err)
 	}
-
-	m := t.collection.Maps[t.printMap]
-	switch m.Type() {
-	case ebpf.RingBuf:
-		t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[t.printMap])
-	case ebpf.PerfEventArray:
-		t.perfReader, err = perf.NewReader(t.collection.Maps[t.printMap], gadgets.PerfBufferPages*os.Getpagesize())
-	default:
-		return fmt.Errorf("unsupported BPF map type: %q", m.Type())
-	}
-	if err != nil {
-		return fmt.Errorf("create BPF map reader: %w", err)
+	if t.printMap != "" {
+		m := t.collection.Maps[t.printMap]
+		switch m.Type() {
+		case ebpf.RingBuf:
+			t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[t.printMap])
+		case ebpf.PerfEventArray:
+			t.perfReader, err = perf.NewReader(t.collection.Maps[t.printMap], gadgets.PerfBufferPages*os.Getpagesize())
+		default:
+			return fmt.Errorf("unsupported BPF map type: %q", m.Type())
+		}
+		if err != nil {
+			return fmt.Errorf("create BPF map reader: %w", err)
+		}
 	}
 
 	// Attach programs
@@ -228,10 +229,42 @@ func (t *Tracer) installTracer() error {
 				return fmt.Errorf("attach BPF program %q: %w", progName, err)
 			}
 			t.links = append(t.links, l)
+		} else if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, "iter/") {
+			switch p.AttachTo {
+			case "task":
+				l, err := link.AttachIter(link.IterOptions{
+					Program: t.collection.Programs[progName],
+				})
+				if err != nil {
+					return fmt.Errorf("attach BPF program %q: %w", progName, err)
+				}
+				t.linksIter = append(t.linksIter, l)
+				t.links = append(t.links, l)
+			}
 		}
 	}
 
 	return nil
+}
+
+func (t *Tracer) runIter(gadgetCtx gadgets.GadgetContext) {
+	for {
+		for _, l := range t.linksIter {
+			file, err := l.Open()
+			if err != nil {
+				gadgetCtx.Logger().Errorf("open BPF link: %w", err)
+				return
+			}
+			defer file.Close()
+			buf, err := io.ReadAll(file)
+			if err != nil {
+				gadgetCtx.Logger().Errorf("read BPF link: %w", err)
+				return
+			}
+			fmt.Printf("%s\n", string(buf))
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
@@ -310,6 +343,7 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	go t.run(gadgetCtx)
+	go t.runIter(gadgetCtx)
 	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
 
 	return nil
