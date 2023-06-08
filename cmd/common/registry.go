@@ -578,6 +578,10 @@ func addFlags(cmd *cobra.Command, params *params.Params, skipParams []params.Val
 		}
 	}()
 	for _, p := range *params {
+		if p.Hidden {
+			continue
+		}
+
 		desc := p.Description
 
 		if p.ValueHint != "" {

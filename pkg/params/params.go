@@ -88,6 +88,10 @@ type ParamDesc struct {
 	// PossibleValues holds all possible values for this parameter and will be considered
 	// when validating
 	PossibleValues []string `json:"possibleValues"`
+
+	// Hidden, if set, will hide the parameter from for example cli output. This is meant to be
+	// able to set parameters programmatically without the option to override.
+	Hidden bool
 }
 
 // Param holds a ParamDesc but can additionally store a value
