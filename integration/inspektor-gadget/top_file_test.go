@@ -18,50 +18,79 @@ import (
 	"fmt"
 	"testing"
 
-	topfileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
-
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	topfileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
 )
 
+func newTopFileCmd(ns, cmd string, startAndStop bool) *Command {
+	expectedOutputFn := func(output string) error {
+		expectedEntry := &topfileTypes.Stats{
+			CommonData: BuildCommonData(ns),
+			Reads:      0,
+			ReadBytes:  0,
+			Filename:   "date.txt",
+			FileType:   byte('R'), // Regular file
+			Comm:       "sh",
+		}
+
+		normalize := func(e *topfileTypes.Stats) {
+			e.Node = ""
+			e.Writes = 0
+			e.WriteBytes = 0
+			e.Pid = 0
+			e.Tid = 0
+			e.MountNsID = 0
+		}
+
+		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+	}
+	return &Command{
+		Name:             "TopFile",
+		ExpectedOutputFn: expectedOutputFn,
+		Cmd:              cmd,
+		StartAndStop:     startAndStop,
+	}
+}
+
 func TestTopFile(t *testing.T) {
+	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-file")
 
-	t.Parallel()
-
-	topFileCmd := &Command{
-		Name:         "StartFiletopGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &topfileTypes.Stats{
-				CommonData: BuildCommonData(ns),
-				Reads:      0,
-				ReadBytes:  0,
-				Filename:   "date.txt",
-				FileType:   byte('R'), // Regular file
-				Comm:       "sh",
-			}
-
-			normalize := func(e *topfileTypes.Stats) {
-				e.Node = ""
-				e.Writes = 0
-				e.WriteBytes = 0
-				e.Pid = 0
-				e.Tid = 0
-				e.MountNsID = 0
-			}
-
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
+	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
-		topFileCmd,
 		BusyboxPodRepeatCommand(ns, "echo date >> /tmp/date.txt"),
 		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
 	}
+	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
-	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	t.Cleanup(func() {
+		commandsPostTest := []*Command{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("StartAndStop", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json", ns)
+		topFileCmd := newTopFileCmd(ns, cmd, true)
+		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json --timeout %d", ns, topTimeoutInSeconds)
+		topFileCmd := newTopFileCmd(ns, cmd, false)
+		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("Interval=Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json --timeout %d --interval %d", ns, topTimeoutInSeconds, topTimeoutInSeconds)
+		topFileCmd := newTopFileCmd(ns, cmd, false)
+		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
 }

@@ -19,50 +19,80 @@ import (
 	"syscall"
 	"testing"
 
-	toptcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
-
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	toptcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
 )
 
+func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
+	expectedOutputFn := func(output string) error {
+		expectedEntry := &toptcpTypes.Stats{
+			CommonData: BuildCommonData(ns),
+			Comm:       "curl",
+			IPVersion:  syscall.AF_INET,
+			Dport:      80,
+			Saddr:      "127.0.0.1",
+			Daddr:      "127.0.0.1",
+		}
+
+		normalize := func(e *toptcpTypes.Stats) {
+			e.Node = ""
+			e.MountNsID = 0
+			e.Pid = 0
+			e.Sport = 0
+			e.Sent = 0
+			e.Received = 0
+		}
+
+		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+	}
+
+	return &Command{
+		Name:             "TopTCP",
+		ExpectedOutputFn: expectedOutputFn,
+		Cmd:              cmd,
+		StartAndStop:     startAndStop,
+	}
+}
+
 func TestTopTcp(t *testing.T) {
+	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-tcp")
 
-	t.Parallel()
-
-	topTCPCmd := &Command{
-		Name:         "StartTopTcpGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &toptcpTypes.Stats{
-				CommonData: BuildCommonData(ns),
-				Comm:       "curl",
-				Dport:      80,
-				IPVersion:  syscall.AF_INET,
-				Saddr:      "127.0.0.1",
-				Daddr:      "127.0.0.1",
-			}
-
-			normalize := func(e *toptcpTypes.Stats) {
-				e.Node = ""
-				e.MountNsID = 0
-				e.Pid = 0
-				e.Sport = 0
-				e.Sent = 0
-				e.Received = 0
-			}
-
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
+	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
-		topTCPCmd,
 		PodCommand("test-pod", "nginx", ns, "[sh, -c]", "nginx && while true; do curl 127.0.0.1; sleep 0.1; done"),
 		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
 	}
+	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
-	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	t.Cleanup(func() {
+		commandsPostTest := []*Command{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("StartAndStop", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json", ns)
+		topTCPCmd := newTopTCPCmd(ns, cmd, true)
+		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json -m 100 --timeout %d", ns, topTimeoutInSeconds)
+		topTCPCmd := newTopTCPCmd(ns, cmd, false)
+		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("Interval=Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json -m 100 --timeout %d --interval %d", ns, topTimeoutInSeconds, topTimeoutInSeconds)
+		topTCPCmd := newTopTCPCmd(ns, cmd, false)
+		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
 }
