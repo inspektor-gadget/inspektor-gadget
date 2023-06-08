@@ -793,7 +793,13 @@ jobs:
   test-integration-aks:
     name: Integration tests on AKS
     # level: 2
-    needs: [check-secrets, test-unit, build-kubectl-gadget, build-ig, build-gadget-container-images, publish-gadget-images-manifest]
+    needs:
+      - check-secrets
+      - test-unit
+      - build-kubectl-gadget
+      - build-ig
+      - build-gadget-container-images
+      - publish-gadget-images-manifest
     if: needs.check-secrets.outputs.aks == 'true'
     runs-on: ubuntu-latest
     strategy:
@@ -869,7 +875,13 @@ jobs:
   test-integration-aro:
     name: Integration tests on ARO
     # level: 2
-    needs: [check-secrets, test-unit, build-kubectl-gadget, build-ig, build-gadget-container-images, publish-gadget-images-manifest]
+    needs:
+      - check-secrets
+      - test-unit
+      - build-kubectl-gadget
+      - build-ig
+      - build-gadget-container-images
+      - publish-gadget-images-manifest
     # Run this job only if an ARO cluster is available on repo secrets. See
     # docs/ci.md for further details.
     if: needs.check-secrets.outputs.aro == 'true'
@@ -912,7 +924,12 @@ jobs:
   test-integration-minikube:
     name: Integr. tests
     # level: 1
-    needs: [test-unit, build-kubectl-gadget, build-ig, build-gadget-container-images, build-helper-images ]
+    needs:
+      - test-unit
+      - build-kubectl-gadget
+      - build-ig
+      - build-gadget-container-images
+      - build-helper-images
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
