@@ -31,6 +31,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/tcprtt/tracer"
 
 	// Snapshot Category
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/file/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer"
 

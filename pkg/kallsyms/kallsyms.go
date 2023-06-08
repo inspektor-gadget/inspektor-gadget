@@ -33,6 +33,9 @@ type KAllSyms struct {
 
 	// symbolsMap is a map of kernel symbols. Provides fast lookup.
 	symbolsMap map[string]uint64
+
+	// addrMap is a map of kernel addresses. Provides fast lookup.
+	addrMap map[uint64]string
 }
 
 type kernelSymbol struct {
@@ -56,6 +59,7 @@ func NewKAllSyms() (*KAllSyms, error) {
 func NewKAllSymsFromReader(reader io.Reader) (*KAllSyms, error) {
 	symbols := []kernelSymbol{}
 	symbolsMap := map[string]uint64{}
+	addrMap := map[uint64]string{}
 
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
@@ -79,6 +83,7 @@ func NewKAllSymsFromReader(reader io.Reader) (*KAllSyms, error) {
 			name: fields[2],
 		})
 		symbolsMap[fields[2]] = addr
+		addrMap[addr] = fields[2]
 	}
 
 	err := scanner.Err()
@@ -89,6 +94,7 @@ func NewKAllSymsFromReader(reader io.Reader) (*KAllSyms, error) {
 	return &KAllSyms{
 		symbols:    symbols,
 		symbolsMap: symbolsMap,
+		addrMap:    addrMap,
 	}, nil
 }
 
@@ -122,6 +128,16 @@ func (k *KAllSyms) LookupByInstructionPointer(ip uint64) string {
 	}
 
 	return "[unknown]"
+}
+
+// LookupByAddress tries to find the kernel symbol corresponding to the given
+// address.
+func (k *KAllSyms) LookupByAddress(addr uint64) string {
+	name, ok := k.addrMap[addr]
+	if !ok {
+		return "unknown"
+	}
+	return name
 }
 
 // SymbolExists returns true if the given symbol exists in the kernel.
@@ -191,6 +207,7 @@ func specUpdateAddresses(
 				symbolsMap[symbol] = k.symbolsMap[symbol]
 			} else {
 				triedGetAddr[symbol] = os.ErrNotExist
+				fmt.Printf("symbol %q not found in kallsyms\n", symbol)
 				return os.ErrNotExist
 			}
 		}
