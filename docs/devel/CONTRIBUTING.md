@@ -111,7 +111,7 @@ registry.
 
 #### Requirements
 
-For running unit tests, the following additional requirements need to be installed and configured on your system: 
+For running unit tests, the following additional requirements need to be installed and configured on your system:
 - gcc compiler
 - `pkg-config` and `libseccomp-dev` libraries
 
@@ -297,7 +297,13 @@ $ go tool pprof -top mem.prof
 ### Continuous Integration
 
 Inspektor Gadget uses GitHub Actions as CI. Please check dedicated [CI
-documentation](../ci.md) for details.
+documentation](../ci.md) for more details.
+
+Some integration tests (like AKS and ARO) are only run when a commit is pushed to the main branch or
+a new tag is pushed. It's also possible to run those by pusing a branch named `citest/...`. Please
+notice that the container images will be pushed to
+https://github.com/inspektor-gadget/inspektor-gadget/pkgs/container/inspektor-gadget and those
+should be manually cleaned up.
 
 ## Contribution Guidelines
 
