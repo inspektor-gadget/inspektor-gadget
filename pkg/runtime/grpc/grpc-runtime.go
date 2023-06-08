@@ -32,9 +32,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -264,9 +264,9 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 		return nil, fmt.Errorf("dialing gadget pod on node %q: %w", pod.node, err)
 	}
 	defer conn.Close()
-	client := pb.NewGadgetManagerClient(conn)
+	client := api.NewGadgetManagerClient(conn)
 
-	runRequest := &pb.GadgetRunRequest{
+	runRequest := &api.GadgetRunRequest{
 		GadgetName:     gadgetCtx.GadgetDesc().Name(),
 		GadgetCategory: gadgetCtx.GadgetDesc().Category(),
 		Params:         allParams,
@@ -281,7 +281,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 		return nil, err
 	}
 
-	controlRequest := &pb.GadgetControlRequest{Event: &pb.GadgetControlRequest_RunRequest{RunRequest: runRequest}}
+	controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_RunRequest{RunRequest: runRequest}}
 	err = runClient.Send(controlRequest)
 	if err != nil {
 		return nil, err
@@ -324,7 +324,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 				return
 			}
 			switch ev.Type {
-			case pb.EventTypeGadgetPayload:
+			case api.EventTypeGadgetPayload:
 				if expectedSeq != ev.Seq {
 					gadgetCtx.Logger().Warnf("%-20s | expected seq %d, got %d, %d messages dropped", pod.node, expectedSeq, ev.Seq, ev.Seq-expectedSeq)
 				}
@@ -334,13 +334,13 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 					continue
 				}
 				jsonHandler(ev.Payload)
-			case pb.EventTypeGadgetResult:
+			case api.EventTypeGadgetResult:
 				gadgetCtx.Logger().Debugf("%-20s | got result from server", pod.node)
 				result = ev.Payload
-			case pb.EventTypeGadgetJobID: // not needed right now
+			case api.EventTypeGadgetJobID: // not needed right now
 			default:
-				if ev.Type >= 1<<pb.EventLogShift {
-					gadgetCtx.Logger().Log(logger.Level(ev.Type>>pb.EventLogShift), fmt.Sprintf("%-20s | %s", pod.node, string(ev.Payload)))
+				if ev.Type >= 1<<api.EventLogShift {
+					gadgetCtx.Logger().Log(logger.Level(ev.Type>>api.EventLogShift), fmt.Sprintf("%-20s | %s", pod.node, string(ev.Payload)))
 					continue
 				}
 				gadgetCtx.Logger().Warnf("unknown payload type %d: %s", ev.Type, ev.Payload)
@@ -356,7 +356,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 	case <-gadgetCtx.Context().Done():
 		// Send stop request
 		gadgetCtx.Logger().Debugf("%-20s | sending stop request", pod.node)
-		controlRequest := &pb.GadgetControlRequest{Event: &pb.GadgetControlRequest_StopRequest{StopRequest: &pb.GadgetStopRequest{}}}
+		controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_StopRequest{StopRequest: &api.GadgetStopRequest{}}}
 		runClient.Send(controlRequest)
 
 		// Wait for done or timeout

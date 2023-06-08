@@ -45,6 +45,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
@@ -73,7 +74,7 @@ var clientTimeout = 2 * time.Second
 
 func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
-	flag.StringVar(&gadgetServiceSocketFile, "service-socketfile", pb.GadgetServiceSocket, "Socket file for gadget service")
+	flag.StringVar(&gadgetServiceSocketFile, "service-socketfile", api.GadgetServiceSocket, "Socket file for gadget service")
 	flag.StringVar(&hookMode, "hook-mode", "auto", "how to get containers start/stop notifications (podinformer, fanotify, auto, none)")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
