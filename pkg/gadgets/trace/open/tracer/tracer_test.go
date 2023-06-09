@@ -19,6 +19,7 @@ package tracer_test
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"testing"
 	"time"
@@ -138,6 +139,45 @@ func TestOpenTracer(t *testing.T) {
 					Path:          "/dev/null",
 					Flags:         []string{"O_RDONLY"},
 					Mode:          "----------",
+				}
+			}),
+		},
+		"test_flags_and_mode": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			generateEvent: func() (int, error) {
+				filename := "/tmp/test"
+				fd, err := unix.Open(filename, unix.O_CREAT|unix.O_RDWR, unix.S_IRWXU|unix.S_IRGRP|unix.S_IWGRP|unix.S_IXOTH)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+
+				defer os.Remove(filename)
+
+				unix.Close(fd)
+
+				return fd, nil
+			},
+			validateEvent: utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, fd int) *types.Event {
+				return &types.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
+					Pid:           uint32(info.Pid),
+					Uid:           uint32(info.Uid),
+					Comm:          info.Comm,
+					Fd:            fd,
+					Ret:           fd,
+					Err:           0,
+					Path:          "/tmp/test",
+					Flags:         []string{"O_RDWR", "O_CREAT"},
+					FlagsRaw:      unix.O_CREAT | unix.O_RDWR,
+					Mode:          "-rwxrw---x",
+					ModeRaw:       unix.S_IRWXU | unix.S_IRGRP | unix.S_IWGRP | unix.S_IXOTH,
 				}
 			}),
 		},
