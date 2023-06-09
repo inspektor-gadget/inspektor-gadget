@@ -143,7 +143,7 @@ func IPStringToUint32(ipAddr string) (uint32, error) {
 	return *(*uint32)(unsafe.Pointer(&ip[0])), nil
 }
 
-func IPVerFromAF(af uint32) int {
+func IPVerFromAF(af uint16) int {
 	switch af {
 	case unix.AF_INET:
 		return 4

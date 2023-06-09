@@ -17,13 +17,13 @@ type tcpconnectEvent struct {
 	DaddrV6   [16]uint8
 	Task      [16]uint8
 	Timestamp uint64
-	Af        uint32
 	Pid       uint32
 	Uid       uint32
 	Gid       uint32
+	Af        uint16
 	Dport     uint16
 	Sport     uint16
-	_         [4]byte
+	_         [6]byte
 	MntnsId   uint64
 	Latency   uint64
 }

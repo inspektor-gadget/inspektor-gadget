@@ -19,15 +19,15 @@ type tcptracerEvent struct {
 	MntnsId   uint64
 	Timestamp uint64
 	TsUs      uint64
-	Af        uint32
 	Pid       uint32
 	Uid       uint32
 	Gid       uint32
 	Netns     uint32
+	Af        uint16
 	Dport     uint16
 	Sport     uint16
 	Type      tcptracerEventType
-	_         [15]byte
+	_         [1]byte
 }
 
 type tcptracerEventType uint8

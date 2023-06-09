@@ -22,7 +22,7 @@ type dnsEventT struct {
 	Task        [16]uint8
 	SaddrV6     [16]uint8
 	DaddrV6     [16]uint8
-	Af          uint32
+	Af          uint16
 	Id          uint16
 	Qtype       uint16
 	Qr          uint8
@@ -32,7 +32,7 @@ type dnsEventT struct {
 	Ancount     uint16
 	Anaddrcount uint16
 	Anaddr      [8][16]uint8
-	_           [2]byte
+	_           [4]byte
 }
 
 type dnsSocketsKey struct {

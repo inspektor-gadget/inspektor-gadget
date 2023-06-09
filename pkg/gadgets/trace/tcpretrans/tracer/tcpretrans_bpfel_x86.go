@@ -16,15 +16,13 @@ type tcpretransEvent struct {
 	Saddr       [16]uint8
 	Daddr       [16]uint8
 	Timestamp   uint64
-	Af          uint32
+	Af          uint16
 	Dport       uint16
 	Sport       uint16
 	State       uint8
 	Tcpflags    uint8
-	_           [2]byte
 	Reason      uint32
 	Netns       uint32
-	_           [4]byte
 	ProcCurrent struct {
 		MountNsId uint64
 		Pid       uint32
@@ -41,6 +39,7 @@ type tcpretransEvent struct {
 		Gid       uint32
 		Task      [16]uint8
 	}
+	_ [8]byte
 }
 
 // loadTcpretrans returns the embedded CollectionSpec for tcpretrans.

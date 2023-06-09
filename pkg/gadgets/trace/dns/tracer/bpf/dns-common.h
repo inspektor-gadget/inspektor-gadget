@@ -29,7 +29,7 @@ struct event_t {
 		__u8 daddr_v6[16];
 		__u32 daddr_v4;
 	};
-	__u32 af; // AF_INET or AF_INET6
+	__u16 af; // AF_INET or AF_INET6
 
 	__u16 id;
 	unsigned short qtype;
