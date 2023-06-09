@@ -26,7 +26,7 @@ struct event {
 		__u32 daddr_v4;
 	};
 	__u64 timestamp;
-	__u32 af; // AF_INET or AF_INET6
+	__u16 af; // AF_INET or AF_INET6
 	__u16 dport;
 	__u16 sport;
 	__u8 state;
