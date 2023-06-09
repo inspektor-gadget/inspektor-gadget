@@ -160,16 +160,23 @@ func (p *parser[T]) EnableSnapshots(ctx context.Context, interval time.Duration,
 		for {
 			select {
 			case <-ticker.C:
-				out, _ := p.snapshotCombiner.GetSnapshots()
-				if p.sortSpec != nil {
-					p.sortSpec.Sort(out)
-				}
-				p.eventCallbackArray(out)
+				p.flushSnapshotCombiner()
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
+}
+
+func (p *parser[T]) flushSnapshotCombiner() {
+	if p.snapshotCombiner == nil {
+		panic("snapshotCombiner is not initialized")
+	}
+	out, _ := p.snapshotCombiner.GetSnapshots()
+	if p.sortSpec != nil {
+		p.sortSpec.Sort(out)
+	}
+	p.eventCallbackArray(out)
 }
 
 func (p *parser[T]) EnableCombiner() {
@@ -182,6 +189,10 @@ func (p *parser[T]) EnableCombiner() {
 }
 
 func (p *parser[T]) Flush() {
+	if p.snapshotCombiner != nil {
+		p.flushSnapshotCombiner()
+		return
+	}
 	if p.sortSpec != nil {
 		p.sortSpec.Sort(p.combinedEvents)
 	}
