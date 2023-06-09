@@ -54,6 +54,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 )
 
 var deployCmd = &cobra.Command{
@@ -80,6 +81,7 @@ var (
 	wait                bool
 	runtimesConfig      commonutils.RuntimesSocketPathConfig
 	nodeSelector        string
+	experimentalVar     bool
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -148,6 +150,11 @@ func init() {
 		"node-selector", "",
 		"",
 		"node labels selector for the Inspektor Gadget DaemonSet")
+	deployCmd.PersistentFlags().BoolVar(
+		&experimentalVar,
+		"experimental",
+		false,
+		"enable experimental features")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -434,6 +441,9 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					gadgetContainer.Env[i].Value = runtimesConfig.Docker
 				case utils.GadgetEnvironmentPodmanSocketpath:
 					gadgetContainer.Env[i].Value = runtimesConfig.Podman
+				case experimental.EnvName:
+					value := experimental.Enabled() || experimentalVar
+					gadgetContainer.Env[i].Value = strconv.FormatBool(value)
 				}
 			}
 

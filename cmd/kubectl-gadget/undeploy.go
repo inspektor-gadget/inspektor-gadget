@@ -22,7 +22,9 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	v1 "k8s.io/api/core/v1"
@@ -249,6 +251,15 @@ out:
 	} else {
 		fmt.Println("Inspektor Gadget is being removed")
 	}
+
+	// Cleanup state related to the deployment (everything but the catalog)
+	info, err := deployinfo.Load()
+	// It's a cleanup action, not needed to warn / error out
+	if err != nil {
+		log.Warnf("failed to load deploy info: %s", err)
+		return nil
+	}
+	deployinfo.Store(&deployinfo.DeployInfo{Catalog: info.Catalog})
 
 	return nil
 }

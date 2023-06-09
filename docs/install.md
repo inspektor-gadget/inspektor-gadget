@@ -21,6 +21,9 @@ description: >
 - [Installing `ig`](#installing-ig)
   * [Install a specific release](#install-a-specific-release-1)
   * [Compile from source](#compile-from-source-1)
+- [Experimental features](#experimental-features)
+  * [ig](#ig)
+  * [kubectl-gadget and ig-k8s](#kubectl-gadget-and-ig-k8s)
 <!-- /toc -->
 
 Inspektor Gadget is composed of a `kubectl` plugin executed in the user's
@@ -209,3 +212,40 @@ $ make ig
 $ sudo cp ig /usr/local/bin/
 ```
 
+## Experimental features
+
+Inspektor Gadget has some experimental features disabled by default. Users can enable those
+features, however they don't provide any stability and could be removed at any time.
+
+### ig
+
+Experimental features can be enabled in `ig` by using the `IG_EXPERIMENTAL` env variable.
+
+```bash
+$ sudo IG_EXPERIMENTAL=true ig trace exec
+INFO[0000] Experimental features enabled
+...
+
+# pass -E if using export and sudo
+$ export IG_EXPERIMENTAL=true
+$ sudo -E ig trace exec
+INFO[0000] Experimental features enabled
+...
+```
+
+### kubectl-gadget
+
+`kubectl gadget deploy` provides an `--experimental` flag to enabled them.
+
+```bash
+$ kubectl gadget deploy --experimental
+$ kubectl logs -n gadget $PODNAME -f | grep -i experimental
+...
+time="2023-06-15T15:20:03Z" level=info msg="Experimental features enabled"
+...
+
+
+$ kubectl gadget trace exec
+INFO[0000] Experimental features enabled
+...
+```

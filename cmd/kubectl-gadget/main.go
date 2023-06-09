@@ -18,6 +18,7 @@ import (
 	"os"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
@@ -27,6 +28,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 	// The script is not included in the all gadgets package.
@@ -48,6 +50,10 @@ func init() {
 }
 
 func main() {
+	if experimental.Enabled() {
+		log.Info("Experimental features enabled")
+	}
+
 	common.AddVerboseFlag(rootCmd)
 
 	// grpcruntime.New() will try to fetch the info from the cluster by

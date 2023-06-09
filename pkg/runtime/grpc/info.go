@@ -59,7 +59,9 @@ func loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
 		return nil, fmt.Errorf("get info from gadget pod: %w", err)
 	}
 
-	retInfo := &deployinfo.DeployInfo{}
+	retInfo := &deployinfo.DeployInfo{
+		Experimental: info.Experimental,
+	}
 	err = json.Unmarshal(info.Catalog, &retInfo.Catalog)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshaling info: %w", err)
