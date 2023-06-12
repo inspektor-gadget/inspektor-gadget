@@ -40,10 +40,6 @@ type Event struct {
 	DstEndpoint eventtypes.L4Endpoint `json:"dst,omitempty" column:"dst"`
 }
 
-func (e *Event) SetLocalPodDetails(owner, hostIP, podIP string, labels map[string]string) {
-	// Unused
-}
-
 func (e *Event) GetEndpoints() []*eventtypes.L3Endpoint {
 	return []*eventtypes.L3Endpoint{&e.SrcEndpoint.L3Endpoint, &e.DstEndpoint.L3Endpoint}
 }
@@ -59,7 +55,8 @@ func GetColumns() *columns.Columns[Event] {
 			Width:   30,
 			Order:   2000,
 		},
-		func(e *Event) eventtypes.L4Endpoint { return e.SrcEndpoint })
+		func(e *Event) eventtypes.L4Endpoint { return e.SrcEndpoint },
+	)
 	eventtypes.MustAddVirtualL4EndpointColumn(
 		cols,
 		columns.Attributes{
@@ -68,7 +65,8 @@ func GetColumns() *columns.Columns[Event] {
 			Width:   30,
 			Order:   3000,
 		},
-		func(e *Event) eventtypes.L4Endpoint { return e.DstEndpoint })
+		func(e *Event) eventtypes.L4Endpoint { return e.DstEndpoint },
+	)
 
 	return cols
 }
