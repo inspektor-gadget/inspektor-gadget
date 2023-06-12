@@ -69,8 +69,6 @@ $ git push origin v0.x.0
 
 - Update other projects using Inspektor Gadget:
 
-  - Update the [Inspektor Gadget Addon in Minikube](https://github.com/kubernetes/minikube/pull/15869). This includes the
-    yaml files and the container image version.
   - Update the [Azure Kubernetes Service (AKS) Extension for Visual Studio Code](https://github.com/Azure/vscode-aks-tools/pull/191).
 
 ## Troubleshooting a failed release
