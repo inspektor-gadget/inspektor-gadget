@@ -376,7 +376,7 @@ jobs:
           name: gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
           path: ${{ github.workspace }}
       - name: Scan gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image
-        uses: aquasecurity/trivy-action@e5f43133f6e8736992c9f3c1b3296e24b37e17f2 # v0.10.0
+        uses: aquasecurity/trivy-action@41f05d9ecffa2ed3f1580af306000f734b733e54 # v0.11.2
         with:
           input: gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
           format: 'table'
