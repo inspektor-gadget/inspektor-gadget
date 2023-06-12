@@ -91,7 +91,7 @@ spec:
           kubernetes.io/metadata.name: (kube-system|openshift-dns)
       podSelector:
         matchLabels:
-          .*(kubernetes.io/name: CoreDNS|k8s-app: kube-dns|dns.operator.openshift.io/daemonset-dns: default).*
+          .*(kubernetes.io/name: CoreDNS|k8s-app: kube-dns|dns.operator.openshift.io/.*: default).*
   podSelector:
     matchLabels:
       run: test-pod
