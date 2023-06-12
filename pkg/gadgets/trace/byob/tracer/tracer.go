@@ -156,6 +156,77 @@ func (t *Tracer) installTracer() error {
 		return fmt.Errorf("load ebpf program: %w", err)
 	}
 
+	fmt.Printf("Spec:\n%+v\n", t.spec)
+	btfEntries := t.spec.Types.Iterate()
+
+	var (
+		i                      int64 = 0
+		iEntryPlaceholder      int64 = -1
+		iEntryPlaceholderInner int64 = -1
+		iEntryTask             int64 = -1
+		iEntryCred             int64 = -1
+		iMemberCred            int64 = -1
+		memberCredOffset       int64 = -1
+		typeCred               btf.Type
+		typeTask               btf.Type
+	)
+
+	for btfEntries.Next() {
+		fmt.Printf("Type #%d %q: %+v\n", i, btfEntries.Type.TypeName(), btfEntries.Type)
+		if btfEntries.Type.TypeName() == "placeholder_struct" {
+			iEntryPlaceholder = i
+		}
+		if btfEntries.Type.TypeName() == "placeholder_inner_field" {
+			iEntryPlaceholderInner = i
+		}
+		if btfEntries.Type.TypeName() == "task_struct" {
+			iEntryTask = i
+			typeTask = btfEntries.Type
+			for j, field := range typeTask.(*btf.Struct).Members {
+				if field.Name == "cred" {
+					iMemberCred = int64(j)
+					memberCredOffset = int64(field.Offset.Bytes())
+				}
+				fmt.Printf("task_struct field #%d: %+v\n", j, field.Name)
+			}
+		}
+		if btfEntries.Type.TypeName() == "cred" {
+			iEntryCred = i
+			typeCred = btfEntries.Type
+		}
+		i++
+	}
+	fmt.Printf("i task->cred: %d->%d placeholder_struct->inner_field=%d->%d iMemberCred=%d\n",
+		iEntryTask, iEntryCred,
+		iEntryPlaceholder, iEntryPlaceholderInner,
+		iMemberCred,
+	)
+
+	for progName, p := range t.spec.Programs {
+		fmt.Printf("Program %q: %+v\n", progName, p)
+		for i, ins := range p.Instructions {
+			src := ins.Source()
+			if src != nil {
+				fmt.Printf("; %s\n", src.String())
+			}
+			fmt.Printf("Instruction #%d: %+v\n", i, ins)
+			relo := btf.CORERelocationMetadata(&ins)
+			if relo != nil {
+				fmt.Printf("  constant=%d relo: %s\n", ins.Constant, relo.String())
+				if strings.HasPrefix(relo.String(), "placeholder_inner_field 0 target_type_id ") && ins.Constant == iEntryPlaceholderInner {
+					p.Instructions[i].Constant = iEntryCred
+					relo.Update(typeCred, "0", "", btf.TypeID(iEntryCred))
+					fmt.Printf("  --> Replaced instruction [cred] #%d: %+v\n", i, p.Instructions[i])
+				}
+				if strings.HasPrefix(relo.String(), "placeholder_struct 0:0 byte_off ") {
+					p.Instructions[i].Constant = memberCredOffset
+					relo.Update(typeTask, fmt.Sprintf("0:%d", iMemberCred), "byte_off", btf.TypeID(iEntryTask))
+					fmt.Printf("  --> Replaced instruction [task] #%d: %+v\n", i, p.Instructions[i])
+				}
+			}
+		}
+	}
+
 	mapReplacements := map[string]*ebpf.Map{}
 
 	// Find the print map
