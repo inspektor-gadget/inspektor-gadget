@@ -9,6 +9,7 @@
 struct args_t {
 	const char *fname;
 	int flags;
+	__u16 mode;
 };
 
 struct event {
@@ -20,6 +21,7 @@ struct event {
 	__u64 mntns_id;
 	int ret;
 	int flags;
+	__u16 mode;
 	__u8 comm[TASK_COMM_LEN];
 	__u8 fname[NAME_MAX];
 };

@@ -40,6 +40,8 @@ func TestTraceOpen(t *testing.T) {
 				Path:  "/dev/null",
 				Uid:   1000,
 				Gid:   1111,
+				Flags: []string{"O_RDONLY"},
+				Mode:  "----------",
 			}
 
 			normalize := func(e *openTypes.Event) {

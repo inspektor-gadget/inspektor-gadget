@@ -19,6 +19,7 @@ package tracer
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"runtime"
 	"unsafe"
@@ -170,6 +171,8 @@ func (t *Tracer) run() {
 			errval = -ret
 		}
 
+		mode := fs.FileMode(bpfEvent.Mode)
+
 		event := types.Event{
 			Event: eventtypes.Event{
 				Type:      eventtypes.NORMAL,
@@ -183,6 +186,10 @@ func (t *Tracer) run() {
 			Ret:           ret,
 			Fd:            fd,
 			Err:           errval,
+			FlagsRaw:      bpfEvent.Flags,
+			Flags:         DecodeFlags(bpfEvent.Flags),
+			ModeRaw:       mode,
+			Mode:          mode.String(),
 			Path:          gadgets.FromCString(bpfEvent.Fname[:]),
 		}
 
