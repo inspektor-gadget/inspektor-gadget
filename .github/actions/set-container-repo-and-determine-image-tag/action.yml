@@ -48,7 +48,7 @@ runs:
       run: |
         # If GITHUB_REF_NAME is 'foo/bar', image_tag will be 'foo-bar', we need
         # this because it is not possible to have slash in image tag.
-        image_tag=${GITHUB_REF_NAME/\//-}
+        image_tag=${GITHUB_REF_NAME//\//-}
         if [ "$image_tag" = "main" ]; then
             image_tag="latest"
         fi
