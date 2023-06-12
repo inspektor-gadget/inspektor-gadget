@@ -54,7 +54,8 @@ func GetColumns() *columns.Columns[Event] {
 			Width:   30,
 			Order:   2000,
 		},
-		func(e *Event) eventtypes.L4Endpoint { return e.SrcEndpoint })
+		func(e *Event) eventtypes.L4Endpoint { return e.SrcEndpoint },
+	)
 	eventtypes.MustAddVirtualL4EndpointColumn(
 		cols,
 		columns.Attributes{
@@ -63,7 +64,8 @@ func GetColumns() *columns.Columns[Event] {
 			Width:   30,
 			Order:   3000,
 		},
-		func(e *Event) eventtypes.L4Endpoint { return e.DstEndpoint })
+		func(e *Event) eventtypes.L4Endpoint { return e.DstEndpoint },
+	)
 
 	return cols
 }

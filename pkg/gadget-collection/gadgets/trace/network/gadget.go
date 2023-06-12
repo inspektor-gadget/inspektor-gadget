@@ -26,6 +26,7 @@ import (
 	netTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubenameresolver"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -37,6 +38,9 @@ type Trace struct {
 
 	tracer *netTracer.Tracer
 	conn   *networktracer.ConnectionToContainerCollection
+
+	kubeIPInst   operators.OperatorInstance
+	kubeNameInst operators.OperatorInstance
 }
 
 type TraceFactory struct {
@@ -114,14 +118,20 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	// TODO: Don't access the operator directly
+	// TODO: Don't access the operators directly
 	// - update cmd/kubectl-gadget/advise/network-policy.go to use the gRPC interface instead of the CR one
 	// - delete this file pkg/gadget-collection/gadgets/trace/network/gadget.go
-	op := operators.GetRaw(kubeipresolver.OperatorName).(*kubeipresolver.KubeIPResolver)
-	op.Init(nil)
-	inst, err := op.Instantiate(nil, nil, nil)
+	kubeIPOp := operators.GetRaw(kubeipresolver.OperatorName).(*kubeipresolver.KubeIPResolver)
+	kubeIPOp.Init(nil)
+	t.kubeIPInst, err = kubeIPOp.Instantiate(nil, nil, nil)
 	if err == nil {
-		inst.PreGadgetRun()
+		t.kubeIPInst.PreGadgetRun()
+	}
+	kubeNameOp := operators.GetRaw(kubenameresolver.OperatorName).(*kubenameresolver.KubeNameResolver)
+	kubeNameOp.Init(nil)
+	t.kubeNameInst, err = kubeNameOp.Instantiate(nil, nil, nil)
+	if err == nil {
+		t.kubeNameInst.PreGadgetRun()
 	}
 
 	eventCallback := func(event *netTypes.Event) {
@@ -131,9 +141,12 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			t.helpers.EnrichByNetNs(&event.CommonData, event.WithNetNsID.NetNsID)
 		}
 
-		// Use KubeIPResolver to enrich event based on Namespace/Pod and IP.
-		if inst != nil {
-			inst.EnrichEvent(event)
+		// Use KubeIPResolver and KubeNameResolver to enrich event based on Namespace/Pod and IP.
+		if t.kubeIPInst != nil {
+			t.kubeIPInst.EnrichEvent(event)
+		}
+		if t.kubeNameInst != nil {
+			t.kubeNameInst.EnrichEvent(event)
 		}
 
 		t.publishEvent(trace, event)
@@ -160,6 +173,15 @@ func (t *Trace) Stop(trace *gadgetv1alpha1.Trace) {
 	if !t.started {
 		trace.Status.OperationError = "Not started"
 		return
+	}
+
+	if t.kubeIPInst != nil {
+		t.kubeIPInst.PostGadgetRun()
+		t.kubeIPInst = nil
+	}
+	if t.kubeNameInst != nil {
+		t.kubeNameInst.PostGadgetRun()
+		t.kubeNameInst = nil
 	}
 
 	t.stop()

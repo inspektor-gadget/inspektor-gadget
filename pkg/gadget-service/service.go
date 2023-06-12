@@ -38,6 +38,7 @@ import (
 	// TODO: Move!
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubenameresolver"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/prometheus"
 )
 
