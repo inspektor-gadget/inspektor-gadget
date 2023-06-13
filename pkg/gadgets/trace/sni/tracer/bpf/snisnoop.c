@@ -166,6 +166,7 @@ int ig_trace_sni(struct __sk_buff *skb)
 		return 0;
 
 	struct event_t event = {0,};
+	event.netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
 	for (int i = 0; i < TLS_MAX_SERVER_NAME_LEN; i++) {
 		if (sni[i] == '\0')
 			break;

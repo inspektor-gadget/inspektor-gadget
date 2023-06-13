@@ -84,6 +84,7 @@ int ig_trace_net(struct __sk_buff *skb)
 
 	struct event_t event = {};
 	__builtin_memset(&event, 0, sizeof(event));
+	event.netns	= skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
 	event.timestamp = bpf_ktime_get_boot_ns();
 	event.pkt_type = skb->pkt_type;
 	event.proto = iph.protocol;

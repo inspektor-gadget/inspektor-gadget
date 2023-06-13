@@ -37,6 +37,9 @@
 #define TASK_COMM_LEN	16
 
 struct event_t {
+	// Keep netns at the top: networktracer depends on it
+	__u32 netns;
+
 	__u64 mount_ns_id;
 	__u32 pid;
 	__u32 tid;

@@ -159,6 +159,7 @@ output_dns_event(struct __sk_buff *skb, union dnsflags flags, __u32 name_len, __
 
 	__builtin_memset(event, 0, sizeof(*event));
 
+	event->netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
 	event->timestamp = bpf_ktime_get_boot_ns();
 	event->id = load_half(skb, DNS_OFF + offsetof(struct dnshdr, id));
 	event->af = AF_INET;
