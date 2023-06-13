@@ -19,6 +19,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"reflect"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -341,12 +343,76 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	traceObjects, err := parseK8sYaml(resources.TracesCustomResource)
-	if err != nil {
-		return err
+	// Get cluster role
+	var clusterRole *rbacv1.ClusterRole
+	for _, obj := range objects {
+		gvk := obj.GetObjectKind().GroupVersionKind()
+		if gvk.Kind == "ClusterRole" {
+			tmpClusterRole, ok := obj.(*rbacv1.ClusterRole)
+			if !ok {
+				return fmt.Errorf("converting object to ClusterRole")
+			}
+			if tmpClusterRole.Name == "gadget-cluster-role" {
+				clusterRole = tmpClusterRole
+			}
+		}
 	}
 
-	objects = append(objects, traceObjects...)
+	if clusterRole == nil {
+		return fmt.Errorf("missing ClusterRole")
+	}
+
+	// Read CRD from embedded files and add rules to our ClusterRole for them
+	err = fs.WalkDir(resources.CustomResources, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return fmt.Errorf("reading embedded CRD: %w", err)
+		}
+		if d.IsDir() {
+			return nil
+		}
+		yml, err := fs.ReadFile(resources.CustomResources, path)
+		if err != nil {
+			return fmt.Errorf("reading embedded CRD %q: %w", path, err)
+		}
+		crds, err := parseK8sYaml(string(yml))
+		if err != nil {
+			return fmt.Errorf("reading yaml from embedded CRD %q: %w", path, err)
+		}
+
+		for _, obj := range crds {
+			if crd, ok := obj.(*apiextv1.CustomResourceDefinition); ok {
+				names := []string{crd.Spec.Names.Plural}
+				hasStatus := false
+
+				// look for subresource /status
+				for _, version := range crd.Spec.Versions {
+					if version.Subresources != nil && version.Subresources.Status != nil {
+						hasStatus = true
+					}
+				}
+
+				if hasStatus {
+					// add subresource /status as well
+					names = append(names, names[0]+"/status")
+				}
+
+				// add rule to ClusterRole
+				clusterRole.Rules = append(clusterRole.Rules, rbacv1.PolicyRule{
+					APIGroups: []string{crd.Spec.Group},
+					Resources: names,
+
+					// all the verbs as we've created this resource
+					Verbs: []string{"delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"},
+				})
+			}
+		}
+
+		objects = append(objects, crds...)
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("reading embedded CRD: %w", err)
+	}
 
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {

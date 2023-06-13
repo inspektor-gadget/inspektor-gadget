@@ -20,12 +20,9 @@ import (
 	"strings"
 	"time"
 
-	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/spf13/cobra"
-
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -34,7 +31,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 
-	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
 var undeployCmd = &cobra.Command{
@@ -133,13 +132,26 @@ again:
 
 	// 2. remove crd
 	fmt.Println("Removing CRD...")
-	err = crdClient.ApiextensionsV1().CustomResourceDefinitions().Delete(
-		context.TODO(), "traces.gadget.kinvolk.io", metav1.DeleteOptions{},
-	)
-	if err != nil && !errors.IsNotFound(err) {
+	crds, err := crdClient.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
 		errs = append(
-			errs, fmt.Sprintf("failed to remove \"traces.gadget.kinvolk.io\" CRD: %s", err),
+			errs, fmt.Sprintf("list CRD: %v", err),
 		)
+	} else {
+		for _, crd := range crds.Items {
+			if !strings.HasSuffix(crd.Name, ".gadget.kinvolk.io") && !strings.HasSuffix(crd.Name, ".inspektor-gadget.io") {
+				continue
+			}
+			fmt.Printf("> %s\n", crd.Name)
+			err = crdClient.ApiextensionsV1().CustomResourceDefinitions().Delete(
+				context.TODO(), crd.Name, metav1.DeleteOptions{},
+			)
+			if err != nil && !errors.IsNotFound(err) {
+				errs = append(
+					errs, fmt.Sprintf("failed to remove \"traces.gadget.kinvolk.io\" CRD: %s", err),
+				)
+			}
+		}
 	}
 
 	// 3. gadget cluster role binding
