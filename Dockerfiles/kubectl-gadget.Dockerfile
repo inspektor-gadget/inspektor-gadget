@@ -7,7 +7,7 @@
 # between size and tools available in the image.
 
 ARG BUILDER_IMAGE=golang:1.19-bullseye
-ARG BASE_IMAGE=alpine:3.14
+ARG BASE_IMAGE=alpine:3.18
 
 FROM ${BUILDER_IMAGE} as builder
 
