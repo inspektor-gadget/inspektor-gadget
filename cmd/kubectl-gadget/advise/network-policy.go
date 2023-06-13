@@ -112,7 +112,6 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) error {
 		return ""
 	}
 
-	fmt.Printf("\033[2K\rRecording events into file %q...", outputFileName)
 	err = utils.RunTraceAndPrintStream(config, transform)
 	if err != nil {
 		return commonutils.WrapInErrRunGadget(err)

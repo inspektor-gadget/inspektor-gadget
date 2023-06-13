@@ -15,8 +15,14 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"os/exec"
+	"strings"
 	"testing"
+
+	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -41,25 +47,92 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 		WaitUntilTestPodReadyCommand(nsClient),
 		{
 			Name: "RunNetworkPolicyMonitorClient",
-			Cmd: fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace-client.log &
-					sleep 10
-					kill $!
-					echo
-					grep tcp networktrace-client.log | sort | uniq`, nsClient),
-			ExpectedRegexp: fmt.Sprintf(`{"node":".*","namespace":"%s","pod":"test-pod",.*"type":"normal",.*"pktType":"OUTGOING","proto":"tcp","port":9090,.*"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"svc","remoteAddr":".*","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsClient, nsServer),
+			Cmd:  fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --timeout 5 --output - | tee ./networktrace-client.log`, nsClient),
+			ExpectedOutputFn: func(output string) error {
+				expectedEntry := &networkTypes.Event{
+					Event:           BuildBaseEvent(nsClient),
+					Comm:            "nc",
+					Uid:             0,
+					Gid:             0,
+					PktType:         "OUTGOING",
+					Proto:           "tcp",
+					PodLabels:       map[string]string{"run": "test-pod"},
+					Port:            9090,
+					RemoteKind:      eventtypes.RemoteKindService,
+					RemoteNamespace: nsServer,
+					RemoteName:      "test-pod",
+					RemoteLabels:    map[string]string{"run": "test-pod"},
+				}
+
+				expectedEntry.Container = ""
+
+				normalize := func(e *networkTypes.Event) {
+					e.Container = ""
+					e.Timestamp = 0
+					e.Node = ""
+					e.Pid = 0
+					e.Tid = 0
+					e.PodIP = ""
+					e.RemoteAddr = ""
+					e.PodHostIP = ""
+					e.NetNsID = 0
+					e.MountNsID = 0
+				}
+
+				return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			},
 		},
 		{
-			// Docker bridge does not preserve source IP :-(
-			// https://github.com/kubernetes/minikube/issues/11211
-			// Skip this command with SKIP_TEST if docker is detected
 			Name: "RunNetworkPolicyMonitorServer",
-			Cmd: fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --output ./networktrace-server.log &
-					sleep 10
-					kill $!
-					echo
-					grep tcp networktrace-server.log | sort | uniq
-					kubectl get node -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}'|grep -q docker && echo SKIP_TEST || true`, nsServer),
-			ExpectedRegexp: fmt.Sprintf(`SKIP_TEST|{"node":".*","namespace":"%s","pod":"test-pod",.*"type":"normal","netnsid":.*,"pktType":"HOST","proto":"tcp","port":9090,"podHostIP":".*","podIP":".*","podLabels":{"run":"test-pod"},"remoteKind":"pod","remoteAddr":".*","remoteName":"test-pod","remoteNamespace":"%s","remoteLabels":{"run":"test-pod"}}`, nsServer, nsClient),
+			Cmd:  fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --timeout 5 --output - | tee ./networktrace-server.log`, nsServer),
+			ExpectedOutputFn: func(output string) error {
+				cmd := exec.Command("kubectl", "get", "node", "-o", "jsonpath={.items[0].status.nodeInfo.containerRuntimeVersion}")
+				var stderr bytes.Buffer
+				cmd.Stderr = &stderr
+				r, err := cmd.Output()
+				if err != nil {
+					return fmt.Errorf("%w: %s", err, stderr.String())
+				}
+				ret := string(r)
+
+				// Docker bridge does not preserve source IP :-(
+				// https://github.com/kubernetes/minikube/issues/11211
+				// Skip this test step if docker is detected
+				if strings.Contains(ret, "docker") {
+					return nil
+				}
+
+				expectedEntry := &networkTypes.Event{
+					Event:           BuildBaseEvent(nsServer),
+					Uid:             0,
+					Gid:             0,
+					PktType:         "HOST",
+					Proto:           "tcp",
+					PodLabels:       map[string]string{"run": "test-pod"},
+					Port:            9090,
+					RemoteKind:      eventtypes.RemoteKindPod,
+					RemoteNamespace: nsClient,
+					RemoteName:      "test-pod",
+					RemoteLabels:    map[string]string{"run": "test-pod"},
+				}
+
+				expectedEntry.Container = ""
+
+				normalize := func(e *networkTypes.Event) {
+					e.Container = ""
+					e.Timestamp = 0
+					e.Node = ""
+					e.Pid = 0
+					e.Tid = 0
+					e.PodIP = ""
+					e.RemoteAddr = ""
+					e.PodHostIP = ""
+					e.NetNsID = 0
+					e.MountNsID = 0
+				}
+
+				return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			},
 		},
 		{
 			Name: "RunNetworkPolicyReportClient",
