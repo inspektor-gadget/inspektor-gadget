@@ -211,8 +211,12 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 	var resultsLock sync.Mutex
 
 	allParams := make(map[string]string)
-	gadgetCtx.GadgetParams().CopyToMap(allParams, "")
-	gadgetCtx.OperatorsParamCollection().CopyToMap(allParams, "operator.")
+	gadgets.ParamsToMap(
+		allParams,
+		gadgetCtx.GadgetParams(),
+		gadgetCtx.RuntimeParams(),
+		gadgetCtx.OperatorsParamCollection(),
+	)
 
 	gadgetCtx.Logger().Debugf("Params")
 	for k, v := range allParams {
