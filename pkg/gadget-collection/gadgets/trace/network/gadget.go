@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	netTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/tracer"
@@ -125,14 +124,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		inst.PreGadgetRun()
 	}
 
-	eventCallback := func(container *containercollection.Container, event *netTypes.Event) {
-		// Enrich event with data from container
-		event.Node = trace.Spec.Node
-		if !container.HostNetwork {
-			event.Namespace = container.Namespace
-			event.Pod = container.Podname
-		}
-
+	eventCallback := func(event *netTypes.Event) {
 		// Use KubeIPResolver to enrich event based on Namespace/Pod and IP.
 		if inst != nil {
 			inst.EnrichEvent(event)
@@ -140,13 +132,13 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 		t.publishEvent(trace, event)
 	}
+	t.tracer.SetEventHandler(eventCallback)
 
 	config := &networktracer.ConnectToContainerCollectionConfig[netTypes.Event]{
-		Tracer:        t.tracer,
-		Resolver:      t.helpers,
-		Selector:      *gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
-		EventCallback: eventCallback,
-		Base:          netTypes.Base,
+		Tracer:   t.tracer,
+		Resolver: t.helpers,
+		Selector: *gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
+		Base:     netTypes.Base,
 	}
 	t.conn, err = networktracer.ConnectToContainerCollection(config)
 	if err != nil {

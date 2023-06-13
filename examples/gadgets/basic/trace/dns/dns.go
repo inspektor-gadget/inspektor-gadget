@@ -52,11 +52,12 @@ func main() {
 		return
 	}
 	defer tracer.Close()
+	tracer.SetEventHandler(eventCallback)
 
 	// The tracer has to be attached. The DNS packets will be traced on
 	// the network namespace of pid.
 	pid := uint32(os.Getpid())
-	if err := tracer.Attach(pid, eventCallback); err != nil {
+	if err := tracer.Attach(pid); err != nil {
 		fmt.Printf("error attaching tracer: %s\n", err)
 		return
 	}

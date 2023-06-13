@@ -23,21 +23,9 @@ import (
 )
 
 type Tracer interface {
-	// Tracer must also implement either CallbackTracer or PopTracer.
-	Detach(pid uint32) error
-}
-
-// CallbackTracer represents network tracers that provide the events through a
-// callback as soon as they are available.
-type CallbackTracer[Event any] interface {
-	Attach(pid uint32, eventCallback func(*Event)) error
-}
-
-// PopTracer represents network tracers that don't return the events through a
-// callback but instead they provide a method to retrieve them.
-type PopTracer[Event any] interface {
 	Attach(pid uint32) error
-	Pop() ([]*Event, error)
+	Detach(pid uint32) error
+	EventCallback(event any)
 }
 
 type ConnectionToContainerCollection struct {
@@ -50,11 +38,10 @@ func (c *ConnectionToContainerCollection) Close() {
 }
 
 type ConnectToContainerCollectionConfig[Event any] struct {
-	Tracer        Tracer
-	Resolver      containercollection.ContainerResolver
-	Selector      containercollection.ContainerSelector
-	EventCallback func(*containercollection.Container, *Event)
-	Base          func(eventtypes.Event) *Event
+	Tracer   Tracer
+	Resolver containercollection.ContainerResolver
+	Selector containercollection.ContainerSelector
+	Base     func(eventtypes.Event) *Event
 }
 
 // ConnectToContainerCollection connects a networking tracer to the
@@ -71,43 +58,26 @@ func ConnectToContainerCollection[Event any](
 	tracer := config.Tracer
 	resolver := config.Resolver
 	selector := config.Selector
-	eventCallback := config.EventCallback
 	base := config.Base
 
-	switch tracer.(type) {
-	case CallbackTracer[Event]:
-	case PopTracer[Event]:
-	default:
-		return nil, fmt.Errorf("tracer doesn't provide any way to attach containers")
-	}
-
 	attachContainerFunc := func(container *containercollection.Container) {
-		var err error
-		switch tracer.(type) {
-		case CallbackTracer[Event]:
-			cbWithContainer := func(ev *Event) {
-				eventCallback(container, ev)
-			}
-			err = tracer.(CallbackTracer[Event]).Attach(container.Pid, cbWithContainer)
-		case PopTracer[Event]:
-			err = tracer.(PopTracer[Event]).Attach(container.Pid)
-		}
+		err := tracer.Attach(container.Pid)
 		if err != nil {
 			msg := fmt.Sprintf("start tracing container %q: %s", container.Name, err)
-			eventCallback(container, base(eventtypes.Err(msg)))
+			tracer.EventCallback(base(eventtypes.Err(msg)))
 			return
 		}
-		eventCallback(container, base(eventtypes.Debug("tracer attached")))
+		tracer.EventCallback(base(eventtypes.Debug("tracer attached")))
 	}
 
 	detachContainerFunc := func(container *containercollection.Container) {
 		err := tracer.Detach(container.Pid)
 		if err != nil {
 			msg := fmt.Sprintf("stop tracing container %q: %s", container.Name, err)
-			eventCallback(container, base(eventtypes.Err(msg)))
+			tracer.EventCallback(base(eventtypes.Err(msg)))
 			return
 		}
-		eventCallback(container, base(eventtypes.Debug("tracer detached")))
+		tracer.EventCallback(base(eventtypes.Debug("tracer detached")))
 	}
 
 	containers := resolver.Subscribe(

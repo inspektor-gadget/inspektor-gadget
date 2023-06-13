@@ -5,6 +5,9 @@
 #define GADGET_NETWORK_H
 
 struct event_t {
+	// Keep netns at the top: networktracer depends on it
+	__u32 netns;
+
 	__u64 timestamp;
 	__u64 mount_ns_id;
 	__u32 pid;

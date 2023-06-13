@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
-	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	dnsTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
@@ -107,6 +106,10 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
+	eventCallback := func(event *dnsTypes.Event) {
+		t.publishEvent(trace, event)
+	}
+
 	var err error
 	t.tracer, err = dnsTracer.NewTracer()
 	if err != nil {
@@ -114,23 +117,13 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 		return
 	}
 
-	eventCallback := func(container *containercollection.Container, event *dnsTypes.Event) {
-		// Enrich event with data from container
-		event.Node = trace.Spec.Node
-		if !container.HostNetwork {
-			event.Namespace = container.Namespace
-			event.Pod = container.Podname
-		}
-
-		t.publishEvent(trace, event)
-	}
+	t.tracer.SetEventHandler(eventCallback)
 
 	config := &networktracer.ConnectToContainerCollectionConfig[dnsTypes.Event]{
-		Tracer:        t.tracer,
-		Resolver:      t.helpers,
-		Selector:      *gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
-		EventCallback: eventCallback,
-		Base:          dnsTypes.Base,
+		Tracer:   t.tracer,
+		Resolver: t.helpers,
+		Selector: *gadgets.ContainerSelectorFromContainerFilter(trace.Spec.Filter),
+		Base:     dnsTypes.Base,
 	}
 	t.conn, err = networktracer.ConnectToContainerCollection(config)
 	if err != nil {

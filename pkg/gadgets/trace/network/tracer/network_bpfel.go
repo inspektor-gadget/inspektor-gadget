@@ -13,6 +13,8 @@ import (
 )
 
 type networkEventT struct {
+	Netns     uint32
+	_         [4]byte
 	Timestamp uint64
 	MountNsId uint64
 	Pid       uint32
