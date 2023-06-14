@@ -24,19 +24,44 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 var (
 	HostRoot   string
 	HostProcFs string
+
+	IsHostPidNs bool
 )
 
 func init() {
+	// Initialize HostRoot and HostProcFs
 	HostRoot = os.Getenv("HOST_ROOT")
 	if HostRoot == "" {
 		HostRoot = "/"
 	}
 	HostProcFs = filepath.Join(HostRoot, "/proc")
+
+	// Initialize IsHostPidNs
+	selfFileInfo, err := os.Stat("/proc/self/ns/pid")
+	if err != nil {
+		return
+	}
+	selfStat, ok := selfFileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return
+	}
+
+	systemdFileInfo, err := os.Stat(fmt.Sprintf("%s/1/ns/pid", HostProcFs))
+	if err != nil {
+		return
+	}
+	systemdStat, ok := systemdFileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return
+	}
+
+	IsHostPidNs = selfStat.Ino == systemdStat.Ino
 }
 
 func GetProcComm(pid int) string {
