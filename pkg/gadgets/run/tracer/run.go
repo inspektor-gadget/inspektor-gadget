@@ -237,7 +237,7 @@ func (g *GadgetDesc) CustomParser(params *params.Params, args []string) (parser.
 
 		switch typedMember := member.Type.(type) {
 		case *btf.Union:
-			if typedMember.Name == "ip_addr" {
+			if typedMember.Name == "ip_addr" && typedMember.Size >= 4 {
 				cols.AddColumn(attrs, func(ev *types.Event) string {
 					// TODO: Handle IPv6
 					offset := uintptr(member.Offset.Bytes())

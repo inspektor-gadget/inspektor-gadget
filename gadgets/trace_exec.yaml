@@ -1,0 +1,23 @@
+name: trace exec
+description: trace process executions
+columns:
+  - name: pid
+    template: pid
+    order: 1000
+    visible: true
+  - name: ppid
+    template: pid
+    order: 1001
+    visible: true
+  - name: comm
+    template: comm
+    order: 1002
+    visible: true
+  - name: uid
+    template: uid
+    order: 1003
+    visible: true
+  - name: gid
+    template: gid
+    order: 1004
+    visible: true
