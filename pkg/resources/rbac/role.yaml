@@ -4,31 +4,64 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: manager-role
+  name: gadget-cluster-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - namespaces
+  - nodes
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - list
+- apiGroups:
+  - '*'
+  resources:
+  - cronjobs
+  - daemonsets
+  - deployments
+  - jobs
+  - replicasets
+  - replicationcontrollers
+  - statefulsets
+  verbs:
+  - get
+- apiGroups:
   - gadget.kinvolk.io
+  - inspektor-gadget.io
   resources:
   - traces
+  - traces/status
   verbs:
   - create
   - delete
+  - deletecollection
   - get
   - list
   - patch
   - update
   - watch
 - apiGroups:
-  - gadget.kinvolk.io
+  - security-profiles-operator.x-k8s.io
   resources:
-  - traces/finalizers
+  - seccompprofiles
   verbs:
-  - update
+  - create
+  - list
+  - watch
 - apiGroups:
-  - gadget.kinvolk.io
+  - security.openshift.io
+  resourceNames:
+  - privileged
   resources:
-  - traces/status
+  - securitycontextconstraints
   verbs:
-  - get
-  - patch
-  - update
+  - use

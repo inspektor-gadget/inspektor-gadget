@@ -23,7 +23,8 @@ CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
 ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=gadget-manager-role webhook paths="./pkg/apis/..." output:crd:artifacts:config=pkg/resources/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=gadget-cluster-role paths="./pkg/controllers/..." output:dir=pkg/resources/rbac
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/..." output:crd:artifacts:config=pkg/resources/crd/bases
 
 ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 ## Also generates client API

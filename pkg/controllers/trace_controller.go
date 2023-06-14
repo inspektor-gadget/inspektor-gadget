@@ -84,9 +84,12 @@ func setTraceOpError(ctx context.Context, cli client.Client,
 	updateTraceStatus(ctx, cli, traceNsName, trace, patch)
 }
 
-//+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=gadget.kinvolk.io,resources=traces/finalizers,verbs=update
+//+kubebuilder:rbac:groups="",resources=namespaces;nodes;pods,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=services,verbs=list
+//+kubebuilder:rbac:groups="*",resources=deployments;replicasets;statefulsets;daemonsets;jobs;cronjobs;replicationcontrollers,verbs=get
+//+kubebuilder:rbac:groups="security-profiles-operator.x-k8s.io",resources=seccompprofiles,verbs=list;watch;create
+//+kubebuilder:rbac:groups="security.openshift.io",resources=securitycontextconstraints,resourceNames=privileged,verbs=use
+//+kubebuilder:rbac:groups=gadget.kinvolk.io;inspektor-gadget.io,resources=traces;traces/status,verbs=get;list;watch;create;update;patch;delete;deletecollection
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
