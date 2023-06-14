@@ -48,6 +48,8 @@ func init() {
 }
 
 func main() {
+	common.AddVerboseFlag(rootCmd)
+
 	// grpcruntime.New() will try to fetch a catalog from the cluster by
 	// default. Make sure we don't do this when certain commands are run
 	// (as they just don't need it or imply that there are no nodes to

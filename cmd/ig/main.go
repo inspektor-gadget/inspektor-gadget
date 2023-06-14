@@ -40,6 +40,7 @@ func main() {
 		Use:   "ig",
 		Short: "Collection of gadgets for containers",
 	}
+	common.AddVerboseFlag(rootCmd)
 
 	rootCmd.AddCommand(
 		containers.NewListContainersCmd(),

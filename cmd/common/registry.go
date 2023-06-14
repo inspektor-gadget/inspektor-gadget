@@ -132,7 +132,6 @@ func buildCommandFromGadget(
 	operatorsParamsCollection params.Collection,
 ) *cobra.Command {
 	var outputMode string
-	var verbose bool
 	var filters []string
 	var timeout int
 
@@ -166,12 +165,6 @@ func buildCommandFromGadget(
 		Use:          gadgetDesc.Name(),
 		Short:        gadgetDesc.Description(),
 		SilenceUsage: true, // do not print usage when there is an error
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if verbose {
-				log.SetLevel(log.DebugLevel)
-			}
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := runtime.Init(runtimeGlobalParams)
 			if err != nil {
@@ -430,13 +423,6 @@ func buildCommandFromGadget(
 			"Number of seconds that the gadget will run for, 0 to disable",
 		)
 	}
-
-	cmd.PersistentFlags().BoolVarP(
-		&verbose,
-		"verbose", "v",
-		false,
-		"Print debug information",
-	)
 
 	outputFormats.Append(gadgets.OutputFormats{
 		"json": {
