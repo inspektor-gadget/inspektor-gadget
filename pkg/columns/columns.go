@@ -614,8 +614,7 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 				fieldStart := unsafe.Add(entryStart, column.getOffset())
 
 				for i := 0; i < int(l); i++ {
-					b := (*(*byte)(unsafe.Pointer(fieldStart)))
-					fieldStart = unsafe.Add(fieldStart, 1)
+					b := *(*byte)(unsafe.Add(fieldStart, i))
 					if b == 0 {
 						break
 					}

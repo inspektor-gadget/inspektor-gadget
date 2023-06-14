@@ -193,9 +193,6 @@ func buildCommandFromGadget(
 
 	// Instantiate parser - this is important to do, because we might apply filters and such to this instance
 	parser := gadgetDesc.Parser()
-	if parser != nil && columnFilters != nil {
-		parser.SetColumnFilters(columnFilters...)
-	}
 
 	// Instantiate runtime params
 	runtimeParams := runtime.ParamDescs().ToParams()
@@ -210,10 +207,37 @@ func buildCommandFromGadget(
 	//  Example use case: setting default namespace for kubernetes
 
 	cmd := &cobra.Command{
-		Use:          gadgetDesc.Name(),
-		Short:        gadgetDesc.Description(),
-		SilenceUsage: true, // do not print usage when there is an error
+		Use:                gadgetDesc.Name(),
+		Short:              gadgetDesc.Description(),
+		SilenceUsage:       true, // do not print usage when there is an error
+		DisableFlagParsing: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			cmd.DisableFlagParsing = false
+			return cmd.ParseFlags(args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if c, ok := gadgetDesc.(gadgets.GadgetDescCustomParser); ok {
+				var err error
+				parser, err = c.CustomParser(gadgetParams, cmd.Flags().Args())
+				if err != nil {
+					return fmt.Errorf("calling custom parser: %w", err)
+				}
+			}
+
+			if parser != nil {
+				if columnFilters != nil {
+					parser.SetColumnFilters(columnFilters...)
+				}
+
+				outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser))
+				outputFormatsHelp := buildOutputFormatsHelp(outputFormats)
+				cmd.Flags().Lookup("output").Usage = strings.Join(outputFormatsHelp, "\n") + "\n\n"
+				cmd.Flags().Lookup("output").DefValue = "columns"
+				if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
+					return cmd.Help()
+				}
+			}
+
 			err := runtime.Init(runtimeGlobalParams)
 			if err != nil {
 				return fmt.Errorf("initializing runtime: %w", err)
@@ -444,11 +468,23 @@ func buildCommandFromGadget(
 				fe.Output(formatter.FormatHeader())
 				parser.SetEventCallback(formatter.EventHandlerFuncArray())
 			case OutputModeJSON:
-				parser.SetEventCallback(printEventAsJSONFn(fe))
+				jsonCallback := printEventAsJSONFn(fe)
+				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONConverter); ok {
+					jsonCallback = cjson.JSONConverter(gadgetParams, fe)
+				}
+				parser.SetEventCallback(jsonCallback)
 			case OutputModeJSONPretty:
-				parser.SetEventCallback(printEventAsJSONPrettyFn(fe))
+				jsonPrettyCallback := printEventAsJSONFn(fe)
+				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONPrettyConverter); ok {
+					jsonPrettyCallback = cjson.JSONPrettyConverter(gadgetParams, fe)
+				}
+				parser.SetEventCallback(jsonPrettyCallback)
 			case OutputModeYAML:
-				parser.SetEventCallback(printEventAsYAMLFn(fe))
+				yamlCallback := printEventAsYAMLFn(fe)
+				if cyaml, ok := gadgetDesc.(gadgets.GadgetYAMLConverter); ok {
+					yamlCallback = cyaml.YAMLConverter(gadgetParams, fe)
+				}
+				parser.SetEventCallback(yamlCallback)
 			}
 
 			// Gadgets with parser don't return anything, they provide the
@@ -494,6 +530,13 @@ func buildCommandFromGadget(
 
 	// Add parser output flags
 	if parser != nil {
+		outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser))
+	}
+	_, hasCustomParser := gadgetDesc.(gadgets.GadgetDescCustomParser)
+
+	if parser != nil || hasCustomParser {
+		defaultOutputFormat = "columns"
+
 		cmd.PersistentFlags().StringSliceVarP(
 			&filters,
 			"filter", "F",
@@ -510,9 +553,6 @@ func buildCommandFromGadget(
                              see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
 `,
 		)
-
-		defaultOutputFormat = "columns"
-		outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser))
 	}
 
 	// Add alternative output formats available in the gadgets
