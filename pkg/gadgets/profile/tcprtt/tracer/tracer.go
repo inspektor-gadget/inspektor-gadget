@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/netip"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -37,11 +36,13 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type hist -cc clang tcpRTT ./bpf/tcprtt.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
 
 type Config struct {
-	useMilliseconds     bool
-	localAddrHist       bool
-	remoteAddrHist      bool
-	filterLocalAddress  uint32
-	filterRemoteAddress uint32
+	useMilliseconds       bool
+	localAddrHist         bool
+	remoteAddrHist        bool
+	filterLocalAddress    uint32
+	filterRemoteAddress   uint32
+	filterLocalAddressV6  [16]byte
+	filterRemoteAddressV6 [16]byte
 }
 
 type Tracer struct {
@@ -100,13 +101,37 @@ func (t *Tracer) parseParams(params *params.Params) error {
 		t.config.filterRemoteAddress = r
 	}
 
+	lAddrV6 := params.Get(ParamFilterLocalAddressV6).AsString()
+	if lAddrV6 != "" {
+		if lAddr != "" || rAddr != "" {
+			return errors.New("filtering by any IPv4 and local IPv6 is not permitted")
+		}
+		l, err := gadgets.IPStringToByteArray(lAddrV6)
+		if err != nil {
+			return fmt.Errorf("parsing local address: %w", err)
+		}
+		t.config.filterLocalAddressV6 = l
+	}
+
+	rAddrV6 := params.Get(ParamFilterRemoteAddressV6).AsString()
+	if rAddrV6 != "" {
+		if rAddr != "" || lAddr != "" {
+			return errors.New("filtering by any IPv4 and remote IPv6 is not permitted")
+		}
+		r, err := gadgets.IPStringToByteArray(rAddrV6)
+		if err != nil {
+			return fmt.Errorf("parsing remote address: %w", err)
+		}
+		t.config.filterRemoteAddressV6 = r
+	}
+
 	return nil
 }
 
 func (t *Tracer) collectResult() ([]byte, error) {
 	histsMap := t.objs.Hists
 
-	var key uint32
+	var key tcpRTTHistKey
 	if err := histsMap.NextKey(nil, unsafe.Pointer(&key)); err != nil {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			return nil, fmt.Errorf("no data was collected to generate the histogram")
@@ -134,14 +159,13 @@ func (t *Tracer) collectResult() ([]byte, error) {
 		Histograms: make([]*types.ExtendedHistogram, 0),
 	}
 
-	var prev uint32
+	var prev tcpRTTHistKey
 	for {
 		var addr string
 		if addressType == types.AddressTypeAll {
 			addr = types.WildcardAddress
 		} else {
-			ptr := (*[4]byte)(unsafe.Pointer(&key))
-			addr = netip.AddrFrom4(*ptr).String()
+			addr = gadgets.IPStringFromBytes(key.Addr, gadgets.IPVerFromAF(key.Family))
 		}
 
 		hist := tcpRTTHist{}
@@ -189,6 +213,8 @@ func (t *Tracer) install() error {
 		"targ_raddr_hist": t.config.remoteAddrHist,
 		"targ_saddr":      t.config.filterLocalAddress,
 		"targ_daddr":      t.config.filterRemoteAddress,
+		"targ_saddr_v6":   t.config.filterLocalAddressV6,
+		"targ_daddr_v6":   t.config.filterRemoteAddressV6,
 	}
 
 	if err := spec.RewriteConstants(consts); err != nil {

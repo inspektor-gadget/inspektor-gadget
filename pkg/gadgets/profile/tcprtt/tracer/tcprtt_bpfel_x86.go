@@ -19,6 +19,11 @@ type tcpRTTHist struct {
 	_       [4]byte
 }
 
+type tcpRTTHistKey struct {
+	Family uint16
+	Addr   [16]uint8
+}
+
 // loadTcpRTT returns the embedded CollectionSpec for tcpRTT.
 func loadTcpRTT() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_TcpRTTBytes)
