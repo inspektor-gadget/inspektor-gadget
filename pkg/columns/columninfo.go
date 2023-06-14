@@ -44,20 +44,36 @@ type subField struct {
 }
 
 type Attributes struct {
-	Name         string                // Name of the column; case-insensitive for most use cases; includes inherited prefixes
-	RawName      string                // Name of the columns without inherited prefixes
-	Width        int                   // Width to reserve for this column
-	MinWidth     int                   // MinWidth will be the minimum width this column will be scaled to when using auto-scaling
-	MaxWidth     int                   // MaxWidth will be the maximum width this column will be scaled to when using auto-scaling
-	Alignment    Alignment             // Alignment of this column (left or right)
-	Visible      bool                  // Visible defines whether a column is to be shown by default
-	GroupType    GroupType             // GroupType defines the aggregation method used when grouping this column
-	EllipsisType ellipsis.EllipsisType // EllipsisType defines how to abbreviate this column if the value needs more space than is available
-	FixedWidth   bool                  // FixedWidth forces the Width even when using Auto-Scaling
-	Precision    int                   // Precision defines how many decimals should be shown on float values, default: 2
-	Description  string                // Description can hold a short description of the field that can be used to aid the user
-	Order        int                   // Order defines the default order in which columns are shown
-	Tags         []string              // Tags can be used to dynamically include or exclude columns
+	// Name of the column; case-insensitive for most use cases; includes inherited prefixes
+	Name string `yaml:"name"`
+	// Name of the columns without inherited prefixes
+	RawName string `yaml:"raw_name"`
+	// Width to reserve for this column
+	Width int `yaml:"width"`
+	// MinWidth will be the minimum width this column will be scaled to when using auto-scaling
+	MinWidth int `yaml:"min_width"`
+	// MaxWidth will be the maximum width this column will be scaled to when using auto-scaling
+	MaxWidth int `yaml:"max_width"`
+	// Alignment of this column (left or right)
+	Alignment Alignment `yaml:"alignment"`
+	// Visible defines whether a column is to be shown by default
+	Visible bool `yaml:"visible"`
+	// GroupType defines the aggregation method used when grouping this column
+	GroupType GroupType `yaml:"group_type"`
+	// EllipsisType defines how to abbreviate this column if the value needs more space than is available
+	EllipsisType ellipsis.EllipsisType `yaml:"ellipsis_type"`
+	// FixedWidth forces the Width even when using Auto-Scaling
+	FixedWidth bool `yaml:"fixed_width"`
+	// Precision defines how many decimals should be shown on float values, default: 2
+	Precision int `yaml:"precision"`
+	// Description can hold a short description of the field that can be used to aid the user
+	Description string `yaml:"description"`
+	// Order defines the default order in which columns are shown
+	Order int `yaml:"order"`
+	// Tags can be used to dynamically include or exclude columns
+	Tags []string `yaml:"tags"`
+	// Template defines the template that will be used. Non-typed templates will be applied first.
+	Template string `yaml:"template"`
 }
 
 type Column[T any] struct {
@@ -246,7 +262,7 @@ func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 			if paramsLen < 2 || params[1] == "" {
 				return fmt.Errorf("no template specified for field %q", ci.Name)
 			}
-			ci.template = params[1]
+			ci.Template = params[1]
 		case "stringer":
 			if ci.Extractor != nil {
 				break

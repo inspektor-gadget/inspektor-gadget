@@ -328,12 +328,12 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintpt
 		}
 
 		if column.useTemplate {
-			tpl, ok := getTemplate(column.template)
+			tpl, ok := getTemplate(column.Template)
 			if !ok {
-				return fmt.Errorf("applying template %q for %q on field %q: template not found", column.template, t.Name(), f.Name)
+				return fmt.Errorf("applying template %q for %q on field %q: template not found", column.Template, t.Name(), f.Name)
 			}
 			if err := column.parseTagInfo(strings.Split(tpl, ",")); err != nil {
-				return fmt.Errorf("applying template %q for %q on field %q: %w", column.template, t.Name(), f.Name, err)
+				return fmt.Errorf("applying template %q for %q on field %q: %w", column.Template, t.Name(), f.Name, err)
 			}
 
 			// re-apply information from field tag to overwrite template settings
