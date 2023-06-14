@@ -29,12 +29,11 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
+//go:generate bash -c "source ../../../internal/networktracer/clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
 const (
 	BPFProgName         = "ig_trace_sni"
 	BPFPerfMapName      = "events"
-	BPFSocketAttach     = 50
 	TLSMaxServerNameLen = len(snisnoopEventT{}.Name)
 )
 
@@ -114,7 +113,6 @@ func (t *Tracer) install() error {
 		spec,
 		BPFProgName,
 		BPFPerfMapName,
-		BPFSocketAttach,
 		types.Base,
 		parseSNIEvent,
 	)

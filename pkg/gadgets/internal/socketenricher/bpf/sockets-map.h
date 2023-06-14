@@ -51,8 +51,6 @@
 
 #ifdef GADGET_TYPE_NETWORKING
 
-const volatile __u32 current_netns = 0;
-
 unsigned long long load_byte(const void *skb,
 			     unsigned long long off) asm("llvm.bpf.load.byte");
 unsigned long long load_half(const void *skb,
@@ -99,7 +97,7 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 	__u16 h_proto;
 	int i;
 
-	key.netns = current_netns;
+	key.netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
 	h_proto = load_half(skb, offsetof(struct ethhdr, h_proto));
 	switch (h_proto) {
 	case ETH_P_IP:

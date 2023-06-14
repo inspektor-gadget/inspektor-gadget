@@ -13,6 +13,8 @@ import (
 )
 
 type snisnoopEventT struct {
+	Netns     uint32
+	_         [4]byte
 	MountNsId uint64
 	Pid       uint32
 	Tid       uint32

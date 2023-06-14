@@ -32,13 +32,12 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
+//go:generate bash -c "source ../../../internal/networktracer/clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
 const (
-	BPFProgName     = "ig_trace_dns"
-	BPFPerfMapName  = "events"
-	BPFSocketAttach = 50
-	MaxAddrAnswers  = 8 // Keep aligned with MAX_ADDR_ANSWERS in bpf/dns-common.h
+	BPFProgName    = "ig_trace_dns"
+	BPFPerfMapName = "events"
+	MaxAddrAnswers = 8 // Keep aligned with MAX_ADDR_ANSWERS in bpf/dns-common.h
 )
 
 type Tracer struct {
@@ -326,7 +325,6 @@ func (t *Tracer) install() error {
 		spec,
 		BPFProgName,
 		BPFPerfMapName,
-		BPFSocketAttach,
 		types.Base,
 		parseAndEnrichDNSEvent,
 	)

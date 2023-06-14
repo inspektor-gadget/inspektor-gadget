@@ -31,7 +31,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t network ./bpf/network.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
+//go:generate bash -c "source ../../../internal/networktracer/clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t network ./bpf/network.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
 const (
 	BPFProgName     = "ig_trace_net"
@@ -149,7 +149,6 @@ func (t *Tracer) install() error {
 		spec,
 		BPFProgName,
 		BPFPerfMapName,
-		BPFSocketAttach,
 		types.Base,
 		parseNetEvent,
 	)
