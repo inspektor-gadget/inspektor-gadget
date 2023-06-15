@@ -32,6 +32,7 @@ COPY ./ /gadget
 RUN cd /gadget/gadget-container && \
 	if [ ${TARGETARCH} = 'arm64' ]; then \
 		export CC=aarch64-linux-gnu-gcc; \
+		export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig/; \
 	fi; \
 	make -j$(nproc) TARGET_ARCH=${TARGETARCH} gadget-container-deps
 
