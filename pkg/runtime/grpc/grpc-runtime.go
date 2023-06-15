@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -53,51 +54,51 @@ const (
 )
 
 type Runtime struct {
-	catalog       *runtime.Catalog
+	info          *deployinfo.DeployInfo
 	defaultValues map[string]string
 }
 
-// New instantiates the runtime and loads the locally stored gadget catalog. If no catalog is stored locally,
+// New instantiates the runtime and loads the locally stored gadget info. If no info is stored locally,
 // it will try to fetch one from one of the gadget nodes and store it locally. It will issue warnings on
 // failures.
-func New(skipCatalog bool) *Runtime {
+func New(skipInfo bool) *Runtime {
 	r := &Runtime{
 		defaultValues: map[string]string{},
 	}
 
-	if skipCatalog {
+	if skipInfo {
 		return r
 	}
 
-	// Initialize Catalog
-	catalog, err := loadLocalGadgetCatalog()
+	// Initialize info
+	info, err := deployinfo.Load()
 	if err == nil {
-		r.catalog = catalog
+		r.info = info
 		return r
 	}
 
-	catalog, err = loadRemoteGadgetCatalog()
+	info, err = loadRemoteDeployInfo()
 	if err != nil {
-		log.Warnf("could not load gadget catalog from remote: %v", err)
+		log.Warnf("could not load gadget info from remote: %v", err)
 		return r
 	}
-	r.catalog = catalog
+	r.info = info
 
-	err = storeCatalog(catalog)
+	err = deployinfo.Store(info)
 	if err != nil {
-		log.Warnf("could not store gadget catalog: %v", err)
+		log.Warnf("could not store gadget info: %v", err)
 	}
 
 	return r
 }
 
-func (r *Runtime) UpdateCatalog() error {
-	catalog, err := loadRemoteGadgetCatalog()
+func (r *Runtime) UpdateDeployInfo() error {
+	info, err := loadRemoteDeployInfo()
 	if err != nil {
-		return fmt.Errorf("loading remote gadget catalog: %w", err)
+		return fmt.Errorf("loading remote gadget info: %w", err)
 	}
 
-	return storeCatalog(catalog)
+	return deployinfo.Store(info)
 }
 
 func (r *Runtime) Init(runtimeGlobalParams *params.Params) error {
@@ -371,7 +372,10 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 }
 
 func (r *Runtime) GetCatalog() (*runtime.Catalog, error) {
-	return r.catalog, nil
+	if r.info == nil {
+		return nil, nil
+	}
+	return r.info.Catalog, nil
 }
 
 func (r *Runtime) SetDefaultValue(key params.ValueHint, value string) {
