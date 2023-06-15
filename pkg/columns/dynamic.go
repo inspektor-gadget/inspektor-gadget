@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package textcolumns
+package columns
 
-type ColumnFormatter func(any) string
+import (
+	"reflect"
+)
+
+// DynamicField manually describes fields this library should be able to access. Combined with the DynamicPtr
+// interface, this can be used to access fields for example in a byte slice. Either Attributes or a Tag has
+// to be set - if both are set, Tag takes precedence over the Attributes.
+type DynamicField struct {
+	Attributes *Attributes
+	Tag        string
+	Template   string
+	Type       reflect.Type
+	Offset     uintptr
+}

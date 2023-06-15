@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"unsafe"
 
@@ -33,7 +34,10 @@ type Columns[T any] struct {
 	options *Options
 }
 
-const virtualIndex = -1
+const (
+	virtualIndex = -1
+	manualIndex  = -2
+)
 
 var stringType = reflect.TypeOf("") // used for virtual columns and columns with a custom extractor
 
@@ -79,6 +83,81 @@ func NewColumns[T any](options ...Option) (*Columns[T], error) {
 	}
 
 	return columns, nil
+}
+
+func (c *Columns[T]) AddFields(fields []DynamicField, base func(*T) unsafe.Pointer) error {
+	newCols := make(map[string]*Column[T])
+	for _, f := range fields {
+		column := &Column[T]{
+			explicitName:  true,
+			offset:        f.Offset,
+			fieldIndex:    manualIndex,
+			kind:          f.Type.Kind(),
+			columnType:    f.Type,
+			rawColumnType: f.Type,
+			getStart:      base,
+		}
+
+		// Copy attributes, if present
+		if f.Attributes != nil {
+			column.Attributes = *f.Attributes
+		} else {
+			// Set defaults
+			column.Attributes = Attributes{
+				EllipsisType: c.options.DefaultEllipsis,
+				Alignment:    c.options.DefaultAlignment,
+				Visible:      true,
+				Precision:    2,
+				Order:        len(c.ColumnMap) * 10,
+			}
+		}
+
+		// Apply tag
+		err := column.fromTag(f.Tag)
+		if err != nil {
+			return fmt.Errorf("applying tag: %w", err)
+		}
+
+		if column.useTemplate {
+			f.Template = column.template
+		}
+
+		// After applying attributes and tag, we should have a name
+		if column.Name == "" {
+			return fmt.Errorf("missing name")
+		}
+
+		// Apply template, if present
+		if f.Template != "" {
+			name := column.Name
+			tpl, ok := getTemplate(f.Template)
+			if !ok {
+				return fmt.Errorf("template %q not found", f.Template)
+			}
+			err := column.parseTagInfo(strings.Split(tpl, ","))
+			if err != nil {
+				return fmt.Errorf("applying template to column %q: %w", name, err)
+			}
+			column.Name = name
+		}
+
+		lowerName := strings.ToLower(column.Name)
+
+		if _, ok := c.ColumnMap[lowerName]; ok {
+			return fmt.Errorf("duplicate column name %q", column.Name)
+		}
+
+		if _, ok := newCols[lowerName]; ok {
+			return fmt.Errorf("duplicate column name %q", column.Name)
+		}
+
+		newCols[strings.ToLower(column.Name)] = column
+	}
+
+	for colName, col := range newCols {
+		c.ColumnMap[colName] = col
+	}
+	return nil
 }
 
 // GetColumn returns a specific column by its name
@@ -380,14 +459,24 @@ type ColumnInternals interface {
 	getOffset() uintptr
 	getSubFields() []subField
 	IsVirtual() bool
+	HasCustomExtractor() bool
 }
 
 // GetFieldFunc returns a helper function to access the value of type OT of a struct T
 // without using reflection. It differentiates between direct members of the struct and
-// members of embedded structs. If any of the embedded structs is a nil-pointer, the
-// default value of OT will be returned
+// members of embedded structs. If any of the embedded structs being accessed is a nil-pointer,
+// the default value of OT will be returned. Custom extractors will be preferred.
 func GetFieldFunc[OT any, T any](column ColumnInternals) func(entry *T) OT {
-	if column.IsVirtual() {
+	return GetFieldFuncExt[OT, T](column, false)
+}
+
+// GetFieldFuncExt returns a helper function to access the value of type OT of a struct T
+// without using reflection. It differentiates between direct members of the struct and
+// members of embedded structs. If any of the embedded structs being accessed is a nil-pointer,
+// the default value of OT will be returned. If raw is set, even if a custom extractor has been
+// set, the returned func will access the underlying values.
+func GetFieldFuncExt[OT any, T any](column ColumnInternals, raw bool) func(entry *T) OT {
+	if column.IsVirtual() || (column.HasCustomExtractor() && !raw) {
 		var tempVar OT
 		switch any(tempVar).(type) {
 		case string:
@@ -403,14 +492,20 @@ func GetFieldFunc[OT any, T any](column ColumnInternals) func(entry *T) OT {
 	subLen := len(sub)
 	if subLen == 0 {
 		return func(entry *T) OT {
-			// Keep the pointer arithmetic on one line. See:
-			// https://go101.org/article/unsafe.html#pattern-convert-to-uintptr-and-back
-			return *(*OT)(unsafe.Add(unsafe.Pointer(entry), offset))
+			start := unsafe.Pointer(entry)
+			if column.(*Column[T]).getStart != nil {
+				start = column.(*Column[T]).getStart(entry)
+			}
+			// Previous note was outdated since we weren't using uintptr here
+			return *(*OT)(unsafe.Add(start, offset))
 		}
 	}
 
 	return func(entry *T) OT {
 		start := unsafe.Pointer(entry)
+		if column.(*Column[T]).getStart != nil {
+			start = column.(*Column[T]).getStart(entry)
+		}
 		for i := 0; i < subLen-1; i++ {
 			if sub[i].isPtr {
 				start = unsafe.Add(start, sub[i].offset) // now pointing at the pointer
@@ -425,6 +520,98 @@ func GetFieldFunc[OT any, T any](column ColumnInternals) func(entry *T) OT {
 		}
 		return *(*OT)(unsafe.Add(start, (sub)[subLen-1].offset))
 	}
+}
+
+// SetFieldFunc returns a helper function to set the value of type OT to a member of struct T
+// without using reflection. It differentiates between direct members of the struct and
+// members of embedded structs. If any of the embedded structs being accessed is a nil-pointer,
+// no value will be set
+func SetFieldFunc[OT any, T any](column ColumnInternals) func(entry *T, val OT) {
+	// We cannot write to virtual columns
+	if column.IsVirtual() {
+		return func(entry *T, val OT) {
+		}
+	}
+	sub := column.getSubFields()
+	offset := column.getOffset()
+	subLen := len(sub)
+	if subLen == 0 {
+		return func(entry *T, val OT) {
+			start := unsafe.Pointer(entry)
+			if column.(*Column[T]).getStart != nil {
+				start = column.(*Column[T]).getStart(entry)
+			}
+			// Previous note was outdated since we weren't using uintptr here
+			*(*OT)(unsafe.Add(start, offset)) = val
+		}
+	}
+
+	return func(entry *T, val OT) {
+		start := unsafe.Pointer(entry)
+		if column.(*Column[T]).getStart != nil {
+			start = column.(*Column[T]).getStart(entry)
+		}
+		for i := 0; i < subLen-1; i++ {
+			if sub[i].isPtr {
+				start = unsafe.Add(start, sub[i].offset) // now pointing at the pointer
+				start = unsafe.Pointer(*(*uintptr)(start))
+				if start == nil {
+					// If we at any time hit a nil-pointer, we cannot set the value
+					return
+				}
+			}
+		}
+		*(*OT)(unsafe.Add(start, (sub)[subLen-1].offset)) = val
+	}
+}
+
+func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatPrecision int) func(entry *T) string {
+	switch column.(*Column[T]).Kind() {
+	case reflect.Int,
+		reflect.Int8,
+		reflect.Int16,
+		reflect.Int32,
+		reflect.Int64:
+		ff := GetFieldAsNumberFunc[int64, T](column)
+		return func(entry *T) string {
+			return strconv.FormatInt(ff(entry), 10)
+		}
+	case reflect.Uint,
+		reflect.Uint8,
+		reflect.Uint16,
+		reflect.Uint32,
+		reflect.Uint64:
+		ff := GetFieldAsNumberFunc[uint64, T](column)
+		return func(entry *T) string {
+			return strconv.FormatUint(ff(entry), 10)
+		}
+	case reflect.Float32,
+		reflect.Float64:
+		ff := GetFieldAsNumberFunc[float64, T](column)
+		return func(entry *T) string {
+			return strconv.FormatFloat(ff(entry), floatFormat, floatPrecision, 64)
+		}
+	case reflect.Bool:
+		ff := GetFieldFunc[bool, T](column)
+		return func(entry *T) string {
+			if ff(entry) {
+				return "true"
+			}
+			return "false"
+		}
+	case reflect.String:
+		ff := GetFieldFunc[string, T](column)
+		return func(entry *T) string {
+			return ff(entry)
+		}
+	}
+	return func(entry *T) string {
+		return ""
+	}
+}
+
+func GetFieldAsString[T any](column ColumnInternals) func(entry *T) string {
+	return GetFieldAsStringExt[T](column, 'E', -1)
 }
 
 // GetFieldAsNumberFunc returns a helper function to access a field of struct T as a number.
@@ -456,7 +643,7 @@ func GetFieldAsNumberFunc[OT constraints.Integer | constraints.Float, T any](col
 			return OT(ff(entry))
 		}
 	case reflect.Int64:
-		ff := GetFieldFunc[int32, T](column)
+		ff := GetFieldFunc[int64, T](column)
 		return func(entry *T) OT {
 			return OT(ff(entry))
 		}
@@ -481,7 +668,7 @@ func GetFieldAsNumberFunc[OT constraints.Integer | constraints.Float, T any](col
 			return OT(ff(entry))
 		}
 	case reflect.Uint64:
-		ff := GetFieldFunc[uint32, T](column)
+		ff := GetFieldFunc[uint64, T](column)
 		return func(entry *T) OT {
 			return OT(ff(entry))
 		}
@@ -496,4 +683,71 @@ func GetFieldAsNumberFunc[OT constraints.Integer | constraints.Float, T any](col
 			return OT(ff(entry))
 		}
 	}
+}
+
+// SetFieldAsNumberFunc returns a helper function to set a field of struct T to a number.
+func SetFieldAsNumberFunc[OT constraints.Integer | constraints.Float, T any](column ColumnInternals) func(entry *T, value OT) {
+	switch column.(*Column[T]).Kind() {
+	case reflect.Int:
+		ff := SetFieldFunc[int, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, int(value))
+		}
+	case reflect.Int8:
+		ff := SetFieldFunc[int8, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, int8(value))
+		}
+	case reflect.Int16:
+		ff := SetFieldFunc[int16, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, int16(value))
+		}
+	case reflect.Int32:
+		ff := SetFieldFunc[int32, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, int32(value))
+		}
+	case reflect.Int64:
+		ff := SetFieldFunc[int64, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, int64(value))
+		}
+	case reflect.Uint:
+		ff := SetFieldFunc[uint, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, uint(value))
+		}
+	case reflect.Uint8:
+		ff := SetFieldFunc[uint8, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, uint8(value))
+		}
+	case reflect.Uint16:
+		ff := SetFieldFunc[uint16, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, uint16(value))
+		}
+	case reflect.Uint32:
+		ff := SetFieldFunc[uint32, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, uint32(value))
+		}
+	case reflect.Uint64:
+		ff := SetFieldFunc[uint64, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, uint64(value))
+		}
+	case reflect.Float32:
+		ff := SetFieldFunc[float32, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, float32(value))
+		}
+	case reflect.Float64:
+		ff := SetFieldFunc[float64, T](column)
+		return func(entry *T, value OT) {
+			ff(entry, float64(value))
+		}
+	}
+	return func(entry *T, value OT) {}
 }

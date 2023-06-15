@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unsafe"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 )
@@ -63,15 +64,16 @@ type Column[T any] struct {
 	Attributes
 	Extractor func(*T) string // Extractor to be used; this can be defined to transform the output before retrieving the actual value
 
-	explicitName  bool         // true, if the name has been set explicitly
-	offset        uintptr      // offset to the field (relative to root non-ptr struct)
-	fieldIndex    int          // used for the main struct
-	subFieldIndex []subField   // used for embedded structs
-	kind          reflect.Kind // cached kind info from reflection
-	columnType    reflect.Type // cached type info from reflection
-	rawColumnType reflect.Type // cached type info from reflection
-	useTemplate   bool         // if a template has been set, this will be true
-	template      string       // defines the template that will be used. Non-typed templates will be applied first.
+	explicitName  bool                    // true, if the name has been set explicitly
+	offset        uintptr                 // offset to the field (relative to root non-ptr struct)
+	getStart      func(*T) unsafe.Pointer // getStarts, if present, should point to the start of the struct to be used
+	fieldIndex    int                     // used for the main struct
+	subFieldIndex []subField              // used for embedded structs
+	kind          reflect.Kind            // cached kind info from reflection
+	columnType    reflect.Type            // cached type info from reflection
+	rawColumnType reflect.Type            // cached type info from reflection
+	useTemplate   bool                    // if a template has been set, this will be true
+	template      string                  // defines the template that will be used. Non-typed templates will be applied first.
 }
 
 func (ci *Column[T]) GetAttributes() *Attributes {
@@ -290,17 +292,18 @@ func (ci *Column[T]) getSubFields() []subField {
 // GetRef returns the reflected value of an already reflected entry for the current column; expects v to be valid or
 // will panic
 func (ci *Column[T]) GetRef(v reflect.Value) reflect.Value {
-	if ci.Extractor != nil {
+	if ci.Extractor != nil || ci.fieldIndex == manualIndex {
 		return reflect.ValueOf(ci.Extractor(v.Interface().(*T)))
 	}
 	return ci.getRawField(v)
 }
 
 // GetRaw returns the reflected value of an entry for the current column without evaluating the extractor func;
-// if given nil or run on a virtual column, it will return the zero value of the underlying type. If using embedded
-// structs via pointers and the embedded value is nil, it will also return the zero value of the underlying type.
+// if given nil or run on a virtual or manually added column, it will return the zero value of the underlying type.
+// If using embedded structs via pointers and the embedded value is nil, it will also return the zero value of the
+// underlying type.
 func (ci *Column[T]) GetRaw(entry *T) reflect.Value {
-	if entry == nil || ci.fieldIndex == virtualIndex {
+	if entry == nil || ci.fieldIndex == virtualIndex || ci.fieldIndex == manualIndex {
 		return reflect.Zero(ci.RawType())
 	}
 	v := reflect.ValueOf(entry)
