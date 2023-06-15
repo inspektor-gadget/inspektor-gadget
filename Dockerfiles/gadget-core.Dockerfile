@@ -5,7 +5,7 @@
 # and is designed to be used on systems that support BTF
 # (CONFIG_DEBUG_INFO_BTF).
 
-ARG BUILDER_IMAGE=golang:1.19
+ARG BUILDER_IMAGE=golang:1.19-bullseye
 ARG BASE_IMAGE=alpine:3.14
 
 # Prepare and build gadget artifacts in a container

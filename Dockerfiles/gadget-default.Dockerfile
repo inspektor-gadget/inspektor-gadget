@@ -2,7 +2,7 @@
 # This image contains CO-RE and BCC-based gadgets. Its base image is the
 # BCC image. It's the default image that is deployed in Inspektor Gadget.
 
-ARG BUILDER_IMAGE=golang:1.19
+ARG BUILDER_IMAGE=golang:1.19-bullseye
 
 # BCC built from the gadget branch in the kinvolk/bcc fork.
 # See BCC section in docs/devel/CONTRIBUTING.md for further details.
