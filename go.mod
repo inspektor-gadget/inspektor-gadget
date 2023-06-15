@@ -24,11 +24,11 @@ require (
 	golang.org/x/term v0.9.0
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
-	k8s.io/api v0.27.2
+	k8s.io/api v0.27.3
 	k8s.io/apiextensions-apiserver v0.27.2
-	k8s.io/apimachinery v0.27.2
+	k8s.io/apimachinery v0.27.3
 	k8s.io/cli-runtime v0.27.2
-	k8s.io/client-go v0.27.2
+	k8s.io/client-go v0.27.3
 	k8s.io/code-generator v0.27.2
 	sigs.k8s.io/controller-runtime v0.14.6
 	sigs.k8s.io/security-profiles-operator v0.8.0
