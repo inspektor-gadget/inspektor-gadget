@@ -186,7 +186,9 @@ It is possible to download the asset for a given release and platform from the
 For instance, to download the latest release for linux-amd64:
 
 ```bash
-$ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/latest/download/ig-linux-amd64.tar.gz | sudo tar -C /usr/local/bin -xzf - ig
+$ IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name)
+$ IG_ARCH=amd64
+$ curl -sL https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/ig-linux-${IG_ARCH}-${IG_VERSION}.tar.gz | sudo tar -C /usr/local/bin -xzf - ig
 $ ig version
 ```
 
