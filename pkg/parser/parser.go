@@ -161,6 +161,9 @@ func (p *parser[T]) EnableSnapshots(ctx context.Context, interval time.Duration,
 			select {
 			case <-ticker.C:
 				out, _ := p.snapshotCombiner.GetSnapshots()
+				if p.sortSpec != nil {
+					p.sortSpec.Sort(out)
+				}
 				p.eventCallbackArray(out)
 			case <-ctx.Done():
 				return
@@ -179,6 +182,9 @@ func (p *parser[T]) EnableCombiner() {
 }
 
 func (p *parser[T]) Flush() {
+	if p.sortSpec != nil {
+		p.sortSpec.Sort(p.combinedEvents)
+	}
 	p.eventCallbackArray(p.combinedEvents)
 }
 
