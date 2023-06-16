@@ -139,6 +139,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 					Namespace: pod.GetNamespace(),
 					Pod:       pod.GetName(),
 					Container: s.Name,
+					ImageName: s.Image,
 				},
 				Labels: labels,
 			},
