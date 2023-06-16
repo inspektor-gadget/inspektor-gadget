@@ -190,6 +190,7 @@ func WithRuntimeMetadata(runtime string) CommonDataOption {
 	return func(commonData *eventtypes.CommonData) {
 		commonData.Runtime.Runtime = eventtypes.String2RuntimeName(runtime)
 		commonData.Runtime.Container = commonData.K8s.Container
+		commonData.K8s.BasicK8sMetadata.ImageName = commonData.K8s.ImageName
 	}
 }
 
