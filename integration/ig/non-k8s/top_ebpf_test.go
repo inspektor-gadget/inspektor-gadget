@@ -47,6 +47,8 @@ func TestTopEbpf(t *testing.T) {
 				e.TotalRunCount = 0
 				e.MapMemory = 0
 				e.MapCount = 0
+				e.TotalCpuUsage = 0
+				e.PerCpuUsage = 0
 			}
 
 			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
