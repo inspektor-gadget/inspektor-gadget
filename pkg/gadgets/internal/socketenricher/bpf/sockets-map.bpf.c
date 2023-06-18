@@ -126,7 +126,8 @@ remove_socket(struct sock *sock)
 	if (socket_value->deletion_timestamp == 0) {
 		// bpf timers are only available in Linux 5.15.
 		// Use bpf iterators (Linux 5.8) controlled from userspace instead.
-		socket_value->deletion_timestamp = bpf_ktime_get_boot_ns();
+		// Avoid bpf_ktime_get_boot_ns() to support older kernels
+		socket_value->deletion_timestamp = bpf_ktime_get_ns();
 	}
 	return 0;
 }
@@ -177,7 +178,7 @@ int ig_sk_cleanup(struct bpf_iter__bpf_map_elem *ctx)
 	if (!socket_key || !socket_value)
 		return 0;
 
-	__u64 now = bpf_ktime_get_boot_ns();
+	__u64 now = bpf_ktime_get_ns();
 	__u64 deletion_timestamp = socket_value->deletion_timestamp;
 	__u64 socket_expiration_ns = 1000ULL*1000ULL*1000ULL*5ULL; // 5 seconds
 
