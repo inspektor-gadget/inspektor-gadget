@@ -2,13 +2,20 @@ services:
   ig:
     image: ${DESKTOP_PLUGIN_IMAGE}
     privileged: true
-    network_mode: host
     userns_mode: host
+
+    # Docker Desktop VM does not use systemd, so the container pidns cannot be escaped
     pid: host
+
+    #network_mode: host
+
     volumes:
       - /:/host
-      # fanotify /run/containerd/io.containerd.runtime.v2.task/moby/d29.../init.pid
       - /run:/run
+      - /lib/modules:/lib/modules
+      - /sys/kernel/debug:/sys/kernel/debug
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - /sys/fs/bpf:/sys/fs/bpf
     environment:
       HOST_ROOT: /host
 

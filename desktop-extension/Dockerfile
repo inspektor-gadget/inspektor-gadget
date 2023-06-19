@@ -12,7 +12,7 @@ COPY ./internal ./internal
 COPY ./desktop-extension ./desktop-extension
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    pwd;ls -l ;go build -trimpath -ldflags="-s -w" -o bin/ig-service ./desktop-extension/ig-service
+    go build -trimpath -ldflags="-s -w" -o bin/ig-service ./desktop-extension/ig-service
 
 # Building Javascript
 FROM --platform=$BUILDPLATFORM node:18.9-alpine3.15 AS client-builder
