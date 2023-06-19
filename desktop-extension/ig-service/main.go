@@ -11,19 +11,22 @@ import (
 
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/google/uuid"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
+	"github.com/sirupsen/logrus"
+
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/tracer"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/tracer"
+	// This is a blank include that actually imports all gadgets
+	// TODO: traceloop is imported separately because it is not in all-gadgets
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
-	"github.com/sirupsen/logrus"
 )
 
 type IGWeb struct {
