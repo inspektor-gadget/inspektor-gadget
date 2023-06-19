@@ -194,7 +194,7 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 	if err != nil {
 		return fmt.Errorf("load ebpf program for container-hook: %w", err)
 	}
-	if err := kallsyms.SpecUpdateAddresses(spec, []string{"fanotify_fops"}); err != nil {
+	if err := kallsyms.SpecUpdateAddresses(spec, []string{"fanotify_show_fdinfo"}); err != nil {
 		return fmt.Errorf("RewriteConstants: %w", err)
 	}
 
