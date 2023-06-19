@@ -203,3 +203,11 @@ This table can be generated with:
 ```bash
 $ go run ./pkg/gadgets/trace/tcpdrop/tracer/dropreasongen/...
 ```
+
+### Other tools showing dropped packets
+
+The following tools can be used to show dropped packets but they are not focused on containers or Kubernetes:
+
+* [dropwatch](https://github.com/nhorman/dropwatch): interactive tool using [Netlink Devlink Trap](https://www.kernel.org/doc/html/latest/networking/devlink/devlink-trap.html) to see drops packets by the NIC.
+* [BCC's tcpdrop](https://github.com/iovisor/bcc/blob/master/tools/tcpdrop_example.txt): tool using eBPF and kprobes/tracepoints to show when a socket buffer is released by the kernel.
+* [Retis' skb-drop collector](https://github.com/retis-org/retis): tool using various collectors (skb-drop, nftables, ovs) to show the flow of packets in the kernel.
