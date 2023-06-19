@@ -207,6 +207,7 @@ func buildCommandFromGadget(
 				runtimeParams,
 				gadgetDesc,
 				gadgetParams,
+				args,
 				operatorsParamsCollection,
 				parser,
 				logger.DefaultLogger(),

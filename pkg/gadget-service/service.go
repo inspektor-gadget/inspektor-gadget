@@ -197,6 +197,7 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 		runtimeParams,
 		gadgetDesc,
 		gadgetParams,
+		request.Args,
 		operatorParams,
 		parser,
 		logger,
