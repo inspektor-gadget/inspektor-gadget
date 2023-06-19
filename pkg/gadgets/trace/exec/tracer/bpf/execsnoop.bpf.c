@@ -38,7 +38,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	pid_t pid, tgid;
 	struct event *event;
 	struct task_struct *task;
-	unsigned int ret;
+	int ret;
 	const char **args = (const char **)(ctx->args[1]);
 	const char *argp;
 	int i;
@@ -78,7 +78,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	event->mntns_id = mntns_id;
 
 	ret = bpf_probe_read_user_str(event->args, ARGSIZE, (const char*)ctx->args[0]);
-	if (ret <= ARGSIZE) {
+	if (ret > 0 && ret <= ARGSIZE) {
 		event->args_size += ret;
 	} else {
 		/* write an empty string */
@@ -89,23 +89,24 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	event->args_count++;
 	#pragma unroll
 	for (i = 1; i < TOTAL_MAX_ARGS && i < max_args; i++) {
-		bpf_probe_read_user(&argp, sizeof(argp), &args[i]);
-		if (!argp)
+		ret = bpf_probe_read_user(&argp, sizeof(argp), &args[i]);
+		if (ret != 0 || !argp)
 			return 0;
 
 		if (event->args_size > LAST_ARG)
 			return 0;
 
 		ret = bpf_probe_read_user_str(&event->args[event->args_size], ARGSIZE, argp);
-		if (ret > ARGSIZE)
+		if (ret > 0 && ret <= ARGSIZE) {
+			event->args_count++;
+			event->args_size += ret;
+		} else {
 			return 0;
-
-		event->args_count++;
-		event->args_size += ret;
+		}
 	}
 	/* try to read one more argument to check if there is one */
-	bpf_probe_read_user(&argp, sizeof(argp), &args[max_args]);
-	if (!argp)
+	ret = bpf_probe_read_user(&argp, sizeof(argp), &args[max_args]);
+	if (ret != 0 || !argp)
 		return 0;
 
 	/* pointer to max_args+1 isn't null, asume we have more arguments */
