@@ -43,6 +43,10 @@ type ContainerCollection struct {
 	// Values: container   Container
 	containers sync.Map
 
+	// Keys:   mntNsID   uint64
+	// Values: container Container
+	containersBytMntNsID sync.Map
+
 	// Saves containers for "cacheDelay" to be able to enrich events after the container is
 	// removed. This is enabled by using WithTracerCollection().
 	cachedContainers *sync.Map
@@ -113,6 +117,7 @@ initialContainersLoop:
 		}
 
 		cc.containers.Store(container.ID, container)
+		cc.containersBytMntNsID.Store(container.Mntns, container)
 		if cc.pubsub != nil {
 			cc.pubsub.Publish(EventTypeAddContainer, container)
 		}
@@ -159,6 +164,7 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 	// subscribers might need to use the different collection's lookups during
 	// the notification handler, and they expect the container to still be
 	// present.
+	cc.containersBytMntNsID.Delete(container.Mntns)
 	cc.containers.Delete(id)
 }
 
@@ -173,6 +179,7 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 	}
 
 	_, loaded := cc.containers.LoadOrStore(container.ID, container)
+	cc.containersBytMntNsID.LoadOrStore(container.Mntns, container)
 	if loaded {
 		return
 	}
