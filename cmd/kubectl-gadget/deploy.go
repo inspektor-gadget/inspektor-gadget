@@ -73,6 +73,7 @@ var (
 	livenessProbe       bool
 	deployTimeout       time.Duration
 	fallbackPodInformer bool
+	legacyHostPID       bool
 	printOnly           bool
 	quiet               bool
 	debug               bool
@@ -81,7 +82,7 @@ var (
 	nodeSelector        string
 )
 
-var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify"}
+var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
 
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
@@ -111,6 +112,11 @@ func init() {
 		"fallback-podinformer", "",
 		true,
 		"use pod informer as a fallback for the main hook")
+	deployCmd.PersistentFlags().BoolVarP(
+		&legacyHostPID,
+		"legacy-host-pid", "",
+		false,
+		"use hostPID=true for the gadget pod (legacy)")
 	deployCmd.PersistentFlags().BoolVarP(
 		&printOnly,
 		"print-only", "",
@@ -375,6 +381,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		daemonSet, handlingDaemonSet := object.(*appsv1.DaemonSet)
 		if handlingDaemonSet {
 			daemonSet.Spec.Template.Annotations["inspektor-gadget.kinvolk.io/option-hook-mode"] = hookMode
+
+			// Inspektor Gadget used to require hostPID=true. This is no longer
+			// required, so keep hostPID=false unless the user explicitly
+			// requests it for compatibility with older clusters.
+			daemonSet.Spec.Template.Spec.HostPID = legacyHostPID
 
 			if !printOnly {
 				// The "kubernetes.io/os" node label was introduced in v1.14.0

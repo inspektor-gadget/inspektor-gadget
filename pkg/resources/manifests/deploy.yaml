@@ -108,7 +108,7 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccount: gadget
-      hostPID: true
+      hostPID: false
       hostNetwork: false
       nodeSelector:
         kubernetes.io/os: "linux"

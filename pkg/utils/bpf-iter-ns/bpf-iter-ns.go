@@ -24,7 +24,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf/link"
@@ -35,34 +34,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
-var isHostPidNs bool
-
-func init() {
-	selfFileInfo, err := os.Stat("/proc/self/ns/pid")
-	if err != nil {
-		return
-	}
-	selfStat, ok := selfFileInfo.Sys().(*syscall.Stat_t)
-	if !ok {
-		return
-	}
-
-	systemdFileInfo, err := os.Stat(fmt.Sprintf("%s/1/ns/pid", host.HostProcFs))
-	if err != nil {
-		return
-	}
-	systemdStat, ok := systemdFileInfo.Sys().(*syscall.Stat_t)
-	if !ok {
-		return
-	}
-
-	isHostPidNs = selfStat.Ino == systemdStat.Ino
-}
-
 // Read reads the iterator in the host pid namespace.
 // It will test if the current pid namespace is the host pid namespace.
 func Read(iter *link.Iter) ([]byte, error) {
-	if isHostPidNs {
+	if host.IsHostPidNs {
 		return ReadOnCurrentPidNs(iter)
 	} else {
 		return ReadOnHostPidNs(iter)

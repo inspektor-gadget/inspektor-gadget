@@ -1,4 +1,4 @@
-// Copyright 2021 The Inspektor Gadget authors
+// Copyright 2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package runcfanotify
+// Package containerhook detects when a container is created or terminated.
+//
+// It uses two mechanisms to detect new containers:
+//  1. fanotify with FAN_OPEN_EXEC_PERM.
+//  2. ebpf on the sys_enter_execve tracepoint to get the execve arguments.
+//
+// Using fanotify with FAN_OPEN_EXEC_PERM allows to call a callback function
+// while the container is being created. The container is paused until the
+// callback function returns.
+//
+// Using ebpf on the sys_enter_execve tracepoint allows to get the execve
+// arguments without the need to read /proc/$pid/cmdline or /proc/$pid/comm.
+// Reading /proc/$pid/cmdline is not possible using only fanotify when the
+// tracer is not in the same pidns as the process being traced. This is the
+// case when Inspektor Gadget is started with hostPID=false.
+//
+// https://github.com/inspektor-gadget/inspektor-gadget/blob/main/docs/devel/fanotify-ebpf.png
+package containerhook
 
 import (
 	"encoding/json"
@@ -21,20 +38,26 @@ import (
 	"io"
 	"math"
 	"os"
-	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/s3rj1k/go-fanotify/fanotify"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
+
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type record execruntime ./bpf/execruntime.bpf.c -- -I./bpf/ -I../${TARGET}
 
 type EventType int
 
@@ -67,12 +90,11 @@ type ContainerEvent struct {
 	Bundle string
 }
 
-type RuncNotifyFunc func(notif ContainerEvent)
+type ContainerNotifyFunc func(notif ContainerEvent)
 
-type runcContainer struct {
-	id    string
-	pid   int
-	pidfd int
+type watchedContainer struct {
+	id  string
+	pid int
 }
 
 type futureContainer struct {
@@ -82,16 +104,16 @@ type futureContainer struct {
 	pidFile   string
 }
 
-type RuncNotifier struct {
-	runcBinaryNotify *fanotify.NotifyFD
-	callback         RuncNotifyFunc
+type ContainerNotifier struct {
+	runtimeBinaryNotify *fanotify.NotifyFD
+	callback            ContainerNotifyFunc
 
 	// containers is the set of containers that are being watched for
 	// termination. This prevents duplicate calls to
 	// AddWatchContainerTermination.
 	//
 	// Keys: Container ID
-	containers   map[string]*runcContainer
+	containers   map[string]*watchedContainer
 	containersMu sync.Mutex
 
 	// futureContainers is the set of containers that are detected before
@@ -101,25 +123,30 @@ type RuncNotifier struct {
 	futureContainers map[string]*futureContainer
 	futureMu         sync.Mutex
 
-	// set to true when RuncNotifier is closed
+	objs  execruntimeObjects
+	links []link.Link
+
+	// set to true when Runtime is closed
 	closed bool
 	done   chan bool
 
 	wg sync.WaitGroup
 }
 
-// runcPaths is the list of paths where runc could be installed. Depending on
-// the Linux distribution, it could be in different locations.
+// runtimePaths is the list of paths where the container runtime runc or crun
+// could be installed. Depending on the Linux distribution, it could be in
+// different locations.
 //
 // When this package is executed in a container, it prepends the
 // HOST_ROOT env variable to the path.
-var runcPaths = []string{
+var runtimePaths = []string{
 	"/usr/bin/runc",
 	"/usr/sbin/runc",
 	"/usr/local/sbin/runc",
 	"/usr/lib/cri-o-runc/sbin/runc",
 	"/run/torcx/unpack/docker/bin/runc",
 	"/usr/bin/crun",
+	"/usr/bin/conmon",
 }
 
 // initFanotify initializes the fanotify API with the flags we need
@@ -131,75 +158,168 @@ func initFanotify() (*fanotify.NotifyFD, error) {
 
 // Supported detects if RuncNotifier is supported in the current environment
 func Supported() bool {
-	if !host.IsHostPidNs {
-		log.Debugf("Runcfanotify: not supported: not in host pid namespace")
-		return false
-	}
-	notifier, err := NewRuncNotifier(func(notif ContainerEvent) {})
+	notifier, err := NewContainerNotifier(func(notif ContainerEvent) {})
 	if notifier != nil {
 		notifier.Close()
 	}
 	if err != nil {
-		log.Debugf("Runcfanotify: not supported: %s", err)
+		log.Debugf("ContainerNotifier: not supported: %s", err)
 	}
 	return err == nil
 }
 
-// NewRuncNotifier uses fanotify to detect when runc containers are created
-// or terminated, and call the callback on such event.
+// NewContainerNotifier uses fanotify and ebpf to detect when a container is
+// created or terminated, and call the callback on such event.
 //
 // Limitations:
-// - runc must be installed in one of the paths listed by runcPaths
-func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
-	n := &RuncNotifier{
+// - the container runtime must be installed in one of the paths listed by runtimePaths
+func NewContainerNotifier(callback ContainerNotifyFunc) (*ContainerNotifier, error) {
+	n := &ContainerNotifier{
 		callback:         callback,
-		containers:       make(map[string]*runcContainer),
+		containers:       make(map[string]*watchedContainer),
 		futureContainers: make(map[string]*futureContainer),
 		done:             make(chan bool),
 	}
 
-	runcBinaryNotify, err := initFanotify()
-	if err != nil {
+	if err := n.install(); err != nil {
+		n.Close()
 		return nil, err
 	}
-	n.runcBinaryNotify = runcBinaryNotify
-
-	runcMonitored := false
-
-	for _, r := range runcPaths {
-		runcPath := filepath.Join(host.HostRoot, r)
-
-		log.Debugf("Runcfanotify: trying runc at %s", runcPath)
-
-		if _, err := os.Stat(runcPath); errors.Is(err, os.ErrNotExist) {
-			log.Debugf("Runcfanotify: runc at %s not found", runcPath)
-			continue
-		}
-
-		if err := runcBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runcPath); err != nil {
-			log.Warnf("Runcfanotify: failed to fanotify mark: %s", err)
-			continue
-		}
-		runcMonitored = true
-	}
-
-	if !runcMonitored {
-		runcBinaryNotify.File.Close()
-		return nil, errors.New("no runc instance can be monitored with fanotify")
-	}
-
-	n.wg.Add(2)
-	go n.watchContainersTermination()
-	go n.watchRunc()
 
 	return n, nil
 }
 
+func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
+	spec, err := loadExecruntime()
+	if err != nil {
+		return fmt.Errorf("load ebpf program for container-hook: %w", err)
+	}
+	if err := kallsyms.SpecUpdateAddresses(spec, []string{"fanotify_fops"}); err != nil {
+		return fmt.Errorf("RewriteConstants: %w", err)
+	}
+
+	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
+	consts := map[string]interface{}{
+		"tracer_fanotify_fd": uint64(fanotifyFd),
+	}
+	if err := spec.RewriteConstants(consts); err != nil {
+		return fmt.Errorf("RewriteConstants: %w", err)
+	}
+
+	opts := ebpf.CollectionOptions{}
+
+	if err := spec.LoadAndAssign(&n.objs, &opts); err != nil {
+		return fmt.Errorf("loading maps and programs: %w", err)
+	}
+
+	// Initialize the ebpf programs by calling the iterator.
+	initIter, err := link.AttachIter(link.IterOptions{
+		Program: n.objs.IgFaIt,
+	})
+	if err != nil {
+		return fmt.Errorf("attach BPF iterator: %w", err)
+	}
+	defer initIter.Close()
+
+	initIterFile, err := initIter.Open()
+	if err != nil {
+		return fmt.Errorf("open BPF iterator: %w", err)
+	}
+	defer initIterFile.Close()
+	_, err = io.ReadAll(initIterFile)
+	if err != nil {
+		return fmt.Errorf("read BPF iterator: %w", err)
+	}
+
+	// Attach ebpf programs
+	l, err := link.Kprobe("fsnotify_remove_first_event", n.objs.IgFaPickE, nil)
+	if err != nil {
+		return fmt.Errorf("attaching kprobe fsnotify_remove_first_event: %w", err)
+	}
+	n.links = append(n.links, l)
+
+	l, err = link.Kretprobe("fsnotify_remove_first_event", n.objs.IgFaPickX, nil)
+	if err != nil {
+		return fmt.Errorf("attaching kretprobe fsnotify_remove_first_event: %w", err)
+	}
+	n.links = append(n.links, l)
+
+	l, err = link.Tracepoint("syscalls", "sys_enter_execve", n.objs.IgExecveE, nil)
+	if err != nil {
+		return fmt.Errorf("attaching tracepoint: %w", err)
+	}
+	n.links = append(n.links, l)
+
+	if runtime.GOARCH == "arm64" {
+		// On arm64, the tracepoint for sys_exit_execve is only supported in Linux >= v6.0.
+		// See https://github.com/torvalds/linux/commit/de6921856f99
+		l, err := link.Kretprobe("do_execveat_common.isra.0", n.objs.IgExecveX, nil)
+		if err != nil {
+			return fmt.Errorf("attaching kretprobe do_execveat_common.isra.0: %w", err)
+		}
+		n.links = append(n.links, l)
+	} else {
+		l, err = link.Tracepoint("syscalls", "sys_exit_execve", n.objs.IgExecveX, nil)
+		if err != nil {
+			return fmt.Errorf("attaching tracepoint: %w", err)
+		}
+		n.links = append(n.links, l)
+	}
+
+	return nil
+}
+
+func (n *ContainerNotifier) install() error {
+	// Start fanotify
+	runtimeBinaryNotify, err := initFanotify()
+	if err != nil {
+		return err
+	}
+	n.runtimeBinaryNotify = runtimeBinaryNotify
+
+	// Load, initialize and attach ebpf program
+	err = n.installEbpf(runtimeBinaryNotify.Fd)
+	if err != nil {
+		return err
+	}
+
+	// Attach fanotify to various runtime binaries
+	runtimeFound := false
+
+	for _, r := range runtimePaths {
+		runtimePath := filepath.Join(host.HostRoot, r)
+
+		log.Debugf("Runcfanotify: trying runc at %s", runtimePath)
+
+		if _, err := os.Stat(runtimePath); errors.Is(err, os.ErrNotExist) {
+			log.Debugf("Runcfanotify: runc at %s not found", runtimePath)
+			continue
+		}
+
+		if err := runtimeBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runtimePath); err != nil {
+			log.Warnf("Runcfanotify: failed to fanotify mark: %s", err)
+			continue
+		}
+		runtimeFound = true
+	}
+
+	if !runtimeFound {
+		runtimeBinaryNotify.File.Close()
+		return errors.New("no container runtime can be monitored with fanotify")
+	}
+
+	n.wg.Add(2)
+	go n.watchContainersTermination()
+	go n.watchRuntimeBinary()
+
+	return nil
+}
+
 // AddWatchContainerTermination watches a container for termination and
 // generates an event on the notifier. This is automatically called for new
-// containers detected by RuncNotifier, but it can also be called for
+// containers detected by ContainerNotifier, but it can also be called for
 // containers detected externally such as initial containers.
-func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containerPID int) error {
+func (n *ContainerNotifier) AddWatchContainerTermination(containerID string, containerPID int) error {
 	n.containersMu.Lock()
 	defer n.containersMu.Unlock()
 
@@ -208,7 +328,7 @@ func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containe
 		return nil
 	}
 
-	n.containers[containerID] = &runcContainer{
+	n.containers[containerID] = &watchedContainer{
 		id:  containerID,
 		pid: containerPID,
 	}
@@ -217,7 +337,7 @@ func (n *RuncNotifier) AddWatchContainerTermination(containerID string, containe
 }
 
 // watchContainerTermination waits until the container terminates
-func (n *RuncNotifier) watchContainersTermination() {
+func (n *ContainerNotifier) watchContainersTermination() {
 	defer n.wg.Done()
 
 	ticker := time.NewTicker(time.Second)
@@ -267,7 +387,13 @@ func (n *RuncNotifier) watchContainersTermination() {
 	}
 }
 
-func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, bundleDir string, pidFile string, pidFileDir string) (bool, error) {
+func (n *ContainerNotifier) watchPidFileIterate(
+	pidFileDirNotify *fanotify.NotifyFD,
+	bundleDir string,
+	configJSONPath string,
+	pidFile string,
+	pidFileDir string,
+) (bool, error) {
 	// Get the next event from fanotify.
 	// Even though the API allows to pass skipPIDs, we cannot use
 	// it here because ResponseAllow would not be called.
@@ -294,13 +420,6 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 
 	// This unblocks whoever is accessing the pidfile
 	defer pidFileDirNotify.ResponseAllow(data)
-
-	pid := data.GetPID()
-
-	// Skip events triggered by ourselves
-	if pid == os.Getpid() {
-		return false, nil
-	}
 
 	path, err := data.GetPath()
 	if err != nil {
@@ -340,7 +459,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 		return false, nil
 	}
 
-	bundleConfigJSON, err := os.ReadFile(filepath.Join(bundleDir, "config.json"))
+	bundleConfigJSON, err := os.ReadFile(configJSONPath)
 	if err != nil {
 		return false, err
 	}
@@ -356,7 +475,7 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 
 	err = n.AddWatchContainerTermination(containerID, containerPID)
 	if err != nil {
-		log.Errorf("runc fanotify: container %s with pid %d terminated before we could watch it: %s", containerID, containerPID, err)
+		log.Errorf("container %s with pid %d terminated before we could watch it: %s", containerID, containerPID, err)
 		return true, nil
 	}
 
@@ -366,9 +485,13 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 	}
 
 	var containerName string
-	if fc := n.lookupFutureContainer(containerID); fc != nil {
+	n.futureMu.Lock()
+	fc, ok := n.futureContainers[containerID]
+	if ok {
 		containerName = fc.name
 	}
+	delete(n.futureContainers, containerID)
+	n.futureMu.Unlock()
 
 	n.callback(ContainerEvent{
 		Type:            EventTypeAddContainer,
@@ -396,7 +519,7 @@ func checkFilesAreIdentical(path1, path2 string) (bool, error) {
 	return os.SameFile(f1, f2), nil
 }
 
-func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) error {
+func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile string) error {
 	fanotifyFlags := uint(unix.FAN_CLOEXEC | unix.FAN_CLASS_CONTENT | unix.FAN_UNLIMITED_QUEUE | unix.FAN_UNLIMITED_MARKS)
 	openFlags := os.O_RDONLY | unix.O_LARGEFILE | unix.O_CLOEXEC
 
@@ -423,10 +546,18 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 	// respected until a fix in Linux 5.9:
 	// https://github.com/torvalds/linux/commit/497b0c5a7c0688c1b100a9c2e267337f677c198e
 	configJSONPath := filepath.Join(bundleDir, "config.json")
+	if _, err := os.Stat(configJSONPath); errors.Is(err, os.ErrNotExist) {
+		// podman might install config.json in the userdata directory
+		configJSONPath = filepath.Join(bundleDir, "userdata", "config.json")
+		if _, err := os.Stat(configJSONPath); errors.Is(err, os.ErrNotExist) {
+			pidFileDirNotify.File.Close()
+			return fmt.Errorf("config not found at %s", configJSONPath)
+		}
+	}
 	err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, configJSONPath)
 	if err != nil {
 		pidFileDirNotify.File.Close()
-		return fmt.Errorf("ignoring %s: %w", configJSONPath, err)
+		return fmt.Errorf("marking %s: %w", configJSONPath, err)
 	}
 
 	n.wg.Add(1)
@@ -434,7 +565,7 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 		defer n.wg.Done()
 		defer pidFileDirNotify.File.Close()
 		for {
-			stop, err := n.watchPidFileIterate(pidFileDirNotify, bundleDir, pidFile, pidFileDir)
+			stop, err := n.watchPidFileIterate(pidFileDirNotify, bundleDir, configJSONPath, pidFile, pidFileDir)
 			if n.closed {
 				return
 			}
@@ -451,38 +582,31 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 	return nil
 }
 
-func (n *RuncNotifier) watchRunc() {
+func (n *ContainerNotifier) watchRuntimeBinary() {
 	defer n.wg.Done()
 
 	for {
-		stop, err := n.watchRuncIterate()
+		stop, err := n.watchRuntimeIterate()
 		if n.closed {
-			n.runcBinaryNotify.File.Close()
+			n.runtimeBinaryNotify.File.Close()
 			return
 		}
 		if err != nil {
-			log.Errorf("error watching runc: %v\n", err)
+			log.Errorf("error watching runtime binary: %v\n", err)
 		}
 		if stop {
-			n.runcBinaryNotify.File.Close()
+			n.runtimeBinaryNotify.File.Close()
 			return
 		}
 	}
 }
 
-func (n *RuncNotifier) parseConmonCmdline(cmdlineArr []string) {
-	if path.Base(cmdlineArr[0]) != "conmon" {
-		return
-	}
-
-	// Parse conmon command line
+func (n *ContainerNotifier) parseConmonCmdline(cmdlineArr []string) {
 	containerName := ""
 	containerID := ""
 	bundleDir := ""
 	pidFile := ""
-	conmonFound := false
 
-	conmonFound = true
 	for i := 0; i < len(cmdlineArr); i++ {
 		verb := cmdlineArr[i]
 		arg := ""
@@ -505,7 +629,7 @@ func (n *RuncNotifier) parseConmonCmdline(cmdlineArr []string) {
 		}
 	}
 
-	if !conmonFound || containerName == "" || containerID == "" || bundleDir == "" || pidFile == "" {
+	if containerName == "" || containerID == "" || bundleDir == "" || pidFile == "" {
 		return
 	}
 
@@ -519,21 +643,15 @@ func (n *RuncNotifier) parseConmonCmdline(cmdlineArr []string) {
 	n.futureMu.Unlock()
 }
 
-func (n *RuncNotifier) parseOCIRuntime(comm string, cmdlineArr []string) {
+func (n *ContainerNotifier) parseOCIRuntime(comm string, cmdlineArr []string) {
 	// Parse oci-runtime (runc/crun) command line
 	createFound := false
-	startFound := false
-	containerID := ""
 	bundleDir := ""
 	pidFile := ""
 
 	for i := 0; i < len(cmdlineArr); i++ {
 		if cmdlineArr[i] == "create" {
 			createFound = true
-			continue
-		}
-		if cmdlineArr[i] == "start" {
-			startFound = true
 			continue
 		}
 		if cmdlineArr[i] == "--bundle" && i+1 < len(cmdlineArr) {
@@ -546,69 +664,23 @@ func (n *RuncNotifier) parseOCIRuntime(comm string, cmdlineArr []string) {
 			pidFile = filepath.Join(host.HostRoot, cmdlineArr[i])
 			continue
 		}
-		if cmdlineArr[i] != "" {
-			containerID = cmdlineArr[i]
-		}
 	}
 
-	if comm == "runc" && createFound && bundleDir != "" && pidFile != "" {
-		err := n.monitorRuncInstance(bundleDir, pidFile)
+	if createFound && bundleDir != "" && pidFile != "" {
+		err := n.monitorRuntimeInstance(bundleDir, pidFile)
 		if err != nil {
-			log.Errorf("error monitoring runc instance: %v\n", err)
+			log.Errorf("error monitoring runtime instance: %v\n", err)
 		}
-	}
-
-	if comm == "crun" && startFound && containerID != "" {
-		fc := n.lookupFutureContainer(containerID)
-		if fc == nil {
-			log.Warnf("cannot lookup container for %s\n", containerID)
-			return
-		}
-		bundleConfigJSON, err := os.ReadFile(filepath.Join(fc.bundleDir, "config.json"))
-		if err != nil {
-			log.Errorf("error reading bundle config: %v\n", err)
-			return
-		}
-		containerConfig := &ocispec.Spec{}
-		err = json.Unmarshal(bundleConfigJSON, containerConfig)
-		if err != nil {
-			log.Errorf("error unmarshaling bundle config: %v\n", err)
-			return
-		}
-
-		pidFileContent, err := os.ReadFile(fc.pidFile)
-		if err != nil {
-			log.Errorf("error reading pid file: %v\n", err)
-			return
-		}
-		if len(pidFileContent) == 0 {
-			log.Errorf("empty pid file")
-			return
-		}
-		containerPID, err := strconv.Atoi(string(pidFileContent))
-		if err != nil {
-			log.Errorf("error parsing pid file: %v\n", err)
-			return
-		}
-
-		n.callback(ContainerEvent{
-			Type:            EventTypeAddContainer,
-			ContainerID:     containerID,
-			ContainerPID:    uint32(containerPID),
-			ContainerConfig: containerConfig,
-			Bundle:          bundleDir,
-			ContainerName:   fc.name,
-		})
 	}
 }
 
-func (n *RuncNotifier) watchRuncIterate() (bool, error) {
+func (n *ContainerNotifier) watchRuntimeIterate() (bool, error) {
 	// Get the next event from fanotify.
 	// Even though the API allows to pass skipPIDs, we cannot use it here
 	// because ResponseAllow would not be called.
-	data, err := n.runcBinaryNotify.GetEvent()
+	data, err := n.runtimeBinaryNotify.GetEvent()
 	if err != nil {
-		return true, fmt.Errorf("%w", err)
+		return true, err
 	}
 
 	// data can be nil if the event received is from a process in skipPIDs.
@@ -626,34 +698,60 @@ func (n *RuncNotifier) watchRuncIterate() (bool, error) {
 	}
 
 	// This unblocks the execution
-	defer n.runcBinaryNotify.ResponseAllow(data)
+	defer n.runtimeBinaryNotify.ResponseAllow(data)
 
-	pid := data.GetPID()
+	// Lookup entry in ebpf map ig_fa_records
+	var record execruntimeRecord
+	err = n.objs.IgFaRecords.LookupAndDelete(nil, &record)
+	if err != nil {
+		return false, fmt.Errorf("lookup record: %w", err)
+	}
 
-	// Skip events triggered by ourselves
-	if pid == os.Getpid() {
+	// Skip empty record
+	// This can happen when the ebpf code didn't find the exec args
+	if record.Pid == 0 {
+		log.Debugf("skip event with pid=0")
 		return false, nil
 	}
+	if record.ArgsSize == 0 {
+		log.Debugf("skip event without args")
+		return false, nil
+	}
+
+	callerComm := strings.TrimRight(string(record.CallerComm[:]), "\x00")
+
+	cmdlineArr := []string{}
+	calleeComm := ""
+	for _, arg := range strings.Split(string(record.Args[0:record.ArgsSize]), "\x00") {
+		if arg != "" {
+			cmdlineArr = append(cmdlineArr, arg)
+		}
+	}
+	if len(cmdlineArr) == 0 {
+		log.Debugf("cannot get cmdline for pid %d", record.Pid)
+		return false, nil
+	}
+	if len(cmdlineArr) > 0 {
+		calleeComm = filepath.Base(cmdlineArr[0])
+	}
+
+	log.Debugf("got event with pid=%d caller=%q callee=%q args=%v",
+		record.Pid,
+		callerComm, calleeComm,
+		cmdlineArr)
 
 	// runc is executing itself with unix.Exec(), so fanotify receives two
 	// FAN_OPEN_EXEC_PERM events:
 	//   1. from containerd-shim (or similar)
 	//   2. from runc, by this re-execution.
-	// This filter skips the first one and handles the second one.
-	comm := host.GetProcComm(pid)
-	cmdlineArr := host.GetProcCmdline(pid)
+	// This filter takes the first one.
 
-	if len(cmdlineArr) == 0 {
-		return false, nil
-	}
-
-	switch comm {
+	switch calleeComm {
 	case "conmon":
-		// conmon is a special case because it is not a child of the container
-		// Also, the calling sequence is podman -> conmon -> runc
+		// Calling sequence: podman -> conmon -> runc/crun
 		n.parseConmonCmdline(cmdlineArr)
 	case "runc", "crun":
-		n.parseOCIRuntime(comm, cmdlineArr)
+		n.parseOCIRuntime(calleeComm, cmdlineArr)
 	default:
 		return false, nil
 	}
@@ -661,20 +759,17 @@ func (n *RuncNotifier) watchRuncIterate() (bool, error) {
 	return false, nil
 }
 
-func (n *RuncNotifier) Close() {
+func (n *ContainerNotifier) Close() {
 	n.closed = true
 	close(n.done)
-	n.runcBinaryNotify.File.Close()
-	n.wg.Wait()
-}
-
-func (n *RuncNotifier) lookupFutureContainer(id string) *futureContainer {
-	n.futureMu.Lock()
-	defer n.futureMu.Unlock()
-	fc, ok := n.futureContainers[id]
-	if !ok {
-		return nil
+	if n.runtimeBinaryNotify != nil {
+		n.runtimeBinaryNotify.File.Close()
 	}
-	delete(n.futureContainers, id)
-	return fc
+	n.wg.Wait()
+
+	for _, l := range n.links {
+		gadgets.CloseLink(l)
+	}
+	n.links = nil
+	n.objs.Close()
 }

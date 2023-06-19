@@ -123,9 +123,9 @@ if [ "$HOOK_MODE" = "crio" ] || [ "$HOOK_MODE" = "nri" ] ; then
   # For crio and nri, the gadgettracermanager process can passively wait for
   # the gRPC calls without monitoring containers itself.
   GADGET_TRACER_MANAGER_HOOK_MODE=none
-elif [ "$HOOK_MODE" = "fanotify" ] || [ "$HOOK_MODE" = "podinformer" ] ; then
-  # fanotify and podinformer are implemented in the gadgettracermanager
-  # process.
+elif [ "$HOOK_MODE" = "fanotify" ] || [ "$HOOK_MODE" = "fanotify+ebpf" ] || [ "$HOOK_MODE" = "podinformer" ] ; then
+  # fanotify, fanotify+ebpf and podinformer are implemented in the
+  # gadgettracermanager process.
   GADGET_TRACER_MANAGER_HOOK_MODE="$HOOK_MODE"
 else
   # Use fanotify if possible, or fall back on podinformer
