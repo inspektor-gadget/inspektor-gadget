@@ -36,6 +36,8 @@ type IGWeb struct {
 var lrlogger = logrus.New()
 
 func main() {
+	fmt.Printf("Starting IG service\n")
+
 	if err := rlimit.RemoveMemlock(); err != nil {
 		return
 	}
