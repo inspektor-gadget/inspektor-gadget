@@ -110,25 +110,17 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 	ops := operators.GetOperatorsForGadget(gadgetDesc)
 
 	operatorParams := ops.ParamCollection()
-	err = operatorParams.CopyFromMap(request.Params, "operator.")
-	if err != nil {
-		return fmt.Errorf("setting operator parameters: %w", err)
-	}
 
 	parser := gadgetDesc.Parser()
 
 	runtimeParams := runtime.ParamDescs().ToParams()
-	err = runtimeParams.CopyFromMap(request.Params, "runtime.")
-	if err != nil {
-		return fmt.Errorf("setting runtime parameters: %w", err)
-	}
 
 	gadgetParamDescs := gadgetDesc.ParamDescs()
 	gadgetParamDescs.Add(gadgets.GadgetParams(gadgetDesc, parser)...)
 	gadgetParams := gadgetParamDescs.ToParams()
-	err = gadgetParams.CopyFromMap(request.Params, "")
+	err = gadgets.ParamsFromMap(request.Params, gadgetParams, runtimeParams, operatorParams)
 	if err != nil {
-		return fmt.Errorf("setting gadget parameters: %w", err)
+		return fmt.Errorf("setting parameters: %w", err)
 	}
 
 	// Create payload buffer
