@@ -29,6 +29,7 @@ import (
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-hook"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	containersmap "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/containers-map"
@@ -269,7 +270,11 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 			opts = append(opts, containercollection.WithInitialKubernetesContainers(g.nodeName))
 		}
 	case "auto":
-		if runcfanotify.Supported() {
+		if containerhook.Supported() {
+			log.Infof("GadgetTracerManager: hook mode: fanotify+ebpf (auto)")
+			opts = append(opts, containercollection.WithContainerFanotifyEbpf())
+			opts = append(opts, containercollection.WithInitialKubernetesContainers(g.nodeName))
+		} else if runcfanotify.Supported() {
 			log.Infof("GadgetTracerManager: hook mode: fanotify (auto)")
 			opts = append(opts, containercollection.WithRuncFanotify())
 			opts = append(opts, containercollection.WithInitialKubernetesContainers(g.nodeName))
@@ -285,6 +290,10 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 	case "fanotify":
 		log.Infof("GadgetTracerManager: hook mode: fanotify")
 		opts = append(opts, containercollection.WithRuncFanotify())
+		opts = append(opts, containercollection.WithInitialKubernetesContainers(g.nodeName))
+	case "fanotify+ebpf":
+		log.Infof("GadgetTracerManager: hook mode: fanotify+ebpf")
+		opts = append(opts, containercollection.WithContainerFanotifyEbpf())
 		opts = append(opts, containercollection.WithInitialKubernetesContainers(g.nodeName))
 	default:
 		return nil, fmt.Errorf("invalid hook mode: %s", conf.HookMode)

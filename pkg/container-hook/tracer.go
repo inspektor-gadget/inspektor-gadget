@@ -156,6 +156,18 @@ func initFanotify() (*fanotify.NotifyFD, error) {
 	return fanotify.Initialize(fanotifyFlags, openFlags)
 }
 
+// Supported detects if RuncNotifier is supported in the current environment
+func Supported() bool {
+	notifier, err := NewContainerNotifier(func(notif ContainerEvent) {})
+	if notifier != nil {
+		notifier.Close()
+	}
+	if err != nil {
+		log.Debugf("ContainerNotifier: not supported: %s", err)
+	}
+	return err == nil
+}
+
 // NewContainerNotifier uses fanotify and ebpf to detect when a container is
 // created or terminated, and call the callback on such event.
 //
