@@ -24,7 +24,7 @@ export function App() {
   const fetchAndDisplayResponse = async () => {
     const result = await ddClient.extension.vm?.service?.post('/gadget', {
         id: 'demo',
-        gadgetName: 'socket',
+        gadgetName: 'process',
         gadgetCategory: 'snapshot',
     });
     setResponse(JSON.stringify(result));
@@ -49,12 +49,12 @@ export function App() {
         </FormControl>
       <Stack direction="row" alignItems="start" spacing={2} sx={{ mt: 4 }}>
         <Button variant="contained" onClick={fetchAndDisplayResponse}>
-          Call Gadget
+          Run snapshot process
         </Button>
 
         <TextField
           label="Backend response"
-          sx={{ width: 480 }}
+          sx={{ width: 600, height: 600 }}
           disabled
           multiline
           variant="outlined"
