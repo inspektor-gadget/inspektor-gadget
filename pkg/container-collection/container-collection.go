@@ -203,25 +203,14 @@ func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container 
 	return
 }
 
-func lookupContainerByMntns(m *sync.Map, mntnsid uint64) *Container {
-	var container *Container
-
-	m.Range(func(key, value interface{}) bool {
-		c := value.(*Container)
-		if c.Mntns == mntnsid {
-			container = c
-			// container found, stop iterating
-			return false
-		}
-		return true
-	})
-	return container
-}
-
 // LookupContainerByMntns returns a container by its mount namespace
 // inode id. If not found nil is returned.
 func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container {
-	return lookupContainerByMntns(&cc.containers, mntnsid)
+	c, ok := cc.containersBytMntNsID.Load(mntnsid)
+	if !ok {
+		return nil
+	}
+	return c.(*Container)
 }
 
 // LookupContainersByNetns returns a slice of containers that run in a given
@@ -362,9 +351,17 @@ func (cc *ContainerCollection) EnrichNode(event *eventtypes.CommonData) {
 func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
 	event.Node = cc.nodeName
 
-	container := lookupContainerByMntns(&cc.containers, mountnsid)
+	container := cc.LookupContainerByMntns(mountnsid)
 	if container == nil && cc.cachedContainers != nil {
-		container = lookupContainerByMntns(cc.cachedContainers, mountnsid)
+		cc.cachedContainers.Range(func(key, value interface{}) bool {
+			c := value.(*Container)
+			if c.Mntns == mountnsid {
+				container = c
+				// container found, stop iterating
+				return false
+			}
+			return true
+		})
 	}
 
 	if container != nil {
