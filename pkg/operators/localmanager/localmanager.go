@@ -38,6 +38,7 @@ const (
 	OperatorInstanceName = "LocalManagerTrace"
 	Runtimes             = "runtimes"
 	ContainerName        = "containername"
+	Host                 = "host"
 	DockerSocketPath     = "docker-socketpath"
 	ContainerdSocketPath = "containerd-socketpath"
 	CrioSocketPath       = "crio-socketpath"
@@ -110,6 +111,12 @@ func (l *LocalManager) ParamDescs() params.ParamDescs {
 			Alias:       "c",
 			Description: "Show only data from containers with that name",
 			ValueHint:   gadgets.LocalContainer,
+		},
+		{
+			Key:          Host,
+			Description:  "Show data from both the host and containers",
+			DefaultValue: "false",
+			TypeHint:     params.TypeBool,
 		},
 	}
 }
@@ -236,6 +243,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 
 	id := uuid.New()
 	l.subscriptionKey = id.String()
+	host := l.params.Get(Host).AsBool()
 
 	// TODO: Improve filtering, see further details in
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
@@ -243,7 +251,9 @@ func (l *localManagerTrace) PreGadgetRun() error {
 		Name: l.params.Get(ContainerName).AsString(),
 	}
 
-	if setter, ok := l.gadgetInstance.(MountNsMapSetter); ok {
+	// If --host is set, we do not want to create the below map because we do not
+	// want any filtering.
+	if setter, ok := l.gadgetInstance.(MountNsMapSetter); ok && !host {
 		// Create mount namespace map to filter by containers
 		mountnsmap, err := l.manager.igManager.CreateMountNsMap(l.subscriptionKey, containerSelector)
 		if err != nil {
