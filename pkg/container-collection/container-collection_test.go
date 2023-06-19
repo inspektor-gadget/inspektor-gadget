@@ -16,6 +16,7 @@ package containercollection
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -36,6 +37,45 @@ func (f *fakeTracerMapsUpdater) TracerMapsUpdater() FuncNotify {
 			f.containers[event.Container.ID] = event.Container
 		case EventTypeRemoveContainer:
 			delete(f.containers, event.Container.ID)
+		}
+	}
+}
+
+func BenchmarkCreateContainerCollection(b *testing.B) {
+	b.ReportAllocs()
+
+	for n := 0; n < b.N; n++ {
+		cc := ContainerCollection{}
+		cc.AddContainer(&Container{
+			ID:    fmt.Sprint(n),
+			Mntns: uint64(n),
+		})
+	}
+}
+
+const (
+	SIZE = 10000
+)
+
+func BenchmarkLookupContainerByMntns(b *testing.B) {
+	cc := ContainerCollection{}
+
+	for n := 0; n < SIZE; n++ {
+		cc.AddContainer(&Container{
+			ID:    fmt.Sprint(n),
+			Mntns: uint64(n),
+		})
+	}
+
+	rand.Seed(time.Now().UnixNano())
+
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		mntnsID := uint64(rand.Intn(SIZE))
+		container := cc.LookupContainerByMntns(mntnsID)
+		if container == nil {
+			b.Fatalf("there should be a container for mount namespace ID %d", mntnsID)
 		}
 	}
 }
