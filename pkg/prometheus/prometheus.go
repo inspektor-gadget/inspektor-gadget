@@ -152,6 +152,7 @@ func handleMetric(
 		runtimeParams,
 		gadgetDesc,
 		gadgetParams,
+		nil, // TODO: where do I get this?
 		operatorsParamCollection,
 		parser,
 		logger.DefaultLogger(),

@@ -34,6 +34,7 @@ type GadgetContext interface {
 	Logger() logger.Logger
 	RuntimeParams() *params.Params
 	GadgetParams() *params.Params
+	Args() []string
 	OperatorsParamCollection() params.Collection
 	Timeout() time.Duration
 }

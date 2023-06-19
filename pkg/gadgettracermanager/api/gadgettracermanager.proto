@@ -91,6 +91,9 @@ message GadgetRunRequest {
   // pkg/runtime/grpc)
   map<string, string> params = 3;
 
+  // args are all parameters which were not specified with a flag
+  repeated string args = 4;
+
   // a list of nodes the gadget should run on; if not specified, it should run
   // on all nodes
   repeated string nodes = 10;
