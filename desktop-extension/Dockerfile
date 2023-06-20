@@ -78,6 +78,7 @@ ENV HOST_ROOT=/host
 ENV INSPEKTOR_GADGET_DOCKER_SOCKETPATH=/host/var/run/docker.sock
 ENV INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH=/host/run/containerd/containerd.sock
 ENV IG_DESKTOP_EXTENSION_SOCKET=/run/guest-services/albanc_gadget-desktop-extension/ig-desktop-extension.sock
+ENV OCI_RUNTIME_PATH=/proc/1/root/containers/services/docker/rootfs/usr/bin/runc:/proc/1/root/containers/services/docker/lower/usr/bin/runc
 
 RUN mkdir -p /run/guest-services/
 CMD /bin/ig-service -socket /run/guest-services/ig-desktop-extension.sock
