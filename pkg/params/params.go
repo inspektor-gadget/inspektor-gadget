@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -470,4 +471,8 @@ func (p *Param) AsInt64Slice() []int64 {
 func (p *Param) AsDuration() time.Duration {
 	d, _ := time.ParseDuration(p.value)
 	return d
+}
+
+func (p *Param) AsIP() net.IP {
+	return net.ParseIP(p.value)
 }

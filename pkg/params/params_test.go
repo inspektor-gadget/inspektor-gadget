@@ -16,6 +16,7 @@ package params
 
 import (
 	"errors"
+	"net"
 	"testing"
 	"time"
 
@@ -186,6 +187,18 @@ func TestParamAs(t *testing.T) {
 			value:    "0.5h",
 			expected: time.Duration(30 * time.Minute),
 			getter:   func(p *Param) any { return p.AsDuration() },
+		},
+		{
+			name:     "IPv4",
+			value:    "127.0.0.1",
+			expected: net.IPv4(127, 0, 0, 1),
+			getter:   func(p *Param) any { return p.AsIP() },
+		},
+		{
+			name:     "IPv6",
+			value:    "::1",
+			expected: net.IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+			getter:   func(p *Param) any { return p.AsIP() },
 		},
 	}
 
