@@ -200,6 +200,7 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 			time.Duration(gadgetCtx.GadgetParams().Get(gadgets.ParamInterval).AsInt32())*time.Second,
 			2,
 		)
+		defer gadgetCtx.Parser().Flush()
 	}
 
 	if gadgetCtx.GadgetDesc().Type() == gadgets.TypeOneShot {

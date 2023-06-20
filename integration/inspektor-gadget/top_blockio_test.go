@@ -18,53 +18,82 @@ import (
 	"fmt"
 	"testing"
 
-	topblockioTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
-
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	topblockioTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
+
+func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
+	expectedOutputFn := func(output string) error {
+		expectedEntry := &topblockioTypes.Stats{
+			CommonData: BuildCommonData(ns),
+			Write:      true,
+			Comm:       "dd",
+		}
+
+		normalize := func(e *topblockioTypes.Stats) {
+			e.Node = ""
+			e.Major = 0
+			e.Minor = 0
+			e.MicroSecs = 0
+			e.MountNsID = 0
+			e.Pid = 0
+			e.Operations = 0
+			e.Bytes = 0
+		}
+
+		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+	}
+	return &Command{
+		Name:             "TopBlockIO",
+		ExpectedOutputFn: expectedOutputFn,
+		Cmd:              cmd,
+		StartAndStop:     startAndStop,
+	}
+}
 
 func TestTopBlockIO(t *testing.T) {
 	if *k8sDistro == K8sDistroARO {
 		t.Skip("Skip running top block-io gadget on ARO: see issue #589")
 	}
 
+	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-block-io")
 
-	t.Parallel()
-
-	topBlockIOCmd := &Command{
-		Name:         "StartTopBlockIOGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json", ns),
-		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			expectedEntry := &topblockioTypes.Stats{
-				CommonData: BuildCommonData(ns),
-				Write:      true,
-				Comm:       "dd",
-			}
-
-			normalize := func(e *topblockioTypes.Stats) {
-				e.Node = ""
-				e.Major = 0
-				e.Minor = 0
-				e.MicroSecs = 0
-				e.MountNsID = 0
-				e.Pid = 0
-				e.Operations = 0
-				e.Bytes = 0
-			}
-
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
-		},
-	}
-
-	commands := []*Command{
+	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
-		topBlockIOCmd,
 		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096"),
 		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
 	}
+	RunTestSteps(commandsPreTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 
-	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	t.Cleanup(func() {
+		commandsPostTest := []*Command{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("StartAndStop", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json", ns)
+		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, true)
+		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json --timeout %d", ns, topTimeoutInSeconds)
+		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false)
+		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	t.Run("Interval=Timeout", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json --timeout %d --interval %d", ns, topTimeoutInSeconds, topTimeoutInSeconds)
+		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false)
+		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
 }
