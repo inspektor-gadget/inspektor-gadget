@@ -452,3 +452,36 @@ func TestValidateDuration(t *testing.T) {
 		ValidateDuration,
 	)
 }
+
+func TestValidateIP(t *testing.T) {
+	testValidate(t,
+		[]validateTest{
+			{
+				name:          "IPv4_no_error",
+				value:         "127.0.0.1",
+				expectedError: false,
+			},
+			{
+				name:          "IPv6_no_error",
+				value:         "::1",
+				expectedError: false,
+			},
+			{
+				name:          "empty_error",
+				value:         "",
+				expectedError: true,
+			},
+			{
+				name:          "bad_input_0",
+				value:         "-",
+				expectedError: true,
+			},
+			{
+				name:          "bad_input_1",
+				value:         "foo",
+				expectedError: true,
+			},
+		},
+		ValidateIP,
+	)
+}

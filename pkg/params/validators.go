@@ -16,6 +16,7 @@ package params
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +39,7 @@ const (
 	TypeUint32   TypeHint = "uint32"
 	TypeUint64   TypeHint = "uint64"
 	TypeDuration TypeHint = "duration"
+	TypeIP       TypeHint = "ip"
 )
 
 var typeHintValidators = map[TypeHint]ParamValidator{
@@ -53,6 +55,7 @@ var typeHintValidators = map[TypeHint]ParamValidator{
 	TypeUint32:   ValidateUint(32),
 	TypeUint64:   ValidateUint(64),
 	TypeDuration: ValidateDuration,
+	TypeIP:       ValidateIP,
 }
 
 type ValueHint string
@@ -131,4 +134,11 @@ func ValidateSlice(validator ParamValidator) func(value string) error {
 func ValidateDuration(value string) error {
 	_, err := time.ParseDuration(value)
 	return err
+}
+
+func ValidateIP(value string) error {
+	if net.ParseIP(value) == nil {
+		return fmt.Errorf("%q is not a valid IP address", value)
+	}
+	return nil
 }
