@@ -16,7 +16,7 @@ type execruntimeRecord struct {
 	Pid        uint32
 	ArgsSize   uint32
 	CallerComm [16]uint8
-	Args       [7680]uint8
+	Args       [15360]uint8
 }
 
 // loadExecruntime returns the embedded CollectionSpec for execruntime.

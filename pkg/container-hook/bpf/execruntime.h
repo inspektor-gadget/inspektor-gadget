@@ -2,7 +2,7 @@
 #ifndef __EXECRUNTIME_H
 #define __EXECRUNTIME_H
 
-#define ARGSIZE  128
+#define ARGSIZE  256
 #define TASK_COMM_LEN 16
 #define TOTAL_MAX_ARGS 60
 #define DEFAULT_MAXARGS 20
