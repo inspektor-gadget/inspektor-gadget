@@ -560,6 +560,16 @@ func (n *ContainerNotifier) monitorRuntimeInstance(bundleDir string, pidFile str
 		return fmt.Errorf("marking %s: %w", configJSONPath, err)
 	}
 
+	// similar to config.json, we ignore passwd file if it exists
+	passwdPath := filepath.Join(bundleDir, "passwd")
+	if _, err := os.Stat(passwdPath); !errors.Is(err, os.ErrNotExist) {
+		err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, passwdPath)
+		if err != nil {
+			pidFileDirNotify.File.Close()
+			return fmt.Errorf("marking %s: %w", passwdPath, err)
+		}
+	}
+
 	n.wg.Add(1)
 	go func() {
 		defer n.wg.Done()
