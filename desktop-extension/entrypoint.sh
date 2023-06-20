@@ -16,6 +16,11 @@ KERNEL=$(uname -r)
 echo -n "Kernel detected: "
 echo $KERNEL
 
+if ! readlink /host/proc/self > /dev/null ; then
+  echo "/host/proc's pidns is neither the current pidns or a parent of the current pidns. Remounting."
+  mount --bind /proc /host/proc
+fi
+
 BPF_MOUNTPOINT_TYPE="`stat -f -c %T /sys/fs/bpf`"
 if [ "$BPF_MOUNTPOINT_TYPE" != "bpf_fs" ] ; then
   echo "/sys/fs/bpf is of type $BPF_MOUNTPOINT_TYPE. Remounting."
