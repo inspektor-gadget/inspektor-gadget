@@ -150,7 +150,7 @@ func (ig *IGWeb) runGadgetHandler(ctx echo.Context) error {
 		return fmt.Errorf("setting gadget parameters: %w", err)
 	}
 
-	var output = make(map[string]any)
+	output := make(map[string]any)
 	events := make([]any, 0)
 
 	if parser != nil {
