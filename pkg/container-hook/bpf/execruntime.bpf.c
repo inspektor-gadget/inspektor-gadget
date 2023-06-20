@@ -11,7 +11,7 @@ const volatile int max_args = DEFAULT_MAXARGS;
 static const struct record empty_record = {};
 
 // configured by userspace
-const volatile u64 fanotify_fops_addr = 0;
+const volatile u64 fanotify_show_fdinfo_addr = 0;
 const volatile u64 tracer_fanotify_fd = 0;
 
 // initialized by the iterator
@@ -61,7 +61,7 @@ int ig_fa_it(struct bpf_iter__task_file *ctx)
 		return 0;
 
 	// The current file is not a fanotify file
-	if (fanotify_fops_addr == 0 || (__u64)(file->f_op) != fanotify_fops_addr)
+	if (fanotify_show_fdinfo_addr == 0 || (__u64)(file->f_op) == 0 || (__u64)(file->f_op->show_fdinfo) != fanotify_show_fdinfo_addr)
 		return 0;
 
 	// The current process is the one running the iterator

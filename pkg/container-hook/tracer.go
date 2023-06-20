@@ -194,7 +194,7 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 	if err != nil {
 		return fmt.Errorf("load ebpf program for container-hook: %w", err)
 	}
-	if err := kallsyms.SpecUpdateAddresses(spec, []string{"fanotify_fops"}); err != nil {
+	if err := kallsyms.SpecUpdateAddresses(spec, []string{"fanotify_show_fdinfo"}); err != nil {
 		return fmt.Errorf("RewriteConstants: %w", err)
 	}
 
@@ -289,15 +289,15 @@ func (n *ContainerNotifier) install() error {
 	for _, r := range runtimePaths {
 		runtimePath := filepath.Join(host.HostRoot, r)
 
-		log.Debugf("Runcfanotify: trying runc at %s", runtimePath)
+		log.Debugf("container-hook: trying runc at %s", runtimePath)
 
 		if _, err := os.Stat(runtimePath); errors.Is(err, os.ErrNotExist) {
-			log.Debugf("Runcfanotify: runc at %s not found", runtimePath)
+			log.Debugf("container-hook: runc at %s not found", runtimePath)
 			continue
 		}
 
 		if err := runtimeBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runtimePath); err != nil {
-			log.Warnf("Runcfanotify: failed to fanotify mark: %s", err)
+			log.Warnf("container-hook: failed to fanotify mark: %s", err)
 			continue
 		}
 		runtimeFound = true
