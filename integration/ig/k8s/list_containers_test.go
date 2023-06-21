@@ -243,3 +243,85 @@ func TestWatchDeletedContainers(t *testing.T) {
 
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 }
+
+func TestPodWithSecurityContext(t *testing.T) {
+	t.Parallel()
+	cn := "test-security-context"
+	po := cn
+	ns := GenerateTestNamespaceName(cn)
+
+	// TODO: Handle it once we support getting K8s container name for docker
+	// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
+	if *containerRuntime == ContainerRuntimeDocker {
+		t.Skip("Skip TestPodWithSecurityContext on docker since we don't propagate the Kubernetes pod container name")
+	}
+
+	watchContainersCmd := &Command{
+		Name:         "RunWatchContainers",
+		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --containername=%s --watch", *containerRuntime, cn),
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEvent := &containercollection.PubSubEvent{
+				Type: containercollection.EventTypeAddContainer,
+				Container: &containercollection.Container{
+					Name:      cn,
+					Podname:   po,
+					Runtime:   *containerRuntime,
+					Namespace: ns,
+				},
+			}
+
+			normalize := func(e *containercollection.PubSubEvent) {
+				e.Container.ID = ""
+				e.Container.Pid = 0
+				e.Container.OciConfig = nil
+				e.Container.Bundle = ""
+				e.Container.Mntns = 0
+				e.Container.Netns = 0
+				e.Container.CgroupPath = ""
+				e.Container.CgroupID = 0
+				e.Container.CgroupV1 = ""
+				e.Container.CgroupV2 = ""
+				e.Container.Labels = nil
+				e.Container.PodUID = ""
+				e.Timestamp = ""
+			}
+
+			return ExpectAllToMatch(output, normalize, expectedEvent)
+		},
+	}
+
+	securityContextPodYaml := fmt.Sprintf(`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1001
+    fsGroup: 1002
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 0
+  containers:
+  - name: %s
+    image: busybox
+    command: ["sleep", "inf"]
+`, po, ns, cn)
+
+	commands := []*Command{
+		CreateTestNamespaceCommand(ns),
+		watchContainersCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		{
+			Name:           "RunTestPodWithSecurityContext",
+			Cmd:            fmt.Sprintf("echo '%s' | kubectl apply -f -", securityContextPodYaml),
+			ExpectedRegexp: fmt.Sprintf("pod/%s created", po),
+		},
+		WaitUntilPodReadyCommand(ns, po),
+		DeleteTestNamespaceCommand(ns),
+	}
+
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+}
