@@ -395,50 +395,17 @@ func TestValidateSlice(t *testing.T) {
 	}
 }
 
-func TestValidateDuration(t *testing.T) {
-	type test struct {
-		name          string
-		value         string
-		expectedError bool
-	}
+type validateTest struct {
+	name          string
+	value         string
+	expectedError bool
+}
 
-	tests := []test{
-		{
-			name:          "1s_no_error",
-			value:         "1s",
-			expectedError: false,
-		},
-		{
-			name:          "1m_no_error",
-			value:         "1m",
-			expectedError: false,
-		},
-		{
-			name:          "empty_error",
-			value:         "",
-			expectedError: true,
-		},
-		{
-			name:          "bad_input_0",
-			value:         "-",
-			expectedError: true,
-		},
-		{
-			name:          "bad_input_1",
-			value:         "asdafaf",
-			expectedError: true,
-		},
-		{
-			name:          "bad_unit",
-			value:         "1sad",
-			expectedError: true,
-		},
-	}
-
+func testValidate(t *testing.T, tests []validateTest, validate func(str string) error) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			err := ValidateDuration(test.value)
+			err := validate(test.value)
 			if test.expectedError {
 				require.Error(t, err)
 			} else {
@@ -446,4 +413,75 @@ func TestValidateDuration(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateDuration(t *testing.T) {
+	testValidate(t,
+		[]validateTest{
+			{
+				name:          "1s_no_error",
+				value:         "1s",
+				expectedError: false,
+			},
+			{
+				name:          "1m_no_error",
+				value:         "1m",
+				expectedError: false,
+			},
+			{
+				name:          "empty_error",
+				value:         "",
+				expectedError: true,
+			},
+			{
+				name:          "bad_input_0",
+				value:         "-",
+				expectedError: true,
+			},
+			{
+				name:          "bad_input_1",
+				value:         "asdafaf",
+				expectedError: true,
+			},
+			{
+				name:          "bad_unit",
+				value:         "1sad",
+				expectedError: true,
+			},
+		},
+		ValidateDuration,
+	)
+}
+
+func TestValidateIP(t *testing.T) {
+	testValidate(t,
+		[]validateTest{
+			{
+				name:          "IPv4_no_error",
+				value:         "127.0.0.1",
+				expectedError: false,
+			},
+			{
+				name:          "IPv6_no_error",
+				value:         "::1",
+				expectedError: false,
+			},
+			{
+				name:          "empty_error",
+				value:         "",
+				expectedError: true,
+			},
+			{
+				name:          "bad_input_0",
+				value:         "-",
+				expectedError: true,
+			},
+			{
+				name:          "bad_input_1",
+				value:         "foo",
+				expectedError: true,
+			},
+		},
+		ValidateIP,
+	)
 }
