@@ -599,6 +599,36 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 			}
 			return "false"
 		}
+	case reflect.Array:
+		l := column.(*Column[T]).Type().Len()
+		s := column.(*Column[T]).Type().Elem().Size()
+		// c strings: []char null terminated
+		if s == 1 {
+			return func(entry *T) string {
+				r := []byte{}
+				entryStart := unsafe.Pointer(entry)
+				if column.(*Column[T]).getStart != nil {
+					entryStart = column.(*Column[T]).getStart(entry)
+				}
+
+				fieldStart := unsafe.Add(entryStart, column.getOffset())
+
+				for i := 0; i < int(l); i++ {
+					b := (*(*byte)(unsafe.Pointer(fieldStart)))
+					fieldStart = unsafe.Add(fieldStart, 1)
+					if b == 0 {
+						break
+					}
+					r = append(r, b)
+				}
+
+				return string(r)
+			}
+		}
+
+		return func(entry *T) string {
+			return "TODO"
+		}
 	case reflect.String:
 		ff := GetFieldFunc[string, T](column)
 		return func(entry *T) string {
