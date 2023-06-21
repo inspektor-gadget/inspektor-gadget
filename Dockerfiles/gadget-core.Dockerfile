@@ -6,7 +6,7 @@
 # (CONFIG_DEBUG_INFO_BTF).
 
 ARG BUILDER_IMAGE=golang:1.19-bullseye
-ARG BASE_IMAGE=alpine:3.14
+ARG BASE_IMAGE=debian:bullseye-slim
 
 # Prepare and build gadget artifacts in a container
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
@@ -47,7 +47,9 @@ RUN set -ex; \
 		yum install -y libseccomp wget util-linux socat; \
 	elif command -v apt-get; then \
 		apt-get update && \
-		apt-get install -y seccomp wget util-linux socat; \
+		apt-get install -y seccomp wget util-linux socat && \
+		apt-get clean && \
+		rm -rf /var/lib/apt/lists/*; \
 	elif command -v apk; then \
 		apk add gcompat libseccomp wget util-linux socat; \
 	fi && \
