@@ -82,6 +82,7 @@ var (
 	runtimesConfig      commonutils.RuntimesSocketPathConfig
 	nodeSelector        string
 	experimentalVar     bool
+	skipSELinuxOpts     bool
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -155,6 +156,11 @@ func init() {
 		"experimental",
 		false,
 		"enable experimental features")
+	deployCmd.PersistentFlags().BoolVarP(
+		&skipSELinuxOpts,
+		"skip-selinux-opts", "",
+		false,
+		"skip setting SELinux options on the gadget pod")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -453,6 +459,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					return fmt.Errorf("creating affinity: %w", err)
 				}
 				daemonSet.Spec.Template.Spec.Affinity = affinity
+			}
+
+			// skip SELinux options if the user explicitly requests it
+			if legacyHostPID || skipSELinuxOpts {
+				gadgetContainer.SecurityContext.SELinuxOptions = nil
 			}
 
 			// Get gadget daemon set (if any) to check if it was modified
