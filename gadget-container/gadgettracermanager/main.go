@@ -38,6 +38,7 @@ import (
 
 	// This is a blank include that actually imports all gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 	// The script gadget is designed only to work in k8s, hence it's not part of all-gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
 
@@ -91,6 +92,10 @@ func init() {
 }
 
 func main() {
+	if experimental.Enabled() {
+		log.Info("Experimental features enabled")
+	}
+
 	flag.Parse()
 
 	if flag.NArg() > 0 {

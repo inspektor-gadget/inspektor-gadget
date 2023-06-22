@@ -18,6 +18,7 @@ import (
 	"os"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
@@ -27,6 +28,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 	// The script is not included in the all gadgets package.
@@ -41,29 +43,33 @@ var rootCmd = &cobra.Command{
 	Short: "Collection of gadgets for Kubernetes developers",
 }
 
-var catalogSkipCommands = []string{"deploy", "undeploy", "version"}
+var infoSkipCommands = []string{"deploy", "undeploy", "version"}
 
 func init() {
 	utils.FlagInit(rootCmd)
 }
 
 func main() {
+	if experimental.Enabled() {
+		log.Info("Experimental features enabled")
+	}
+
 	common.AddVerboseFlag(rootCmd)
 
-	// grpcruntime.New() will try to fetch a catalog from the cluster by
+	// grpcruntime.New() will try to fetch the info from the cluster by
 	// default. Make sure we don't do this when certain commands are run
 	// (as they just don't need it or imply that there are no nodes to
 	// contact, yet).
-	skipCatalog := false
+	skipInfo := false
 	for _, arg := range os.Args[1:] {
-		for _, skipCmd := range catalogSkipCommands {
+		for _, skipCmd := range infoSkipCommands {
 			if strings.ToLower(arg) == skipCmd {
-				skipCatalog = true
+				skipInfo = true
 			}
 		}
 	}
 
-	runtime := grpcruntime.New(skipCatalog)
+	runtime := grpcruntime.New(skipInfo)
 
 	namespace, _ := utils.GetNamespace()
 	runtime.SetDefaultValue(gadgets.K8SNamespace, namespace)
@@ -76,10 +82,10 @@ func main() {
 	rootCmd.AddCommand(advise.NewAdviseCmd())
 
 	rootCmd.AddCommand(&cobra.Command{
-		Use:   "update-catalog",
-		Short: "Download a new gadget catalog from the nodes to have it in sync with this client",
+		Use:   "sync",
+		Short: "Synchronize gadget information with your cluster",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runtime.UpdateCatalog()
+			return runtime.UpdateDeployInfo()
 		},
 	})
 

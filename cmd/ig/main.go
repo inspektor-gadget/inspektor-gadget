@@ -17,6 +17,7 @@ package main
 import (
 	"os"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
@@ -24,6 +25,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
 	// This is a blank include that actually imports all gadgets
 	// TODO: traceloop is imported separately because it is not in all-gadgets
@@ -36,6 +38,10 @@ import (
 )
 
 func main() {
+	if experimental.Enabled() {
+		log.Info("Experimental features enabled")
+	}
+
 	rootCmd := &cobra.Command{
 		Use:   "ig",
 		Short: "Collection of gadgets for containers",

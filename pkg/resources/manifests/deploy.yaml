@@ -175,6 +175,8 @@ spec:
             value: "/run/docker.sock"
           - name: HOST_ROOT
             value: "/host"
+          - name: IG_EXPERIMENTAL
+            value: "false"
         securityContext:
           capabilities:
             add:

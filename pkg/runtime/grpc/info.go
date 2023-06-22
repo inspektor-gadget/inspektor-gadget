@@ -17,62 +17,28 @@ package grpcruntime
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
-	"os"
-	"path/filepath"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
-func getCatalogFilename() (string, error) {
-	homedir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("get home dir: %w", err)
-	}
-	configFile := filepath.Join(homedir, ".ig", "catalog.json")
-	return configFile, nil
-}
-
-func loadLocalGadgetCatalog() (*runtime.Catalog, error) {
-	catalogFile, err := getCatalogFilename()
-	if err != nil {
-		return nil, fmt.Errorf("get catalog filename: %w", err)
-	}
-
-	f, err := os.Open(catalogFile)
-	if err != nil {
-		return nil, fmt.Errorf("open catalog file: %w", err)
-	}
-
-	catalog := &runtime.Catalog{}
-
-	dec := json.NewDecoder(f)
-	err = dec.Decode(&catalog)
-	if err != nil {
-		return nil, fmt.Errorf("reading catalog: %w", err)
-	}
-
-	return catalog, err
-}
-
-func loadRemoteGadgetCatalog() (*runtime.Catalog, error) {
+func loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
 	ctx, cancelDial := context.WithTimeout(context.Background(), time.Second*ConnectTimeout)
 	defer cancelDial()
 
-	// Get a random gadget pod and get the catalog from there
+	// Get a random gadget pod and get the info from there
 	pods, err := getGadgetPods(ctx, []string{})
 	if err != nil {
 		return nil, fmt.Errorf("get gadget pods: %w", err)
 	}
 	if len(pods) == 0 {
-		return nil, fmt.Errorf("no valid pods found to get catalog from")
+		return nil, fmt.Errorf("no valid pods found to get info from")
 	}
 
 	pod := pods[0]
@@ -93,31 +59,13 @@ func loadRemoteGadgetCatalog() (*runtime.Catalog, error) {
 		return nil, fmt.Errorf("get info from gadget pod: %w", err)
 	}
 
-	catalog := &runtime.Catalog{}
-	err = json.Unmarshal(info.Catalog, &catalog)
+	retInfo := &deployinfo.DeployInfo{
+		Experimental: info.Experimental,
+	}
+	err = json.Unmarshal(info.Catalog, &retInfo.Catalog)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshaling catalog: %w", err)
+		return nil, fmt.Errorf("unmarshaling info: %w", err)
 	}
 
-	return catalog, nil
-}
-
-func storeCatalog(catalog *runtime.Catalog) error {
-	catalogFile, err := getCatalogFilename()
-	if err != nil {
-		return fmt.Errorf("get catalog filename: %w", err)
-	}
-	err = os.MkdirAll(filepath.Dir(catalogFile), 0o750)
-	if err != nil && errors.Is(err, os.ErrExist) {
-		return fmt.Errorf("create config dir: %w", err)
-	}
-	catalogJSON, err := json.Marshal(catalog)
-	if err != nil {
-		return fmt.Errorf("marshaling catalog JSON: %w", err)
-	}
-	err = os.WriteFile(catalogFile, catalogJSON, 0o644)
-	if err != nil {
-		return fmt.Errorf("write catalog file: %w", err)
-	}
-	return nil
+	return retInfo, nil
 }

@@ -33,6 +33,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
 	// TODO: Move!
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
@@ -71,8 +72,9 @@ func (s *Service) GetInfo(ctx context.Context, request *pb.InfoRequest) (*pb.Inf
 		return nil, fmt.Errorf("marshal catalog: %w", err)
 	}
 	return &pb.InfoResponse{
-		Version: "1.0", // TODO
-		Catalog: catalogJSON,
+		Version:      "1.0", // TODO
+		Catalog:      catalogJSON,
+		Experimental: experimental.Enabled(),
 	}, nil
 }
 
