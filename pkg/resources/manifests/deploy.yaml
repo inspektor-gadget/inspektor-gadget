@@ -178,6 +178,14 @@ spec:
           - name: IG_EXPERIMENTAL
             value: "false"
         securityContext:
+          # With hostPID/hostNetwork/privileged [1] set to false, we need to set appropriate
+          # SELinux context [2] to be able to mount host directories with correct permissions.
+          # This option is ignored if hostPID/hostNetwork/privileged is set to true or SELinux isn't enabled.
+          # See:
+          # 1 - https://github.com/cri-o/cri-o/blob/v1.27.0/server/sandbox_run_linux.go#L537
+          # 2 - https://github.com/cri-o/cri-o/blob/v1.27.0/server/container_create_linux.go#L310
+          seLinuxOptions:
+            type: "spc_t"
           capabilities:
             add:
               # We need CAP_NET_ADMIN to be able to create BPF link.
