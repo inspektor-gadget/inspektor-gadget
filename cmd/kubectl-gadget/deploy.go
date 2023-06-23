@@ -104,7 +104,7 @@ func init() {
 		&hookMode,
 		"hook-mode", "",
 		"auto",
-		"how to get containers start/stop notifications (auto, crio, podinformer, nri, fanotify)")
+		fmt.Sprintf("how to get containers start/stop notifications (%s)", strings.Join(supportedHooks, ", ")))
 	deployCmd.PersistentFlags().BoolVarP(
 		&livenessProbe,
 		"liveness-probe", "",
