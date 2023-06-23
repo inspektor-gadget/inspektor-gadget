@@ -79,6 +79,16 @@ func (k *K8sClient) Close() {
 	k.runtimeClient.Close()
 }
 
+// trimRuntimePrefix removes the runtime prefix from a container ID.
+func trimRuntimePrefix(id string) string {
+	parts := strings.SplitN(id, "//", 2)
+	if len(parts) != 2 {
+		return ""
+	}
+
+	return parts[1]
+}
+
 // GetNonRunningContainers returns the list of containers IDs that are not running.
 func (k *K8sClient) GetNonRunningContainers(pod *v1.Pod) []string {
 	ret := []string{}
@@ -89,7 +99,12 @@ func (k *K8sClient) GetNonRunningContainers(pod *v1.Pod) []string {
 
 	for _, s := range containerStatuses {
 		if s.ContainerID != "" && s.State.Running == nil {
-			ret = append(ret, s.ContainerID)
+			id := trimRuntimePrefix(s.ContainerID)
+			if id == "" {
+				continue
+			}
+
+			ret = append(ret, id)
 		}
 	}
 
@@ -122,8 +137,8 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 			continue
 		}
 
-		idParts := strings.SplitN(s.ContainerID, "//", 2)
-		if len(idParts) != 2 {
+		id := trimRuntimePrefix(s.ContainerID)
+		if id == "" {
 			continue
 		}
 
@@ -134,7 +149,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 		}
 
 		containerDef := Container{
-			ID:        idParts[1],
+			ID:        id,
 			Namespace: pod.GetNamespace(),
 			Podname:   pod.GetName(),
 			Name:      s.Name,

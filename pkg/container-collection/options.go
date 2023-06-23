@@ -247,15 +247,16 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 
 			for {
 				select {
-				case d, ok := <-podInformer.DeletedChan():
+				case key, ok := <-podInformer.DeletedChan():
 					if !ok {
 						return
 					}
-					if containerIDs, ok := containerIDsByKey[d]; ok {
+					if containerIDs, ok := containerIDsByKey[key]; ok {
 						for containerID := range containerIDs {
 							cc.RemoveContainer(containerID)
 						}
 					}
+					delete(containerIDsByKey, key)
 				case c, ok := <-podInformer.CreatedChan():
 					if !ok {
 						return
@@ -274,7 +275,6 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 						if _, ok := containerIDs[id]; !ok {
 							continue
 						}
-
 						cc.RemoveContainer(id)
 					}
 
@@ -286,6 +286,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 						if _, ok := containerIDs[container.ID]; ok {
 							continue
 						}
+						containerIDs[container.ID] = struct{}{}
 
 						// Make a copy instead of passing the same pointer at
 						// each iteration of the loop
@@ -299,8 +300,6 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 								container.Namespace, container.Podname, container.Name)
 						}
 						cc.AddContainer(&newContainer)
-
-						containerIDs[container.ID] = struct{}{}
 					}
 				}
 			}
