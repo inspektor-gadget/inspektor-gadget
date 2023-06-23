@@ -26,7 +26,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -108,6 +107,7 @@ initialContainersLoop:
 			ok := enricher(container)
 			if !ok {
 				// Enrichers can decide to drop a container
+				container.close()
 				continue initialContainersLoop
 			}
 		}
@@ -168,6 +168,7 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 		ok := enricher(container)
 		// Enrichers can decide to drop a container
 		if !ok {
+			container.close()
 			return
 		}
 	}
@@ -217,11 +218,8 @@ func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container
 	return lookupContainerByMntns(&cc.containers, mntnsid)
 }
 
-// LookupContainersByNetns returns a slice of containers that run in a given
-// network namespace. Or an empty slice if there are no containers running in
-// that network namespace.
-func (cc *ContainerCollection) LookupContainersByNetns(netnsid uint64) (containers []*Container) {
-	cc.containers.Range(func(key, value interface{}) bool {
+func lookupContainersByNetns(m *sync.Map, netnsid uint64) (containers []*Container) {
+	m.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
 		if c.Netns == netnsid {
 			containers = append(containers, c)
@@ -229,6 +227,13 @@ func (cc *ContainerCollection) LookupContainersByNetns(netnsid uint64) (containe
 		return true
 	})
 	return containers
+}
+
+// LookupContainersByNetns returns a slice of containers that run in a given
+// network namespace. Or an empty slice if there are no containers running in
+// that network namespace.
+func (cc *ContainerCollection) LookupContainersByNetns(netnsid uint64) (containers []*Container) {
+	return lookupContainersByNetns(&cc.containers, netnsid)
 }
 
 // LookupMntnsByPod returns the mount namespace inodes of all containers
@@ -370,7 +375,10 @@ func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mount
 func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netnsid uint64) {
 	event.Node = cc.nodeName
 
-	containers := cc.LookupContainersByNetns(netnsid)
+	containers := lookupContainersByNetns(&cc.containers, netnsid)
+	if len(containers) == 0 && cc.cachedContainers != nil {
+		containers = lookupContainersByNetns(cc.cachedContainers, netnsid)
+	}
 	if len(containers) == 0 {
 		return
 	}
@@ -448,10 +456,7 @@ func (cc *ContainerCollection) Close() {
 	// events.
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
-		if c.mntNsFd != 0 {
-			unix.Close(c.mntNsFd)
-			c.mntNsFd = 0
-		}
+		c.close()
 		cc.containers.Delete(c)
 		return true
 	})
