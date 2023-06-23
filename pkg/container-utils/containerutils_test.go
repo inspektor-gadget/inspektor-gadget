@@ -18,7 +18,22 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
+
+func TestNewContainerRuntimeClient(t *testing.T) {
+	nonExistingSocketPath := filepath.Join(t.TempDir(), "non-existing-socket")
+	for _, runtime := range AvailableRuntimes {
+		rc := RuntimeConfig{
+			Name:       runtime,
+			SocketPath: nonExistingSocketPath,
+		}
+		c, err := NewContainerRuntimeClient(&rc)
+		require.Nil(t, err)
+		require.NotNil(t, c)
+	}
+}
 
 func TestParseOCIState(t *testing.T) {
 	match, err := filepath.Glob("testdata/*.input")
