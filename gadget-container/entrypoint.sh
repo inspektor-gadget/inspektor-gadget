@@ -88,7 +88,7 @@ if [ "$HOOK_MODE" = "crio" ] ; then
   for HOOK_PATH in "/host/etc/containers/oci/hooks.d" \
                    "/host/usr/share/containers/oci/hooks.d/"
   do
-    echo "Installing OCI hooks configuration in /etc/containers/oci/hooks.d"
+    echo "Installing OCI hooks configuration in $HOOK_PATH"
     mkdir -p $HOOK_PATH
     cp /opt/hooks/crio/gadget-prestart.json $HOOK_PATH 2>/dev/null || true
     cp /opt/hooks/crio/gadget-poststop.json $HOOK_PATH 2>/dev/null || true
