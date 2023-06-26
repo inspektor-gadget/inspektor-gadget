@@ -114,6 +114,8 @@ simplicity, they are not demonstrated in each command guide:
   `--output` flag.
 - It is possible to filter events by container name using the `--containername`
   flag.
+- It is possible to trace events from all the running processes, even though
+  they were not generated from containers, using the `--host` flag.
 
 For instance, for the `list-containers` command:
 
@@ -137,3 +139,21 @@ $ sudo ig list-containers -o json --containername etcd
   }
 ]
 ```
+
+For example, with `--host`, you can get the following output:
+
+```bash
+$ sudo ig trace exec --host
+CONTAINER                                               PID        PPID       COMM             RET ARGS
+
+# Open another terminal.
+$ cat /dev/null
+$ docker run --name test-host --rm -t debian sh -c 'ls > /dev/null'
+# Go back to first terminal.
+CONTAINER                                               PID        PPID       COMM             RET ARGS
+                               24640            4537             cat              0   /usr/bin/cat /dev/null
+test-host                      24577            24553            sh               0   /bin/sh -c cat /dev/null
+test-host                      24598            24577            cat              0   /bin/cat /dev/null
+```
+
+Events generated from containers have their container field set, while events which are generated from the host do not.

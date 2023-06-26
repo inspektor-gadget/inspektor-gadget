@@ -17,9 +17,11 @@ package main
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestTraceExec(t *testing.T) {
@@ -88,4 +90,68 @@ func TestTraceExec(t *testing.T) {
 	}
 
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+}
+
+func TestTraceExecHost(t *testing.T) {
+	t.Parallel()
+
+	cmd := "sh -c 'for i in $(seq 1 30); do date; /bin/sleep 0.1; done'"
+	shArgs := []string{"/bin/sh", "-c", cmd}
+	dateArgs := []string{"/usr/bin/date"}
+	sleepArgs := []string{"/bin/sleep", "0.1"}
+
+	traceExecCmd := &Command{
+		Name:         "TraceExecHost",
+		Cmd:          "ig trace exec -o json --host",
+		StartAndStop: true,
+		ExpectedOutputFn: func(output string) error {
+			expectedEntries := []*execTypes.Event{
+				{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					Comm: "sh",
+					Args: shArgs,
+				},
+				{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					Comm: "date",
+					Args: dateArgs,
+				},
+				{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					Comm: "sleep",
+					Args: sleepArgs,
+				},
+			}
+
+			normalize := func(e *execTypes.Event) {
+				e.Timestamp = 0
+				e.Pid = 0
+				e.Ppid = 0
+				e.LoginUid = 0
+				e.SessionId = 0
+				e.Retval = 0
+				e.MountNsID = 0
+			}
+
+			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+		},
+	}
+
+	commands := []*Command{
+		traceExecCmd,
+		SleepForSecondsCommand(2), // wait to ensure ig has started
+		{
+			Name:           cmd,
+			Cmd:            cmd,
+			ExpectedRegexp: fmt.Sprintf("%d", time.Now().Year()),
+		},
+	}
+
+	RunTestSteps(commands, t, WithCbBeforeCleanup(func(t *testing.T) {}))
 }

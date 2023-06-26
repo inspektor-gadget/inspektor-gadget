@@ -40,6 +40,10 @@ type CommonFlags struct {
 	// The name of the container runtimes to be used separated by comma.
 	Runtimes string
 
+	// Host, when set to true, specifies to include all events both from
+	// the host and from containers.
+	Host bool
+
 	// RuntimeConfigs contains the list of the container runtimes to be used
 	// with their specific socket path.
 	RuntimeConfigs []*containerutils.RuntimeConfig
@@ -106,6 +110,13 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		"c",
 		"",
 		"Show only data from containers with that name",
+	)
+	command.PersistentFlags().BoolVarP(
+		&commonFlags.Host,
+		"host",
+		"",
+		false,
+		"Show data from both the host and containers",
 	)
 
 	command.PersistentFlags().StringVarP(
