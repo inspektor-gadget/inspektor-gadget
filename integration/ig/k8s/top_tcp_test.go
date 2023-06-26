@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -27,16 +28,9 @@ import (
 func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 	expectedOutputFn := func(output string) error {
 		expectedEntry := &types.Stats{
-			CommonData: eventtypes.CommonData{
-				K8s: eventtypes.K8sMetadata{
-					BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-						Namespace: ns,
-						PodName:   "test-pod",
-					},
-				},
-			},
-			Comm:      "curl",
-			IPVersion: syscall.AF_INET,
+			CommonData: BuildCommonData(ns, WithRuntimeMetadata(*containerRuntime)),
+			Comm:       "curl",
+			IPVersion:  syscall.AF_INET,
 			SrcEndpoint: eventtypes.L4Endpoint{
 				L3Endpoint: eventtypes.L3Endpoint{
 					Addr: "127.0.0.1",
@@ -51,12 +45,22 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 		}
 
 		normalize := func(e *types.Stats) {
-			e.K8s.ContainerName = ""
+			// Docker and CRI-O use a custom container name composed, among
+			// other things, by the pod UID. We don't know the pod UID in
+			// advance, so we can't match the exact expected container name.
+			prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+			if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+				strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
+				e.Runtime.ContainerName = "test-pod"
+			}
+
 			e.Pid = 0
 			e.MountNsID = 0
 			e.SrcEndpoint.Port = 0
 			e.Sent = 0
 			e.Received = 0
+
+			e.Runtime.ContainerID = ""
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

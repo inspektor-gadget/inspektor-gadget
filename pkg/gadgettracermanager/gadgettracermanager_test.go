@@ -33,7 +33,7 @@ func TestTracer(t *testing.T) {
 		err := g.AddTracer(
 			fmt.Sprintf("my_tracer_id%d", i),
 			containercollection.ContainerSelector{
-				K8sSelector: containercollection.K8sSelector{
+				K8s: containercollection.K8sSelector{
 					BasicK8sMetadata: types.BasicK8sMetadata{
 						Namespace: fmt.Sprintf("this-namespace%d", i),
 					},
@@ -53,7 +53,7 @@ func TestTracer(t *testing.T) {
 	err = g.AddTracer(
 		fmt.Sprintf("my_tracer_id%d", 0),
 		containercollection.ContainerSelector{
-			K8sSelector: containercollection.K8sSelector{
+			K8s: containercollection.K8sSelector{
 				BasicK8sMetadata: types.BasicK8sMetadata{
 					Namespace: fmt.Sprintf("this-namespace%d", 0),
 				},

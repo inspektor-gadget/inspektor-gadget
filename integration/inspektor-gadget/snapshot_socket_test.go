@@ -81,9 +81,12 @@ func TestSnapshotSocket(t *testing.T) {
 				expectedEntry.K8s.ContainerName = ""
 
 				normalize := func(e *snapshotsocketTypes.Event) {
-					e.K8s.ContainerName = ""
 					e.InodeNumber = 0
 					e.NetNsID = 0
+
+					e.K8s.ContainerName = ""
+					// TODO: Verify container runtime and container name
+					e.Runtime = eventtypes.BasicRuntimeMetadata{}
 				}
 
 				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)

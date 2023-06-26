@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -32,18 +33,20 @@ func TestTraceOOMKill(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &oomkillTypes.Event{
-				Event:        BuildBaseEvent(ns),
+				Event:        BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
 				KilledComm:   "tail",
 				TriggeredUid: 1000,
 				TriggeredGid: 2000,
 			}
-			expectedEntry.K8s.ContainerName = "test-pod-container"
 
 			normalize := func(e *oomkillTypes.Event) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					e.K8s.ContainerName = "test-pod-container"
+				// Docker and CRI-O use a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the exact expected container name.
+				prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+				if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+					strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
+					e.Runtime.ContainerName = "test-pod"
 				}
 
 				e.Timestamp = 0
@@ -52,6 +55,8 @@ func TestTraceOOMKill(t *testing.T) {
 				e.TriggeredPid = 0
 				e.TriggeredComm = ""
 				e.MountNsID = 0
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectAllToMatch(output, normalize, expectedEntry)
@@ -68,7 +73,7 @@ spec:
   restartPolicy: Never
   terminationGracePeriodSeconds: 0
   containers:
-  - name: test-pod-container
+  - name: test-pod
     image: busybox
     resources:
       limits:

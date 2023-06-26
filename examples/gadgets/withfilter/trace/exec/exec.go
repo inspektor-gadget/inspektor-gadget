@@ -96,7 +96,7 @@ func main() {
 	// Create a tracer instance. This is the glue piece that allows
 	// this example to filter events by containers.
 	containerSelector := containercollection.ContainerSelector{
-		K8sSelector: containercollection.K8sSelector{
+		K8s: containercollection.K8sSelector{
 			BasicK8sMetadata: types.BasicK8sMetadata{
 				ContainerName: containerName,
 			},

@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	traceexecTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -62,13 +63,16 @@ func TestTraceExec(t *testing.T) {
 
 			normalize := func(e *traceexecTypes.Event) {
 				e.Timestamp = 0
-				e.K8s.Node = ""
 				e.Pid = 0
 				e.Ppid = 0
 				e.LoginUid = 0
 				e.SessionId = 0
 				e.Retval = 0
 				e.MountNsID = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

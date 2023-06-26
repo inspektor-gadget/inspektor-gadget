@@ -30,7 +30,10 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-var cmpIgnoreUnexported = cmpopts.IgnoreUnexported(containercollection.Container{})
+var cmpIgnoreUnexported = cmpopts.IgnoreUnexported(
+	containercollection.Container{},
+	containercollection.K8sMetadata{},
+)
 
 func parseMultiJSONOutput[T any](output string, normalize func(*T)) ([]*T, error) {
 	ret := []*T{}
@@ -179,8 +182,19 @@ func ExpectEntriesInMultipleArrayToMatch[T any](output string, normalize func(*T
 	return expectEntriesToMatch(entries, expectedEntries...)
 }
 
-func BuildCommonData(namespace string) eventtypes.CommonData {
-	return eventtypes.CommonData{
+type CommonDataOption func(commonData *eventtypes.CommonData)
+
+// WithRuntimeMetadata sets the runtime and container name in the common data.
+// Notice the container name is taken from the Kubernetes metadata.
+func WithRuntimeMetadata(runtime string) CommonDataOption {
+	return func(commonData *eventtypes.CommonData) {
+		commonData.Runtime.RuntimeName = eventtypes.String2RuntimeName(runtime)
+		commonData.Runtime.ContainerName = commonData.K8s.ContainerName
+	}
+}
+
+func BuildCommonData(namespace string, options ...CommonDataOption) eventtypes.CommonData {
+	e := eventtypes.CommonData{
 		K8s: eventtypes.K8sMetadata{
 			BasicK8sMetadata: eventtypes.BasicK8sMetadata{
 				Namespace: namespace,
@@ -191,13 +205,21 @@ func BuildCommonData(namespace string) eventtypes.CommonData {
 		},
 		// TODO: Include the Node
 	}
+	for _, option := range options {
+		option(&e)
+	}
+	return e
 }
 
-func BuildBaseEvent(namespace string) eventtypes.Event {
-	return eventtypes.Event{
+func BuildBaseEvent(namespace string, options ...CommonDataOption) eventtypes.Event {
+	e := eventtypes.Event{
 		Type:       eventtypes.NORMAL,
 		CommonData: BuildCommonData(namespace),
 	}
+	for _, option := range options {
+		option(&e.CommonData)
+	}
+	return e
 }
 
 func GetTestPodIP(ns string, podname string) (string, error) {
@@ -230,6 +252,16 @@ func GetPodNode(ns string, podname string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: %s", err, stderr.String())
 	}
+	return string(r), nil
+}
+
+func GetPodUID(ns, podname string) (string, error) {
+	cmd := exec.Command("kubectl", "-n", ns, "get", "pod", podname, "-o", "jsonpath={.metadata.uid}")
+	r, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("getting UID of %s/%s: %w", ns, podname, err)
+	}
+
 	return string(r), nil
 }
 

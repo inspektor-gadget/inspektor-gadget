@@ -47,7 +47,7 @@ func HandleSpecialEvent(e *eventtypes.Event, verbose bool) {
 				msgSyntax = msgSyntax + ", pod " + e.K8s.Namespace + "/" + e.K8s.PodName
 			}
 		} else {
-			msgSyntax = "container " + e.K8s.ContainerName
+			msgSyntax = "container " + e.Runtime.ContainerName
 		}
 
 		fmt.Fprintf(os.Stderr, "%s: %s: %s\n", e.Type, msgSyntax, e.Message)

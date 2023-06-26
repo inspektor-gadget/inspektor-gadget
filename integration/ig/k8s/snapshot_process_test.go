@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -32,18 +33,26 @@ func TestSnapshotProcess(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &types.Event{
-				Event:   BuildBaseEvent(ns),
+				Event:   BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
 				Command: "nc",
 			}
-			expectedEntry.Event.K8s.ContainerName = ""
 
 			normalize := func(e *types.Event) {
-				e.K8s.Node = ""
-				e.K8s.ContainerName = ""
+				// Docker and CRI-O use a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the exact expected container name.
+				prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+				if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+					strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
+					e.Runtime.ContainerName = "test-pod"
+				}
+
 				e.Pid = 0
 				e.Tid = 0
 				e.ParentPid = 0
 				e.MountNsID = 0
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
@@ -55,7 +64,6 @@ func TestSnapshotProcess(t *testing.T) {
 		BusyboxPodCommand(ns, "nc -l -p 9090"),
 		WaitUntilTestPodReadyCommand(ns),
 		snapshotProcessCmd,
-		SleepForSecondsCommand(2), // wait to ensure ig has started
 		DeleteTestNamespaceCommand(ns),
 	}
 

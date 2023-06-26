@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -59,8 +60,6 @@ func TestRunTraceOpen(t *testing.T) {
 			}
 
 			normalize := func(e *types.Event) {
-				e.K8s.Node = ""
-
 				e.Timestamp = 0
 				e.MountNsID = 0
 				e.RawData = nil
@@ -79,6 +78,10 @@ func TestRunTraceOpen(t *testing.T) {
 				data["mode"] = uint16(data["mode"].(float64))
 				data["uid"] = uint32(data["uid"].(float64))
 				data["gid"] = uint32(data["gid"].(float64))
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = eventtypes.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

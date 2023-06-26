@@ -53,6 +53,8 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 			e.Received = 0
 
 			e.K8s.Node = ""
+			// TODO: Verify container runtime and container name
+			e.Runtime = eventtypes.BasicRuntimeMetadata{}
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

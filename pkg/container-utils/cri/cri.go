@@ -192,25 +192,13 @@ func (c *CRIClient) useV1alpha2() bool {
 
 // parseContainerDetailsData parses the container status and extra information
 // returned by ContainerStatus() into a ContainerDetailsData structure.
-func parseContainerDetailsData(runtimeName types.RuntimeName, containerStatus *runtime.ContainerStatus,
+func parseContainerDetailsData(runtimeName types.RuntimeName, containerStatus CRIContainer,
 	extraInfo map[string]string,
 ) (*runtimeclient.ContainerDetailsData, error) {
 	// Create container details structure to be filled.
 	containerDetailsData := &runtimeclient.ContainerDetailsData{
-		ContainerData: runtimeclient.ContainerData{
-			Runtime: runtimeclient.RuntimeContainerData{
-				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-					ContainerID:   containerStatus.Id,
-					ContainerName: strings.TrimPrefix(containerStatus.GetMetadata().Name, "/"),
-					RuntimeName:   runtimeName,
-				},
-				State: containerStatusStateToRuntimeClientState(containerStatus.GetState()),
-			},
-		},
+		ContainerData: *CRIContainerToContainerData(runtimeName, containerStatus),
 	}
-
-	// Fill K8S information.
-	runtimeclient.EnrichWithK8sMetadata(&containerDetailsData.ContainerData, containerStatus.Labels)
 
 	// Parse the extra info and fill the data.
 	err := parseExtraInfo(extraInfo, containerDetailsData)
@@ -335,12 +323,24 @@ func containerStatusStateToRuntimeClientState(containerStatusState runtime.Conta
 	return
 }
 
-func CRIContainerToContainerData(runtimeName types.RuntimeName, container *runtime.Container) *runtimeclient.ContainerData {
+// CRIContainer is an interface that contains the methods required to get
+// the information of a container from the responses of the CRI. In particular,
+// from runtime.ContainerStatus and runtime.Container.
+type CRIContainer interface {
+	GetId() string
+	GetState() runtime.ContainerState
+	GetMetadata() *runtime.ContainerMetadata
+	GetLabels() map[string]string
+}
+
+func CRIContainerToContainerData(runtimeName types.RuntimeName, container CRIContainer) *runtimeclient.ContainerData {
+	containerMetadata := container.GetMetadata()
+
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:   container.Id,
-				ContainerName: strings.TrimPrefix(container.GetMetadata().Name, "/"),
+				ContainerID:   container.GetId(),
+				ContainerName: strings.TrimPrefix(containerMetadata.GetName(), "/"),
 				RuntimeName:   runtimeName,
 			},
 			State: containerStatusStateToRuntimeClientState(container.GetState()),
@@ -348,7 +348,19 @@ func CRIContainerToContainerData(runtimeName types.RuntimeName, container *runti
 	}
 
 	// Fill K8S information.
-	runtimeclient.EnrichWithK8sMetadata(containerData, container.Labels)
+	runtimeclient.EnrichWithK8sMetadata(containerData, container.GetLabels())
+
+	// CRI-O does not use the same container name of Kubernetes as containerd.
+	// Instead, it uses a composed name as Docker does, but such name is not
+	// available in the container metadata.
+	if runtimeName == types.RuntimeNameCrio {
+		containerData.Runtime.ContainerName = fmt.Sprintf("k8s_%s_%s_%s_%s_%d",
+			containerData.K8s.ContainerName,
+			containerData.K8s.PodName,
+			containerData.K8s.Namespace,
+			containerData.K8s.PodUID,
+			containerMetadata.GetAttempt())
+	}
 
 	return containerData
 }

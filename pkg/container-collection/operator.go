@@ -27,7 +27,7 @@ func (cc *ContainerCollection) EnrichEventByMntNs(event operators.ContainerInfoF
 		container = lookupContainerByMntns(cc.cachedContainers, mountNsId)
 	}
 	if container != nil {
-		event.SetContainerInfo(container.K8s.PodName, container.K8s.Namespace, container.K8s.ContainerName)
+		event.SetContainerMetadata(&container.K8s.BasicK8sMetadata, &container.Runtime.BasicRuntimeMetadata)
 	}
 }
 
@@ -43,12 +43,12 @@ func (cc *ContainerCollection) EnrichEventByNetNs(event operators.ContainerInfoF
 		return
 	}
 	if len(containers) == 1 {
-		event.SetContainerInfo(containers[0].K8s.PodName, containers[0].K8s.Namespace, containers[0].K8s.ContainerName)
+		event.SetContainerMetadata(&containers[0].K8s.BasicK8sMetadata, &containers[0].Runtime.BasicRuntimeMetadata)
 		return
 	}
 	if containers[0].K8s.PodName != "" && containers[0].K8s.Namespace != "" {
 		// Kubernetes containers within the same pod.
-		event.SetContainerInfo(containers[0].K8s.PodName, containers[0].K8s.Namespace, "")
+		event.SetPodMetadata(&containers[0].K8s.BasicK8sMetadata, &containers[0].Runtime.BasicRuntimeMetadata)
 	}
 	// else {
 	// 	TODO: Non-Kubernetes containers sharing the same network namespace.

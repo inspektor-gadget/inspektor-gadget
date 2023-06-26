@@ -16,30 +16,31 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 	expectedOutputFn := func(output string) error {
 		expectedEntry := &types.Stats{
-			CommonData: eventtypes.CommonData{
-				K8s: eventtypes.K8sMetadata{
-					BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-						Namespace: ns,
-						PodName:   "test-pod",
-					},
-				},
-			},
-			Comm:  "dd",
-			Write: true,
+			CommonData: BuildCommonData(ns, WithRuntimeMetadata(*containerRuntime)),
+			Comm:       "dd",
+			Write:      true,
 		}
 
 		normalize := func(e *types.Stats) {
-			e.K8s.ContainerName = ""
+			// Docker and CRI-O use a custom container name composed, among
+			// other things, by the pod UID. We don't know the pod UID in
+			// advance, so we can't match the exact expected container name.
+			prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+			if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+				strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
+				e.Runtime.ContainerName = "test-pod"
+			}
+
 			e.Pid = 0
 			e.MountNsID = 0
 			e.Major = 0
@@ -47,6 +48,8 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 			e.Bytes = 0
 			e.MicroSecs = 0
 			e.Operations = 0
+
+			e.Runtime.ContainerID = ""
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

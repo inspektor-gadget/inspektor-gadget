@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	topfileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func newTopFileCmd(ns, cmd string, startAndStop bool) *Command {
@@ -41,6 +42,8 @@ func newTopFileCmd(ns, cmd string, startAndStop bool) *Command {
 			e.MountNsID = 0
 
 			e.K8s.Node = ""
+			// TODO: Verify container runtime and container name
+			e.Runtime = types.BasicRuntimeMetadata{}
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

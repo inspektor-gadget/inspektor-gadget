@@ -35,10 +35,9 @@ func TestSnapshotProcess(t *testing.T) {
 				Event: eventtypes.Event{
 					Type: eventtypes.NORMAL,
 					CommonData: eventtypes.CommonData{
-						K8s: eventtypes.K8sMetadata{
-							BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-								ContainerName: cn,
-							},
+						Runtime: eventtypes.BasicRuntimeMetadata{
+							RuntimeName:   eventtypes.String2RuntimeName(*runtime),
+							ContainerName: cn,
 						},
 					},
 				},
@@ -50,6 +49,8 @@ func TestSnapshotProcess(t *testing.T) {
 				e.Tid = 0
 				e.ParentPid = 0
 				e.MountNsID = 0
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)

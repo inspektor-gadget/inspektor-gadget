@@ -438,6 +438,10 @@ func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mount
 		event.K8s.ContainerName = container.K8s.ContainerName
 		event.K8s.PodName = container.K8s.PodName
 		event.K8s.Namespace = container.K8s.Namespace
+
+		event.Runtime.RuntimeName = container.Runtime.RuntimeName
+		event.Runtime.ContainerName = container.Runtime.ContainerName
+		event.Runtime.ContainerID = container.Runtime.ContainerID
 	}
 }
 
@@ -460,12 +464,19 @@ func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netns
 		event.K8s.ContainerName = containers[0].K8s.ContainerName
 		event.K8s.PodName = containers[0].K8s.PodName
 		event.K8s.Namespace = containers[0].K8s.Namespace
+
+		event.Runtime.RuntimeName = containers[0].Runtime.RuntimeName
+		event.Runtime.ContainerName = containers[0].Runtime.ContainerName
+		event.Runtime.ContainerID = containers[0].Runtime.ContainerID
 		return
 	}
 	if containers[0].K8s.PodName != "" && containers[0].K8s.Namespace != "" {
 		// Kubernetes containers within the same pod.
 		event.K8s.PodName = containers[0].K8s.PodName
 		event.K8s.Namespace = containers[0].K8s.Namespace
+
+		// All containers in the same pod share the same container runtime
+		event.Runtime.RuntimeName = containers[0].Runtime.RuntimeName
 	}
 	// else {
 	// 	TODO: Non-Kubernetes containers sharing the same network namespace.

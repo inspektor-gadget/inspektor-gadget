@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	traceoomkillTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/oomkill/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -43,12 +44,15 @@ func TestTraceOOMKill(t *testing.T) {
 
 			normalize := func(e *traceoomkillTypes.Event) {
 				e.Timestamp = 0
-				e.K8s.Node = ""
 				e.KilledPid = 0
 				e.Pages = 0
 				e.TriggeredPid = 0
 				e.TriggeredComm = ""
 				e.MountNsID = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectAllToMatch(output, normalize, expectedEntry)

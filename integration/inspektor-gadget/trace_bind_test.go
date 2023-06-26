@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	tracebindTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/bind/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -47,9 +48,12 @@ func TestTraceBind(t *testing.T) {
 
 			normalize := func(e *tracebindTypes.Event) {
 				e.Timestamp = 0
-				e.K8s.Node = ""
 				e.Pid = 0
 				e.MountNsID = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectAllToMatch(output, normalize, expectedEntry)

@@ -39,7 +39,7 @@ func ContainerSelectorFromContainerFilter(f *gadgetv1alpha1.ContainerFilter) *co
 		labels[k] = v
 	}
 	return &containercollection.ContainerSelector{
-		K8sSelector: containercollection.K8sSelector{
+		K8s: containercollection.K8sSelector{
 			BasicK8sMetadata: types.BasicK8sMetadata{
 				Namespace:     f.Namespace,
 				PodName:       f.Podname,

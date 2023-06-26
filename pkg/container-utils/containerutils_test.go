@@ -27,7 +27,7 @@ func TestNewContainerRuntimeClient(t *testing.T) {
 	nonExistingSocketPath := filepath.Join(t.TempDir(), "non-existing-socket")
 	for _, runtime := range AvailableRuntimes {
 		rc := RuntimeConfig{
-			Name:       types.RuntimeName(runtime),
+			Name:       types.String2RuntimeName(runtime),
 			SocketPath: nonExistingSocketPath,
 		}
 		c, err := NewContainerRuntimeClient(&rc)

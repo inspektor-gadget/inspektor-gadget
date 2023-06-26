@@ -72,7 +72,7 @@ func createTestEnv(
 	t.Cleanup(cc.Close)
 
 	containerSelector := containercollection.ContainerSelector{
-		K8sSelector: containercollection.K8sSelector{
+		K8s: containercollection.K8sSelector{
 			BasicK8sMetadata: types.BasicK8sMetadata{
 				ContainerName: containerName,
 			},

@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -51,7 +52,7 @@ func TestTraceNetwork(t *testing.T) {
 
 			expectedEntries := []*networkTypes.Event{
 				{
-					Event:   BuildBaseEvent(ns),
+					Event:   BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
 					Comm:    "wget",
 					Uid:     0,
 					Gid:     0,
@@ -73,6 +74,10 @@ func TestTraceNetwork(t *testing.T) {
 									ContainerName: "nginx-pod",
 								},
 							},
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								ContainerName: "nginx-pod",
+								RuntimeName:   eventtypes.String2RuntimeName(*containerRuntime),
+							},
 						},
 					},
 					Comm:    "nginx",
@@ -88,21 +93,23 @@ func TestTraceNetwork(t *testing.T) {
 			}
 
 			normalize := func(e *networkTypes.Event) {
+				// Docker and CRI-O use a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the exact expected container name.
+				if *containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO {
+					cn := e.K8s.ContainerName
+					if strings.HasPrefix(e.Runtime.ContainerName, fmt.Sprintf("k8s_%s_%s_%s_", cn, cn, ns)) {
+						e.Runtime.ContainerName = cn
+					}
+				}
+
 				e.Timestamp = 0
 				e.MountNsID = 0
 				e.NetNsID = 0
 				e.Pid = 0
 				e.Tid = 0
 
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					if e.K8s.PodName == "nginx-pod" {
-						e.K8s.ContainerName = "nginx-pod"
-					} else if e.K8s.PodName == "test-pod" {
-						e.K8s.ContainerName = "test-pod"
-					}
-				}
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

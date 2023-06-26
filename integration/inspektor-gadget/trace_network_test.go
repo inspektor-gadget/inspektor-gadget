@@ -103,12 +103,14 @@ func TestTraceNetwork(t *testing.T) {
 
 			normalize := func(e *tracenetworkTypes.Event) {
 				e.Timestamp = 0
-				e.K8s.Node = ""
 				e.PodHostIP = ""
 				e.MountNsID = 0
 				e.NetNsID = 0
 				e.Pid = 0
 				e.Tid = 0
+
+				e.K8s.Node = ""
+				e.Runtime = eventtypes.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

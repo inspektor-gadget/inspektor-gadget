@@ -37,10 +37,9 @@ func TestTraceNetwork(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							K8s: eventtypes.K8sMetadata{
-								BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-									ContainerName: cn,
-								},
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								RuntimeName:   eventtypes.String2RuntimeName(*runtime),
+								ContainerName: cn,
 							},
 						},
 					},
@@ -58,10 +57,9 @@ func TestTraceNetwork(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							K8s: eventtypes.K8sMetadata{
-								BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-									ContainerName: cn,
-								},
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								RuntimeName:   eventtypes.String2RuntimeName(*runtime),
+								ContainerName: cn,
 							},
 						},
 					},
@@ -83,6 +81,8 @@ func TestTraceNetwork(t *testing.T) {
 				e.NetNsID = 0
 				e.Pid = 0
 				e.Tid = 0
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
