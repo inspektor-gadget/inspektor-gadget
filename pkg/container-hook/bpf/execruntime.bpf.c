@@ -11,11 +11,7 @@ const volatile int max_args = DEFAULT_MAXARGS;
 static const struct record empty_record = {};
 
 // configured by userspace
-const volatile u64 fanotify_show_fdinfo_addr = 0;
-const volatile u64 tracer_fanotify_fd = 0;
-
-// initialized by the iterator
-volatile u64 tracer_group = 0;
+const volatile u64 tracer_group = 0;
 
 // ig_fa_pick_ctx keeps context for kprobe/kretprobe fsnotify_remove_first_event
 struct {
@@ -38,46 +34,6 @@ struct {
 	__type(key, u32); // tgid (fanotify will need to lookup by tgid)
 	__type(value, struct record);
 } exec_args SEC(".maps");
-
-// Iterator used to initialize tracer_group.
-//
-// Unfortunately, all fanotify files are created with anon_inode_getfd() and
-// they will use the same singleton inode.
-// We cannot use bpf_get_ns_current_pid_tgid() because it requires kernel 5.7+.
-// We cannot use bpf_get_current_pid_tgid() because the tracer might run in a non-init pidns.
-SEC("iter/task_file")
-int ig_fa_it(struct bpf_iter__task_file *ctx)
-{
-	struct seq_file *seq = ctx->meta->seq;
-	struct file *file = ctx->file;
-	struct task_struct *task = ctx->task;
-	struct task_struct *current_task;
-
-	if (!file || !task)
-		return 0;
-
-	// Initialization should only be done once
-	if (tracer_group != 0)
-		return 0;
-
-	// The current file is not a fanotify file
-	if (fanotify_show_fdinfo_addr == 0 || (__u64)(file->f_op) == 0 || (__u64)(file->f_op->show_fdinfo) != fanotify_show_fdinfo_addr)
-		return 0;
-
-	// The current process is the one running the iterator
-	current_task = (struct task_struct *) bpf_get_current_task();
-	current_task = BPF_CORE_READ(current_task, group_leader);
-	if (task != current_task)
-		return 0;
-
-	if (tracer_fanotify_fd == ctx->fd) {
-		// found it!
-		tracer_group = (u64) BPF_CORE_READ(file, private_data);
-		return 0;
-	}
-
-	return 0;
-}
 
 SEC("kprobe/fsnotify_remove_first_event")
 int BPF_KPROBE(ig_fa_pick_e, struct fsnotify_group *group)

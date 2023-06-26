@@ -62,7 +62,6 @@ type execruntimeSpecs struct {
 type execruntimeProgramSpecs struct {
 	IgExecveE *ebpf.ProgramSpec `ebpf:"ig_execve_e"`
 	IgExecveX *ebpf.ProgramSpec `ebpf:"ig_execve_x"`
-	IgFaIt    *ebpf.ProgramSpec `ebpf:"ig_fa_it"`
 	IgFaPickE *ebpf.ProgramSpec `ebpf:"ig_fa_pick_e"`
 	IgFaPickX *ebpf.ProgramSpec `ebpf:"ig_fa_pick_x"`
 }
@@ -114,7 +113,6 @@ func (m *execruntimeMaps) Close() error {
 type execruntimePrograms struct {
 	IgExecveE *ebpf.Program `ebpf:"ig_execve_e"`
 	IgExecveX *ebpf.Program `ebpf:"ig_execve_x"`
-	IgFaIt    *ebpf.Program `ebpf:"ig_fa_it"`
 	IgFaPickE *ebpf.Program `ebpf:"ig_fa_pick_e"`
 	IgFaPickX *ebpf.Program `ebpf:"ig_fa_pick_x"`
 }
@@ -123,7 +121,6 @@ func (p *execruntimePrograms) Close() error {
 	return _ExecruntimeClose(
 		p.IgExecveE,
 		p.IgExecveX,
-		p.IgFaIt,
 		p.IgFaPickE,
 		p.IgFaPickX,
 	)
