@@ -19,13 +19,40 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+type L3Endpoint struct {
+	eventtypes.L3Endpoint
+	Name string
+}
+
+type L4Endpoint struct {
+	eventtypes.L4Endpoint
+	Name string
+}
+
 type Event struct {
 	eventtypes.Event
 	eventtypes.WithMountNsID
+
+	L3Endpoints []L3Endpoint `json:"l3endpoints,omitempty"`
+	L4Endpoints []L4Endpoint `json:"l4endpoints,omitempty"`
+
 	// Raw event sent by the ebpf program
-	RawData []byte `json:"raw_data"`
+	RawData []byte `json:"raw_data,omitempty"`
 	// How to flatten this?
 	Data interface{} `json:"data"`
+}
+
+func (ev *Event) GetEndpoints() []*eventtypes.L3Endpoint {
+	endpoints := make([]*eventtypes.L3Endpoint, 0, len(ev.L3Endpoints)+len(ev.L4Endpoints))
+
+	for i := range ev.L3Endpoints {
+		endpoints = append(endpoints, &ev.L3Endpoints[i].L3Endpoint)
+	}
+	for i := range ev.L4Endpoints {
+		endpoints = append(endpoints, &ev.L4Endpoints[i].L3Endpoint)
+	}
+
+	return endpoints
 }
 
 func GetColumns() *columns.Columns[Event] {

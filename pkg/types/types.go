@@ -206,7 +206,8 @@ func (c *CommonData) GetContainerImageName() string {
 
 type L3Endpoint struct {
 	// Addr is filled by the gadget
-	Addr string `json:"addr,omitempty" column:"addr,hide,template:ipaddr"`
+	Addr    string `json:"addr,omitempty" column:"addr,hide,template:ipaddr"`
+	Version uint8  `json:"version,omitempty" column:"v,hide,template:ipversion"`
 
 	// Namespace, Name, Kind and PodLabels get populated by the KubeIPResolver operator
 	Namespace string            `json:"namespace,omitempty" column:"ns,template:namespace,hide"`
@@ -230,8 +231,9 @@ func (e *L3Endpoint) String() string {
 
 type L4Endpoint struct {
 	L3Endpoint
-	// Port is filled by the gadget
-	Port uint16 `json:"port" column:"port,hide,template:ipport"`
+	// Port and Proto are filled by the gadget
+	Port  uint16 `json:"port" column:"port,hide,template:ipport"`
+	Proto uint16 `json:"proto,omitempty" column:"proto,hide,width:4"`
 }
 
 func (e *L4Endpoint) String() string {
