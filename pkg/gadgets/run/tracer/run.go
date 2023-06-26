@@ -18,8 +18,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net"
 	"reflect"
+	"strconv"
 	"strings"
 	"unsafe"
 
@@ -37,6 +37,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 )
 
@@ -197,6 +198,64 @@ func getSimpleType(typ btf.Type) reflect.Type {
 	return nil
 }
 
+func addL3EndpointColumns(
+	cols *columns.Columns[types.Event],
+	name string,
+	getEndpoint func(*types.Event) eventtypes.L3Endpoint,
+) {
+	cols.AddColumn(columns.Attributes{
+		Name:     name + ".namespace",
+		Template: "namespace",
+	}, func(e *types.Event) string {
+		return getEndpoint(e).Namespace
+	})
+
+	cols.AddColumn(columns.Attributes{
+		Name: name + ".name",
+	}, func(e *types.Event) string {
+		return getEndpoint(e).Name
+	})
+
+	cols.AddColumn(columns.Attributes{
+		Name: name + ".kind",
+	}, func(e *types.Event) string {
+		return string(getEndpoint(e).Kind)
+	})
+
+	cols.AddColumn(columns.Attributes{
+		Name:     name + ".addr",
+		Template: "ipaddr",
+	}, func(e *types.Event) string {
+		return getEndpoint(e).Addr
+	})
+
+	cols.AddColumn(columns.Attributes{
+		Name:     name + ".v",
+		Template: "ipversion",
+	}, func(e *types.Event) string {
+		p := getEndpoint(e).Version
+		return strconv.FormatUint(uint64(p), 10)
+	})
+}
+
+func addL4EndpointColumns(
+	cols *columns.Columns[types.Event],
+	name string,
+	getEndpoint func(*types.Event) eventtypes.L4Endpoint,
+) {
+	addL3EndpointColumns(cols, name, func(e *types.Event) eventtypes.L3Endpoint {
+		return getEndpoint(e).L3Endpoint
+	})
+
+	cols.AddColumn(columns.Attributes{
+		Name:     name + ".port",
+		Template: "ipport",
+	}, func(e *types.Event) string {
+		p := getEndpoint(e).Port
+		return strconv.FormatUint(uint64(p), 10)
+	})
+}
+
 func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.Columns[types.Event], error) {
 	if len(args) != 0 {
 		return nil, fmt.Errorf("no arguments expected: received %d", len(args))
@@ -227,6 +286,9 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 
 	fields := []columns.DynamicField{}
 
+	l3endpointCounter := 0
+	l4endpointCounter := 0
+
 	for _, member := range valueStruct.Members {
 		member := member
 
@@ -236,16 +298,35 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 		}
 
 		switch typedMember := member.Type.(type) {
-		case *btf.Union:
-			if typedMember.Name == "ip_addr" && typedMember.Size >= 4 {
-				cols.AddColumn(attrs, func(ev *types.Event) string {
-					// TODO: Handle IPv6
-					offset := uintptr(member.Offset.Bytes())
-					ipSlice := unsafe.Slice(&ev.RawData[offset], 4)
-					ipBytes := make(net.IP, 4)
-					copy(ipBytes, ipSlice)
-					return ipBytes.String()
+		case *btf.Struct:
+			switch typedMember.Name {
+			case gadgets.L3EndpointTypeName:
+				// we need to take the value here, otherwise it'll use the wrong
+				// value after it's increased
+				index := l3endpointCounter
+				// Add the column that is enriched
+				eventtypes.MustAddVirtualL3EndpointColumn(cols, attrs, func(e *types.Event) eventtypes.L3Endpoint {
+					return e.L3Endpoints[index].L3Endpoint
 				})
+				// Add single columns for each field in the endpoint
+				addL3EndpointColumns(cols, member.Name, func(e *types.Event) eventtypes.L3Endpoint {
+					return e.L3Endpoints[index].L3Endpoint
+				})
+				l3endpointCounter++
+				continue
+			case gadgets.L4EndpointTypeName:
+				// we need to take the value here, otherwise it'll use the wrong
+				// value after it's increased
+				index := l4endpointCounter
+				// Add the column that is enriched
+				eventtypes.MustAddVirtualL4EndpointColumn(cols, attrs, func(e *types.Event) eventtypes.L4Endpoint {
+					return e.L4Endpoints[index].L4Endpoint
+				})
+				// Add single columns for each field in the endpoint
+				addL4EndpointColumns(cols, member.Name, func(e *types.Event) eventtypes.L4Endpoint {
+					return e.L4Endpoints[index].L4Endpoint
+				})
+				l4endpointCounter++
 				continue
 			}
 		}
@@ -338,8 +419,22 @@ func genericConverter(params *params.Params, printer gadgets.Printer, convert fu
 			return
 		}
 
+		// Set endpoint information
+		resultM := result.(map[string]interface{})
+		for _, endpoint := range event.L3Endpoints {
+			resultM[endpoint.Name] = endpoint.L3Endpoint
+		}
+		for _, endpoint := range event.L4Endpoints {
+			resultM[endpoint.Name] = endpoint.L4Endpoint
+		}
+
 		// TODO: flatten the results?
 		event.Data = result
+
+		// Remove information not useful for the user as it's already present on event.Data
+		event.RawData = nil
+		event.L3Endpoints = nil
+		event.L4Endpoints = nil
 
 		d, err := convert(event)
 		if err != nil {

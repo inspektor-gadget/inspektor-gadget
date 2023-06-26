@@ -201,7 +201,8 @@ func (c *CommonData) GetContainerImageName() string {
 
 type L3Endpoint struct {
 	// Addr is filled by the gadget
-	Addr string `json:"addr,omitempty" column:"addr,hide,template:ipaddr"`
+	Addr    string `json:"addr,omitempty" column:"addr,hide,template:ipaddr"`
+	Version uint8  `json:"version,omitempty" column:"v,hide,template:ipversion"`
 
 	// Namespace, Name, Kind and PodLabels get populated by the KubeIPResolver operator
 	Namespace string            `json:"namespace,omitempty" column:"ns,template:namespace,hide"`

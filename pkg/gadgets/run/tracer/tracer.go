@@ -17,13 +17,13 @@
 package tracer
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strings"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -41,9 +41,17 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-const (
-	mntNsIdType = "mnt_ns_id_t"
-)
+// keep aligned with pkg/gadgets/common/types.h
+type l3EndpointT struct {
+	addr    [16]byte
+	version uint8
+	pad     [3]uint8
+}
+
+type l4EndpointT struct {
+	l3   l3EndpointT
+	port uint16
+}
 
 type Config struct {
 	RegistryAuth orascontent.RegistryOptions
@@ -220,34 +228,55 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 
 	var mntNsIdstart, mntNsIdend uint32
 
+	type endpointType int
+
+	const (
+		U endpointType = iota
+		L3
+		L4
+	)
+
+	type endpointDef struct {
+		name  string
+		start uint32
+		typ   endpointType
+	}
+
+	endpointDefs := []endpointDef{}
+
 	// we suppose the same data structure is always used, so we can precalculate the offsets for
 	// the mount ns id
 	for _, member := range typ.Members {
-		if member.Type.TypeName() != mntNsIdType {
-			continue
-		}
+		switch member.Type.TypeName() {
+		case gadgets.MntNsIdTypeName:
+			typDef, ok := member.Type.(*btf.Typedef)
+			if !ok {
+				continue
+			}
 
-		typDef, ok := member.Type.(*btf.Typedef)
-		if !ok {
-			continue
-		}
+			underlying, err := getUnderlyingType(typDef)
+			if err != nil {
+				continue
+			}
 
-		underlying, err := getUnderlyingType(typDef)
-		if err != nil {
-			continue
-		}
+			intM, ok := underlying.(*btf.Int)
+			if !ok {
+				continue
+			}
 
-		intM, ok := underlying.(*btf.Int)
-		if !ok {
-			continue
-		}
+			if intM.Size != 8 {
+				continue
+			}
 
-		if intM.Size != 8 {
-			continue
+			mntNsIdstart = member.Offset.Bytes()
+			mntNsIdend = mntNsIdstart + intM.Size
+		case gadgets.L3EndpointTypeName:
+			e := endpointDef{name: member.Name, start: member.Offset.Bytes(), typ: L3}
+			endpointDefs = append(endpointDefs, e)
+		case gadgets.L4EndpointTypeName:
+			e := endpointDef{name: member.Name, start: member.Offset.Bytes(), typ: L4}
+			endpointDefs = append(endpointDefs, e)
 		}
-
-		mntNsIdstart = member.Offset.Bytes()
-		mntNsIdend = mntNsIdstart + intM.Size
 	}
 
 	for {
@@ -294,10 +323,51 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 		// get mnt_ns_id for enriching the event
 		mtn_ns_id := uint64(0)
 		if mntNsIdend != 0 {
-			buf := bytes.NewBuffer(data[mntNsIdstart:mntNsIdend])
-			// TODO: is binary.LittleEndian correct?
-			if err := binary.Read(buf, binary.LittleEndian, &mtn_ns_id); err != nil {
+			mtn_ns_id = *(*uint64)(unsafe.Pointer(&data[mntNsIdstart]))
+		}
+
+		l3endpoints := []types.L3Endpoint{}
+		l4endpoints := []types.L4Endpoint{}
+
+		for _, endpoint := range endpointDefs {
+			endpointC := (*l3EndpointT)(unsafe.Pointer(&data[endpoint.start]))
+			var addr string
+			switch endpointC.version {
+			case 4:
+				ipBytes := make(net.IP, 4)
+				copy(ipBytes, endpointC.addr[:])
+				addr = ipBytes.String()
+			case 6:
+				ipBytes := make(net.IP, 16)
+				copy(ipBytes, endpointC.addr[:])
+				addr = ipBytes.String()
+			default:
+				gadgetCtx.Logger().Warnf("bad IP version received: %d", endpointC.version)
 				continue
+			}
+
+			l3endpoint := eventtypes.L3Endpoint{
+				Addr:    addr,
+				Version: endpointC.version,
+			}
+
+			switch endpoint.typ {
+			case L3:
+				endpoint := types.L3Endpoint{
+					Name:       endpoint.name,
+					L3Endpoint: l3endpoint,
+				}
+				l3endpoints = append(l3endpoints, endpoint)
+			case L4:
+				l4EndpointC := (*l4EndpointT)(unsafe.Pointer(&data[endpoint.start]))
+				endpoint := types.L4Endpoint{
+					Name: endpoint.name,
+					L4Endpoint: eventtypes.L4Endpoint{
+						L3Endpoint: l3endpoint,
+						Port:       l4EndpointC.port,
+					},
+				}
+				l4endpoints = append(l4endpoints, endpoint)
 			}
 		}
 
@@ -307,6 +377,8 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 			},
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: mtn_ns_id},
 			RawData:       data,
+			L3Endpoints:   l3endpoints,
+			L4Endpoints:   l4endpoints,
 		}
 
 		t.eventCallback(&event)
