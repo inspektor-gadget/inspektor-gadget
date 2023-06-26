@@ -195,7 +195,7 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 
 	attachContainerFunc := func(container *containercollection.Container) error {
-		containerID := container.ID
+		containerID := container.Runtime.ContainerID
 		mntNsID := container.Mntns
 		key := genKey(container)
 
@@ -265,11 +265,11 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 			return
 		}
 
-		_, ok := t.containerIDs[container.ID]
+		_, ok := t.containerIDs[container.Runtime.ContainerID]
 		if ok {
-			t.containerIDs[container.ID].detached = true
+			t.containerIDs[container.Runtime.ContainerID].detached = true
 		} else {
-			log.Errorf("trace does not know about container with ID %q", container.ID)
+			log.Errorf("trace does not know about container with ID %q", container.Runtime.ContainerID)
 
 			return
 		}

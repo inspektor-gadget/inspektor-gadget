@@ -176,7 +176,7 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 
 	// Remove from MntNs lookup
 	mntNsContainer, ok := cc.containersByMntNs.Load(container.Mntns)
-	if !ok || mntNsContainer.(*Container).ID != container.ID {
+	if !ok || mntNsContainer.(*Container).Runtime.ContainerID != container.Runtime.ContainerID {
 		log.Warn("container not found or mismatch in mntns lookup map")
 		return
 	} else {
@@ -194,7 +194,7 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 	netNsContainersArr := netNsContainers.([]*Container)
 	newNetNsContainers := make([]*Container, 0, len(netNsContainersArr)-1)
 	for _, netNsContainer := range netNsContainersArr {
-		if netNsContainer.ID == container.ID {
+		if netNsContainer.Runtime.ContainerID == container.Runtime.ContainerID {
 			found = true
 			continue
 		}
@@ -223,7 +223,7 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 		}
 	}
 
-	_, loaded := cc.containers.LoadOrStore(container.ID, container)
+	_, loaded := cc.containers.LoadOrStore(container.Runtime.ContainerID, container)
 	if loaded {
 		return
 	}

@@ -36,7 +36,14 @@ func TestPubSub(t *testing.T) {
 
 	p.Subscribe(key, callback, nil)
 
-	p.Publish(EventTypeRemoveContainer, &Container{ID: "container1"})
+	p.Publish(
+		EventTypeRemoveContainer,
+		&Container{
+			Runtime: RuntimeMetadata{
+				ContainerID: "container1",
+			},
+		},
+	)
 	_, ok := <-done
 	if !ok {
 		t.Fatalf("Failed to receive event from callback")
@@ -45,12 +52,19 @@ func TestPubSub(t *testing.T) {
 	if event.Type != EventTypeRemoveContainer {
 		t.Fatalf("Failed to receive correct event of type EVENT_TYPE_REMOVE_CONTAINER")
 	}
-	if event.Container.ID != "container1" {
+	if event.Container.Runtime.ContainerID != "container1" {
 		t.Fatalf("Failed to receive correct event")
 	}
 
 	p.Unsubscribe(key)
-	p.Publish(EventTypeRemoveContainer, &Container{ID: "container2"})
+	p.Publish(
+		EventTypeRemoveContainer,
+		&Container{
+			Runtime: RuntimeMetadata{
+				ContainerID: "container2",
+			},
+		},
+	)
 	if counter != 1 {
 		t.Fatalf("Callback called too many times")
 	}
@@ -62,7 +76,11 @@ func TestPubSubVerifyPointerToContainer(t *testing.T) {
 		t.Fatalf("Failed to create new pubsub")
 	}
 
-	c := &Container{ID: "container1"}
+	c := &Container{
+		Runtime: RuntimeMetadata{
+			ContainerID: "container1",
+		},
+	}
 
 	var receivedC *Container
 

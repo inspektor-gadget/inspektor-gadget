@@ -304,7 +304,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 			l.subscriptionKey,
 			containerSelector,
 			func(event containercollection.PubSubEvent) {
-				log.Debugf("%s: %s", event.Type.String(), event.Container.ID)
+				log.Debugf("%s: %s", event.Type.String(), event.Container.Runtime.ContainerID)
 				switch event.Type {
 				case containercollection.EventTypeAddContainer:
 					attachContainerFunc(event.Container)

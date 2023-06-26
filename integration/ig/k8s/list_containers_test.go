@@ -36,7 +36,9 @@ func TestListContainers(t *testing.T) {
 					PodName:       "test-pod",
 					Namespace:     ns,
 				},
-				Runtime: *containerRuntime,
+				Runtime: containercollection.RuntimeMetadata{
+					RuntimeName: *containerRuntime,
+				},
 			}
 
 			normalize := func(c *containercollection.Container) {
@@ -46,7 +48,7 @@ func TestListContainers(t *testing.T) {
 					c.K8s.ContainerName = "test-pod"
 				}
 
-				c.ID = ""
+				c.Runtime.ContainerID = ""
 				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
@@ -96,11 +98,13 @@ func TestFilterByContainerName(t *testing.T) {
 					PodName:       cn,
 					Namespace:     ns,
 				},
-				Runtime: *containerRuntime,
+				Runtime: containercollection.RuntimeMetadata{
+					RuntimeName: *containerRuntime,
+				},
 			}
 
 			normalize := func(c *containercollection.Container) {
-				c.ID = ""
+				c.Runtime.ContainerID = ""
 				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
@@ -153,12 +157,14 @@ func TestWatchCreatedContainers(t *testing.T) {
 						PodName:       cn,
 						Namespace:     ns,
 					},
-					Runtime: *containerRuntime,
+					Runtime: containercollection.RuntimeMetadata{
+						RuntimeName: *containerRuntime,
+					},
 				},
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.ID = ""
+				e.Container.Runtime.ContainerID = ""
 				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
@@ -213,12 +219,14 @@ func TestWatchDeletedContainers(t *testing.T) {
 						PodName:       cn,
 						Namespace:     ns,
 					},
-					Runtime: *containerRuntime,
+					Runtime: containercollection.RuntimeMetadata{
+						RuntimeName: *containerRuntime,
+					},
 				},
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.ID = ""
+				e.Container.Runtime.ContainerID = ""
 				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
@@ -272,7 +280,9 @@ func TestPodWithSecurityContext(t *testing.T) {
 			expectedEvent := &containercollection.PubSubEvent{
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
-					Runtime: *containerRuntime,
+					Runtime: containercollection.RuntimeMetadata{
+						RuntimeName: *containerRuntime,
+					},
 					K8s: containercollection.K8sMetadata{
 						ContainerName: cn,
 						PodName:       po,
@@ -282,7 +292,6 @@ func TestPodWithSecurityContext(t *testing.T) {
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.ID = ""
 				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
@@ -296,6 +305,7 @@ func TestPodWithSecurityContext(t *testing.T) {
 
 				e.Container.K8s.PodLabels = nil
 				e.Container.K8s.PodUID = ""
+				e.Container.Runtime.ContainerID = ""
 			}
 
 			return ExpectAllToMatch(output, normalize, expectedEvent)

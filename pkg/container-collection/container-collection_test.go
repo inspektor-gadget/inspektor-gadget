@@ -34,9 +34,9 @@ func (f *fakeTracerMapsUpdater) TracerMapsUpdater() FuncNotify {
 	return func(event PubSubEvent) {
 		switch event.Type {
 		case EventTypeAddContainer:
-			f.containers[event.Container.ID] = event.Container
+			f.containers[event.Container.Runtime.ContainerID] = event.Container
 		case EventTypeRemoveContainer:
-			delete(f.containers, event.Container.ID)
+			delete(f.containers, event.Container.Runtime.ContainerID)
 		}
 	}
 }
@@ -47,7 +47,9 @@ func BenchmarkCreateContainerCollection(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		cc := ContainerCollection{}
 		cc.AddContainer(&Container{
-			ID:    fmt.Sprint(n),
+			Runtime: RuntimeMetadata{
+				ContainerID: fmt.Sprint(n),
+			},
 			Mntns: uint64(n),
 		})
 	}
@@ -62,7 +64,9 @@ func BenchmarkLookupContainerByMntns(b *testing.B) {
 
 	for n := 0; n < TestContainerCount; n++ {
 		cc.AddContainer(&Container{
-			ID:    fmt.Sprint(n),
+			Runtime: RuntimeMetadata{
+				ContainerID: fmt.Sprint(n),
+			},
 			Mntns: uint64(n),
 		})
 	}
@@ -85,7 +89,9 @@ func BenchmarkLookupContainerByNetns(b *testing.B) {
 
 	for n := 0; n < TestContainerCount; n++ {
 		cc.AddContainer(&Container{
-			ID:    fmt.Sprint(n),
+			Runtime: RuntimeMetadata{
+				ContainerID: fmt.Sprint(n),
+			},
 			Netns: uint64(n),
 		})
 	}
@@ -133,7 +139,9 @@ func TestWithTracerCollection(t *testing.T) {
 		runners[i] = runner
 
 		containers[i] = &Container{
-			ID:    fmt.Sprintf("id%d", i),
+			Runtime: RuntimeMetadata{
+				ContainerID: fmt.Sprintf("id%d", i),
+			},
 			Mntns: runner.Info.MountNsID,
 			Netns: runner.Info.NetworkNsID,
 			Pid:   uint32(runner.Info.Pid),
@@ -182,7 +190,7 @@ func TestWithTracerCollection(t *testing.T) {
 	verifyEnrichByMntNs()
 	verifyEnrichByNetNs()
 
-	cc.RemoveContainer(containers[0].ID)
+	cc.RemoveContainer(containers[0].Runtime.ContainerID)
 
 	// Pubsub events should be triggered immediately after container removal
 	require.Equal(t, nContainers-1, len(f.containers), "number of containers should be equal")

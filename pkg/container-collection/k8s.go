@@ -148,7 +148,9 @@ func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 		}
 
 		containerDef := Container{
-			ID:  id,
+			Runtime: RuntimeMetadata{
+				ContainerID: id,
+			},
 			Pid: uint32(pid),
 			K8s: K8sMetadata{
 				Namespace:     pod.GetNamespace(),

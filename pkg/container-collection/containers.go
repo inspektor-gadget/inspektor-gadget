@@ -30,14 +30,11 @@ import (
 
 // Container represents a container with its metadata.
 type Container struct {
-	// Container Runtime
-	Runtime string `json:"runtime,omitempty" column:"runtime,minWidth:5,maxWidth:10" columnTags:"runtime"`
+	// Runtime contains the metadata of the container runtime
+	Runtime RuntimeMetadata `json:"runtime,omitempty" column:"runtime" columnTags:"runtime"`
 
 	// K8s contains the Kubernetes metadata of the container.
 	K8s K8sMetadata `json:"k8s,omitempty" column:"k8s" columnTags:"kubernetes"`
-
-	// ID is the container id, typically a 64 hexadecimal string
-	ID string `json:"id,omitempty" column:"id,width:13,maxWidth:64" columnTags:"runtime"`
 
 	// Pid is the process id of the container
 	Pid uint32 `json:"pid,omitempty" column:"pid,template:pid,hide"`
@@ -97,6 +94,14 @@ type K8sMetadata struct {
 	ContainerName string `json:"containerName,omitempty" column:"container,template:container" columnTags:"runtime"`
 
 	ownerReference *metav1.OwnerReference
+}
+
+type RuntimeMetadata struct {
+	// Container RuntimeName Name (docker, containerd, cri-o, ...)
+	RuntimeName string `json:"runtimeName,omitempty" column:"runtimeName,minWidth:5,maxWidth:10"`
+
+	// ContainerID is the container id, typically a 64 hexadecimal string
+	ContainerID string `json:"containerId,omitempty" column:"ContainerId,width:13,maxWidth:64"`
 }
 
 type ContainerSelector struct {
@@ -197,5 +202,5 @@ func GetColumns() *columns.Columns[Container] {
 }
 
 func (c *Container) IsEnriched() bool {
-	return c.K8s.ContainerName != "" && c.K8s.PodName != "" && c.K8s.Namespace != "" && c.K8s.PodUID != "" && c.Runtime != ""
+	return c.K8s.ContainerName != "" && c.K8s.PodName != "" && c.K8s.Namespace != "" && c.K8s.PodUID != "" && c.Runtime.RuntimeName != ""
 }
