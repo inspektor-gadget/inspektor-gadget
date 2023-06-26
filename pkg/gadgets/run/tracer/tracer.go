@@ -17,13 +17,13 @@
 package tracer
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strings"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -41,9 +41,12 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-const (
-	mntNsIdType = "mnt_ns_id_t"
-)
+// keep aligned with pkg/gadgets/common/types.h
+type endpointT struct {
+	addr    [16]byte
+	port    uint16
+	version uint8
+}
 
 type Config struct {
 	RegistryAuth orascontent.RegistryOptions
@@ -220,34 +223,41 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 
 	var mntNsIdstart, mntNsIdend uint32
 
+	endpointsStarts := []uint32{}
+	endpointsNames := []string{}
+
 	// we suppose the same data structure is always used, so we can precalculate the offsets for
 	// the mount ns id
 	for _, member := range typ.Members {
-		if member.Type.TypeName() != mntNsIdType {
-			continue
-		}
 
-		typDef, ok := member.Type.(*btf.Typedef)
-		if !ok {
-			continue
-		}
+		switch member.Type.TypeName() {
+		case gadgets.MntNsIdTypeName:
+			typDef, ok := member.Type.(*btf.Typedef)
+			if !ok {
+				continue
+			}
 
-		underlying, err := getUnderlyingType(typDef)
-		if err != nil {
-			continue
-		}
+			underlying, err := getUnderlyingType(typDef)
+			if err != nil {
+				continue
+			}
 
-		intM, ok := underlying.(*btf.Int)
-		if !ok {
-			continue
-		}
+			intM, ok := underlying.(*btf.Int)
+			if !ok {
+				continue
+			}
 
-		if intM.Size != 8 {
-			continue
-		}
+			if intM.Size != 8 {
+				continue
+			}
 
-		mntNsIdstart = member.Offset.Bytes()
-		mntNsIdend = mntNsIdstart + intM.Size
+			mntNsIdstart = member.Offset.Bytes()
+			mntNsIdend = mntNsIdstart + intM.Size
+		case gadgets.EndpointTypeName:
+			endpointsStarts = append(endpointsStarts, member.Offset.Bytes())
+			endpointsNames = append(endpointsNames, member.Name)
+
+		}
 	}
 
 	for {
@@ -294,11 +304,40 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 		// get mnt_ns_id for enriching the event
 		mtn_ns_id := uint64(0)
 		if mntNsIdend != 0 {
-			buf := bytes.NewBuffer(data[mntNsIdstart:mntNsIdend])
-			// TODO: is binary.LittleEndian correct?
-			if err := binary.Read(buf, binary.LittleEndian, &mtn_ns_id); err != nil {
+			mtn_ns_id = *(*uint64)(unsafe.Pointer(&data[mntNsIdstart]))
+		}
+
+		endpoints := []types.Endpoint{}
+
+		for i, endpointStart := range endpointsStarts {
+			endpointC := (*endpointT)(unsafe.Pointer(&data[endpointStart]))
+			var addr string
+			switch endpointC.version {
+			case 4:
+				ipBytes := make(net.IP, 4)
+				copy(ipBytes, endpointC.addr[:])
+				addr = ipBytes.String()
+			case 6:
+				ipBytes := make(net.IP, 16)
+				copy(ipBytes, endpointC.addr[:])
+				addr = ipBytes.String()
+			default:
+				gadgetCtx.Logger().Warnf("bad IP version received: %d", endpointC.version)
 				continue
 			}
+
+			endpoint := types.Endpoint{
+				Name:    endpointsNames[i],
+				Version: endpointC.version,
+				L4Endpoint: eventtypes.L4Endpoint{
+					L3Endpoint: eventtypes.L3Endpoint{
+						Addr: addr,
+					},
+					Port: endpointC.port,
+				},
+			}
+
+			endpoints = append(endpoints, endpoint)
 		}
 
 		event := types.Event{
@@ -307,6 +346,7 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 			},
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: mtn_ns_id},
 			RawData:       data,
+			Endpoints:     endpoints,
 		}
 
 		t.eventCallback(&event)
