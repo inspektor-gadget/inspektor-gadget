@@ -16,7 +16,6 @@ package igmanager
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -25,10 +24,11 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+
+	// Yes, not the better naming for these two.
+	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 )
-
-var rootTest = flag.Bool("root-test", false, "enable tests requiring root")
 
 const (
 	// The product of these to contansts defines the maximum wait
@@ -41,9 +41,7 @@ const (
 )
 
 func TestBasic(t *testing.T) {
-	if !*rootTest {
-		t.Skip("skipping test requiring root.")
-	}
+	utilstest.RequireRoot(t)
 
 	igManager, err := NewManager(nil)
 	if err != nil {
@@ -53,9 +51,8 @@ func TestBasic(t *testing.T) {
 }
 
 func TestContainersMap(t *testing.T) {
-	if !*rootTest {
-		t.Skip("skipping test requiring root.")
-	}
+	utilstest.RequireRoot(t)
+
 	igManager, err := NewManager(nil)
 	if err != nil {
 		t.Fatalf("Failed to start ig manager: %s", err)
@@ -68,9 +65,8 @@ func TestContainersMap(t *testing.T) {
 }
 
 func TestMountNsMap(t *testing.T) {
-	if !*rootTest {
-		t.Skip("skipping test requiring root.")
-	}
+	utilstest.RequireRoot(t)
+
 	igManager, err := NewManager(nil)
 	if err != nil {
 		t.Fatalf("Failed to start ig manager: %s", err)
@@ -129,9 +125,7 @@ func checkFdList(t *testing.T, initialFdList string, attempts int, sleep time.Du
 
 // TestClose tests that resources aren't leaked after calling Close()
 func TestClose(t *testing.T) {
-	if !*rootTest {
-		t.Skip("skipping test requiring root.")
-	}
+	utilstest.RequireRoot(t)
 
 	initialFdList := currentFdList(t)
 
