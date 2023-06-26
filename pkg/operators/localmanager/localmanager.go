@@ -314,6 +314,12 @@ func (l *localManagerTrace) PreGadgetRun() error {
 			},
 		)
 
+		if host {
+			// We need to attach this fake container for gadget which rely only on the
+			// Attacher concept.
+			containers = append(containers, &containercollection.Container{Pid: 1})
+		}
+
 		for _, container := range containers {
 			attachContainerFunc(container)
 		}
@@ -328,12 +334,20 @@ func (l *localManagerTrace) PostGadgetRun() error {
 		l.manager.igManager.RemoveMountNsMap(l.subscriptionKey)
 	}
 	if l.subscriptionKey != "" {
+		host := l.params.Get(Host).AsBool()
+
 		log.Debugf("calling Unsubscribe()")
 		l.manager.igManager.Unsubscribe(l.subscriptionKey)
 
 		// emit detach for all remaining containers
 		for container := range l.attachedContainers {
 			l.attacher.DetachContainer(container)
+		}
+
+		if host {
+			// Reciprocal operation of attaching fake container with PID 1 which is
+			// needed by gadgets relying on the Attacher concept.
+			l.attacher.DetachContainer(&containercollection.Container{Pid: 1})
 		}
 	}
 	return nil
