@@ -73,6 +73,7 @@ spec:
       image: prom/prometheus:v2.44.0
       args:
         - "--config.file=/etc/prometheus/prometheus.yml"
+        - "--log.level=debug"
       ports:
         - containerPort: 9090
       volumeMounts:
@@ -109,7 +110,7 @@ EOF
 			},
 			SleepForSecondsCommand(2),
 			BusyboxPodCommand(ns, "for i in $(seq 1 100); do cat /dev/null; done; sleep 2"),
-			SleepForSecondsCommand(5), // wait for prometheus to scrape
+			SleepForSecondsCommand(10), // wait for prometheus to scrape
 			{
 				Name: "ValidatePrometheusMetrics",
 				Cmd:  fmt.Sprintf("kubectl exec -n %s prometheus -- wget -qO- http://localhost:9090/api/v1/query?query=executed_processes_total", ns),
