@@ -76,8 +76,6 @@ type socketenricherProgramSpecs struct {
 	IgBindIpv6X   *ebpf.ProgramSpec `ebpf:"ig_bind_ipv6_x"`
 	IgFreeIpv4E   *ebpf.ProgramSpec `ebpf:"ig_free_ipv4_e"`
 	IgFreeIpv6E   *ebpf.ProgramSpec `ebpf:"ig_free_ipv6_e"`
-	IgSkCleanup   *ebpf.ProgramSpec `ebpf:"ig_sk_cleanup"`
-	IgSocketsIt   *ebpf.ProgramSpec `ebpf:"ig_sockets_it"`
 	IgTcpCoE      *ebpf.ProgramSpec `ebpf:"ig_tcp_co_e"`
 	IgTcpCoX      *ebpf.ProgramSpec `ebpf:"ig_tcp_co_x"`
 	IgUdp6Sendmsg *ebpf.ProgramSpec `ebpf:"ig_udp6_sendmsg"`
@@ -132,8 +130,6 @@ type socketenricherPrograms struct {
 	IgBindIpv6X   *ebpf.Program `ebpf:"ig_bind_ipv6_x"`
 	IgFreeIpv4E   *ebpf.Program `ebpf:"ig_free_ipv4_e"`
 	IgFreeIpv6E   *ebpf.Program `ebpf:"ig_free_ipv6_e"`
-	IgSkCleanup   *ebpf.Program `ebpf:"ig_sk_cleanup"`
-	IgSocketsIt   *ebpf.Program `ebpf:"ig_sockets_it"`
 	IgTcpCoE      *ebpf.Program `ebpf:"ig_tcp_co_e"`
 	IgTcpCoX      *ebpf.Program `ebpf:"ig_tcp_co_x"`
 	IgUdp6Sendmsg *ebpf.Program `ebpf:"ig_udp6_sendmsg"`
@@ -148,8 +144,6 @@ func (p *socketenricherPrograms) Close() error {
 		p.IgBindIpv6X,
 		p.IgFreeIpv4E,
 		p.IgFreeIpv6E,
-		p.IgSkCleanup,
-		p.IgSocketsIt,
 		p.IgTcpCoE,
 		p.IgTcpCoX,
 		p.IgUdp6Sendmsg,
