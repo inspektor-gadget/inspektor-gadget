@@ -257,11 +257,11 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 						}
 					}
 					delete(containerIDsByKey, key)
-				case c, ok := <-podInformer.CreatedChan():
+				case pod, ok := <-podInformer.UpdatedChan():
 					if !ok {
 						return
 					}
-					key, _ := cache.MetaNamespaceKeyFunc(c)
+					key, _ := cache.MetaNamespaceKeyFunc(pod)
 					containerIDs, ok := containerIDsByKey[key]
 					if !ok {
 						containerIDs = make(map[string]struct{})
@@ -269,7 +269,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 					}
 
 					// first: remove containers that are not running anymore
-					nonrunning := k8sClient.GetNonRunningContainers(c)
+					nonrunning := k8sClient.GetNonRunningContainers(pod)
 					for _, id := range nonrunning {
 						// container had not been added, no need to remove it
 						if _, ok := containerIDs[id]; !ok {
@@ -279,7 +279,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 					}
 
 					// second: add containers that are in running state
-					containers := k8sClient.PodToContainers(c)
+					containers := k8sClient.GetRunningContainers(pod)
 					for _, container := range containers {
 						// The container is already registered, there is not any chance the
 						// PID will change, so ignore it.

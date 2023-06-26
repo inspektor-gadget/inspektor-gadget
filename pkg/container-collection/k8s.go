@@ -111,9 +111,8 @@ func (k *K8sClient) GetNonRunningContainers(pod *v1.Pod) []string {
 	return ret
 }
 
-// PodToContainers returns a list of the containers of a given Pod.
-// Containers that are not running or don't have an ID are not considered.
-func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
+// GetRunningContainers returns a list of the containers of a given Pod that are running.
+func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 	containers := []Container{}
 
 	labels := map[string]string{}
@@ -174,7 +173,7 @@ func (k *K8sClient) ListContainers() (arr []Container, err error) {
 	}
 
 	for _, pod := range pods.Items {
-		containers := k.PodToContainers(&pod)
+		containers := k.GetRunningContainers(&pod)
 		arr = append(arr, containers...)
 	}
 	return arr, nil
