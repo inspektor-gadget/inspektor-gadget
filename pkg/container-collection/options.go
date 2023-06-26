@@ -247,20 +247,21 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 
 			for {
 				select {
-				case d, ok := <-podInformer.DeletedChan():
+				case key, ok := <-podInformer.DeletedChan():
 					if !ok {
 						return
 					}
-					if containerIDs, ok := containerIDsByKey[d]; ok {
+					if containerIDs, ok := containerIDsByKey[key]; ok {
 						for containerID := range containerIDs {
 							cc.RemoveContainer(containerID)
 						}
 					}
-				case c, ok := <-podInformer.CreatedChan():
+					delete(containerIDsByKey, key)
+				case pod, ok := <-podInformer.UpdatedChan():
 					if !ok {
 						return
 					}
-					key, _ := cache.MetaNamespaceKeyFunc(c)
+					key, _ := cache.MetaNamespaceKeyFunc(pod)
 					containerIDs, ok := containerIDsByKey[key]
 					if !ok {
 						containerIDs = make(map[string]struct{})
@@ -268,24 +269,24 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 					}
 
 					// first: remove containers that are not running anymore
-					nonrunning := k8sClient.GetNonRunningContainers(c)
+					nonrunning := k8sClient.GetNonRunningContainers(pod)
 					for _, id := range nonrunning {
 						// container had not been added, no need to remove it
 						if _, ok := containerIDs[id]; !ok {
 							continue
 						}
-
 						cc.RemoveContainer(id)
 					}
 
 					// second: add containers that are in running state
-					containers := k8sClient.PodToContainers(c)
+					containers := k8sClient.GetRunningContainers(pod)
 					for _, container := range containers {
 						// The container is already registered, there is not any chance the
 						// PID will change, so ignore it.
 						if _, ok := containerIDs[container.ID]; ok {
 							continue
 						}
+						containerIDs[container.ID] = struct{}{}
 
 						// Make a copy instead of passing the same pointer at
 						// each iteration of the loop
@@ -299,8 +300,6 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 								container.Namespace, container.Podname, container.Name)
 						}
 						cc.AddContainer(&newContainer)
-
-						containerIDs[container.ID] = struct{}{}
 					}
 				}
 			}

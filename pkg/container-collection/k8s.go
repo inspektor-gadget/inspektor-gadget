@@ -79,6 +79,16 @@ func (k *K8sClient) Close() {
 	k.runtimeClient.Close()
 }
 
+// trimRuntimePrefix removes the runtime prefix from a container ID.
+func trimRuntimePrefix(id string) string {
+	parts := strings.SplitN(id, "//", 2)
+	if len(parts) != 2 {
+		return ""
+	}
+
+	return parts[1]
+}
+
 // GetNonRunningContainers returns the list of containers IDs that are not running.
 func (k *K8sClient) GetNonRunningContainers(pod *v1.Pod) []string {
 	ret := []string{}
@@ -89,16 +99,20 @@ func (k *K8sClient) GetNonRunningContainers(pod *v1.Pod) []string {
 
 	for _, s := range containerStatuses {
 		if s.ContainerID != "" && s.State.Running == nil {
-			ret = append(ret, s.ContainerID)
+			id := trimRuntimePrefix(s.ContainerID)
+			if id == "" {
+				continue
+			}
+
+			ret = append(ret, id)
 		}
 	}
 
 	return ret
 }
 
-// PodToContainers returns a list of the containers of a given Pod.
-// Containers that are not running or don't have an ID are not considered.
-func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
+// GetRunningContainers returns a list of the containers of a given Pod that are running.
+func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 	containers := []Container{}
 
 	labels := map[string]string{}
@@ -122,8 +136,8 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 			continue
 		}
 
-		idParts := strings.SplitN(s.ContainerID, "//", 2)
-		if len(idParts) != 2 {
+		id := trimRuntimePrefix(s.ContainerID)
+		if id == "" {
 			continue
 		}
 
@@ -134,7 +148,7 @@ func (k *K8sClient) PodToContainers(pod *v1.Pod) []Container {
 		}
 
 		containerDef := Container{
-			ID:        idParts[1],
+			ID:        id,
 			Namespace: pod.GetNamespace(),
 			Podname:   pod.GetName(),
 			Name:      s.Name,
@@ -159,7 +173,7 @@ func (k *K8sClient) ListContainers() (arr []Container, err error) {
 	}
 
 	for _, pod := range pods.Items {
-		containers := k.PodToContainers(&pod)
+		containers := k.GetRunningContainers(&pod)
 		arr = append(arr, containers...)
 	}
 	return arr, nil

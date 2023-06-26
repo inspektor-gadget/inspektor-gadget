@@ -44,7 +44,7 @@ type PodInformer struct {
 	informer cache.Controller
 
 	stop           chan struct{}
-	createdPodChan chan *v1.Pod
+	updatedPodChan chan *v1.Pod
 	deletedPodChan chan string
 	wg             sync.WaitGroup
 }
@@ -92,7 +92,7 @@ func NewPodInformer(node string) (*PodInformer, error) {
 		queue:          queue,
 		informer:       informer,
 		stop:           make(chan struct{}),
-		createdPodChan: make(chan *v1.Pod),
+		updatedPodChan: make(chan *v1.Pod),
 		deletedPodChan: make(chan string),
 	}
 
@@ -110,12 +110,12 @@ func (p *PodInformer) Stop() {
 	// writing to closed channels
 	p.wg.Wait()
 
-	close(p.createdPodChan)
+	close(p.updatedPodChan)
 	close(p.deletedPodChan)
 }
 
-func (p *PodInformer) CreatedChan() <-chan *v1.Pod {
-	return p.createdPodChan
+func (p *PodInformer) UpdatedChan() <-chan *v1.Pod {
+	return p.updatedPodChan
 }
 
 func (p *PodInformer) DeletedChan() <-chan string {
@@ -149,7 +149,7 @@ func (p *PodInformer) notifyChans(key string) error {
 		return nil
 	}
 
-	p.createdPodChan <- obj.(*v1.Pod)
+	p.updatedPodChan <- obj.(*v1.Pod)
 	return nil
 }
 
