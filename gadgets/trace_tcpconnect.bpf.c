@@ -32,17 +32,14 @@ struct ipv6_flow_key {
 };
 
 struct event {
-	union ip_addr src;
-	union ip_addr dst;
+	struct gadget_l4endpoint_t src;
+	struct gadget_l4endpoint_t dst;
 
 	__u8 task[TASK_COMM_LEN];
 	__u64 timestamp;
 	__u32 pid;
 	__u32 uid;
 	__u32 gid;
-	__u16 version; // 4 or 6
-	__u16 dport;
-	__u16 sport;
 	mnt_ns_id_t mntns_id;
 	__u64 latency;
 };
@@ -203,14 +200,17 @@ static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
 
 	__u64 uid_gid = bpf_get_current_uid_gid();
 
-	event.version = 4;
 	event.pid = pid;
 	event.uid = (u32)uid_gid;
 	event.gid = (u32)(uid_gid >> 32);
-	BPF_CORE_READ_INTO(&event.src.v4, sk, __sk_common.skc_rcv_saddr);
-	BPF_CORE_READ_INTO(&event.dst.v4, sk, __sk_common.skc_daddr);
-	event.dport = bpf_ntohs(dport); // host expects data in host byte order
-	event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+	event.src.l3.version = event.dst.l3.version = 4;
+	event.src.proto = event.dst.proto = IPPROTO_TCP;
+	BPF_CORE_READ_INTO(&event.src.l3.addr.v4, sk,
+			   __sk_common.skc_rcv_saddr);
+	BPF_CORE_READ_INTO(&event.dst.l3.addr.v4, sk, __sk_common.skc_daddr);
+	event.dst.port =
+		bpf_ntohs(dport); // host expects data in host byte order
+	event.src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	;
 	event.mntns_id = mntns_id;
 	bpf_get_current_comm(event.task, sizeof(event.task));
@@ -228,17 +228,19 @@ static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 
 	__u64 uid_gid = bpf_get_current_uid_gid();
 
-	event.version = 6;
 	event.pid = pid;
 	event.uid = (u32)uid_gid;
 	event.gid = (u32)(uid_gid >> 32);
 	event.mntns_id = mntns_id;
-	BPF_CORE_READ_INTO(&event.src.v6, sk,
+	event.src.l3.version = event.dst.l3.version = 6;
+	event.src.proto = event.dst.proto = IPPROTO_TCP;
+	BPF_CORE_READ_INTO(&event.src.l3.addr.v6, sk,
 			   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-	BPF_CORE_READ_INTO(&event.dst.v6, sk,
+	BPF_CORE_READ_INTO(&event.dst.l3.addr.v6, sk,
 			   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
-	event.dport = bpf_ntohs(dport); // host expects data in host byte order
-	event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+	event.dst.port =
+		bpf_ntohs(dport); // host expects data in host byte order
+	event.src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
 	;
 	bpf_get_current_comm(event.task, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();
@@ -321,21 +323,22 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx,
 	__builtin_memcpy(&event.task, piddatap->comm, sizeof(event.task));
 	event.pid = piddatap->pid;
 	event.mntns_id = piddatap->mntns_id;
-	event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
-	event.dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
-	event.dport =
-		bpf_ntohs(event.dport); // host expects data in host byte order
+	event.src.port = BPF_CORE_READ(sk, __sk_common.skc_num);
+	// host expects data in host byte order
+	event.dst.port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
+	event.src.proto = event.dst.proto = IPPROTO_TCP;
 	family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	if (family == AF_INET) {
-		event.version = 4;
-		event.src.v4 = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-		event.dst.v4 = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+		event.src.l3.version = event.dst.l3.version = 4;
+		event.src.l3.addr.v4 =
+			BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+		event.dst.l3.addr.v4 = BPF_CORE_READ(sk, __sk_common.skc_daddr);
 	} else {
-		event.version = 6;
+		event.src.l3.version = event.dst.l3.version = 6;
 		BPF_CORE_READ_INTO(
-			&event.src.v6, sk,
+			&event.src.l3.addr.v6, sk,
 			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		BPF_CORE_READ_INTO(&event.dst.v6, sk,
+		BPF_CORE_READ_INTO(&event.dst.l3.addr.v6, sk,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	}
 	event.timestamp = bpf_ktime_get_boot_ns();
