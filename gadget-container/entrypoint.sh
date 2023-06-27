@@ -16,12 +16,18 @@
 
 set -e
 
-if [ ! -r /host/etc/os-release ] ; then
+if [ ! -d /host/bin ] ; then
   echo "$0 must be executed in a pod with access to the host via /host" >&2
   exit 1
 fi
 
-. /host/etc/os-release
+# In some distributions /host/etc/os-release is a symlink that can't be read from the container. For
+# instance, NixOS -> https://github.com/NixOS/nixpkgs/issues/28833.
+if [ ! -r /host/etc/os-release ] ; then
+  echo "os-release information not available. Some features could not work" >&2
+else
+  . /host/etc/os-release
+fi
 
 echo -n "OS detected: "
 echo $PRETTY_NAME
