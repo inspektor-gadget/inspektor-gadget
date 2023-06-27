@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/tklauser/numcpus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/bpfstats"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -237,6 +238,11 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 
 	mapSizes := make(map[ebpf.MapID]uint64)
 
+	numOnlineCPUs, err := numcpus.GetOnline()
+	if err != nil {
+		return nil, fmt.Errorf("getting number of online cpu: %w", err)
+	}
+
 	// Get memory usage by maps
 	for {
 		nextMapID, err = ebpf.MapGetNextID(curMapID)
@@ -322,6 +328,8 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			runCount: totalRunCount,
 		}
 
+		totalCpuUsage := 100 * float64(curRuntime) / float64(t.config.Interval.Nanoseconds())
+
 		stat := &types.Stats{
 			ProgramID:          uint32(curID),
 			Name:               pi.Name,
@@ -334,6 +342,8 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			CumulativeRunCount: cumulativeRunCount,
 			MapMemory:          totalMapMemory,
 			MapCount:           uint32(len(mapIDs)),
+			TotalCpuUsage:      totalCpuUsage,
+			PerCpuUsage:        totalCpuUsage / float64(numOnlineCPUs),
 		}
 
 		if t.enricher != nil {

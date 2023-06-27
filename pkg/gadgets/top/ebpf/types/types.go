@@ -47,6 +47,8 @@ type Stats struct {
 	TotalRunCount      uint64     `json:"totalRunCount,omitempty" column:"totalRunCount,order:1006,align:right,hide"`
 	MapMemory          uint64     `json:"mapMemory,omitempty" column:"mapmemory,order:1007,align:right"`
 	MapCount           uint32     `json:"mapCount,omitempty" column:"mapcount,order:1008"`
+	TotalCpuUsage      float64    `json:"totalCpuUsage,omitempty" column:"totalcpu,order:1009,align:right,hide"`
+	PerCpuUsage        float64    `json:"perCpuUsage,omitempty" column:"percpu,order:1010,align:right,hide"`
 }
 
 func GetColumns() *columns.Columns[Stats] {
@@ -101,6 +103,12 @@ func GetColumns() *columns.Columns[Stats] {
 	})
 	cols.MustSetExtractor("mapmemory", func(stats *Stats) (ret string) {
 		return fmt.Sprint(units.BytesSize(float64(stats.MapMemory)))
+	})
+	cols.MustSetExtractor("totalcpu", func(stats *Stats) (ret string) {
+		return fmt.Sprintf("%.4f%%", stats.TotalCpuUsage)
+	})
+	cols.MustSetExtractor("percpu", func(stats *Stats) (ret string) {
+		return fmt.Sprintf("%.4f%%", stats.PerCpuUsage)
 	})
 
 	return cols

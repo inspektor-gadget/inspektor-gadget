@@ -104,3 +104,11 @@ be used by more than one program and would account towards the MapMemory of all 
 Also note:
 * BPF_MAP_TYPE_PERF_EVENT_ARRAY: value_size is not counting the ring buffers, but only their file descriptors (i.e. sizeof(int) = 4 bytes)
 * BPF_MAP_TYPE_{HASH,ARRAY}_OF_MAPS: value_size is not counting the inner maps, but only their file descriptors (i.e. sizeof(int) = 4 bytes)
+
+### A note about CPU usage
+
+There are two types of cpu usage metrics available in top ebpf gadget:
+* TotalCPUUsage: It means all ebpf progs' share of the elapsed CPU time since the last update, expressed as a percentage of total CPU time. This value can be >100% because it summed up cpu time in all cpu cores, similar to linux `top`.
+* PerCPUUsage: This value is `TotalCPUUsage / CPUCores` and `CPUCores` is the number of cpu cores in a node. PerCPUUsage will be always be <=100%. When using ebpf top gadget to check cpu usage for many nodes, it's suggested to use PerCPUUsage.
+
+To show them, you can run the gadget with `percpu` and `totalcpu` specified in `-o columns` option.
