@@ -97,7 +97,7 @@ func (c *Command) Running() bool {
 
 // DeployInspektorGadget deploys inspector gadget in Kubernetes
 func DeployInspektorGadget(image, imagePullPolicy string) *Command {
-	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --image-pull-policy=%s --debug",
+	cmd := fmt.Sprintf("$KUBECTL_GADGET deploy --image-pull-policy=%s --debug --experimental",
 		imagePullPolicy)
 
 	if image != "" {
