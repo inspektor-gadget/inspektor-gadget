@@ -20,6 +20,7 @@ import (
 	"time"
 
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/sys/unix"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
@@ -67,15 +68,28 @@ type Container struct {
 
 	ownerReference *metav1.OwnerReference
 
-	// We keep an open file descriptor of the containers mount namespace to be sure the kernel
-	// doesn't reuse the inode id before we get rid of this container. This logic avoids a race
-	// condition when the mnt ns inode id is reused by a new container and we erroneously pick
-	// events from it.
-	// This is only used when cachedContainers are enabled through WithTracerCollection().
+	// We keep an open file descriptor of the containers mount and net namespaces to be sure the
+	// kernel doesn't reuse the inode id before we get rid of this container. This logic avoids
+	// a race condition when the ns inode id is reused by a new container and we erroneously
+	// pick events from it or enrich data using it.
+	// These are only used when cachedContainers are enabled through WithTracerCollection().
 	mntNsFd int
+	netNsFd int
 
 	// when the container was removed. Useful for prunning cached containers.
 	deletionTimestamp time.Time
+}
+
+// close releases any resources (like  file descriptors) the container is using.
+func (c *Container) close() {
+	if c.mntNsFd != 0 {
+		unix.Close(c.mntNsFd)
+		c.mntNsFd = 0
+	}
+	if c.netNsFd != 0 {
+		unix.Close(c.netNsFd)
+		c.netNsFd = 0
+	}
 }
 
 type ContainerSelector struct {

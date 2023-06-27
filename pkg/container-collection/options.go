@@ -777,10 +777,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 						c := value.(*Container)
 
 						if now.Sub(c.deletionTimestamp) > cc.cacheDelay {
-							if c.mntNsFd != 0 {
-								unix.Close(c.mntNsFd)
-								c.mntNsFd = 0
-							}
+							c.close()
 							cc.cachedContainers.Delete(c.ID)
 						}
 
@@ -795,15 +792,23 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 		}()
 
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			path := filepath.Join(host.HostProcFs, fmt.Sprint(container.Pid), "ns", "mnt")
-			fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+			mntNsPath := filepath.Join(host.HostProcFs, fmt.Sprint(container.Pid), "ns", "mnt")
+			mntNsFd, err := unix.Open(mntNsPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 			if err != nil {
 				log.Warnf("WithTracerCollection: failed to open mntns reference for container %s: %s",
 					container.ID, err)
 				return false
 			}
+			container.mntNsFd = mntNsFd
 
-			container.mntNsFd = fd
+			netNsPath := filepath.Join(host.HostProcFs, fmt.Sprint(container.Pid), "ns", "net")
+			netNsFd, err := unix.Open(netNsPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+			if err != nil {
+				log.Warnf("WithTracerCollection: failed to open netns reference for container %s: %s",
+					container.ID, err)
+				return false
+			}
+			container.netNsFd = netNsFd
 			return true
 		})
 
@@ -811,10 +816,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 			// clean up functions are called with the mutex held
 			cc.cachedContainers.Range(func(key, value interface{}) bool {
 				c := value.(*Container)
-				if c.mntNsFd != 0 {
-					unix.Close(c.mntNsFd)
-					c.mntNsFd = 0
-				}
+				c.close()
 				cc.cachedContainers.Delete(key)
 				return true
 			})

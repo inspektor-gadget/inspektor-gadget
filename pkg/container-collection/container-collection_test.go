@@ -75,6 +75,7 @@ func TestWithTracerCollection(t *testing.T) {
 			Namespace: fmt.Sprintf("namespace%d", i),
 			Podname:   fmt.Sprintf("pod%d", i),
 			Mntns:     runner.Info.MountNsID,
+			Netns:     runner.Info.NetworkNsID,
 			Pid:       uint32(runner.Info.Pid),
 		}
 		cc.AddContainer(containers[i])
@@ -82,7 +83,7 @@ func TestWithTracerCollection(t *testing.T) {
 
 	require.Equal(t, nContainers, len(f.containers), "number of containers should be equal")
 
-	verifyEnrich := func() {
+	verifyEnrichByMntNs := func() {
 		for i := 0; i < nContainers; i++ {
 			ev := types.CommonData{}
 			expected := types.CommonData{
@@ -97,8 +98,24 @@ func TestWithTracerCollection(t *testing.T) {
 		}
 	}
 
-	// Enrich by MountNs should work
-	verifyEnrich()
+	verifyEnrichByNetNs := func() {
+		for i := 0; i < nContainers; i++ {
+			ev := types.CommonData{}
+			expected := types.CommonData{
+				Namespace: containers[i].Namespace,
+				Pod:       containers[i].Podname,
+				Container: containers[i].Name,
+			}
+
+			cc.EnrichByNetNs(&ev, containers[i].Netns)
+
+			require.Equal(t, expected, ev, "events should be equal")
+		}
+	}
+
+	// Enrich by should work
+	verifyEnrichByMntNs()
+	verifyEnrichByNetNs()
 
 	cc.RemoveContainer(containers[0].ID)
 
@@ -107,15 +124,19 @@ func TestWithTracerCollection(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	// Enrich by MountNs should work 1 second after removing container
-	verifyEnrich()
+	// Enrich should work 1 second after removing container
+	verifyEnrichByMntNs()
+	verifyEnrichByNetNs()
 
 	time.Sleep(6 * time.Second)
 
-	// Enrich by MountNs should **not** work after removing container more than 6 seconds ago
+	// Enrich should **not** work after removing container more than 6 seconds ago
 	ev := types.CommonData{}
 	expected := types.CommonData{}
 	cc.EnrichByMntNs(&ev, containers[0].Mntns)
+	require.Equal(t, expected, ev, "events should be equal")
 
+	// This is in a separated line to understand who is causing the issue.
+	cc.EnrichByNetNs(&ev, containers[0].Netns)
 	require.Equal(t, expected, ev, "events should be equal")
 }
