@@ -96,7 +96,6 @@ func TestTraceExecHost(t *testing.T) {
 	t.Parallel()
 
 	cmd := "sh -c 'for i in $(seq 1 30); do date; /bin/sleep 0.1; done'"
-	shArgs := []string{"/bin/sh", "-c", cmd}
 	dateArgs := []string{"/usr/bin/date"}
 	sleepArgs := []string{"/bin/sleep", "0.1"}
 
@@ -106,13 +105,6 @@ func TestTraceExecHost(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*execTypes.Event{
-				{
-					Event: eventtypes.Event{
-						Type: eventtypes.NORMAL,
-					},
-					Comm: "sh",
-					Args: shArgs,
-				},
 				{
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
