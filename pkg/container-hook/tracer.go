@@ -162,7 +162,7 @@ func Supported() bool {
 		notifier.Close()
 	}
 	if err != nil {
-		log.Debugf("ContainerNotifier: not supported: %s", err)
+		log.Warnf("ContainerNotifier: not supported: %s", err)
 	}
 	return err == nil
 }

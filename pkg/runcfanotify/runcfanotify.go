@@ -140,7 +140,7 @@ func Supported() bool {
 		notifier.Close()
 	}
 	if err != nil {
-		log.Debugf("Runcfanotify: not supported: %s", err)
+		log.Warnf("Runcfanotify: not supported: %s", err)
 	}
 	return err == nil
 }
