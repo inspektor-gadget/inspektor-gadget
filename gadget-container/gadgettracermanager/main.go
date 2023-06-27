@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -46,6 +47,7 @@ import (
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 var (
@@ -255,6 +257,8 @@ func main() {
 		if experimental.Enabled() {
 			log.Info("Experimental features enabled")
 		}
+		log.Infof("HostPID=%s", strconv.FormatBool(host.IsHostPidNs))
+		log.Infof("HostNetwork=%s", strconv.FormatBool(host.IsHostNetNs))
 
 		node := os.Getenv("NODE_NAME")
 		if node == "" {
