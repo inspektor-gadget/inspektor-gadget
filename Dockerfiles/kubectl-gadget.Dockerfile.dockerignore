@@ -4,6 +4,7 @@
 !cmd
 !pkg
 !internal/thirdparty
+!internal/deployinfo
 !tools
 !Makefile
 !*.mk
