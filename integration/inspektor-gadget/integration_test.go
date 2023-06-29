@@ -30,10 +30,10 @@ import (
 )
 
 const (
-	K8sDistroAKSMariner = "aks-Mariner"
-	K8sDistroAKSUbuntu  = "aks-Ubuntu"
-	K8sDistroARO        = "aro"
-	K8sDistroMinikubeGH = "minikube-github"
+	K8sDistroAKSAzureLinux = "aks-AzureLinux"
+	K8sDistroAKSUbuntu     = "aks-Ubuntu"
+	K8sDistroARO           = "aro"
+	K8sDistroMinikubeGH    = "minikube-github"
 )
 
 const (
@@ -46,7 +46,7 @@ const securityProfileOperatorNamespace = "security-profiles-operator"
 const topTimeoutInSeconds = 10
 
 var (
-	supportedK8sDistros = []string{K8sDistroAKSMariner, K8sDistroAKSUbuntu, K8sDistroARO, K8sDistroMinikubeGH}
+	supportedK8sDistros = []string{K8sDistroAKSAzureLinux, K8sDistroAKSUbuntu, K8sDistroARO, K8sDistroMinikubeGH}
 	cleaningUp          = uint32(0)
 )
 
