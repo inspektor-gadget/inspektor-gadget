@@ -21,13 +21,16 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang socketenricher ./bpf/sockets-map.bpf.c -- -I./bpf/ -I../../../ -I../../../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang socketenricher ./bpf/socket-enricher.bpf.c -- -I./bpf/ -I../../../ -I../../../${TARGET}
+
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang socketsiter ./bpf/sockets-iter.bpf.c -- -I./bpf/ -I../../../ -I../../../${TARGET}
 
 // SocketEnricher creates a map exposing processes owning each socket.
 //
@@ -35,8 +38,9 @@ import (
 // display it directly from the BPF code. Example of such code in the dns and
 // sni gadgets.
 type SocketEnricher struct {
-	objs  socketenricherObjects
-	links []link.Link
+	objs     socketenricherObjects
+	objsIter socketsiterObjects
+	links    []link.Link
 
 	closeOnce sync.Once
 	done      chan bool
@@ -58,14 +62,36 @@ func NewSocketEnricher() (*SocketEnricher, error) {
 }
 
 func (se *SocketEnricher) start() error {
-	spec, err := loadSocketenricher()
+	specIter, err := loadSocketsiter()
 	if err != nil {
-		return fmt.Errorf("loading asset: %w", err)
+		return fmt.Errorf("loading socketsiter asset: %w", err)
 	}
 
-	kallsyms.SpecUpdateAddresses(spec, []string{"socket_file_ops"})
+	kallsyms.SpecUpdateAddresses(specIter, []string{"socket_file_ops"})
 
-	if err := spec.LoadAndAssign(&se.objs, nil); err != nil {
+	disableBPFIterators := false
+	if err := specIter.LoadAndAssign(&se.objsIter, nil); err != nil {
+		disableBPFIterators = true
+		log.Warnf("Socket enricher: skip loading iterators: %v", err)
+	}
+
+	spec, err := loadSocketenricher()
+	if err != nil {
+		return fmt.Errorf("loading socket enricher asset: %w", err)
+	}
+
+	opts := ebpf.CollectionOptions{}
+	if disableBPFIterators {
+		spec.RewriteConstants(map[string]interface{}{
+			"disable_bpf_iterators": true,
+		})
+	} else {
+		opts.MapReplacements = map[string]*ebpf.Map{
+			"sockets": se.objsIter.Sockets,
+		}
+	}
+
+	if err := spec.LoadAndAssign(&se.objs, &opts); err != nil {
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
@@ -135,31 +161,34 @@ func (se *SocketEnricher) start() error {
 	}
 	se.links = append(se.links, l)
 
-	// get initial sockets
-	socketsIter, err := link.AttachIter(link.IterOptions{
-		Program: se.objs.IgSocketsIt,
-	})
-	if err != nil {
-		return fmt.Errorf("attach BPF iterator: %w", err)
-	}
-	defer socketsIter.Close()
+	if !disableBPFIterators {
+		// get initial sockets
+		socketsIter, err := link.AttachIter(link.IterOptions{
+			Program: se.objsIter.IgSocketsIt,
+		})
+		if err != nil {
+			return fmt.Errorf("attach BPF iterator: %w", err)
+		}
+		defer socketsIter.Close()
 
-	_, err = bpfiterns.Read(socketsIter)
-	if err != nil {
-		return fmt.Errorf("read BPF iterator: %w", err)
-	}
+		_, err = bpfiterns.Read(socketsIter)
+		if err != nil {
+			return fmt.Errorf("read BPF iterator: %w", err)
+		}
 
-	cleanupIter, err := link.AttachIter(link.IterOptions{
-		Program: se.objs.IgSkCleanup,
-		Map:     se.objs.Sockets,
-	})
-	if err != nil {
-		return fmt.Errorf("attach BPF iterator for cleanups: %w", err)
-	}
-	se.links = append(se.links, cleanupIter)
+		// Schedule socket cleanup
+		cleanupIter, err := link.AttachIter(link.IterOptions{
+			Program: se.objsIter.IgSkCleanup,
+			Map:     se.objsIter.Sockets,
+		})
+		if err != nil {
+			return fmt.Errorf("attach BPF iterator for cleanups: %w", err)
+		}
+		se.links = append(se.links, cleanupIter)
 
-	se.done = make(chan bool)
-	go se.cleanupDeletedSockets(cleanupIter)
+		se.done = make(chan bool)
+		go se.cleanupDeletedSockets(cleanupIter)
+	}
 
 	return nil
 }
