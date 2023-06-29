@@ -19,22 +19,22 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget top tcp
-NODE            NAMESPACE       POD             CONTAINER       PID     COMM    IP REMOTE                LOCAL                 SENT    RECV
+NODE             NAMESPACE        POD              CONTAINER        PID       COMM      IP SRC                   DST                   SENT     RECV
 ```
 
 Indeed, it is waiting for TCP connection to occur.
 So, open *another terminal* and keep and eye on the first one, `exec` the container and use `wget`:
 
 ```bash
-$ kubectl exec -ti test-pod -- wget kinvolk.io
+$ kubectl exec -ti test-pod -- wget 1.1.1.1
 ```
 
 On *the first terminal*, you should see:
 
 ```
-NODE            NAMESPACE       POD             CONTAINER       PID     COMM    IP REMOTE                LOCAL                 SENT    RECV
-minikube        default         test-pod        test-pod        134110  wget    4  188.114.96.3:443      172.17.0.2:38190      0       2
-minikube        default         test-pod        test-pod        134110  wget    4  188.114.96.3:80       172.17.0.2:33286      0       1
+NODE               NAMESPACE     POD        CONTAINER   PID         COMM       IP SRC                        DST                  SENT       RECV      
+minikube-docker    default       test-pod   test-pod    289548      wget       4  p/default/test-pod:47228   r/1.1.1.1:443        296B       15.49KiB  
+minikube-docker    default       test-pod   test-pod    289540      wget       4  p/default/test-pod:42604   r/1.1.1.1:80         70B        381B      
 ```
 
 This line corresponds to the TCP connection initiated by `wget`.
@@ -61,7 +61,7 @@ Start the gadget, it'll show the different connections created the localhost:
 
 ```bash
 $ sudo ig top tcp -c test-top-tcp
-CONTAINER                                              PID         COMM             IP LOCAL                 REMOTE                SENT                 RECV
-test-top-tcp                                           564780      nginx            4  127.0.0.1:80          127.0.0.1:35904       238B                 73B
-test-top-tcp                                           564813      curl             4  127.0.0.1:35904       127.0.0.1:80          73B                  853B
+CONTAINER                  PID         COMM           IP SRC                               DST                               SENT          RECV
+test-top-tcp               2177846     nginx          4  127.0.0.1:80                      127.0.0.1:53130                   238B          73B
+test-top-tcp               2178303     curl           4  127.0.0.1:53130                   127.0.0.1:80                      73B           853B
 ```

@@ -21,6 +21,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	toptcpTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/tcp/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
@@ -29,16 +30,26 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 			CommonData: BuildCommonData(ns),
 			Comm:       "curl",
 			IPVersion:  syscall.AF_INET,
-			Dport:      80,
-			Saddr:      "127.0.0.1",
-			Daddr:      "127.0.0.1",
+			SrcEndpoint: eventtypes.L4Endpoint{
+				L3Endpoint: eventtypes.L3Endpoint{
+					Addr: "127.0.0.1",
+					Kind: eventtypes.EndpointKindRaw,
+				},
+			},
+			DstEndpoint: eventtypes.L4Endpoint{
+				L3Endpoint: eventtypes.L3Endpoint{
+					Addr: "127.0.0.1",
+					Kind: eventtypes.EndpointKindRaw,
+				},
+				Port: 80,
+			},
 		}
 
 		normalize := func(e *toptcpTypes.Stats) {
 			e.Node = ""
 			e.MountNsID = 0
 			e.Pid = 0
-			e.Sport = 0
+			e.SrcEndpoint.Port = 0
 			e.Sent = 0
 			e.Received = 0
 		}
