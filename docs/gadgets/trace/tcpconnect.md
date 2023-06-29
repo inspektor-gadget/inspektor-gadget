@@ -29,10 +29,9 @@ In our trace tcpconnect gadget terminal we can now see the logged connection:
 
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod
-Tracing connect ... Hit Ctrl-C to end
-NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            SPORT    DPORT
-ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          40724    80
-ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          33728    443
+NODE                     NAMESPACE                POD                      CONTAINER                PID        COMM          IP SRC                     DST
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:46779   r/1.1.1.1:80
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:21731   r/1.1.1.1:443
 ```
 
 If the pod was started as part of a deployment, the name of the pod is not known
@@ -93,11 +92,11 @@ Switching to the gadget trace tcpconnnect terminal, we see the same connections 
 
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod  # (still running in old terminal)
-NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            SPORT    DPORT
-ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          40724    80   # (previous output)
-ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          33728    443  # (previous output)
-ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          40676    80
-ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          40630    443
+NODE                     NAMESPACE                POD                      CONTAINER                PID        COMM          IP SRC                     DST
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:46779   r/1.1.1.1:80   # (previous output)
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:21731   r/1.1.1.1:443  # (previous output)
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:40676   r/1.1.1.1:80
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:40630   r/1.1.1.1:443
 ```
 
 But what if the pod would connect to other IP addresses which we disallowed?
@@ -116,12 +115,12 @@ there is no redirect visible to port 443:
 
 ```bash
 $ kubectl gadget trace tcpconnect --podname mypod  # (still running in old terminal)
-NODE             NAMESPACE        POD              CONTAINER       PID    COMM         IP SADDR            DADDR            SPORT    DPORT
-ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          40724    80   # (previous output)
-ip-10-0-30-247   default          mypod            mypod           9386   wget         4  172.17.0.3       1.1.1.1          33728    443  # (previous output)
-ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          40676    80   # (previous output)
-ip-10-0-30-247   default          mypod            mypod           16547  wget         4  10.2.232.51      1.1.1.1          40630    443  # (previous output)
-ip-10-0-30-247   default          mypod            mypod           17418  wget         4  10.2.232.50      1.0.0.1          40688    80
+NODE                     NAMESPACE                POD                      CONTAINER                PID        COMM          IP SRC                     DST
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:46779   r/1.1.1.1:80   # (previous output)
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:21731   r/1.1.1.1:443  # (previous output)
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:40676   r/1.1.1.1:80   # (previous output)
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:40630   r/1.1.1.1:443  # (previous output)
+minikube-docker          default                  mypod                    mypod                    2011630    wget          4  p/default/mypod:17418   r/1.0.0.1:80
 ```
 
 We created a tailored network policy for our (original) demo pod by observing its connection behavior :)
@@ -145,10 +144,12 @@ $ sudo ig trace tcpconnect -c test-tcp-connect
 Then, create a gadget that performs a TCP connection.
 
 ```bash
-$ docker run -it --rm --name test-tcp-connect busybox /bin/sh -c "wget http://www.example.com"
-Connecting to www.example.com (93.184.216.34:80)
+$ docker run -it --rm --name test-tcp-connect busybox /bin/sh -c "wget 1.1.1.1"
+Connecting to 1.1.1.1 (1.1.1.1:80)
+Connecting to 1.1.1.1 (1.1.1.1:443)
+wget: note: TLS certificate validation not implemented
 saving to 'index.html'
-index.html           100% |************************************************************************************************|  1256  0:00:00 ETA
+index.html           100% |********************************| 54361  0:00:00 ETA
 'index.html' saved
 ```
 
@@ -156,8 +157,9 @@ The gadget will show the connection and related information to it.
 
 ```bash
 $ sudo ig trace tcpconnect -c test-tcp-connect
-CONTAINER        PID     COMM             IP  SADDR            DADDR            SPORT    DPORT
-test-tcp-connect 503650  wget             4   172.17.0.3       93.184.216.34    40658    80
+CONTAINER                                  PID        COMM             IP SRC                                        DST
+test-tcp-connect                           2021739    wget             4  172.17.0.2:4784                            1.1.1.1:80
+test-tcp-connect                           2021739    wget             4  172.17.0.2:14023                           1.1.1.1:443
 ```
 
 ### Calculating the latency of a connection
@@ -180,8 +182,7 @@ Start the gadget on a terminal:
 
 ```bash
 $ kubectl gadget trace tcpconnect --latency
-NODE         NAMESPACE    POD         CONTAINER   PID     COMM   IP SADDR           DADDR           SPORT DPORT LATENCY
-```
+CONTAINER                     PID        COMM             IP SRC                          DST                                  LATENCY```
 
 In another terminal, create a nginx service and a pod to send some http requests:
 
@@ -203,9 +204,9 @@ The first terminal show all those connections and their latency. In my case both
 the same node, so it's very low:
 
 ```bash
-NODE             NAMESPACE        POD              CONTAINER        PID       COMM     IP SADDR           DADDR           SPORT DPORT LATENCY
-ubuntu-hirsute   default          myclientpod      myclientpod      363550    curl     4  172.16.118.147  10.109.132.206  47078 80    121µs
-ubuntu-hirsute   default          myclientpod      myclientpod      363654    curl     4  172.16.118.147  10.109.132.206  60028 80    116µs
+NODE                  NAMESPACE      POD                CONTAINER          PID        COMM            IP SRC                         DST                               LATENCY
+minikube-docker       default        myclientpod        myclientpod        2054329    curl            4  p/default/myclientpod:50306 s/default/nginx:80               47.069µs
+minikube-docker       default        myclientpod        myclientpod        2054338    curl            4  p/default/myclientpod:53378 s/default/nginx:80              120.017µs
 ```
 
 Now, let's use the [network emulator](https://wiki.linuxfoundation.org/networking/netem) to
@@ -221,11 +222,11 @@ the server again:
 Now the latency is a lot higher and has some variance because of the emulation configuration:
 
 ```bash
-NODE             NAMESPACE        POD              CONTAINER        PID       COMM     IP SADDR           DADDR           SPORT DPORT LATENCY
+NODE                  NAMESPACE      POD                CONTAINER          PID        COMM            IP SRC                         DST                               LATENCY
 ...
-ubuntu-hirsute   default          myclientpod      myclientpod      366034    curl     4  172.16.118.147  10.109.132.206  39486 80    32.584ms
-ubuntu-hirsute   default          myclientpod      myclientpod      366036    curl     4  172.16.118.147  10.109.132.206  39488 80    56.375ms
-ubuntu-hirsute   default          myclientpod      myclientpod      366040    curl     4  172.16.118.147  10.109.132.206  33490 80    79.54ms
+minikube-docker       default        myclientpod        myclientpod        2056697    curl            4  p/default/myclientpod:32415 s/default/nginx:80             7.820966ms
+minikube-docker       default        myclientpod        myclientpod        2056832    curl            4  p/default/myclientpod:32927 s/default/nginx:80            64.388825ms
+minikube-docker       default        myclientpod        myclientpod        2056905    curl            4  p/default/myclientpod:46811 s/default/nginx:80            39.244112ms
 ```
 
 #### With `ig`
@@ -234,7 +235,7 @@ Start the trace tcpconnect gadget on a first terminal:
 
 ```bash
 $ sudo ig trace tcpconnect --latency
-CONTAINER                      PID        COMM            IP SADDR           DADDR           SPORT DPORT LATENCY
+CONTAINER                     PID        COMM             IP SRC                          DST                                  LATENCY
 ```
 
 Then, start a container and download a web page:
@@ -247,9 +248,9 @@ $ docker run -ti --rm --cap-add NET_ADMIN --name=netem wbitt/network-multitool -
 The first terminal will show the connections created and their latency:
 
 ```bash
-CONTAINER                      PID        COMM            IP SADDR           DADDR           SPORT DPORT LATENCY
-netem                          352449     wget            4  172.17.0.4      1.1.1.1         48668 80    49.543ms
-netem                          352449     wget            4  172.17.0.4      1.1.1.1         48986 443   57.295ms
+CONTAINER                     PID        COMM             IP SRC                          DST                                  LATENCY
+netem                         2036550    wget             4  172.17.0.2:47250             1.1.1.1:80                       14.149828ms
+netem                         2036550    wget             4  172.17.0.2:44734             1.1.1.1:443                      15.025666ms
 ```
 
 In this case, it can be seen that two connections were made by the `curl` command and their latency
@@ -267,8 +268,9 @@ In this case the `wget` command takes way longer to complete the request. We can
 latency for those connections is more than one second as expected:
 
 ```bash
-CONTAINER                      PID        COMM            IP SADDR           DADDR           SPORT DPORT LATENCY
+CONTAINER                     PID        COMM             IP SRC                          DST                                  LATENCY
 ...
-netem                          352846     wget            4  172.17.0.4      1.1.1.1         38236 80    1.045217s
-netem                          352846     wget            4  172.17.0.4      1.1.1.1         45982 443   1.044178s
+netem                         2037935    wget             4  172.17.0.2:38587             1.1.1.1:80                      1.006814808s
+...
+netem                         2037935    wget             4  172.17.0.2:10469             1.1.1.1:443                     1.010320064s
 ```

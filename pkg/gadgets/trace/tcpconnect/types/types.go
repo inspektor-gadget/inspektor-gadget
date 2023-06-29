@@ -25,16 +25,20 @@ type Event struct {
 	eventtypes.Event
 	eventtypes.WithMountNsID
 
-	Pid       uint32        `json:"pid,omitempty" column:"pid,template:pid"`
-	Uid       uint32        `json:"uid" column:"uid,template:uid,hide"`
-	Gid       uint32        `json:"gid" column:"gid,template:gid,hide"`
-	Comm      string        `json:"comm,omitempty" column:"comm,template:comm"`
-	IPVersion int           `json:"ipversion,omitempty" column:"ip,template:ipversion"`
-	Saddr     string        `json:"saddr,omitempty" column:"saddr,template:ipaddr"`
-	Daddr     string        `json:"daddr,omitempty" column:"daddr,template:ipaddr"`
-	Sport     uint16        `json:"sport,omitempty" column:"sport,template:ipport"`
-	Dport     uint16        `json:"dport,omitempty" column:"dport,template:ipport"`
-	Latency   time.Duration `json:"latency,omitempty" column:"latency,minWidth:8,align:right" columnTags:"param:latency"`
+	Pid       uint32 `json:"pid,omitempty" column:"pid,template:pid"`
+	Uid       uint32 `json:"uid" column:"uid,template:uid,hide"`
+	Gid       uint32 `json:"gid" column:"gid,template:gid,hide"`
+	Comm      string `json:"comm,omitempty" column:"comm,template:comm"`
+	IPVersion int    `json:"ipversion,omitempty" column:"ip,template:ipversion"`
+
+	SrcEndpoint eventtypes.L4Endpoint `json:"src,omitempty" column:"src"`
+	DstEndpoint eventtypes.L4Endpoint `json:"dst,omitempty" column:"dst"`
+
+	Latency time.Duration `json:"latency,omitempty" column:"latency,minWidth:8,align:right,order:4000" columnTags:"param:latency"`
+}
+
+func (e *Event) GetEndpoints() []*eventtypes.L3Endpoint {
+	return []*eventtypes.L3Endpoint{&e.SrcEndpoint.L3Endpoint, &e.DstEndpoint.L3Endpoint}
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -43,6 +47,27 @@ func GetColumns() *columns.Columns[Event] {
 	cols.MustSetExtractor("latency", func(event *Event) string {
 		return event.Latency.String()
 	})
+
+	eventtypes.MustAddVirtualL4EndpointColumn(
+		cols,
+		columns.Attributes{
+			Name:     "src",
+			Visible:  true,
+			Template: "ipaddrport",
+			Order:    2000,
+		},
+		func(e *Event) eventtypes.L4Endpoint { return e.SrcEndpoint },
+	)
+	eventtypes.MustAddVirtualL4EndpointColumn(
+		cols,
+		columns.Attributes{
+			Name:     "dst",
+			Visible:  true,
+			Template: "ipaddrport",
+			Order:    3000,
+		},
+		func(e *Event) eventtypes.L4Endpoint { return e.DstEndpoint },
+	)
 
 	return cols
 }

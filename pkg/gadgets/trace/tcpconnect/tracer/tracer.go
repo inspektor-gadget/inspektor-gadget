@@ -183,12 +183,20 @@ func (t *Tracer) run() {
 			Uid:           bpfEvent.Uid,
 			Gid:           bpfEvent.Gid,
 			Comm:          gadgets.FromCString(bpfEvent.Task[:]),
-			Saddr:         gadgets.IPStringFromBytes(bpfEvent.SaddrV6, ipversion),
-			Daddr:         gadgets.IPStringFromBytes(bpfEvent.DaddrV6, ipversion),
-			Dport:         gadgets.Htons(bpfEvent.Dport),
-			IPVersion:     ipversion,
-			Sport:         bpfEvent.Sport,
-			Latency:       time.Duration(int64(bpfEvent.Latency)),
+			SrcEndpoint: eventtypes.L4Endpoint{
+				L3Endpoint: eventtypes.L3Endpoint{
+					Addr: gadgets.IPStringFromBytes(bpfEvent.SaddrV6, ipversion),
+				},
+				Port: gadgets.Htons(bpfEvent.Sport),
+			},
+			DstEndpoint: eventtypes.L4Endpoint{
+				L3Endpoint: eventtypes.L3Endpoint{
+					Addr: gadgets.IPStringFromBytes(bpfEvent.DaddrV6, ipversion),
+				},
+				Port: gadgets.Htons(bpfEvent.Dport),
+			},
+			IPVersion: ipversion,
+			Latency:   time.Duration(int64(bpfEvent.Latency)),
 		}
 
 		if t.enricher != nil {
