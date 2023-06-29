@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,7 @@ package textcolumns
 
 import (
 	"bytes"
-	"fmt"
 	"io"
-	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -28,35 +25,9 @@ import (
 )
 
 func (tf *TextColumnsFormatter[T]) setFormatter(column *Column[T]) {
-	switch column.col.Kind() {
-	case reflect.Int,
-		reflect.Int8,
-		reflect.Int16,
-		reflect.Int32,
-		reflect.Int64:
-		column.formatter = func(v interface{}) string {
-			return tf.buildFixedString(strconv.FormatInt(reflect.ValueOf(v).Int(), 10), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
-		}
-	case reflect.Uint,
-		reflect.Uint8,
-		reflect.Uint16,
-		reflect.Uint32,
-		reflect.Uint64:
-		column.formatter = func(v interface{}) string {
-			return tf.buildFixedString(strconv.FormatUint(reflect.ValueOf(v).Uint(), 10), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
-		}
-	case reflect.Float32, reflect.Float64:
-		column.formatter = func(v interface{}) string {
-			return tf.buildFixedString(strconv.FormatFloat(reflect.ValueOf(v).Float(), 'f', column.col.Precision, 64), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
-		}
-	case reflect.String:
-		column.formatter = func(v interface{}) string {
-			return tf.buildFixedString(reflect.ValueOf(v).String(), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
-		}
-	default:
-		column.formatter = func(v interface{}) string {
-			return tf.buildFixedString(fmt.Sprintf("%v", v), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
-		}
+	ff := columns.GetFieldAsStringExt[T](column.col, 'f', column.col.Precision)
+	column.formatter = func(entry *T) string {
+		return tf.buildFixedString(ff(entry), column.calculatedWidth, column.col.EllipsisType, column.col.Alignment)
 	}
 }
 
@@ -82,15 +53,12 @@ func (tf *TextColumnsFormatter[T]) FormatEntry(entry *T) string {
 		return ""
 	}
 
-	entryValue := reflect.ValueOf(entry)
-
 	var row strings.Builder
 	for i, col := range tf.showColumns {
 		if i > 0 {
 			row.WriteString(tf.options.ColumnDivider)
 		}
-		field := col.col.GetRef(entryValue)
-		row.WriteString(col.formatter(field.Interface()))
+		row.WriteString(col.formatter(entry))
 	}
 	return row.String()
 }

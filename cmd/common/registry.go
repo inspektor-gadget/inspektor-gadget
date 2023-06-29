@@ -35,6 +35,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
@@ -103,6 +104,53 @@ func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, co
 	}
 }
 
+func buildColumnsOutputFormat(gadgetParams *params.Params, parser parser.Parser) gadgets.OutputFormats {
+	paramTags := make(map[string]string)
+	if gadgetParams != nil {
+		for _, param := range *gadgetParams {
+			if param.TypeHint == params.TypeBool {
+				paramTags["param:"+strings.ToLower(param.Key)] = param.Key
+			}
+		}
+	}
+	hasAnyTag := func(columnTags []string) (string, bool) {
+		for _, columnTag := range columnTags {
+			if key, ok := paramTags[columnTag]; ok {
+				return key, true
+			}
+		}
+		return "", false
+	}
+
+	of := gadgets.OutputFormat{
+		Name:        "Columns",
+		Description: "The output of the gadget is formatted in human readable columns.\n  You can optionally specify the columns to output using '-o columns=col1,col2,col3' etc.",
+	}
+
+	var out strings.Builder
+	fmt.Fprintf(&out, "\n    Available columns:\n")
+
+	columnAttributes := parser.GetColumnAttributes()
+	sort.Slice(columnAttributes, func(i, j int) bool {
+		return columnAttributes[i].Name < columnAttributes[j].Name
+	})
+	for _, attrs := range columnAttributes {
+		fmt.Fprintf(&out, "      %s", attrs.Name)
+		if attrs.Description != "" {
+			fmt.Fprintf(&out, "%s", attrs.Description)
+		}
+		if paramKey, ok := hasAnyTag(attrs.Tags); ok {
+			fmt.Fprintf(&out, " (requires --%s)", paramKey)
+		}
+		fmt.Fprintf(&out, "\n")
+	}
+	fmt.Fprintf(&out, "    Default columns: %s\n", strings.Join(parser.GetDefaultColumns(), ","))
+
+	of.Description += out.String()
+
+	return gadgets.OutputFormats{OutputModeColumns: of}
+}
+
 func buildOutputFormatsHelp(outputFormats gadgets.OutputFormats) []string {
 	var outputFormatsHelp []string
 	var supportedOutputFormats []string
@@ -145,9 +193,6 @@ func buildCommandFromGadget(
 
 	// Instantiate parser - this is important to do, because we might apply filters and such to this instance
 	parser := gadgetDesc.Parser()
-	if parser != nil && columnFilters != nil {
-		parser.SetColumnFilters(columnFilters...)
-	}
 
 	// Instantiate runtime params
 	runtimeParams := runtime.ParamDescs().ToParams()
@@ -162,10 +207,37 @@ func buildCommandFromGadget(
 	//  Example use case: setting default namespace for kubernetes
 
 	cmd := &cobra.Command{
-		Use:          gadgetDesc.Name(),
-		Short:        gadgetDesc.Description(),
-		SilenceUsage: true, // do not print usage when there is an error
+		Use:                gadgetDesc.Name(),
+		Short:              gadgetDesc.Description(),
+		SilenceUsage:       true, // do not print usage when there is an error
+		DisableFlagParsing: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			cmd.DisableFlagParsing = false
+			return cmd.ParseFlags(args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if c, ok := gadgetDesc.(gadgets.GadgetDescCustomParser); ok {
+				var err error
+				parser, err = c.CustomParser(gadgetParams, cmd.Flags().Args())
+				if err != nil {
+					return fmt.Errorf("calling custom parser: %w", err)
+				}
+			}
+
+			if parser != nil {
+				if columnFilters != nil {
+					parser.SetColumnFilters(columnFilters...)
+				}
+
+				outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser))
+				outputFormatsHelp := buildOutputFormatsHelp(outputFormats)
+				cmd.Flags().Lookup("output").Usage = strings.Join(outputFormatsHelp, "\n") + "\n\n"
+				cmd.Flags().Lookup("output").DefValue = "columns"
+				if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
+					return cmd.Help()
+				}
+			}
+
 			err := runtime.Init(runtimeGlobalParams)
 			if err != nil {
 				return fmt.Errorf("initializing runtime: %w", err)
@@ -207,6 +279,7 @@ func buildCommandFromGadget(
 				runtimeParams,
 				gadgetDesc,
 				gadgetParams,
+				args,
 				operatorsParamsCollection,
 				parser,
 				logger.DefaultLogger(),
@@ -395,11 +468,23 @@ func buildCommandFromGadget(
 				fe.Output(formatter.FormatHeader())
 				parser.SetEventCallback(formatter.EventHandlerFuncArray())
 			case OutputModeJSON:
-				parser.SetEventCallback(printEventAsJSONFn(fe))
+				jsonCallback := printEventAsJSONFn(fe)
+				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONConverter); ok {
+					jsonCallback = cjson.JSONConverter(gadgetParams, fe)
+				}
+				parser.SetEventCallback(jsonCallback)
 			case OutputModeJSONPretty:
-				parser.SetEventCallback(printEventAsJSONPrettyFn(fe))
+				jsonPrettyCallback := printEventAsJSONFn(fe)
+				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONPrettyConverter); ok {
+					jsonPrettyCallback = cjson.JSONPrettyConverter(gadgetParams, fe)
+				}
+				parser.SetEventCallback(jsonPrettyCallback)
 			case OutputModeYAML:
-				parser.SetEventCallback(printEventAsYAMLFn(fe))
+				yamlCallback := printEventAsYAMLFn(fe)
+				if cyaml, ok := gadgetDesc.(gadgets.GadgetYAMLConverter); ok {
+					yamlCallback = cyaml.YAMLConverter(gadgetParams, fe)
+				}
+				parser.SetEventCallback(yamlCallback)
 			}
 
 			// Gadgets with parser don't return anything, they provide the
@@ -430,57 +515,27 @@ func buildCommandFromGadget(
 			Description: "The output of the gadget is returned as raw JSON",
 			Transform:   nil,
 		},
+		OutputModeJSONPretty: {
+			Name:        "JSON Prettified",
+			Description: "The output of the gadget is returned as prettified JSON",
+			Transform:   nil,
+		},
+		OutputModeYAML: {
+			Name:        "YAML",
+			Description: "The output of the gadget is returned as YAML",
+			Transform:   nil,
+		},
 	})
 	defaultOutputFormat = "json"
 
 	// Add parser output flags
 	if parser != nil {
-		of := gadgets.OutputFormat{
-			Name:        "Columns",
-			Description: "The output of the gadget is formatted in human readable columns.\n  You can optionally specify the columns to output using '-o columns=col1,col2,col3' etc.",
-		}
+		outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser))
+	}
+	_, hasCustomParser := gadgetDesc.(gadgets.GadgetDescCustomParser)
 
+	if parser != nil || hasCustomParser {
 		defaultOutputFormat = "columns"
-
-		paramTags := make(map[string]string)
-		if gadgetParams != nil {
-			for _, param := range *gadgetParams {
-				if param.TypeHint == params.TypeBool {
-					paramTags["param:"+strings.ToLower(param.Key)] = param.Key
-				}
-			}
-		}
-		hasAnyTag := func(columnTags []string) (string, bool) {
-			for _, columnTag := range columnTags {
-				if key, ok := paramTags[columnTag]; ok {
-					return key, true
-				}
-			}
-			return "", false
-		}
-
-		var out strings.Builder
-		fmt.Fprintf(&out, "\n    Available columns:\n")
-
-		columnAttributes := parser.GetColumnAttributes()
-		sort.Slice(columnAttributes, func(i, j int) bool {
-			return columnAttributes[i].Name < columnAttributes[j].Name
-		})
-		for _, attrs := range columnAttributes {
-			fmt.Fprintf(&out, "      %s", attrs.Name)
-			if attrs.Description != "" {
-				fmt.Fprintf(&out, "%s", attrs.Description)
-			}
-			if paramKey, ok := hasAnyTag(attrs.Tags); ok {
-				fmt.Fprintf(&out, " (requires --%s)", paramKey)
-			}
-			fmt.Fprintf(&out, "\n")
-		}
-		fmt.Fprintf(&out, "    Default columns: %s\n", strings.Join(parser.GetDefaultColumns(), ","))
-
-		of.Description += out.String()
-
-		outputFormats.Append(gadgets.OutputFormats{OutputModeColumns: of})
 
 		cmd.PersistentFlags().StringSliceVarP(
 			&filters,
@@ -498,21 +553,6 @@ func buildCommandFromGadget(
                              see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
 `,
 		)
-
-		outputFormats.Append(gadgets.OutputFormats{
-			OutputModeJSONPretty: {
-				Name:        "JSON Prettified",
-				Description: "The output of the gadget is returned as prettified JSON",
-				Transform:   nil,
-			},
-		})
-		outputFormats.Append(gadgets.OutputFormats{
-			OutputModeYAML: {
-				Name:        "YAML",
-				Description: "The output of the gadget is returned as YAML",
-				Transform:   nil,
-			},
-		})
 	}
 
 	// Add alternative output formats available in the gadgets

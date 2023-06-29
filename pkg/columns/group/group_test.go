@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,10 @@
 package group
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 )
@@ -144,28 +146,20 @@ func TestGroupSum(t *testing.T) {
 	}
 
 	cols, err := columns.NewColumns[testStruct]()
-	if err != nil {
-		t.Errorf("Failed to initialize: %v", err)
-	}
+	require.NoError(t, err)
 
 	cmap := cols.GetColumnMap()
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			result, err := GroupEntries(cmap, test.Input, test.GroupBy)
-
-			if err != nil && !test.ExpectError {
-				t.Errorf("While grouping: %v", err)
+			if !test.ExpectError {
+				require.NoError(t, err)
 			}
-			if err == nil && test.ExpectError {
-				t.Errorf("Expected error")
+			if test.ExpectError {
+				require.Error(t, err)
 			}
-			if !reflect.DeepEqual(result, test.ExpectedResult) {
-				for _, entry := range result {
-					t.Logf("%+v", entry)
-				}
-				t.Errorf("Unexpected result")
-			}
+			assert.Equal(t, result, test.ExpectedResult)
 		})
 	}
 }

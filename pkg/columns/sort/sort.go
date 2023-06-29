@@ -122,7 +122,7 @@ func SortEntries[T any](cols columns.ColumnMap[T], entries []*T, sortBy []string
 }
 
 func getLessFunc[OT constraints.Ordered, T any](array []*T, column columns.ColumnInternals, order columns.Order) func(i, j int) bool {
-	fieldFunc := columns.GetFieldFunc[OT, T](column)
+	fieldFunc := columns.GetFieldFuncExt[OT, T](column, true)
 	return func(i, j int) bool {
 		if array[i] == nil {
 			return false

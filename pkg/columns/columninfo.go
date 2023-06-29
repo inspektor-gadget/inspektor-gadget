@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"unsafe"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 )
@@ -43,35 +44,52 @@ type subField struct {
 }
 
 type Attributes struct {
-	Name         string                // Name of the column; case-insensitive for most use cases; includes inherited prefixes
-	RawName      string                // Name of the columns without inherited prefixes
-	Width        int                   // Width to reserve for this column
-	MinWidth     int                   // MinWidth will be the minimum width this column will be scaled to when using auto-scaling
-	MaxWidth     int                   // MaxWidth will be the maximum width this column will be scaled to when using auto-scaling
-	Alignment    Alignment             // Alignment of this column (left or right)
-	Visible      bool                  // Visible defines whether a column is to be shown by default
-	GroupType    GroupType             // GroupType defines the aggregation method used when grouping this column
-	EllipsisType ellipsis.EllipsisType // EllipsisType defines how to abbreviate this column if the value needs more space than is available
-	FixedWidth   bool                  // FixedWidth forces the Width even when using Auto-Scaling
-	Precision    int                   // Precision defines how many decimals should be shown on float values, default: 2
-	Description  string                // Description can hold a short description of the field that can be used to aid the user
-	Order        int                   // Order defines the default order in which columns are shown
-	Tags         []string              // Tags can be used to dynamically include or exclude columns
+	// Name of the column; case-insensitive for most use cases; includes inherited prefixes
+	Name string `yaml:"name"`
+	// Name of the columns without inherited prefixes
+	RawName string `yaml:"raw_name"`
+	// Width to reserve for this column
+	Width int `yaml:"width"`
+	// MinWidth will be the minimum width this column will be scaled to when using auto-scaling
+	MinWidth int `yaml:"min_width"`
+	// MaxWidth will be the maximum width this column will be scaled to when using auto-scaling
+	MaxWidth int `yaml:"max_width"`
+	// Alignment of this column (left or right)
+	Alignment Alignment `yaml:"alignment"`
+	// Visible defines whether a column is to be shown by default
+	Visible bool `yaml:"visible"`
+	// GroupType defines the aggregation method used when grouping this column
+	GroupType GroupType `yaml:"group_type"`
+	// EllipsisType defines how to abbreviate this column if the value needs more space than is available
+	EllipsisType ellipsis.EllipsisType `yaml:"ellipsis_type"`
+	// FixedWidth forces the Width even when using Auto-Scaling
+	FixedWidth bool `yaml:"fixed_width"`
+	// Precision defines how many decimals should be shown on float values, default: 2
+	Precision int `yaml:"precision"`
+	// Description can hold a short description of the field that can be used to aid the user
+	Description string `yaml:"description"`
+	// Order defines the default order in which columns are shown
+	Order int `yaml:"order"`
+	// Tags can be used to dynamically include or exclude columns
+	Tags []string `yaml:"tags"`
+	// Template defines the template that will be used. Non-typed templates will be applied first.
+	Template string `yaml:"template"`
 }
 
 type Column[T any] struct {
 	Attributes
 	Extractor func(*T) string // Extractor to be used; this can be defined to transform the output before retrieving the actual value
 
-	explicitName  bool         // true, if the name has been set explicitly
-	offset        uintptr      // offset to the field (relative to root non-ptr struct)
-	fieldIndex    int          // used for the main struct
-	subFieldIndex []subField   // used for embedded structs
-	kind          reflect.Kind // cached kind info from reflection
-	columnType    reflect.Type // cached type info from reflection
-	rawColumnType reflect.Type // cached type info from reflection
-	useTemplate   bool         // if a template has been set, this will be true
-	template      string       // defines the template that will be used. Non-typed templates will be applied first.
+	explicitName  bool                    // true, if the name has been set explicitly
+	offset        uintptr                 // offset to the field (relative to root non-ptr struct)
+	getStart      func(*T) unsafe.Pointer // getStarts, if present, should point to the start of the struct to be used
+	fieldIndex    int                     // used for the main struct
+	subFieldIndex []subField              // used for embedded structs
+	kind          reflect.Kind            // cached kind info from reflection
+	columnType    reflect.Type            // cached type info from reflection
+	rawColumnType reflect.Type            // cached type info from reflection
+	useTemplate   bool                    // if a template has been set, this will be true
+	template      string                  // defines the template that will be used. Non-typed templates will be applied first.
 }
 
 func (ci *Column[T]) GetAttributes() *Attributes {
@@ -244,7 +262,7 @@ func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 			if paramsLen < 2 || params[1] == "" {
 				return fmt.Errorf("no template specified for field %q", ci.Name)
 			}
-			ci.template = params[1]
+			ci.Template = params[1]
 		case "stringer":
 			if ci.Extractor != nil {
 				break
@@ -290,17 +308,18 @@ func (ci *Column[T]) getSubFields() []subField {
 // GetRef returns the reflected value of an already reflected entry for the current column; expects v to be valid or
 // will panic
 func (ci *Column[T]) GetRef(v reflect.Value) reflect.Value {
-	if ci.Extractor != nil {
+	if ci.Extractor != nil || ci.fieldIndex == manualIndex {
 		return reflect.ValueOf(ci.Extractor(v.Interface().(*T)))
 	}
 	return ci.getRawField(v)
 }
 
 // GetRaw returns the reflected value of an entry for the current column without evaluating the extractor func;
-// if given nil or run on a virtual column, it will return the zero value of the underlying type. If using embedded
-// structs via pointers and the embedded value is nil, it will also return the zero value of the underlying type.
+// if given nil or run on a virtual or manually added column, it will return the zero value of the underlying type.
+// If using embedded structs via pointers and the embedded value is nil, it will also return the zero value of the
+// underlying type.
 func (ci *Column[T]) GetRaw(entry *T) reflect.Value {
-	if entry == nil || ci.fieldIndex == virtualIndex {
+	if entry == nil || ci.fieldIndex == virtualIndex || ci.fieldIndex == manualIndex {
 		return reflect.Zero(ci.RawType())
 	}
 	v := reflect.ValueOf(entry)

@@ -56,4 +56,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpdrop/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpretrans/tracer"
+
+	// Run gadget
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/tracer"
 )

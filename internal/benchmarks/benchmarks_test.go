@@ -264,6 +264,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 							runtime.ParamDescs().ToParams(),
 							gadgetDesc,
 							gadgetParams,
+							nil, // TODO: where do I get this/Do we need this?
 							operatorsParamCollection,
 							parser,
 							logger.DefaultLogger(),

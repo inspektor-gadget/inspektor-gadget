@@ -126,6 +126,14 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 		return fmt.Errorf("setting parameters: %w", err)
 	}
 
+	if c, ok := gadgetDesc.(gadgets.GadgetDescCustomParser); ok {
+		var err error
+		parser, err = c.CustomParser(gadgetParams, request.Args)
+		if err != nil {
+			return fmt.Errorf("calling custom parser: %w", err)
+		}
+	}
+
 	// Create payload buffer
 	outputBuffer := make(chan *pb.GadgetEvent, 1024) // TODO: Discuss 1024
 
@@ -197,6 +205,7 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 		runtimeParams,
 		gadgetDesc,
 		gadgetParams,
+		request.Args,
 		operatorParams,
 		parser,
 		logger,

@@ -1160,6 +1160,7 @@ func newGadgetCtx(gadgetParams *params.Params, timeout time.Duration) *gadgetcon
 		gadgetParams,
 		nil,
 		nil,
+		nil,
 		log.StandardLogger(),
 		timeout,
 	)
