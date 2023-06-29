@@ -172,11 +172,15 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: key.Mntnsid},
 			Pid:           int32(key.Pid),
 			Comm:          gadgets.FromCString(key.Name[:]),
-			Sport:         key.Lport,
-			Dport:         key.Dport,
-			IPVersion:     key.Family,
-			Sent:          val.Sent,
-			Received:      val.Received,
+			SrcEndpoint: eventtypes.L4Endpoint{
+				Port: key.Lport,
+			},
+			DstEndpoint: eventtypes.L4Endpoint{
+				Port: key.Dport,
+			},
+			IPVersion: key.Family,
+			Sent:      val.Sent,
+			Received:  val.Received,
 		}
 
 		// eBPF program includes checks to only handle AF_INET and AF_INET6
@@ -185,8 +189,8 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			ipType = 6
 		}
 
-		stat.Saddr = gadgets.IPStringFromBytes(key.Saddr, ipType)
-		stat.Daddr = gadgets.IPStringFromBytes(key.Daddr, ipType)
+		stat.SrcEndpoint.L3Endpoint.Addr = gadgets.IPStringFromBytes(key.Saddr, ipType)
+		stat.DstEndpoint.L3Endpoint.Addr = gadgets.IPStringFromBytes(key.Daddr, ipType)
 
 		if t.enricher != nil {
 			t.enricher.EnrichByMntNs(&stat.CommonData, stat.MountNsID)

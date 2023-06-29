@@ -33,16 +33,24 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 			},
 			Comm:      "curl",
 			IPVersion: syscall.AF_INET,
-			Dport:     80,
-			Saddr:     "127.0.0.1",
-			Daddr:     "127.0.0.1",
+			SrcEndpoint: eventtypes.L4Endpoint{
+				L3Endpoint: eventtypes.L3Endpoint{
+					Addr: "127.0.0.1",
+				},
+			},
+			DstEndpoint: eventtypes.L4Endpoint{
+				L3Endpoint: eventtypes.L3Endpoint{
+					Addr: "127.0.0.1",
+				},
+				Port: 80,
+			},
 		}
 
 		normalize := func(e *types.Stats) {
 			e.Container = ""
 			e.Pid = 0
 			e.MountNsID = 0
-			e.Sport = 0
+			e.SrcEndpoint.Port = 0
 			e.Sent = 0
 			e.Received = 0
 		}
