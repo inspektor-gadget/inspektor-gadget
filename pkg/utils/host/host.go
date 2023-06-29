@@ -32,7 +32,30 @@ var (
 	HostProcFs string
 
 	IsHostPidNs bool
+	IsHostNetNs bool
 )
+
+func isHostNamespace(nsKind string) bool {
+	selfFileInfo, err := os.Stat("/proc/self/ns/" + nsKind)
+	if err != nil {
+		return false
+	}
+	selfStat, ok := selfFileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return false
+	}
+
+	systemdFileInfo, err := os.Stat(fmt.Sprintf("%s/1/ns/%s", HostProcFs, nsKind))
+	if err != nil {
+		return false
+	}
+	systemdStat, ok := systemdFileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return false
+	}
+
+	return selfStat.Ino == systemdStat.Ino
+}
 
 func init() {
 	// Initialize HostRoot and HostProcFs
@@ -42,26 +65,9 @@ func init() {
 	}
 	HostProcFs = filepath.Join(HostRoot, "/proc")
 
-	// Initialize IsHostPidNs
-	selfFileInfo, err := os.Stat("/proc/self/ns/pid")
-	if err != nil {
-		return
-	}
-	selfStat, ok := selfFileInfo.Sys().(*syscall.Stat_t)
-	if !ok {
-		return
-	}
-
-	systemdFileInfo, err := os.Stat(fmt.Sprintf("%s/1/ns/pid", HostProcFs))
-	if err != nil {
-		return
-	}
-	systemdStat, ok := systemdFileInfo.Sys().(*syscall.Stat_t)
-	if !ok {
-		return
-	}
-
-	IsHostPidNs = selfStat.Ino == systemdStat.Ino
+	// Initialize IsHost*Ns
+	IsHostPidNs = isHostNamespace("pid")
+	IsHostNetNs = isHostNamespace("net")
 }
 
 func GetProcComm(pid int) string {

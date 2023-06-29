@@ -140,7 +140,7 @@ func Supported() bool {
 		notifier.Close()
 	}
 	if err != nil {
-		log.Debugf("Runcfanotify: not supported: %s", err)
+		log.Warnf("Runcfanotify: not supported: %s", err)
 	}
 	return err == nil
 }
@@ -383,6 +383,15 @@ func (n *RuncNotifier) watchPidFileIterate(pidFileDirNotify *fanotify.NotifyFD, 
 }
 
 func checkFilesAreIdentical(path1, path2 string) (bool, error) {
+	// Since fanotify masks don't work on Linux 5.4, we could get a
+	// notification for an unrelated file before the pid file is created
+	// See fix in Linux 5.9:
+	// https://github.com/torvalds/linux/commit/497b0c5a7c0688c1b100a9c2e267337f677c198e
+	// In this case we should not return an error.
+	if filepath.Base(path1) != filepath.Base(path2) {
+		return false, nil
+	}
+
 	f1, err := os.Stat(path1)
 	if err != nil {
 		return false, err

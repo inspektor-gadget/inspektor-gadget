@@ -53,7 +53,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -163,7 +162,7 @@ func Supported() bool {
 		notifier.Close()
 	}
 	if err != nil {
-		log.Debugf("ContainerNotifier: not supported: %s", err)
+		log.Warnf("ContainerNotifier: not supported: %s", err)
 	}
 	return err == nil
 }
@@ -194,13 +193,14 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 	if err != nil {
 		return fmt.Errorf("load ebpf program for container-hook: %w", err)
 	}
-	if err := kallsyms.SpecUpdateAddresses(spec, []string{"fanotify_show_fdinfo"}); err != nil {
-		return fmt.Errorf("RewriteConstants: %w", err)
+
+	fanotifyPrivateData, err := readPrivateDataFromFd(fanotifyFd)
+	if err != nil {
+		return fmt.Errorf("readPrivateDataFromFd: %w", err)
 	}
 
-	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
 	consts := map[string]interface{}{
-		"tracer_fanotify_fd": uint64(fanotifyFd),
+		"tracer_group": fanotifyPrivateData,
 	}
 	if err := spec.RewriteConstants(consts); err != nil {
 		return fmt.Errorf("RewriteConstants: %w", err)
@@ -210,25 +210,6 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 
 	if err := spec.LoadAndAssign(&n.objs, &opts); err != nil {
 		return fmt.Errorf("loading maps and programs: %w", err)
-	}
-
-	// Initialize the ebpf programs by calling the iterator.
-	initIter, err := link.AttachIter(link.IterOptions{
-		Program: n.objs.IgFaIt,
-	})
-	if err != nil {
-		return fmt.Errorf("attach BPF iterator: %w", err)
-	}
-	defer initIter.Close()
-
-	initIterFile, err := initIter.Open()
-	if err != nil {
-		return fmt.Errorf("open BPF iterator: %w", err)
-	}
-	defer initIterFile.Close()
-	_, err = io.ReadAll(initIterFile)
-	if err != nil {
-		return fmt.Errorf("read BPF iterator: %w", err)
 	}
 
 	// Attach ebpf programs
@@ -506,6 +487,15 @@ func (n *ContainerNotifier) watchPidFileIterate(
 }
 
 func checkFilesAreIdentical(path1, path2 string) (bool, error) {
+	// Since fanotify masks don't work on Linux 5.4, we could get a
+	// notification for an unrelated file before the pid file is created
+	// See fix in Linux 5.9:
+	// https://github.com/torvalds/linux/commit/497b0c5a7c0688c1b100a9c2e267337f677c198e
+	// In this case we should not return an error.
+	if filepath.Base(path1) != filepath.Base(path2) {
+		return false, nil
+	}
+
 	f1, err := os.Stat(path1)
 	if err != nil {
 		return false, err
