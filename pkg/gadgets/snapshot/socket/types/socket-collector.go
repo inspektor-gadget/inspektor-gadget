@@ -42,13 +42,15 @@ type Event struct {
 	eventtypes.Event
 	eventtypes.WithNetNsID
 
-	Protocol      string `json:"protocol" column:"protocol,maxWidth:8"`
-	LocalAddress  string `json:"localAddress" column:"localAddr,template:ipaddr,hide"`
-	LocalPort     uint16 `json:"localPort" column:"localPort,template:ipport,hide"`
-	RemoteAddress string `json:"remoteAddress" column:"remoteAddr,template:ipaddr,hide"`
-	RemotePort    uint16 `json:"remotePort" column:"remotePort,template:ipport,hide"`
-	Status        string `json:"status" column:"status,order:1002,maxWidth:12"`
-	InodeNumber   uint64 `json:"inodeNumber" column:"inode,order:1003,hide"`
+	Protocol    string                `json:"protocol" column:"protocol,maxWidth:8"`
+	SrcEndpoint eventtypes.L4Endpoint `json:"src,omitempty" column:"src"`
+	DstEndpoint eventtypes.L4Endpoint `json:"dst,omitempty" column:"dst"`
+	Status      string                `json:"status" column:"status,order:1002,maxWidth:12"`
+	InodeNumber uint64                `json:"inodeNumber" column:"inode,order:1003,hide"`
+}
+
+func (e *Event) GetEndpoints() []*eventtypes.L3Endpoint {
+	return []*eventtypes.L3Endpoint{&e.SrcEndpoint.L3Endpoint, &e.DstEndpoint.L3Endpoint}
 }
 
 func GetColumns() *columns.Columns[Event] {
@@ -60,25 +62,26 @@ func GetColumns() *columns.Columns[Event] {
 		col.Visible = false
 	}
 
-	cols.MustAddColumn(columns.Attributes{
-		Name:     "local",
-		MinWidth: 21, // 15(ipv4) + 1(:) + 5(port)
-		MaxWidth: 51, // 45(ipv4 mapped ipv6) + 1(:) + 5(port)
-		Visible:  true,
-		Order:    1000,
-	}, func(e *Event) string {
-		return fmt.Sprintf("%s:%d", e.LocalAddress, e.LocalPort)
-	})
-
-	cols.MustAddColumn(columns.Attributes{
-		Name:     "remote",
-		MinWidth: 21, // 15(ipv4) + 1(:) + 5(port)
-		MaxWidth: 51, // 45(ipv4 mapped ipv6) + 1(:) + 5(port)
-		Visible:  true,
-		Order:    1001,
-	}, func(e *Event) string {
-		return fmt.Sprintf("%s:%d", e.RemoteAddress, e.RemotePort)
-	})
+	eventtypes.MustAddVirtualL4EndpointColumn(
+		cols,
+		columns.Attributes{
+			Name:     "src",
+			Visible:  true,
+			Template: "ipaddrport",
+			Order:    1000,
+		},
+		func(e *Event) eventtypes.L4Endpoint { return e.SrcEndpoint },
+	)
+	eventtypes.MustAddVirtualL4EndpointColumn(
+		cols,
+		columns.Attributes{
+			Name:     "dst",
+			Visible:  true,
+			Template: "ipaddrport",
+			Order:    1001,
+		},
+		func(e *Event) eventtypes.L4Endpoint { return e.DstEndpoint },
+	)
 
 	return cols
 }
