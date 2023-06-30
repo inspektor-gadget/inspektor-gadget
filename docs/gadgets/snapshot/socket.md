@@ -33,12 +33,12 @@ done it also using the podname or labels:
 
 ```bash
 $ kubectl gadget snapshot socket -n test-socketcollector
-NODE       NAMESPACE               POD          PROTOCOL    LOCAL         REMOTE       STATUS
-my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:80    0.0.0.0:0    LISTEN
+NODE                NAMESPACE           POD                PROTOCOL SRC                      DST                      STATUS
+minikube-docker     test-socketcollect… nginx-app          TCP      r/0.0.0.0:80             r/0.0.0.0:0              LISTEN
 ```
 
-In the output, "LOCAL" is the local IP address and port number pair.
-If connected, "REMOTE" is the remote IP address and port number pair,
+In the output, "SRC" is the local IP address and port number pair.
+If connected, "DST" is the remote IP address and port number pair,
 otherwise, it will be "0.0.0.0:0". While "STATUS" is the internal
 status of the socket.
 
@@ -52,17 +52,8 @@ $ kubectl exec -n test-socketcollector nginx-app -- /bin/bash -c "sed -i 's/list
 Now, we can check again with the snapshot socket gadget what the active socket is:
 
 ```bash
-$ kubectl gadget snapshot socket -n test-socketcollector
-NODE       NAMESPACE               POD          PROTOCOL    LOCAL           REMOTE       STATUS
-my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:8080    0.0.0.0:0    LISTEN
-```
-
-To get extended information, like the socket inode number, just the `-e` or `--extend` flag:
-
-```bash
-$ kubectl gadget snapshot socket -n test-socketcollector -e
-NODE       NAMESPACE               POD          PROTOCOL    LOCAL           REMOTE       STATUS         INODE
-my-node    test-socketcollector    nginx-app    TCP         0.0.0.0:8080    0.0.0.0:0    LISTEN         716174
+NODE                NAMESPACE           POD                PROTOCOL SRC                      DST                      STATUS
+minikube-docker     test-socketcollect… nginx-app          TCP      r/0.0.0.0:8080           r/0.0.0.0:0              LISTEN
 ```
 
 Delete test namespace:

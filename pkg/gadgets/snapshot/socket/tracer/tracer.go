@@ -174,14 +174,22 @@ func (t *Tracer) RunCollector(pid uint32, podname, namespace, node string) ([]*s
 							Pod:       podname,
 						},
 					},
-					Protocol:      proto,
-					LocalAddress:  parseIPv4(src),
-					LocalPort:     srcp,
-					RemoteAddress: parseIPv4(dest),
-					RemotePort:    destp,
-					Status:        status,
-					InodeNumber:   inodeNumber,
-					WithNetNsID:   eventtypes.WithNetNsID{NetNsID: netns},
+					Protocol: proto,
+					SrcEndpoint: eventtypes.L4Endpoint{
+						L3Endpoint: eventtypes.L3Endpoint{
+							Addr: parseIPv4(src),
+						},
+						Port: srcp,
+					},
+					DstEndpoint: eventtypes.L4Endpoint{
+						L3Endpoint: eventtypes.L3Endpoint{
+							Addr: parseIPv4(dest),
+						},
+						Port: destp,
+					},
+					Status:      status,
+					InodeNumber: inodeNumber,
+					WithNetNsID: eventtypes.WithNetNsID{NetNsID: netns},
 				})
 			}
 

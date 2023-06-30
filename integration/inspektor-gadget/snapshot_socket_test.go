@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"testing"
 
-	snapshotsocketTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
-
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
+	snapshotsocketTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/socket/types"
+	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestSnapshotSocket(t *testing.T) {
@@ -61,13 +61,23 @@ func TestSnapshotSocket(t *testing.T) {
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json --node %s", ns, nodeName),
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &snapshotsocketTypes.Event{
-					Event:         BuildBaseEvent(ns),
-					Protocol:      "TCP",
-					LocalAddress:  "0.0.0.0",
-					LocalPort:     9090,
-					RemoteAddress: "0.0.0.0",
-					RemotePort:    0,
-					Status:        "LISTEN",
+					Event:    BuildBaseEvent(ns),
+					Protocol: "TCP",
+					SrcEndpoint: eventtypes.L4Endpoint{
+						L3Endpoint: eventtypes.L3Endpoint{
+							Addr: "0.0.0.0",
+							Kind: eventtypes.EndpointKindRaw,
+						},
+						Port: 9090,
+					},
+					DstEndpoint: eventtypes.L4Endpoint{
+						L3Endpoint: eventtypes.L3Endpoint{
+							Addr: "0.0.0.0",
+							Kind: eventtypes.EndpointKindRaw,
+						},
+						Port: 0,
+					},
+					Status: "LISTEN",
 				}
 				expectedEntry.Node = nodeName
 
