@@ -150,7 +150,7 @@ func (e *L3Endpoint) String() string {
 type L4Endpoint struct {
 	L3Endpoint
 	// Port is filled by the gadget
-	Port uint16 `json:"port,omitempty" column:"port,hide,template:ipport"`
+	Port uint16 `json:"port" column:"port,hide,template:ipport"`
 }
 
 func (e *L4Endpoint) String() string {
