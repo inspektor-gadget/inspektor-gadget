@@ -925,7 +925,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os-sku: [Ubuntu, Mariner]
+        os-sku: [Ubuntu, AzureLinux]
         arch: [amd64, arm64]
     steps:
     - uses: actions/checkout@v3
@@ -958,8 +958,8 @@ jobs:
           node_size='Standard_D2ps_v5'
         fi
 
-        # Enable the aks-preview extension to use Mariner as --os-sku.
-        # This should lead to AKS being deployed on top of Mariner 2.0.
+        # Enable the aks-preview extension to use AzureLinux as --os-sku.
+        # This should lead to AKS being deployed on top of AzureLinux.
         # We do not upgrade az because there is a problem doing so in the
         # GitHub Action.
         az extension add --name aks-preview
