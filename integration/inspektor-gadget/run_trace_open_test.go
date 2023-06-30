@@ -28,6 +28,10 @@ func TestRunTraceOpen(t *testing.T) {
 
 	t.Parallel()
 
+	if *k8sArch == "arm64" {
+		t.Skip("Skip running run trace open on arm64 as run gadget does not filter out non existing tracepoints")
+	}
+
 	const (
 		prog = "../../gadgets/trace_open_x86.bpf.o"
 		def  = "../../gadgets/trace_open.yaml"
