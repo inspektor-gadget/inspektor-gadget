@@ -114,6 +114,12 @@ static int handle_tcp_rcv_established(struct sock *sk)
 		if (key.family == AF_INET6)
 			bpf_probe_read_kernel(&key.addr, sizeof(key.addr), BPF_CORE_READ(inet, pinet6, saddr.in6_u.u6_addr8));
 		else
+			/*
+			 * It is fine to use "->" operator with bpf_probe_read_kernel() as we are
+			 * using vmlinux.h which defines struct with preserve_access_index
+			 * attribute, see:
+			 * https://nakryiko.com/posts/bpf-core-reference-guide/#defining-own-co-re-relocatable-type-definitions
+			 */
 			bpf_probe_read_kernel(&key.addr, sizeof(inet->inet_saddr), &inet->inet_saddr);
 	else if (targ_raddr_hist)
 		if (key.family == AF_INET6)
