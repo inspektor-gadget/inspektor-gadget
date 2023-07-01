@@ -27,6 +27,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 type Runtime struct {
@@ -57,6 +58,11 @@ func prepareCatalog() *runtime.Catalog {
 func (r *Runtime) Init(globalRuntimeParams *params.Params) error {
 	if os.Geteuid() != 0 {
 		return fmt.Errorf("%s must be run as root to be able to run eBPF programs", filepath.Base(os.Args[0]))
+	}
+
+	err := host.Init(host.Config{})
+	if err != nil {
+		return err
 	}
 
 	return nil

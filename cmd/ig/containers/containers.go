@@ -27,6 +27,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 const igSubKey = "ig-key"
@@ -39,6 +40,13 @@ func NewListContainersCmd() *cobra.Command {
 		Use:   "list-containers",
 		Short: "List all containers",
 		RunE: func(*cobra.Command, []string) error {
+			// The list-containers command is not a gadget, so the local
+			// runtime won't call host.Init().
+			err := host.Init(host.Config{})
+			if err != nil {
+				return err
+			}
+
 			igmanager, err := igmanager.NewManager(commonFlags.RuntimeConfigs)
 			if err != nil {
 				return commonutils.WrapInErrManagerInit(err)

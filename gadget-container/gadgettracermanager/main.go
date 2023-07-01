@@ -23,7 +23,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -257,8 +256,24 @@ func main() {
 		if experimental.Enabled() {
 			log.Info("Experimental features enabled")
 		}
-		log.Infof("HostPID=%s", strconv.FormatBool(host.IsHostPidNs))
-		log.Infof("HostNetwork=%s", strconv.FormatBool(host.IsHostNetNs))
+		hostConfig := host.Config{
+			AutoMountFilesystems: true,
+		}
+		err := host.Init(hostConfig)
+		if err != nil {
+			log.Fatalf("host.Init() failed: %v", err)
+		}
+
+		hostPidNs, err := host.IsHostPidNs()
+		if err != nil {
+			log.Fatalf("Detecting pid namespace: %v", err)
+		}
+		log.Infof("HostPID=%t", hostPidNs)
+		hostNetNs, err := host.IsHostNetNs()
+		if err != nil {
+			log.Fatalf("Detecting net namespace: %v", err)
+		}
+		log.Infof("HostNetwork=%t", hostNetNs)
 
 		node := os.Getenv("NODE_NAME")
 		if node == "" {
