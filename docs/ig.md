@@ -157,3 +157,38 @@ test-host                      24598            24577            cat            
 ```
 
 Events generated from containers have their container field set, while events which are generated from the host do not.
+
+### Using ig with "kubectl debug node"
+
+The "kubectl debug node" command is documented in
+[Debugging Kubernetes Nodes With Kubectl](https://kubernetes.io/docs/tasks/debug/debug-cluster/kubectl-node-debug/).
+
+This is currently not supported.
+
+### Using ig in a container
+
+Example of command:
+
+```bash
+$ docker run -ti --rm \
+    --privileged \
+    -v /run:/run \
+    -v /:/host \
+    -v /sys/fs/bpf:/sys/fs/bpf \
+    -v /sys/kernel/debug:/sys/kernel/debug \
+    -v /sys/kernel/tracing:/sys/kernel/tracing \
+    --pid=host \
+    ghcr.io/inspektor-gadget/ig \
+    trace exec
+CONTAINER    PID        PPID       COMM  RET ARGS
+cool_wright  1163565    1154511    ls    0   /bin/ls
+```
+
+List of flags:
+- `--privileged` gives all capabilities such as `CAP_SYS_ADMIN`. It is required to run eBPF programs.
+- `-v /run:/run` gives access to the container runtimes sockets (docker, containerd, CRI-O).
+- `-v /:/host` gives access to the host filesystem. This is used to access the host processes via /host/proc, and access
+  container runtime hooks (rootfs and config.json).
+- More `-v` flags give access to bpffs, debugfs and tracefs.
+- `--pid=host` runs in the host PID namespace. Optional on Linux. This is necessary on Docker Desktop on Windows because
+  /host/proc does not give access to the host processes.
