@@ -137,7 +137,7 @@ func ValidateDuration(value string) error {
 }
 
 func ValidateIP(value string) error {
-	if net.ParseIP(value) == nil {
+	if value != "" && net.ParseIP(value) == nil {
 		return fmt.Errorf("%q is not a valid IP address", value)
 	}
 	return nil
