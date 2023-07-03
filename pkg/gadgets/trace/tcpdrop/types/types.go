@@ -50,20 +50,20 @@ func GetColumns() *columns.Columns[Event] {
 	eventtypes.MustAddVirtualL4EndpointColumn(
 		cols,
 		columns.Attributes{
-			Name:    "src",
-			Visible: true,
-			Width:   30,
-			Order:   2000,
+			Name:     "src",
+			Visible:  true,
+			Template: "ipaddrport",
+			Order:    2000,
 		},
 		func(e *Event) eventtypes.L4Endpoint { return e.SrcEndpoint },
 	)
 	eventtypes.MustAddVirtualL4EndpointColumn(
 		cols,
 		columns.Attributes{
-			Name:    "dst",
-			Visible: true,
-			Width:   30,
-			Order:   3000,
+			Name:     "dst",
+			Visible:  true,
+			Template: "ipaddrport",
+			Order:    3000,
 		},
 		func(e *Event) eventtypes.L4Endpoint { return e.DstEndpoint },
 	)
