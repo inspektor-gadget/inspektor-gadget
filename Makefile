@@ -256,7 +256,7 @@ minikube-deploy: minikube-start gadget-default-container kubectl-gadget
 	# Remove all resources created by Inspektor Gadget.
 	./kubectl-gadget undeploy || true
 	./kubectl-gadget deploy --liveness-probe=$(LIVENESS_PROBE) \
-		--image-pull-policy=Never
+		--image-pull-policy=Never --experimental
 	kubectl rollout status daemonset -n gadget gadget --timeout 30s
 	@echo "Image used by the gadget pod:"
 	kubectl get pod -n gadget -o yaml|grep imageID:
