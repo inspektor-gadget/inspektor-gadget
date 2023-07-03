@@ -339,15 +339,17 @@ func (l *localManagerTrace) PostGadgetRun() error {
 		log.Debugf("calling Unsubscribe()")
 		l.manager.igManager.Unsubscribe(l.subscriptionKey)
 
-		// emit detach for all remaining containers
-		for container := range l.attachedContainers {
-			l.attacher.DetachContainer(container)
-		}
+		if l.attacher != nil {
+			// emit detach for all remaining containers
+			for container := range l.attachedContainers {
+				l.attacher.DetachContainer(container)
+			}
 
-		if host {
-			// Reciprocal operation of attaching fake container with PID 1 which is
-			// needed by gadgets relying on the Attacher concept.
-			l.attacher.DetachContainer(&containercollection.Container{Pid: 1})
+			if host {
+				// Reciprocal operation of attaching fake container with PID 1 which is
+				// needed by gadgets relying on the Attacher concept.
+				l.attacher.DetachContainer(&containercollection.Container{Pid: 1})
+			}
 		}
 	}
 	return nil
