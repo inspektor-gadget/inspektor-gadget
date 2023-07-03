@@ -1,4 +1,4 @@
-// Copyright 2019-2022 The Inspektor Gadget authors
+// Copyright 2019-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,6 +41,14 @@ type ContainerCollection struct {
 	// Keys:   containerID string
 	// Values: container   Container
 	containers sync.Map
+
+	// Keys:   MntNsID     string
+	// Values: container   Container
+	containersByMntNs sync.Map
+
+	// Keys:   NetNsID     string
+	// Values: container   Container
+	containersByNetNs sync.Map
 
 	// Saves containers for "cacheDelay" to be able to enrich events after the container is
 	// removed. This is enabled by using WithTracerCollection().
@@ -112,7 +120,7 @@ initialContainersLoop:
 			}
 		}
 
-		cc.containers.Store(container.ID, container)
+		cc.AddContainer(container)
 		if cc.pubsub != nil {
 			cc.pubsub.Publish(EventTypeAddContainer, container)
 		}
@@ -160,6 +168,48 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 	// the notification handler, and they expect the container to still be
 	// present.
 	cc.containers.Delete(id)
+
+	// Make this operation atomic, as RemoveContainer() could be called concurrently, which could result in
+	// dirty map contents
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
+
+	// Remove from MntNs lookup
+	mntNsContainer, ok := cc.containersByMntNs.Load(container.Mntns)
+	if !ok || mntNsContainer.(*Container).ID != container.ID {
+		log.Warn("container not found or mismatch in mntns lookup map")
+		return
+	} else {
+		cc.containersByMntNs.Delete(container.Mntns)
+	}
+
+	// Remove from NetNs lookup; arrays should be immutable, so recreate them
+	netNsContainers, ok := cc.containersByNetNs.Load(container.Netns)
+	if !ok {
+		log.Warn("container netns not found in netns lookup map")
+		return
+	}
+
+	found := false
+	netNsContainersArr := netNsContainers.([]*Container)
+	newNetNsContainers := make([]*Container, 0, len(netNsContainersArr)-1)
+	for _, netNsContainer := range netNsContainersArr {
+		if netNsContainer.ID == container.ID {
+			found = true
+			continue
+		}
+		newNetNsContainers = append(newNetNsContainers, netNsContainer)
+	}
+	if !found {
+		log.Warn("container not found in netns lookup array")
+	}
+
+	if len(newNetNsContainers) > 0 {
+		cc.containersByNetNs.Store(container.Netns, newNetNsContainers)
+	} else {
+		// clean up empty entries
+		cc.containersByNetNs.Delete(container.Netns)
+	}
 }
 
 // AddContainer adds a container to the collection.
@@ -177,6 +227,17 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 	if loaded {
 		return
 	}
+	cc.mu.Lock()
+	cc.containersByMntNs.Store(container.Mntns, container)
+	arr, ok := cc.containersByNetNs.Load(container.Netns)
+	var newContainerArr []*Container
+	if ok {
+		newContainerArr = append(newContainerArr, arr.([]*Container)...)
+	}
+	newContainerArr = append(newContainerArr, container)
+	cc.containersByNetNs.Store(container.Netns, newContainerArr)
+	cc.mu.Unlock()
+
 	if cc.pubsub != nil {
 		cc.pubsub.Publish(EventTypeAddContainer, container)
 	}
@@ -215,7 +276,22 @@ func lookupContainerByMntns(m *sync.Map, mntnsid uint64) *Container {
 // LookupContainerByMntns returns a container by its mount namespace
 // inode id. If not found nil is returned.
 func (cc *ContainerCollection) LookupContainerByMntns(mntnsid uint64) *Container {
-	return lookupContainerByMntns(&cc.containers, mntnsid)
+	container, ok := cc.containersByMntNs.Load(mntnsid)
+	if !ok {
+		return nil
+	}
+	return container.(*Container)
+}
+
+// LookupContainersByNetns returns a slice of containers that run in a given
+// network namespace. Or an empty slice if there are no containers running in
+// that network namespace.
+func (cc *ContainerCollection) LookupContainersByNetns(netnsid uint64) []*Container {
+	containers, ok := cc.containersByNetNs.Load(netnsid)
+	if !ok {
+		return nil
+	}
+	return containers.([]*Container)
 }
 
 func lookupContainersByNetns(m *sync.Map, netnsid uint64) (containers []*Container) {
@@ -227,13 +303,6 @@ func lookupContainersByNetns(m *sync.Map, netnsid uint64) (containers []*Contain
 		return true
 	})
 	return containers
-}
-
-// LookupContainersByNetns returns a slice of containers that run in a given
-// network namespace. Or an empty slice if there are no containers running in
-// that network namespace.
-func (cc *ContainerCollection) LookupContainersByNetns(netnsid uint64) (containers []*Container) {
-	return lookupContainersByNetns(&cc.containers, netnsid)
 }
 
 // LookupMntnsByPod returns the mount namespace inodes of all containers
@@ -360,7 +429,7 @@ func (cc *ContainerCollection) EnrichNode(event *eventtypes.CommonData) {
 func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
 	event.Node = cc.nodeName
 
-	container := lookupContainerByMntns(&cc.containers, mountnsid)
+	container := cc.LookupContainerByMntns(mountnsid)
 	if container == nil && cc.cachedContainers != nil {
 		container = lookupContainerByMntns(cc.cachedContainers, mountnsid)
 	}
@@ -375,7 +444,7 @@ func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mount
 func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netnsid uint64) {
 	event.Node = cc.nodeName
 
-	containers := lookupContainersByNetns(&cc.containers, netnsid)
+	containers := cc.LookupContainersByNetns(netnsid)
 	if len(containers) == 0 && cc.cachedContainers != nil {
 		containers = lookupContainersByNetns(cc.cachedContainers, netnsid)
 	}
