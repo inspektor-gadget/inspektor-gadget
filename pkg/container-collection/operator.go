@@ -21,7 +21,11 @@ import (
 func (cc *ContainerCollection) EnrichEventByMntNs(event operators.ContainerInfoFromMountNSID) {
 	event.SetNode(cc.nodeName)
 
-	container := cc.LookupContainerByMntns(event.GetMountNSID())
+	mountNsId := event.GetMountNSID()
+	container := cc.LookupContainerByMntns(mountNsId)
+	if container == nil && cc.cachedContainers != nil {
+		container = lookupContainerByMntns(cc.cachedContainers, mountNsId)
+	}
 	if container != nil {
 		event.SetContainerInfo(container.Podname, container.Namespace, container.Name)
 	}
@@ -30,7 +34,11 @@ func (cc *ContainerCollection) EnrichEventByMntNs(event operators.ContainerInfoF
 func (cc *ContainerCollection) EnrichEventByNetNs(event operators.ContainerInfoFromNetNSID) {
 	event.SetNode(cc.nodeName)
 
-	containers := cc.LookupContainersByNetns(event.GetNetNSID())
+	netNsId := event.GetNetNSID()
+	containers := cc.LookupContainersByNetns(netNsId)
+	if len(containers) == 0 {
+		containers = lookupContainersByNetns(cc.cachedContainers, netNsId)
+	}
 	if len(containers) == 0 || containers[0].HostNetwork {
 		return
 	}
