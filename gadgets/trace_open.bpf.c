@@ -105,11 +105,13 @@ int trace_enter(const char *filename, int flags, __u16 mode)
 	return 0;
 }
 
+#ifndef __TARGET_ARCH_arm64
 SEC("tracepoint/syscalls/sys_enter_open")
 int ig_open_e(struct trace_event_raw_sys_enter* ctx)
 {
 	return trace_enter((const char *)ctx->args[0], (int)ctx->args[1], (__u16)ctx->args[2]);
 }
+#endif /* !__TARGET_ARCH_arm64 */
 
 SEC("tracepoint/syscalls/sys_enter_openat")
 int ig_openat_e(struct trace_event_raw_sys_enter* ctx)
@@ -154,11 +156,13 @@ cleanup:
 	return 0;
 }
 
+#ifndef __TARGET_ARCH_arm64
 SEC("tracepoint/syscalls/sys_exit_open")
 int ig_open_x(struct trace_event_raw_sys_exit* ctx)
 {
 	return trace_exit(ctx);
 }
+#endif /* !__TARGET_ARCH_arm64 */
 
 SEC("tracepoint/syscalls/sys_exit_openat")
 int ig_openat_x(struct trace_event_raw_sys_exit* ctx)
