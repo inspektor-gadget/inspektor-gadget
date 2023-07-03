@@ -118,28 +118,12 @@ func (c *Columns[T]) AddFields(fields []DynamicField, base func(*T) unsafe.Point
 			return fmt.Errorf("applying tag: %w", err)
 		}
 
-		if column.useTemplate {
-			f.Template = column.template
-		}
-
 		// After applying attributes and tag, we should have a name
 		if column.Name == "" {
 			return fmt.Errorf("missing name")
 		}
 
-		// Apply template, if present
-		if f.Template != "" {
-			name := column.Name
-			tpl, ok := getTemplate(f.Template)
-			if !ok {
-				return fmt.Errorf("template %q not found", f.Template)
-			}
-			err := column.parseTagInfo(strings.Split(tpl, ","))
-			if err != nil {
-				return fmt.Errorf("applying template to column %q: %w", name, err)
-			}
-			column.Name = name
-		}
+		column.applyTemplate()
 
 		lowerName := strings.ToLower(column.Name)
 
@@ -328,14 +312,10 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintpt
 		}
 
 		if column.useTemplate {
-			tpl, ok := getTemplate(column.Template)
-			if !ok {
-				return fmt.Errorf("applying template %q for %q on field %q: template not found", column.Template, t.Name(), f.Name)
+			err := column.applyTemplate()
+			if err != nil {
+				return err
 			}
-			if err := column.parseTagInfo(strings.Split(tpl, ",")); err != nil {
-				return fmt.Errorf("applying template %q for %q on field %q: %w", column.Template, t.Name(), f.Name, err)
-			}
-
 			// re-apply information from field tag to overwrite template settings
 			err = column.fromTag(tag)
 			if err != nil {
@@ -399,26 +379,26 @@ func (c *Columns[T]) AddColumn(attributes Attributes, extractor func(*T) string)
 	column := Column[T]{
 		Attributes: attributes,
 		Extractor:  extractor,
+		fieldIndex: virtualIndex,
+		// We expect kind to be of type reflect.String because we always use the extractor func for
+		// virtual columns
+		kind:          reflect.String,
+		columnType:    stringType,
+		rawColumnType: stringType,
 	}
+
+	column.applyTemplate()
 
 	columnName := strings.ToLower(column.Name)
 	if _, ok := c.ColumnMap[columnName]; ok {
-		return fmt.Errorf("column already exists: %q", columnName)
+		return fmt.Errorf("duplicate column name %q", column.Name)
 	}
-
-	c.ColumnMap[columnName] = &column
 
 	if column.Width == 0 {
 		column.Width = c.options.DefaultWidth
 	}
 
-	column.fieldIndex = virtualIndex
-
-	// We expect kind to be of type reflect.String because we always use the extractor func for
-	// virtual columns
-	column.kind = reflect.String
-	column.columnType = stringType
-	column.rawColumnType = stringType
+	c.ColumnMap[columnName] = &column
 	return nil
 }
 

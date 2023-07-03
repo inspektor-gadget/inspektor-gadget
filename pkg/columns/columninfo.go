@@ -156,6 +156,23 @@ func (ci *Column[T]) fromTag(tag string) error {
 	return ci.parseTagInfo(tagInfo[1:])
 }
 
+func (ci *Column[T]) applyTemplate() error {
+	if ci.Template == "" {
+		return nil
+	}
+	name := ci.Name
+	tpl, ok := getTemplate(ci.Template)
+	if !ok {
+		return fmt.Errorf("applying template %q for %q on field %q: template not found", ci.Template, ci.rawColumnType.Name(), name)
+	}
+	err := ci.parseTagInfo(strings.Split(tpl, ","))
+	if err != nil {
+		return fmt.Errorf("applying template %q for %q on field %q: %w", ci.Template, ci.rawColumnType.Name(), name, err)
+	}
+	ci.Name = name
+	return nil
+}
+
 func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 	var err error
 	for _, subTag := range tagInfo {
