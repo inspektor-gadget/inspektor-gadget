@@ -1,0 +1,38 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect
+Kubernetes resources and applications. It manages the packaging, deployment and
+execution of [eBPF](https://ebpf.io/) programs in a Kubernetes cluster,
+including many based on [BCC](https://github.com/iovisor/bcc) tools, as well as
+some developed specifically for use in Inspektor Gadget. It automatically maps
+low-level kernel primitives to high-level Kubernetes resources, making it easier
+and quicker to find the relevant information.
+
+## The Gadgets
+
+Inspektor Gadget tools are known as gadgets. You can deploy one, two or many gadgets.
+
+![different tools offered by Inspektor Gadget](https://raw.githubusercontent.com/inspektor-gadget/inspektor-gadget/main/docs/images/architecture/inspektor_gadget_tools.svg)
+
+## Getting Started
+
+```
+$ helm repo add gadget https://inspektor-gadget.github.io/charts
+$ helm install gadget gadget/gadget --namespace=gadget --create-namespace
+```
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+## Getting Help
+
+In case you encounter any problems while using Inspektor Gadget, feel free to
+open an issue in the [Inspektor Gadget GitHub repository](https://github.com/inspektor-gadget/inspektor-gadget) or reach out to use at
+[Inspektor Gadget Slack channel](https://kubernetes.slack.com/messages/inspektor-gadget/).
+
+{{ template "chart.valuesSection" . }}

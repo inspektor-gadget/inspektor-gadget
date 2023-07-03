@@ -30,6 +30,7 @@ hack/btfs/*
 
 # Build artifacts
 *.o
+*.tgz
 # keep all bpf objects generated with bpf2go
 !pkg/gadgets/**/*.o
 !pkg/container-hook/**/*.o
