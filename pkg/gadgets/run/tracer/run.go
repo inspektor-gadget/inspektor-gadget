@@ -17,7 +17,6 @@ package tracer
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"reflect"
@@ -31,6 +30,7 @@ import (
 	k8syaml "sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	columns_json "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/json"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
@@ -197,7 +197,7 @@ func getSimpleType(typ btf.Type) reflect.Type {
 	return nil
 }
 
-func (g *GadgetDesc) CustomParser(params *params.Params, args []string) (parser.Parser, error) {
+func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.Columns[types.Event], error) {
 	if len(args) != 0 {
 		return nil, fmt.Errorf("no arguments expected: received %d", len(args))
 	}
@@ -272,8 +272,47 @@ func (g *GadgetDesc) CustomParser(params *params.Params, args []string) (parser.
 	if err := cols.AddFields(fields, base); err != nil {
 		return nil, fmt.Errorf("adding fields: %w", err)
 	}
+	return cols, nil
+}
 
+func (g *GadgetDesc) CustomParser(params *params.Params, args []string) (parser.Parser, error) {
+	cols, err := g.getColumns(params, args)
+	if err != nil {
+		return nil, err
+	}
 	return parser.NewParser[types.Event](cols), nil
+}
+
+func (g *GadgetDesc) CustomJsonParser(params *params.Params, args []string, options ...columns_json.Option) (*columns_json.Formatter[types.Event], error) {
+	cols, err := g.getColumns(params, args)
+	if err != nil {
+		return nil, err
+	}
+	return columns_json.NewFormatter(cols.ColumnMap, options...), nil
+}
+
+func (g *GadgetDesc) JSONConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
+	formatter, err := g.CustomJsonParser(params, []string{})
+	if err != nil {
+		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
+		return nil
+	}
+	return func(ev any) {
+		event := ev.(*types.Event)
+		printer.Output(formatter.FormatEntry(event))
+	}
+}
+
+func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
+	formatter, err := g.CustomJsonParser(params, []string{}, columns_json.WithPrettyPrint())
+	if err != nil {
+		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
+		return nil
+	}
+	return func(ev any) {
+		event := ev.(*types.Event)
+		printer.Output(formatter.FormatEntry(event))
+	}
 }
 
 func genericConverter(params *params.Params, printer gadgets.Printer, convert func(any) ([]byte, error)) func(ev any) {
@@ -309,17 +348,6 @@ func genericConverter(params *params.Params, printer gadgets.Printer, convert fu
 		}
 		printer.Output(string(d))
 	}
-}
-
-func (g *GadgetDesc) JSONConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
-	return genericConverter(params, printer, json.Marshal)
-}
-
-func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
-	convert := func(ev any) ([]byte, error) {
-		return json.MarshalIndent(ev, "", "  ")
-	}
-	return genericConverter(params, printer, convert)
 }
 
 func (g *GadgetDesc) YAMLConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
