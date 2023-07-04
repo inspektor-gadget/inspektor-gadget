@@ -467,9 +467,9 @@ func TestValidateIP(t *testing.T) {
 				expectedError: false,
 			},
 			{
-				name:          "empty_error",
+				name:          "empty_no_error",
 				value:         "",
-				expectedError: true,
+				expectedError: false,
 			},
 			{
 				name:          "bad_input_0",

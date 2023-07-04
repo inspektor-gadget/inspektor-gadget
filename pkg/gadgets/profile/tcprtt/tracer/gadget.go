@@ -82,28 +82,28 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			Alias:        "", // It was "a" in BCC but ParamFilterRemoteAddress had a conflict
 			DefaultValue: "",
 			Description:  "Filter for local address",
-			TypeHint:     params.TypeString,
+			TypeHint:     params.TypeIP,
 		},
 		{
 			Key:          ParamFilterRemoteAddress,
 			Alias:        "", // It was "A" in BCC but it collides with the alias of ParamAllNamespaces
 			DefaultValue: "",
 			Description:  "Filter for remote address",
-			TypeHint:     params.TypeString,
+			TypeHint:     params.TypeIP,
 		},
 		{
 			Key:          ParamFilterLocalAddressV6,
 			Alias:        "",
 			DefaultValue: "",
 			Description:  "Filter for local address using IPv6",
-			TypeHint:     params.TypeString,
+			TypeHint:     params.TypeIP,
 		},
 		{
 			Key:          ParamFilterRemoteAddressV6,
 			Alias:        "",
 			DefaultValue: "",
 			Description:  "Filter for remote address using IPv6",
-			TypeHint:     params.TypeString,
+			TypeHint:     params.TypeIP,
 		},
 	}
 }
