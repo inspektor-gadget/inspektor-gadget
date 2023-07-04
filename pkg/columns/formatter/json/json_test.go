@@ -57,6 +57,37 @@ func TestJSONFormatter_FormatEntry(t *testing.T) {
 	}
 }
 
+func TestJSONFormatter_PrettyFormatEntry(t *testing.T) {
+	expected := []string{
+		`{
+  "name": "Alice",
+  "age": 32,
+  "size": 1.74,
+  "balance": 1000,
+  "canDance": true
+}`,
+		`{
+  "name": "Bob",
+  "age": 26,
+  "size": 1.73,
+  "balance": -200,
+  "canDance": true
+}`,
+		`{
+  "name": "Eve",
+  "age": 99,
+  "size": 5.12,
+  "balance": 1000000,
+  "canDance": false
+}`,
+		``,
+	}
+	formatter := NewFormatter(testColumns, WithPrettyPrint())
+	for i, entry := range testEntries {
+		assert.Equal(t, expected[i], formatter.FormatEntry(entry))
+	}
+}
+
 func BenchmarkFormatter(b *testing.B) {
 	b.StopTimer()
 	formatter := NewFormatter(testColumns)
