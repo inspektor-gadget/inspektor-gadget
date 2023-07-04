@@ -59,6 +59,21 @@ func TestJSONFormatter_FormatEntry(t *testing.T) {
 	}
 }
 
+func TestJSONFormatter_PrettyFormatEntry(t *testing.T) {
+	expected := []string{
+		"{\n  \"name\": \"Alice\",\n  \"age\": 32,\n  \"size\": 1.74,\n  \"balance\": 1000,\n  \"canDance\": true\n}",
+		"{\n  \"name\": \"Bob\",\n  \"age\": 26,\n  \"size\": 1.73,\n  \"balance\": -200,\n  \"canDance\": true\n}",
+		"{\n  \"name\": \"Eve\",\n  \"age\": 99,\n  \"size\": 5.12,\n  \"balance\": 1000000,\n  \"canDance\": false\n}",
+		"",
+	}
+	formatter := NewFormatter(testColumns, WithPrettyPrint())
+	for i, entry := range testEntries {
+		if res := formatter.FormatEntry(entry); res != expected[i] {
+			t.Errorf("got %s, expected %s", res, expected[i])
+		}
+	}
+}
+
 func BenchmarkFormatter(b *testing.B) {
 	b.StopTimer()
 	formatter := NewFormatter(testColumns)

@@ -27,8 +27,6 @@ import (
 )
 
 type column[T any] struct {
-	name      string
-	nameb     []byte
 	column    *columns.Column[T]
 	formatter func(*encodeState, *T)
 }
@@ -115,8 +113,6 @@ func NewFormatter[T any](cols columns.ColumnMap[T], options ...Option) *Formatte
 
 		ncols = append(ncols, &column[T]{
 			column:    col,
-			name:      string(name) + ": ",
-			nameb:     []byte(string(name) + ": "),
 			formatter: formatter,
 		})
 	}
@@ -139,11 +135,26 @@ func (f *Formatter[T]) FormatEntry(entry *T) string {
 	defer bufpool.Put(buf)
 
 	buf.WriteByte('{')
+	if f.options.prettPrint {
+		buf.WriteByte('\n')
+	}
 	for i, col := range f.columns {
 		if i > 0 {
-			buf.WriteString(", ")
+			buf.WriteByte(',')
+			if f.options.prettPrint {
+				buf.WriteByte('\n')
+			} else {
+				buf.WriteByte(' ')
+			}
+		}
+		if f.options.prettPrint {
+			buf.WriteString("  ")
 		}
 		col.formatter(buf, entry)
+	}
+	// Don't pretty-print a newline when there are no columns
+	if f.options.prettPrint && len(f.columns) > 0 {
+		buf.WriteByte('\n')
 	}
 	buf.WriteByte('}')
 	return buf.String()

@@ -16,8 +16,17 @@ package json
 
 type Option func(*Options)
 
-type Options struct{}
+type Options struct {
+	// Pretty print the JSON output
+	prettPrint bool
+}
 
 func DefaultOptions() *Options {
 	return &Options{}
+}
+
+func WithPrettyPrint() func(*Options) {
+	return func(o *Options) {
+		o.prettPrint = true
+	}
 }
