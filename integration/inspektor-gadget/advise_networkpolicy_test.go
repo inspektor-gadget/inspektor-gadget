@@ -35,7 +35,11 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(nsServer),
-		BusyboxPodRepeatCommand(nsServer, "nc -lk -p 9090 -e /bin/cat"),
+		BusyboxPodRepeatCommand(
+			nsServer,
+			// Dual stack socket
+			"nc -lk -p 9090 -e /bin/cat",
+		),
 		{
 			Name:           "CreateService",
 			Cmd:            fmt.Sprintf("kubectl expose -n %s pod test-pod --port 9090", nsServer),
@@ -43,7 +47,11 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 		},
 		WaitUntilTestPodReadyCommand(nsServer),
 		CreateTestNamespaceCommand(nsClient),
-		BusyboxPodRepeatCommand(nsClient, fmt.Sprintf("echo ok | nc -w 1 test-pod.%s.svc.cluster.local 9090 || true", nsServer)),
+		BusyboxPodRepeatCommand(
+			nsClient,
+			// IPv4 socket
+			fmt.Sprintf("echo ok | nc -w 1 test-pod.%s.svc.cluster.local 9090 || true", nsServer),
+		),
 		WaitUntilTestPodReadyCommand(nsClient),
 		{
 			Name: "RunNetworkPolicyMonitorClient",
@@ -105,7 +113,9 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 				}
 
 				expectedEntry := &networkTypes.Event{
-					Event:     BuildBaseEvent(nsServer),
+					Event: BuildBaseEvent(nsServer),
+					// The socket enricher can find the correct "comm" because it supports dual stack sockets
+					Comm:      "nc",
 					Uid:       0,
 					Gid:       0,
 					PktType:   "HOST",

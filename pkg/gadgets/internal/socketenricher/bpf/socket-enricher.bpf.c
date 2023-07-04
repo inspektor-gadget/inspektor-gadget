@@ -42,6 +42,8 @@ insert_current_socket(struct sock *sock)
 	socket_value.uid_gid = bpf_get_current_uid_gid();
 	bpf_get_current_comm(&socket_value.task, sizeof(socket_value.task));
 	socket_value.sock = (__u64) sock;
+	if (socket_key.family == AF_INET6)
+		socket_value.ipv6only = BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_ipv6only);
 
 	bpf_map_update_elem(&sockets, &socket_key, &socket_value, BPF_ANY);
 }
