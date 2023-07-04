@@ -302,8 +302,12 @@ func (t *Tracer[Event]) Detach(pid uint32) error {
 }
 
 func (t *Tracer[Event]) Close() {
-	t.perfRd.Close()
-	t.collection.Close()
+	if t.perfRd != nil {
+		t.perfRd.Close()
+	}
+	if t.collection != nil {
+		t.collection.Close()
+	}
 	for key, l := range t.attachments {
 		t.releaseAttachment(key, l)
 	}
