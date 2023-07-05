@@ -28,10 +28,6 @@ func TestSnapshotSocket(t *testing.T) {
 		t.Skip("Skip running snapshot socket gadget on ARO: iterators are not supported on kernel 4.18.0-305.19.1.el8_4.x86_64")
 	}
 
-	if *k8sDistro == K8sDistroAKSUbuntu && *k8sArch == "amd64" {
-		t.Skip("Skip running snapshot socket gadget on AKS Ubuntu amd64: iterators are not supported on kernel 5.4.0-1089-azure")
-	}
-
 	ns := GenerateTestNamespaceName("test-socket-collector")
 
 	t.Parallel()
