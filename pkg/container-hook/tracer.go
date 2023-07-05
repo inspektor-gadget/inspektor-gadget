@@ -139,6 +139,7 @@ type ContainerNotifier struct {
 // When this package is executed in a container, it prepends the
 // HOST_ROOT env variable to the path.
 var runtimePaths = []string{
+	"/bin/runc",
 	"/usr/bin/runc",
 	"/usr/sbin/runc",
 	"/usr/local/sbin/runc",
