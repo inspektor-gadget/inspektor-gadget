@@ -502,6 +502,31 @@ func GetFieldFuncExt[OT any, T any](column ColumnInternals, raw bool) func(entry
 	}
 }
 
+// GetFieldAsArrayFunc returns a helper function to access an array of type OT of a struct T
+// without using reflection. It does not differentiates between direct members of the struct and
+// members of embedded structs.
+func GetFieldAsArrayFunc[OT any, T any](column ColumnInternals) func(entry *T) []OT {
+	l := column.(*Column[T]).Type().Len()
+	s := column.(*Column[T]).Type().Elem().Size()
+
+	return func(entry *T) []OT {
+		r := []OT{}
+		entryStart := unsafe.Pointer(entry)
+		if column.(*Column[T]).getStart != nil {
+			entryStart = column.(*Column[T]).getStart(entry)
+		}
+
+		fieldStart := unsafe.Add(entryStart, column.getOffset())
+
+		for i := 0; i < int(l); i += int(s) {
+			b := *(*OT)(unsafe.Add(fieldStart, i))
+			r = append(r, b)
+		}
+
+		return r
+	}
+}
+
 // SetFieldFunc returns a helper function to set the value of type OT to a member of struct T
 // without using reflection. It differentiates between direct members of the struct and
 // members of embedded structs. If any of the embedded structs being accessed is a nil-pointer,
@@ -585,23 +610,14 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 		// c strings: []char null terminated
 		if s == 1 {
 			return func(entry *T) string {
-				r := []byte{}
-				entryStart := unsafe.Pointer(entry)
-				if column.(*Column[T]).getStart != nil {
-					entryStart = column.(*Column[T]).getStart(entry)
-				}
-
-				fieldStart := unsafe.Add(entryStart, column.getOffset())
-
+				arr := GetFieldAsArrayFunc[byte, T](column)(entry)
 				for i := 0; i < int(l); i++ {
-					b := *(*byte)(unsafe.Add(fieldStart, i))
-					if b == 0 {
+					if arr[i] == 0 {
+						arr = arr[:i]
 						break
 					}
-					r = append(r, b)
 				}
-
-				return string(r)
+				return string(arr)
 			}
 		}
 

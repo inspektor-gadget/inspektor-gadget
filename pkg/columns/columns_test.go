@@ -362,3 +362,27 @@ func TestEmbeddedStructs(t *testing.T) {
 
 	expectColumnValue(t, expectColumn(t, cols, "withTemplate.foo"), "Width", 123)
 }
+
+func TestFieldFuncs(t *testing.T) {
+	type testStruct struct {
+		stringField   string    `column:"stringField"`
+		uint8ArrField [16]uint8 `column:"uint8ArrField"`
+	}
+
+	testInstance := &testStruct{
+		stringField:   "foo",
+		uint8ArrField: [16]uint8{}, // Will be setup by copy
+	}
+	copy(testInstance.uint8ArrField[:], []uint8("foobarbaz\x00asdfgh"))
+
+	cols := MustCreateColumns[testStruct]()
+
+	stringFieldCol, _ := cols.GetColumn("stringField")
+	stringFieldFunc := GetFieldFunc[string, testStruct](stringFieldCol)
+	assert.Equal(t, "foo", stringFieldFunc(testInstance))
+	uint8ArrFieldCol, _ := cols.GetColumn("uint8ArrField")
+	uint8ArrFieldFunc := GetFieldAsArrayFunc[uint8, testStruct](uint8ArrFieldCol)
+	assert.Equal(t, "foobarbaz\x00asdfgh", string(uint8ArrFieldFunc(testInstance)))
+	uint8ArrFieldStringFunc := GetFieldAsString[testStruct](uint8ArrFieldCol)
+	assert.Equal(t, "foobarbaz", uint8ArrFieldStringFunc(testInstance))
+}
