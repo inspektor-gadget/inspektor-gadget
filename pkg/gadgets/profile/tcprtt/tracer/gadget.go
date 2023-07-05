@@ -30,6 +30,8 @@ const (
 	ParamMilliseconds          = "milliseconds"
 	ParamByLocalAddress        = "byladdr"
 	ParamByRemoteAddress       = "byraddr"
+	ParamFilterLocalPort       = "lport"
+	ParamFilterRemotePort      = "rport"
 	ParamFilterLocalAddress    = "laddr"
 	ParamFilterRemoteAddress   = "raddr"
 	ParamFilterLocalAddressV6  = "laddrv6"
@@ -76,6 +78,20 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			DefaultValue: "false",
 			Description:  "Show histogram by remote address",
 			TypeHint:     params.TypeBool,
+		},
+		{
+			Key:          ParamFilterLocalPort,
+			Alias:        "",
+			DefaultValue: "0",
+			Description:  "Filter for local port",
+			TypeHint:     params.TypeUint16,
+		},
+		{
+			Key:          ParamFilterRemotePort,
+			Alias:        "",
+			DefaultValue: "0",
+			Description:  "Filter for remote port",
+			TypeHint:     params.TypeUint16,
 		},
 		{
 			Key:          ParamFilterLocalAddress,
@@ -134,6 +150,15 @@ func (g *GadgetDesc) OutputFormats() (gadgets.OutputFormats, string) {
 				var sb strings.Builder
 				for _, h := range report.Histograms {
 					sb.WriteString(fmt.Sprintf("%s = %s", h.AddressType, h.Address))
+
+					if h.LocalPort > 0 {
+						sb.WriteString(fmt.Sprintf(" Local port = %d", h.LocalPort))
+					}
+
+					if h.RemotePort > 0 {
+						sb.WriteString(fmt.Sprintf(" Remote port = %d", h.RemotePort))
+					}
+
 					if h.Average > 0 {
 						sb.WriteString(fmt.Sprintf(" [AVG %f]", h.Average))
 					}

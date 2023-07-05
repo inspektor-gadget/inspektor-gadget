@@ -45,6 +45,14 @@ type ExtendedHistogram struct {
 
 	// Average is the average value of the histogram.
 	Average float64 `json:"average,omitempty"`
+
+	// LocalPort is the local port used to filter address.
+	// If it is 0, it means there was not filtering on local port.
+	LocalPort uint16 `json:"localPort,omitempty"`
+
+	// RemotePort is the local port used to filter address.
+	// If it is 0, it means there was not filtering on remote port.
+	RemotePort uint16 `json:"remotePort,omitempty"`
 }
 
 type Report struct {
@@ -57,6 +65,8 @@ func NewHistogram(
 	addressType AddressType,
 	addr string,
 	avg float64,
+	localPort uint16,
+	remotePort uint16,
 ) *ExtendedHistogram {
 	return &ExtendedHistogram{
 		Histogram: &histogram.Histogram{
@@ -66,5 +76,7 @@ func NewHistogram(
 		AddressType: addressType,
 		Address:     addr,
 		Average:     avg,
+		LocalPort:   localPort,
+		RemotePort:  remotePort,
 	}
 }

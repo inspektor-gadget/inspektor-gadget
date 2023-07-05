@@ -40,7 +40,7 @@ func newProfileTCPRTTCmd(flags string, useTimeout bool, node string, unit histog
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tcprttProfileTypes.Report{
 				Histograms: []*tcprttProfileTypes.ExtendedHistogram{
-					tcprttProfileTypes.NewHistogram(unit, nil, addressType, addr, 1),
+					tcprttProfileTypes.NewHistogram(unit, nil, addressType, addr, 1, 0, 0),
 				},
 			}
 
