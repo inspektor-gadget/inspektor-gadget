@@ -171,5 +171,7 @@ func (t *Tracer) Close() {
 		t.cancel()
 	}
 
-	t.Tracer.Close()
+	if t.Tracer != nil {
+		t.Tracer.Close()
+	}
 }

@@ -78,6 +78,7 @@ struct sockets_value {
 	char task[TASK_COMM_LEN];
 	__u64 sock;
 	__u64 deletion_timestamp;
+	char ipv6only;
 };
 
 #define MAX_SOCKETS	16384
@@ -92,6 +93,7 @@ struct {
 static __always_inline struct sockets_value *
 gadget_socket_lookup(const struct __sk_buff *skb)
 {
+	struct sockets_value *ret;
 	struct sockets_key key = {0,};
 	int l4_off;
 	__u16 h_proto;
@@ -179,7 +181,19 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 		return 0;
 	}
 
-	return bpf_map_lookup_elem(&sockets, &key);
+	ret = bpf_map_lookup_elem(&sockets, &key);
+	if (ret)
+		return ret;
+
+	// If a native socket was not found, try to find a dual-stack socket.
+	if (key.family == AF_INET) {
+		key.family = AF_INET6;
+		ret = bpf_map_lookup_elem(&sockets, &key);
+		if (ret && ret->ipv6only == 0)
+			return ret;
+	}
+
+	return 0;
 }
 #endif
 

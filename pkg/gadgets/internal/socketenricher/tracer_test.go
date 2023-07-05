@@ -124,6 +124,30 @@ func TestSocketEnricherBind(t *testing.T) {
 				}
 			},
 		},
+		"udp6-only": {
+			generateEvent: func() (uint16, int, error) {
+				opts := []sockOpt{
+					{unix.IPPROTO_IPV6, unix.IPV6_V6ONLY, 1},
+				}
+				return bindSocketWithOpts("::", unix.AF_INET6, unix.SOCK_DGRAM, 0, opts)
+			},
+			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+				return &socketEnricherMapEntry{
+					Key: socketenricherSocketsKey{
+						Netns:  uint32(info.NetworkNsID),
+						Family: unix.AF_INET6,
+						Proto:  unix.IPPROTO_UDP,
+						Port:   port,
+					},
+					Value: socketenricherSocketsValue{
+						Mntns:    info.MountNsID,
+						PidTgid:  uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
+						Task:     stringToSlice("socketenricher."),
+						Ipv6only: int8(1),
+					},
+				}
+			},
+		},
 		"tcp": {
 			generateEvent: bindSocketFn("127.0.0.1", unix.AF_INET, unix.SOCK_STREAM, 0),
 			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
@@ -156,6 +180,30 @@ func TestSocketEnricherBind(t *testing.T) {
 						Mntns:   info.MountNsID,
 						PidTgid: uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
 						Task:    stringToSlice("socketenricher."),
+					},
+				}
+			},
+		},
+		"tcp6-only": {
+			generateEvent: func() (uint16, int, error) {
+				opts := []sockOpt{
+					{unix.IPPROTO_IPV6, unix.IPV6_V6ONLY, 1},
+				}
+				return bindSocketWithOpts("::", unix.AF_INET6, unix.SOCK_STREAM, 0, opts)
+			},
+			expectedEvent: func(info *utilstest.RunnerInfo, port uint16) *socketEnricherMapEntry {
+				return &socketEnricherMapEntry{
+					Key: socketenricherSocketsKey{
+						Netns:  uint32(info.NetworkNsID),
+						Family: unix.AF_INET6,
+						Proto:  unix.IPPROTO_TCP,
+						Port:   port,
+					},
+					Value: socketenricherSocketsValue{
+						Mntns:    info.MountNsID,
+						PidTgid:  uint64(uint32(info.Pid))<<32 + uint64(info.Tid),
+						Task:     stringToSlice("socketenricher."),
+						Ipv6only: int8(1),
 					},
 				}
 			},
