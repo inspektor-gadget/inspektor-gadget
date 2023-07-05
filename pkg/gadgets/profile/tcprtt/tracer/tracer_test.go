@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -143,6 +144,32 @@ func TestParseParams(t *testing.T) {
 			},
 			expected: expected{
 				err: true,
+			},
+		},
+		{
+			description: "filter_by_local_port",
+			getGadgetParams: func() *params.Params {
+				params := gadget.ParamDescs().ToParams()
+				params.Get(ParamFilterLocalPort).Set("42")
+				return params
+			},
+			expected: expected{
+				config: &Config{
+					filterLocalPort: uint16(42),
+				},
+			},
+		},
+		{
+			description: "filter_by_remote_port",
+			getGadgetParams: func() *params.Params {
+				params := gadget.ParamDescs().ToParams()
+				params.Get(ParamFilterRemotePort).Set("42")
+				return params
+			},
+			expected: expected{
+				config: &Config{
+					filterRemotePort: uint16(42),
+				},
 			},
 		},
 		{
@@ -333,6 +360,8 @@ type expectedResult struct {
 	useMilliseconds bool // true if the unit is milliseconds, false if microseconds (gadget default)
 	byRemoteAddr    string
 	byLocalAddr     string
+	localPort       uint16
+	remotePort      uint16
 }
 
 type testDefinition struct {
@@ -560,6 +589,104 @@ func testRunWithResult(t *testing.T, serverPort int, serverIP, clientIP net.IP, 
 				byRemoteAddr:    serverIP.String(),
 			},
 		},
+		"filter_by_lport": {
+			getGadgetParams: func() *params.Params {
+				params := gadget.ParamDescs().ToParams()
+				params.Get(ParamFilterLocalPort).Set(strconv.Itoa(serverPort))
+				return params
+			},
+			expectedResult: expectedResult{
+				exactHistograms: 1,
+				localPort:       uint16(serverPort),
+			},
+		},
+		"mix_by_local_addr_and_filter_by_lport": {
+			getGadgetParams: func() *params.Params {
+				params := gadget.ParamDescs().ToParams()
+				params.Get(ParamByLocalAddress).Set("true")
+				params.Get(ParamFilterLocalPort).Set(strconv.Itoa(serverPort))
+				return params
+			},
+			expectedResult: expectedResult{
+				minHistograms: 1,
+				byLocalAddr:   serverIP.String(),
+				localPort:     uint16(serverPort),
+			},
+		},
+		"mix_by_remote_addr_and_filter_by_lport": {
+			getGadgetParams: func() *params.Params {
+				params := gadget.ParamDescs().ToParams()
+				params.Get(ParamByRemoteAddress).Set("true")
+				params.Get(ParamFilterLocalPort).Set(strconv.Itoa(serverPort))
+				return params
+			},
+			expectedResult: expectedResult{
+				minHistograms: 1,
+				byRemoteAddr:  clientIP.String(),
+				localPort:     uint16(serverPort),
+			},
+		},
+		"filter_by_rport": {
+			getGadgetParams: func() *params.Params {
+				params := gadget.ParamDescs().ToParams()
+				params.Get(ParamFilterRemotePort).Set(strconv.Itoa(serverPort))
+				return params
+			},
+			expectedResult: expectedResult{
+				exactHistograms: 1,
+				remotePort:      uint16(serverPort),
+			},
+		},
+		"mix_by_local_addr_and_filter_by_rport": {
+			getGadgetParams: func() *params.Params {
+				params := gadget.ParamDescs().ToParams()
+				params.Get(ParamByLocalAddress).Set("true")
+				params.Get(ParamFilterRemotePort).Set(strconv.Itoa(serverPort))
+				return params
+			},
+			expectedResult: expectedResult{
+				minHistograms: 1,
+				byLocalAddr:   clientIP.String(),
+				remotePort:    uint16(serverPort),
+			},
+		},
+		"mix_by_remote_addr_and_filter_by_rport": {
+			getGadgetParams: func() *params.Params {
+				params := gadget.ParamDescs().ToParams()
+				params.Get(ParamByRemoteAddress).Set("true")
+				params.Get(ParamFilterRemotePort).Set(strconv.Itoa(serverPort))
+				return params
+			},
+			expectedResult: expectedResult{
+				minHistograms: 1,
+				byRemoteAddr:  serverIP.String(),
+				remotePort:    uint16(serverPort),
+			},
+		},
+		"filter_by_laddr_and_rport": {
+			getGadgetParams: func() *params.Params {
+				params := gadget.ParamDescs().ToParams()
+				params.Get(paramFilterLocalAddress).Set(clientIP.String())
+				params.Get(ParamFilterRemotePort).Set(strconv.Itoa(serverPort))
+				return params
+			},
+			expectedResult: expectedResult{
+				exactHistograms: 1,
+				remotePort:      uint16(serverPort),
+			},
+		},
+		"filter_by_raddr_and_lport": {
+			getGadgetParams: func() *params.Params {
+				params := gadget.ParamDescs().ToParams()
+				params.Get(paramFilterRemoteAddress).Set(clientIP.String())
+				params.Get(ParamFilterLocalPort).Set(strconv.Itoa(serverPort))
+				return params
+			},
+			expectedResult: expectedResult{
+				exactHistograms: 1,
+				localPort:       uint16(serverPort),
+			},
+		},
 		// TODO: Test mix cases with clients and servers with different IPs
 	}
 
@@ -624,7 +751,7 @@ func testRunWithResult(t *testing.T, serverPort int, serverIP, clientIP net.IP, 
 			// Dump the result
 			for i, l := range result.Histograms {
 				t.Logf("Result [%d/%d]:", i+1, lHis)
-				t.Logf("AddrType %s - Addr %s - Avg %f", l.AddressType, l.Address, l.Average)
+				t.Logf("AddrType %s - Addr %s - LocalPort %d - RemotePort %d - Avg %f", l.AddressType, l.Address, l.LocalPort, l.RemotePort, l.Average)
 				t.Logf("Histogram: %s", l.Histogram)
 			}
 
@@ -643,6 +770,8 @@ func testRunWithResult(t *testing.T, serverPort int, serverIP, clientIP net.IP, 
 					"wrong number of histograms")
 			}
 
+			lPortFound := false
+			rPortFound := false
 			lAddrFound := false
 			rAddrFound := false
 			for _, h := range result.Histograms {
@@ -669,6 +798,14 @@ func testRunWithResult(t *testing.T, serverPort int, serverIP, clientIP net.IP, 
 					require.Greater(t, h.Average, float64(0))
 				}
 
+				// Validate histogram contains the expected port information
+				if test.expectedResult.localPort != 0 && h.LocalPort == test.expectedResult.localPort {
+					lPortFound = true
+				}
+				if test.expectedResult.remotePort != 0 && h.RemotePort == test.expectedResult.remotePort {
+					rPortFound = true
+				}
+
 				// Validate histogram contains the expected address information
 				if test.expectedResult.byLocalAddr != "" {
 					require.Equal(t, types.AddressTypeLocal, h.AddressType)
@@ -687,6 +824,16 @@ func testRunWithResult(t *testing.T, serverPort int, serverIP, clientIP net.IP, 
 					require.Equal(t, types.WildcardAddress, h.Address)
 				}
 			}
+
+			if test.expectedResult.localPort != 0 {
+				require.True(t, lPortFound,
+					"expected to find histogram with local port %d", test.expectedResult.localPort)
+			}
+			if test.expectedResult.remotePort != 0 {
+				require.True(t, rPortFound,
+					"expected to find histogram with local port %d", test.expectedResult.remotePort)
+			}
+
 			if test.expectedResult.byLocalAddr != "" {
 				require.True(t, lAddrFound,
 					"expected to find histogram with local address %s", test.expectedResult.byLocalAddr)
