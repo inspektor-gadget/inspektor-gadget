@@ -216,6 +216,10 @@ func buildCommandFromGadget(
 			return cmd.ParseFlags(args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
+				return cmd.Help()
+			}
+
 			if c, ok := gadgetDesc.(gadgets.GadgetDescCustomParser); ok {
 				var err error
 				parser, err = c.CustomParser(gadgetParams, cmd.Flags().Args())
