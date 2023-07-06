@@ -17,6 +17,7 @@
 package tracer
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -72,6 +73,13 @@ func (t *Tracer) RunWithResult(gadgetCtx gadgets.GadgetContext) ([]byte, error) 
 		return nil, fmt.Errorf("collecting result: %w", err)
 	}
 	return result, nil
+}
+
+// htons converts an unsigned short integer from host byte order to network byte order.
+func htons(i uint16) uint16 {
+	b := make([]byte, 2)
+	binary.BigEndian.PutUint16(b, i)
+	return *(*uint16)(unsafe.Pointer(&b[0]))
 }
 
 func (t *Tracer) parseParams(params *params.Params) error {
