@@ -33,6 +33,7 @@ func TestSocketEnricherCreate(t *testing.T) {
 	t.Parallel()
 
 	utilstest.RequireRoot(t)
+	utilstest.HostInit(t)
 
 	tracer, err := NewSocketEnricher()
 	if err != nil {
@@ -47,6 +48,7 @@ func TestSocketEnricherStopIdempotent(t *testing.T) {
 	t.Parallel()
 
 	utilstest.RequireRoot(t)
+	utilstest.HostInit(t)
 
 	tracer, _ := NewSocketEnricher()
 
@@ -70,6 +72,7 @@ func TestSocketEnricherBind(t *testing.T) {
 	t.Parallel()
 
 	utilstest.RequireRoot(t)
+	utilstest.HostInit(t)
 
 	type testDefinition struct {
 		runnerConfig  *utilstest.RunnerConfig

@@ -64,6 +64,7 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 	t.Parallel()
 
 	utilstest.RequireRoot(t)
+	utilstest.HostInit(t)
 
 	type testDefinition struct {
 		getTracerConfig func(info *utilstest.RunnerInfo) *Config
