@@ -19,9 +19,9 @@ As a result, Inspektor Gadget is deployed on each node of the cluster as a
 
 Inspektor Gadget provides a trace Custom Resource Definition (CRD) that is used
 to control it. The user interacts with the `kubectl gadget` CLI to create
-tracers in the cluster, this CLI uses the kubeapi-server to create create the
+tracers in the cluster, this CLI uses the kubeapi-server to create the
 corresponding trace CRs on each node. Then, the gadget pod implements a
-kubernetes controller that performs the actions indicated in the CR.
+Kubernetes controller that performs the actions indicated in the CR.
 
 ![k8s trace CRD](images/architecture/k8s_trace.svg)
 
@@ -50,7 +50,7 @@ parameters, and writes them to a ring buffer or eBPF map.
 
 The events gathered by the eBPF program are written to specific kernel buffers.
 The userspace part of Inspektor Gadget reads this events from the buffer and
-publishes them to stream.
+publishes them to a stream.
 This stream is displayed on the developer laptop using, internally the
 `kubectl exec` API.
 
