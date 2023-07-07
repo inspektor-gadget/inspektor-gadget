@@ -23,7 +23,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
 )
 
-func newProfileTCPRTTCmd(flags string, useTimeout bool, node string, unit histogram.Unit, addressType tcprttProfileTypes.AddressType, addr string) *integration.Command {
+func newProfileTCPRTTCmd(flags string, useTimeout bool, node string, unit histogram.Unit, addressType tcprttProfileTypes.AddressType, addr string, localPort uint16, remotePort uint16) *integration.Command {
 	cmd := fmt.Sprintf("%s profile tcprtt -o json %s", integration.DefaultTestComponent, flags)
 
 	if useTimeout {
@@ -40,7 +40,7 @@ func newProfileTCPRTTCmd(flags string, useTimeout bool, node string, unit histog
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tcprttProfileTypes.Report{
 				Histograms: []*tcprttProfileTypes.ExtendedHistogram{
-					tcprttProfileTypes.NewHistogram(unit, nil, addressType, addr, 1, 0, 0),
+					tcprttProfileTypes.NewHistogram(unit, nil, addressType, addr, 1, localPort, remotePort),
 				},
 			}
 
@@ -124,6 +124,8 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			histogram.UnitMicroseconds,
 			tcprttProfileTypes.AddressTypeAll,
 			tcprttProfileTypes.WildcardAddress,
+			0,
+			0,
 		)
 		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
@@ -155,6 +157,8 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			histogram.UnitMicroseconds,
 			tcprttProfileTypes.AddressTypeAll,
 			tcprttProfileTypes.WildcardAddress,
+			0,
+			0,
 		)
 		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
@@ -170,6 +174,8 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			histogram.UnitMicroseconds,
 			tcprttProfileTypes.AddressTypeAll,
 			tcprttProfileTypes.WildcardAddress,
+			0,
+			0,
 		)
 		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
@@ -185,6 +191,8 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			histogram.UnitMicroseconds,
 			tcprttProfileTypes.AddressTypeRemote,
 			serverIP,
+			0,
+			0,
 		)
 		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
@@ -200,6 +208,8 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			histogram.UnitMicroseconds,
 			tcprttProfileTypes.AddressTypeLocal,
 			clientIP,
+			0,
+			0,
 		)
 		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
@@ -215,6 +225,8 @@ func RunTestProfileTCPRTT(t *testing.T) {
 			histogram.UnitMilliseconds,
 			tcprttProfileTypes.AddressTypeAll,
 			tcprttProfileTypes.WildcardAddress,
+			0,
+			0,
 		)
 		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
