@@ -43,8 +43,7 @@ type ContainerdContainer struct {
 }
 
 func (c *ContainerdContainer) Run(t *testing.T) {
-	opts := append(c.options, testutils.WithName(c.name))
-	testutils.RunContainerdContainer(context.Background(), t, c.cmd, opts...)
+	testutils.RunContainerdContainer(context.Background(), t, c.name, c.cmd, c.options...)
 }
 
 func (c *ContainerdContainer) Start(t *testing.T) {
@@ -52,8 +51,7 @@ func (c *ContainerdContainer) Start(t *testing.T) {
 		t.Logf("Warn(%s): trying to start already running container\n", c.name)
 		return
 	}
-	opts := append(c.options, testutils.WithName(c.name), testutils.WithoutRemoval(), testutils.WithoutWait())
-	testutils.RunContainerdContainer(context.Background(), t, c.cmd, opts...)
+	testutils.StartContainerdContainer(context.Background(), t, c.name, c.cmd, c.options...)
 	c.started = true
 }
 

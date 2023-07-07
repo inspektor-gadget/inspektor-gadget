@@ -26,7 +26,7 @@ import (
 	"github.com/docker/docker/client"
 )
 
-func RunDockerContainer(ctx context.Context, t *testing.T, command string, options ...Option) {
+func RunDockerContainer(ctx context.Context, t *testing.T, name, command string, options ...Option) {
 	opts := defaultContainerOptions()
 	for _, o := range options {
 		o(opts)
@@ -38,7 +38,7 @@ func RunDockerContainer(ctx context.Context, t *testing.T, command string, optio
 	}
 	defer cli.Close()
 
-	_ = cli.ContainerRemove(ctx, opts.name, types.ContainerRemoveOptions{})
+	_ = cli.ContainerRemove(ctx, name, types.ContainerRemoveOptions{})
 
 	reader, err := cli.ImagePull(ctx, opts.image, types.ImagePullOptions{})
 	if err != nil {
@@ -55,7 +55,7 @@ func RunDockerContainer(ctx context.Context, t *testing.T, command string, optio
 		Image: opts.image,
 		Cmd:   []string{"/bin/sh", "-c", command},
 		Tty:   false,
-	}, hostConfig, nil, nil, opts.name)
+	}, hostConfig, nil, nil, name)
 	if err != nil {
 		t.Fatalf("Failed to create container: %s", err)
 	}
@@ -85,17 +85,22 @@ func RunDockerContainer(ctx context.Context, t *testing.T, command string, optio
 	}
 
 	if opts.removal {
-		err = cli.ContainerRemove(ctx, opts.name, types.ContainerRemoveOptions{Force: true})
+		err = cli.ContainerRemove(ctx, name, types.ContainerRemoveOptions{Force: true})
 		if err != nil {
 			t.Fatalf("Failed to remove container: %s", err)
 		}
 	}
 }
 
+func StartDockerContainer(ctx context.Context, t *testing.T, name, command string, options ...Option) {
+	opts := append(options, WithoutWait(), WithoutRemoval())
+	RunDockerContainer(context.Background(), t, name, command, opts...)
+}
+
 func RunDockerFailedContainer(ctx context.Context, t *testing.T) {
 	RunDockerContainer(ctx, t,
+		"test-ig-failed-container",
 		"/none",
-		WithName("test-ig-failed-container"),
 		WithoutLogs(),
 		WithoutWait(),
 	)

@@ -7,9 +7,6 @@ import (
 func TestContainerOptions(t *testing.T) {
 	opts := defaultContainerOptions()
 
-	if opts.name != DefaultContainerName {
-		t.Errorf("Expected default container name to be %q", DefaultContainerName)
-	}
 	if opts.image != DefaultContainerImage {
 		t.Errorf("Expected default container image to be %q", DefaultContainerImage)
 	}
