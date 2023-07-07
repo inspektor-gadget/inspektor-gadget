@@ -445,7 +445,7 @@ func (n *RuncNotifier) monitorRuncInstance(bundleDir string, pidFile string) err
 		err = pidFileDirNotify.Mark(unix.FAN_MARK_ADD|unix.FAN_MARK_IGNORED_MASK, unix.FAN_ACCESS_PERM, unix.AT_FDCWD, passwdPath)
 		if err != nil {
 			pidFileDirNotify.File.Close()
-			return fmt.Errorf("marking %s: %w", passwdPath, err)
+			return fmt.Errorf("marking passwd path: %w", err)
 		}
 	}
 
