@@ -16,7 +16,6 @@ package integration
 
 import (
 	"context"
-	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 )
@@ -27,7 +26,7 @@ func (cm *ContainerdManager) NewContainer(name, cmd string, opts ...containerOpt
 	c := &ContainerdContainer{}
 
 	for _, o := range opts {
-		o(&c.containerSpec)
+		o(&c.cOptions)
 	}
 	c.options = append(c.options, testutils.WithContext(context.Background()))
 
@@ -38,25 +37,7 @@ func (cm *ContainerdManager) NewContainer(name, cmd string, opts ...containerOpt
 // ContainerdContainer implements TestStep for containerd containers
 type ContainerdContainer struct {
 	testutils.Container
-	containerSpec
-}
-
-func (c *ContainerdContainer) Run(t *testing.T) {
-	c.Container.Run(t)
-}
-
-func (c *ContainerdContainer) Start(t *testing.T) {
-	if c.started {
-		t.Logf("Warn(%s): trying to start already running container\n", c.Container.Name())
-		return
-	}
-	c.Container.Start(t)
-	c.started = true
-}
-
-func (c *ContainerdContainer) Stop(t *testing.T) {
-	c.Container.Stop(t)
-	c.started = false
+	cOptions
 }
 
 func (c *ContainerdContainer) IsCleanup() bool {
@@ -65,8 +46,4 @@ func (c *ContainerdContainer) IsCleanup() bool {
 
 func (c *ContainerdContainer) IsStartAndStop() bool {
 	return c.startAndStop
-}
-
-func (c *ContainerdContainer) Running() bool {
-	return c.started
 }

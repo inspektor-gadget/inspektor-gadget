@@ -46,40 +46,36 @@ func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 	}
 }
 
-type containerSpec struct {
-	// Options
+type cOptions struct {
 	options      []testutils.Option
 	cleanup      bool
 	startAndStop bool
-
-	// Internal
-	started bool
 }
 
 // containerOption is a function that modifies a ContainerSpec and exposes only
 // few options from testutils.Option to the user.
-type containerOption func(specs *containerSpec)
+type containerOption func(opts *cOptions)
 
 func WithContainerImage(image string) containerOption {
-	return func(specs *containerSpec) {
-		specs.options = append(specs.options, testutils.WithImage(image))
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithImage(image))
 	}
 }
 
 func WithContainerSeccompProfile(profile string) containerOption {
-	return func(specs *containerSpec) {
-		specs.options = append(specs.options, testutils.WithSeccompProfile(profile))
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithSeccompProfile(profile))
 	}
 }
 
 func WithCleanup() containerOption {
-	return func(specs *containerSpec) {
-		specs.cleanup = true
+	return func(opts *cOptions) {
+		opts.cleanup = true
 	}
 }
 
 func WithStartAndStop() containerOption {
-	return func(specs *containerSpec) {
-		specs.startAndStop = true
+	return func(opts *cOptions) {
+		opts.startAndStop = true
 	}
 }

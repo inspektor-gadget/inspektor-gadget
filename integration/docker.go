@@ -16,7 +16,6 @@ package integration
 
 import (
 	"context"
-	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 )
@@ -27,7 +26,7 @@ func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption)
 	c := &DockerContainer{}
 
 	for _, o := range opts {
-		o(&c.containerSpec)
+		o(&c.cOptions)
 	}
 	c.options = append(c.options, testutils.WithContext(context.Background()))
 
@@ -38,25 +37,7 @@ func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption)
 // DockerContainer implements TestStep for docker containers
 type DockerContainer struct {
 	testutils.Container
-	containerSpec
-}
-
-func (d *DockerContainer) Run(t *testing.T) {
-	d.Container.Run(t)
-}
-
-func (d *DockerContainer) Start(t *testing.T) {
-	if d.started {
-		t.Logf("Warn(%s): trying to start already running container\n", d.Container.Name())
-		return
-	}
-	d.Container.Start(t)
-	d.started = true
-}
-
-func (d *DockerContainer) Stop(t *testing.T) {
-	d.Container.Stop(t)
-	d.started = false
+	cOptions
 }
 
 func (d *DockerContainer) IsCleanup() bool {
@@ -65,8 +46,4 @@ func (d *DockerContainer) IsCleanup() bool {
 
 func (d *DockerContainer) IsStartAndStop() bool {
 	return d.startAndStop
-}
-
-func (d *DockerContainer) Running() bool {
-	return d.started
 }

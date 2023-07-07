@@ -44,8 +44,8 @@ type DockerContainer struct {
 	containerSpec
 }
 
-func (d *DockerContainer) Name() string {
-	return d.name
+func (d *DockerContainer) Running() bool {
+	return d.started
 }
 
 func (d *DockerContainer) ID() string {
@@ -124,6 +124,15 @@ func (d *DockerContainer) Run(t *testing.T) {
 }
 
 func (d *DockerContainer) Start(t *testing.T) {
+	if d.started {
+		t.Logf("Warn(%s): trying to start already running container\n", d.name)
+		return
+	}
+	d.start(t)
+	d.started = true
+}
+
+func (d *DockerContainer) start(t *testing.T) {
 	for _, o := range []Option{WithoutWait(), WithoutRemoval()} {
 		o(d.options)
 	}
@@ -131,6 +140,11 @@ func (d *DockerContainer) Start(t *testing.T) {
 }
 
 func (d *DockerContainer) Stop(t *testing.T) {
+	d.stop(t)
+	d.started = false
+}
+
+func (d *DockerContainer) stop(t *testing.T) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		t.Fatalf("Failed to connect to Docker: %s", err)

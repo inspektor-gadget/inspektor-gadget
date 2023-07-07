@@ -27,17 +27,18 @@ type containerSpec struct {
 	options *containerOptions
 
 	// Internal state
-	id  string
-	pid int
+	id      string
+	pid     int
+	started bool
 }
 
 type Container interface {
-	Name() string
 	Run(t *testing.T)
 	Start(t *testing.T)
 	Stop(t *testing.T)
 	ID() string
 	Pid() int
+	Running() bool
 }
 
 var SupportedContainerRuntimes = []types.RuntimeName{

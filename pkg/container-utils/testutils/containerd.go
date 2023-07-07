@@ -52,8 +52,8 @@ type ContainerdContainer struct {
 	containerSpec
 }
 
-func (c *ContainerdContainer) Name() string {
-	return c.name
+func (c *ContainerdContainer) Running() bool {
+	return c.started
 }
 
 func (c *ContainerdContainer) ID() string {
@@ -166,6 +166,15 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 }
 
 func (c *ContainerdContainer) Start(t *testing.T) {
+	if c.started {
+		t.Logf("Warn(%s): trying to start already running container\n", c.name)
+		return
+	}
+	c.start(t)
+	c.started = true
+}
+
+func (c *ContainerdContainer) start(t *testing.T) {
 	for _, o := range []Option{WithoutWait(), WithoutRemoval()} {
 		o(c.options)
 	}
@@ -173,6 +182,11 @@ func (c *ContainerdContainer) Start(t *testing.T) {
 }
 
 func (c *ContainerdContainer) Stop(t *testing.T) {
+	c.stop(t)
+	c.started = false
+}
+
+func (c *ContainerdContainer) stop(t *testing.T) {
 	client, err := containerd.New("/run/containerd/containerd.sock",
 		containerd.WithTimeout(3*time.Second),
 	)
