@@ -24,39 +24,38 @@ import (
 type ContainerdManager struct{}
 
 func (cm *ContainerdManager) NewContainer(name, cmd string, opts ...containerOption) ContainerInterface {
-	c := &ContainerdContainer{
-		containerSpec: containerSpec{
-			name: name,
-			cmd:  cmd,
-		},
-	}
+	c := &ContainerdContainer{}
+
 	for _, o := range opts {
 		o(&c.containerSpec)
 	}
+	c.options = append(c.options, testutils.WithContext(context.Background()))
+
+	c.Container = testutils.NewContainerdContainer(name, cmd, c.options...)
 	return c
 }
 
 // ContainerdContainer implements TestStep for containerd containers
 type ContainerdContainer struct {
+	testutils.Container
 	containerSpec
-	started bool
 }
 
 func (c *ContainerdContainer) Run(t *testing.T) {
-	testutils.RunContainerdContainer(context.Background(), t, c.name, c.cmd, c.options...)
+	c.Container.Run(t)
 }
 
 func (c *ContainerdContainer) Start(t *testing.T) {
 	if c.started {
-		t.Logf("Warn(%s): trying to start already running container\n", c.name)
+		t.Logf("Warn(%s): trying to start already running container\n", c.Container.Name())
 		return
 	}
-	testutils.StartContainerdContainer(context.Background(), t, c.name, c.cmd, c.options...)
+	c.Container.Start(t)
 	c.started = true
 }
 
 func (c *ContainerdContainer) Stop(t *testing.T) {
-	testutils.StopContainerdContainer(context.Background(), t, c.name)
+	c.Container.Stop(t)
 	c.started = false
 }
 

@@ -14,6 +14,8 @@
 
 package testutils
 
+import "context"
+
 const (
 	DefaultContainerImage    = "docker.io/library/busybox"
 	DefaultContainerImageTag = "latest"
@@ -22,6 +24,7 @@ const (
 type Option func(*containerOptions)
 
 type containerOptions struct {
+	ctx            context.Context
 	image          string
 	imageTag       string
 	seccompProfile string
@@ -32,11 +35,18 @@ type containerOptions struct {
 
 func defaultContainerOptions() *containerOptions {
 	return &containerOptions{
+		ctx:      context.TODO(),
 		image:    DefaultContainerImage,
 		imageTag: DefaultContainerImageTag,
 		logs:     true,
 		wait:     true,
 		removal:  true,
+	}
+}
+
+func WithContext(ctx context.Context) Option {
+	return func(opts *containerOptions) {
+		opts.ctx = ctx
 	}
 }
 

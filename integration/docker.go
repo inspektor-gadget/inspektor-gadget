@@ -24,40 +24,38 @@ import (
 type DockerManager struct{}
 
 func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption) ContainerInterface {
-	c := &DockerContainer{
-		containerSpec: containerSpec{
-			name: name,
-			cmd:  cmd,
-		},
-	}
+	c := &DockerContainer{}
+
 	for _, o := range opts {
 		o(&c.containerSpec)
 	}
+	c.options = append(c.options, testutils.WithContext(context.Background()))
+
+	c.Container = testutils.NewDockerContainer(name, cmd, c.options...)
 	return c
 }
 
 // DockerContainer implements TestStep for docker containers
 type DockerContainer struct {
+	testutils.Container
 	containerSpec
-
-	started bool
 }
 
 func (d *DockerContainer) Run(t *testing.T) {
-	testutils.RunDockerContainer(context.Background(), t, d.name, d.cmd, d.options...)
+	d.Container.Run(t)
 }
 
 func (d *DockerContainer) Start(t *testing.T) {
 	if d.started {
-		t.Logf("Warn(%s): trying to start already running container\n", d.name)
+		t.Logf("Warn(%s): trying to start already running container\n", d.Container.Name())
 		return
 	}
-	testutils.StartDockerContainer(context.Background(), t, d.name, d.cmd, d.options...)
+	d.Container.Start(t)
 	d.started = true
 }
 
 func (d *DockerContainer) Stop(t *testing.T) {
-	testutils.StopDockerContainer(context.Background(), t, d.name)
+	d.Container.Stop(t)
 	d.started = false
 }
 

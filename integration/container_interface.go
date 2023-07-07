@@ -47,11 +47,13 @@ func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 }
 
 type containerSpec struct {
-	name         string
-	cmd          string
+	// Options
 	options      []testutils.Option
 	cleanup      bool
 	startAndStop bool
+
+	// Internal
+	started bool
 }
 
 // containerOption is a function that modifies a ContainerSpec and exposes only

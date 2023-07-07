@@ -34,14 +34,39 @@ const (
 	defaultNamespace = "k8s.io"
 )
 
-func RunContainerdContainer(ctx context.Context, t *testing.T, name, command string, options ...Option) {
-	opts := defaultContainerOptions()
-	for _, o := range options {
-		o(opts)
+func NewContainerdContainer(name, cmd string, options ...Option) Container {
+	c := &ContainerdContainer{
+		containerSpec: containerSpec{
+			name:    name,
+			cmd:     cmd,
+			options: defaultContainerOptions(),
+		},
 	}
+	for _, o := range options {
+		o(c.options)
+	}
+	return c
+}
 
-	nsCtx := namespaces.WithNamespace(ctx, defaultNamespace)
-	fullImage := getFullImage(opts)
+type ContainerdContainer struct {
+	containerSpec
+}
+
+func (c *ContainerdContainer) Name() string {
+	return c.name
+}
+
+func (c *ContainerdContainer) ID() string {
+	return c.id
+}
+
+func (c *ContainerdContainer) Pid() int {
+	return c.pid
+}
+
+func (c *ContainerdContainer) Run(t *testing.T) {
+	nsCtx := namespaces.WithNamespace(c.options.ctx, defaultNamespace)
+	fullImage := getFullImage(c.options)
 
 	client, err := containerd.New("/run/containerd/containerd.sock",
 		containerd.WithTimeout(3*time.Second),
@@ -71,88 +96,83 @@ func RunContainerdContainer(ctx context.Context, t *testing.T, name, command str
 	specOpts = append(specOpts, oci.WithDefaultSpec())
 	specOpts = append(specOpts, oci.WithDefaultUnixDevices)
 	specOpts = append(specOpts, oci.WithImageConfig(image))
-	if len(command) != 0 {
-		specOpts = append(specOpts, oci.WithProcessArgs("/bin/sh", "-c", command))
+	if len(c.cmd) != 0 {
+		specOpts = append(specOpts, oci.WithProcessArgs("/bin/sh", "-c", c.cmd))
 	}
-	if opts.seccompProfile != "" {
+	if c.options.seccompProfile != "" {
 		t.Fatalf("testutils/containerd: seccomp profiles are not supported yet")
 	}
 
 	var spec specs.Spec
-	container, err := client.NewContainer(nsCtx, name,
+	container, err := client.NewContainer(nsCtx, c.name,
 		containerd.WithImage(image),
 		containerd.WithImageConfigLabels(image),
 		containerd.WithAdditionalContainerLabels(image.Labels()),
 		containerd.WithSnapshotter(""),
-		containerd.WithNewSnapshot(name, image, snapshots.WithLabels(map[string]string{})),
+		containerd.WithNewSnapshot(c.name, image, snapshots.WithLabels(map[string]string{})),
 		containerd.WithImageStopSignal(image, "SIGTERM"),
 		containerd.WithSpec(&spec, specOpts...),
 	)
 	if err != nil {
-		t.Fatalf("Failed to create container %q: %s", name, err)
+		t.Fatalf("Failed to create container %q: %s", c.name, err)
 	}
+	c.id = container.ID()
 
 	containerIO := cio.NullIO
 	output := &strings.Builder{}
-	if opts.logs {
+	if c.options.logs {
 		containerIO = cio.NewCreator(cio.WithStreams(nil, output, output))
 	}
 	// Now create and start the task
 	task, err := container.NewTask(nsCtx, containerIO)
 	if err != nil {
 		container.Delete(nsCtx, containerd.WithSnapshotCleanup)
-		t.Fatalf("Failed to create task %q: %s", name, err)
+		t.Fatalf("Failed to create task %q: %s", c.name, err)
 	}
 
 	err = task.Start(nsCtx)
 	if err != nil {
 		container.Delete(nsCtx, containerd.WithSnapshotCleanup)
-		t.Fatalf("Failed to start task %q: %s", name, err)
+		t.Fatalf("Failed to start task %q: %s", c.name, err)
 	}
+	c.pid = int(task.Pid())
 
-	if opts.wait {
+	if c.options.wait {
 		exitStatus, err := task.Wait(nsCtx)
 		if err != nil {
-			t.Fatalf("Failed to wait on task %q: %s", name, err)
+			t.Fatalf("Failed to wait on task %q: %s", c.name, err)
 		}
 		s := <-exitStatus
 		if s.ExitCode() != 0 {
-			t.Logf("Exitcode for task %q: %d", name, s.ExitCode())
+			t.Logf("Exitcode for task %q: %d", c.name, s.ExitCode())
 		}
 	}
 
-	if opts.logs {
-		t.Logf("Container %q output:\n%s", name, output.String())
+	if c.options.logs {
+		t.Logf("Container %q output:\n%s", c.name, output.String())
 	}
 
-	if opts.removal {
+	if c.options.removal {
 		task.Kill(nsCtx, syscall.SIGKILL)
 		_, err = task.Delete(nsCtx)
 		if err != nil {
-			t.Fatalf("Failed to delete task %q: %s", name, err)
+			t.Fatalf("Failed to delete task %q: %s", c.name, err)
 		}
 		err = container.Delete(nsCtx, containerd.WithSnapshotCleanup)
 		if err != nil {
-			t.Fatalf("Failed to delete container %q: %s", name, err)
+			t.Fatalf("Failed to delete container %q: %s", c.name, err)
 		}
 	}
 }
 
-func StartContainerdContainer(ctx context.Context, t *testing.T, name, command string, options ...Option) {
-	opts := append(options, WithoutWait(), WithoutRemoval())
-	RunContainerdContainer(context.Background(), t, name, command, opts...)
+func (c *ContainerdContainer) Start(t *testing.T) {
+	for _, o := range []Option{WithoutWait(), WithoutRemoval()} {
+		o(c.options)
+	}
+	c.Run(t)
 }
 
-func RunContainerdFailedContainer(ctx context.Context, t *testing.T) {
-	RunContainerdContainer(ctx, t,
-		"test-ig-failed-container",
-		"/none",
-		WithoutLogs(),
-		WithoutWait(),
-	)
-}
-
-func StopContainerdContainer(ctx context.Context, t *testing.T, name string) {
+func (c *ContainerdContainer) Stop(t *testing.T) {
 	client, err := containerd.New("/run/containerd/containerd.sock",
 		containerd.WithTimeout(3*time.Second),
 	)
@@ -160,31 +180,35 @@ func StopContainerdContainer(ctx context.Context, t *testing.T, name string) {
 		t.Fatalf("Failed to connect to containerd: %s", err)
 	}
 
-	nsCtx := namespaces.WithNamespace(ctx, defaultNamespace)
-	container, err := client.LoadContainer(nsCtx, name)
+	nsCtx := namespaces.WithNamespace(c.options.ctx, defaultNamespace)
+	container, err := client.LoadContainer(nsCtx, c.name)
 	if err != nil {
-		t.Fatalf("Failed to get container %q: %s", name, err)
+		t.Fatalf("Failed to get container %q: %s", c.name, err)
 	}
 
 	task, err := container.Task(nsCtx, nil)
 	if err != nil {
-		t.Fatalf("Failed to get task %q: %s", name, err)
+		t.Fatalf("Failed to get task %q: %s", c.name, err)
 	}
 
 	task.Kill(nsCtx, syscall.SIGKILL)
 	_, err = task.Delete(nsCtx)
 	if err != nil {
-		t.Fatalf("Failed to delete task %q: %s", name, err)
+		t.Fatalf("Failed to delete task %q: %s", c.name, err)
 	}
 	err = container.Delete(nsCtx, containerd.WithSnapshotCleanup)
 	if err != nil {
-		t.Fatalf("Failed to delete container %q: %s", name, err)
+		t.Fatalf("Failed to delete container %q: %s", c.name, err)
 	}
 }
 
-func getFullImage(opts *containerOptions) string {
-	if strings.Contains(opts.image, ":") {
-		return opts.image
+func getFullImage(options *containerOptions) string {
+	if strings.Contains(options.image, ":") {
+		return options.image
 	}
-	return opts.image + ":" + opts.imageTag
+	return options.image + ":" + options.imageTag
+}
+
+func RunContainerdFailedContainer(ctx context.Context, t *testing.T) {
+	NewContainerdContainer("test-ig-failed-container", "/none", WithoutLogs(), WithoutWait(), WithContext(ctx)).Run(t)
 }
