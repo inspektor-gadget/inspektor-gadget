@@ -605,7 +605,7 @@ func (n *RuncNotifier) parseOCIRuntime(comm string, cmdlineArr []string) {
 			log.Errorf("empty pid file")
 			return
 		}
-		containerPID, err := strconv.Atoi(string(pidFileContent))
+		containerPID, err := strconv.ParseUint(string(pidFileContent), 10, 32)
 		if err != nil {
 			log.Errorf("error parsing pid file: %v\n", err)
 			return
