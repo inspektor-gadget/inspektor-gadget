@@ -146,6 +146,23 @@ func RunTestProfileTCPRTT(t *testing.T) {
 	// 	integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	// })
 
+	t.Run("FilterRemotePort", func(t *testing.T) {
+		t.Parallel()
+
+		flags := "--rport 80"
+		topTCPCmd := newProfileTCPRTTCmd(
+			flags,
+			true,
+			clientNode,
+			histogram.UnitMicroseconds,
+			tcprttProfileTypes.AddressTypeAll,
+			tcprttProfileTypes.WildcardAddress,
+			0,
+			80,
+		)
+		integration.RunTestSteps([]*integration.Command{topTCPCmd}, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
+	})
+
 	t.Run("FilterRemoteAddr", func(t *testing.T) {
 		t.Parallel()
 
