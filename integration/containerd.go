@@ -23,46 +23,53 @@ import (
 
 type ContainerdManager struct{}
 
-func (*ContainerdManager) NewContainer(spec ContainerSpec) ContainerInterface {
-	return &ContainerdContainer{
-		ContainerSpec: spec,
+func (cm *ContainerdManager) NewContainer(name, cmd string, opts ...containerOption) ContainerInterface {
+	c := &ContainerdContainer{
+		containerSpec: containerSpec{
+			name: name,
+			cmd:  cmd,
+		},
 	}
+	for _, o := range opts {
+		o(&c.containerSpec)
+	}
+	return c
 }
 
 // ContainerdContainer implements TestStep for containerd containers
 type ContainerdContainer struct {
-	ContainerSpec
+	containerSpec
 	started bool
 }
 
-func (d *ContainerdContainer) Run(t *testing.T) {
-	opts := append(optionsFromContainerOptions(d.Options), testutils.WithName(d.Name))
-	testutils.RunContainerdContainer(context.Background(), t, d.Cmd, opts...)
+func (c *ContainerdContainer) Run(t *testing.T) {
+	opts := append(c.options, testutils.WithName(c.name))
+	testutils.RunContainerdContainer(context.Background(), t, c.cmd, opts...)
 }
 
-func (d *ContainerdContainer) Start(t *testing.T) {
-	if d.started {
-		t.Logf("Warn(%s): trying to start already running container\n", d.Name)
+func (c *ContainerdContainer) Start(t *testing.T) {
+	if c.started {
+		t.Logf("Warn(%s): trying to start already running container\n", c.name)
 		return
 	}
-	opts := append(optionsFromContainerOptions(d.Options), testutils.WithName(d.Name), testutils.WithoutRemoval(), testutils.WithoutWait())
-	testutils.RunContainerdContainer(context.Background(), t, d.Cmd, opts...)
-	d.started = true
+	opts := append(c.options, testutils.WithName(c.name), testutils.WithoutRemoval(), testutils.WithoutWait())
+	testutils.RunContainerdContainer(context.Background(), t, c.cmd, opts...)
+	c.started = true
 }
 
-func (d *ContainerdContainer) Stop(t *testing.T) {
-	testutils.RemoveContainerdContainer(context.Background(), t, d.Name)
-	d.started = false
+func (c *ContainerdContainer) Stop(t *testing.T) {
+	testutils.RemoveContainerdContainer(context.Background(), t, c.name)
+	c.started = false
 }
 
-func (d *ContainerdContainer) IsCleanup() bool {
-	return d.Cleanup
+func (c *ContainerdContainer) IsCleanup() bool {
+	return c.cleanup
 }
 
-func (d *ContainerdContainer) IsStartAndStop() bool {
-	return d.StartAndStop
+func (c *ContainerdContainer) IsStartAndStop() bool {
+	return c.startAndStop
 }
 
-func (d *ContainerdContainer) Running() bool {
-	return d.started
+func (c *ContainerdContainer) Running() bool {
+	return c.started
 }

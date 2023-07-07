@@ -60,11 +60,7 @@ func TestSnapshotProcess(t *testing.T) {
 	}
 
 	testSteps := []TestStep{
-		containerFactory.NewContainer(ContainerSpec{
-			Name:         cn,
-			Cmd:          "nc -l -p 9090",
-			StartAndStop: true,
-		}),
+		containerFactory.NewContainer(cn, "nc -l -p 9090", WithStartAndStop()),
 		snapshotProcessCmd,
 	}
 

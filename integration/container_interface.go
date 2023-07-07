@@ -22,16 +22,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type ContainerSpec struct {
-	Name         string
-	Cmd          string
-	Options      []containerOption
-	Cleanup      bool
-	StartAndStop bool
-}
-
 type ContainerFactory interface {
-	NewContainer(ContainerSpec) ContainerInterface
+	NewContainer(name, cmd string, opts ...containerOption) ContainerInterface
 }
 
 type ContainerInterface interface {
@@ -54,35 +46,38 @@ func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 	}
 }
 
-// containerdOption wraps testutils.Option to allow certain values only
-type containerOption struct {
-	opt          testutils.Option
-	Name         string
-	Cmd          string
-	Cleanup      bool
-	StartAndStop bool
+type containerSpec struct {
+	name         string
+	cmd          string
+	options      []testutils.Option
+	cleanup      bool
+	startAndStop bool
 }
 
-func NewContainerOptions(opts ...containerOption) []containerOption {
-	return opts
-}
-
-func optionsFromContainerOptions(containerOption []containerOption) []testutils.Option {
-	var opts []testutils.Option
-	for _, do := range containerOption {
-		opts = append(opts, do.opt)
-	}
-	return opts
-}
-
-func WithName(name string) containerOption {
-	return containerOption{opt: testutils.WithName(name)}
-}
+// containerOption is a function that modifies a ContainerSpec and exposes only
+// few options from testutils.Option to the user.
+type containerOption func(specs *containerSpec)
 
 func WithContainerImage(image string) containerOption {
-	return containerOption{opt: testutils.WithImage(image)}
+	return func(specs *containerSpec) {
+		specs.options = append(specs.options, testutils.WithImage(image))
+	}
 }
 
 func WithContainerSeccompProfile(profile string) containerOption {
-	return containerOption{opt: testutils.WithSeccompProfile(profile)}
+	return func(specs *containerSpec) {
+		specs.options = append(specs.options, testutils.WithSeccompProfile(profile))
+	}
+}
+
+func WithCleanup() containerOption {
+	return func(specs *containerSpec) {
+		specs.cleanup = true
+	}
+}
+
+func WithStartAndStop() containerOption {
+	return func(specs *containerSpec) {
+		specs.startAndStop = true
+	}
 }

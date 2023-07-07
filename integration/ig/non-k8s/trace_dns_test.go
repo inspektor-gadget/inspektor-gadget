@@ -144,11 +144,7 @@ func TestTraceDns(t *testing.T) {
 	testSteps := []TestStep{
 		traceDNSCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		containerFactory.NewContainer(ContainerSpec{
-			Name:    cn,
-			Cmd:     strings.Join(dnsCmds, " ; "),
-			Options: NewContainerOptions(WithContainerImage(*dnsTesterImage)),
-		}),
+		containerFactory.NewContainer(cn, strings.Join(dnsCmds, " ; "), WithContainerImage(*dnsTesterImage)),
 	}
 
 	RunTestSteps(testSteps, t)

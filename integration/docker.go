@@ -23,45 +23,52 @@ import (
 
 type DockerManager struct{}
 
-func (*DockerManager) NewContainer(spec ContainerSpec) ContainerInterface {
-	return &DockerContainer{
-		ContainerSpec: spec,
+func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption) ContainerInterface {
+	c := &DockerContainer{
+		containerSpec: containerSpec{
+			name: name,
+			cmd:  cmd,
+		},
 	}
+	for _, o := range opts {
+		o(&c.containerSpec)
+	}
+	return c
 }
 
 // DockerContainer implements TestStep for docker containers
 type DockerContainer struct {
-	ContainerSpec
+	containerSpec
 
 	started bool
 }
 
 func (d *DockerContainer) Run(t *testing.T) {
-	opts := append(optionsFromContainerOptions(d.Options), testutils.WithName(d.Name))
-	testutils.RunDockerContainer(context.Background(), t, d.Cmd, opts...)
+	opts := append(d.options, testutils.WithName(d.name))
+	testutils.RunDockerContainer(context.Background(), t, d.cmd, opts...)
 }
 
 func (d *DockerContainer) Start(t *testing.T) {
 	if d.started {
-		t.Logf("Warn(%s): trying to start already running container\n", d.Name)
+		t.Logf("Warn(%s): trying to start already running container\n", d.name)
 		return
 	}
-	opts := append(optionsFromContainerOptions(d.Options), testutils.WithName(d.Name), testutils.WithoutRemoval(), testutils.WithoutWait())
-	testutils.RunDockerContainer(context.Background(), t, d.Cmd, opts...)
+	opts := append(d.options, testutils.WithName(d.name), testutils.WithoutRemoval(), testutils.WithoutWait())
+	testutils.RunDockerContainer(context.Background(), t, d.cmd, opts...)
 	d.started = true
 }
 
 func (d *DockerContainer) Stop(t *testing.T) {
-	testutils.RemoveDockerContainer(context.Background(), t, d.Name)
+	testutils.RemoveDockerContainer(context.Background(), t, d.name)
 	d.started = false
 }
 
 func (d *DockerContainer) IsCleanup() bool {
-	return d.Cleanup
+	return d.cleanup
 }
 
 func (d *DockerContainer) IsStartAndStop() bool {
-	return d.StartAndStop
+	return d.startAndStop
 }
 
 func (d *DockerContainer) Running() bool {
