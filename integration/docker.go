@@ -59,7 +59,7 @@ func (d *DockerContainer) Start(t *testing.T) {
 }
 
 func (d *DockerContainer) Stop(t *testing.T) {
-	testutils.RemoveDockerContainer(context.Background(), t, d.name)
+	testutils.StopDockerContainer(context.Background(), t, d.name)
 	d.started = false
 }
 

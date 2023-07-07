@@ -147,7 +147,7 @@ func RunContainerdFailedContainer(ctx context.Context, t *testing.T) {
 	)
 }
 
-func RemoveContainerdContainer(ctx context.Context, t *testing.T, name string) {
+func StopContainerdContainer(ctx context.Context, t *testing.T, name string) {
 	client, err := containerd.New("/run/containerd/containerd.sock",
 		containerd.WithTimeout(3*time.Second),
 	)

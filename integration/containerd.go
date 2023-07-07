@@ -58,7 +58,7 @@ func (c *ContainerdContainer) Start(t *testing.T) {
 }
 
 func (c *ContainerdContainer) Stop(t *testing.T) {
-	testutils.RemoveContainerdContainer(context.Background(), t, c.name)
+	testutils.StopContainerdContainer(context.Background(), t, c.name)
 	c.started = false
 }
 

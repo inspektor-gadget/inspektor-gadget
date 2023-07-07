@@ -101,7 +101,7 @@ func RunDockerFailedContainer(ctx context.Context, t *testing.T) {
 	)
 }
 
-func RemoveDockerContainer(ctx context.Context, t *testing.T, name string) {
+func StopDockerContainer(ctx context.Context, t *testing.T, name string) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		t.Fatalf("Failed to connect to Docker: %s", err)
