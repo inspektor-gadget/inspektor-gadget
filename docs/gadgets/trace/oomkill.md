@@ -43,7 +43,7 @@ NODE             NAMESPACE        POD              CONTAINER        KPID   KCOMM
 minikube         oomkill-demo     test-pod         test-container   11507  tail             32768  11507            tail
 ```
 
-The printed lined corresponds to the killing of the `perl` process by the OOM killer.
+The printed lined corresponds to the killing of the `tail` process by the OOM killer.
 Here is the full legend of all the fields:
 
 * `KPID`: The PID of the process killed by the OOM killer (KilledPID).
