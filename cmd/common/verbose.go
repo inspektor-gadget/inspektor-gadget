@@ -19,8 +19,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var verbose bool
+
+func checkVerboseFlag() {
+	if verbose {
+		log.SetLevel(log.DebugLevel)
+	}
+}
+
 func AddVerboseFlag(rootCmd *cobra.Command) {
-	var verbose bool
 	rootCmd.PersistentFlags().BoolVarP(
 		&verbose,
 		"verbose", "v",
@@ -28,8 +35,6 @@ func AddVerboseFlag(rootCmd *cobra.Command) {
 		"Print debug information",
 	)
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		if verbose {
-			log.SetLevel(log.DebugLevel)
-		}
+		checkVerboseFlag()
 	}
 }

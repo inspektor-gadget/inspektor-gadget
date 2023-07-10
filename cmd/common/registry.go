@@ -207,15 +207,36 @@ func buildCommandFromGadget(
 	//  Example use case: setting default namespace for kubernetes
 
 	cmd := &cobra.Command{
-		Use:                gadgetDesc.Name(),
-		Short:              gadgetDesc.Description(),
-		SilenceUsage:       true, // do not print usage when there is an error
+		Use:          gadgetDesc.Name(),
+		Short:        gadgetDesc.Description(),
+		SilenceUsage: true, // do not print usage when there is an error
+
+		// We have to disable flag parsing in here to be able to handle certain
+		// flags more dynamically and have `--help` also react to those changes.
+		// Instead, we need to manually
+		// * call cmd.ParseFlags()
+		// * handle `--help` after changing the params dynamically
+		// * handle everything that could have been handled inside
+		//   `PersistentPreRun(E)` of a parent cmd, as the flags wouldn't have
+		//   been parsed there (e.g. --verbose)
 		DisableFlagParsing: true,
+
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			// we need to re-enable flag parsing, as cmd.ParseFlags() would not
+			// do anything otherwise
 			cmd.DisableFlagParsing = false
 			return cmd.ParseFlags(args)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			// args from RunE still contains all flags, since we manually parsed them,
+			// so we need to manually pull the remaining args here
+			args := cmd.Flags().Args()
+
+			// we also manually need to check the verbose flag, as PersistentPreRunE in
+			// verbose.go will not have the correct information due to manually parsing
+			// the flags
+			checkVerboseFlag()
+
 			if c, ok := gadgetDesc.(gadgets.GadgetDescCustomParser); ok {
 				var err error
 				parser, err = c.CustomParser(gadgetParams, cmd.Flags().Args())
@@ -233,9 +254,10 @@ func buildCommandFromGadget(
 				outputFormatsHelp := buildOutputFormatsHelp(outputFormats)
 				cmd.Flags().Lookup("output").Usage = strings.Join(outputFormatsHelp, "\n") + "\n\n"
 				cmd.Flags().Lookup("output").DefValue = "columns"
-				if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
-					return cmd.Help()
-				}
+			}
+
+			if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
+				return cmd.Help()
 			}
 
 			err := runtime.Init(runtimeGlobalParams)
