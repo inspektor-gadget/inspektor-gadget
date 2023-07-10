@@ -496,7 +496,7 @@ func buildCommandFromGadget(
 				}
 				parser.SetEventCallback(jsonCallback)
 			case OutputModeJSONPretty:
-				jsonPrettyCallback := printEventAsJSONFn(fe)
+				jsonPrettyCallback := printEventAsJSONPrettyFn(fe)
 				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONPrettyConverter); ok {
 					jsonPrettyCallback = cjson.JSONPrettyConverter(gadgetParams, fe)
 				}
