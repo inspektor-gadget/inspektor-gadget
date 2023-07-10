@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -585,15 +586,13 @@ func TestMetrics(t *testing.T) {
 			require.Equal(t, len(test.expectedFloat64Counters), len(meter.float64counters))
 			require.Equal(t, len(test.expectedInt64Gauges), len(meter.int64gauges))
 
-			// TODO: timeout?
-			// https://stackoverflow.com/questions/32840687/timeout-for-waitgroup-wait
-
 			// Collect metrics: Update gauges
 			err = meter.Collect(ctx)
 			require.Nil(t, err, "failed to collect metrics")
 
 			// wait for the tracers to run
-			wg.Wait()
+			err = waitTimeout(wg, 5*time.Second)
+			require.Nil(t, err, "waiting timeout: %s", err)
 
 			// int64 counters
 			for name, expected := range test.expectedInt64Counters {
@@ -629,5 +628,24 @@ func TestMetrics(t *testing.T) {
 				require.InDeltaMapValues(t, expected, gauge.values, 0.01, "gauge values are wrong")
 			}
 		})
+	}
+}
+
+// Based on https://github.com/embano1/waitgroup/blob/e5229ff7bc061f391c12f2be244bb50f030a6688/waitgroup.go#L27
+func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) error {
+	doneCh := make(chan struct{})
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	go func() {
+		wg.Wait()
+		close(doneCh)
+	}()
+
+	select {
+	case <-timer.C:
+		return fmt.Errorf("timed out")
+	case <-doneCh:
+		return nil
 	}
 }
