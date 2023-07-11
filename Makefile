@@ -94,7 +94,7 @@ ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 ig-%: phony_explicit
 	echo Building $@
 	docker buildx build --load --platform=$(subst -,/,$*) -t $@ -f Dockerfiles/ig.Dockerfile \
-		--build-arg VERSION=$(VERSION) . ;\
+		--build-arg VERSION=$(VERSION) .
 	docker create --name ig-$*-container $@
 	docker cp ig-$*-container:/usr/bin/ig $@
 	docker rm ig-$*-container
