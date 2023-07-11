@@ -8,3 +8,6 @@ rules:
     resources: ["pods"]
     # update is needed by traceloop gadget.
     verbs: ["update"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "watch", "list", "create", "delete", "patch", "update"]
