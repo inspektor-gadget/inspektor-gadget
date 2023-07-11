@@ -31,6 +31,11 @@ import (
 const (
 	OutputModeJSON          = "json"
 	OutputModeCustomColumns = "custom-columns"
+
+	DockerSocketPathFlag     = "docker-socketpath"
+	ContainerdSocketPathFlag = "containerd-socketpath"
+	CrioSocketPathFlag       = "crio-socketpath"
+	PodmanSocketPathFlag     = "podman-socketpath"
 )
 
 var SupportedOutputModes = []string{OutputModeJSON, OutputModeCustomColumns}
@@ -108,28 +113,28 @@ type RuntimesSocketPathConfig struct {
 func AddRuntimesSocketPathFlags(command *cobra.Command, config *RuntimesSocketPathConfig) {
 	command.PersistentFlags().StringVarP(
 		&config.Docker,
-		"docker-socketpath", "",
+		DockerSocketPathFlag, "",
 		runtimeclient.DockerDefaultSocketPath,
 		"Docker Engine API Unix socket path",
 	)
 
 	command.PersistentFlags().StringVarP(
 		&config.Containerd,
-		"containerd-socketpath", "",
+		ContainerdSocketPathFlag, "",
 		runtimeclient.ContainerdDefaultSocketPath,
 		"containerd CRI Unix socket path",
 	)
 
 	command.PersistentFlags().StringVarP(
 		&config.Crio,
-		"crio-socketpath", "",
+		CrioSocketPathFlag, "",
 		runtimeclient.CrioDefaultSocketPath,
 		"CRI-O CRI Unix socket path",
 	)
 
 	command.PersistentFlags().StringVarP(
 		&config.Podman,
-		"podman-socketpath", "",
+		PodmanSocketPathFlag, "",
 		runtimeclient.PodmanDefaultSocketPath,
 		"Podman Unix socket path",
 	)

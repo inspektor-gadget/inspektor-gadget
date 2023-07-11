@@ -52,31 +52,53 @@ var AvailableRuntimeProtocols = []string{
 }
 
 func NewContainerRuntimeClient(runtime *containerutilsTypes.RuntimeConfig) (runtimeclient.ContainerRuntimeClient, error) {
+	socketPath := runtime.SocketPath
+
 	switch runtime.Name {
 	case types.RuntimeNameDocker:
-		socketPath := runtime.SocketPath
-		if envsp := os.Getenv("INSPEKTOR_GADGET_DOCKER_SOCKETPATH"); envsp != "" && socketPath == "" {
-			socketPath = filepath.Join(host.HostRoot, envsp)
+		if envsp := os.Getenv("INSPEKTOR_GADGET_DOCKER_SOCKETPATH"); envsp != "" && socketPath != nil {
+			path := filepath.Join(host.HostRoot, envsp)
+			socketPath = &path
 		}
-		return docker.NewDockerClient(socketPath, runtime.RuntimeProtocol)
+
+		if socketPath == nil {
+			return docker.NewDockerClient(runtimeclient.DockerDefaultSocketPath, runtime.RuntimeProtocol)
+		}
+
+		return docker.NewDockerClient(*socketPath, runtime.RuntimeProtocol)
 	case types.RuntimeNameContainerd:
-		socketPath := runtime.SocketPath
-		if envsp := os.Getenv("INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"); envsp != "" && socketPath == "" {
-			socketPath = filepath.Join(host.HostRoot, envsp)
+		if envsp := os.Getenv("INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"); envsp != "" && socketPath != nil {
+			path := filepath.Join(host.HostRoot, envsp)
+			socketPath = &path
 		}
-		return containerd.NewContainerdClient(socketPath, runtime.RuntimeProtocol, &runtime.Extra)
+
+		if socketPath == nil {
+			return containerd.NewContainerdClient(runtimeclient.ContainerdDefaultSocketPath, runtime.RuntimeProtocol, &runtime.Extra)
+		}
+
+		return containerd.NewContainerdClient(*socketPath, runtime.RuntimeProtocol, &runtime.Extra)
 	case types.RuntimeNameCrio:
-		socketPath := runtime.SocketPath
-		if envsp := os.Getenv("INSPEKTOR_GADGET_CRIO_SOCKETPATH"); envsp != "" && socketPath == "" {
-			socketPath = filepath.Join(host.HostRoot, envsp)
+		if envsp := os.Getenv("INSPEKTOR_GADGET_CRIO_SOCKETPATH"); envsp != "" && socketPath != nil {
+			path := filepath.Join(host.HostRoot, envsp)
+			socketPath = &path
 		}
-		return crio.NewCrioClient(socketPath)
+
+		if socketPath == nil {
+			return crio.NewCrioClient(runtimeclient.CrioDefaultSocketPath)
+		}
+
+		return crio.NewCrioClient(*socketPath)
 	case types.RuntimeNamePodman:
-		socketPath := runtime.SocketPath
-		if envsp := os.Getenv("INSPEKTOR_GADGET_PODMAN_SOCKETPATH"); envsp != "" && socketPath == "" {
-			socketPath = filepath.Join(host.HostRoot, envsp)
+		if envsp := os.Getenv("INSPEKTOR_GADGET_PODMAN_SOCKETPATH"); envsp != "" && socketPath != nil {
+			path := filepath.Join(host.HostRoot, envsp)
+			socketPath = &path
 		}
-		return podman.NewPodmanClient(socketPath), nil
+
+		if socketPath == nil {
+			return podman.NewPodmanClient(runtimeclient.PodmanDefaultSocketPath), nil
+		}
+
+		return podman.NewPodmanClient(*socketPath), nil
 	default:
 		return nil, fmt.Errorf("unknown container runtime: %s (available %s)",
 			runtime.Name, strings.Join(AvailableRuntimes, ", "))

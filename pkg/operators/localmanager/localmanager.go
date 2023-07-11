@@ -201,7 +201,7 @@ partsLoop:
 
 		r := &containerutilsTypes.RuntimeConfig{
 			Name:            runtimeName,
-			SocketPath:      socketPath,
+			SocketPath:      &socketPath,
 			RuntimeProtocol: operatorParams.Get(RuntimeProtocol).AsString(),
 			Extra: containerutilsTypes.ExtraConfig{
 				Namespace: namespace,
