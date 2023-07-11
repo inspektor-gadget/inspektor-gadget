@@ -28,6 +28,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 )
@@ -42,11 +43,11 @@ const (
 )
 
 type Counter struct {
-	Metric
+	config.Metric
 }
 
 type Gauge struct {
-	Metric
+	config.Metric
 
 	registration otelmetric.Registration
 }
@@ -56,7 +57,7 @@ type Instruments struct {
 	Gauges   []*Gauge
 }
 
-func CreateMetrics(ctx context.Context, config *Config, meterProvider otelmetric.MeterProvider) (func(), error) {
+func CreateMetrics(ctx context.Context, config *config.Config, meterProvider otelmetric.MeterProvider) (func(), error) {
 	runtime := &local.Runtime{}
 	instruments := &Instruments{}
 
@@ -92,7 +93,7 @@ func CreateMetrics(ctx context.Context, config *Config, meterProvider otelmetric
 
 func handleMetric(
 	ctx context.Context,
-	metricCommon *Metric,
+	metricCommon *config.Metric,
 	runtime runtime.Runtime,
 ) (*gadgetcontext.GadgetContext, parser.Parser, error) {
 	runtimeParams := runtime.ParamDescs().ToParams()
@@ -177,7 +178,7 @@ func handleMetric(
 func createCounter(
 	ctx context.Context,
 	runtime runtime.Runtime,
-	metric *Metric,
+	metric *config.Metric,
 	meter otelmetric.Meter,
 ) (*Counter, error) {
 	counter := &Counter{Metric: *metric}
@@ -280,7 +281,7 @@ func createCounter(
 func createGauge(
 	ctx context.Context,
 	runtime runtime.Runtime,
-	metric *Metric,
+	metric *config.Metric,
 	meter otelmetric.Meter,
 ) (*Gauge, error) {
 	gauge := &Gauge{Metric: *metric}

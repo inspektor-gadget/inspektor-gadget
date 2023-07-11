@@ -19,7 +19,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
-	igprometheus "github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus/config"
 )
 
 const (
@@ -55,7 +55,7 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			IsMandatory: true,
 			TypeHint:    params.TypeBytes,
 			Validator: func(value string) error {
-				_, err := igprometheus.ParseConfig([]byte(value))
+				_, err := config.ParseConfig([]byte(value))
 				return err
 			},
 		},
