@@ -58,7 +58,6 @@ type Config struct {
 }
 
 var (
-	autoSdUnitRestartFlag    bool
 	autoMountFilesystemsFlag bool
 	autoWSLWorkaroundFlag    bool
 
@@ -73,27 +72,6 @@ func Init(config Config) error {
 	// TODO: understand why we need to call Init() twice and fix it.
 	if initDone {
 		return nil
-	}
-
-	// Apply systemd workaround first because it might start a new process and
-	// exit before the other workarounds.
-	if autoSdUnitRestartFlag {
-		exit, err := autoSdUnitRestart()
-		if exit {
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-				os.Exit(1)
-			}
-			os.Exit(0)
-		}
-		if err != nil {
-			return err
-		}
-	} else {
-		if err := suggestSdUnitRestart(); err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
-		}
 	}
 
 	// The mount workaround could either be applied unconditionally (in the
@@ -135,15 +113,6 @@ func Init(config Config) error {
 
 // AddFlags adds CLI flags for various workarounds
 func AddFlags(command *cobra.Command) {
-	command.PersistentFlags().BoolVarP(
-		&autoSdUnitRestartFlag,
-		"auto-sd-unit-restart",
-		"",
-		false,
-		"Automatically run in a privileged systemd unit if lacking enough capabilities",
-	)
-
-	// Enable the mount workaround by default when running inside a container.
 	automountFilesystemsDefault := false
 	if HostRoot != "" && HostRoot != "/" {
 		automountFilesystemsDefault = true
