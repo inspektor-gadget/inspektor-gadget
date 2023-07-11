@@ -39,4 +39,5 @@ ARG TARGETOS
 ARG TARGETARCH
 
 COPY --from=builder /go/src/github.com/inspektor-gadget/inspektor-gadget/ig-${TARGETOS}-${TARGETARCH} /usr/bin/ig
+ENV HOST_ROOT=/host
 ENTRYPOINT ["/usr/bin/ig"]
