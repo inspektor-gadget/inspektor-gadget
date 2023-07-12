@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus/config"
 )
 
 // events that are generated in the test. Counters are incremented based on them and the metric
@@ -37,7 +39,7 @@ var testEvents = []*stubEvent{
 func TestMetrics(t *testing.T) {
 	type testDefinition struct {
 		name        string
-		config      *Config
+		config      *config.Config
 		expectedErr bool
 
 		// outer key: metric name, inner key: attributes hash
@@ -51,9 +53,9 @@ func TestMetrics(t *testing.T) {
 		// Generic checks before
 		{
 			name: "wrong_metric_type",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "wrong_metric_type",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "wrong_metric_type",
 						Type:     "nonvalidtype",
@@ -67,9 +69,9 @@ func TestMetrics(t *testing.T) {
 		// Wrong configurations
 		{
 			name: "counter_wrong_gadget_name",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_wrong_gadget_name",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_wrong_gadget_name",
 						Type:     "counter",
@@ -82,9 +84,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_wrong_gadget_category",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_wrong_gadget_category",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_wrong_gadget_category",
 						Type:     "counter",
@@ -97,9 +99,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_wrong_gadget_type",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_wrong_gadget_type",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_wrong_gadget_type",
 						Type:     "counter",
@@ -112,9 +114,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_wrong_type_field",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_wrong_type_field",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_wrong_type_field",
 						Type:     "counter",
@@ -128,9 +130,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_wrong_selector",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_wrong_selector",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_wrong_selector",
 						Type:     "counter",
@@ -145,9 +147,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_wrong_labels",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_wrong_labels",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_wrong_labels",
 						Type:     "counter",
@@ -162,9 +164,9 @@ func TestMetrics(t *testing.T) {
 		// Check that counters are updated correctly
 		{
 			name: "counter_no_labels_nor_filtering",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_no_labels_nor_filtering",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_no_labels_nor_filtering",
 						Type:     "counter",
@@ -179,9 +181,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_filter_only_root_events",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_filter_only_root_events",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_filter_only_root_events",
 						Type:     "counter",
@@ -197,9 +199,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_filter_only_root_cat_events",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_filter_only_root_cat_events",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_filter_only_root_cat_events",
 						Type:     "counter",
@@ -215,9 +217,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_filter_uid_greater_than_0",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_filter_uid_greater_than_0",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_filter_uid_greater_than_0",
 						Type:     "counter",
@@ -233,9 +235,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_aggregate_by_comm",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_aggregate_by_comm",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_aggregate_by_comm",
 						Type:     "counter",
@@ -251,9 +253,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_aggregate_by_uid",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_aggregate_by_uid",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_aggregate_by_uid",
 						Type:     "counter",
@@ -269,9 +271,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_aggregate_by_uid_and_comm",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_aggregate_by_uid_and_comm",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_aggregate_by_uid_and_comm",
 						Type:     "counter",
@@ -292,9 +294,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_aggregate_by_uid_and_filter_by_comm",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_aggregate_by_uid_and_filter_by_comm",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_aggregate_by_uid_and_filter_by_comm",
 						Type:     "counter",
@@ -311,9 +313,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_with_int_field",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_with_int_field",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_with_int_field",
 						Type:     "counter",
@@ -329,9 +331,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_with_float_field",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_with_float_field",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_with_float_field",
 						Type:     "counter",
@@ -347,9 +349,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "counter_with_float_field_aggregate_by_uid_and_filter_by_comm",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_with_float_field_aggregate_by_uid_and_filter_by_comm",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_with_float_field_aggregate_by_uid_and_filter_by_comm",
 						Type:     "counter",
@@ -368,9 +370,9 @@ func TestMetrics(t *testing.T) {
 		// Multiple counters
 		{
 			name: "counter_multiple_mixed",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "counter_multiple_mixed",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_multiple1",
 						Type:     "counter",
@@ -396,9 +398,9 @@ func TestMetrics(t *testing.T) {
 		// Gauges
 		{
 			name: "gauge_wrong_gadget_name",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "gauge_wrong_gadget_name",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "gauge_wrong_gadget_name",
 						Type:     "gauge",
@@ -411,9 +413,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "gauge_wrong_gadget_category",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "gauge_wrong_gadget_category",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "gauge_wrong_gadget_category",
 						Type:     "gauge",
@@ -426,9 +428,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "gauge_wrong_gadget_type",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "gauge_wrong_gadget_type",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "counter_wrong_gadget_type",
 						Type:     "gauge",
@@ -441,9 +443,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "gauge_no_labels_nor_filtering",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "gauge_no_labels_nor_filtering",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "gauge_no_labels_nor_filtering",
 						Type:     "gauge",
@@ -458,9 +460,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "gauge_filter_only_root_events",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "gauge_filter_only_root_events",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "gauge_filter_only_root_events",
 						Type:     "gauge",
@@ -476,9 +478,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "gauge_filter_only_root_cat_events",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "gauge_filter_only_root_cat_events",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "gauge_filter_only_root_cat_events",
 						Type:     "gauge",
@@ -494,9 +496,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "gauge_with_int_field",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "gauge_with_int_field",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "gauge_with_int_field",
 						Type:     "gauge",
@@ -512,9 +514,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "gauge_with_float_field",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "gauge_with_float_field",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "gauge_with_float_field",
 						Type:     "gauge",
@@ -530,9 +532,9 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "gauge_multiple",
-			config: &Config{
+			config: &config.Config{
 				MetricsName: "gauge_multiple",
-				Metrics: []Metric{
+				Metrics: []config.Metric{
 					{
 						Name:     "gauge_no_labels_nor_filtering",
 						Type:     "gauge",

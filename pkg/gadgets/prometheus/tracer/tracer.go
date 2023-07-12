@@ -21,6 +21,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	igprometheus "github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus/config"
 )
 
 type Tracer struct {
@@ -33,7 +34,7 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
 	metricsConfig := params.Get(ParamConfig).AsBytes()
 
-	config, err := igprometheus.ParseConfig(metricsConfig)
+	config, err := config.ParseConfig(metricsConfig)
 	if err != nil {
 		return err
 	}
