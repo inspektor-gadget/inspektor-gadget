@@ -32,16 +32,17 @@ func TestTraceOpen(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &openTypes.Event{
-				Event: BuildBaseEvent(ns),
-				Comm:  "cat",
-				Fd:    3,
-				Ret:   3,
-				Err:   0,
-				Path:  "/dev/null",
-				Uid:   1000,
-				Gid:   1111,
-				Flags: []string{"O_RDONLY"},
-				Mode:  "----------",
+				Event:    BuildBaseEvent(ns),
+				Comm:     "cat",
+				Fd:       3,
+				Ret:      3,
+				Err:      0,
+				Path:     "/dev/null",
+				FullPath: "",
+				Uid:      1000,
+				Gid:      1111,
+				Flags:    []string{"O_RDONLY"},
+				Mode:     "----------",
 			}
 
 			normalize := func(e *openTypes.Event) {
