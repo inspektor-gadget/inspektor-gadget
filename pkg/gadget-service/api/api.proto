@@ -30,6 +30,9 @@ message GadgetRunRequest {
   // pkg/runtime/grpc)
   map<string, string> params = 3;
 
+  // args are all parameters which were not specified with a flag
+  repeated string args = 4;
+
   // a list of nodes the gadget should run on; if not specified, it should run
   // on all nodes
   repeated string nodes = 10;
@@ -48,11 +51,6 @@ message GadgetRunRequest {
 }
 
 message GadgetStopRequest {
-}
-
-// GadgetAttachRequest is used to attach to a running (persistent gadget) and get its results / events
-message GadgetAttachRequest {
-  string id = 1;
 }
 
 message GadgetEvent {
@@ -76,30 +74,41 @@ message InfoRequest {
 message InfoResponse {
   string version = 1;
   bytes catalog = 2;
+  bool experimental = 3;
 }
 
 message InstallPersistentGadgetRequest {
-  GadgetRunRequest runRequest = 1;
+  PersistentGadget persistentGadget = 1;
   int32 eventBufferLength = 2;
 }
 
 message InstallPersistentGadgetResponse {
   int32 result = 1;
-  string id = 2;
+  PersistentGadget persistentGadget = 2;
 }
 
 message ListPersistentGadgetRequest {}
 
-message ListPersistentGadgetResponse {
-  repeated GadgetRunRequest persistentGadgets = 1;
+message PersistentGadget {
+  string id = 1;
+  GadgetRunRequest gadgetInfo = 2;
+  repeated string tags = 3;
+  int64 timeCreated = 4;
+  bool paused = 5;
+  string name = 6;
 }
 
-message RemovePersistentGadgetRequest {
+message ListPersistentGadgetResponse {
+  repeated PersistentGadget persistentGadgets = 1;
+}
+
+message PersistentGadgetId {
   string id = 1;
 }
 
 message StatusResponse {
   int32 result = 1;
+  string message = 2;
 }
 
 service GadgetManager {
@@ -107,6 +116,8 @@ service GadgetManager {
   rpc RunGadget(stream GadgetControlRequest) returns (stream GadgetEvent) {}
   rpc InstallPersistentGadget(InstallPersistentGadgetRequest) returns (InstallPersistentGadgetResponse) {}
   rpc ListPersistentGadgets(ListPersistentGadgetRequest) returns (ListPersistentGadgetResponse) {}
-  rpc RemovePersistentGadget(RemovePersistentGadgetRequest) returns (StatusResponse) {}
-  rpc AttachToPersistentGadget(GadgetAttachRequest) returns (stream GadgetEvent) {}
+  rpc GetPersistentGadget(PersistentGadgetId) returns (PersistentGadget) {}
+  rpc RemovePersistentGadget(PersistentGadgetId) returns (StatusResponse) {}
+  rpc StopPersistentGadget(PersistentGadgetId) returns (StatusResponse) {}
+  rpc AttachToPersistentGadget(PersistentGadgetId) returns (stream GadgetEvent) {}
 }

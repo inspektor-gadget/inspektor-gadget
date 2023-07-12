@@ -69,14 +69,19 @@ func main() {
 		}
 	}
 
-	runtime := grpcruntime.New(skipInfo)
+	runtime := grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
 
 	namespace, _ := utils.GetNamespace()
 	runtime.SetDefaultValue(gadgets.K8SNamespace, namespace)
 
 	// columnFilters for kubectl-gadget
 	columnFilters := []columns.ColumnFilter{columns.WithoutExceptTag("runtime", "kubernetes")}
-	common.AddCommandsFromRegistry(rootCmd, runtime, columnFilters)
+	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
+	if !skipInfo {
+		runtime.InitInfo(runtimeGlobalParams)
+	}
+	common.AddCommandsFromRegistry(rootCmd, runtime, runtimeGlobalParams, columnFilters)
+	common.AddPersistenceCommands(rootCmd, runtime, runtimeGlobalParams, columnFilters)
 
 	// Advise category is still being handled by CRs for now
 	rootCmd.AddCommand(advise.NewAdviseCmd())

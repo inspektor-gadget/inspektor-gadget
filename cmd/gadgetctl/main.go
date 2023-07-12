@@ -1,4 +1,4 @@
-// Copyright 2019-2023 The Inspektor Gadget authors
+// Copyright 2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,25 +16,17 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/ig/containers"
+	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
+	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
-
-	// This is a blank include that actually imports all gadgets
-	// TODO: traceloop is imported separately because it is not in all-gadgets
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/tracer"
-
-	// Another blank import for the used operator
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/prometheus"
 )
 
 func main() {
@@ -43,24 +35,19 @@ func main() {
 	}
 
 	rootCmd := &cobra.Command{
-		Use:   "ig",
+		Use:   filepath.Base(os.Args[0]),
 		Short: "Collection of gadgets for containers",
 	}
 	common.AddVerboseFlag(rootCmd)
 
-	rootCmd.AddCommand(
-		containers.NewListContainersCmd(),
-		newVersionCmd(),
-	)
-
-	runtime := local.New()
+	runtime := grpcruntime.New()
 	// columnFilters for ig
 	columnFilters := []columns.ColumnFilter{columns.WithoutExceptTag("kubernetes", "runtime")}
 
 	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
+	runtime.InitInfo(runtimeGlobalParams)
 	common.AddCommandsFromRegistry(rootCmd, runtime, runtimeGlobalParams, columnFilters)
-
-	addDaemonCommand(rootCmd, runtime)
+	common.AddPersistenceCommands(rootCmd, runtime, runtimeGlobalParams, columnFilters)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

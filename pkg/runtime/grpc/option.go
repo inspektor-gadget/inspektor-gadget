@@ -12,19 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package api
+package grpcruntime
 
-const (
-	EventTypeGadgetPayload uint32 = 0
-	EventTypeGadgetResult  uint32 = 1
-	EventTypeGadgetDone    uint32 = 2
-	EventTypeGadgetJobID   uint32 = 3
+type Option func(runtime *Runtime)
 
-	EventLogShift = 16
-)
-
-const (
-	GadgetServiceSocket          = "/run/gadgetservice.socket"
-	GadgetWebServiceSocket       = "/run/gadgetwebservice.socket"
-	GadgetStreamingServiceSocket = "/run/gadgetstreamingservice.socket"
-)
+func WithConnectUsingK8SProxy(runtime *Runtime) {
+	runtime.connectionMode = ConnectionModeKubernetesProxy
+}

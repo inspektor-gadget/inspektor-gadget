@@ -228,6 +228,9 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintpt
 	}
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
+		if !f.IsExported() {
+			continue
+		}
 
 		tag := f.Tag.Get("column")
 		// tagSet := len(tag) > 0

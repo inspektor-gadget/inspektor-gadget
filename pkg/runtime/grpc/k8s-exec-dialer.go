@@ -42,7 +42,7 @@ type k8sExecConn struct {
 }
 
 // NewK8SExecConn connects to a Pod using the Kubernetes API Server and launches a socat
-func NewK8SExecConn(ctx context.Context, pod gadgetPod, timeout time.Duration) (net.Conn, error) {
+func NewK8SExecConn(ctx context.Context, pod target, timeout time.Duration) (net.Conn, error) {
 	readerExt, writer := io.Pipe()
 	reader, writerExt := io.Pipe()
 	conn := &k8sExecConn{

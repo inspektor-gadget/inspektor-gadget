@@ -568,7 +568,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	info("Retrieving Gadget Catalog...\n")
-	err = grpcruntime.New(true).UpdateDeployInfo()
+	runtime := grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
+	err = runtime.UpdateDeployInfo()
 	if err != nil {
 		fmt.Printf("> failed: %v\n", err)
 	}

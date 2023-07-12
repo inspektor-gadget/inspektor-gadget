@@ -26,8 +26,10 @@ type GadgetManagerClient interface {
 	RunGadget(ctx context.Context, opts ...grpc.CallOption) (GadgetManager_RunGadgetClient, error)
 	InstallPersistentGadget(ctx context.Context, in *InstallPersistentGadgetRequest, opts ...grpc.CallOption) (*InstallPersistentGadgetResponse, error)
 	ListPersistentGadgets(ctx context.Context, in *ListPersistentGadgetRequest, opts ...grpc.CallOption) (*ListPersistentGadgetResponse, error)
-	RemovePersistentGadget(ctx context.Context, in *RemovePersistentGadgetRequest, opts ...grpc.CallOption) (*StatusResponse, error)
-	AttachToPersistentGadget(ctx context.Context, in *GadgetAttachRequest, opts ...grpc.CallOption) (GadgetManager_AttachToPersistentGadgetClient, error)
+	GetPersistentGadget(ctx context.Context, in *PersistentGadgetId, opts ...grpc.CallOption) (*PersistentGadget, error)
+	RemovePersistentGadget(ctx context.Context, in *PersistentGadgetId, opts ...grpc.CallOption) (*StatusResponse, error)
+	StopPersistentGadget(ctx context.Context, in *PersistentGadgetId, opts ...grpc.CallOption) (*StatusResponse, error)
+	AttachToPersistentGadget(ctx context.Context, in *PersistentGadgetId, opts ...grpc.CallOption) (GadgetManager_AttachToPersistentGadgetClient, error)
 }
 
 type gadgetManagerClient struct {
@@ -96,7 +98,16 @@ func (c *gadgetManagerClient) ListPersistentGadgets(ctx context.Context, in *Lis
 	return out, nil
 }
 
-func (c *gadgetManagerClient) RemovePersistentGadget(ctx context.Context, in *RemovePersistentGadgetRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+func (c *gadgetManagerClient) GetPersistentGadget(ctx context.Context, in *PersistentGadgetId, opts ...grpc.CallOption) (*PersistentGadget, error) {
+	out := new(PersistentGadget)
+	err := c.cc.Invoke(ctx, "/api.GadgetManager/GetPersistentGadget", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gadgetManagerClient) RemovePersistentGadget(ctx context.Context, in *PersistentGadgetId, opts ...grpc.CallOption) (*StatusResponse, error) {
 	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, "/api.GadgetManager/RemovePersistentGadget", in, out, opts...)
 	if err != nil {
@@ -105,7 +116,16 @@ func (c *gadgetManagerClient) RemovePersistentGadget(ctx context.Context, in *Re
 	return out, nil
 }
 
-func (c *gadgetManagerClient) AttachToPersistentGadget(ctx context.Context, in *GadgetAttachRequest, opts ...grpc.CallOption) (GadgetManager_AttachToPersistentGadgetClient, error) {
+func (c *gadgetManagerClient) StopPersistentGadget(ctx context.Context, in *PersistentGadgetId, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, "/api.GadgetManager/StopPersistentGadget", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gadgetManagerClient) AttachToPersistentGadget(ctx context.Context, in *PersistentGadgetId, opts ...grpc.CallOption) (GadgetManager_AttachToPersistentGadgetClient, error) {
 	stream, err := c.cc.NewStream(ctx, &GadgetManager_ServiceDesc.Streams[1], "/api.GadgetManager/AttachToPersistentGadget", opts...)
 	if err != nil {
 		return nil, err
@@ -145,8 +165,10 @@ type GadgetManagerServer interface {
 	RunGadget(GadgetManager_RunGadgetServer) error
 	InstallPersistentGadget(context.Context, *InstallPersistentGadgetRequest) (*InstallPersistentGadgetResponse, error)
 	ListPersistentGadgets(context.Context, *ListPersistentGadgetRequest) (*ListPersistentGadgetResponse, error)
-	RemovePersistentGadget(context.Context, *RemovePersistentGadgetRequest) (*StatusResponse, error)
-	AttachToPersistentGadget(*GadgetAttachRequest, GadgetManager_AttachToPersistentGadgetServer) error
+	GetPersistentGadget(context.Context, *PersistentGadgetId) (*PersistentGadget, error)
+	RemovePersistentGadget(context.Context, *PersistentGadgetId) (*StatusResponse, error)
+	StopPersistentGadget(context.Context, *PersistentGadgetId) (*StatusResponse, error)
+	AttachToPersistentGadget(*PersistentGadgetId, GadgetManager_AttachToPersistentGadgetServer) error
 	mustEmbedUnimplementedGadgetManagerServer()
 }
 
@@ -166,10 +188,16 @@ func (UnimplementedGadgetManagerServer) InstallPersistentGadget(context.Context,
 func (UnimplementedGadgetManagerServer) ListPersistentGadgets(context.Context, *ListPersistentGadgetRequest) (*ListPersistentGadgetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListPersistentGadgets not implemented")
 }
-func (UnimplementedGadgetManagerServer) RemovePersistentGadget(context.Context, *RemovePersistentGadgetRequest) (*StatusResponse, error) {
+func (UnimplementedGadgetManagerServer) GetPersistentGadget(context.Context, *PersistentGadgetId) (*PersistentGadget, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPersistentGadget not implemented")
+}
+func (UnimplementedGadgetManagerServer) RemovePersistentGadget(context.Context, *PersistentGadgetId) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemovePersistentGadget not implemented")
 }
-func (UnimplementedGadgetManagerServer) AttachToPersistentGadget(*GadgetAttachRequest, GadgetManager_AttachToPersistentGadgetServer) error {
+func (UnimplementedGadgetManagerServer) StopPersistentGadget(context.Context, *PersistentGadgetId) (*StatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopPersistentGadget not implemented")
+}
+func (UnimplementedGadgetManagerServer) AttachToPersistentGadget(*PersistentGadgetId, GadgetManager_AttachToPersistentGadgetServer) error {
 	return status.Errorf(codes.Unimplemented, "method AttachToPersistentGadget not implemented")
 }
 func (UnimplementedGadgetManagerServer) mustEmbedUnimplementedGadgetManagerServer() {}
@@ -265,8 +293,26 @@ func _GadgetManager_ListPersistentGadgets_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GadgetManager_GetPersistentGadget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PersistentGadgetId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GadgetManagerServer).GetPersistentGadget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.GadgetManager/GetPersistentGadget",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GadgetManagerServer).GetPersistentGadget(ctx, req.(*PersistentGadgetId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _GadgetManager_RemovePersistentGadget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemovePersistentGadgetRequest)
+	in := new(PersistentGadgetId)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -278,13 +324,31 @@ func _GadgetManager_RemovePersistentGadget_Handler(srv interface{}, ctx context.
 		FullMethod: "/api.GadgetManager/RemovePersistentGadget",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GadgetManagerServer).RemovePersistentGadget(ctx, req.(*RemovePersistentGadgetRequest))
+		return srv.(GadgetManagerServer).RemovePersistentGadget(ctx, req.(*PersistentGadgetId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GadgetManager_StopPersistentGadget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PersistentGadgetId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GadgetManagerServer).StopPersistentGadget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.GadgetManager/StopPersistentGadget",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GadgetManagerServer).StopPersistentGadget(ctx, req.(*PersistentGadgetId))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _GadgetManager_AttachToPersistentGadget_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(GadgetAttachRequest)
+	m := new(PersistentGadgetId)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -324,8 +388,16 @@ var GadgetManager_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GadgetManager_ListPersistentGadgets_Handler,
 		},
 		{
+			MethodName: "GetPersistentGadget",
+			Handler:    _GadgetManager_GetPersistentGadget_Handler,
+		},
+		{
 			MethodName: "RemovePersistentGadget",
 			Handler:    _GadgetManager_RemovePersistentGadget_Handler,
+		},
+		{
+			MethodName: "StopPersistentGadget",
+			Handler:    _GadgetManager_StopPersistentGadget_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

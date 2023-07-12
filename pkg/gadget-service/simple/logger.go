@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gadgetservice
+package simple
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ import (
 
 // Logger sends log messages through grpc
 type Logger struct {
-	send           func(*api.GadgetEvent) error
+	send           func(*GadgetEvent) error
 	level          logger.Level
 	fallbackLogger logger.Logger
 }
@@ -40,7 +40,7 @@ func (l *Logger) Logf(severity logger.Level, format string, params ...any) {
 	if l.level < severity {
 		return
 	}
-	ev := &api.GadgetEvent{
+	ev := &GadgetEvent{
 		Type:    uint32(severity) << api.EventLogShift,
 		Payload: []byte(fmt.Sprintf(format, params...)),
 	}
@@ -53,7 +53,7 @@ func (l *Logger) Log(severity logger.Level, params ...any) {
 	if l.level < severity {
 		return
 	}
-	ev := &api.GadgetEvent{
+	ev := &GadgetEvent{
 		Type:    uint32(severity) << api.EventLogShift,
 		Payload: []byte(fmt.Sprintf("%+v", params...)),
 	}
