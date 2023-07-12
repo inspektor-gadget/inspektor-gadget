@@ -22,6 +22,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
 
+const (
+	ParamFullPath = "full-path"
+)
+
 type GadgetDesc struct{}
 
 func (g *GadgetDesc) Name() string {
@@ -41,7 +45,14 @@ func (g *GadgetDesc) Description() string {
 }
 
 func (g *GadgetDesc) ParamDescs() params.ParamDescs {
-	return nil
+	return params.ParamDescs{
+		{
+			Key:          ParamFullPath,
+			Title:        "Show the absolute full path of the opened file",
+			DefaultValue: "false",
+			TypeHint:     params.TypeBool,
+		},
+	}
 }
 
 func (g *GadgetDesc) Parser() parser.Parser {

@@ -63,3 +63,13 @@ CONTAINER                                                  PID        COMM      
 test-trace-open                                            630417     whoami           3     0   /etc/passwd
 test-trace-open                                            630954     whoami           3     0   /etc/passwd
 ```
+
+If you want to get full paths in from the tool, you can run it with the `--full-path` flag. This
+will add the column `FULLPATH` that contains the absolute path of the file with symlinks resolved.
+
+```bash
+$ sudo ./ig trace open -c test-trace-open-fullpath --full-path
+CONTAINER                     PID        COMM             FD  ERR PATH                            FULLPATH
+test-trace-open-fullpath      1330356    cat              3   0   /etc/passwd                     /etc/passwd
+test-trace-open-fullpath      1330401    cat              3   0   ../etc/mtab                     /proc/22/mounts
+```

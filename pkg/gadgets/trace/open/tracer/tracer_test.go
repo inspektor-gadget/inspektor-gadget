@@ -20,6 +20,8 @@ package tracer_test
 import (
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
 	"sort"
 	"testing"
 	"time"
@@ -67,6 +69,35 @@ func createTracer(
 	t.Cleanup(tracer.Stop)
 
 	return tracer
+}
+
+func generateRelativePathForAbsolutePath(t *testing.T, fileName string) string {
+	// If the filename is relative, return it as is
+	if !filepath.IsAbs(fileName) {
+		return fileName
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Errorf("Error getting current working directory: %s", err)
+	}
+
+	relPath, err := filepath.Rel(cwd, fileName)
+	if err != nil {
+		t.Errorf("Error getting relative path: %s", err)
+	}
+
+	return relPath
+}
+
+func generateLongDirPath(t *testing.T) string {
+	size := 64
+	str := "abcdefgh"
+	slice := make([]string, size)
+	for i := 0; i < size; i++ {
+		slice[i] = str
+	}
+	return path.Join("/tmp", path.Join(slice...))
 }
 
 func TestOpenTracer(t *testing.T) {
@@ -137,6 +168,7 @@ func TestOpenTracer(t *testing.T) {
 					Ret:           fd,
 					Err:           0,
 					Path:          "/dev/null",
+					FullPath:      "",
 					Flags:         []string{"O_RDONLY"},
 					Mode:          "----------",
 				}
@@ -149,7 +181,7 @@ func TestOpenTracer(t *testing.T) {
 				}
 			},
 			generateEvent: func() (int, error) {
-				filename := "/tmp/test"
+				filename := "/tmp/test_flags_and_mode"
 				fd, err := unix.Open(filename, unix.O_CREAT|unix.O_RDWR, unix.S_IRWXU|unix.S_IRGRP|unix.S_IWGRP|unix.S_IXOTH)
 				if err != nil {
 					return 0, fmt.Errorf("opening file: %w", err)
@@ -173,7 +205,139 @@ func TestOpenTracer(t *testing.T) {
 					Fd:            fd,
 					Ret:           fd,
 					Err:           0,
-					Path:          "/tmp/test",
+					Path:          "/tmp/test_flags_and_mode",
+					FullPath:      "",
+					Flags:         []string{"O_RDWR", "O_CREAT"},
+					FlagsRaw:      unix.O_CREAT | unix.O_RDWR,
+					Mode:          "-rwxrw---x",
+					ModeRaw:       unix.S_IRWXU | unix.S_IRGRP | unix.S_IWGRP | unix.S_IXOTH,
+				}
+			}),
+		},
+		"test_relative_path": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					FullPath:   true,
+				}
+			},
+			generateEvent: func() (int, error) {
+				relPath := generateRelativePathForAbsolutePath(t, "/tmp/test_relative_path")
+				fd, err := unix.Open(relPath, unix.O_CREAT|unix.O_RDWR, unix.S_IRWXU|unix.S_IRGRP|unix.S_IWGRP|unix.S_IXOTH)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+
+				defer os.Remove(relPath)
+
+				unix.Close(fd)
+
+				return fd, nil
+			},
+			validateEvent: utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, fd int) *types.Event {
+				relPath := generateRelativePathForAbsolutePath(t, "/tmp/test_relative_path")
+				return &types.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
+					Pid:           uint32(info.Pid),
+					Uid:           uint32(info.Uid),
+					Comm:          info.Comm,
+					Fd:            fd,
+					Ret:           fd,
+					Err:           0,
+					Path:          relPath,
+					FullPath:      "/tmp/test_relative_path",
+					Flags:         []string{"O_RDWR", "O_CREAT"},
+					FlagsRaw:      unix.O_CREAT | unix.O_RDWR,
+					Mode:          "-rwxrw---x",
+					ModeRaw:       unix.S_IRWXU | unix.S_IRGRP | unix.S_IWGRP | unix.S_IXOTH,
+				}
+			}),
+		},
+		"test_symbolic_links": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					FullPath:   true,
+				}
+			},
+			generateEvent: func() (int, error) {
+				// Create a symbolic link to /dev/null
+				err := os.Symlink("/dev/null", "/tmp/test_symbolic_links")
+				if err != nil {
+					return 0, fmt.Errorf("creating symbolic link: %w", err)
+				}
+				defer os.Remove("/tmp/test_symbolic_links")
+
+				// Open the symbolic link
+				fd, err := unix.Open("/tmp/test_symbolic_links", unix.O_RDONLY, 0)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+				defer unix.Close(fd)
+
+				return fd, nil
+			},
+			validateEvent: utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, fd int) *types.Event {
+				return &types.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
+					Pid:           uint32(info.Pid),
+					Uid:           uint32(info.Uid),
+					Comm:          info.Comm,
+					Fd:            fd,
+					Ret:           fd,
+					Err:           0,
+					Path:          "/tmp/test_symbolic_links",
+					FullPath:      "/dev/null",
+					Flags:         []string{"O_RDONLY"},
+					Mode:          "----------",
+				}
+			}),
+		},
+		"test_long_path": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					FullPath:   true,
+				}
+			},
+			generateEvent: func() (int, error) {
+				dirPath := generateLongDirPath(t)
+				err := os.MkdirAll(generateLongDirPath(t), 0o755)
+				if err != nil {
+					return 0, fmt.Errorf("creating directory: %w", err)
+				}
+				fd, err := unix.Open(path.Join(dirPath, "test_long_path"), unix.O_CREAT|unix.O_RDWR, unix.S_IRWXU|unix.S_IRGRP|unix.S_IWGRP|unix.S_IXOTH)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+
+				defer os.RemoveAll(path.Join(dirPath, "test_long_path"))
+
+				unix.Close(fd)
+
+				return fd, nil
+			},
+			validateEvent: utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, fd int) *types.Event {
+				longPath := path.Join(generateLongDirPath(t), "test_long_path")
+				return &types.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
+					Pid:           uint32(info.Pid),
+					Uid:           uint32(info.Uid),
+					Comm:          info.Comm,
+					Fd:            fd,
+					Ret:           fd,
+					Err:           0,
+					Path:          longPath[:254],
+					FullPath:      longPath,
 					Flags:         []string{"O_RDWR", "O_CREAT"},
 					FlagsRaw:      unix.O_CREAT | unix.O_RDWR,
 					Mode:          "-rwxrw---x",

@@ -4,13 +4,8 @@
 
 #define TASK_COMM_LEN 16
 #define NAME_MAX 255
+#define PATH_MAX 4096
 #define INVALID_UID ((uid_t)-1)
-
-struct args_t {
-	const char *fname;
-	int flags;
-	__u16 mode;
-};
 
 struct event {
 	__u64 timestamp;
@@ -24,6 +19,8 @@ struct event {
 	__u16 mode;
 	__u8 comm[TASK_COMM_LEN];
 	__u8 fname[NAME_MAX];
+	// Keep full_fname as the last field for optimization
+	__u8 full_fname[PATH_MAX];
 };
 
 #endif /* __OPENSNOOP_H */

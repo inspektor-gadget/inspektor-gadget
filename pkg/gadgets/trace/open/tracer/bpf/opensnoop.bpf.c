@@ -4,8 +4,9 @@
 #include <vmlinux/vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
-#include "opensnoop.h"
 #include "mntns_filter.h"
+#include "filesystem.h"
+#include "opensnoop.h"
 
 #define TASK_RUNNING	0
 
@@ -14,6 +15,7 @@ const volatile pid_t targ_pid = 0;
 const volatile pid_t targ_tgid = 0;
 const volatile uid_t targ_uid = INVALID_UID;
 const volatile bool targ_failed = false;
+const volatile bool get_full_path = false;
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));
@@ -22,7 +24,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 10240);
 	__type(key, u32);
-	__type(value, struct args_t);
+	__type(value, struct event);
 } start SEC(".maps");
 
 struct {
@@ -30,6 +32,8 @@ struct {
 	__uint(key_size, sizeof(u32));
 	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
+
+static const struct event empty_event = {};
 
 static __always_inline bool valid_uid(uid_t uid) {
 	return uid != INVALID_UID;
@@ -71,11 +75,18 @@ int trace_enter(const char *filename, int flags, __u16 mode)
 
 	/* store arg info for later lookup */
 	if (trace_allowed(tgid, pid)) {
-		struct args_t args = {};
-		args.fname = filename;
-		args.flags = flags;
-		args.mode = mode;
-		bpf_map_update_elem(&start, &pid, &args, 0);
+		struct event *event;
+
+		if (bpf_map_update_elem(&start, &pid, &empty_event, BPF_NOEXIST))
+			return 0;
+
+		event = bpf_map_lookup_elem(&start, &pid);
+		if (!event)
+			return 0;
+
+		bpf_probe_read_user_str(&event->fname, sizeof(event->fname), filename);
+		event->flags = flags;
+		event->mode = mode;
 	}
 	return 0;
 }
@@ -95,35 +106,50 @@ int ig_openat_e(struct trace_event_raw_sys_enter* ctx)
 static __always_inline
 int trace_exit(struct trace_event_raw_sys_exit* ctx)
 {
-	struct event event = {};
-	struct args_t *ap;
+	struct event *event;
 	int ret;
 	u32 pid = bpf_get_current_pid_tgid();
 	u64 uid_gid = bpf_get_current_uid_gid();
 	u64 mntns_id;
+	size_t full_fname_len = 0;
 
-	ap = bpf_map_lookup_elem(&start, &pid);
-	if (!ap)
-		return 0;	/* missed entry */
+	event = bpf_map_lookup_elem(&start, &pid);
+	if (!event)
+		return 0; /* missed entry */
+
 	ret = ctx->ret;
 	if (targ_failed && ret >= 0)
 		goto cleanup;	/* want failed only */
 
 	/* event data */
-	event.pid = bpf_get_current_pid_tgid() >> 32;
-	event.uid = (u32) uid_gid;
-	event.gid = (u32) (uid_gid >> 32);
-	bpf_get_current_comm(&event.comm, sizeof(event.comm));
-	bpf_probe_read_user_str(&event.fname, sizeof(event.fname), ap->fname);
-	event.flags = ap->flags;
-	event.mode = ap->mode;
-	event.ret = ret;
-	event.mntns_id = gadget_get_mntns_id();
-	event.timestamp = bpf_ktime_get_boot_ns();
+	event->pid = bpf_get_current_pid_tgid() >> 32;
+	event->uid = (u32) uid_gid;
+	event->gid = (u32) (uid_gid >> 32);
+	bpf_get_current_comm(&event->comm, sizeof(event->comm));
+	event->ret = ret;
+	event->mntns_id = gadget_get_mntns_id();
+	event->timestamp = bpf_ktime_get_boot_ns();
+
+	// Attempting to extract the full file path with symlink resolution
+	if (ret >= 0 && get_full_path)
+	{
+		long r = read_full_path_of_open_file_fd(ret, (char*)event->full_fname, sizeof(event->full_fname));
+		if (r > 0)	{
+			full_fname_len = (size_t)r;
+		} else {
+			// If we cannot get the full path put the empty string
+			event->full_fname[0] = '\0';
+			full_fname_len = 1;
+		}
+	} else {
+		// If the open failed, we can't get the full path
+		event->full_fname[0] = '\0';
+		full_fname_len = 1;
+	}
 
 	/* emit event */
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+			      event, sizeof(struct event) - (PATH_MAX - full_fname_len));
 
 cleanup:
 	bpf_map_delete_elem(&start, &pid);
