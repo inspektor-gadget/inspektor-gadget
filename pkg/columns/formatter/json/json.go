@@ -20,6 +20,7 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 	"unicode/utf8"
 	_ "unsafe"
 
@@ -46,7 +47,12 @@ func NewFormatter[T any](cols columns.ColumnMap[T], options ...Option) *Formatte
 
 	ncols := make([]*column[T], 0)
 	for _, col := range cols.GetOrderedColumns() {
-		name, _ := json.Marshal(col.Name)
+		colName := col.Name
+		if strings.Contains(colName, ".") {
+			hierarchy := strings.Split(colName, ".")
+			colName = hierarchy[len(hierarchy)-1]
+		}
+		name, _ := json.Marshal(colName)
 		key := append(name, []byte(": ")...)
 
 		var formatter func(*encodeState, *T)
@@ -124,6 +130,75 @@ func NewFormatter[T any](cols columns.ColumnMap[T], options ...Option) *Formatte
 	return tf
 }
 
+func (f *Formatter[T]) printCols(entry *T, buf *encodeState, cols []*column[T], level int) {
+	indent := strings.Repeat("  ", level+1)
+	colsWithParent := map[string][]*column[T]{}
+	colsWithoutParent := []*column[T]{}
+
+	for _, col := range cols {
+		// Save columns which has a parent in its name
+		if strings.Count(col.column.Name, ".") > level {
+			hierarchy := strings.Split(col.column.Name, ".")
+			parentName := hierarchy[level]
+			colsWithParent[parentName] = append(colsWithParent[parentName], col)
+			continue
+		}
+		// Don't print columns without a parent directly
+		// It is possible that their name is the same as a name of an object in the same level
+		// For example: {"a": {"bbb": 1}, "a": 2}
+		// We will filter them out after we gathered all object names
+		colsWithoutParent = append(colsWithoutParent, col)
+	}
+
+	first := true
+	// Better name?
+	handlePrefix := func() {
+		if !first {
+			buf.WriteByte(',')
+			if f.options.prettPrint {
+				buf.WriteString("\n" + indent)
+			} else {
+				buf.WriteByte(' ')
+			}
+		} else {
+			if f.options.prettPrint {
+				buf.WriteString("\n" + indent)
+			}
+			first = false
+		}
+	}
+
+	// Now print columns with their parents
+	for key, val := range colsWithParent {
+		handlePrefix()
+
+		parentName, _ := json.Marshal(strings.Split(key, ".")[0])
+		buf.Write(parentName)
+		buf.WriteString(": {")
+
+		f.printCols(entry, buf, val, level+1)
+
+		// End parent
+		if f.options.prettPrint {
+			buf.WriteString("\n" + indent + "}")
+		} else {
+			buf.WriteByte('}')
+		}
+	}
+
+	// Now all cols without a parent
+	for _, col := range colsWithoutParent {
+		childName := strings.Split(col.column.Name, ".")[level]
+		_, found := colsWithParent[childName]
+		if found {
+			// We already have an object with this key, skip this column
+			continue
+		}
+		handlePrefix()
+		col.formatter(buf, entry)
+	}
+}
+
 // FormatEntry returns an entry as a formatted string, respecting the given formatting settings
 func (f *Formatter[T]) FormatEntry(entry *T) string {
 	if entry == nil {
@@ -135,28 +210,12 @@ func (f *Formatter[T]) FormatEntry(entry *T) string {
 	defer bufpool.Put(buf)
 
 	buf.WriteByte('{')
+	f.printCols(entry, buf, f.columns, 0)
 	if f.options.prettPrint {
 		buf.WriteByte('\n')
 	}
-	for i, col := range f.columns {
-		if i > 0 {
-			buf.WriteByte(',')
-			if f.options.prettPrint {
-				buf.WriteByte('\n')
-			} else {
-				buf.WriteByte(' ')
-			}
-		}
-		if f.options.prettPrint {
-			buf.WriteString("  ")
-		}
-		col.formatter(buf, entry)
-	}
-	// Don't pretty-print a newline when there are no columns
-	if f.options.prettPrint && len(f.columns) > 0 {
-		buf.WriteByte('\n')
-	}
 	buf.WriteByte('}')
+
 	return buf.String()
 }
 

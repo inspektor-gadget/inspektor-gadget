@@ -22,9 +22,10 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 )
 
 type testStruct struct {
@@ -140,4 +141,48 @@ func TestDynamicFields(t *testing.T) {
 	})
 	formatter := NewFormatter[empty](cols.GetColumnMap())
 	assert.Equal(t, `{"str": "foobar", "int32": 1234567890, "bool": true}`, formatter.FormatEntry(&empty{}))
+}
+
+func TestJSONFormatter(t *testing.T) {
+	type testStruct struct{}
+
+	cols := columns.MustCreateColumns[testStruct]()
+
+	assert.NoError(t, cols.AddColumn(columns.Attributes{
+		Name: "parent.child1.grandchild1",
+	}, func(t *testStruct) string { return "parent.child1.grandchild1_text" }))
+	assert.NoError(t, cols.AddColumn(columns.Attributes{
+		Name: "parent.child1.grandchild2",
+	}, func(t *testStruct) string { return "parent.child1.grandchild2_text" }))
+	assert.NoError(t, cols.AddColumn(columns.Attributes{
+		Name: "parent.child2.grandchild1",
+	}, func(t *testStruct) string { return "parent.child2.grandchild1_text" }))
+	assert.NoError(t, cols.AddColumn(columns.Attributes{
+		Name: "parent.child3",
+	}, func(t *testStruct) string { return "parent.child3_text" }))
+
+	assert.NoError(t, cols.AddColumn(columns.Attributes{
+		Name: "parent.child1",
+	}, func(t *testStruct) string { return "This should be skipped/filtered" }))
+
+	expected := `{
+		"parent": {
+			"child1": {
+				"grandchild1": "parent.child1.grandchild1_text",
+				"grandchild2": "parent.child1.grandchild2_text"
+			},
+			"child2": {
+				"grandchild1": "parent.child2.grandchild1_text"
+			},
+			"child3": "parent.child3_text"
+		}
+	}`
+
+	formatter := NewFormatter[testStruct](cols.ColumnMap)
+	actual := formatter.FormatEntry(&testStruct{})
+	assert.JSONEq(t, expected, actual)
+
+	prettyFormatter := NewFormatter[testStruct](cols.ColumnMap, WithPrettyPrint())
+	actual = prettyFormatter.FormatEntry(&testStruct{})
+	assert.JSONEq(t, expected, actual)
 }
