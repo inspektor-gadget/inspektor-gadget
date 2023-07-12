@@ -24,6 +24,7 @@ type opensnoopEvent struct {
 	Mode      uint16
 	Comm      [16]uint8
 	Fname     [255]uint8
+	FullFname [4096]uint8
 	_         [7]byte
 }
 
@@ -78,6 +79,7 @@ type opensnoopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type opensnoopMapSpecs struct {
+	Bufs                 *ebpf.MapSpec `ebpf:"bufs"`
 	Events               *ebpf.MapSpec `ebpf:"events"`
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
 	Start                *ebpf.MapSpec `ebpf:"start"`
@@ -102,6 +104,7 @@ func (o *opensnoopObjects) Close() error {
 //
 // It can be passed to loadOpensnoopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type opensnoopMaps struct {
+	Bufs                 *ebpf.Map `ebpf:"bufs"`
 	Events               *ebpf.Map `ebpf:"events"`
 	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
 	Start                *ebpf.Map `ebpf:"start"`
@@ -109,6 +112,7 @@ type opensnoopMaps struct {
 
 func (m *opensnoopMaps) Close() error {
 	return _OpensnoopClose(
+		m.Bufs,
 		m.Events,
 		m.GadgetMntnsFilterMap,
 		m.Start,

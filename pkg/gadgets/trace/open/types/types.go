@@ -37,6 +37,7 @@ type Event struct {
 	Mode     string      `json:"mode,omitempty" column:"mode,width:10,hide"`
 	ModeRaw  fs.FileMode `json:"modeRaw,omitempty"`
 	Path     string      `json:"path,omitempty" column:"path,minWidth:24,width:32"`
+	FullPath string      `json:"fullPath,omitempty" column:"fullPath,minWidth:24,width:32" columnTags:"param:full-path"`
 }
 
 func GetColumns() *columns.Columns[Event] {

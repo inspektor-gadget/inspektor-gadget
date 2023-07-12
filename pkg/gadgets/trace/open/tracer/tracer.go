@@ -38,6 +38,7 @@ import (
 
 type Config struct {
 	MountnsMap *ebpf.Map
+	FullPath   bool
 }
 
 type Tracer struct {
@@ -97,7 +98,10 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
-	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, nil, &t.objs); err != nil {
+	consts := make(map[string]interface{})
+	consts["get_full_path"] = t.config.FullPath
+
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
@@ -191,6 +195,7 @@ func (t *Tracer) run() {
 			ModeRaw:       mode,
 			Mode:          mode.String(),
 			Path:          gadgets.FromCString(bpfEvent.Fname[:]),
+			FullPath:      gadgets.FromCString(bpfEvent.FullFname[:]),
 		}
 
 		if t.enricher != nil {
@@ -204,6 +209,8 @@ func (t *Tracer) run() {
 // --- Registry changes
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	t.config.FullPath = gadgetCtx.GadgetParams().Get(ParamFullPath).AsBool()
+
 	defer t.close()
 	if err := t.install(); err != nil {
 		return fmt.Errorf("installing tracer: %w", err)
