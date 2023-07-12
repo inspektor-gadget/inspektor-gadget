@@ -25,36 +25,50 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
-func loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
+func (r *Runtime) loadRemoteDeployInfo(globalParams *params.Params) (*deployinfo.DeployInfo, error) {
 	ctx, cancelDial := context.WithTimeout(context.Background(), time.Second*ConnectTimeout)
 	defer cancelDial()
 
-	// Get a random gadget pod and get the info from there
-	pods, err := getGadgetPods(ctx, []string{})
-	if err != nil {
-		return nil, fmt.Errorf("get gadget pods: %w", err)
-	}
-	if len(pods) == 0 {
-		return nil, fmt.Errorf("no valid pods found to get info from")
+	var pod target
+
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
 	}
 
-	pod := pods[0]
-	dialOpt := grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
-		return NewK8SExecConn(ctx, pod, time.Second*ConnectTimeout)
-		// return NewK8SPortForwardConn(ctx, s, time.Second*30)
-	})
+	switch r.connectionMode {
+	default:
+		panic("invalid connection mode set for grpc-runtime")
+	case ConnectionModeKubernetesProxy:
+		// Get a random gadget pod and get the catalog from there
+		pods, err := getGadgetPods(ctx, []string{})
+		if err != nil {
+			return nil, fmt.Errorf("get gadget pods: %w", err)
+		}
+		if len(pods) == 0 {
+			return nil, fmt.Errorf("no valid pods found to get info from")
+		}
+		pod = pods[0]
+		opts = append(opts, grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			return NewK8SExecConn(ctx, pod, time.Second*ConnectTimeout)
+			// return NewK8SPortForwardConn(ctx, s, time.Second*30)
+		}))
+	case ConnectionModeDirect:
+		pod.node = "unix:///var/run/ig.socket"
+	}
 
-	conn, err := grpc.DialContext(ctx, "", dialOpt, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, "passthrough:///"+pod.node, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("dialing gadget pod on node %q: %w", pod.node, err)
 	}
-	client := pb.NewGadgetManagerClient(conn)
+	client := api.NewGadgetManagerClient(conn)
 	defer conn.Close()
 
-	info, err := client.GetInfo(ctx, &pb.InfoRequest{Version: "1.0"})
+	info, err := client.GetInfo(ctx, &api.InfoRequest{Version: "1.0"})
 	if err != nil {
 		return nil, fmt.Errorf("get info from gadget pod: %w", err)
 	}

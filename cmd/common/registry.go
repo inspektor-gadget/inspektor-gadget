@@ -15,21 +15,15 @@
 package common
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	k8syaml "sigs.k8s.io/yaml"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends/console"
 	cols "github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
-	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -37,6 +31,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/runner"
 )
 
 const (
@@ -47,9 +42,7 @@ const (
 )
 
 // AddCommandsFromRegistry adds all gadgets known by the registry as cobra commands as a subcommand to their categories
-func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, columnFilters []cols.ColumnFilter) {
-	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
-
+func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, runtimeGlobalParams *params.Params, columnFilters []cols.ColumnFilter) {
 	// Build lookup
 	lookup := make(map[string]*cobra.Command)
 
@@ -260,6 +253,11 @@ func buildCommandFromGadget(
 				return cmd.Help()
 			}
 
+			fe := console.NewFrontend()
+			defer fe.Close()
+
+			ctx := fe.GetContext()
+
 			err := runtime.Init(runtimeGlobalParams)
 			if err != nil {
 				return fmt.Errorf("initializing runtime: %w", err)
@@ -272,42 +270,7 @@ func buildCommandFromGadget(
 			}
 			defer validOperators.Close()
 
-			fe := console.NewFrontend()
-			defer fe.Close()
-
-			ctx := fe.GetContext()
-
-			timeoutDuration := time.Duration(0)
-
-			// Handle timeout parameter by adding a timeout to the context
-			if timeout != 0 {
-				if gadgetDesc.Type().IsPeriodic() {
-					interval := gadgetParams.Get(gadgets.ParamInterval).AsInt()
-					if timeout < interval {
-						return fmt.Errorf("timeout must be greater than interval")
-					}
-					if timeout%interval != 0 {
-						return fmt.Errorf("timeout must be a multiple of interval")
-					}
-				}
-
-				timeoutDuration = time.Duration(timeout) * time.Second
-			}
-
-			gadgetCtx := gadgetcontext.New(
-				ctx,
-				"",
-				runtime,
-				runtimeParams,
-				gadgetDesc,
-				gadgetParams,
-				args,
-				operatorsParamsCollection,
-				parser,
-				logger.DefaultLogger(),
-				timeoutDuration,
-			)
-			defer gadgetCtx.Cancel()
+			timeoutDuration := time.Duration(timeout) * time.Second
 
 			outputModeInfo := strings.SplitN(outputMode, "=", 2)
 			outputModeName := outputModeInfo[0]
@@ -316,207 +279,24 @@ func buildCommandFromGadget(
 				outputModeParams = outputModeInfo[1]
 			}
 
-			if parser == nil {
-				var transformResult func(any) ([]byte, error)
-
-				switch outputModeName {
-				default:
-					transformer, ok := gadgetDesc.(gadgets.GadgetOutputFormats)
-					if !ok {
-						return fmt.Errorf("gadget does not provide output formats")
-					}
-					formats, _ := transformer.OutputFormats()
-					if _, ok := formats[outputModeName]; !ok {
-						return fmt.Errorf("invalid output mode %q", outputModeName)
-					}
-
-					transformResult = formats[outputModeName].Transform
-				case OutputModeJSON:
-					transformResult = func(result any) ([]byte, error) {
-						r, _ := result.([]byte)
-						return r, nil
-					}
-				case OutputModeJSONPretty:
-					printEventAsJSONPrettyFn(fe)
-				case OutputModeYAML:
-					printEventAsYAMLFn(fe)
-				}
-
-				gType := gadgetDesc.Type()
-				if timeout == 0 && gType != gadgets.TypeTrace && gType != gadgets.TypeTraceIntervals {
-					gadgetCtx.Logger().Info("Running. Press Ctrl + C to finish")
-				}
-
-				// This kind of gadgets return directly the result instead of
-				// using the parser. We allow partial results, so error is only
-				// returned after handling those results.
-				results, err := runtime.RunGadget(gadgetCtx)
-
-				for node, result := range results {
-					if result.Error != nil {
-						continue
-					}
-					transformed, err := transformResult(result.Payload)
-					if err != nil {
-						gadgetCtx.Logger().Warnf("transform result for %q failed: %v", node, err)
-						continue
-					}
-					results[node].Payload = transformed
-				}
-
-				if len(results) == 1 {
-					// still need to iterate as we don't necessarily know the key
-					for _, result := range results {
-						fe.Output(string(result.Payload))
-					}
-				} else {
-					format := "%s: %s"
-					for _, result := range results {
-						// Check, whether we have a multi-line payload and adjust the output accordingly
-						if bytes.Contains(result.Payload, []byte("\n")) {
-							format = "\n---\n%s:\n%s"
-							break
-						}
-					}
-					for key, result := range results {
-						fe.Output(fmt.Sprintf(format, key, string(result.Payload)))
-					}
-				}
-
-				return err
-			}
-
-			// Add filters if requested
-			if len(filters) > 0 {
-				err = parser.SetFilters(filters)
-				if err != nil {
-					return fmt.Errorf("setting filters: %w", err)
-				}
-			}
-
-			if gadgetDesc.Type().CanSort() {
-				sortBy := gadgetParams.Get(gadgets.ParamSortBy).AsStringSlice()
-				err := parser.SetSorting(sortBy)
-				if err != nil {
-					return fmt.Errorf("setting sort order: %w", err)
-				}
-			}
-
-			formatter := parser.GetTextColumnsFormatter()
-
-			requestedStandardColumns := outputModeParams == ""
-			requestedColumns := strings.Split(outputModeParams, ",")
-
-			// If the standard columns are requested, hide columns that would be empty without specific features
-			// (bool params) enabled
-			if requestedStandardColumns {
-				var hiddenTags []string
-				if gadgetParams != nil {
-					for _, param := range *gadgetParams {
-						if param.TypeHint == params.TypeBool {
-							if !param.AsBool() {
-								hiddenTags = append(hiddenTags, "param:"+strings.ToLower(param.Key))
-							}
-						}
-					}
-				}
-				requestedColumns = parser.GetDefaultColumns(hiddenTags...)
-			}
-
-			valid, invalid := parser.VerifyColumnNames(requestedColumns)
-
-			for _, c := range invalid {
-				log.Warnf("column %q not found", c)
-			}
-
-			if err := formatter.SetShowColumns(valid); err != nil {
-				return err
-			}
-
-			parser.SetLogCallback(fe.Logf)
-
-			// Wire up callbacks before handing over to runtime depending on the output mode
-			switch outputModeName {
-			default:
-				transformer, ok := gadgetDesc.(gadgets.GadgetOutputFormats)
-				if !ok {
-					return fmt.Errorf("gadget does not provide output formats")
-				}
-				formats, _ := transformer.OutputFormats()
-				if _, ok := formats[outputModeName]; !ok {
-					return fmt.Errorf("invalid output mode %q", outputModeName)
-				}
-
-				format := formats[outputModeName]
-
-				if format.RequiresCombinedResult {
-					parser.EnableCombiner()
-				}
-
-				transformResult := format.Transform
-				parser.SetEventCallback(func(ev any) {
-					transformed, err := transformResult(ev)
-					if err != nil {
-						fe.Logf(logger.WarnLevel, "could not transform event: %v", err)
-						return
-					}
-					fe.Output(string(transformed))
-				})
-			case OutputModeColumns:
-				formatter.SetEventCallback(fe.Output)
-
-				// Enable additional output, if the gadget supports it (e.g. profile/cpu)
-				//  TODO: This can be optimized later on
-				formatter.SetEnableExtraLines(true)
-
-				parser.SetEventCallback(formatter.EventHandlerFunc())
-				if gadgetDesc.Type().IsPeriodic() {
-					// In case of periodic outputting gadgets, this is done as full table output, and we need to
-					// clear the screen for every interval, that's why we add fe.Clear here
-					parser.SetEventCallback(formatter.EventHandlerFuncArray(
-						fe.Clear,
-						func() {
-							fe.Output(formatter.FormatHeader())
-						},
-					))
-
-					// Print first header while we wait for input
-					if fe.IsTerminal() {
-						fe.Clear()
-						fe.Output(formatter.FormatHeader())
-					}
-					break
-				}
-				fe.Output(formatter.FormatHeader())
-				parser.SetEventCallback(formatter.EventHandlerFuncArray())
-			case OutputModeJSON:
-				jsonCallback := printEventAsJSONFn(fe)
-				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONConverter); ok {
-					jsonCallback = cjson.JSONConverter(gadgetParams, fe)
-				}
-				parser.SetEventCallback(jsonCallback)
-			case OutputModeJSONPretty:
-				jsonPrettyCallback := printEventAsJSONPrettyFn(fe)
-				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONPrettyConverter); ok {
-					jsonPrettyCallback = cjson.JSONPrettyConverter(gadgetParams, fe)
-				}
-				parser.SetEventCallback(jsonPrettyCallback)
-			case OutputModeYAML:
-				yamlCallback := printEventAsYAMLFn(fe)
-				if cyaml, ok := gadgetDesc.(gadgets.GadgetYAMLConverter); ok {
-					yamlCallback = cyaml.YAMLConverter(gadgetParams, fe)
-				}
-				parser.SetEventCallback(yamlCallback)
-			}
-
-			// Gadgets with parser don't return anything, they provide the
-			// output via the parser
-			_, err = runtime.RunGadget(gadgetCtx)
-			if err != nil {
-				return fmt.Errorf("running gadget: %w", err)
-			}
-
-			return nil
+			return runner.PrepareAndRunGadget(
+				ctx,
+				"",
+				runtime,
+				runtimeParams,
+				gadgetDesc,
+				gadgetParams,
+				args,
+				validOperators,
+				operatorsParamsCollection,
+				parser,
+				logger.DefaultLogger(),
+				timeoutDuration,
+				outputModeName,
+				outputModeParams,
+				fe,
+				filters,
+			)
 		},
 	}
 
@@ -531,34 +311,11 @@ func buildCommandFromGadget(
 		)
 	}
 
-	outputFormats.Append(gadgets.OutputFormats{
-		"json": {
-			Name:        "JSON",
-			Description: "The output of the gadget is returned as raw JSON",
-			Transform:   nil,
-		},
-		OutputModeJSONPretty: {
-			Name:        "JSON Prettified",
-			Description: "The output of the gadget is returned as prettified JSON",
-			Transform:   nil,
-		},
-		OutputModeYAML: {
-			Name:        "YAML",
-			Description: "The output of the gadget is returned as YAML",
-			Transform:   nil,
-		},
-	})
-	defaultOutputFormat = "json"
+	defaultOutputFormat = handleOutputFormats(outputFormats, gadgetDesc, gadgetParams, parser)
 
-	// Add parser output flags
-	if parser != nil {
-		outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser))
-	}
 	_, hasCustomParser := gadgetDesc.(gadgets.GadgetDescCustomParser)
 
 	if parser != nil || hasCustomParser {
-		defaultOutputFormat = "columns"
-
 		cmd.PersistentFlags().StringSliceVarP(
 			&filters,
 			"filter", "F",
@@ -575,13 +332,6 @@ func buildCommandFromGadget(
                              see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
 `,
 		)
-	}
-
-	// Add alternative output formats available in the gadgets
-	if outputFormatInterface, ok := gadgetDesc.(gadgets.GadgetOutputFormats); ok {
-		formats, defaultFormat := outputFormatInterface.OutputFormats()
-		outputFormats.Append(formats)
-		defaultOutputFormat = defaultFormat
 	}
 
 	outputFormatsHelp := buildOutputFormatsHelp(outputFormats)
@@ -656,35 +406,44 @@ func addFlags(cmd *cobra.Command, params *params.Params, skipParams []params.Val
 	}
 }
 
-func printEventAsJSONFn(fe frontends.Frontend) func(ev any) {
-	return func(ev any) {
-		d, err := json.Marshal(ev)
-		if err != nil {
-			fe.Logf(logger.WarnLevel, "marshaling %+v: %s", ev, err)
-			return
-		}
-		fe.Output(string(d))
-	}
-}
+func handleOutputFormats(outputFormats gadgets.OutputFormats, gadgetDesc gadgets.GadgetDesc, gadgetParams *params.Params, parser parser.Parser) string {
+	var defaultOutputFormat string
 
-func printEventAsJSONPrettyFn(fe frontends.Frontend) func(ev any) {
-	return func(ev any) {
-		d, err := json.MarshalIndent(ev, "", "  ")
-		if err != nil {
-			fe.Logf(logger.WarnLevel, "marshaling %+v: %s", ev, err)
-			return
-		}
-		fe.Output(string(d))
-	}
-}
+	outputFormats.Append(gadgets.OutputFormats{
+		"json": {
+			Name:        "JSON",
+			Description: "The output of the gadget is returned as raw JSON",
+			Transform:   nil,
+		},
+		OutputModeJSONPretty: {
+			Name:        "JSON Prettified",
+			Description: "The output of the gadget is returned as prettified JSON",
+			Transform:   nil,
+		},
+		OutputModeYAML: {
+			Name:        "YAML",
+			Description: "The output of the gadget is returned as YAML",
+			Transform:   nil,
+		},
+	})
+	defaultOutputFormat = "json"
 
-func printEventAsYAMLFn(fe frontends.Frontend) func(ev any) {
-	return func(ev any) {
-		d, err := k8syaml.Marshal(ev)
-		if err != nil {
-			fe.Logf(logger.WarnLevel, "marshaling %+v: %s", ev, err)
-			return
-		}
-		fe.Output("---\n" + string(d))
+	// Add parser output flags
+	if parser != nil {
+		outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser))
 	}
+	_, hasCustomParser := gadgetDesc.(gadgets.GadgetDescCustomParser)
+
+	if parser != nil || hasCustomParser {
+		defaultOutputFormat = "columns"
+	}
+
+	// Add alternative output formats available in the gadgets
+	if outputFormatInterface, ok := gadgetDesc.(gadgets.GadgetOutputFormats); ok {
+		formats, defaultFormat := outputFormatInterface.OutputFormats()
+		outputFormats.Append(formats)
+		defaultOutputFormat = defaultFormat
+	}
+
+	return defaultOutputFormat
 }

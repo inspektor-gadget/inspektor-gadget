@@ -30,7 +30,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/factory"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
 type k8sExecConn struct {
@@ -42,7 +42,7 @@ type k8sExecConn struct {
 }
 
 // NewK8SExecConn connects to a Pod using the Kubernetes API Server and launches a socat
-func NewK8SExecConn(ctx context.Context, pod gadgetPod, timeout time.Duration) (net.Conn, error) {
+func NewK8SExecConn(ctx context.Context, pod target, timeout time.Duration) (net.Conn, error) {
 	readerExt, writer := io.Pipe()
 	reader, writerExt := io.Pipe()
 	conn := &k8sExecConn{
@@ -75,7 +75,7 @@ func NewK8SExecConn(ctx context.Context, pod gadgetPod, timeout time.Duration) (
 		Param("container", "gadget").
 		VersionedParams(&v1.PodExecOptions{
 			Container: "gadget",
-			Command:   []string{"/usr/bin/socat", pb.GadgetServiceSocket, "-"},
+			Command:   []string{"/usr/bin/socat", api.GadgetServiceSocket, "-"},
 			Stdin:     true,
 			Stdout:    true,
 			Stderr:    false,

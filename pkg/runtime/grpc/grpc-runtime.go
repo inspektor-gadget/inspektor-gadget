@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -33,16 +34,27 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 )
 
+type ConnectionMode int
+
 const (
-	ParamNode = "node"
+	ConnectionModeDirect ConnectionMode = iota
+	ConnectionModeKubernetesProxy
+)
+
+const (
+	ParamNode          = "node"
+	ParamRemoteAddress = "remote-address"
+	ParamDetach        = "detach"
+	ParamName          = "name"
+	ParamTags          = "tags"
 
 	// ConnectTimeout is the time in seconds we wait for a connection to the pod to
 	// succeed
@@ -54,33 +66,40 @@ const (
 )
 
 type Runtime struct {
-	info          *deployinfo.DeployInfo
-	defaultValues map[string]string
+	info           *deployinfo.DeployInfo
+	defaultValues  map[string]string
+	globalParams   *params.Params
+	connectionMode ConnectionMode
 }
 
 // New instantiates the runtime and loads the locally stored gadget info. If no info is stored locally,
 // it will try to fetch one from one of the gadget nodes and store it locally. It will issue warnings on
 // failures.
-func New(skipInfo bool) *Runtime {
+func New(options ...Option) *Runtime {
 	r := &Runtime{
 		defaultValues: map[string]string{},
 	}
-
-	if skipInfo {
-		return r
+	for _, option := range options {
+		option(r)
 	}
+	return r
+}
 
+// InitInfo loads the locally stored gadget catalog. If no catalog is stored locally,
+// it will try to fetch one from one of the gadget nodes and store it locally. It will issue warnings on
+// failures.
+func (r *Runtime) InitInfo(globalParams *params.Params) error {
 	// Initialize info
 	info, err := deployinfo.Load()
 	if err == nil {
 		r.info = info
-		return r
+		return nil
 	}
 
-	info, err = loadRemoteDeployInfo()
+	info, err = r.loadRemoteDeployInfo(globalParams)
 	if err != nil {
 		log.Warnf("could not load gadget info from remote: %v", err)
-		return r
+		return nil
 	}
 	r.info = info
 
@@ -89,11 +108,11 @@ func New(skipInfo bool) *Runtime {
 		log.Warnf("could not store gadget info: %v", err)
 	}
 
-	return r
+	return nil
 }
 
 func (r *Runtime) UpdateDeployInfo() error {
-	info, err := loadRemoteDeployInfo()
+	info, err := r.loadRemoteDeployInfo(r.globalParams)
 	if err != nil {
 		return fmt.Errorf("loading remote gadget info: %w", err)
 	}
@@ -102,6 +121,7 @@ func (r *Runtime) UpdateDeployInfo() error {
 }
 
 func (r *Runtime) Init(runtimeGlobalParams *params.Params) error {
+	r.globalParams = runtimeGlobalParams
 	return nil
 }
 
@@ -110,35 +130,68 @@ func (r *Runtime) Close() error {
 }
 
 func (r *Runtime) ParamDescs() params.ParamDescs {
-	return params.ParamDescs{
+	p := params.ParamDescs{
 		{
-			Key:         ParamNode,
-			Description: "Comma-separated list of nodes to run the gadget on",
-			Validator: func(value string) error {
-				nodes := strings.Split(value, ",")
-				nodeMap := make(map[string]struct{})
-				for _, node := range nodes {
-					if _, ok := nodeMap[node]; ok {
-						return fmt.Errorf("duplicated node: %s", node)
-					}
-					nodeMap[node] = struct{}{}
-				}
-				return nil
-			},
+			Key:          ParamDetach,
+			Description:  "Keep gadget running in the background",
+			TypeHint:     params.TypeBool,
+			DefaultValue: "false",
+		},
+		{
+			Key:          ParamName,
+			Description:  "Assign a distinctive name to this gadget instance",
+			TypeHint:     params.TypeString,
+			DefaultValue: "",
+		},
+		{
+			Key:         ParamTags,
+			Description: "List of comma-separated tags to assign to this instance",
+			TypeHint:    params.TypeString,
 		},
 	}
+	switch r.connectionMode {
+	case ConnectionModeDirect:
+		p.Add(params.ParamDescs{
+			{
+				Key:          ParamRemoteAddress,
+				Description:  "Comma-separated list of remote address (gRPC) to connect to",
+				DefaultValue: "unix:///var/run/ig.socket",
+			},
+		}...)
+		return p
+	case ConnectionModeKubernetesProxy:
+		p.Add(params.ParamDescs{
+			{
+				Key:         ParamNode,
+				Description: "Comma-separated list of nodes to run the gadget on",
+				Validator: func(value string) error {
+					nodes := strings.Split(value, ",")
+					nodeMap := make(map[string]struct{})
+					for _, node := range nodes {
+						if _, ok := nodeMap[node]; ok {
+							return fmt.Errorf("duplicated node: %s", node)
+						}
+						nodeMap[node] = struct{}{}
+					}
+					return nil
+				},
+			},
+		}...)
+		return p
+	}
+	panic("invalid connection mode set for grpc-runtime")
 }
 
 func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 	return nil
 }
 
-type gadgetPod struct {
+type target struct {
 	name string
 	node string
 }
 
-func getGadgetPods(ctx context.Context, nodes []string) ([]gadgetPod, error) {
+func getGadgetPods(ctx context.Context, nodes []string) ([]target, error) {
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
 		return nil, fmt.Errorf("creating RESTConfig: %w", err)
@@ -160,21 +213,21 @@ func getGadgetPods(ctx context.Context, nodes []string) ([]gadgetPod, error) {
 	}
 
 	if len(nodes) == 0 {
-		res := make([]gadgetPod, 0, len(pods.Items))
+		res := make([]target, 0, len(pods.Items))
 
 		for _, pod := range pods.Items {
-			res = append(res, gadgetPod{name: pod.Name, node: pod.Spec.NodeName})
+			res = append(res, target{name: pod.Name, node: pod.Spec.NodeName})
 		}
 
 		return res, nil
 	}
 
-	res := make([]gadgetPod, 0, len(nodes))
+	res := make([]target, 0, len(nodes))
 nodesLoop:
 	for _, node := range nodes {
 		for _, pod := range pods.Items {
 			if node == pod.Spec.NodeName {
-				res = append(res, gadgetPod{name: pod.Name, node: node})
+				res = append(res, target{name: pod.Name, node: node})
 				continue nodesLoop
 			}
 		}
@@ -184,15 +237,165 @@ nodesLoop:
 	return res, nil
 }
 
-func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
-	// Get nodes to run on
-	nodes := gadgetCtx.RuntimeParams().Get(ParamNode).AsStringSlice()
-	pods, err := getGadgetPods(gadgetCtx.Context(), nodes)
-	if err != nil {
-		return nil, fmt.Errorf("get gadget pods: %w", err)
+func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]target, error) {
+	switch r.connectionMode {
+	case ConnectionModeKubernetesProxy:
+		// Get nodes to run on
+		nodes := params.Get(ParamNode).AsStringSlice()
+		pods, err := getGadgetPods(ctx, nodes)
+		if err != nil {
+			return nil, fmt.Errorf("get gadget pods: %w", err)
+		}
+		if len(pods) == 0 {
+			return nil, fmt.Errorf("get gadget pods: Inspektor Gadget is not running on the requested node(s): %v", nodes) //nolint:all
+		}
+		return pods, nil
+	case ConnectionModeDirect:
+		inTargets := params.Get(ParamRemoteAddress).AsStringSlice()
+		targets := make([]target, 0)
+		for _, t := range inTargets {
+			purl, err := url.Parse(t)
+			if err != nil {
+				return nil, fmt.Errorf("invalid remote address %q: %w", t, err)
+			}
+			targets = append(targets, target{
+				name: t,
+				node: purl.Hostname(),
+			})
+		}
+		return targets, nil
 	}
-	if len(pods) == 0 {
-		return nil, fmt.Errorf("get gadget pods: Inspektor Gadget is not running on the requested node(s): %v", nodes) //nolint:all
+	return nil, fmt.Errorf("unsupported connection mode")
+}
+
+func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
+	paramMap := make(map[string]string)
+	gadgets.ParamsToMap(
+		paramMap,
+		gadgetCtx.GadgetParams(),
+		gadgetCtx.RuntimeParams(),
+		gadgetCtx.OperatorsParamCollection(),
+	)
+
+	gadgetCtx.Logger().Debugf("Params")
+	for k, v := range paramMap {
+		gadgetCtx.Logger().Debugf("- %s: %q", k, v)
+	}
+
+	targets, err := r.getTargets(gadgetCtx.Context(), gadgetCtx.RuntimeParams())
+	if err != nil {
+		return nil, fmt.Errorf("getting target nodes: %w", err)
+	}
+	return r.runGadgetOnTargets(gadgetCtx, paramMap, targets)
+}
+
+func (r *Runtime) getClientFromRandomTarget(ctx context.Context, runtimeParams *params.Params) (api.GadgetManagerClient, error) {
+	targets, err := r.getTargets(ctx, runtimeParams)
+	if err != nil {
+		return nil, err
+	}
+	if len(targets) == 0 {
+		return nil, fmt.Errorf("no valid targets")
+	}
+	conn, err := r.dialContext(ctx, targets[0])
+	if err != nil {
+		return nil, err
+	}
+	client := api.NewGadgetManagerClient(conn)
+	return client, nil
+}
+
+func (r *Runtime) RemovePersistentGadget(ctx context.Context, runtimeParams *params.Params, id string) error {
+	client, err := r.getClientFromRandomTarget(ctx, runtimeParams)
+	if err != nil {
+		return err
+	}
+	res, err := client.RemovePersistentGadget(ctx, &api.PersistentGadgetId{Id: id})
+	if err != nil {
+		return err
+	}
+	if res.Result != 0 {
+		return errors.New(res.Message)
+	}
+	return nil
+}
+
+func (r *Runtime) StopPersistentGadget(ctx context.Context, runtimeParams *params.Params, id string) error {
+	client, err := r.getClientFromRandomTarget(ctx, runtimeParams)
+	if err != nil {
+		return err
+	}
+	res, err := client.StopPersistentGadget(ctx, &api.PersistentGadgetId{Id: id})
+	if err != nil {
+		return err
+	}
+	if res.Result != 0 {
+		return errors.New(res.Message)
+	}
+	return nil
+}
+
+func (r *Runtime) GetPersistentGadgets(ctx context.Context, runtimeParams *params.Params) ([]*api.PersistentGadget, error) {
+	client, err := r.getClientFromRandomTarget(ctx, runtimeParams)
+	if err != nil {
+		return nil, err
+	}
+	res, err := client.ListPersistentGadgets(ctx, &api.ListPersistentGadgetRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return res.PersistentGadgets, nil
+}
+
+func (r *Runtime) installPersistent(gadgetCtx runtime.GadgetContext, paramMap map[string]string, targets []target) error {
+	gadgetCtx.Logger().Debugf("installing persistent gadget")
+
+	dialCtx, cancelDial := context.WithTimeout(gadgetCtx.Context(), time.Second*ConnectTimeout)
+	defer cancelDial()
+
+	target := targets[0]
+
+	conn, err := r.dialContext(dialCtx, target)
+	if err != nil {
+		return fmt.Errorf("dialing node %q: %w", target.node, err)
+	}
+	defer conn.Close()
+	client := api.NewGadgetManagerClient(conn)
+
+	res, err := client.InstallPersistentGadget(dialCtx, &api.InstallPersistentGadgetRequest{
+		PersistentGadget: &api.PersistentGadget{
+			Name: gadgetCtx.RuntimeParams().Get(ParamName).AsString(),
+			Tags: strings.Split(gadgetCtx.RuntimeParams().Get(ParamTags).AsString(), ","),
+			GadgetInfo: &api.GadgetRunRequest{
+				GadgetName:     gadgetCtx.GadgetDesc().Name(),
+				GadgetCategory: gadgetCtx.GadgetDesc().Category(),
+				Params:         paramMap,
+			},
+		},
+		EventBufferLength: 0,
+	})
+	if err != nil {
+		return err
+	}
+
+	gadgetCtx.Logger().Debugf("installed as %q", res.PersistentGadget.Id)
+	return nil
+}
+
+func (r *Runtime) runGadgetOnTargets(
+	gadgetCtx runtime.GadgetContext,
+	paramMap map[string]string,
+	targets []target,
+) (runtime.CombinedGadgetResult, error) {
+	isPersistent := gadgetCtx.RuntimeParams().Get(ParamDetach).AsBool()
+	if isPersistent {
+		// Add on first node only
+		err := r.installPersistent(gadgetCtx, paramMap, targets)
+		if err != nil {
+			return nil, fmt.Errorf("could not install persistent gadget: %w", err)
+		}
+		// if not in interactive mode, return here
+		return nil, nil
 	}
 
 	if gadgetCtx.GadgetDesc().Type() == gadgets.TypeTraceIntervals {
@@ -212,61 +415,72 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 	results := make(runtime.CombinedGadgetResult)
 	var resultsLock sync.Mutex
 
-	allParams := make(map[string]string)
-	gadgets.ParamsToMap(
-		allParams,
-		gadgetCtx.GadgetParams(),
-		gadgetCtx.RuntimeParams(),
-		gadgetCtx.OperatorsParamCollection(),
-	)
-
-	gadgetCtx.Logger().Debugf("Params")
-	for k, v := range allParams {
-		gadgetCtx.Logger().Debugf("- %s: %q", k, v)
-	}
-
 	wg := sync.WaitGroup{}
-	for _, pod := range pods {
+	for _, t := range targets {
 		wg.Add(1)
-		go func(pod gadgetPod) {
-			gadgetCtx.Logger().Debugf("running gadget on node %q", pod.node)
-			res, err := r.runGadget(gadgetCtx, pod, allParams)
+		go func(t target) {
+			gadgetCtx.Logger().Debugf("running gadget on node %q", t.node)
+			res, err := r.runGadget(gadgetCtx, t, paramMap)
 			resultsLock.Lock()
-			results[pod.node] = &runtime.GadgetResult{
+			results[t.node] = &runtime.GadgetResult{
 				Payload: res,
 				Error:   err,
 			}
 			resultsLock.Unlock()
 			wg.Done()
-		}(pod)
+		}(t)
 	}
 
 	wg.Wait()
 	return results, results.Err()
 }
 
-func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allParams map[string]string) ([]byte, error) {
+func (r *Runtime) dialContext(dialCtx context.Context, target target) (*grpc.ClientConn, error) {
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	}
+
+	// If we're in Kubernetes connection mode, we need a custom dialer
+	if r.connectionMode == ConnectionModeKubernetesProxy {
+		opts = append(opts, grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			return NewK8SExecConn(ctx, target, time.Second*ConnectTimeout)
+		}))
+	}
+
+	conn, err := grpc.DialContext(dialCtx, "passthrough:///"+target.name, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("dialing node %q: %w", target.node, err)
+	}
+	return conn, nil
+}
+
+type RunClient interface {
+	Recv() (*api.GadgetEvent, error)
+}
+
+func (r *Runtime) runGadget(
+	gadgetCtx runtime.GadgetContext,
+	pod target,
+	allParams map[string]string,
+) ([]byte, error) {
 	// Notice that we cannot use gadgetCtx.Context() here, as that would - when cancelled by the user - also cancel the
 	// underlying gRPC connection. That would then lead to results not being received anymore (mostly for profile
 	// gadgets.)
 	connCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dialOpt := grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
-		return NewK8SExecConn(ctx, pod, time.Second*ConnectTimeout)
-	})
-
 	dialCtx, cancelDial := context.WithTimeout(gadgetCtx.Context(), time.Second*ConnectTimeout)
 	defer cancelDial()
 
-	conn, err := grpc.DialContext(dialCtx, "", dialOpt, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := r.dialContext(dialCtx, pod)
 	if err != nil {
 		return nil, fmt.Errorf("dialing gadget pod on node %q: %w", pod.node, err)
 	}
 	defer conn.Close()
-	client := pb.NewGadgetManagerClient(conn)
+	client := api.NewGadgetManagerClient(conn)
 
-	runRequest := &pb.GadgetRunRequest{
+	runRequest := &api.GadgetRunRequest{
 		GadgetName:     gadgetCtx.GadgetDesc().Name(),
 		GadgetCategory: gadgetCtx.GadgetDesc().Category(),
 		Params:         allParams,
@@ -276,15 +490,27 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 		Timeout:        int64(gadgetCtx.Timeout()),
 	}
 
-	runClient, err := client.RunGadget(connCtx)
-	if err != nil && !errors.Is(err, context.Canceled) {
-		return nil, err
-	}
+	var runClient RunClient
 
-	controlRequest := &pb.GadgetControlRequest{Event: &pb.GadgetControlRequest_RunRequest{RunRequest: runRequest}}
-	err = runClient.Send(controlRequest)
-	if err != nil {
-		return nil, err
+	if gadgetCtx.ID() != "" {
+		gadgetCtx.Logger().Debugf("attaching to existing gadget %q", gadgetCtx.ID())
+		grpcClient, err := client.AttachToPersistentGadget(connCtx, &api.PersistentGadgetId{Id: gadgetCtx.ID()})
+		if err != nil && !errors.Is(err, context.Canceled) {
+			return nil, err
+		}
+		runClient = grpcClient
+	} else {
+		gadgetCtx.Logger().Debugf("starting new gadget %q")
+		grpcClient, err := client.RunGadget(connCtx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			return nil, err
+		}
+		controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_RunRequest{RunRequest: runRequest}}
+		err = grpcClient.Send(controlRequest)
+		if err != nil {
+			return nil, err
+		}
+		runClient = grpcClient
 	}
 
 	parser := gadgetCtx.Parser()
@@ -324,7 +550,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 				return
 			}
 			switch ev.Type {
-			case pb.EventTypeGadgetPayload:
+			case api.EventTypeGadgetPayload:
 				if expectedSeq != ev.Seq {
 					gadgetCtx.Logger().Warnf("%-20s | expected seq %d, got %d, %d messages dropped", pod.node, expectedSeq, ev.Seq, ev.Seq-expectedSeq)
 				}
@@ -334,13 +560,13 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 					continue
 				}
 				jsonHandler(ev.Payload)
-			case pb.EventTypeGadgetResult:
+			case api.EventTypeGadgetResult:
 				gadgetCtx.Logger().Debugf("%-20s | got result from server", pod.node)
 				result = ev.Payload
-			case pb.EventTypeGadgetJobID: // not needed right now
+			case api.EventTypeGadgetJobID: // not needed right now
 			default:
-				if ev.Type >= 1<<pb.EventLogShift {
-					gadgetCtx.Logger().Log(logger.Level(ev.Type>>pb.EventLogShift), fmt.Sprintf("%-20s | %s", pod.node, string(ev.Payload)))
+				if ev.Type >= 1<<api.EventLogShift {
+					gadgetCtx.Logger().Log(logger.Level(ev.Type>>api.EventLogShift), fmt.Sprintf("%-20s | %s", pod.node, string(ev.Payload)))
 					continue
 				}
 				gadgetCtx.Logger().Warnf("unknown payload type %d: %s", ev.Type, ev.Payload)
@@ -355,17 +581,20 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 		runErr = doneErr
 	case <-gadgetCtx.Context().Done():
 		// Send stop request
-		gadgetCtx.Logger().Debugf("%-20s | sending stop request", pod.node)
-		controlRequest := &pb.GadgetControlRequest{Event: &pb.GadgetControlRequest_StopRequest{StopRequest: &pb.GadgetStopRequest{}}}
-		runClient.Send(controlRequest)
+		if t, ok := runClient.(api.GadgetManager_RunGadgetClient); ok {
+			gadgetCtx.Logger().Debugf("%-20s | sending stop request", pod.node)
+			controlRequest := &api.GadgetControlRequest{Event: &api.GadgetControlRequest_StopRequest{StopRequest: &api.GadgetStopRequest{}}}
+			// Only send stop command when not attached
+			t.Send(controlRequest)
 
-		// Wait for done or timeout
-		select {
-		case doneErr := <-doneChan:
-			gadgetCtx.Logger().Debugf("%-20s | done after cancel request (%v)", pod.node, doneErr)
-			runErr = doneErr
-		case <-time.After(ResultTimeout * time.Second):
-			return nil, fmt.Errorf("timed out while getting result")
+			// Wait for done or timeout
+			select {
+			case doneErr := <-doneChan:
+				gadgetCtx.Logger().Debugf("%-20s | done after cancel request (%v)", pod.node, doneErr)
+				runErr = doneErr
+			case <-time.After(ResultTimeout * time.Second):
+				return nil, fmt.Errorf("timed out while getting result")
+			}
 		}
 	}
 	return result, runErr

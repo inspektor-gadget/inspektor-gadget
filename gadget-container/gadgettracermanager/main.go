@@ -39,41 +39,51 @@ import (
 
 	// This is a blank include that actually imports all gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/persistence"
+	k8sconfigmaps "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/persistence/k8s-configmaps"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/simple"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
 	// The script gadget is designed only to work in k8s, hence it's not part of all-gadgets
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/script"
 
 	gadgetservice "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 var (
-	controller              bool
-	serve                   bool
-	liveness                bool
-	fallbackPodInformer     bool
-	dump                    string
-	hookMode                string
-	socketfile              string
-	gadgetServiceSocketFile string
-	method                  string
-	label                   string
-	tracerid                string
-	containerID             string
-	namespace               string
-	podname                 string
-	containername           string
-	containerPid            uint
+	controller                       bool
+	serve                            bool
+	liveness                         bool
+	fallbackPodInformer              bool
+	dump                             string
+	hookMode                         string
+	socketfile                       string
+	gadgetServiceSocketFile          string
+	gadgetServiceWebSocketFile       string
+	gadgetServiceStreamingSocketFile string
+	method                           string
+	label                            string
+	tracerid                         string
+	containerID                      string
+	namespace                        string
+	podname                          string
+	containername                    string
+	containerPid                     uint
 )
 
 var clientTimeout = 2 * time.Second
 
 func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
-	flag.StringVar(&gadgetServiceSocketFile, "service-socketfile", pb.GadgetServiceSocket, "Socket file for gadget service")
+	flag.StringVar(&gadgetServiceSocketFile, "service-socketfile", api.GadgetServiceSocket, "Socket file for gadget service")
+	flag.StringVar(&gadgetServiceWebSocketFile, "service-websocketfile", api.GadgetWebServiceSocket, "Socket file for gadget service (WebSocket)")
+	flag.StringVar(&gadgetServiceStreamingSocketFile, "service-streamingsocketfile", api.GadgetStreamingServiceSocket, "Socket file for gadget service (WebSocket)")
 	flag.StringVar(&hookMode, "hook-mode", "auto", "how to get containers start/stop notifications (podinformer, fanotify, auto, none)")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
@@ -297,12 +307,29 @@ func main() {
 			go startController(node, tracerManager)
 		}
 
-		service := gadgetservice.NewService(log.StandardLogger())
+		runtime := local.New()
+
+		persistentManager := persistence.NewManager(runtime, true)
+
+		store, err := k8sconfigmaps.NewStore(persistentManager)
+		if err != nil {
+			log.Fatalf("could not initialize store: %v", err)
+		}
+		persistentManager.SetStore(store)
+
+		service := gadgetservice.NewService(log.StandardLogger(), persistentManager)
 		go func() {
-			err := service.Run("unix", gadgetServiceSocketFile)
+			err := service.Run("unix", gadgetServiceSocketFile, 0)
 			if err != nil {
 				log.Fatalf("failed to start Gadget Service: %v", err)
 			}
+		}()
+
+		// Additional services
+		streamingServer := simple.NewStreamingServer(runtime, persistentManager)
+		os.Remove(gadgetServiceStreamingSocketFile)
+		go func() {
+			streamingServer.Run("unix", gadgetServiceStreamingSocketFile)
 		}()
 
 		exitSignal := make(chan os.Signal, 1)

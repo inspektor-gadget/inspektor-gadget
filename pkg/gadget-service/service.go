@@ -19,7 +19,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,8 +29,9 @@ import (
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/persistence"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -36,9 +39,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 
 	// TODO: Move!
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubenameresolver"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/prometheus"
 )
 
@@ -47,22 +47,27 @@ type Config struct {
 }
 
 type Service struct {
-	pb.UnimplementedGadgetManagerServer
-	config   *Config
-	listener net.Listener
-	runtime  runtime.Runtime
-	logger   logger.Logger
-	servers  map[*grpc.Server]struct{}
+	api.UnimplementedGadgetManagerServer
+	persistenceMgr *persistence.Manager
+	config         *Config
+	listener       net.Listener
+	runtime        runtime.Runtime
+	logger         logger.Logger
+	servers        map[*grpc.Server]struct{}
 }
 
-func NewService(defaultLogger logger.Logger) *Service {
+func NewService(
+	defaultLogger logger.Logger,
+	persistenceMgr *persistence.Manager,
+) *Service {
 	return &Service{
-		servers: map[*grpc.Server]struct{}{},
-		logger:  defaultLogger,
+		persistenceMgr: persistenceMgr,
+		servers:        map[*grpc.Server]struct{}{},
+		logger:         defaultLogger,
 	}
 }
 
-func (s *Service) GetInfo(ctx context.Context, request *pb.InfoRequest) (*pb.InfoResponse, error) {
+func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.InfoResponse, error) {
 	catalog, err := s.runtime.GetCatalog()
 	if err != nil {
 		return nil, fmt.Errorf("get catalog: %w", err)
@@ -72,14 +77,14 @@ func (s *Service) GetInfo(ctx context.Context, request *pb.InfoRequest) (*pb.Inf
 	if err != nil {
 		return nil, fmt.Errorf("marshal catalog: %w", err)
 	}
-	return &pb.InfoResponse{
+	return &api.InfoResponse{
 		Version:      "1.0", // TODO
 		Catalog:      catalogJSON,
 		Experimental: experimental.Enabled(),
 	}, nil
 }
 
-func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
+func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	ctrl, err := runGadget.Recv()
 	if err != nil {
 		return err
@@ -135,7 +140,7 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 	}
 
 	// Create payload buffer
-	outputBuffer := make(chan *pb.GadgetEvent, 1024) // TODO: Discuss 1024
+	outputBuffer := make(chan *api.GadgetEvent, 1024) // TODO: Discuss 1024
 
 	seq := uint32(0)
 	var seqLock sync.Mutex
@@ -153,8 +158,8 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 			// would be dropped anyway. However, we're optimistic that this occurs rarely and instead prevent using
 			// ev in another thread.
 			data, _ := json.Marshal(ev)
-			event := &pb.GadgetEvent{
-				Type:    pb.EventTypeGadgetPayload,
+			event := &api.GadgetEvent{
+				Type:    api.EventTypeGadgetPayload,
 				Payload: data,
 			}
 
@@ -188,8 +193,8 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 	runID := uuid.New().String()
 
 	// Send Job ID to client
-	err = runGadget.Send(&pb.GadgetEvent{
-		Type:    pb.EventTypeGadgetJobID,
+	err = runGadget.Send(&api.GadgetEvent{
+		Type:    api.EventTypeGadgetJobID,
 		Payload: []byte(runID),
 	})
 	if err != nil {
@@ -225,7 +230,7 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 				return
 			}
 			switch msg.Event.(type) {
-			case *pb.GadgetControlRequest_StopRequest:
+			case *api.GadgetControlRequest_StopRequest:
 				gadgetCtx.Cancel()
 				return
 			default:
@@ -243,8 +248,8 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 	// Send result, if any
 	for _, result := range results {
 		// TODO: when used with fan-out, we need to add the node in here
-		event := &pb.GadgetEvent{
-			Type:    pb.EventTypeGadgetResult,
+		event := &api.GadgetEvent{
+			Type:    api.EventTypeGadgetResult,
 			Payload: result.Payload,
 		}
 		runGadget.Send(event)
@@ -253,7 +258,32 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 	return nil
 }
 
-func (s *Service) Run(network, address string, serverOptions ...grpc.ServerOption) error {
+func (s *Service) newListener(network, address string, gid int) (net.Listener, error) {
+	if network == "unix" && gid != 0 {
+		if err := os.Remove(address); err != nil && !os.IsNotExist(err) {
+			return nil, fmt.Errorf("remove existing unix socket at %q: %w", err)
+		}
+		mask := syscall.Umask(0o777)
+		defer syscall.Umask(mask)
+	}
+	listener, err := net.Listen(network, address)
+	if err != nil {
+		return nil, err
+	}
+	if network == "unix" && gid != 0 {
+		if err := os.Chown(address, 0, gid); err != nil {
+			listener.Close()
+			return nil, fmt.Errorf("chown unix socket %q: %w", address, err)
+		}
+		if err := os.Chmod(address, 0o660); err != nil {
+			listener.Close()
+			return nil, fmt.Errorf("chmod unix socket %q: %w", address, err)
+		}
+	}
+	return listener, nil
+}
+
+func (s *Service) Run(network, address string, gid int, serverOptions ...grpc.ServerOption) error {
 	s.runtime = local.New()
 	defer s.runtime.Close()
 
@@ -264,14 +294,14 @@ func (s *Service) Run(network, address string, serverOptions ...grpc.ServerOptio
 		return fmt.Errorf("initializing runtime: %w", err)
 	}
 
-	listener, err := net.Listen(network, address)
+	listener, err := s.newListener(network, address, gid)
 	if err != nil {
 		return err
 	}
 	s.listener = listener
 
 	server := grpc.NewServer(serverOptions...)
-	pb.RegisterGadgetManagerServer(server, s)
+	api.RegisterGadgetManagerServer(server, s)
 
 	s.servers[server] = struct{}{}
 
