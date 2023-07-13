@@ -17,9 +17,11 @@
 package tracer
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -39,6 +41,8 @@ type Config struct {
 	useMilliseconds       bool
 	localAddrHist         bool
 	remoteAddrHist        bool
+	filterLocalPort       uint16
+	filterRemotePort      uint16
 	filterLocalAddress    uint32
 	filterRemoteAddress   uint32
 	filterLocalAddressV6  [16]byte
@@ -74,6 +78,13 @@ func (t *Tracer) RunWithResult(gadgetCtx gadgets.GadgetContext) ([]byte, error) 
 	return result, nil
 }
 
+// htons converts an unsigned short integer from host byte order to network byte order.
+func htons(i uint16) uint16 {
+	b := make([]byte, 2)
+	binary.BigEndian.PutUint16(b, i)
+	return *(*uint16)(unsafe.Pointer(&b[0]))
+}
+
 func (t *Tracer) parseParams(params *params.Params) error {
 	t.config.useMilliseconds = params.Get(ParamMilliseconds).AsBool()
 
@@ -81,6 +92,24 @@ func (t *Tracer) parseParams(params *params.Params) error {
 	t.config.remoteAddrHist = params.Get(ParamByRemoteAddress).AsBool()
 	if t.config.localAddrHist && t.config.remoteAddrHist {
 		return fmt.Errorf("local and remote address histograms cannot be enabled at the same time")
+	}
+
+	lPort := params.Get(ParamFilterLocalPort).AsString()
+	if lPort != "" {
+		p, err := strconv.ParseUint(lPort, 10, 16)
+		if err != nil {
+			return fmt.Errorf("parsing local port: %w", err)
+		}
+		t.config.filterLocalPort = uint16(p)
+	}
+
+	rPort := params.Get(ParamFilterRemotePort).AsString()
+	if rPort != "" {
+		p, err := strconv.ParseUint(rPort, 10, 16)
+		if err != nil {
+			return fmt.Errorf("parsing remote port: %w", err)
+		}
+		t.config.filterRemotePort = uint16(p)
 	}
 
 	lAddr := params.Get(ParamFilterLocalAddress).AsString()
@@ -178,7 +207,7 @@ func (t *Tracer) collectResult() ([]byte, error) {
 			avg = float64(hist.Latency) / float64(hist.Cnt)
 		}
 
-		h := types.NewHistogram(unit, hist.Slots[:], addressType, addr, avg)
+		h := types.NewHistogram(unit, hist.Slots[:], addressType, addr, avg, t.config.filterLocalPort, t.config.filterRemotePort)
 		report.Histograms = append(report.Histograms, h)
 
 		prev = key
@@ -211,6 +240,8 @@ func (t *Tracer) install() error {
 		"targ_ms":         t.config.useMilliseconds,
 		"targ_laddr_hist": t.config.localAddrHist,
 		"targ_raddr_hist": t.config.remoteAddrHist,
+		"targ_sport":      htons(t.config.filterLocalPort),
+		"targ_dport":      htons(t.config.filterRemotePort),
 		"targ_saddr":      t.config.filterLocalAddress,
 		"targ_daddr":      t.config.filterRemoteAddress,
 		"targ_saddr_v6":   t.config.filterLocalAddressV6,
