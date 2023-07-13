@@ -132,7 +132,12 @@ func initFanotify() (*fanotify.NotifyFD, error) {
 
 // Supported detects if RuncNotifier is supported in the current environment
 func Supported() bool {
-	if !host.IsHostPidNs {
+	hostPidNs, err := host.IsHostPidNs()
+	if err != nil {
+		log.Debugf("Runcfanotify: not supported: %s", err)
+		return false
+	}
+	if !hostPidNs {
 		log.Debugf("Runcfanotify: not supported: not in host pid namespace")
 		return false
 	}
@@ -141,7 +146,7 @@ func Supported() bool {
 		notifier.Close()
 	}
 	if err != nil {
-		log.Warnf("Runcfanotify: not supported: %s", err)
+		log.Warnf("checking if current pid namespace is host pid namespace %s", err)
 	}
 	return err == nil
 }

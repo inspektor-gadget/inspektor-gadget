@@ -28,7 +28,17 @@ import (
 	"github.com/moby/moby/pkg/parsers/kernel"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
+
+// HostInit initializes the host package for testing without any automatic workarounds.
+func HostInit(t *testing.T) {
+	err := host.Init(host.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 
 // CreateMntNsFilterMap creates and fills an eBPF map that can be used
 // to filter by mount namespace in the different tracers.
