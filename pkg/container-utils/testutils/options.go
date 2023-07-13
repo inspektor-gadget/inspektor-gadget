@@ -31,6 +31,10 @@ type containerOptions struct {
 	wait           bool
 	logs           bool
 	removal        bool
+
+	// forceDelete is mostly used for debugging purposes, when a container
+	// fails to be deleted and we want to force it.
+	forceDelete bool
 }
 
 func defaultContainerOptions() *containerOptions {
@@ -83,5 +87,13 @@ func WithoutRemoval() Option {
 func WithoutLogs() Option {
 	return func(opts *containerOptions) {
 		opts.logs = false
+	}
+}
+
+// WithForceDelete is mostly used for debugging purposes, when a container
+// fails to be deleted and we want to force it.
+func WithForceDelete() Option {
+	return func(opts *containerOptions) {
+		opts.forceDelete = true
 	}
 }

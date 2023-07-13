@@ -33,6 +33,7 @@ import (
 const (
 	// TODO containerd currently only works on k8s.io namespace
 	defaultNamespace = "k8s.io"
+	taskKillTimeout  = 3 * time.Second
 )
 
 func NewContainerdContainer(name, cmd string, options ...Option) Container {
@@ -69,19 +70,26 @@ func (c *ContainerdContainer) Pid() int {
 	return c.pid
 }
 
-func (c *ContainerdContainer) Run(t *testing.T) {
+func (c *ContainerdContainer) initClientAndCtx() error {
 	var err error
 	c.client, err = containerd.New("/run/containerd/containerd.sock",
 		containerd.WithTimeout(3*time.Second),
 	)
 	if err != nil {
-		t.Fatalf("Failed to connect to containerd: %s", err)
+		return fmt.Errorf("creating a client: %w", err)
 	}
 
 	c.nsCtx = namespaces.WithNamespace(c.options.ctx, defaultNamespace)
-	fullImage := getFullImage(c.options)
+	return nil
+}
+
+func (c *ContainerdContainer) Run(t *testing.T) {
+	if err := c.initClientAndCtx(); err != nil {
+		t.Fatalf("Failed to initialize client: %s", err)
+	}
 
 	// Download and unpack the image
+	fullImage := getFullImage(c.options)
 	image, err := c.client.Pull(c.nsCtx, fullImage)
 	if err != nil {
 		t.Fatalf("Failed to pull the image %q: %s", fullImage, err)
@@ -160,7 +168,7 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	}
 
 	if c.options.removal {
-		err := c.deleteAndClose(task, container)
+		err := c.deleteAndClose(t, task, container)
 		if err != nil {
 			t.Fatalf("Failed to delete container %q: %s", c.name, err)
 		}
@@ -184,19 +192,39 @@ func (c *ContainerdContainer) start(t *testing.T) {
 }
 
 func (c *ContainerdContainer) Stop(t *testing.T) {
+	if !c.started && !c.options.forceDelete {
+		t.Logf("Warn(%s): trying to stop already stopped container\n", c.name)
+		return
+	}
+	if c.client == nil {
+		if c.options.forceDelete {
+			t.Logf("Warn(%s): trying to stop container with nil client. Forcing deletion\n", c.name)
+			if err := c.initClientAndCtx(); err != nil {
+				t.Fatalf("Failed to initialize client: %s", err)
+			}
+		} else {
+			t.Fatalf("Client is not initialized")
+		}
+	}
+
 	c.stop(t)
 	c.started = false
 }
 
 // deleteAndClose kill the task, delete the container and close the client
-func (c *ContainerdContainer) deleteAndClose(task containerd.Task, container containerd.Container) error {
-	var err error
-
-	// Kill the task
+func (c *ContainerdContainer) deleteAndClose(t *testing.T, task containerd.Task, container containerd.Container) error {
 	task.Kill(c.nsCtx, syscall.SIGKILL)
-	// We need to wait until the task is killed before trying to delete it
-	<-c.exitStatus
-	_, err = task.Delete(c.nsCtx)
+
+	// We need to wait until the task is killed before trying to delete it. But
+	// don't wait forever as the task might be already stopped.
+	select {
+	case <-c.exitStatus:
+	case <-time.After(taskKillTimeout):
+		t.Logf("Timeout %v waiting for container's task %q to be killed. Go ahead with deletion",
+			taskKillTimeout, c.name)
+	}
+
+	_, err := task.Delete(c.nsCtx)
 	if err != nil {
 		return fmt.Errorf("deleting task %q: %w", c.name, err)
 	}
@@ -225,7 +253,7 @@ func (c *ContainerdContainer) stop(t *testing.T) {
 		t.Fatalf("Failed to get task %q: %s", c.name, err)
 	}
 
-	err = c.deleteAndClose(task, container)
+	err = c.deleteAndClose(t, task, container)
 	if err != nil {
 		t.Fatalf("Failed to delete container %q: %s", c.name, err)
 	}

@@ -58,11 +58,18 @@ func (d *DockerContainer) Pid() int {
 	return d.pid
 }
 
-func (d *DockerContainer) Run(t *testing.T) {
+func (d *DockerContainer) initClient() error {
 	var err error
 	d.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		t.Fatalf("Failed to connect to Docker: %s", err)
+		return fmt.Errorf("creating a client: %w", err)
+	}
+	return nil
+}
+
+func (d *DockerContainer) Run(t *testing.T) {
+	if err := d.initClient(); err != nil {
+		t.Fatalf("Failed to initialize client: %s", err)
 	}
 
 	_ = d.client.ContainerRemove(d.options.ctx, d.name, types.ContainerRemoveOptions{})
@@ -114,7 +121,7 @@ func (d *DockerContainer) Run(t *testing.T) {
 		}
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(out)
-		t.Logf("Container %s output:\n%s", d.options.image, string(buf.Bytes()))
+		t.Logf("Container %q output:\n%s", d.name, string(buf.Bytes()))
 	}
 
 	if d.options.removal {
@@ -142,11 +149,24 @@ func (d *DockerContainer) start(t *testing.T) {
 }
 
 func (d *DockerContainer) Stop(t *testing.T) {
-	err := d.removeAndClose()
-	if err != nil {
-		t.Fatalf("Failed to stop container: %s", err)
+	if !d.started && !d.options.forceDelete {
+		t.Logf("Warn(%s): trying to stop already stopped container\n", d.name)
+		return
+	}
+	if d.client == nil {
+		if d.options.forceDelete {
+			t.Logf("Warn(%s): trying to stop container with nil client. Forcing deletion\n", d.name)
+			if err := d.initClient(); err != nil {
+				t.Fatalf("Failed to initialize client: %s", err)
+			}
+		} else {
+			t.Fatalf("Client is not initialized")
+		}
 	}
 
+	if err := d.removeAndClose(); err != nil {
+		t.Fatalf("Failed to stop container: %s", err)
+	}
 	d.started = false
 }
 
