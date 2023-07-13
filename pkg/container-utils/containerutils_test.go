@@ -19,24 +19,56 @@ import (
 	"path/filepath"
 	"testing"
 
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/stretchr/testify/require"
 )
 
+func newRuntimeClient(t *testing.T, runtime types.RuntimeName, sPath string) (runtimeclient.ContainerRuntimeClient, error) {
+	config := &RuntimeConfig{
+		Name:       runtime,
+		SocketPath: sPath,
+	}
+	rc, err := NewContainerRuntimeClient(config)
+	t.Cleanup(func() {
+		if rc != nil {
+			rc.Close()
+		}
+	})
+	return rc, err
+}
+
 func TestNewContainerRuntimeClient(t *testing.T) {
+	t.Parallel()
+
 	nonExistingSocketPath := filepath.Join(t.TempDir(), "non-existing-socket")
 	for _, runtime := range AvailableRuntimes {
-		rc := RuntimeConfig{
-			Name:       types.String2RuntimeName(runtime),
-			SocketPath: nonExistingSocketPath,
-		}
-		c, err := NewContainerRuntimeClient(&rc)
-		require.Nil(t, err)
-		require.NotNil(t, c)
+		t.Run(runtime, func(t *testing.T) {
+			runtime := types.String2RuntimeName(runtime)
+			t.Parallel()
+
+			t.Run("WithNonExistingSocketPath", func(t *testing.T) {
+				t.Parallel()
+
+				rc, err := newRuntimeClient(t, runtime, nonExistingSocketPath)
+				require.Nil(t, err)
+				require.NotNil(t, rc)
+			})
+
+			t.Run("WithDefaultSocketPath", func(t *testing.T) {
+				t.Parallel()
+
+				rc, err := newRuntimeClient(t, runtime, "")
+				require.Nil(t, err)
+				require.NotNil(t, rc)
+			})
+		})
 	}
 }
 
 func TestParseOCIState(t *testing.T) {
+	t.Parallel()
+
 	match, err := filepath.Glob("testdata/*.input")
 	if err != nil {
 		t.Fatal(err)
