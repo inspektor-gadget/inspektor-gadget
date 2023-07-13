@@ -24,6 +24,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type GadgetContext interface {
@@ -100,7 +101,8 @@ type ContainerInfoFromNetNSID interface {
 
 type ContainerInfoSetters interface {
 	NodeSetter
-	SetContainerInfo(pod, namespace, container string)
+	SetPodMetadata(*types.BasicK8sMetadata, *types.BasicRuntimeMetadata)
+	SetContainerMetadata(*types.BasicK8sMetadata, *types.BasicRuntimeMetadata)
 }
 
 type NodeSetter interface {

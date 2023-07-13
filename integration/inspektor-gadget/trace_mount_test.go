@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	tracemountTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/mount/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -44,7 +45,6 @@ func TestTraceMount(t *testing.T) {
 
 			normalize := func(e *tracemountTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
 				e.Pid = 0
 				e.Tid = 0
 				e.MountNsID = 0
@@ -53,6 +53,10 @@ func TestTraceMount(t *testing.T) {
 				e.Data = ""
 				e.Flags = nil
 				e.FlagsRaw = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

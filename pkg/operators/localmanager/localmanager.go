@@ -31,6 +31,7 @@ import (
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -157,17 +158,17 @@ func (l *LocalManager) Init(operatorParams *params.Params) error {
 
 partsLoop:
 	for _, p := range parts {
-		runtimeName := strings.TrimSpace(p)
+		runtimeName := types.String2RuntimeName(strings.TrimSpace(p))
 		socketPath := ""
 
 		switch runtimeName {
-		case runtimeclient.DockerName:
+		case types.RuntimeNameDocker:
 			socketPath = operatorParams.Get(DockerSocketPath).AsString()
-		case runtimeclient.ContainerdName:
+		case types.RuntimeNameContainerd:
 			socketPath = operatorParams.Get(ContainerdSocketPath).AsString()
-		case runtimeclient.CrioName:
+		case types.RuntimeNameCrio:
 			socketPath = operatorParams.Get(CrioSocketPath).AsString()
-		case runtimeclient.PodmanName:
+		case types.RuntimeNamePodman:
 			socketPath = operatorParams.Get(PodmanSocketPath).AsString()
 		default:
 			return commonutils.WrapInErrInvalidArg("--runtime / -r",
@@ -248,7 +249,9 @@ func (l *localManagerTrace) PreGadgetRun() error {
 	// TODO: Improve filtering, see further details in
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
 	containerSelector := containercollection.ContainerSelector{
-		Name: l.params.Get(ContainerName).AsString(),
+		Runtime: containercollection.RuntimeSelector{
+			ContainerName: l.params.Get(ContainerName).AsString(),
+		},
 	}
 
 	// If --host is set, we do not want to create the below map because we do not
@@ -275,28 +278,28 @@ func (l *localManagerTrace) PreGadgetRun() error {
 			if err != nil {
 				var ve *ebpf.VerifierError
 				if errors.As(err, &ve) {
-					l.gadgetCtx.Logger().Debugf("start tracing container %q: verifier error: %+v\n", container.Name, ve)
+					l.gadgetCtx.Logger().Debugf("start tracing container %q: verifier error: %+v\n", container.K8s.ContainerName, ve)
 				}
 
-				log.Warnf("start tracing container %q: %s", container.Name, err)
+				log.Warnf("start tracing container %q: %s", container.K8s.ContainerName, err)
 				return
 			}
 
 			l.attachedContainers[container] = struct{}{}
 
 			log.Debugf("tracer attached: container %q pid %d mntns %d netns %d",
-				container.Name, container.Pid, container.Mntns, container.Netns)
+				container.K8s.ContainerName, container.Pid, container.Mntns, container.Netns)
 		}
 
 		detachContainerFunc := func(container *containercollection.Container) {
 			log.Debugf("calling gadget.DetachContainer()")
 			err := attacher.DetachContainer(container)
 			if err != nil {
-				log.Warnf("stop tracing container %q: %s", container.Name, err)
+				log.Warnf("stop tracing container %q: %s", container.K8s.ContainerName, err)
 				return
 			}
 			log.Debugf("tracer detached: container %q pid %d mntns %d netns %d",
-				container.Name, container.Pid, container.Mntns, container.Netns)
+				container.K8s.ContainerName, container.Pid, container.Mntns, container.Netns)
 		}
 
 		log.Debugf("add subscription")
@@ -304,7 +307,7 @@ func (l *localManagerTrace) PreGadgetRun() error {
 			l.subscriptionKey,
 			containerSelector,
 			func(event containercollection.PubSubEvent) {
-				log.Debugf("%s: %s", event.Type.String(), event.Container.ID)
+				log.Debugf("%s: %s", event.Type.String(), event.Container.Runtime.ContainerID)
 				switch event.Type {
 				case containercollection.EventTypeAddContainer:
 					attachContainerFunc(event.Container)

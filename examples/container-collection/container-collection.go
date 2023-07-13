@@ -22,7 +22,7 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
-	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func main() {
@@ -33,10 +33,10 @@ func main() {
 		switch event.Type {
 		case containercollection.EventTypeAddContainer:
 			fmt.Printf("Container added: %q pid %d\n",
-				event.Container.Name, event.Container.Pid)
+				event.Container.Runtime.ContainerName, event.Container.Pid)
 		case containercollection.EventTypeRemoveContainer:
 			fmt.Printf("Container removed: %q pid %d\n",
-				event.Container.Name, event.Container.Pid)
+				event.Container.Runtime.ContainerName, event.Container.Pid)
 		}
 	}
 
@@ -54,8 +54,8 @@ func main() {
 		// (It's needed to have the name of the container in this example).
 		containercollection.WithMultipleContainerRuntimesEnrichment(
 			[]*containerutils.RuntimeConfig{
-				{Name: runtimeclient.DockerName},
-				{Name: runtimeclient.ContainerdName},
+				{Name: types.RuntimeNameDocker},
+				{Name: types.RuntimeNameContainerd},
 			}),
 	}
 

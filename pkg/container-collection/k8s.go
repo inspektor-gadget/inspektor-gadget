@@ -30,6 +30,7 @@ import (
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type K8sClient struct {
@@ -61,7 +62,7 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 	list := strings.SplitN(node.Status.NodeInfo.ContainerRuntimeVersion, "://", 2)
 	runtimeClient, err := containerutils.NewContainerRuntimeClient(
 		&containerutils.RuntimeConfig{
-			Name: list[0],
+			Name: types.String2RuntimeName(list[0]),
 		})
 	if err != nil {
 		return nil, err
@@ -136,11 +137,6 @@ func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 			continue
 		}
 
-		id := trimRuntimePrefix(s.ContainerID)
-		if id == "" {
-			continue
-		}
-
 		pid := containerData.Pid
 		if pid > math.MaxUint32 {
 			log.Errorf("Container PID (%d) exceeds math.MaxUint32 (%d), skipping this container", pid, math.MaxUint32)
@@ -148,12 +144,18 @@ func (k *K8sClient) GetRunningContainers(pod *v1.Pod) []Container {
 		}
 
 		containerDef := Container{
-			ID:        id,
-			Namespace: pod.GetNamespace(),
-			Podname:   pod.GetName(),
-			Name:      s.Name,
-			Labels:    labels,
-			Pid:       uint32(pid),
+			Runtime: RuntimeMetadata{
+				BasicRuntimeMetadata: containerData.Runtime.BasicRuntimeMetadata,
+			},
+			Pid: uint32(pid),
+			K8s: K8sMetadata{
+				BasicK8sMetadata: types.BasicK8sMetadata{
+					Namespace:     pod.GetNamespace(),
+					PodName:       pod.GetName(),
+					ContainerName: s.Name,
+				},
+				PodLabels: labels,
+			},
 		}
 		containers = append(containers, containerDef)
 	}

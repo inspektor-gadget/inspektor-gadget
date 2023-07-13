@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"testing"
 
-	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type ContainerSpec struct {
@@ -44,10 +44,10 @@ type ContainerInterface interface {
 }
 
 func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
-	switch containerRuntime {
-	case runtimeclient.DockerName:
+	switch types.String2RuntimeName(containerRuntime) {
+	case types.RuntimeNameDocker:
 		return &DockerManager{}, nil
-	case runtimeclient.ContainerdName:
+	case types.RuntimeNameContainerd:
 		return &ContainerdManager{}, nil
 	default:
 		return nil, fmt.Errorf("unknown container runtime %q", containerRuntime)

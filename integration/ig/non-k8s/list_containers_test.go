@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TestFilterByContainerName(t *testing.T) {
@@ -31,12 +32,15 @@ func TestFilterByContainerName(t *testing.T) {
 		Cmd:  fmt.Sprintf("./ig list-containers -o json --runtimes=%s --containername=%s", *runtime, cn),
 		ExpectedOutputFn: func(output string) error {
 			expectedContainer := &containercollection.Container{
-				Name:    cn,
-				Runtime: *runtime,
+				Runtime: containercollection.RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						RuntimeName:   types.String2RuntimeName(*runtime),
+						ContainerName: cn,
+					},
+				},
 			}
 
 			normalize := func(c *containercollection.Container) {
-				c.ID = ""
 				c.Pid = 0
 				c.OciConfig = nil
 				c.Bundle = ""
@@ -46,8 +50,10 @@ func TestFilterByContainerName(t *testing.T) {
 				c.CgroupID = 0
 				c.CgroupV1 = ""
 				c.CgroupV2 = ""
-				c.Labels = nil
-				c.PodUID = ""
+
+				c.K8s.PodLabels = nil
+				c.K8s.PodUID = ""
+				c.Runtime.ContainerID = ""
 			}
 
 			return ExpectAllInArrayToMatch(output, normalize, expectedContainer)
@@ -80,21 +86,28 @@ func TestWatchContainers(t *testing.T) {
 				{
 					Type: containercollection.EventTypeAddContainer,
 					Container: &containercollection.Container{
-						Name:    cn,
-						Runtime: *runtime,
+						Runtime: containercollection.RuntimeMetadata{
+							BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+								RuntimeName:   types.String2RuntimeName(*runtime),
+								ContainerName: cn,
+							},
+						},
 					},
 				},
 				{
 					Type: containercollection.EventTypeRemoveContainer,
 					Container: &containercollection.Container{
-						Name:    cn,
-						Runtime: *runtime,
+						Runtime: containercollection.RuntimeMetadata{
+							BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+								RuntimeName:   types.String2RuntimeName(*runtime),
+								ContainerName: cn,
+							},
+						},
 					},
 				},
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
-				e.Container.ID = ""
 				e.Container.Pid = 0
 				e.Container.OciConfig = nil
 				e.Container.Bundle = ""
@@ -104,9 +117,11 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.CgroupID = 0
 				e.Container.CgroupV1 = ""
 				e.Container.CgroupV2 = ""
-				e.Container.Labels = nil
-				e.Container.PodUID = ""
 				e.Timestamp = ""
+
+				e.Container.K8s.PodLabels = nil
+				e.Container.K8s.PodUID = ""
+				e.Container.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEvents...)

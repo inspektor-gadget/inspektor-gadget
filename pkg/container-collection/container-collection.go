@@ -176,7 +176,7 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 
 	// Remove from MntNs lookup
 	mntNsContainer, ok := cc.containersByMntNs.Load(container.Mntns)
-	if !ok || mntNsContainer.(*Container).ID != container.ID {
+	if !ok || mntNsContainer.(*Container).Runtime.ContainerID != container.Runtime.ContainerID {
 		log.Warn("container not found or mismatch in mntns lookup map")
 		return
 	} else {
@@ -194,7 +194,7 @@ func (cc *ContainerCollection) RemoveContainer(id string) {
 	netNsContainersArr := netNsContainers.([]*Container)
 	newNetNsContainers := make([]*Container, 0, len(netNsContainersArr)-1)
 	for _, netNsContainer := range netNsContainersArr {
-		if netNsContainer.ID == container.ID {
+		if netNsContainer.Runtime.ContainerID == container.Runtime.ContainerID {
 			found = true
 			continue
 		}
@@ -223,7 +223,7 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 		}
 	}
 
-	_, loaded := cc.containers.LoadOrStore(container.ID, container)
+	_, loaded := cc.containers.LoadOrStore(container.Runtime.ContainerID, container)
 	if loaded {
 		return
 	}
@@ -248,7 +248,7 @@ func (cc *ContainerCollection) AddContainer(container *Container) {
 func (cc *ContainerCollection) LookupMntnsByContainer(namespace, pod, container string) (mntns uint64) {
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
-		if namespace == c.Namespace && pod == c.Podname && container == c.Name {
+		if namespace == c.K8s.Namespace && pod == c.K8s.PodName && container == c.K8s.ContainerName {
 			mntns = c.Mntns
 			// container found, stop iterating
 			return false
@@ -312,8 +312,8 @@ func (cc *ContainerCollection) LookupMntnsByPod(namespace, pod string) map[strin
 	ret := make(map[string]uint64)
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
-		if namespace == c.Namespace && pod == c.Podname {
-			ret[c.Name] = c.Mntns
+		if namespace == c.K8s.Namespace && pod == c.K8s.PodName {
+			ret[c.K8s.ContainerName] = c.Mntns
 		}
 		return true
 	})
@@ -325,7 +325,7 @@ func (cc *ContainerCollection) LookupMntnsByPod(namespace, pod string) map[strin
 func (cc *ContainerCollection) LookupPIDByContainer(namespace, pod, container string) (pid uint32) {
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
-		if namespace == c.Namespace && pod == c.Podname && container == c.Name {
+		if namespace == c.K8s.Namespace && pod == c.K8s.PodName && container == c.K8s.ContainerName {
 			pid = c.Pid
 			// container found, stop iterating
 			return false
@@ -342,8 +342,8 @@ func (cc *ContainerCollection) LookupPIDByPod(namespace, pod string) map[string]
 	ret := make(map[string]uint32)
 	cc.containers.Range(func(key, value interface{}) bool {
 		c := value.(*Container)
-		if namespace == c.Namespace && pod == c.Podname {
-			ret[c.Name] = c.Pid
+		if namespace == c.K8s.Namespace && pod == c.K8s.PodName {
+			ret[c.K8s.ContainerName] = c.Pid
 		}
 		return true
 	})
@@ -361,7 +361,7 @@ func (cc *ContainerCollection) LookupOwnerReferenceByMntns(mntns uint64) *metav1
 			ownerRef, err = c.GetOwnerReference()
 			if err != nil {
 				log.Warnf("Failed to get owner reference of %s/%s/%s: %s",
-					c.Namespace, c.Podname, c.Name, err)
+					c.K8s.Namespace, c.K8s.PodName, c.K8s.ContainerName, err)
 			}
 			// container found, stop iterating
 			return false
@@ -423,11 +423,11 @@ func (cc *ContainerCollection) ContainerRangeWithSelector(
 }
 
 func (cc *ContainerCollection) EnrichNode(event *eventtypes.CommonData) {
-	event.Node = cc.nodeName
+	event.K8s.Node = cc.nodeName
 }
 
 func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mountnsid uint64) {
-	event.Node = cc.nodeName
+	event.K8s.Node = cc.nodeName
 
 	container := cc.LookupContainerByMntns(mountnsid)
 	if container == nil && cc.cachedContainers != nil {
@@ -435,14 +435,18 @@ func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mount
 	}
 
 	if container != nil {
-		event.Container = container.Name
-		event.Pod = container.Podname
-		event.Namespace = container.Namespace
+		event.K8s.ContainerName = container.K8s.ContainerName
+		event.K8s.PodName = container.K8s.PodName
+		event.K8s.Namespace = container.K8s.Namespace
+
+		event.Runtime.RuntimeName = container.Runtime.RuntimeName
+		event.Runtime.ContainerName = container.Runtime.ContainerName
+		event.Runtime.ContainerID = container.Runtime.ContainerID
 	}
 }
 
 func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netnsid uint64) {
-	event.Node = cc.nodeName
+	event.K8s.Node = cc.nodeName
 
 	containers := cc.LookupContainersByNetns(netnsid)
 	if len(containers) == 0 && cc.cachedContainers != nil {
@@ -452,20 +456,27 @@ func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netns
 		return
 	}
 	if containers[0].HostNetwork {
-		event.HostNetwork = true
+		event.K8s.HostNetwork = true
 		return
 	}
 
 	if len(containers) == 1 {
-		event.Container = containers[0].Name
-		event.Pod = containers[0].Podname
-		event.Namespace = containers[0].Namespace
+		event.K8s.ContainerName = containers[0].K8s.ContainerName
+		event.K8s.PodName = containers[0].K8s.PodName
+		event.K8s.Namespace = containers[0].K8s.Namespace
+
+		event.Runtime.RuntimeName = containers[0].Runtime.RuntimeName
+		event.Runtime.ContainerName = containers[0].Runtime.ContainerName
+		event.Runtime.ContainerID = containers[0].Runtime.ContainerID
 		return
 	}
-	if containers[0].Podname != "" && containers[0].Namespace != "" {
+	if containers[0].K8s.PodName != "" && containers[0].K8s.Namespace != "" {
 		// Kubernetes containers within the same pod.
-		event.Pod = containers[0].Podname
-		event.Namespace = containers[0].Namespace
+		event.K8s.PodName = containers[0].K8s.PodName
+		event.K8s.Namespace = containers[0].K8s.Namespace
+
+		// All containers in the same pod share the same container runtime
+		event.Runtime.RuntimeName = containers[0].Runtime.RuntimeName
 	}
 	// else {
 	// 	TODO: Non-Kubernetes containers sharing the same network namespace.

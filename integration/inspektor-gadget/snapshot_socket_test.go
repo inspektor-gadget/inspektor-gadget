@@ -75,15 +75,18 @@ func TestSnapshotSocket(t *testing.T) {
 					},
 					Status: "LISTEN",
 				}
-				expectedEntry.Node = nodeName
+				expectedEntry.K8s.Node = nodeName
 
 				// Socket gadget doesn't provide container data yet. See issue #744.
-				expectedEntry.Container = ""
+				expectedEntry.K8s.ContainerName = ""
 
 				normalize := func(e *snapshotsocketTypes.Event) {
-					e.Container = ""
 					e.InodeNumber = 0
 					e.NetNsID = 0
+
+					e.K8s.ContainerName = ""
+					// TODO: Verify container runtime and container name
+					e.Runtime = eventtypes.BasicRuntimeMetadata{}
 				}
 
 				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)

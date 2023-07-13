@@ -28,6 +28,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -208,14 +209,18 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 	}
 
 	containerSelector := containercollection.ContainerSelector{
-		Namespace: m.params.Get(ParamNamespace).AsString(),
-		Podname:   m.params.Get(ParamPodName).AsString(),
-		Name:      m.params.Get(ParamContainerName).AsString(),
-		Labels:    labels,
+		K8s: containercollection.K8sSelector{
+			BasicK8sMetadata: types.BasicK8sMetadata{
+				Namespace:     m.params.Get(ParamNamespace).AsString(),
+				PodName:       m.params.Get(ParamPodName).AsString(),
+				ContainerName: m.params.Get(ParamContainerName).AsString(),
+			},
+			PodLabels: labels,
+		},
 	}
 
 	if m.params.Get(ParamAllNamespaces).AsBool() {
-		containerSelector.Namespace = ""
+		containerSelector.K8s.Namespace = ""
 	}
 
 	if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {
@@ -247,30 +252,30 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 			if err != nil {
 				var ve *ebpf.VerifierError
 				if errors.As(err, &ve) {
-					m.gadgetCtx.Logger().Debugf("start tracing container %q: verifier error: %+v\n", container.Name, ve)
+					m.gadgetCtx.Logger().Debugf("start tracing container %q: verifier error: %+v\n", container.K8s.ContainerName, ve)
 				}
 
-				log.Warnf("start tracing container %q: %s", container.Name, err)
+				log.Warnf("start tracing container %q: %s", container.K8s.ContainerName, err)
 				return
 			}
 
-			m.attachedContainers[container.ID] = container
+			m.attachedContainers[container.Runtime.ContainerID] = container
 
 			log.Debugf("tracer attached: container %q pid %d mntns %d netns %d",
-				container.Name, container.Pid, container.Mntns, container.Netns)
+				container.K8s.ContainerName, container.Pid, container.Mntns, container.Netns)
 		}
 
 		detachContainerFunc := func(container *containercollection.Container) {
 			log.Debugf("calling gadget.Detach()")
-			delete(m.attachedContainers, container.ID)
+			delete(m.attachedContainers, container.Runtime.ContainerID)
 
 			err := attacher.DetachContainer(container)
 			if err != nil {
-				log.Warnf("stop tracing container %q: %s", container.Name, err)
+				log.Warnf("stop tracing container %q: %s", container.K8s.ContainerName, err)
 				return
 			}
 			log.Debugf("tracer detached: container %q pid %d mntns %d netns %d",
-				container.Name, container.Pid, container.Mntns, container.Netns)
+				container.K8s.ContainerName, container.Pid, container.Mntns, container.Netns)
 		}
 
 		m.subscribed = true
@@ -280,7 +285,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 			m.id,
 			containerSelector,
 			func(event containercollection.PubSubEvent) {
-				log.Debugf("%s: %s", event.Type.String(), event.Container.ID)
+				log.Debugf("%s: %s", event.Type.String(), event.Container.Runtime.ContainerID)
 				switch event.Type {
 				case containercollection.EventTypeAddContainer:
 					attachContainerFunc(event.Container)

@@ -14,7 +14,11 @@
 
 package ociannotations
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+)
 
 // ErrUnsupportedContainerRuntime is used for unsupported container runtime
 var ErrUnsupportedContainerRuntime = errors.New("unsupported container runtime")
@@ -33,7 +37,7 @@ type Resolver interface {
 	// PodNamespace returns the namespace of the pod to which container belongs
 	PodNamespace(annotations map[string]string) string
 	// Runtime returns runtime in which the container is running
-	Runtime() string
+	Runtime() types.RuntimeName
 }
 
 // NewResolver creates a Resolver for a given container runtime

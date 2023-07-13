@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	tracesniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -43,11 +44,14 @@ func TestTraceSni(t *testing.T) {
 
 			normalize := func(e *tracesniTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
 				e.MountNsID = 0
 				e.NetNsID = 0
 				e.Pid = 0
 				e.Tid = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectAllToMatch(output, normalize, expectedEntry)

@@ -16,20 +16,17 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func newTopFileCmd(ns string, cmd string, startAndStop bool) *Command {
 	expectedOutputFn := func(output string) error {
 		expectedEntry := &types.Stats{
-			CommonData: eventtypes.CommonData{
-				Namespace: ns,
-				Pod:       "test-pod",
-			},
+			CommonData: BuildCommonData(ns, WithRuntimeMetadata(*containerRuntime)),
 			// echo is built-in
 			Comm:     "sh",
 			Filename: "bar",
@@ -37,7 +34,15 @@ func newTopFileCmd(ns string, cmd string, startAndStop bool) *Command {
 		}
 
 		normalize := func(e *types.Stats) {
-			e.Container = ""
+			// Docker and CRI-O use a custom container name composed, among
+			// other things, by the pod UID. We don't know the pod UID in
+			// advance, so we can't match the exact expected container name.
+			prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+			if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+				strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
+				e.Runtime.ContainerName = "test-pod"
+			}
+
 			e.Pid = 0
 			e.Tid = 0
 			e.MountNsID = 0
@@ -45,6 +50,8 @@ func newTopFileCmd(ns string, cmd string, startAndStop bool) *Command {
 			e.ReadBytes = 0
 			e.Writes = 0
 			e.WriteBytes = 0
+
+			e.Runtime.ContainerID = ""
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

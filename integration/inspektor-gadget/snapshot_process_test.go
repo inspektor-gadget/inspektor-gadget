@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	snapshotprocessTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -56,13 +57,16 @@ func TestSnapshotProcess(t *testing.T) {
 					Event:   BuildBaseEvent(ns),
 					Command: "nc",
 				}
-				expectedEntry.Node = nodeName
+				expectedEntry.K8s.Node = nodeName
 
 				normalize := func(e *snapshotprocessTypes.Event) {
 					e.Pid = 0
 					e.Tid = 0
 					e.ParentPid = 0
 					e.MountNsID = 0
+
+					// TODO: Verify container runtime and container name
+					e.Runtime = types.BasicRuntimeMetadata{}
 				}
 
 				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)

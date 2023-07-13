@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	tracesignalTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/signal/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -41,11 +42,14 @@ func TestTraceSignal(t *testing.T) {
 
 			normalize := func(e *tracesignalTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
 				e.Pid = 0
 				e.TargetPid = 0
 				e.Retval = 0
 				e.MountNsID = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

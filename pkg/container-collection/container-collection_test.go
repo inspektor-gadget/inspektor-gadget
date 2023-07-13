@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	types "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type fakeTracerMapsUpdater struct {
@@ -34,9 +34,9 @@ func (f *fakeTracerMapsUpdater) TracerMapsUpdater() FuncNotify {
 	return func(event PubSubEvent) {
 		switch event.Type {
 		case EventTypeAddContainer:
-			f.containers[event.Container.ID] = event.Container
+			f.containers[event.Container.Runtime.ContainerID] = event.Container
 		case EventTypeRemoveContainer:
-			delete(f.containers, event.Container.ID)
+			delete(f.containers, event.Container.Runtime.ContainerID)
 		}
 	}
 }
@@ -47,7 +47,11 @@ func BenchmarkCreateContainerCollection(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		cc := ContainerCollection{}
 		cc.AddContainer(&Container{
-			ID:    fmt.Sprint(n),
+			Runtime: RuntimeMetadata{
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: fmt.Sprint(n),
+				},
+			},
 			Mntns: uint64(n),
 		})
 	}
@@ -62,7 +66,11 @@ func BenchmarkLookupContainerByMntns(b *testing.B) {
 
 	for n := 0; n < TestContainerCount; n++ {
 		cc.AddContainer(&Container{
-			ID:    fmt.Sprint(n),
+			Runtime: RuntimeMetadata{
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: fmt.Sprint(n),
+				},
+			},
 			Mntns: uint64(n),
 		})
 	}
@@ -85,7 +93,11 @@ func BenchmarkLookupContainerByNetns(b *testing.B) {
 
 	for n := 0; n < TestContainerCount; n++ {
 		cc.AddContainer(&Container{
-			ID:    fmt.Sprint(n),
+			Runtime: RuntimeMetadata{
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID: fmt.Sprint(n),
+				},
+			},
 			Netns: uint64(n),
 		})
 	}
@@ -133,13 +145,23 @@ func TestWithTracerCollection(t *testing.T) {
 		runners[i] = runner
 
 		containers[i] = &Container{
-			ID:        fmt.Sprintf("id%d", i),
-			Name:      fmt.Sprintf("name%d", i),
-			Namespace: fmt.Sprintf("namespace%d", i),
-			Podname:   fmt.Sprintf("pod%d", i),
-			Mntns:     runner.Info.MountNsID,
-			Netns:     runner.Info.NetworkNsID,
-			Pid:       uint32(runner.Info.Pid),
+			Runtime: RuntimeMetadata{
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					RuntimeName:   types.RuntimeNameDocker,
+					ContainerName: fmt.Sprintf("name%d", i),
+					ContainerID:   fmt.Sprintf("id%d", i),
+				},
+			},
+			Mntns: runner.Info.MountNsID,
+			Netns: runner.Info.NetworkNsID,
+			Pid:   uint32(runner.Info.Pid),
+			K8s: K8sMetadata{
+				BasicK8sMetadata: types.BasicK8sMetadata{
+					ContainerName: fmt.Sprintf("name%d", i),
+					Namespace:     fmt.Sprintf("namespace%d", i),
+					PodName:       fmt.Sprintf("pod%d", i),
+				},
+			},
 		}
 		cc.AddContainer(containers[i])
 	}
@@ -150,9 +172,18 @@ func TestWithTracerCollection(t *testing.T) {
 		for i := 0; i < nContainers; i++ {
 			ev := types.CommonData{}
 			expected := types.CommonData{
-				Namespace: containers[i].Namespace,
-				Pod:       containers[i].Podname,
-				Container: containers[i].Name,
+				Runtime: types.BasicRuntimeMetadata{
+					RuntimeName:   containers[i].Runtime.RuntimeName,
+					ContainerName: containers[i].Runtime.ContainerName,
+					ContainerID:   containers[i].Runtime.ContainerID,
+				},
+				K8s: types.K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     containers[i].K8s.Namespace,
+						PodName:       containers[i].K8s.PodName,
+						ContainerName: containers[i].K8s.ContainerName,
+					},
+				},
 			}
 
 			cc.EnrichByMntNs(&ev, containers[i].Mntns)
@@ -165,9 +196,18 @@ func TestWithTracerCollection(t *testing.T) {
 		for i := 0; i < nContainers; i++ {
 			ev := types.CommonData{}
 			expected := types.CommonData{
-				Namespace: containers[i].Namespace,
-				Pod:       containers[i].Podname,
-				Container: containers[i].Name,
+				Runtime: types.BasicRuntimeMetadata{
+					RuntimeName:   containers[i].Runtime.RuntimeName,
+					ContainerName: containers[i].Runtime.ContainerName,
+					ContainerID:   containers[i].Runtime.ContainerID,
+				},
+				K8s: types.K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						Namespace:     containers[i].K8s.Namespace,
+						PodName:       containers[i].K8s.PodName,
+						ContainerName: containers[i].K8s.ContainerName,
+					},
+				},
 			}
 
 			cc.EnrichByNetNs(&ev, containers[i].Netns)
@@ -180,7 +220,7 @@ func TestWithTracerCollection(t *testing.T) {
 	verifyEnrichByMntNs()
 	verifyEnrichByNetNs()
 
-	cc.RemoveContainer(containers[0].ID)
+	cc.RemoveContainer(containers[0].Runtime.ContainerID)
 
 	// Pubsub events should be triggered immediately after container removal
 	require.Equal(t, nContainers-1, len(f.containers), "number of containers should be equal")

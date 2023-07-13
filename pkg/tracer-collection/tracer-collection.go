@@ -69,8 +69,9 @@ func (tc *TracerCollection) TracerMapsUpdater() containercollection.FuncNotify {
 	return func(event containercollection.PubSubEvent) {
 		switch event.Type {
 		case containercollection.EventTypeAddContainer:
-			// Skip the pause container
-			if event.Container.Name == "" {
+			// Skip the pause container, only if it is not a standalone
+			// container (ig use-case)
+			if event.Container.K8s.ContainerName == "" && event.Container.Runtime.ContainerName == "" {
 				return
 			}
 
@@ -169,15 +170,15 @@ func (tc *TracerCollection) TracerDump() (out string) {
 	for i, t := range tc.tracers {
 		out += fmt.Sprintf("%v -> %q/%q (%s) Labels: \n",
 			i,
-			t.containerSelector.Namespace,
-			t.containerSelector.Podname,
-			t.containerSelector.Name)
-		for k, v := range t.containerSelector.Labels {
+			t.containerSelector.K8s.Namespace,
+			t.containerSelector.K8s.PodName,
+			t.containerSelector.K8s.ContainerName)
+		for k, v := range t.containerSelector.K8s.PodLabels {
 			out += fmt.Sprintf("                  %v: %v\n", k, v)
 		}
 		out += "        Matches:\n"
 		tc.containerCollection.ContainerRangeWithSelector(&t.containerSelector, func(c *containercollection.Container) {
-			out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupID=%v]\n", c.Namespace, c.Podname, c.Mntns, c.CgroupID)
+			out += fmt.Sprintf("        - %s/%s [Mntns=%v CgroupID=%v]\n", c.K8s.Namespace, c.K8s.PodName, c.Mntns, c.CgroupID)
 		})
 	}
 	return

@@ -29,9 +29,10 @@ import (
 
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
+	execTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
+	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 // Function to generate an event used most of the times.
@@ -49,7 +50,7 @@ func createTestEnv(
 	t *testing.T,
 	traceName string,
 	containerName string,
-	eventCallback func(event *types.Event),
+	eventCallback func(event *execTypes.Event),
 ) *containercollection.ContainerCollection {
 	t.Helper()
 
@@ -71,7 +72,11 @@ func createTestEnv(
 	t.Cleanup(cc.Close)
 
 	containerSelector := containercollection.ContainerSelector{
-		Name: containerName,
+		K8s: containercollection.K8sSelector{
+			BasicK8sMetadata: types.BasicK8sMetadata{
+				ContainerName: containerName,
+			},
+		},
 	}
 	if err := tc.AddTracer(traceName, containerSelector); err != nil {
 		t.Fatalf("error adding tracer: %s", err)
@@ -85,7 +90,7 @@ func createTestEnv(
 	}
 
 	// Create the tracer
-	tracer, err := tracer.NewTracer(&tracer.Config{MountnsMap: mountnsmap}, cc, eventCallback)
+	tracer, err := execTracer.NewTracer(&execTracer.Config{MountnsMap: mountnsmap}, cc, eventCallback)
 	if err != nil {
 		t.Fatalf("failed to create tracer: %s", err)
 	}
@@ -111,7 +116,7 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 		nonMatchingCommand   = "touch"
 	)
 
-	eventCallback := func(event *types.Event) {
+	eventCallback := func(event *execTypes.Event) {
 		// "nonMatchingCommand" is only executed in the
 		// "nonMatching" container that doesn't match with the
 		// filter
@@ -135,10 +140,18 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 			}
 
 			container := &containercollection.Container{
-				ID:    uuid.New().String(),
-				Name:  name,
+				Runtime: containercollection.RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerID: uuid.New().String(),
+					},
+				},
 				Mntns: r.Info.MountNsID,
 				Pid:   uint32(r.Info.Tid),
+				K8s: containercollection.K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						ContainerName: name,
+					},
+				},
 			}
 
 			cc.AddContainer(container)
@@ -153,7 +166,7 @@ func TestContainerRemovalRaceCondition(t *testing.T) {
 			// container after it's notified. Notice that the container hooks are not blocking
 			// on the remove events, hence when we get the notification the container is already
 			// gone.
-			time.AfterFunc(1*time.Millisecond, func() { cc.RemoveContainer(container.ID) })
+			time.AfterFunc(1*time.Millisecond, func() { cc.RemoveContainer(container.Runtime.ContainerID) })
 		}
 
 		return nil
@@ -191,8 +204,8 @@ func TestEventEnrichmentRaceCondition(t *testing.T) {
 		command       = "cat"
 	)
 
-	eventCallback := func(event *types.Event) {
-		if event.Container == "" {
+	eventCallback := func(event *execTypes.Event) {
+		if event.K8s.ContainerName == "" {
 			t.Fatal("event not enriched")
 		}
 	}
@@ -216,17 +229,25 @@ func TestEventEnrichmentRaceCondition(t *testing.T) {
 			}
 
 			container := &containercollection.Container{
-				ID:    uuid.New().String(),
-				Name:  name,
+				Runtime: containercollection.RuntimeMetadata{
+					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+						ContainerID: uuid.New().String(),
+					},
+				},
 				Mntns: r.Info.MountNsID,
 				Pid:   uint32(r.Info.Tid),
+				K8s: containercollection.K8sMetadata{
+					BasicK8sMetadata: types.BasicK8sMetadata{
+						ContainerName: name,
+					},
+				},
 			}
 
 			cc.AddContainer(container)
 			// Remove the container right after it generates the command. Running this
 			// after r.Run() will be too late, so let's do in a different goroutine to
 			// have some time.
-			go func() { cc.RemoveContainer(container.ID) }()
+			go func() { cc.RemoveContainer(container.Runtime.ContainerID) }()
 
 			if err := r.Run(f); err != nil {
 				return fmt.Errorf("running command: %w", err)

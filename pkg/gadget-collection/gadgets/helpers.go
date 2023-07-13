@@ -15,16 +15,18 @@
 package gadgets
 
 import (
+	k8sTypes "k8s.io/apimachinery/pkg/types"
+
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	"k8s.io/apimachinery/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func TraceName(namespace, name string) string {
 	return "trace_" + namespace + "_" + name
 }
 
-func TraceNameFromNamespacedName(n types.NamespacedName) string {
+func TraceNameFromNamespacedName(n k8sTypes.NamespacedName) string {
 	return TraceName(n.Namespace, n.Name)
 }
 
@@ -37,9 +39,13 @@ func ContainerSelectorFromContainerFilter(f *gadgetv1alpha1.ContainerFilter) *co
 		labels[k] = v
 	}
 	return &containercollection.ContainerSelector{
-		Namespace: f.Namespace,
-		Podname:   f.Podname,
-		Labels:    labels,
-		Name:      f.ContainerName,
+		K8s: containercollection.K8sSelector{
+			BasicK8sMetadata: types.BasicK8sMetadata{
+				Namespace:     f.Namespace,
+				PodName:       f.Podname,
+				ContainerName: f.ContainerName,
+			},
+			PodLabels: labels,
+		},
 	}
 }

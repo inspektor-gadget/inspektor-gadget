@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	seccompauditTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -98,9 +99,12 @@ EOF
 
 				normalize := func(e *seccompauditTypes.Event) {
 					e.Timestamp = 0
-					e.Node = ""
 					e.Pid = 0
 					e.MountNsID = 0
+
+					e.K8s.Node = ""
+					// TODO: Verify container runtime and container name
+					e.Runtime = types.BasicRuntimeMetadata{}
 				}
 
 				return ExpectEntriesToMatch(output, normalize, expectedEntry)

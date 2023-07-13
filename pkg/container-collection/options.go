@@ -40,36 +40,36 @@ import (
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData, container *Container) {
 	// Runtime
-	container.ID = containerData.ID
-	container.Runtime = containerData.Runtime
+	container.Runtime.ContainerID = containerData.Runtime.ContainerID
+	container.Runtime.RuntimeName = containerData.Runtime.RuntimeName
+	container.Runtime.ContainerName = containerData.Runtime.ContainerName
 
 	// Kubernetes
-	container.Namespace = containerData.PodNamespace
-	container.Podname = containerData.PodName
-	container.PodUID = containerData.PodUID
-
-	// Notice we are temporarily using the runtime container name as the
-	// Kubernetes container name because the Container struct doesn't have that
-	// field, and we don't support filtering by runtime container name yet.
-	container.Name = containerData.Name
+	container.K8s.Namespace = containerData.K8s.Namespace
+	container.K8s.PodName = containerData.K8s.PodName
+	container.K8s.PodUID = containerData.K8s.PodUID
+	container.K8s.ContainerName = containerData.K8s.ContainerName
 }
 
 func containerRuntimeEnricher(
-	runtimeName string,
+	runtimeName types.RuntimeName,
 	runtimeClient runtimeclient.ContainerRuntimeClient,
 	container *Container,
 ) bool {
-	// Is container already enriched? Notice that, at this point, the container
-	// was already enriched with the PID by the hook.
-	if container.IsEnriched() {
+	// If the container is already enriched with the metadata a runtime client
+	// is able to provide, skip it.
+	if runtimeclient.IsEnrichedWithK8sMetadata(container.K8s.BasicK8sMetadata) &&
+		runtimeclient.IsEnrichedWithRuntimeMetadata(container.Runtime.BasicRuntimeMetadata) {
 		return true
 	}
-	containerData, err := runtimeClient.GetContainer(container.ID)
+
+	containerData, err := runtimeClient.GetContainer(container.Runtime.ContainerID)
 	if err != nil {
 		// Temporary dropping pause container. See issue
 		// https://github.com/inspektor-gadget/inspektor-gadget/issues/1095.
@@ -141,7 +141,7 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 		}
 
 		switch runtime.Name {
-		case runtimeclient.PodmanName:
+		case types.RuntimeNamePodman:
 			// Podman only supports runtime enrichment for initial containers otherwise it will deadlock.
 			// As a consequence, we need to ensure that new podman containers will be enriched with all
 			// the information via other enrichers e.g. see RuncNotifier.futureContainers implementation
@@ -172,16 +172,16 @@ func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) Conta
 			return nil
 		}
 		for _, container := range containers {
-			if container.State != runtimeclient.StateRunning {
+			if container.Runtime.State != runtimeclient.StateRunning {
 				log.Debugf("Runtime enricher(%s): Skip container %q (ID: %s): not running",
-					runtime.Name, container.Name, container.ID)
+					runtime.Name, container.Runtime.ContainerName, container.Runtime.ContainerID)
 				continue
 			}
 
-			containerDetails, err := runtimeClient.GetContainerDetails(container.ID)
+			containerDetails, err := runtimeClient.GetContainerDetails(container.Runtime.ContainerID)
 			if err != nil {
 				log.Debugf("Runtime enricher (%s): Skip container %q (ID: %s): couldn't find container: %s",
-					runtime.Name, container.Name, container.ID, err)
+					runtime.Name, container.Runtime.ContainerName, container.Runtime.ContainerID, err)
 				continue
 			}
 
@@ -283,21 +283,21 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 					for _, container := range containers {
 						// The container is already registered, there is not any chance the
 						// PID will change, so ignore it.
-						if _, ok := containerIDs[container.ID]; ok {
+						if _, ok := containerIDs[container.Runtime.ContainerID]; ok {
 							continue
 						}
-						containerIDs[container.ID] = struct{}{}
+						containerIDs[container.Runtime.ContainerID] = struct{}{}
 
 						// Make a copy instead of passing the same pointer at
 						// each iteration of the loop
 						newContainer := Container{}
 						newContainer = container
 						if fallbackMode {
-							if cc.GetContainer(container.ID) != nil {
+							if cc.GetContainer(container.Runtime.ContainerID) != nil {
 								continue // container is already there. All good!
 							}
 							log.Warnf("container %s/%s/%s wasn't detected by the main hook! The fallback pod informer will add it.",
-								container.Namespace, container.Podname, container.Name)
+								container.K8s.Namespace, container.K8s.PodName, container.K8s.ContainerName)
 						}
 						cc.AddContainer(&newContainer)
 					}
@@ -313,7 +313,7 @@ func withPodInformer(nodeName string, fallbackMode bool) ContainerCollectionOpti
 func WithHost() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		newContainer := Container{}
-		newContainer.Name = "host"
+		newContainer.K8s.ContainerName = "host"
 		newContainer.CgroupID = 1
 		newContainer.Pid = 1
 		newContainer.HostNetwork = true
@@ -453,7 +453,7 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			if container.Podname != "" {
+			if container.K8s.PodName != "" {
 				return true
 			}
 
@@ -519,14 +519,14 @@ func WithKubernetesEnrichment(nodeName string, kubeconfig *rest.Config) Containe
 				}
 			}
 
-			container.Namespace = namespace
-			container.Podname = podname
-			container.PodUID = podUID
-			container.Name = containerName
-			container.Labels = labels
+			container.K8s.Namespace = namespace
+			container.K8s.PodName = podname
+			container.K8s.PodUID = podUID
+			container.K8s.ContainerName = containerName
+			container.K8s.PodLabels = labels
 
 			// drop pause containers
-			if container.Podname != "" && containerName == "" {
+			if container.K8s.PodName != "" && containerName == "" {
 				return false
 			}
 
@@ -549,10 +549,14 @@ func WithRuncFanotify() ContainerCollectionOption {
 			switch notif.Type {
 			case runcfanotify.EventTypeAddContainer:
 				container := &Container{
-					ID:        notif.ContainerID,
+					Runtime: RuntimeMetadata{
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							ContainerID:   notif.ContainerID,
+							ContainerName: notif.ContainerName,
+						},
+					},
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
-					Name:      notif.ContainerName,
 				}
 				cc.AddContainer(container)
 			case runcfanotify.EventTypeRemoveContainer:
@@ -569,9 +573,9 @@ func WithRuncFanotify() ContainerCollectionOption {
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			err := runcNotifier.AddWatchContainerTermination(container.ID, int(container.Pid))
+			err := runcNotifier.AddWatchContainerTermination(container.Runtime.ContainerID, int(container.Pid))
 			if err != nil {
-				log.Errorf("runc fanotify enricher: failed to watch container %s: %s", container.ID, err)
+				log.Errorf("runc fanotify enricher: failed to watch container %s: %s", container.Runtime.ContainerID, err)
 				return false
 			}
 			return true
@@ -592,10 +596,14 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 			switch notif.Type {
 			case containerhook.EventTypeAddContainer:
 				container := &Container{
-					ID:        notif.ContainerID,
+					Runtime: RuntimeMetadata{
+						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+							ContainerID:   notif.ContainerID,
+							ContainerName: notif.ContainerName,
+						},
+					},
 					Pid:       notif.ContainerPID,
 					OciConfig: notif.ContainerConfig,
-					Name:      notif.ContainerName,
 				}
 				cc.AddContainer(container)
 			case containerhook.EventTypeRemoveContainer:
@@ -612,9 +620,9 @@ func WithContainerFanotifyEbpf() ContainerCollectionOption {
 
 		// Future containers
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			err := containerNotifier.AddWatchContainerTermination(container.ID, int(container.Pid))
+			err := containerNotifier.AddWatchContainerTermination(container.Runtime.ContainerID, int(container.Pid))
 			if err != nil {
-				log.Errorf("container fanotify enricher: failed to watch container %s: %s", container.ID, err)
+				log.Errorf("container fanotify enricher: failed to watch container %s: %s", container.Runtime.ContainerID, err)
 				return false
 			}
 			return true
@@ -629,13 +637,13 @@ func WithCgroupEnrichment() ContainerCollectionOption {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			pid := int(container.Pid)
 			if pid == 0 {
-				log.Errorf("cgroup enricher: failed to enrich container %s with pid zero", container.ID)
+				log.Errorf("cgroup enricher: failed to enrich container %s with pid zero", container.Runtime.ContainerID)
 				return true
 			}
 
 			cgroupPathV1, cgroupPathV2, err := cgroups.GetCgroupPaths(pid)
 			if err != nil {
-				log.Errorf("cgroup enricher: failed to get cgroup paths on container %s: %s", container.ID, err)
+				log.Errorf("cgroup enricher: failed to get cgroup paths on container %s: %s", container.Runtime.ContainerID, err)
 				return true
 			}
 			cgroupPathV2WithMountpoint, _ := cgroups.CgroupPathV2AddMountpoint(cgroupPathV2)
@@ -664,20 +672,20 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
 			pid := int(container.Pid)
 			if pid == 0 {
-				log.Errorf("namespace enricher: failed to enrich container %s with pid zero", container.ID)
+				log.Errorf("namespace enricher: failed to enrich container %s with pid zero", container.Runtime.ContainerID)
 				return true
 			}
 
 			mntns, err := containerutils.GetMntNs(pid)
 			if err != nil {
-				log.Errorf("namespace enricher: failed to get mnt namespace on container %s: %s", container.ID, err)
+				log.Errorf("namespace enricher: failed to get mnt namespace on container %s: %s", container.Runtime.ContainerID, err)
 				return true
 			}
 			container.Mntns = mntns
 
 			netns, err := containerutils.GetNetNs(pid)
 			if err != nil {
-				log.Errorf("namespace enricher: failed to get net namespace on container %s: %s", container.ID, err)
+				log.Errorf("namespace enricher: failed to get net namespace on container %s: %s", container.Runtime.ContainerID, err)
 				return true
 			}
 			container.Netns = netns
@@ -688,16 +696,28 @@ func WithLinuxNamespaceEnrichment() ContainerCollectionOption {
 	}
 }
 
+// isEnrichedWithOCIConfigInfo returns true if container is enriched with the
+// metadata from OCI config that WithOCIConfigEnrichment is able to provide.
+// Keep in sync with what WithOCIConfigEnrichment does.
+func isEnrichedWithOCIConfigInfo(container *Container) bool {
+	return container.OciConfig != nil &&
+		container.Runtime.RuntimeName != "" &&
+		container.K8s.ContainerName != "" &&
+		container.K8s.PodName != "" &&
+		container.K8s.Namespace != "" &&
+		container.K8s.PodUID != ""
+}
+
 // WithOCIConfigEnrichment enriches container using provided OCI config
 func WithOCIConfigEnrichment() ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		cc.containerEnrichers = append(cc.containerEnrichers, func(container *Container) bool {
-			if container.OciConfig == nil || container.IsEnriched() {
+			if container.OciConfig == nil || isEnrichedWithOCIConfigInfo(container) {
 				return true
 			}
 
 			if cm, ok := container.OciConfig.Annotations["io.container.manager"]; ok && cm == "libpod" {
-				container.Runtime = runtimeclient.PodmanName
+				container.Runtime.RuntimeName = types.RuntimeNamePodman
 			}
 
 			resolver, err := ociannotations.NewResolverFromAnnotations(container.OciConfig.Annotations)
@@ -713,19 +733,19 @@ func WithOCIConfigEnrichment() ContainerCollectionOption {
 				return false
 			}
 
-			// enrich the container
-			container.Runtime = resolver.Runtime()
+			// Enrich the container. Keep in sync with isEnrichedWithOCIConfigInfo.
+			container.Runtime.RuntimeName = resolver.Runtime()
 			if name := resolver.ContainerName(container.OciConfig.Annotations); name != "" {
-				container.Name = name
+				container.K8s.ContainerName = name
 			}
 			if podName := resolver.PodName(container.OciConfig.Annotations); podName != "" {
-				container.Podname = podName
+				container.K8s.PodName = podName
 			}
 			if podNamespace := resolver.PodNamespace(container.OciConfig.Annotations); podNamespace != "" {
-				container.Namespace = podNamespace
+				container.K8s.Namespace = podNamespace
 			}
 			if podUID := resolver.PodUID(container.OciConfig.Annotations); podUID != "" {
-				container.PodUID = podUID
+				container.K8s.PodUID = podUID
 			}
 
 			return true
@@ -778,7 +798,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 
 						if now.Sub(c.deletionTimestamp) > cc.cacheDelay {
 							c.close()
-							cc.cachedContainers.Delete(c.ID)
+							cc.cachedContainers.Delete(c.Runtime.ContainerID)
 						}
 
 						return true
@@ -796,7 +816,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 			mntNsFd, err := unix.Open(mntNsPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 			if err != nil {
 				log.Warnf("WithTracerCollection: failed to open mntns reference for container %s: %s",
-					container.ID, err)
+					container.Runtime.ContainerID, err)
 				return false
 			}
 			container.mntNsFd = mntNsFd
@@ -805,7 +825,7 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 			netNsFd, err := unix.Open(netNsPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 			if err != nil {
 				log.Warnf("WithTracerCollection: failed to open netns reference for container %s: %s",
-					container.ID, err)
+					container.Runtime.ContainerID, err)
 				return false
 			}
 			container.netNsFd = netNsFd

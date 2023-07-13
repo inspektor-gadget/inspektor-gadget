@@ -173,7 +173,7 @@ func (t *Tracer) DetachContainer(container *containercollection.Container) error
 func (t *Tracer) collectResult() ([]byte, error) {
 	out := make(map[string][]string)
 	for container, result := range t.containers {
-		out[container.Name] = result
+		out[container.K8s.ContainerName] = result
 	}
 	return json.MarshalIndent(out, "", "  ")
 }

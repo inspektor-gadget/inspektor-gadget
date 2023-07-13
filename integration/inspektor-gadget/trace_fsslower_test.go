@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	tracefsslowerType "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -47,12 +48,15 @@ func TestTraceFsslower(t *testing.T) {
 
 			normalize := func(e *tracefsslowerType.Event) {
 				e.Timestamp = 0
-				e.Node = ""
 				e.MountNsID = 0
 				e.Pid = 0
 				e.Bytes = 0
 				e.Offset = 0
 				e.Latency = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

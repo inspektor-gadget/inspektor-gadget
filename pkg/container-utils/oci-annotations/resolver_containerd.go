@@ -14,6 +14,8 @@
 
 package ociannotations
 
+import "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+
 const (
 	// containerd container annotations to get container information
 	// https://github.com/containerd/containerd/blob/main/pkg/cri/annotations/annotations.go
@@ -50,6 +52,6 @@ func (containerdResolver) PodNamespace(annotations map[string]string) string {
 	return annotations[containerdPodNamespaceAnnotation]
 }
 
-func (containerdResolver) Runtime() string {
-	return "containerd"
+func (containerdResolver) Runtime() types.RuntimeName {
+	return types.RuntimeNameContainerd
 }

@@ -46,8 +46,8 @@ func publishEvent(c *containercollection.Container, reason, message string) {
 	eventTime := metav1.NewTime(time.Now())
 	event := &api.Event{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%v.%x", c.Podname, time.Now().UnixNano()),
-			Namespace: c.Namespace,
+			Name:      fmt.Sprintf("%v.%x", c.K8s.PodName, time.Now().UnixNano()),
+			Namespace: c.K8s.Namespace,
 		},
 		Source: api.EventSource{
 			Component: "KubeContainerCollection",
@@ -60,9 +60,9 @@ func publishEvent(c *containercollection.Container, reason, message string) {
 		LastTimestamp:       eventTime,
 		InvolvedObject: api.ObjectReference{
 			Kind:      "Pod",
-			Namespace: c.Namespace,
-			Name:      c.Podname,
-			UID:       types.UID(c.PodUID),
+			Namespace: c.K8s.Namespace,
+			Name:      c.K8s.PodName,
+			UID:       types.UID(c.K8s.PodUID),
 		},
 		Type:    api.EventTypeNormal,
 		Reason:  reason,
@@ -72,7 +72,7 @@ func publishEvent(c *containercollection.Container, reason, message string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if _, err := client.CoreV1().Events(c.Namespace).Create(ctx, event, metav1.CreateOptions{}); err != nil {
+	if _, err := client.CoreV1().Events(c.K8s.Namespace).Create(ctx, event, metav1.CreateOptions{}); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create event: %s\n", err)
 	}
 }
@@ -80,7 +80,7 @@ func publishEvent(c *containercollection.Container, reason, message string) {
 func callback(notif containercollection.PubSubEvent) {
 	switch notif.Type {
 	case containercollection.EventTypeAddContainer:
-		fmt.Printf("Container added: %v pid %d\n", notif.Container.ID, notif.Container.Pid)
+		fmt.Printf("Container added: %v pid %d\n", notif.Container.Runtime.ContainerID, notif.Container.Pid)
 		if notif.Container.OciConfig != nil {
 			config, err := json.Marshal(notif.Container.OciConfig)
 			if err != nil {
@@ -92,7 +92,7 @@ func callback(notif containercollection.PubSubEvent) {
 			publishEvent(notif.Container, "ContainerConfigNotFound", "")
 		}
 	case containercollection.EventTypeRemoveContainer:
-		fmt.Printf("Container removed: %v pid %d\n", notif.Container.ID, notif.Container.Pid)
+		fmt.Printf("Container removed: %v pid %d\n", notif.Container.Runtime.ContainerID, notif.Container.Pid)
 	default:
 		return
 	}

@@ -18,52 +18,42 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
 	// Make sure to keep these settings in sync with pkg/resources/manifests/deploy.yaml
-	CrioName              = "cri-o"
-	CrioDefaultSocketPath = "/run/crio/crio.sock"
-
-	PodmanName              = "podman"
-	PodmanDefaultSocketPath = "/run/podman/podman.sock"
-
-	ContainerdName              = "containerd"
+	CrioDefaultSocketPath       = "/run/crio/crio.sock"
+	PodmanDefaultSocketPath     = "/run/podman/podman.sock"
 	ContainerdDefaultSocketPath = "/run/containerd/containerd.sock"
-
-	DockerName              = "docker"
-	DockerDefaultSocketPath = "/run/docker.sock"
+	DockerDefaultSocketPath     = "/run/docker.sock"
 )
 
 var ErrPauseContainer = errors.New("it is a pause container")
 
-// ContainerData contains container information returned from the container
-// runtime clients.
-type ContainerData struct {
-	// ID is the container ID without the container runtime prefix. For
-	// instance, "cri-o://" for CRI-O.
-	ID string
-
-	// Name is the container name. In the case the container runtime response
-	// with multiples, Name contains only the first element.
-	Name string
-
-	// Current state of the container.
-	State string
-
-	// Runtime is the name of the runtime (e.g. docker, cri-o, containerd). It
-	// is useful to distinguish who is the "owner" of each container in a list
-	// of containers collected from multiples runtimes.
-	Runtime string
+type K8sContainerData struct {
+	types.BasicK8sMetadata
 
 	// Unique identifier of pod running the container.
 	PodUID string
+}
 
-	// Name of the pod running the container.
-	PodName string
+type RuntimeContainerData struct {
+	types.BasicRuntimeMetadata
 
-	// Namespace of the pod running the container.
-	PodNamespace string
+	// Current state of the container.
+	State string
+}
+
+// ContainerData contains container information returned from the container
+// runtime clients.
+type ContainerData struct {
+	// Runtime contains all the metadata returned by the container runtime.
+	Runtime RuntimeContainerData
+
+	// K8s contains the Kubernetes metadata of the container.
+	K8s K8sContainerData
 }
 
 // ContainerDetailsData contains container extra information returned from the
@@ -107,9 +97,10 @@ const (
 )
 
 const (
-	containerLabelK8sPodName      = "io.kubernetes.pod.name"
-	containerLabelK8sPodNamespace = "io.kubernetes.pod.namespace"
-	containerLabelK8sPodUID       = "io.kubernetes.pod.uid"
+	containerLabelK8sContainerName = "io.kubernetes.container.name"
+	containerLabelK8sPodName       = "io.kubernetes.pod.name"
+	containerLabelK8sPodNamespace  = "io.kubernetes.pod.namespace"
+	containerLabelK8sPodUID        = "io.kubernetes.pod.uid"
 )
 
 // ContainerRuntimeClient defines the interface to communicate with the
@@ -132,11 +123,11 @@ type ContainerRuntimeClient interface {
 	Close() error
 }
 
-func ParseContainerID(expectedRuntime, containerID string) (string, error) {
+func ParseContainerID(expectedRuntime types.RuntimeName, containerID string) (string, error) {
 	// If ID contains a prefix, it must match the format "<runtime>://<ID>"
 	split := strings.SplitN(containerID, "://", 2)
 	if len(split) == 2 {
-		if split[0] != expectedRuntime {
+		if types.String2RuntimeName(split[0]) != expectedRuntime {
 			return "", fmt.Errorf("invalid container runtime %q, it should be %q",
 				containerID, expectedRuntime)
 		}
@@ -147,13 +138,28 @@ func ParseContainerID(expectedRuntime, containerID string) (string, error) {
 }
 
 func EnrichWithK8sMetadata(container *ContainerData, labels map[string]string) {
+	if containerName, ok := labels[containerLabelK8sContainerName]; ok {
+		container.K8s.ContainerName = containerName
+	}
 	if podName, ok := labels[containerLabelK8sPodName]; ok {
-		container.PodName = podName
+		container.K8s.PodName = podName
 	}
 	if podNamespace, ok := labels[containerLabelK8sPodNamespace]; ok {
-		container.PodNamespace = podNamespace
+		container.K8s.Namespace = podNamespace
 	}
 	if podUID, ok := labels[containerLabelK8sPodUID]; ok {
-		container.PodUID = podUID
+		container.K8s.PodUID = podUID
 	}
+}
+
+// IsEnrichedWithK8sMetadata returns true if the container already contains
+// the Kubernetes metadata a container runtime client is able to provide.
+func IsEnrichedWithK8sMetadata(k8s types.BasicK8sMetadata) bool {
+	return k8s.IsEnriched()
+}
+
+// IsEnrichedWithRuntimeMetadata returns true if the container already contains
+// the runtime metadata a container runtime client is able to provide.
+func IsEnrichedWithRuntimeMetadata(runtime types.BasicRuntimeMetadata) bool {
+	return runtime.IsEnriched()
 }

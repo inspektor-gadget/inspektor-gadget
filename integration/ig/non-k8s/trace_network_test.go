@@ -37,7 +37,10 @@ func TestTraceNetwork(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Container: cn,
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								RuntimeName:   eventtypes.String2RuntimeName(*runtime),
+								ContainerName: cn,
+							},
 						},
 					},
 					Comm:    "curl",
@@ -54,7 +57,10 @@ func TestTraceNetwork(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Container: cn,
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								RuntimeName:   eventtypes.String2RuntimeName(*runtime),
+								ContainerName: cn,
+							},
 						},
 					},
 					Comm:    "nginx",
@@ -75,6 +81,8 @@ func TestTraceNetwork(t *testing.T) {
 				e.NetNsID = 0
 				e.Pid = 0
 				e.Tid = 0
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

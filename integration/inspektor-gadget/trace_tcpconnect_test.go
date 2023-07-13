@@ -54,10 +54,13 @@ func TestTraceTcpconnect(t *testing.T) {
 
 			normalize := func(e *tracetcpconnectTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
 				e.Pid = 0
 				e.SrcEndpoint.Port = 0
 				e.MountNsID = 0
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = eventtypes.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -108,13 +111,16 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 
 			normalize := func(e *tracetcpconnectTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
 				e.Pid = 0
 				e.SrcEndpoint.Port = 0
 				e.MountNsID = 0
 				if e.Latency > 0 {
 					e.Latency = 1
 				}
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = eventtypes.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

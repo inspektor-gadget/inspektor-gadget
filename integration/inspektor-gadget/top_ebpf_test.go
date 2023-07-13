@@ -22,6 +22,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	topebpfTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/ebpf/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
@@ -32,11 +33,6 @@ func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
 		}
 
 		normalize := func(e *topebpfTypes.Stats) {
-			e.Node = ""
-			e.Namespace = ""
-			e.Pod = ""
-			e.Container = ""
-			e.Namespace = ""
 			e.ProgramID = 0
 			e.Processes = nil
 			e.CurrentRuntime = 0
@@ -49,6 +45,10 @@ func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
 			e.MapCount = 0
 			e.TotalCpuUsage = 0
 			e.PerCpuUsage = 0
+
+			e.K8s = types.K8sMetadata{}
+			// TODO: Verify container runtime and container name
+			e.Runtime = types.BasicRuntimeMetadata{}
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

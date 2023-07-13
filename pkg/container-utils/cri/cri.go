@@ -32,12 +32,13 @@ import (
 
 	runtimeV1alpha2 "github.com/inspektor-gadget/inspektor-gadget/internal/thirdparty/k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 // CRIClient implements the ContainerRuntimeClient interface using the CRI
 // plugin interface to communicate with the different container runtimes.
 type CRIClient struct {
-	Name        string
+	Name        types.RuntimeName
 	SocketPath  string
 	ConnTimeout time.Duration
 
@@ -46,7 +47,7 @@ type CRIClient struct {
 	clientV1alpha2 runtimeV1alpha2.RuntimeServiceClient
 }
 
-func NewCRIClient(name, socketPath string, timeout time.Duration) (CRIClient, error) {
+func NewCRIClient(name types.RuntimeName, socketPath string, timeout time.Duration) (CRIClient, error) {
 	conn, err := grpc.Dial(
 		socketPath,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -191,21 +192,13 @@ func (c *CRIClient) useV1alpha2() bool {
 
 // parseContainerDetailsData parses the container status and extra information
 // returned by ContainerStatus() into a ContainerDetailsData structure.
-func parseContainerDetailsData(runtimeName string, containerStatus *runtime.ContainerStatus,
+func parseContainerDetailsData(runtimeName types.RuntimeName, containerStatus CRIContainer,
 	extraInfo map[string]string,
 ) (*runtimeclient.ContainerDetailsData, error) {
 	// Create container details structure to be filled.
 	containerDetailsData := &runtimeclient.ContainerDetailsData{
-		ContainerData: runtimeclient.ContainerData{
-			ID:      containerStatus.Id,
-			Name:    strings.TrimPrefix(containerStatus.GetMetadata().Name, "/"),
-			State:   containerStatusStateToRuntimeClientState(containerStatus.GetState()),
-			Runtime: runtimeName,
-		},
+		ContainerData: *CRIContainerToContainerData(runtimeName, containerStatus),
 	}
-
-	// Fill K8S information.
-	runtimeclient.EnrichWithK8sMetadata(&containerDetailsData.ContainerData, containerStatus.Labels)
 
 	// Parse the extra info and fill the data.
 	err := parseExtraInfo(extraInfo, containerDetailsData)
@@ -330,16 +323,44 @@ func containerStatusStateToRuntimeClientState(containerStatusState runtime.Conta
 	return
 }
 
-func CRIContainerToContainerData(runtimeName string, container *runtime.Container) *runtimeclient.ContainerData {
+// CRIContainer is an interface that contains the methods required to get
+// the information of a container from the responses of the CRI. In particular,
+// from runtime.ContainerStatus and runtime.Container.
+type CRIContainer interface {
+	GetId() string
+	GetState() runtime.ContainerState
+	GetMetadata() *runtime.ContainerMetadata
+	GetLabels() map[string]string
+}
+
+func CRIContainerToContainerData(runtimeName types.RuntimeName, container CRIContainer) *runtimeclient.ContainerData {
+	containerMetadata := container.GetMetadata()
+
 	containerData := &runtimeclient.ContainerData{
-		ID:      container.Id,
-		Name:    strings.TrimPrefix(container.GetMetadata().Name, "/"),
-		State:   containerStatusStateToRuntimeClientState(container.GetState()),
-		Runtime: runtimeName,
+		Runtime: runtimeclient.RuntimeContainerData{
+			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+				ContainerID:   container.GetId(),
+				ContainerName: strings.TrimPrefix(containerMetadata.GetName(), "/"),
+				RuntimeName:   runtimeName,
+			},
+			State: containerStatusStateToRuntimeClientState(container.GetState()),
+		},
 	}
 
 	// Fill K8S information.
-	runtimeclient.EnrichWithK8sMetadata(containerData, container.Labels)
+	runtimeclient.EnrichWithK8sMetadata(containerData, container.GetLabels())
+
+	// CRI-O does not use the same container name of Kubernetes as containerd.
+	// Instead, it uses a composed name as Docker does, but such name is not
+	// available in the container metadata.
+	if runtimeName == types.RuntimeNameCrio {
+		containerData.Runtime.ContainerName = fmt.Sprintf("k8s_%s_%s_%s_%s_%d",
+			containerData.K8s.ContainerName,
+			containerData.K8s.PodName,
+			containerData.K8s.Namespace,
+			containerData.K8s.PodUID,
+			containerMetadata.GetAttempt())
+	}
 
 	return containerData
 }

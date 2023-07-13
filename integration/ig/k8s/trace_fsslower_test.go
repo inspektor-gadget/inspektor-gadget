@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -35,17 +36,20 @@ func TestTraceFsslower(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &fsslowerTypes.Event{
-				Event: BuildBaseEvent(ns),
+				Event: BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
 				Comm:  "cat",
 				File:  "foo",
 				Op:    "R",
 			}
 
 			normalize := func(e *fsslowerTypes.Event) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					e.Container = "test-pod"
+				// Docker and CRI-O use a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the exact expected container name.
+				prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+				if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+					strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
+					e.Runtime.ContainerName = "test-pod"
 				}
 
 				e.Timestamp = 0
@@ -54,6 +58,8 @@ func TestTraceFsslower(t *testing.T) {
 				e.Bytes = 0
 				e.Offset = 0
 				e.Latency = 0
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

@@ -20,6 +20,7 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	topblockioTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
@@ -31,7 +32,6 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 		}
 
 		normalize := func(e *topblockioTypes.Stats) {
-			e.Node = ""
 			e.Major = 0
 			e.Minor = 0
 			e.MicroSecs = 0
@@ -39,6 +39,10 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 			e.Pid = 0
 			e.Operations = 0
 			e.Bytes = 0
+
+			e.K8s.Node = ""
+			// TODO: Verify container runtime and container name
+			e.Runtime = types.BasicRuntimeMetadata{}
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

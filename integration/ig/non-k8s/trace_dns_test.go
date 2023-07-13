@@ -38,7 +38,10 @@ func TestTraceDns(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Container: cn,
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								RuntimeName:   eventtypes.String2RuntimeName(*runtime),
+								ContainerName: cn,
+							},
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeQuery,
@@ -52,7 +55,10 @@ func TestTraceDns(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Container: cn,
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								RuntimeName:   eventtypes.String2RuntimeName(*runtime),
+								ContainerName: cn,
+							},
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeResponse,
@@ -70,7 +76,10 @@ func TestTraceDns(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Container: cn,
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								RuntimeName:   eventtypes.String2RuntimeName(*runtime),
+								ContainerName: cn,
+							},
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeQuery,
@@ -84,7 +93,10 @@ func TestTraceDns(t *testing.T) {
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 						CommonData: eventtypes.CommonData{
-							Container: cn,
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								RuntimeName:   eventtypes.String2RuntimeName(*runtime),
+								ContainerName: cn,
+							},
 						},
 					},
 					Qr:         dnsTypes.DNSPktTypeResponse,
@@ -112,6 +124,8 @@ func TestTraceDns(t *testing.T) {
 				if e.Latency > 0 {
 					e.Latency = 1
 				}
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

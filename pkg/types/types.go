@@ -75,54 +75,118 @@ const (
 	EndpointKindRaw     EndpointKind = "raw"
 )
 
-type CommonData struct {
-	// Node where the event comes from
-	Node string `json:"node,omitempty" column:"node,template:node" columnTags:"kubernetes"`
+type RuntimeName string
 
-	// Pod namespace where the event comes from, or empty for host-level
-	// event
-	Namespace string `json:"namespace,omitempty" column:"namespace,template:namespace" columnTags:"kubernetes"`
+func (r RuntimeName) String() string {
+	return string(r)
+}
 
-	// Pod where the event comes from, or empty for host-level event
-	Pod string `json:"pod,omitempty" column:"pod,template:pod" columnTags:"kubernetes"`
+const (
+	RuntimeNameDocker     RuntimeName = "docker"
+	RuntimeNameContainerd RuntimeName = "containerd"
+	RuntimeNameCrio       RuntimeName = "cri-o"
+	RuntimeNamePodman     RuntimeName = "podman"
+	RuntimeNameUnknown    RuntimeName = "unknown"
+)
 
-	// Container where the event comes from, or empty for host-level or
-	// pod-level event
-	Container string `json:"container,omitempty" column:"container,template:container" columnTags:"kubernetes,runtime"`
+func String2RuntimeName(name string) RuntimeName {
+	switch name {
+	case string(RuntimeNameDocker):
+		return RuntimeNameDocker
+	case string(RuntimeNameContainerd):
+		return RuntimeNameContainerd
+	case string(RuntimeNameCrio):
+		return RuntimeNameCrio
+	case string(RuntimeNamePodman):
+		return RuntimeNamePodman
+	}
+	return RuntimeNameUnknown
+}
+
+type BasicRuntimeMetadata struct {
+	// RuntimeName is the name of the container runtime. It is useful to distinguish
+	// who is the "owner" of each container in a list of containers collected
+	// from multiple runtimes.
+	RuntimeName RuntimeName `json:"runtimeName,omitempty" column:"runtimeName,minWidth:5,maxWidth:12,hide"`
+
+	// ContainerID is the container ContainerID without the container runtime prefix. For
+	// instance, without the "cri-o://" for CRI-O.
+	ContainerID string `json:"containerId,omitempty" column:"containerId,width:13,maxWidth:64,hide"`
+
+	// ContainerName is the container name. In the case the container runtime
+	// response with multiple containers, ContainerName contains only the first element.
+	ContainerName string `json:"containerName,omitempty" column:"containerName,template:container"`
+}
+
+func (b *BasicRuntimeMetadata) IsEnriched() bool {
+	return b.RuntimeName != RuntimeNameUnknown && b.RuntimeName != "" && b.ContainerID != "" && b.ContainerName != ""
+}
+
+type BasicK8sMetadata struct {
+	Namespace     string `json:"namespace,omitempty" column:"namespace,template:namespace"`
+	PodName       string `json:"podName,omitempty" column:"pod,template:pod"`
+	ContainerName string `json:"containerName,omitempty" column:"container,template:container"`
+}
+
+func (b *BasicK8sMetadata) IsEnriched() bool {
+	return b.Namespace != "" && b.PodName != "" && b.ContainerName != ""
+}
+
+type K8sMetadata struct {
+	Node string `json:"node,omitempty" column:"node,template:node"`
+
+	BasicK8sMetadata `json:",inline"`
 
 	// HostNetwork is true if the container uses the host network namespace
 	HostNetwork bool `json:"hostNetwork,omitempty" column:"hostnetwork,hide"`
 }
 
-func (c *CommonData) SetNode(node string) {
-	c.Node = node
+type CommonData struct {
+	// Runtime contains the container runtime metadata of the container
+	// that generated the event
+	Runtime BasicRuntimeMetadata `json:"runtime,omitempty" column:"runtime" columnTags:"runtime"`
+
+	// K8s contains the Kubernetes metadata of the object that generated the
+	// event
+	K8s K8sMetadata `json:"k8s,omitempty" columnTags:"kubernetes"`
 }
 
-func (c *CommonData) SetContainerInfo(pod, namespace, container string) {
-	c.Pod = pod
-	c.Namespace = namespace
+func (c *CommonData) SetNode(node string) {
+	c.K8s.Node = node
+}
 
-	// Container may have been enriched before by other means, so don't delete it here,
-	// if the incoming info is empty
-	if container != "" {
-		c.Container = container
-	}
+func (c *CommonData) SetPodMetadata(k8s *BasicK8sMetadata, runtime *BasicRuntimeMetadata) {
+	c.K8s.PodName = k8s.PodName
+	c.K8s.Namespace = k8s.Namespace
+
+	// All containers in the same pod share the same container runtime
+	c.Runtime.RuntimeName = runtime.RuntimeName
+}
+
+func (c *CommonData) SetContainerMetadata(k8s *BasicK8sMetadata, runtime *BasicRuntimeMetadata) {
+	c.K8s.ContainerName = k8s.ContainerName
+	c.K8s.PodName = k8s.PodName
+	c.K8s.Namespace = k8s.Namespace
+
+	c.Runtime.RuntimeName = runtime.RuntimeName
+	c.Runtime.ContainerName = runtime.ContainerName
+	c.Runtime.ContainerID = runtime.ContainerID
 }
 
 func (c *CommonData) GetNode() string {
-	return c.Node
+	return c.K8s.Node
 }
 
 func (c *CommonData) GetPod() string {
-	return c.Pod
+	return c.K8s.PodName
 }
 
 func (c *CommonData) GetNamespace() string {
-	return c.Namespace
+	return c.K8s.Namespace
 }
 
 func (c *CommonData) GetContainer() string {
-	return c.Container
+	return c.K8s.ContainerName
 }
 
 type L3Endpoint struct {
@@ -239,7 +303,9 @@ func (e *Event) GetMessage() string {
 func Err(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			K8s: K8sMetadata{
+				Node: node,
+			},
 		},
 		Type:    ERR,
 		Message: msg,
@@ -249,7 +315,9 @@ func Err(msg string) Event {
 func Warn(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			K8s: K8sMetadata{
+				Node: node,
+			},
 		},
 		Type:    WARN,
 		Message: msg,
@@ -259,7 +327,9 @@ func Warn(msg string) Event {
 func Debug(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			K8s: K8sMetadata{
+				Node: node,
+			},
 		},
 		Type:    DEBUG,
 		Message: msg,
@@ -269,7 +339,9 @@ func Debug(msg string) Event {
 func Info(msg string) Event {
 	return Event{
 		CommonData: CommonData{
-			Node: node,
+			K8s: K8sMetadata{
+				Node: node,
+			},
 		},
 		Type:    INFO,
 		Message: msg,

@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
@@ -33,7 +34,7 @@ func TestTraceTcpconnect(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tcpconnectTypes.Event{
-				Event:     BuildBaseEvent(ns),
+				Event:     BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
 				Comm:      "curl",
 				IPVersion: 4,
 				SrcEndpoint: eventtypes.L4Endpoint{
@@ -50,16 +51,21 @@ func TestTraceTcpconnect(t *testing.T) {
 			}
 
 			normalize := func(e *tcpconnectTypes.Event) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					e.Container = "test-pod"
+				// Docker and CRI-O use a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the exact expected container name.
+				prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+				if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+					strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
+					e.Runtime.ContainerName = "test-pod"
 				}
 
 				e.Timestamp = 0
 				e.Pid = 0
 				e.SrcEndpoint.Port = 0
 				e.MountNsID = 0
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -88,7 +94,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tcpconnectTypes.Event{
-				Event:     BuildBaseEvent(ns),
+				Event:     BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
 				Comm:      "curl",
 				IPVersion: 4,
 				SrcEndpoint: eventtypes.L4Endpoint{
@@ -107,10 +113,13 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 			}
 
 			normalize := func(e *tcpconnectTypes.Event) {
-				// TODO: Handle it once we support getting K8s container name for docker
-				// Issue: https://github.com/inspektor-gadget/inspektor-gadget/issues/737
-				if *containerRuntime == ContainerRuntimeDocker {
-					e.Container = "test-pod"
+				// Docker and CRI-O use a custom container name composed, among
+				// other things, by the pod UID. We don't know the pod UID in
+				// advance, so we can't match the exact expected container name.
+				prefixContainerName := "k8s_" + "test-pod" + "_" + "test-pod" + "_" + ns + "_"
+				if (*containerRuntime == ContainerRuntimeDocker || *containerRuntime == ContainerRuntimeCRIO) &&
+					strings.HasPrefix(e.Runtime.ContainerName, prefixContainerName) {
+					e.Runtime.ContainerName = "test-pod"
 				}
 
 				e.Timestamp = 0
@@ -120,6 +129,8 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 				if e.Latency > 0 {
 					e.Latency = 1
 				}
+
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

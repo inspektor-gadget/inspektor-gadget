@@ -26,6 +26,7 @@ import (
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containersmap "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 type IGManager struct {
@@ -131,13 +132,13 @@ func isDefaultContainerRuntimeConfig(runtimes []*containerutils.RuntimeConfig) b
 	var customSocketPath bool
 	for _, runtime := range runtimes {
 		switch runtime.Name {
-		case runtimeclient.DockerName:
+		case types.RuntimeNameDocker:
 			customSocketPath = runtime.SocketPath != runtimeclient.DockerDefaultSocketPath
-		case runtimeclient.ContainerdName:
+		case types.RuntimeNameContainerd:
 			customSocketPath = runtime.SocketPath != runtimeclient.ContainerdDefaultSocketPath
-		case runtimeclient.CrioName:
+		case types.RuntimeNameCrio:
 			customSocketPath = runtime.SocketPath != runtimeclient.CrioDefaultSocketPath
-		case runtimeclient.PodmanName:
+		case types.RuntimeNamePodman:
 			customSocketPath = runtime.SocketPath != runtimeclient.PodmanDefaultSocketPath
 		default:
 			customSocketPath = true

@@ -26,15 +26,16 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 // Container represents a container with its metadata.
 type Container struct {
-	// Container Runtime
-	Runtime string `json:"runtime,omitempty" column:"runtime,minWidth:5,maxWidth:10" columnTags:"runtime"`
+	// Runtime contains the metadata of the container runtime
+	Runtime RuntimeMetadata `json:"runtime,omitempty" column:"runtime" columnTags:"runtime"`
 
-	// ID is the container id, typically a 64 hexadecimal string
-	ID string `json:"id,omitempty" column:"id,width:13,maxWidth:64" columnTags:"runtime"`
+	// K8s contains the Kubernetes metadata of the container.
+	K8s K8sMetadata `json:"k8s,omitempty" column:"k8s" columnTags:"kubernetes"`
 
 	// Pid is the process id of the container
 	Pid uint32 `json:"pid,omitempty" column:"pid,template:pid,hide"`
@@ -59,15 +60,6 @@ type Container struct {
 	CgroupV1 string `json:"cgroupV1,omitempty"`
 	CgroupV2 string `json:"cgroupV2,omitempty"`
 
-	// Kubernetes metadata
-	Namespace string            `json:"namespace,omitempty"`
-	Podname   string            `json:"podname,omitempty"`
-	Name      string            `json:"name,omitempty" column:"name,width:30" columnTags:"runtime"`
-	Labels    map[string]string `json:"labels,omitempty"`
-	PodUID    string            `json:"podUID,omitempty"`
-
-	ownerReference *metav1.OwnerReference
-
 	// We keep an open file descriptor of the containers mount and net namespaces to be sure the
 	// kernel doesn't reuse the inode id before we get rid of this container. This logic avoids
 	// a race condition when the ns inode id is reused by a new container and we erroneously
@@ -76,7 +68,7 @@ type Container struct {
 	mntNsFd int
 	netNsFd int
 
-	// when the container was removed. Useful for prunning cached containers.
+	// when the container was removed. Useful for running cached containers.
 	deletionTimestamp time.Time
 }
 
@@ -92,11 +84,31 @@ func (c *Container) close() {
 	}
 }
 
+type RuntimeMetadata struct {
+	types.BasicRuntimeMetadata `json:",inline"`
+}
+
+type K8sMetadata struct {
+	types.BasicK8sMetadata `json:",inline"`
+	PodLabels              map[string]string `json:"podLabels,omitempty"`
+	PodUID                 string            `json:"podUID,omitempty"`
+
+	ownerReference *metav1.OwnerReference
+}
+
+type K8sSelector struct {
+	types.BasicK8sMetadata
+	PodLabels map[string]string
+}
+
+type RuntimeSelector struct {
+	// TODO: Support filtering by all the fields in BasicRuntimeMetadata
+	ContainerName string
+}
+
 type ContainerSelector struct {
-	Namespace string
-	Podname   string
-	Labels    map[string]string
-	Name      string
+	K8s     K8sSelector
+	Runtime RuntimeSelector
 }
 
 // GetOwnerReference returns the owner reference information of the
@@ -105,8 +117,8 @@ type ContainerSelector struct {
 // enrich" this information because this operation is expensive and this
 // information is only needed in some cases.
 func (c *Container) GetOwnerReference() (*metav1.OwnerReference, error) {
-	if c.ownerReference != nil {
-		return c.ownerReference, nil
+	if c.K8s.ownerReference != nil {
+		return c.K8s.ownerReference, nil
 	}
 
 	kubeconfig, err := rest.InClusterConfig()
@@ -124,7 +136,7 @@ func (c *Container) GetOwnerReference() (*metav1.OwnerReference, error) {
 		return nil, fmt.Errorf("enriching owner reference: %w", err)
 	}
 
-	return c.ownerReference, nil
+	return c.K8s.ownerReference, nil
 }
 
 func ownerReferenceEnrichment(
@@ -134,8 +146,8 @@ func ownerReferenceEnrichment(
 ) error {
 	resGroupVersion := "v1"
 	resKind := "pods"
-	resName := container.Podname
-	resNamespace := container.Namespace
+	resName := container.K8s.PodName
+	resNamespace := container.K8s.Namespace
 
 	var highestOwnerRef *metav1.OwnerReference
 
@@ -174,7 +186,7 @@ func ownerReferenceEnrichment(
 
 	// Update container's owner reference (If any)
 	if highestOwnerRef != nil {
-		container.ownerReference = &metav1.OwnerReference{
+		container.K8s.ownerReference = &metav1.OwnerReference{
 			APIVersion: highestOwnerRef.APIVersion,
 			Kind:       highestOwnerRef.Kind,
 			Name:       highestOwnerRef.Name,
@@ -186,9 +198,14 @@ func ownerReferenceEnrichment(
 }
 
 func GetColumns() *columns.Columns[Container] {
-	return columns.MustCreateColumns[Container]()
-}
+	cols := columns.MustCreateColumns[Container]()
 
-func (c *Container) IsEnriched() bool {
-	return c.Name != "" && c.Podname != "" && c.Namespace != "" && c.PodUID != "" && c.Runtime != ""
+	// Display the runtime name and container ID when listing containers
+	col, _ := cols.GetColumn("runtime.containerId")
+	col.Visible = true
+
+	col, _ = cols.GetColumn("runtime.runtimeName")
+	col.Visible = true
+
+	return cols
 }

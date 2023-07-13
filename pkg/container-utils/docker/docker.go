@@ -28,6 +28,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 const (
@@ -135,7 +136,7 @@ func (c *DockerClient) GetContainer(containerID string) (*runtimeclient.Containe
 }
 
 func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.ContainerDetailsData, error) {
-	containerID, err := runtimeclient.ParseContainerID(runtimeclient.DockerName, containerID)
+	containerID, err := runtimeclient.ParseContainerID(types.RuntimeNameDocker, containerID)
 	if err != nil {
 		return nil, err
 	}
@@ -160,10 +161,14 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 
 	containerDetailsData := runtimeclient.ContainerDetailsData{
 		ContainerData: runtimeclient.ContainerData{
-			ID:      containerJSON.ID,
-			Name:    strings.TrimPrefix(containerJSON.Name, "/"),
-			State:   containerStatusStateToRuntimeClientState(containerJSON.State.Status),
-			Runtime: runtimeclient.DockerName,
+			Runtime: runtimeclient.RuntimeContainerData{
+				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+					ContainerID:   containerJSON.ID,
+					ContainerName: strings.TrimPrefix(containerJSON.Name, "/"),
+					RuntimeName:   types.RuntimeNameDocker,
+				},
+				State: containerStatusStateToRuntimeClientState(containerJSON.State.Status),
+			},
 		},
 		Pid:         containerJSON.State.Pid,
 		CgroupsPath: string(containerJSON.HostConfig.Cgroup),
@@ -232,10 +237,14 @@ func containerStatusStateToRuntimeClientState(containerState string) (runtimeCli
 
 func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {
 	containerData := &runtimeclient.ContainerData{
-		ID:      container.ID,
-		Name:    strings.TrimPrefix(container.Names[0], "/"),
-		State:   containerStatusStateToRuntimeClientState(container.State),
-		Runtime: runtimeclient.DockerName,
+		Runtime: runtimeclient.RuntimeContainerData{
+			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+				ContainerID:   container.ID,
+				ContainerName: strings.TrimPrefix(container.Names[0], "/"),
+				RuntimeName:   types.RuntimeNameDocker,
+			},
+			State: containerStatusStateToRuntimeClientState(container.State),
+		},
 	}
 
 	// Fill K8S information.

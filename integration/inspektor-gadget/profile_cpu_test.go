@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	profilecpuTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -42,11 +43,14 @@ func TestProfileCpu(t *testing.T) {
 				}
 
 				normalize := func(e *profilecpuTypes.Report) {
-					e.Node = ""
 					e.Pid = 0
 					e.UserStack = nil
 					e.KernelStack = nil
 					e.Count = 0
+
+					e.K8s.Node = ""
+					// TODO: Verify container runtime and container name
+					e.Runtime = types.BasicRuntimeMetadata{}
 				}
 
 				return ExpectEntriesToMatch(output, normalize, expectedEntry)

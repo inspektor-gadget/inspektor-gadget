@@ -14,6 +14,7 @@ the container runtimes. It is important to remark that `ig` can also
 be used to trace containers that were not created via Kubernetes.
 
 Some characteristics of `ig`:
+
 - It uses eBPF as its underlying core technology.
 - Enriches the collected data with the Kubernetes metadata.
 - Easy to install as it is a single binary (statically linked).
@@ -57,27 +58,22 @@ $ docker run -d --name myContainer nginx:1.21
 95b814bb82b9e30dd935b03d04a7b00b6978ce018a6f55d6a9c7a824b31ec6b5
 
 $ sudo ig list-containers
-WARN[0000] Runtime enricher (cri-o): couldn't get current containers
-RUNTIME       ID               NAME
-containerd    7766d32caded4    calico-kube-controllers
-containerd    2e3e4968b456f    calico-node
-containerd    d3be7741b94ff    coredns
-containerd    e7be3e4dc1bb4    coredns
-containerd    fb4fe41921f30    etcd
-containerd    136e7944d2077    kube-apiserver
-containerd    ad8709a2c2ded    kube-controller-manager
-containerd    66cf05654a47f    kube-proxy
-containerd    a68bed42aa6b2    kube-scheduler
-docker        95b814bb82b9e    myContainer
+RUNTIME.RUNTIMENAME RUNTIME.CONTAINERID                                              RUNTIME.CONTAINERNAME
+containerd          c7dfa4c92fec235626157417bf45745969006bd3bfd2607e87fdd0a176547603 konnectivity-agent
+containerd          cd8ce885c115adbc87da5243630b90935e5bf1c2af96b00154ec475fd9b393b0 nsenter
+containerd          b436a9886ee6e59ac7d38d1b76f8a306e2efeb3f1b6679ea1a58028edb198db3 azure-ip-masq-agent
+containerd          642fc58b15fbaf578340f4bd656b427db51be63a94a7b6eb663388486e73d855 azuredisk
+containerd          466a9d7e7b2087966621eacd792cc492f48f08f741f9dc82d88ef62a9d7d3e0f liveness-probe
+containerd          f79db0f2ea6518869c89e1d0a0892221047b23e04e4dab59dc7e42d6808e2530 azurefile
+containerd          85d74aeb6d29aaa38b282f3e51202bb648f7ba16a681d0d39dda684e724bb8a3 node-driver-registrar
+containerd          a126df15fba5713f57f1abad9c484cb75569e9f48f1169bd9710f63bb8af0e46 kube-proxy
+containerd          428c933882f1e4459c397da20bd89bbe7df7d437880a254472879d33b125b4da node-driver-registrar
+containerd          cd75a08ea2e69756cd7b1de5935c49f5ba08ba7495b0589567dcd9493193d712 cloud-node-manager
+containerd          d4bdf83ba71c7b22ee339ae5bb6fa7359f8a6bc7cd2f35ccd5681c728869cd39 liveness-probe
+docker              b72558e589cb95e835c4840de19f0306d4081091c34045246d62b6efed3549f4 myContainer
 ```
 
-This output shows the containers `ig` retrieved from Docker and
-containerd, while the warning message tells us that `ig` tried to
-communicate with CRI-O but couldn't. In this case, it was because CRI-O was not
-running in the system where we executed the test. However, it could also happen
-if `ig` uses a different UNIX socket path to communicate with the
-runtimes. To check which paths `ig` is using, you can use the `--help`
-flag:
+To check which paths `ig` is using, you can use the `--help` flag:
 
 ```bash
 $ sudo ig list-containers --help
@@ -91,7 +87,9 @@ Flags:
       --containerd-socketpath string   containerd CRI Unix socket path (default "/run/containerd/containerd.sock")
       --crio-socketpath string         CRI-O CRI Unix socket path (default "/run/crio/crio.sock")
       --docker-socketpath string       Docker Engine API Unix socket path (default "/run/docker.sock")
-  -r, --runtimes string                Container runtimes to be used separated by comma. Supported values are: docker, containerd, cri-o (default "docker,containerd,cri-o")
+      --podman-socketpath string       Podman Unix socket path (default "/run/podman/podman.sock")
+  ...
+  -r, --runtimes string                Container runtimes to be used separated by comma. Supported values are: docker, containerd, cri-o, podman (default "docker,containerd,cri-o,podman")
   -w, --watch                          After listing the containers, watch for new containers
   ...
 ```
@@ -101,8 +99,8 @@ path:
 
 ```bash
 $ sudo ig list-containers --runtimes docker --docker-socketpath /some/path/docker.sock
-RUNTIME    ID               NAME
-docker     95b814bb82b9e    myContainer
+RUNTIME.RUNTIMENAME RUNTIME.CONTAINERID                                              RUNTIME.CONTAINERNAME
+docker              b72558e589cb95e835c4840de19f0306d4081091c34045246d62b6efed3549f4 myContainer
 ```
 
 ### Common features
@@ -120,22 +118,27 @@ simplicity, they are not demonstrated in each command guide:
 For instance, for the `list-containers` command:
 
 ```bash
-$ sudo ig list-containers -o json --containername etcd
+$ sudo ig list-containers -o json --containername kube-proxy
 [
   {
-    "runtime": "containerd",
-    "id": "fef9c7f66e0d68c554b7ea48cc3ef4e77c553957807de7f05ad0210a05d8c215",
-    "pid": 1611,
-    "mntns": 4026532270,
-    "netns": 4026531992,
-    "cgroupPath": "/sys/fs/cgroup/unified/system.slice/containerd.service",
-    "cgroupID": 854,
-    "cgroupV1": "/system.slice/containerd.service/kubepods-burstable-pod87a960e902bbb19289771a77e4b07353.slice:cri-containerd:fef9c7f66e0d68c554b7ea48cc3ef4e77c553957807de7f05ad0210a05d8c215",
-    "cgroupV2": "/system.slice/containerd.service",
-    "namespace": "kube-system",
-    "podname": "etcd-master",
-    "name": "etcd",
-    "podUID": "87a960e902bbb19289771a77e4b07353"
+    "runtime": {
+      "runtimeName": "containerd",
+      "containerId": "a126df15fba5713f57f1abad9c484cb75569e9f48f1169bd9710f63bb8af0e46",
+      "containerName": "kube-proxy"
+    },
+    "k8s": {
+      "namespace": "kube-system",
+      "podName": "kube-proxy-tcbn4",
+      "containerName": "kube-proxy",
+      "podUID": "87c52d60-fefd-45a9-a420-895256fc03b5"
+    },
+    "pid": 454674,
+    "mntns": 4026532232,
+    "netns": 4026531840,
+    "hostNetwork": true,
+    "cgroupPath": "/sys/fs/cgroup/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod87c52d60_fefd_45a9_a420_895256fc03b5.slice/cri-containerd-a126df15fba5713f57f1abad9c484cb75569e9f48f1169bd9710f63bb8af0e46.scope",
+    "cgroupID": 41286,
+    "cgroupV2": "/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod87c52d60_fefd_45a9_a420_895256fc03b5.slice/cri-containerd-a126df15fba5713f57f1abad9c484cb75569e9f48f1169bd9710f63bb8af0e46.scope"
   }
 ]
 ```

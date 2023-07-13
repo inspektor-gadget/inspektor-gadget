@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	tracednsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -103,7 +104,6 @@ func TestTraceDns(t *testing.T) {
 
 			normalize := func(e *tracednsTypes.Event) {
 				e.Timestamp = 0
-				e.Node = ""
 				e.ID = ""
 				e.MountNsID = 0
 				e.NetNsID = 0
@@ -114,6 +114,10 @@ func TestTraceDns(t *testing.T) {
 				if e.Latency > 0 {
 					e.Latency = 1
 				}
+
+				e.K8s.Node = ""
+				// TODO: Verify container runtime and container name
+				e.Runtime = types.BasicRuntimeMetadata{}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

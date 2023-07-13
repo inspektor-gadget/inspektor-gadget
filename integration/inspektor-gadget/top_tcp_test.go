@@ -46,12 +46,15 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 		}
 
 		normalize := func(e *toptcpTypes.Stats) {
-			e.Node = ""
 			e.MountNsID = 0
 			e.Pid = 0
 			e.SrcEndpoint.Port = 0
 			e.Sent = 0
 			e.Received = 0
+
+			e.K8s.Node = ""
+			// TODO: Verify container runtime and container name
+			e.Runtime = eventtypes.BasicRuntimeMetadata{}
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
