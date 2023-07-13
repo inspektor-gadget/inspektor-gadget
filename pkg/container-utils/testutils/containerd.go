@@ -16,6 +16,7 @@ package testutils
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"syscall"
 	"testing"
@@ -51,6 +52,8 @@ func NewContainerdContainer(name, cmd string, options ...Option) Container {
 type ContainerdContainer struct {
 	containerSpec
 
+	client     *containerd.Client
+	nsCtx      context.Context
 	exitStatus <-chan containerd.ExitStatus
 }
 
@@ -67,28 +70,29 @@ func (c *ContainerdContainer) Pid() int {
 }
 
 func (c *ContainerdContainer) Run(t *testing.T) {
-	nsCtx := namespaces.WithNamespace(c.options.ctx, defaultNamespace)
-	fullImage := getFullImage(c.options)
-
-	client, err := containerd.New("/run/containerd/containerd.sock",
+	var err error
+	c.client, err = containerd.New("/run/containerd/containerd.sock",
 		containerd.WithTimeout(3*time.Second),
 	)
 	if err != nil {
 		t.Fatalf("Failed to connect to containerd: %s", err)
 	}
 
+	c.nsCtx = namespaces.WithNamespace(c.options.ctx, defaultNamespace)
+	fullImage := getFullImage(c.options)
+
 	// Download and unpack the image
-	image, err := client.Pull(nsCtx, fullImage)
+	image, err := c.client.Pull(c.nsCtx, fullImage)
 	if err != nil {
 		t.Fatalf("Failed to pull the image %q: %s", fullImage, err)
 	}
 
-	unpacked, err := image.IsUnpacked(nsCtx, "")
+	unpacked, err := image.IsUnpacked(c.nsCtx, "")
 	if err != nil {
 		t.Fatalf("image.IsUnpacked: %v", err)
 	}
 	if !unpacked {
-		if err := image.Unpack(nsCtx, ""); err != nil {
+		if err := image.Unpack(c.nsCtx, ""); err != nil {
 			t.Fatalf("image.Unpack: %v", err)
 		}
 	}
@@ -106,7 +110,7 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	}
 
 	var spec specs.Spec
-	container, err := client.NewContainer(nsCtx, c.name,
+	container, err := c.client.NewContainer(c.nsCtx, c.name,
 		containerd.WithImage(image),
 		containerd.WithImageConfigLabels(image),
 		containerd.WithAdditionalContainerLabels(image.Labels()),
@@ -126,19 +130,19 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 		containerIO = cio.NewCreator(cio.WithStreams(nil, output, output))
 	}
 	// Now create and start the task
-	task, err := container.NewTask(nsCtx, containerIO)
+	task, err := container.NewTask(c.nsCtx, containerIO)
 	if err != nil {
-		container.Delete(nsCtx, containerd.WithSnapshotCleanup)
+		container.Delete(c.nsCtx, containerd.WithSnapshotCleanup)
 		t.Fatalf("Failed to create task %q: %s", c.name, err)
 	}
 
-	err = task.Start(nsCtx)
+	err = task.Start(c.nsCtx)
 	if err != nil {
-		container.Delete(nsCtx, containerd.WithSnapshotCleanup)
+		container.Delete(c.nsCtx, containerd.WithSnapshotCleanup)
 		t.Fatalf("Failed to start task %q: %s", c.name, err)
 	}
 
-	c.exitStatus, err = task.Wait(nsCtx)
+	c.exitStatus, err = task.Wait(c.nsCtx)
 	if err != nil {
 		t.Fatalf("Failed to wait on task %q: %s", c.name, err)
 	}
@@ -156,14 +160,7 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	}
 
 	if c.options.removal {
-		task.Kill(nsCtx, syscall.SIGKILL)
-		// We need to wait until the task is killed before trying to delete it
-		<-c.exitStatus
-		_, err = task.Delete(nsCtx)
-		if err != nil {
-			t.Fatalf("Failed to delete task %q: %s", c.name, err)
-		}
-		err = container.Delete(nsCtx, containerd.WithSnapshotCleanup)
+		err := c.deleteAndClose(task, container)
 		if err != nil {
 			t.Fatalf("Failed to delete container %q: %s", c.name, err)
 		}
@@ -191,33 +188,44 @@ func (c *ContainerdContainer) Stop(t *testing.T) {
 	c.started = false
 }
 
-func (c *ContainerdContainer) stop(t *testing.T) {
-	client, err := containerd.New("/run/containerd/containerd.sock",
-		containerd.WithTimeout(3*time.Second),
-	)
+// deleteAndClose kill the task, delete the container and close the client
+func (c *ContainerdContainer) deleteAndClose(task containerd.Task, container containerd.Container) error {
+	var err error
+
+	// Kill the task
+	task.Kill(c.nsCtx, syscall.SIGKILL)
+	// We need to wait until the task is killed before trying to delete it
+	<-c.exitStatus
+	_, err = task.Delete(c.nsCtx)
 	if err != nil {
-		t.Fatalf("Failed to connect to containerd: %s", err)
+		return fmt.Errorf("deleting task %q: %w", c.name, err)
 	}
 
-	nsCtx := namespaces.WithNamespace(c.options.ctx, defaultNamespace)
-	container, err := client.LoadContainer(nsCtx, c.name)
+	err = container.Delete(c.nsCtx, containerd.WithSnapshotCleanup)
+	if err != nil {
+		return fmt.Errorf("deleting container %q: %w", c.name, err)
+	}
+
+	err = c.client.Close()
+	if err != nil {
+		return fmt.Errorf("closing client: %w", err)
+	}
+
+	return nil
+}
+
+func (c *ContainerdContainer) stop(t *testing.T) {
+	container, err := c.client.LoadContainer(c.nsCtx, c.name)
 	if err != nil {
 		t.Fatalf("Failed to get container %q: %s", c.name, err)
 	}
 
-	task, err := container.Task(nsCtx, nil)
+	task, err := container.Task(c.nsCtx, nil)
 	if err != nil {
 		t.Fatalf("Failed to get task %q: %s", c.name, err)
 	}
 
-	task.Kill(nsCtx, syscall.SIGKILL)
-	// We need to wait until the task is killed before trying to delete it
-	<-c.exitStatus
-	_, err = task.Delete(nsCtx)
-	if err != nil {
-		t.Fatalf("Failed to delete task %q: %s", c.name, err)
-	}
-	err = container.Delete(nsCtx, containerd.WithSnapshotCleanup)
+	err = c.deleteAndClose(task, container)
 	if err != nil {
 		t.Fatalf("Failed to delete container %q: %s", c.name, err)
 	}

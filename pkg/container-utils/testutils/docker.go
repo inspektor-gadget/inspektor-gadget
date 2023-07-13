@@ -42,6 +42,8 @@ func NewDockerContainer(name, cmd string, options ...Option) Container {
 
 type DockerContainer struct {
 	containerSpec
+
+	client *client.Client
 }
 
 func (d *DockerContainer) Running() bool {
@@ -57,15 +59,15 @@ func (d *DockerContainer) Pid() int {
 }
 
 func (d *DockerContainer) Run(t *testing.T) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	var err error
+	d.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		t.Fatalf("Failed to connect to Docker: %s", err)
 	}
-	defer cli.Close()
 
-	_ = cli.ContainerRemove(d.options.ctx, d.name, types.ContainerRemoveOptions{})
+	_ = d.client.ContainerRemove(d.options.ctx, d.name, types.ContainerRemoveOptions{})
 
-	reader, err := cli.ImagePull(d.options.ctx, d.options.image, types.ImagePullOptions{})
+	reader, err := d.client.ImagePull(d.options.ctx, d.options.image, types.ImagePullOptions{})
 	if err != nil {
 		t.Fatalf("Failed to pull image container: %s", err)
 	}
@@ -76,7 +78,7 @@ func (d *DockerContainer) Run(t *testing.T) {
 		hostConfig.SecurityOpt = []string{fmt.Sprintf("seccomp=%s", d.options.seccompProfile)}
 	}
 
-	resp, err := cli.ContainerCreate(d.options.ctx, &container.Config{
+	resp, err := d.client.ContainerCreate(d.options.ctx, &container.Config{
 		Image: d.options.image,
 		Cmd:   []string{"/bin/sh", "-c", d.cmd},
 		Tty:   false,
@@ -84,13 +86,13 @@ func (d *DockerContainer) Run(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create container: %s", err)
 	}
-	if err := cli.ContainerStart(d.options.ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := d.client.ContainerStart(d.options.ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		t.Fatalf("Failed to start container: %s", err)
 	}
 	d.id = resp.ID
 
 	if d.options.wait {
-		statusCh, errCh := cli.ContainerWait(d.options.ctx, resp.ID, container.WaitConditionNotRunning)
+		statusCh, errCh := d.client.ContainerWait(d.options.ctx, resp.ID, container.WaitConditionNotRunning)
 		select {
 		case err := <-errCh:
 			if err != nil {
@@ -99,14 +101,14 @@ func (d *DockerContainer) Run(t *testing.T) {
 		case <-statusCh:
 		}
 	}
-	containerJSON, err := cli.ContainerInspect(d.options.ctx, d.id)
+	containerJSON, err := d.client.ContainerInspect(d.options.ctx, d.id)
 	if err != nil {
 		t.Fatalf("Failed to inspect container: %s", err)
 	}
 	d.pid = containerJSON.State.Pid
 
 	if d.options.logs {
-		out, err := cli.ContainerLogs(d.options.ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
+		out, err := d.client.ContainerLogs(d.options.ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 		if err != nil {
 			t.Fatalf("Failed to get container logs: %s", err)
 		}
@@ -116,7 +118,7 @@ func (d *DockerContainer) Run(t *testing.T) {
 	}
 
 	if d.options.removal {
-		err = cli.ContainerRemove(d.options.ctx, d.name, types.ContainerRemoveOptions{Force: true})
+		err := d.removeAndClose()
 		if err != nil {
 			t.Fatalf("Failed to remove container: %s", err)
 		}
@@ -140,20 +142,26 @@ func (d *DockerContainer) start(t *testing.T) {
 }
 
 func (d *DockerContainer) Stop(t *testing.T) {
-	d.stop(t)
+	err := d.removeAndClose()
+	if err != nil {
+		t.Fatalf("Failed to stop container: %s", err)
+	}
+
 	d.started = false
 }
 
-func (d *DockerContainer) stop(t *testing.T) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+func (d *DockerContainer) removeAndClose() error {
+	err := d.client.ContainerRemove(d.options.ctx, d.name, types.ContainerRemoveOptions{Force: true})
 	if err != nil {
-		t.Fatalf("Failed to connect to Docker: %s", err)
+		return fmt.Errorf("removing container: %w", err)
 	}
 
-	err = cli.ContainerRemove(d.options.ctx, d.name, types.ContainerRemoveOptions{Force: true})
+	err = d.client.Close()
 	if err != nil {
-		t.Fatalf("Failed to remove container: %s", err)
+		return fmt.Errorf("closing client: %w", err)
 	}
+
+	return nil
 }
 
 func RunDockerFailedContainer(ctx context.Context, t *testing.T) {
