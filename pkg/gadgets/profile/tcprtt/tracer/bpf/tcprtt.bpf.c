@@ -11,7 +11,7 @@
 #include "maps.bpf.h"
 
 /* Taken from kernel include/linux/socket.h. */
-#define AF_INET		2	/* Internet IP Protocol 	*/
+#define AF_INET		2	/* IP version 4			*/
 #define AF_INET6	10	/* IP version 6			*/
 
 
@@ -21,8 +21,8 @@ const volatile __u16 targ_sport = 0;
 const volatile __u16 targ_dport = 0;
 const volatile __u32 targ_saddr = 0;
 const volatile __u32 targ_daddr = 0;
-const volatile __u8 targ_saddr_v6[IPV6_LEN] = { 0 };
-const volatile __u8 targ_daddr_v6[IPV6_LEN] = { 0 };
+const volatile __u8 targ_saddr_v6[IPV6_LEN] = {};
+const volatile __u8 targ_daddr_v6[IPV6_LEN] = {};
 const volatile bool targ_ms = false;
 
 #define MAX_ENTRIES	10240
@@ -38,7 +38,7 @@ static struct hist zero;
 
 /*
  * We cannot use the following:
- * __builtin_memcmp(targ_*addr_v6, *, sizeof targ_*addr_v6);
+ * __builtin_memcmp(targ_*addr_v6, *, sizeof(targ_*addr_v6));
  * Indeed, by using the builtin, we would discard the volatile qualifier of
  * targ_*addr_v6, so the compiler would optimize it and replaces the call
  * with 0.
@@ -65,7 +65,7 @@ static int handle_tcp_rcv_established(struct sock *sk)
 	const struct inet_sock *inet = (struct inet_sock *)(sk);
 	struct tcp_sock *ts;
 	struct hist *histp;
-	struct hist_key key = { 0 };
+	struct hist_key key = {};
 	u64 slot;
 	u32 srtt;
 
@@ -110,7 +110,7 @@ static int handle_tcp_rcv_established(struct sock *sk)
 		return 0;
 	}
 
-	if (targ_laddr_hist)
+	if (targ_laddr_hist) {
 		if (key.family == AF_INET6)
 			bpf_probe_read_kernel(&key.addr, sizeof(key.addr), BPF_CORE_READ(inet, pinet6, saddr.in6_u.u6_addr8));
 		else
@@ -121,13 +121,14 @@ static int handle_tcp_rcv_established(struct sock *sk)
 			 * https://nakryiko.com/posts/bpf-core-reference-guide/#defining-own-co-re-relocatable-type-definitions
 			 */
 			bpf_probe_read_kernel(&key.addr, sizeof(inet->inet_saddr), &inet->inet_saddr);
-	else if (targ_raddr_hist)
+	} else if (targ_raddr_hist) {
 		if (key.family == AF_INET6)
 			bpf_probe_read_kernel(&key.addr, sizeof(key.addr), BPF_CORE_READ(sk, __sk_common.skc_v6_daddr.in6_u.u6_addr8));
 		else
 			bpf_probe_read_kernel(&key.addr, sizeof(sk->__sk_common.skc_daddr), &sk->__sk_common.skc_daddr);
-	else
+	} else {
 		key.family = 0;
+	}
 
 	histp = bpf_map_lookup_or_try_init(&hists, &key, &zero);
 	if (!histp)
