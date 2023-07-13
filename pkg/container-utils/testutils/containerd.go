@@ -50,6 +50,8 @@ func NewContainerdContainer(name, cmd string, options ...Option) Container {
 
 type ContainerdContainer struct {
 	containerSpec
+
+	exitStatus <-chan containerd.ExitStatus
 }
 
 func (c *ContainerdContainer) Running() bool {
@@ -135,14 +137,15 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 		container.Delete(nsCtx, containerd.WithSnapshotCleanup)
 		t.Fatalf("Failed to start task %q: %s", c.name, err)
 	}
+
+	c.exitStatus, err = task.Wait(nsCtx)
+	if err != nil {
+		t.Fatalf("Failed to wait on task %q: %s", c.name, err)
+	}
 	c.pid = int(task.Pid())
 
 	if c.options.wait {
-		exitStatus, err := task.Wait(nsCtx)
-		if err != nil {
-			t.Fatalf("Failed to wait on task %q: %s", c.name, err)
-		}
-		s := <-exitStatus
+		s := <-c.exitStatus
 		if s.ExitCode() != 0 {
 			t.Logf("Exitcode for task %q: %d", c.name, s.ExitCode())
 		}
@@ -154,6 +157,8 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 
 	if c.options.removal {
 		task.Kill(nsCtx, syscall.SIGKILL)
+		// We need to wait until the task is killed before trying to delete it
+		<-c.exitStatus
 		_, err = task.Delete(nsCtx)
 		if err != nil {
 			t.Fatalf("Failed to delete task %q: %s", c.name, err)
@@ -206,6 +211,8 @@ func (c *ContainerdContainer) stop(t *testing.T) {
 	}
 
 	task.Kill(nsCtx, syscall.SIGKILL)
+	// We need to wait until the task is killed before trying to delete it
+	<-c.exitStatus
 	_, err = task.Delete(nsCtx)
 	if err != nil {
 		t.Fatalf("Failed to delete task %q: %s", c.name, err)
