@@ -74,6 +74,8 @@ type Attributes struct {
 	Tags []string `yaml:"tags"`
 	// Template defines the template that will be used. Non-typed templates will be applied first.
 	Template string `yaml:"template"`
+	// Category can be used to group columns
+	Category string `yaml:"category"`
 }
 
 type Column[T any] struct {
@@ -280,6 +282,11 @@ func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 				return fmt.Errorf("no template specified for field %q", ci.Name)
 			}
 			ci.Template = params[1]
+		case "category":
+			if paramsLen < 2 || params[1] == "" {
+				return fmt.Errorf("no category specified for field %q", ci.Name)
+			}
+			ci.Category = params[1]
 		case "stringer":
 			if ci.Extractor != nil {
 				break
