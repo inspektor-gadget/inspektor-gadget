@@ -66,7 +66,7 @@ func NewListContainersCmd() *cobra.Command {
 				}
 				containers := igmanager.GetContainersBySelector(&selector)
 
-				parser.Sort(containers, []string{"runtime", "name"})
+				parser.Sort(containers, []string{"runtime.runtimeName", "runtime.containerName"})
 				if err = printContainers(parser, commonFlags, containers); err != nil {
 					return err
 				}
