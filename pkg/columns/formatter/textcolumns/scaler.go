@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"golang.org/x/term"
 )
@@ -225,6 +226,18 @@ func (tf *TextColumnsFormatter[T]) AdjustWidthsToScreen() {
 	tf.RecalculateWidths(terminalWidth, false)
 }
 
+func (tf *TextColumnsFormatter[T]) getColumnName(col *Column[T]) string {
+	name := col.col.Name
+	for _, prefix := range tf.options.StripPrefixes {
+		newName := strings.TrimPrefix(name, prefix+".")
+		if newName != name {
+			// only allow trimming one prefix for now
+			return newName
+		}
+	}
+	return name
+}
+
 // AdjustWidthsToContent will calculate widths of columns by getting the maximum length found for each column
 // in the input array. If considerHeaders is true, header lengths will also be considered when calculating.
 // If maxWidth > 0, space will be reduced to accordingly to match the given width.
@@ -283,7 +296,7 @@ func (tf *TextColumnsFormatter[T]) AdjustWidthsToContent(entries []*T, considerH
 			if column.col.FixedWidth {
 				continue
 			}
-			headerLen := len([]rune(column.col.Name))
+			headerLen := len([]rune(tf.getColumnName(column)))
 			if headerLen > columnWidths[columnIndex] {
 				columnWidths[columnIndex] = headerLen
 			}

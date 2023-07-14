@@ -71,7 +71,7 @@ func (tf *TextColumnsFormatter[T]) FormatHeader() string {
 		if i > 0 {
 			row.WriteString(tf.options.ColumnDivider)
 		}
-		name := column.col.Name
+		name := tf.getColumnName(column)
 		switch tf.options.HeaderStyle {
 		case HeaderStyleUppercase:
 			name = strings.ToUpper(name)

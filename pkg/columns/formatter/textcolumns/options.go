@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2022-2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ type Options struct {
 	DefaultColumns []string    // defines which columns to show by default; will be set to all visible columns if nil
 	HeaderStyle    HeaderStyle // defines how column headers are decorated (e.g. uppercase/lowercase)
 	RowDivider     string      // defines the (to be repeated) string that should be used below the header
+	StripPrefixes  []string    // defines prefixes to strip from embedded (prefixed) columns
 }
 
 func DefaultOptions() *Options {
@@ -81,5 +82,12 @@ func WithHeaderStyle(headerStyle HeaderStyle) Option {
 func WithRowDivider(divider string) Option {
 	return func(opts *Options) {
 		opts.RowDivider = divider
+	}
+}
+
+// WithStripPrefixes sets prefixes that should be stripped from column names
+func WithStripPrefixes(prefixes []string) Option {
+	return func(opts *Options) {
+		opts.StripPrefixes = prefixes
 	}
 }
