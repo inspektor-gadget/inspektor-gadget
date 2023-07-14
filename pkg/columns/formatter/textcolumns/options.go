@@ -32,12 +32,14 @@ const (
 type Option func(*Options)
 
 type Options struct {
-	AutoScale      bool        // if enabled, the screen size will be used to scale the widths
-	ColumnDivider  string      // defines the string that should be used as spacer in between columns (default " ")
-	DefaultColumns []string    // defines which columns to show by default; will be set to all visible columns if nil
-	HeaderStyle    HeaderStyle // defines how column headers are decorated (e.g. uppercase/lowercase)
-	RowDivider     string      // defines the (to be repeated) string that should be used below the header
-	StripPrefixes  []string    // defines prefixes to strip from embedded (prefixed) columns
+	AutoScale        bool            // if enabled, the screen size will be used to scale the widths
+	ColumnDivider    string          // defines the string that should be used as spacer in between columns (default " ")
+	DefaultColumns   []string        // defines which columns to show by default; will be set to all visible columns if nil
+	HeaderStyle      HeaderStyle     // defines how column headers are decorated (e.g. uppercase/lowercase)
+	RowDivider       string          // defines the (to be repeated) string that should be used below the header
+	StripPrefixes    []string        // defines prefixes to strip from embedded (prefixed) columns
+	CategoryDefaults map[string]bool // defines default visibility for categories
+	CategoryDefault  bool            // defines whether unspecified categories should be visible by default or not
 }
 
 func DefaultOptions() *Options {
@@ -89,5 +91,19 @@ func WithRowDivider(divider string) Option {
 func WithStripPrefixes(prefixes []string) Option {
 	return func(opts *Options) {
 		opts.StripPrefixes = prefixes
+	}
+}
+
+// WithCategoryDefaults defines the default visibility of categories
+func WithCategoryDefaults(categoryDefaults map[string]bool) Option {
+	return func(opts *Options) {
+		opts.CategoryDefaults = categoryDefaults
+	}
+}
+
+// WithCategoryDefault defines the default visibility of unspecified categories
+func WithCategoryDefault(categoryDefault bool) Option {
+	return func(opts *Options) {
+		opts.CategoryDefault = categoryDefault
 	}
 }

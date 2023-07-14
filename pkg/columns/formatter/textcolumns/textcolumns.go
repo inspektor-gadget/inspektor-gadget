@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
 type Column[T any] struct {
@@ -35,6 +36,7 @@ type TextColumnsFormatter[T any] struct {
 	currentMaxWidth int
 	showColumns     []*Column[T]
 	fillString      string
+	categories      map[string]*params.Param
 }
 
 // NewFormatter returns a TextColumnsFormatter that will turn entries of type T into tables that can be shown
@@ -54,8 +56,9 @@ func NewFormatter[T any](columns columns.ColumnMap[T], options ...Option) *TextC
 	}
 
 	tf := &TextColumnsFormatter[T]{
-		options: opts,
-		columns: formatterColumnMap,
+		options:    opts,
+		columns:    formatterColumnMap,
+		categories: map[string]*params.Param{},
 	}
 
 	for _, column := range tf.columns {
