@@ -107,7 +107,7 @@ type BasicRuntimeMetadata struct {
 	// RuntimeName is the name of the container runtime. It is useful to distinguish
 	// who is the "owner" of each container in a list of containers collected
 	// from multiple runtimes.
-	RuntimeName RuntimeName `json:"runtimeName,omitempty" column:"runtimeName,minWidth:5,maxWidth:12,hide"`
+	RuntimeName RuntimeName `json:"runtimeName,omitempty" column:"runtimeName,width:19,fixed,hide"`
 
 	// ContainerID is the container ContainerID without the container runtime prefix. For
 	// instance, without the "cri-o://" for CRI-O.
