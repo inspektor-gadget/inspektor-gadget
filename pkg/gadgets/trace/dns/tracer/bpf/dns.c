@@ -22,6 +22,17 @@
 #define DNS_TYPE_A 1     // https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.2
 #define DNS_TYPE_AAAA 28 // https://www.rfc-editor.org/rfc/rfc3596#section-2.1
 
+#ifndef PACKET_HOST
+#define PACKET_HOST 0x0
+#endif
+
+#ifndef PACKET_OUTGOING
+#define PACKET_OUTGOING 0x4
+#endif
+
+#define DNS_QR_QUERY 0
+#define DNS_QR_RESP  1
+
 // we need this to make sure the compiler doesn't remove our struct
 const struct event_t *unusedevent __attribute__((unused));
 
@@ -87,6 +98,19 @@ struct {
 	__type(key, __u32);
 	__type(value, struct event_t);
 } tmp_event SEC(".maps");
+
+// Map of DNS query to timestamp so we can calculate latency from query sent to answer received.
+struct query_key_t {
+	__u64 pid_tgid;
+	__u16 id;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct query_key_t);
+	__type(value, __u64); // timestamp of the query
+	__uint(max_entries, 1024);
+} query_map SEC(".maps");
 
 static __always_inline __u32 dns_name_length(struct __sk_buff *skb)
 {
@@ -203,6 +227,42 @@ output_dns_event(struct __sk_buff *skb, union dnsflags flags, __u32 name_len, __
 	int anoffset = DNS_OFF + sizeof(struct dnshdr) + name_len + 5;
 	int anaddrcount = load_addresses(skb, ancount, anoffset, event);
 	event->anaddrcount = anaddrcount;
+
+	// Calculate latency:
+	//
+	// Track the latency from when a query is sent from a container
+	// to when a response to the query is received by that same container.
+	//
+	// * On DNS query sent from a container namespace (qr == DNS_QR_QUERY and pkt_type == OUTGOING),
+	//   store the query timestamp in a map.
+	//
+	// * On DNS response received in the same container namespace (qr == DNS_QR_RESP and pkt_type == HOST)
+	//   retrieve/delete the query timestamp and set the latency field on the event.
+	//
+	// A garbage collection thread running in userspace periodically scans for keys with old timestamps
+	// to free space occupied by queries that never receive a response.
+	//
+	// Skip this if skb_val == NULL (gadget_socket_lookup did not set pid_tgid we use in the query key)
+	// or if event->timestamp == 0 (kernels before 5.8 don't support bpf_ktime_get_boot_ns, and the patched
+	// version IG injects always returns zero).
+	if (skb_val != NULL && event->timestamp > 0) {
+		struct query_key_t query_key = {
+			.pid_tgid = skb_val->pid_tgid,
+			.id = event->id,
+		};
+		if (event->qr == DNS_QR_QUERY && event->pkt_type == PACKET_OUTGOING) {
+			bpf_map_update_elem(&query_map, &query_key, &event->timestamp, BPF_NOEXIST);
+		} else if (event->qr == DNS_QR_RESP && event->pkt_type == PACKET_HOST) {
+			__u64 *query_ts = bpf_map_lookup_elem(&query_map, &query_key);
+			if (query_ts != NULL) {
+				// query ts should always be less than the event ts, but check anyway to be safe.
+				if (*query_ts < event->timestamp) {
+					event->latency_ns = event->timestamp - *query_ts;
+				}
+				bpf_map_delete_elem(&query_map, &query_key);
+			}
+		}
+	}
 
 	// size of full structure - addresses + only used addresses
 	unsigned long long size = sizeof(*event) - MAX_ADDR_ANSWERS*16 + anaddrcount*16;

@@ -21,9 +21,8 @@ import (
 	"fmt"
 	"net/netip"
 	"syscall"
+	"time"
 	"unsafe"
-
-	"golang.org/x/sys/unix"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -35,9 +34,10 @@ import (
 //go:generate bash -c "source ../../../internal/networktracer/clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
 const (
-	BPFProgName    = "ig_trace_dns"
-	BPFPerfMapName = "events"
-	MaxAddrAnswers = 8 // Keep aligned with MAX_ADDR_ANSWERS in bpf/dns-common.h
+	BPFProgName     = "ig_trace_dns"
+	BPFPerfMapName  = "events"
+	BPFQueryMapName = "query_map"
+	MaxAddrAnswers  = 8 // Keep aligned with MAX_ADDR_ANSWERS in bpf/dns-common.h
 )
 
 type Tracer struct {
@@ -253,6 +253,8 @@ func bpfEventToDNSEvent(bpfEvent *dnsEventT, netns uint64) (*types.Event, error)
 		if !ok {
 			event.Rcode = "UNKNOWN"
 		}
+
+		event.Latency = time.Duration(bpfEvent.LatencyNs)
 	}
 
 	// There's a limit on the number of addresses in the BPF event,
@@ -281,6 +283,17 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	}
 
 	t.ctx, t.cancel = gadgetcontext.WithTimeoutOrCancel(gadgetCtx.Context(), gadgetCtx.Timeout())
+
+	// Start a background thread to garbage collect queries without responses
+	// from the queries map (used to calculate DNS latency).
+	// The goroutine terminates when t.ctx is done.
+	queryMap := t.Tracer.GetMap(BPFQueryMapName)
+	if queryMap == nil {
+		t.Close()
+		return fmt.Errorf("got nil retrieving DNS query map")
+	}
+	startGarbageCollector(t.ctx, gadgetCtx.Logger(), gadgetCtx.GadgetParams(), queryMap)
+
 	return nil
 }
 
@@ -290,12 +303,7 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("loading asset: %w", err)
 	}
 
-	latencyCalc, err := newDNSLatencyCalculator()
-	if err != nil {
-		return err
-	}
-
-	parseAndEnrichDNSEvent := func(rawSample []byte, netns uint64) (*types.Event, error) {
+	parseDNSEvent := func(rawSample []byte, netns uint64) (*types.Event, error) {
 		bpfEvent := (*dnsEventT)(unsafe.Pointer(&rawSample[0]))
 		// TODO: Why do I need 4+?
 		expected := 4 + int(unsafe.Sizeof(*bpfEvent)) - MaxAddrAnswers*16 + int(bpfEvent.Anaddrcount)*16
@@ -309,15 +317,6 @@ func (t *Tracer) install() error {
 			return nil, err
 		}
 
-		// Derive latency from the query/response timestamps.
-		// Filter by packet type (OUTGOING for queries and HOST for responses) to exclude cases where
-		// the packet is forwarded between containers in the host netns.
-		if bpfEvent.Qr == 0 && bpfEvent.PktType == unix.PACKET_OUTGOING {
-			latencyCalc.storeDNSQueryTimestamp(netns, bpfEvent.Id, uint64(event.Event.Timestamp))
-		} else if bpfEvent.Qr == 1 && bpfEvent.PktType == unix.PACKET_HOST {
-			event.Latency = latencyCalc.calculateDNSResponseLatency(netns, bpfEvent.Id, uint64(event.Event.Timestamp))
-		}
-
 		return event, nil
 	}
 
@@ -326,12 +325,13 @@ func (t *Tracer) install() error {
 		BPFProgName,
 		BPFPerfMapName,
 		types.Base,
-		parseAndEnrichDNSEvent,
+		parseDNSEvent,
 	)
 	if err != nil {
 		return fmt.Errorf("creating network tracer: %w", err)
 	}
 	t.Tracer = networkTracer
+
 	return nil
 }
 
