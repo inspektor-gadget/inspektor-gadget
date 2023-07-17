@@ -15,8 +15,12 @@
 package textcolumns
 
 import (
+	"bytes"
+	"encoding/binary"
+	"reflect"
 	"strings"
 	"testing"
+	"unsafe"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 
@@ -241,4 +245,54 @@ func TestTextColumnsFormatter_SetShownColumns(t *testing.T) {
 			require.Equal(t, test.expected, found, "shown columns doesn't match the expected ones")
 		})
 	}
+}
+
+func TestDynamicFields(t *testing.T) {
+	// Write the data in its binary representation to a buffer
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, []uint8("foobar"))
+	require.NoError(t, err)
+	err = binary.Write(buf, binary.LittleEndian, int32(1234567890))
+	require.NoError(t, err)
+	err = binary.Write(buf, binary.LittleEndian, true)
+	require.NoError(t, err)
+
+	fields := []columns.DynamicField{{
+		Attributes: &columns.Attributes{
+			Name:    "str",
+			Width:   columns.GetDefault().DefaultWidth,
+			Visible: true,
+			Order:   0,
+		},
+		Type:   reflect.TypeOf([6]uint8{}),
+		Offset: 0,
+	}, {
+		Attributes: &columns.Attributes{
+			Name:    "int32",
+			Width:   columns.GetDefault().DefaultWidth,
+			Visible: true,
+			Order:   1,
+		},
+		Type:   reflect.TypeOf(int32(0)),
+		Offset: 6,
+	}, {
+		Attributes: &columns.Attributes{
+			Name:    "bool",
+			Width:   columns.GetDefault().DefaultWidth,
+			Visible: true,
+			Order:   2,
+		},
+		Type:   reflect.TypeOf(true),
+		Offset: 10,
+	}}
+
+	type empty struct{}
+	cols := columns.MustCreateColumns[empty]()
+	cols.AddFields(fields, func(ev *empty) unsafe.Pointer {
+		bytes := buf.Bytes()
+		return unsafe.Pointer(&bytes[0])
+	})
+	formatter := NewFormatter[empty](cols.GetColumnMap())
+	assert.Equal(t, "STR              INT32            BOOL            ", formatter.FormatHeader())
+	assert.Equal(t, "foobar           1234567890       true            ", formatter.FormatEntry(&empty{}))
 }
