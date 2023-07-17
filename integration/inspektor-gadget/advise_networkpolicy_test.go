@@ -15,10 +15,7 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"os/exec"
-	"strings"
 	"testing"
 
 	networkTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/network/types"
@@ -32,6 +29,12 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 	nsClient := GenerateTestNamespaceName("test-advise-networkpolicy-client")
 
 	t.Parallel()
+
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(nsServer),
@@ -58,7 +61,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 			Cmd:  fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --timeout 5 --output - | tee ./networktrace-client.log`, nsClient),
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &networkTypes.Event{
-					Event:     BuildBaseEvent(nsClient),
+					Event:     BuildBaseEvent(nsClient, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:      "nc",
 					Uid:       0,
 					Gid:       0,
@@ -89,7 +92,9 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.K8s.Node = ""
 					e.K8s.ContainerName = ""
 					// TODO: Verify container runtime and container name
-					e.Runtime = eventtypes.BasicRuntimeMetadata{}
+					e.Runtime.RuntimeName = ""
+					e.Runtime.ContainerName = ""
+					e.Runtime.ContainerID = ""
 				}
 
 				return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -99,24 +104,15 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 			Name: "RunNetworkPolicyMonitorServer",
 			Cmd:  fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --timeout 5 --output - | tee ./networktrace-server.log`, nsServer),
 			ExpectedOutputFn: func(output string) error {
-				cmd := exec.Command("kubectl", "get", "node", "-o", "jsonpath={.items[0].status.nodeInfo.containerRuntimeVersion}")
-				var stderr bytes.Buffer
-				cmd.Stderr = &stderr
-				r, err := cmd.Output()
-				if err != nil {
-					return fmt.Errorf("%w: %s", err, stderr.String())
-				}
-				ret := string(r)
-
 				// Docker bridge does not preserve source IP :-(
 				// https://github.com/kubernetes/minikube/issues/11211
 				// Skip this test step if docker is detected
-				if strings.Contains(ret, "docker") {
+				if isDockerRuntime {
 					return nil
 				}
 
 				expectedEntry := &networkTypes.Event{
-					Event: BuildBaseEvent(nsServer),
+					Event: BuildBaseEvent(nsServer, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					// The socket enricher can find the correct "comm" because it supports dual stack sockets
 					Comm:      "nc",
 					Uid:       0,
@@ -148,7 +144,9 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.K8s.Node = ""
 					e.K8s.ContainerName = ""
 					// TODO: Verify container runtime and container name
-					e.Runtime = eventtypes.BasicRuntimeMetadata{}
+					e.Runtime.RuntimeName = ""
+					e.Runtime.ContainerName = ""
+					e.Runtime.ContainerID = ""
 				}
 
 				return ExpectEntriesToMatch(output, normalize, expectedEntry)

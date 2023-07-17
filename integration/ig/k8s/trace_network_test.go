@@ -50,9 +50,13 @@ func TestTraceNetwork(t *testing.T) {
 				return fmt.Errorf("getting pod ip: %w", err)
 			}
 
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntries := []*networkTypes.Event{
 				{
-					Event:   BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+					Event: BuildBaseEvent(ns,
+						WithRuntimeMetadata(*containerRuntime),
+						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					),
 					Comm:    "wget",
 					Uid:     0,
 					Gid:     0,
@@ -77,6 +81,8 @@ func TestTraceNetwork(t *testing.T) {
 							Runtime: eventtypes.BasicRuntimeMetadata{
 								ContainerName: "nginx-pod",
 								RuntimeName:   eventtypes.String2RuntimeName(*containerRuntime),
+								// TODO: once ig supports initial containers images enrichment, ContainerImageName should be added
+								// ContainerImageName: "docker.io/library/nginx:latest",
 							},
 						},
 					},

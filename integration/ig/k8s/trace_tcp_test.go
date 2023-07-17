@@ -33,8 +33,12 @@ func TestTraceTCP(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace tcp -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &tcpTypes.Event{
-				Event:     BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime),
+				),
 				Comm:      "curl",
 				IPVersion: 4,
 				SrcEndpoint: eventtypes.L4Endpoint{

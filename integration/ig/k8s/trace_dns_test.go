@@ -45,9 +45,13 @@ func TestTraceDns(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace dns -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntries := []*dnsTypes.Event{
 				{
-					Event:      BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+					Event: BuildBaseEvent(ns,
+						WithRuntimeMetadata(*containerRuntime),
+						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -58,7 +62,10 @@ func TestTraceDns(t *testing.T) {
 					Gid:        1111,
 				},
 				{
-					Event:      BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+					Event: BuildBaseEvent(ns,
+						WithRuntimeMetadata(*containerRuntime),
+						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,
@@ -73,7 +80,10 @@ func TestTraceDns(t *testing.T) {
 					Gid:        1111,
 				},
 				{
-					Event:      BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+					Event: BuildBaseEvent(ns,
+						WithRuntimeMetadata(*containerRuntime),
+						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -84,7 +94,10 @@ func TestTraceDns(t *testing.T) {
 					Gid:        1111,
 				},
 				{
-					Event:      BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+					Event: BuildBaseEvent(ns,
+						WithRuntimeMetadata(*containerRuntime),
+						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,
@@ -99,7 +112,10 @@ func TestTraceDns(t *testing.T) {
 					Gid:        1111,
 				},
 				{
-					Event:      BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+					Event: BuildBaseEvent(ns,
+						WithRuntimeMetadata(*containerRuntime),
+						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -110,7 +126,10 @@ func TestTraceDns(t *testing.T) {
 					Gid:        1111,
 				},
 				{
-					Event:      BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+					Event: BuildBaseEvent(ns,
+						WithRuntimeMetadata(*containerRuntime),
+						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					),
 					Comm:       "nslookup",
 					Qr:         dnsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,

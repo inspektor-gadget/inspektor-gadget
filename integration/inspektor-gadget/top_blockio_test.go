@@ -20,13 +20,12 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	topblockioTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
+func newTopBlockIOCmd(ns string, cmd string, startAndStop bool, isDockerRuntime bool) *Command {
 	expectedOutputFn := func(output string) error {
 		expectedEntry := &topblockioTypes.Stats{
-			CommonData: BuildCommonData(ns),
+			CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 			Write:      true,
 			Comm:       "dd",
 		}
@@ -42,7 +41,9 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 
 			e.K8s.Node = ""
 			// TODO: Verify container runtime and container name
-			e.Runtime = types.BasicRuntimeMetadata{}
+			e.Runtime.RuntimeName = ""
+			e.Runtime.ContainerName = ""
+			e.Runtime.ContainerID = ""
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
@@ -63,6 +64,12 @@ func TestTopBlockIO(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-block-io")
 
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
+
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodRepeatCommand(ns, "dd if=/dev/zero of=/tmp/test count=4096"),
@@ -81,7 +88,7 @@ func TestTopBlockIO(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json", ns)
-		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, true)
+		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, true, isDockerRuntime)
 		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
@@ -89,7 +96,7 @@ func TestTopBlockIO(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json --timeout %d", ns, topTimeoutInSeconds)
-		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false)
+		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false, isDockerRuntime)
 		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
@@ -97,7 +104,7 @@ func TestTopBlockIO(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top block-io -n %s -o json --timeout %d --interval %d", ns, topTimeoutInSeconds, topTimeoutInSeconds)
-		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false)
+		topBlockIOCmd := newTopBlockIOCmd(ns, cmd, false, isDockerRuntime)
 		RunTestSteps([]*Command{topBlockIOCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 }

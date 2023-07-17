@@ -35,11 +35,15 @@ func TestTraceFsslower(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace fsslower -f %s --runtimes=%s -m 0 -o json", fsType, *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &fsslowerTypes.Event{
-				Event: BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
-				Comm:  "cat",
-				File:  "foo",
-				Op:    "R",
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+				),
+				Comm: "cat",
+				File: "foo",
+				Op:   "R",
 			}
 
 			normalize := func(e *fsslowerTypes.Event) {

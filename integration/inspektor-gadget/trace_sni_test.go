@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	tracesniTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/sni/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -29,13 +28,19 @@ func TestTraceSni(t *testing.T) {
 
 	t.Parallel()
 
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
+
 	traceSniCmd := &Command{
 		Name:         "StartTraceSniGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace sni -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tracesniTypes.Event{
-				Event: BuildBaseEvent(ns),
+				Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Comm:  "wget",
 				Name:  "inspektor-gadget.io",
 				Uid:   1000,
@@ -51,7 +56,9 @@ func TestTraceSni(t *testing.T) {
 
 				e.K8s.Node = ""
 				// TODO: Verify container runtime and container name
-				e.Runtime = types.BasicRuntimeMetadata{}
+				e.Runtime.RuntimeName = ""
+				e.Runtime.ContainerName = ""
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectAllToMatch(output, normalize, expectedEntry)

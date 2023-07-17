@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
-	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -30,6 +29,13 @@ func TestRunTraceOpen(t *testing.T) {
 	t.Parallel()
 
 	prog := "../../gadgets/trace_open_x86.bpf.o"
+
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
+
 	if *k8sArch == "arm64" {
 		prog = "../../gadgets/trace_open_arm64.bpf.o"
 	}
@@ -44,7 +50,7 @@ func TestRunTraceOpen(t *testing.T) {
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &types.Event{
-				Event: BuildBaseEvent(ns),
+				Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Data: map[string]interface{}{
 					"comm":      "cat",
 					"fname":     "/dev/null",
@@ -81,7 +87,9 @@ func TestRunTraceOpen(t *testing.T) {
 
 				e.K8s.Node = ""
 				// TODO: Verify container runtime and container name
-				e.Runtime = eventtypes.BasicRuntimeMetadata{}
+				e.Runtime.RuntimeName = ""
+				e.Runtime.ContainerName = ""
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

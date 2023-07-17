@@ -39,25 +39,35 @@ func TestTraceExec(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace exec -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntries := []*execTypes.Event{
 				{
-					Event: BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
-					Comm:  "sh",
-					Args:  shArgs,
+					Event: BuildBaseEvent(ns,
+						WithRuntimeMetadata(*containerRuntime),
+						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					),
+					Comm: "sh",
+					Args: shArgs,
 				},
 				{
-					Event: BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
-					Comm:  "date",
-					Args:  dateArgs,
-					Uid:   1000,
-					Gid:   1111,
+					Event: BuildBaseEvent(ns,
+						WithRuntimeMetadata(*containerRuntime),
+						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					),
+					Comm: "date",
+					Args: dateArgs,
+					Uid:  1000,
+					Gid:  1111,
 				},
 				{
-					Event: BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
-					Comm:  "sleep",
-					Args:  sleepArgs,
-					Uid:   1000,
-					Gid:   1111,
+					Event: BuildBaseEvent(ns,
+						WithRuntimeMetadata(*containerRuntime),
+						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+					),
+					Comm: "sleep",
+					Args: sleepArgs,
+					Uid:  1000,
+					Gid:  1111,
 				},
 			}
 

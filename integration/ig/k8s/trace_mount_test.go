@@ -34,8 +34,12 @@ func TestTraceMount(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace mount -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &mountTypes.Event{
-				Event:     BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+				),
 				Comm:      "mount",
 				Operation: "mount",
 				Retval:    -int(unix.ENOENT),

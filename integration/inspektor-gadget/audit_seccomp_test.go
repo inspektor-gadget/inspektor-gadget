@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	seccompauditTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/audit/seccomp/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -29,6 +28,12 @@ func TestAuditSeccomp(t *testing.T) {
 	spName := "log"
 
 	t.Parallel()
+
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -91,7 +96,7 @@ EOF
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15 -o json", ns),
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &seccompauditTypes.Event{
-					Event:   BuildBaseEvent(ns),
+					Event:   BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Syscall: "unshare",
 					Code:    "kill_thread",
 					Comm:    "unshare",
@@ -104,7 +109,9 @@ EOF
 
 					e.K8s.Node = ""
 					// TODO: Verify container runtime and container name
-					e.Runtime = types.BasicRuntimeMetadata{}
+					e.Runtime.RuntimeName = ""
+					e.Runtime.ContainerName = ""
+					e.Runtime.ContainerID = ""
 				}
 
 				return ExpectEntriesToMatch(output, normalize, expectedEntry)

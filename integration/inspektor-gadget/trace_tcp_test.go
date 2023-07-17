@@ -29,13 +29,19 @@ func TestTraceTcp(t *testing.T) {
 
 	t.Parallel()
 
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
+
 	traceTCPCmd := &Command{
 		Name:         "StartTraceTcpGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcp -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tracetcpTypes.Event{
-				Event:     BuildBaseEvent(ns),
+				Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
 				Comm:      "curl",
 				IPVersion: 4,
 				Operation: "connect",
@@ -62,7 +68,9 @@ func TestTraceTcp(t *testing.T) {
 
 				e.K8s.Node = ""
 				// TODO: Verify container runtime and container name
-				e.Runtime = eventtypes.BasicRuntimeMetadata{}
+				e.Runtime.RuntimeName = ""
+				e.Runtime.ContainerName = ""
+				e.Runtime.ContainerID = ""
 			}
 
 			fmt.Printf("output: %s\n", output)

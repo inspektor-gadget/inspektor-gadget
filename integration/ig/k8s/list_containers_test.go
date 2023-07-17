@@ -143,6 +143,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --watch", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEvent := &containercollection.PubSubEvent{
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
@@ -161,6 +162,11 @@ func TestWatchCreatedContainers(t *testing.T) {
 						},
 					},
 				},
+			}
+
+			// TODO: Handle it once we support getting container image name for docker.
+			if isDockerRuntime {
+				expectedEvent.Container.Runtime.ContainerImageName = ""
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {
@@ -301,6 +307,7 @@ func TestPodWithSecurityContext(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig list-containers -o json --runtimes=%s --watch", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEvent := &containercollection.PubSubEvent{
 				Type: containercollection.EventTypeAddContainer,
 				Container: &containercollection.Container{
@@ -313,11 +320,17 @@ func TestPodWithSecurityContext(t *testing.T) {
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-							RuntimeName:   types.String2RuntimeName(*containerRuntime),
-							ContainerName: cn,
+							RuntimeName:        types.String2RuntimeName(*containerRuntime),
+							ContainerName:      cn,
+							ContainerImageName: "docker.io/library/busybox:latest",
 						},
 					},
 				},
+			}
+
+			// TODO: Handle it once we support getting container image name for docker.
+			if isDockerRuntime {
+				expectedEvent.Container.Runtime.ContainerImageName = ""
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {

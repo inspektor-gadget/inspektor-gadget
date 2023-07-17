@@ -33,8 +33,12 @@ func TestTraceTcpconnect(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace tcpconnect -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &tcpconnectTypes.Event{
-				Event:     BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime),
+				),
 				Comm:      "curl",
 				IPVersion: 4,
 				SrcEndpoint: eventtypes.L4Endpoint{
@@ -93,8 +97,12 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace tcpconnect --latency -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &tcpconnectTypes.Event{
-				Event:     BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime),
+				),
 				Comm:      "curl",
 				IPVersion: 4,
 				SrcEndpoint: eventtypes.L4Endpoint{

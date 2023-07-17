@@ -32,6 +32,12 @@ func TestSnapshotSocket(t *testing.T) {
 
 	t.Parallel()
 
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
+
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
 		BusyboxPodCommand(ns, "nc -l 0.0.0.0 -p 9090"),
@@ -57,7 +63,7 @@ func TestSnapshotSocket(t *testing.T) {
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot socket -n %s -o json --node %s", ns, nodeName),
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &snapshotsocketTypes.Event{
-					Event:    BuildBaseEvent(ns),
+					Event:    BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Protocol: "TCP",
 					SrcEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
@@ -86,7 +92,9 @@ func TestSnapshotSocket(t *testing.T) {
 
 					e.K8s.ContainerName = ""
 					// TODO: Verify container runtime and container name
-					e.Runtime = eventtypes.BasicRuntimeMetadata{}
+					e.Runtime.RuntimeName = ""
+					e.Runtime.ContainerName = ""
+					e.Runtime.ContainerID = ""
 				}
 
 				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)

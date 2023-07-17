@@ -32,8 +32,12 @@ func TestTraceOpen(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace open -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &openTypes.Event{
-				Event:    BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+				),
 				Comm:     "cat",
 				Fd:       3,
 				Ret:      3,

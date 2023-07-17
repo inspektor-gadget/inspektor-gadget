@@ -32,10 +32,14 @@ func TestTraceSni(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace sni -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &sniTypes.Event{
-				Event: BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
-				Comm:  "wget",
-				Name:  "kubernetes.default.svc.cluster.local",
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+				),
+				Comm: "wget",
+				Name: "kubernetes.default.svc.cluster.local",
 			}
 
 			normalize := func(e *sniTypes.Event) {

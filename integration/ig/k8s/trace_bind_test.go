@@ -32,8 +32,12 @@ func TestTraceBind(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace bind -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &bindTypes.Event{
-				Event:    BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+				),
 				Comm:     "nc",
 				Protocol: "TCP",
 				Addr:     "::",

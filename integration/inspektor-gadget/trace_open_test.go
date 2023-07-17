@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	traceopenTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/open/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -29,13 +28,19 @@ func TestTraceOpen(t *testing.T) {
 
 	t.Parallel()
 
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
+
 	traceOpenCmd := &Command{
 		Name:         "StartTraceOpenGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace open -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &traceopenTypes.Event{
-				Event:    BuildBaseEvent(ns),
+				Event:    BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Comm:     "cat",
 				Fd:       3,
 				Ret:      3,
@@ -55,7 +60,9 @@ func TestTraceOpen(t *testing.T) {
 
 				e.K8s.Node = ""
 				// TODO: Verify container runtime and container name
-				e.Runtime = types.BasicRuntimeMetadata{}
+				e.Runtime.RuntimeName = ""
+				e.Runtime.ContainerName = ""
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
