@@ -15,6 +15,7 @@
 package columns
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
@@ -502,6 +503,26 @@ func GetFieldFuncExt[OT any, T any](column ColumnInternals, raw bool) func(entry
 	}
 }
 
+// GetFieldAsArrayFunc returns a helper function to access an array of type OT of a struct T
+// without using reflection. It does not differentiate between direct members of the struct and
+// members of embedded structs.
+func GetFieldAsArrayFunc[OT any, T any](column ColumnInternals) func(entry *T) []OT {
+	l := column.(*Column[T]).RawType().Len()
+
+	return func(entry *T) []OT {
+		entryStart := unsafe.Pointer(entry)
+		if column.(*Column[T]).getStart != nil {
+			entryStart = column.(*Column[T]).getStart(entry)
+		}
+
+		fieldStart := unsafe.Add(entryStart, column.getOffset())
+		srcSlice := unsafe.Slice((*OT)(fieldStart), l)
+		r := make([]OT, l)
+		copy(r, srcSlice)
+		return r
+	}
+}
+
 // SetFieldFunc returns a helper function to set the value of type OT to a member of struct T
 // without using reflection. It differentiates between direct members of the struct and
 // members of embedded structs. If any of the embedded structs being accessed is a nil-pointer,
@@ -580,28 +601,16 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 			return "false"
 		}
 	case reflect.Array:
-		l := column.(*Column[T]).Type().Len()
 		s := column.(*Column[T]).Type().Elem().Size()
 		// c strings: []char null terminated
 		if s == 1 {
 			return func(entry *T) string {
-				r := []byte{}
-				entryStart := unsafe.Pointer(entry)
-				if column.(*Column[T]).getStart != nil {
-					entryStart = column.(*Column[T]).getStart(entry)
+				arr := GetFieldAsArrayFunc[byte, T](column)(entry)
+				i := bytes.IndexByte(arr, 0)
+				if i != -1 {
+					arr = arr[:i]
 				}
-
-				fieldStart := unsafe.Add(entryStart, column.getOffset())
-
-				for i := 0; i < int(l); i++ {
-					b := *(*byte)(unsafe.Add(fieldStart, i))
-					if b == 0 {
-						break
-					}
-					r = append(r, b)
-				}
-
-				return string(r)
+				return string(arr)
 			}
 		}
 
