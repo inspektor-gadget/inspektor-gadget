@@ -109,21 +109,8 @@ func (cc *ContainerCollection) Initialize(options ...ContainerCollectionOption) 
 	// Consume initial containers that might have been fetched by
 	// functional options. This is done after all functional options have
 	// been called, so that cc.containerEnrichers is fully set up.
-initialContainersLoop:
 	for _, container := range cc.initialContainers {
-		for _, enricher := range cc.containerEnrichers {
-			ok := enricher(container)
-			if !ok {
-				// Enrichers can decide to drop a container
-				container.close()
-				continue initialContainersLoop
-			}
-		}
-
 		cc.AddContainer(container)
-		if cc.pubsub != nil {
-			cc.pubsub.Publish(EventTypeAddContainer, container)
-		}
 	}
 	cc.initialContainers = nil
 
