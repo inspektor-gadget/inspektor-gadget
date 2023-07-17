@@ -239,6 +239,10 @@ func (t *Tracer[Event]) DetachContainer(container *containercollection.Container
 	return t.Detach(container.Pid)
 }
 
+func (t *Tracer[Event]) GetMap(name string) *ebpf.Map {
+	return t.collection.Maps[name]
+}
+
 func (t *Tracer[Event]) listen(
 	rd *perf.Reader,
 	baseEvent func(ev types.Event) *Event,
