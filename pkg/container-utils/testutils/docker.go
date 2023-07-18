@@ -142,7 +142,7 @@ func (d *DockerContainer) Start(t *testing.T) {
 }
 
 func (d *DockerContainer) start(t *testing.T) {
-	for _, o := range []Option{WithoutWait(), WithoutRemoval()} {
+	for _, o := range []Option{WithoutWait(), withoutRemoval()} {
 		o(d.options)
 	}
 	d.Run(t)

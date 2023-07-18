@@ -78,15 +78,18 @@ func WithoutWait() Option {
 	}
 }
 
-func WithoutRemoval() Option {
-	return func(opts *containerOptions) {
-		opts.removal = false
-	}
-}
-
 func WithoutLogs() Option {
 	return func(opts *containerOptions) {
 		opts.logs = false
+	}
+}
+
+// withoutRemoval is only used internally. If an external caller wants to run a
+// container without removal, they should use the Start() method instead of
+// Run().
+func withoutRemoval() Option {
+	return func(opts *containerOptions) {
+		opts.removal = false
 	}
 }
 

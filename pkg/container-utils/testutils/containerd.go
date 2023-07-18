@@ -185,7 +185,7 @@ func (c *ContainerdContainer) Start(t *testing.T) {
 }
 
 func (c *ContainerdContainer) start(t *testing.T) {
-	for _, o := range []Option{WithoutWait(), WithoutRemoval()} {
+	for _, o := range []Option{WithoutWait(), withoutRemoval()} {
 		o(c.options)
 	}
 	c.Run(t)
