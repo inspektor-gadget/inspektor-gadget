@@ -16,7 +16,6 @@ package tracer
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"net"
 	"reflect"
@@ -25,7 +24,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
-	"github.com/solo-io/bumblebee/pkg/decoder"
 	"gopkg.in/yaml.v3"
 	k8syaml "sigs.k8s.io/yaml"
 
@@ -315,43 +313,22 @@ func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, printer gadgets.
 	}
 }
 
-func genericConverter(params *params.Params, printer gadgets.Printer, convert func(any) ([]byte, error)) func(ev any) {
-	decoderFactory := decoder.NewDecoderFactory()()
-
-	// TODO: add support for OCI programs
-	progContent := params.Get(ProgramContent).AsBytes()
-
-	valueStruct, err := getValueStructBTF(progContent)
+func (g *GadgetDesc) YAMLConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
+	formatter, err := g.customJsonParser(params, []string{})
 	if err != nil {
-		printer.Logf(logger.WarnLevel, "coult not get value struct BTF: %s", err)
+		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
 		return nil
 	}
-
-	ctx := context.TODO()
-
 	return func(ev any) {
 		event := ev.(*types.Event)
-
-		result, err := decoderFactory.DecodeBtfBinary(ctx, valueStruct, event.RawData)
+		eventJson := formatter.FormatEntry(event)
+		eventYaml, err := k8syaml.JSONToYAML([]byte(eventJson))
 		if err != nil {
-			printer.Logf(logger.WarnLevel, "decoding %+v: %s", ev, err)
+			printer.Logf(logger.WarnLevel, "converting json to yaml: %s", err)
 			return
 		}
-
-		// TODO: flatten the results?
-		event.Data = result
-
-		d, err := convert(event)
-		if err != nil {
-			printer.Logf(logger.WarnLevel, "marshalling %+v: %s", ev, err)
-			return
-		}
-		printer.Output(string(d))
+		printer.Output(string(eventYaml))
 	}
-}
-
-func (g *GadgetDesc) YAMLConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
-	return genericConverter(params, printer, k8syaml.Marshal)
 }
 
 func (g *GadgetDesc) EventPrototype() any {
