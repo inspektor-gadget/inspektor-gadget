@@ -121,6 +121,43 @@ func getPrintMap(spec *ebpf.CollectionSpec) (*ebpf.MapSpec, error) {
 	return nil, fmt.Errorf("no BPF map with %q prefix found", printMapPrefix)
 }
 
+// getIterType looks for a variable declaration like
+// const struct myevent *gadget_iter_type __attribute__((unused)); in the eBPF code.
+// It's used to determine the type of the event the gadget produces.
+func getIterType(spec *ebpf.CollectionSpec) (*btf.Struct, error) {
+	it := spec.Types.Iterate()
+	for it.Next() {
+		if v, ok := it.Type.(*btf.Var); ok {
+			if v.Name != gadgets.IterTypeVarName {
+				continue
+			}
+
+			p, ok := v.Type.(*btf.Pointer)
+			if !ok {
+				// TODO: warn/debug
+				continue
+			}
+
+			c, ok := p.Target.(*btf.Const)
+			if !ok {
+				// TODO: warn/debug
+				continue
+			}
+
+			s, ok := c.Type.(*btf.Struct)
+			if !ok {
+				// TODO: warn/debug
+				continue
+			}
+
+			return s, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no iterator type found")
+}
+
+// getEventTypeBTF returns the btf.Struct defining the event the gadget produces.
 func getEventTypeBTF(progContent []byte) (*btf.Struct, error) {
 	spec, err := loadSpec(progContent)
 	if err != nil {
@@ -138,6 +175,11 @@ func getEventTypeBTF(progContent []byte) (*btf.Struct, error) {
 		}
 
 		return valueStruct, nil
+	}
+
+	t, err := getIterType(spec)
+	if err == nil {
+		return t, nil
 	}
 
 	return nil, fmt.Errorf("the gadget doesn't provide any compatible way to show information")
@@ -380,8 +422,22 @@ func (g *GadgetDesc) JSONConverter(params *params.Params, printer gadgets.Printe
 		return nil
 	}
 	return func(ev any) {
-		event := ev.(*types.Event)
-		printer.Output(formatter.FormatEntry(event))
+		switch typ := ev.(type) {
+		case *types.Event:
+			printer.Output(formatter.FormatEntry(typ))
+		case []*types.Event:
+			// TODO: this should be moved to the library!
+			printer.Output("[")
+			for i, event := range typ {
+				printer.Output(formatter.FormatEntry(event))
+				if i != len(typ)-1 {
+					printer.Output(", ")
+				}
+			}
+			printer.Output("]")
+		default:
+			printer.Logf(logger.WarnLevel, "unknown type: %T", typ)
+		}
 	}
 }
 
@@ -392,6 +448,7 @@ func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, printer gadgets.
 		return nil
 	}
 	return func(ev any) {
+		// TODO: support also arrays!
 		event := ev.(*types.Event)
 		printer.Output(formatter.FormatEntry(event))
 	}

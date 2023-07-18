@@ -44,4 +44,9 @@ const (
 
 	// Name of the type to store a mount namespace inode id
 	MntNsIdTypeName = "mnt_ns_id_t"
+
+	// Name of the unused variable iter programs need to declare in order to provide BTF
+	// information.
+	// Keep in sync with pkg/gadgets/common/types.h
+	IterTypeVarName = "gadget_iter_type"
 )

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -61,9 +62,10 @@ type Config struct {
 }
 
 type Tracer struct {
-	config         *Config
-	eventCallback  func(*types.Event)
-	decoderFactory decoder.DecoderFactory
+	config             *Config
+	eventCallback      func(*types.Event)
+	eventArrayCallback func([]*types.Event)
+	decoderFactory     decoder.DecoderFactory
 
 	spec       *ebpf.CollectionSpec
 	collection *ebpf.Collection
@@ -75,6 +77,9 @@ type Tracer struct {
 	ringbufReader     *ringbuf.Reader
 	perfReader        *perf.Reader
 	printMapValueSize uint32
+
+	// Iterators related
+	linksIter []*link.Iter
 
 	links []link.Link
 }
@@ -163,6 +168,17 @@ func (t *Tracer) handlePrint() error {
 	return nil
 }
 
+func (t *Tracer) handleIter() error {
+	eventType, err := getIterType(t.spec)
+	if err != nil {
+		return nil
+	}
+
+	t.eventType = eventType
+
+	return nil
+}
+
 func (t *Tracer) installTracer() error {
 	// Load the spec
 	var err error
@@ -176,6 +192,10 @@ func (t *Tracer) installTracer() error {
 
 	if err := t.handlePrint(); err != nil {
 		return fmt.Errorf("handling print_ programs: %w", err)
+	}
+
+	if err := t.handleIter(); err != nil {
+		return fmt.Errorf("handling iterator programs: %w", err)
 	}
 
 	if t.eventType == nil {
@@ -239,6 +259,18 @@ func (t *Tracer) installTracer() error {
 				return fmt.Errorf("attach BPF program %q: %w", progName, err)
 			}
 			t.links = append(t.links, l)
+		} else if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, "iter/") {
+			switch p.AttachTo {
+			case "task":
+				l, err := link.AttachIter(link.IterOptions{
+					Program: t.collection.Programs[progName],
+				})
+				if err != nil {
+					return fmt.Errorf("attach BPF program %q: %w", progName, err)
+				}
+				t.links = append(t.links, l)
+				t.linksIter = append(t.linksIter, l)
+			}
 		}
 	}
 
@@ -416,6 +448,34 @@ func (t *Tracer) runPrint(gadgetCtx gadgets.GadgetContext) {
 	}
 }
 
+func (t *Tracer) runIter(gadgetCtx gadgets.GadgetContext) {
+	cb := t.processEventFunc(gadgetCtx)
+
+	for _, l := range t.linksIter {
+		file, err := l.Open()
+		if err != nil {
+			gadgetCtx.Logger().Errorf("open BPF link: %w", err)
+			return
+		}
+		defer file.Close()
+		buf, err := io.ReadAll(file)
+		if err != nil {
+			gadgetCtx.Logger().Errorf("reading iterator: %w", err)
+			continue
+		}
+
+		// iterators produce multiple events per read. Split them up
+		s := int(t.eventType.Size)
+		events := make([]*types.Event, len(buf)/s)
+		for i := 0; i < len(buf)/s; i++ {
+			ev := cb(buf[i*s : (i+1)*s])
+			events[i] = ev
+		}
+
+		t.eventArrayCallback(events)
+	}
+}
+
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
 	if len(params.Get(ProgramContent).AsBytes()) != 0 {
@@ -444,6 +504,10 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	if t.printMap != nil {
 		go t.runPrint(gadgetCtx)
 	}
+	if len(t.linksIter) > 0 {
+		t.runIter(gadgetCtx)
+		return nil
+	}
 	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
 
 	return nil
@@ -459,4 +523,12 @@ func (t *Tracer) SetEventHandler(handler any) {
 		panic("event handler invalid")
 	}
 	t.eventCallback = nh
+}
+
+func (t *Tracer) SetEventHandlerArray(handler any) {
+	nh, ok := handler.(func(ev []*types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventArrayCallback = nh
 }

@@ -3,6 +3,8 @@
 #ifndef __TYPES_H
 #define __TYPES_H
 
+#define GADGET_ITER_TYPE_VAR_NAME gadget_iter_type
+
 // union defining either an IPv4 or IPv6 address
 union gadget_ip_addr_t {
 	__u8 v6[16];
