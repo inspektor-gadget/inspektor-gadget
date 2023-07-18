@@ -66,7 +66,7 @@ func NewListContainersCmd() *cobra.Command {
 				}
 				containers := igmanager.GetContainersBySelector(&selector)
 
-				parser.Sort(containers, []string{"runtime", "name"})
+				parser.Sort(containers, []string{"runtime.runtimeName", "runtime.containerName"})
 				if err = printContainers(parser, commonFlags, containers); err != nil {
 					return err
 				}
@@ -77,6 +77,11 @@ func NewListContainersCmd() *cobra.Command {
 			cols.SetExtractor("event", func(event *containercollection.PubSubEvent) string {
 				return event.Type.String()
 			})
+			// Display the runtime name and container ID when watching containers
+			col, _ := cols.GetColumn("runtime.containerId")
+			col.Visible = true
+			col, _ = cols.GetColumn("runtime.runtimeName")
+			col.Visible = true
 
 			parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, cols)
 			if err != nil {
