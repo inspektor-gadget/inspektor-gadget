@@ -34,6 +34,7 @@ type Event struct {
 	Gid       uint32   `json:"gid" column:"gid,template:gid,hide"`
 	LoginUid  uint32   `json:"loginuid" column:"loginuid,template:uid,hide"`
 	SessionId uint32   `json:"sessionid" column:"sessionid,minWidth:10,hide"`
+	Cwd       string   `json:"cwd,omitempty" column:"cwd,width:40" columnTags:"param:cwd"`
 }
 
 func GetColumns() *columns.Columns[Event] {

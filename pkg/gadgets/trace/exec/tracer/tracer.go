@@ -33,9 +33,11 @@ import (
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang -type event execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang -type event execsnoopWithCwd ./bpf/execsnoop.bpf.c -- -DWITH_CWD -I./bpf/ -I../../../../${TARGET} -I ../../../common/
 
 type Config struct {
 	MountnsMap *ebpf.Map
+	GetCwd     bool
 }
 
 type Tracer struct {
@@ -86,7 +88,14 @@ func (t *Tracer) close() {
 }
 
 func (t *Tracer) install() error {
-	spec, err := loadExecsnoop()
+	var spec *ebpf.CollectionSpec
+	var err error
+
+	if t.config.GetCwd {
+		spec, err = loadExecsnoopWithCwd()
+	} else {
+		spec, err = loadExecsnoop()
+	}
 	if err != nil {
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
@@ -134,6 +143,8 @@ func (t *Tracer) run() {
 			continue
 		}
 
+		// this works regardless the kind of event because cwd is defined at the end of the
+		// structure. (Just before args that are handled in a different way below)
 		bpfEvent := (*execsnoopEvent)(unsafe.Pointer(&record.RawSample[0]))
 
 		event := types.Event{
@@ -154,9 +165,16 @@ func (t *Tracer) run() {
 
 		argsCount := 0
 		buf := []byte{}
+		args := bpfEvent.Args
+
+		if t.config.GetCwd {
+			bpfEventWithCwd := (*execsnoopWithCwdEvent)(unsafe.Pointer(&record.RawSample[0]))
+			event.Cwd = gadgets.FromCString(bpfEventWithCwd.Cwd[:])
+			args = bpfEventWithCwd.Args
+		}
 
 		for i := 0; i < int(bpfEvent.ArgsSize) && argsCount < int(bpfEvent.ArgsCount); i++ {
-			c := bpfEvent.Args[i]
+			c := args[i]
 			if c == 0 {
 				event.Args = append(event.Args, string(buf))
 				argsCount = 0
@@ -177,6 +195,8 @@ func (t *Tracer) run() {
 // --- Registry changes
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	t.config.GetCwd = gadgetCtx.GadgetParams().Get(ParamCwd).AsBool()
+
 	defer t.close()
 	if err := t.install(); err != nil {
 		return fmt.Errorf("installing tracer: %w", err)

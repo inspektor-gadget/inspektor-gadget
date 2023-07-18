@@ -41,7 +41,7 @@ func TestTraceExec(t *testing.T) {
 
 	traceExecCmd := &Command{
 		Name:         "StartTraceExecGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s -o json", ns),
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s -o json --cwd", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*traceexecTypes.Event{
@@ -49,6 +49,7 @@ func TestTraceExec(t *testing.T) {
 					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:  "sh",
 					Args:  shArgs,
+					Cwd:   "/",
 				},
 				{
 					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
@@ -56,6 +57,7 @@ func TestTraceExec(t *testing.T) {
 					Args:  dateArgs,
 					Uid:   1000,
 					Gid:   1111,
+					Cwd:   "/",
 				},
 				{
 					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
@@ -63,6 +65,7 @@ func TestTraceExec(t *testing.T) {
 					Args:  sleepArgs,
 					Uid:   1000,
 					Gid:   1111,
+					Cwd:   "/",
 				},
 			}
 

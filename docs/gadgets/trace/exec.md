@@ -93,3 +93,15 @@ test-trace-exec                                   99128      99081      true    
 test-trace-exec                                   99129      99081      whoami           0   /bin/whoami
 test-trace-exec                                   99130      99081      sleep            0   /bin/sleep 3
 ```
+
+### `--cwd`
+
+This gadget provides the current working directory of the process calling `exec()`. This is disabled
+by default and can be enabled by passing the `--cwd` flag:
+
+```bash
+$ sudo ig trace exec  --cwd
+
+CONTAINER                       PID        PPID       COMM              RET ARGS                                      CWD
+mycontainer2                    287752     287360     mkdir             0   /bin/mkdir -p /tmp/bar/foo/               /
+mycontainer2                    287897     287360     cat               0   /bin/cat /dev/null                        /tmp/bar/foo
