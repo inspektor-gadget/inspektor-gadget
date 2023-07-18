@@ -27,4 +27,11 @@ COPY ./ /gadget
 RUN cd /gadget && make kubectl-gadget
 
 FROM ${BASE_IMAGE}
+
+LABEL org.opencontainers.image.source=https://github.com/inspektor-gadget/inspektor-gadget
+LABEL org.opencontainers.image.title="Inspektor Gadget kubectl-gadget tool"
+LABEL org.opencontainers.image.description="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image only includes the kubectl-gadget binary, a kubectl plugin for Inspektor Gadget."
+LABEL org.opencontainers.image.documentation="https://inspektor-gadget.io/docs"
+LABEL org.opencontainers.image.licenses=Apache-2.0
+
 COPY --from=builder /gadget/kubectl-gadget /bin/kubectl-gadget
