@@ -819,6 +819,9 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 					container.Runtime.ContainerID, err)
 				return false
 			}
+			if container.mntNsFd != 0 {
+				log.Warnf("WithTracerCollection: mntns reference already set for container %s", container.Runtime.ContainerID)
+			}
 			container.mntNsFd = mntNsFd
 
 			netNsPath := filepath.Join(host.HostProcFs, fmt.Sprint(container.Pid), "ns", "net")
@@ -827,6 +830,9 @@ func WithTracerCollection(tc TracerCollection) ContainerCollectionOption {
 				log.Warnf("WithTracerCollection: failed to open netns reference for container %s: %s",
 					container.Runtime.ContainerID, err)
 				return false
+			}
+			if container.netNsFd != 0 {
+				log.Warnf("WithTracerCollection: netns reference already set for container %s", container.Runtime.ContainerID)
 			}
 			container.netNsFd = netNsFd
 			return true
