@@ -126,6 +126,11 @@ func (c *ContainerdClient) GetContainer(containerID string) (*runtimeclient.Cont
 		return nil, fmt.Errorf("listing labels of container %q: %w", container.ID(), err)
 	}
 
+	image, err := container.Image(c.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting image details %q: %w", container.ID(), err)
+	}
+
 	// State is getting set to `Created` here for the following reasons:
 	// 1. GetContainer is only getting called on new created containers
 	// 2. We would need to get the Task for the Container. containerd needs to aquire a mutex
@@ -133,9 +138,10 @@ func (c *ContainerdClient) GetContainer(containerID string) (*runtimeclient.Cont
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:   container.ID(),
-				ContainerName: getContainerName(container, labels),
-				RuntimeName:   types.RuntimeNameContainerd,
+				ContainerID:        container.ID(),
+				ContainerName:      getContainerName(container, labels),
+				RuntimeName:        types.RuntimeNameContainerd,
+				ContainerImageName: image.Name(),
 			},
 			State: runtimeclient.StateCreated,
 		},
@@ -261,12 +267,19 @@ func (c *ContainerdClient) taskAndContainerToContainerData(task *containerTask, 
 	if err != nil {
 		return nil, fmt.Errorf("listing labels of container %q: %w", container.ID(), err)
 	}
+
+	image, err := container.Image(c.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting image of container %q: %w", container.ID(), err)
+	}
+
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:   container.ID(),
-				ContainerName: getContainerName(container, labels),
-				RuntimeName:   types.RuntimeNameContainerd,
+				ContainerID:        container.ID(),
+				ContainerName:      getContainerName(container, labels),
+				RuntimeName:        types.RuntimeNameContainerd,
+				ContainerImageName: image.Name(),
 			},
 			State: task.status,
 		},
