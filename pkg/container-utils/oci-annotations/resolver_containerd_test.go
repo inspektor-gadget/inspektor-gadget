@@ -23,6 +23,7 @@ func Test_containerdResolver(t *testing.T) {
 		containerdPodUIDAnnotation:        "test-pod-uid",
 		containerdContainerNameAnnotation: "test-container-name",
 		containerdContainerTypeAnnotation: "test-container-type",
+		containerdContainerImageName:      "test-container-image-name",
 	}
 
 	resolver := containerdResolver{}
@@ -38,4 +39,5 @@ func Test_containerdResolver(t *testing.T) {
 	assert(resolver.PodUID(annotations), "test-pod-uid")
 	assert(resolver.ContainerName(annotations), "test-container-name")
 	assert(resolver.ContainerType(annotations), "test-container-type")
+	assert(resolver.ContainerImageName(annotations), "test-container-image-name")
 }

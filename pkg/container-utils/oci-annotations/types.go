@@ -30,6 +30,8 @@ type Resolver interface {
 	ContainerName(annotations map[string]string) string
 	// ContainerType returns the type of the container i.e "container" or "sandbox"
 	ContainerType(annotations map[string]string) string
+	// ContainerImageName returns the image name of the container i.e. docker.io/library/busybox:latest
+	ContainerImageName(annotations map[string]string) string
 	// PodName returns the name of the pod to which the container belongs
 	PodName(annotations map[string]string) string
 	// PodUID returns the uid of pod to which the container belongs

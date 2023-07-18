@@ -48,7 +48,9 @@ func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
 
 			e.K8s = types.K8sMetadata{}
 			// TODO: Verify container runtime and container name
-			e.Runtime = types.BasicRuntimeMetadata{}
+			e.Runtime.RuntimeName = ""
+			e.Runtime.ContainerName = ""
+			e.Runtime.ContainerID = ""
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)

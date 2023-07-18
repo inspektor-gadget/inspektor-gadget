@@ -32,8 +32,12 @@ func TestTraceCapabilities(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace capabilities -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &capabilitiesTypes.Event{
-				Event:         BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+				),
 				Comm:          "nice",
 				CapName:       "SYS_NICE",
 				Cap:           23,

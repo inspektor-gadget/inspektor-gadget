@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	snapshotprocessTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/snapshot/process/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -28,6 +27,12 @@ func TestSnapshotProcess(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-snapshot-process")
 
 	t.Parallel()
+
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -54,7 +59,7 @@ func TestSnapshotProcess(t *testing.T) {
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot process -n %s -o json --node %s", ns, nodeName),
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &snapshotprocessTypes.Event{
-					Event:   BuildBaseEvent(ns),
+					Event:   BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Command: "nc",
 				}
 				expectedEntry.K8s.Node = nodeName
@@ -66,7 +71,9 @@ func TestSnapshotProcess(t *testing.T) {
 					e.MountNsID = 0
 
 					// TODO: Verify container runtime and container name
-					e.Runtime = types.BasicRuntimeMetadata{}
+					e.Runtime.RuntimeName = ""
+					e.Runtime.ContainerName = ""
+					e.Runtime.ContainerID = ""
 				}
 
 				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)

@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	tracefsslowerType "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/fsslower/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -34,13 +33,19 @@ func TestTraceFsslower(t *testing.T) {
 
 	t.Parallel()
 
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
+
 	fsslowerCmd := &Command{
 		Name:         "StartTraceFsslowerGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace fsslower -n %s -f %s -m 0 -o json", ns, fsType),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tracefsslowerType.Event{
-				Event: BuildBaseEvent(ns),
+				Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Comm:  "cat",
 				File:  "foo",
 				Op:    "R",
@@ -56,7 +61,9 @@ func TestTraceFsslower(t *testing.T) {
 
 				e.K8s.Node = ""
 				// TODO: Verify container runtime and container name
-				e.Runtime = types.BasicRuntimeMetadata{}
+				e.Runtime.RuntimeName = ""
+				e.Runtime.ContainerName = ""
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

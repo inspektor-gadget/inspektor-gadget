@@ -29,6 +29,12 @@ func TestTraceNetwork(t *testing.T) {
 
 	t.Parallel()
 
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
+
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
 		PodCommand("nginx-pod", "nginx", ns, "", ""),
@@ -53,7 +59,7 @@ func TestTraceNetwork(t *testing.T) {
 
 			expectedEntries := []*tracenetworkTypes.Event{
 				{
-					Event:     BuildBaseEvent(ns),
+					Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:      "wget",
 					Uid:       0,
 					Gid:       0,
@@ -81,6 +87,9 @@ func TestTraceNetwork(t *testing.T) {
 									ContainerName: "nginx-pod",
 								},
 							},
+							Runtime: eventtypes.BasicRuntimeMetadata{
+								ContainerImageName: "docker.io/library/nginx:latest",
+							},
 						},
 					},
 					Comm:      "nginx",
@@ -101,6 +110,11 @@ func TestTraceNetwork(t *testing.T) {
 				},
 			}
 
+			// TODO: Handle it once we support getting container image name from docker
+			if isDockerRuntime {
+				expectedEntries[1].CommonData.Runtime.ContainerImageName = ""
+			}
+
 			normalize := func(e *tracenetworkTypes.Event) {
 				e.Timestamp = 0
 				e.PodHostIP = ""
@@ -110,7 +124,9 @@ func TestTraceNetwork(t *testing.T) {
 				e.Tid = 0
 
 				e.K8s.Node = ""
-				e.Runtime = eventtypes.BasicRuntimeMetadata{}
+				e.Runtime.RuntimeName = ""
+				e.Runtime.ContainerName = ""
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

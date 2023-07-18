@@ -429,6 +429,7 @@ func (cc *ContainerCollection) EnrichByMntNs(event *eventtypes.CommonData, mount
 		event.Runtime.RuntimeName = container.Runtime.RuntimeName
 		event.Runtime.ContainerName = container.Runtime.ContainerName
 		event.Runtime.ContainerID = container.Runtime.ContainerID
+		event.Runtime.ContainerImageName = container.Runtime.ContainerImageName
 	}
 }
 
@@ -455,6 +456,7 @@ func (cc *ContainerCollection) EnrichByNetNs(event *eventtypes.CommonData, netns
 		event.Runtime.RuntimeName = containers[0].Runtime.RuntimeName
 		event.Runtime.ContainerName = containers[0].Runtime.ContainerName
 		event.Runtime.ContainerID = containers[0].Runtime.ContainerID
+		event.Runtime.ContainerImageName = containers[0].Runtime.ContainerImageName
 		return
 	}
 	if containers[0].K8s.PodName != "" && containers[0].K8s.Namespace != "" {

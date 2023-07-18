@@ -32,8 +32,12 @@ func TestTraceOOMKill(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig trace oomkill -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &oomkillTypes.Event{
-				Event:        BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+				),
 				KilledComm:   "tail",
 				TriggeredUid: 1000,
 				TriggeredGid: 2000,

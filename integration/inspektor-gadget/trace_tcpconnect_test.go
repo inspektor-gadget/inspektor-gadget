@@ -28,13 +28,19 @@ func TestTraceTcpconnect(t *testing.T) {
 
 	t.Parallel()
 
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
+
 	traceTcpconnectCmd := &Command{
 		Name:         "StartTraceTcpconnectGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s -o json", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tracetcpconnectTypes.Event{
-				Event:     BuildBaseEvent(ns),
+				Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
 				Comm:      "curl",
 				IPVersion: 4,
 				SrcEndpoint: eventtypes.L4Endpoint{
@@ -60,7 +66,9 @@ func TestTraceTcpconnect(t *testing.T) {
 
 				e.K8s.Node = ""
 				// TODO: Verify container runtime and container name
-				e.Runtime = eventtypes.BasicRuntimeMetadata{}
+				e.Runtime.RuntimeName = ""
+				e.Runtime.ContainerName = ""
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)
@@ -83,13 +91,19 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 
 	t.Parallel()
 
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
+
 	traceTcpconnectCmd := &Command{
 		Name:         "StartTraceTcpconnectGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s -o json --latency", ns),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
 			expectedEntry := &tracetcpconnectTypes.Event{
-				Event:     BuildBaseEvent(ns),
+				Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
 				Comm:      "curl",
 				IPVersion: 4,
 				SrcEndpoint: eventtypes.L4Endpoint{
@@ -120,7 +134,9 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 
 				e.K8s.Node = ""
 				// TODO: Verify container runtime and container name
-				e.Runtime = eventtypes.BasicRuntimeMetadata{}
+				e.Runtime.RuntimeName = ""
+				e.Runtime.ContainerName = ""
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

@@ -193,6 +193,15 @@ func WithRuntimeMetadata(runtime string) CommonDataOption {
 	}
 }
 
+// WithContainerImageName sets the ContainerImageName to facilitate the tests
+func WithContainerImageName(imageName string, isDockerRuntime bool) CommonDataOption {
+	return func(commonData *eventtypes.CommonData) {
+		if !isDockerRuntime {
+			commonData.Runtime.ContainerImageName = imageName
+		}
+	}
+}
+
 func BuildCommonData(namespace string, options ...CommonDataOption) eventtypes.CommonData {
 	e := eventtypes.CommonData{
 		K8s: eventtypes.K8sMetadata{
@@ -268,4 +277,21 @@ func GetPodUID(ns, podname string) (string, error) {
 func CheckNamespace(ns string) bool {
 	cmd := exec.Command("kubectl", "get", "ns", ns)
 	return cmd.Run() == nil
+}
+
+// IsDockerRuntime checks whether the container runtime of the first node in the Kubernetes cluster is Docker or not.
+func IsDockerRuntime() (error, bool) {
+	cmd := exec.Command("kubectl", "get", "node", "-o", "jsonpath={.items[0].status.nodeInfo.containerRuntimeVersion}")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	r, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("%w: %s", err, stderr.String()), false
+	}
+	ret := string(r)
+
+	if strings.Contains(ret, "docker") {
+		return nil, true
+	}
+	return nil, false
 }

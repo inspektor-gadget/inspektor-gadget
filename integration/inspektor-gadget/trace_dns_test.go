@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	tracednsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -29,6 +28,12 @@ func TestTraceDns(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-trace-dns")
 
 	t.Parallel()
+
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -49,7 +54,7 @@ func TestTraceDns(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*tracednsTypes.Event{
 				{
-					Event:      BuildBaseEvent(ns),
+					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -60,7 +65,7 @@ func TestTraceDns(t *testing.T) {
 					Gid:        1111,
 				},
 				{
-					Event:      BuildBaseEvent(ns),
+					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,
@@ -75,7 +80,7 @@ func TestTraceDns(t *testing.T) {
 					Gid:        1111,
 				},
 				{
-					Event:      BuildBaseEvent(ns),
+					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeQuery,
 					Nameserver: dnsServer,
@@ -86,7 +91,7 @@ func TestTraceDns(t *testing.T) {
 					Gid:        1111,
 				},
 				{
-					Event:      BuildBaseEvent(ns),
+					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "nslookup",
 					Qr:         tracednsTypes.DNSPktTypeResponse,
 					Nameserver: dnsServer,
@@ -117,7 +122,9 @@ func TestTraceDns(t *testing.T) {
 
 				e.K8s.Node = ""
 				// TODO: Verify container runtime and container name
-				e.Runtime = types.BasicRuntimeMetadata{}
+				e.Runtime.RuntimeName = ""
+				e.Runtime.ContainerName = ""
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

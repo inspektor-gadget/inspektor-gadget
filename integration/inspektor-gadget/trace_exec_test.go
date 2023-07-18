@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	traceexecTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -28,6 +27,12 @@ func TestTraceExec(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-trace-exec")
 
 	t.Parallel()
+
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
 
 	cmd := "setuidgid 1000:1111 sh -c 'while true; do date ; /bin/sleep 0.1; done'"
 	shArgs := []string{"/bin/sh", "-c", cmd}
@@ -41,19 +46,19 @@ func TestTraceExec(t *testing.T) {
 		ExpectedOutputFn: func(output string) error {
 			expectedEntries := []*traceexecTypes.Event{
 				{
-					Event: BuildBaseEvent(ns),
+					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:  "sh",
 					Args:  shArgs,
 				},
 				{
-					Event: BuildBaseEvent(ns),
+					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:  "date",
 					Args:  dateArgs,
 					Uid:   1000,
 					Gid:   1111,
 				},
 				{
-					Event: BuildBaseEvent(ns),
+					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:  "sleep",
 					Args:  sleepArgs,
 					Uid:   1000,
@@ -72,7 +77,9 @@ func TestTraceExec(t *testing.T) {
 
 				e.K8s.Node = ""
 				// TODO: Verify container runtime and container name
-				e.Runtime = types.BasicRuntimeMetadata{}
+				e.Runtime.RuntimeName = ""
+				e.Runtime.ContainerName = ""
+				e.Runtime.ContainerID = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntries...)

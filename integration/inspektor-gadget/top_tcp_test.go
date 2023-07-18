@@ -24,10 +24,10 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
+func newTopTCPCmd(ns string, cmd string, startAndStop bool, isDockerRuntime bool) *Command {
 	expectedOutputFn := func(output string) error {
 		expectedEntry := &toptcpTypes.Stats{
-			CommonData: BuildCommonData(ns),
+			CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
 			Comm:       "curl",
 			IPVersion:  syscall.AF_INET,
 			SrcEndpoint: eventtypes.L4Endpoint{
@@ -54,7 +54,9 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 
 			e.K8s.Node = ""
 			// TODO: Verify container runtime and container name
-			e.Runtime = eventtypes.BasicRuntimeMetadata{}
+			e.Runtime.RuntimeName = ""
+			e.Runtime.ContainerName = ""
+			e.Runtime.ContainerID = ""
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
@@ -71,6 +73,12 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 func TestTopTcp(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-tcp")
+
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -90,7 +98,7 @@ func TestTopTcp(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json", ns)
-		topTCPCmd := newTopTCPCmd(ns, cmd, true)
+		topTCPCmd := newTopTCPCmd(ns, cmd, true, isDockerRuntime)
 		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
@@ -98,7 +106,7 @@ func TestTopTcp(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json -m 100 --timeout %d", ns, topTimeoutInSeconds)
-		topTCPCmd := newTopTCPCmd(ns, cmd, false)
+		topTCPCmd := newTopTCPCmd(ns, cmd, false, isDockerRuntime)
 		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
@@ -106,7 +114,7 @@ func TestTopTcp(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top tcp -n %s -o json -m 100 --timeout %d --interval %d", ns, topTimeoutInSeconds, topTimeoutInSeconds)
-		topTCPCmd := newTopTCPCmd(ns, cmd, false)
+		topTCPCmd := newTopTCPCmd(ns, cmd, false, isDockerRuntime)
 		RunTestSteps([]*Command{topTCPCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 }

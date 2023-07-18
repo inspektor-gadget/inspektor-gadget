@@ -26,6 +26,7 @@ const (
 	crioPodUIDAnnotation           = "io.kubernetes.pod.uid"
 	crioContainerNameAnnotation    = "io.kubernetes.container.name"
 	crioContainerTypeAnnotation    = "io.kubernetes.cri-o.ContainerType"
+	crioContainerImageName         = "io.kubernetes.cri-o.ImageName"
 )
 
 type crioResolver struct{}
@@ -36,6 +37,10 @@ func (crioResolver) ContainerName(annotations map[string]string) string {
 
 func (crioResolver) ContainerType(annotations map[string]string) string {
 	return annotations[crioContainerTypeAnnotation]
+}
+
+func (crioResolver) ContainerImageName(annotations map[string]string) string {
+	return annotations[crioContainerImageName]
 }
 
 func (crioResolver) PodName(annotations map[string]string) string {

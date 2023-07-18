@@ -28,6 +28,7 @@ const (
 	containerdPodUIDAnnotation        = "io.kubernetes.cri.sandbox-uid"
 	containerdContainerNameAnnotation = "io.kubernetes.cri.container-name"
 	containerdContainerTypeAnnotation = "io.kubernetes.cri.container-type"
+	containerdContainerImageName      = "io.kubernetes.cri.image-name"
 )
 
 type containerdResolver struct{}
@@ -38,6 +39,10 @@ func (containerdResolver) ContainerName(annotations map[string]string) string {
 
 func (containerdResolver) ContainerType(annotations map[string]string) string {
 	return annotations[containerdContainerTypeAnnotation]
+}
+
+func (containerdResolver) ContainerImageName(annotations map[string]string) string {
+	return annotations[containerdContainerImageName]
 }
 
 func (containerdResolver) PodName(annotations map[string]string) string {

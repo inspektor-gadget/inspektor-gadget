@@ -33,6 +33,7 @@ func init() {
 	columns.MustRegisterTemplate("namespace", "width:30")
 	columns.MustRegisterTemplate("pod", "width:30,ellipsis:middle")
 	columns.MustRegisterTemplate("container", "width:30")
+	columns.MustRegisterTemplate("containerImageName", "width:30")
 	columns.MustRegisterTemplate("comm", "maxWidth:16")
 	columns.MustRegisterTemplate("pid", "minWidth:7")
 	columns.MustRegisterTemplate("uid", "minWidth:8")
@@ -116,10 +117,14 @@ type BasicRuntimeMetadata struct {
 	// ContainerName is the container name. In the case the container runtime
 	// response with multiple containers, ContainerName contains only the first element.
 	ContainerName string `json:"containerName,omitempty" column:"containerName,template:container"`
+
+	// ContainerImageName is the name of the container image where the event comes from
+	// i.e. docker.io/library/busybox:latest
+	ContainerImageName string `json:"containerImageName,omitempty" column:"containerImageName"`
 }
 
 func (b *BasicRuntimeMetadata) IsEnriched() bool {
-	return b.RuntimeName != RuntimeNameUnknown && b.RuntimeName != "" && b.ContainerID != "" && b.ContainerName != ""
+	return b.RuntimeName != RuntimeNameUnknown && b.RuntimeName != "" && b.ContainerID != "" && b.ContainerName != "" && b.ContainerImageName != ""
 }
 
 type BasicK8sMetadata struct {
@@ -171,6 +176,7 @@ func (c *CommonData) SetContainerMetadata(k8s *BasicK8sMetadata, runtime *BasicR
 	c.Runtime.RuntimeName = runtime.RuntimeName
 	c.Runtime.ContainerName = runtime.ContainerName
 	c.Runtime.ContainerID = runtime.ContainerID
+	c.Runtime.ContainerImageName = runtime.ContainerImageName
 }
 
 func (c *CommonData) GetNode() string {
@@ -187,6 +193,10 @@ func (c *CommonData) GetNamespace() string {
 
 func (c *CommonData) GetContainer() string {
 	return c.K8s.ContainerName
+}
+
+func (c *CommonData) GetContainerImageName() string {
+	return c.Runtime.ContainerImageName
 }
 
 type L3Endpoint struct {

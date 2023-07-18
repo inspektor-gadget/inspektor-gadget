@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	profilecpuTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -28,6 +27,12 @@ func TestProfileCpu(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-profile-cpu")
 
 	t.Parallel()
+
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -38,7 +43,7 @@ func TestProfileCpu(t *testing.T) {
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -K --timeout 15 -o json", ns),
 			ExpectedOutputFn: func(output string) error {
 				expectedEntry := &profilecpuTypes.Report{
-					CommonData: BuildCommonData(ns),
+					CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "sh",
 				}
 
@@ -50,7 +55,9 @@ func TestProfileCpu(t *testing.T) {
 
 					e.K8s.Node = ""
 					// TODO: Verify container runtime and container name
-					e.Runtime = types.BasicRuntimeMetadata{}
+					e.Runtime.RuntimeName = ""
+					e.Runtime.ContainerName = ""
+					e.Runtime.ContainerID = ""
 				}
 
 				return ExpectEntriesToMatch(output, normalize, expectedEntry)

@@ -20,13 +20,12 @@ import (
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	topfileTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/file/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func newTopFileCmd(ns, cmd string, startAndStop bool) *Command {
+func newTopFileCmd(ns, cmd string, startAndStop bool, isDockerRuntime bool) *Command {
 	expectedOutputFn := func(output string) error {
 		expectedEntry := &topfileTypes.Stats{
-			CommonData: BuildCommonData(ns),
+			CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 			Reads:      0,
 			ReadBytes:  0,
 			Filename:   "date.txt",
@@ -43,7 +42,9 @@ func newTopFileCmd(ns, cmd string, startAndStop bool) *Command {
 
 			e.K8s.Node = ""
 			// TODO: Verify container runtime and container name
-			e.Runtime = types.BasicRuntimeMetadata{}
+			e.Runtime.RuntimeName = ""
+			e.Runtime.ContainerName = ""
+			e.Runtime.ContainerID = ""
 		}
 
 		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
@@ -59,6 +60,12 @@ func newTopFileCmd(ns, cmd string, startAndStop bool) *Command {
 func TestTopFile(t *testing.T) {
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-file")
+
+	// TODO: Handle it once we support getting container image name from docker
+	errIsDocker, isDockerRuntime := IsDockerRuntime()
+	if errIsDocker != nil {
+		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
+	}
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -78,7 +85,7 @@ func TestTopFile(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json", ns)
-		topFileCmd := newTopFileCmd(ns, cmd, true)
+		topFileCmd := newTopFileCmd(ns, cmd, true, isDockerRuntime)
 		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
@@ -86,7 +93,7 @@ func TestTopFile(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json --timeout %d", ns, topTimeoutInSeconds)
-		topFileCmd := newTopFileCmd(ns, cmd, false)
+		topFileCmd := newTopFileCmd(ns, cmd, false, isDockerRuntime)
 		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
@@ -94,7 +101,7 @@ func TestTopFile(t *testing.T) {
 		t.Parallel()
 
 		cmd := fmt.Sprintf("$KUBECTL_GADGET top file -n %s --sort \"-writes\" -o json --timeout %d --interval %d", ns, topTimeoutInSeconds, topTimeoutInSeconds)
-		topFileCmd := newTopFileCmd(ns, cmd, false)
+		topFileCmd := newTopFileCmd(ns, cmd, false, isDockerRuntime)
 		RunTestSteps([]*Command{topFileCmd}, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 }
