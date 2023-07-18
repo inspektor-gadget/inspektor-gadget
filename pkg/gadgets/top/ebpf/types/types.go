@@ -60,6 +60,8 @@ func GetColumns() *columns.Columns[Stats] {
 	col.Visible = false
 	col, _ = cols.GetColumn("container")
 	col.Visible = false
+	col, _ = cols.GetColumn("runtime.containerName")
+	col.Visible = false
 
 	cols.MustAddColumn(columns.Attributes{
 		Name:         "pid",
