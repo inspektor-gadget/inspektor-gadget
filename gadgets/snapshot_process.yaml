@@ -1,0 +1,24 @@
+name: process
+description: print processes
+columns:
+  - name: tgid
+    template: pid
+    order: 1000
+    visible: true
+  - name: pid
+    template: pid
+    order: 1000
+    visible: true
+  - name: comm
+    template: comm
+    width: 16
+    order: 1002
+    visible: true
+  - name: uid
+    template: uid
+    order: 1003
+    visible: true
+  - name: gid
+    template: gid
+    order: 1004
+    visible: true
