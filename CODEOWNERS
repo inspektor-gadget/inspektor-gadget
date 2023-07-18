@@ -1,0 +1,85 @@
+# Code owners are used to define who is responsible for reviewing PRs.
+# Currently we don't define any teams, but we can do that later on.
+#
+# Please check [0] to get more details about the syntax of this file.
+#
+# [0] https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners#codeowners-syntax
+
+# Keep the list sorted
+# The last matching pattern takes the most precedence, then more specific rules should be after.
+* @alban @mauriciovasquezbernal
+/.github/ @eiffel-fl @mqasimsarfraz
+/charts/ @mqasimsarfraz
+/cmd/common/ @flyth
+/cmd/ig/ @blanquicet
+/Dockerfiles/ @eiffel-fl @mqasimsarfraz
+/docs/ @mauriciovasquezbernal
+/docs/images/architecture/ @eiffel-fl
+/examples/ @mauriciovasquezbernal
+/examples/container-collection/ @alban
+/examples/container-hook/ @alban
+/examples/kube-container-collection/ @alban
+/examples/runc-hook/ @alban
+/gadget-container/hooks/ @alban
+/gadgets/ @mauriciovasquezbernal
+/integration/ @blanquicet @mqasimsarfraz
+/integration/inspektor-gadget/ @eiffel-fl
+/internal/benchmarks/ @alban
+/pkg/amd64/ @eiffel-fl
+/pkg/arm64/ @eiffel-fl
+/pkg/columns/ @flyth
+/pkg/container-collection/ @alban @blanquicet @mqasimsarfraz
+/pkg/container-hook/ @alban
+/pkg/container-utils/ @blanquicet @mqasimsarfraz
+/pkg/container-utils/containerd/ @burak-ok
+/pkg/gadget-context/ @flyth
+/pkg/gadget-registry/ @flyth
+/pkg/gadget-service/ @flyth
+/pkg/gadgets/advise/networkpolicy/ @alban
+/pkg/gadgets/advise/seccomp/ @alban
+/pkg/gadgets/audit/seccomp/ @alban
+/pkg/gadgets/common/ @mauriciovasquezbernal
+/pkg/gadgets/internal/networktracer/ @alban @blanquicet
+/pkg/gadgets/internal/socketenricher/ @alban
+/pkg/gadgets/profile/tcprtt/ @blanquicet
+/pkg/gadgets/prometheus/ @mauriciovasquezbernal
+/pkg/gadgets/run/ @burak-ok @mauriciovasquezbernal
+/pkg/gadgets/script/ @mauriciovasquezbernal
+/pkg/gadgets/snapshot/process/ @alban @mauriciovasquezbernal
+/pkg/gadgets/snapshot/socket/ @alban @blanquicet
+/pkg/gadgets/test/ @mauriciovasquezbernal
+/pkg/gadgets/top/file/ @mauriciovasquezbernal
+/pkg/gadgets/trace/capabilities/ @alban
+/pkg/gadgets/trace/dns/ @alban @blanquicet
+/pkg/gadgets/trace/exec/ @mauriciovasquezbernal
+/pkg/gadgets/trace/network/ @alban @blanquicet
+/pkg/gadgets/trace/oomkill/ @eiffel-fl
+/pkg/gadgets/trace/open/ @mauriciovasquezbernal
+/pkg/gadgets/trace/signal/ @eiffel-fl
+/pkg/gadgets/trace/sni/ @alban @blanquicet
+/pkg/gadgets/trace/tcp/ @mauriciovasquezbernal
+/pkg/gadgets/trace/tcpconnect/ @mauriciovasquezbernal
+/pkg/gadgets/trace/tcpdrop/ @alban
+/pkg/gadgets/traceloop/ @eiffel-fl
+/pkg/gadgettracermanager/ @mauriciovasquezbernal
+/pkg/histogram/ @blanquicet
+/pkg/ig-manager/ @blanquicet
+/pkg/kallsyms/ @alban
+/pkg/netnsenter/ @alban
+/pkg/operators/ @flyth
+/pkg/operators/kubeipresolver/ @burak-ok
+/pkg/operators/kubenameresolver/ @burak-ok
+/pkg/params/ @flyth @mauriciovasquezbernal
+/pkg/prometheus/ @mauriciovasquezbernal
+/pkg/rawsock/ @alban
+/pkg/resources/manifests/ @eiffel-fl
+/pkg/resources/rbac/ @eiffel-fl
+/pkg/runcfanotify/ @alban
+/pkg/runtime/ @flyth @mauriciovasquezbernal
+/pkg/standardgadgets/ @mauriciovasquezbernal
+/pkg/tracer-collection/ @alban
+/pkg/types/ @blanquicet
+/pkg/utils/bpf-iter-ns/ @alban
+/pkg/utils/host/ @alban
+/tools/ @mqasimsarfraz
+/tools/demos/ @alban
