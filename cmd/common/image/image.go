@@ -26,6 +26,7 @@ func NewImageCmd() *cobra.Command {
 	cmd.AddCommand(NewPushCmd())
 	cmd.AddCommand(NewPullCmd())
 	cmd.AddCommand(NewTagCmd())
+	cmd.AddCommand(NewListCmd())
 
 	return cmd
 }
