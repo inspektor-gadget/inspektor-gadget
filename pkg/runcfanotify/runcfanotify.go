@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"math"
 	"os"
 	"path"
@@ -191,6 +192,43 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 		runcMonitored = true
 	}
 
+	// Let's try to find runc in some directories under /host before failing.
+	if !runcMonitored {
+		for _, p := range []string{"/bin", "/usr", "/run"} {
+			fullPath := filepath.Join(host.HostRoot, p)
+			log.Debugf("Runcfanotify: searching runc in %s", fullPath)
+
+			filepath.WalkDir(fullPath, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return nil
+				}
+
+				if !d.IsDir() && (d.Name() == "runc" || d.Name() == "crun") {
+					if err := runcBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, path); err != nil {
+						log.Warnf("Runcfanotify: failed to fanotify mark: %s", err)
+						return nil
+					}
+
+					log.Infof("Runcfanotify: found runc in %s, please open a PR to add it to runcPaths", path)
+
+					runcMonitored = true
+
+					// golang 1.20 comes with SkipAll which permits stopping the walk
+					// here.
+					return filepath.SkipDir
+				}
+
+				return nil
+			})
+
+			if runcMonitored {
+				break
+			}
+		}
+	}
+
+	// We did not find it in either runcPaths and some specific directories, it is
+	// time to fail.
 	if !runcMonitored {
 		runcBinaryNotify.File.Close()
 		return nil, errors.New("no runc instance can be monitored with fanotify")
