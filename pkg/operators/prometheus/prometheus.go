@@ -47,23 +47,23 @@ type Prometheus struct {
 	meterProvider metric.MeterProvider
 }
 
-func (l *Prometheus) EnrichEvent(a any) error {
+func (p *Prometheus) EnrichEvent(a any) error {
 	return nil
 }
 
-func (l *Prometheus) Name() string {
+func (p *Prometheus) Name() string {
 	return "Prometheus"
 }
 
-func (l *Prometheus) Description() string {
+func (p *Prometheus) Description() string {
 	return "Provides a facility to export metrics using Prometheus"
 }
 
-func (l *Prometheus) Dependencies() []string {
+func (p *Prometheus) Dependencies() []string {
 	return nil
 }
 
-func (l *Prometheus) GlobalParamDescs() params.ParamDescs {
+func (p *Prometheus) GlobalParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		// TODO: this should be a deploy time flag
 		//{
@@ -89,11 +89,11 @@ func (l *Prometheus) GlobalParamDescs() params.ParamDescs {
 	}
 }
 
-func (l *Prometheus) ParamDescs() params.ParamDescs {
+func (p *Prometheus) ParamDescs() params.ParamDescs {
 	return nil
 }
 
-func (l *Prometheus) Init(globalParams *params.Params) error {
+func (p *Prometheus) Init(globalParams *params.Params) error {
 	//if !globalParams.Get(ParamEnableMetrics).AsBool() {
 	//	return nil
 	//}
@@ -102,8 +102,8 @@ func (l *Prometheus) Init(globalParams *params.Params) error {
 	if err != nil {
 		return fmt.Errorf("initialize prometheus exporter: %w", err)
 	}
-	l.exporter = exporter
-	l.meterProvider = sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
+	p.exporter = exporter
+	p.meterProvider = sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
 
 	listenAddress := globalParams.Get(ParamListenAddress).AsString()
 	metricsPath := globalParams.Get(ParamMetricsPath).AsString()
@@ -120,7 +120,7 @@ func (l *Prometheus) Init(globalParams *params.Params) error {
 	return nil
 }
 
-func (l *Prometheus) CanOperateOn(gadget gadgets.GadgetDesc) bool {
+func (p *Prometheus) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	inst, ok := gadget.(gadgets.GadgetInstantiate)
 	if !ok {
 		return false
@@ -135,22 +135,22 @@ func (l *Prometheus) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	return true
 }
 
-func (l *Prometheus) Close() error {
+func (p *Prometheus) Close() error {
 	return nil
 }
 
-func (l *Prometheus) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
+func (p *Prometheus) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
 	if setter, ok := gadgetInstance.(SetMetricsProvider); ok {
-		setter.SetMetricsProvider(l.meterProvider)
+		setter.SetMetricsProvider(p.meterProvider)
 	}
-	return l, nil
+	return p, nil
 }
 
-func (l *Prometheus) PreGadgetRun() error {
+func (p *Prometheus) PreGadgetRun() error {
 	return nil
 }
 
-func (l *Prometheus) PostGadgetRun() error {
+func (p *Prometheus) PostGadgetRun() error {
 	return nil
 }
 

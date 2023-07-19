@@ -46,6 +46,7 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v24.0.4+incompatible
 	github.com/prometheus/client_golang v1.16.0
+	github.com/shopspring/decimal v1.2.0
 	github.com/solo-io/bumblebee v0.0.14
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
@@ -142,7 +143,6 @@ require (
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
