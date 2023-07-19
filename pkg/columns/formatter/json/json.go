@@ -35,6 +35,7 @@ type column[T any] struct {
 type Formatter[T any] struct {
 	options *Options
 	columns []*column[T]
+	printer func(entry *T, buf *encodeState)
 }
 
 // NewFormatter returns a Formatter that will turn entries of type T into JSON representation
@@ -126,13 +127,16 @@ func NewFormatter[T any](cols columns.ColumnMap[T], options ...Option) *Formatte
 		options: opts,
 		columns: ncols,
 	}
+	tf.printer = tf.getPrinter(0, ncols)
 	return tf
 }
 
-func (f *Formatter[T]) printCols(entry *T, buf *encodeState, cols []*column[T], level int) {
+func (f *Formatter[T]) getPrinter(level int, cols []*column[T]) func(entry *T, buf *encodeState) {
 	indent := strings.Repeat("  ", level+1)
 	colsWithParent := map[string][]*column[T]{}
 	colsWithoutParent := []*column[T]{}
+
+	funcs := make([]func(entry *T, buf *encodeState), 0)
 
 	for _, col := range cols {
 		// Save columns which have a parent in its name
@@ -153,15 +157,19 @@ func (f *Formatter[T]) printCols(entry *T, buf *encodeState, cols []*column[T], 
 	// Better name?
 	handlePrefix := func() {
 		if !first {
-			buf.WriteByte(',')
-			if f.options.prettyPrint {
-				buf.WriteString("\n" + indent)
-			} else {
-				buf.WriteByte(' ')
-			}
+			funcs = append(funcs, func(entry *T, buf *encodeState) {
+				buf.WriteByte(',')
+				if f.options.prettyPrint {
+					buf.WriteString("\n" + indent)
+				} else {
+					buf.WriteByte(' ')
+				}
+			})
 		} else {
 			if f.options.prettyPrint {
-				buf.WriteString("\n" + indent)
+				funcs = append(funcs, func(entry *T, buf *encodeState) {
+					buf.WriteString("\n" + indent)
+				})
 			}
 			first = false
 		}
@@ -172,21 +180,26 @@ func (f *Formatter[T]) printCols(entry *T, buf *encodeState, cols []*column[T], 
 		handlePrefix()
 
 		parentName, _ := json.Marshal(strings.Split(key, ".")[0])
-		buf.Write(parentName)
-		buf.WriteString(": {")
 
-		f.printCols(entry, buf, val, level+1)
+		childFuncs := f.getPrinter(level+1, val)
+		funcs = append(funcs, func(entry *T, buf *encodeState) {
+			buf.Write(parentName)
+			buf.WriteString(": {")
 
-		// End parent
-		if f.options.prettyPrint {
-			buf.WriteString("\n" + indent + "}")
-		} else {
-			buf.WriteByte('}')
-		}
+			childFuncs(entry, buf)
+
+			// End parent
+			if f.options.prettyPrint {
+				buf.WriteString("\n" + indent + "}")
+			} else {
+				buf.WriteByte('}')
+			}
+		})
 	}
 
 	// Now all cols without a parent
-	for _, col := range colsWithoutParent {
+	for i := range colsWithoutParent {
+		col := colsWithoutParent[i]
 		childName := strings.Split(col.column.Name, ".")[level]
 		_, found := colsWithParent[childName]
 		if found {
@@ -194,7 +207,16 @@ func (f *Formatter[T]) printCols(entry *T, buf *encodeState, cols []*column[T], 
 			continue
 		}
 		handlePrefix()
-		col.formatter(buf, entry)
+
+		funcs = append(funcs, func(entry *T, buf *encodeState) {
+			col.formatter(buf, entry)
+		})
+	}
+
+	return func(entry *T, buf *encodeState) {
+		for _, f := range funcs {
+			f(entry, buf)
+		}
 	}
 }
 
@@ -209,7 +231,7 @@ func (f *Formatter[T]) FormatEntry(entry *T) string {
 	defer bufpool.Put(buf)
 
 	buf.WriteByte('{')
-	f.printCols(entry, buf, f.columns, 0)
+	f.printer(entry, buf)
 	if f.options.prettyPrint {
 		buf.WriteByte('\n')
 	}
