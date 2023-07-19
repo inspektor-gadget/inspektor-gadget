@@ -45,11 +45,13 @@ func (s *stubMeterProvider) Meter(name string, opts ...metric.MeterOption) metri
 
 func NewStubMeter(t *testing.T) *stubMeter {
 	return &stubMeter{
-		t:               t,
-		int64counters:   make(map[string]*stubInt64Counter),
-		float64counters: make(map[string]*stubFloat64Counter),
-		int64gauges:     make(map[string]*stubInt64ObservableGauge),
-		float64gauges:   make(map[string]*stubFloat64ObservableGauge),
+		t:                 t,
+		int64counters:     make(map[string]*stubInt64Counter),
+		float64counters:   make(map[string]*stubFloat64Counter),
+		int64gauges:       make(map[string]*stubInt64ObservableGauge),
+		float64gauges:     make(map[string]*stubFloat64ObservableGauge),
+		int64histograms:   make(map[string]*stubInt64Histogram),
+		float64histograms: make(map[string]*stubFloat64Histogram),
 	}
 }
 
@@ -57,12 +59,14 @@ type stubMeter struct {
 	embedded.Meter
 	t *testing.T
 
-	int64counters   map[string]*stubInt64Counter
-	float64counters map[string]*stubFloat64Counter
-	int64gauges     map[string]*stubInt64ObservableGauge
-	float64gauges   map[string]*stubFloat64ObservableGauge
-	callbacks       []metric.Callback
-	mu              sync.Mutex
+	int64counters     map[string]*stubInt64Counter
+	float64counters   map[string]*stubFloat64Counter
+	int64gauges       map[string]*stubInt64ObservableGauge
+	float64gauges     map[string]*stubFloat64ObservableGauge
+	int64histograms   map[string]*stubInt64Histogram
+	float64histograms map[string]*stubFloat64Histogram
+	callbacks         []metric.Callback
+	mu                sync.Mutex
 }
 
 func (s *stubMeter) Int64Counter(name string, options ...metric.Int64CounterOption) (metric.Int64Counter, error) {
@@ -81,7 +85,14 @@ func (s *stubMeter) Int64UpDownCounter(name string, options ...metric.Int64UpDow
 }
 
 func (s *stubMeter) Int64Histogram(name string, options ...metric.Int64HistogramOption) (metric.Int64Histogram, error) {
-	return nil, nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	c := &stubInt64Histogram{
+		values: make(map[string]int64),
+	}
+	s.int64histograms[name] = c
+	return c, nil
 }
 
 func (s *stubMeter) Int64ObservableCounter(name string, options ...metric.Int64ObservableCounterOption) (metric.Int64ObservableCounter, error) {
@@ -119,7 +130,14 @@ func (s *stubMeter) Float64UpDownCounter(name string, options ...metric.Float64U
 }
 
 func (s *stubMeter) Float64Histogram(name string, options ...metric.Float64HistogramOption) (metric.Float64Histogram, error) {
-	return nil, nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	c := &stubFloat64Histogram{
+		values: make(map[string]float64),
+	}
+	s.float64histograms[name] = c
+	return c, nil
 }
 
 func (s *stubMeter) Float64ObservableCounter(name string, options ...metric.Float64ObservableCounterOption) (metric.Float64ObservableCounter, error) {
@@ -252,4 +270,34 @@ func (o *stubObserver) ObserveInt64(obsrv metric.Int64Observable, value int64, o
 
 	attrs := metric.NewObserveConfig(opts).Attributes()
 	in.values[attrsToString(attrs.ToSlice())] = value
+}
+
+type stubInt64Histogram struct {
+	embedded.Int64Histogram
+	values map[string]int64
+	mu     sync.Mutex
+}
+
+// Record records a new measurement in the histogram.
+func (h *stubInt64Histogram) Record(ctx context.Context, value int64, options ...metric.RecordOption) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	attrs := metric.NewRecordConfig(options).Attributes()
+	h.values[attrsToString(attrs.ToSlice())] = value
+}
+
+type stubFloat64Histogram struct {
+	embedded.Float64Histogram
+	values map[string]float64
+	mu     sync.Mutex
+}
+
+// Record records a new measurement in the histogram.
+func (h *stubFloat64Histogram) Record(ctx context.Context, value float64, options ...metric.RecordOption) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	attrs := metric.NewRecordConfig(options).Attributes()
+	h.values[attrsToString(attrs.ToSlice())] = value
 }

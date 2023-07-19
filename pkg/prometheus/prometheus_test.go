@@ -43,10 +43,12 @@ func TestMetrics(t *testing.T) {
 		expectedErr bool
 
 		// outer key: metric name, inner key: attributes hash
-		expectedInt64Counters   map[string]map[string]int64
-		expectedFloat64Counters map[string]map[string]float64
-		expectedInt64Gauges     map[string]map[string]int64
-		expectedFloat64Gauges   map[string]map[string]float64
+		expectedInt64Counters     map[string]map[string]int64
+		expectedFloat64Counters   map[string]map[string]float64
+		expectedInt64Gauges       map[string]map[string]int64
+		expectedFloat64Gauges     map[string]map[string]float64
+		expectedInt64Histograms   map[string]map[string]int64
+		expectedFloat64Histograms map[string]map[string]float64
 	}
 
 	tests := []testDefinition{
@@ -555,6 +557,133 @@ func TestMetrics(t *testing.T) {
 				"gauge_filter_only_root_events": {"": 3},
 			},
 		},
+		{
+			name: "histogram_missing_bucket_config",
+			config: &config.Config{
+				MetricsName: "histogram_missing_bucket_config",
+				Metrics: []config.Metric{
+					{
+						Name:     "histogram_missing_bucket_config",
+						Type:     "histogram",
+						Category: "trace",
+						Gadget:   "stubtracer",
+						Field:    "intval",
+					},
+				},
+			},
+			expectedErr: true,
+		},
+		{
+			name: "histrogram_invalid_bucket_config",
+			config: &config.Config{
+				MetricsName: "histrogram_invalid_bucket_config",
+				Metrics: []config.Metric{
+					{
+						Name:     "histrogram_invalid_bucket_config",
+						Type:     "histogram",
+						Category: "trace",
+						Gadget:   "stubtracer",
+						Field:    "intval",
+						Bucket: config.Bucket{
+							Type:       "invalid",
+							Max:        1,
+							Multiplier: 10,
+						},
+					},
+				},
+			},
+			expectedErr: true,
+		},
+		{
+			name: "histogram_int_field",
+			config: &config.Config{
+				MetricsName: "histogram_int_field",
+				Metrics: []config.Metric{
+					{
+						Name:     "histogram_int_field",
+						Type:     "histogram",
+						Category: "trace",
+						Gadget:   "stubtracer",
+						Field:    "intval",
+						Selector: []string{"uid:1000", "comm:cat"},
+						Bucket: config.Bucket{
+							Type:       "linear",
+							Max:        5,
+							Min:        0,
+							Multiplier: 1,
+						},
+					},
+				},
+			},
+			expectedInt64Histograms: map[string]map[string]int64{
+				"histogram_int_field": {"": 327},
+			},
+		},
+		{
+			name: "histogram_float_field",
+			config: &config.Config{
+				MetricsName: "histogram_float_field",
+				Metrics: []config.Metric{
+					{
+						Name:     "histogram_float_field",
+						Type:     "histogram",
+						Category: "trace",
+						Gadget:   "stubtracer",
+						Field:    "floatval",
+						Selector: []string{"uid:1000", "comm:cat"},
+						Bucket: config.Bucket{
+							Type:       "linear",
+							Max:        5,
+							Min:        0,
+							Multiplier: 1,
+						},
+					},
+				},
+			},
+			expectedFloat64Histograms: map[string]map[string]float64{
+				"histogram_float_field": {"": 645.4},
+			},
+		},
+		{
+			name: "histogram_multiple",
+			config: &config.Config{
+				MetricsName: "histogram_multiple",
+				Metrics: []config.Metric{
+					{
+						Name:     "histogram_int_field",
+						Type:     "histogram",
+						Category: "trace",
+						Gadget:   "stubtracer",
+						Field:    "intval",
+						Selector: []string{"uid:1000", "comm:cat"},
+						Bucket: config.Bucket{
+							Type:       "linear",
+							Max:        5,
+							Multiplier: 1,
+						},
+					},
+					{
+						Name:     "histogram_float_field",
+						Type:     "histogram",
+						Category: "trace",
+						Gadget:   "stubtracer",
+						Field:    "floatval",
+						Selector: []string{"uid:1000", "comm:cat"},
+						Bucket: config.Bucket{
+							Type:       "linear",
+							Max:        5,
+							Multiplier: 1,
+						},
+					},
+				},
+			},
+			expectedFloat64Histograms: map[string]map[string]float64{
+				"histogram_float_field": {"": 645.4},
+			},
+			expectedInt64Histograms: map[string]map[string]int64{
+				"histogram_int_field": {"": 327},
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -587,6 +716,8 @@ func TestMetrics(t *testing.T) {
 			require.Equal(t, len(test.expectedInt64Counters), len(meter.int64counters))
 			require.Equal(t, len(test.expectedFloat64Counters), len(meter.float64counters))
 			require.Equal(t, len(test.expectedInt64Gauges), len(meter.int64gauges))
+			require.Equal(t, len(test.expectedInt64Histograms), len(meter.int64histograms))
+			require.Equal(t, len(test.expectedFloat64Histograms), len(meter.float64histograms))
 
 			// Collect metrics: Update gauges
 			err = meter.Collect(ctx)
@@ -628,6 +759,23 @@ func TestMetrics(t *testing.T) {
 
 				// require.Equal doesn't work because of float comparisons
 				require.InDeltaMapValues(t, expected, gauge.values, 0.01, "gauge values are wrong")
+			}
+
+			// int64 histograms
+			for name, expected := range test.expectedInt64Histograms {
+				histogram, ok := meter.int64histograms[name]
+				require.True(t, ok, "int64 histogram %q not found", name)
+
+				require.Equal(t, expected, histogram.values, "histogram values are wrong")
+			}
+
+			// float64 histograms
+			for name, expected := range test.expectedFloat64Histograms {
+				histogram, ok := meter.float64histograms[name]
+				require.True(t, ok, "float64 histogram %q not found", name)
+
+				// require.Equal doesn't work because of float comparisons
+				require.InDeltaMapValues(t, expected, histogram.values, 0.01, "histogram values are wrong")
 			}
 		})
 	}
