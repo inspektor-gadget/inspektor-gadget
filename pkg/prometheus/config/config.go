@@ -29,11 +29,20 @@ type Metric struct {
 	Field    string   `yaml:"field,omitempty"`
 	Labels   []string `yaml:"labels,omitempty"`
 	Selector []string `yaml:"selector,omitempty"`
+	Bucket   Bucket   `yaml:"bucket,omitempty"`
 }
 
 type Config struct {
 	MetricsName string   `yaml:"metrics_name"`
 	Metrics     []Metric `yaml:"metrics"`
+}
+
+type Bucket struct {
+	Unit       string  `yaml:"unit"`
+	Type       string  `yaml:"type"`
+	Min        int     `yaml:"min"`
+	Max        int     `yaml:"max"`
+	Multiplier float64 `yaml:"multiplier"`
 }
 
 func ParseConfig(configBytes []byte) (*Config, error) {

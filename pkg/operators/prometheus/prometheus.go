@@ -27,9 +27,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus/config"
 )
 
-type SetMetricsProvider interface {
+type PrometheusProvider interface {
+	GetPrometheusConfig() *config.Config
 	SetMetricsProvider(metric.MeterProvider)
 }
 
@@ -45,6 +47,7 @@ const (
 type Prometheus struct {
 	exporter      *prometheus.Exporter
 	meterProvider metric.MeterProvider
+	bucketConfigs map[string]*BucketConfig
 }
 
 func (p *Prometheus) EnrichEvent(a any) error {
@@ -103,7 +106,7 @@ func (p *Prometheus) Init(globalParams *params.Params) error {
 		return fmt.Errorf("initialize prometheus exporter: %w", err)
 	}
 	p.exporter = exporter
-	p.meterProvider = sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
+	p.meterProvider = sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter), sdkmetric.WithView(p.histogramViewFunc()))
 
 	listenAddress := globalParams.Get(ParamListenAddress).AsString()
 	metricsPath := globalParams.Get(ParamMetricsPath).AsString()
@@ -129,7 +132,7 @@ func (p *Prometheus) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	if err != nil {
 		return false
 	}
-	if _, ok := tempInstance.(SetMetricsProvider); !ok {
+	if _, ok := tempInstance.(PrometheusProvider); !ok {
 		return false
 	}
 	return true
@@ -140,8 +143,9 @@ func (p *Prometheus) Close() error {
 }
 
 func (p *Prometheus) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
-	if setter, ok := gadgetInstance.(SetMetricsProvider); ok {
-		setter.SetMetricsProvider(p.meterProvider)
+	if provider, ok := gadgetInstance.(PrometheusProvider); ok {
+		provider.SetMetricsProvider(p.meterProvider)
+		p.bucketConfigs = bucketConfigsFromConfig(provider.GetPrometheusConfig())
 	}
 	return p, nil
 }
