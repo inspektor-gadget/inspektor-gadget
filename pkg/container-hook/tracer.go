@@ -142,6 +142,7 @@ var runtimePaths = []string{
 	"/bin/runc",
 	"/usr/bin/runc",
 	"/usr/sbin/runc",
+	"/usr/local/bin/runc",
 	"/usr/local/sbin/runc",
 	"/usr/lib/cri-o-runc/sbin/runc",
 	"/run/torcx/unpack/docker/bin/runc",
