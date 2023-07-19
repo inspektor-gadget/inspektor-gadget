@@ -532,6 +532,10 @@ func (p *parser[T]) GetColKind(colName string) (reflect.Kind, error) {
 		return reflect.Invalid, fmt.Errorf("colunm %s not found", colName)
 	}
 
+	if col.HasCustomExtractor() {
+		return col.RawType().Kind(), nil
+	}
+
 	return col.Kind(), nil
 }
 
@@ -541,6 +545,14 @@ func (p *parser[T]) ColIntGetter(colName string) (func(any) int64, error) {
 	col, ok := columnMap.GetColumn(colName)
 	if !ok {
 		return nil, fmt.Errorf("column %s not found", colName)
+	}
+
+	// TODO: Handle all int types?
+	if col.HasCustomExtractor() && col.RawType().Kind() == reflect.Int64 {
+		f := columns.GetFieldFuncExt[int64, T](col, true)
+		return func(a any) int64 {
+			return f(a.(*T))
+		}, nil
 	}
 
 	f := columns.GetFieldAsNumberFunc[int64, T](col)
@@ -556,6 +568,14 @@ func (p *parser[T]) ColFloatGetter(colName string) (func(any) float64, error) {
 	col, ok := columnMap.GetColumn(colName)
 	if !ok {
 		return nil, fmt.Errorf("colunm %s not found", colName)
+	}
+
+	// TODO: Handle all float types?
+	if col.HasCustomExtractor() && col.RawType().Kind() == reflect.Float64 {
+		f := columns.GetFieldFuncExt[float64, T](col, true)
+		return func(a any) float64 {
+			return f(a.(*T))
+		}, nil
 	}
 
 	f := columns.GetFieldAsNumberFunc[float64, T](col)
