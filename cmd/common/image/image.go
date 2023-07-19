@@ -23,6 +23,7 @@ func NewImageCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(NewBuildCmd())
+	cmd.AddCommand(NewPushCmd())
 
 	return cmd
 }

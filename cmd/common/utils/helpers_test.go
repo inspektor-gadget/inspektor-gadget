@@ -218,3 +218,64 @@ func TestNormalizeImage(t *testing.T) {
 		})
 	}
 }
+
+func TestGetHostString(t *testing.T) {
+	t.Parallel()
+
+	type testDefinition struct {
+		image string
+		host  string
+		err   bool
+	}
+
+	tests := map[string]testDefinition{
+		"empty": {
+			image: "",
+			err:   true,
+		},
+		"badtag": {
+			image: "inspektor-gadget/ig:~½¬",
+			err:   true,
+		},
+		"image": {
+			image: "ig",
+			host:  "",
+		},
+		"host": {
+			image: "ghcr.io",
+			host:  "",
+		},
+		"host_image_and_tag": {
+			image: "inspektor-gadget/ig:latest",
+			host:  "inspektor-gadget",
+		},
+		"schema_host_image_and_tag": {
+			image: "https://inspektor-gadget/ig:latest",
+			err:   true,
+		},
+		"host_port_image_and_tag": {
+			image: "ghcr.io:443/inspektor-gadget/ig:latest",
+			host:  "ghcr.io:443",
+		},
+		"schema_host_port_image_and_tag": {
+			image: "https://ghcr.io:443/inspektor-gadget/ig:latest",
+			err:   true,
+		},
+	}
+
+	for name, test := range tests {
+		test := test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			host, err := GetHostString(test.image)
+			if test.err {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, test.host, host)
+		})
+	}
+}
