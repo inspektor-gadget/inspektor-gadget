@@ -40,11 +40,13 @@ require (
 	github.com/containerd/containerd v1.7.3
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/davecgh/go-spew v1.1.1
+	github.com/docker/distribution v2.8.2+incompatible
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/go-cmp v0.5.9
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v24.0.5+incompatible
+	github.com/opencontainers/image-spec v1.1.0-rc4
 	github.com/prometheus/client_golang v1.16.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/solo-io/bumblebee v0.0.14
@@ -60,6 +62,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/cri-api v0.27.4
 	oras.land/oras-go v1.2.3
+	oras.land/oras-go/v2 v2.2.1
 )
 
 require (
@@ -79,7 +82,6 @@ require (
 	github.com/containerd/ttrpc v1.2.2 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/docker/cli v24.0.5+incompatible // indirect
-	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.0 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
@@ -130,7 +132,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.1.0-rc4 // indirect
 	github.com/opencontainers/runc v1.1.9 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect

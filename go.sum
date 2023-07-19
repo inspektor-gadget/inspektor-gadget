@@ -604,6 +604,8 @@ k8s.io/utils v0.0.0-20230726121419-3b25d923346b h1:sgn3ZU783SCgtaSJjpcVVlRqd6GSn
 k8s.io/utils v0.0.0-20230726121419-3b25d923346b/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 oras.land/oras-go v1.2.3 h1:v8PJl+gEAntI1pJ/LCrDgsuk+1PKVavVEPsYIHFE5uY=
 oras.land/oras-go v1.2.3/go.mod h1:M/uaPdYklze0Vf3AakfarnpoEckvw0ESbRdN8Z1vdJg=
+oras.land/oras-go/v2 v2.2.1 h1:3VJTYqy5KfelEF9c2jo1MLSpr+TM3mX8K42wzZcd6qE=
+oras.land/oras-go/v2 v2.2.1/go.mod h1:GeAwLuC4G/JpNwkd+bSZ6SkDMGaaYglt6YK2WvZP7uQ=
 sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3 h1:fic0YtUGSr79nv8vn3ziNZJrPZsm64KT/Fd/bc7Q6xY=
 sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3/go.mod h1:Qox07m8Gh7skSeOfppEWllPxNMhA7+b93D8Qjj6rBlQ=
 sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd h1:EDPBXCAspyGV4jQlpZSudPeMmr1bNJefnuqLsRAsHZo=
