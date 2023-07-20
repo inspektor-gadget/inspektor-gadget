@@ -331,17 +331,20 @@ type CRIContainer interface {
 	GetState() runtime.ContainerState
 	GetMetadata() *runtime.ContainerMetadata
 	GetLabels() map[string]string
+	GetImage() *runtime.ImageSpec
 }
 
 func CRIContainerToContainerData(runtimeName types.RuntimeName, container CRIContainer) *runtimeclient.ContainerData {
 	containerMetadata := container.GetMetadata()
+	image := container.GetImage()
 
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:   container.GetId(),
-				ContainerName: strings.TrimPrefix(containerMetadata.GetName(), "/"),
-				RuntimeName:   runtimeName,
+				ContainerID:        container.GetId(),
+				ContainerName:      strings.TrimPrefix(containerMetadata.GetName(), "/"),
+				RuntimeName:        runtimeName,
+				ContainerImageName: image.GetImage(),
 			},
 			State: containerStatusStateToRuntimeClientState(container.GetState()),
 		},
