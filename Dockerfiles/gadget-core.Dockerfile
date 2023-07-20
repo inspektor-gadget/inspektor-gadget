@@ -39,6 +39,12 @@ RUN cd /gadget/gadget-container && \
 # Main gadget image
 FROM ${BASE_IMAGE}
 
+LABEL org.opencontainers.image.source=https://github.com/inspektor-gadget/inspektor-gadget
+LABEL org.opencontainers.image.title="Inspektor Gadget k8s DaemonSet (core flavor)"
+LABEL org.opencontainers.image.description="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts. This is the core flavor (default flavor includes both bcc-based tools and CO-RE-based tools; core flavor includes only CO-RE-based tools)."
+LABEL org.opencontainers.image.documentation="https://inspektor-gadget.io/docs"
+LABEL org.opencontainers.image.licenses=Apache-2.0
+
 # install runtime dependencies  according to the package manager
 # available on the base image
 RUN set -ex; \
