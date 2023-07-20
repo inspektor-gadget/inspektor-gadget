@@ -17,6 +17,7 @@ package tracer
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -25,10 +26,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
-	"github.com/solo-io/bumblebee/pkg/decoder"
-	"gopkg.in/yaml.v3"
-	k8syaml "sigs.k8s.io/yaml"
-
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	columns_json "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/json"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
@@ -39,6 +36,9 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
+	"github.com/solo-io/bumblebee/pkg/decoder"
+	"gopkg.in/yaml.v3"
+	k8syaml "sigs.k8s.io/yaml"
 )
 
 const (
@@ -331,6 +331,7 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 
 	l3endpointCounter := 0
 	l4endpointCounter := 0
+	btfStringCounter := 0
 
 	for _, member := range valueStruct.Members {
 		member := member
@@ -338,6 +339,19 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 		attrs, ok := colAttrs[member.Name]
 		if !ok {
 			continue
+		}
+
+		if member.Type.TypeName() == "field_placeholder_btf" {
+			index := btfStringCounter
+			attrs := attrs
+			attrs.Name = member.Name + ".btf_string"
+			cols.MustAddColumn(
+				attrs,
+				func(e *types.Event) string {
+					return e.BTFStrings[index]
+				},
+			)
+			btfStringCounter++
 		}
 
 		switch typedMember := member.Type.(type) {
@@ -448,9 +462,17 @@ func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, printer gadgets.
 		return nil
 	}
 	return func(ev any) {
-		// TODO: support also arrays!
-		event := ev.(*types.Event)
-		printer.Output(formatter.FormatEntry(event))
+		event, ok := ev.(*types.Event)
+		if ok {
+			printer.Output(formatter.FormatEntry(event))
+			return
+		}
+		b, err := json.MarshalIndent(ev, "", "  ")
+		if err != nil {
+			printer.Logf(logger.ErrorLevel, "marshaling events: %s", err)
+			return
+		}
+		printer.Output(string(b))
 	}
 }
 
@@ -504,7 +526,16 @@ func genericConverter(params *params.Params, printer gadgets.Printer, convert fu
 }
 
 func (g *GadgetDesc) YAMLConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
-	return genericConverter(params, printer, k8syaml.Marshal)
+	//return genericConverter(params, printer, k8syaml.Marshal)
+	return func(ev any) {
+		b, err := k8syaml.Marshal(ev)
+		if err != nil {
+			printer.Logf(logger.ErrorLevel, "marshaling events: %s", err)
+			return
+		}
+		printer.Output(string(b))
+	}
+
 }
 
 func (g *GadgetDesc) EventPrototype() any {

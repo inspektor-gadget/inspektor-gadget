@@ -17,6 +17,7 @@
 package tracer
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -279,7 +280,7 @@ func (t *Tracer) installTracer() error {
 
 // processEventFunc returns a callback that parses a binary encoded event in data, enriches and
 // returns it.
-func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []byte) *types.Event {
+func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []byte) (*types.Event, int) {
 	typ := t.eventType
 
 	var mntNsIdstart, mntNsIdend uint32
@@ -299,11 +300,14 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 	}
 
 	endpointDefs := []endpointDef{}
+	btfStringsCount := 0
 
 	// we suppose the same data structure is always used, so we can precalculate the offsets for
 	// the mount ns id
 	for _, member := range typ.Members {
 		switch member.Type.TypeName() {
+		case "field_placeholder_btf":
+			btfStringsCount++
 		case gadgets.MntNsIdTypeName:
 			typDef, ok := member.Type.(*btf.Typedef)
 			if !ok {
@@ -335,7 +339,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		}
 	}
 
-	return func(data []byte) *types.Event {
+	return func(data []byte) (*types.Event, int) {
 		// get mnt_ns_id for enriching the event
 		mtn_ns_id := uint64(0)
 		if mntNsIdend != 0 {
@@ -388,15 +392,30 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			}
 		}
 
+		consumed := int(t.eventType.Size)
+		btfStrings := []string{}
+		for i := 0; i < btfStringsCount; i++ {
+			if len(data) <= consumed {
+				break
+			}
+			idx := bytes.Index(data[consumed:], []byte{0})
+			if idx == -1 {
+				break
+			}
+			btfStrings = append(btfStrings, string(data[consumed:consumed+idx]))
+			consumed += idx + 1
+		}
+
 		return &types.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 			},
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: mtn_ns_id},
-			RawData:       data,
+			RawData:       data[:t.eventType.Size],
 			L3Endpoints:   l3endpoints,
 			L4Endpoints:   l4endpoints,
-		}
+			BTFStrings:    btfStrings,
+		}, consumed
 	}
 }
 
@@ -443,7 +462,7 @@ func (t *Tracer) runPrint(gadgetCtx gadgets.GadgetContext) {
 
 		// data will be decoded in the client
 		data := rawSample[:t.printMapValueSize]
-		ev := cb(data)
+		ev, _ := cb(data)
 		t.eventCallback(ev)
 	}
 }
@@ -466,10 +485,11 @@ func (t *Tracer) runIter(gadgetCtx gadgets.GadgetContext) {
 
 		// iterators produce multiple events per read. Split them up
 		s := int(t.eventType.Size)
-		events := make([]*types.Event, len(buf)/s)
-		for i := 0; i < len(buf)/s; i++ {
-			ev := cb(buf[i*s : (i+1)*s])
-			events[i] = ev
+		events := []*types.Event{}
+		for len(buf) >= s {
+			ev, consumed := cb(buf)
+			events = append(events, ev)
+			buf = buf[consumed:]
 		}
 
 		t.eventArrayCallback(events)

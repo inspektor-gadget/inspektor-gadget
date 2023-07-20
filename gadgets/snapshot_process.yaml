@@ -22,3 +22,9 @@ columns:
     template: gid
     order: 1004
     visible: true
+  - name: user
+    order: 1005
+    visible: true
+  - name: user_ns
+    order: 1006
+    visible: true

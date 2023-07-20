@@ -15,12 +15,17 @@
 #include "mntns_filter.h"
 #include "types.h"
 
+typedef u64 field_placeholder_btf;
+
 struct myevent {
 	__u32 tgid;
 	__u32 pid;
 	__u32 parent_pid;
 	__u32 uid;
 	__u32 gid;
+
+	field_placeholder_btf user;
+	field_placeholder_btf user_ns;
 
 	mnt_ns_id_t mntns_id;
 	__u8 comm[TASK_COMM_LEN];
@@ -40,6 +45,8 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	struct task_struct *task = ctx->task;
 	struct task_struct *parent;
 	pid_t parent_pid;
+	struct btf_ptr ptr = {};
+	char nul = '\0';
 
 	struct myevent event = {};
 
@@ -72,6 +79,17 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	__builtin_memcpy(event.comm, task->comm, TASK_COMM_LEN);
 
 	bpf_seq_write(seq, &event, sizeof(event));
+
+	ptr.type_id = bpf_core_type_id_kernel(struct user_struct);
+	ptr.ptr = BPF_CORE_READ(task, cred, user);
+	bpf_seq_printf_btf(seq, &ptr, sizeof(ptr), 0);
+	bpf_seq_write(seq, &nul, 1);
+
+	ptr.type_id = bpf_core_type_id_kernel(struct user_namespace);
+	ptr.ptr = BPF_CORE_READ(task, cred, user_ns);
+	bpf_seq_printf_btf(seq, &ptr, sizeof(ptr), 0);
+	bpf_seq_write(seq, &nul, 1);
+
 
 	return 0;
 }
