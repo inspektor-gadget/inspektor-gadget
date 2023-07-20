@@ -56,7 +56,7 @@ require (
 	golang.org/x/sync v0.3.0
 	golang.org/x/text v0.11.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/cri-api v0.27.3
+	k8s.io/cri-api v0.27.4
 	oras.land/oras-go v1.2.3
 )
 
