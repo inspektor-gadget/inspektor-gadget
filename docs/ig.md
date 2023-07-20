@@ -147,16 +147,16 @@ For example, with `--host`, you can get the following output:
 
 ```bash
 $ sudo ig trace exec --host
-CONTAINER                                               PID        PPID       COMM             RET ARGS
+RUNTIME.CONTAINERNAME    PID        PPID       COMM             RET ARGS
 
 # Open another terminal.
 $ cat /dev/null
 $ docker run --name test-host --rm -t debian sh -c 'ls > /dev/null'
 # Go back to first terminal.
-CONTAINER                                               PID        PPID       COMM             RET ARGS
-                               24640            4537             cat              0   /usr/bin/cat /dev/null
-test-host                      24577            24553            sh               0   /bin/sh -c cat /dev/null
-test-host                      24598            24577            cat              0   /bin/cat /dev/null
+RUNTIME.CONTAINERNAME    PID        PPID       COMM             RET ARGS
+                         3326022    308789     cat              0   /usr/bin/cat /dev/null
+test-host                3326093    3326070    sh               0   /usr/bin/sh -c ls > /dev/null
+test-host                3326123    3326093    ls               0   /usr/bin/ls
 ```
 
 Events generated from containers have their container field set, while events which are generated from the host do not.
@@ -172,8 +172,8 @@ Examples of commands:
 $ kubectl debug node/minikube-docker -ti --image=ghcr.io/inspektor-gadget/ig -- ig --auto-sd-unit-restart trace exec
 Creating debugging pod node-debugger-minikube-docker-c2wfw with container debugger on node minikube-docker.
 If you don't see a command prompt, try pressing enter.
-CONTAINER                                                     PID        PPID       COMM             RET ARGS
-k8s_test01_test01_default_0aca2685-a8d2-49c7-9580-58fb806270… 1802638    1800551    cat              0   /bin/cat README
+RUNTIME.CONTAINERNAME          PID              PPID             COMM             RET ARGS
+k8s_shell_shell_default_b4ebb… 3186934          3186270          cat              0   /bin/cat file
 ```
 
 ```bash
@@ -203,11 +203,14 @@ $ docker run -ti --rm \
     --privileged \
     -v /run:/run \
     -v /:/host \
+    -v /sys/kernel/debug:/sys/kernel/debug \
+    -v /sys/kernel/tracing:/sys/kernel/tracing \
+    -v /sys/fs/bpf:/sys/fs/bpf \
     --pid=host \
     ghcr.io/inspektor-gadget/ig \
     trace exec
-CONTAINER    PID        PPID       COMM  RET ARGS
-cool_wright  1163565    1154511    ls    0   /bin/ls
+RUNTIME.CONTAINERNAME    PID        PPID       COMM             RET ARGS
+heuristic_yonath         3329233    3329211    ls               0   /bin/ls
 ```
 
 List of flags:
@@ -215,5 +218,7 @@ List of flags:
 - `-v /run:/run` gives access to the container runtimes sockets (docker, containerd, CRI-O).
 - `-v /:/host` gives access to the host filesystem. This is used to access the host processes via /host/proc, and access
   container runtime hooks (rootfs and config.json).
+- `-v` volumes for debugfs, tracefs and bpf filesystems. Alternatively, it is possible to pass the flag
+  `--auto-mount-filesystems` to ig to automatically mount those filesystems.
 - `--pid=host` runs in the host PID namespace. Optional on Linux. This is necessary on Docker Desktop on Windows because
   /host/proc does not give access to the host processes.
