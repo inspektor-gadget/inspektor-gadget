@@ -16,8 +16,6 @@ package tracer
 
 import (
 	"bytes"
-	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"reflect"
@@ -26,11 +24,11 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
-	"github.com/solo-io/bumblebee/pkg/decoder"
 	"gopkg.in/yaml.v3"
 	k8syaml "sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	columns_json "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/json"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
@@ -197,7 +195,7 @@ func getSimpleType(typ btf.Type) reflect.Type {
 	return nil
 }
 
-func (g *GadgetDesc) CustomParser(params *params.Params, args []string) (parser.Parser, error) {
+func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.Columns[types.Event], error) {
 	if len(args) != 0 {
 		return nil, fmt.Errorf("no arguments expected: received %d", len(args))
 	}
@@ -272,58 +270,65 @@ func (g *GadgetDesc) CustomParser(params *params.Params, args []string) (parser.
 	if err := cols.AddFields(fields, base); err != nil {
 		return nil, fmt.Errorf("adding fields: %w", err)
 	}
+	return cols, nil
+}
 
+func (g *GadgetDesc) CustomParser(params *params.Params, args []string) (parser.Parser, error) {
+	cols, err := g.getColumns(params, args)
+	if err != nil {
+		return nil, err
+	}
 	return parser.NewParser[types.Event](cols), nil
 }
 
-func genericConverter(params *params.Params, printer gadgets.Printer, convert func(any) ([]byte, error)) func(ev any) {
-	decoderFactory := decoder.NewDecoderFactory()()
-
-	// TODO: add support for OCI programs
-	progContent := params.Get(ProgramContent).AsBytes()
-
-	valueStruct, err := getValueStructBTF(progContent)
+func (g *GadgetDesc) customJsonParser(params *params.Params, args []string, options ...columns_json.Option) (*columns_json.Formatter[types.Event], error) {
+	cols, err := g.getColumns(params, args)
 	if err != nil {
-		printer.Logf(logger.WarnLevel, "coult not get value struct BTF: %s", err)
-		return nil
+		return nil, err
 	}
-
-	ctx := context.TODO()
-
-	return func(ev any) {
-		event := ev.(*types.Event)
-
-		result, err := decoderFactory.DecodeBtfBinary(ctx, valueStruct, event.RawData)
-		if err != nil {
-			printer.Logf(logger.WarnLevel, "decoding %+v: %s", ev, err)
-			return
-		}
-
-		// TODO: flatten the results?
-		event.Data = result
-
-		d, err := convert(event)
-		if err != nil {
-			printer.Logf(logger.WarnLevel, "marshalling %+v: %s", ev, err)
-			return
-		}
-		printer.Output(string(d))
-	}
+	return columns_json.NewFormatter(cols.ColumnMap, options...), nil
 }
 
 func (g *GadgetDesc) JSONConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
-	return genericConverter(params, printer, json.Marshal)
+	formatter, err := g.customJsonParser(params, []string{})
+	if err != nil {
+		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
+		return nil
+	}
+	return func(ev any) {
+		event := ev.(*types.Event)
+		printer.Output(formatter.FormatEntry(event))
+	}
 }
 
 func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
-	convert := func(ev any) ([]byte, error) {
-		return json.MarshalIndent(ev, "", "  ")
+	formatter, err := g.customJsonParser(params, []string{}, columns_json.WithPrettyPrint())
+	if err != nil {
+		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
+		return nil
 	}
-	return genericConverter(params, printer, convert)
+	return func(ev any) {
+		event := ev.(*types.Event)
+		printer.Output(formatter.FormatEntry(event))
+	}
 }
 
 func (g *GadgetDesc) YAMLConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
-	return genericConverter(params, printer, k8syaml.Marshal)
+	formatter, err := g.customJsonParser(params, []string{})
+	if err != nil {
+		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
+		return nil
+	}
+	return func(ev any) {
+		event := ev.(*types.Event)
+		eventJson := formatter.FormatEntry(event)
+		eventYaml, err := k8syaml.JSONToYAML([]byte(eventJson))
+		if err != nil {
+			printer.Logf(logger.WarnLevel, "converting json to yaml: %s", err)
+			return
+		}
+		printer.Output(string(eventYaml))
+	}
 }
 
 func (g *GadgetDesc) EventPrototype() any {
