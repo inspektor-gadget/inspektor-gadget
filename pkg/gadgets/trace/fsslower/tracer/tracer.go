@@ -78,6 +78,12 @@ var fsConfMap = map[string]fsConf{
 		open:  "ext4_file_open",
 		fsync: "ext4_sync_file",
 	},
+	"fuse": {
+		read:  "fuse_file_read_iter",
+		write: "fuse_file_write_iter",
+		open:  "fuse_open",
+		fsync: "fuse_fsync",
+	},
 	"nfs": {
 		read:  "nfs_file_read",
 		write: "nfs_file_write",
