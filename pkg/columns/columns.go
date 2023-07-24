@@ -369,7 +369,7 @@ func (c *Columns[T]) iterateFields(t reflect.Type, sub []subField, offset uintpt
 
 // AddColumn adds a virtual column to the table. This virtual column requires at least a
 // name and an Extractor
-func (c *Columns[T]) AddColumn(attributes Attributes, extractor func(*T) string) error {
+func (c *Columns[T]) AddColumn(attributes Attributes, extractor func(*T) any) error {
 	if attributes.Name == "" {
 		return errors.New("no name set for column")
 	}
@@ -377,15 +377,16 @@ func (c *Columns[T]) AddColumn(attributes Attributes, extractor func(*T) string)
 		return fmt.Errorf("no extractor set for column %q", attributes.Name)
 	}
 
+	var temp T
+	typ := reflect.TypeOf(extractor(&temp))
+
 	column := Column[T]{
-		Attributes: attributes,
-		Extractor:  extractor,
-		fieldIndex: virtualIndex,
-		// We expect kind to be of type reflect.String because we always use the extractor func for
-		// virtual columns
-		kind:          reflect.String,
-		columnType:    stringType,
-		rawColumnType: stringType,
+		Attributes:    attributes,
+		Extractor:     extractor,
+		fieldIndex:    virtualIndex,
+		kind:          typ.Kind(),
+		columnType:    typ,
+		rawColumnType: typ,
 	}
 
 	column.applyTemplate()
@@ -404,7 +405,7 @@ func (c *Columns[T]) AddColumn(attributes Attributes, extractor func(*T) string)
 }
 
 // MustAddColumn adds a new column and panics if it cannot successfully do so
-func (c *Columns[T]) MustAddColumn(attributes Attributes, extractor func(*T) string) {
+func (c *Columns[T]) MustAddColumn(attributes Attributes, extractor func(*T) any) {
 	err := c.AddColumn(attributes, extractor)
 	if err != nil {
 		panic(err)
@@ -412,7 +413,7 @@ func (c *Columns[T]) MustAddColumn(attributes Attributes, extractor func(*T) str
 }
 
 // SetExtractor sets the extractor function for a specific column
-func (c *Columns[T]) SetExtractor(columnName string, extractor func(*T) string) error {
+func (c *Columns[T]) SetExtractor(columnName string, extractor func(*T) any) error {
 	if extractor == nil {
 		return fmt.Errorf("extractor func must be non-nil")
 	}
@@ -420,14 +421,18 @@ func (c *Columns[T]) SetExtractor(columnName string, extractor func(*T) string) 
 	if !ok {
 		return fmt.Errorf("field %q not found", columnName)
 	}
-	column.kind = reflect.String
+
+	var temp T
+	typ := reflect.TypeOf(extractor(&temp))
+
+	column.kind = typ.Kind()
 	column.Extractor = extractor
-	column.columnType = stringType
+	column.columnType = typ
 	return nil
 }
 
 // MustSetExtractor adds a new extractor to a column and panics if it cannot successfully do so
-func (c *Columns[T]) MustSetExtractor(columnName string, extractor func(*T) string) {
+func (c *Columns[T]) MustSetExtractor(columnName string, extractor func(*T) any) {
 	err := c.SetExtractor(columnName, extractor)
 	if err != nil {
 		panic(fmt.Errorf("setting extractor for %q column: %w", columnName, err))
@@ -458,14 +463,8 @@ func GetFieldFunc[OT any, T any](column ColumnInternals) func(entry *T) OT {
 // set, the returned func will access the underlying values.
 func GetFieldFuncExt[OT any, T any](column ColumnInternals, raw bool) func(entry *T) OT {
 	if column.IsVirtual() || (column.HasCustomExtractor() && !raw) {
-		var tempVar OT
-		switch any(tempVar).(type) {
-		case string:
-			return func(entry *T) OT {
-				return any(column.(*Column[T]).Extractor(entry)).(OT)
-			}
-		default:
-			panic(fmt.Sprintf("trying to get type %T from virtual column, expected string", tempVar))
+		return func(entry *T) OT {
+			return column.(*Column[T]).Extractor(entry).(OT)
 		}
 	}
 	sub := column.getSubFields()

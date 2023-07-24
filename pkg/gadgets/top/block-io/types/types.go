@@ -48,7 +48,7 @@ type Stats struct {
 func GetColumns() *columns.Columns[Stats] {
 	cols := columns.MustCreateColumns[Stats]()
 
-	cols.MustSetExtractor("r/w", func(stats *Stats) (ret string) {
+	cols.MustSetExtractor("r/w", func(stats *Stats) any {
 		if stats.Write {
 			return "W"
 		}

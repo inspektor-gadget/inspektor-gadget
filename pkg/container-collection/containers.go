@@ -211,7 +211,10 @@ func GetColumns() *columns.Columns[Container] {
 	col, _ = cols.GetColumn("runtime.containerImageName")
 	col.Visible = true
 
-	cols.MustSetExtractor("runtime.containerImageName", func(container *Container) string {
+	cols.MustSetExtractor("runtime.containerImageName", func(container *Container) any {
+		if container == nil {
+			return ""
+		}
 		if strings.Contains(container.Runtime.ContainerImageName, "sha256") {
 			return stringid.TruncateID(container.Runtime.ContainerImageName)
 		}

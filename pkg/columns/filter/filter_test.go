@@ -300,7 +300,7 @@ func TestFilters(t *testing.T) {
 	cols, err := columns.NewColumns[testData]()
 	require.NoError(t, err)
 
-	cols.MustAddColumn(columns.Attributes{Name: "virtual"}, func(t *testData) string {
+	cols.MustAddColumn(columns.Attributes{Name: "virtual"}, func(t *testData) any {
 		return t.Dummy
 	})
 

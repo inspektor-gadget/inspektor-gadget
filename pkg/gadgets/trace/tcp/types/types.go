@@ -41,7 +41,7 @@ func (e *Event) GetEndpoints() []*eventtypes.L3Endpoint {
 func GetColumns() *columns.Columns[Event] {
 	tcpColumns := columns.MustCreateColumns[Event]()
 
-	tcpColumns.MustSetExtractor("t", func(event *Event) (ret string) {
+	tcpColumns.MustSetExtractor("t", func(event *Event) any {
 		operations := map[string]string{
 			"accept":  "A",
 			"connect": "C",

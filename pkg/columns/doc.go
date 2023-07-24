@@ -77,7 +77,7 @@ You can do that by adding a virtual column:
 	cols.AddColumn(columns.Attributes{
 		Name:  "foo",
 		Width: 14,
-	}, func(e *Event) string {
+	}, func(e *Event) any {
 		return string(e.Foo)
 	})
 
@@ -85,7 +85,7 @@ This will convert the []byte to a string before printing it.
 
 You can also just override the default extractor like so:
 
-	cols.SetExtractor("node", func(a *Event) string {
+	cols.SetExtractor("node", func(a *Event) any {
 		return "Foobar"
 	})
 */

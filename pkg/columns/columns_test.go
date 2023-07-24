@@ -224,10 +224,10 @@ func TestExtractor(t *testing.T) {
 		StringField string `column:"stringField"`
 	}
 	cols := expectColumnsSuccess[testStruct](t)
-	assert.NoError(t, cols.SetExtractor("sTrInGfIeLd", func(t *testStruct) string {
+	assert.NoError(t, cols.SetExtractor("sTrInGfIeLd", func(t *testStruct) any {
 		return "empty"
 	}))
-	assert.Error(t, cols.SetExtractor("unknown", func(t *testStruct) string {
+	assert.Error(t, cols.SetExtractor("unknown", func(t *testStruct) any {
 		return "empty"
 	}), "should return error when trying to set extractor for non-existent field")
 	assert.Error(
@@ -268,38 +268,51 @@ func TestVirtualColumns(t *testing.T) {
 		Name: "vcol",
 	}, nil), "should return error when adding a column without extractor func")
 
-	assert.Error(t, cols.AddColumn(Attributes{}, func(_ *testStruct) string {
+	assert.Error(t, cols.AddColumn(Attributes{}, func(_ *testStruct) any {
 		return ""
 	}), "should return error when adding a column without name")
 
 	assert.Error(t, cols.AddColumn(Attributes{
 		Name: "stringfield",
-	}, func(_ *testStruct) string {
+	}, func(_ *testStruct) any {
 		return ""
 	}), "should return error when adding a column with already existing name")
 
 	assert.NoError(t, cols.AddColumn(Attributes{
-		Name: "foobar",
-	}, func(t *testStruct) string {
+		Name: "foobarstring",
+	}, func(t *testStruct) any {
 		return "FooBar"
 	}))
 
-	col := expectColumn(t, cols, "foobar")
-	_, ok := col.Get(nil).Interface().(string)
+	colStr := expectColumn(t, cols, "foobarstring")
+	_, ok := colStr.Get(nil).Interface().(string)
 	require.True(t, ok, "type should be string")
-	str, ok := col.Get(&testStruct{}).Interface().(string)
+	str, ok := colStr.Get(&testStruct{}).Interface().(string)
 	require.True(t, ok, "type should be string")
 	assert.Equal(t, str, "FooBar")
 
 	// Test GetRef also
-	str, ok = col.GetRef(reflect.ValueOf(&testStruct{})).Interface().(string)
+	str, ok = colStr.GetRef(reflect.ValueOf(&testStruct{})).Interface().(string)
 	require.True(t, ok, "type should be string")
 	assert.Equal(t, str, "FooBar")
 
 	// Raw access should return an empty string
-	str, ok = col.GetRaw(&testStruct{}).Interface().(string)
+	str, ok = colStr.GetRaw(&testStruct{}).Interface().(string)
 	require.True(t, ok, "type should be string")
 	assert.Equal(t, str, "", "should be empty on a virtual column")
+
+	assert.NoError(t, cols.AddColumn(Attributes{
+		Name: "foobarint",
+	}, func(t *testStruct) any {
+		return 42
+	}))
+
+	colInt := expectColumn(t, cols, "foobarint")
+	_, ok = colInt.Get(nil).Interface().(int)
+	require.True(t, ok, "type should be int")
+	intv, ok := colInt.Get(&testStruct{}).Interface().(int)
+	require.True(t, ok, "type should be string")
+	assert.Equal(t, intv, 42)
 }
 
 func TestVerifyColumnNames(t *testing.T) {
@@ -378,7 +391,7 @@ func TestFieldFuncs(t *testing.T) {
 	copy(testInstance.uint8ArrField[:], []uint8("foobarbaz\x00asdfgh"))
 
 	cols := MustCreateColumns[testStruct]()
-	cols.MustSetExtractor("uint64ArrField", func(t *testStruct) string {
+	cols.MustSetExtractor("uint64ArrField", func(t *testStruct) any {
 		return "This should be ignored for GetFieldAsArrayFunc"
 	})
 
