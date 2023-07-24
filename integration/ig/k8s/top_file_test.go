@@ -25,8 +25,11 @@ import (
 
 func newTopFileCmd(ns string, cmd string, startAndStop bool) *Command {
 	expectedOutputFn := func(output string) error {
+		isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 		expectedEntry := &types.Stats{
-			CommonData: BuildCommonData(ns, WithRuntimeMetadata(*containerRuntime)),
+			CommonData: BuildCommonData(ns, WithRuntimeMetadata(*containerRuntime),
+				WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+			),
 			// echo is built-in
 			Comm:     "sh",
 			Filename: "bar",
