@@ -269,26 +269,40 @@ func (n *ContainerNotifier) install() error {
 	// Attach fanotify to various runtime binaries
 	runtimeFound := false
 
-	for _, r := range runtimePaths {
-		runtimePath := filepath.Join(host.HostRoot, r)
-
-		log.Debugf("container-hook: trying runc at %s", runtimePath)
+	runtimePath := os.Getenv("RUNTIME_PATH")
+	if runtimePath != "" {
+		log.Debugf("container-hook: trying runtime from RUNTIME_PATH env variable at %s", runtimePath)
 
 		if _, err := os.Stat(runtimePath); errors.Is(err, os.ErrNotExist) {
-			log.Debugf("container-hook: runc at %s not found", runtimePath)
-			continue
+			return err
 		}
 
 		if err := runtimeBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runtimePath); err != nil {
-			log.Warnf("container-hook: failed to fanotify mark: %s", err)
-			continue
+			return fmt.Errorf("fanotify marking of %s: %w", runtimePath, err)
 		}
 		runtimeFound = true
+	} else {
+		for _, r := range runtimePaths {
+			runtimePath := filepath.Join(host.HostRoot, r)
+
+			log.Debugf("container-hook: trying runtime at %s", runtimePath)
+
+			if _, err := os.Stat(runtimePath); errors.Is(err, os.ErrNotExist) {
+				log.Debugf("container-hook: runc at %s not found", runtimePath)
+				continue
+			}
+
+			if err := runtimeBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runtimePath); err != nil {
+				log.Warnf("container-hook: failed to fanotify mark: %s", err)
+				continue
+			}
+			runtimeFound = true
+		}
 	}
 
 	if !runtimeFound {
 		runtimeBinaryNotify.File.Close()
-		return errors.New("no container runtime can be monitored with fanotify")
+		return fmt.Errorf("no container runtime can be monitored with fanotify. The following paths were tested: %s. You can use the RUNTIME_PATH env variable to specify a custom path. If you are successful doing so, please open a PR to add your custom path to runtimePaths", strings.Join(runtimePaths, ","))
 	}
 
 	n.wg.Add(2)
