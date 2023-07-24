@@ -1,0 +1,15 @@
+metrics_name: test_metrics
+metrics:
+  - name: dns_latency
+    type: histogram
+    category: trace
+    field: latency
+    bucket:
+      min: 0
+      max: 15
+      type: exp2
+      multiplier: 100000
+      unit: ns
+    gadget: dns
+    selector:
+      - "qr:R"
