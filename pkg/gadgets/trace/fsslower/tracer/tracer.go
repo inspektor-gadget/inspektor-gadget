@@ -84,6 +84,12 @@ var fsConfMap = map[string]fsConf{
 		open:  "nfs_file_open",
 		fsync: "nfs_file_fsync",
 	},
+	"ntfs3": {
+		read:  "ntfs_file_read_iter",
+		write: "ntfs_file_write_iter",
+		open:  "ntfs_file_open",
+		fsync: "generic_file_fsync",
+	},
 	"xfs": {
 		read:  "xfs_file_read_iter",
 		write: "xfs_file_write_iter",
