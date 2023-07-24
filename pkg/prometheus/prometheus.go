@@ -180,8 +180,10 @@ func handleMetric(
 		}
 	}
 
-	if err := parser.SetFilters(filters); err != nil {
-		return nil, nil, fmt.Errorf("setting filters: %w", err)
+	if parser != nil {
+		if err := parser.SetFilters(filters); err != nil {
+			return nil, nil, fmt.Errorf("setting filters: %w", err)
+		}
 	}
 
 	return gadgetCtx, parser, nil
@@ -407,6 +409,11 @@ func createHistogram(
 	if err != nil {
 		return nil, err
 	}
+
+	if gadgetCtx.GadgetDesc().Type() != gadgets.TypeTrace {
+		return nil, fmt.Errorf("histogram %s: only trace gadgets are supported", histogram.Name)
+	}
+
 	typ, err := parser.GetColKind(histogram.Field)
 	if err != nil {
 		return nil, err
