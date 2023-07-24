@@ -94,7 +94,7 @@ func runList(o listOptions) error {
 
 	cols := columns.MustCreateColumns[imageColumn]()
 	if !o.noTrunc {
-		cols.MustSetExtractor("digest", func(i *imageColumn) string {
+		cols.MustSetExtractor("digest", func(i *imageColumn) any {
 			if i.Digest == "" {
 				return ""
 			}

@@ -236,7 +236,10 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 		switch typedMember := member.Type.(type) {
 		case *btf.Union:
 			if typedMember.Name == "ip_addr" && typedMember.Size >= 4 {
-				cols.AddColumn(attrs, func(ev *types.Event) string {
+				cols.AddColumn(attrs, func(ev *types.Event) any {
+					if ev.RawData == nil {
+						return ""
+					}
 					// TODO: Handle IPv6
 					offset := uintptr(member.Offset.Bytes())
 					ipSlice := unsafe.Slice(&ev.RawData[offset], 4)

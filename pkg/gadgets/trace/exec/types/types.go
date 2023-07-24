@@ -40,7 +40,7 @@ type Event struct {
 func GetColumns() *columns.Columns[Event] {
 	execColumns := columns.MustCreateColumns[Event]()
 
-	execColumns.MustSetExtractor("args", func(event *Event) (ret string) {
+	execColumns.MustSetExtractor("args", func(event *Event) any {
 		return strings.Join(event.Args, " ")
 	})
 

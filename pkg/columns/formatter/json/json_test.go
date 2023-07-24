@@ -164,20 +164,23 @@ func TestJSONFormatter(t *testing.T) {
 
 	require.NoError(t, cols.AddColumn(columns.Attributes{
 		Name: "parent.child1.grandchild1",
-	}, func(t *testStruct) string { return "parent.child1.grandchild1_text" }))
+	}, func(t *testStruct) any { return "parent.child1.grandchild1_text" }))
 	require.NoError(t, cols.AddColumn(columns.Attributes{
 		Name: "parent.child1.grandchild2",
-	}, func(t *testStruct) string { return "parent.child1.grandchild2_text" }))
+	}, func(t *testStruct) any { return "parent.child1.grandchild2_text" }))
 	require.NoError(t, cols.AddColumn(columns.Attributes{
 		Name: "parent.child2.grandchild1",
-	}, func(t *testStruct) string { return "parent.child2.grandchild1_text" }))
+	}, func(t *testStruct) any { return "parent.child2.grandchild1_text" }))
 	require.NoError(t, cols.AddColumn(columns.Attributes{
 		Name: "parent.child3",
-	}, func(t *testStruct) string { return "parent.child3_text" }))
+	}, func(t *testStruct) any { return "parent.child3_text" }))
+	require.NoError(t, cols.AddColumn(columns.Attributes{
+		Name: "parent.child4",
+	}, func(t *testStruct) any { return 42444 }))
 
 	require.NoError(t, cols.AddColumn(columns.Attributes{
 		Name: "parent.child1",
-	}, func(t *testStruct) string { return "This should be skipped/filtered" }))
+	}, func(t *testStruct) any { return "This should be skipped/filtered" }))
 
 	expected := `{
   "parent": {
@@ -188,7 +191,8 @@ func TestJSONFormatter(t *testing.T) {
     "child2": {
       "grandchild1": "parent.child2.grandchild1_text"
     },
-    "child3": "parent.child3_text"
+    "child3": "parent.child3_text",
+    "child4": 42444
   }
 }`
 
@@ -210,7 +214,7 @@ func TestJSONFormatterDeeplyNested(t *testing.T) {
 
 	require.NoError(t, cols.AddColumn(columns.Attributes{
 		Name: "a.b.c.d.e.f.g",
-	}, func(t *testStruct) string { return "foobar" }))
+	}, func(t *testStruct) any { return "foobar" }))
 
 	expected := `{
   "a": {

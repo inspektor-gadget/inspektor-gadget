@@ -52,13 +52,13 @@ type Stats struct {
 func GetColumns() *columns.Columns[Stats] {
 	cols := columns.MustCreateColumns[Stats]()
 
-	cols.MustSetExtractor("rbytes", func(stats *Stats) (ret string) {
+	cols.MustSetExtractor("rbytes", func(stats *Stats) any {
 		return fmt.Sprint(units.BytesSize(float64(stats.ReadBytes)))
 	})
-	cols.MustSetExtractor("wbytes", func(stats *Stats) (ret string) {
+	cols.MustSetExtractor("wbytes", func(stats *Stats) any {
 		return fmt.Sprint(units.BytesSize(float64(stats.WriteBytes)))
 	})
-	cols.MustSetExtractor("T", func(stats *Stats) (ret string) {
+	cols.MustSetExtractor("T", func(stats *Stats) any {
 		return string(stats.FileType)
 	})
 

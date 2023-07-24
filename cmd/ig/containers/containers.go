@@ -76,7 +76,7 @@ func NewListContainersCmd() *cobra.Command {
 			}
 
 			cols := columns.MustCreateColumns[containercollection.PubSubEvent]()
-			cols.SetExtractor("event", func(event *containercollection.PubSubEvent) string {
+			cols.SetExtractor("event", func(event *containercollection.PubSubEvent) any {
 				return event.Type.String()
 			})
 			// Display the runtime name, container ID and image name when watching containers
@@ -86,7 +86,10 @@ func NewListContainersCmd() *cobra.Command {
 			col.Visible = true
 			col, _ = cols.GetColumn("runtime.containerImageName")
 			col.Visible = true
-			cols.MustSetExtractor("runtime.containerImageName", func(event *containercollection.PubSubEvent) string {
+			cols.MustSetExtractor("runtime.containerImageName", func(event *containercollection.PubSubEvent) any {
+				if event == nil || event.Container == nil {
+					return ""
+				}
 				if strings.Contains(event.Container.Runtime.ContainerImageName, "sha256") {
 					return stringid.TruncateID(event.Container.Runtime.ContainerImageName)
 				}

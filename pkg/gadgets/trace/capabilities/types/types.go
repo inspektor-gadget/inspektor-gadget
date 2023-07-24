@@ -55,7 +55,7 @@ type Event struct {
 func GetColumns() *columns.Columns[Event] {
 	cols := columns.MustCreateColumns[Event]()
 
-	cols.SetExtractor("insetid", func(event *Event) (ret string) {
+	cols.SetExtractor("insetid", func(event *Event) any {
 		if event.InsetID == nil {
 			return "N/A"
 		}
@@ -63,11 +63,11 @@ func GetColumns() *columns.Columns[Event] {
 		return fmt.Sprintf("%t", *event.InsetID)
 	})
 
-	cols.MustSetExtractor("caps", func(event *Event) string {
+	cols.MustSetExtractor("caps", func(event *Event) any {
 		return fmt.Sprintf("%x", event.Caps)
 	})
 
-	cols.MustSetExtractor("capsnames", func(event *Event) string {
+	cols.MustSetExtractor("capsnames", func(event *Event) any {
 		return strings.Join(event.CapsNames, ",")
 	})
 	return cols
