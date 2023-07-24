@@ -175,26 +175,40 @@ func NewRuncNotifier(callback RuncNotifyFunc) (*RuncNotifier, error) {
 
 	runcMonitored := false
 
-	for _, r := range runcPaths {
-		runcPath := filepath.Join(host.HostRoot, r)
-
-		log.Debugf("Runcfanotify: trying runc at %s", runcPath)
+	runcPath := os.Getenv("RUNC_PATH")
+	if runcPath != "" {
+		log.Debugf("Runcfanotify: trying runc from RUNC_PATH env variable at %s", runcPath)
 
 		if _, err := os.Stat(runcPath); errors.Is(err, os.ErrNotExist) {
-			log.Debugf("Runcfanotify: runc at %s not found", runcPath)
-			continue
+			return nil, err
 		}
 
 		if err := runcBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runcPath); err != nil {
-			log.Warnf("Runcfanotify: failed to fanotify mark: %s", err)
-			continue
+			return nil, fmt.Errorf("fanotify marking of %s: %w", runcPath, err)
 		}
 		runcMonitored = true
+	} else {
+		for _, r := range runcPaths {
+			runcPath := filepath.Join(host.HostRoot, r)
+
+			log.Debugf("Runcfanotify: trying runc at %s", runcPath)
+
+			if _, err := os.Stat(runcPath); errors.Is(err, os.ErrNotExist) {
+				log.Debugf("Runcfanotify: runc at %s not found", runcPath)
+				continue
+			}
+
+			if err := runcBinaryNotify.Mark(unix.FAN_MARK_ADD, unix.FAN_OPEN_EXEC_PERM, unix.AT_FDCWD, runcPath); err != nil {
+				log.Warnf("Runcfanotify: failed to fanotify mark: %s", err)
+				continue
+			}
+			runcMonitored = true
+		}
 	}
 
 	if !runcMonitored {
 		runcBinaryNotify.File.Close()
-		return nil, errors.New("no runc instance can be monitored with fanotify")
+		return nil, fmt.Errorf("no runc instance can be monitored with fanotify. The following paths were tested: %s. You can use the RUNC_PATH env variable to specify a custom path. If you are successful doing so, please open a PR to add your custom path to runcPaths", strings.Join(runcPaths, ","))
 	}
 
 	n.wg.Add(2)
