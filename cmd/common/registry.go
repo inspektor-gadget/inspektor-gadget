@@ -405,7 +405,30 @@ func buildCommandFromGadget(
 			formatter := parser.GetTextColumnsFormatter()
 
 			requestedStandardColumns := outputModeParams == ""
-			requestedColumns := strings.Split(outputModeParams, ",")
+			requestedColumns := make([]string, 0)
+
+			// Check, if columns were requested relatively
+			// (using only +column and -column syntax)
+			addCols := make(map[string]struct{})
+			removeCols := make(map[string]struct{})
+			requestedRelativeColumns := true
+			for _, col := range strings.Split(strings.ToLower(outputModeParams), ",") {
+				if strings.HasPrefix(col, "+") {
+					addCols[strings.TrimPrefix(col, "+")] = struct{}{}
+					continue
+				}
+				if strings.HasPrefix(col, "-") {
+					removeCols[strings.TrimPrefix(col, "-")] = struct{}{}
+					continue
+				}
+				requestedRelativeColumns = false
+				requestedColumns = append(requestedColumns, col)
+			}
+
+			// If all column requests are relative, reset requestedStandardColumns
+			if requestedRelativeColumns {
+				requestedStandardColumns = true
+			}
 
 			// If the standard columns are requested, hide columns that would be empty without specific features
 			// (bool params) enabled
@@ -421,6 +444,23 @@ func buildCommandFromGadget(
 					}
 				}
 				requestedColumns = parser.GetDefaultColumns(hiddenTags...)
+			}
+
+			// Add/remove relative column requests
+			if len(addCols) > 0 || len(removeCols) > 0 {
+				newRequestedColumns := make([]string, 0)
+				for _, col := range requestedColumns {
+					delete(addCols, col)
+					if _, ok := removeCols[col]; ok {
+						continue
+					}
+					newRequestedColumns = append(newRequestedColumns, col)
+				}
+				// add remaining columns
+				for col := range addCols {
+					newRequestedColumns = append(newRequestedColumns, col)
+				}
+				requestedColumns = newRequestedColumns
 			}
 
 			valid, invalid := parser.VerifyColumnNames(requestedColumns)
