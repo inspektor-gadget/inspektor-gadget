@@ -18,6 +18,7 @@
 package tracer_test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -121,7 +122,8 @@ func TestSignalTracer(t *testing.T) {
 				}
 			},
 			generateEvent: func(_ syscall.Signal) (uint32, error) {
-				childPid, _, errno := syscall.Syscall(syscall.SYS_FORK, 0, 0, 0)
+				// Use clone to make it more portable, at least for amd64 and arm64.
+				childPid, _, errno := syscall.Syscall6(syscall.SYS_CLONE, uintptr(syscall.SIGCHLD), 0, 0, 0, 0, 0)
 				if errno != 0 {
 					var err error = errno
 
@@ -131,16 +133,18 @@ func TestSignalTracer(t *testing.T) {
 				if childPid == 0 {
 					var t *testDefinition
 					t.signalToSend = 0xdead
-				} else {
-					proc, err := os.FindProcess(int(childPid))
-					if err != nil {
-						return 0, fmt.Errorf("no process with PID %d: %w", childPid, err)
-					}
 
-					_, err = proc.Wait()
-					if err != nil {
-						return 0, fmt.Errorf("waiting child with PID %d: %w", childPid, err)
-					}
+					return 0, errors.New("this code should never be reached")
+				}
+
+				proc, err := os.FindProcess(int(childPid))
+				if err != nil {
+					return 0, fmt.Errorf("no process with PID %d: %w", childPid, err)
+				}
+
+				_, err = proc.Wait()
+				if err != nil {
+					return 0, fmt.Errorf("waiting child with PID %d: %w", childPid, err)
 				}
 
 				return uint32(childPid), nil
