@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ig
+  labels:
+    k8s-app: example-ig
+spec:
+  selector:
+    matchLabels:
+      name: example-ig
+  template:
+    metadata:
+      labels:
+        name: example-ig
+    spec:
+      containers:
+      - name: ig
+        # CHANGEME: use your own image
+        image: mycontainerimage:latest
+        securityContext:
+          # CHANGEME: you can also use a more restrictive securityContext
+          # See example in
+          # https://github.com/inspektor-gadget/inspektor-gadget/blob/main/pkg/resources/manifests/deploy.yaml
+          privileged: true
+        # CHANGEME: replace this with your own commands
+        command:
+        - "/bin/sh"
+        - "-c"
+        - "sleep inf"
+        env:
+        - name: HOST_ROOT
+          value: "/host"
+        volumeMounts:
+          - mountPath: /host
+            name: host
+          - mountPath: /run
+            name: run
+          - mountPath: /sys/kernel/debug
+            name: debugfs
+      nodeSelector:
+        kubernetes.io/os: linux
+      volumes:
+        - name: host
+          hostPath:
+            path: /
+        - name: run
+          hostPath:
+            path: /run
+        - name: debugfs
+          hostPath:
+            path: /sys/kernel/debug

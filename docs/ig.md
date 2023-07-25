@@ -29,6 +29,8 @@ The architecture of `ig` is described in the main
   debug the containers of the cluster.
 - In some cases, you might have root SSH access to the Kubernetes nodes of a
   cluster, but not to the `kubeconfig`.
+- If you don't want to install `kubectl-gadget` on your machine, you can run
+  `ig` in a Kubernetes pod and read the output directly.
 - If you are implementing an application that needs to get insights from the
   Kubernetes node, you could include the `ig` binary in your container
   image, and your app simply execs it. In such a case, it is suggested to use
@@ -222,3 +224,44 @@ List of flags:
   `--auto-mount-filesystems` to ig to automatically mount those filesystems.
 - `--pid=host` runs in the host PID namespace. Optional on Linux. This is necessary on Docker Desktop on Windows because
   /host/proc does not give access to the host processes.
+
+### Using ig in a Kubernetes pod
+
+In order to run `ig` in a Kubernetes pod use [examples/pod-ig.yaml](examples/pod-ig.yaml).
+
+```bash
+$ kubectl apply -f docs/examples/pod-ig.yaml
+$ kubectl logs ig
+RUNTIME.CONTAINERNAME          RUNTIME.CONTAIN… PID              PPID             COMM             RET ARGS
+kube-proxy                     k8s.gcr.io/kube… 3985376          3024961          ip6tables        0   /usr/sbin/ip6tables -w 5 -W 100000 -S K…
+```
+
+### Adding ig in your own container image
+
+In order to add `ig` in your own container image, you can take example on the following Dockerfile:
+
+```Dockerfile
+# In production, you should use a specific version of ig instead of latest:
+# --build-arg BASE_IMAGE=ghcr.io/inspektor-gadget/ig:v0.18.1
+ARG BASE_IMAGE=ghcr.io/inspektor-gadget/ig:latest
+FROM ${BASE_IMAGE} as ig
+
+# Your own image
+FROM alpine:3.17
+COPY --from=ig /usr/bin/ig /usr/bin/ig
+ENV HOST_ROOT=/host
+# The rest of your Dockerfile
+```
+
+The `ghcr.io/inspektor-gadget/ig` image supports amd64 and arm64. Your own image can also support both architectures if
+you use the appropriate `--platforms` flag of `docker buildx build` (see
+[Docker documentation about multi-platform images](https://docs.docker.com/build/building/multi-platform/#example)).
+
+You can then run your image locally or in a Kubernetes pod.
+Here is an example using a Kubernetes DaemonSet: [examples/ds-ig.yaml](examples/ds-ig.yaml):
+
+```bash
+$ kubectl apply -f docs/examples/ds-ig.yaml
+$ kubectl exec -ti $(kubectl get pod -o name -l name=example-ig | head -1) -- sh
+/ # ig trace exec
+```
