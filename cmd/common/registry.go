@@ -28,6 +28,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends/console"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -43,6 +44,11 @@ const (
 	OutputModeJSON       = "json"
 	OutputModeJSONPretty = "jsonpretty"
 	OutputModeYAML       = "yaml"
+)
+
+const (
+	kubernetesColumnPrefix = "k8s"
+	runtimeColumnPrefix    = "runtime"
 )
 
 // AddCommandsFromRegistry adds all gadgets known by the registry as cobra commands as a subcommand to their categories
@@ -122,8 +128,11 @@ func buildColumnsOutputFormat(gadgetParams *params.Params, parser parser.Parser,
 	}
 
 	of := gadgets.OutputFormat{
-		Name:        "Columns",
-		Description: "The output of the gadget is formatted in human readable columns.\n  You can optionally specify the columns to output using '-o columns=col1,col2,col3' etc.",
+		Name: "Columns",
+		Description: "The output of the gadget is formatted in human readable columns.\n  " +
+			"You can optionally specify the columns to output using '-o columns=col1,col2,col3' etc.\n  " +
+			"Columns can be prefixed with '+' or '-' to add or remove columns relative to the default columns.\n  " +
+			"Columns 'k8s' and 'runtime' are expanded to all available columns for the respective environment.",
 	}
 
 	var out strings.Builder
@@ -400,7 +409,34 @@ func buildCommandFromGadget(
 			formatter := parser.GetTextColumnsFormatter()
 
 			requestedStandardColumns := outputModeParams == ""
-			requestedColumns := strings.Split(outputModeParams, ",")
+			requestedColumns := make([]string, 0)
+
+			// Check, if columns were requested relatively
+			// (using only +column and -column syntax)
+			addCols := make([]string, 0)
+			removeCols := make([]string, 0)
+			requestedAllRelativeColumns := true
+			for _, col := range strings.Split(strings.ToLower(outputModeParams), ",") {
+				if strings.HasPrefix(col, "+") {
+					for _, c := range expandedColumns(strings.TrimPrefix(col, "+")) {
+						addCols = append(addCols, c)
+					}
+					continue
+				}
+				if strings.HasPrefix(col, "-") {
+					for _, c := range expandedColumns(strings.TrimPrefix(col, "-")) {
+						removeCols = append(removeCols, c)
+					}
+					continue
+				}
+				requestedAllRelativeColumns = false
+				requestedColumns = append(requestedColumns, expandedColumns(col)...)
+			}
+
+			// If all column requests are relative, reset requestedStandardColumns
+			if requestedAllRelativeColumns {
+				requestedStandardColumns = true
+			}
 
 			// If the standard columns are requested, hide columns that would be empty without specific features
 			// (bool params) enabled
@@ -419,7 +455,37 @@ func buildCommandFromGadget(
 				if len(hiddenColumnTags) > 0 {
 					hiddenTags = append(hiddenTags, hiddenColumnTags...)
 				}
-				requestedColumns = parser.GetDefaultColumns(hiddenTags...)
+				requestedColumns = append(requestedColumns, parser.GetDefaultColumns(hiddenTags...)...)
+			}
+
+			// Add/remove relative column requests
+			if len(addCols) > 0 || len(removeCols) > 0 {
+				newRequestedColumns := make([]string, 0)
+				for _, col := range requestedColumns {
+					if containsColumn(removeCols, col) {
+						continue
+					}
+					newRequestedColumns = append(newRequestedColumns, col)
+				}
+				// add remaining columns
+				for _, col := range addCols {
+					if containsColumn(newRequestedColumns, col) || containsColumn(removeCols, col) {
+						continue
+					}
+					newRequestedColumns = append(newRequestedColumns, col)
+				}
+				requestedColumns = newRequestedColumns
+			}
+
+			// sort columns by runtime and kubernetes columns
+			if requestedAllRelativeColumns {
+				stableSortByPrefix(runtimeColumnPrefix, requestedColumns)
+				stableSortByPrefix(kubernetesColumnPrefix, requestedColumns)
+			}
+
+			if len(requestedColumns) == 0 {
+				log.Warn("no columns requested")
+				requestedColumns = parser.GetDefaultColumns(hiddenColumnTags...)
 			}
 
 			valid, invalid := parser.VerifyColumnNames(requestedColumns)
@@ -607,6 +673,38 @@ func buildCommandFromGadget(
 		addFlags(cmd, operatorParams, skipParams, runtime)
 	}
 	return cmd
+}
+
+func containsColumn(columns []string, column string) bool {
+	for _, c := range columns {
+		if strings.EqualFold(c, column) {
+			return true
+		}
+	}
+	return false
+}
+
+func expandedColumns(col string) []string {
+	switch col {
+	case kubernetesColumnPrefix:
+		return utils.GetKubernetesColumns()
+	case runtimeColumnPrefix:
+		return utils.GetContainerRuntimeColumns()
+	case "":
+		return []string{}
+	default:
+		return []string{col}
+	}
+}
+
+func stableSortByPrefix(prefix string, columns []string) {
+	prefix = prefix + "."
+	sort.SliceStable(columns, func(i, j int) bool {
+		if strings.HasPrefix(columns[i], prefix) && !strings.HasPrefix(columns[j], prefix) {
+			return true
+		}
+		return i < j
+	})
 }
 
 func mustSkip(skipParams []params.ValueHint, valueHint params.ValueHint) bool {
