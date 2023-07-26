@@ -31,9 +31,13 @@ func TestProfileCpu(t *testing.T) {
 		Name: "ProfileCpu",
 		Cmd:  fmt.Sprintf("ig profile cpu -K -o json --runtimes=%s --timeout 10", *containerRuntime),
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &cpuprofileTypes.Report{
-				CommonData: BuildCommonData(ns, WithRuntimeMetadata(*containerRuntime)),
-				Comm:       "sh",
+				CommonData: BuildCommonData(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+				),
+				Comm: "sh",
 			}
 
 			normalize := func(e *cpuprofileTypes.Report) {

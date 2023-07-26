@@ -79,10 +79,9 @@ func TestTraceNetwork(t *testing.T) {
 								},
 							},
 							Runtime: eventtypes.BasicRuntimeMetadata{
-								ContainerName: "nginx-pod",
-								RuntimeName:   eventtypes.String2RuntimeName(*containerRuntime),
-								// TODO: once ig supports initial containers images enrichment, ContainerImageName should be added
-								// ContainerImageName: "docker.io/library/nginx:latest",
+								ContainerName:      "nginx-pod",
+								RuntimeName:        eventtypes.String2RuntimeName(*containerRuntime),
+								ContainerImageName: "docker.io/library/nginx:latest",
 							},
 						},
 					},
@@ -96,6 +95,11 @@ func TestTraceNetwork(t *testing.T) {
 						Addr: testPodIP,
 					},
 				},
+			}
+
+			// TODO: Handle once we can get ContainerImageName from docker
+			if isDockerRuntime {
+				expectedEntries[1].Event.Runtime.ContainerImageName = ""
 			}
 
 			normalize := func(e *networkTypes.Event) {

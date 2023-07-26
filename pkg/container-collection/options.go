@@ -49,6 +49,7 @@ func enrichContainerWithContainerData(containerData *runtimeclient.ContainerData
 	container.Runtime.ContainerID = containerData.Runtime.ContainerID
 	container.Runtime.RuntimeName = containerData.Runtime.RuntimeName
 	container.Runtime.ContainerName = containerData.Runtime.ContainerName
+	container.Runtime.ContainerImageName = containerData.Runtime.ContainerImageName
 
 	// Kubernetes
 	container.K8s.Namespace = containerData.K8s.Namespace

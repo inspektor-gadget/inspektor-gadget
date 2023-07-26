@@ -27,10 +27,14 @@ import (
 
 func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 	expectedOutputFn := func(output string) error {
+		isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 		expectedEntry := &types.Stats{
-			CommonData: BuildCommonData(ns, WithRuntimeMetadata(*containerRuntime)),
-			Comm:       "curl",
-			IPVersion:  syscall.AF_INET,
+			CommonData: BuildCommonData(ns,
+				WithRuntimeMetadata(*containerRuntime),
+				WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime),
+			),
+			Comm:      "curl",
+			IPVersion: syscall.AF_INET,
 			SrcEndpoint: eventtypes.L4Endpoint{
 				L3Endpoint: eventtypes.L3Endpoint{
 					Addr: "127.0.0.1",

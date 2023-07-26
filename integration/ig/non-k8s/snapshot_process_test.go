@@ -51,6 +51,8 @@ func TestSnapshotProcess(t *testing.T) {
 				e.MountNsID = 0
 
 				e.Runtime.ContainerID = ""
+				// TODO: Handle once we support getting ContainerImageName from Docker
+				e.Runtime.ContainerImageName = ""
 			}
 
 			return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)

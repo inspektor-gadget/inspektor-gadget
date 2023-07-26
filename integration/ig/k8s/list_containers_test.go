@@ -43,10 +43,17 @@ func newListContainerTestStep(
 				},
 				Runtime: containercollection.RuntimeMetadata{
 					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-						RuntimeName:   types.String2RuntimeName(runtime),
-						ContainerName: runtimeContainerName,
+						RuntimeName:        types.String2RuntimeName(runtime),
+						ContainerName:      runtimeContainerName,
+						ContainerImageName: "docker.io/library/busybox:latest",
 					},
 				},
+			}
+
+			// TODO: Handle once we support getting ContainerImageName from docker
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+			if isDockerRuntime {
+				expectedContainer.Runtime.ContainerImageName = ""
 			}
 
 			normalize := func(c *containercollection.Container) {
@@ -239,11 +246,18 @@ func TestWatchDeletedContainers(t *testing.T) {
 					},
 					Runtime: containercollection.RuntimeMetadata{
 						BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-							RuntimeName:   types.String2RuntimeName(*containerRuntime),
-							ContainerName: cn,
+							RuntimeName:        types.String2RuntimeName(*containerRuntime),
+							ContainerName:      cn,
+							ContainerImageName: "docker.io/library/busybox:latest",
 						},
 					},
 				},
+			}
+
+			// TODO: Handle once we support getting containerImageName from Docker
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
+			if isDockerRuntime {
+				expectedEvent.Container.Runtime.ContainerImageName = ""
 			}
 
 			normalize := func(e *containercollection.PubSubEvent) {

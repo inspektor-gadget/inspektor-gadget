@@ -32,8 +32,12 @@ func TestSnapshotProcess(t *testing.T) {
 		Cmd:          fmt.Sprintf("ig snapshot process -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
 		ExpectedOutputFn: func(output string) error {
+			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &types.Event{
-				Event:   BuildBaseEvent(ns, WithRuntimeMetadata(*containerRuntime)),
+				Event: BuildBaseEvent(ns,
+					WithRuntimeMetadata(*containerRuntime),
+					WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+				),
 				Command: "nc",
 			}
 

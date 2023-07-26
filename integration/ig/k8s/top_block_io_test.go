@@ -25,10 +25,14 @@ import (
 
 func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 	expectedOutputFn := func(output string) error {
+		isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 		expectedEntry := &types.Stats{
-			CommonData: BuildCommonData(ns, WithRuntimeMetadata(*containerRuntime)),
-			Comm:       "dd",
-			Write:      true,
+			CommonData: BuildCommonData(ns,
+				WithRuntimeMetadata(*containerRuntime),
+				WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
+			),
+			Comm:  "dd",
+			Write: true,
 		}
 
 		normalize := func(e *types.Stats) {

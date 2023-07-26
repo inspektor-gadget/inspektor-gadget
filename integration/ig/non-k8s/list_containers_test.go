@@ -54,6 +54,8 @@ func TestFilterByContainerName(t *testing.T) {
 				c.K8s.PodLabels = nil
 				c.K8s.PodUID = ""
 				c.Runtime.ContainerID = ""
+				// TODO: Handle once we support getting ContainerImageName from Docker
+				c.Runtime.ContainerImageName = ""
 			}
 
 			return ExpectAllInArrayToMatch(output, normalize, expectedContainer)
@@ -122,6 +124,8 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.K8s.PodLabels = nil
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
+				// TODO: Handle once we support getting ContainerImageName from Docker
+				e.Container.Runtime.ContainerImageName = ""
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEvents...)
