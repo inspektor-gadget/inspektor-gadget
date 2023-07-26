@@ -23,7 +23,7 @@ file is:
 metrics_name: metrics_name
 metrics:
   - name: metric_name
-    type: counter or  gauge # histogram isnt' supported yet
+    type: counter or  gauge or histogram
     category: trace # category of the gadget to collect the metric. trace, snapshot, etc.
     gadget: exec # gadget used to collect the metric. exec, open, etc.
     selector:
@@ -193,6 +193,36 @@ metrics:
     selector:
       - "status:CLOSE_WAIT"
 ```
+
+### Histograms
+
+"A _histogram_ samples observations (usually things like request durations or response sizes) and counts them in
+configurable buckets. It also provides a sum of all observed values."
+from [https://prometheus.io/docs/concepts/metric_types/#histogram](https://prometheus.io/docs/concepts/metric_types/#histogram).
+We support the same bucket configuration as described in
+[https://github.com/cloudflare/ebpf_exporter#histograms.](https://github.com/cloudflare/ebpf_exporter#histograms.)
+
+Right now only trace gadgets are supported.
+
+Example of histograms is:
+
+Latency of DNS requests for all pods
+
+```yaml
+metrics_name: metrics_name
+metrics:
+  - name: dns_requests_latency
+    type: histogram
+    category: trace
+    field: latency
+    bucket:
+      min: 0
+      max: 10
+      multiplier: 100000 # 0.1ms
+      type: exp2
+      unit: ns
+    selector:
+      - "qr:R" # Latency is only calculated for response events
 
 ### Guide
 
@@ -377,8 +407,40 @@ We can see how the counter for `mycontainer` is increased in http://localhost:90
 
 ![ig counter](../images/prometheus_ig_counter1.png)
 
+#### Grafana
+
+It's possible to visualize the metrics in Grafana. As an example we will plot a histogram for DNS requests latency. We
+can use the [docker compose file](../../tools/monitoring/docker-compose.yml) to prepare the environment:
+
+```bash
+$ pushd tools/monitoring
+$ docker compose up -d
+$ popd
+```
+
+<!-- markdown-link-check-disable-next-line -->
+At this point, Grafana is available at http://localhost:3000 and Prometheus at http://localhost:9090. We can start `ig`
+with the following configuration:
+
+```bash
+$ sudo ig prometheus --config @tools/monitoring/config/histogram.yaml
+INFO[0000] Running. Press Ctrl + C to finish
+```
+
+Now, generate some DNS requests:
+
+```bash
+$ docker run --rm -ti busybox sh -c 'for i in $(seq 0 1 1000); do cat /dev/null ; nslookup -querytype=a microsoft.com. > /dev/null; done'
+```
+
+<!-- markdown-link-check-disable -->
+We should now be able to see the visualized histogram
+at: http://localhost:3000/d/e1981f70-308c-4784-b986-9b5f1a895444/inspektor-gadget?orgId=1&viewPanel=1
+<!-- markdown-link-check-enable -->
+
+![ig histogram](../images/prometheus_ig_histogram.png)
+
 ### Limitations
 
 - The `kubectl gadget` instance has to keep running in order to update the metrics.
-- Histograms aren't supported
 - It's not possible to configure the metrics endpoint in ig-k8s

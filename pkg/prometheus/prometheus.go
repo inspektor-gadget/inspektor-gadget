@@ -27,6 +27,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/prometheus"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus/config"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -52,9 +53,14 @@ type Gauge struct {
 	registration otelmetric.Registration
 }
 
+type Histogram struct {
+	config.Metric
+}
+
 type Instruments struct {
-	Counters []*Counter
-	Gauges   []*Gauge
+	Counters   []*Counter
+	Gauges     []*Gauge
+	Histograms []*Histogram
 }
 
 func CreateMetrics(ctx context.Context, config *config.Config, meterProvider otelmetric.MeterProvider) (func(), error) {
@@ -77,6 +83,12 @@ func CreateMetrics(ctx context.Context, config *config.Config, meterProvider ote
 				return nil, err
 			}
 			instruments.Gauges = append(instruments.Gauges, gauge)
+		case "histogram":
+			histogram, err := createHistogram(ctx, runtime, &metric, meter)
+			if err != nil {
+				return nil, err
+			}
+			instruments.Histograms = append(instruments.Histograms, histogram)
 		default:
 			return nil, fmt.Errorf("metric type %s not supported", metric.Type)
 		}
@@ -168,8 +180,10 @@ func handleMetric(
 		}
 	}
 
-	if err := parser.SetFilters(filters); err != nil {
-		return nil, nil, fmt.Errorf("setting filters: %w", err)
+	if parser != nil {
+		if err := parser.SetFilters(filters); err != nil {
+			return nil, nil, fmt.Errorf("setting filters: %w", err)
+		}
 	}
 
 	return gadgetCtx, parser, nil
@@ -201,14 +215,9 @@ func createCounter(
 			return nil, err
 		}
 
-		switch typ {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			isInt = true
-		case reflect.Float32, reflect.Float64:
-			isInt = false
-		default:
-			return nil, fmt.Errorf("counter %s: unsupported field type %s", counter.Name, typ)
+		isInt, err = isKindInt(typ)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -317,14 +326,9 @@ func createGauge(
 			return nil, err
 		}
 
-		switch typ {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			isInt = true
-		case reflect.Float32, reflect.Float64:
-			isInt = false
-		default:
-			return nil, fmt.Errorf("gauge %s: unsupported field type %s", gauge.Name, typ)
+		isInt, err = isKindInt(typ)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -381,4 +385,98 @@ func createGauge(
 	}
 
 	return gauge, nil
+}
+
+func createHistogram(
+	ctx context.Context,
+	runtime runtime.Runtime,
+	metric *config.Metric,
+	meter otelmetric.Meter,
+) (*Histogram, error) {
+	histogram := &Histogram{Metric: *metric}
+
+	if histogram.Field == "" || histogram.Bucket.Type == "" || histogram.Bucket.Max == 0 {
+		return nil, fmt.Errorf("histogram %q: field, bucket type and bucket max are required", histogram.Name)
+	}
+	if _, ok := prometheus.AllBucketTypes[histogram.Bucket.Type]; !ok {
+		return nil, fmt.Errorf("histogram %q: invalid bucket type %q", histogram.Name, histogram.Bucket.Type)
+	}
+	if histogram.Bucket.Multiplier == 0 {
+		histogram.Bucket.Multiplier = 1
+	}
+
+	gadgetCtx, parser, err := handleMetric(ctx, &histogram.Metric, runtime)
+	if err != nil {
+		return nil, err
+	}
+
+	if gadgetCtx.GadgetDesc().Type() != gadgets.TypeTrace {
+		return nil, fmt.Errorf("histogram %s: only trace gadgets are supported", histogram.Name)
+	}
+
+	typ, err := parser.GetColKind(histogram.Field)
+	if err != nil {
+		return nil, err
+	}
+	isInt, err := isKindInt(typ)
+	if err != nil {
+		return nil, err
+	}
+
+	var cb func(any)
+
+	attrsGetter, err := parser.AttrsGetter(histogram.Labels)
+	if err != nil {
+		return nil, err
+	}
+
+	if isInt {
+		otelHistogram, err := meter.Int64Histogram(histogram.Name, otelmetric.WithUnit(histogram.Bucket.Unit))
+		if err != nil {
+			return nil, err
+		}
+		getter, err := parser.ColIntGetter(histogram.Field)
+		if err != nil {
+			return nil, err
+		}
+		cb = func(ev any) {
+			attrs := attrsGetter(ev)
+			otelHistogram.Record(ctx, getter(ev), otelmetric.WithAttributes(attrs...))
+		}
+	} else {
+		otelHistogram, err := meter.Float64Histogram(histogram.Name, otelmetric.WithUnit(histogram.Bucket.Unit))
+		if err != nil {
+			return nil, err
+		}
+		getter, err := parser.ColFloatGetter(histogram.Field)
+		if err != nil {
+			return nil, err
+		}
+		cb = func(ev any) {
+			attrs := attrsGetter(ev)
+			otelHistogram.Record(ctx, getter(ev), otelmetric.WithAttributes(attrs...))
+		}
+	}
+
+	parser.SetEventCallback(cb)
+
+	go func() {
+		if _, err = runtime.RunGadget(gadgetCtx); err != nil {
+			gadgetCtx.Logger().Errorf("running gadget: %s", err)
+		}
+	}()
+
+	return histogram, nil
+}
+
+func isKindInt(typ reflect.Kind) (bool, error) {
+	switch typ {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return true, nil
+	case reflect.Float32, reflect.Float64:
+		return false, nil
+	default:
+		return false, fmt.Errorf("unsupported field type %s", typ)
+	}
 }

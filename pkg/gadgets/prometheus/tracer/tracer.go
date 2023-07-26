@@ -26,11 +26,10 @@ import (
 
 type Tracer struct {
 	meterProvider metric.MeterProvider
+	config        *config.Config
 }
 
-func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
-	ctx := gadgetCtx.Context()
-
+func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
 	metricsConfig := params.Get(ParamConfig).AsBytes()
 
@@ -38,10 +37,18 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	if err != nil {
 		return err
 	}
+	t.config = config
+	return nil
+}
 
-	gadgetCtx.Logger().Debugf("config: %+v", config)
+func (t *Tracer) Close() {
+}
 
-	cleanup, err := igprometheus.CreateMetrics(ctx, config, t.meterProvider)
+func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	ctx := gadgetCtx.Context()
+	gadgetCtx.Logger().Debugf("config: %+v", t.config)
+
+	cleanup, err := igprometheus.CreateMetrics(ctx, t.config, t.meterProvider)
 	if err != nil {
 		return err
 	}
@@ -60,4 +67,8 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 
 func (t *Tracer) SetMetricsProvider(meter metric.MeterProvider) {
 	t.meterProvider = meter
+}
+
+func (t *Tracer) GetPrometheusConfig() *config.Config {
+	return t.config
 }
