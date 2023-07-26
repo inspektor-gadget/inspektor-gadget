@@ -213,3 +213,19 @@ This requires a GitHub API token (secret `BENCHMARKS_TOKEN`) configured with rea
 
 The GitHub Action is disabled for pushes on forks or PR from forks, so the result page will not be updated by forks.
 In this way, forks can still use other parts of the CI without failing, even without the `BENCHMARKS_TOKEN` secret.
+
+## Sign release artifact
+
+We compute hash sum of all our release artifacts and the file containing these checksums is signed using [`cosign`](https://github.com/sigstore/cosign).
+To sign this file, you will need to create a private key with an associated password:
+
+```bash
+$ cosign generate-key-pair
+Enter password for private key:
+Enter password for private key again:
+Private key written to cosign.key
+Public key written to cosign.pub
+```
+
+You will then need to store the content of `cosign.key` in the `COSIGN_PRIVATE_KEY` and the password you used to create the key in `COSIGN_PASSWORD`.
+Without these secrets, the release job will not be run.
