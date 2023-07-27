@@ -156,16 +156,18 @@ func (t *Tracer) installTracer() error {
 		printMap.ValueSize = 4
 	}
 
-	for _, m := range t.spec.Maps {
-		// Replace filter mount ns map
-		if m.Name == gadgets.MntNsFilterMapName {
-			mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
-			consts[gadgets.FilterByMntNsName] = true
+	if t.config.MountnsMap != nil {
+		for _, m := range t.spec.Maps {
+			// Replace filter mount ns map
+			if m.Name == gadgets.MntNsFilterMapName {
+				mapReplacements[gadgets.MntNsFilterMapName] = t.config.MountnsMap
+				consts[gadgets.FilterByMntNsName] = true
+			}
 		}
-	}
 
-	if err := t.spec.RewriteConstants(consts); err != nil {
-		return fmt.Errorf("rewriting constants: %w", err)
+		if err := t.spec.RewriteConstants(consts); err != nil {
+			return fmt.Errorf("rewriting constants: %w", err)
+		}
 	}
 
 	// Load the ebpf objects
