@@ -141,7 +141,7 @@ cross-gadget-container-all: $(foreach container,$(GADGET_CONTAINERS),$(addprefix
 gadget-%-container:
 	if $(ENABLE_BTFGEN) == "true" ; then \
 		./tools/getbtfhub.sh && \
-		$(MAKE) -f Makefile.btfgen BPFTOOL=$(HOME)/btfhub/tools/bin/bpftool.$(uname -m) \
+		$(MAKE) -f Makefile.btfgen \
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
 	fi
 	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
@@ -150,7 +150,7 @@ gadget-%-container:
 cross-gadget-%-container:
 	if $(ENABLE_BTFGEN) == "true" ; then \
 		./tools/getbtfhub.sh && \
-		$(MAKE) -f Makefile.btfgen BPFTOOL=$(HOME)/btfhub/tools/bin/bpftool.$(uname -m) \
+		$(MAKE) -f Makefile.btfgen \
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
 	fi
 	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
