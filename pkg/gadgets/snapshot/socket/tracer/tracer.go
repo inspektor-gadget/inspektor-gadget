@@ -121,8 +121,7 @@ func getUDPIter() (*link.Iter, error) {
 	return it, nil
 }
 
-// RunCollector is currently exported so it can be called from Collect()
-func (t *Tracer) RunCollector(pid uint32, podname, namespace, node string) ([]*socketcollectortypes.Event, error) {
+func (t *Tracer) runCollector(pid uint32, netns uint64) ([]*socketcollectortypes.Event, error) {
 	sockets := []*socketcollectortypes.Event{}
 	err := netnsenter.NetnsEnter(int(pid), func() error {
 		for iterKey, it := range t.iters {
@@ -157,26 +156,9 @@ func (t *Tracer) RunCollector(pid uint32, podname, namespace, node string) ([]*s
 					return err
 				}
 
-				// TODO: Receive the netns from caller
-				netns, err := containerutils.GetNetNs(int(pid))
-				if err != nil {
-					return fmt.Errorf("getting netns for pid %d: %w", pid, err)
-				}
-
 				sockets = append(sockets, &socketcollectortypes.Event{
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
-						// TODO: This can be removed as events will be enriched
-						//  by the eventHandler
-						CommonData: eventtypes.CommonData{
-							K8s: eventtypes.K8sMetadata{
-								Node: node,
-								BasicK8sMetadata: eventtypes.BasicK8sMetadata{
-									Namespace: namespace,
-									PodName:   podname,
-								},
-							},
-						},
 					},
 					Protocol: proto,
 					SrcEndpoint: eventtypes.L4Endpoint{
@@ -205,6 +187,28 @@ func (t *Tracer) RunCollector(pid uint32, podname, namespace, node string) ([]*s
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	return sockets, nil
+}
+
+// RunCollector is currently exported so it can be called from Collect(). It can be removed once
+// pkg/gadget-collection/gadgets/snapshot/socket/gadget.go is gone.
+func (t *Tracer) RunCollector(pid uint32, podname, namespace, node string) ([]*socketcollectortypes.Event, error) {
+	netns, err := containerutils.GetNetNs(int(pid))
+	if err != nil {
+		return nil, fmt.Errorf("getting netns for pid %d: %w", pid, err)
+	}
+
+	sockets, err := t.runCollector(pid, netns)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, socket := range sockets {
+		socket.K8s.Node = node
+		socket.K8s.Namespace = namespace
+		socket.K8s.PodName = podname
 	}
 
 	return sockets, nil
@@ -287,7 +291,7 @@ func (t *Tracer) openIters() error {
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	protocols := gadgetCtx.GadgetParams().Get(ParamProto).AsString()
-	t.protocols, _ = socketcollectortypes.ProtocolsMap[protocols]
+	t.protocols = socketcollectortypes.ProtocolsMap[protocols]
 
 	defer t.CloseIters()
 	if err := t.openIters(); err != nil {
@@ -296,10 +300,7 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 
 	allSockets := []*socketcollectortypes.Event{}
 	for netns, pid := range t.visitedNamespaces {
-		// TODO: Remove podname, namespace and node arguments from RunCollector.
-		// The enrichment will be done in the event handler. In addition, pass
-		// the netns to avoid retrieving it again in RunCollector.
-		sockets, err := t.RunCollector(pid, "", "", "")
+		sockets, err := t.runCollector(pid, netns)
 		if err != nil {
 			return fmt.Errorf("snapshotting sockets in netns %d: %w", netns, err)
 		}
