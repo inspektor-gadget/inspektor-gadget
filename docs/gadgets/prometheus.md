@@ -223,6 +223,7 @@ metrics:
       unit: ns
     selector:
       - "qr:R" # Latency is only calculated for response events
+```
 
 ### Guide
 

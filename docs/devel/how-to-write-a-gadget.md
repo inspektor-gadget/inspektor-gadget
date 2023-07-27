@@ -16,7 +16,7 @@ The first step to writing a new gadget is providing a _Gadget Descriptor_. Simpl
 the [`gadgets.GadgetDesc`]( https://pkg.go.dev/github.com/inspektor-gadget/inspektor-gadget@main/pkg/gadgets#GadgetDesc)
 interface, providing all required information, including a name, description, category and so on.
 
-sIn our example, we call this struct like the interface, `GadgetDesc`. If you want your gadget to return records of
+In our example, we call this struct like the interface, `GadgetDesc`. If you want your gadget to return records of
 a specific known type, for example system events as they come in, you can define a type for it (we call it
 EventDataType in our example) and return a pointer to an empty version of it in the `EventPrototype()` methods and
 initialize a Parser inside the `Parser()` function. This typically looks like this:
