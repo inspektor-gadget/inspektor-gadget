@@ -848,10 +848,18 @@ jobs:
       # Secrets cannot be used as if condition, use job output as workaround.
       # https://github.com/actions/runner/issues/520
       - id: set_output
+        env:
+          OPENSHIFT_SERVER: '${{ secrets.OPENSHIFT_SERVER }}'
+          OPENSHIFT_USER: '${{ secrets.OPENSHIFT_USER }}'
+          OPENSHIFT_PASSWORD: '${{ secrets.OPENSHIFT_PASSWORD }}'
+          AZURE_AKS_CREDS: '${{ secrets.AZURE_AKS_CREDS }}'
+          AZURE_AKS_RESOURCE_GROUP: '${{ secrets.AZURE_AKS_RESOURCE_GROUP }}'
+          COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
+          COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
         run: |
-          if [[ "${{ secrets.OPENSHIFT_SERVER }}" != "" && \
-                "${{ secrets.OPENSHIFT_USER }}" != "" && \
-                "${{ secrets.OPENSHIFT_PASSWORD }}" != "" ]]; \
+          if [[ "${OPENSHIFT_SERVER}" != "" && \
+                "${OPENSHIFT_USER}" != "" && \
+                "${OPENSHIFT_PASSWORD}" != "" ]]; \
           then
             echo "Secrets to use an ARO cluster were configured in the repo"
             echo "aro=true" >> $GITHUB_OUTPUT
@@ -860,8 +868,8 @@ jobs:
             echo "aro=false" >> $GITHUB_OUTPUT
           fi
 
-          if [[ "${{ secrets.AZURE_AKS_CREDS }}" != "" && \
-                "${{ secrets.AZURE_AKS_RESOURCE_GROUP }}" != "" ]]; \
+          if [[ "${AZURE_AKS_CREDS}" != "" && \
+                "${AZURE_AKS_RESOURCE_GROUP}" != "" ]]; \
           then
             echo "Secrets to use an AKS cluster were configured in the repo"
             echo "aks=true" >> $GITHUB_OUTPUT
@@ -870,8 +878,8 @@ jobs:
             echo "aks=false" >> $GITHUB_OUTPUT
           fi
 
-          if [[ "${{ secrets.COSIGN_PASSWORD }}" != "" && \
-                "${{ secrets.COSIGN_PRIVATE_KEY }}" != "" ]]; \
+          if [[ "${COSIGN_PASSWORD}" != "" && \
+                "${COSIGN_PRIVATE_KEY}" != "" ]]; \
           then
             echo "Secrets to use cosign were configured in the repo"
             echo "cosign=true" >> $GITHUB_OUTPUT
@@ -983,6 +991,8 @@ jobs:
       matrix:
         os-sku: [Ubuntu, AzureLinux]
         arch: [amd64, arm64]
+    env:
+      AZURE_AKS_RESOURCE_GROUP: '${{ secrets.AZURE_AKS_RESOURCE_GROUP }}'
     steps:
     - uses: actions/checkout@v3
     - name: Setup go
@@ -1023,7 +1033,7 @@ jobs:
         # Let's keep thing in the US to avoid data crossing the Atlantic as
         # GitHub data centers are in the US:
         # https://github.blog/2017-10-12-evolution-of-our-data-centers/
-        az aks create -l eastus -g ${{ secrets.AZURE_AKS_RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} -s $node_size --os-sku ${{ matrix.os-sku }} --no-ssh-key
+        az aks create -l eastus -g ${AZURE_AKS_RESOURCE_GROUP} -n ${{ env.CLUSTER_NAME }} -s $node_size --os-sku ${{ matrix.os-sku }} --no-ssh-key
     - uses: azure/aks-set-context@v3
       name: Set AKS cluster ${{ env.CLUSTER_NAME }} context
       with:
@@ -1042,7 +1052,7 @@ jobs:
       if: always()
       shell: bash
       run: |
-        az aks delete -g ${{ secrets.AZURE_AKS_RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --no-wait --yes
+        az aks delete -g ${AZURE_AKS_RESOURCE_GROUP} -n ${{ env.CLUSTER_NAME }} --no-wait --yes
 
   # Integration tests for ARO are separated from others distributions because it
   # is a pre-created cluster. It implies that we need to use a concurrency group
@@ -1256,14 +1266,17 @@ jobs:
       uses: sigstore/cosign-installer@main
     - name: Sign checksums file
       shell: bash
+      env:
+        COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
+        COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
       run: |
         checksums_file=SHA256SUMS
 
-        COSIGN_PASSWORD='${{ secrets.COSIGN_PASSWORD }}' cosign sign-blob --key <(echo '${{ secrets.COSIGN_PRIVATE_KEY }}') --yes $checksums_file --output-signature="${checksums_file}.sig" --bundle="${checksums_file}.bundle"
+        cosign sign-blob --key <(echo "${COSIGN_PRIVATE_KEY}") --yes $checksums_file --output-signature="${checksums_file}.sig" --bundle="${checksums_file}.bundle"
 
         # Derivate public key from private key to publish it as release
         # artifact, so people can verify our signature.
-        COSIGN_PASSWORD='${{ secrets.COSIGN_PASSWORD }}' cosign public-key --key <(echo '${{ secrets.COSIGN_PRIVATE_KEY }}') > inspektor-gadget.pub
+        cosign public-key --key <(echo "${COSIGN_PRIVATE_KEY}") > inspektor-gadget.pub
     - name: Upload kubectl-gadget binary
       uses: csexton/release-asset-action@v2
       with:
