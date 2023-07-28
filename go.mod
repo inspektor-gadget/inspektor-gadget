@@ -37,7 +37,7 @@ require (
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/containerd/containerd v1.7.2
+	github.com/containerd/containerd v1.7.3
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/gogo/protobuf v1.3.2
