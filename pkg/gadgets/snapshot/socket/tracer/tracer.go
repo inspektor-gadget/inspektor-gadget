@@ -17,11 +17,13 @@
 package tracer
 
 import (
-	"bufio"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
+	"unsafe"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
@@ -32,11 +34,10 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang iterTCPv4 ./bpf/tcp4-collector.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang iterUDPv4 ./bpf/udp4-collector.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type entry  socket ./bpf/socket.bpf.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
 
 type Tracer struct {
-	iters map[socketcollectortypes.Proto]*link.Iter
+	iters []*link.Iter
 
 	// visitedNamespaces is a map where the key is the netns inode number and
 	// the value is the pid of one of the containers that share that netns. Such
@@ -87,100 +88,54 @@ func parseStatus(proto string, statusUint uint8) (string, error) {
 	return status, nil
 }
 
-func getTCPIter() (*link.Iter, error) {
-	objs := iterTCPv4Objects{}
-	if err := loadIterTCPv4Objects(&objs, nil); err != nil {
-		return nil, fmt.Errorf("loading TCP BPF objects: %w", err)
-	}
-	defer objs.Close()
-
-	it, err := link.AttachIter(link.IterOptions{
-		Program: objs.IgSnapTcp4,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("attaching TCP BPF iterator: %w", err)
-	}
-
-	return it, nil
-}
-
-func getUDPIter() (*link.Iter, error) {
-	objs := iterUDPv4Objects{}
-	if err := loadIterUDPv4Objects(&objs, nil); err != nil {
-		return nil, fmt.Errorf("loading UDP BPF objects: %w", err)
-	}
-	defer objs.Close()
-
-	it, err := link.AttachIter(link.IterOptions{
-		Program: objs.IgSnapUdp4,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("attaching UDP BPF iterator: %w", err)
-	}
-
-	return it, nil
-}
-
 func (t *Tracer) runCollector(pid uint32, netns uint64) ([]*socketcollectortypes.Event, error) {
 	sockets := []*socketcollectortypes.Event{}
 	err := netnsenter.NetnsEnter(int(pid), func() error {
-		for iterKey, it := range t.iters {
-			if t.protocols != socketcollectortypes.ALL && t.protocols != iterKey {
-				continue
-			}
-
+		for _, it := range t.iters {
 			reader, err := it.Open()
 			if err != nil {
 				return fmt.Errorf("opening BPF iterator: %w", err)
 			}
 			defer reader.Close()
 
-			scanner := bufio.NewScanner(reader)
-			for scanner.Scan() {
-				var status, proto string
-				var destp, srcp uint16
-				var dest, src uint32
-				var hexStatus uint8
-				var inodeNumber uint64
+			buf, err := io.ReadAll(reader)
+			if err != nil {
+				return fmt.Errorf("reading BPF iterator: %w", err)
+			}
+			entrySize := int(unsafe.Sizeof(socketEntry{}))
 
-				// Format from socket_bpf_seq_print() in bpf/socket_common.h
-				// IP addresses and ports are in host-byte order
-				len, err := fmt.Sscanf(scanner.Text(), "%s %08X %04X %08X %04X %02X %d",
-					&proto, &src, &srcp, &dest, &destp, &hexStatus, &inodeNumber)
-				if err != nil || len != 7 {
-					return fmt.Errorf("parsing sockets information: %w", err)
-				}
+			for i := 0; i < len(buf)/entrySize; i++ {
+				entry := (*socketEntry)(unsafe.Pointer(&buf[i*entrySize]))
 
-				status, err = parseStatus(proto, hexStatus)
+				proto := eventtypes.ProtoToString(entry.Proto)
+				status, err := parseStatus(proto, entry.State)
 				if err != nil {
 					return err
 				}
 
-				sockets = append(sockets, &socketcollectortypes.Event{
+				event := &socketcollectortypes.Event{
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
 					},
 					Protocol: proto,
 					SrcEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: parseIPv4(src),
+							Addr: parseIPv4(entry.Saddr),
 						},
-						Port: srcp,
+						Port: entry.Sport,
 					},
 					DstEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: parseIPv4(dest),
+							Addr: parseIPv4(entry.Daddr),
 						},
-						Port: destp,
+						Port: entry.Dport,
 					},
 					Status:      status,
-					InodeNumber: inodeNumber,
+					InodeNumber: entry.Inode,
 					WithNetNsID: eventtypes.WithNetNsID{NetNsID: netns},
-				})
-			}
+				}
 
-			if err := scanner.Err(); err != nil {
-				return fmt.Errorf("reading output of BPF iterator: %w", err)
+				sockets = append(sockets, event)
 			}
 		}
 		return nil
@@ -220,7 +175,6 @@ func NewTracer(protocols socketcollectortypes.Proto) (*Tracer, error) {
 	tracer := &Tracer{
 		visitedNamespaces: make(map[uint64]uint32),
 		protocols:         protocols,
-		iters:             make(map[socketcollectortypes.Proto]*link.Iter),
 	}
 
 	if err := tracer.openIters(); err != nil {
@@ -234,7 +188,6 @@ func NewTracer(protocols socketcollectortypes.Proto) (*Tracer, error) {
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 	return &Tracer{
 		visitedNamespaces: make(map[uint64]uint32),
-		iters:             make(map[socketcollectortypes.Proto]*link.Iter),
 	}, nil
 }
 
@@ -267,23 +220,35 @@ func (t *Tracer) CloseIters() {
 }
 
 func (t *Tracer) openIters() error {
-	var it *link.Iter
-	var err error
-
-	if t.protocols == socketcollectortypes.TCP || t.protocols == socketcollectortypes.ALL {
-		it, err = getTCPIter()
-		if err != nil {
-			return err
-		}
-		t.iters[socketcollectortypes.TCP] = it
+	// TODO: how to avoid loading programs that aren't needed?
+	objs := &socketObjects{}
+	if err := loadSocketObjects(objs, nil); err != nil {
+		return err
 	}
 
-	if t.protocols == socketcollectortypes.UDP || t.protocols == socketcollectortypes.ALL {
-		it, err = getUDPIter()
+	toAttach := []*ebpf.Program{}
+
+	switch t.protocols {
+	case socketcollectortypes.TCP:
+		toAttach = append(toAttach, objs.IgSnapTcp4)
+	case socketcollectortypes.UDP:
+		toAttach = append(toAttach, objs.IgSnapUdp4)
+	case socketcollectortypes.ALL:
+		toAttach = append(toAttach, objs.IgSnapTcp4, objs.IgSnapUdp4)
+	}
+
+	for _, prog := range toAttach {
+		it, err := link.AttachIter(link.IterOptions{
+			Program: prog,
+		})
 		if err != nil {
-			return err
+			var name string
+			if info, err := prog.Info(); err == nil {
+				name = info.Name
+			}
+			return fmt.Errorf("attaching program %q: %w", name, err)
 		}
-		t.iters[socketcollectortypes.UDP] = it
+		t.iters = append(t.iters, it)
 	}
 
 	return nil

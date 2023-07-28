@@ -228,6 +228,20 @@ func (e *L3Endpoint) String() string {
 	}
 }
 
+// ProtoToString converts an IP protocol number to its name.
+// https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+// TODO: Support other protos
+func ProtoToString(proto uint16) string {
+	switch proto {
+	case 6:
+		return "TCP"
+	case 17:
+		return "UDP"
+	default:
+		return fmt.Sprintf("unknown(%d)", proto)
+	}
+}
+
 type L4Endpoint struct {
 	L3Endpoint
 	// Port is filled by the gadget
