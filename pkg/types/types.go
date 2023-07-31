@@ -120,7 +120,7 @@ type BasicRuntimeMetadata struct {
 
 	// ContainerImageName is the name of the container image where the event comes from
 	// i.e. docker.io/library/busybox:latest
-	ContainerImageName string `json:"containerImageName,omitempty" column:"containerImageName"`
+	ContainerImageName string `json:"containerImageName,omitempty" column:"containerImageName,hide"`
 }
 
 func (b *BasicRuntimeMetadata) IsEnriched() bool {
