@@ -77,10 +77,12 @@ func NewListContainersCmd() *cobra.Command {
 			cols.SetExtractor("event", func(event *containercollection.PubSubEvent) string {
 				return event.Type.String()
 			})
-			// Display the runtime name and container ID when watching containers
+			// Display the runtime name, container ID and image name when watching containers
 			col, _ := cols.GetColumn("runtime.containerId")
 			col.Visible = true
 			col, _ = cols.GetColumn("runtime.runtimeName")
+			col.Visible = true
+			col, _ = cols.GetColumn("runtime.containerImageName")
 			col.Visible = true
 
 			parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, cols)
