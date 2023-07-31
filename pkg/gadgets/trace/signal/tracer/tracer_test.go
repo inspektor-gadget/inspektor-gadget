@@ -142,12 +142,21 @@ func TestSignalTracer(t *testing.T) {
 					return 0, fmt.Errorf("no process with PID %d: %w", childPid, err)
 				}
 
-				_, err = proc.Wait()
-				if err != nil {
-					return 0, fmt.Errorf("waiting child with PID %d: %w", childPid, err)
-				}
+				done := make(chan error)
+				go func() {
+					_, err := proc.Wait()
+					done <- err
+				}()
 
-				return uint32(childPid), nil
+				select {
+				case err := <-done:
+					if err != nil {
+						return 0, fmt.Errorf("waiting child with PID %d: %w", childPid, err)
+					}
+					return uint32(childPid), nil
+				case <-time.After(10 * time.Second):
+					return 0, fmt.Errorf("waiting child with PID %d: time out", childPid)
+				}
 			},
 			validateEvent: utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, childPid uint32) *types.Event {
 				return &types.Event{
