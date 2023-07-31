@@ -30,7 +30,6 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
-	"github.com/solo-io/bumblebee/pkg/decoder"
 	beespec "github.com/solo-io/bumblebee/pkg/spec"
 	orascontent "oras.land/oras-go/pkg/content"
 	"oras.land/oras-go/pkg/oras"
@@ -53,9 +52,8 @@ type Config struct {
 }
 
 type Tracer struct {
-	config         *Config
-	eventCallback  func(*types.Event)
-	decoderFactory decoder.DecoderFactory
+	config        *Config
+	eventCallback func(*types.Event)
 
 	spec       *ebpf.CollectionSpec
 	collection *ebpf.Collection
@@ -70,8 +68,7 @@ type Tracer struct {
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 	tracer := &Tracer{
-		config:         &Config{},
-		decoderFactory: decoder.NewDecoderFactory(),
+		config: &Config{},
 	}
 	return tracer, nil
 }
