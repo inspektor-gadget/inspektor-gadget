@@ -120,6 +120,11 @@ type BasicRuntimeMetadata struct {
 
 	// ContainerImageName is the name of the container image where the event comes from
 	// i.e. docker.io/library/busybox:latest
+	// Sometimes the image name is not provided by the runtime (i.e. Docker), then ContainerImageName
+	// is the imageID
+	// i.e. sha256:6e38f40d628db3002f5617342c8872c935de530d867d0f709a2fbda1a302a562
+	// OR
+	// i.e. 6e38f40d628d, when truncated
 	ContainerImageName string `json:"containerImageName,omitempty" column:"containerImageName,hide"`
 }
 
