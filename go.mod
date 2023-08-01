@@ -3,7 +3,7 @@ module github.com/inspektor-gadget/inspektor-gadget
 go 1.19
 
 require (
-	github.com/cilium/ebpf v0.10.0
+	github.com/cilium/ebpf v0.11.0
 	github.com/containerd/nri v0.3.0
 	github.com/containers/common v0.55.2
 	github.com/docker/docker v24.0.2+incompatible
@@ -186,7 +186,3 @@ replace github.com/docker/docker => github.com/docker/docker v23.0.6+incompatibl
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3
 
 replace github.com/vishvananda/netns => github.com/inspektor-gadget/netns v0.0.5-0.20230524185006-155d84c555d6
-
-// Required by traceloop, Will be in future release cilium/ebpf v0.10.1
-// https://github.com/cilium/ebpf/commit/5ea5368f9823c13e71146a6c2cca84ad60a5e26a
-replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.0.0-20230406090554-73acad5e3906
