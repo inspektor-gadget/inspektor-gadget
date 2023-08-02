@@ -18,8 +18,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/moby/moby/pkg/stringid"
 	"github.com/spf13/cobra"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
@@ -84,6 +86,12 @@ func NewListContainersCmd() *cobra.Command {
 			col.Visible = true
 			col, _ = cols.GetColumn("runtime.containerImageName")
 			col.Visible = true
+			cols.MustSetExtractor("runtime.containerImageName", func(event *containercollection.PubSubEvent) string {
+				if strings.Contains(event.Container.Runtime.ContainerImageName, "sha256") {
+					return stringid.TruncateID(event.Container.Runtime.ContainerImageName)
+				}
+				return event.Container.Runtime.ContainerImageName
+			})
 
 			parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, cols)
 			if err != nil {
