@@ -200,11 +200,14 @@ func ownerReferenceEnrichment(
 func GetColumns() *columns.Columns[Container] {
 	cols := columns.MustCreateColumns[Container]()
 
-	// Display the runtime name and container ID when listing containers
+	// Display the runtime name, container ID and image name when listing containers
 	col, _ := cols.GetColumn("runtime.containerId")
 	col.Visible = true
 
 	col, _ = cols.GetColumn("runtime.runtimeName")
+	col.Visible = true
+
+	col, _ = cols.GetColumn("runtime.containerImageName")
 	col.Visible = true
 
 	return cols
