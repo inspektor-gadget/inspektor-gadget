@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ig
+  labels:
+    k8s-app: example-ig
+spec:
+  containers:
+    - name: ig
+      image: ghcr.io/inspektor-gadget/ig:latest
+      securityContext:
+        # CHANGEME: you can also use a more restrictive securityContext
+        # See example in
+        # https://github.com/inspektor-gadget/inspektor-gadget/blob/main/pkg/resources/manifests/deploy.yaml
+        privileged: true
+      command:
+        # CHANGEME: run the gadget of your choice
+        - "ig"
+        - "--auto-mount-filesystems"
+        - "trace"
+        - "exec"
+        - "--host"
+      env:
+        - name: HOST_ROOT
+          value: "/host"
+      volumeMounts:
+        - mountPath: /host
+          name: host
+        - mountPath: /run
+          name: run
+        - mountPath: /sys/kernel/debug
+          name: debugfs
+  # CHANGEME: where do you want to run this pod?
+  nodeName: minikube-containerd
+  volumes:
+    - name: host
+      hostPath:
+        path: /
+    - name: run
+      hostPath:
+        path: /run
+    - name: debugfs
+      hostPath:
+        path: /sys/kernel/debug
