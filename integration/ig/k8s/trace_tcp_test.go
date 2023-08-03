@@ -32,7 +32,7 @@ func TestTraceTCP(t *testing.T) {
 		Name:         "TraceTCP",
 		Cmd:          fmt.Sprintf("ig trace tcp -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &tcpTypes.Event{
 				Event: BuildBaseEvent(ns,
@@ -73,7 +73,7 @@ func TestTraceTCP(t *testing.T) {
 				e.Runtime.ContainerID = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

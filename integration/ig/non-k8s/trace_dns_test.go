@@ -32,7 +32,7 @@ func TestTraceDns(t *testing.T) {
 		Name:         "TraceDns",
 		Cmd:          fmt.Sprintf("./ig trace dns -o json --runtimes=%s -c %s", *runtime, cn),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*dnsTypes.Event{
 				{
 					Event: eventtypes.Event{
@@ -130,7 +130,7 @@ func TestTraceDns(t *testing.T) {
 				e.Runtime.ContainerImageName = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 

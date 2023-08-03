@@ -114,36 +114,33 @@ func MergeJsonObjs(t *testing.T, base map[string]interface{}, additionalFields m
 
 // parseMultiJSONOutputToObj parses a string containing multiple JSON objects
 // (one per line) into a slice of maps.
-func parseMultiJSONOutputToObj(output string, normalize func(map[string]interface{})) ([]map[string]interface{}, error) {
+func parseMultiJSONOutputToObj(t *testing.T, output string, normalize func(map[string]interface{})) []map[string]interface{} {
 	ret := []map[string]interface{}{}
 
 	decoder := json.NewDecoder(strings.NewReader(output))
 	for decoder.More() {
 		var entry map[string]interface{}
-		if err := decoder.Decode(&entry); err != nil {
-			return nil, fmt.Errorf("decoding json: %w", err)
-		}
+		err := decoder.Decode(&entry)
+		require.NoError(t, err, "decoding json")
+
 		if normalize != nil {
 			normalize(entry)
 		}
 
 		// Marshal & Unmarshal to have the right types in the map
 		bytes, err := json.Marshal(entry)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling json: %w", err)
-		}
+		require.NoError(t, err, "marshalling json")
+
 		err = json.Unmarshal(bytes, &entry)
-		if err != nil {
-			return nil, fmt.Errorf("unmarshalling json: %w", err)
-		}
+		require.NoError(t, err, "unmarshalling json")
 		ret = append(ret, entry)
 	}
-	return ret, nil
+	return ret
 }
 
 // expectEntriesToMatchObj verifies that all the entries in expectedEntries are
 // matched by at least one entry in the output
-func expectEntriesToMatchObj(t *testing.T, entries []map[string]interface{}, expectedEntries ...map[string]interface{}) error {
+func expectEntriesToMatchObj(t *testing.T, entries []map[string]interface{}, expectedEntries ...map[string]interface{}) {
 out:
 	for _, expectedEntry := range expectedEntries { // Marshal & Unmarshal to have the right types in the map
 		bytes, err := json.Marshal(expectedEntry)
@@ -160,17 +157,13 @@ out:
 			}
 		}
 		expectedJsonEntry, _ := json.Marshal(expectedEntry)
-		return fmt.Errorf("output doesn't contain the expected entry: %+v", string(expectedJsonEntry))
+		t.Fatalf("output doesn't contain the expected entry: %+v", string(expectedJsonEntry))
 	}
-	return nil
 }
 
 // ExpectEntriesToMatchObj verifies that all the entries in expectedEntries are
 // matched by at least one entry in the output (Lines of independent JSON objects).
-func ExpectEntriesToMatchObj(t *testing.T, output string, normalize func(map[string]interface{}), expectedEntries ...map[string]interface{}) error {
-	entries, err := parseMultiJSONOutputToObj(output, normalize)
-	if err != nil {
-		return err
-	}
-	return expectEntriesToMatchObj(t, entries, expectedEntries...)
+func ExpectEntriesToMatchObj(t *testing.T, output string, normalize func(map[string]interface{}), expectedEntries ...map[string]interface{}) {
+	entries := parseMultiJSONOutputToObj(t, output, normalize)
+	expectEntriesToMatchObj(t, entries, expectedEntries...)
 }

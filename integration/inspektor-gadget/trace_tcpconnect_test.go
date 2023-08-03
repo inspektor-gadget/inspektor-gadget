@@ -29,16 +29,13 @@ func TestTraceTcpconnect(t *testing.T) {
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	traceTcpconnectCmd := &Command{
 		Name:         "StartTraceTcpconnectGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s -o json", ns),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &tracetcpconnectTypes.Event{
 				Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
 				Comm:      "curl",
@@ -71,7 +68,7 @@ func TestTraceTcpconnect(t *testing.T) {
 				e.Runtime.ContainerID = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 
@@ -92,16 +89,13 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	traceTcpconnectCmd := &Command{
 		Name:         "StartTraceTcpconnectGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace tcpconnect -n %s -o json --latency", ns),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &tracetcpconnectTypes.Event{
 				Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/nginx:latest", isDockerRuntime)),
 				Comm:      "curl",
@@ -139,7 +133,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 				e.Runtime.ContainerID = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

@@ -23,7 +23,7 @@ import (
 )
 
 func newTopFileCmd(ns, cmd string, startAndStop bool, isDockerRuntime bool) *Command {
-	expectedOutputFn := func(output string) error {
+	validateOutputFn := func(t *testing.T, output string) {
 		expectedEntry := &topfileTypes.Stats{
 			CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 			Reads:      0,
@@ -47,13 +47,13 @@ func newTopFileCmd(ns, cmd string, startAndStop bool, isDockerRuntime bool) *Com
 			e.Runtime.ContainerID = ""
 		}
 
-		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
 	}
 	return &Command{
-		Name:             "TopFile",
-		ExpectedOutputFn: expectedOutputFn,
-		Cmd:              cmd,
-		StartAndStop:     startAndStop,
+		Name:           "TopFile",
+		ValidateOutput: validateOutputFn,
+		Cmd:            cmd,
+		StartAndStop:   startAndStop,
 	}
 }
 
@@ -62,10 +62,7 @@ func TestTopFile(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-top-file")
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),

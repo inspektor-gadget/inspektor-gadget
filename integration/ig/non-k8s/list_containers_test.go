@@ -30,7 +30,7 @@ func TestFilterByContainerName(t *testing.T) {
 	listContainersCmd := &Command{
 		Name: "RunFilterByContainerName",
 		Cmd:  fmt.Sprintf("./ig list-containers -o json --runtimes=%s --containername=%s", *runtime, cn),
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedContainer := &containercollection.Container{
 				Runtime: containercollection.RuntimeMetadata{
 					BasicRuntimeMetadata: types.BasicRuntimeMetadata{
@@ -58,7 +58,7 @@ func TestFilterByContainerName(t *testing.T) {
 				c.Runtime.ContainerImageName = ""
 			}
 
-			return ExpectAllInArrayToMatch(output, normalize, expectedContainer)
+			ExpectAllInArrayToMatch(t, output, normalize, expectedContainer)
 		},
 	}
 
@@ -83,7 +83,7 @@ func TestWatchContainers(t *testing.T) {
 		Name:         "RunWatchContainers",
 		Cmd:          fmt.Sprintf("./ig list-containers -o json --watch --runtimes=%s -c %s", *runtime, cn),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEvents := []*containercollection.PubSubEvent{
 				{
 					Type: containercollection.EventTypeAddContainer,
@@ -128,7 +128,7 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.Runtime.ContainerImageName = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEvents...)
+			ExpectEntriesToMatch(t, output, normalize, expectedEvents...)
 		},
 	}
 

@@ -29,10 +29,7 @@ func TestSnapshotProcess(t *testing.T) {
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -48,16 +45,13 @@ func TestSnapshotProcess(t *testing.T) {
 		RunTestSteps(commandsPostTest, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 	})
 
-	nodeName, err := GetPodNode(ns, "test-pod")
-	if err != nil {
-		t.Fatalf("getting test-pod node: %s", err)
-	}
+	nodeName := GetPodNode(t, ns, "test-pod")
 
 	commands := []*Command{
 		{
 			Name: "RunProcessCollectorGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET snapshot process -n %s -o json --node %s", ns, nodeName),
-			ExpectedOutputFn: func(output string) error {
+			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &snapshotprocessTypes.Event{
 					Event:   BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Command: "nc",
@@ -76,7 +70,7 @@ func TestSnapshotProcess(t *testing.T) {
 					e.Runtime.ContainerID = ""
 				}
 
-				return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
+				ExpectEntriesInArrayToMatch(t, output, normalize, expectedEntry)
 			},
 		},
 	}

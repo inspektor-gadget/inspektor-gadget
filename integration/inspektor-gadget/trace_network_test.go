@@ -30,10 +30,7 @@ func TestTraceNetwork(t *testing.T) {
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -42,20 +39,14 @@ func TestTraceNetwork(t *testing.T) {
 	}
 
 	RunTestSteps(commandsPreTest, t)
-	nginxIP, err := GetTestPodIP(ns, "nginx-pod")
-	if err != nil {
-		t.Fatalf("failed to get pod ip %s", err)
-	}
+	nginxIP := GetTestPodIP(t, ns, "nginx-pod")
 
 	traceNetworkCmd := &Command{
 		Name:         "StartTraceNetworkGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace network -n %s -o json", ns),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			testPodIP, err := GetTestPodIP(ns, "test-pod")
-			if err != nil {
-				return fmt.Errorf("getting pod ip: %w", err)
-			}
+		ValidateOutput: func(t *testing.T, output string) {
+			testPodIP := GetTestPodIP(t, ns, "test-pod")
 
 			expectedEntries := []*tracenetworkTypes.Event{
 				{
@@ -129,7 +120,7 @@ func TestTraceNetwork(t *testing.T) {
 				e.Runtime.ContainerID = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 

@@ -37,7 +37,7 @@ func newProfileTCPRTTCmd(flags string, useTimeout bool, node string, unit histog
 		Name:         "ProfileTCPRTT",
 		Cmd:          cmd,
 		StartAndStop: !useTimeout,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &tcprttProfileTypes.Report{
 				Histograms: []*tcprttProfileTypes.ExtendedHistogram{
 					tcprttProfileTypes.NewHistogram(unit, nil, addressType, addr, 1, localPort, remotePort),
@@ -65,7 +65,7 @@ func newProfileTCPRTTCmd(flags string, useTimeout bool, node string, unit histog
 				}
 			}
 
-			return integration.ExpectEntriesToMatch(output, normalize, expectedEntry)
+			integration.ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 }
@@ -89,10 +89,7 @@ func RunTestProfileTCPRTT(t *testing.T) {
 		integration.RunTestSteps(cleanupCommands, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn(ns)))
 	})
 
-	serverIP, err := integration.GetTestPodIP(ns, serverPodName)
-	if err != nil {
-		t.Fatalf("getting server pod ip %s", err)
-	}
+	serverIP := integration.GetTestPodIP(t, ns, serverPodName)
 
 	generateTrafficCommands := []*integration.Command{
 		integration.BusyboxPodRepeatCommand(ns, fmt.Sprintf("wget -q -O /dev/null %s:80", serverIP)),
@@ -100,18 +97,12 @@ func RunTestProfileTCPRTT(t *testing.T) {
 	}
 	integration.RunTestSteps(generateTrafficCommands, t, integration.WithCbBeforeCleanup(integration.PrintLogsFn()))
 
-	clientIP, err := integration.GetTestPodIP(ns, clientPodName)
-	if err != nil {
-		t.Fatalf("getting client pod ip %s", err)
-	}
+	clientIP := integration.GetTestPodIP(t, ns, clientPodName)
 
 	// Filtering by node doesn't make sense for ig but just for kubectl-gadget.
 	var clientNode string
 	if integration.DefaultTestComponent == integration.InspektorGadgetTestComponent {
-		clientNode, err = integration.GetPodNode(ns, clientPodName)
-		if err != nil {
-			t.Fatalf("getting client pod node: %s", err)
-		}
+		clientNode = integration.GetPodNode(t, ns, clientPodName)
 	}
 
 	t.Run("DefaultParams", func(t *testing.T) {

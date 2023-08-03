@@ -32,7 +32,7 @@ func TestTraceTcpconnect(t *testing.T) {
 		Name:         "StartTcpconnectGadget",
 		Cmd:          fmt.Sprintf("ig trace tcpconnect -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &tcpconnectTypes.Event{
 				Event: BuildBaseEvent(ns,
@@ -72,7 +72,7 @@ func TestTraceTcpconnect(t *testing.T) {
 				e.Runtime.ContainerID = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 
@@ -96,7 +96,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 		Name:         "StartTcpconnectGadget",
 		Cmd:          fmt.Sprintf("ig trace tcpconnect --latency -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &tcpconnectTypes.Event{
 				Event: BuildBaseEvent(ns,
@@ -141,7 +141,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 				e.Runtime.ContainerID = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

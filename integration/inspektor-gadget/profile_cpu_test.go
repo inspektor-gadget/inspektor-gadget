@@ -29,10 +29,7 @@ func TestProfileCpu(t *testing.T) {
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -41,7 +38,7 @@ func TestProfileCpu(t *testing.T) {
 		{
 			Name: "RunProfileCpuGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET profile cpu -n %s -p test-pod -K --timeout 15 -o json", ns),
-			ExpectedOutputFn: func(output string) error {
+			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &profilecpuTypes.Report{
 					CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:       "sh",
@@ -60,7 +57,7 @@ func TestProfileCpu(t *testing.T) {
 					e.Runtime.ContainerID = ""
 				}
 
-				return ExpectEntriesToMatch(output, normalize, expectedEntry)
+				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
 		DeleteTestNamespaceCommand(ns),

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
@@ -26,10 +28,7 @@ func TestPrometheus(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-prometheus")
 
 	// prepare prometheus scrape targets
-	gadgetPodIps, err := GetPodIPsFromLabel("gadget", "k8s-app=gadget")
-	if err != nil {
-		t.Fatalf("failed to get gadget pod ip: %v", err)
-	}
+	gadgetPodIps := GetPodIPsFromLabel(t, "gadget", "k8s-app=gadget")
 	targets := make([]string, 0, len(gadgetPodIps))
 	for _, ip := range gadgetPodIps {
 		targets = append(targets, fmt.Sprintf("%s:2223", ip))
@@ -114,16 +113,14 @@ EOF
 			{
 				Name: "ValidatePrometheusMetrics",
 				Cmd:  fmt.Sprintf("kubectl exec -n %s prometheus -- wget -qO- http://localhost:9090/api/v1/query?query=executed_processes_total", ns),
-				ExpectedOutputFn: func(output string) error {
+				ValidateOutput: func(t *testing.T, output string) {
 					var prometheusResponse struct {
 						Data struct {
 							Result json.RawMessage `json:"result"`
 						} `json:"data"`
 					}
 					err = json.Unmarshal([]byte(output), &prometheusResponse)
-					if err != nil {
-						return fmt.Errorf("marshaling prometheus response: %w", err)
-					}
+					require.NoError(t, err, "marshaling prometheus response")
 
 					type Result struct {
 						Metric map[string]string `json:"metric"`
@@ -149,7 +146,7 @@ EOF
 						r.Metric["otel_scope_name"] = ""
 					}
 
-					return ExpectEntriesInArrayToMatch(string(prometheusResponse.Data.Result), normalize, expectedEntry)
+					ExpectEntriesInArrayToMatch(t, string(prometheusResponse.Data.Result), normalize, expectedEntry)
 				},
 			},
 		}

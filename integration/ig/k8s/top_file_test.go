@@ -24,7 +24,7 @@ import (
 )
 
 func newTopFileCmd(ns string, cmd string, startAndStop bool) *Command {
-	expectedOutputFn := func(output string) error {
+	validateOutputFn := func(t *testing.T, output string) {
 		isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 		expectedEntry := &types.Stats{
 			CommonData: BuildCommonData(ns, WithRuntimeMetadata(*containerRuntime),
@@ -57,14 +57,14 @@ func newTopFileCmd(ns string, cmd string, startAndStop bool) *Command {
 			e.Runtime.ContainerID = ""
 		}
 
-		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
 	}
 
 	return &Command{
-		Name:             "TopFile",
-		ExpectedOutputFn: expectedOutputFn,
-		Cmd:              cmd,
-		StartAndStop:     startAndStop,
+		Name:           "TopFile",
+		ValidateOutput: validateOutputFn,
+		Cmd:            cmd,
+		StartAndStop:   startAndStop,
 	}
 }
 

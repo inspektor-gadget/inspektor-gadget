@@ -30,7 +30,7 @@ func TestTopEbpf(t *testing.T) {
 		Name:         "TopEbpf",
 		Cmd:          "./ig top ebpf -o json -m 100 --runtimes=docker",
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &topebpfTypes.Stats{
 				Type: ebpf.Tracing.String(),
 				Name: "ig_top_ebpf_it",
@@ -51,7 +51,7 @@ func TestTopEbpf(t *testing.T) {
 				e.PerCpuUsage = 0
 			}
 
-			return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+			ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

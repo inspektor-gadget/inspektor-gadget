@@ -26,7 +26,7 @@ import (
 )
 
 func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
-	expectedOutputFn := func(output string) error {
+	validateOutputFn := func(t *testing.T, output string) {
 		expectedEntry := &topebpfTypes.Stats{
 			Type: ebpf.Tracing.String(),
 			Name: "ig_top_ebpf_it",
@@ -53,13 +53,13 @@ func newTopEbpfCmd(cmd string, startAndStop bool) *Command {
 			e.Runtime.ContainerID = ""
 		}
 
-		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
 	}
 	return &Command{
-		Name:             "TopEbpf",
-		Cmd:              cmd,
-		StartAndStop:     startAndStop,
-		ExpectedOutputFn: expectedOutputFn,
+		Name:           "TopEbpf",
+		Cmd:            cmd,
+		StartAndStop:   startAndStop,
+		ValidateOutput: validateOutputFn,
 	}
 }
 

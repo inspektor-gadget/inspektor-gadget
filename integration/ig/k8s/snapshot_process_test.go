@@ -31,7 +31,7 @@ func TestSnapshotProcess(t *testing.T) {
 		Name:         "SnapshotProcess",
 		Cmd:          fmt.Sprintf("ig snapshot process -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &types.Event{
 				Event: BuildBaseEvent(ns,
@@ -59,7 +59,7 @@ func TestSnapshotProcess(t *testing.T) {
 				e.Runtime.ContainerID = ""
 			}
 
-			return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
+			ExpectEntriesInArrayToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

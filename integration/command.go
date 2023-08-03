@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/kr/pretty"
+	"github.com/stretchr/testify/require"
 )
 
 type TestComponent string
@@ -57,8 +58,9 @@ type Command struct {
 	// ExpectedRegexp contains a regex used to match against the command output.
 	ExpectedRegexp string
 
-	// ExpectedOutputFn is a function used to verify the output.
-	ExpectedOutputFn func(output string) error
+	// ValidateOutput is a function used to verify the output. It must make the test fail in
+	// case of error.
+	ValidateOutput func(t *testing.T, output string)
 
 	// Cleanup indicates this command is used to clean resource and should not be
 	// skipped even if previous commands failed.
@@ -296,30 +298,41 @@ func getPodLogs(ns string) string {
 	return sb.String()
 }
 
-// verifyOutput verifies if the stdout match with the expected regular
-// expression and the expected string. If it doesn't, verifyOutput returns and
-// error and the gadget pod logs.
-func (c *Command) verifyOutput() error {
+// verifyOutput verifies if the stdout match with the expected regular expression and the expected
+// string. If it doesn't, verifyOutput makes the test fail.
+func (c *Command) verifyOutput(t *testing.T) {
 	output := c.stdout.String()
 
 	if c.ExpectedRegexp != "" {
 		r := regexp.MustCompile(c.ExpectedRegexp)
 		if !r.MatchString(output) {
-			return fmt.Errorf("output didn't match the expected regexp: %s",
-				c.ExpectedRegexp)
+			t.Fatalf("output didn't match the expected regexp: %s", c.ExpectedRegexp)
+		}
+	}
+
+	if c.ExpectedString != "" {
+		require.Equal(t, c.ExpectedString, output, "output didn't match the expected string")
+	}
+
+	if c.ValidateOutput != nil {
+		c.ValidateOutput(t, output)
+	}
+}
+
+// verifyOutputWihoutTest verifies the output without using the ValidateOutput function.
+func (c *Command) verifyOutputWihoutTest() error {
+	output := c.stdout.String()
+
+	if c.ExpectedRegexp != "" {
+		r := regexp.MustCompile(c.ExpectedRegexp)
+		if !r.MatchString(output) {
+			return fmt.Errorf("output didn't match the expected regexp: %s", c.ExpectedRegexp)
 		}
 	}
 
 	if c.ExpectedString != "" && output != c.ExpectedString {
 		return fmt.Errorf("output didn't match the expected string: %s\n%v",
 			c.ExpectedString, pretty.Diff(c.ExpectedString, output))
-	}
-
-	if c.ExpectedOutputFn != nil {
-		if err := c.ExpectedOutputFn(output); err != nil {
-			return fmt.Errorf("verifying output with custom function: %w",
-				err)
-		}
 	}
 
 	return nil
@@ -388,7 +401,7 @@ func (c *Command) RunWithoutTest() error {
 		return fmt.Errorf("running command(%s): %w", c.Name, err)
 	}
 
-	if err = c.verifyOutput(); err != nil {
+	if err = c.verifyOutputWihoutTest(); err != nil {
 		return fmt.Errorf("invalid command output(%s): %w", c.Name, err)
 	}
 
@@ -458,15 +471,9 @@ func (c *Command) Run(t *testing.T) {
 	err := c.command.Run()
 	t.Logf("Command returned(%s):\n%s\n%s\n",
 		c.Name, c.stderr.String(), c.stdout.String())
+	require.NoError(t, err, "failed to run command(%s)", c.Name)
 
-	if err != nil {
-		t.Fatalf("failed to run command(%s): %s\n", c.Name, err)
-	}
-
-	err = c.verifyOutput()
-	if err != nil {
-		t.Fatalf("invalid command output(%s): %s\n", c.Name, err)
-	}
+	c.verifyOutput(t)
 }
 
 // Start starts the Command on the given as parameter test, you need to
@@ -481,9 +488,7 @@ func (c *Command) Start(t *testing.T) {
 
 	t.Logf("Start command(%s): %s\n", c.Name, c.Cmd)
 	err := c.command.Start()
-	if err != nil {
-		t.Fatalf("failed to start command(%s): %s\n", c.Name, err)
-	}
+	require.NoError(t, err, "failed to start command(%s)", c.Name)
 
 	c.started = true
 }
@@ -502,15 +507,9 @@ func (c *Command) Stop(t *testing.T) {
 	err := c.kill()
 	t.Logf("Command returned(%s):\n%s\n%s\n",
 		c.Name, c.stderr.String(), c.stdout.String())
+	require.NoError(t, err, "failed to kill command(%s)", c.Name)
 
-	if err != nil {
-		t.Fatalf("failed to stop command(%s): %s\n", c.Name, err)
-	}
-
-	err = c.verifyOutput()
-	if err != nil {
-		t.Fatalf("invalid command output(%s): %s\n", c.Name, err)
-	}
+	c.verifyOutput(t)
 
 	c.started = false
 }
