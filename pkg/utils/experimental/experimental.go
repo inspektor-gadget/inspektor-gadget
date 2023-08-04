@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 )
 
 var (
@@ -36,12 +37,15 @@ func Enabled() bool {
 			return
 		}
 
-		info, err := deployinfo.Load()
-		if err != nil {
-			return
-		}
+		// Only check the deployinfo file if this is running in Kubernetes
+		if environment.Environment == environment.Kubernetes {
+			info, err := deployinfo.Load()
+			if err != nil {
+				return
+			}
 
-		experimental = info.Experimental
+			experimental = info.Experimental
+		}
 	})
 
 	return experimental
