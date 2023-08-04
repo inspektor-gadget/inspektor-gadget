@@ -14,35 +14,44 @@
 
 const volatile __u64 socket_file_ops_addr = 0;
 
-static __always_inline void
-insert_socket_from_iter(struct sock *sock, struct task_struct *task)
+static __always_inline void insert_socket_from_iter(struct sock *sock,
+						    struct task_struct *task)
 {
-	struct sockets_key socket_key = {0,};
+	struct sockets_key socket_key = {
+		0,
+	};
 	prepare_socket_key(&socket_key, sock);
 
-	struct sockets_value socket_value = {0,};
+	struct sockets_value socket_value = {
+		0,
+	};
 	// use given task
 	socket_value.pid_tgid = ((u64)task->tgid) << 32 | task->pid;
 	// The VFS code might temporary substitute task->cred by other creds during overlayfs
 	// copyup. In this case, we want the real creds of the process, not the creds temporarily
 	// substituted by VFS overlayfs copyup.
 	// https://kernel.org/doc/html/v6.2-rc8/security/credentials.html#overriding-the-vfs-s-use-of-credentials
-	socket_value.uid_gid = ((u64)task->real_cred->gid.val) << 32 | task->real_cred->uid.val;
-	__builtin_memcpy(&socket_value.task, task->comm, sizeof(socket_value.task));
-	socket_value.mntns = (u64) task->nsproxy->mnt_ns->ns.inum;
-	socket_value.sock = (__u64) sock;
-	socket_value.ipv6only = BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_ipv6only);
+	socket_value.uid_gid = ((u64)task->real_cred->gid.val) << 32 |
+			       task->real_cred->uid.val;
+	__builtin_memcpy(&socket_value.task, task->comm,
+			 sizeof(socket_value.task));
+	socket_value.mntns = (u64)task->nsproxy->mnt_ns->ns.inum;
+	socket_value.sock = (__u64)sock;
+	socket_value.ipv6only =
+		BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_ipv6only);
 
 	// If the endpoint was not present, add it and we're done.
 	struct sockets_value *old_socket_value =
-		(struct sockets_value *) bpf_map_lookup_elem(&sockets, &socket_key);
+		(struct sockets_value *)bpf_map_lookup_elem(&sockets,
+							    &socket_key);
 	if (!old_socket_value) {
 		// Use BPF_NOEXIST: if an entry was inserted just after the check, this
 		// is because the bpf iterator for initial sockets runs in
 		// parallel to other kprobes and we prefer the information from the
 		// other kprobes because their data is more accurate (e.g. correct
 		// thread).
-		bpf_map_update_elem(&sockets, &socket_key, &socket_value, BPF_NOEXIST);
+		bpf_map_update_elem(&sockets, &socket_key, &socket_value,
+				    BPF_NOEXIST);
 		return;
 	}
 
@@ -58,7 +67,8 @@ insert_socket_from_iter(struct sock *sock, struct task_struct *task)
 	// because the passive socket will be added later, overwriting the
 	// active socket.
 	if (BPF_CORE_READ(sock, __sk_common.skc_state) == TCP_LISTEN)
-		bpf_map_update_elem(&sockets, &socket_key, &socket_value, BPF_ANY);
+		bpf_map_update_elem(&sockets, &socket_key, &socket_value,
+				    BPF_ANY);
 }
 
 // This iterates on all the sockets (from all tasks) and updates the sockets
@@ -77,11 +87,12 @@ int ig_sockets_it(struct bpf_iter__task_file *ctx)
 	// TODO: cilium/ebpf doesn't support .ksyms, so we get the address of
 	// socket_file_ops from userspace.
 	// See: https://github.com/cilium/ebpf/issues/761
-	if (socket_file_ops_addr == 0 || (__u64)(file->f_op) != socket_file_ops_addr)
+	if (socket_file_ops_addr == 0 ||
+	    (__u64)(file->f_op) != socket_file_ops_addr)
 		return 0;
 
 	// file->private_data is a struct socket because we checked f_op.
-	struct socket *socket = (struct socket *) file->private_data;
+	struct socket *socket = (struct socket *)file->private_data;
 	struct sock *sock = BPF_CORE_READ(socket, sk);
 	__u16 family = BPF_CORE_READ(sock, __sk_common.skc_family);
 	if (family != AF_INET && family != AF_INET6)
@@ -109,11 +120,14 @@ int ig_sk_cleanup(struct bpf_iter__bpf_map_elem *ctx)
 
 	__u64 now = bpf_ktime_get_ns();
 	__u64 deletion_timestamp = socket_value->deletion_timestamp;
-	__u64 socket_expiration_ns = 1000ULL*1000ULL*1000ULL*5ULL; // 5 seconds
+	__u64 socket_expiration_ns =
+		1000ULL * 1000ULL * 1000ULL * 5ULL; // 5 seconds
 
-	if (deletion_timestamp != 0 && deletion_timestamp + socket_expiration_ns < now) {
+	if (deletion_timestamp != 0 &&
+	    deletion_timestamp + socket_expiration_ns < now) {
 		// The socket is expired, remove it from the map.
-		__builtin_memcpy(&tmp_key, socket_key, sizeof(struct sockets_key));
+		__builtin_memcpy(&tmp_key, socket_key,
+				 sizeof(struct sockets_key));
 		bpf_map_delete_elem(&sockets, &tmp_key);
 		return 0;
 	}

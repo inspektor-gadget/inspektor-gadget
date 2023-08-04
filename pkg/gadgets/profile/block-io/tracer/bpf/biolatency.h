@@ -2,13 +2,13 @@
 #ifndef __BIOLATENCY_H
 #define __BIOLATENCY_H
 
-#define DISK_NAME_LEN	32
-#define MAX_SLOTS	27
+#define DISK_NAME_LEN 32
+#define MAX_SLOTS 27
 
-#define MINORBITS	20
-#define MINORMASK	((1U << MINORBITS) - 1)
+#define MINORBITS 20
+#define MINORMASK ((1U << MINORBITS) - 1)
 
-#define MKDEV(ma, mi)	(((ma) << MINORBITS) | (mi))
+#define MKDEV(ma, mi) (((ma) << MINORBITS) | (mi))
 
 struct hist_key {
 	__u32 cmd_flags;

@@ -5,7 +5,7 @@
 #ifndef __CAPABLE_H
 #define __CAPABLE_H
 
-#define TASK_COMM_LEN	16
+#define TASK_COMM_LEN 16
 
 #ifndef BIT
 #define BIT(nr) (1UL << (nr))
@@ -24,21 +24,21 @@
 #endif /* !CAP_OPT_INSETID */
 
 struct cap_event {
-	__u64	mntnsid;
-	__u64	current_userns;
-	__u64	target_userns;
+	__u64 mntnsid;
+	__u64 current_userns;
+	__u64 target_userns;
 	__u64 cap_effective;
 	__u64 timestamp;
-	__u32	pid;
-	int	cap;
-	__u32	tgid;
-	__u32	uid;
-	__u32	gid;
-	int	ret;
-	int	audit;
-	int	insetid;
-	__u64	syscall;
-	__u8	task[TASK_COMM_LEN];
+	__u32 pid;
+	int cap;
+	__u32 tgid;
+	__u32 uid;
+	__u32 gid;
+	int ret;
+	int audit;
+	int insetid;
+	__u64 syscall;
+	__u8 task[TASK_COMM_LEN];
 };
 
 #endif /* __CAPABLE_H */

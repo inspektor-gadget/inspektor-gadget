@@ -28,6 +28,8 @@ IMAGE_FLAVOUR ?= "default"
 
 PLATFORMS ?= "linux/amd64,linux/arm64"
 
+CLANG_FORMAT ?= clang-format
+
 # Adds a '-dirty' suffix to version string if there are uncommitted changes
 changes := $(shell git status --porcelain)
 ifeq ($(changes),)
@@ -233,6 +235,9 @@ lint:
 		--user $(shell id -u):$(shell id -g) -v $(shell pwd):/app -w /app \
 		linter
 
+clang-format:
+	find ./ -type f \( -iname '*.h' ! -iname "vmlinux.h" \) -o -iname '*.c' -execdir $(CLANG_FORMAT) -i {} \;
+
 # minikube
 LIVENESS_PROBE ?= true
 .PHONY: minikube-deploy
@@ -308,7 +313,8 @@ help:
 	@echo  '  install/kubectl-gadget	- Build kubectl plugin and install it in ~/.local/bin'
 	@echo  ''
 	@echo  'Development targets:'
-	@echo  '  lint				- Lint the code'
+	@echo  '  clang-format			- Format ebpf source files'
+	@echo  '  lint				- Lint the Go code'
 	@echo  '  generate-documentation	- Generate documentation for gadgets and trace CRD'
 	@echo  '  generate-manifests		- Generate manifests for the gadget deployment'
 	@echo  '  minikube-start		- Start a kubernetes cluster using minikube with the docker driver'

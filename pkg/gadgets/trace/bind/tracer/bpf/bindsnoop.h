@@ -2,7 +2,7 @@
 #ifndef __BINDSNOOP_H
 #define __BINDSNOOP_H
 
-#define TASK_COMM_LEN	16
+#define TASK_COMM_LEN 16
 
 struct bind_event {
 	__u8 addr[16];

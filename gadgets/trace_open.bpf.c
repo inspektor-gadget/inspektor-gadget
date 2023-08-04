@@ -9,7 +9,7 @@
 #include "mntns_filter.h"
 #include "types.h"
 
-#define TASK_RUNNING	0
+#define TASK_RUNNING 0
 #define NAME_MAX 255
 #define INVALID_UID ((uid_t)-1)
 
@@ -56,12 +56,12 @@ struct {
 	//__uint(value_size, sizeof(u32));
 } print_events SEC(".maps");
 
-static __always_inline bool valid_uid(uid_t uid) {
+static __always_inline bool valid_uid(uid_t uid)
+{
 	return uid != INVALID_UID;
 }
 
-static __always_inline
-bool trace_allowed(u32 tgid, u32 pid)
+static __always_inline bool trace_allowed(u32 tgid, u32 pid)
 {
 	u64 mntns_id;
 	u32 uid;
@@ -86,8 +86,8 @@ bool trace_allowed(u32 tgid, u32 pid)
 	return true;
 }
 
-static __always_inline
-int trace_enter(const char *filename, int flags, __u16 mode)
+static __always_inline int trace_enter(const char *filename, int flags,
+				       __u16 mode)
 {
 	u64 id = bpf_get_current_pid_tgid();
 	/* use kernel terminology here for tgid/pid: */
@@ -107,20 +107,21 @@ int trace_enter(const char *filename, int flags, __u16 mode)
 
 #ifndef __TARGET_ARCH_arm64
 SEC("tracepoint/syscalls/sys_enter_open")
-int ig_open_e(struct trace_event_raw_sys_enter* ctx)
+int ig_open_e(struct trace_event_raw_sys_enter *ctx)
 {
-	return trace_enter((const char *)ctx->args[0], (int)ctx->args[1], (__u16)ctx->args[2]);
+	return trace_enter((const char *)ctx->args[0], (int)ctx->args[1],
+			   (__u16)ctx->args[2]);
 }
 #endif /* !__TARGET_ARCH_arm64 */
 
 SEC("tracepoint/syscalls/sys_enter_openat")
-int ig_openat_e(struct trace_event_raw_sys_enter* ctx)
+int ig_openat_e(struct trace_event_raw_sys_enter *ctx)
 {
-	return trace_enter((const char *)ctx->args[1], (int)ctx->args[2], (__u16)ctx->args[3]);
+	return trace_enter((const char *)ctx->args[1], (int)ctx->args[2],
+			   (__u16)ctx->args[3]);
 }
 
-static __always_inline
-int trace_exit(struct trace_event_raw_sys_exit* ctx)
+static __always_inline int trace_exit(struct trace_event_raw_sys_exit *ctx)
 {
 	struct event event = {};
 	struct args_t *ap;
@@ -130,15 +131,15 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 
 	ap = bpf_map_lookup_elem(&start, &pid);
 	if (!ap)
-		return 0;	/* missed entry */
+		return 0; /* missed entry */
 	ret = ctx->ret;
 	if (targ_failed && ret >= 0)
-		goto cleanup;	/* want failed only */
+		goto cleanup; /* want failed only */
 
 	/* event data */
 	event.pid = bpf_get_current_pid_tgid() >> 32;
-	event.uid = (u32) uid_gid;
-	event.gid = (u32) (uid_gid >> 32);
+	event.uid = (u32)uid_gid;
+	event.gid = (u32)(uid_gid >> 32);
 	bpf_get_current_comm(&event.comm, sizeof(event.comm));
 	bpf_probe_read_user_str(&event.fname, sizeof(event.fname), ap->fname);
 	event.flags = ap->flags;
@@ -148,8 +149,8 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 	event.timestamp = bpf_ktime_get_boot_ns();
 
 	/* emit event */
-	bpf_perf_event_output(ctx, &print_events, BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+	bpf_perf_event_output(ctx, &print_events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 
 cleanup:
 	bpf_map_delete_elem(&start, &pid);
@@ -158,14 +159,14 @@ cleanup:
 
 #ifndef __TARGET_ARCH_arm64
 SEC("tracepoint/syscalls/sys_exit_open")
-int ig_open_x(struct trace_event_raw_sys_exit* ctx)
+int ig_open_x(struct trace_event_raw_sys_exit *ctx)
 {
 	return trace_exit(ctx);
 }
 #endif /* !__TARGET_ARCH_arm64 */
 
 SEC("tracepoint/syscalls/sys_exit_openat")
-int ig_openat_x(struct trace_event_raw_sys_exit* ctx)
+int ig_openat_x(struct trace_event_raw_sys_exit *ctx)
 {
 	return trace_exit(ctx);
 }

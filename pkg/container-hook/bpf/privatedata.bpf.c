@@ -27,7 +27,7 @@ int BPF_KPROBE(ig_scm_snd_e, struct socket *sock)
 {
 	if (socket_ino == 0)
 		return 0;
-	if ((u64) BPF_CORE_READ(sock, file, f_inode, i_ino) != socket_ino)
+	if ((u64)BPF_CORE_READ(sock, file, f_inode, i_ino) != socket_ino)
 		return 0;
 
 	tracer_pid_tgid = bpf_get_current_pid_tgid();
@@ -58,7 +58,7 @@ int BPF_KRETPROBE(ig_fget_x, struct file *ret)
 	if (!private_data)
 		return 0;
 
-	*private_data = (u64) BPF_CORE_READ(ret, private_data);
+	*private_data = (u64)BPF_CORE_READ(ret, private_data);
 
 	// Initialize private_data for only one execution of __scm_send
 	tracer_pid_tgid = 0;

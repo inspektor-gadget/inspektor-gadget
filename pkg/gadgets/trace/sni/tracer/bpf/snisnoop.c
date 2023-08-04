@@ -23,101 +23,103 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 } events SEC(".maps");
 
-
 // parse_sni() from:
 // https://github.com/gardener/connectivity-monitor/blob/4e924f50367c9fa02075b50b0ecd8c821b3a15f1/connectivity-exporter/packet/c/cap.c#L146-L149
 
 // Parses the provided SKB at the given offset for SNI information. If parsing
 // succeeds, the SNI information is written to the out array. Returns the
 // number of characters in the SNI field or 0 if SNI couldn't be parsed.
-static __always_inline int parse_sni(struct __sk_buff *skb, int data_offset, char *out)
+static __always_inline int parse_sni(struct __sk_buff *skb, int data_offset,
+				     char *out)
 {
-  // Verify TLS content type.
-  __u8 content_type;
-  bpf_skb_load_bytes(skb, data_offset, &content_type, 1);
-  if (content_type != TLS_CONTENT_TYPE_HANDSHAKE)
-    return 0;
+	// Verify TLS content type.
+	__u8 content_type;
+	bpf_skb_load_bytes(skb, data_offset, &content_type, 1);
+	if (content_type != TLS_CONTENT_TYPE_HANDSHAKE)
+		return 0;
 
-  // Verify TLS handshake type.
-  __u8 handshake_type;
-  bpf_skb_load_bytes(skb, data_offset + TLS_HANDSHAKE_TYPE_OFF, &handshake_type, 1);
-  if (handshake_type != TLS_HANDSHAKE_TYPE_CLIENT_HELLO)
-    return 0;
+	// Verify TLS handshake type.
+	__u8 handshake_type;
+	bpf_skb_load_bytes(skb, data_offset + TLS_HANDSHAKE_TYPE_OFF,
+			   &handshake_type, 1);
+	if (handshake_type != TLS_HANDSHAKE_TYPE_CLIENT_HELLO)
+		return 0;
 
-  int session_id_len_off = data_offset + TLS_SESSION_ID_LENGTH_OFF;
-  __u8 session_id_len;
-  bpf_skb_load_bytes(skb, session_id_len_off, &session_id_len, 1);
+	int session_id_len_off = data_offset + TLS_SESSION_ID_LENGTH_OFF;
+	__u8 session_id_len;
+	bpf_skb_load_bytes(skb, session_id_len_off, &session_id_len, 1);
 
-  int cipher_suites_len_off =
-      session_id_len_off + TLS_SESSION_ID_LENGTH_LEN + session_id_len;
-  __u16 cipher_suites_len_be;
-  bpf_skb_load_bytes(skb, cipher_suites_len_off, &cipher_suites_len_be, 2);
+	int cipher_suites_len_off =
+		session_id_len_off + TLS_SESSION_ID_LENGTH_LEN + session_id_len;
+	__u16 cipher_suites_len_be;
+	bpf_skb_load_bytes(skb, cipher_suites_len_off, &cipher_suites_len_be,
+			   2);
 
-  int compression_methods_len_off =
-      cipher_suites_len_off + TLS_CIPHER_SUITES_LENGTH_LEN +
-      bpf_ntohs(cipher_suites_len_be);
+	int compression_methods_len_off = cipher_suites_len_off +
+					  TLS_CIPHER_SUITES_LENGTH_LEN +
+					  bpf_ntohs(cipher_suites_len_be);
 
-  __u8 compression_methods_len;
-  bpf_skb_load_bytes(skb, compression_methods_len_off,
-      &compression_methods_len, 1);
+	__u8 compression_methods_len;
+	bpf_skb_load_bytes(skb, compression_methods_len_off,
+			   &compression_methods_len, 1);
 
-  int extensions_len_off =
-      compression_methods_len_off + TLS_COMPRESSION_METHODS_LENGTH_LEN +
-        compression_methods_len;
+	int extensions_len_off = compression_methods_len_off +
+				 TLS_COMPRESSION_METHODS_LENGTH_LEN +
+				 compression_methods_len;
 
-  int extensions_off = extensions_len_off + TLS_EXTENSIONS_LENGTH_LEN;
+	int extensions_off = extensions_len_off + TLS_EXTENSIONS_LENGTH_LEN;
 
-  // TODO: Ensure the cursor doesn't surpass the extensions length value?
-  __u16 cur = 0;
-  __u16 server_name_ext_off = 0;
-  for (int i = 0; i < TLS_MAX_EXTENSION_COUNT; i++) {
-    __u16 curr_ext_type_be;
-    bpf_skb_load_bytes(skb, extensions_off + cur, &curr_ext_type_be, 2);
-    if (bpf_ntohs(curr_ext_type_be) == TLS_EXTENSION_SERVER_NAME)
-    {
-      server_name_ext_off = extensions_off + cur;
-      break;
-    }
-    // Skip the extension type field to get to the extension length field.
-    cur += TLS_EXTENSION_TYPE_LEN;
+	// TODO: Ensure the cursor doesn't surpass the extensions length value?
+	__u16 cur = 0;
+	__u16 server_name_ext_off = 0;
+	for (int i = 0; i < TLS_MAX_EXTENSION_COUNT; i++) {
+		__u16 curr_ext_type_be;
+		bpf_skb_load_bytes(skb, extensions_off + cur, &curr_ext_type_be,
+				   2);
+		if (bpf_ntohs(curr_ext_type_be) == TLS_EXTENSION_SERVER_NAME) {
+			server_name_ext_off = extensions_off + cur;
+			break;
+		}
+		// Skip the extension type field to get to the extension length field.
+		cur += TLS_EXTENSION_TYPE_LEN;
 
-    // Read the extension length and skip the extension length field as well as
-    // the rest of the extension to get to the next extension.
-    __u16 len_be;
-    bpf_skb_load_bytes(skb, extensions_off + cur, &len_be, 2);
-    cur += TLS_EXTENSION_LENGTH_LEN + bpf_ntohs(len_be);
-  }
+		// Read the extension length and skip the extension length field as well as
+		// the rest of the extension to get to the next extension.
+		__u16 len_be;
+		bpf_skb_load_bytes(skb, extensions_off + cur, &len_be, 2);
+		cur += TLS_EXTENSION_LENGTH_LEN + bpf_ntohs(len_be);
+	}
 
-  if (server_name_ext_off == 0) // Couldn't find server name extension.
-    return 0;
+	if (server_name_ext_off == 0) // Couldn't find server name extension.
+		return 0;
 
-  __u16 server_name_len_be;
-  bpf_skb_load_bytes(skb, server_name_ext_off + TLS_SERVER_NAME_LENGTH_OFF,
-      &server_name_len_be, 2);
-  __u16 server_name_len = bpf_ntohs(server_name_len_be);
-  if (server_name_len == 0 || server_name_len > TLS_MAX_SERVER_NAME_LEN)
-    return 0;
+	__u16 server_name_len_be;
+	bpf_skb_load_bytes(skb,
+			   server_name_ext_off + TLS_SERVER_NAME_LENGTH_OFF,
+			   &server_name_len_be, 2);
+	__u16 server_name_len = bpf_ntohs(server_name_len_be);
+	if (server_name_len == 0 || server_name_len > TLS_MAX_SERVER_NAME_LEN)
+		return 0;
 
-  // The server name field under the server name extension.
-  __u16 server_name_off = server_name_ext_off + TLS_SERVER_NAME_OFF;
+	// The server name field under the server name extension.
+	__u16 server_name_off = server_name_ext_off + TLS_SERVER_NAME_OFF;
 
-  // Read the server name field.
-  int counter = 0;
-  for (int i = 0; i < TLS_MAX_SERVER_NAME_LEN; i++) {
-    if (!out)
-      break;
-    if (i >= server_name_len)
-      break;
-    char b;
-    bpf_skb_load_bytes(skb, server_name_off + i, &b, 1);
-    if (b == '\0')
-      break;
-    out[i] = b;
-    counter++;
-  }
-  return counter;
+	// Read the server name field.
+	int counter = 0;
+	for (int i = 0; i < TLS_MAX_SERVER_NAME_LEN; i++) {
+		if (!out)
+			break;
+		if (i >= server_name_len)
+			break;
+		char b;
+		bpf_skb_load_bytes(skb, server_name_off + i, &b, 1);
+		if (b == '\0')
+			break;
+		out[i] = b;
+		counter++;
+	}
+	return counter;
 }
-
 
 SEC("socket1")
 int ig_trace_sni(struct __sk_buff *skb)
@@ -165,7 +167,9 @@ int ig_trace_sni(struct __sk_buff *skb)
 	if (read == 0)
 		return 0;
 
-	struct event_t event = {0,};
+	struct event_t event = {
+		0,
+	};
 	event.netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
 	for (int i = 0; i < TLS_MAX_SERVER_NAME_LEN; i++) {
 		if (sni[i] == '\0')
@@ -180,12 +184,14 @@ int ig_trace_sni(struct __sk_buff *skb)
 		event.mount_ns_id = skb_val->mntns;
 		event.pid = skb_val->pid_tgid >> 32;
 		event.tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event.task,  skb_val->task, sizeof(event.task));
-		event.uid = (__u32) skb_val->uid_gid;
-		event.gid = (__u32) (skb_val->uid_gid >> 32);
+		__builtin_memcpy(&event.task, skb_val->task,
+				 sizeof(event.task));
+		event.uid = (__u32)skb_val->uid_gid;
+		event.gid = (__u32)(skb_val->uid_gid >> 32);
 	}
 
-	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 
 	return 0;
 }

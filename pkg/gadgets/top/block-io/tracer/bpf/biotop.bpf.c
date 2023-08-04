@@ -86,7 +86,7 @@ int BPF_KPROBE(ig_topio_done, struct request *req, u64 now)
 	/* fetch timestamp and calculate delta */
 	startp = bpf_map_lookup_elem(&start, &req);
 	if (!startp)
-		return 0;    /* missed tracing issue */
+		return 0; /* missed tracing issue */
 
 	delta_us = (bpf_ktime_get_ns() - startp->ts) / 1000;
 

@@ -7,7 +7,7 @@
 #include "fsslower.h"
 #include "mntns_filter.h"
 
-#define MAX_ENTRIES	8192
+#define MAX_ENTRIES 8192
 
 const volatile pid_t target_pid = 0;
 const volatile __u64 min_lat_ns = 0;
@@ -107,7 +107,8 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	file_name = BPF_CORE_READ(dentry, d_name.name);
 	bpf_probe_read_kernel_str(&event.file, sizeof(event.file), file_name);
 	bpf_get_current_comm(&event.task, sizeof(event.task));
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 	return 0;
 }
 

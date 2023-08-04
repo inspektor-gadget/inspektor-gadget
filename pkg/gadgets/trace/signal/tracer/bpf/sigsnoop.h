@@ -2,7 +2,7 @@
 #ifndef __SIGSNOOP_H
 #define __SIGSNOOP_H
 
-#define TASK_COMM_LEN	16
+#define TASK_COMM_LEN 16
 
 struct event {
 	__u32 pid;

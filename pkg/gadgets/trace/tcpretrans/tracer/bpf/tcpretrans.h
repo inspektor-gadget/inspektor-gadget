@@ -38,5 +38,4 @@ struct event {
 	struct proc_ctx proc_socket;
 };
 
-
 #endif /* __TCPRETRAMS_H */

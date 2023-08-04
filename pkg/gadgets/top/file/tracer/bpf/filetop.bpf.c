@@ -8,7 +8,7 @@
 #include "stat.h"
 #include "mntns_filter.h"
 
-#define MAX_ENTRIES	10240
+#define MAX_ENTRIES 10240
 
 const volatile pid_t target_pid = 0;
 const volatile bool regular_file_only = true;
@@ -29,7 +29,8 @@ static void get_file_path(struct file *file, __u8 *buf, size_t size)
 	bpf_probe_read_kernel(buf, size, dname.name);
 }
 
-static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count, enum op op)
+static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count,
+		       enum op op)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
@@ -77,7 +78,7 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count, enu
 	if (op == READ) {
 		valuep->reads++;
 		valuep->read_bytes += count;
-	} else {	/* op == WRITE */
+	} else { /* op == WRITE */
 		valuep->writes++;
 		valuep->write_bytes += count;
 	}
@@ -85,13 +86,15 @@ static int probe_entry(struct pt_regs *ctx, struct file *file, size_t count, enu
 };
 
 SEC("kprobe/vfs_read")
-int BPF_KPROBE(ig_topfile_rd_e, struct file *file, char *buf, size_t count, loff_t *pos)
+int BPF_KPROBE(ig_topfile_rd_e, struct file *file, char *buf, size_t count,
+	       loff_t *pos)
 {
 	return probe_entry(ctx, file, count, READ);
 }
 
 SEC("kprobe/vfs_write")
-int BPF_KPROBE(ig_topfile_wr_e, struct file *file, const char *buf, size_t count, loff_t *pos)
+int BPF_KPROBE(ig_topfile_wr_e, struct file *file, const char *buf,
+	       size_t count, loff_t *pos)
 {
 	return probe_entry(ctx, file, count, WRITE);
 }

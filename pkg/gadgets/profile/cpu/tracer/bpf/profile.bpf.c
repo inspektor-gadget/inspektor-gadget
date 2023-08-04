@@ -35,16 +35,14 @@ struct {
  * TODO: use end address of user space to determine the address space of ip
  */
 #if defined(__TARGET_ARCH_arm64) || defined(__TARGET_ARCH_x86)
-#define BITS_PER_ADDR	(64)
-#define MSB_SET_ULONG	(1UL << (BITS_PER_ADDR - 1))
-static __always_inline
-bool is_kernel_addr(u64 addr)
+#define BITS_PER_ADDR (64)
+#define MSB_SET_ULONG (1UL << (BITS_PER_ADDR - 1))
+static __always_inline bool is_kernel_addr(u64 addr)
 {
 	return !!(addr & MSB_SET_ULONG);
 }
 #else
-static __always_inline
-bool is_kernel_addr(u64 addr)
+static __always_inline bool is_kernel_addr(u64 addr)
 {
 	return false;
 }
@@ -87,7 +85,8 @@ int ig_prof_cpu(struct bpf_perf_event_data *ctx)
 	if (kernel_stacks_only)
 		key.user_stack_id = -1;
 	else
-		key.user_stack_id = bpf_get_stackid(&ctx->regs, &stackmap, BPF_F_USER_STACK);
+		key.user_stack_id = bpf_get_stackid(&ctx->regs, &stackmap,
+						    BPF_F_USER_STACK);
 
 	if (key.kern_stack_id >= 0) {
 		// populate extras to fix the kernel stack

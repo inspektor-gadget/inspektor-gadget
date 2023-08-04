@@ -87,7 +87,7 @@ int BPF_KRETPROBE(ig_fa_pick_x, struct fanotify_event *ret)
 }
 
 SEC("tracepoint/syscalls/sys_enter_execve")
-int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
+int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 {
 	u64 pid_tgid;
 	u32 tgid;
@@ -110,13 +110,14 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	if (!record)
 		return 0;
 
-	task = (struct task_struct*)bpf_get_current_task();
+	task = (struct task_struct *)bpf_get_current_task();
 
 	bpf_get_current_comm(&record->caller_comm, sizeof(record->caller_comm));
 	record->pid = tgid;
 	record->args_size = 0;
 
-	ret = bpf_probe_read_user_str(record->args, ARGSIZE, (const char*)ctx->args[0]);
+	ret = bpf_probe_read_user_str(record->args, ARGSIZE,
+				      (const char *)ctx->args[0]);
 	if (ret > 0 && ret <= ARGSIZE) {
 		record->args_size += ret;
 	} else {
@@ -125,7 +126,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 		record->args_size++;
 	}
 
-	#pragma unroll
+#pragma unroll
 	for (i = 1; i < TOTAL_MAX_ARGS && i < max_args; i++) {
 		ret = bpf_probe_read_user(&argp, sizeof(argp), &args[i]);
 		if (ret != 0 || !argp)
@@ -134,7 +135,8 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 		if (record->args_size > LAST_ARG)
 			return 0;
 
-		ret = bpf_probe_read_user_str(&record->args[record->args_size], ARGSIZE, argp);
+		ret = bpf_probe_read_user_str(&record->args[record->args_size],
+					      ARGSIZE, argp);
 		if (ret > 0 && ret <= ARGSIZE) {
 			record->args_size += ret;
 		} else {
@@ -150,7 +152,7 @@ SEC("kretprobe/do_execveat_common.isra.0")
 int BPF_KRETPROBE(ig_execve_x)
 #else /* !__TARGET_ARCH_arm64 */
 SEC("tracepoint/syscalls/sys_exit_execve")
-int ig_execve_x(struct trace_event_raw_sys_exit* ctx)
+int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 #endif /* !__TARGET_ARCH_arm64 */
 {
 	u64 pid_tgid;

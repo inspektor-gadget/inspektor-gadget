@@ -14,39 +14,39 @@
 #endif
 
 #ifndef PACKET_HOST
-#define PACKET_HOST		0
+#define PACKET_HOST 0
 #endif
 
 #ifndef PACKET_OUTGOING
-#define PACKET_OUTGOING		4
+#define PACKET_OUTGOING 4
 #endif
 
 #ifndef ETH_HLEN
-#define ETH_HLEN	14
+#define ETH_HLEN 14
 #endif
 
 #ifndef ETH_P_IP
-#define ETH_P_IP        0x0800          /* Internet Protocol packet     */
+#define ETH_P_IP 0x0800 /* Internet Protocol packet     */
 #endif
 
 #ifndef AF_INET
-#define AF_INET		2	/* Internet IP Protocol 	*/
+#define AF_INET 2 /* Internet IP Protocol 	*/
 #endif
 
 #ifndef AF_INET6
-#define AF_INET6 10      /* IP version 6                 */
+#define AF_INET6 10 /* IP version 6                 */
 #endif
 
 // See include/net/ipv6.h
 #ifndef NEXTHDR_NONE
-#define NEXTHDR_HOP             0       /* Hop-by-hop option header. */
-#define NEXTHDR_TCP             6       /* TCP segment. */
-#define NEXTHDR_UDP             17      /* UDP message. */
-#define NEXTHDR_ROUTING         43      /* Routing header. */
-#define NEXTHDR_FRAGMENT        44      /* Fragmentation/reassembly header. */
-#define NEXTHDR_AUTH            51      /* Authentication header. */
-#define NEXTHDR_NONE            59      /* No next header */
-#define NEXTHDR_DEST            60      /* Destination options header. */
+#define NEXTHDR_HOP 0 /* Hop-by-hop option header. */
+#define NEXTHDR_TCP 6 /* TCP segment. */
+#define NEXTHDR_UDP 17 /* UDP message. */
+#define NEXTHDR_ROUTING 43 /* Routing header. */
+#define NEXTHDR_FRAGMENT 44 /* Fragmentation/reassembly header. */
+#define NEXTHDR_AUTH 51 /* Authentication header. */
+#define NEXTHDR_NONE 59 /* No next header */
+#define NEXTHDR_DEST 60 /* Destination options header. */
 #endif
 
 #ifdef GADGET_TYPE_NETWORKING
@@ -60,7 +60,6 @@ unsigned long long load_word(const void *skb,
 
 #endif
 
-
 struct sockets_key {
 	__u32 netns;
 	__u16 family;
@@ -70,7 +69,7 @@ struct sockets_key {
 	__u16 port;
 };
 
-#define TASK_COMM_LEN	16
+#define TASK_COMM_LEN 16
 struct sockets_value {
 	__u64 mntns;
 	__u64 pid_tgid;
@@ -81,7 +80,7 @@ struct sockets_value {
 	char ipv6only;
 };
 
-#define MAX_SOCKETS	16384
+#define MAX_SOCKETS 16384
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_SOCKETS);
@@ -94,7 +93,9 @@ static __always_inline struct sockets_value *
 gadget_socket_lookup(const struct __sk_buff *skb)
 {
 	struct sockets_value *ret;
-	struct sockets_key key = {0,};
+	struct sockets_key key = {
+		0,
+	};
 	int l4_off;
 	__u16 h_proto;
 	int i;
@@ -104,7 +105,8 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 	switch (h_proto) {
 	case ETH_P_IP:
 		key.family = AF_INET;
-		key.proto = load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol));
+		key.proto = load_byte(skb, ETH_HLEN + offsetof(struct iphdr,
+							       protocol));
 
 		// An IPv4 header doesn't have a fixed size. The IHL field of a packet
 		// represents the size of the IP header in 32-bit words, so we need to
@@ -117,17 +119,19 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 
 	case ETH_P_IPV6:
 		key.family = AF_INET6;
-		key.proto = load_byte(skb, ETH_HLEN + offsetof(struct ipv6hdr, nexthdr));
+		key.proto = load_byte(skb, ETH_HLEN + offsetof(struct ipv6hdr,
+							       nexthdr));
 		l4_off = ETH_HLEN + sizeof(struct ipv6hdr);
 
-		// Parse IPv6 extension headers
-		// Up to 6 extension headers can be chained. See ipv6_ext_hdr().
-		#pragma unroll
+// Parse IPv6 extension headers
+// Up to 6 extension headers can be chained. See ipv6_ext_hdr().
+#pragma unroll
 		for (i = 0; i < 6; i++) {
 			__u16 nextproto;
 
 			// TCP or UDP found
-			if (key.proto == NEXTHDR_TCP || key.proto == NEXTHDR_UDP)
+			if (key.proto == NEXTHDR_TCP ||
+			    key.proto == NEXTHDR_UDP)
 				break;
 
 			nextproto = load_byte(skb, l4_off);
@@ -167,15 +171,19 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 	switch (key.proto) {
 	case IPPROTO_TCP:
 		if (skb->pkt_type == PACKET_HOST)
-			key.port = load_half(skb, l4_off + offsetof(struct tcphdr, dest));
+			key.port = load_half(
+				skb, l4_off + offsetof(struct tcphdr, dest));
 		else
-			key.port = load_half(skb, l4_off + offsetof(struct tcphdr, source));
+			key.port = load_half(
+				skb, l4_off + offsetof(struct tcphdr, source));
 		break;
 	case IPPROTO_UDP:
 		if (skb->pkt_type == PACKET_HOST)
-			key.port = load_half(skb, l4_off + offsetof(struct udphdr, dest));
+			key.port = load_half(
+				skb, l4_off + offsetof(struct udphdr, dest));
 		else
-			key.port = load_half(skb, l4_off + offsetof(struct udphdr, source));
+			key.port = load_half(
+				skb, l4_off + offsetof(struct udphdr, source));
 		break;
 	default:
 		return 0;
@@ -201,7 +209,9 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 static __always_inline struct sockets_value *
 gadget_socket_lookup(const struct sock *sk, __u32 netns)
 {
-	struct sockets_key key = {0,};
+	struct sockets_key key = {
+		0,
+	};
 	key.netns = netns;
 	key.family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	key.proto = BPF_CORE_READ_BITFIELD_PROBED(sk, sk_protocol);

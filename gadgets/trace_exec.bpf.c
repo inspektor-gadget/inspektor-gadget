@@ -10,12 +10,12 @@
 #include "mntns_filter.h"
 #include "types.h"
 
-#define ARGSIZE  128
+#define ARGSIZE 128
 #define TOTAL_MAX_ARGS 60
 #define DEFAULT_MAXARGS 20
 #define FULL_MAX_ARGS_ARR (TOTAL_MAX_ARGS * ARGSIZE)
 #define INVALID_UID ((uid_t)-1)
-#define BASE_EVENT_SIZE (size_t)(&((struct event*)0)->args)
+#define BASE_EVENT_SIZE (size_t)(&((struct event *)0)->args)
 #define EVENT_SIZE(e) (BASE_EVENT_SIZE + e->args_size)
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
 
@@ -55,12 +55,13 @@ struct {
 	__type(value, struct event);
 } print_events SEC(".maps");
 
-static __always_inline bool valid_uid(uid_t uid) {
+static __always_inline bool valid_uid(uid_t uid)
+{
 	return uid != INVALID_UID;
 }
 
 SEC("tracepoint/syscalls/sys_enter_execve")
-int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
+int ig_execve_e(struct trace_event_raw_sys_enter *ctx)
 {
 	u64 id;
 	pid_t pid, tgid;
@@ -72,14 +73,14 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	int i;
 	u64 mntns_id;
 	u64 uid_gid = bpf_get_current_uid_gid();
-	u32 uid = (u32) uid_gid;
-	u32 gid = (u32) (uid_gid >> 32);
+	u32 uid = (u32)uid_gid;
+	u32 gid = (u32)(uid_gid >> 32);
 
 	if (valid_uid(targ_uid) && targ_uid != uid)
 		return 0;
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	task = (struct task_struct *)bpf_get_current_task();
+	mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
@@ -105,7 +106,8 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	event->args_size = 0;
 	event->mntns_id = mntns_id;
 
-	ret = bpf_probe_read_user_str(event->args, ARGSIZE, (const char*)ctx->args[0]);
+	ret = bpf_probe_read_user_str(event->args, ARGSIZE,
+				      (const char *)ctx->args[0]);
 	if (ret <= ARGSIZE) {
 		event->args_size += ret;
 	} else {
@@ -115,7 +117,7 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 	}
 
 	event->args_count++;
-	#pragma unroll
+#pragma unroll
 	for (i = 1; i < TOTAL_MAX_ARGS && i < max_args; i++) {
 		bpf_probe_read_user(&argp, sizeof(argp), &args[i]);
 		if (!argp)
@@ -124,7 +126,8 @@ int ig_execve_e(struct trace_event_raw_sys_enter* ctx)
 		if (event->args_size > LAST_ARG)
 			return 0;
 
-		ret = bpf_probe_read_user_str(&event->args[event->args_size], ARGSIZE, argp);
+		ret = bpf_probe_read_user_str(&event->args[event->args_size],
+					      ARGSIZE, argp);
 		if (ret > ARGSIZE)
 			return 0;
 
@@ -146,7 +149,7 @@ SEC("kretprobe/do_execveat_common.isra.0")
 int BPF_KRETPROBE(ig_execveat_x)
 #else /* !__TARGET_ARCH_arm64 */
 SEC("tracepoint/syscalls/sys_exit_execve")
-int ig_execve_x(struct trace_event_raw_sys_exit* ctx)
+int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 #endif /* !__TARGET_ARCH_arm64 */
 {
 	u64 id;
@@ -174,7 +177,8 @@ int ig_execve_x(struct trace_event_raw_sys_exit* ctx)
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))
-		bpf_perf_event_output(ctx, &print_events, BPF_F_CURRENT_CPU, event, len);
+		bpf_perf_event_output(ctx, &print_events, BPF_F_CURRENT_CPU,
+				      event, len);
 cleanup:
 	bpf_map_delete_elem(&execs, &pid);
 	return 0;

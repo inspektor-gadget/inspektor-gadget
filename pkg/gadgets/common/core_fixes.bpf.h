@@ -76,7 +76,8 @@ struct trace_event_raw_block_rq_completion___x {
 
 static __always_inline bool has_block_rq_completion()
 {
-	if (bpf_core_type_exists(struct trace_event_raw_block_rq_completion___x))
+	if (bpf_core_type_exists(
+		    struct trace_event_raw_block_rq_completion___x))
 		return true;
 	return false;
 }

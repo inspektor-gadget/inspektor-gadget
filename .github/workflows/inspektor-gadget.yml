@@ -116,6 +116,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Check ebpf formatting
+        run: |
+          sudo apt-get update && sudo apt-get install -y clang-format
+          make clang-format
+          changes="$(git status --porcelain)"
+          if [ -n "$changes" ] ; then
+            >&2 echo "Use 'make clang-format' to fix the style in the eBPF code:"
+            >&2 git diff
+            exit 1
+          fi
       - name: Detect changes for ebpf objects
         run: |
           make ebpf-objects

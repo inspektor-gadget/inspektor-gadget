@@ -18,36 +18,36 @@
 // prctl syscall number from
 // https://github.com/seccomp/libseccomp/blob/abad8a8f41fc13efbb95fc1ccaa3e181342bade7/src/syscalls.csv#L265
 #ifndef __NR_prctl
-# if defined(bpf_target_x86)
-#  define __NR_prctl 157
-# elif defined(bpf_target_arm64)
-#  define __NR_prctl 167
-# else
-#  error "Unsupported architecture"
-# endif
+#if defined(bpf_target_x86)
+#define __NR_prctl 157
+#elif defined(bpf_target_arm64)
+#define __NR_prctl 167
+#else
+#error "Unsupported architecture"
+#endif
 #endif
 
 // prclt syscall parameters from
 // https://github.com/torvalds/linux/blob/5147da902e0dd162c6254a61e4c57f21b60a9b1c/include/uapi/linux/prctl.h#L10
 // https://github.com/torvalds/linux/blob/5147da902e0dd162c6254a61e4c57f21b60a9b1c/include/uapi/linux/prctl.h#L175
 #ifndef PR_GET_PDEATHSIG
-# define PR_GET_PDEATHSIG 2
+#define PR_GET_PDEATHSIG 2
 #endif
 #ifndef PR_SET_NO_NEW_PRIVS
-# define PR_SET_NO_NEW_PRIVS 38
+#define PR_SET_NO_NEW_PRIVS 38
 #endif
 
 // Seccomp syscall number from
 // https://github.com/torvalds/linux/blob/v5.12/tools/testing/selftests/seccomp/seccomp_bpf.c#L115
 // Only x86_64 is supported for now.
 #ifndef __NR_seccomp
-# if defined(bpf_target_x86)
-#  define __NR_seccomp 317
-# elif defined(bpf_target_arm64)
-#  define __NR_seccomp 277
-# else
-#  error "Unsupported architecture"
-# endif
+#if defined(bpf_target_x86)
+#define __NR_seccomp 317
+#elif defined(bpf_target_arm64)
+#define __NR_seccomp 277
+#else
+#error "Unsupported architecture"
+#endif
 #endif
 
 struct {
@@ -71,7 +71,7 @@ int ig_seccomp_e(struct bpf_raw_tracepoint_args *ctx)
 	unsigned int id;
 	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 
-	bpf_probe_read(&regs, sizeof(struct pt_regs), (void*)ctx->args[0]);
+	bpf_probe_read(&regs, sizeof(struct pt_regs), (void *)ctx->args[0]);
 	id = ctx->args[1];
 
 #ifdef __TARGET_ARCH_x86
@@ -85,22 +85,27 @@ int ig_seccomp_e(struct bpf_raw_tracepoint_args *ctx)
 
 	char comm[TASK_COMM_LEN];
 	bpf_get_current_comm(comm, sizeof(comm));
-	int is_runc = comm[0] == 'r' && comm[1] == 'u' && comm[2] == 'n' && comm[3] == 'c';
+	int is_runc = comm[0] == 'r' && comm[1] == 'u' && comm[2] == 'n' &&
+		      comm[3] == 'c';
 
 	__u64 mntns = BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	if (mntns == 0) {
 		return 0;
 	}
 
-	unsigned char *syscall_bitmap = bpf_map_lookup_elem(&syscalls_per_mntns, &mntns);
+	unsigned char *syscall_bitmap =
+		bpf_map_lookup_elem(&syscalls_per_mntns, &mntns);
 	if (syscall_bitmap == 0) {
 		__u64 zero = 0;
-		unsigned char *blank_bitmap = bpf_map_lookup_elem(&syscalls_per_mntns, &zero);
+		unsigned char *blank_bitmap =
+			bpf_map_lookup_elem(&syscalls_per_mntns, &zero);
 		if (blank_bitmap == 0)
 			return 0;
-		bpf_map_update_elem(&syscalls_per_mntns, &mntns, blank_bitmap, BPF_NOEXIST);
+		bpf_map_update_elem(&syscalls_per_mntns, &mntns, blank_bitmap,
+				    BPF_NOEXIST);
 
-		syscall_bitmap = bpf_map_lookup_elem(&syscalls_per_mntns, &mntns);
+		syscall_bitmap =
+			bpf_map_lookup_elem(&syscalls_per_mntns, &mntns);
 		if (syscall_bitmap == 0)
 			return 0;
 	}
@@ -115,7 +120,8 @@ int ig_seccomp_e(struct bpf_raw_tracepoint_args *ctx)
 	// https://github.com/opencontainers/runc/blob/8b4a8f093d0dbdf45100597f710d16777845ee83/libcontainer/standard_init_linux.go#L148
 	if (is_runc) {
 		if (syscall_bitmap[SYSCALLS_COUNT] == 0) {
-			if (id == __NR_prctl && PT_REGS_PARM1(&regs) == PR_GET_PDEATHSIG) {
+			if (id == __NR_prctl &&
+			    PT_REGS_PARM1(&regs) == PR_GET_PDEATHSIG) {
 				// Start recording the runc syscalls from now on.
 				syscall_bitmap[SYSCALLS_COUNT] = 1;
 			}
@@ -126,8 +132,9 @@ int ig_seccomp_e(struct bpf_raw_tracepoint_args *ctx)
 		// Record all the runc syscalls after prctl(PR_GET_PDEATHSIG) except
 		// for seccomp() and prctl(PR_SET_NO_NEW_PRIVS) because we know they
 		// are executed before the seccomp profile is installed.
-		if ((id == __NR_prctl && PT_REGS_PARM1(&regs) == PR_SET_NO_NEW_PRIVS) ||
-				(id == __NR_seccomp)) {
+		if ((id == __NR_prctl &&
+		     PT_REGS_PARM1(&regs) == PR_SET_NO_NEW_PRIVS) ||
+		    (id == __NR_seccomp)) {
 			return 0;
 		}
 	}
