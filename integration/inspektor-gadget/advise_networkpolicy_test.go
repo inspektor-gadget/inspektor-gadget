@@ -31,10 +31,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(nsServer),
@@ -59,7 +56,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 		{
 			Name: "RunNetworkPolicyMonitorClient",
 			Cmd:  fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --timeout 5 --output - | tee ./networktrace-client.log`, nsClient),
-			ExpectedOutputFn: func(output string) error {
+			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &networkTypes.Event{
 					Event:     BuildBaseEvent(nsClient, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Comm:      "nc",
@@ -97,18 +94,18 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.Runtime.ContainerID = ""
 				}
 
-				return ExpectEntriesToMatch(output, normalize, expectedEntry)
+				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
 		{
 			Name: "RunNetworkPolicyMonitorServer",
 			Cmd:  fmt.Sprintf(`$KUBECTL_GADGET advise network-policy monitor -n %s --timeout 5 --output - | tee ./networktrace-server.log`, nsServer),
-			ExpectedOutputFn: func(output string) error {
+			ValidateOutput: func(t *testing.T, output string) {
 				// Docker bridge does not preserve source IP :-(
 				// https://github.com/kubernetes/minikube/issues/11211
 				// Skip this test step if docker is detected
 				if isDockerRuntime {
-					return nil
+					return
 				}
 
 				expectedEntry := &networkTypes.Event{
@@ -149,7 +146,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.Runtime.ContainerID = ""
 				}
 
-				return ExpectEntriesToMatch(output, normalize, expectedEntry)
+				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
 		{

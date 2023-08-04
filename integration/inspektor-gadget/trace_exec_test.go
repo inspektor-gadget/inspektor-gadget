@@ -29,10 +29,7 @@ func TestTraceExec(t *testing.T) {
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	cmd := "setuidgid 1000:1111 sh -c 'while true; do date ; /bin/sleep 0.1; done'"
 	shArgs := []string{"/bin/sh", "-c", cmd}
@@ -43,7 +40,7 @@ func TestTraceExec(t *testing.T) {
 		Name:         "StartTraceExecGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s -o json --cwd", ns),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*traceexecTypes.Event{
 				{
 					Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
@@ -85,7 +82,7 @@ func TestTraceExec(t *testing.T) {
 				e.Runtime.ContainerID = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 

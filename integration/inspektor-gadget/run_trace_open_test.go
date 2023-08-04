@@ -31,10 +31,7 @@ func TestRunTraceOpen(t *testing.T) {
 	prog := "../../gadgets/trace_open_x86.bpf.o"
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	if *k8sArch == "arm64" {
 		prog = "../../gadgets/trace_open_arm64.bpf.o"
@@ -48,7 +45,7 @@ func TestRunTraceOpen(t *testing.T) {
 		Name:         "StartRunTraceOpenGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET run --prog @%s --definition @%s -n %s -o json", prog, def, ns),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedBaseJsonObj := RunEventToObj(t, &types.Event{
 				Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 			})
@@ -81,7 +78,7 @@ func TestRunTraceOpen(t *testing.T) {
 				m["mntns_id"] = uint64(0)
 			}
 
-			return ExpectEntriesToMatchObj(t, output, normalize, expectedJsonObj)
+			ExpectEntriesToMatchObj(t, output, normalize, expectedJsonObj)
 		},
 	}
 

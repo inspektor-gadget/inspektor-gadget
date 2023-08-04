@@ -28,14 +28,14 @@ func TestProfileBio(t *testing.T) {
 	profileBioCmd := &Command{
 		Name: "ProfileBio",
 		Cmd:  "ig profile block-io -o json --timeout 10",
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := bioprofileTypes.NewReport(histogram.UnitMicroseconds, nil)
 
 			normalize := func(e *bioprofileTypes.Report) {
 				e.Intervals = nil
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

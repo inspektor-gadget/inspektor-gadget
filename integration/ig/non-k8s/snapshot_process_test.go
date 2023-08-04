@@ -30,7 +30,7 @@ func TestSnapshotProcess(t *testing.T) {
 	snapshotProcessCmd := &Command{
 		Name: "SnapshotProcess",
 		Cmd:  fmt.Sprintf("./ig snapshot process -o json --runtimes=%s -c %s", *runtime, cn),
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &snapshotprocessTypes.Event{
 				Event: eventtypes.Event{
 					Type: eventtypes.NORMAL,
@@ -55,7 +55,7 @@ func TestSnapshotProcess(t *testing.T) {
 				e.Runtime.ContainerImageName = ""
 			}
 
-			return ExpectEntriesInArrayToMatch(output, normalize, expectedEntry)
+			ExpectEntriesInArrayToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

@@ -31,7 +31,7 @@ func TestTraceOOMKill(t *testing.T) {
 		Name:         "TraceOomkill",
 		Cmd:          fmt.Sprintf("ig trace oomkill -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &oomkillTypes.Event{
 				Event: BuildBaseEvent(ns,
@@ -68,7 +68,7 @@ func TestTraceOOMKill(t *testing.T) {
 				}
 			}
 
-			return ExpectAllToMatch(output, normalize, expectedEntry)
+			ExpectAllToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

@@ -30,10 +30,7 @@ func TestTraceDns(t *testing.T) {
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -42,16 +39,13 @@ func TestTraceDns(t *testing.T) {
 	}
 
 	RunTestSteps(commandsPreTest, t)
-	dnsServer, err := GetTestPodIP(ns, "dnstester")
-	if err != nil {
-		t.Fatalf("failed to get pod ip: %v", err)
-	}
+	dnsServer := GetTestPodIP(t, ns, "dnstester")
 
 	traceDNSCmd := &Command{
 		Name:         "StartTraceDnsGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace dns -n %s -o json", ns),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*tracednsTypes.Event{
 				{
 					Event:      BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
@@ -127,7 +121,7 @@ func TestTraceDns(t *testing.T) {
 				e.Runtime.ContainerID = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 

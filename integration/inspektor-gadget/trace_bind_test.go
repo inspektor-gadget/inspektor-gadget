@@ -29,16 +29,13 @@ func TestTraceBind(t *testing.T) {
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	traceBindCmd := &Command{
 		Name:         "StartBindsnoopGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace bind -n %s -o json", ns),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntry := &tracebindTypes.Event{
 				Event:     BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 				Comm:      "nc",
@@ -63,7 +60,7 @@ func TestTraceBind(t *testing.T) {
 				e.Runtime.ContainerID = ""
 			}
 
-			return ExpectAllToMatch(output, normalize, expectedEntry)
+			ExpectAllToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

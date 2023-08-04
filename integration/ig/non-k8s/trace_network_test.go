@@ -31,7 +31,7 @@ func TestTraceNetwork(t *testing.T) {
 		Name:         "TraceNetwork",
 		Cmd:          fmt.Sprintf("./ig trace network -o json --runtimes=%s -c %s", *runtime, cn),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*networkTypes.Event{
 				{
 					Event: eventtypes.Event{
@@ -87,7 +87,7 @@ func TestTraceNetwork(t *testing.T) {
 				e.Runtime.ContainerImageName = ""
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 

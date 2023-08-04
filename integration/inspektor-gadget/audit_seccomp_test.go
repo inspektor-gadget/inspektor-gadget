@@ -30,10 +30,7 @@ func TestAuditSeccomp(t *testing.T) {
 	t.Parallel()
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	commands := []*Command{
 		CreateTestNamespaceCommand(ns),
@@ -94,7 +91,7 @@ EOF
 		{
 			Name: "RunAuditSeccompGadget",
 			Cmd:  fmt.Sprintf("$KUBECTL_GADGET audit seccomp -n %s --timeout 15 -o json", ns),
-			ExpectedOutputFn: func(output string) error {
+			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := &seccompauditTypes.Event{
 					Event:   BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 					Syscall: "unshare",
@@ -114,7 +111,7 @@ EOF
 					e.Runtime.ContainerID = ""
 				}
 
-				return ExpectEntriesToMatch(output, normalize, expectedEntry)
+				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
 		DeleteTestNamespaceCommand(ns),

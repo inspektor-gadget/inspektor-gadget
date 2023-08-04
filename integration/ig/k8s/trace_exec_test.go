@@ -38,7 +38,7 @@ func TestTraceExec(t *testing.T) {
 		Name:         "TraceExec",
 		Cmd:          fmt.Sprintf("ig trace exec -o json --runtimes=%s --cwd", *containerRuntime),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntries := []*execTypes.Event{
 				{
@@ -100,7 +100,7 @@ func TestTraceExec(t *testing.T) {
 				}
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 
@@ -127,7 +127,7 @@ func TestTraceExecHost(t *testing.T) {
 		Name:         "TraceExecHost",
 		Cmd:          "ig trace exec -o json --host",
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*execTypes.Event{
 				{
 					Event: eventtypes.Event{
@@ -155,7 +155,7 @@ func TestTraceExecHost(t *testing.T) {
 				e.MountNsID = 0
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntries...)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 

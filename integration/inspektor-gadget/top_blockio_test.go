@@ -23,7 +23,7 @@ import (
 )
 
 func newTopBlockIOCmd(ns string, cmd string, startAndStop bool, isDockerRuntime bool) *Command {
-	expectedOutputFn := func(output string) error {
+	validateOutputFn := func(t *testing.T, output string) {
 		expectedEntry := &topblockioTypes.Stats{
 			CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 			Write:      true,
@@ -46,13 +46,13 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool, isDockerRuntime 
 			e.Runtime.ContainerID = ""
 		}
 
-		return ExpectEntriesInMultipleArrayToMatch(output, normalize, expectedEntry)
+		ExpectEntriesInMultipleArrayToMatch(t, output, normalize, expectedEntry)
 	}
 	return &Command{
-		Name:             "TopBlockIO",
-		ExpectedOutputFn: expectedOutputFn,
-		Cmd:              cmd,
-		StartAndStop:     startAndStop,
+		Name:           "TopBlockIO",
+		ValidateOutput: validateOutputFn,
+		Cmd:            cmd,
+		StartAndStop:   startAndStop,
 	}
 }
 
@@ -65,10 +65,7 @@ func TestTopBlockIO(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-top-block-io")
 
 	// TODO: Handle it once we support getting container image name from docker
-	errIsDocker, isDockerRuntime := IsDockerRuntime()
-	if errIsDocker != nil {
-		t.Fatalf("checking if docker is current runtime: %v", errIsDocker)
-	}
+	isDockerRuntime := IsDockerRuntime(t)
 
 	commandsPreTest := []*Command{
 		CreateTestNamespaceCommand(ns),

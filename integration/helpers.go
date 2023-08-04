@@ -18,13 +18,13 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"os/exec"
 	"reflect"
 	"strings"
+	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/require"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -35,14 +35,14 @@ var cmpIgnoreUnexported = cmpopts.IgnoreUnexported(
 	containercollection.K8sMetadata{},
 )
 
-func parseMultiJSONOutput[T any](output string, normalize func(*T)) ([]*T, error) {
+func parseMultiJSONOutput[T any](t *testing.T, output string, normalize func(*T)) []*T {
 	ret := []*T{}
 
 	decoder := json.NewDecoder(strings.NewReader(output))
 	for decoder.More() {
 		var entry T
 		if err := decoder.Decode(&entry); err != nil {
-			return nil, fmt.Errorf("decoding json: %w", err)
+			require.NoError(t, err, "decoding json")
 		}
 		// To be able to use reflect.DeepEqual and cmp.Diff, we need to
 		// "normalize" the output so that it only includes non-default values
@@ -54,15 +54,14 @@ func parseMultiJSONOutput[T any](output string, normalize func(*T)) ([]*T, error
 		ret = append(ret, &entry)
 	}
 
-	return ret, nil
+	return ret
 }
 
-func parseJSONArrayOutput[T any](output string, normalize func(*T)) ([]*T, error) {
+func parseJSONArrayOutput[T any](t *testing.T, output string, normalize func(*T)) []*T {
 	entries := []*T{}
 
-	if err := json.Unmarshal([]byte(output), &entries); err != nil {
-		return nil, fmt.Errorf("unmarshaling output array: %w", err)
-	}
+	err := json.Unmarshal([]byte(output), &entries)
+	require.NoError(t, err, "unmarshaling output array")
 
 	for _, entry := range entries {
 		// To be able to use reflect.DeepEqual and cmp.Diff, we need to
@@ -73,73 +72,54 @@ func parseJSONArrayOutput[T any](output string, normalize func(*T)) ([]*T, error
 		}
 	}
 
-	return entries, nil
+	return entries
 }
 
-func parseMultipleJSONArrayOutput[T any](output string, normalize func(*T)) ([]*T, error) {
+func parseMultipleJSONArrayOutput[T any](t *testing.T, output string, normalize func(*T)) []*T {
 	allEntries := make([]*T, 0)
 
 	sc := bufio.NewScanner(strings.NewReader(output))
 	// On ARO we saw arrays with charcounts of > 100,000. Lets just set 1 MB as the limit
 	sc.Buffer(make([]byte, 1024), 1024*1024)
 	for sc.Scan() {
-		entries, err := parseJSONArrayOutput(sc.Text(), normalize)
-		if err != nil {
-			return nil, err
-		}
+		entries := parseJSONArrayOutput(t, sc.Text(), normalize)
 		allEntries = append(allEntries, entries...)
 	}
-	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("parsing multiple JSON arrays: %w", err)
-	}
+	require.NoError(t, sc.Err(), "parsing multiple JSON arrays")
 
-	return allEntries, nil
+	return allEntries
 }
 
-func expectAllToMatch[T any](entries []*T, expectedEntry *T) error {
-	if len(entries) == 0 {
-		return fmt.Errorf("no output entries to match")
-	}
+func expectAllToMatch[T any](t *testing.T, entries []*T, expectedEntry *T) {
+	require.NotEmpty(t, entries, "no output entries to match")
+
 	for _, entry := range entries {
-		if !reflect.DeepEqual(expectedEntry, entry) {
-			return fmt.Errorf("unexpected output entry:\n%s",
-				cmp.Diff(expectedEntry, entry, cmpIgnoreUnexported))
-		}
+		require.Equal(t, expectedEntry, entry, "unexpected output entry")
 	}
-	return nil
 }
 
 // ExpectAllToMatch verifies that the expectedEntry is matched by all the
 // entries in the output (Lines of independent JSON objects).
-func ExpectAllToMatch[T any](output string, normalize func(*T), expectedEntry *T) error {
-	entries, err := parseMultiJSONOutput(output, normalize)
-	if err != nil {
-		return err
-	}
-	return expectAllToMatch(entries, expectedEntry)
+func ExpectAllToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntry *T) {
+	entries := parseMultiJSONOutput(t, output, normalize)
+	expectAllToMatch(t, entries, expectedEntry)
 }
 
 // ExpectAllInArrayToMatch verifies that the expectedEntry is matched by all the
 // entries in the output (JSON array of JSON objects).
-func ExpectAllInArrayToMatch[T any](output string, normalize func(*T), expectedEntry *T) error {
-	entries, err := parseJSONArrayOutput(output, normalize)
-	if err != nil {
-		return err
-	}
-	return expectAllToMatch(entries, expectedEntry)
+func ExpectAllInArrayToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntry *T) {
+	entries := parseJSONArrayOutput(t, output, normalize)
+	expectAllToMatch(t, entries, expectedEntry)
 }
 
 // ExpectAllInMultipleArrayToMatch verifies that the expectedEntry is matched by all the
 // entries in the output (multiple JSON array of JSON objects separated by newlines).
-func ExpectAllInMultipleArrayToMatch[T any](output string, normalize func(*T), expectedEntry *T) error {
-	entries, err := parseMultipleJSONArrayOutput(output, normalize)
-	if err != nil {
-		return err
-	}
-	return expectAllToMatch(entries, expectedEntry)
+func ExpectAllInMultipleArrayToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntry *T) {
+	entries := parseMultipleJSONArrayOutput(t, output, normalize)
+	expectAllToMatch(t, entries, expectedEntry)
 }
 
-func expectEntriesToMatch[T any](entries []*T, expectedEntries ...*T) error {
+func expectEntriesToMatch[T any](t *testing.T, entries []*T, expectedEntries ...*T) {
 out:
 	for _, expectedEntry := range expectedEntries {
 		for _, entry := range entries {
@@ -147,39 +127,29 @@ out:
 				continue out
 			}
 		}
-		return fmt.Errorf("output doesn't contain the expected entry: %+v", expectedEntry)
+		t.Fatalf("output doesn't contain the expected entry: %+v", expectedEntry)
 	}
-	return nil
 }
 
 // ExpectEntriesToMatch verifies that all the entries in expectedEntries are
 // matched by at least one entry in the output (Lines of independent JSON objects).
-func ExpectEntriesToMatch[T any](output string, normalize func(*T), expectedEntries ...*T) error {
-	entries, err := parseMultiJSONOutput(output, normalize)
-	if err != nil {
-		return err
-	}
-	return expectEntriesToMatch(entries, expectedEntries...)
+func ExpectEntriesToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntries ...*T) {
+	entries := parseMultiJSONOutput(t, output, normalize)
+	expectEntriesToMatch(t, entries, expectedEntries...)
 }
 
 // ExpectEntriesInArrayToMatch verifies that all the entries in expectedEntries are
 // matched by at least one entry in the output (JSON array of JSON objects).
-func ExpectEntriesInArrayToMatch[T any](output string, normalize func(*T), expectedEntries ...*T) error {
-	entries, err := parseJSONArrayOutput(output, normalize)
-	if err != nil {
-		return err
-	}
-	return expectEntriesToMatch(entries, expectedEntries...)
+func ExpectEntriesInArrayToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntries ...*T) {
+	entries := parseJSONArrayOutput(t, output, normalize)
+	expectEntriesToMatch(t, entries, expectedEntries...)
 }
 
 // ExpectEntriesInMultipleArrayToMatch verifies that all the entries in expectedEntries are
 // matched by at least one entry in the output (multiple JSON array of JSON objects separated by newlines).
-func ExpectEntriesInMultipleArrayToMatch[T any](output string, normalize func(*T), expectedEntries ...*T) error {
-	entries, err := parseMultipleJSONArrayOutput(output, normalize)
-	if err != nil {
-		return err
-	}
-	return expectEntriesToMatch(entries, expectedEntries...)
+func ExpectEntriesInMultipleArrayToMatch[T any](t *testing.T, output string, normalize func(*T), expectedEntries ...*T) {
+	entries := parseMultipleJSONArrayOutput(t, output, normalize)
+	expectEntriesToMatch(t, entries, expectedEntries...)
 }
 
 type CommonDataOption func(commonData *eventtypes.CommonData)
@@ -231,47 +201,38 @@ func BuildBaseEvent(namespace string, options ...CommonDataOption) eventtypes.Ev
 	return e
 }
 
-func GetTestPodIP(ns string, podname string) (string, error) {
+func GetTestPodIP(t *testing.T, ns string, podname string) string {
 	cmd := exec.Command("kubectl", "-n", ns, "get", "pod", podname, "-o", "jsonpath={.status.podIP}")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	r, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("%w: %s", err, stderr.String())
-	}
-	return string(r), nil
+	require.NoError(t, err, "getting pod ip: %s", stderr.String())
+	return string(r)
 }
 
-func GetPodIPsFromLabel(ns string, label string) ([]string, error) {
+func GetPodIPsFromLabel(t *testing.T, ns string, label string) []string {
 	cmd := exec.Command("kubectl", "-n", ns, "get", "pod", "-l", label, "-o", "jsonpath={.items[*].status.podIP}")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	r, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", err, stderr.String())
-	}
-	return strings.Split(string(r), " "), nil
+	require.NoError(t, err, "getting pods ips from label: %s", stderr.String())
+	return strings.Split(string(r), " ")
 }
 
-func GetPodNode(ns string, podname string) (string, error) {
+func GetPodNode(t *testing.T, ns string, podname string) string {
 	cmd := exec.Command("kubectl", "-n", ns, "get", "pod", podname, "-o", "jsonpath={.spec.nodeName}")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	r, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("%w: %s", err, stderr.String())
-	}
-	return string(r), nil
+	require.NoError(t, err, "getting pod node: %s", stderr.String())
+	return string(r)
 }
 
-func GetPodUID(ns, podname string) (string, error) {
+func GetPodUID(t *testing.T, ns, podname string) string {
 	cmd := exec.Command("kubectl", "-n", ns, "get", "pod", podname, "-o", "jsonpath={.metadata.uid}")
 	r, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("getting UID of %s/%s: %w", ns, podname, err)
-	}
-
-	return string(r), nil
+	require.NoError(t, err, "getting UID of %s/%s: %s", ns, podname, r)
+	return string(r)
 }
 
 func CheckNamespace(ns string) bool {
@@ -280,18 +241,13 @@ func CheckNamespace(ns string) bool {
 }
 
 // IsDockerRuntime checks whether the container runtime of the first node in the Kubernetes cluster is Docker or not.
-func IsDockerRuntime() (error, bool) {
+func IsDockerRuntime(t *testing.T) bool {
 	cmd := exec.Command("kubectl", "get", "node", "-o", "jsonpath={.items[0].status.nodeInfo.containerRuntimeVersion}")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	r, err := cmd.Output()
-	if err != nil {
-		return fmt.Errorf("%w: %s", err, stderr.String()), false
-	}
+	require.NoError(t, err, "getting container runtime: %s", stderr.String())
 	ret := string(r)
 
-	if strings.Contains(ret, "docker") {
-		return nil, true
-	}
-	return nil, false
+	return strings.Contains(ret, "docker")
 }

@@ -31,7 +31,7 @@ func TestTraceSni(t *testing.T) {
 		Name:         "TraceSNI",
 		Cmd:          fmt.Sprintf("ig trace sni -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &sniTypes.Event{
 				Event: BuildBaseEvent(ns,
@@ -66,7 +66,7 @@ func TestTraceSni(t *testing.T) {
 				}
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

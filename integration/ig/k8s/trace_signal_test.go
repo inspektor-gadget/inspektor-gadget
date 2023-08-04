@@ -31,7 +31,7 @@ func TestTraceSignal(t *testing.T) {
 		Name:         "TraceSignal",
 		Cmd:          fmt.Sprintf("ig trace signal -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &signalTypes.Event{
 				Event: BuildBaseEvent(ns,
@@ -66,7 +66,7 @@ func TestTraceSignal(t *testing.T) {
 				}
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

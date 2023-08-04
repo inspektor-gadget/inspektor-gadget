@@ -30,7 +30,7 @@ func TestProfileCpu(t *testing.T) {
 	profileCPUCmd := &Command{
 		Name: "ProfileCpu",
 		Cmd:  fmt.Sprintf("ig profile cpu -K -o json --runtimes=%s --timeout 10", *containerRuntime),
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &cpuprofileTypes.Report{
 				CommonData: BuildCommonData(ns,
@@ -63,7 +63,7 @@ func TestProfileCpu(t *testing.T) {
 				}
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

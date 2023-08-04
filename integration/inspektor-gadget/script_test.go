@@ -16,8 +16,9 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -37,12 +38,8 @@ func TestScript(t *testing.T) {
 		Name:         "StartScriptGadget",
 		Cmd:          fmt.Sprintf("$KUBECTL_GADGET script -o json -e '%s'", prog),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
-			if strings.Contains(output, "fofofofof nc") {
-				return nil
-			}
-
-			return fmt.Errorf("output doesn't contain 'fofofofof nc': %s", output)
+		ValidateOutput: func(t *testing.T, output string) {
+			require.Contains(t, output, "fofofofof nc")
 		},
 	}
 

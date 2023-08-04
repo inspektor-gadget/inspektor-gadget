@@ -31,7 +31,7 @@ func TestTraceOpen(t *testing.T) {
 		Name:         "TraceOpen",
 		Cmd:          fmt.Sprintf("ig trace open -o json --runtimes=%s", *containerRuntime),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &openTypes.Event{
 				Event: BuildBaseEvent(ns,
@@ -72,7 +72,7 @@ func TestTraceOpen(t *testing.T) {
 				}
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 

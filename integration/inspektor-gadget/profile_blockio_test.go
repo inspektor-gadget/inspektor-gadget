@@ -30,14 +30,14 @@ func TestProfileBlockIO(t *testing.T) {
 		{
 			Name: "RunProfileBlockIOGadget",
 			Cmd:  "$KUBECTL_GADGET profile block-io --node $(kubectl get node --no-headers | cut -d' ' -f1 | head -1) --timeout 15 -o json",
-			ExpectedOutputFn: func(output string) error {
+			ValidateOutput: func(t *testing.T, output string) {
 				expectedEntry := bioprofileTypes.NewReport(histogram.UnitMicroseconds, nil)
 
 				normalize := func(e *bioprofileTypes.Report) {
 					e.Intervals = nil
 				}
 
-				return ExpectEntriesToMatch(output, normalize, expectedEntry)
+				ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 			},
 		},
 	}

@@ -34,7 +34,7 @@ func TestTraceFsslower(t *testing.T) {
 		Name:         "TraceFsslower",
 		Cmd:          fmt.Sprintf("ig trace fsslower -f %s --runtimes=%s -m 0 -o json", fsType, *containerRuntime),
 		StartAndStop: true,
-		ExpectedOutputFn: func(output string) error {
+		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntry := &fsslowerTypes.Event{
 				Event: BuildBaseEvent(ns,
@@ -71,7 +71,7 @@ func TestTraceFsslower(t *testing.T) {
 				}
 			}
 
-			return ExpectEntriesToMatch(output, normalize, expectedEntry)
+			ExpectEntriesToMatch(t, output, normalize, expectedEntry)
 		},
 	}
 
