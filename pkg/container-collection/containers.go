@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/moby/moby/pkg/stringid"
 	ocispec "github.com/opencontainers/runtime-spec/specs-go"
 	"golang.org/x/sys/unix"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -209,6 +210,13 @@ func GetColumns() *columns.Columns[Container] {
 
 	col, _ = cols.GetColumn("runtime.containerImageName")
 	col.Visible = true
+
+	cols.MustSetExtractor("runtime.containerImageName", func(container *Container) string {
+		if strings.Contains(container.Runtime.ContainerImageName, "sha256") {
+			return stringid.TruncateID(container.Runtime.ContainerImageName)
+		}
+		return container.Runtime.ContainerImageName
+	})
 
 	return cols
 }

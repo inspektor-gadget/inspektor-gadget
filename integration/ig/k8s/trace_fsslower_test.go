@@ -64,6 +64,11 @@ func TestTraceFsslower(t *testing.T) {
 				e.Latency = 0
 
 				e.Runtime.ContainerID = ""
+
+				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+				if isDockerRuntime {
+					e.Runtime.ContainerImageName = ""
+				}
 			}
 
 			return ExpectEntriesToMatch(output, normalize, expectedEntry)

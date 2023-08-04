@@ -163,9 +163,10 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 		ContainerData: runtimeclient.ContainerData{
 			Runtime: runtimeclient.RuntimeContainerData{
 				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-					ContainerID:   containerJSON.ID,
-					ContainerName: strings.TrimPrefix(containerJSON.Name, "/"),
-					RuntimeName:   types.RuntimeNameDocker,
+					ContainerID:        containerJSON.ID,
+					ContainerName:      strings.TrimPrefix(containerJSON.Name, "/"),
+					RuntimeName:        types.RuntimeNameDocker,
+					ContainerImageName: getContainerImageNamefromImage(containerJSON.Config.Image, containerJSON.ID),
 				},
 				State: containerStatusStateToRuntimeClientState(containerJSON.State.Status),
 			},
@@ -239,9 +240,10 @@ func DockerContainerToContainerData(container *dockertypes.Container) *runtimecl
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:   container.ID,
-				ContainerName: strings.TrimPrefix(container.Names[0], "/"),
-				RuntimeName:   types.RuntimeNameDocker,
+				ContainerID:        container.ID,
+				ContainerName:      strings.TrimPrefix(container.Names[0], "/"),
+				RuntimeName:        types.RuntimeNameDocker,
+				ContainerImageName: getContainerImageNamefromImage(container.Image, container.ID),
 			},
 			State: containerStatusStateToRuntimeClientState(container.State),
 		},
@@ -251,4 +253,28 @@ func DockerContainerToContainerData(container *dockertypes.Container) *runtimecl
 	runtimeclient.EnrichWithK8sMetadata(containerData, container.Labels)
 
 	return containerData
+}
+
+// getContainerImageNamefromImage is a helper to parse the image string we get from Docker API
+// and retrieve the image name if provided.
+func getContainerImageNamefromImage(image string, containerID string) string {
+	// Image filed provided by Docker API may looks like e.g.
+	// 1. gcr.io/k8s-minikube/kicbase:v0.0.37@sha256:8bf7a0e8a062bc5e2b71d28b35bfa9cc862d9220e234e86176b3785f685d8b15
+	// OR
+	// 2. busybox@sha256:3fbc632167424a6d997e74f52b878d7cc478225cffac6bc977eedfe51c7f4e79
+	// These two provide both image name and digest separated by '@'.
+	//
+	// 3. docker.io/library/busybox:latest or simply busybox
+	// Just image name is provided.
+	//
+	// 4. sha256:aebe758cef4cd05b9f8cee39758227714d02f42ef3088023c1e3cd454f927a2b
+	// This fourth option provides the imageID and, following Docker example, we'll use the imageID.
+
+	// Case 1 or 2
+	if strings.Contains(image, "@") {
+		return strings.Split(image, "@")[0]
+	}
+
+	// Case 3 or 4
+	return image
 }

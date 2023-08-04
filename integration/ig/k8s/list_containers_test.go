@@ -50,7 +50,7 @@ func newListContainerTestStep(
 				},
 			}
 
-			// TODO: Handle once we support getting ContainerImageName from docker
+			// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			if isDockerRuntime {
 				expectedContainer.Runtime.ContainerImageName = ""
@@ -69,6 +69,11 @@ func newListContainerTestStep(
 
 				c.K8s.PodLabels = nil
 				c.Runtime.ContainerID = ""
+
+				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+				if isDockerRuntime {
+					c.Runtime.ContainerImageName = ""
+				}
 			}
 
 			return verifyOutput(output, normalize, expectedContainer)
@@ -171,7 +176,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 				},
 			}
 
-			// TODO: Handle it once we support getting container image name for docker.
+			// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 			if isDockerRuntime {
 				expectedEvent.Container.Runtime.ContainerImageName = ""
 			}
@@ -201,6 +206,11 @@ func TestWatchCreatedContainers(t *testing.T) {
 				if e.Container.Runtime.RuntimeName == ContainerRuntimeDocker ||
 					e.Container.Runtime.RuntimeName == ContainerRuntimeCRIO {
 					e.Container.Runtime.ContainerName = cn
+				}
+
+				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+				if e.Container.Runtime.RuntimeName == ContainerRuntimeDocker {
+					e.Container.Runtime.ContainerImageName = ""
 				}
 			}
 
@@ -254,7 +264,7 @@ func TestWatchDeletedContainers(t *testing.T) {
 				},
 			}
 
-			// TODO: Handle once we support getting containerImageName from Docker
+			// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			if isDockerRuntime {
 				expectedEvent.Container.Runtime.ContainerImageName = ""
@@ -285,6 +295,11 @@ func TestWatchDeletedContainers(t *testing.T) {
 				if e.Container.Runtime.RuntimeName == ContainerRuntimeDocker ||
 					e.Container.Runtime.RuntimeName == ContainerRuntimeCRIO {
 					e.Container.Runtime.ContainerName = cn
+				}
+
+				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+				if e.Container.Runtime.RuntimeName == ContainerRuntimeDocker {
+					e.Container.Runtime.ContainerImageName = ""
 				}
 			}
 
@@ -342,7 +357,7 @@ func TestPodWithSecurityContext(t *testing.T) {
 				},
 			}
 
-			// TODO: Handle it once we support getting container image name for docker.
+			// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 			if isDockerRuntime {
 				expectedEvent.Container.Runtime.ContainerImageName = ""
 			}
@@ -372,6 +387,11 @@ func TestPodWithSecurityContext(t *testing.T) {
 				if e.Container.Runtime.RuntimeName == ContainerRuntimeDocker ||
 					e.Container.Runtime.RuntimeName == ContainerRuntimeCRIO {
 					e.Container.Runtime.ContainerName = cn
+				}
+
+				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
+				if e.Container.Runtime.RuntimeName == ContainerRuntimeDocker {
+					e.Container.Runtime.ContainerImageName = ""
 				}
 			}
 
