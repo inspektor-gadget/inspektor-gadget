@@ -34,7 +34,7 @@
 // The offset of the session ID length field from the start of the TLS payload.
 #define TLS_SESSION_ID_LENGTH_OFF 43
 
-#define TASK_COMM_LEN	16
+#define TASK_COMM_LEN 16
 
 struct event_t {
 	// Keep netns at the top: networktracer depends on it

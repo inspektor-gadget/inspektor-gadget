@@ -25,21 +25,23 @@ int BPF_KPROBE(ig_oom_kill, struct oom_control *oc, const char *message)
 	u64 mntns_id;
 	u64 uid_gid = bpf_get_current_uid_gid();
 
-	mntns_id = (u64) BPF_CORE_READ(oc, chosen, nsproxy, mnt_ns, ns.inum);
+	mntns_id = (u64)BPF_CORE_READ(oc, chosen, nsproxy, mnt_ns, ns.inum);
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
 
 	data.fpid = bpf_get_current_pid_tgid() >> 32;
-	data.fuid = (u32) uid_gid;
-	data.fgid = (u32) (uid_gid >> 32);
+	data.fuid = (u32)uid_gid;
+	data.fgid = (u32)(uid_gid >> 32);
 	data.tpid = BPF_CORE_READ(oc, chosen, tgid);
 	data.pages = BPF_CORE_READ(oc, totalpages);
 	bpf_get_current_comm(&data.fcomm, sizeof(data.fcomm));
-	bpf_probe_read_kernel(&data.tcomm, sizeof(data.tcomm), BPF_CORE_READ(oc, chosen, comm));
+	bpf_probe_read_kernel(&data.tcomm, sizeof(data.tcomm),
+			      BPF_CORE_READ(oc, chosen, comm));
 	data.mount_ns_id = mntns_id;
 	data.timestamp = bpf_ktime_get_boot_ns();
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &data, sizeof(data));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &data,
+			      sizeof(data));
 	return 0;
 }
 

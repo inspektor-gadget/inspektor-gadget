@@ -11,9 +11,8 @@
 #include "maps.bpf.h"
 
 /* Taken from kernel include/linux/socket.h. */
-#define AF_INET		2	/* IP version 4			*/
-#define AF_INET6	10	/* IP version 6			*/
-
+#define AF_INET 2 /* IP version 4			*/
+#define AF_INET6 10 /* IP version 6			*/
 
 const volatile bool targ_laddr_hist = false;
 const volatile bool targ_raddr_hist = false;
@@ -25,7 +24,7 @@ const volatile __u8 targ_saddr_v6[IPV6_LEN] = {};
 const volatile __u8 targ_daddr_v6[IPV6_LEN] = {};
 const volatile bool targ_ms = false;
 
-#define MAX_ENTRIES	10240
+#define MAX_ENTRIES 10240
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -52,7 +51,8 @@ static bool inline ipv6_is_not_zero(const volatile __u8 addr[IPV6_LEN])
 	return false;
 }
 
-static bool inline ipv6_are_different(const volatile __u8 a[IPV6_LEN], const __u8 b[IPV6_LEN])
+static bool inline ipv6_are_different(const volatile __u8 a[IPV6_LEN],
+				      const __u8 b[IPV6_LEN])
 {
 	for (int i = 0; i < IPV6_LEN; i++)
 		if (a[i] != b[i])
@@ -72,20 +72,23 @@ static int handle_tcp_rcv_established(struct sock *sk)
 	if (targ_sport && targ_sport != BPF_CORE_READ(inet, inet_sport))
 		return 0;
 
-	if (targ_dport && targ_dport != BPF_CORE_READ(sk, __sk_common.skc_dport))
+	if (targ_dport &&
+	    targ_dport != BPF_CORE_READ(sk, __sk_common.skc_dport))
 		return 0;
 
 	key.family = BPF_CORE_READ(sk, __sk_common.skc_family);
 	switch (key.family) {
 	case AF_INET:
 		/* If we set any of IPv6 address, we do not care about IPv4 ones. */
-		if (ipv6_is_not_zero(targ_saddr_v6) || ipv6_is_not_zero(targ_daddr_v6))
+		if (ipv6_is_not_zero(targ_saddr_v6) ||
+		    ipv6_is_not_zero(targ_daddr_v6))
 			return 0;
 
 		if (targ_saddr && targ_saddr != BPF_CORE_READ(inet, inet_saddr))
 			return 0;
 
-		if (targ_daddr && targ_daddr != BPF_CORE_READ(sk, __sk_common.skc_daddr))
+		if (targ_daddr &&
+		    targ_daddr != BPF_CORE_READ(sk, __sk_common.skc_daddr))
 			return 0;
 
 		break;
@@ -97,12 +100,18 @@ static int handle_tcp_rcv_established(struct sock *sk)
 		if (targ_saddr || targ_daddr)
 			return 0;
 
-		if (ipv6_is_not_zero(targ_saddr_v6)
-		    && ipv6_are_different(targ_saddr_v6, BPF_CORE_READ(inet, pinet6, saddr.in6_u.u6_addr8)))
+		if (ipv6_is_not_zero(targ_saddr_v6) &&
+		    ipv6_are_different(targ_saddr_v6,
+				       BPF_CORE_READ(inet, pinet6,
+						     saddr.in6_u.u6_addr8)))
 			return 0;
 
-		if (ipv6_is_not_zero(targ_daddr_v6)
-		    && ipv6_are_different(targ_daddr_v6, BPF_CORE_READ(sk, __sk_common.skc_v6_daddr.in6_u.u6_addr8)))
+		if (ipv6_is_not_zero(targ_daddr_v6) &&
+		    ipv6_are_different(
+			    targ_daddr_v6,
+			    BPF_CORE_READ(
+				    sk,
+				    __sk_common.skc_v6_daddr.in6_u.u6_addr8)))
 			return 0;
 
 		break;
@@ -112,7 +121,10 @@ static int handle_tcp_rcv_established(struct sock *sk)
 
 	if (targ_laddr_hist) {
 		if (key.family == AF_INET6)
-			bpf_probe_read_kernel(&key.addr, sizeof(key.addr), BPF_CORE_READ(inet, pinet6, saddr.in6_u.u6_addr8));
+			bpf_probe_read_kernel(
+				&key.addr, sizeof(key.addr),
+				BPF_CORE_READ(inet, pinet6,
+					      saddr.in6_u.u6_addr8));
 		else
 			/*
 			 * It is fine to use "->" operator with bpf_probe_read_kernel() as we are
@@ -120,12 +132,19 @@ static int handle_tcp_rcv_established(struct sock *sk)
 			 * attribute, see:
 			 * https://nakryiko.com/posts/bpf-core-reference-guide/#defining-own-co-re-relocatable-type-definitions
 			 */
-			bpf_probe_read_kernel(&key.addr, sizeof(inet->inet_saddr), &inet->inet_saddr);
+			bpf_probe_read_kernel(&key.addr,
+					      sizeof(inet->inet_saddr),
+					      &inet->inet_saddr);
 	} else if (targ_raddr_hist) {
 		if (key.family == AF_INET6)
-			bpf_probe_read_kernel(&key.addr, sizeof(key.addr), BPF_CORE_READ(sk, __sk_common.skc_v6_daddr.in6_u.u6_addr8));
+			bpf_probe_read_kernel(
+				&key.addr, sizeof(key.addr),
+				BPF_CORE_READ(sk, __sk_common.skc_v6_daddr.in6_u
+							  .u6_addr8));
 		else
-			bpf_probe_read_kernel(&key.addr, sizeof(sk->__sk_common.skc_daddr), &sk->__sk_common.skc_daddr);
+			bpf_probe_read_kernel(&key.addr,
+					      sizeof(sk->__sk_common.skc_daddr),
+					      &sk->__sk_common.skc_daddr);
 	} else {
 		key.family = 0;
 	}

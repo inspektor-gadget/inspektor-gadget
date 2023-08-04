@@ -84,7 +84,7 @@ int ig_trace_net(struct __sk_buff *skb)
 
 	struct event_t event = {};
 	__builtin_memset(&event, 0, sizeof(event));
-	event.netns	= skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
+	event.netns = skb->cb[0]; // cb[0] initialized by dispatcher.bpf.c
 	event.timestamp = bpf_ktime_get_boot_ns();
 	event.pkt_type = skb->pkt_type;
 	event.proto = iph.protocol;
@@ -97,12 +97,14 @@ int ig_trace_net(struct __sk_buff *skb)
 		event.mount_ns_id = skb_val->mntns;
 		event.pid = skb_val->pid_tgid >> 32;
 		event.tid = (__u32)skb_val->pid_tgid;
-		__builtin_memcpy(&event.task,  skb_val->task, sizeof(event.task));
-		event.uid = (__u32) skb_val->uid_gid;
-		event.gid = (__u32) (skb_val->uid_gid >> 32);
+		__builtin_memcpy(&event.task, skb_val->task,
+				 sizeof(event.task));
+		event.uid = (__u32)skb_val->uid_gid;
+		event.gid = (__u32)(skb_val->uid_gid >> 32);
 	}
 
-	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 
 	return 0;
 }

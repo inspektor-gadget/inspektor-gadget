@@ -18,16 +18,19 @@ struct {
 
 // gadget_should_discard_mntns_id returns true if events generated from the given mntns_id should
 // not be taken into consideration.
-static __always_inline bool gadget_should_discard_mntns_id(__u64 mntns_id) {
-	return gadget_filter_by_mntns && !bpf_map_lookup_elem(&gadget_mntns_filter_map, &mntns_id);
+static __always_inline bool gadget_should_discard_mntns_id(__u64 mntns_id)
+{
+	return gadget_filter_by_mntns &&
+	       !bpf_map_lookup_elem(&gadget_mntns_filter_map, &mntns_id);
 }
 
 // gadget_get_mntns_id returns the mntns_id of the current task.
-static __always_inline __u64 gadget_get_mntns_id() {
+static __always_inline __u64 gadget_get_mntns_id()
+{
 	struct task_struct *task;
 	__u64 mntns_id;
 
-	task = (struct task_struct*) bpf_get_current_task();
+	task = (struct task_struct *)bpf_get_current_task();
 	mntns_id = BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
 	return mntns_id;

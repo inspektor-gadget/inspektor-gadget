@@ -17,8 +17,7 @@
 #define CAP_OPT_NOAUDIT 1 << 1
 #endif
 
-
-#define MAX_ENTRIES	10240
+#define MAX_ENTRIES 10240
 
 const volatile pid_t my_pid = -1;
 const volatile pid_t targ_pid = -1;
@@ -76,19 +75,21 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(key_size, sizeof(u64));
 	__uint(value_size, sizeof(struct syscall_context));
-	__uint(max_entries, 1048576); // There can be many threads sleeping in some futex/poll syscalls
+	__uint(max_entries,
+	       1048576); // There can be many threads sleeping in some futex/poll syscalls
 } current_syscall SEC(".maps");
 
 SEC("kprobe/cap_capable")
-int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred, struct user_namespace *targ_ns, int cap, int cap_opt)
+int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred,
+	       struct user_namespace *targ_ns, int cap, int cap_opt)
 {
 	__u32 pid;
 	u64 mntns_id;
 	__u64 pid_tgid;
 	struct task_struct *task;
 
-	task = (struct task_struct*) bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	task = (struct task_struct *)bpf_get_current_task();
+	mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
 	if (gadget_should_discard_mntns_id(mntns_id))
 		return 0;
@@ -134,9 +135,11 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred, struct user_namespace *t
 	}
 
 	struct args_t args = {};
-	args.current_userns = (u64) BPF_CORE_READ(task, real_cred, user_ns, ns.inum);
-	args.target_userns = (u64) BPF_CORE_READ(targ_ns, ns.inum);
-	BPF_CORE_READ_INTO(&args.cap_effective, task, real_cred, cap_effective.cap[0]);
+	args.current_userns =
+		(u64)BPF_CORE_READ(task, real_cred, user_ns, ns.inum);
+	args.target_userns = (u64)BPF_CORE_READ(targ_ns, ns.inum);
+	BPF_CORE_READ_INTO(&args.cap_effective, task, real_cred,
+			   cap_effective.cap[0]);
 	args.cap = cap;
 	args.cap_opt = cap_opt;
 	bpf_map_update_elem(&start, &pid_tgid, &args, 0);
@@ -155,7 +158,7 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	pid_tgid = bpf_get_current_pid_tgid();
 	ap = bpf_map_lookup_elem(&start, &pid_tgid);
 	if (!ap)
-		return 0;	/* missed entry */
+		return 0; /* missed entry */
 
 	struct cap_event event = {};
 	event.current_userns = ap->current_userns;
@@ -164,8 +167,8 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 	event.pid = pid_tgid >> 32;
 	event.tgid = pid_tgid;
 	event.cap = ap->cap;
-	event.uid = (u32) uid_gid;
-	event.gid = (u32) (uid_gid >> 32);
+	event.uid = (u32)uid_gid;
+	event.gid = (u32)(uid_gid >> 32);
 	event.mntnsid = gadget_get_mntns_id();
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.ret = PT_REGS_RC(ctx);
@@ -187,7 +190,8 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 		event.syscall = -1;
 	}
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 
 	bpf_map_delete_elem(&start, &pid_tgid);
 
@@ -210,10 +214,10 @@ int BPF_KRETPROBE(ig_trace_cap_x)
 #error "The trace capabilities gadget is not supported on your architecture."
 #endif
 
-static __always_inline int skip_exit_probe(int nr) {
-	return !!(nr == __NR_exit ||
-		nr == __NR_exit_group ||
-		nr == __NR_rt_sigreturn);
+static __always_inline int skip_exit_probe(int nr)
+{
+	return !!(nr == __NR_exit || nr == __NR_exit_group ||
+		  nr == __NR_rt_sigreturn);
 }
 
 SEC("raw_tracepoint/sys_enter")
@@ -233,7 +237,8 @@ int ig_cap_sys_enter(struct bpf_raw_tracepoint_args *ctx)
 
 	// The sys_exit tracepoint is not called for some syscalls.
 	if (!skip_exit_probe(nr))
-		bpf_map_update_elem(&current_syscall, &pid_tgid, &sc_ctx, BPF_ANY);
+		bpf_map_update_elem(&current_syscall, &pid_tgid, &sc_ctx,
+				    BPF_ANY);
 
 	return 0;
 }

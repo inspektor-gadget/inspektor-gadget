@@ -27,9 +27,9 @@ static int dump_tcp_sock(struct seq_file *seq, struct tcp_sock *tp)
 	const struct inet_sock *inet = &icsk->icsk_inet;
 	const struct sock *sp = &inet->sk;
 
-	socket_bpf_seq_print(seq, proto, inet->inet_rcv_saddr,
-		inet->inet_sport, inet->inet_daddr,
-		inet->inet_dport, sp->sk_state, sock_i_ino(sp));
+	socket_bpf_seq_print(seq, proto, inet->inet_rcv_saddr, inet->inet_sport,
+			     inet->inet_daddr, inet->inet_dport, sp->sk_state,
+			     sock_i_ino(sp));
 
 	return 0;
 }
@@ -38,9 +38,9 @@ static int dump_tw_sock(struct seq_file *seq, struct tcp_timewait_sock *ttw)
 {
 	struct inet_timewait_sock *tw = &ttw->tw_sk;
 
-	socket_bpf_seq_print(seq, proto, tw->tw_rcv_saddr,
-		tw->tw_sport, tw->tw_daddr,
-		/*
+	socket_bpf_seq_print(seq, proto, tw->tw_rcv_saddr, tw->tw_sport,
+			     tw->tw_daddr,
+			     /*
 		 * tcp_timewait_sock represents socket in TIME_WAIT state.
 		 * Socket is this particular state are not associated with a
 		 * struct sock:
@@ -53,7 +53,7 @@ static int dump_tw_sock(struct seq_file *seq, struct tcp_timewait_sock *ttw)
 		 * (state 6) socket:
 		 * https://elixir.bootlin.com/linux/v5.15.12/source/include/net/tcp_states.h#L18
 		 */
-		tw->tw_dport, tw->tw_substate, 0);
+			     tw->tw_dport, tw->tw_substate, 0);
 
 	return 0;
 }
@@ -62,9 +62,9 @@ static int dump_req_sock(struct seq_file *seq, struct tcp_request_sock *treq)
 {
 	struct inet_request_sock *irsk = &treq->req;
 
-	socket_bpf_seq_print(seq, proto, irsk->ir_loc_addr,
-		irsk->ir_num, irsk->ir_rmt_addr, irsk->ir_rmt_port,
-		TCP_SYN_RECV, sock_i_ino(treq->req.req.sk));
+	socket_bpf_seq_print(seq, proto, irsk->ir_loc_addr, irsk->ir_num,
+			     irsk->ir_rmt_addr, irsk->ir_rmt_port, TCP_SYN_RECV,
+			     sock_i_ino(treq->req.req.sk));
 
 	return 0;
 }

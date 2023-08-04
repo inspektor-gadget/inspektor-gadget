@@ -67,11 +67,12 @@ struct {
 	__uint(key_size, sizeof(u64));
 	__uint(value_size, sizeof(u32));
 	__uint(max_entries, 1024);
-	__array(values, struct {
-		__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-		__uint(key_size, sizeof(u32));
-		__uint(value_size, sizeof(u32));
-	});
+	__array(
+		values, struct {
+			__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+			__uint(key_size, sizeof(u32));
+			__uint(value_size, sizeof(u32));
+		});
 } map_of_perf_buffers SEC(".maps");
 
 struct {
@@ -104,10 +105,10 @@ struct {
 	__uint(max_entries, 1024);
 } regs_map SEC(".maps");
 
-static __always_inline int skip_exit_probe(int nr) {
-	return !!(nr == __NR_exit ||
-		nr == __NR_exit_group ||
-		nr == __NR_rt_sigreturn);
+static __always_inline int skip_exit_probe(int nr)
+{
+	return !!(nr == __NR_exit || nr == __NR_exit_group ||
+		  nr == __NR_rt_sigreturn);
 }
 
 /*
@@ -116,7 +117,7 @@ static __always_inline int skip_exit_probe(int nr) {
  */
 static __always_inline u64 get_arg(struct pt_regs *regs, int i)
 {
-	switch(i) {
+	switch (i) {
 	case 1:
 		return PT_REGS_PARM1_CORE_SYSCALL(regs);
 	case 2:
@@ -130,7 +131,9 @@ static __always_inline u64 get_arg(struct pt_regs *regs, int i)
 	case 6:
 		return PT_REGS_PARM6_CORE_SYSCALL(regs);
 	default:
-		bpf_error_printk("There is no PT_REGS_PARM%d_SYSCALL macro, check the argument!\n", i);
+		bpf_error_printk(
+			"There is no PT_REGS_PARM%d_SYSCALL macro, check the argument!\n",
+			i);
 		return 0;
 	}
 }
@@ -195,8 +198,8 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	if (syscall_def == NULL)
 		syscall_def = &default_definition;
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	task = (struct task_struct *)bpf_get_current_task();
+	mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
 	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
 	if (!perf_buffer)
@@ -206,19 +209,22 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 
 	ret = bpf_map_update_elem(&regs_map, &pid, &empty, BPF_NOEXIST);
 	if (ret) {
-		bpf_error_printk("enter: there should not be any pt_regs for key %lu: %d\n", pid, ret);
+		bpf_error_printk(
+			"enter: there should not be any pt_regs for key %lu: %d\n",
+			pid, ret);
 
 		return 0;
 	}
 
 	args = bpf_map_lookup_elem(&regs_map, &pid);
 	if (!args) {
-		bpf_error_printk("enter: there should be a pt_regs for key %lu\n", pid);
+		bpf_error_printk(
+			"enter: there should be a pt_regs for key %lu\n", pid);
 
 		goto end;
 	}
 
-	bpf_probe_read(args, sizeof(*args), (void*) ctx->args[0]);
+	bpf_probe_read(args, sizeof(*args), (void *)ctx->args[0]);
 
 	for (i = 0; i < SYSCALL_ARGS; i++) {
 		/* + 1 because PT_REGS_PARM begins from 1. */
@@ -229,9 +235,11 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 			sc.cont_nr++;
 	}
 
-	bpf_debug_printk("Perf event output: sc.id: %d; sc.comm: %s; sizeof(sc): %d\n", sc.id, sc.comm, sizeof(sc));
+	bpf_debug_printk(
+		"Perf event output: sc.id: %d; sc.comm: %s; sizeof(sc): %d\n",
+		sc.id, sc.comm, sizeof(sc));
 	ret = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc,
-			      sizeof(sc));
+				    sizeof(sc));
 	if (ret != 0) {
 		bpf_error_printk("Problem outputting perf event: %d", ret);
 	}
@@ -241,15 +249,17 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	// Note that a process can still get killed in the middle, so we would need
 	// a userspace cleaner for this case (TODO).
 	if (!skip_exit_probe(nr))
-		bpf_map_update_elem(&probe_at_sys_exit, &pid, &remembered, BPF_ANY);
+		bpf_map_update_elem(&probe_at_sys_exit, &pid, &remembered,
+				    BPF_ANY);
 
-	// We need to unroll this loop to make this work on kernels 5.4.0-x on ubuntu, see
-	// https://github.com/inspektor-gadget/inspektor-gadget/issues/1465 for more details.
-	#pragma unroll
+// We need to unroll this loop to make this work on kernels 5.4.0-x on ubuntu, see
+// https://github.com/inspektor-gadget/inspektor-gadget/issues/1465 for more details.
+#pragma unroll
 	for (i = 0; i < SYSCALL_ARGS; i++) {
 		__u64 arg_len = syscall_def->args_len[i];
 
-		if (!arg_len || (arg_len & PARAM_PROBE_AT_EXIT_MASK) || arg_len == USE_RET_AS_PARAM_LENGTH)
+		if (!arg_len || (arg_len & PARAM_PROBE_AT_EXIT_MASK) ||
+		    arg_len == USE_RET_AS_PARAM_LENGTH)
 			continue;
 
 		bool null_terminated = false;
@@ -263,7 +273,8 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 			null_terminated = true;
 			arg_len = 0;
 		} else if (arg_len >= USE_ARG_INDEX_AS_PARAM_LENGTH) {
-			__u64 idx = arg_len & USE_ARG_INDEX_AS_PARAM_LENGTH_MASK;
+			__u64 idx = arg_len &
+				    USE_ARG_INDEX_AS_PARAM_LENGTH_MASK;
 
 			/*
 			 * Access args via the previously saved map entry instead of
@@ -273,9 +284,11 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 			 */
 			struct remembered_args *remembered_ctx_workaround;
 			if (idx < SYSCALL_ARGS) {
-				remembered_ctx_workaround = bpf_map_lookup_elem(&probe_at_sys_exit, &pid);
+				remembered_ctx_workaround = bpf_map_lookup_elem(
+					&probe_at_sys_exit, &pid);
 				if (remembered_ctx_workaround)
-					arg_len = remembered_ctx_workaround->args[idx];
+					arg_len = remembered_ctx_workaround
+							  ->args[idx];
 				else
 					arg_len = 0;
 			} else {
@@ -294,19 +307,31 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 		/* + 1 because PT_REGS_PARM begins from 1. */
 		u64 arg = get_arg(args, i + 1);
 
-		if (!arg_len && null_terminated /* NULL terminated argument like string */
-			&& bpf_probe_read_user_str(sc_cont.param, PARAM_LEN, (void *)(arg)) < 0)
+		if (!arg_len &&
+		    null_terminated /* NULL terminated argument like string */
+		    && bpf_probe_read_user_str(sc_cont.param, PARAM_LEN,
+					       (void *)(arg)) < 0)
 			sc_cont.failed = true;
-		else if (sizeof(u8) <= arg_len && arg_len <= sizeof(u64) /* Conventional arguments like type (char, int, etc.) */
-			&& bpf_probe_read_user(sc_cont.param, arg_len, (void *)(arg)))
+		else if (sizeof(u8) <= arg_len &&
+			 arg_len <=
+				 sizeof(u64) /* Conventional arguments like type (char, int, etc.) */
+			 && bpf_probe_read_user(sc_cont.param, arg_len,
+						(void *)(arg)))
 			sc_cont.failed = true;
-		else if (bpf_probe_read_user(sc_cont.param, PARAM_LEN, (void *)(arg))) /* TODO Struct arguments? */
+		else if (bpf_probe_read_user(
+				 sc_cont.param, PARAM_LEN,
+				 (void *)(arg))) /* TODO Struct arguments? */
 			sc_cont.failed = true;
 
-		bpf_debug_printk("Perf event output: sc_cont.index: %d; sizeof(sc_cont): %d\n", sc_cont.index, sizeof(sc_cont));
-		ret = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc_cont, sizeof(sc_cont));
+		bpf_debug_printk(
+			"Perf event output: sc_cont.index: %d; sizeof(sc_cont): %d\n",
+			sc_cont.index, sizeof(sc_cont));
+		ret = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU,
+					    &sc_cont, sizeof(sc_cont));
 		if (ret != 0) {
-			bpf_error_printk("Problem outputting continued perf event: %d", ret);
+			bpf_error_printk(
+				"Problem outputting continued perf event: %d",
+				ret);
 		}
 	}
 
@@ -357,19 +382,22 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 
 	r = bpf_map_update_elem(&regs_map, &pid, &empty, BPF_NOEXIST);
 	if (r) {
-		bpf_error_printk("exit: there should not be any pt_regs for key %lu: %d\n", pid, r);
+		bpf_error_printk(
+			"exit: there should not be any pt_regs for key %lu: %d\n",
+			pid, r);
 
 		return 0;
 	}
 
 	args = bpf_map_lookup_elem(&regs_map, &pid);
 	if (!args) {
-		bpf_error_printk("exit: there should be a pt_regs for key %lu\n", pid);
+		bpf_error_printk(
+			"exit: there should be a pt_regs for key %lu\n", pid);
 
 		goto end;
 	}
 
-	bpf_probe_read(args, sizeof(*args), (void*) ctx->args[0]);
+	bpf_probe_read(args, sizeof(*args), (void *)ctx->args[0]);
 	nr = syscall_get_nr(args);
 	/* TODO Why this can occur? */
 	if (nr == -1)
@@ -388,8 +416,8 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 	if (syscall_def == NULL)
 		syscall_def = &default_definition;
 
-	task = (struct task_struct*)bpf_get_current_task();
-	mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	task = (struct task_struct *)bpf_get_current_task();
+	mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 
 	perf_buffer = bpf_map_lookup_elem(&map_of_perf_buffers, &mntns_id);
 	if (!perf_buffer)
@@ -421,7 +449,7 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 		arg_len &= ~PARAM_PROBE_AT_EXIT_MASK;
 
 		if (arg_len == USE_RET_AS_PARAM_LENGTH) {
-			if ((signed long) ret < 0)
+			if ((signed long)ret < 0)
 				arg_len = 0;
 			else
 				arg_len = ret;
@@ -429,7 +457,8 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 			null_terminated = true;
 			arg_len = 0;
 		} else if (arg_len >= USE_ARG_INDEX_AS_PARAM_LENGTH) {
-			__u64 idx = arg_len & USE_ARG_INDEX_AS_PARAM_LENGTH_MASK;
+			__u64 idx = arg_len &
+				    USE_ARG_INDEX_AS_PARAM_LENGTH_MASK;
 			if (idx < SYSCALL_ARGS)
 				arg_len = remembered->args[idx];
 			else
@@ -445,20 +474,28 @@ int ig_traceloop_x(struct bpf_raw_tracepoint_args *ctx)
 			sc_cont.length = arg_len;
 
 		if (arg_len == 0 && null_terminated) {
-			if (bpf_probe_read_user_str(sc_cont.param, PARAM_LEN, (void *)(remembered->args[i])) < 0)
+			if (bpf_probe_read_user_str(
+				    sc_cont.param, PARAM_LEN,
+				    (void *)(remembered->args[i])) < 0)
 				sc_cont.failed = true;
-		} else if (sizeof(u8) <= arg_len
-			&& arg_len <= sizeof(u64)
-			&& bpf_probe_read_user(sc_cont.param, arg_len, (void *)(remembered->args[i]))) {
+		} else if (sizeof(u8) <= arg_len && arg_len <= sizeof(u64) &&
+			   bpf_probe_read_user(sc_cont.param, arg_len,
+					       (void *)(remembered->args[i]))) {
 			sc_cont.failed = true;
-		} else if (bpf_probe_read_user(sc_cont.param, PARAM_LEN, (void *)(remembered->args[i]))) {
+		} else if (bpf_probe_read_user(sc_cont.param, PARAM_LEN,
+					       (void *)(remembered->args[i]))) {
 			sc_cont.failed = true;
 		}
 
-		bpf_debug_printk("Perf event output (exit): sc_cont.index: %d; sizeof(sc_cont): %d\n", sc_cont.index, sizeof(sc_cont));
-		r = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc_cont, sizeof(sc_cont));
+		bpf_debug_printk(
+			"Perf event output (exit): sc_cont.index: %d; sizeof(sc_cont): %d\n",
+			sc_cont.index, sizeof(sc_cont));
+		r = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU,
+					  &sc_cont, sizeof(sc_cont));
 		if (r != 0) {
-			bpf_error_printk("Problem outputting continued perf event: %d", ret);
+			bpf_error_printk(
+				"Problem outputting continued perf event: %d",
+				ret);
 		}
 end_loop:
 		bpf_map_delete_elem(&probe_at_sys_exit, &pid);
@@ -466,8 +503,11 @@ end_loop:
 
 	bpf_get_current_comm(sc.comm, sizeof(sc.comm));
 
-	bpf_debug_printk("Perf event output (exit): sc.id: %d; sc.comm: %s; sizeof(sc): %d\n", sc.id, sc.comm, sizeof(sc));
-	r = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc, sizeof(sc));
+	bpf_debug_printk(
+		"Perf event output (exit): sc.id: %d; sc.comm: %s; sizeof(sc): %d\n",
+		sc.id, sc.comm, sizeof(sc));
+	r = bpf_perf_event_output(ctx, perf_buffer, BPF_F_CURRENT_CPU, &sc,
+				  sizeof(sc));
 	if (r != 0) {
 		bpf_error_printk("Problem outputting perf event: %d", ret);
 	}

@@ -2,8 +2,8 @@
 #ifndef __TCPRTT_H
 #define __TCPRTT_H
 
-#define MAX_SLOTS	27
-#define IPV6_LEN	16
+#define MAX_SLOTS 27
+#define IPV6_LEN 16
 
 struct hist {
 	__u64 latency;

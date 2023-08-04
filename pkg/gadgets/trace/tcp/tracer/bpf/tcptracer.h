@@ -43,5 +43,4 @@ struct event {
 	enum event_type type;
 };
 
-
 #endif /* __TCPTRACER_H */

@@ -22,14 +22,16 @@ int ig_top_ebpf_it(struct bpf_iter__task_file *ctx)
 
 	// We need to have an address of bpf_prog_fops to run
 	// TODO: Currently cilium/ebpf doesn't support .ksyms, this is why we get the info from userspace right now
-	if (bpf_prog_fops_addr == 0 || (__u64)(file->f_op) != bpf_prog_fops_addr)
+	if (bpf_prog_fops_addr == 0 ||
+	    (__u64)(file->f_op) != bpf_prog_fops_addr)
 		return 0;
 
 	__builtin_memset(&e, 0, sizeof(e));
 	e.pid = task->tgid;
 	e.id = BPF_CORE_READ((struct bpf_prog *)(file->private_data), aux, id);
 
-	bpf_probe_read_kernel_str(&e.comm, sizeof(e.comm), task->group_leader->comm);
+	bpf_probe_read_kernel_str(&e.comm, sizeof(e.comm),
+				  task->group_leader->comm);
 	bpf_seq_write(ctx->meta->seq, &e, sizeof(e));
 
 	return 0;

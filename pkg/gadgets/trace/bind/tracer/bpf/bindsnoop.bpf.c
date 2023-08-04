@@ -8,8 +8,8 @@
 #include "bindsnoop.h"
 #include "mntns_filter.h"
 
-#define MAX_ENTRIES	10240
-#define MAX_PORTS	1024
+#define MAX_ENTRIES 10240
+#define MAX_PORTS 1024
 
 const volatile pid_t target_pid = 0;
 const volatile bool ignore_errors = true;
@@ -88,11 +88,16 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	if (filter_by_port && !port)
 		goto cleanup;
 
-	opts.fields.freebind             = BPF_CORE_READ_BITFIELD_PROBED(inet_sock, freebind);
-	opts.fields.transparent          = BPF_CORE_READ_BITFIELD_PROBED(inet_sock, transparent);
-	opts.fields.bind_address_no_port = BPF_CORE_READ_BITFIELD_PROBED(inet_sock, bind_address_no_port);
-	opts.fields.reuseaddress         = BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_reuse);
-	opts.fields.reuseport            = BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_reuseport);
+	opts.fields.freebind =
+		BPF_CORE_READ_BITFIELD_PROBED(inet_sock, freebind);
+	opts.fields.transparent =
+		BPF_CORE_READ_BITFIELD_PROBED(inet_sock, transparent);
+	opts.fields.bind_address_no_port =
+		BPF_CORE_READ_BITFIELD_PROBED(inet_sock, bind_address_no_port);
+	opts.fields.reuseaddress =
+		BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_reuse);
+	opts.fields.reuseport =
+		BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_reuseport);
 	event.opts = opts.data;
 	event.ts_us = bpf_ktime_get_ns() / 1000;
 	event.pid = pid;
@@ -102,17 +107,21 @@ static int probe_exit(struct pt_regs *ctx, short ver)
 	event.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	event.mount_ns_id = mntns_id;
 	event.timestamp = bpf_ktime_get_boot_ns();
-	event.uid = (u32) uid_gid;
-	event.gid = (u32) (uid_gid >> 32);
+	event.uid = (u32)uid_gid;
+	event.gid = (u32)(uid_gid >> 32);
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	if (ver == 4) {
 		event.ver = ver;
-		bpf_probe_read_kernel(&event.addr, sizeof(event.addr), &inet_sock->inet_saddr);
+		bpf_probe_read_kernel(&event.addr, sizeof(event.addr),
+				      &inet_sock->inet_saddr);
 	} else { /* ver == 6 */
 		event.ver = ver;
-		bpf_probe_read_kernel(&event.addr, sizeof(event.addr), sock->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+		bpf_probe_read_kernel(
+			&event.addr, sizeof(event.addr),
+			sock->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
 	}
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 
 cleanup:
 	bpf_map_delete_elem(&sockets, &tid);

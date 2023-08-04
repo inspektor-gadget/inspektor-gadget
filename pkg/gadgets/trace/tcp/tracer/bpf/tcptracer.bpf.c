@@ -16,8 +16,8 @@ const volatile uid_t filter_uid = -1;
 const volatile pid_t filter_pid = 0;
 
 /* Define here, because there are conflicts with include files */
-#define AF_INET		2
-#define AF_INET6	10
+#define AF_INET 2
+#define AF_INET6 10
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));
@@ -69,8 +69,8 @@ struct {
 	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 
-static __always_inline bool
-fill_tuple(struct tuple_key_t *tuple, struct sock *sk, int family)
+static __always_inline bool fill_tuple(struct tuple_key_t *tuple,
+				       struct sock *sk, int family)
 {
 	struct inet_sock *sockp = (struct inet_sock *)sk;
 
@@ -78,7 +78,8 @@ fill_tuple(struct tuple_key_t *tuple, struct sock *sk, int family)
 
 	switch (family) {
 	case AF_INET:
-		BPF_CORE_READ_INTO(&tuple->saddr_v4, sk, __sk_common.skc_rcv_saddr);
+		BPF_CORE_READ_INTO(&tuple->saddr_v4, sk,
+				   __sk_common.skc_rcv_saddr);
 		if (tuple->saddr_v4 == 0)
 			return false;
 
@@ -88,8 +89,9 @@ fill_tuple(struct tuple_key_t *tuple, struct sock *sk, int family)
 
 		break;
 	case AF_INET6:
-		BPF_CORE_READ_INTO(&tuple->saddr_v6, sk,
-				   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+		BPF_CORE_READ_INTO(
+			&tuple->saddr_v6, sk,
+			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
 		if (tuple->saddr_v6 == 0)
 			return false;
 		BPF_CORE_READ_INTO(&tuple->daddr_v6, sk,
@@ -114,15 +116,17 @@ fill_tuple(struct tuple_key_t *tuple, struct sock *sk, int family)
 	return true;
 }
 
-static __always_inline void
-fill_event(struct tuple_key_t *tuple, struct event *event, __u32 pid,
-	   __u64 uid_gid, __u16 family, __u8 type, __u64 mntns_id)
+static __always_inline void fill_event(struct tuple_key_t *tuple,
+				       struct event *event, __u32 pid,
+				       __u64 uid_gid, __u16 family, __u8 type,
+				       __u64 mntns_id)
 {
 	event->ts_us = bpf_ktime_get_ns() / 1000;
 	event->type = type;
 	event->pid = pid;
-	event->uid = (__u32) uid_gid;
-	event->gid = (__u32) (uid_gid >> 32);;
+	event->uid = (__u32)uid_gid;
+	event->gid = (__u32)(uid_gid >> 32);
+	;
 	event->af = family;
 	event->netns = tuple->netns;
 	event->mntns_id = mntns_id;
@@ -138,8 +142,8 @@ fill_event(struct tuple_key_t *tuple, struct event *event, __u32 pid,
 }
 
 /* returns true if the event should be skipped */
-static __always_inline bool
-filter_event(struct sock *sk, __u32 uid, __u32 pid, __u64 mntns_id)
+static __always_inline bool filter_event(struct sock *sk, __u32 uid, __u32 pid,
+					 __u64 mntns_id)
 {
 	u16 family;
 
@@ -153,14 +157,14 @@ filter_event(struct sock *sk, __u32 uid, __u32 pid, __u64 mntns_id)
 	if (filter_pid && pid != filter_pid)
 		return true;
 
-	if (filter_uid != (uid_t) -1 && uid != filter_uid)
+	if (filter_uid != (uid_t)-1 && uid != filter_uid)
 		return true;
 
 	return false;
 }
 
-static __always_inline int
-enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
+static __always_inline int enter_tcp_connect(struct pt_regs *ctx,
+					     struct sock *sk)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
@@ -178,8 +182,8 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 	return 0;
 }
 
-static __always_inline int
-exit_tcp_connect(struct pt_regs *ctx, int ret, __u16 family)
+static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
+					    __u16 family)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
@@ -203,11 +207,11 @@ exit_tcp_connect(struct pt_regs *ctx, int ret, __u16 family)
 	if (!fill_tuple(&tuple, sk, family))
 		goto end;
 
-	task = (struct task_struct*)bpf_get_current_task();
+	task = (struct task_struct *)bpf_get_current_task();
 
 	pid_comm.pid = pid;
 	pid_comm.uid_gid = uid_gid;
-	pid_comm.mntns_id = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	pid_comm.mntns_id = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	bpf_get_current_comm(&pid_comm.comm, sizeof(pid_comm.comm));
 
 	bpf_map_update_elem(&tuplepid, &tuple, &pid_comm, 0);
@@ -263,8 +267,7 @@ int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 	 * established in the first place.
 	 */
 	u8 oldstate = BPF_CORE_READ(sk, __sk_common.skc_state);
-	if (oldstate == TCP_SYN_SENT ||
-	    oldstate == TCP_SYN_RECV ||
+	if (oldstate == TCP_SYN_SENT || oldstate == TCP_SYN_RECV ||
 	    oldstate == TCP_NEW_SYN_RECV)
 		return 0;
 
@@ -272,12 +275,13 @@ int BPF_KPROBE(ig_tcp_close, struct sock *sk)
 	if (!fill_tuple(&tuple, sk, family))
 		return 0;
 
-	fill_event(&tuple, &event, pid, uid_gid, family, TCP_EVENT_TYPE_CLOSE, mntns_id);
+	fill_event(&tuple, &event, pid, uid_gid, family, TCP_EVENT_TYPE_CLOSE,
+		   mntns_id);
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-		      &event, sizeof(event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 
 	return 0;
 };
@@ -305,12 +309,13 @@ int BPF_KPROBE(ig_tcp_state, struct sock *sk, int state)
 	if (!p)
 		return 0; /* missed entry */
 
-	fill_event(&tuple, &event, p->pid, p->uid_gid, family, TCP_EVENT_TYPE_CONNECT, p->mntns_id);
+	fill_event(&tuple, &event, p->pid, p->uid_gid, family,
+		   TCP_EVENT_TYPE_CONNECT, p->mntns_id);
 	__builtin_memcpy(&event.task, p->comm, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 
 end:
 	bpf_map_delete_elem(&tuplepid, &tuple);
@@ -347,16 +352,16 @@ int BPF_KRETPROBE(ig_tcp_accept, struct sock *sk)
 	if (t.saddr_v6 == 0 || t.daddr_v6 == 0 || t.dport == 0 || t.sport == 0)
 		return 0;
 
-	fill_event(&t, &event, pid, uid_gid, family, TCP_EVENT_TYPE_ACCEPT, mntns_id);
+	fill_event(&t, &event, pid, uid_gid, family, TCP_EVENT_TYPE_ACCEPT,
+		   mntns_id);
 
 	bpf_get_current_comm(&event.task, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 
 	return 0;
 }
-
 
 char LICENSE[] SEC("license") = "GPL";

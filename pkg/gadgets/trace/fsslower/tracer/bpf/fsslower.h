@@ -2,8 +2,8 @@
 #ifndef __FSSLOWER_H
 #define __FSSLOWER_H
 
-#define FILE_NAME_LEN	32
-#define TASK_COMM_LEN	16
+#define FILE_NAME_LEN 32
+#define TASK_COMM_LEN 16
 
 enum fs_file_op {
 	F_READ,

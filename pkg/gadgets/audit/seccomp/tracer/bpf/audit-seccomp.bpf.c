@@ -49,7 +49,8 @@ int ig_audit_secc(struct pt_regs *ctx)
 	event->code = code;
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event, sizeof(*event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,
+			      sizeof(*event));
 	return 0;
 }
 

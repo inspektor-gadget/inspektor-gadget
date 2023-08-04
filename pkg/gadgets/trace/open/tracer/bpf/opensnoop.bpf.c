@@ -8,7 +8,7 @@
 #include "filesystem.h"
 #include "opensnoop.h"
 
-#define TASK_RUNNING	0
+#define TASK_RUNNING 0
 
 const volatile __u64 min_us = 0;
 const volatile pid_t targ_pid = 0;
@@ -35,12 +35,12 @@ struct {
 
 static const struct event empty_event = {};
 
-static __always_inline bool valid_uid(uid_t uid) {
+static __always_inline bool valid_uid(uid_t uid)
+{
 	return uid != INVALID_UID;
 }
 
-static __always_inline
-bool trace_allowed(u32 tgid, u32 pid)
+static __always_inline bool trace_allowed(u32 tgid, u32 pid)
 {
 	u64 mntns_id;
 	u32 uid;
@@ -65,8 +65,8 @@ bool trace_allowed(u32 tgid, u32 pid)
 	return true;
 }
 
-static __always_inline
-int trace_enter(const char *filename, int flags, __u16 mode)
+static __always_inline int trace_enter(const char *filename, int flags,
+				       __u16 mode)
 {
 	u64 id = bpf_get_current_pid_tgid();
 	/* use kernel terminology here for tgid/pid: */
@@ -77,14 +77,16 @@ int trace_enter(const char *filename, int flags, __u16 mode)
 	if (trace_allowed(tgid, pid)) {
 		struct event *event;
 
-		if (bpf_map_update_elem(&start, &pid, &empty_event, BPF_NOEXIST))
+		if (bpf_map_update_elem(&start, &pid, &empty_event,
+					BPF_NOEXIST))
 			return 0;
 
 		event = bpf_map_lookup_elem(&start, &pid);
 		if (!event)
 			return 0;
 
-		bpf_probe_read_user_str(&event->fname, sizeof(event->fname), filename);
+		bpf_probe_read_user_str(&event->fname, sizeof(event->fname),
+					filename);
 		event->flags = flags;
 		event->mode = mode;
 	}
@@ -92,19 +94,20 @@ int trace_enter(const char *filename, int flags, __u16 mode)
 }
 
 SEC("tracepoint/syscalls/sys_enter_open")
-int ig_open_e(struct trace_event_raw_sys_enter* ctx)
+int ig_open_e(struct trace_event_raw_sys_enter *ctx)
 {
-	return trace_enter((const char *)ctx->args[0], (int)ctx->args[1], (__u16)ctx->args[2]);
+	return trace_enter((const char *)ctx->args[0], (int)ctx->args[1],
+			   (__u16)ctx->args[2]);
 }
 
 SEC("tracepoint/syscalls/sys_enter_openat")
-int ig_openat_e(struct trace_event_raw_sys_enter* ctx)
+int ig_openat_e(struct trace_event_raw_sys_enter *ctx)
 {
-	return trace_enter((const char *)ctx->args[1], (int)ctx->args[2], (__u16)ctx->args[3]);
+	return trace_enter((const char *)ctx->args[1], (int)ctx->args[2],
+			   (__u16)ctx->args[3]);
 }
 
-static __always_inline
-int trace_exit(struct trace_event_raw_sys_exit* ctx)
+static __always_inline int trace_exit(struct trace_event_raw_sys_exit *ctx)
 {
 	struct event *event;
 	int ret;
@@ -119,22 +122,23 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 
 	ret = ctx->ret;
 	if (targ_failed && ret >= 0)
-		goto cleanup;	/* want failed only */
+		goto cleanup; /* want failed only */
 
 	/* event data */
 	event->pid = bpf_get_current_pid_tgid() >> 32;
-	event->uid = (u32) uid_gid;
-	event->gid = (u32) (uid_gid >> 32);
+	event->uid = (u32)uid_gid;
+	event->gid = (u32)(uid_gid >> 32);
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 	event->ret = ret;
 	event->mntns_id = gadget_get_mntns_id();
 	event->timestamp = bpf_ktime_get_boot_ns();
 
 	// Attempting to extract the full file path with symlink resolution
-	if (ret >= 0 && get_full_path)
-	{
-		long r = read_full_path_of_open_file_fd(ret, (char*)event->full_fname, sizeof(event->full_fname));
-		if (r > 0)	{
+	if (ret >= 0 && get_full_path) {
+		long r = read_full_path_of_open_file_fd(
+			ret, (char *)event->full_fname,
+			sizeof(event->full_fname));
+		if (r > 0) {
 			full_fname_len = (size_t)r;
 		} else {
 			// If we cannot get the full path put the empty string
@@ -148,8 +152,9 @@ int trace_exit(struct trace_event_raw_sys_exit* ctx)
 	}
 
 	/* emit event */
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-			      event, sizeof(struct event) - (PATH_MAX - full_fname_len));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,
+			      sizeof(struct event) -
+				      (PATH_MAX - full_fname_len));
 
 cleanup:
 	bpf_map_delete_elem(&start, &pid);
@@ -157,13 +162,13 @@ cleanup:
 }
 
 SEC("tracepoint/syscalls/sys_exit_open")
-int ig_open_x(struct trace_event_raw_sys_exit* ctx)
+int ig_open_x(struct trace_event_raw_sys_exit *ctx)
 {
 	return trace_exit(ctx);
 }
 
 SEC("tracepoint/syscalls/sys_exit_openat")
-int ig_openat_x(struct trace_event_raw_sys_exit* ctx)
+int ig_openat_x(struct trace_event_raw_sys_exit *ctx)
 {
 	return trace_exit(ctx);
 }

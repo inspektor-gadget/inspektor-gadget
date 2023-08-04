@@ -10,8 +10,8 @@
 #include "mntns_filter.h"
 
 /* Taken from kernel include/linux/socket.h. */
-#define AF_INET		2	/* Internet IP Protocol 	*/
-#define AF_INET6	10	/* IP version 6			*/
+#define AF_INET 2 /* Internet IP Protocol 	*/
+#define AF_INET6 10 /* IP version 6			*/
 
 const volatile pid_t target_pid = 0;
 const volatile int target_family = -1;
@@ -67,12 +67,14 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 		 * family == AF_INET6,
 		 * we already checked above family is correct.
 		 */
-		bpf_probe_read_kernel(&ip_key.saddr,
-				      sizeof(sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32),
-				      &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-		bpf_probe_read_kernel(&ip_key.daddr,
-				      sizeof(sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32),
-				      &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+		bpf_probe_read_kernel(
+			&ip_key.saddr,
+			sizeof(sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32),
+			&sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+		bpf_probe_read_kernel(
+			&ip_key.daddr,
+			sizeof(sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32),
+			&sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	}
 
 	trafficp = bpf_map_lookup_elem(&ip_map, &ip_key);
@@ -101,7 +103,8 @@ static int probe_ip(bool receiving, struct sock *sk, size_t size)
 }
 
 SEC("kprobe/tcp_sendmsg")
-int BPF_KPROBE(ig_toptcp_sdmsg, struct sock *sk, struct msghdr *msg, size_t size)
+int BPF_KPROBE(ig_toptcp_sdmsg, struct sock *sk, struct msghdr *msg,
+	       size_t size)
 {
 	return probe_ip(false, sk, size);
 }

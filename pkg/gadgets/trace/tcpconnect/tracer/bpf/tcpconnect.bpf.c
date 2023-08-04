@@ -21,8 +21,8 @@ const volatile bool calculate_latency = false;
 const volatile __u64 targ_min_latency_ns = 0;
 
 /* Define here, because there are conflicts with include files */
-#define AF_INET		2
-#define AF_INET6	10
+#define AF_INET 2
+#define AF_INET6 10
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));
@@ -88,26 +88,27 @@ static __always_inline bool filter_port(__u16 port)
 		if (i >= filter_ports_len)
 			break;
 		if (port == filter_ports[i])
-		return false;
+			return false;
 	}
 	return true;
 }
 
-static __always_inline int
-enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
+static __always_inline int enter_tcp_connect(struct pt_regs *ctx,
+					     struct sock *sk)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u64 uid_gid = bpf_get_current_uid_gid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = pid_tgid;
 	__u64 mntns_id;
-	__u32 uid = (u32) uid_gid;;
+	__u32 uid = (u32)uid_gid;
+	;
 	struct piddata piddata = {};
 
 	if (filter_pid && pid != filter_pid)
 		return 0;
 
-	if (filter_uid != (uid_t) -1 && uid != filter_uid)
+	if (filter_uid != (uid_t)-1 && uid != filter_uid)
 		return 0;
 
 	mntns_id = gadget_get_mntns_id();
@@ -128,7 +129,7 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 	return 0;
 }
 
-static  __always_inline void count_v4(struct sock *sk, __u16 dport)
+static __always_inline void count_v4(struct sock *sk, __u16 dport)
 {
 	struct ipv4_flow_key key = {};
 	static __u64 zero;
@@ -159,8 +160,9 @@ static __always_inline void count_v6(struct sock *sk, __u16 dport)
 		__atomic_add_fetch(val, 1, __ATOMIC_RELAXED);
 }
 
-static __always_inline void
-trace_v4(struct pt_regs *ctx, pid_t pid, struct sock *sk, __u16 dport, __u64 mntns_id)
+static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
+				     struct sock *sk, __u16 dport,
+				     __u64 mntns_id)
 {
 	struct event event = {};
 
@@ -168,22 +170,24 @@ trace_v4(struct pt_regs *ctx, pid_t pid, struct sock *sk, __u16 dport, __u64 mnt
 
 	event.af = AF_INET;
 	event.pid = pid;
-	event.uid = (u32) uid_gid;
-	event.gid = (u32) (uid_gid >> 32);
+	event.uid = (u32)uid_gid;
+	event.gid = (u32)(uid_gid >> 32);
 	BPF_CORE_READ_INTO(&event.saddr_v4, sk, __sk_common.skc_rcv_saddr);
 	BPF_CORE_READ_INTO(&event.daddr_v4, sk, __sk_common.skc_daddr);
 	event.dport = dport;
-	event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);;
+	event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+	;
 	event.mntns_id = mntns_id;
 	bpf_get_current_comm(event.task, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 }
 
-static __always_inline void
-trace_v6(struct pt_regs *ctx, pid_t pid, struct sock *sk, __u16 dport, __u64 mntns_id)
+static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
+				     struct sock *sk, __u16 dport,
+				     __u64 mntns_id)
 {
 	struct event event = {};
 
@@ -191,24 +195,25 @@ trace_v6(struct pt_regs *ctx, pid_t pid, struct sock *sk, __u16 dport, __u64 mnt
 
 	event.af = AF_INET6;
 	event.pid = pid;
-	event.uid = (u32) uid_gid;
-	event.gid = (u32) (uid_gid >> 32);
+	event.uid = (u32)uid_gid;
+	event.gid = (u32)(uid_gid >> 32);
 	event.mntns_id = mntns_id;
 	BPF_CORE_READ_INTO(&event.saddr_v6, sk,
 			   __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
 	BPF_CORE_READ_INTO(&event.daddr_v6, sk,
 			   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	event.dport = dport;
-	event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);;
+	event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+	;
 	bpf_get_current_comm(event.task, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-			      &event, sizeof(event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 }
 
-static __always_inline int
-exit_tcp_connect(struct pt_regs *ctx, int ret, int ip_ver)
+static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret,
+					    int ip_ver)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
@@ -256,7 +261,8 @@ static __always_inline int cleanup_sockets_latency_map(const struct sock *sk)
 	return 0;
 }
 
-static __always_inline int handle_tcp_rcv_state_process(void *ctx, struct sock *sk)
+static __always_inline int handle_tcp_rcv_state_process(void *ctx,
+							struct sock *sk)
 {
 	struct piddata *piddatap;
 	struct event event = {};
@@ -276,8 +282,7 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx, struct sock *
 	event.latency = ts - piddatap->ts;
 	if (targ_min_latency_ns && event.latency < targ_min_latency_ns)
 		goto cleanup;
-	__builtin_memcpy(&event.task, piddatap->comm,
-			sizeof(event.task));
+	__builtin_memcpy(&event.task, piddatap->comm, sizeof(event.task));
 	event.pid = piddatap->pid;
 	event.mntns_id = piddatap->mntns_id;
 	event.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
@@ -287,14 +292,15 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx, struct sock *
 		event.saddr_v4 = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
 		event.daddr_v4 = BPF_CORE_READ(sk, __sk_common.skc_daddr);
 	} else {
-		BPF_CORE_READ_INTO(&event.saddr_v6, sk,
-				__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+		BPF_CORE_READ_INTO(
+			&event.saddr_v6, sk,
+			__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
 		BPF_CORE_READ_INTO(&event.daddr_v6, sk,
-				__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	}
 	event.timestamp = bpf_ktime_get_boot_ns();
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU,
-			&event, sizeof(event));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
+			      sizeof(event));
 
 cleanup:
 	return cleanup_sockets_latency_map(sk);

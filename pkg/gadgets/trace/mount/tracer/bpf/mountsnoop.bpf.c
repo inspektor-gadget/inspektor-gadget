@@ -36,8 +36,9 @@ struct {
 // TODO: have to use "inline" to avoid this error:
 // bpf/mountsnoop.bpf.c:41:12: error: defined with too many args
 // static int probe_entry(const char *src, const char *dest, const char *fs,
-static __always_inline int probe_entry(const char *src, const char *dest, const char *fs,
-		       __u64 flags, const char *data, enum op op)
+static __always_inline int probe_entry(const char *src, const char *dest,
+				       const char *fs, __u64 flags,
+				       const char *data, enum op op)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
@@ -58,7 +59,7 @@ static __always_inline int probe_entry(const char *src, const char *dest, const 
 	arg.src = src;
 	arg.dest = dest;
 	arg.fs = fs;
-	arg.data= data;
+	arg.data = data;
 	arg.op = op;
 	bpf_map_update_elem(&args, &tid, &arg, BPF_ANY);
 
@@ -93,23 +94,28 @@ static int probe_exit(void *ctx, int ret)
 	eventp->op = argp->op;
 	bpf_get_current_comm(&eventp->comm, sizeof(eventp->comm));
 	if (argp->src)
-		bpf_probe_read_user_str(eventp->src, sizeof(eventp->src), argp->src);
+		bpf_probe_read_user_str(eventp->src, sizeof(eventp->src),
+					argp->src);
 	else
 		eventp->src[0] = '\0';
 	if (argp->dest)
-		bpf_probe_read_user_str(eventp->dest, sizeof(eventp->dest), argp->dest);
+		bpf_probe_read_user_str(eventp->dest, sizeof(eventp->dest),
+					argp->dest);
 	else
 		eventp->dest[0] = '\0';
 	if (argp->fs)
-		bpf_probe_read_user_str(eventp->fs, sizeof(eventp->fs), argp->fs);
+		bpf_probe_read_user_str(eventp->fs, sizeof(eventp->fs),
+					argp->fs);
 	else
 		eventp->fs[0] = '\0';
 	if (argp->data)
-		bpf_probe_read_user_str(eventp->data, sizeof(eventp->data), argp->data);
+		bpf_probe_read_user_str(eventp->data, sizeof(eventp->data),
+					argp->data);
 	else
 		eventp->data[0] = '\0';
 
-	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, eventp, sizeof(*eventp));
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, eventp,
+			      sizeof(*eventp));
 
 	bpf_map_delete_elem(&args, &tid);
 	return 0;

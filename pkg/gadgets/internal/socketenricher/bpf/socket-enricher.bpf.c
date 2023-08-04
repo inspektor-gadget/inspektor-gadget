@@ -12,7 +12,7 @@
 #include "sockets-map.h"
 #include "socket-enricher-helpers.h"
 
-#define MAX_ENTRIES	10240
+#define MAX_ENTRIES 10240
 
 // The map 'start' keeps context between a kprobe and a kretprobe
 // Keys: pid_tgid
@@ -28,43 +28,50 @@ struct {
 
 const volatile bool disable_bpf_iterators = 0;
 
-static __always_inline void
-insert_current_socket(struct sock *sock)
+static __always_inline void insert_current_socket(struct sock *sock)
 {
-	struct sockets_key socket_key = {0,};
+	struct sockets_key socket_key = {
+		0,
+	};
 	prepare_socket_key(&socket_key, sock);
 
-	struct sockets_value socket_value = {0,};
+	struct sockets_value socket_value = {
+		0,
+	};
 	// use 'current' task
-	struct task_struct *task = (struct task_struct*) bpf_get_current_task();
-	socket_value.mntns = (u64) BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
+	struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+	socket_value.mntns = (u64)BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 	socket_value.pid_tgid = bpf_get_current_pid_tgid();
 	socket_value.uid_gid = bpf_get_current_uid_gid();
 	bpf_get_current_comm(&socket_value.task, sizeof(socket_value.task));
-	socket_value.sock = (__u64) sock;
+	socket_value.sock = (__u64)sock;
 	if (socket_key.family == AF_INET6)
-		socket_value.ipv6only = BPF_CORE_READ_BITFIELD_PROBED(sock, __sk_common.skc_ipv6only);
+		socket_value.ipv6only = BPF_CORE_READ_BITFIELD_PROBED(
+			sock, __sk_common.skc_ipv6only);
 
 	bpf_map_update_elem(&sockets, &socket_key, &socket_value, BPF_ANY);
 }
 
-static __always_inline int
-remove_socket(struct sock *sock)
+static __always_inline int remove_socket(struct sock *sock)
 {
 	struct inet_sock *inet_sock = (struct inet_sock *)sock;
-	struct sockets_key socket_key = {0,};
+	struct sockets_key socket_key = {
+		0,
+	};
 
 	BPF_CORE_READ_INTO(&socket_key.family, sock, __sk_common.skc_family);
-	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net, ns.inum);
+	BPF_CORE_READ_INTO(&socket_key.netns, sock, __sk_common.skc_net.net,
+			   ns.inum);
 
 	socket_key.proto = BPF_CORE_READ_BITFIELD_PROBED(sock, sk_protocol);
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
 
-	struct sockets_value *socket_value = bpf_map_lookup_elem(&sockets, &socket_key);
+	struct sockets_value *socket_value =
+		bpf_map_lookup_elem(&sockets, &socket_key);
 	if (socket_value == NULL)
 		return 0;
 
-	if (socket_value->sock != (__u64) sock)
+	if (socket_value->sock != (__u64)sock)
 		return 0;
 
 	if (socket_value->deletion_timestamp == 0) {
@@ -86,8 +93,8 @@ remove_socket(struct sock *sock)
 // - server side
 // - for both UDP and TCP
 // - for both IPv4 and IPv6
-static __always_inline int
-probe_bind_entry(struct pt_regs *ctx, struct socket *socket)
+static __always_inline int probe_bind_entry(struct pt_regs *ctx,
+					    struct socket *socket)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 
@@ -95,8 +102,7 @@ probe_bind_entry(struct pt_regs *ctx, struct socket *socket)
 	return 0;
 };
 
-static __always_inline int
-probe_bind_exit(struct pt_regs *ctx, short ver)
+static __always_inline int probe_bind_exit(struct pt_regs *ctx, short ver)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	struct socket **socketp, *socket;
@@ -125,8 +131,8 @@ cleanup:
 // - client side
 // - for TCP only
 // - for both IPv4 and IPv6
-static __always_inline int
-enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
+static __always_inline int enter_tcp_connect(struct pt_regs *ctx,
+					     struct sock *sk)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	bpf_map_update_elem(&start, &pid_tgid, &sk, 0);
@@ -138,8 +144,7 @@ enter_tcp_connect(struct pt_regs *ctx, struct sock *sk)
 	return 0;
 }
 
-static __always_inline int
-exit_tcp_connect(struct pt_regs *ctx, int ret)
+static __always_inline int exit_tcp_connect(struct pt_regs *ctx, int ret)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	struct task_struct *task;
@@ -163,8 +168,9 @@ exit_tcp_connect(struct pt_regs *ctx, int ret)
 // - client side
 // - for UDP only
 // - for both IPv4 and IPv6
-static __always_inline int
-enter_udp_sendmsg(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg, size_t len)
+static __always_inline int enter_udp_sendmsg(struct pt_regs *ctx,
+					     struct sock *sk,
+					     struct msghdr *msg, size_t len)
 {
 	insert_current_socket(sk);
 	return 0;
