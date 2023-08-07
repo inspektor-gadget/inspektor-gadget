@@ -4,14 +4,22 @@ ARG BASE_IMAGE=gcr.io/distroless/static-debian11
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
 
 ARG TARGETARCH
+ARG BUILDARCH
 
 RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	dpkg --add-architecture ${TARGETARCH} && \
 	apt-get update && \
 	apt-get install -y gcc build-essential libseccomp-dev:${TARGETARCH} && \
-	if [ ${TARGETARCH} = 'arm64' ]; then \
-		apt-get install -y gcc-aarch64-linux-gnu crossbuild-essential-arm64 ; \
+	if [ "${TARGETARCH}" != "${BUILDARCH}" ]; then \
+		if [ ${TARGETARCH} = 'arm64' ]; then \
+			apt-get install -y gcc-aarch64-linux-gnu crossbuild-essential-arm64; \
+		elif [ ${TARGETARCH} = 'amd64' ]; then \
+			apt-get install -y gcc-x86-64-linux-gnu crossbuild-essential-amd64; \
+		else \
+			>&2 echo "${TARGETARCH} is not supported"; \
+			exit 1; \
+		fi \
 	fi
 
 COPY go.mod go.sum /cache/
