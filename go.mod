@@ -55,7 +55,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.16.0
 	go.opentelemetry.io/otel/sdk/metric v0.39.0
 	golang.org/x/sync v0.3.0
-	golang.org/x/text v0.11.0
+	golang.org/x/text v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/cri-api v0.27.4
 	oras.land/oras-go v1.2.3
