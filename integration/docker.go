@@ -22,7 +22,7 @@ import (
 
 type DockerManager struct{}
 
-func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption) ContainerInterface {
+func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption) IntegrationTestsContainer {
 	c := &DockerContainer{}
 
 	for _, o := range opts {

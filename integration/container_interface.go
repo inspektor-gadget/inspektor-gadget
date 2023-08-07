@@ -23,10 +23,10 @@ import (
 )
 
 type ContainerFactory interface {
-	NewContainer(name, cmd string, opts ...containerOption) ContainerInterface
+	NewContainer(name, cmd string, opts ...containerOption) IntegrationTestsContainer
 }
 
-type ContainerInterface interface {
+type IntegrationTestsContainer interface {
 	Run(t *testing.T)
 	Start(t *testing.T)
 	Stop(t *testing.T)
