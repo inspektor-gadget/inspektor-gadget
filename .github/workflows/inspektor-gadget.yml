@@ -1025,7 +1025,7 @@ jobs:
     - name: Craft cluster name
       shell: bash
       run: |
-        echo "CLUSTER_NAME=${{ env.AZURE_AKS_CLUSTER_PREFIX }}${{ matrix.arch }}-${{ matrix.os-sku }}" >> $GITHUB_ENV
+        echo "CLUSTER_NAME=${{ env.AZURE_AKS_CLUSTER_PREFIX }}${{ matrix.arch }}-${{ matrix.os-sku }}-${RANDOM}" >> $GITHUB_ENV
     - name: Create AKS cluster ${{ env.CLUSTER_NAME }}
       shell: bash
       run: |
