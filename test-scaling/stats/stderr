@@ -1,0 +1,302 @@
+#1 [internal] load build definition from gadget-default.Dockerfile
+#1 transferring dockerfile: 104B done
+#1 DONE 0.0s
+
+#2 [internal] load .dockerignore
+#2 transferring context: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/inspektor-gadget/bpftrace:latest
+#3 DONE 0.7s
+
+#4 [internal] load metadata for quay.io/kinvolk/bcc:gadget
+#4 ...
+
+#5 [internal] load metadata for docker.io/library/golang:1.19-bullseye
+#5 DONE 0.9s
+
+#4 [internal] load metadata for quay.io/kinvolk/bcc:gadget
+#4 DONE 2.1s
+
+#6 [bpftrace 1/1] FROM ghcr.io/inspektor-gadget/bpftrace@sha256:b539212202331d8ee4c4adec0e35e526fb7811a800f3e54c949fd40c30417a5a
+#6 DONE 0.0s
+
+#7 [builder 1/6] FROM docker.io/library/golang:1.19-bullseye@sha256:a0381d20066951ba8a2e6a190dbf960d62ca367dc0306d865ac65e8ccb6f62dd
+#7 DONE 0.0s
+
+#8 [bcc 1/1] FROM quay.io/kinvolk/bcc:gadget@sha256:117a02cc5e69e054d5a8bbd5eccad074175d0fa9358d67d008f2e7bba1010915
+#8 resolve quay.io/kinvolk/bcc:gadget@sha256:117a02cc5e69e054d5a8bbd5eccad074175d0fa9358d67d008f2e7bba1010915 0.0s done
+#8 ...
+
+#9 [internal] load build context
+#9 transferring context: 54.57kB 0.0s done
+#9 DONE 0.1s
+
+#10 [builder 4/6] RUN cd /gadget && go mod download
+#10 CACHED
+
+#11 [builder 5/6] COPY ./ /gadget
+#11 CACHED
+
+#12 [builder 2/6] RUN set -ex; 	export DEBIAN_FRONTEND=noninteractive; 	dpkg --add-architecture amd64 && 	apt-get update && 	apt-get install -y gcc make ca-certificates git libelf-dev:amd64 		pkg-config:amd64 libseccomp-dev:amd64 && 	if [ amd64 = 'arm64' ]; then 		apt-get install -y gcc-aarch64-linux-gnu; 	fi
+#12 CACHED
+
+#13 [builder 3/6] COPY go.mod go.sum /gadget/
+#13 CACHED
+
+#14 [builder 6/6] RUN cd /gadget/gadget-container && 	if [ amd64 = 'arm64' ]; then 		export CC=aarch64-linux-gnu-gcc; 		export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig/; 	fi; 	make -j$(nproc) TARGET_ARCH=amd64 gadget-container-deps
+#14 CACHED
+
+#6 [bpftrace 1/1] FROM ghcr.io/inspektor-gadget/bpftrace@sha256:b539212202331d8ee4c4adec0e35e526fb7811a800f3e54c949fd40c30417a5a
+#6 CACHED
+
+#8 [bcc 1/1] FROM quay.io/kinvolk/bcc:gadget@sha256:117a02cc5e69e054d5a8bbd5eccad074175d0fa9358d67d008f2e7bba1010915
+#8 sha256:117a02cc5e69e054d5a8bbd5eccad074175d0fa9358d67d008f2e7bba1010915 1.61kB / 1.61kB done
+#8 sha256:beb27296ba0ccb1f30242773f0c83e5eb92ec5195bcf888878123e18f5b99ef8 868B / 868B done
+#8 sha256:2a2b710450baf940326973e65da9fa16be72cb7c54447b751a498de74d4a1af8 1.26kB / 1.26kB done
+#8 sha256:494599f517d0dd6bf658c588840a2f613f7cc338aefb9374413b1083f6a4d1e1 0B / 16.97MB 0.1s
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 0B / 72.36MB 0.1s
+#8 sha256:494599f517d0dd6bf658c588840a2f613f7cc338aefb9374413b1083f6a4d1e1 2.10MB / 16.97MB 1.7s
+#8 sha256:494599f517d0dd6bf658c588840a2f613f7cc338aefb9374413b1083f6a4d1e1 9.44MB / 16.97MB 1.9s
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 6.29MB / 72.36MB 1.9s
+#8 sha256:494599f517d0dd6bf658c588840a2f613f7cc338aefb9374413b1083f6a4d1e1 13.63MB / 16.97MB 2.0s
+#8 sha256:494599f517d0dd6bf658c588840a2f613f7cc338aefb9374413b1083f6a4d1e1 16.97MB / 16.97MB 2.1s done
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 18.87MB / 72.36MB 2.2s
+#8 extracting sha256:494599f517d0dd6bf658c588840a2f613f7cc338aefb9374413b1083f6a4d1e1
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 24.12MB / 72.36MB 2.3s
+#8 extracting sha256:494599f517d0dd6bf658c588840a2f613f7cc338aefb9374413b1083f6a4d1e1 0.1s done
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 35.65MB / 72.36MB 2.6s
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 39.85MB / 72.36MB 2.7s
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 45.09MB / 72.36MB 2.9s
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 50.33MB / 72.36MB 3.0s
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 57.67MB / 72.36MB 3.3s
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 72.36MB / 72.36MB 3.6s
+#8 sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 72.36MB / 72.36MB 3.9s done
+#8 extracting sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0
+#8 extracting sha256:c41e879c2d3bbfcf806cd176b1da02204f86a862ae61afa54d031e19a87e64a0 1.0s done
+#8 DONE 6.8s
+
+#15 [stage-3  1/11] RUN set -ex; 	export DEBIAN_FRONTEND=noninteractive; 	apt-get update && 	apt-get install -y --no-install-recommends 		ca-certificates jq wget xz-utils binutils socat && 	rmdir /usr/src && ln -sf /host/usr/src /usr/src && 	rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
+#15 0.250 + export DEBIAN_FRONTEND=noninteractive
+#15 0.250 + apt-get update
+#15 0.281 Hit:1 http://deb.debian.org/debian bookworm InRelease
+#15 0.281 Get:2 http://deb.debian.org/debian bookworm-updates InRelease [52.1 kB]
+#15 0.282 Hit:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#15 0.383 Fetched 52.1 kB in 0s (423 kB/s)
+#15 0.383 Reading package lists...
+#15 0.765 + apt-get install -y --no-install-recommends ca-certificates jq wget xz-utils binutils socat
+#15 0.769 Reading package lists...
+#15 1.143 Building dependency tree...
+#15 1.229 Reading state information...
+#15 1.317 ca-certificates is already the newest version (20230311).
+#15 1.317 ca-certificates set to manually installed.
+#15 1.317 xz-utils is already the newest version (5.4.1-0.2).
+#15 1.317 binutils is already the newest version (2.40-2).
+#15 1.317 The following additional packages will be installed:
+#15 1.317   libjq1 libonig5 libpsl5 libwrap0
+#15 1.318 Recommended packages:
+#15 1.318   publicsuffix
+#15 1.390 The following NEW packages will be installed:
+#15 1.390   jq libjq1 libonig5 libpsl5 libwrap0 socat wget
+#15 1.408 0 upgraded, 7 newly installed, 0 to remove and 0 not upgraded.
+#15 1.408 Need to get 1860 kB of archives.
+#15 1.408 After this operation, 6619 kB of additional disk space will be used.
+#15 1.408 Get:1 http://deb.debian.org/debian bookworm/main amd64 libpsl5 amd64 0.21.2-1 [58.7 kB]
+#15 1.413 Get:2 http://deb.debian.org/debian bookworm/main amd64 wget amd64 1.21.3-1+b2 [984 kB]
+#15 1.421 Get:3 http://deb.debian.org/debian bookworm/main amd64 libonig5 amd64 6.9.8-1 [188 kB]
+#15 1.421 Get:4 http://deb.debian.org/debian bookworm/main amd64 libjq1 amd64 1.6-2.1 [135 kB]
+#15 1.422 Get:5 http://deb.debian.org/debian bookworm/main amd64 jq amd64 1.6-2.1 [64.9 kB]
+#15 1.422 Get:6 http://deb.debian.org/debian bookworm/main amd64 libwrap0 amd64 7.6.q-32 [54.9 kB]
+#15 1.423 Get:7 http://deb.debian.org/debian bookworm/main amd64 socat amd64 1.7.4.4-2 [375 kB]
+#15 1.519 debconf: delaying package configuration, since apt-utils is not installed
+#15 1.540 Fetched 1860 kB in 0s (58.9 MB/s)
+#15 1.570 Selecting previously unselected package libpsl5:amd64.
+#15 1.570 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 8685 files and directories currently installed.)
+#15 1.575 Preparing to unpack .../0-libpsl5_0.21.2-1_amd64.deb ...
+#15 1.588 Unpacking libpsl5:amd64 (0.21.2-1) ...
+#15 1.633 Selecting previously unselected package wget.
+#15 1.634 Preparing to unpack .../1-wget_1.21.3-1+b2_amd64.deb ...
+#15 1.640 Unpacking wget (1.21.3-1+b2) ...
+#15 1.739 Selecting previously unselected package libonig5:amd64.
+#15 1.741 Preparing to unpack .../2-libonig5_6.9.8-1_amd64.deb ...
+#15 1.747 Unpacking libonig5:amd64 (6.9.8-1) ...
+#15 1.810 Selecting previously unselected package libjq1:amd64.
+#15 1.811 Preparing to unpack .../3-libjq1_1.6-2.1_amd64.deb ...
+#15 1.817 Unpacking libjq1:amd64 (1.6-2.1) ...
+#15 1.862 Selecting previously unselected package jq.
+#15 1.863 Preparing to unpack .../4-jq_1.6-2.1_amd64.deb ...
+#15 1.869 Unpacking jq (1.6-2.1) ...
+#15 1.937 Selecting previously unselected package libwrap0:amd64.
+#15 1.938 Preparing to unpack .../5-libwrap0_7.6.q-32_amd64.deb ...
+#15 1.945 Unpacking libwrap0:amd64 (7.6.q-32) ...
+#15 1.986 Selecting previously unselected package socat.
+#15 1.987 Preparing to unpack .../6-socat_1.7.4.4-2_amd64.deb ...
+#15 1.993 Unpacking socat (1.7.4.4-2) ...
+#15 2.065 Setting up libpsl5:amd64 (0.21.2-1) ...
+#15 2.088 Setting up wget (1.21.3-1+b2) ...
+#15 2.114 Setting up libwrap0:amd64 (7.6.q-32) ...
+#15 2.136 Setting up socat (1.7.4.4-2) ...
+#15 2.161 Setting up libonig5:amd64 (6.9.8-1) ...
+#15 2.180 Setting up libjq1:amd64 (1.6-2.1) ...
+#15 2.202 Setting up jq (1.6-2.1) ...
+#15 2.221 Processing triggers for libc-bin (2.36-9+deb12u1) ...
+#15 2.265 + rmdir /usr/src
+#15 2.265 + ln -sf /host/usr/src /usr/src
+#15 2.265 + rm -f /etc/localtime
+#15 2.266 + ln -sf /host/etc/localtime /etc/localtime
+#15 DONE 2.4s
+
+#16 [stage-3  2/11] COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
+#16 DONE 0.1s
+
+#17 [stage-3  3/11] COPY --from=builder /gadget/gadget-container/bin/gadgettracermanager /bin/
+#17 DONE 1.4s
+
+#18 [stage-3  4/11] COPY gadget-container/hooks/oci/prestart.sh gadget-container/hooks/oci/poststop.sh /opt/hooks/oci/
+#18 DONE 0.1s
+
+#19 [stage-3  5/11] COPY --from=builder /gadget/gadget-container/bin/ocihookgadget /opt/hooks/oci/
+#19 DONE 0.2s
+
+#20 [stage-3  6/11] COPY gadget-container/hooks/crio/gadget-prestart.json gadget-container/hooks/crio/gadget-poststop.json /opt/hooks/crio/
+#20 DONE 0.1s
+
+#21 [stage-3  7/11] COPY --from=builder /gadget/gadget-container/bin/nrigadget /opt/hooks/nri/
+#21 DONE 0.1s
+
+#22 [stage-3  8/11] COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
+#22 DONE 0.1s
+
+#23 [stage-3  9/11] COPY hack/btfs /btfs/
+#23 DONE 0.1s
+
+#24 [stage-3 10/11] COPY --from=bpftrace /usr/bin/bpftrace /usr/bin/bpftrace
+#24 DONE 0.6s
+
+#25 [stage-3 11/11] RUN rm -f /var/run
+#25 DONE 0.3s
+
+#26 exporting to image
+#26 exporting layers
+#26 exporting layers 1.7s done
+#26 writing image sha256:d7c37bade1eb3c0aed92f38c1a560f821bed752d2238032cfe96b8c640dca196 done
+#26 naming to francisregistry.azurecr.io/gadget:francis-test-scaling done
+#26 DONE 1.7s
+mkdir: cannot create directory ‘gadget-output-2’: File exists
+mkdir: cannot create directory ‘gadget-output-12’: File exists
+time="2023-08-08T09:57:56Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007i\": command terminated with exit code 137"
+E0808 09:58:00.700052 1468473 v2.go:104] EOF
+Error: running gadget: timed out while getting result
+time="2023-08-08T10:08:20Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007i\": command terminated with exit code 137"
+E0808 10:08:24.255712 1475660 v2.go:104] EOF
+Error: running gadget: timed out while getting result
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-12-8tlgp" is waiting to start: PodInitializing
+mkdir: cannot create directory ‘gadget-output-25’: File exists
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-25-vnssf" is waiting to start: PodInitializing
+Error from server: error dialing backend: proxy error from /tunnel-uds/proxysocket while dialing 10.224.0.27:10250, code 503: 503 Service Unavailable
+Error from server: error dialing backend: proxy error from /tunnel-uds/proxysocket while dialing 10.224.0.27:10250, code 503: 503 Service Unavailable
+Error from server: error dialing backend: proxy error from /tunnel-uds/proxysocket while dialing 10.224.0.18:10250, code 503: 503 Service Unavailable
+Error from server: error dialing backend: proxy error from /tunnel-uds/proxysocket while dialing 10.224.0.18:10250, code 503: 503 Service Unavailable
+Error from server: error dialing backend: proxy error from /tunnel-uds/proxysocket while dialing 10.224.0.18:10250, code 503: 503 Service Unavailable
+Error from server: error dialing backend: proxy error from /tunnel-uds/proxysocket while dialing 10.224.0.20:10250, code 503: 503 Service Unavailable
+Error from server: error dialing backend: proxy error from /tunnel-uds/proxysocket while dialing 10.224.0.20:10250, code 503: 503 Service Unavailable
+Error from server: error dialing backend: proxy error from /tunnel-uds/proxysocket while dialing 10.224.0.20:10250, code 503: 503 Service Unavailable
+Error from server: error dialing backend: EOF
+Error from server: Get "https://10.224.0.20:10250/containerLogs/test-scaling-25-nodes/daemonset-25-l4f6s/stress-exec": http2: client connection lost
+Error from server: error dialing backend: EOF
+time="2023-08-08T10:58:03Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007q\": command terminated with exit code 137"
+E0808 10:58:08.907932 1505165 v2.go:104] EOF
+Error: running gadget: timed out while getting result
+E0808 10:59:57.829746 1507233 v2.go:104] use of closed network connection
+time="2023-08-08T11:16:15Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007p\": command terminated with exit code 137"
+time="2023-08-08T11:16:15Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007v\": command terminated with exit code 137"
+E0808 11:16:20.706328 1525821 v2.go:104] EOF
+E0808 11:16:20.706349 1525821 v2.go:104] EOF
+Error: running gadget: timed out while getting result
+timed out while getting result
+time="2023-08-08T11:32:27Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007k\": command terminated with exit code 137"
+E0808 11:32:31.047718 1544934 v2.go:104] EOF
+Error: running gadget: timed out while getting result
+mkdir: cannot create directory ‘gadget-output-37’: File exists
+error: no matching resources found
+time="2023-08-08T12:26:06Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007s\": error sending request: Post \"https://francisclu-francisrg21409-47635d-72vibkvj.hcp.westeurope.azmk8s.io:443/api/v1/namespaces/gadget/pods/gadget-gdg4k/exec?command=%2Fusr%2Fbin%2Fsocat&command=%2Frun%2Fgadgetservice.socket&command=-&container=gadget&container=gadget&stdin=true&stdout=true&timeout=30s\": context canceled"
+time="2023-08-08T12:26:06Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss000084\": error sending request: Post \"https://francisclu-francisrg21409-47635d-72vibkvj.hcp.westeurope.azmk8s.io:443/api/v1/namespaces/gadget/pods/gadget-t289b/exec?command=%2Fusr%2Fbin%2Fsocat&command=%2Frun%2Fgadgetservice.socket&command=-&container=gadget&container=gadget&stdin=true&stdout=true&timeout=30s\": context canceled"
+time="2023-08-08T12:26:06Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007o\": error sending request: Post \"https://francisclu-francisrg21409-47635d-72vibkvj.hcp.westeurope.azmk8s.io:443/api/v1/namespaces/gadget/pods/gadget-tth9t/exec?command=%2Fusr%2Fbin%2Fsocat&command=%2Frun%2Fgadgetservice.socket&command=-&container=gadget&container=gadget&stdin=true&stdout=true&timeout=30s\": context canceled"
+time="2023-08-08T12:26:06Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007v\": error sending request: Post \"https://francisclu-francisrg21409-47635d-72vibkvj.hcp.westeurope.azmk8s.io:443/api/v1/namespaces/gadget/pods/gadget-d5qf7/exec?command=%2Fusr%2Fbin%2Fsocat&command=%2Frun%2Fgadgetservice.socket&command=-&container=gadget&container=gadget&stdin=true&stdout=true&timeout=30s\": context canceled"
+time="2023-08-08T12:26:06Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss000086\": error sending request: Post \"https://francisclu-francisrg21409-47635d-72vibkvj.hcp.westeurope.azmk8s.io:443/api/v1/namespaces/gadget/pods/gadget-7m4xb/exec?command=%2Fusr%2Fbin%2Fsocat&command=%2Frun%2Fgadgetservice.socket&command=-&container=gadget&container=gadget&stdin=true&stdout=true&timeout=30s\": context canceled"
+time="2023-08-08T12:26:06Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007l\": error sending request: Post \"https://francisclu-francisrg21409-47635d-72vibkvj.hcp.westeurope.azmk8s.io:443/api/v1/namespaces/gadget/pods/gadget-s8f5r/exec?command=%2Fusr%2Fbin%2Fsocat&command=%2Frun%2Fgadgetservice.socket&command=-&container=gadget&container=gadget&stdin=true&stdout=true&timeout=30s\": context canceled"
+time="2023-08-08T12:26:06Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007y\": error sending request: Post \"https://francisclu-francisrg21409-47635d-72vibkvj.hcp.westeurope.azmk8s.io:443/api/v1/namespaces/gadget/pods/gadget-4vd7s/exec?command=%2Fusr%2Fbin%2Fsocat&command=%2Frun%2Fgadgetservice.socket&command=-&container=gadget&container=gadget&stdin=true&stdout=true&timeout=30s\": context canceled"
+time="2023-08-08T12:26:06Z" level=warning msg="connecting to gadget service on node \"aks-nodepool1-40558706-vmss00007n\": error sending request: Post \"https://francisclu-francisrg21409-47635d-72vibkvj.hcp.westeurope.azmk8s.io:443/api/v1/namespaces/gadget/pods/gadget-6lfgw/exec?command=%2Fusr%2Fbin%2Fsocat&command=%2Frun%2Fgadgetservice.socket&command=-&container=gadget&container=gadget&stdin=true&stdout=true&timeout=30s\": context canceled"
+error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+POD or TYPE/NAME is a required argument for the logs command
+See 'kubectl logs -h' for help and examples
+Error: running gadget: dialing gadget pod on node "aks-nodepool1-40558706-vmss000085": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007q": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007v": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss000082": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss000083": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007r": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007x": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007l": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss000087": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007s": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss000080": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007k": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007n": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss000000": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss000081": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007z": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007f": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss000089": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss000088": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss000086": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007e": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007y": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007p": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007h": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007m": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00008a": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss000084": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007o": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007t": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007c": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007u": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007j": context canceled
+dialing gadget pod on node "aks-nodepool1-40558706-vmss00007w": context canceled
+error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+POD or TYPE/NAME is a required argument for the logs command
+See 'kubectl logs -h' for help and examples
+error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+POD or TYPE/NAME is a required argument for the logs command
+See 'kubectl logs -h' for help and examples
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-37-bvrld" is waiting to start: PodInitializing
+error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+POD or TYPE/NAME is a required argument for the logs command
+See 'kubectl logs -h' for help and examples
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-37-xzl8n" is waiting to start: PodInitializing
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-37-tb7d5" is waiting to start: PodInitializing
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-37-ldspz" is waiting to start: PodInitializing
+error: no matching resources found
+Error: running gadget: get gadget pods: getting pods: Get "https://francisclu-francisrg21409-47635d-72vibkvj.hcp.westeurope.azmk8s.io:443/api/v1/namespaces/gadget/pods?labelSelector=k8s-app%3Dgadget": context canceled
+error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+POD or TYPE/NAME is a required argument for the logs command
+See 'kubectl logs -h' for help and examples
+error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+POD or TYPE/NAME is a required argument for the logs command
+See 'kubectl logs -h' for help and examples
+error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+POD or TYPE/NAME is a required argument for the logs command
+See 'kubectl logs -h' for help and examples
+error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+POD or TYPE/NAME is a required argument for the logs command
+See 'kubectl logs -h' for help and examples
+error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+POD or TYPE/NAME is a required argument for the logs command
+See 'kubectl logs -h' for help and examples
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-37-6lk4z" is waiting to start: PodInitializing
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-37-9csxs" is waiting to start: PodInitializing
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-37-6kqft" is waiting to start: PodInitializing
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-37-8jzh9" is waiting to start: PodInitializing
+Error from server (BadRequest): container "stress-exec" in pod "daemonset-37-jn84k" is waiting to start: PodInitializing
+mkdir: cannot create directory ‘gadget-output-50’: File exists
+E0808 13:51:17.984708 1732808 v2.go:104] use of closed network connection
