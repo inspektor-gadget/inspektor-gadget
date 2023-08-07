@@ -34,7 +34,11 @@ Create chart name and version as used by the chart label.
 Namespace used by all resources.
 */}}
 {{- define "gadget.namespace" -}}
+{{- if .Values.namespaceOverride }}
+{{- .Values.namespaceOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
 gadget
+{{- end }}
 {{- end }}
 
 {{/*
