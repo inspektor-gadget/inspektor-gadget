@@ -131,7 +131,7 @@ func (c *ContainerdClient) GetContainer(containerID string) (*runtimeclient.Cont
 		return nil, fmt.Errorf("getting image details %q: %w", container.ID(), err)
 	}
 
-	// State is getting set to `Created` here for the following reasons:
+	// State is getting set to `Running` here for the following reasons:
 	// 1. GetContainer is only getting called on new created containers
 	// 2. We would need to get the Task for the Container. containerd needs to aquire a mutex
 	//    that is currently hold by the creating process, which we interrupted -> deadlock
@@ -143,7 +143,7 @@ func (c *ContainerdClient) GetContainer(containerID string) (*runtimeclient.Cont
 				RuntimeName:        types.RuntimeNameContainerd,
 				ContainerImageName: image.Name(),
 			},
-			State: runtimeclient.StateCreated,
+			State: runtimeclient.StateRunning,
 		},
 	}
 	runtimeclient.EnrichWithK8sMetadata(containerData, labels)

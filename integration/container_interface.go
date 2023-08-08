@@ -22,19 +22,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-type ContainerSpec struct {
-	Name         string
-	Cmd          string
-	Options      []containerOption
-	Cleanup      bool
-	StartAndStop bool
-}
-
 type ContainerFactory interface {
-	NewContainer(ContainerSpec) ContainerInterface
+	NewContainer(name, cmd string, opts ...containerOption) IntegrationTestsContainer
 }
 
-type ContainerInterface interface {
+type IntegrationTestsContainer interface {
 	Run(t *testing.T)
 	Start(t *testing.T)
 	Stop(t *testing.T)
@@ -54,35 +46,36 @@ func NewContainerFactory(containerRuntime string) (ContainerFactory, error) {
 	}
 }
 
-// containerdOption wraps testutils.Option to allow certain values only
-type containerOption struct {
-	opt          testutils.Option
-	Name         string
-	Cmd          string
-	Cleanup      bool
-	StartAndStop bool
+type cOptions struct {
+	options      []testutils.Option
+	cleanup      bool
+	startAndStop bool
 }
 
-func NewContainerOptions(opts ...containerOption) []containerOption {
-	return opts
-}
-
-func optionsFromContainerOptions(containerOption []containerOption) []testutils.Option {
-	var opts []testutils.Option
-	for _, do := range containerOption {
-		opts = append(opts, do.opt)
-	}
-	return opts
-}
-
-func WithName(name string) containerOption {
-	return containerOption{opt: testutils.WithName(name)}
-}
+// containerOption is a function that modifies a ContainerSpec and exposes only
+// few options from testutils.Option to the user.
+type containerOption func(opts *cOptions)
 
 func WithContainerImage(image string) containerOption {
-	return containerOption{opt: testutils.WithImage(image)}
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithImage(image))
+	}
 }
 
 func WithContainerSeccompProfile(profile string) containerOption {
-	return containerOption{opt: testutils.WithSeccompProfile(profile)}
+	return func(opts *cOptions) {
+		opts.options = append(opts.options, testutils.WithSeccompProfile(profile))
+	}
+}
+
+func WithCleanup() containerOption {
+	return func(opts *cOptions) {
+		opts.cleanup = true
+	}
+}
+
+func WithStartAndStop() containerOption {
+	return func(opts *cOptions) {
+		opts.startAndStop = true
+	}
 }

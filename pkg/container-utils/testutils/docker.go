@@ -26,45 +26,80 @@ import (
 	"github.com/docker/docker/client"
 )
 
-func RunDockerContainer(ctx context.Context, t *testing.T, command string, options ...Option) {
-	opts := defaultContainerOptions()
+func NewDockerContainer(name, cmd string, options ...Option) Container {
+	c := &DockerContainer{
+		containerSpec: containerSpec{
+			name:    name,
+			cmd:     cmd,
+			options: defaultContainerOptions(),
+		},
+	}
 	for _, o := range options {
-		o(opts)
+		o(c.options)
 	}
+	return c
+}
 
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+type DockerContainer struct {
+	containerSpec
+
+	client *client.Client
+}
+
+func (d *DockerContainer) Running() bool {
+	return d.started
+}
+
+func (d *DockerContainer) ID() string {
+	return d.id
+}
+
+func (d *DockerContainer) Pid() int {
+	return d.pid
+}
+
+func (d *DockerContainer) initClient() error {
+	var err error
+	d.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		t.Fatalf("Failed to connect to Docker: %s", err)
+		return fmt.Errorf("creating a client: %w", err)
 	}
-	defer cli.Close()
+	return nil
+}
 
-	_ = cli.ContainerRemove(ctx, opts.name, types.ContainerRemoveOptions{})
+func (d *DockerContainer) Run(t *testing.T) {
+	if err := d.initClient(); err != nil {
+		t.Fatalf("Failed to initialize client: %s", err)
+	}
 
-	reader, err := cli.ImagePull(ctx, opts.image, types.ImagePullOptions{})
+	_ = d.client.ContainerRemove(d.options.ctx, d.name, types.ContainerRemoveOptions{})
+
+	reader, err := d.client.ImagePull(d.options.ctx, d.options.image, types.ImagePullOptions{})
 	if err != nil {
 		t.Fatalf("Failed to pull image container: %s", err)
 	}
 	io.Copy(io.Discard, reader)
 
 	hostConfig := &container.HostConfig{}
-	if opts.seccompProfile != "" {
-		hostConfig.SecurityOpt = []string{fmt.Sprintf("seccomp=%s", opts.seccompProfile)}
+	if d.options.seccompProfile != "" {
+		hostConfig.SecurityOpt = []string{fmt.Sprintf("seccomp=%s", d.options.seccompProfile)}
 	}
 
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: opts.image,
-		Cmd:   []string{"/bin/sh", "-c", command},
+	resp, err := d.client.ContainerCreate(d.options.ctx, &container.Config{
+		Image: d.options.image,
+		Cmd:   []string{"/bin/sh", "-c", d.cmd},
 		Tty:   false,
-	}, hostConfig, nil, nil, opts.name)
+	}, hostConfig, nil, nil, d.name)
 	if err != nil {
 		t.Fatalf("Failed to create container: %s", err)
 	}
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := d.client.ContainerStart(d.options.ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		t.Fatalf("Failed to start container: %s", err)
 	}
+	d.id = resp.ID
 
-	if opts.wait {
-		statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	if d.options.wait {
+		statusCh, errCh := d.client.ContainerWait(d.options.ctx, resp.ID, container.WaitConditionNotRunning)
 		select {
 		case err := <-errCh:
 			if err != nil {
@@ -73,42 +108,82 @@ func RunDockerContainer(ctx context.Context, t *testing.T, command string, optio
 		case <-statusCh:
 		}
 	}
+	containerJSON, err := d.client.ContainerInspect(d.options.ctx, d.id)
+	if err != nil {
+		t.Fatalf("Failed to inspect container: %s", err)
+	}
+	d.pid = containerJSON.State.Pid
 
-	if opts.logs {
-		out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
+	if d.options.logs {
+		out, err := d.client.ContainerLogs(d.options.ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 		if err != nil {
 			t.Fatalf("Failed to get container logs: %s", err)
 		}
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(out)
-		t.Logf("Container %s output:\n%s", opts.image, string(buf.Bytes()))
+		t.Logf("Container %q output:\n%s", d.name, string(buf.Bytes()))
 	}
 
-	if opts.removal {
-		err = cli.ContainerRemove(ctx, opts.name, types.ContainerRemoveOptions{Force: true})
+	if d.options.removal {
+		err := d.removeAndClose()
 		if err != nil {
 			t.Fatalf("Failed to remove container: %s", err)
 		}
 	}
 }
 
-func RunDockerFailedContainer(ctx context.Context, t *testing.T) {
-	RunDockerContainer(ctx, t,
-		"/none",
-		WithName("test-ig-failed-container"),
-		WithoutLogs(),
-		WithoutWait(),
-	)
+func (d *DockerContainer) Start(t *testing.T) {
+	if d.started {
+		t.Logf("Warn(%s): trying to start already running container\n", d.name)
+		return
+	}
+	d.start(t)
+	d.started = true
 }
 
-func RemoveDockerContainer(ctx context.Context, t *testing.T, name string) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		t.Fatalf("Failed to connect to Docker: %s", err)
+func (d *DockerContainer) start(t *testing.T) {
+	for _, o := range []Option{WithoutWait(), withoutRemoval()} {
+		o(d.options)
+	}
+	d.Run(t)
+}
+
+func (d *DockerContainer) Stop(t *testing.T) {
+	if !d.started && !d.options.forceDelete {
+		t.Logf("Warn(%s): trying to stop already stopped container\n", d.name)
+		return
+	}
+	if d.client == nil {
+		if d.options.forceDelete {
+			t.Logf("Warn(%s): trying to stop container with nil client. Forcing deletion\n", d.name)
+			if err := d.initClient(); err != nil {
+				t.Fatalf("Failed to initialize client: %s", err)
+			}
+		} else {
+			t.Fatalf("Client is not initialized")
+		}
 	}
 
-	err = cli.ContainerRemove(ctx, name, types.ContainerRemoveOptions{Force: true})
-	if err != nil {
-		t.Fatalf("Failed to remove container: %s", err)
+	if err := d.removeAndClose(); err != nil {
+		t.Fatalf("Failed to stop container: %s", err)
 	}
+	d.started = false
+}
+
+func (d *DockerContainer) removeAndClose() error {
+	err := d.client.ContainerRemove(d.options.ctx, d.name, types.ContainerRemoveOptions{Force: true})
+	if err != nil {
+		return fmt.Errorf("removing container: %w", err)
+	}
+
+	err = d.client.Close()
+	if err != nil {
+		return fmt.Errorf("closing client: %w", err)
+	}
+
+	return nil
+}
+
+func RunDockerFailedContainer(ctx context.Context, t *testing.T) {
+	NewDockerContainer("test-ig-failed-container", "/none", WithoutLogs(), WithoutWait(), WithContext(ctx)).Run(t)
 }

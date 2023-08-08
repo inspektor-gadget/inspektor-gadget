@@ -16,54 +16,34 @@ package integration
 
 import (
 	"context"
-	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 )
 
 type DockerManager struct{}
 
-func (*DockerManager) NewContainer(spec ContainerSpec) ContainerInterface {
-	return &DockerContainer{
-		ContainerSpec: spec,
+func (dm *DockerManager) NewContainer(name, cmd string, opts ...containerOption) IntegrationTestsContainer {
+	c := &DockerContainer{}
+
+	for _, o := range opts {
+		o(&c.cOptions)
 	}
+	c.options = append(c.options, testutils.WithContext(context.Background()))
+
+	c.Container = testutils.NewDockerContainer(name, cmd, c.options...)
+	return c
 }
 
 // DockerContainer implements TestStep for docker containers
 type DockerContainer struct {
-	ContainerSpec
-
-	started bool
-}
-
-func (d *DockerContainer) Run(t *testing.T) {
-	opts := append(optionsFromContainerOptions(d.Options), testutils.WithName(d.Name))
-	testutils.RunDockerContainer(context.Background(), t, d.Cmd, opts...)
-}
-
-func (d *DockerContainer) Start(t *testing.T) {
-	if d.started {
-		t.Logf("Warn(%s): trying to start already running container\n", d.Name)
-		return
-	}
-	opts := append(optionsFromContainerOptions(d.Options), testutils.WithName(d.Name), testutils.WithoutRemoval(), testutils.WithoutWait())
-	testutils.RunDockerContainer(context.Background(), t, d.Cmd, opts...)
-	d.started = true
-}
-
-func (d *DockerContainer) Stop(t *testing.T) {
-	testutils.RemoveDockerContainer(context.Background(), t, d.Name)
-	d.started = false
+	testutils.Container
+	cOptions
 }
 
 func (d *DockerContainer) IsCleanup() bool {
-	return d.Cleanup
+	return d.cleanup
 }
 
 func (d *DockerContainer) IsStartAndStop() bool {
-	return d.StartAndStop
-}
-
-func (d *DockerContainer) Running() bool {
-	return d.started
+	return d.startAndStop
 }

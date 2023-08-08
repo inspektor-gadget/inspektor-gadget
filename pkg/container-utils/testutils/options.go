@@ -14,8 +14,9 @@
 
 package testutils
 
+import "context"
+
 const (
-	DefaultContainerName     = "test-container"
 	DefaultContainerImage    = "docker.io/library/busybox"
 	DefaultContainerImageTag = "latest"
 )
@@ -23,18 +24,22 @@ const (
 type Option func(*containerOptions)
 
 type containerOptions struct {
-	name           string
+	ctx            context.Context
 	image          string
 	imageTag       string
 	seccompProfile string
 	wait           bool
 	logs           bool
 	removal        bool
+
+	// forceDelete is mostly used for debugging purposes, when a container
+	// fails to be deleted and we want to force it.
+	forceDelete bool
 }
 
 func defaultContainerOptions() *containerOptions {
 	return &containerOptions{
-		name:     DefaultContainerName,
+		ctx:      context.TODO(),
 		image:    DefaultContainerImage,
 		imageTag: DefaultContainerImageTag,
 		logs:     true,
@@ -43,9 +48,9 @@ func defaultContainerOptions() *containerOptions {
 	}
 }
 
-func WithName(name string) Option {
+func WithContext(ctx context.Context) Option {
 	return func(opts *containerOptions) {
-		opts.name = name
+		opts.ctx = ctx
 	}
 }
 
@@ -73,14 +78,25 @@ func WithoutWait() Option {
 	}
 }
 
-func WithoutRemoval() Option {
+func WithoutLogs() Option {
+	return func(opts *containerOptions) {
+		opts.logs = false
+	}
+}
+
+// withoutRemoval is only used internally. If an external caller wants to run a
+// container without removal, they should use the Start() method instead of
+// Run().
+func withoutRemoval() Option {
 	return func(opts *containerOptions) {
 		opts.removal = false
 	}
 }
 
-func WithoutLogs() Option {
+// WithForceDelete is mostly used for debugging purposes, when a container
+// fails to be deleted and we want to force it.
+func WithForceDelete() Option {
 	return func(opts *containerOptions) {
-		opts.logs = false
+		opts.forceDelete = true
 	}
 }

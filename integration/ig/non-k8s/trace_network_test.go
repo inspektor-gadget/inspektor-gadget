@@ -94,11 +94,7 @@ func TestTraceNetwork(t *testing.T) {
 	testSteps := []TestStep{
 		traceNetworkCmd,
 		SleepForSecondsCommand(2), // wait to ensure ig has started
-		containerFactory.NewContainer(ContainerSpec{
-			Name:    cn,
-			Cmd:     "nginx && curl 127.0.0.1",
-			Options: NewContainerOptions(WithContainerImage("docker.io/library/nginx")),
-		}),
+		containerFactory.NewContainer(cn, "nginx && curl 127.0.0.1", WithContainerImage("docker.io/library/nginx")),
 	}
 
 	RunTestSteps(testSteps, t)

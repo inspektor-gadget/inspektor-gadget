@@ -16,53 +16,34 @@ package integration
 
 import (
 	"context"
-	"testing"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 )
 
 type ContainerdManager struct{}
 
-func (*ContainerdManager) NewContainer(spec ContainerSpec) ContainerInterface {
-	return &ContainerdContainer{
-		ContainerSpec: spec,
+func (cm *ContainerdManager) NewContainer(name, cmd string, opts ...containerOption) IntegrationTestsContainer {
+	c := &ContainerdContainer{}
+
+	for _, o := range opts {
+		o(&c.cOptions)
 	}
+	c.options = append(c.options, testutils.WithContext(context.Background()))
+
+	c.Container = testutils.NewContainerdContainer(name, cmd, c.options...)
+	return c
 }
 
 // ContainerdContainer implements TestStep for containerd containers
 type ContainerdContainer struct {
-	ContainerSpec
-	started bool
+	testutils.Container
+	cOptions
 }
 
-func (d *ContainerdContainer) Run(t *testing.T) {
-	opts := append(optionsFromContainerOptions(d.Options), testutils.WithName(d.Name))
-	testutils.RunContainerdContainer(context.Background(), t, d.Cmd, opts...)
+func (c *ContainerdContainer) IsCleanup() bool {
+	return c.cleanup
 }
 
-func (d *ContainerdContainer) Start(t *testing.T) {
-	if d.started {
-		t.Logf("Warn(%s): trying to start already running container\n", d.Name)
-		return
-	}
-	opts := append(optionsFromContainerOptions(d.Options), testutils.WithName(d.Name), testutils.WithoutRemoval(), testutils.WithoutWait())
-	testutils.RunContainerdContainer(context.Background(), t, d.Cmd, opts...)
-	d.started = true
-}
-
-func (d *ContainerdContainer) Stop(t *testing.T) {
-	testutils.RemoveContainerdContainer(context.Background(), t, d.Name)
-	d.started = false
-}
-
-func (d *ContainerdContainer) IsCleanup() bool {
-	return d.Cleanup
-}
-
-func (d *ContainerdContainer) IsStartAndStop() bool {
-	return d.StartAndStop
-}
-
-func (d *ContainerdContainer) Running() bool {
-	return d.started
+func (c *ContainerdContainer) IsStartAndStop() bool {
+	return c.startAndStop
 }

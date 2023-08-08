@@ -63,11 +63,7 @@ func TestFilterByContainerName(t *testing.T) {
 	}
 
 	testSteps := []TestStep{
-		containerFactory.NewContainer(ContainerSpec{
-			Name:         cn,
-			Cmd:          "sleep inf",
-			StartAndStop: true,
-		}),
+		containerFactory.NewContainer(cn, "sleep inf", WithStartAndStop()),
 		SleepForSecondsCommand(2),
 		listContainersCmd,
 	}
@@ -135,10 +131,7 @@ func TestWatchContainers(t *testing.T) {
 	testSteps := []TestStep{
 		watchContainersCommand,
 		SleepForSecondsCommand(2),
-		containerFactory.NewContainer(ContainerSpec{
-			Name: cn,
-			Cmd:  "echo I am short lived container",
-		}),
+		containerFactory.NewContainer(cn, "echo I am short lived container"),
 	}
 
 	RunTestSteps(testSteps, t)

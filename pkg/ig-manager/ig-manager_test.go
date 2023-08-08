@@ -127,15 +127,10 @@ func checkFdList(t *testing.T, initialFdList string, attempts int, sleep time.Du
 func TestClose(t *testing.T) {
 	utilstest.RequireRoot(t)
 
-	opts := []testutils.Option{
-		testutils.WithName("test-ig-close"),
-		testutils.WithoutRemoval(),
-		testutils.WithoutWait(),
-		testutils.WithoutLogs(),
-	}
-	testutils.RunDockerContainer(context.Background(), t, "sleep inf", opts...)
+	c := testutils.NewDockerContainer("test-ig-close", "sleep inf", testutils.WithoutLogs())
+	c.Start(t)
 	t.Cleanup(func() {
-		testutils.RemoveDockerContainer(context.Background(), t, "test-ig-close")
+		c.Stop(t)
 	})
 
 	initialFdList := currentFdList(t)
