@@ -23,7 +23,8 @@ import (
 )
 
 const (
-	ParamCwd = "cwd"
+	ParamCwd          = "cwd"
+	ParamIgnoreErrors = "ignore-errors"
 )
 
 type GadgetDesc struct{}
@@ -49,6 +50,12 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 		{
 			Key:          ParamCwd,
 			Title:        "Show current working directory",
+			DefaultValue: "false",
+			TypeHint:     params.TypeBool,
+		},
+		{
+			Key:          ParamIgnoreErrors,
+			Title:        "Show only successful exec calls",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
 		},
