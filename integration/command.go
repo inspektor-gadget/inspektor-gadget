@@ -514,7 +514,7 @@ func (c *Command) Stop(t *testing.T) {
 	c.started = false
 }
 
-// PodCommand returns a Command that starts a pid with a specified image, command and args
+// PodCommand returns a Command that starts a pod with a specified image, command and args
 func PodCommand(podname, image, namespace, command, commandArgs string) *Command {
 	cmdLine := ""
 	if command != "" {

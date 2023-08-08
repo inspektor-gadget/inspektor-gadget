@@ -208,6 +208,28 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 	event->daddr_v4 = bpf_htonl(event->daddr_v4);
 	event->saddr_v4 = bpf_htonl(event->saddr_v4);
 
+	// Check network protocol.
+	// This only works with IPv4.
+	// For IPv6, gadget_socket_lookup() in pkg/gadgets/internal/socketenricher/bpf/sockets-map.h
+	// provides an example how to parse ip/ports on IPv6.
+	event->proto =
+		load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol));
+	if (event->proto == IPPROTO_TCP) {
+		event->sport =
+			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
+					       offsetof(struct tcphdr, source));
+		event->dport =
+			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
+					       offsetof(struct tcphdr, dest));
+	} else if (event->proto == IPPROTO_UDP) {
+		event->sport =
+			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
+					       offsetof(struct udphdr, source));
+		event->dport =
+			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
+					       offsetof(struct udphdr, dest));
+	}
+
 	event->qr = flags.qr;
 
 	if (flags.qr == 1) {

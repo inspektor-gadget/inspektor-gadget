@@ -63,7 +63,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					Uid:       0,
 					Gid:       0,
 					PktType:   "OUTGOING",
-					Proto:     "tcp",
+					Proto:     "TCP",
 					PodLabels: map[string]string{"run": "test-pod"},
 					Port:      9090,
 					DstEndpoint: eventtypes.L3Endpoint{
@@ -115,7 +115,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					Uid:       0,
 					Gid:       0,
 					PktType:   "HOST",
-					Proto:     "tcp",
+					Proto:     "TCP",
 					PodLabels: map[string]string{"run": "test-pod"},
 					Port:      9090,
 					DstEndpoint: eventtypes.L3Endpoint{

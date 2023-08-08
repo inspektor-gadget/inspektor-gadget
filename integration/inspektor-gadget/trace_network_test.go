@@ -55,7 +55,7 @@ func TestTraceNetwork(t *testing.T) {
 					Uid:       0,
 					Gid:       0,
 					PktType:   "OUTGOING",
-					Proto:     "tcp",
+					Proto:     "TCP",
 					PodIP:     testPodIP,
 					PodLabels: map[string]string{"run": "test-pod"},
 					Port:      80,
@@ -87,7 +87,7 @@ func TestTraceNetwork(t *testing.T) {
 					Uid:       101, // default nginx user
 					Gid:       101,
 					PktType:   "HOST",
-					Proto:     "tcp",
+					Proto:     "TCP",
 					PodIP:     nginxIP,
 					PodLabels: map[string]string{"run": "nginx-pod"},
 					Port:      80,

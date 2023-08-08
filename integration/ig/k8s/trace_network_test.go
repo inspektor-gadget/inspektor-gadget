@@ -54,7 +54,7 @@ func TestTraceNetwork(t *testing.T) {
 					Uid:     0,
 					Gid:     0,
 					PktType: "OUTGOING",
-					Proto:   "tcp",
+					Proto:   "TCP",
 					Port:    80,
 					DstEndpoint: eventtypes.L3Endpoint{
 						Addr: nginxIP,
@@ -82,7 +82,7 @@ func TestTraceNetwork(t *testing.T) {
 					Uid:     101, // default nginx user
 					Gid:     101,
 					PktType: "HOST",
-					Proto:   "tcp",
+					Proto:   "TCP",
 					Port:    80,
 					DstEndpoint: eventtypes.L3Endpoint{
 						Addr: testPodIP,

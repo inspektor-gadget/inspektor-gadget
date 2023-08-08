@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/netip"
-	"syscall"
 	"time"
 	"unsafe"
 
@@ -213,22 +212,21 @@ func bpfEventToDNSEvent(bpfEvent *dnsEventT, netns uint64) (*types.Event, error)
 	event.Event.Timestamp = gadgets.WallTimeFromBootTime(bpfEvent.Timestamp)
 
 	event.ID = fmt.Sprintf("%.4x", bpfEvent.Id)
+	ipversion := gadgets.IPVerFromAF(bpfEvent.Af)
+	event.SrcIP = gadgets.IPStringFromBytes(bpfEvent.SaddrV6, ipversion)
+	event.DstIP = gadgets.IPStringFromBytes(bpfEvent.DaddrV6, ipversion)
 
 	if bpfEvent.Qr == 1 {
 		event.Qr = types.DNSPktTypeResponse
-		if bpfEvent.Af == syscall.AF_INET {
-			event.Nameserver = gadgets.IPStringFromBytes(bpfEvent.SaddrV6, 4)
-		} else if bpfEvent.Af == syscall.AF_INET6 {
-			event.Nameserver = gadgets.IPStringFromBytes(bpfEvent.SaddrV6, 6)
-		}
+		event.Nameserver = event.SrcIP
 	} else {
 		event.Qr = types.DNSPktTypeQuery
-		if bpfEvent.Af == syscall.AF_INET {
-			event.Nameserver = gadgets.IPStringFromBytes(bpfEvent.DaddrV6, 4)
-		} else if bpfEvent.Af == syscall.AF_INET6 {
-			event.Nameserver = gadgets.IPStringFromBytes(bpfEvent.DaddrV6, 6)
-		}
+		event.Nameserver = event.DstIP
 	}
+
+	event.SrcPort = bpfEvent.Sport
+	event.DstPort = bpfEvent.Dport
+	event.Protocol = gadgets.ProtoString(int(bpfEvent.Proto))
 
 	// Convert name into a string with dots
 	event.DNSName = parseLabelSequence(bpfEvent.Name[:])
