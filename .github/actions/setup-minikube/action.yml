@@ -13,15 +13,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # https://github.com/kubernetes/minikube/issues/12928#issuecomment-1245458044
-    - name: Upgrade docker for ${{ inputs.runtime }}
-      shell: bash
-      if: inputs.runtime == 'cri-o'
-      run: |
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
-        sudo apt-get update
-        sudo apt-get install docker-ce containerd.io
     - name: Start minikube
       shell: bash
       run: |
