@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/cilium/ebpf v0.11.0
 	github.com/containerd/nri v0.3.0
-	github.com/containers/common v0.55.2
+	github.com/containers/common v0.55.3
 	github.com/docker/docker v24.0.2+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/giantswarm/crd-docs-generator v0.11.0
@@ -39,6 +39,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/containerd/containerd v1.7.3
 	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/davecgh/go-spew v1.1.1
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/go-cmp v0.5.9
@@ -78,7 +79,6 @@ require (
 	github.com/containerd/ttrpc v1.2.2 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v23.0.3+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
