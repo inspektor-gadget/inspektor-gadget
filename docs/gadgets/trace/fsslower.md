@@ -71,4 +71,38 @@ $ kubectl delete pod mypod
 
 ### With `ig`
 
-TODO
+Let's start the gadget in a terminal:
+
+```bash
+$ sudo ig trace fsslower -f ext4 -m 1 -c test-trace-fsslower
+RUNTIME.CONTAINERNAME          PID              COMM             T      BYTES     OFFSET        LAT FILE
+```
+
+Launch a container that will perform input/output operations:
+
+```bash
+$ docker run --name test-trace-fsslower -it --rm debian /bin/sh -c "apt-get update && apt-get install -y git"
+Get:1 http://deb.debian.org/debian bullseye InRelease [116 kB]
+Get:2 http://deb.debian.org/debian-security bullseye-security InRelease [48.4 kB]
+...
+0 added, 0 removed; done.
+Running hooks in /etc/ca-certificates/update.d...
+done.
+```
+
+The tool will list the I/O operations that were slower than 1ms:
+
+```bash
+$ sudo ig trace fsslower -f ext4 -m 1 -c test-trace-fsslower
+RUNTIME.CONTAINERNAME          PID              COMM             T      BYTES     OFFSET        LAT FILE
+test-trace-fsslower            35065            apt-get          R      32771          0       7671 status
+test-trace-fsslower            35303            apt-get          R       5619          0       7434 extended_states
+test-trace-fsslower            35312            dpkg-preconfigu  F 922337203…          0       3586 #29920952
+test-trace-fsslower            35312            dpkg-preconfigu  F 922337203…          0       4239 #29920954
+test-trace-fsslower            35315            dpkg             F 922337203…          0       3774 control
+test-trace-fsslower            35315            dpkg             F 922337203…          0       3049 md5sums
+test-trace-fsslower            35315            dpkg             F 922337203…          0       3064 tmp.ci
+test-trace-fsslower            35315            dpkg             F 922337203…          0       2886 tmp.i
+test-trace-fsslower            35315            dpkg             F 922337203…          0       4173 updates
+...
+```
