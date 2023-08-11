@@ -58,7 +58,37 @@ namespace "demo" deleted
 
 ### With `ig`
 
-TODO
+Let's start the gadget in a terminal:
+
+```bash
+$ sudo ig trace dns -c test-trace-dns
+RUNTIME.CONTAINERNAME                   PID        TID        COMM             QR TYPE      QTYPE      NAME                                   RCODE                NUMANSW…
+```
+
+Launch a container that makes DNS requests:
+
+```bash
+$ docker run --name test-trace-dns -it --rm wbitt/network-multitool /bin/sh
+/ # nslookup -querytype=a inspektor-gadget.io. 8.8.4.4
+...
+/ # nslookup -querytype=aaaa inspektor-gadget.io. 8.8.4.4
+...
+/ # nslookup -querytype=mx inspektor-gadget.io. 8.8.4.4
+...
+```
+
+The tool will list the different DNS queries that were made:
+
+```bash
+$ sudo ig trace dns -c test-trace-dns
+RUNTIME.CONTAINERNAME                   PID        TID        COMM             QR TYPE      QTYPE      NAME                                   RCODE                NUMANSW…
+test-trace-dns                          38797      38798      isc-net-0000     Q  OUTGOING  A          inspektor-gadget.io.                                        0
+test-trace-dns                          38797      38798      isc-net-0000     R  HOST      A          inspektor-gadget.io.                   NoError              2
+test-trace-dns                          38801      38802      isc-net-0000     Q  OUTGOING  AAAA       inspektor-gadget.io.                                        0
+test-trace-dns                          38801      38802      isc-net-0000     R  HOST      AAAA       inspektor-gadget.io.                   NoError              2
+test-trace-dns                          38807      38808      isc-net-0000     Q  OUTGOING  MX         inspektor-gadget.io.                                        0
+test-trace-dns                          38807      38808      isc-net-0000     R  HOST      MX         inspektor-gadget.io.                   NoError              3
+```
 
 ### Limitations
 
