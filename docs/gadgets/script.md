@@ -11,7 +11,7 @@ The script gadget allows to run [bpftrace](https://github.com/iovisor/bpftrace)-
 on a Kubernetes cluster. To get more information about bpftrace and its features please check the
 bpftrace documentation.
 
-Currently, only running one-liners is supported:
+#### One-liners
 
 ```bash
 # Files opened by process
@@ -90,6 +90,24 @@ minikube-m03                     @[EMT-7]: 15583
 minikube-m03                     @[dockerd]: 22937
 minikube-m03                     @[kubelet]: 27455
 ...
+```
+
+#### Script files
+
+When a script does not fit on one line, it can be stored in a file and passed to the gadget using the
+`-e @FILE` flag.
+
+```bash
+$ wget https://raw.githubusercontent.com/iovisor/bpftrace/master/tools/loads.bt
+$ wc -l loads.bt
+41 loads.bt
+$ kubectl gadget script -e @./loads.bt
+NODE                                             OUTPUT
+minikube-docker                                  Attaching 2 probes...
+minikube-docker                                  Reading load averages... Hit Ctrl-C to end.
+minikube-docker                                  15:40:36 load averages: 2.960 2.451 2.166
+minikube-docker                                  15:40:37 load averages: 2.960 2.451 2.166
+^C
 ```
 
 ### Limitations
