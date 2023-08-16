@@ -34,6 +34,9 @@ nodeSelector:
 # -- Affinity used by `gadget` container
 affinity: {}
 
+# -- Capabilities used by `gadget` container
+capabilities: {}
+
 # -- Tolerations used by `gadget` container
 tolerations:
   - effect: NoSchedule

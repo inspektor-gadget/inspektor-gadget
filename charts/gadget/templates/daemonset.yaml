@@ -104,6 +104,7 @@ spec:
             seLinuxOptions:
               type: "spc_t"
             capabilities:
+              {{- if not .Values.capabilities }}
               add:
                 # We need CAP_NET_ADMIN to be able to create BPF link.
                 # Indeed, link_create is called with prog->type which equals
@@ -172,6 +173,9 @@ spec:
 
                 # Needed by gadgets that open a raw sock like dns and snisnoop
                 - NET_RAW
+              {{- else }}
+              {{- toYaml .Values.capabilities | nindent 14 }}
+              {{- end }}
           volumeMounts:
             - mountPath: /host
               name: host
