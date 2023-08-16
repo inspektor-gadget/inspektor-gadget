@@ -91,18 +91,24 @@ test-trace-exec       2233931 2233189 true   sh              0   /bin/true
 test-trace-exec       2233932 2233189 whoami sh              0   /bin/whoami
 ```
 
-### `--cwd`
+### `--paths`
 
-This gadget provides the current working directory of the process calling `exec()`. This is disabled
-by default and can be enabled by passing the `--cwd` flag:
+Optionally, this gadget can provide the current working directory of the process calling `exec()` and the full path of the executable.
+This is disabled by default and can be enabled by passing the `--paths` flag:
 
 ```bash
-$ sudo ig trace exec --cwd -c test-trace-exec
-RUNTIME.CONTAINERNAME PID     PPID    COMM   PCOMM           RET ARGS                                               CWD
-test-trace-exec       2238354 2238329 sh     containerd-shim 0   /bin/sh -c while /bin/true ; do whoami ; sleep 3 … /
-test-trace-exec       2238380 2238354 true   sh              0   /bin/true                                          /
-test-trace-exec       2238381 2238354 whoami sh              0   /bin/whoami                                        /
+$ sudo ig trace exec
+RUNTIME.CONTAINERNAME PID    PPID   COMM  RET ARGS
+test                  644871 639225 mkdir 0   /usr/bin/mkdir -p /tmp/bar/foo/
+test                  644888 639225 cat   0   /usr/bin/cat /dev/null
 ```
+```
+$ sudo ig trace exec --paths
+RUNTIME.CONTAINERN… PID    PPID   COMM  RET ARGS                     CWD EXEPATH
+test                644377 639225 mkdir 0   /usr/bin/mkdir -p /tmp/… /   /usr/bin/mkdir
+test                644497 639225 cat   0   /usr/bin/cat /dev/null   /   /usr/bin/cat
+```
+
 
 ### Overlay filesystem upper layer
 

@@ -36,7 +36,7 @@ func TestTraceExec(t *testing.T) {
 
 	traceExecCmd := &Command{
 		Name:         "TraceExec",
-		Cmd:          fmt.Sprintf("ig trace exec -o json --runtimes=%s --cwd", *containerRuntime),
+		Cmd:          fmt.Sprintf("ig trace exec -o json --runtimes=%s --paths", *containerRuntime),
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
@@ -48,10 +48,11 @@ func TestTraceExec(t *testing.T) {
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
 						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
-					Comm:  "sh",
-					Pcomm: "", // Not tested, see normalize()
-					Args:  shArgs,
-					Cwd:   "/",
+					Comm:    "sh",
+					Pcomm:   "", // Not tested, see normalize()
+					Args:    shArgs,
+					Cwd:     "/",
+					ExePath: "/bin/sh",
 				},
 				{
 					Event: BuildBaseEvent(ns,
@@ -65,6 +66,7 @@ func TestTraceExec(t *testing.T) {
 					Uid:        1000,
 					Gid:        1111,
 					Cwd:        "/",
+					ExePath:    "/date",
 					UpperLayer: true,
 				},
 				{
@@ -73,12 +75,13 @@ func TestTraceExec(t *testing.T) {
 						WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime),
 						WithPodLabels("test-pod", ns, isCrioRuntime),
 					),
-					Comm:  "sleep",
-					Pcomm: "sh",
-					Args:  sleepArgs,
-					Uid:   1000,
-					Gid:   1111,
-					Cwd:   "/",
+					Comm:    "sleep",
+					Pcomm:   "sh",
+					Args:    sleepArgs,
+					Uid:     1000,
+					Gid:     1111,
+					Cwd:     "/",
+					ExePath: "/bin/sleep",
 				},
 			}
 

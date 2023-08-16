@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	ParamCwd          = "cwd"
+	ParamPaths        = "paths"
 	ParamIgnoreErrors = "ignore-errors"
 )
 
@@ -48,9 +48,9 @@ func (g *GadgetDesc) Description() string {
 func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		{
-			Key:          ParamCwd,
-			Title:        "Current working directory",
-			Description:  "Show current working directory",
+			Key:          ParamPaths,
+			Title:        "Additional paths",
+			Description:  "Show current working directory and executable path",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
 		},

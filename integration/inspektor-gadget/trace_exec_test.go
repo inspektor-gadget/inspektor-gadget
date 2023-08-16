@@ -38,16 +38,17 @@ func TestTraceExec(t *testing.T) {
 
 	traceExecCmd := &Command{
 		Name:         "StartTraceExecGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s -o json --cwd", ns),
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET trace exec -n %s -o json --paths", ns),
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedEntries := []*traceexecTypes.Event{
 				{
-					Event: BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
-					Comm:  "sh",
-					Pcomm: "", // Not tested, see normalize()
-					Args:  shArgs,
-					Cwd:   "/",
+					Event:   BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Comm:    "sh",
+					Pcomm:   "", // Not tested, see normalize()
+					Args:    shArgs,
+					Cwd:     "/",
+					ExePath: "/bin/sh",
 				},
 				{
 					Event:      BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
@@ -57,16 +58,18 @@ func TestTraceExec(t *testing.T) {
 					Uid:        1000,
 					Gid:        1111,
 					Cwd:        "/",
+					ExePath:    "/date",
 					UpperLayer: true,
 				},
 				{
-					Event: BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
-					Comm:  "sleep",
-					Pcomm: "sh",
-					Args:  sleepArgs,
-					Uid:   1000,
-					Gid:   1111,
-					Cwd:   "/",
+					Event:   BuildBaseEventK8s(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+					Comm:    "sleep",
+					Pcomm:   "sh",
+					Args:    sleepArgs,
+					Uid:     1000,
+					Gid:     1111,
+					Cwd:     "/",
+					ExePath: "/bin/sleep",
 				},
 			}
 
