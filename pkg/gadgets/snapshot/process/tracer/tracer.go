@@ -72,7 +72,7 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 	}
 	objs := processCollectorObjects{}
 
-	if err := gadgets.LoadeBPFSpec(config.MountnsMap, spec, consts, &objs); err != nil {
+	if err := gadgets.LoadeBPFSpec(config.MountnsMap, nil, spec, consts, &objs); err != nil {
 		return nil, fmt.Errorf("loading ebpf spec: %w", err)
 	}
 

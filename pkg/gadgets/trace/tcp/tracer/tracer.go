@@ -103,7 +103,7 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
-	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, nil, &t.objs); err != nil {
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, nil, spec, nil, &t.objs); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 

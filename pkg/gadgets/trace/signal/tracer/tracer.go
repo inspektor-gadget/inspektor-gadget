@@ -129,7 +129,7 @@ func (t *Tracer) install() error {
 		"failed_only":   t.config.FailedOnly,
 	}
 
-	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, nil, spec, consts, &t.objs); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 

@@ -101,7 +101,7 @@ func (t *Tracer) install() error {
 	consts := make(map[string]interface{})
 	consts["get_full_path"] = t.config.FullPath
 
-	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, nil, spec, consts, &t.objs); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 

@@ -152,7 +152,7 @@ func (t *Tracer) install() error {
 		"min_lat_ns": uint64(t.config.MinLatency * 1000 * 1000),
 	}
 
-	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, nil, spec, consts, &t.objs); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
