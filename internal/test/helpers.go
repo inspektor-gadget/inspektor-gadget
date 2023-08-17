@@ -121,11 +121,14 @@ func ExpectNoEvent[Event any, Extra any](t *testing.T, _ *RunnerInfo, _ Extra, e
 }
 
 // ExpectAtLeastOneEvent expects that at least one of the captures events matches.
-func ExpectAtLeastOneEvent[Event any, Extra any](getEvent func(info *RunnerInfo, extra Extra) *Event) ValidateEventType[Event, Extra] {
+func ExpectAtLeastOneEvent[Event any, Extra any](getEvent func(info *RunnerInfo, extra Extra) *Event, normalize func(*Event)) ValidateEventType[Event, Extra] {
 	return func(t *testing.T, info *RunnerInfo, extra Extra, events []Event) {
 		expectedEvent := getEvent(info, extra)
 
 		for _, event := range events {
+			if normalize != nil {
+				normalize(&event)
+			}
 			if reflect.DeepEqual(expectedEvent, &event) {
 				return
 			}
@@ -141,11 +144,14 @@ func ExpectAtLeastOneEvent[Event any, Extra any](getEvent func(info *RunnerInfo,
 }
 
 // ExpectOneEvent expects only matching event to be captured.
-func ExpectOneEvent[Event any, Extra any](getEvent func(info *RunnerInfo, extra Extra) *Event) ValidateEventType[Event, Extra] {
+func ExpectOneEvent[Event any, Extra any](getEvent func(info *RunnerInfo, extra Extra) *Event, normalize func(*Event)) ValidateEventType[Event, Extra] {
 	return func(t *testing.T, info *RunnerInfo, extra Extra, events []Event) {
 		expectedEvent := getEvent(info, extra)
 
 		require.Len(t, events, 1, "One event is expected")
+		if normalize != nil {
+			normalize(&events[0])
+		}
 		require.Equal(t, expectedEvent, &events[0], "Event doesn't match")
 	}
 }

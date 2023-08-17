@@ -295,7 +295,7 @@ func TestSocketEnricherBind(t *testing.T) {
 
 			t.Logf("Testing if early tracer noticed the event")
 			entries := socketsMapEntries(t, earlyTracer, earlyNormalize, nil)
-			utilstest.ExpectAtLeastOneEvent(test.expectedEvent)(t, runner.Info, port, entries)
+			utilstest.ExpectAtLeastOneEvent(test.expectedEvent, nil)(t, runner.Info, port, entries)
 
 			t.Logf("Testing if late tracer noticed the event")
 			entries2 := socketsMapEntries(t, lateTracer, lateNormalize, nil)
@@ -304,7 +304,7 @@ func TestSocketEnricherBind(t *testing.T) {
 				lateNormalize(e)
 				return e
 			}
-			utilstest.ExpectAtLeastOneEvent(expectedEvent2)(t, runner.Info, port, entries2)
+			utilstest.ExpectAtLeastOneEvent(expectedEvent2, nil)(t, runner.Info, port, entries2)
 
 			t.Logf("Close socket in order to check for cleanup")
 			if fd != -1 {

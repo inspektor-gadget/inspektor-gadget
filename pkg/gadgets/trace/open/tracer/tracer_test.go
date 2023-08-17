@@ -137,7 +137,7 @@ func TestOpenTracer(t *testing.T) {
 					Flags:         []string{"O_RDONLY"},
 					Mode:          "----------",
 				}
-			}),
+			}, nil),
 		},
 		"captures_no_events_with_no_matching_filter": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -172,7 +172,7 @@ func TestOpenTracer(t *testing.T) {
 					Flags:         []string{"O_RDONLY"},
 					Mode:          "----------",
 				}
-			}),
+			}, nil),
 		},
 		"test_flags_and_mode": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -212,7 +212,7 @@ func TestOpenTracer(t *testing.T) {
 					Mode:          "-rwxrw---x",
 					ModeRaw:       unix.S_IRWXU | unix.S_IRGRP | unix.S_IWGRP | unix.S_IXOTH,
 				}
-			}),
+			}, nil),
 		},
 		"test_relative_path": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -254,7 +254,7 @@ func TestOpenTracer(t *testing.T) {
 					Mode:          "-rwxrw---x",
 					ModeRaw:       unix.S_IRWXU | unix.S_IRGRP | unix.S_IWGRP | unix.S_IXOTH,
 				}
-			}),
+			}, nil),
 		},
 		"test_symbolic_links": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -297,7 +297,7 @@ func TestOpenTracer(t *testing.T) {
 					Flags:         []string{"O_RDONLY"},
 					Mode:          "----------",
 				}
-			}),
+			}, nil),
 		},
 		"test_long_path": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -343,7 +343,7 @@ func TestOpenTracer(t *testing.T) {
 					Mode:          "-rwxrw---x",
 					ModeRaw:       unix.S_IRWXU | unix.S_IRGRP | unix.S_IWGRP | unix.S_IXOTH,
 				}
-			}),
+			}, nil),
 		},
 		"event_has_UID_and_GID_of_user_generating_event": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {

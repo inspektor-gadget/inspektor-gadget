@@ -236,7 +236,7 @@ func TestSnapshotSocket(t *testing.T) {
 				events[i].InodeNumber = 0
 			}
 
-			utilstest.ExpectAtLeastOneEvent(c.expectedEvent)(t, runner.Info, nil, events)
+			utilstest.ExpectAtLeastOneEvent(c.expectedEvent, nil)(t, runner.Info, nil, events)
 		})
 	}
 }

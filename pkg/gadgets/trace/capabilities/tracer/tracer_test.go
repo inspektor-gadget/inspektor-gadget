@@ -105,7 +105,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Caps:          0,
 					CapsNames:     []string{},
 				}
-			}),
+			}, nil),
 		},
 		"captures_no_events_with_no_matching_filter": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -144,7 +144,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Caps:          0,
 					CapsNames:     []string{},
 				}
-			}),
+			}, nil),
 		},
 		"captures_events_with_matching_filter_CAP_NET_BIND_SERVICE": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -174,7 +174,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Caps:          0,
 					CapsNames:     []string{},
 				}
-			}),
+			}, nil),
 		},
 		"verdict_deny": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -210,7 +210,7 @@ func TestCapabilitiesTracer(t *testing.T) {
 					Caps:          0,
 					CapsNames:     []string{},
 				}
-			}),
+			}, nil),
 		},
 		"audit_only_false": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {

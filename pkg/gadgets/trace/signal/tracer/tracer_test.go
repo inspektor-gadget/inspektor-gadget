@@ -94,7 +94,7 @@ func TestSignalTracer(t *testing.T) {
 					Gid:           uint32(info.Gid),
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
-			}),
+			}, nil),
 		},
 		"event_has_UID_and_GID_of_user_generating_event": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -140,7 +140,7 @@ func TestSignalTracer(t *testing.T) {
 					Gid:           uint32(info.Gid),
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
-			}),
+			}, nil),
 		}
 	}
 

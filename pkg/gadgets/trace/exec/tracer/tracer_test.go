@@ -102,7 +102,7 @@ func TestExecTracer(t *testing.T) {
 					Comm:          "cat",
 					Args:          []string{"/bin/cat", "/dev/null"},
 				}
-			}),
+			}, nil),
 		},
 		"captures_no_events_with_no_matching_filter": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -135,7 +135,7 @@ func TestExecTracer(t *testing.T) {
 					Comm:          "cat",
 					Args:          []string{"/bin/cat", "/dev/null"},
 				}
-			}),
+			}, nil),
 		},
 		"event_has_UID_and_GID_of_user_generating_event": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {

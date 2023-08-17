@@ -96,7 +96,7 @@ func TestBindTracer(t *testing.T) {
 					Interface:     "",
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
-			}),
+			}, nil),
 		},
 		"captures_no_events_with_no_matching_filter": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -128,7 +128,7 @@ func TestBindTracer(t *testing.T) {
 					Interface:     "",
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
-			}),
+			}, nil),
 		},
 		"tcp4": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {

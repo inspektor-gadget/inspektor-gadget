@@ -90,7 +90,7 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 					ParentPid:     0,
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
-			}),
+			}, nil),
 		},
 		"captures_no_events_with_no_matching_filter": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *Config {
@@ -125,7 +125,7 @@ func testTracer(t *testing.T, runCollector collectorFunc) {
 					Tid:           sleepPid,
 					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
 				}
-			}),
+			}, nil),
 		},
 		// This is a hacky way to test this: one of the threads of the goroutine is moved to
 		// the mount namespace created for testing, also the sleep process we execute is
