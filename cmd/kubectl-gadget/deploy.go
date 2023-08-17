@@ -83,6 +83,7 @@ var (
 	nodeSelector        string
 	experimentalVar     bool
 	skipSELinuxOpts     bool
+	core                bool
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -161,6 +162,11 @@ func init() {
 		"skip-selinux-opts", "",
 		false,
 		"skip setting SELinux options on the gadget pod")
+	deployCmd.PersistentFlags().BoolVarP(
+		&core,
+		"co-re", "",
+		false,
+		"use CO-RE flavor of Inspektor Gadget")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -355,6 +361,14 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("it's not possible to use --quiet and --debug together")
 	}
 
+	if core {
+		if image != gadgetimage {
+			return fmt.Errorf("it is not possible to use --co-re and --image together")
+		}
+
+		image = fmt.Sprintf("%s-core", gadgetimage)
+	}
+
 	objects, err := parseK8sYaml(resources.GadgetDeployment)
 	if err != nil {
 		return err
@@ -451,6 +465,27 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					value := experimental.Enabled() || experimentalVar
 					gadgetContainer.Env[i].Value = strconv.FormatBool(value)
 				}
+			}
+
+			// When using CO-RE flavor, we can remove some capabilities.
+			// Particularly, we can remove the SYS_MODULE one, as this is only by
+			// bcc gadgets to load kheaders.ko.
+			// NOTE Talos forbids this capability:
+			// https://support.siderolabs.com/hc/en-us/articles/18362930553876-Process-Capabilities
+			if core {
+				addedCapabilities := &gadgetContainer.SecurityContext.Capabilities.Add
+
+				capabilities := make([]v1.Capability, 0, len(*addedCapabilities))
+				for _, capability := range *addedCapabilities {
+					switch capability {
+					case "SYS_MODULE":
+						continue
+					default:
+						capabilities = append(capabilities, capability)
+					}
+				}
+
+				*addedCapabilities = capabilities[:]
 			}
 
 			if nodeSelector != "" {
