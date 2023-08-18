@@ -24,6 +24,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/local"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/image"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/ig/containers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
@@ -62,6 +63,12 @@ func main() {
 	// columnFilters for ig
 	columnFilters := []columns.ColumnFilter{columns.WithoutExceptTag("kubernetes", "runtime")}
 	common.AddCommandsFromRegistry(rootCmd, runtime, columnFilters)
+
+	if experimental.Enabled() {
+		rootCmd.AddCommand(image.NewImageCmd())
+		rootCmd.AddCommand(common.NewLoginCmd())
+		rootCmd.AddCommand(common.NewLogoutCmd())
+	}
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
