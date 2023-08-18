@@ -46,6 +46,7 @@ RUN \
 	fi; \
 	GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 		-ldflags "-X main.version=${VERSION} -extldflags '-static'" \
+		-tags "netgo" \
 		-o ig-${TARGETOS}-${TARGETARCH} \
 		github.com/inspektor-gadget/inspektor-gadget/cmd/ig
 
