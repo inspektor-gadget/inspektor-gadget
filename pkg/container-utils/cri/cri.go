@@ -25,12 +25,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 	runtime "k8s.io/cri-api/pkg/apis/runtime/v1"
 
-	runtimeV1alpha2 "github.com/inspektor-gadget/inspektor-gadget/internal/thirdparty/k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -42,9 +39,8 @@ type CRIClient struct {
 	SocketPath  string
 	ConnTimeout time.Duration
 
-	conn           *grpc.ClientConn
-	client         runtime.RuntimeServiceClient
-	clientV1alpha2 runtimeV1alpha2.RuntimeServiceClient
+	conn   *grpc.ClientConn
+	client runtime.RuntimeServiceClient
 }
 
 func NewCRIClient(name types.RuntimeName, socketPath string, timeout time.Duration) (CRIClient, error) {
@@ -68,35 +64,10 @@ func NewCRIClient(name types.RuntimeName, socketPath string, timeout time.Durati
 		client:      runtime.NewRuntimeServiceClient(conn),
 	}
 
-	// determine CRI API version to use
-	if _, err = cc.client.Version(context.Background(), &runtime.VersionRequest{}); err == nil {
-		log.Debugf("Using CRI v1 for %s CRI client", name)
-	} else if status.Code(err) == codes.Unimplemented {
-		log.Debugf("Using CRI v1alpha2 for %s CRI client", name)
-		cc.client = nil
-		cc.clientV1alpha2 = runtimeV1alpha2.NewRuntimeServiceClient(conn)
-	} else {
-		log.Debugf("Failed to determine CRI API version: %v using v1", err)
-	}
-
 	return cc, nil
 }
 
 func listContainers(c *CRIClient, filter *runtime.ContainerFilter) ([]*runtime.Container, error) {
-	if c.useV1alpha2() {
-		request := &runtimeV1alpha2.ListContainersRequest{}
-		if filter != nil {
-			request.Filter = v1alpha2ContainerFilter(filter)
-		}
-		res, err := c.clientV1alpha2.ListContainers(context.Background(), request)
-		if err != nil {
-			return nil, fmt.Errorf("listing containers with request %+v: %w",
-				request, err)
-		}
-
-		return fromV1alpha2ListContainersResponse(res).Containers, nil
-	}
-
 	request := &runtime.ListContainersRequest{}
 	if filter != nil {
 		request.Filter = filter
@@ -151,20 +122,6 @@ func (c *CRIClient) GetContainerDetails(containerID string) (*runtimeclient.Cont
 		return nil, err
 	}
 
-	if c.useV1alpha2() {
-		request := &runtimeV1alpha2.ContainerStatusRequest{
-			ContainerId: containerID,
-			Verbose:     true,
-		}
-
-		res, err := c.clientV1alpha2.ContainerStatus(context.Background(), request)
-		if err != nil {
-			return nil, err
-		}
-
-		return parseContainerDetailsData(c.Name, fromV1alpha2ContainerStatusResponse(res).Status, res.Info)
-	}
-
 	request := &runtime.ContainerStatusRequest{
 		ContainerId: containerID,
 		Verbose:     true,
@@ -184,10 +141,6 @@ func (c *CRIClient) Close() error {
 	}
 
 	return nil
-}
-
-func (c *CRIClient) useV1alpha2() bool {
-	return c.clientV1alpha2 != nil
 }
 
 // parseContainerDetailsData parses the container status and extra information

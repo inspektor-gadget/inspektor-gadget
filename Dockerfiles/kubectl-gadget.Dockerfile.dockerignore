@@ -3,8 +3,7 @@
 !go.sum
 !cmd
 !pkg
-!internal/thirdparty
-!internal/deployinfo
+!internal
 !tools
 !Makefile
 !*.mk
