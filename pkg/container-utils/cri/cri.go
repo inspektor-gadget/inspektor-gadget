@@ -285,19 +285,25 @@ type CRIContainer interface {
 	GetMetadata() *runtime.ContainerMetadata
 	GetLabels() map[string]string
 	GetImage() *runtime.ImageSpec
+	GetImageRef() string
 }
 
 func CRIContainerToContainerData(runtimeName types.RuntimeName, container CRIContainer) *runtimeclient.ContainerData {
 	containerMetadata := container.GetMetadata()
 	image := container.GetImage()
+	// for crio imageRef has the following structure:
+	// k8s.gcr.io/kube-apiserver@sha256:4a165184c779c0a4f2d31d6676b7790589b977c3c8fbc0577dac2544fd69cade
+	// the hash being the image digest
+	imageRef := container.GetImageRef()
 
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:        container.GetId(),
-				ContainerName:      strings.TrimPrefix(containerMetadata.GetName(), "/"),
-				RuntimeName:        runtimeName,
-				ContainerImageName: image.GetImage(),
+				ContainerID:          container.GetId(),
+				ContainerName:        strings.TrimPrefix(containerMetadata.GetName(), "/"),
+				RuntimeName:          runtimeName,
+				ContainerImageName:   image.GetImage(),
+				ContainerImageDigest: strings.Split(imageRef, "@")[1],
 			},
 			State: containerStatusStateToRuntimeClientState(container.GetState()),
 		},
