@@ -118,15 +118,15 @@ type Printer interface {
 }
 
 type GadgetJSONConverter interface {
-	JSONConverter(params *params.Params, p Printer) func(ev any)
+	JSONConverter(params *params.Params, args []string, p Printer) func(ev any)
 }
 
 type GadgetJSONPrettyConverter interface {
-	JSONPrettyConverter(params *params.Params, p Printer) func(ev any)
+	JSONPrettyConverter(params *params.Params, args []string, p Printer) func(ev any)
 }
 
 type GadgetYAMLConverter interface {
-	YAMLConverter(params *params.Params, p Printer) func(ev any)
+	YAMLConverter(params *params.Params, args []string, p Printer) func(ev any)
 }
 
 type EventHandlerSetter interface {

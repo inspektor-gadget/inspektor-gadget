@@ -270,6 +270,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 		GadgetName:     gadgetCtx.GadgetDesc().Name(),
 		GadgetCategory: gadgetCtx.GadgetDesc().Category(),
 		Params:         allParams,
+		Args:           gadgetCtx.Args(),
 		Nodes:          nil,
 		FanOut:         false,
 		LogLevel:       uint32(gadgetCtx.Logger().GetLevel()),

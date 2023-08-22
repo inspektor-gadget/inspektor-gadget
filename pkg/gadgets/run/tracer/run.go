@@ -23,7 +23,9 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+	"oras.land/oras-go/v2"
 	k8syaml "sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -32,6 +34,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci_helper"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -41,6 +44,7 @@ import (
 const (
 	ProgramContent  = "prog"
 	ParamDefinition = "definition"
+	OCIImage        = "oci-image"
 	printMapPrefix  = "print_"
 )
 
@@ -76,6 +80,13 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			Title:       "Gadget definition",
 			Description: "Gadget definition in yaml format",
 			TypeHint:    params.TypeBytes,
+		},
+		// Hardcoded for now
+		{
+			Key:          "authfile",
+			Title:        "Auth file",
+			DefaultValue: oci_helper.DefaultAuthFile,
+			TypeHint:     params.TypeString,
 		},
 	}
 }
@@ -262,11 +273,41 @@ func addL4EndpointColumns(
 }
 
 func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.Columns[types.Event], error) {
-	if len(args) != 0 {
-		return nil, fmt.Errorf("no arguments expected: received %d", len(args))
-	}
 	progContent := params.Get(ProgramContent).AsBytes()
 	definitionBytes := params.Get(ParamDefinition).AsBytes()
+
+	if len(progContent) == 0 || len(definitionBytes) == 0 {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("one argument expected: received %d", len(args))
+		}
+
+		image, err := oci_helper.NormalizeImage(args[0])
+		if err != nil {
+			return nil, fmt.Errorf("normalize image: %w", err)
+		}
+
+		var imageStore oras.Target
+		imageStore, err = oci_helper.GetLocalOciStore()
+		if err != nil {
+			logrus.Debugf("get oci store: %s", err)
+			imageStore = oci_helper.GetMemoryStore()
+		}
+		authOpts := oci_helper.AuthOptions{
+			AuthFile: params.Get("authfile").AsString(),
+		}
+		def, err := oci_helper.GetDefinition(imageStore, &authOpts, image)
+		if err != nil {
+			return nil, fmt.Errorf("get definition: %w", err)
+		}
+		definitionBytes = def
+
+		prog, err := oci_helper.GetEbpfProgram(imageStore, &authOpts, image)
+		if err != nil {
+			return nil, fmt.Errorf("get ebpf program: %w", err)
+		}
+		progContent = prog
+	}
+
 	if len(definitionBytes) == 0 {
 		return nil, fmt.Errorf("no definition provided")
 	}
@@ -389,8 +430,8 @@ func (g *GadgetDesc) customJsonParser(params *params.Params, args []string, opti
 	return columns_json.NewFormatter(cols.ColumnMap, options...), nil
 }
 
-func (g *GadgetDesc) JSONConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
-	formatter, err := g.customJsonParser(params, []string{})
+func (g *GadgetDesc) JSONConverter(params *params.Params, args []string, printer gadgets.Printer) func(ev any) {
+	formatter, err := g.customJsonParser(params, args)
 	if err != nil {
 		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
 		return nil
@@ -401,8 +442,8 @@ func (g *GadgetDesc) JSONConverter(params *params.Params, printer gadgets.Printe
 	}
 }
 
-func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
-	formatter, err := g.customJsonParser(params, []string{}, columns_json.WithPrettyPrint())
+func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, args []string, printer gadgets.Printer) func(ev any) {
+	formatter, err := g.customJsonParser(params, args, columns_json.WithPrettyPrint())
 	if err != nil {
 		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
 		return nil
@@ -413,8 +454,8 @@ func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, printer gadgets.
 	}
 }
 
-func (g *GadgetDesc) YAMLConverter(params *params.Params, printer gadgets.Printer) func(ev any) {
-	formatter, err := g.customJsonParser(params, []string{})
+func (g *GadgetDesc) YAMLConverter(params *params.Params, args []string, printer gadgets.Printer) func(ev any) {
+	formatter, err := g.customJsonParser(params, args)
 	if err != nil {
 		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
 		return nil

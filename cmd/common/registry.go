@@ -492,19 +492,19 @@ func buildCommandFromGadget(
 			case OutputModeJSON:
 				jsonCallback := printEventAsJSONFn(fe)
 				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONConverter); ok {
-					jsonCallback = cjson.JSONConverter(gadgetParams, fe)
+					jsonCallback = cjson.JSONConverter(gadgetParams, args, fe)
 				}
 				parser.SetEventCallback(jsonCallback)
 			case OutputModeJSONPretty:
 				jsonPrettyCallback := printEventAsJSONPrettyFn(fe)
 				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONPrettyConverter); ok {
-					jsonPrettyCallback = cjson.JSONPrettyConverter(gadgetParams, fe)
+					jsonPrettyCallback = cjson.JSONPrettyConverter(gadgetParams, args, fe)
 				}
 				parser.SetEventCallback(jsonPrettyCallback)
 			case OutputModeYAML:
 				yamlCallback := printEventAsYAMLFn(fe)
 				if cyaml, ok := gadgetDesc.(gadgets.GadgetYAMLConverter); ok {
-					yamlCallback = cyaml.YAMLConverter(gadgetParams, fe)
+					yamlCallback = cyaml.YAMLConverter(gadgetParams, args, fe)
 				}
 				parser.SetEventCallback(yamlCallback)
 			}

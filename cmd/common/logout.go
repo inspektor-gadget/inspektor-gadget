@@ -21,7 +21,7 @@ import (
 	"github.com/containers/image/v5/types"
 	"github.com/spf13/cobra"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci_helper"
 )
 
 type logoutOptions struct {
@@ -41,7 +41,7 @@ func NewLogoutCmd() *cobra.Command {
 		},
 	}
 	logoutFlagSet := auth.GetLogoutFlags(&o.logoutOpts)
-	logoutFlagSet.Lookup("authfile").Value.Set(utils.DefaultAuthFile)
+	logoutFlagSet.Lookup("authfile").Value.Set(oci_helper.DefaultAuthFile)
 	cmd.Flags().AddFlagSet(logoutFlagSet)
 	return cmd
 }

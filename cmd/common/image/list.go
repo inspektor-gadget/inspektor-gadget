@@ -23,9 +23,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci_helper"
 )
 
 type listOptions struct {
@@ -49,7 +49,7 @@ func NewListCmd() *cobra.Command {
 }
 
 func runList(o listOptions) error {
-	ociStore, err := utils.GetLocalOciStore()
+	ociStore, err := oci_helper.GetLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("get oci store: %w", err)
 	}
@@ -63,12 +63,12 @@ func runList(o listOptions) error {
 	imageColumns := []*imageColumn{}
 	err = ociStore.Tags(context.TODO(), "", func(tags []string) error {
 		for _, fullTag := range tags {
-			repository, err := utils.GetRepositoryFromImage(fullTag)
+			repository, err := oci_helper.GetRepositoryFromImage(fullTag)
 			if err != nil {
 				logrus.Debugf("get repository from image %q: %s", fullTag, err)
 				continue
 			}
-			tag, err := utils.GetTagFromImage(fullTag)
+			tag, err := oci_helper.GetTagFromImage(fullTag)
 			if err != nil {
 				logrus.Debugf("get tag from image %q: %s", fullTag, err)
 				continue
