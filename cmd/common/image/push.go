@@ -18,17 +18,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci_helper"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote"
-
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 )
 
 type pushOptions struct {
 	image    string
-	authOpts utils.AuthOptions
-	insecure bool
+	authOpts oci_helper.AuthOptions
 }
 
 func NewPushCmd() *cobra.Command {
@@ -45,33 +42,21 @@ func NewPushCmd() *cobra.Command {
 			return runPush(o)
 		},
 	}
-	utils.SetupAuthVariablesAndFlags(cmd, &o.authOpts)
-	cmd.Flags().BoolVar(&o.insecure, "insecure", false, "allow connections to HTTP only registries")
+	oci_helper.SetupAuthVariablesAndFlags(cmd, &o.authOpts)
 	return cmd
 }
 
 func runPush(o pushOptions) error {
-	ociStore, err := utils.GetLocalOciStore()
+	ociStore, err := oci_helper.GetLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("get oci store: %w", err)
 	}
 
-	repository, err := utils.GetRepositoryFromImage(o.image)
-	if err != nil {
-		return fmt.Errorf("get repository from image %q: %w", o.image, err)
-	}
-	client, err := utils.CreateAuthClient(repository, &o.authOpts)
-	if err != nil {
-		return fmt.Errorf("create auth client: %w", err)
-	}
-	repo, err := remote.NewRepository(repository)
+	repo, err := oci_helper.CreateRemoteRepository(o.image, &o.authOpts)
 	if err != nil {
 		return fmt.Errorf("create remote repository: %w", err)
 	}
-	repo.PlainHTTP = o.insecure
-	repo.Client = client
-
-	targetImage, err := utils.NormalizeImage(o.image)
+	targetImage, err := oci_helper.NormalizeImage(o.image)
 	if err != nil {
 		return fmt.Errorf("normalize image: %w", err)
 	}

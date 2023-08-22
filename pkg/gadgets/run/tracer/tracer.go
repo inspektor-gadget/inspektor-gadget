@@ -18,7 +18,6 @@ package tracer
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -30,13 +29,13 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
-	beespec "github.com/solo-io/bumblebee/pkg/spec"
-	orascontent "oras.land/oras-go/pkg/content"
-	"oras.land/oras-go/pkg/oras"
+	"github.com/sirupsen/logrus"
+	"oras.land/oras-go/v2"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci_helper"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -45,7 +44,7 @@ const (
 )
 
 type Config struct {
-	RegistryAuth orascontent.RegistryOptions
+	//RegistryAuth orascontent.RegistryOptions
 	ProgLocation string
 	ProgContent  []byte
 	MountnsMap   *ebpf.Map
@@ -81,27 +80,27 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 func (t *Tracer) Close() {
 }
 
-func (t *Tracer) getByobEbpfPackage() (*beespec.EbpfPackage, error) {
-	localRegistry := orascontent.NewMemory()
+// func (t *Tracer) getByobEbpfPackage() (*beespec.EbpfPackage, error) {
+// 	localRegistry := orascontent.NewMemory()
 
-	remoteRegistry, err := orascontent.NewRegistry(t.config.RegistryAuth)
-	if err != nil {
-		return nil, fmt.Errorf("create new oras registry: %w", err)
-	}
+// 	remoteRegistry, err := orascontent.NewRegistry(t.config.RegistryAuth)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("create new oras registry: %w", err)
+// 	}
 
-	_, err = oras.Copy(
-		context.Background(),
-		remoteRegistry,
-		t.config.ProgLocation,
-		localRegistry,
-		t.config.ProgLocation,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("copy oras: %w", err)
-	}
-	byobClient := beespec.NewEbpfOCICLient()
-	return byobClient.Pull(context.Background(), t.config.ProgLocation, localRegistry)
-}
+// 	_, err = oras.Copy(
+// 		context.Background(),
+// 		remoteRegistry,
+// 		t.config.ProgLocation,
+// 		localRegistry,
+// 		t.config.ProgLocation,
+// 	)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("copy oras: %w", err)
+// 	}
+// 	byobClient := beespec.NewEbpfOCICLient()
+// 	return byobClient.Pull(context.Background(), t.config.ProgLocation, localRegistry)
+// }
 
 func (t *Tracer) Stop() {
 	if t.collection != nil {
@@ -314,23 +313,34 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
-	if len(params.Get(ProgramContent).AsBytes()) != 0 {
-		t.config.ProgContent = params.Get(ProgramContent).AsBytes()
-	} else {
-		args := gadgetCtx.Args()
-		if len(args) != 1 {
-			return fmt.Errorf("expected exactly one argument, got %d", len(args))
+	progContent := params.Get(ProgramContent).AsBytes()
+
+	if len(progContent) == 0 {
+		if len(gadgetCtx.Args()) != 1 {
+			return fmt.Errorf("one argument expected: received %d", len(gadgetCtx.Args()))
+		}
+		image, err := oci_helper.NormalizeImage(gadgetCtx.Args()[0])
+		if err != nil {
+			return fmt.Errorf("normalize image: %w", err)
 		}
 
-		param := args[0]
-		t.config.ProgLocation = param
-		// Download the BPF module
-		byobEbpfPackage, err := t.getByobEbpfPackage()
+		var imageStore oras.Target
+		imageStore, err = oci_helper.GetLocalOciStore()
 		if err != nil {
-			return fmt.Errorf("download byob ebpf package: %w", err)
+			logrus.Debugf("get oci store: %s", err)
+			imageStore = oci_helper.GetMemoryStore()
 		}
-		t.config.ProgContent = byobEbpfPackage.ProgramFileBytes
+		authOpts := oci_helper.AuthOptions{
+			AuthFile: params.Get("authfile").AsString(),
+		}
+		prog, err := oci_helper.GetEbpfProgram(imageStore, &authOpts, image)
+		if err != nil {
+			return fmt.Errorf("get ebpf program: %w", err)
+		}
+		progContent = prog
 	}
+
+	t.config.ProgContent = progContent
 
 	if err := t.installTracer(); err != nil {
 		t.Stop()

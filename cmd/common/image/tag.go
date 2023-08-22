@@ -18,9 +18,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci_helper"
 	"github.com/spf13/cobra"
-
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 )
 
 type tagOptions struct {
@@ -49,16 +48,16 @@ func runTag(cmd *cobra.Command, args []string) error {
 		dstImage: args[1],
 	}
 
-	src, err := utils.NormalizeImage(o.srcImage)
+	src, err := oci_helper.NormalizeImage(o.srcImage)
 	if err != nil {
 		return fmt.Errorf("normalize src image: %w", err)
 	}
-	dst, err := utils.NormalizeImage(o.dstImage)
+	dst, err := oci_helper.NormalizeImage(o.dstImage)
 	if err != nil {
 		return fmt.Errorf("normalize dst image: %w", err)
 	}
 
-	ociStore, err := utils.GetLocalOciStore()
+	ociStore, err := oci_helper.GetLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("get oci store: %w", err)
 	}
