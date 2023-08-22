@@ -19,7 +19,8 @@ const (
 	EventTypeGadgetResult  uint32 = 1
 	EventTypeGadgetDone    uint32 = 2
 	EventTypeGadgetJobID   uint32 = 3
-	EventTypeRunGadget     uint32 = 4
+	EventTypeColAttr       uint32 = 4
+	EventTypeRunGadget     uint32 = 5
 
 	EventLogShift = 16
 )

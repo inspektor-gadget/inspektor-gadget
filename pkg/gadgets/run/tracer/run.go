@@ -48,7 +48,9 @@ const (
 	printMapPrefix  = "print_"
 )
 
-type GadgetDesc struct{}
+type GadgetDesc struct {
+	ebpfColAttrs map[string]columns.Attributes
+}
 
 func (g *GadgetDesc) Name() string {
 	return "run"
@@ -259,9 +261,9 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 		return nil, fmt.Errorf("unmarshaling definition: %w", err)
 	}
 
-	colAttrs := map[string]columns.Attributes{}
+	g.ebpfColAttrs = map[string]columns.Attributes{}
 	for _, col := range gadgetDefinition.ColumnsAttrs {
-		colAttrs[col.Name] = col
+		g.ebpfColAttrs[col.Name] = col
 	}
 
 	fields := []columns.DynamicField{}
@@ -269,7 +271,7 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 	for _, member := range valueStruct.Members {
 		member := member
 
-		attrs, ok := colAttrs[member.Name]
+		attrs, ok := g.ebpfColAttrs[member.Name]
 		if !ok {
 			continue
 		}
@@ -312,6 +314,10 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 		return nil, fmt.Errorf("adding fields: %w", err)
 	}
 	return cols, nil
+}
+
+func (g *GadgetDesc) GetEbpfColAttrs() map[string]columns.Attributes {
+	return g.ebpfColAttrs
 }
 
 func (g *GadgetDesc) CustomParser(params *params.Params, args []string) (parser.Parser, error) {

@@ -68,6 +68,16 @@ func (t Time) String() string {
 	return time.Unix(0, int64(t)).Format("2006-01-02T15:04:05.000000000Z07:00")
 }
 
+func TimeFromString(s string) Time {
+	// Don't use time.RFC3339Nano because we prefer to keep the trailing
+	// zeros for alignment
+	time, err := time.Parse("2006-01-02T15:04:05.000000000Z07:00", s)
+	if err != nil {
+		return Time(0)
+	}
+	return Time(time.UnixNano())
+}
+
 type EndpointKind string
 
 const (

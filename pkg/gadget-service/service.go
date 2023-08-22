@@ -28,6 +28,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/tracer"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -77,6 +78,19 @@ func (s *Service) GetInfo(ctx context.Context, request *pb.InfoRequest) (*pb.Inf
 		Catalog:      catalogJSON,
 		Experimental: experimental.Enabled(),
 	}, nil
+}
+
+type FooPrinter struct {
+	out string
+	log string
+}
+
+func (f *FooPrinter) Output(payload string) {
+	f.out = payload
+}
+
+func (f *FooPrinter) Logf(severity logger.Level, fmtStr string, params ...any) {
+	f.log += fmt.Sprintf(fmtStr, params...)
 }
 
 func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
@@ -134,6 +148,19 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 		}
 	}
 
+	foo := FooPrinter{}
+	var evFunc func(ev any)
+	isRunGadget := true
+	if isRunGadget {
+		// Always use json parser
+		if c, ok := gadgetDesc.(gadgets.GadgetJSONConverter); ok {
+			evFunc = c.JSONConverter(gadgetParams, request.Args, &foo)
+			if evFunc == nil {
+				return fmt.Errorf("creating run json parser: %s", foo.log)
+			}
+		}
+	}
+
 	// Create payload buffer
 	outputBuffer := make(chan *pb.GadgetEvent, 1024) // TODO: Discuss 1024
 
@@ -148,14 +175,24 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 
 		parser.SetLogCallback(logger.Logf)
 		parser.SetEventCallback(func(ev any) {
-			// Marshal messages to JSON
-			// Normally, it would be better to have this in the pump below rather than marshaling events that
-			// would be dropped anyway. However, we're optimistic that this occurs rarely and instead prevent using
-			// ev in another thread.
-			data, _ := json.Marshal(ev)
-			event := &pb.GadgetEvent{
-				Type:    pb.EventTypeGadgetPayload,
-				Payload: data,
+			var event *pb.GadgetEvent
+			if !isRunGadget {
+				// Marshal messages to JSON
+				// Normally, it would be better to have this in the pump below rather than marshaling events that
+				// would be dropped anyway. However, we're optimistic that this occurs rarely and instead prevent using
+				// ev in another thread.
+				data, _ := json.Marshal(ev)
+				event = &pb.GadgetEvent{
+					Type:    pb.EventTypeGadgetPayload,
+					Payload: data,
+				}
+			} else {
+				// Use the event function to convert the event to JSON
+				evFunc(ev)
+				event = &pb.GadgetEvent{
+					Type:    pb.EventTypeRunGadget,
+					Payload: []byte(foo.out),
+				}
 			}
 
 			seqLock.Lock()
@@ -195,6 +232,22 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 	if err != nil {
 		logger.Warnf("sending JobID: %v", err)
 		return nil
+	}
+
+	if isRunGadget {
+		runDesc, ok := gadgetDesc.(*runTracer.GadgetDesc)
+		if !ok {
+			logger.Errorf("expected runTracer.GadgetDesc, got %T", gadgetDesc)
+		}
+		data, _ := json.Marshal(runDesc.GetEbpfColAttrs())
+		err := runGadget.Send(&pb.GadgetEvent{
+			Type:    pb.EventTypeColAttr,
+			Payload: data,
+		})
+		if err != nil {
+			logger.Warnf("sending column attributes: %v", err)
+			return nil
+		}
 	}
 
 	// Create new Gadget Context
