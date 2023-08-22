@@ -44,7 +44,6 @@ func loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
 	pod := pods[0]
 	dialOpt := grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 		return NewK8SExecConn(ctx, pod, time.Second*ConnectTimeout)
-		// return NewK8SPortForwardConn(ctx, s, time.Second*30)
 	})
 
 	conn, err := grpc.DialContext(ctx, "", dialOpt, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())

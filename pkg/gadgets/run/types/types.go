@@ -16,6 +16,9 @@ package types
 
 import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -40,6 +43,11 @@ type Event struct {
 	RawData []byte `json:"raw_data,omitempty"`
 	// How to flatten this?
 	Data interface{} `json:"data"`
+}
+
+type GadgetInfo struct {
+	GadgetDefinition *GadgetDefinition
+	ProgContent      []byte
 }
 
 func (ev *Event) GetEndpoints() []*eventtypes.L3Endpoint {
@@ -69,4 +77,19 @@ type GadgetDefinition struct {
 	Name         string               `yaml:"name"`
 	Description  string               `yaml:"description"`
 	ColumnsAttrs []columns.Attributes `yaml:"columns"`
+}
+
+// Printer is implemented by objects that can print information, like frontends.
+type Printer interface {
+	Output(payload string)
+	Logf(severity logger.Level, fmt string, params ...any)
+}
+
+// RunGadgetDesc represents the different methods implemented by the run gadget descriptor.
+type RunGadgetDesc interface {
+	GetGadgetInfo(params *params.Params, args []string) (*GadgetInfo, error)
+	CustomParser(info *GadgetInfo) (parser.Parser, error)
+	JSONConverter(info *GadgetInfo, p Printer) func(ev any)
+	JSONPrettyConverter(info *GadgetInfo, p Printer) func(ev any)
+	YAMLConverter(info *GadgetInfo, p Printer) func(ev any)
 }

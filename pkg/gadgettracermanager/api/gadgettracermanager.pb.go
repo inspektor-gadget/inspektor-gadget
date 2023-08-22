@@ -21,11 +21,10 @@
 package gadgettracermanager
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -637,20 +636,18 @@ func file_api_gadgettracermanager_proto_rawDescGZIP() []byte {
 	return file_api_gadgettracermanager_proto_rawDescData
 }
 
-var (
-	file_api_gadgettracermanager_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
-	file_api_gadgettracermanager_proto_goTypes  = []interface{}{
-		(*Label)(nil),                   // 0: gadgettracermanager.Label
-		(*AddContainerResponse)(nil),    // 1: gadgettracermanager.AddContainerResponse
-		(*RemoveContainerResponse)(nil), // 2: gadgettracermanager.RemoveContainerResponse
-		(*TracerID)(nil),                // 3: gadgettracermanager.TracerID
-		(*StreamData)(nil),              // 4: gadgettracermanager.StreamData
-		(*OwnerReference)(nil),          // 5: gadgettracermanager.OwnerReference
-		(*ContainerDefinition)(nil),     // 6: gadgettracermanager.ContainerDefinition
-		(*DumpStateRequest)(nil),        // 7: gadgettracermanager.DumpStateRequest
-		(*Dump)(nil),                    // 8: gadgettracermanager.Dump
-	}
-)
+var file_api_gadgettracermanager_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_api_gadgettracermanager_proto_goTypes = []interface{}{
+	(*Label)(nil),                   // 0: gadgettracermanager.Label
+	(*AddContainerResponse)(nil),    // 1: gadgettracermanager.AddContainerResponse
+	(*RemoveContainerResponse)(nil), // 2: gadgettracermanager.RemoveContainerResponse
+	(*TracerID)(nil),                // 3: gadgettracermanager.TracerID
+	(*StreamData)(nil),              // 4: gadgettracermanager.StreamData
+	(*OwnerReference)(nil),          // 5: gadgettracermanager.OwnerReference
+	(*ContainerDefinition)(nil),     // 6: gadgettracermanager.ContainerDefinition
+	(*DumpStateRequest)(nil),        // 7: gadgettracermanager.DumpStateRequest
+	(*Dump)(nil),                    // 8: gadgettracermanager.Dump
+}
 var file_api_gadgettracermanager_proto_depIdxs = []int32{
 	0, // 0: gadgettracermanager.ContainerDefinition.labels:type_name -> gadgettracermanager.Label
 	3, // 1: gadgettracermanager.GadgetTracerManager.ReceiveStream:input_type -> gadgettracermanager.TracerID

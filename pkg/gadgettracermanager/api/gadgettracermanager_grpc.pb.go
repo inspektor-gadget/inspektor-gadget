@@ -4,7 +4,6 @@ package gadgettracermanager
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -110,20 +109,18 @@ type GadgetTracerManagerServer interface {
 }
 
 // UnimplementedGadgetTracerManagerServer must be embedded to have forward compatible implementations.
-type UnimplementedGadgetTracerManagerServer struct{}
+type UnimplementedGadgetTracerManagerServer struct {
+}
 
 func (UnimplementedGadgetTracerManagerServer) ReceiveStream(*TracerID, GadgetTracerManager_ReceiveStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReceiveStream not implemented")
 }
-
 func (UnimplementedGadgetTracerManagerServer) AddContainer(context.Context, *ContainerDefinition) (*AddContainerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddContainer not implemented")
 }
-
 func (UnimplementedGadgetTracerManagerServer) RemoveContainer(context.Context, *ContainerDefinition) (*RemoveContainerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveContainer not implemented")
 }
-
 func (UnimplementedGadgetTracerManagerServer) DumpState(context.Context, *DumpStateRequest) (*Dump, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DumpState not implemented")
 }
