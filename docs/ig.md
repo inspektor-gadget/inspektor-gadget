@@ -46,14 +46,16 @@ The instruction to install `ig` are available in the main
 ## Usage
 
 Currently, `ig` can trace containers managed by Docker regardless
-of whether they were created via Kubernetes or not. In addition, it can also
-use the CRI to trace containers managed by containerd and CRI-O, meaning only
-the ones created via Kubernetes. Support for non-Kubernetes containers with
+of whether they were created via Kubernetes or not. In case of containerd,
+we are using containerd API directly but only `k8s.io` namespace is supported,
+meaning only the ones created via Kubernetes. In addition, it can also use the CRI to
+trace containers managed by CRI-O, Support for non-Kubernetes containers with
 containerd is coming, see issue
-[#734](https://github.com/inspektor-gadget/inspektor-gadget/issues/734).
+[#1849](https://github.com/inspektor-gadget/inspektor-gadget/issues/1849).
 
-By default, `ig` will try to communicate with the Docker Engine
-API and the CRI API of containerd and CRI-O:
+**Note:** We only support CRI v1 meaning that only CRI-O v1.20+ (compatible with Kubernetes v1.20+) is supported.
+
+By default, `ig` will try to communicate with all the supported container runtimes (docker, containerd, CRI-O, podman):
 
 ```bash
 $ docker run -d --name myContainer nginx:1.21
