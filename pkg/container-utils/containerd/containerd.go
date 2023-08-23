@@ -22,11 +22,13 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -45,9 +47,13 @@ type ContainerdClient struct {
 	ctx    context.Context
 }
 
-func NewContainerdClient(socketPath string) (runtimeclient.ContainerRuntimeClient, error) {
+func NewContainerdClient(socketPath string, config *containerutilsTypes.ExtraConfig) (runtimeclient.ContainerRuntimeClient, error) {
 	if socketPath == "" {
 		socketPath = runtimeclient.ContainerdDefaultSocketPath
+	}
+	namespace := constants.K8sContainerdNamespace
+	if config != nil && config.Namespace != "" {
+		namespace = config.Namespace
 	}
 
 	dialCtx, cancelFunc := context.WithTimeout(context.TODO(), DefaultTimeout)
@@ -68,7 +74,7 @@ func NewContainerdClient(socketPath string) (runtimeclient.ContainerRuntimeClien
 
 	containerdCtx := namespaces.WithNamespace(
 		context.TODO(),
-		"k8s.io",
+		namespace,
 	)
 
 	return &ContainerdClient{

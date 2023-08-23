@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/containerd/containerd/pkg/cri/constants"
+
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
@@ -51,6 +53,9 @@ type CommonFlags struct {
 
 	// Number of seconds that the gadget will run for
 	Timeout int
+
+	// ContainerdNamespace is the namespace used by containerd
+	ContainerdNamespace string
 }
 
 func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
@@ -62,12 +67,14 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		for _, p := range parts {
 			runtimeName := types.String2RuntimeName(strings.TrimSpace(p))
 			socketPath := ""
+			namespace := ""
 
 			switch runtimeName {
 			case types.RuntimeNameDocker:
 				socketPath = commonFlags.RuntimesSocketPathConfig.Docker
 			case types.RuntimeNameContainerd:
 				socketPath = commonFlags.RuntimesSocketPathConfig.Containerd
+				namespace = commonFlags.ContainerdNamespace
 			case types.RuntimeNameCrio:
 				socketPath = commonFlags.RuntimesSocketPathConfig.Crio
 			case types.RuntimeNamePodman:
@@ -85,10 +92,18 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 				}
 			}
 
-			commonFlags.RuntimeConfigs = append(commonFlags.RuntimeConfigs, &containerutilsTypes.RuntimeConfig{
+			r := &containerutilsTypes.RuntimeConfig{
 				Name:       runtimeName,
 				SocketPath: socketPath,
-			})
+			}
+
+			if namespace != "" {
+				r.Extra = &containerutilsTypes.ExtraConfig{
+					Namespace: namespace,
+				}
+			}
+
+			commonFlags.RuntimeConfigs = append(commonFlags.RuntimeConfigs, r)
 		}
 
 		// Output Mode
@@ -133,6 +148,13 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 		"timeout",
 		0,
 		"Number of seconds that the gadget will run for",
+	)
+
+	command.PersistentFlags().StringVar(
+		&commonFlags.ContainerdNamespace,
+		"containerd-namespace",
+		constants.K8sContainerdNamespace,
+		"Namespace used by containerd",
 	)
 }
 

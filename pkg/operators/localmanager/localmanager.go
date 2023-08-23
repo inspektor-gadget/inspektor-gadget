@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/cilium/ebpf"
+	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
@@ -45,6 +46,7 @@ const (
 	ContainerdSocketPath = "containerd-socketpath"
 	CrioSocketPath       = "crio-socketpath"
 	PodmanSocketPath     = "podman-socketpath"
+	ContainerdNamespace  = "containerd-namespace"
 )
 
 type MountNsMapSetter interface {
@@ -102,6 +104,11 @@ func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
 			Key:          PodmanSocketPath,
 			DefaultValue: runtimeclient.PodmanDefaultSocketPath,
 			Description:  "Podman Unix socket path",
+		},
+		{
+			Key:          ContainerdNamespace,
+			DefaultValue: constants.K8sContainerdNamespace,
+			Description:  "Containerd namespace to use",
 		},
 	}
 }
@@ -161,12 +168,14 @@ partsLoop:
 	for _, p := range parts {
 		runtimeName := types.String2RuntimeName(strings.TrimSpace(p))
 		socketPath := ""
+		namespace := ""
 
 		switch runtimeName {
 		case types.RuntimeNameDocker:
 			socketPath = operatorParams.Get(DockerSocketPath).AsString()
 		case types.RuntimeNameContainerd:
 			socketPath = operatorParams.Get(ContainerdSocketPath).AsString()
+			namespace = operatorParams.Get(ContainerdNamespace).AsString()
 		case types.RuntimeNameCrio:
 			socketPath = operatorParams.Get(CrioSocketPath).AsString()
 		case types.RuntimeNamePodman:
@@ -184,10 +193,17 @@ partsLoop:
 			}
 		}
 
-		rc = append(rc, &containerutilsTypes.RuntimeConfig{
+		r := &containerutilsTypes.RuntimeConfig{
 			Name:       runtimeName,
 			SocketPath: socketPath,
-		})
+		}
+		if namespace != "" {
+			r.Extra = &containerutilsTypes.ExtraConfig{
+				Namespace: namespace,
+			}
+		}
+
+		rc = append(rc, r)
 	}
 
 	l.rc = rc

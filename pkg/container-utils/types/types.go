@@ -16,7 +16,12 @@ package types
 
 import "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
+type ExtraConfig struct {
+	Namespace string
+}
+
 type RuntimeConfig struct {
 	Name       types.RuntimeName
 	SocketPath string
+	Extra      *ExtraConfig
 }

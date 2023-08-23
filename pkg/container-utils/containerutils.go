@@ -56,7 +56,7 @@ func NewContainerRuntimeClient(runtime *containerutilsTypes.RuntimeConfig) (runt
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"); envsp != "" && socketPath == "" {
 			socketPath = envsp
 		}
-		return containerd.NewContainerdClient(socketPath)
+		return containerd.NewContainerdClient(socketPath, runtime.Extra)
 	case types.RuntimeNameCrio:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CRIO_SOCKETPATH"); envsp != "" && socketPath == "" {
