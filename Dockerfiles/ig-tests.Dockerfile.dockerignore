@@ -2,7 +2,6 @@
 !go.mod
 !go.sum
 !pkg
-!internal/thirdparty
 !integration
 !Makefile*
 !*.mk
