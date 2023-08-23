@@ -77,19 +77,6 @@ func pktTypeString(pktType int) string {
 	return pktTypeStr
 }
 
-func protoString(proto int) string {
-	// proto definitions:
-	// https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
-	protoStr := fmt.Sprintf("UNKNOWN#%d", proto)
-	switch proto {
-	case 6:
-		protoStr = "tcp"
-	case 17:
-		protoStr = "udp"
-	}
-	return protoStr
-}
-
 func parseNetEvent(sample []byte, netns uint64) (*types.Event, error) {
 	bpfEvent := (*networkEventT)(unsafe.Pointer(&sample[0]))
 	if len(sample) < int(unsafe.Sizeof(*bpfEvent)) {
@@ -107,7 +94,7 @@ func parseNetEvent(sample []byte, netns uint64) (*types.Event, error) {
 			Timestamp: timestamp,
 		},
 		PktType: pktTypeString(int(bpfEvent.PktType)),
-		Proto:   protoString(int(bpfEvent.Proto)),
+		Proto:   gadgets.ProtoString(int(bpfEvent.Proto)),
 		Port:    gadgets.Htons(bpfEvent.Port),
 		DstEndpoint: eventtypes.L3Endpoint{
 			Addr: ip.String(),

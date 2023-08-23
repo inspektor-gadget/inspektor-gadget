@@ -50,6 +50,8 @@ func TestTraceDns(t *testing.T) {
 					PktType:    "OUTGOING",
 					DNSName:    "fake.test.com.",
 					QType:      "A",
+					Protocol:   "UDP",
+					DstPort:    53,
 				},
 				{
 					Event: eventtypes.Event{
@@ -71,6 +73,8 @@ func TestTraceDns(t *testing.T) {
 					Latency:    1,
 					NumAnswers: 1,
 					Addresses:  []string{"127.0.0.1"},
+					Protocol:   "UDP",
+					SrcPort:    53,
 				},
 				{
 					Event: eventtypes.Event{
@@ -88,6 +92,8 @@ func TestTraceDns(t *testing.T) {
 					PktType:    "OUTGOING",
 					DNSName:    "fake.test.com.",
 					QType:      "AAAA",
+					Protocol:   "UDP",
+					DstPort:    53,
 				},
 				{
 					Event: eventtypes.Event{
@@ -109,6 +115,8 @@ func TestTraceDns(t *testing.T) {
 					Latency:    1,
 					NumAnswers: 1,
 					Addresses:  []string{"::1"},
+					Protocol:   "UDP",
+					SrcPort:    53,
 				},
 			}
 
@@ -128,6 +136,14 @@ func TestTraceDns(t *testing.T) {
 				e.Runtime.ContainerID = ""
 				// TODO: Handle once we support getting ContainerImageName from Docker
 				e.Runtime.ContainerImageName = ""
+
+				e.SrcIP = ""
+				e.DstIP = ""
+				if e.Qr == dnsTypes.DNSPktTypeResponse {
+					e.DstPort = 0
+				} else {
+					e.SrcPort = 0
+				}
 			}
 
 			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)

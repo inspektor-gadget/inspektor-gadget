@@ -34,6 +34,11 @@ struct event_t {
 	};
 	__u16 af; // AF_INET or AF_INET6
 
+	// Internet protocol and port numbers.
+	__u16 sport;
+	__u16 dport;
+	__u8 proto;
+
 	__u16 id;
 	unsigned short qtype;
 

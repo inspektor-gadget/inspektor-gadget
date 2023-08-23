@@ -35,8 +35,28 @@ func TestTraceDns(t *testing.T) {
 	}
 
 	RunTestSteps(commandsPreTest, t)
-	dnsServer := GetTestPodIP(t, ns, "dnstester")
 
+	t.Cleanup(func() {
+		commands := []*Command{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	dnsServer := GetTestPodIP(t, ns, "dnstester")
+	nslookupCmds := []string{
+		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=a fake.test.com. %s", dnsServer),
+		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=aaaa fake.test.com. %s", dnsServer),
+		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=a nodomain.fake.test.com. %s", dnsServer),
+	}
+	// Start the busybox pod so that we can get the IP address of the pod.
+	commands := []*Command{
+		BusyboxPodRepeatCommand(ns, strings.Join(nslookupCmds, " ; ")),
+		WaitUntilTestPodReadyCommand(ns),
+	}
+	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+
+	busyBoxIP := GetTestPodIP(t, ns, "test-pod")
 	traceDNSCmd := &Command{
 		Name:         "TraceDns",
 		Cmd:          fmt.Sprintf("ig trace dns -o json --runtimes=%s", *containerRuntime),
@@ -57,6 +77,9 @@ func TestTraceDns(t *testing.T) {
 					QType:      "A",
 					Uid:        1000,
 					Gid:        1111,
+					Protocol:   "UDP",
+					DstPort:    53,
+					SrcIP:      busyBoxIP,
 				},
 				{
 					Event: BuildBaseEvent(ns,
@@ -75,6 +98,9 @@ func TestTraceDns(t *testing.T) {
 					Addresses:  []string{"127.0.0.1"},
 					Uid:        1000,
 					Gid:        1111,
+					Protocol:   "UDP",
+					SrcPort:    53,
+					DstIP:      busyBoxIP,
 				},
 				{
 					Event: BuildBaseEvent(ns,
@@ -89,6 +115,9 @@ func TestTraceDns(t *testing.T) {
 					QType:      "AAAA",
 					Uid:        1000,
 					Gid:        1111,
+					Protocol:   "UDP",
+					DstPort:    53,
+					SrcIP:      busyBoxIP,
 				},
 				{
 					Event: BuildBaseEvent(ns,
@@ -107,6 +136,9 @@ func TestTraceDns(t *testing.T) {
 					Addresses:  []string{"::1"},
 					Uid:        1000,
 					Gid:        1111,
+					Protocol:   "UDP",
+					SrcPort:    53,
+					DstIP:      busyBoxIP,
 				},
 				{
 					Event: BuildBaseEvent(ns,
@@ -121,6 +153,9 @@ func TestTraceDns(t *testing.T) {
 					QType:      "A",
 					Uid:        1000,
 					Gid:        1111,
+					Protocol:   "UDP",
+					DstPort:    53,
+					SrcIP:      busyBoxIP,
 				},
 				{
 					Event: BuildBaseEvent(ns,
@@ -138,6 +173,9 @@ func TestTraceDns(t *testing.T) {
 					NumAnswers: 0,
 					Uid:        1000,
 					Gid:        1111,
+					Protocol:   "UDP",
+					SrcPort:    53,
+					DstIP:      busyBoxIP,
 				},
 			}
 
@@ -169,27 +207,24 @@ func TestTraceDns(t *testing.T) {
 				if isDockerRuntime {
 					e.Runtime.ContainerImageName = ""
 				}
+
+				if e.Qr == dnsTypes.DNSPktTypeResponse {
+					e.DstPort = 0
+					e.SrcIP = ""
+				} else {
+					e.SrcPort = 0
+					e.DstIP = ""
+				}
 			}
 
 			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)
 		},
 	}
 
-	nslookupCmds := []string{
-		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=a fake.test.com. %s", dnsServer),
-		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=aaaa fake.test.com. %s", dnsServer),
-		fmt.Sprintf("setuidgid 1000:1111 nslookup -type=a nodomain.fake.test.com. %s", dnsServer),
-	}
-
-	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
+	// Start the trace gadget and verify the output.
+	commands = []*Command{
 		traceDNSCmd,
-		SleepForSecondsCommand(2), // wait to ensure ig has started
-		BusyboxPodRepeatCommand(ns, strings.Join(nslookupCmds, " ; ")),
-		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
 	}
-
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
 }
 
@@ -224,6 +259,8 @@ func TestTraceDnsHost(t *testing.T) {
 					PktType:    "OUTGOING",
 					DNSName:    "fake.test.com.",
 					QType:      "A",
+					Protocol:   "UDP",
+					DstPort:    53,
 				},
 				{
 					Event: eventtypes.Event{
@@ -235,6 +272,8 @@ func TestTraceDnsHost(t *testing.T) {
 					PktType:    "OUTGOING",
 					DNSName:    "fake.test.com.",
 					QType:      "AAAA",
+					Protocol:   "UDP",
+					DstPort:    53,
 				},
 				{
 					Event: eventtypes.Event{
@@ -246,6 +285,8 @@ func TestTraceDnsHost(t *testing.T) {
 					PktType:    "OUTGOING",
 					DNSName:    "fake.test.com.",
 					QType:      "A",
+					Protocol:   "UDP",
+					DstPort:    53,
 				},
 			}
 
@@ -261,6 +302,10 @@ func TestTraceDnsHost(t *testing.T) {
 				if e.Latency > 0 {
 					e.Latency = 1
 				}
+
+				e.SrcIP = ""
+				e.SrcPort = 0
+				e.DstIP = ""
 			}
 
 			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)

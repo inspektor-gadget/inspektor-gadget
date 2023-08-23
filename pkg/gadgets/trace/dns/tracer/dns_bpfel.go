@@ -25,12 +25,16 @@ type dnsEventT struct {
 	SaddrV6     [16]uint8
 	DaddrV6     [16]uint8
 	Af          uint16
+	Sport       uint16
+	Dport       uint16
+	Proto       uint8
+	_           [1]byte
 	Id          uint16
 	Qtype       uint16
 	Qr          uint8
 	PktType     uint8
 	Rcode       uint8
-	_           [7]byte
+	_           [1]byte
 	LatencyNs   uint64
 	Name        [255]uint8
 	_           [1]byte
