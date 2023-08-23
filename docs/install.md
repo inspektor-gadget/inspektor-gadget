@@ -13,6 +13,7 @@ description: >
 - [Installing in the cluster](#installing-in-the-cluster)
   * [Quick installation](#quick-installation)
   * [Choosing the gadget image](#choosing-the-gadget-image)
+  * [Using the CO-RE image](#using-the-co-re-image)
   * [Hook Mode](#hook-mode)
   * [Specific Information for Different Platforms](#specific-information-for-different-platforms)
     + [Minikube](#minikube)
@@ -92,6 +93,19 @@ If you wish to install an alternative gadget image, you could use the following 
 $ kubectl gadget deploy --image=ghcr.io/myfork/inspektor-gadget:tag
 ```
 
+### Using the CO-RE image
+
+You can use the CO-RE image of Inspektor Gadget by using the `--co-re` flag:
+
+```bash
+$ kubectl gadget deploy --co-re
+```
+
+Note that, it will use the latest version of Inspektor Gadget.
+This is particularly useful when deploying to Talos, as the default image
+cannot be run on this target as it relies on `CAP_SYS_MODULE` which usage is
+forbidden by [Talos](https://www.talos.dev/latest/learn-more/process-capabilities/).
+
 ### Deploy to specific nodes
 
 The `--node-selector` flag accepts a [label
@@ -136,7 +150,7 @@ The different supported modes can be set by using the `hook-mode` option:
 - `fanotify+ebpf`:  Uses the Linux
   [fanotify](https://man7.org/linux/man-pages/man7/fanotify.7.html) API and an
   eBPF module. It works with both runc and crun. It works regardless of the
-  pid namespace configuration. 
+  pid namespace configuration.
 
 ### Specific Information for Different Platforms
 
