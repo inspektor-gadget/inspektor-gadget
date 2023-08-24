@@ -105,21 +105,73 @@ TODO: Should commands like `ig pull`, `ig build`, `ig push` be aliases of `ig im
 
 ## Gadget Packaging
 
-Gadgets should be packed as [OCI](https://github.com/opencontainers/image-spec) images. Initially
-the following layers are proposed:
-- `application/vnd.definition.image.inspektor-gadget.io+yaml`: [Definition file](#definition-file)
-- `application/vnd.ebpf.image.inspektor-gadget.io+binary`: Compiled eBPF object.
+Gadgets should be packed as [OCI](https://github.com/opencontainers/image-spec) images.
+It is expected that the first manifest is an image index `application/vnd.oci.image.index.v1+json`.
+All supported architectures has to be listed here
+```bash
+$ crane manifest ghcr.io/inspektor-gadget/tcp-connect:test | jq .
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:7138dd1d4599d3e2c010a08e2609d53bea0764809563ff4554b9f4c8116fafef",
+      "size": 590,
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:9ecb3e8284068ce53d6c359b046ff20febf39f2d05ffa219e4665bd29fef1954",
+      "size": 590,
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux"
+      }
+    }
+  ]
+}
+```
 
-### OCI Annotations
+The manifest referenced by the digest of a specific architecture has a config and a single layer. The content of the config is [the definition file](#def-file).
+The currently single layer contains the compiled eBPF program. It supports configurable annotations for the author and description
 
-The OCI image should contain the following [OCI annotations](https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys):
-- `org.opencontainers.image.title`
-- `org.opencontainers.image.description`
-- `org.opencontainers.image.url`
+Example:
+```bash
+$ crane manifest ghcr.io/inspektor-gadget/tcp-connect@sha256:9ecb3e8284068ce53d6c359b046ff20febf39f2d05ffa219e4665bd29fef1954 | jq .
+{
+  "schemaVersion": 2,
+  "config": {
+    "mediaType": "application/vnd.gadget.config.v1+yaml",
+    "digest": "sha256:eb71861c0a5d5ca9a706fffa20fead54f64a1624dfeef5d334a8a3c2462c4c37",
+    "size": 628,
+    "annotations": {
+      "org.opencontainers.image.title": "config.yaml"
+    }
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.gadget.ebpf.program.v1+binary",
+      "digest": "sha256:a2e1f232e675b1a8d83f94fc646b40e885564f8346273c3257ac76003545880b",
+      "size": 873256,
+      "annotations": {
+        "org.opencontainers.image.authors": "Burak Ok",
+        "org.opencontainers.image.description": "A simple tcpconnect program",
+        "org.opencontainers.image.title": "program.o"
+      }
+    }
+  ]
+}
+
+```
+
 
 TODO: How the user could specify these annotations when using the build command?
 
-### Definition File
+### Definition File <a name="def-file"></a>
 
 The definition file contains the following information for a gadget:
 - `documentation`: Long text describing how to use the gadget. This should describe the different
