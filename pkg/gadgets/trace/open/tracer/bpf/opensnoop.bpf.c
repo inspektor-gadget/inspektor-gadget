@@ -4,6 +4,7 @@
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
+#include <gadget/cgroup_filter.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/filesystem.h>
 #include "opensnoop.h"
@@ -43,6 +44,7 @@ static __always_inline bool valid_uid(uid_t uid)
 static __always_inline bool trace_allowed(u32 tgid, u32 pid)
 {
 	u64 mntns_id;
+	u64 cgroup_id;
 	u32 uid;
 
 	/* filters */
@@ -60,6 +62,11 @@ static __always_inline bool trace_allowed(u32 tgid, u32 pid)
 	mntns_id = gadget_get_mntns_id();
 
 	if (gadget_should_discard_mntns_id(mntns_id))
+		return false;
+
+	cgroup_id = bpf_get_current_cgroup_id();
+
+	if (gadget_should_discard_cgroup_id(cgroup_id))
 		return false;
 
 	return true;

@@ -38,6 +38,7 @@ import (
 
 type Config struct {
 	MountnsMap *ebpf.Map
+	CgroupMap  *ebpf.Map
 	FullPath   bool
 }
 
@@ -101,7 +102,7 @@ func (t *Tracer) install() error {
 	consts := make(map[string]interface{})
 	consts["get_full_path"] = t.config.FullPath
 
-	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, nil, spec, consts, &t.objs); err != nil {
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, t.config.CgroupMap, spec, consts, &t.objs); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
@@ -225,6 +226,10 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 
 func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
 	t.config.MountnsMap = mountnsMap
+}
+
+func (t *Tracer) SetCgroupMap(cgroupMap *ebpf.Map) {
+	t.config.CgroupMap = cgroupMap
 }
 
 func (t *Tracer) SetEventHandler(handler any) {
