@@ -44,7 +44,6 @@ require (
 	github.com/docker/cli v24.0.5+incompatible
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/godbus/dbus/v5 v5.1.0
-	github.com/gogo/protobuf v1.3.2
 	github.com/google/go-cmp v0.5.9
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v24.0.5+incompatible
@@ -63,7 +62,7 @@ require (
 	golang.org/x/sync v0.3.0
 	golang.org/x/text v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/cri-api v0.27.4
+	k8s.io/cri-api v0.28.1
 	oras.land/oras-go v1.2.3
 	oras.land/oras-go/v2 v2.2.1
 )
@@ -105,6 +104,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.20.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/btree v1.1.2 // indirect
