@@ -390,6 +390,19 @@ func (e *WithMountNsID) GetMountNSID() uint64 {
 	return e.MountNsID
 }
 
+type WithCgroupID struct {
+	CgroupID uint64 `json:"cgroupid,omitempty" column:"CgroupID,hide"`
+	Sdname   string `json:"sdname,omitempty" column:"sdname,minWidth:20"`
+}
+
+func (e *WithCgroupID) GetCgroupID() uint64 {
+	return e.CgroupID
+}
+
+func (e *WithCgroupID) SetSystemdName(name string) {
+	e.Sdname = name
+}
+
 type WithNetNsID struct {
 	NetNsID uint64 `json:"netnsid,omitempty" column:"netns,template:ns"`
 }
