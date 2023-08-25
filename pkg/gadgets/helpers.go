@@ -257,7 +257,7 @@ func FixBpfKtimeGetBootNs(programSpecs map[string]*ebpf.ProgramSpec) {
 // Maps and Programs into the kernel
 func LoadeBPFSpec(
 	mountnsMap *ebpf.Map,
-	_ *ebpf.Map,
+	cgroupIdMap *ebpf.Map,
 	spec *ebpf.CollectionSpec,
 	consts map[string]interface{},
 	objs interface{},
@@ -267,16 +267,20 @@ func LoadeBPFSpec(
 	mapReplacements := map[string]*ebpf.Map{}
 	filterByMntNs := false
 
-	if mountnsMap != nil {
-		filterByMntNs = true
-		mapReplacements[MntNsFilterMapName] = mountnsMap
-	}
-
 	if consts == nil {
 		consts = map[string]interface{}{}
 	}
 
+	if mountnsMap != nil {
+		filterByMntNs = true
+		mapReplacements[MntNsFilterMapName] = mountnsMap
+	}
 	consts[FilterByMntNsName] = filterByMntNs
+
+	if cgroupIdMap != nil {
+		mapReplacements[CgroupFilterMapName] = cgroupIdMap
+		consts[FilterByCgroupName] = true
+	}
 
 	if err := spec.RewriteConstants(consts); err != nil {
 		return fmt.Errorf("rewriting constants: %w", err)

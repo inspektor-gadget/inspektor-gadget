@@ -27,11 +27,11 @@ const (
 	BpfKtimeGetBootNsFuncID = 125
 
 	// Constant used to enable filtering by mount namespace inode id in eBPF.
-	// Keep in syn with variable defined in pkg/gadgets/common/mntns_filter.h.
+	// Keep in sync with variable defined in pkg/gadgets/common/mntns_filter.h.
 	FilterByMntNsName = "gadget_filter_by_mntns"
 
 	// Name of the map that stores the mount namespace inode id to filter on.
-	// Keep in syn with name used in pkg/gadgets/common/mntns_filter.h.
+	// Keep in sync with name used in pkg/gadgets/common/mntns_filter.h.
 	MntNsFilterMapName = "gadget_mntns_filter_map"
 
 	// Name of the type that gadgets should use to store an L3 endpoint.
@@ -44,4 +44,12 @@ const (
 
 	// Name of the type to store a mount namespace inode id
 	MntNsIdTypeName = "mnt_ns_id_t"
+
+	// Constant used to enable filtering by cgroup id in eBPF.
+	// Keep in sync with variable defined in pkg/gadgets/common/cgroup_filter.h.
+	FilterByCgroupName = "gadget_filter_by_cgroup"
+
+	// Name of the map that stores the cgroup inode id to filter on.
+	// Keep in sync with name used in pkg/gadgets/common/cgroup_filter.h.
+	CgroupFilterMapName = "gadget_cgroup_filter_map"
 )

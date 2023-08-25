@@ -17,6 +17,7 @@ package localmanager
 import (
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/cilium/ebpf"
@@ -25,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	cgrouphook "github.com/inspektor-gadget/inspektor-gadget/pkg/cgroup-hook"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
@@ -42,6 +44,8 @@ const (
 	Runtimes             = "runtimes"
 	ContainerName        = "containername"
 	Host                 = "host"
+	Systemd              = "show-systemd"
+	SystemdUnit          = "sdunit"
 	DockerSocketPath     = "docker-socketpath"
 	ContainerdSocketPath = "containerd-socketpath"
 	CrioSocketPath       = "crio-socketpath"
@@ -53,14 +57,19 @@ type MountNsMapSetter interface {
 	SetMountNsMap(*ebpf.Map)
 }
 
+type CgroupMapSetter interface {
+	SetCgroupMap(*ebpf.Map)
+}
+
 type Attacher interface {
 	AttachContainer(container *containercollection.Container) error
 	DetachContainer(*containercollection.Container) error
 }
 
 type LocalManager struct {
-	igManager *igmanager.IGManager
-	rc        []*containerutilsTypes.RuntimeConfig
+	igManager      *igmanager.IGManager
+	rc             []*containerutilsTypes.RuntimeConfig
+	cgroupNotifier *cgrouphook.CgroupNotifier
 }
 
 func (l *LocalManager) Name() string {
@@ -127,6 +136,21 @@ func (l *LocalManager) ParamDescs() params.ParamDescs {
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
 		},
+		{
+			Key: Systemd,
+			Description: "Enrich and show systemd unit names. " +
+				"Furthermore only events originating from systemd units are shown. " +
+				"This flag implies --" + Host,
+			DefaultValue: "false",
+			TypeHint:     params.TypeBool,
+		},
+		{
+			Key: SystemdUnit,
+			Description: "Show only data from systemd units with that name. " +
+				"This flag requires --" + Systemd,
+			DefaultValue: "",
+			TypeHint:     params.TypeString,
+		},
 	}
 }
 
@@ -149,12 +173,14 @@ func (l *LocalManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 		return false
 	}
 	_, isMountNsMapSetter := instance.(MountNsMapSetter)
+	_, isCgroupMapSetter := instance.(CgroupMapSetter)
 	_, isAttacher := instance.(Attacher)
 
 	log.Debugf("> canEnrichEvent: %v", canEnrichEvent)
 	log.Debugf("\t> canEnrichEventFromMountNs: %v", canEnrichEventFromMountNs)
 	log.Debugf("\t> canEnrichEventFromNetNs: %v", canEnrichEventFromNetNs)
 	log.Debugf("> isMountNsMapSetter: %v", isMountNsMapSetter)
+	log.Debugf("> isCgroupMapSetter: %v", isCgroupMapSetter)
 	log.Debugf("> isAttacher: %v", isAttacher)
 
 	return isMountNsMapSetter || canEnrichEvent || isAttacher
@@ -214,6 +240,12 @@ partsLoop:
 		log.Debugf("Failed to create container-collection: %s", err)
 	}
 	l.igManager = igManager
+
+	cgroupNotifier, err := cgrouphook.GetCgroupNotifier()
+	if err != nil {
+		return fmt.Errorf("getting cgroup notifier: %w", err)
+	}
+	l.cgroupNotifier = cgroupNotifier
 	return nil
 }
 
@@ -248,8 +280,10 @@ func (l *LocalManager) Instantiate(gadgetContext operators.GadgetContext, gadget
 type localManagerTrace struct {
 	manager         *LocalManager
 	mountnsmap      *ebpf.Map
+	cgroupMap       *ebpf.Map
 	enrichEvents    bool
 	subscriptionKey string
+	sdunit          string
 
 	// Keep a map to attached containers, so we can clean up properly
 	attachedContainers map[*containercollection.Container]struct{}
@@ -263,10 +297,38 @@ func (l *localManagerTrace) Name() string {
 	return OperatorInstanceName
 }
 
+func (l *localManagerTrace) AddCgroup(cgroupPath string, id uint64) {
+	unitName := path.Base(cgroupPath)
+	if l.sdunit != "" && l.sdunit != unitName {
+		return
+	}
+	err := l.cgroupMap.Put(id, uint8(1))
+	if err != nil {
+		log.Warnf("adding cgroup id %d to filter map: %s", id, err)
+	}
+}
+
+func (l *localManagerTrace) RemoveCgroup(cgroupPath string, id uint64) {
+	unitName := path.Base(cgroupPath)
+	if l.sdunit != "" && l.sdunit != unitName {
+		return
+	}
+	err := l.cgroupMap.Delete(id)
+	if err != nil {
+		log.Warnf("removing cgroup id %d from filter map: %s", id, err)
+	}
+}
+
 func (l *localManagerTrace) PreGadgetRun() error {
 	log := l.gadgetCtx.Logger()
 	id := uuid.New()
 	host := l.params.Get(Host).AsBool()
+	systemd := l.params.Get(Systemd).AsBool()
+	l.sdunit = l.params.Get(SystemdUnit).AsString()
+
+	if systemd {
+		host = true
+	}
 
 	// TODO: Improve filtering, see further details in
 	// https://github.com/inspektor-gadget/inspektor-gadget/issues/644.
@@ -296,6 +358,27 @@ func (l *localManagerTrace) PreGadgetRun() error {
 			l.mountnsmap = mountnsmap
 		} else if l.manager.igManager == nil {
 			log.Warn("container-collection isn't available: container enrichment and filtering won't work")
+		}
+	}
+
+	if systemd {
+		if setter, ok := l.gadgetInstance.(CgroupMapSetter); ok {
+			cgroupSetSpec := &ebpf.MapSpec{
+				Name:       "cgroupFilterMap",
+				Type:       ebpf.Hash,
+				KeySize:    8,
+				ValueSize:  1,
+				MaxEntries: 2048,
+			}
+			cgroupMap, err := ebpf.NewMap(cgroupSetSpec)
+			if err != nil {
+				return fmt.Errorf("creating cgroupMap map: %w", err)
+			}
+			l.cgroupMap = cgroupMap
+			setter.SetCgroupMap(l.cgroupMap)
+			log.Debugf("set cgroupmap for gadget")
+		} else {
+			return fmt.Errorf("gadget does not support systemd filtering")
 		}
 	}
 
@@ -370,16 +453,30 @@ func (l *localManagerTrace) PreGadgetRun() error {
 		}
 	}
 
+	if l.cgroupMap != nil {
+		l.manager.cgroupNotifier.Subscribe(l, true)
+		l.manager.cgroupNotifier.Start()
+	}
+
 	return nil
 }
 
 func (l *localManagerTrace) PostGadgetRun() error {
+	if l.cgroupMap != nil {
+		l.manager.cgroupNotifier.Unsubscribe(l)
+		l.manager.cgroupNotifier.Stop()
+		l.cgroupMap.Close()
+		l.cgroupMap = nil
+	}
 	if l.mountnsmap != nil {
 		log.Debugf("calling RemoveMountNsMap()")
 		l.manager.igManager.RemoveMountNsMap(l.subscriptionKey)
 	}
 	if l.subscriptionKey != "" {
 		host := l.params.Get(Host).AsBool()
+		if l.params.Get(Systemd).AsBool() {
+			host = true
+		}
 
 		log.Debugf("calling Unsubscribe()")
 		l.manager.igManager.Unsubscribe(l.subscriptionKey)

@@ -24,6 +24,7 @@ import (
 	cgrouphook "github.com/inspektor-gadget/inspektor-gadget/pkg/cgroup-hook"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/localmanager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
@@ -92,6 +93,10 @@ func (k *SystemdResolver) RemoveCgroup(cgroupPath string, id uint64) {
 }
 
 func (k *SystemdResolver) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
+	enableSystemdParam := params.Get(localmanager.Systemd)
+	if enableSystemdParam != nil && !enableSystemdParam.AsBool() {
+		return nil, nil
+	}
 	return &SystemdResolverInstance{
 		gadgetCtx:      gadgetCtx,
 		manager:        k,
