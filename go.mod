@@ -27,8 +27,8 @@ require (
 	k8s.io/api v0.28.1
 	k8s.io/apiextensions-apiserver v0.28.0
 	k8s.io/apimachinery v0.28.1
-	k8s.io/cli-runtime v0.28.0
-	k8s.io/client-go v0.28.0
+	k8s.io/cli-runtime v0.28.1
+	k8s.io/client-go v0.28.1
 	k8s.io/code-generator v0.28.0
 	sigs.k8s.io/controller-runtime v0.15.1
 	sigs.k8s.io/security-profiles-operator v0.8.0
