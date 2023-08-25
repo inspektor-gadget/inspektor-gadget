@@ -26,7 +26,7 @@ require (
 	google.golang.org/protobuf v1.31.0
 	k8s.io/api v0.28.0
 	k8s.io/apiextensions-apiserver v0.28.0
-	k8s.io/apimachinery v0.28.0
+	k8s.io/apimachinery v0.28.1
 	k8s.io/cli-runtime v0.28.0
 	k8s.io/client-go v0.28.0
 	k8s.io/code-generator v0.28.0
@@ -44,7 +44,6 @@ require (
 	github.com/docker/cli v24.0.5+incompatible
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/godbus/dbus/v5 v5.1.0
-	github.com/gogo/protobuf v1.3.2
 	github.com/google/go-cmp v0.5.9
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v24.0.5+incompatible
@@ -105,6 +104,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.20.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/btree v1.1.2 // indirect
