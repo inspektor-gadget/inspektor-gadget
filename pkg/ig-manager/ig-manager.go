@@ -24,6 +24,7 @@ import (
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	containersmap "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/containers-map"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -73,7 +74,7 @@ func (l *IGManager) RemoveMountNsMap(id string) error {
 	return l.tracerCollection.RemoveTracer(id)
 }
 
-func NewManager(runtimes []*containerutils.RuntimeConfig) (*IGManager, error) {
+func NewManager(runtimes []*containerutilsTypes.RuntimeConfig) (*IGManager, error) {
 	l := &IGManager{}
 
 	var err error
@@ -124,7 +125,7 @@ func (l *IGManager) Close() {
 	}
 }
 
-func isDefaultContainerRuntimeConfig(runtimes []*containerutils.RuntimeConfig) bool {
+func isDefaultContainerRuntimeConfig(runtimes []*containerutilsTypes.RuntimeConfig) bool {
 	if len(runtimes) != len(containerutils.AvailableRuntimes) {
 		return false
 	}

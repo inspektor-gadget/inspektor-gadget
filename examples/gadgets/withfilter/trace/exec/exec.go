@@ -24,7 +24,7 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	execTracer "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/tracer"
 	execTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/exec/types"
 	tracercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/tracer-collection"
@@ -75,7 +75,7 @@ func main() {
 		// Enrich those containers with data from the container
 		// runtime. docker and containerd in this case.
 		containercollection.WithMultipleContainerRuntimesEnrichment(
-			[]*containerutils.RuntimeConfig{
+			[]*containerutilsTypes.RuntimeConfig{
 				{Name: types.RuntimeNameDocker},
 				{Name: types.RuntimeNameContainerd},
 			}),

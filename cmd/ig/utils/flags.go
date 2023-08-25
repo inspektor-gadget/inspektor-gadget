@@ -20,6 +20,7 @@ import (
 
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 
 	log "github.com/sirupsen/logrus"
@@ -46,7 +47,7 @@ type CommonFlags struct {
 
 	// RuntimeConfigs contains the list of the container runtimes to be used
 	// with their specific socket path.
-	RuntimeConfigs []*containerutils.RuntimeConfig
+	RuntimeConfigs []*containerutilsTypes.RuntimeConfig
 
 	// Number of seconds that the gadget will run for
 	Timeout int
@@ -84,7 +85,7 @@ func AddCommonFlags(command *cobra.Command, commonFlags *CommonFlags) {
 				}
 			}
 
-			commonFlags.RuntimeConfigs = append(commonFlags.RuntimeConfigs, &containerutils.RuntimeConfig{
+			commonFlags.RuntimeConfigs = append(commonFlags.RuntimeConfigs, &containerutilsTypes.RuntimeConfig{
 				Name:       runtimeName,
 				SocketPath: socketPath,
 			})

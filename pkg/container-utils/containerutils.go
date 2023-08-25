@@ -31,6 +31,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/docker"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/podman"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -42,12 +43,7 @@ var AvailableRuntimes = []string{
 	types.RuntimeNamePodman.String(),
 }
 
-type RuntimeConfig struct {
-	Name       types.RuntimeName
-	SocketPath string
-}
-
-func NewContainerRuntimeClient(runtime *RuntimeConfig) (runtimeclient.ContainerRuntimeClient, error) {
+func NewContainerRuntimeClient(runtime *containerutilsTypes.RuntimeConfig) (runtimeclient.ContainerRuntimeClient, error) {
 	switch runtime.Name {
 	case types.RuntimeNameDocker:
 		socketPath := runtime.SocketPath
@@ -75,7 +71,7 @@ func NewContainerRuntimeClient(runtime *RuntimeConfig) (runtimeclient.ContainerR
 		return podman.NewPodmanClient(socketPath), nil
 	default:
 		return nil, fmt.Errorf("unknown container runtime: %s (available %s)",
-			runtime, strings.Join(AvailableRuntimes, ", "))
+			runtime.Name, strings.Join(AvailableRuntimes, ", "))
 	}
 }
 

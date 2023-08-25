@@ -27,6 +27,7 @@ import (
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -57,7 +58,7 @@ type Attacher interface {
 
 type LocalManager struct {
 	igManager *igmanager.IGManager
-	rc        []*containerutils.RuntimeConfig
+	rc        []*containerutilsTypes.RuntimeConfig
 }
 
 func (l *LocalManager) Name() string {
@@ -153,7 +154,7 @@ func (l *LocalManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 }
 
 func (l *LocalManager) Init(operatorParams *params.Params) error {
-	rc := make([]*containerutils.RuntimeConfig, 0)
+	rc := make([]*containerutilsTypes.RuntimeConfig, 0)
 	parts := operatorParams.Get(Runtimes).AsStringSlice()
 
 partsLoop:
@@ -183,7 +184,7 @@ partsLoop:
 			}
 		}
 
-		rc = append(rc, &containerutils.RuntimeConfig{
+		rc = append(rc, &containerutilsTypes.RuntimeConfig{
 			Name:       runtimeName,
 			SocketPath: socketPath,
 		})

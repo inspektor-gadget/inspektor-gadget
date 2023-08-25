@@ -39,6 +39,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/cgroups"
 	ociannotations "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/oci-annotations"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runcfanotify"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
@@ -102,7 +103,7 @@ func WithDisableContainerRuntimeWarnings() ContainerCollectionOption {
 // one single call.
 //
 // ContainerCollection.Initialize(WithMultipleContainerRuntimesEnrichment([]*RuntimeConfig)...)
-func WithMultipleContainerRuntimesEnrichment(runtimes []*containerutils.RuntimeConfig) ContainerCollectionOption {
+func WithMultipleContainerRuntimesEnrichment(runtimes []*containerutilsTypes.RuntimeConfig) ContainerCollectionOption {
 	var opts []ContainerCollectionOption
 
 	for _, r := range runtimes {
@@ -130,7 +131,7 @@ func WithMultipleContainerRuntimesEnrichment(runtimes []*containerutils.RuntimeC
 // name because some gadgets need those two values to be set.
 //
 // ContainerCollection.Initialize(WithContainerRuntimeEnrichment(*RuntimeConfig))
-func WithContainerRuntimeEnrichment(runtime *containerutils.RuntimeConfig) ContainerCollectionOption {
+func WithContainerRuntimeEnrichment(runtime *containerutilsTypes.RuntimeConfig) ContainerCollectionOption {
 	return func(cc *ContainerCollection) error {
 		runtimeClient, err := containerutils.NewContainerRuntimeClient(runtime)
 		if err != nil {

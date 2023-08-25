@@ -21,7 +21,7 @@ import (
 	"syscall"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -53,7 +53,7 @@ func main() {
 		// runtime. docker and containerd in this case.
 		// (It's needed to have the name of the container in this example).
 		containercollection.WithMultipleContainerRuntimesEnrichment(
-			[]*containerutils.RuntimeConfig{
+			[]*containerutilsTypes.RuntimeConfig{
 				{Name: types.RuntimeNameDocker},
 				{Name: types.RuntimeNameContainerd},
 			}),

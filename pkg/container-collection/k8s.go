@@ -30,6 +30,7 @@ import (
 
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -61,7 +62,7 @@ func NewK8sClient(nodeName string) (*K8sClient, error) {
 	// this node.
 	list := strings.SplitN(node.Status.NodeInfo.ContainerRuntimeVersion, "://", 2)
 	runtimeClient, err := containerutils.NewContainerRuntimeClient(
-		&containerutils.RuntimeConfig{
+		&containerutilsTypes.RuntimeConfig{
 			Name: types.String2RuntimeName(list[0]),
 		})
 	if err != nil {
