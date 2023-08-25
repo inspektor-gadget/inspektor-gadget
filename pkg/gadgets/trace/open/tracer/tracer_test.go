@@ -115,6 +115,11 @@ func TestOpenTracer(t *testing.T) {
 		validateEvent   func(*testing.T, *utilstest.RunnerInfo, int, []types.Event)
 	}
 
+	normalize_cgroupid := func(e *types.Event) {
+		e.CgroupID = 0
+		e.Sdname = ""
+	}
+
 	for name, test := range map[string]testDefinition{
 		"captures_all_events_with_no_filters_configured": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -137,7 +142,7 @@ func TestOpenTracer(t *testing.T) {
 					Flags:         []string{"O_RDONLY"},
 					Mode:          "----------",
 				}
-			}, nil),
+			}, normalize_cgroupid),
 		},
 		"captures_no_events_with_no_matching_filter": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -172,7 +177,7 @@ func TestOpenTracer(t *testing.T) {
 					Flags:         []string{"O_RDONLY"},
 					Mode:          "----------",
 				}
-			}, nil),
+			}, normalize_cgroupid),
 		},
 		"test_flags_and_mode": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -212,7 +217,7 @@ func TestOpenTracer(t *testing.T) {
 					Mode:          "-rwxrw---x",
 					ModeRaw:       unix.S_IRWXU | unix.S_IRGRP | unix.S_IWGRP | unix.S_IXOTH,
 				}
-			}, nil),
+			}, normalize_cgroupid),
 		},
 		"test_relative_path": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -254,7 +259,7 @@ func TestOpenTracer(t *testing.T) {
 					Mode:          "-rwxrw---x",
 					ModeRaw:       unix.S_IRWXU | unix.S_IRGRP | unix.S_IWGRP | unix.S_IXOTH,
 				}
-			}, nil),
+			}, normalize_cgroupid),
 		},
 		"test_symbolic_links": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -297,7 +302,7 @@ func TestOpenTracer(t *testing.T) {
 					Flags:         []string{"O_RDONLY"},
 					Mode:          "----------",
 				}
-			}, nil),
+			}, normalize_cgroupid),
 		},
 		"test_long_path": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
@@ -343,7 +348,7 @@ func TestOpenTracer(t *testing.T) {
 					Mode:          "-rwxrw---x",
 					ModeRaw:       unix.S_IRWXU | unix.S_IRGRP | unix.S_IWGRP | unix.S_IXOTH,
 				}
-			}, nil),
+			}, normalize_cgroupid),
 		},
 		"event_has_UID_and_GID_of_user_generating_event": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {

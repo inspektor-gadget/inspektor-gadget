@@ -14,6 +14,7 @@ struct event {
 	__u32 uid;
 	__u32 gid;
 	__u64 mntns_id;
+	__u64 cgroup_id;
 	int ret;
 	int flags;
 	__u16 mode;

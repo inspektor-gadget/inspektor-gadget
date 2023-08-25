@@ -132,6 +132,7 @@ static __always_inline int trace_exit(struct trace_event_raw_sys_exit *ctx)
 	event->ret = ret;
 	event->mntns_id = gadget_get_mntns_id();
 	event->timestamp = bpf_ktime_get_boot_ns();
+	event->cgroup_id = bpf_get_current_cgroup_id();
 
 	// Attempting to extract the full file path with symlink resolution
 	if (ret >= 0 && get_full_path) {

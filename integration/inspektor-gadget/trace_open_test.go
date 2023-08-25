@@ -56,6 +56,8 @@ func TestTraceOpen(t *testing.T) {
 				e.Pid = 0
 
 				e.K8s.Node = ""
+				e.WithCgroupID.CgroupID = 0
+				e.WithCgroupID.Sdname = ""
 				// TODO: Verify container runtime and container name
 				e.Runtime.RuntimeName = ""
 				e.Runtime.ContainerName = ""

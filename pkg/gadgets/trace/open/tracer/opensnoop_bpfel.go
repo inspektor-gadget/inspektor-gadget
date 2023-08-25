@@ -19,6 +19,7 @@ type opensnoopEvent struct {
 	Gid       uint32
 	_         [4]byte
 	MntnsId   uint64
+	CgroupId  uint64
 	Ret       int32
 	Flags     int32
 	Mode      uint16

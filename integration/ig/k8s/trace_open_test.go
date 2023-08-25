@@ -66,6 +66,8 @@ func TestTraceOpen(t *testing.T) {
 
 				e.Runtime.ContainerID = ""
 
+				e.WithCgroupID.CgroupID = 0
+				e.WithCgroupID.Sdname = ""
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {
 					e.Runtime.ContainerImageName = ""

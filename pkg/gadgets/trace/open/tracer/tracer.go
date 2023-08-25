@@ -183,6 +183,7 @@ func (t *Tracer) run() {
 				Timestamp: gadgets.WallTimeFromBootTime(bpfEvent.Timestamp),
 			},
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: bpfEvent.MntnsId},
+			WithCgroupID:  eventtypes.WithCgroupID{CgroupID: bpfEvent.CgroupId},
 			Pid:           bpfEvent.Pid,
 			Uid:           bpfEvent.Uid,
 			Gid:           bpfEvent.Gid,
