@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/cilium/ebpf"
+	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 
@@ -27,6 +28,7 @@ import (
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -44,6 +46,7 @@ const (
 	ContainerdSocketPath = "containerd-socketpath"
 	CrioSocketPath       = "crio-socketpath"
 	PodmanSocketPath     = "podman-socketpath"
+	ContainerdNamespace  = "containerd-namespace"
 )
 
 type MountNsMapSetter interface {
@@ -57,7 +60,7 @@ type Attacher interface {
 
 type LocalManager struct {
 	igManager *igmanager.IGManager
-	rc        []*containerutils.RuntimeConfig
+	rc        []*containerutilsTypes.RuntimeConfig
 }
 
 func (l *LocalManager) Name() string {
@@ -101,6 +104,11 @@ func (l *LocalManager) GlobalParamDescs() params.ParamDescs {
 			Key:          PodmanSocketPath,
 			DefaultValue: runtimeclient.PodmanDefaultSocketPath,
 			Description:  "Podman Unix socket path",
+		},
+		{
+			Key:          ContainerdNamespace,
+			DefaultValue: constants.K8sContainerdNamespace,
+			Description:  "Containerd namespace to use",
 		},
 	}
 }
@@ -153,19 +161,21 @@ func (l *LocalManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 }
 
 func (l *LocalManager) Init(operatorParams *params.Params) error {
-	rc := make([]*containerutils.RuntimeConfig, 0)
+	rc := make([]*containerutilsTypes.RuntimeConfig, 0)
 	parts := operatorParams.Get(Runtimes).AsStringSlice()
 
 partsLoop:
 	for _, p := range parts {
 		runtimeName := types.String2RuntimeName(strings.TrimSpace(p))
 		socketPath := ""
+		namespace := ""
 
 		switch runtimeName {
 		case types.RuntimeNameDocker:
 			socketPath = operatorParams.Get(DockerSocketPath).AsString()
 		case types.RuntimeNameContainerd:
 			socketPath = operatorParams.Get(ContainerdSocketPath).AsString()
+			namespace = operatorParams.Get(ContainerdNamespace).AsString()
 		case types.RuntimeNameCrio:
 			socketPath = operatorParams.Get(CrioSocketPath).AsString()
 		case types.RuntimeNamePodman:
@@ -183,10 +193,17 @@ partsLoop:
 			}
 		}
 
-		rc = append(rc, &containerutils.RuntimeConfig{
+		r := &containerutilsTypes.RuntimeConfig{
 			Name:       runtimeName,
 			SocketPath: socketPath,
-		})
+		}
+		if namespace != "" {
+			r.Extra = &containerutilsTypes.ExtraConfig{
+				Namespace: namespace,
+			}
+		}
+
+		rc = append(rc, r)
 	}
 
 	l.rc = rc

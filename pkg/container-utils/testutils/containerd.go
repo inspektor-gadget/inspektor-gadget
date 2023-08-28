@@ -26,14 +26,13 @@ import (
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
+	"github.com/containerd/containerd/pkg/cri/constants"
 	"github.com/containerd/containerd/snapshots"
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 const (
-	// TODO containerd currently only works on k8s.io namespace
-	defaultNamespace = "k8s.io"
-	taskKillTimeout  = 3 * time.Second
+	taskKillTimeout = 3 * time.Second
 )
 
 func NewContainerdContainer(name, cmd string, options ...Option) Container {
@@ -79,7 +78,11 @@ func (c *ContainerdContainer) initClientAndCtx() error {
 		return fmt.Errorf("creating a client: %w", err)
 	}
 
-	c.nsCtx = namespaces.WithNamespace(c.options.ctx, defaultNamespace)
+	namespace := constants.K8sContainerdNamespace
+	if c.options.namespace != "" {
+		namespace = c.options.namespace
+	}
+	c.nsCtx = namespaces.WithNamespace(c.options.ctx, namespace)
 	return nil
 }
 

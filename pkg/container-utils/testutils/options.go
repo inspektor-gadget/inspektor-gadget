@@ -28,6 +28,7 @@ type containerOptions struct {
 	image          string
 	imageTag       string
 	seccompProfile string
+	namespace      string
 	wait           bool
 	logs           bool
 	removal        bool
@@ -69,6 +70,13 @@ func WithImageTag(tag string) Option {
 func WithSeccompProfile(profile string) Option {
 	return func(opts *containerOptions) {
 		opts.seccompProfile = profile
+	}
+}
+
+// WithNamespace sets the namespace of the container runtime
+func WithNamespace(namespace string) Option {
+	return func(opts *containerOptions) {
+		opts.namespace = namespace
 	}
 }
 

@@ -19,13 +19,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/stretchr/testify/require"
+
+	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 func newRuntimeClient(t *testing.T, runtime types.RuntimeName, sPath string) (runtimeclient.ContainerRuntimeClient, error) {
-	config := &RuntimeConfig{
+	config := &containerutilsTypes.RuntimeConfig{
 		Name:       runtime,
 		SocketPath: sPath,
 	}

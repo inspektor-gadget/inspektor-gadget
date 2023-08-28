@@ -26,6 +26,7 @@ import (
 	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -83,7 +84,7 @@ func TestRuntimeClientInterface(t *testing.T) {
 			}
 
 			// Initialize runtime client
-			config := &containerutils.RuntimeConfig{
+			config := &containerutilsTypes.RuntimeConfig{
 				Name: runtime,
 			}
 			rc, err := containerutils.NewContainerRuntimeClient(config)

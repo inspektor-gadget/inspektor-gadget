@@ -23,7 +23,7 @@ import (
 	"time"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
-	containerutils "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils"
+	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 
 	// Yes, not the better naming for these two.
 	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
@@ -136,7 +136,7 @@ func TestClose(t *testing.T) {
 	initialFdList := currentFdList(t)
 
 	for i := 0; i < 4; i++ {
-		igManager, err := NewManager([]*containerutils.RuntimeConfig{{Name: "docker"}})
+		igManager, err := NewManager([]*containerutilsTypes.RuntimeConfig{{Name: "docker"}})
 		if err != nil {
 			t.Fatalf("Failed to start ig manager: %s", err)
 		}
