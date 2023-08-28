@@ -17,14 +17,13 @@
 package tracer
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -37,7 +36,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang processCollector ./bpf/process-collector.bpf.c -- -I../../../../${TARGET} -I ../../../common/ -Werror -O2 -g -c -x c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type process_entry processCollector ./bpf/process-collector.bpf.c -- -I../../../../${TARGET} -I ../../../common/ -Werror -O2 -g -c -x c
 
 type Config struct {
 	MountnsMap  *ebpf.Map
@@ -94,38 +93,22 @@ func runeBPFCollector(config *Config, enricher gadgets.DataEnricherByMntNs) ([]*
 
 	events := []*processcollectortypes.Event{}
 
-	scanner := bufio.NewScanner(strings.NewReader(string(buf)))
-	for scanner.Scan() {
-		var command string
-		var tgid, pid, parentPid int
-		var mntnsid uint64
-		var uid, gid uint32
+	entrySize := int(unsafe.Sizeof(processCollectorProcessEntry{}))
 
-		text := scanner.Text()
-		matchedElems, err := fmt.Sscanf(text, "%d %d %d %d %d %d", &tgid, &pid, &parentPid, &mntnsid, &uid, &gid)
-		if err != nil {
-			return nil, fmt.Errorf("parsing process information: %w", err)
-		}
-		if matchedElems != 6 {
-			return nil, fmt.Errorf("parsing process information, expected 4 integers had %d", matchedElems)
-		}
-		textSplit := strings.SplitN(text, " ", 7)
-		if len(textSplit) != 7 {
-			return nil, fmt.Errorf("parsing process information, expected 5 matched elements had %d", len(textSplit))
-		}
-		command = textSplit[6]
+	for i := 0; i < len(buf)/entrySize; i++ {
+		entry := (*processCollectorProcessEntry)(unsafe.Pointer(&buf[i*entrySize]))
 
 		event := processcollectortypes.Event{
 			Event: eventtypes.Event{
 				Type: eventtypes.NORMAL,
 			},
-			Pid:           tgid,
-			Tid:           pid,
-			Uid:           uid,
-			Gid:           gid,
-			Command:       command,
-			ParentPid:     parentPid,
-			WithMountNsID: eventtypes.WithMountNsID{MountNsID: mntnsid},
+			Pid:           int(entry.Tgid),
+			Tid:           int(entry.Pid),
+			Uid:           entry.Uid,
+			Gid:           entry.Gid,
+			Command:       gadgets.FromCString(entry.Comm[:]),
+			ParentPid:     int(entry.ParentPid),
+			WithMountNsID: eventtypes.WithMountNsID{MountNsID: entry.MntnsId},
 		}
 
 		if enricher != nil {

@@ -16,6 +16,19 @@
 
 const volatile bool show_threads = false;
 
+struct process_entry {
+	__u32 tgid;
+	__u32 pid;
+	__u32 parent_pid;
+	__u32 uid;
+	__u32 gid;
+	__u64 mntns_id;
+	__u8 comm[TASK_COMM_LEN];
+};
+
+// we need this to make sure the compiler doesn't remove our struct
+const struct process_entry *unused __attribute__((unused));
+
 SEC("iter/task")
 int ig_snap_proc(struct bpf_iter__task *ctx)
 {
@@ -25,6 +38,8 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	struct task_struct *task = ctx->task;
 	struct task_struct *parent;
 	pid_t parent_pid;
+
+	struct process_entry process = {};
 
 	if (task == NULL)
 		return 0;
@@ -46,9 +61,15 @@ int ig_snap_proc(struct bpf_iter__task *ctx)
 	__u32 uid = task->cred->uid.val;
 	__u32 gid = task->cred->gid.val;
 
-	BPF_SEQ_PRINTF(seq, "%d %d %d %llu %d %d %s\n", task->tgid, task->pid,
-		       parent_pid, mntns_id, uid, gid, task->comm);
+	process.tgid = task->tgid;
+	process.pid = task->pid;
+	process.parent_pid = parent_pid;
+	process.mntns_id = mntns_id;
+	process.uid = uid;
+	process.gid = gid;
+	__builtin_memcpy(process.comm, task->comm, TASK_COMM_LEN);
 
+	bpf_seq_write(seq, &process, sizeof(process));
 	return 0;
 }
 
