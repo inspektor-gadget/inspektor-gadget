@@ -130,6 +130,7 @@ func TestSnapshotSocket(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -139,11 +140,11 @@ func TestSnapshotSocket(t *testing.T) {
 			})
 
 			tracer, err := NewTracer(c.proto)
-			require.ErrorIsf(t, nil, err, "creating tracer: %v", err)
+			require.NoError(t, err, "creating tracer: %v", err)
 			defer tracer.CloseIters()
 
-			evs, err := tracer.RunCollector(uint32(runner.Info.Tid), "", "", "")
-			require.ErrorIsf(t, nil, err, "running collector: %v", err)
+			evs, err := tracer.runCollector(uint32(runner.Info.Tid), runner.Info.NetworkNsID)
+			require.NoError(t, err, "running collector: %v", err)
 
 			events := make([]types.Event, len(evs))
 			for i, ev := range evs {
