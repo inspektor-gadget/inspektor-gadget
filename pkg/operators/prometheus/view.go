@@ -16,7 +16,6 @@ package prometheus
 
 import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 )
 
 // histogramViewFunc returns a view function for a histogram instrument.
@@ -34,7 +33,7 @@ func (p *Prometheus) histogramViewFunc() sdkmetric.View {
 			Name:        instrument.Name,
 			Description: instrument.Description,
 			Unit:        instrument.Unit,
-			Aggregation: aggregation.ExplicitBucketHistogram{
+			Aggregation: sdkmetric.AggregationExplicitBucketHistogram{
 				Boundaries: bc.buckets(),
 			},
 		}, true

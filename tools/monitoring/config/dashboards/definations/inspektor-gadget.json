@@ -83,7 +83,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by(le) (dns_latency_bucket)",
+          "expr": "sum by(le) (dns_latency_nanoseconds_bucket)",
           "format": "heatmap",
           "legendFormat": "__auto",
           "range": true,
