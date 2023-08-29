@@ -69,4 +69,23 @@ pod "test-pod" deleted
 
 ### With `ig`
 
-TODO
+Let's start the gadget in a terminal:
+
+```bash
+$ sudo ig trace oomkill -c test-trace-oomkill
+RUNTIME.CONTAINERNAME                                                                           KPID       KCOMM            PAGES               TPID       TCOMM
+```
+
+Run a container that will be killed by the OOM killer:
+
+```bash
+$ docker run --name test-trace-oomkill -m 512M -it --rm busybox tail /dev/zero
+```
+
+The tool will show the killed process:
+
+```bash
+$ sudo ig trace oomkill -c test-trace-oomkill
+RUNTIME.CONTAINERNAME                                                                           KPID       KCOMM            PAGES               TPID       TCOMM
+test-trace-oomkill                                                                              85862      tail             262144              85862      tail
+```
