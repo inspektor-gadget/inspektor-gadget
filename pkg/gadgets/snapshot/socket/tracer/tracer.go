@@ -107,7 +107,7 @@ func (t *Tracer) runCollector(pid uint32, netns uint64) ([]*socketcollectortypes
 			for i := 0; i < len(buf)/entrySize; i++ {
 				entry := (*socketEntry)(unsafe.Pointer(&buf[i*entrySize]))
 
-				proto := eventtypes.ProtoToString(entry.Proto)
+				proto := gadgets.ProtoString(int(entry.Proto))
 				status, err := parseStatus(proto, entry.State)
 				if err != nil {
 					return err
