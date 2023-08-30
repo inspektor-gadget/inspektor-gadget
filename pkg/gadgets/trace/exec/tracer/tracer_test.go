@@ -195,6 +195,31 @@ func TestExecTracer(t *testing.T) {
 				require.Equal(t, events[0].Cwd, cwd, "Event has bad cwd")
 			},
 		},
+		"event_failed": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+				}
+			},
+			generateEvent: generateFailedEvent,
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
+				require.Len(t, events, 1, "One event expected")
+				require.Equal(t, []string{"/bin/foobar"}, events[0].Args, "Event has bad args")
+				require.NotEqual(t, int(0), events[0].Retval, "Event returns 0, while it should return an error code")
+			},
+		},
+		"event_failed_ignored": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap:   utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					IgnoreErrors: true,
+				}
+			},
+			generateEvent: generateFailedEvent,
+			validateEvent: func(t *testing.T, info *utilstest.RunnerInfo, _ int, events []types.Event) {
+				require.Len(t, events, 0, "Zero events expected")
+			},
+		},
 	} {
 		test := test
 
@@ -320,4 +345,12 @@ func generateEvent() (int, error) {
 	}
 
 	return cmd.Process.Pid, nil
+}
+
+// Function to generate a failed event.
+// Return 0 as no process is created.
+func generateFailedEvent() (int, error) {
+	// Ignore error since we want to capture a failed event
+	exec.Command("/bin/foobar").Run()
+	return 0, nil
 }

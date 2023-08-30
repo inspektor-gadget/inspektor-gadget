@@ -36,8 +36,9 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang -type event execsnoopWithCwd ./bpf/execsnoop.bpf.c -- -DWITH_CWD -I./bpf/ -I../../../../${TARGET} -I ../../../common/
 
 type Config struct {
-	MountnsMap *ebpf.Map
-	GetCwd     bool
+	MountnsMap   *ebpf.Map
+	GetCwd       bool
+	IgnoreErrors bool
 }
 
 type Tracer struct {
@@ -100,7 +101,11 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
-	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, nil, &t.objs); err != nil {
+	consts := map[string]interface{}{
+		"ignore_failed": t.config.IgnoreErrors,
+	}
+
+	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
@@ -196,6 +201,7 @@ func (t *Tracer) run() {
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	t.config.GetCwd = gadgetCtx.GadgetParams().Get(ParamCwd).AsBool()
+	t.config.IgnoreErrors = gadgetCtx.GadgetParams().Get(ParamIgnoreErrors).AsBool()
 
 	defer t.close()
 	if err := t.install(); err != nil {
