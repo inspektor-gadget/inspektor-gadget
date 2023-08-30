@@ -18,10 +18,15 @@ package tracer
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"net/netip"
 	"time"
 	"unsafe"
+
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -31,6 +36,9 @@ import (
 )
 
 //go:generate bash -c "source ../../../internal/networktracer/clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
+
+//go:embed main.wasm
+var mainWasm []byte
 
 const (
 	BPFProgName     = "ig_trace_dns"
@@ -44,6 +52,8 @@ type Tracer struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	wasmModule api.Module
 }
 
 func NewTracer() (*Tracer, error) {
@@ -179,24 +189,27 @@ var rCodeNames = map[uint8]string{
 
 // parseLabelSequence parses a label sequence into a string with dots.
 // See https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.2
-func parseLabelSequence(sample []byte) (ret string) {
-	sampleBounded := make([]byte, MaxDNSName)
-	copy(sampleBounded, sample)
-
-	for i := 0; i < MaxDNSName; i++ {
-		length := int(sampleBounded[i])
-		if length == 0 {
-			break
-		}
-		if i+1+length < MaxDNSName {
-			ret += string(sampleBounded[i+1:i+1+length]) + "."
-		}
-		i += length
+func (t *Tracer) parseLabelSequence(sample []byte) string {
+	allocFn := t.wasmModule.ExportedFunction("alloc")
+	bufIn, err := allocFn.Call(context.Background(), uint64(MaxDNSName))
+	if err != nil {
+		return fmt.Errorf("calling wasm function: %w", err).Error()
 	}
-	return ret
+	t.wasmModule.Memory().Write(uint32(bufIn[0]), sample)
+
+	parseLabelSequenceFn := t.wasmModule.ExportedFunction("parseLabelSequence")
+	results, err := parseLabelSequenceFn.Call(context.Background(), bufIn[0], uint64(len(sample)))
+	if err != nil {
+		return fmt.Errorf("calling wasm function: %w", err).Error()
+	}
+	str, ok := t.wasmModule.Memory().Read(uint32(results[0]>>32), uint32(results[0]))
+	if !ok {
+		return fmt.Errorf("reading wasm memory: %w", err).Error()
+	}
+	return string(str)
 }
 
-func bpfEventToDNSEvent(bpfEvent *dnsEventT, netns uint64) (*types.Event, error) {
+func (t *Tracer) bpfEventToDNSEvent(bpfEvent *dnsEventT, netns uint64) (*types.Event, error) {
 	event := types.Event{
 		Event: eventtypes.Event{
 			Type: eventtypes.NORMAL,
@@ -229,7 +242,7 @@ func bpfEventToDNSEvent(bpfEvent *dnsEventT, netns uint64) (*types.Event, error)
 	event.Protocol = gadgets.ProtoString(int(bpfEvent.Proto))
 
 	// Convert name into a string with dots
-	event.DNSName = parseLabelSequence(bpfEvent.Name[:])
+	event.DNSName = t.parseLabelSequence(bpfEvent.Name[:])
 
 	// Parse the packet type
 	event.PktType = "UNKNOWN"
@@ -296,6 +309,18 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 }
 
 func (t *Tracer) install() error {
+	// Load wasm module for DNS name parsing
+	ctx := context.Background()
+	r := wazero.NewRuntime(ctx)
+	wasi_snapshot_preview1.MustInstantiate(ctx, r)
+
+	mod, err := r.Instantiate(ctx, mainWasm)
+	if err != nil {
+		return fmt.Errorf("instantiating wasm module: %w", err)
+	}
+
+	t.wasmModule = mod
+
 	spec, err := loadDns()
 	if err != nil {
 		return fmt.Errorf("loading asset: %w", err)
@@ -310,7 +335,7 @@ func (t *Tracer) install() error {
 				len(rawSample), expected)
 		}
 
-		event, err := bpfEventToDNSEvent(bpfEvent, netns)
+		event, err := t.bpfEventToDNSEvent(bpfEvent, netns)
 		if err != nil {
 			return nil, err
 		}

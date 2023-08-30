@@ -54,6 +54,7 @@ require (
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635
+	github.com/tetratelabs/wazero v1.5.0
 	github.com/tklauser/numcpus v0.6.1
 	go.opentelemetry.io/otel v1.17.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.40.0
