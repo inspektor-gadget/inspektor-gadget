@@ -34,7 +34,8 @@ struct {
 } events SEC(".maps");
 
 static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
-					       const struct sk_buff *skb)
+					       const struct sk_buff *skb,
+					       enum type type)
 {
 	struct inet_sock *sockp;
 	struct task_struct *task;
@@ -53,6 +54,7 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 	pid_tgid = bpf_get_current_pid_tgid();
 	uid_gid = bpf_get_current_uid_gid();
 
+	event.type = type;
 	event.timestamp = bpf_ktime_get_boot_ns();
 	event.af = BPF_CORE_READ(sk, __sk_common.skc_family);
 	event.state = BPF_CORE_READ(sk, __sk_common.skc_state);
@@ -71,9 +73,11 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 	// we don't have access to.
 	// skb->transport_header is not set: skb_transport_header_was_set() == false.
 	// Instead, we have to read the TCP flags from the TCP control buffer.
-	tcb = (struct tcp_skb_cb *)&(skb->cb[0]);
-	bpf_probe_read_kernel(&event.tcpflags, sizeof(event.tcpflags),
-			      &tcb->tcp_flags);
+	if (skb) {
+		tcb = (struct tcp_skb_cb *)&(skb->cb[0]);
+		bpf_probe_read_kernel(&event.tcpflags, sizeof(event.tcpflags),
+				      &tcb->tcp_flags);
+	}
 
 	BPF_CORE_READ_INTO(&event.dport, sk, __sk_common.skc_dport);
 	if (event.dport == 0)
@@ -138,7 +142,13 @@ int ig_tcpretrans(struct trace_event_raw_tcp_event_sk_skb *ctx)
 	const struct sk_buff *skb = ctx->skbaddr;
 	const struct sock *sk = ctx->skaddr;
 
-	return __trace_tcp_retrans(ctx, sk, skb);
+	return __trace_tcp_retrans(ctx, sk, skb, RETRANS);
+}
+
+SEC("kprobe/tcp_send_loss_probe")
+int BPF_KPROBE(ig_tcplossprobe, struct sock *sk)
+{
+	return __trace_tcp_retrans(ctx, sk, NULL, LOSS);
 }
 
 char LICENSE[] SEC("license") = "GPL";
