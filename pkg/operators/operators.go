@@ -234,6 +234,10 @@ func (e Operators) Instantiate(gadgetContext GadgetContext, trace any, perGadget
 		if err != nil {
 			return nil, fmt.Errorf("start trace on operator %q: %w", operator.Name(), err)
 		}
+		if oi == nil {
+			continue
+		}
+
 		operatorInstances = append(operatorInstances, oi)
 	}
 

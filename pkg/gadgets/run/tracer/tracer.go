@@ -60,6 +60,20 @@ type Config struct {
 	MountnsMap   *ebpf.Map
 }
 
+type endpointType int
+
+const (
+	U endpointType = iota
+	L3
+	L4
+)
+
+type endpointDef struct {
+	name  string
+	start uint32
+	typ   endpointType
+}
+
 type Tracer struct {
 	config        *Config
 	eventCallback func(*types.Event)
@@ -67,12 +81,18 @@ type Tracer struct {
 	spec       *ebpf.CollectionSpec
 	collection *ebpf.Collection
 
-	valueStruct       *btf.Struct
-	ringbufReader     *ringbuf.Reader
-	perfReader        *perf.Reader
+	valueStruct   *btf.Struct
+	ringbufReader *ringbuf.Reader
+	perfReader    *perf.Reader
+
 	printMapValueSize uint32
 
 	links []link.Link
+
+	printMap       *ebpf.MapSpec
+	endpointDefs   []endpointDef
+	mntNsIdstart   uint32
+	mountNsIdFound bool
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
@@ -82,7 +102,34 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 	return tracer, nil
 }
 
+func (t *Tracer) HasEndpoints() bool {
+	return len(t.endpointDefs) > 0
+}
+
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	params := gadgetCtx.GadgetParams()
+	if len(params.Get(ProgramContent).AsBytes()) != 0 {
+		t.config.ProgContent = params.Get(ProgramContent).AsBytes()
+	} else {
+		args := gadgetCtx.Args()
+		if len(args) != 1 {
+			return fmt.Errorf("expected exactly one argument, got %d", len(args))
+		}
+
+		param := args[0]
+		t.config.ProgLocation = param
+		// Download the BPF module
+		byobEbpfPackage, err := t.getByobEbpfPackage()
+		if err != nil {
+			return fmt.Errorf("download byob ebpf package: %w", err)
+		}
+		t.config.ProgContent = byobEbpfPackage.ProgramFileBytes
+	}
+
+	if err := t.initTracer(gadgetCtx); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -130,7 +177,7 @@ func (t *Tracer) Stop() {
 	}
 }
 
-func (t *Tracer) installTracer() error {
+func (t *Tracer) initTracer(gadgetCtx gadgets.GadgetContext) error {
 	// Load the spec
 	var err error
 	t.spec, err = loadSpec(t.config.ProgContent)
@@ -138,29 +185,90 @@ func (t *Tracer) installTracer() error {
 		return err
 	}
 
-	mapReplacements := map[string]*ebpf.Map{}
-	consts := map[string]interface{}{}
-
-	printMap, err := getPrintMap(t.spec)
+	t.printMap, err = getPrintMap(t.spec)
 	if err != nil {
 		return fmt.Errorf("get print map: %w", err)
 	}
 
-	var ok bool
-	t.valueStruct, ok = printMap.Value.(*btf.Struct)
-	if !ok {
-		return fmt.Errorf("BPF map %q does not have BTF info for values", printMap.Name)
+	// Almost same hack as in bumblebee/pkg/loader/loader.go
+	t.printMapValueSize = t.printMap.ValueSize
+	switch t.printMap.Type {
+	case ebpf.RingBuf:
+		t.printMap.ValueSize = 0
+	case ebpf.PerfEventArray:
+		t.printMap.KeySize = 4
+		t.printMap.ValueSize = 4
 	}
 
-	// Almost same hack as in bumblebee/pkg/loader/loader.go
-	t.printMapValueSize = printMap.ValueSize
-	switch printMap.Type {
-	case ebpf.RingBuf:
-		printMap.ValueSize = 0
-	case ebpf.PerfEventArray:
-		printMap.KeySize = 4
-		printMap.ValueSize = 4
+	var ok bool
+	t.valueStruct, ok = t.printMap.Value.(*btf.Struct)
+	if !ok {
+		return fmt.Errorf("BPF map %q does not have BTF info for values", t.printMap.Name)
 	}
+
+	typ := t.valueStruct
+
+	// The same same data structure is always sent, so we can precalculate the offsets for
+	// different fields like mount ns id, endpoints, etc.
+	for _, member := range typ.Members {
+		switch member.Type.TypeName() {
+		case gadgets.MntNsIdTypeName:
+			typDef, ok := member.Type.(*btf.Typedef)
+			if !ok {
+				continue
+			}
+
+			underlying, err := getUnderlyingType(typDef)
+			if err != nil {
+				continue
+			}
+
+			intM, ok := underlying.(*btf.Int)
+			if !ok {
+				continue
+			}
+
+			if intM.Size != 8 {
+				continue
+			}
+
+			t.mntNsIdstart = member.Offset.Bytes()
+			t.mountNsIdFound = true
+		case gadgets.L3EndpointTypeName:
+			typ, ok := member.Type.(*btf.Struct)
+			if !ok {
+				gadgetCtx.Logger().Warn("%s is not a struct", member.Name)
+				continue
+			}
+			if typ.Size != uint32(unsafe.Sizeof(l3EndpointT{})) {
+				gadgetCtx.Logger().Warn("%s is not the expected size", member.Name)
+				continue
+			}
+			e := endpointDef{name: member.Name, start: member.Offset.Bytes(), typ: L3}
+			t.endpointDefs = append(t.endpointDefs, e)
+		case gadgets.L4EndpointTypeName:
+			typ, ok := member.Type.(*btf.Struct)
+			if !ok {
+				gadgetCtx.Logger().Warn("%s is not a struct", member.Name)
+				continue
+			}
+			if typ.Size != uint32(unsafe.Sizeof(l4EndpointT{})) {
+				gadgetCtx.Logger().Warn("%s is not the expected size", member.Name)
+				continue
+			}
+			e := endpointDef{name: member.Name, start: member.Offset.Bytes(), typ: L4}
+			t.endpointDefs = append(t.endpointDefs, e)
+		}
+	}
+
+	return nil
+}
+
+func (t *Tracer) installTracer() error {
+	var err error
+
+	mapReplacements := map[string]*ebpf.Map{}
+	consts := map[string]interface{}{}
 
 	if t.config.MountnsMap != nil {
 		for _, m := range t.spec.Maps {
@@ -185,12 +293,12 @@ func (t *Tracer) installTracer() error {
 		return fmt.Errorf("create BPF collection: %w", err)
 	}
 
-	m := t.collection.Maps[printMap.Name]
+	m := t.collection.Maps[t.printMap.Name]
 	switch m.Type() {
 	case ebpf.RingBuf:
-		t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[printMap.Name])
+		t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[t.printMap.Name])
 	case ebpf.PerfEventArray:
-		t.perfReader, err = perf.NewReader(t.collection.Maps[printMap.Name], gadgets.PerfBufferPages*os.Getpagesize())
+		t.perfReader, err = perf.NewReader(t.collection.Maps[t.printMap.Name], gadgets.PerfBufferPages*os.Getpagesize())
 	}
 	if err != nil {
 		return fmt.Errorf("create BPF map reader: %w", err)
@@ -224,80 +332,6 @@ func (t *Tracer) installTracer() error {
 }
 
 func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
-	typ := t.valueStruct
-
-	var mntNsIdstart uint32
-	mountNsIdFound := false
-
-	type endpointType int
-
-	const (
-		U endpointType = iota
-		L3
-		L4
-	)
-
-	type endpointDef struct {
-		name  string
-		start uint32
-		typ   endpointType
-	}
-
-	endpointDefs := []endpointDef{}
-
-	// The same same data structure is always sent, so we can precalculate the offsets for
-	// different fields like mount ns id, endpoints, etc.
-	for _, member := range typ.Members {
-		switch member.Type.TypeName() {
-		case gadgets.MntNsIdTypeName:
-			typDef, ok := member.Type.(*btf.Typedef)
-			if !ok {
-				continue
-			}
-
-			underlying, err := getUnderlyingType(typDef)
-			if err != nil {
-				continue
-			}
-
-			intM, ok := underlying.(*btf.Int)
-			if !ok {
-				continue
-			}
-
-			if intM.Size != 8 {
-				continue
-			}
-
-			mntNsIdstart = member.Offset.Bytes()
-			mountNsIdFound = true
-		case gadgets.L3EndpointTypeName:
-			typ, ok := member.Type.(*btf.Struct)
-			if !ok {
-				gadgetCtx.Logger().Warn("%s is not a struct", member.Name)
-				continue
-			}
-			if typ.Size != uint32(unsafe.Sizeof(l3EndpointT{})) {
-				gadgetCtx.Logger().Warn("%s is not the expected size", member.Name)
-				continue
-			}
-			e := endpointDef{name: member.Name, start: member.Offset.Bytes(), typ: L3}
-			endpointDefs = append(endpointDefs, e)
-		case gadgets.L4EndpointTypeName:
-			typ, ok := member.Type.(*btf.Struct)
-			if !ok {
-				gadgetCtx.Logger().Warn("%s is not a struct", member.Name)
-				continue
-			}
-			if typ.Size != uint32(unsafe.Sizeof(l4EndpointT{})) {
-				gadgetCtx.Logger().Warn("%s is not the expected size", member.Name)
-				continue
-			}
-			e := endpointDef{name: member.Name, start: member.Offset.Bytes(), typ: L4}
-			endpointDefs = append(endpointDefs, e)
-		}
-	}
-
 	for {
 		var rawSample []byte
 
@@ -341,14 +375,14 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 
 		// get mnt_ns_id for enriching the event
 		mtn_ns_id := uint64(0)
-		if mountNsIdFound {
-			mtn_ns_id = *(*uint64)(unsafe.Pointer(&data[mntNsIdstart]))
+		if t.mountNsIdFound {
+			mtn_ns_id = *(*uint64)(unsafe.Pointer(&data[t.mntNsIdstart]))
 		}
 
 		l3endpoints := []types.L3Endpoint{}
 		l4endpoints := []types.L4Endpoint{}
 
-		for _, endpoint := range endpointDefs {
+		for _, endpoint := range t.endpointDefs {
 			endpointC := (*l3EndpointT)(unsafe.Pointer(&data[endpoint.start]))
 			var size int
 			switch endpointC.version {
@@ -405,25 +439,6 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
-	params := gadgetCtx.GadgetParams()
-	if len(params.Get(ProgramContent).AsBytes()) != 0 {
-		t.config.ProgContent = params.Get(ProgramContent).AsBytes()
-	} else {
-		args := gadgetCtx.Args()
-		if len(args) != 1 {
-			return fmt.Errorf("expected exactly one argument, got %d", len(args))
-		}
-
-		param := args[0]
-		t.config.ProgLocation = param
-		// Download the BPF module
-		byobEbpfPackage, err := t.getByobEbpfPackage()
-		if err != nil {
-			return fmt.Errorf("download byob ebpf package: %w", err)
-		}
-		t.config.ProgContent = byobEbpfPackage.ProgramFileBytes
-	}
-
 	if err := t.installTracer(); err != nil {
 		t.Stop()
 		return fmt.Errorf("install tracer: %w", err)

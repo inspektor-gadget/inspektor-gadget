@@ -60,6 +60,9 @@ func (k *KubeIPResolver) Dependencies() []string {
 
 func (k *KubeIPResolver) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	_, hasIPResolverInterface := gadget.EventPrototype().(KubeIPResolverInterface)
+
+	//fmt.Printf("CanOperateOn: %s, %v\n", gadget.Name(), hasIPResolverInterface)
+
 	return hasIPResolverInterface
 }
 
@@ -77,7 +80,16 @@ func (k *KubeIPResolver) Close() error {
 	return nil
 }
 
+type HasEndpointsI interface {
+	HasEndpoints() bool
+}
+
 func (k *KubeIPResolver) Instantiate(gadgetCtx operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
+	// Do not instantiate the operator if the gadget does not have endpoints
+	if i, ok := gadgetInstance.(HasEndpointsI); ok && !i.HasEndpoints() {
+		return nil, nil
+	}
+
 	return &KubeIPResolverInstance{
 		gadgetCtx:      gadgetCtx,
 		manager:        k,
