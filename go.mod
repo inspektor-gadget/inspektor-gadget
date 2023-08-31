@@ -64,7 +64,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/cri-api v0.28.1
 	oras.land/oras-go v1.2.3
-	oras.land/oras-go/v2 v2.2.1
+	oras.land/oras-go/v2 v2.3.0
 )
 
 require (
