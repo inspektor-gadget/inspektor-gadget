@@ -16,6 +16,7 @@ package tracer
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"reflect"
@@ -26,6 +27,9 @@ import (
 	"github.com/cilium/ebpf/btf"
 	"gopkg.in/yaml.v3"
 	k8syaml "sigs.k8s.io/yaml"
+
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	columns_json "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/json"
@@ -41,6 +45,7 @@ import (
 const (
 	ProgramContent  = "prog"
 	ParamDefinition = "definition"
+	ParamWasm       = "wasm"
 	printMapPrefix  = "print_"
 )
 
@@ -75,6 +80,12 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			Key:         ParamDefinition,
 			Title:       "Gadget definition",
 			Description: "Gadget definition in yaml format",
+			TypeHint:    params.TypeBytes,
+		},
+		{
+			Key:         ParamWasm,
+			Title:       "Wasm module",
+			Description: "Wasm user space module",
 			TypeHint:    params.TypeBytes,
 		},
 	}
@@ -270,7 +281,109 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 	if err := cols.AddFields(fields, base); err != nil {
 		return nil, fmt.Errorf("adding fields: %w", err)
 	}
+
+	if err := g.AddWasmColumns(params, cols); err != nil {
+		return nil, fmt.Errorf("adding wasm columns: %w", err)
+	}
+
 	return cols, nil
+}
+
+func (g *GadgetDesc) AddWasmColumns(params *params.Params, cols *columns.Columns[types.Event]) error {
+	wasmProg := params.Get(ParamWasm).AsBytes()
+
+	// Choose the context to use for function calls.
+	ctx := context.Background()
+
+	// Create a new WebAssembly Runtime.
+	r := wazero.NewRuntime(ctx)
+	// TODO: When to close?
+	//defer r.Close(ctx) // This closes everything this Runtime created.
+
+	// Note: testdata/greet.go doesn't use WASI, but TinyGo needs it to
+	// implement functions such as panic.
+	wasi_snapshot_preview1.MustInstantiate(ctx, r)
+
+	// Instantiate a WebAssembly module that imports the "log" function defined
+	// in "env" and exports "memory" and functions we'll use in this example.
+	mod, err := r.Instantiate(ctx, wasmProg)
+	if err != nil {
+		return fmt.Errorf("instantiating module: %w", err)
+	}
+
+	// These are undocumented, but exported. See tinygo-org/tinygo#2788
+	malloc := mod.ExportedFunction("malloc")
+	free := mod.ExportedFunction("free")
+
+	defs := mod.ExportedFunctionDefinitions()
+
+	for name, _ := range defs {
+		if !strings.HasPrefix(name, "column_") {
+			continue
+		}
+
+		f := mod.ExportedFunction(name)
+
+		attrs := columns.Attributes{
+			Name:    strings.TrimPrefix(name, "column_"),
+			Width:   50,
+			Visible: true,
+			Order:   2000,
+		}
+
+		err := cols.AddColumn(attrs, func(ev *types.Event) string {
+			data := ev.RawData
+			lenData := uint64(len(data))
+
+			results, err := malloc.Call(ctx, lenData)
+			if err != nil {
+				fmt.Printf("error: %v\n", err)
+				return ""
+			}
+			inPtr := results[0]
+			// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
+			// So, we have to free it when finished
+			defer free.Call(ctx, inPtr)
+
+			// The pointer is a linear memory offset, which is where we write the name.
+			if !mod.Memory().Write(uint32(inPtr), data) {
+				fmt.Printf("Memory.Write(%d, %d) out of range of memory size %d\n",
+					inPtr, lenData, mod.Memory().Size())
+				return ""
+			}
+
+			// Finally, we get the greeting message "greet" printed. This shows how to
+			// read-back something allocated by TinyGo.
+			outPtrSize, err := f.Call(ctx, inPtr, lenData)
+			if err != nil {
+				fmt.Printf("f.Call error: %v\n", err)
+				return ""
+			}
+
+			outPtr := uint32(outPtrSize[0] >> 32)
+			outSize := uint32(outPtrSize[0])
+
+			// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
+			// So, we have to free it when finished
+			if outPtr != 0 {
+				defer free.Call(ctx, uint64(outPtr))
+			}
+
+			// The pointer is a linear memory offset, which is where we write the name.
+			bytes, ok := mod.Memory().Read(outPtr, outSize)
+			if !ok {
+				fmt.Printf("Memory.Read(%d, %d) out of range of memory size %d\n",
+					outPtr, outSize, mod.Memory().Size())
+			}
+
+			return string(bytes)
+		})
+		if err != nil {
+			return fmt.Errorf("adding column: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (g *GadgetDesc) CustomParser(params *params.Params, args []string) (parser.Parser, error) {

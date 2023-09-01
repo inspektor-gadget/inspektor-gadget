@@ -13,6 +13,7 @@ columns:
     template: comm
     order: 1002
     visible: true
+    width: 16
   - name: uid
     template: uid
     order: 1003

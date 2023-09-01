@@ -58,10 +58,10 @@ type Tracer struct {
 	spec       *ebpf.CollectionSpec
 	collection *ebpf.Collection
 
-	valueStruct       *btf.Struct
-	ringbufReader     *ringbuf.Reader
-	perfReader        *perf.Reader
-	printMapValueSize uint32
+	valueStruct   *btf.Struct
+	ringbufReader *ringbuf.Reader
+	perfReader    *perf.Reader
+	//printMapValueSize uint32
 
 	links []link.Link
 }
@@ -144,7 +144,7 @@ func (t *Tracer) installTracer() error {
 	}
 
 	// Almost same hack as in bumblebee/pkg/loader/loader.go
-	t.printMapValueSize = printMap.ValueSize
+	//t.printMapValueSize = printMap.ValueSize
 	switch printMap.Type {
 	case ebpf.RingBuf:
 		printMap.ValueSize = 0
@@ -281,14 +281,14 @@ func (t *Tracer) run(gadgetCtx gadgets.GadgetContext) {
 		}
 
 		// TODO: this check is not valid for all cases. For instance trace exec sends a variable length
-		if uint32(len(rawSample)) < t.printMapValueSize {
-			gadgetCtx.Logger().Errorf("read ring buffer: len(RawSample)=%d!=%d",
-				len(rawSample), t.printMapValueSize)
-			return
-		}
+		//if uint32(len(rawSample)) < t.printMapValueSize {
+		//	gadgetCtx.Logger().Errorf("read ring buffer: len(RawSample)=%d!=%d",
+		//		len(rawSample), t.printMapValueSize)
+		//	return
+		//}
 
 		// data will be decoded in the client
-		data := rawSample[:t.printMapValueSize]
+		data := rawSample //[:t.printMapValueSize]
 
 		// get mnt_ns_id for enriching the event
 		mtn_ns_id := uint64(0)
