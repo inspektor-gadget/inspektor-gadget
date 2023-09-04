@@ -107,6 +107,8 @@ func TestRuntimeClientInterface(t *testing.T) {
 				for _, eData := range expectedData {
 					found := false
 					for _, cData := range containers {
+						// ContainerImageDigest may vary among versions, so we do not check it for now
+						cData.Runtime.BasicRuntimeMetadata.ContainerImageDigest = ""
 						if cmp.Equal(*cData, eData.ContainerData) {
 							found = true
 							break
@@ -122,6 +124,8 @@ func TestRuntimeClientInterface(t *testing.T) {
 
 				for _, eData := range expectedData {
 					cData, err := rc.GetContainer(eData.Runtime.ContainerID)
+					// ContainerImageDigest may vary among versions, so we do not check it for now
+					cData.Runtime.BasicRuntimeMetadata.ContainerImageDigest = ""
 					require.Nil(t, err)
 					require.NotNil(t, cData)
 					require.True(t, cmp.Equal(*cData, eData.ContainerData),
@@ -134,6 +138,8 @@ func TestRuntimeClientInterface(t *testing.T) {
 
 				for _, eData := range expectedData {
 					cData, err := rc.GetContainerDetails(eData.Runtime.ContainerID)
+					// ContainerImageDigest may vary among versions, so we do not check it for now
+					cData.Runtime.BasicRuntimeMetadata.ContainerImageDigest = ""
 					require.Nil(t, err)
 					require.NotNil(t, cData)
 

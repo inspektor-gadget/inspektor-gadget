@@ -67,6 +67,7 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 			e.Received = 0
 
 			e.Runtime.ContainerID = ""
+			e.Runtime.ContainerImageDigest = ""
 
 			// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 			if isDockerRuntime {
