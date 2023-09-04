@@ -32,6 +32,10 @@ import (
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang socketsiter ./bpf/sockets-iter.bpf.c -- -I./bpf/ -I../../../ -I../../../${TARGET}
 
+const (
+	SocketsMapName = "gadget_sockets"
+)
+
 // SocketEnricher creates a map exposing processes owning each socket.
 //
 // This makes it possible for network gadgets to access that information and
@@ -47,7 +51,7 @@ type SocketEnricher struct {
 }
 
 func (se *SocketEnricher) SocketsMap() *ebpf.Map {
-	return se.objs.Sockets
+	return se.objs.GadgetSockets
 }
 
 func NewSocketEnricher() (*SocketEnricher, error) {
@@ -87,7 +91,7 @@ func (se *SocketEnricher) start() error {
 		})
 	} else {
 		opts.MapReplacements = map[string]*ebpf.Map{
-			"sockets": se.objsIter.Sockets,
+			SocketsMapName: se.objsIter.GadgetSockets,
 		}
 	}
 
@@ -179,7 +183,7 @@ func (se *SocketEnricher) start() error {
 		// Schedule socket cleanup
 		cleanupIter, err := link.AttachIter(link.IterOptions{
 			Program: se.objsIter.IgSkCleanup,
-			Map:     se.objsIter.Sockets,
+			Map:     se.objsIter.GadgetSockets,
 		})
 		if err != nil {
 			return fmt.Errorf("attach BPF iterator for cleanups: %w", err)

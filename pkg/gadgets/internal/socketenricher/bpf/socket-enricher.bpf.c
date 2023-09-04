@@ -49,7 +49,8 @@ static __always_inline void insert_current_socket(struct sock *sock)
 		socket_value.ipv6only = BPF_CORE_READ_BITFIELD_PROBED(
 			sock, __sk_common.skc_ipv6only);
 
-	bpf_map_update_elem(&sockets, &socket_key, &socket_value, BPF_ANY);
+	bpf_map_update_elem(&gadget_sockets, &socket_key, &socket_value,
+			    BPF_ANY);
 }
 
 static __always_inline int remove_socket(struct sock *sock)
@@ -67,7 +68,7 @@ static __always_inline int remove_socket(struct sock *sock)
 	socket_key.port = bpf_ntohs(BPF_CORE_READ(inet_sock, inet_sport));
 
 	struct sockets_value *socket_value =
-		bpf_map_lookup_elem(&sockets, &socket_key);
+		bpf_map_lookup_elem(&gadget_sockets, &socket_key);
 	if (socket_value == NULL)
 		return 0;
 
@@ -80,7 +81,7 @@ static __always_inline int remove_socket(struct sock *sock)
 		// Use bpf iterators if available (Linux 5.8) otherwise delete
 		// directly.
 		if (disable_bpf_iterators) {
-			bpf_map_delete_elem(&sockets, &socket_key);
+			bpf_map_delete_elem(&gadget_sockets, &socket_key);
 		} else {
 			// Avoid bpf_ktime_get_boot_ns() to support older kernels
 			socket_value->deletion_timestamp = bpf_ktime_get_ns();

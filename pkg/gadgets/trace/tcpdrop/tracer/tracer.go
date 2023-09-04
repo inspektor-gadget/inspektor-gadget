@@ -30,7 +30,6 @@ import (
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpdrop/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/tcpbits"
@@ -132,7 +131,7 @@ func (t *Tracer) install() error {
 	opts := ebpf.CollectionOptions{}
 
 	mapReplacements := map[string]*ebpf.Map{}
-	mapReplacements[networktracer.SocketsMapName] = t.socketEnricher.SocketsMap()
+	mapReplacements[socketenricher.SocketsMapName] = t.socketEnricher.SocketsMap()
 	opts.MapReplacements = mapReplacements
 
 	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {

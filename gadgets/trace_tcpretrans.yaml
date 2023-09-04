@@ -1,0 +1,33 @@
+name: tcpretrans
+description: trace TCP retransmissions
+columns:
+  #- name: timestamp
+  #  template: timestamp
+  #  order: 900
+  - name: src
+    min_width: 24
+    max_width: 50
+    order: 1000
+    visible: true
+  - name: dst
+    min_width: 24
+    max_width: 50
+    order: 1001
+    visible: true
+  - name: task
+    template: comm
+    width: 16
+    order: 1002
+    visible: true
+  - name: pid
+    template: pid
+    order: 1003
+    visible: true
+  - name: uid
+    template: uid
+    order: 1004
+    visible: true
+  - name: gid
+    template: uid
+    order: 1005
+    visible: true

@@ -80,7 +80,7 @@ type socketsiterProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type socketsiterMapSpecs struct {
-	Sockets *ebpf.MapSpec `ebpf:"sockets"`
+	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
 }
 
 // socketsiterObjects contains all objects after they have been loaded into the kernel.
@@ -102,12 +102,12 @@ func (o *socketsiterObjects) Close() error {
 //
 // It can be passed to loadSocketsiterObjects or ebpf.CollectionSpec.LoadAndAssign.
 type socketsiterMaps struct {
-	Sockets *ebpf.Map `ebpf:"sockets"`
+	GadgetSockets *ebpf.Map `ebpf:"gadget_sockets"`
 }
 
 func (m *socketsiterMaps) Close() error {
 	return _SocketsiterClose(
-		m.Sockets,
+		m.GadgetSockets,
 	)
 }
 
