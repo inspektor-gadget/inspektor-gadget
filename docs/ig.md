@@ -47,13 +47,9 @@ The instruction to install `ig` are available in the main
 
 Currently, `ig` can trace containers managed by Docker regardless
 of whether they were created via Kubernetes or not. In case of containerd,
-we are using containerd API directly but only `k8s.io` namespace is supported,
-meaning only the ones created via Kubernetes. In addition, it can also use the CRI to
-trace containers managed by CRI-O, Support for non-Kubernetes containers with
-containerd is coming, see issue
-[#1849](https://github.com/inspektor-gadget/inspektor-gadget/issues/1849).
-
-**Note:** We only support CRI v1 meaning that only CRI-O v1.20+ (compatible with Kubernetes v1.20+) is supported.
+we are using containerd API directly and containerd namespace (default `k8s.io`)
+can be configured using `--containerd-namespace` flag. It uses the CRI to trace
+containers managed by CRI-O. Similarly, it uses the [podman API](https://docs.podman.io/en/latest/markdown/podman-system-service.1.html) to trace podman containers.
 
 By default, `ig` will try to communicate with all the supported container runtimes (docker, containerd, CRI-O, podman):
 
@@ -88,6 +84,7 @@ Usage:
 
 Flags:
   ...
+      --containerd-namespace string    Namespace used by containerd (default "k8s.io")
       --containerd-socketpath string   containerd CRI Unix socket path (default "/run/containerd/containerd.sock")
       --crio-socketpath string         CRI-O CRI Unix socket path (default "/run/crio/crio.sock")
       --docker-socketpath string       Docker Engine API Unix socket path (default "/run/docker.sock")
