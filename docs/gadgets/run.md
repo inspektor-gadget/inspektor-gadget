@@ -19,9 +19,9 @@ The [gadgets](../../gadgets) folder include some sample gadgets to be used with 
 ```bash
 $ kubectl gadget run --prog @./gadgets/trace_tcpconnect_x86.bpf.o --definition @./gadgets/trace_tcpconnect.yaml
 INFO[0000] Experimental features enabled
-NODE                      NAMESPACE                 POD                       CONTAINER                PID     TASK         V… SRC          DST          SPORT
-ubuntu-hirsute            default                   mypod2                    mypod2                   240217  wget         4  172.16.118.1 1.1.1.1      52988
-ubuntu-hirsute            default
+NODE                   NAMESPACE             POD                   CONTAINER             PID     TASK        SRC                      DST
+ubuntu-hirsute         default               mypod2                mypod2                174085  wget        p/default/mypod2:37848   r/1.1.1.1:80
+ubuntu-hirsute         default               mypod2                mypod2                174085  wget        p/default/mypod2:33150   r/1.1.1.1:443
 
 $ kubectl gadget run --prog @./gadgets/trace_open_x86.bpf.o --definition @./gadgets/trace_open.yaml
 INFO[0000] Experimental features enabled
@@ -65,10 +65,9 @@ ubuntu-hirsute         default                mypod2                 mypod2     
 
 ``` bash
 $ sudo ig run --prog @./gadgets/trace_tcpconnect_x86.bpf.o --definition @./gadgets/trace_tcpconnect.yaml
-INFO[0000] Experimental features enabled
-CONTAINER                                                    PID     TASK             V… SRC                             DST                             SPORT
-mycontainer3                                                 121828  wget             4  172.17.0.3                      1.1.1.1                         57654
-mycontainer3                                                 121828  wget             4  172.17.0.3                      1.1.1.1                         49952
+CONTAINER                                                        PID     TASK             SRC                                DST
+mycontainer3                                                     1254254 wget             172.17.0.4:50072                   1.1.1.1:80
+mycontainer3                                                     1254254 wget             172.17.0.4:44408                   1.1.1.1:443
 
 $ sudo ig run --prog @./gadgets/trace_open_x86.bpf.o --definition @./gadgets/trace_open.yaml
 INFO[0000] Experimental features enabled

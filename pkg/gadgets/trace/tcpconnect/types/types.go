@@ -44,7 +44,7 @@ func (e *Event) GetEndpoints() []*eventtypes.L3Endpoint {
 func GetColumns() *columns.Columns[Event] {
 	cols := columns.MustCreateColumns[Event]()
 
-	cols.MustSetExtractor("latency", func(event *Event) string {
+	cols.MustSetExtractor("latency", func(event *Event) any {
 		return event.Latency.String()
 	})
 

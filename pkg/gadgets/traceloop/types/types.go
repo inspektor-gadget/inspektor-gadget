@@ -51,7 +51,7 @@ type TraceloopInfo struct {
 func GetColumns() *columns.Columns[Event] {
 	cols := columns.MustCreateColumns[Event]()
 
-	cols.SetExtractor("params", func(event *Event) (ret string) {
+	cols.SetExtractor("params", func(event *Event) any {
 		var sb strings.Builder
 
 		for idx, p := range event.Parameters {

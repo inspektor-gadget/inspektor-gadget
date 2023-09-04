@@ -76,7 +76,7 @@ func GetColumns() *columns.Columns[Event] {
 		}
 	}
 
-	cols.MustSetExtractor("latency", func(event *Event) string {
+	cols.MustSetExtractor("latency", func(event *Event) any {
 		if event.Latency > 0 {
 			return event.Latency.String()
 		} else {
@@ -87,7 +87,7 @@ func GetColumns() *columns.Columns[Event] {
 		}
 	})
 
-	cols.MustSetExtractor("addresses", func(event *Event) string {
+	cols.MustSetExtractor("addresses", func(event *Event) any {
 		return strings.Join(event.Addresses, ",")
 	})
 

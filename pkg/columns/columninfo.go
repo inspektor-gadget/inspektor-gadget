@@ -78,7 +78,7 @@ type Attributes struct {
 
 type Column[T any] struct {
 	Attributes
-	Extractor func(*T) string // Extractor to be used; this can be defined to transform the output before retrieving the actual value
+	Extractor func(*T) any // Extractor to be used; this can be defined to transform the output before retrieving the actual value
 
 	explicitName  bool                    // true, if the name has been set explicitly
 	offset        uintptr                 // offset to the field (relative to root non-ptr struct)
@@ -286,7 +286,7 @@ func (ci *Column[T]) parseTagInfo(tagInfo []string) error {
 			}
 			stringer := reflect.TypeOf((*fmt.Stringer)(nil)).Elem()
 			if ci.Type().Implements(stringer) {
-				ci.Extractor = func(t *T) string {
+				ci.Extractor = func(t *T) any {
 					return ci.getRawField(reflect.ValueOf(t)).Interface().(fmt.Stringer).String()
 				}
 				ci.kind = reflect.String

@@ -48,7 +48,7 @@ func GetColumns() *columns.Columns[Event] {
 		Width:   80,
 		Visible: true,
 		Order:   1000,
-	}, func(e *Event) string {
+	}, func(e *Event) any {
 		switch e.Operation {
 		case "mount":
 			format := `mount("%s", "%s", "%s", %s, "%s") = %d`
@@ -62,7 +62,7 @@ func GetColumns() *columns.Columns[Event] {
 		return ""
 	})
 
-	cols.MustSetExtractor("flags", func(event *Event) string {
+	cols.MustSetExtractor("flags", func(event *Event) any {
 		return strings.Join(event.Flags, " | ")
 	})
 

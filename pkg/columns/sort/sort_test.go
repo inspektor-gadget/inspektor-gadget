@@ -49,12 +49,12 @@ func getTestCol(t *testing.T) *columns.Columns[testData] {
 	if err != nil {
 		t.Errorf("Failed to initialize %v", err)
 	}
-	cols.MustSetExtractor("extractor", func(t *testData) string {
+	cols.MustSetExtractor("extractor", func(t *testData) any {
 		return fmt.Sprint(t.Extractor)
 	})
 	cols.MustAddColumn(columns.Attributes{
 		Name: "virtual_column",
-	}, func(*testData) string {
+	}, func(*testData) any {
 		return ""
 	})
 

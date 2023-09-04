@@ -65,16 +65,16 @@ func (e *Stats) GetEndpoints() []*eventtypes.L3Endpoint {
 func GetColumns() *columns.Columns[Stats] {
 	cols := columns.MustCreateColumns[Stats]()
 
-	cols.MustSetExtractor("ip", func(stats *Stats) (ret string) {
+	cols.MustSetExtractor("ip", func(stats *Stats) any {
 		if stats.IPVersion == syscall.AF_INET {
 			return "4"
 		}
 		return "6"
 	})
-	cols.MustSetExtractor("sent", func(stats *Stats) (ret string) {
+	cols.MustSetExtractor("sent", func(stats *Stats) any {
 		return fmt.Sprint(units.BytesSize(float64(stats.Sent)))
 	})
-	cols.MustSetExtractor("recv", func(stats *Stats) (ret string) {
+	cols.MustSetExtractor("recv", func(stats *Stats) any {
 		return fmt.Sprint(units.BytesSize(float64(stats.Received)))
 	})
 
