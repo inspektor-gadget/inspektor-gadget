@@ -38,8 +38,8 @@ type Tracer struct {
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	flavour := os.Getenv("GADGET_IMAGE_FLAVOUR")
-	if flavour != "default" {
-		return fmt.Errorf("script is not supported on the %q flavour of the container image. Only \"default\" is supported for now",
+	if flavour != "bcc" {
+		return fmt.Errorf("script is not supported on the %q flavour of the container image. Only \"bcc\" is supported for now",
 			flavour)
 	}
 

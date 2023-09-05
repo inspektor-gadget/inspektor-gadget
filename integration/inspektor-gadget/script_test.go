@@ -26,8 +26,8 @@ import (
 func TestScript(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-script")
 
-	if *imageFlavour != DefaultImageFlavour {
-		t.Skip("Skipping script test because it's only supported in the default image")
+	if *imageFlavour != BccImageFlavour {
+		t.Skip("Skipping script test because it's only supported in the bcc image")
 	}
 
 	t.Parallel()

@@ -9,8 +9,8 @@ inputs:
   container-image:
     description: "The name of the container image"
     required: true
-  co-re:
-    description: "Is the image referencing CO-RE only?"
+  bcc:
+    description: "Is the image referencing bcc only?"
     required: true
 
 outputs:
@@ -53,8 +53,8 @@ runs:
             image_tag="latest"
         fi
 
-        if [ ${{ inputs.co-re }} = 'true' ]; then
-          image_tag="${image_tag}-core"
+        if [ ${{ inputs.bcc }} = 'true' ]; then
+          image_tag="${image_tag}-bcc"
         fi
 
         echo "image-tag=${image_tag}" >> $GITHUB_OUTPUT

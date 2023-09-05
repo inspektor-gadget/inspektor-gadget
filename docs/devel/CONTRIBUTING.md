@@ -37,8 +37,8 @@ kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
 ### Building the gadget container image
 
 Inspektor Gadget provides two different container images:
-- gadget-default: Contains CO-RE and BCC gadgets
-- gadget-core: Containes only CO-RE gadgets that are integrated with the gadget tracer manager
+- gadget-default: Contains only CO-RE gadgets that are integrated with the gadget tracer manager
+- gadget-bcc: Contains CO-RE and BCC gadgets
 
 You can build and push the container gadget image by running the following commands:
 

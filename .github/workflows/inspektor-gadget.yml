@@ -176,7 +176,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
+        bcc: false
     - name: Build kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
       run: |
         git checkout
@@ -266,12 +266,12 @@ jobs:
     outputs:
       digest-default-amd64: ${{ steps.published-gadget-container-images.outputs.default-amd64 }}
       digest-default-arm64: ${{ steps.published-gadget-container-images.outputs.default-arm64 }}
-      digest-core-amd64: ${{ steps.published-gadget-container-images.outputs.core-amd64 }}
-      digest-core-arm64: ${{ steps.published-gadget-container-images.outputs.core-arm64 }}
+      digest-bcc-amd64: ${{ steps.published-gadget-container-images.outputs.bcc-amd64 }}
+      digest-bcc-arm64: ${{ steps.published-gadget-container-images.outputs.bcc-arm64 }}
     strategy:
       fail-fast: false
       matrix:
-        type: [default, core]
+        type: [default, bcc]
         os: [ linux ]
         # For the moment, we only support these two platforms.
         platform: [ arm64, amd64 ]
@@ -301,7 +301,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        co-re: ${{ matrix.type == 'core' }}
+        bcc: ${{ matrix.type == 'bcc' }}
     - name: Get btfhub-archive last commmit
       id: get-btfhub-head
       run: |
@@ -412,7 +412,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ github.repository_owner }}/ig
-        co-re: false
+        bcc: false
     - name: Build ig ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: docker/build-push-action@v4
       with:
@@ -462,7 +462,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        type: [ default, core ]
+        type: [ default, bcc ]
         os: [ linux ]
         platform: [ amd64 ]
     steps:
@@ -496,7 +496,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        type: [ default, core ]
+        type: [ default, bcc ]
     steps:
       - uses: actions/checkout@v3
       - name: Set up Docker Buildx
@@ -516,20 +516,20 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
-          co-re: ${{ matrix.type == 'core' }}
+          bcc: ${{ matrix.type == 'bcc' }}
       - name: Publish the manifest list
         run: |
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
           IMAGE_DOCUMENTATION="https://inspektor-gadget.io/docs"
           IMAGE_LICENSES="Apache-2.0"
           IMAGE_TITLE_FMT="Inspektor Gadget k8s DaemonSet (%s flavor)"
-          IMAGE_DESCRIPTION_FMT="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts. This is the %s flavor (default flavor includes both bcc-based tools and CO-RE-based tools; core flavor includes only CO-RE-based tools)."
+          IMAGE_DESCRIPTION_FMT="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts. This is the %s flavor (default flavor includes only CO-RE-based tools; bcc flavor includes both bcc-based tools and CO-RE-based tools)."
 
-          if [[ "${{ matrix.type }}" == "core" ]]; then
-            IMAGE_TITLE=$(printf "$IMAGE_TITLE_FMT" "core")
-            IMAGE_DESCRIPTION=$(printf "$IMAGE_DESCRIPTION_FMT" "core")
-            IMAGE_DIGEST_AMD64=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-amd64 }}
-            IMAGE_DIGEST_ARM64=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-core-arm64 }}
+          if [[ "${{ matrix.type }}" == "bcc" ]]; then
+            IMAGE_TITLE=$(printf "$IMAGE_TITLE_FMT" "bcc")
+            IMAGE_DESCRIPTION=$(printf "$IMAGE_DESCRIPTION_FMT" "bcc")
+            IMAGE_DIGEST_AMD64=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-bcc-amd64 }}
+            IMAGE_DIGEST_ARM64=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-bcc-arm64 }}
           fi
 
           if [[ "${{ matrix.type }}" == "default" ]]; then
@@ -579,7 +579,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ github.repository_owner }}/ig
-          co-re: false
+          bcc: false
       - name: Publish the manifest list
         run: |
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
@@ -641,7 +641,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ github.repository_owner }}/${{ matrix.image.name }}
-        co-re: false
+        bcc: false
     - name: Build ${{ matrix.image.name }} image
       id: build-image
       if: steps.filter.outputs.pattern == 'true'
@@ -688,7 +688,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
+        bcc: false
     - name: Build example container
       uses: docker/build-push-action@v4
       with:
@@ -809,7 +809,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
+        bcc: false
     - name: Install Helm
       uses: azure/setup-helm@v3
       with:
@@ -1054,7 +1054,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
+        bcc: false
     - uses: azure/login@v1
       name: Login to Azure
       with:
@@ -1146,7 +1146,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
+        bcc: false
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       with:
@@ -1168,7 +1168,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        type: [default, core]
+        type: [default, bcc]
         runtime: [docker, containerd, cri-o]
     steps:
     - uses: actions/checkout@v3
@@ -1193,7 +1193,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        co-re: ${{ matrix.type == 'core' }}
+        bcc: ${{ matrix.type == 'bcc' }}
     - name: Prepare minikube by loading gadget-container-image-${{ matrix.type }}-linux-amd64.tar
       run: |
         # 'docker load' ensures the image is named correctly e.g podman has issues loading untagged images from archive
@@ -1246,7 +1246,7 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        co-re: false
+        bcc: false
     - name: Build release YAML
       run: |
         export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}

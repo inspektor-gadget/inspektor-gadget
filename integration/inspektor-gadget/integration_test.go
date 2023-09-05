@@ -38,7 +38,7 @@ const (
 
 const (
 	DefaultImageFlavour = "default"
-	CoreImageFlavour    = "core"
+	BccImageFlavour     = "bcc"
 )
 
 const securityProfileOperatorNamespace = "security-profiles-operator"
@@ -122,9 +122,9 @@ func testMain(m *testing.M) int {
 	}
 
 	if *imageFlavour != "" {
-		if *imageFlavour != DefaultImageFlavour && *imageFlavour != CoreImageFlavour {
+		if *imageFlavour != DefaultImageFlavour && *imageFlavour != BccImageFlavour {
 			fmt.Fprintf(os.Stderr, "Error: invalid argument '-image-flavour': %q. Valid values: %s, %s\n",
-				*imageFlavour, DefaultImageFlavour, CoreImageFlavour)
+				*imageFlavour, DefaultImageFlavour, BccImageFlavour)
 			return -1
 		}
 	}
