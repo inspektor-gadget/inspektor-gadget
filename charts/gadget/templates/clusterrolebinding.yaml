@@ -2,6 +2,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{ include "gadget.fullname" . }}-cluster-role-binding
+  {{- if not .Values.skipLabels }}
+  labels:
+    {{- include "gadget.labels" . | nindent 4 }}
+  {{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

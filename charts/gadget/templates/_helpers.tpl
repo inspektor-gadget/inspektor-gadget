@@ -38,6 +38,33 @@ gadget
 {{- end }}
 
 {{/*
+Common labels
+*/}}
+{{- define "gadget.labels" -}}
+helm.sh/chart: {{ include "gadget.chart" . }}
+{{ include "gadget.selectorLabels" . }}
+app.kubernetes.io/component: controller
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if .Values.additionalLabels.enabled }}
+{{- if .Values.additionalLabels }}
+{{ toYaml .Values.additionalLabels }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "gadget.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "gadget.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+
+{{/*
 Image tag
 */}}
 {{- define "gadget.image.tag" -}}
