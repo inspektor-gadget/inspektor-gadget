@@ -37,12 +37,6 @@ type Tracer struct {
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
-	flavour := os.Getenv("GADGET_IMAGE_FLAVOUR")
-	if flavour != "bcc" {
-		return fmt.Errorf("script is not supported on the %q flavour of the container image. Only \"bcc\" is supported for now",
-			flavour)
-	}
-
 	params := gadgetCtx.GadgetParams()
 	t.config.Program = params.Get(ParamProgram).AsString()
 	log := gadgetCtx.Logger()
