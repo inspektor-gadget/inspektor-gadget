@@ -33,12 +33,6 @@ import (
 
 //go:generate bash -c "source ../../../internal/networktracer/clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t network ./bpf/network.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
-const (
-	BPFProgName     = "ig_trace_net"
-	BPFPerfMapName  = "events"
-	BPFSocketAttach = 50
-)
-
 type Tracer struct {
 	*networktracer.Tracer[types.Event]
 
@@ -137,8 +131,6 @@ func (t *Tracer) install() error {
 
 	networkTracer, err := networktracer.NewTracer(
 		spec,
-		BPFProgName,
-		BPFPerfMapName,
 		types.Base,
 		parseNetEvent,
 	)

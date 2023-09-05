@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -117,8 +118,6 @@ func (t *Tracer[Event]) newAttachment(
 
 func NewTracer[Event any](
 	spec *ebpf.CollectionSpec,
-	bpfProgName string,
-	bpfPerfMapName string,
 	baseEvent func(ev types.Event) *Event,
 	processEvent func(rawSample []byte, netns uint64) (*Event, error),
 ) (_ *Tracer[Event], err error) {
@@ -156,6 +155,34 @@ func NewTracer[Event any](
 			}
 			break
 		}
+	}
+
+	// Automatically find the socket program
+	bpfProgName := ""
+	for progName, p := range spec.Programs {
+		if p.Type == ebpf.SocketFilter && strings.HasPrefix(p.SectionName, "socket") {
+			if bpfProgName != "" {
+				return nil, fmt.Errorf("multiple socket programs found: %s, %s", bpfProgName, progName)
+			}
+			bpfProgName = progName
+		}
+	}
+	if bpfProgName == "" {
+		return nil, fmt.Errorf("no socket program found")
+	}
+
+	// Automatically find the perf map
+	bpfPerfMapName := ""
+	for mapName, m := range spec.Maps {
+		if m.Type == ebpf.PerfEventArray {
+			if bpfPerfMapName != "" {
+				return nil, fmt.Errorf("multiple perf maps found: %s, %s", bpfPerfMapName, mapName)
+			}
+			bpfPerfMapName = mapName
+		}
+	}
+	if bpfPerfMapName == "" {
+		return nil, fmt.Errorf("no perf map found")
 	}
 
 	if t.socketEnricher != nil {
