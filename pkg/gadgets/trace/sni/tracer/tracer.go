@@ -32,8 +32,6 @@ import (
 //go:generate bash -c "source ../../../internal/networktracer/clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t snisnoop ./bpf/snisnoop.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
 const (
-	BPFProgName         = "ig_trace_sni"
-	BPFPerfMapName      = "events"
 	TLSMaxServerNameLen = len(snisnoopEventT{}.Name)
 )
 
@@ -111,8 +109,6 @@ func (t *Tracer) install() error {
 
 	networkTracer, err := networktracer.NewTracer(
 		spec,
-		BPFProgName,
-		BPFPerfMapName,
 		types.Base,
 		parseSNIEvent,
 	)
