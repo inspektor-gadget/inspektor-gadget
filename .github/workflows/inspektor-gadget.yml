@@ -70,6 +70,22 @@ jobs:
         ln -s $GITHUB_WORKSPACE external-docs/inspektor-gadget.git_mainlatest
         make
 
+  actionlint:
+    name: Lint GitHub Actions workflows
+    # level: 0
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Check workflow files
+      shell: bash
+      run: |
+        # As advised from:
+        # https://github.com/rhysd/actionlint/blob/main/docs/usage.md#use-actionlint-on-github-actions
+        curl -o download-actionlint.bash https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash
+        bash download-actionlint.bash
+        # For now, we do not use shellcheck, we may activate it later.
+        ./actionlint -color -shellcheck=
+
   lint:
     name: Lint
     # level: 0
