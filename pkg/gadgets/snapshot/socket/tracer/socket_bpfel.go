@@ -13,14 +13,15 @@ import (
 )
 
 type socketEntry struct {
-	Daddr uint32
-	Saddr uint32
-	Dport uint16
-	Sport uint16
-	Proto uint16
-	State uint8
-	_     [1]byte
-	Inode uint64
+	Daddr  [16]uint8
+	Saddr  [16]uint8
+	Dport  uint16
+	Sport  uint16
+	Proto  uint16
+	Family uint16
+	State  uint8
+	_      [7]byte
+	Inode  uint64
 }
 
 // loadSocket returns the embedded CollectionSpec for socket.
@@ -64,8 +65,8 @@ type socketSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type socketProgramSpecs struct {
-	IgSnapTcp4 *ebpf.ProgramSpec `ebpf:"ig_snap_tcp4"`
-	IgSnapUdp4 *ebpf.ProgramSpec `ebpf:"ig_snap_udp4"`
+	IgSnapTcp *ebpf.ProgramSpec `ebpf:"ig_snap_tcp"`
+	IgSnapUdp *ebpf.ProgramSpec `ebpf:"ig_snap_udp"`
 }
 
 // socketMapSpecs contains maps before they are loaded into the kernel.
@@ -103,14 +104,14 @@ func (m *socketMaps) Close() error {
 //
 // It can be passed to loadSocketObjects or ebpf.CollectionSpec.LoadAndAssign.
 type socketPrograms struct {
-	IgSnapTcp4 *ebpf.Program `ebpf:"ig_snap_tcp4"`
-	IgSnapUdp4 *ebpf.Program `ebpf:"ig_snap_udp4"`
+	IgSnapTcp *ebpf.Program `ebpf:"ig_snap_tcp"`
+	IgSnapUdp *ebpf.Program `ebpf:"ig_snap_udp"`
 }
 
 func (p *socketPrograms) Close() error {
 	return _SocketClose(
-		p.IgSnapTcp4,
-		p.IgSnapUdp4,
+		p.IgSnapTcp,
+		p.IgSnapUdp,
 	)
 }
 

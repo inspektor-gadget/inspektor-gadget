@@ -17,10 +17,8 @@
 package tracer
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
-	"net"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -46,17 +44,6 @@ type Tracer struct {
 	visitedNamespaces map[uint64]uint32
 	protocols         socketcollectortypes.Proto
 	eventHandler      func([]*socketcollectortypes.Event)
-}
-
-func parseIPv4(ipU32 uint32) string {
-	ipBytes := make([]byte, 4)
-
-	// net.IP() expects network byte order and parseIPv4 receives an
-	// argument in host byte order, so it needs to be converted first
-	binary.BigEndian.PutUint32(ipBytes, ipU32)
-	ip := net.IP(ipBytes)
-
-	return ip.String()
 }
 
 // Format from socket_bpf_seq_print() in bpf/socket_common.h
@@ -120,13 +107,13 @@ func (t *Tracer) runCollector(pid uint32, netns uint64) ([]*socketcollectortypes
 					Protocol: proto,
 					SrcEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: parseIPv4(entry.Saddr),
+							Addr: gadgets.IPStringFromBytes(entry.Saddr, gadgets.IPVerFromAF(entry.Family)),
 						},
 						Port: entry.Sport,
 					},
 					DstEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: parseIPv4(entry.Daddr),
+							Addr: gadgets.IPStringFromBytes(entry.Daddr, gadgets.IPVerFromAF(entry.Family)),
 						},
 						Port: entry.Dport,
 					},
@@ -230,11 +217,11 @@ func (t *Tracer) openIters() error {
 
 	switch t.protocols {
 	case socketcollectortypes.TCP:
-		toAttach = append(toAttach, objs.IgSnapTcp4)
+		toAttach = append(toAttach, objs.IgSnapTcp)
 	case socketcollectortypes.UDP:
-		toAttach = append(toAttach, objs.IgSnapUdp4)
+		toAttach = append(toAttach, objs.IgSnapUdp)
 	case socketcollectortypes.ALL:
-		toAttach = append(toAttach, objs.IgSnapTcp4, objs.IgSnapUdp4)
+		toAttach = append(toAttach, objs.IgSnapTcp, objs.IgSnapUdp)
 	}
 
 	for _, prog := range toAttach {
