@@ -3,6 +3,7 @@ GADGETS = \
 	trace_open_x86.bpf.o trace_open_arm64.bpf.o \
 	trace_tcpconnect_x86.bpf.o trace_tcpconnect_arm64.bpf.o \
 	trace_tcpretrans_x86.bpf.o trace_tcpretrans_arm64.bpf.o \
+	trace_dns_x86.bpf.o trace_dns_arm64.bpf.o \
 	#
 
 .PHONY: all
