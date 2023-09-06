@@ -17,6 +17,12 @@
 #include <bpf/bpf_endian.h>
 
 #define AF_INET 2
+#define AF_INET6 10
+
+#define IPV6_LEN 16
+
+#define sk_v6_daddr __sk_common.skc_v6_daddr
+#define sk_v6_rcv_saddr __sk_common.skc_v6_rcv_saddr
 
 #define inet_daddr sk.__sk_common.skc_daddr
 #define inet_rcv_saddr sk.__sk_common.skc_rcv_saddr
@@ -26,6 +32,9 @@
 #define ir_num req.__req_common.skc_num
 #define ir_rmt_addr req.__req_common.skc_daddr
 #define ir_rmt_port req.__req_common.skc_dport
+#define ir_v6_loc_addr req.__req_common.skc_v6_rcv_saddr
+#define ir_v6_rmt_addr req.__req_common.skc_v6_daddr
+#define ireq_family req.__req_common.skc_family
 
 #define sk_family __sk_common.skc_family
 #define sk_state __sk_common.skc_state
@@ -34,13 +43,17 @@
 #define tw_daddr __tw_common.skc_daddr
 #define tw_rcv_saddr __tw_common.skc_rcv_saddr
 #define tw_dport __tw_common.skc_dport
+#define tw_v6_daddr __tw_common.skc_v6_daddr
+#define tw_v6_rcv_saddr __tw_common.skc_v6_rcv_saddr
+#define tw_family __tw_common.skc_family
 
 struct entry {
-	__u32 daddr;
-	__u32 saddr;
+	__u8 daddr[IPV6_LEN];
+	__u8 saddr[IPV6_LEN];
 	__u16 dport;
 	__u16 sport;
 	__u16 proto; // IP protocol
+	__u16 family;
 	__u8 state;
 	__u64 inode;
 };
@@ -76,16 +89,34 @@ static unsigned long sock_i_ino(const struct sock *sk)
  * in the different socket structure, i.e. network-byte order.
  */
 static __always_inline void
-socket_bpf_seq_write(struct seq_file *seq, __u16 proto, __be32 src, __u16 srcp,
-		     __be32 dest, __u16 destp, __u8 state, __u64 ino)
+socket_bpf_seq_write(struct seq_file *seq, __u16 family, __u16 proto,
+		     __be32 src_v4, struct in6_addr *src_v6, __u16 srcp,
+		     __be32 dest_v4, struct in6_addr *dest_v6, __u16 destp,
+		     __u8 state, __u64 ino)
 {
 	struct entry entry = {};
 
-	entry.daddr = bpf_ntohl(dest);
-	entry.saddr = bpf_ntohl(src);
+	switch (family) {
+	case AF_INET:
+		*((__u32 *)entry.saddr) = src_v4;
+		*((__u32 *)entry.daddr) = dest_v4;
+
+		break;
+	case AF_INET6:
+		bpf_probe_read_kernel(&entry.daddr, sizeof(entry.daddr),
+				      dest_v6);
+		bpf_probe_read_kernel(&entry.saddr, sizeof(entry.saddr),
+				      src_v6);
+
+		break;
+	default:
+		return;
+	}
+
 	entry.dport = bpf_ntohs(destp);
 	entry.sport = bpf_ntohs(srcp);
 	entry.proto = proto;
+	entry.family = family;
 	entry.state = state;
 	entry.inode = ino;
 
@@ -96,13 +127,15 @@ char _license[] SEC("license") = "GPL";
 
 static int dump_tcp_sock(struct seq_file *seq, struct tcp_sock *tp)
 {
-	const struct inet_connection_sock *icsk = &tp->inet_conn;
-	const struct inet_sock *inet = &icsk->icsk_inet;
-	const struct sock *sp = &inet->sk;
+	struct inet_connection_sock *icsk = &tp->inet_conn;
+	struct inet_sock *inet = &icsk->icsk_inet;
+	struct sock *sp = &inet->sk;
 
-	socket_bpf_seq_write(seq, IPPROTO_TCP, inet->inet_rcv_saddr,
+	socket_bpf_seq_write(seq, sp->sk_family, IPPROTO_TCP,
+			     inet->inet_rcv_saddr, &sp->sk_v6_rcv_saddr,
 			     inet->inet_sport, inet->inet_daddr,
-			     inet->inet_dport, sp->sk_state, sock_i_ino(sp));
+			     &sp->sk_v6_daddr, inet->inet_dport, sp->sk_state,
+			     sock_i_ino(sp));
 
 	return 0;
 }
@@ -125,8 +158,10 @@ static int dump_tw_sock(struct seq_file *seq, struct tcp_timewait_sock *ttw)
 	 * https://elixir.bootlin.com/linux/v5.15.12/source/include/net/tcp_states.h#L18
 	 */
 
-	socket_bpf_seq_write(seq, IPPROTO_TCP, tw->tw_rcv_saddr, tw->tw_sport,
-			     tw->tw_daddr, tw->tw_dport, tw->tw_substate, 0);
+	socket_bpf_seq_write(seq, tw->tw_family, IPPROTO_TCP, tw->tw_rcv_saddr,
+			     &tw->tw_v6_rcv_saddr, tw->tw_sport, tw->tw_daddr,
+			     &tw->tw_v6_daddr, tw->tw_dport, tw->tw_substate,
+			     0);
 
 	return 0;
 }
@@ -135,15 +170,17 @@ static int dump_req_sock(struct seq_file *seq, struct tcp_request_sock *treq)
 {
 	struct inet_request_sock *irsk = &treq->req;
 
-	socket_bpf_seq_write(seq, IPPROTO_TCP, irsk->ir_loc_addr, irsk->ir_num,
-			     irsk->ir_rmt_addr, irsk->ir_rmt_port, TCP_SYN_RECV,
-			     sock_i_ino(treq->req.req.sk));
+	socket_bpf_seq_write(seq, irsk->ireq_family, IPPROTO_TCP,
+			     irsk->ir_loc_addr, &irsk->ir_v6_loc_addr,
+			     irsk->ir_num, irsk->ir_rmt_addr,
+			     &irsk->ir_v6_rmt_addr, irsk->ir_rmt_port,
+			     TCP_SYN_RECV, sock_i_ino(treq->req.req.sk));
 
 	return 0;
 }
 
 SEC("iter/tcp")
-int ig_snap_tcp4(struct bpf_iter__tcp *ctx)
+int ig_snap_tcp(struct bpf_iter__tcp *ctx)
 {
 	struct sock_common *sk_common = ctx->sk_common;
 	struct seq_file *seq = ctx->meta->seq;
@@ -152,10 +189,6 @@ int ig_snap_tcp4(struct bpf_iter__tcp *ctx)
 	struct tcp_sock *tp;
 
 	if (sk_common == (void *)0)
-		return 0;
-
-	/* Filter out IPv6 for now */
-	if (sk_common->skc_family != AF_INET)
 		return 0;
 
 	tp = bpf_skc_to_tcp_sock(sk_common);
@@ -174,25 +207,24 @@ int ig_snap_tcp4(struct bpf_iter__tcp *ctx)
 }
 
 SEC("iter/udp")
-int ig_snap_udp4(struct bpf_iter__udp *ctx)
+int ig_snap_udp(struct bpf_iter__udp *ctx)
 {
 	struct seq_file *seq = ctx->meta->seq;
 	struct udp_sock *udp_sk = ctx->udp_sk;
 	struct inet_sock *inet;
+	struct sock *sp;
 
 	if (udp_sk == (void *)0)
 		return 0;
 
 	inet = &udp_sk->inet;
+	sp = &inet->sk;
 
-	/* Filter out IPv6 for now */
-	if (inet->sk.sk_family != AF_INET)
-		return 0;
-
-	socket_bpf_seq_write(seq, IPPROTO_UDP, inet->inet_rcv_saddr,
+	socket_bpf_seq_write(seq, sp->sk_family, IPPROTO_UDP,
+			     inet->inet_rcv_saddr, &sp->sk_v6_rcv_saddr,
 			     inet->inet_sport, inet->inet_daddr,
-			     inet->inet_dport, inet->sk.sk_state,
-			     sock_i_ino(&inet->sk));
+			     &sp->sk_v6_daddr, inet->inet_dport, sp->sk_state,
+			     sock_i_ino(sp));
 
 	return 0;
 }
