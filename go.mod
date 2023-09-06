@@ -46,7 +46,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/go-cmp v0.5.9
 	github.com/kr/pretty v0.3.1
-	github.com/moby/moby v24.0.5+incompatible
+	github.com/moby/moby v24.0.6+incompatible
 	github.com/opencontainers/image-spec v1.1.0-rc4
 	github.com/prometheus/client_golang v1.16.0
 	github.com/shopspring/decimal v1.3.1
