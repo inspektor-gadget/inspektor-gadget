@@ -81,6 +81,7 @@ var (
 	wait                bool
 	runtimesConfig      commonutils.RuntimesSocketPathConfig
 	nodeSelector        string
+	runtimePath         string
 	experimentalVar     bool
 	skipSELinuxOpts     bool
 )
@@ -146,6 +147,11 @@ func init() {
 		"debug", "d",
 		false,
 		"show extra debug information")
+	deployCmd.PersistentFlags().StringVarP(
+		&runtimePath,
+		"runtime-path", "",
+		"",
+		"path to container runtime (runc or crun)")
 	deployCmd.PersistentFlags().StringVarP(
 		&nodeSelector,
 		"node-selector", "",
@@ -451,6 +457,10 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					value := experimental.Enabled() || experimentalVar
 					gadgetContainer.Env[i].Value = strconv.FormatBool(value)
 				}
+			}
+
+			if runtimePath != "" {
+				gadgetContainer.Env = append(gadgetContainer.Env, v1.EnvVar{Name: "RUNTIME_PATH", Value: runtimePath})
 			}
 
 			if nodeSelector != "" {
