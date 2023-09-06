@@ -134,7 +134,7 @@ install/kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
 
 GADGET_CONTAINERS = \
 	gadget-default-container \
-	gadget-core-container
+	gadget-bcc-container
 
 gadget-container-all: $(GADGET_CONTAINERS)
 
@@ -146,7 +146,7 @@ gadget-%-container:
 		$(MAKE) -f Makefile.btfgen \
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
 	fi
-	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
+	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring bcc,$*),-bcc,) \
 		-f Dockerfiles/gadget-$*.Dockerfile .
 
 cross-gadget-%-container:
@@ -155,12 +155,12 @@ cross-gadget-%-container:
 		$(MAKE) -f Makefile.btfgen \
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
 	fi
-	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,) \
+	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring bcc,$*),-bcc,) \
 		--push \
 		-f Dockerfiles/gadget-$*.Dockerfile .
 
 push-gadget-%-container:
-	docker push $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring core,$*),-core,)
+	docker push $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring bcc,$*),-bcc,)
 
 # kubectl-gadget container image
 .PHONY: kubectl-gadget-container
@@ -293,7 +293,7 @@ help:
 	@echo  '  kubectl-gadget-all		- Build the kubectl plugin for all architectures'
 	@echo  '  kubectl-gadget-container	- Build container for kubectl-gadget'
 	@echo  'o gadget-default-container	- Build the gadget container default image for the current architecture'
-	@echo  '  gadget-core-container		- Build the gadget container CO-RE image for the current architecture'
+	@echo  '  gadget-bcc-container		- Build the gadget container bcc image for the current architecture'
 	@echo  '  gadget-container-all		- Build all flavors of the gadget container image'
 	@echo  '  cross-gadget-container-all	- Build all flavors of the gadget container image for all supported architectures'
 	@echo  '  ebpf-objects			- Build eBPF objects file inside docker'

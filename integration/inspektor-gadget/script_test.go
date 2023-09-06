@@ -26,10 +26,6 @@ import (
 func TestScript(t *testing.T) {
 	ns := GenerateTestNamespaceName("test-script")
 
-	if *imageFlavour != DefaultImageFlavour {
-		t.Skip("Skipping script test because it's only supported in the default image")
-	}
-
 	t.Parallel()
 
 	prog := `kretprobe:inet_bind { printf("fofofofof %s\n", comm); }`
