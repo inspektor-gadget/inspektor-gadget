@@ -34,8 +34,10 @@ import (
 	orascontent "oras.land/oras-go/pkg/content"
 	"oras.land/oras-go/pkg/oras"
 
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -71,6 +73,7 @@ type Tracer struct {
 	eventType *btf.Struct
 
 	socketEnricher *socketenricher.SocketEnricher
+	networkTracer  *networktracer.Tracer[types.Event]
 
 	// Printers related
 	ringbufReader *ringbuf.Reader
@@ -80,8 +83,24 @@ type Tracer struct {
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
+	// FIXME: Ideally, we should have one networktracer.NewTracer per socket
+	//        filter program. But in NewInstance(), we don't have access to
+	//        the ebpf program yet, so we don't know how many socket filters
+	//        we have. For now, we don't support several socket filter.
+	//        Currently, we unfortunately impact performance with the
+	//        networkTracer even if there are no socket filters. This is
+	//        difficult to fix because AttachContainer() is called for all
+	//        initial containers before Run(), so we need to create the
+	//        networkTracer in NewInstance().
+	// https://github.com/inspektor-gadget/inspektor-gadget/pull/2003#discussion_r1320569238
+	networkTracer, err := networktracer.NewTracer[types.Event]()
+	if err != nil {
+		return nil, fmt.Errorf("creating network tracer: %w", err)
+	}
+
 	tracer := &Tracer{
-		config: &Config{},
+		config:        &Config{},
+		networkTracer: networkTracer,
 	}
 	return tracer, nil
 }
@@ -234,6 +253,7 @@ func (t *Tracer) installTracer() error {
 	}
 
 	// Attach programs
+	socketFilterFound := false
 	for progName, p := range t.spec.Programs {
 		if p.Type == ebpf.Kprobe && strings.HasPrefix(p.SectionName, "kprobe/") {
 			l, err := link.Kprobe(p.AttachTo, t.collection.Programs[progName], nil)
@@ -254,6 +274,15 @@ func (t *Tracer) installTracer() error {
 				return fmt.Errorf("attach BPF program %q: %w", progName, err)
 			}
 			t.links = append(t.links, l)
+		} else if p.Type == ebpf.SocketFilter && strings.HasPrefix(p.SectionName, "socket") {
+			if socketFilterFound {
+				return fmt.Errorf("several socket filters found, only one is supported")
+			}
+			socketFilterFound = true
+			err := t.networkTracer.AttachProg(t.collection.Programs[progName])
+			if err != nil {
+				return fmt.Errorf("attaching ebpf program to dispatcher: %w", err)
+			}
 		}
 	}
 
@@ -472,6 +501,14 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
 
 	return nil
+}
+
+func (t *Tracer) AttachContainer(container *containercollection.Container) error {
+	return t.networkTracer.Attach(container.Pid)
+}
+
+func (t *Tracer) DetachContainer(container *containercollection.Container) error {
+	return t.networkTracer.Detach(container.Pid)
 }
 
 func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {

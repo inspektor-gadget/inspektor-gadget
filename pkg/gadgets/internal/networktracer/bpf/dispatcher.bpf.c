@@ -6,6 +6,7 @@
 
 const volatile __u32 current_netns = 0;
 
+// Keep in sync with dispatcherMapSpec in tracer.go
 struct {
 	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
 	__type(key, __u32);
