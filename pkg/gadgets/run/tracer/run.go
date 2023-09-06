@@ -95,6 +95,78 @@ func (g *GadgetDesc) Parser() parser.Parser {
 	return nil
 }
 
+func getProgAndDefinition(params *params.Params, args []string) ([]byte, []byte, error) {
+	// First check if things are passed as arguments
+	progContent := params.Get(ProgramContent).AsBytes()
+	definitionBytes := params.Get(ParamDefinition).AsBytes()
+
+	// sanity checks to be sure --prog and --definition aren't used with an image
+	if len(args) != 0 && (len(progContent) != 0 || len(definitionBytes) != 0) {
+		return nil, nil, fmt.Errorf("arguments are not allowed when program or definition are provided")
+	}
+
+	if len(progContent) != 0 && len(definitionBytes) != 0 {
+		return progContent, definitionBytes, nil
+	}
+
+	if len(progContent) != 0 || len(definitionBytes) != 0 {
+		return nil, nil, fmt.Errorf("both program and definition must be provided")
+	}
+
+	// Fallback to image
+	if len(args) != 1 {
+		return nil, nil, fmt.Errorf("one argument expected: received %d", len(args))
+	}
+	image, err := oci_helper.NormalizeImage(args[0])
+	if err != nil {
+		return nil, nil, fmt.Errorf("normalize image: %w", err)
+	}
+
+	var imageStore oras.Target
+	imageStore, err = oci_helper.GetLocalOciStore()
+	if err != nil {
+		logrus.Debugf("get oci store: %s", err)
+		imageStore = oci_helper.GetMemoryStore()
+	}
+	authOpts := oci_helper.AuthOptions{
+		AuthFile: params.Get("authfile").AsString(),
+	}
+
+	prog, err := oci_helper.GetEbpfProgram(imageStore, &authOpts, image)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get ebpf program: %w", err)
+	}
+	if len(prog) == 0 {
+		return nil, nil, fmt.Errorf("no program found in image")
+	}
+
+	def, err := oci_helper.GetDefinition(imageStore, &authOpts, image)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get definition: %w", err)
+	}
+	if len(def) == 0 {
+		return nil, nil, fmt.Errorf("no definition found in image")
+	}
+
+	return prog, def, nil
+}
+
+func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types.GadgetInfo, error) {
+	progContent, definitionBytes, err := getProgAndDefinition(params, args)
+	if err != nil {
+		return nil, fmt.Errorf("get ebpf program and definition: %w", err)
+	}
+
+	ret := &types.GadgetInfo{
+		ProgContent: progContent,
+	}
+	if err := yaml.Unmarshal(definitionBytes, &ret.GadgetDefinition); err != nil {
+		return nil, fmt.Errorf("unmarshaling definition: %w", err)
+	}
+
+	return ret, nil
+}
+
 func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {
 	switch typedMember := tf.Type.(type) {
 	case *btf.Typedef:
@@ -272,58 +344,14 @@ func addL4EndpointColumns(
 	})
 }
 
-func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.Columns[types.Event], error) {
-	progContent := params.Get(ProgramContent).AsBytes()
-	definitionBytes := params.Get(ParamDefinition).AsBytes()
-
-	if len(progContent) == 0 || len(definitionBytes) == 0 {
-		if len(args) != 1 {
-			return nil, fmt.Errorf("one argument expected: received %d", len(args))
-		}
-
-		image, err := oci_helper.NormalizeImage(args[0])
-		if err != nil {
-			return nil, fmt.Errorf("normalize image: %w", err)
-		}
-
-		var imageStore oras.Target
-		imageStore, err = oci_helper.GetLocalOciStore()
-		if err != nil {
-			logrus.Debugf("get oci store: %s", err)
-			imageStore = oci_helper.GetMemoryStore()
-		}
-		authOpts := oci_helper.AuthOptions{
-			AuthFile: params.Get("authfile").AsString(),
-		}
-		def, err := oci_helper.GetDefinition(imageStore, &authOpts, image)
-		if err != nil {
-			return nil, fmt.Errorf("get definition: %w", err)
-		}
-		definitionBytes = def
-
-		prog, err := oci_helper.GetEbpfProgram(imageStore, &authOpts, image)
-		if err != nil {
-			return nil, fmt.Errorf("get ebpf program: %w", err)
-		}
-		progContent = prog
-	}
-
-	if len(definitionBytes) == 0 {
-		return nil, fmt.Errorf("no definition provided")
-	}
-
-	valueStruct, err := getEventTypeBTF(progContent)
+func (g *GadgetDesc) getColumns(prepareResult *types.GadgetInfo) (*columns.Columns[types.Event], error) {
+	gadgetDefinition := prepareResult.GadgetDefinition
+	eventType, err := getEventTypeBTF(prepareResult.ProgContent)
 	if err != nil {
 		return nil, fmt.Errorf("getting value struct: %w", err)
 	}
 
 	cols := types.GetColumns()
-
-	var gadgetDefinition types.GadgetDefinition
-
-	if err := yaml.Unmarshal(definitionBytes, &gadgetDefinition); err != nil {
-		return nil, fmt.Errorf("unmarshaling definition: %w", err)
-	}
 
 	colAttrs := map[string]columns.Attributes{}
 	for _, col := range gadgetDefinition.ColumnsAttrs {
@@ -335,7 +363,7 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 	l3endpointCounter := 0
 	l4endpointCounter := 0
 
-	for _, member := range valueStruct.Members {
+	for _, member := range eventType.Members {
 		member := member
 
 		attrs, ok := colAttrs[member.Name]
@@ -414,24 +442,25 @@ func (g *GadgetDesc) getColumns(params *params.Params, args []string) (*columns.
 	return cols, nil
 }
 
-func (g *GadgetDesc) CustomParser(params *params.Params, args []string) (parser.Parser, error) {
-	cols, err := g.getColumns(params, args)
+func (g *GadgetDesc) CustomParser(result *types.GadgetInfo) (parser.Parser, error) {
+	cols, err := g.getColumns(result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting columns: %w", err)
 	}
+
 	return parser.NewParser[types.Event](cols), nil
 }
 
-func (g *GadgetDesc) customJsonParser(params *params.Params, args []string, options ...columns_json.Option) (*columns_json.Formatter[types.Event], error) {
-	cols, err := g.getColumns(params, args)
+func (g *GadgetDesc) customJsonParser(result *types.GadgetInfo, options ...columns_json.Option) (*columns_json.Formatter[types.Event], error) {
+	cols, err := g.getColumns(result)
 	if err != nil {
 		return nil, err
 	}
 	return columns_json.NewFormatter(cols.ColumnMap, options...), nil
 }
 
-func (g *GadgetDesc) JSONConverter(params *params.Params, args []string, printer gadgets.Printer) func(ev any) {
-	formatter, err := g.customJsonParser(params, args)
+func (g *GadgetDesc) JSONConverter(result *types.GadgetInfo, printer types.Printer) func(ev any) {
+	formatter, err := g.customJsonParser(result)
 	if err != nil {
 		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
 		return nil
@@ -442,8 +471,8 @@ func (g *GadgetDesc) JSONConverter(params *params.Params, args []string, printer
 	}
 }
 
-func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, args []string, printer gadgets.Printer) func(ev any) {
-	formatter, err := g.customJsonParser(params, args, columns_json.WithPrettyPrint())
+func (g *GadgetDesc) JSONPrettyConverter(result *types.GadgetInfo, printer types.Printer) func(ev any) {
+	formatter, err := g.customJsonParser(result, columns_json.WithPrettyPrint())
 	if err != nil {
 		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
 		return nil
@@ -454,8 +483,8 @@ func (g *GadgetDesc) JSONPrettyConverter(params *params.Params, args []string, p
 	}
 }
 
-func (g *GadgetDesc) YAMLConverter(params *params.Params, args []string, printer gadgets.Printer) func(ev any) {
-	formatter, err := g.customJsonParser(params, args)
+func (g *GadgetDesc) YAMLConverter(result *types.GadgetInfo, printer types.Printer) func(ev any) {
+	formatter, err := g.customJsonParser(result)
 	if err != nil {
 		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
 		return nil

@@ -32,6 +32,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -179,6 +180,7 @@ func buildCommandFromGadget(
 	operatorsGlobalParamsCollection params.Collection,
 	operatorsParamsCollection params.Collection,
 ) *cobra.Command {
+	isRunGadget := gadgetDesc.Name() == "run"
 	var outputMode string
 	var filters []string
 	var timeout int
@@ -237,9 +239,23 @@ func buildCommandFromGadget(
 			// the flags
 			checkVerboseFlag()
 
-			if c, ok := gadgetDesc.(gadgets.GadgetDescCustomParser); ok {
+			err := runtime.Init(runtimeGlobalParams)
+			if err != nil {
+				return fmt.Errorf("initializing runtime: %w", err)
+			}
+			defer runtime.Close()
+
+			var gadgetInfo *runTypes.GadgetInfo
+			// Before running the gadget, we need to get the gadget info to create the
+			// parser based on it
+			if isRunGadget {
 				var err error
-				parser, err = c.CustomParser(gadgetParams, cmd.Flags().Args())
+				gadgetInfo, err = runtime.GetGadgetInfo(gadgetDesc, gadgetParams, args)
+				if err != nil {
+					return fmt.Errorf("getting gadget info: %w", err)
+				}
+
+				parser, err = gadgetDesc.(runTypes.RunGadgetDesc).CustomParser(gadgetInfo)
 				if err != nil {
 					return fmt.Errorf("calling custom parser: %w", err)
 				}
@@ -259,12 +275,6 @@ func buildCommandFromGadget(
 			if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
 				return cmd.Help()
 			}
-
-			err := runtime.Init(runtimeGlobalParams)
-			if err != nil {
-				return fmt.Errorf("initializing runtime: %w", err)
-			}
-			defer runtime.Close()
 
 			err = validOperators.Init(operatorsGlobalParamsCollection)
 			if err != nil {
@@ -491,20 +501,20 @@ func buildCommandFromGadget(
 				parser.SetEventCallback(formatter.EventHandlerFuncArray())
 			case OutputModeJSON:
 				jsonCallback := printEventAsJSONFn(fe)
-				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONConverter); ok {
-					jsonCallback = cjson.JSONConverter(gadgetParams, args, fe)
+				if isRunGadget {
+					jsonCallback = gadgetDesc.(runTypes.RunGadgetDesc).JSONConverter(gadgetInfo, fe)
 				}
 				parser.SetEventCallback(jsonCallback)
 			case OutputModeJSONPretty:
 				jsonPrettyCallback := printEventAsJSONPrettyFn(fe)
-				if cjson, ok := gadgetDesc.(gadgets.GadgetJSONPrettyConverter); ok {
-					jsonPrettyCallback = cjson.JSONPrettyConverter(gadgetParams, args, fe)
+				if isRunGadget {
+					jsonPrettyCallback = gadgetDesc.(runTypes.RunGadgetDesc).JSONPrettyConverter(gadgetInfo, fe)
 				}
 				parser.SetEventCallback(jsonPrettyCallback)
 			case OutputModeYAML:
 				yamlCallback := printEventAsYAMLFn(fe)
-				if cyaml, ok := gadgetDesc.(gadgets.GadgetYAMLConverter); ok {
-					yamlCallback = cyaml.YAMLConverter(gadgetParams, args, fe)
+				if isRunGadget {
+					yamlCallback = gadgetDesc.(runTypes.RunGadgetDesc).YAMLConverter(gadgetInfo, fe)
 				}
 				parser.SetEventCallback(yamlCallback)
 			}
@@ -554,9 +564,8 @@ func buildCommandFromGadget(
 	if parser != nil {
 		outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser))
 	}
-	_, hasCustomParser := gadgetDesc.(gadgets.GadgetDescCustomParser)
 
-	if parser != nil || hasCustomParser {
+	if parser != nil || isRunGadget {
 		defaultOutputFormat = "columns"
 
 		cmd.PersistentFlags().StringSliceVarP(

@@ -29,8 +29,6 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
-	"github.com/sirupsen/logrus"
-	"oras.land/oras-go/v2"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
@@ -38,7 +36,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci_helper"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -448,35 +445,14 @@ func (t *Tracer) runPrint(gadgetCtx gadgets.GadgetContext) {
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
+	var err error
+
 	params := gadgetCtx.GadgetParams()
-	progContent := params.Get(ProgramContent).AsBytes()
-
-	if len(progContent) == 0 {
-		if len(gadgetCtx.Args()) != 1 {
-			return fmt.Errorf("one argument expected: received %d", len(gadgetCtx.Args()))
-		}
-		image, err := oci_helper.NormalizeImage(gadgetCtx.Args()[0])
-		if err != nil {
-			return fmt.Errorf("normalize image: %w", err)
-		}
-
-		var imageStore oras.Target
-		imageStore, err = oci_helper.GetLocalOciStore()
-		if err != nil {
-			logrus.Debugf("get oci store: %s", err)
-			imageStore = oci_helper.GetMemoryStore()
-		}
-		authOpts := oci_helper.AuthOptions{
-			AuthFile: params.Get("authfile").AsString(),
-		}
-		prog, err := oci_helper.GetEbpfProgram(imageStore, &authOpts, image)
-		if err != nil {
-			return fmt.Errorf("get ebpf program: %w", err)
-		}
-		progContent = prog
+	args := gadgetCtx.Args()
+	t.config.ProgContent, _, err = getProgAndDefinition(params, args)
+	if err != nil {
+		return fmt.Errorf("get ebpf program: %w", err)
 	}
-
-	t.config.ProgContent = progContent
 
 	if err := t.installTracer(); err != nil {
 		t.Stop()

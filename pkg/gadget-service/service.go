@@ -28,6 +28,7 @@ import (
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
@@ -79,6 +80,30 @@ func (s *Service) GetInfo(ctx context.Context, request *pb.InfoRequest) (*pb.Inf
 	}, nil
 }
 
+func (s *Service) GetGadgetInfo(ctx context.Context, req *pb.GetGadgetInfoRequest) (*pb.GetGadgetInfoResponse, error) {
+	gadgetDesc := gadgetregistry.Get(gadgets.CategoryNone, "run")
+	if gadgetDesc == nil {
+		return nil, fmt.Errorf("run gadget not found")
+	}
+
+	params := gadgetDesc.ParamDescs().ToParams()
+	params.CopyFromMap(req.Params, "")
+
+	ret, err := s.runtime.GetGadgetInfo(gadgetDesc, params, req.Args)
+	if err != nil {
+		return nil, fmt.Errorf("getting gadget info: %w", err)
+	}
+
+	retJSON, err := json.Marshal(ret)
+	if err != nil {
+		return nil, fmt.Errorf("marshal gadget info response: %w", err)
+	}
+
+	return &pb.GetGadgetInfoResponse{
+		Info: retJSON,
+	}, nil
+}
+
 func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 	ctrl, err := runGadget.Recv()
 	if err != nil {
@@ -126,9 +151,12 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 		return fmt.Errorf("setting parameters: %w", err)
 	}
 
-	if c, ok := gadgetDesc.(gadgets.GadgetDescCustomParser); ok {
-		var err error
-		parser, err = c.CustomParser(gadgetParams, request.Args)
+	if c, ok := gadgetDesc.(runTypes.RunGadgetDesc); ok {
+		gadgetInfo, err := s.runtime.GetGadgetInfo(gadgetDesc, gadgetParams, request.Args)
+		if err != nil {
+			return fmt.Errorf("getting gadget info: %w", err)
+		}
+		parser, err = c.CustomParser(gadgetInfo)
 		if err != nil {
 			return fmt.Errorf("calling custom parser: %w", err)
 		}
