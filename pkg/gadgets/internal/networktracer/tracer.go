@@ -12,6 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package networktracer installs the dispatcher ebpf program in each network
+// namespace of interest. The dispatcher program runs a tail call to the actual
+// gadget program.
+//
+// This is done both for builtin gadgets and containerized gadgets. In the case
+// of containerized gadgets, the dispatcher program is installed before
+// knowning the actual gadget program. Once it knows the actual gadget program,
+// the tail call map is updated.
+//
+// In the case of builtin gadgets, the Run() method can be called to fetch and
+// process events from ebpf. The containerized gadgets won't call Run() because
+// run/tracer.go fetches and processes the events themselves. Instead, it will
+// just call AttachProg().
+//
+// The actual gadget program is instantiated only once for performance reason.
+// The network namespace is passed to the actual gadget program via the
+// skb->cb[0] variable.
+//
+// https://github.com/inspektor-gadget/inspektor-gadget/blob/main/docs/devel/network-gadget-dispatcher.png
 package networktracer
 
 import (
