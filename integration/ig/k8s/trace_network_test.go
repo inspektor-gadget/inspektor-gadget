@@ -36,6 +36,7 @@ func TestTraceNetwork(t *testing.T) {
 
 	RunTestSteps(commandsPreTest, t)
 	nginxIP := GetTestPodIP(t, ns, "nginx-pod")
+	nginxIPVersion := GetIPVersion(t, nginxIP)
 
 	traceNetworkCmd := &Command{
 		Name:         "TraceNetwork",
@@ -43,6 +44,7 @@ func TestTraceNetwork(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			testPodIP := GetTestPodIP(t, ns, "test-pod")
+			testPodIPVersion := GetIPVersion(t, testPodIP)
 			isDockerRuntime := *containerRuntime == ContainerRuntimeDocker
 			expectedEntries := []*networkTypes.Event{
 				{
@@ -57,7 +59,8 @@ func TestTraceNetwork(t *testing.T) {
 					Proto:   "TCP",
 					Port:    80,
 					DstEndpoint: eventtypes.L3Endpoint{
-						Addr: nginxIP,
+						Addr:    nginxIP,
+						Version: nginxIPVersion,
 					},
 				},
 				{
@@ -85,7 +88,8 @@ func TestTraceNetwork(t *testing.T) {
 					Proto:   "TCP",
 					Port:    80,
 					DstEndpoint: eventtypes.L3Endpoint{
-						Addr: testPodIP,
+						Addr:    testPodIP,
+						Version: testPodIPVersion,
 					},
 				},
 			}

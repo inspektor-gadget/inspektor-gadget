@@ -40,6 +40,7 @@ func TestTraceNetwork(t *testing.T) {
 
 	RunTestSteps(commandsPreTest, t)
 	nginxIP := GetTestPodIP(t, ns, "nginx-pod")
+	nginxIPVersion := GetIPVersion(t, nginxIP)
 
 	traceNetworkCmd := &Command{
 		Name:         "StartTraceNetworkGadget",
@@ -47,6 +48,7 @@ func TestTraceNetwork(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			testPodIP := GetTestPodIP(t, ns, "test-pod")
+			testPodIPVersion := GetIPVersion(t, testPodIP)
 
 			expectedEntries := []*tracenetworkTypes.Event{
 				{
@@ -61,6 +63,7 @@ func TestTraceNetwork(t *testing.T) {
 					Port:      80,
 					DstEndpoint: eventtypes.L3Endpoint{
 						Addr:      nginxIP,
+						Version:   nginxIPVersion,
 						Namespace: ns,
 						Name:      "nginx-pod",
 						Kind:      eventtypes.EndpointKindPod,
@@ -93,6 +96,7 @@ func TestTraceNetwork(t *testing.T) {
 					Port:      80,
 					DstEndpoint: eventtypes.L3Endpoint{
 						Addr:      testPodIP,
+						Version:   testPodIPVersion,
 						Namespace: ns,
 						Name:      "test-pod",
 						Kind:      eventtypes.EndpointKindPod,

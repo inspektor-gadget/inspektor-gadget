@@ -61,15 +61,17 @@ func TestSnapshotSocket(t *testing.T) {
 					Protocol: "TCP",
 					SrcEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: "0.0.0.0",
-							Kind: eventtypes.EndpointKindRaw,
+							Addr:    "0.0.0.0",
+							Version: 4,
+							Kind:    eventtypes.EndpointKindRaw,
 						},
 						Port: 9090,
 					},
 					DstEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: "0.0.0.0",
-							Kind: eventtypes.EndpointKindRaw,
+							Addr:    "0.0.0.0",
+							Version: 4,
+							Kind:    eventtypes.EndpointKindRaw,
 						},
 						Port: 0,
 					},

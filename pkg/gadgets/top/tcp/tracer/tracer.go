@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"syscall"
 	"time"
 	"unsafe"
 
@@ -168,29 +167,30 @@ func (t *Tracer) nextStats() ([]*types.Stats, error) {
 			return nil, err
 		}
 
+		ipversion := gadgets.IPVerFromAF(key.Family)
+
 		stat := types.Stats{
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: key.Mntnsid},
 			Pid:           int32(key.Pid),
 			Comm:          gadgets.FromCString(key.Name[:]),
 			SrcEndpoint: eventtypes.L4Endpoint{
+				L3Endpoint: eventtypes.L3Endpoint{
+					Addr:    gadgets.IPStringFromBytes(key.Saddr, ipversion),
+					Version: uint8(ipversion),
+				},
 				Port: key.Lport,
 			},
 			DstEndpoint: eventtypes.L4Endpoint{
+				L3Endpoint: eventtypes.L3Endpoint{
+					Addr:    gadgets.IPStringFromBytes(key.Daddr, ipversion),
+					Version: uint8(ipversion),
+				},
 				Port: key.Dport,
 			},
 			IPVersion: key.Family,
 			Sent:      val.Sent,
 			Received:  val.Received,
 		}
-
-		// eBPF program includes checks to only handle AF_INET and AF_INET6
-		ipType := 4
-		if key.Family == syscall.AF_INET6 {
-			ipType = 6
-		}
-
-		stat.SrcEndpoint.L3Endpoint.Addr = gadgets.IPStringFromBytes(key.Saddr, ipType)
-		stat.DstEndpoint.L3Endpoint.Addr = gadgets.IPStringFromBytes(key.Daddr, ipType)
 
 		if t.enricher != nil {
 			t.enricher.EnrichByMntNs(&stat.CommonData, stat.MountNsID)

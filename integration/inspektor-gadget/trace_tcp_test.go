@@ -44,14 +44,16 @@ func TestTraceTcp(t *testing.T) {
 				Operation: "connect",
 				SrcEndpoint: eventtypes.L4Endpoint{
 					L3Endpoint: eventtypes.L3Endpoint{
-						Addr: "127.0.0.1",
-						Kind: eventtypes.EndpointKindRaw,
+						Addr:    "127.0.0.1",
+						Version: 4,
+						Kind:    eventtypes.EndpointKindRaw,
 					},
 				},
 				DstEndpoint: eventtypes.L4Endpoint{
 					L3Endpoint: eventtypes.L3Endpoint{
-						Addr: "127.0.0.1",
-						Kind: eventtypes.EndpointKindRaw,
+						Addr:    "127.0.0.1",
+						Version: 4,
+						Kind:    eventtypes.EndpointKindRaw,
 					},
 					Port: 80,
 				},
