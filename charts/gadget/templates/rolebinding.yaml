@@ -1,6 +1,10 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  {{- if not .Values.skipLabels }}
+  labels:
+    {{- include "gadget.labels" . | nindent 4 }}
+  {{- end }}
   name: {{ include "gadget.fullname" . }}-role-binding
   namespace: {{ include "gadget.namespace" . }}
 roleRef:

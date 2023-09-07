@@ -2,16 +2,25 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
+    {{- if not .Values.skipLabels }}
+    {{- include "gadget.labels" . | nindent 4 }}
+    {{- end }}
     k8s-app: {{ include "gadget.fullname" . }}
   name: {{ include "gadget.fullname" . }}
   namespace: {{ include "gadget.namespace" . }}
 spec:
   selector:
     matchLabels:
+      {{- if not .Values.skipLabels }}
+      {{- include "gadget.selectorLabels" . | nindent 6 }}
+      {{- end }}
       k8s-app: {{ include "gadget.fullname" . }}
   template:
     metadata:
       labels:
+        {{- if not .Values.skipLabels }}
+        {{- include "gadget.labels" . | nindent 8 }}
+        {{- end }}
         k8s-app: {{ include "gadget.fullname" . }}
       annotations:
         # We need to set gadget container as unconfined so it is able to write
