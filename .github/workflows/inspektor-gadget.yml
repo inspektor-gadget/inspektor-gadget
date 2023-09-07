@@ -958,7 +958,9 @@ jobs:
           OPENSHIFT_SERVER: '${{ secrets.OPENSHIFT_SERVER }}'
           OPENSHIFT_USER: '${{ secrets.OPENSHIFT_USER }}'
           OPENSHIFT_PASSWORD: '${{ secrets.OPENSHIFT_PASSWORD }}'
-          AZURE_AKS_CREDS: '${{ secrets.AZURE_AKS_CREDS }}'
+          AZURE_AKS_CLIENT_ID: '${{ secrets.AZURE_AKS_CLIENT_ID }}'
+          AZURE_AKS_TENANT_ID: '${{ secrets.AZURE_AKS_TENANT_ID }}'
+          AZURE_AKS_SUBSCRIPTION_ID: '${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}'
           AZURE_AKS_RESOURCE_GROUP: '${{ secrets.AZURE_AKS_RESOURCE_GROUP }}'
           COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
           COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
@@ -974,7 +976,9 @@ jobs:
             echo "aro=false" >> $GITHUB_OUTPUT
           fi
 
-          if [[ "${AZURE_AKS_CREDS}" != "" && \
+          if [[ "${AZURE_AKS_CLIENT_ID}" != "" && \
+                "${AZURE_AKS_TENANT_ID}" != "" && \
+                "${AZURE_AKS_SUBSCRIPTION_ID}" != "" && \
                 "${AZURE_AKS_RESOURCE_GROUP}" != "" ]]; \
           then
             echo "Secrets to use an AKS cluster were configured in the repo"
@@ -1097,6 +1101,12 @@ jobs:
       matrix:
         os-sku: [Ubuntu, AzureLinux]
         arch: [amd64, arm64]
+    environment: aks
+    permissions:
+      # This is needed to use federated credentials:
+      # https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure?tabs=azure-cli%2Clinux#set-up-azure-login-with-openid-connect-authentication
+      id-token: write
+      contents: read
     env:
       AZURE_AKS_RESOURCE_GROUP: '${{ secrets.AZURE_AKS_RESOURCE_GROUP }}'
     steps:
@@ -1116,7 +1126,9 @@ jobs:
     - uses: azure/login@v1
       name: Login to Azure
       with:
-        creds: ${{ secrets.AZURE_AKS_CREDS }}
+        client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
     - name: Craft cluster name
       shell: bash
       run: |
@@ -1154,6 +1166,13 @@ jobs:
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         image_flavour: "default"
+    - uses: azure/login@v1
+      if: always()
+      name: Login to Azure
+      with:
+        client-id: ${{ secrets.AZURE_AKS_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_AKS_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_AKS_SUBSCRIPTION_ID }}
     - name: Delete AKS cluster ${{ env.CLUSTER_NAME }}
       if: always()
       shell: bash

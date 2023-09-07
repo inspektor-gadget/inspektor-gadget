@@ -162,32 +162,74 @@ will also run on
 ### Create the clusters
 
 As Inspektor Gadget support both `amd64` and `arm64`, two clusters will be
-created:
+created when the CI is triggered.
+To be able to create them in the CI, you need to follow [these instructions](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure?tabs=azure-cli%2Clinux):
 
 ```bash
 $ subscription=<mySubscription>
 $ subscription_id=<mySubscriptionID>
 $ resourcegroup=<myResourceName>
 $ location=<myLocation>
+$ app_name=<myAppName>
+# federated_name should not have spaces!
+$ federated_name=<myFederatedCredentialName>
+$ organization=<myGitHubOrganization>
+$ repository=<myGitHubRepository>
+$ environment=<myCIJobEnvironment>
 
-# Set subscription so that we don't need to specify it at every command
+# Set subscription so that we don't need to specify it at every command.
 $ az account set --subscription $subscription
 
-# Create resource group
+# Create resource group.
+# This is not needed to generate secrets but it is mandatory to creates AKS
+# cluster in the CI.
 $ az group create --name $resourcegroup --location $location
 
-# Create the needed secrets to be able to "az login" from the CI.
-$ az ad sp create-for-rbac --name inspektor-gadget-ci --role contributor \
-	--scopes /subscriptions/${subscription_id}/resourceGroups/${resourcegroup} \
-	--sdk-auth
+# Register an application for your CI.
+$ az ad app create --display-name $app_name
 {
-# The JSON object containing a secret should be stored as CI secret.
+# It should reply with a big JSON object.
+}
+
+# Let's get the ID of the created application
+$ app_id=$(az ad app list --display-name $app_name --query [0].id | tr -d '"')
+
+# Let's create a service principal for the corresponding application.
+$ az ad sp create --id $app_id
+{
+# It should reply with a big JSON object.
+}
+
+# We now want to get the service principal ID.
+$ sp_id=$(az ad sp list --display-name $app_name --query [0].id | tr -d '"')
+
+# Let's create a new role for this service principal.
+$ az role assignment create --role contributor --subscription $subscription_id --assignee-object-id $sp_id --assignee-principal-type ServicePrincipal --scope /subscriptions/$subscription_id/resourceGroups/$resourcegroup
+{
+# It should reply with a big JSON object.
+}
+
+# Create the federated credential to be able to "az login" from the CI.
+$ az ad app federated-credential create --id $app_id --parameters <(echo "{
+  \"name\": \"${federated_name}\",
+  \"issuer\": \"https://token.actions.githubusercontent.com\",
+  \"subject\": \"repo:${organization}/${repository}:environment:${environment}\",
+  \"description\": \"AKS federated credentials for CI\",
+  \"audiences\": [
+    \"api://AzureADTokenExchange\"
+  ]
+}")
+{
+# It replies with a JSON object which has name set to $federated_name.
 }
 ```
 
 After doing this, you will need to create several secrets:
 
-1. `AZURE_AKS_CREDS`: It stores the JSON object outputted by ``.
+1. `AZURE_AKS_CLIENT_ID`: The application ID as given by `az ad app list --display-name $app_name --query [0].appId`.
+1. `AZURE_AKS_TENANT_ID`: The tenant ID as given by `az account show --query tenantId`.
+1. `AZURE_AKS_SUBSCRIPTION_ID`: The subscription used to create the federated
+credentials as given by `az account show --query id`.
 1. `AZURE_AKS_RESOURCE_GROUP`: It stores the name of the resource group where
 the clusters will be created.
 
