@@ -86,7 +86,7 @@ struct {
 	__uint(max_entries, MAX_SOCKETS);
 	__type(key, struct sockets_key);
 	__type(value, struct sockets_value);
-} sockets SEC(".maps");
+} gadget_sockets SEC(".maps");
 
 #ifdef GADGET_TYPE_NETWORKING
 static __always_inline struct sockets_value *
@@ -189,14 +189,14 @@ gadget_socket_lookup(const struct __sk_buff *skb)
 		return 0;
 	}
 
-	ret = bpf_map_lookup_elem(&sockets, &key);
+	ret = bpf_map_lookup_elem(&gadget_sockets, &key);
 	if (ret)
 		return ret;
 
 	// If a native socket was not found, try to find a dual-stack socket.
 	if (key.family == AF_INET) {
 		key.family = AF_INET6;
-		ret = bpf_map_lookup_elem(&sockets, &key);
+		ret = bpf_map_lookup_elem(&gadget_sockets, &key);
 		if (ret && ret->ipv6only == 0)
 			return ret;
 	}
@@ -224,7 +224,7 @@ gadget_socket_lookup(const struct sock *sk, __u32 netns)
 	// inet_sock.inet_sport is in network byte order
 	key.port = bpf_ntohs(key.port);
 
-	return bpf_map_lookup_elem(&sockets, &key);
+	return bpf_map_lookup_elem(&gadget_sockets, &key);
 }
 #endif
 

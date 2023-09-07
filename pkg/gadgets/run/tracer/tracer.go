@@ -36,6 +36,7 @@ import (
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -66,6 +67,8 @@ type Tracer struct {
 
 	spec       *ebpf.CollectionSpec
 	collection *ebpf.Collection
+
+	socketEnricher *socketenricher.SocketEnricher
 
 	valueStruct       *btf.Struct
 	ringbufReader     *ringbuf.Reader
@@ -128,6 +131,9 @@ func (t *Tracer) Stop() {
 	if t.perfReader != nil {
 		t.perfReader.Close()
 	}
+	if t.socketEnricher != nil {
+		t.socketEnricher.Close()
+	}
 }
 
 func (t *Tracer) installTracer() error {
@@ -173,6 +179,19 @@ func (t *Tracer) installTracer() error {
 
 		if err := t.spec.RewriteConstants(consts); err != nil {
 			return fmt.Errorf("rewriting constants: %w", err)
+		}
+	}
+
+	// Only create socket enricher if this is used by the tracer
+	for _, m := range t.spec.Maps {
+		if m.Name == socketenricher.SocketsMapName {
+			t.socketEnricher, err = socketenricher.NewSocketEnricher()
+			if err != nil {
+				// Containerized gadgets require a kernel with BTF
+				return fmt.Errorf("creating socket enricher: %w", err)
+			}
+			mapReplacements[socketenricher.SocketsMapName] = t.socketEnricher.SocketsMap()
+			break
 		}
 	}
 

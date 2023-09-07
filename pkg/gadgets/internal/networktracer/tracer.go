@@ -36,10 +36,6 @@ import (
 
 //go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang dispatcher ./bpf/dispatcher.bpf.c -- $CLANG_OS_FLAGS -I./bpf/ -I../socketenricher/bpf"
 
-const (
-	SocketsMapName = "sockets"
-)
-
 type attachment struct {
 	dispatcherObjs dispatcherObjects
 
@@ -152,7 +148,7 @@ func NewTracer[Event any](
 
 	// Only create socket enricher if this is used by the tracer
 	for _, m := range spec.Maps {
-		if m.Name == SocketsMapName {
+		if m.Name == socketenricher.SocketsMapName {
 			t.socketEnricher, err = socketenricher.NewSocketEnricher()
 			if err != nil {
 				// Non fatal: support kernels without BTF
@@ -164,7 +160,7 @@ func NewTracer[Event any](
 
 	if t.socketEnricher != nil {
 		mapReplacements := map[string]*ebpf.Map{}
-		mapReplacements[SocketsMapName] = t.socketEnricher.SocketsMap()
+		mapReplacements[socketenricher.SocketsMapName] = t.socketEnricher.SocketsMap()
 		opts.MapReplacements = mapReplacements
 	}
 

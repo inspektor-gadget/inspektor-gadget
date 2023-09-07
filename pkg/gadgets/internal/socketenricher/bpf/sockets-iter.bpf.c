@@ -42,7 +42,7 @@ static __always_inline void insert_socket_from_iter(struct sock *sock,
 
 	// If the endpoint was not present, add it and we're done.
 	struct sockets_value *old_socket_value =
-		(struct sockets_value *)bpf_map_lookup_elem(&sockets,
+		(struct sockets_value *)bpf_map_lookup_elem(&gadget_sockets,
 							    &socket_key);
 	if (!old_socket_value) {
 		// Use BPF_NOEXIST: if an entry was inserted just after the check, this
@@ -50,7 +50,7 @@ static __always_inline void insert_socket_from_iter(struct sock *sock,
 		// parallel to other kprobes and we prefer the information from the
 		// other kprobes because their data is more accurate (e.g. correct
 		// thread).
-		bpf_map_update_elem(&sockets, &socket_key, &socket_value,
+		bpf_map_update_elem(&gadget_sockets, &socket_key, &socket_value,
 				    BPF_NOEXIST);
 		return;
 	}
@@ -67,7 +67,7 @@ static __always_inline void insert_socket_from_iter(struct sock *sock,
 	// because the passive socket will be added later, overwriting the
 	// active socket.
 	if (BPF_CORE_READ(sock, __sk_common.skc_state) == TCP_LISTEN)
-		bpf_map_update_elem(&sockets, &socket_key, &socket_value,
+		bpf_map_update_elem(&gadget_sockets, &socket_key, &socket_value,
 				    BPF_ANY);
 }
 
@@ -128,7 +128,7 @@ int ig_sk_cleanup(struct bpf_iter__bpf_map_elem *ctx)
 		// The socket is expired, remove it from the map.
 		__builtin_memcpy(&tmp_key, socket_key,
 				 sizeof(struct sockets_key));
-		bpf_map_delete_elem(&sockets, &tmp_key);
+		bpf_map_delete_elem(&gadget_sockets, &tmp_key);
 		return 0;
 	}
 

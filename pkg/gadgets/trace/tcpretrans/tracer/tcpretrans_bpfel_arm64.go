@@ -90,8 +90,8 @@ type tcpretransProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpretransMapSpecs struct {
-	Events  *ebpf.MapSpec `ebpf:"events"`
-	Sockets *ebpf.MapSpec `ebpf:"sockets"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
 }
 
 // tcpretransObjects contains all objects after they have been loaded into the kernel.
@@ -113,14 +113,14 @@ func (o *tcpretransObjects) Close() error {
 //
 // It can be passed to loadTcpretransObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpretransMaps struct {
-	Events  *ebpf.Map `ebpf:"events"`
-	Sockets *ebpf.Map `ebpf:"sockets"`
+	Events        *ebpf.Map `ebpf:"events"`
+	GadgetSockets *ebpf.Map `ebpf:"gadget_sockets"`
 }
 
 func (m *tcpretransMaps) Close() error {
 	return _TcpretransClose(
 		m.Events,
-		m.Sockets,
+		m.GadgetSockets,
 	)
 }
 

@@ -90,8 +90,8 @@ type tcpdropProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpdropMapSpecs struct {
-	Events  *ebpf.MapSpec `ebpf:"events"`
-	Sockets *ebpf.MapSpec `ebpf:"sockets"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	GadgetSockets *ebpf.MapSpec `ebpf:"gadget_sockets"`
 }
 
 // tcpdropObjects contains all objects after they have been loaded into the kernel.
@@ -113,14 +113,14 @@ func (o *tcpdropObjects) Close() error {
 //
 // It can be passed to loadTcpdropObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpdropMaps struct {
-	Events  *ebpf.Map `ebpf:"events"`
-	Sockets *ebpf.Map `ebpf:"sockets"`
+	Events        *ebpf.Map `ebpf:"events"`
+	GadgetSockets *ebpf.Map `ebpf:"gadget_sockets"`
 }
 
 func (m *tcpdropMaps) Close() error {
 	return _TcpdropClose(
 		m.Events,
-		m.Sockets,
+		m.GadgetSockets,
 	)
 }
 
