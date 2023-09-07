@@ -90,6 +90,41 @@ func TestSnapshotSocket(t *testing.T) {
 			},
 		},
 		{
+			name:  "listen_tcp_v6",
+			proto: types.TCP,
+			addr:  "::1",
+			port:  8082,
+			expectedEvent: func(info *utilstest.RunnerInfo, _ any) *types.Event {
+				return &types.Event{
+					Event:       eventtypes.Event{Type: eventtypes.NORMAL},
+					WithNetNsID: eventtypes.WithNetNsID{NetNsID: info.NetworkNsID},
+					Protocol:    "TCP",
+					Status:      "LISTEN",
+					SrcEndpoint: eventtypes.L4Endpoint{
+						L3Endpoint: eventtypes.L3Endpoint{
+							Addr: "::1",
+						},
+						Port: 8082,
+					},
+					DstEndpoint: eventtypes.L4Endpoint{
+						L3Endpoint: eventtypes.L3Endpoint{
+							// There is no connection in this test, so the remote address is null.
+							Addr: "::",
+						},
+					},
+				}
+			},
+			socketCreator: func(addr string, port int) error {
+				conn, err := net.Listen("tcp", fmt.Sprintf("[%s]:%d", addr, port))
+				if err != nil {
+					return fmt.Errorf("listening to %s: %w", addr, err)
+				}
+				t.Cleanup(func() { conn.Close() })
+
+				return nil
+			},
+		},
+		{
 			name:  "listen_udp_v4",
 			proto: types.UDP,
 			addr:  "127.0.0.1",
@@ -116,6 +151,44 @@ func TestSnapshotSocket(t *testing.T) {
 			},
 			socketCreator: func(addr string, port int) error {
 				conn, err := net.ListenUDP("udp", &net.UDPAddr{
+					Port: port,
+					IP:   net.ParseIP(addr),
+				})
+				if err != nil {
+					return fmt.Errorf("listening to %s: %w", addr, err)
+				}
+				t.Cleanup(func() { conn.Close() })
+
+				return nil
+			},
+		},
+		{
+			name:  "listen_udp_v6",
+			proto: types.UDP,
+			addr:  "::1",
+			port:  8082,
+			expectedEvent: func(info *utilstest.RunnerInfo, _ any) *types.Event {
+				return &types.Event{
+					Event:       eventtypes.Event{Type: eventtypes.NORMAL},
+					WithNetNsID: eventtypes.WithNetNsID{NetNsID: info.NetworkNsID},
+					Protocol:    "UDP",
+					Status:      "INACTIVE",
+					SrcEndpoint: eventtypes.L4Endpoint{
+						L3Endpoint: eventtypes.L3Endpoint{
+							Addr: "::1",
+						},
+						Port: 8082,
+					},
+					DstEndpoint: eventtypes.L4Endpoint{
+						L3Endpoint: eventtypes.L3Endpoint{
+							// There is no connection in this test, so there remote address is null.
+							Addr: "::",
+						},
+					},
+				}
+			},
+			socketCreator: func(addr string, port int) error {
+				conn, err := net.ListenUDP("udp6", &net.UDPAddr{
 					Port: port,
 					IP:   net.ParseIP(addr),
 				})
