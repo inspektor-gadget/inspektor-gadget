@@ -2,16 +2,16 @@
 // Copyright (c) 2020 Anton Protopopov
 //
 // Based on tcpconnect(8) from BCC by Brendan Gregg
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 
-#include "maps.bpf.h"
-#include "mntns_filter.h"
-#include "types.h"
+#include <gadget/maps.bpf.h>
+#include <gadget/mntns_filter.h>
+#include <gadget/types.h>
 
 /* The maximum number of items in maps */
 #define MAX_ENTRIES 8192

@@ -32,7 +32,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type entry  socket ./bpf/socket.bpf.c -- -I../../../../${TARGET} -Werror -O2 -g -c -x c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type entry  socket ./bpf/socket.bpf.c -- -I../../../../../include/gadget/${TARGET}/ -Werror -O2 -g -c -x c
 
 type Tracer struct {
 	iters []*link.Iter

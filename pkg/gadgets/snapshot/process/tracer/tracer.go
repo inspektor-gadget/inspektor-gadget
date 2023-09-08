@@ -36,7 +36,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type process_entry processCollector ./bpf/process-collector.bpf.c -- -I../../../../${TARGET} -I ../../../common/ -Werror -O2 -g -c -x c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type process_entry processCollector ./bpf/process-collector.bpf.c -- -I../../../../../include/gadget/${TARGET}/ -I../../../../../include/ -Werror -O2 -g -c -x c
 
 type Config struct {
 	MountnsMap  *ebpf.Map

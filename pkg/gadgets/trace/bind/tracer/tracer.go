@@ -33,7 +33,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -type bind_event bindsnoop ./bpf/bindsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -type bind_event bindsnoop ./bpf/bindsnoop.bpf.c -- -I./bpf/ -I../../../../../include/gadget/${TARGET}/ -I../../../../../include/
 
 type Config struct {
 	MountnsMap   *ebpf.Map

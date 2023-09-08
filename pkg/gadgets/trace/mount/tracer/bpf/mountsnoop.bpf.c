@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (c) 2021 Hengqi Chen */
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include "mountsnoop.h"
-#include "mntns_filter.h"
+#include <gadget/mntns_filter.h>
 
 #define MAX_ENTRIES 10240
 

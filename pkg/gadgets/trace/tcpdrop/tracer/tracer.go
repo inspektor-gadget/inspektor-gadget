@@ -36,7 +36,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type event tcpdrop ./bpf/tcpdrop.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I../../../internal/socketenricher/bpf
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type event tcpdrop ./bpf/tcpdrop.bpf.c -- -I./bpf/ -I../../../../../include/gadget/${TARGET}/ -I../../../../../include/
 
 type Tracer struct {
 	socketEnricher *socketenricher.SocketEnricher

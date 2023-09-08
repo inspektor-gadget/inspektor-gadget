@@ -4,13 +4,13 @@
 /* This BPF program uses the GPL-restricted function bpf_probe_read*().
  */
 
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
 #include "audit-seccomp.h"
-#include "mntns_filter.h"
+#include <gadget/mntns_filter.h>
 
 /* The stack is limited, so use a map to build the event */
 struct {

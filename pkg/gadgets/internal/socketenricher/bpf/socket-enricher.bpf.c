@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0 WITH Linux-syscall-note) OR Apache-2.0
 /* Copyright (c) 2023 The Inspektor Gadget authors */
 
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
@@ -9,7 +9,7 @@
 
 #include <bpf/bpf_helpers.h>
 
-#include "sockets-map.h"
+#include <gadget/sockets-map.h>
 #include "socket-enricher-helpers.h"
 
 #define MAX_ENTRIES 10240

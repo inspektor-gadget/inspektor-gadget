@@ -26,7 +26,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types privatedata ./bpf/privatedata.bpf.c -- -I./bpf/ -I../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types privatedata ./bpf/privatedata.bpf.c -- -I./bpf/ -I../../include/gadget/${TARGET}
 
 // readPrivateDataFromFd use ebpf to read the private_data pointer from the
 // kernel "struct file" associated with the given fd.

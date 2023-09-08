@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2022 Jingxiang Zeng
 // Copyright (c) 2022 Francis Laniel <flaniel@linux.microsoft.com>
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
 #include "oomkill.h"
-#include "mntns_filter.h"
+#include <gadget/mntns_filter.h>
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct data_t *unuseddata __attribute__((unused));

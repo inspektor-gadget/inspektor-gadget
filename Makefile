@@ -280,6 +280,14 @@ generate-manifests:
 	make -C charts APP_VERSION=latest template
 	cat charts/bin/deploy.yaml >> pkg/resources/manifests/deploy.yaml
 
+.PHONY: install-headers
+install-headers:
+	cp -r ./include/gadget/ /usr/include/
+
+.PHONY: remove-headers
+remove-headers:
+	rm -rf /usr/include/gadget
+
 .PHONY: help
 help:
 	@echo  'Building targets:'
@@ -319,3 +327,5 @@ help:
 	@echo  '  generate-manifests		- Generate manifests for the gadget deployment'
 	@echo  '  minikube-start		- Start a kubernetes cluster using minikube with the docker driver'
 	@echo  '  minikube-deploy		- Build and deploy the gadget container on minikube with docker driver, the cluster is started if it does not exist'
+	@echo  '  install-headers		- Install headers used to build gadgets in /usr/include/gadget'
+	@echo  '  remove-headers		- Remove headers installed in /usr/include/gadget'

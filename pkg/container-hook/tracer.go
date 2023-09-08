@@ -56,7 +56,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type record execruntime ./bpf/execruntime.bpf.c -- -I./bpf/ -I../${TARGET}
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type record execruntime ./bpf/execruntime.bpf.c -- -I./bpf/ -I../../include/gadget/${TARGET}
 
 type EventType int
 
