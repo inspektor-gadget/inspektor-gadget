@@ -50,7 +50,8 @@ func TestTraceNetwork(t *testing.T) {
 					Proto:   "TCP",
 					Port:    80,
 					DstEndpoint: eventtypes.L3Endpoint{
-						Addr: "127.0.0.1",
+						Addr:    "127.0.0.1",
+						Version: 4,
 					},
 				},
 				{
@@ -70,7 +71,8 @@ func TestTraceNetwork(t *testing.T) {
 					Proto:   "TCP",
 					Port:    80,
 					DstEndpoint: eventtypes.L3Endpoint{
-						Addr: "127.0.0.1",
+						Addr:    "127.0.0.1",
+						Version: 4,
 					},
 				},
 			}

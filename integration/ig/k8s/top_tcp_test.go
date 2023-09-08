@@ -37,12 +37,14 @@ func newTopTCPCmd(ns string, cmd string, startAndStop bool) *Command {
 			IPVersion: syscall.AF_INET,
 			SrcEndpoint: eventtypes.L4Endpoint{
 				L3Endpoint: eventtypes.L3Endpoint{
-					Addr: "127.0.0.1",
+					Addr:    "127.0.0.1",
+					Version: 4,
 				},
 			},
 			DstEndpoint: eventtypes.L4Endpoint{
 				L3Endpoint: eventtypes.L3Endpoint{
-					Addr: "127.0.0.1",
+					Addr:    "127.0.0.1",
+					Version: 4,
 				},
 				Port: 80,
 			},

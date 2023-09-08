@@ -251,3 +251,15 @@ func IsDockerRuntime(t *testing.T) bool {
 
 	return strings.Contains(ret, "docker")
 }
+
+// GetIPVersion returns the version of the IP, 4 or 6. It makes the test fail in case of error.
+// Based on https://stackoverflow.com/a/48519490
+func GetIPVersion(t *testing.T, address string) uint8 {
+	if strings.Count(address, ":") < 2 {
+		return 4
+	} else if strings.Count(address, ":") >= 2 {
+		return 6
+	}
+	t.Fatalf("Failed to determine IP version for address %s", address)
+	return 0
+}

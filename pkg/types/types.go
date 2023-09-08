@@ -225,6 +225,9 @@ func (e *L3Endpoint) String() string {
 	case EndpointKindRaw:
 		return "r/" + e.Addr
 	default:
+		if e.Version == 6 {
+			return "[" + e.Addr + "]"
+		}
 		return e.Addr
 	}
 }

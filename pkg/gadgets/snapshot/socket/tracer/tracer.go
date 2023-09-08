@@ -100,6 +100,8 @@ func (t *Tracer) runCollector(pid uint32, netns uint64) ([]*socketcollectortypes
 					return err
 				}
 
+				ipversion := gadgets.IPVerFromAF(entry.Family)
+
 				event := &socketcollectortypes.Event{
 					Event: eventtypes.Event{
 						Type: eventtypes.NORMAL,
@@ -107,13 +109,15 @@ func (t *Tracer) runCollector(pid uint32, netns uint64) ([]*socketcollectortypes
 					Protocol: proto,
 					SrcEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: gadgets.IPStringFromBytes(entry.Saddr, gadgets.IPVerFromAF(entry.Family)),
+							Addr:    gadgets.IPStringFromBytes(entry.Saddr, ipversion),
+							Version: uint8(ipversion),
 						},
 						Port: entry.Sport,
 					},
 					DstEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: gadgets.IPStringFromBytes(entry.Daddr, gadgets.IPVerFromAF(entry.Family)),
+							Addr:    gadgets.IPStringFromBytes(entry.Daddr, ipversion),
+							Version: uint8(ipversion),
 						},
 						Port: entry.Dport,
 					},

@@ -82,6 +82,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.Tid = 0
 					e.PodIP = ""
 					e.DstEndpoint.Addr = ""
+					e.DstEndpoint.Version = 0
 					e.PodHostIP = ""
 					e.NetNsID = 0
 					e.MountNsID = 0
@@ -134,6 +135,7 @@ func TestAdviseNetworkpolicy(t *testing.T) {
 					e.Tid = 0
 					e.PodIP = ""
 					e.DstEndpoint.Addr = ""
+					e.DstEndpoint.Version = 0
 					e.PodHostIP = ""
 					e.NetNsID = 0
 					e.MountNsID = 0

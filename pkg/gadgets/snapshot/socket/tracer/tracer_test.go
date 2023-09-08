@@ -67,14 +67,16 @@ func TestSnapshotSocket(t *testing.T) {
 					Status:      "LISTEN",
 					SrcEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: "127.0.0.1",
+							Addr:    "127.0.0.1",
+							Version: 4,
 						},
 						Port: 8082,
 					},
 					DstEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
 							// There is no connection in this test, so there remote address is null.
-							Addr: "0.0.0.0",
+							Addr:    "0.0.0.0",
+							Version: 4,
 						},
 					},
 				}
@@ -102,14 +104,16 @@ func TestSnapshotSocket(t *testing.T) {
 					Status:      "LISTEN",
 					SrcEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: "::1",
+							Addr:    "::1",
+							Version: 6,
 						},
 						Port: 8082,
 					},
 					DstEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
 							// There is no connection in this test, so the remote address is null.
-							Addr: "::",
+							Addr:    "::",
+							Version: 6,
 						},
 					},
 				}
@@ -137,14 +141,16 @@ func TestSnapshotSocket(t *testing.T) {
 					Status:      "INACTIVE",
 					SrcEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: "127.0.0.1",
+							Addr:    "127.0.0.1",
+							Version: 4,
 						},
 						Port: 8082,
 					},
 					DstEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
 							// There is no connection in this test, so there remote address is null.
-							Addr: "0.0.0.0",
+							Addr:    "0.0.0.0",
+							Version: 4,
 						},
 					},
 				}
@@ -175,14 +181,16 @@ func TestSnapshotSocket(t *testing.T) {
 					Status:      "INACTIVE",
 					SrcEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
-							Addr: "::1",
+							Addr:    "::1",
+							Version: 6,
 						},
 						Port: 8082,
 					},
 					DstEndpoint: eventtypes.L4Endpoint{
 						L3Endpoint: eventtypes.L3Endpoint{
 							// There is no connection in this test, so there remote address is null.
-							Addr: "::",
+							Addr:    "::",
+							Version: 6,
 						},
 					},
 				}
