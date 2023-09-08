@@ -149,9 +149,6 @@ out:
 		require.NoError(t, err, "unmarshalling expectedEntry")
 
 		for _, entry := range entries {
-			if entry["fname"] == "/dev/null" {
-				fmt.Println("actual entry:", entry)
-			}
 			if reflect.DeepEqual(expectedEntry, entry) {
 				continue out
 			}
