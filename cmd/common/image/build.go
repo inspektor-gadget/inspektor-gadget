@@ -17,15 +17,19 @@ package image
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"path/filepath"
 
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
@@ -33,41 +37,126 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci_helper"
 )
 
-type buildOptions struct {
+//go:embed build.sh
+var buildScript []byte
+
+const (
+	DEFAULT_BUILDER_IMAGE = "ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder:latest"
+)
+
+type buildFile struct {
+	EBPFProgram string `yaml:"ebpfprogram"`
+	Definition  string `yaml:"definition"`
+	CFlags      string `yaml:"cflags"`
+	// TODO: custom build script
+	// TODO: author, etc.
+}
+
+type cmdOpts struct {
+	file         string
+	image        string
+	local        bool
+	builderImage string
+}
+
+func NewBuildCmd() *cobra.Command {
+	opts := &cmdOpts{}
+
+	cmd := &cobra.Command{
+		Use:          "build IMAGE",
+		Short:        "Build a gadget image",
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return fmt.Errorf("expected exactly one unnamed argument")
+			}
+
+			if opts.local && opts.builderImage != DEFAULT_BUILDER_IMAGE {
+				return fmt.Errorf("--local and --builder-image cannot be used at the same time")
+			}
+
+			opts.image = args[0]
+
+			return runBuild(opts)
+		},
+	}
+
+	cmd.Flags().StringVarP(&opts.file, "file", "f", "build.yaml", "path to build.yaml")
+	cmd.Flags().BoolVarP(&opts.local, "local", "l", false, "build using local tools")
+	cmd.Flags().StringVar(&opts.builderImage, "builder-image", DEFAULT_BUILDER_IMAGE, "builder image to use")
+
+	return cmd
+}
+
+type imageIndexOpts struct {
 	progAmd64FilePath  string
 	progArm64FilePath  string
 	definitionFilePath string
 	image              string
 }
 
-func NewBuildCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:          "build IMAGE",
-		Short:        "Build a gadget image",
-		SilenceUsage: true,
-		RunE:         runBuild,
+func runBuild(opts *cmdOpts) error {
+	conf := &buildFile{
+		EBPFProgram: "program.bpf.c",
+		Definition:  "definition.yaml",
 	}
 
-	cmd.Flags().String("prog-amd64", "", "path to the amd64 variant of the eBPF program")
-	cmd.Flags().String("prog-arm64", "", "path to the arm64 variant of the eBPF program")
-	cmd.Flags().String("definition", "", "path to the definition file")
-
-	return cmd
-}
-
-func runBuild(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("expected exactly one unnamed argument")
-	}
-	o := &buildOptions{
-		progAmd64FilePath:  cmd.Flag("prog-amd64").Value.String(),
-		progArm64FilePath:  cmd.Flag("prog-arm64").Value.String(),
-		definitionFilePath: cmd.Flag("definition").Value.String(),
-		image:              args[0],
+	b, err := os.ReadFile(opts.file)
+	if err != nil && (opts.file != "build.yaml" || !errors.Is(err, os.ErrNotExist)) {
+		return fmt.Errorf("reading build file: %w", err)
+	} else if err == nil {
+		if err := yaml.Unmarshal(b, conf); err != nil {
+			return fmt.Errorf("unmarshal build.yaml: %w", err)
+		}
 	}
 
-	if o.progArm64FilePath == "" && o.progAmd64FilePath == "" {
-		return fmt.Errorf("at least one of --prog-amd64 or --prog-arm64 must be specified")
+	// make a temp folder to store the build results
+	tmpDir, err := os.MkdirTemp("", "gadget-build")
+	if err != nil {
+		return fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	if opts.local {
+		buildCmd := exec.Command(
+			"/bin/sh", "-c",
+			string(buildScript),
+			"", // TODO: why is it needed?
+			conf.EBPFProgram,
+			tmpDir,
+			conf.CFlags,
+		)
+		out, err := buildCmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("build script: %w: %s", err, out)
+		}
+	} else {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+
+		buildCmd := exec.Command(
+			"docker", "run", "--rm",
+			"-v", cwd+":/work",
+			"-v", tmpDir+":/out",
+			opts.builderImage,
+			"/build.sh",
+			"/work/"+conf.EBPFProgram,
+			"/out",
+			conf.CFlags,
+		)
+		out, err := buildCmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("build script: %w: %s", err, out)
+		}
+	}
+
+	imageIndexOpts := &imageIndexOpts{
+		image:              opts.image,
+		definitionFilePath: conf.Definition,
+		progArm64FilePath:  filepath.Join(tmpDir, "arm64.bpf.o"),
+		progAmd64FilePath:  filepath.Join(tmpDir, "x86.bpf.o"),
 	}
 
 	ociStore, err := oci_helper.GetLocalOciStore()
@@ -75,12 +164,12 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get oci store: %w", err)
 	}
 
-	indexDesc, err := createImageIndex(ociStore, o)
+	indexDesc, err := createImageIndex(ociStore, imageIndexOpts)
 	if err != nil {
 		return fmt.Errorf("create image index: %w", err)
 	}
 
-	targetImage, err := oci_helper.NormalizeImage(o.image)
+	targetImage, err := oci_helper.NormalizeImage(imageIndexOpts.image)
 	if err != nil {
 		return fmt.Errorf("normalize image: %w", err)
 	}
@@ -182,7 +271,7 @@ func createManifestForTarget(target oras.Target, definitionFilePath, progFilePat
 	return manifestDesc, nil
 }
 
-func createImageIndex(target oras.Target, o *buildOptions) (ocispec.Descriptor, error) {
+func createImageIndex(target oras.Target, o *imageIndexOpts) (ocispec.Descriptor, error) {
 	// Read the eBPF program files and push them to the memory store
 	layers := []ocispec.Descriptor{}
 	if o.progAmd64FilePath != "" {
