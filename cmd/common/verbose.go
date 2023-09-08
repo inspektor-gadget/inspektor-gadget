@@ -19,17 +19,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var verbose bool
+var Verbose bool
 
 func checkVerboseFlag() {
-	if verbose {
+	if Verbose {
 		log.SetLevel(log.DebugLevel)
 	}
 }
 
 func AddVerboseFlag(rootCmd *cobra.Command) {
 	rootCmd.PersistentFlags().BoolVarP(
-		&verbose,
+		&Verbose,
 		"verbose", "v",
 		false,
 		"Print debug information",
