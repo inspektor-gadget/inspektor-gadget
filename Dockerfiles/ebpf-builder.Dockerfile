@@ -32,3 +32,7 @@ ENV GOCACHE=/tmp/
 # avoid trouble when running as non root.
 RUN mkdir -m 777 /work
 WORKDIR /work
+
+# Add files used to build containerized gadgets
+ADD include /usr/include
+ADD cmd/common/image/build.sh /build.sh
