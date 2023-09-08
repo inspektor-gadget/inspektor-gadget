@@ -2,15 +2,15 @@
 // Copyright (c) 2020 Anton Protopopov
 //
 // Based on tcpconnect(8) from BCC by Brendan Gregg
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 
-#include "maps.bpf.h"
+#include <gadget/maps.bpf.h>
 #include "tcpconnect.h"
-#include "mntns_filter.h"
+#include <gadget/mntns_filter.h>
 
 const volatile int filter_ports[MAX_PORTS];
 const volatile int filter_ports_len = 0;

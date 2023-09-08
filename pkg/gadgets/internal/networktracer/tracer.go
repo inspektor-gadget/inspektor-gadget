@@ -54,7 +54,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate bash -c "source ./clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang dispatcher ./bpf/dispatcher.bpf.c -- $CLANG_OS_FLAGS -I./bpf/ -I../socketenricher/bpf"
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -cflags ${CFLAGS} dispatcher ./bpf/dispatcher.bpf.c -- -I./bpf/ -I../socketenricher/bpf
 
 type attachment struct {
 	dispatcherObjs dispatcherObjects

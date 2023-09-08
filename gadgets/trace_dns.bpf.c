@@ -11,10 +11,10 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
-#include "types.h"
+#include <gadget/types.h>
 
 #define GADGET_TYPE_NETWORKING
-#include <sockets-map.h>
+#include <gadget/sockets-map.h>
 
 // Max DNS name length: 255
 // https://datatracker.ietf.org/doc/html/rfc1034#section-3.1

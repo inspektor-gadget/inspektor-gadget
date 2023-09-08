@@ -32,7 +32,3 @@ ENV GOCACHE=/tmp/
 # avoid trouble when running as non root.
 RUN mkdir -m 777 /work
 WORKDIR /work
-# The resulting docker image should be run with:
-# docker run --rm --name ebpf-object-builder --user $(id -u):$(id -g) -v $(pwd):/work name-of-this-image
-ENTRYPOINT TARGET=arm64 go generate ./... \
-	&& TARGET=amd64 go generate ./...

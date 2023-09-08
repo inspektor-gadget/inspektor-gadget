@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause)
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #ifdef __TARGET_ARCH_arm64
 #include <bpf/bpf_tracing.h>
 #endif /* __TARGET_ARCH_arm64 */
 
-#include "mntns_filter.h"
+#include <gadget/mntns_filter.h>
 #ifdef WITH_CWD
-#include "filesystem.h"
+#include <gadget/filesystem.h>
 #endif
 #include "execsnoop.h"
 

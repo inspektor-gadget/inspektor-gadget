@@ -2,12 +2,12 @@
 // Copyright (c) 2019 Facebook
 // Copyright (c) 2020 Netflix
 
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 
-#include "mntns_filter.h"
-#include "types.h"
+#include <gadget/mntns_filter.h>
+#include <gadget/types.h>
 
 #define TASK_RUNNING 0
 #define NAME_MAX 255

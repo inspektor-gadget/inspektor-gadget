@@ -5,12 +5,12 @@
 //
 // Copyright 2022 Sony Group Corporation
 
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include "capable.h"
-#include "mntns_filter.h"
+#include <gadget/mntns_filter.h>
 
 // include/linux/security.h
 #ifndef CAP_OPT_NOAUDIT

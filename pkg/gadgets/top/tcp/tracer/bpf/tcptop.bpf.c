@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2022 Francis Laniel <flaniel@linux.microsoft.com>
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 
 #include "tcptop.h"
-#include "mntns_filter.h"
+#include <gadget/mntns_filter.h>
 
 /* Taken from kernel include/linux/socket.h. */
 #define AF_INET 2 /* Internet IP Protocol 	*/

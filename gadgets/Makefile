@@ -11,15 +11,13 @@ all: $(GADGETS)
 
 %_x86.bpf.o : %.bpf.c
 	clang -target bpf -Wall -g -O2 -D __TARGET_ARCH_x86 -c $(filter %.c,$^) \
-		-I ../pkg/amd64/ \
-		-I ../pkg/gadgets/common/ \
-		-I ../pkg/gadgets/internal/socketenricher/bpf/ \
+		-I ../include/ \
+		-I ../include/gadget/amd64/ \
 		-o $@
 %_arm64.bpf.o : %.bpf.c
 	clang -target bpf -Wall -g -O2 -D __TARGET_ARCH_arm64 -c $(filter %.c,$^) \
-		-I ../pkg/arm64/ \
-		-I ../pkg/gadgets/common/ \
-		-I ../pkg/gadgets/internal/socketenricher/bpf/ \
+		-I ../include/ \
+		-I ../include/gadget/arm64/ \
 		-o $@
 
 clean:

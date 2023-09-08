@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 /* Copyright (c) 2022 LG Electronics */
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 #include "profile.h"
-#include "maps.bpf.h"
-#include "mntns_filter.h"
+#include <gadget/maps.bpf.h>
+#include <gadget/mntns_filter.h>
 
 const volatile bool kernel_stacks_only = false;
 const volatile bool user_stacks_only = false;

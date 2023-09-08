@@ -71,11 +71,23 @@ phony_explicit:
 
 ebpf-objects:
 	docker run --rm --name ebpf-object-builder --user $(shell id -u):$(shell id -g) \
-		-v $(shell pwd):/work $(EBPF_BUILDER)
+		-v $(shell pwd):/work $(EBPF_BUILDER) \
+		make ebpf-objects-outside-docker
 
 ebpf-objects-outside-docker:
-	TARGET=arm64 go generate ./...
-	TARGET=amd64 go generate ./...
+# We need <asm/types.h> and depending on Linux distributions, it is installed
+# at different paths:
+#
+# * Ubuntu, package linux-libc-dev:
+#   /usr/include/x86_64-linux-gnu/asm/types.h
+#
+# * Fedora, package kernel-headers
+#   /usr/include/asm/types.h
+#
+# Since Ubuntu does not install it in a standard path, add a compiler flag for
+# it.
+	TARGET=arm64 CFLAGS="-I/usr/include/$(uname -m)-linux-gnu -I$(shell pwd)/include/gadget/arm64/ -I$(shell pwd)/include/" go generate ./...
+	TARGET=amd64 CFLAGS="-I/usr/include/$(uname -m)-linux-gnu -I$(shell pwd)/include/gadget/amd64/ -I$(shell pwd)/include/" go generate ./...
 
 # ig
 
@@ -280,6 +292,14 @@ generate-manifests:
 	make -C charts APP_VERSION=latest template
 	cat charts/bin/deploy.yaml >> pkg/resources/manifests/deploy.yaml
 
+.PHONY: install-headers
+install-headers:
+	cp -r ./include/gadget/ /usr/include/
+
+.PHONY: remove-headers
+remove-headers:
+	rm -rf /usr/include/gadget
+
 .PHONY: help
 help:
 	@echo  'Building targets:'
@@ -319,3 +339,5 @@ help:
 	@echo  '  generate-manifests		- Generate manifests for the gadget deployment'
 	@echo  '  minikube-start		- Start a kubernetes cluster using minikube with the docker driver'
 	@echo  '  minikube-deploy		- Build and deploy the gadget container on minikube with docker driver, the cluster is started if it does not exist'
+	@echo  '  install-headers		- Install headers used to build gadgets in /usr/include/gadget'
+	@echo  '  remove-headers		- Remove headers installed in /usr/include/gadget'

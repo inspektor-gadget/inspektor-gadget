@@ -32,8 +32,8 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang -type event execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang -type event execsnoopWithCwd ./bpf/execsnoop.bpf.c -- -DWITH_CWD -I./bpf/ -I../../../../${TARGET} -I ../../../common/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang -cflags ${CFLAGS} -type event execsnoop ./bpf/execsnoop.bpf.c -- -I./bpf/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang -cflags ${CFLAGS} -type event execsnoopWithCwd ./bpf/execsnoop.bpf.c -- -DWITH_CWD -I./bpf/
 
 type Config struct {
 	MountnsMap   *ebpf.Map

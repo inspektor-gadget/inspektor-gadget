@@ -32,7 +32,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -no-global-types -type event -type event_type tcptracer ./bpf/tcptracer.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types -type event -type event_type tcptracer ./bpf/tcptracer.bpf.c -- -I./bpf/
 
 type Config struct {
 	MountnsMap *ebpf.Map

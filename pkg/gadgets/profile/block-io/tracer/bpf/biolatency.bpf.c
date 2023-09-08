@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2020 Wenbo Zhang
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 #include "biolatency.h"
-#include "bits.bpf.h"
-#include "core_fixes.bpf.h"
+#include <gadget/bits.bpf.h>
+#include <gadget/core_fixes.bpf.h>
 
 #define MAX_ENTRIES 10240
 
