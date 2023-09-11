@@ -22,14 +22,15 @@ import (
 )
 
 type Metric struct {
-	Name     string   `yaml:"name"`
-	Category string   `yaml:"category"`
-	Gadget   string   `yaml:"gadget"`
-	Type     string   `yaml:"type"`
-	Field    string   `yaml:"field,omitempty"`
-	Labels   []string `yaml:"labels,omitempty"`
-	Selector []string `yaml:"selector,omitempty"`
-	Bucket   Bucket   `yaml:"bucket,omitempty"`
+	Name       string   `yaml:"name"`
+	Category   string   `yaml:"category"`
+	Gadget     string   `yaml:"gadget"`
+	GadgetArgs []string `yaml:"gadgetArgs"`
+	Type       string   `yaml:"type"`
+	Field      string   `yaml:"field,omitempty"`
+	Labels     []string `yaml:"labels,omitempty"`
+	Selector   []string `yaml:"selector,omitempty"`
+	Bucket     Bucket   `yaml:"bucket,omitempty"`
 }
 
 type Config struct {
@@ -62,10 +63,6 @@ func ParseConfig(configBytes []byte) (*Config, error) {
 	for _, metric := range config.Metrics {
 		if metric.Name == "" {
 			return nil, errors.New("metric name is missing")
-		}
-
-		if metric.Category == "" {
-			return nil, fmt.Errorf("metric category is missing in %q", metric.Name)
 		}
 
 		if metric.Gadget == "" {

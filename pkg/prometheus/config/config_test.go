@@ -67,9 +67,9 @@ func TestParseConfig(t *testing.T) {
 			expectedErr: true,
 		},
 		{
-			name: "missing_metrics_category",
+			name: "accept_empty_category",
 			input: &Config{
-				MetricsName: "missing_metrics_category",
+				MetricsName: "accept_empty_category",
 				Metrics: []Metric{
 					{
 						Name:     "name",
@@ -79,7 +79,7 @@ func TestParseConfig(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: true,
+			expectedErr: false,
 		},
 		{
 			name: "missing_metrics_gadget",

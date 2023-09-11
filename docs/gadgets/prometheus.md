@@ -33,6 +33,21 @@ metrics:
       # defines the granularity of the labels to capture. See below.
 ```
 
+To use your own gadget, you can refer to the gadget as follows:
+
+```yaml
+metrics_name: dns_traffic
+metrics:
+  - name: dns_traffic
+    type: counter
+    category: ""
+    gadget: run
+    gadgetArgs:
+      - myregistry.azurecr.io/trace-dns:v1
+    labels:
+      # defines the granularity of the labels to capture. See below.
+```
+
 ### Filtering (aka Selectors)
 
 It's possible to configure Inspektor Gadget to only update metrics for some specific labels. This is

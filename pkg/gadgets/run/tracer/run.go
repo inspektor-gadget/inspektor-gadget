@@ -81,7 +81,7 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 }
 
 func (g *GadgetDesc) Parser() parser.Parser {
-	return nil
+	return parser.NewParser[types.Event](types.GetColumns())
 }
 
 func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {
