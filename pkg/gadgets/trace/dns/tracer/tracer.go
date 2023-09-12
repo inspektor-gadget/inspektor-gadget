@@ -33,8 +33,6 @@ import (
 //go:generate bash -c "source ../../../internal/networktracer/clangosflags.sh; go run github.com/cilium/ebpf/cmd/bpf2go -target bpfel -cc clang -type event_t dns ./bpf/dns.c -- $CLANG_OS_FLAGS -I./bpf/ -I../../../internal/socketenricher/bpf"
 
 const (
-	BPFProgName     = "ig_trace_dns"
-	BPFPerfMapName  = "events"
 	BPFQueryMapName = "query_map"
 	MaxAddrAnswers  = 8 // Keep aligned with MAX_ADDR_ANSWERS in bpf/dns-common.h
 )
@@ -318,18 +316,15 @@ func (t *Tracer) install() error {
 		return event, nil
 	}
 
-	networkTracer, err := networktracer.NewTracer(
-		spec,
-		BPFProgName,
-		BPFPerfMapName,
-		types.Base,
-		parseDNSEvent,
-	)
+	networkTracer, err := networktracer.NewTracer[types.Event]()
 	if err != nil {
 		return fmt.Errorf("creating network tracer: %w", err)
 	}
+	err = networkTracer.Run(spec, types.Base, parseDNSEvent)
+	if err != nil {
+		return fmt.Errorf("setting network tracer spec: %w", err)
+	}
 	t.Tracer = networkTracer
-
 	return nil
 }
 

@@ -143,6 +143,9 @@ func getType(typ btf.Type) reflect.Type {
 	switch typedMember := typ.(type) {
 	case *btf.Array:
 		arrType := getSimpleType(typedMember.Type)
+		if arrType == nil {
+			return nil
+		}
 		return reflect.ArrayOf(int(typedMember.Nelems), arrType)
 	default:
 		return getSimpleType(typ)
