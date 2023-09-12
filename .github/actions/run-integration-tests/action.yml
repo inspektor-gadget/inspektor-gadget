@@ -21,6 +21,12 @@ inputs:
   dnstester_image:
     description: 'The image used for the dnstester.'
     default: 'ghcr.io/inspektor-gadget/dnstester:latest'
+  gadgets_repository:
+    description: 'Repository where gadget images are stored.'
+    required: true
+  gadgets_tag:
+    description: 'Tag used for gadgets OCI images'
+    required: true
 
 runs:
   using: "composite"
@@ -72,6 +78,8 @@ runs:
           IMAGE_TAG=${{ inputs.image_tag }} \
           DNSTESTER_IMAGE=${{ inputs.dnstester_image }} \
           IMAGE_FLAVOUR=${{ inputs.image_flavour }} \
+          GADGETS_REPOSITORY=${{ inputs.gadgets_repository }} \
+          GADGETS_TAG=${{ inputs.gadgets_tag }} \
           -o kubectl-gadget integration-tests |& tee integration.log & wait $!
         echo "IntegrationTestsJob: Done"
     - name: Prepare and publish test reports
