@@ -20,6 +20,12 @@ outputs:
   image-tag:
     description: "Image tag to be used."
     value: ${{ steps.craft-image-tag.outputs.image-tag }}
+  gadgets-repo:
+    description: "OCI repository used for gadgets's OCI images."
+    value: ${{ steps.gadgets-repo.outputs.gadgets-repo }}
+  gadgets-tag:
+    description: "Tag used for gadgets's OCI images."
+    value: ${{ steps.gadgets-tag.outputs.gadgets-tag }}
 
 runs:
   using: "composite"
@@ -58,3 +64,30 @@ runs:
         fi
 
         echo "image-tag=${image_tag}" >> $GITHUB_OUTPUT
+    - name: Output gadgets repository
+      id: gadgets-repo
+      shell: bash
+      run: |
+        if [ -z '${{ inputs.registry }}' ]; then
+          echo 'inputs.registry should not be empty! Set it before calling this action' 1>&2
+          exit 1
+        fi
+
+        gadgets_repo=${{ inputs.registry }}/${{ github.repository_owner }}
+        if [ ${{ github.event_name }} == 'pull_request' ]; then
+          gadgets_repo=ttl.sh/${{ github.sha }}
+        fi
+
+        echo "gadgets-repo=${gadgets_repo}" >> $GITHUB_OUTPUT
+    - name: Output gadgets image tag
+      id: gadgets-tag
+      shell: bash
+      run: |
+        # If GITHUB_REF_NAME is 'foo/bar', image_tag will be 'foo-bar', we need
+        # this because it is not possible to have slash in image tag.
+        gadgets_tag=${GITHUB_REF_NAME//\//-}
+        if [ "$gadgets_tag" = "main" ]; then
+            gadgets_tag="latest"
+        fi
+
+        echo "gadgets-tag=${gadgets_tag}" >> $GITHUB_OUTPUT
