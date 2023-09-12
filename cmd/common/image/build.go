@@ -134,14 +134,16 @@ func runBuild(opts *cmdOpts) error {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting current directory: %w", err)
-	}
-	defer os.Chdir(cwd)
+	if opts.path != "." {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("getting current directory: %w", err)
+		}
+		defer os.Chdir(cwd)
 
-	if err := os.Chdir(opts.path); err != nil {
-		return fmt.Errorf("changing directory: %w", err)
+		if err := os.Chdir(opts.path); err != nil {
+			return fmt.Errorf("changing directory: %w", err)
+		}
 	}
 
 	if opts.local {

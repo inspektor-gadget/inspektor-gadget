@@ -6,6 +6,8 @@ IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
 MINIKUBE ?= minikube
 KUBERNETES_DISTRIBUTION ?= ""
+GADGETS_REPOSITORY ?= ""
+GADGETS_TAG ?= ""
 
 GOHOSTOS ?= $(shell go env GOHOSTOS)
 GOHOSTARCH ?= $(shell go env GOHOSTARCH)
@@ -237,6 +239,8 @@ integration-tests: kubectl-gadget
 			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
 			-dnstester-image $(DNSTESTER_IMAGE) \
 			-image-flavour $(IMAGE_FLAVOUR) \
+			-gadgets-repository $(GADGETS_REPOSITORY) \
+			-gadgets-tag $(GADGETS_TAG) \
 			$$INTEGRATION_TESTS_PARAMS
 
 .PHONY: generate-documentation
@@ -306,6 +310,14 @@ install-headers:
 .PHONY: remove-headers
 remove-headers:
 	rm -rf /usr/include/gadget
+
+.PHOHY: build-gadgets
+build-gadgets: ig
+	+make IG=$(shell pwd)/ig -C gadgets/ build
+
+.PHOHY: push-gadgets
+build-gadgets: ig
+	+make IG=$(shell pwd)/ig -C gadgets/ push
 
 .PHONY: help
 help:
