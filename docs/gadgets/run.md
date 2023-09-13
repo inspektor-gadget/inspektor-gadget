@@ -8,22 +8,18 @@ description: >
 > ⚠️ This command is experimental and could change without prior notification. Only few gadgets are supported and we're working to extend this support.
 Check the installation guide to enable [experimental features](../install.md#experimental-features).
 
-The `run` gadget launches a gadget. Currently only local gadgets are supported and must be specified by using the following flags:
-- `--prog`: Compiled eBPF object.
-- `--definition`: Yaml file indicating the output format of the gadget.
-
-The [gadgets](../../gadgets) folder include some sample gadgets to be used with this command.
+The `run` gadget runs a gadget from an OCI image. Check the different gadgets available in https://github.com/orgs/inspektor-gadget/packages.
 
 ## On Kubernetes
 
 ```bash
-$ kubectl gadget run --prog @./gadgets/trace_tcpconnect_x86.bpf.o --definition @./gadgets/trace_tcpconnect.yaml
+$ kubectl gadget run ghcr.io/inspektor-gadget/trace_tcpconnect:latest
 INFO[0000] Experimental features enabled
 K8S.NODE               K8S.NAMESPACE         K8S.POD               K8S.CONTAINER         PID     TASK        SRC                      DST
 ubuntu-hirsute         default               mypod2                mypod2                174085  wget        p/default/mypod2:37848   r/1.1.1.1:80
 ubuntu-hirsute         default               mypod2                mypod2                174085  wget        p/default/mypod2:33150   r/1.1.1.1:443
 
-$ kubectl gadget run --prog @./gadgets/trace_open_x86.bpf.o --definition @./gadgets/trace_open.yaml
+$ kubectl gadget run ghcr.io/inspektor-gadget/trace_open:latest
 INFO[0000] Experimental features enabled
 K8S.NODE               K8S.NAMESPACE          K8S.POD                K8S.CONTAINER          PID     COMM        UID      GID      RET FNAME
 ubuntu-hirsute         default                mypod2                 mypod2                 225071  sh          0        0        3   /
@@ -64,12 +60,13 @@ ubuntu-hirsute         default                mypod2                 mypod2     
 ## With `ig`
 
 ``` bash
-$ sudo ig run --prog @./gadgets/trace_tcpconnect_x86.bpf.o --definition @./gadgets/trace_tcpconnect.yaml
+$ sudo ig run ghcr.io/inspektor-gadget/trace_tcpconnect:latest
+INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERNAME                                            PID     TASK             SRC                                DST
 mycontainer3                                                     1254254 wget             172.17.0.4:50072                   1.1.1.1:80
 mycontainer3                                                     1254254 wget             172.17.0.4:44408                   1.1.1.1:443
 
-$ sudo ig run --prog @./gadgets/trace_open_x86.bpf.o --definition @./gadgets/trace_open.yaml
+$ sudo ig run ghcr.io/inspektor-gadget/trace_open:latest
 INFO[0000] Experimental features enabled
 RUNTIME.CONTAINERNAME                               PID     COMM             UID      GID      RET       FNAME
 mycontainer3                                        62162   sh               0        0        3         /
