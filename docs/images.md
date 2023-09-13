@@ -20,21 +20,6 @@ and you haven't specified one using either the `--authfile PATH` parameter for e
 command or the environment variable `REGISTRY_AUTH_FILE`, your docker credentials
 (`~/.docker/config.json`) will be used as fallback.
 
-### `--authfile`
-
-Credentials are stored by default in `/var/lib/ig/config.json`, this can be modified by the passing
-the `--authfile` flag to the different commands.  If this flag is not passed and the default
-authentication file doesn't exist, the logic fallbacks to use the docker credentails.
-
-### `REGISTRY_AUTH_FILE`
-
-It's possible to override the default path of the authentication file by setting the
-`REGISTRY_AUTH_FILE` env variable
-
-```bash
-$ export REGISTRY_AUTH_FILE=/var/foo
-```
-
 ## Commands
 
 ### `login`
