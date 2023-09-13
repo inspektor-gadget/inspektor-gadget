@@ -19,6 +19,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/moby/moby/pkg/parsers/kernel"
+	"github.com/stretchr/testify/require"
+
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
@@ -73,6 +76,13 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool) *Command {
 }
 
 func TestTopBlockIO(t *testing.T) {
+	version, err := kernel.GetKernelVersion()
+	require.Nil(t, err, "Failed to get kernel version: %s", err)
+	v5_17 := kernel.VersionInfo{Kernel: 5, Major: 17, Minor: 0}
+	if kernel.CompareKernelVersion(*version, v5_17) >= 0 {
+		t.Skip("Skip running top block-io on kernels 5.17+. See issue #2029")
+	}
+
 	t.Parallel()
 	ns := GenerateTestNamespaceName("test-top-block-io")
 
