@@ -1024,7 +1024,7 @@ jobs:
         run: |
           sudo -E GADGETS_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadgets-repo }} \
           GADGETS_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadgets-tag }} \
-          make -C gadgets/ push
+          make BUILDER_IMAGE=ghcr.io/mauriciovasquezbernal/inspektor-gadget-ebpf-builder:latest -C gadgets/ push
 
   test-integration-non-k8s-ig:
     name: Test ig w/o k8s
