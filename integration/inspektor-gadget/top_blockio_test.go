@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/moby/moby/pkg/parsers/kernel"
+	"github.com/stretchr/testify/require"
+
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 	topblockioTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/top/block-io/types"
 )
@@ -59,6 +62,13 @@ func newTopBlockIOCmd(ns string, cmd string, startAndStop bool, isDockerRuntime 
 func TestTopBlockIO(t *testing.T) {
 	if *k8sDistro == K8sDistroARO {
 		t.Skip("Skip running top block-io gadget on ARO: see issue #589")
+	}
+
+	version, err := kernel.GetKernelVersion()
+	require.Nil(t, err, "Failed to get kernel version: %s", err)
+	v5_17 := kernel.VersionInfo{Kernel: 5, Major: 17, Minor: 0}
+	if kernel.CompareKernelVersion(*version, v5_17) >= 0 {
+		t.Skip("Skip running top block-io on kernels 5.17+. See issue #2029")
 	}
 
 	t.Parallel()
