@@ -8,22 +8,18 @@ description: >
 > ⚠️ This command is experimental and could change without prior notification. Only few gadgets are supported and we're working to extend this support.
 Check the installation guide to enable [experimental features](../install.md#experimental-features).
 
-The `run` gadget launches a gadget. Currently only local gadgets are supported and must be specified by using the following flags:
-- `--prog`: Compiled eBPF object.
-- `--definition`: Yaml file indicating the output format of the gadget.
-
-The [gadgets](../../gadgets) folder include some sample gadgets to be used with this command.
+The `run` gadget runs a gadget from an OCI image. Check the different gadgets available in https://github.com/orgs/inspektor-gadget/packages.
 
 ## On Kubernetes
 
 ```bash
-$ kubectl gadget run --prog @./gadgets/trace_tcpconnect_x86.bpf.o --definition @./gadgets/trace_tcpconnect.yaml
+$ kubectl gadget run ghcr.io/inspektor-gadget/trace_tcpconnect:latest
 INFO[0000] Experimental features enabled
 NODE                   NAMESPACE             POD                   CONTAINER             PID     TASK        SRC                      DST
 ubuntu-hirsute         default               mypod2                mypod2                174085  wget        p/default/mypod2:37848   r/1.1.1.1:80
 ubuntu-hirsute         default               mypod2                mypod2                174085  wget        p/default/mypod2:33150   r/1.1.1.1:443
 
-$ kubectl gadget run --prog @./gadgets/trace_open_x86.bpf.o --definition @./gadgets/trace_open.yaml
+$ kubectl gadget run ghcr.io/inspektor-gadget/trace_open:latest
 INFO[0000] Experimental features enabled
 NODE                   NAMESPACE              POD                    CONTAINER              PID     COMM        UID      GID      RET FNAME
 ubuntu-hirsute         default                mypod2                 mypod2                 225071  sh          0        0        3   /
@@ -64,42 +60,49 @@ ubuntu-hirsute         default                mypod2                 mypod2     
 ## With `ig`
 
 ``` bash
-$ sudo ig run --prog @./gadgets/trace_tcpconnect_x86.bpf.o --definition @./gadgets/trace_tcpconnect.yaml
-CONTAINER                                                        PID     TASK             SRC                                DST
-mycontainer3                                                     1254254 wget             172.17.0.4:50072                   1.1.1.1:80
-mycontainer3                                                     1254254 wget             172.17.0.4:44408                   1.1.1.1:443
-
-$ sudo ig run --prog @./gadgets/trace_open_x86.bpf.o --definition @./gadgets/trace_open.yaml
+$ sudo ig run ghcr.io/inspektor-gadget/trace_tcpconnect:latest
 INFO[0000] Experimental features enabled
-CONTAINER                                           PID     COMM             UID      GID      RET       FNAME
-mycontainer3                                        62162   sh               0        0        3         /
-mycontainer3                                        62162   sh               0        0        3         /root/.ash_history
-mycontainer3                                        122110  cat              0        0        -2        /etc/ld.so.cache
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64-linux-gnu/tls/x86_64/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64-linux-gnu/tls/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64-linux-gnu/tls/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64-linux-gnu/tls/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64-linux-gnu/x86_64/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64-linux-gnu/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64-linux-gnu/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64-linux-gnu/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/tls/x86_64/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/tls/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/tls/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/tls/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/x86_64/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/tls/x86_64/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/tls/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/tls/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/tls/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        -2        /lib/x86_64/libm.so.6
-mycontainer3                                        122110  cat              0        0        3         /lib/libm.so.6
-mycontainer3                                        122110  cat              0        0        3         /lib/libresolv.so.2
-mycontainer3                                        122110  cat              0        0        3         /lib/libc.so.6
-mycontainer3                                        122110  cat              0        0        3         /dev/null
+RUNTIME.CONTAINERNAME                                            PID     TASK             SRC                                DST
+mycontainer                                                      213907  wget             172.17.0.4:36764                   1.1.1.1:80
+mycontainer                                                      213907  wget             172.17.0.4:59656                   1.1.1.1:443
+
+$ sudo ig run ghcr.io/inspektor-gadget/trace_open:latest
+INFO[0000] Experimental features enabled
+RUNTIME.CONTAINERNAME                               PID     COMM             UID      GID      RET       FNAME
+mycontainer                                         213884  sh               0        0        3         /
+mycontainer                                         213884  sh               0        0        3         /root/.ash_history
+mycontainer                                         214182  cat              0        0        -2        /etc/ld.so.cache
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v3/libm.so.
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v2/libm.so.
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64-linux-gnu/tls/x86_64/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64-linux-gnu/tls/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64-linux-gnu/tls/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64-linux-gnu/tls/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64-linux-gnu/x86_64/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64-linux-gnu/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64-linux-gnu/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64-linux-gnu/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v3/libm
+mycontainer                                         214182  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v2/libm
+mycontainer                                         214182  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/tls/x86_64/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/tls/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/tls/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/tls/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/x86_64/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /usr/lib/x86_64-linux-gnu/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/glibc-hwcaps/x86-64-v3/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/glibc-hwcaps/x86-64-v2/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/tls/x86_64/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/tls/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/tls/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/tls/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        -2        /lib/x86_64/libm.so.6
+mycontainer                                         214182  cat              0        0        3         /lib/libm.so.6
+mycontainer                                         214182  cat              0        0        3         /lib/libresolv.so.2
+mycontainer                                         214182  cat              0        0        3         /lib/libc.so.6
+mycontainer                                         214182  cat              0        0        3         /dev/null
 ```
