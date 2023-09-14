@@ -220,14 +220,48 @@ jobs:
         name: kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}-tar-gz
         path: /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
 
-  build-ig:
-    name: ig
+  btfgen:
+    name: btfgen
     # level: 0
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        ig-target: [ig-linux-amd64, ig-linux-arm64]
+        platform: [amd64, arm64]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Get btfhub-archive last commmit
+      id: get-btfhub-head
+      run: |
+        echo "head=$(git ls-remote https://github.com/aquasecurity/btfhub-archive/ HEAD | cut -f1)" >> $GITHUB_OUTPUT
+      shell: bash
+    - name: Cache BTFGen
+      id: cache-btfgen
+      uses: actions/cache@v3.3.2
+      with:
+        path: pkg/btfgen/btfs
+        # key is composed by
+        # - arch: amd64 or arm64
+        # - latest commit of btfhub
+        # - hash of all bpf objects
+        key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/**/*.o') }}
+    - name: BTFGen
+      if: ${{ steps.cache-btfgen.outputs.cache-hit != 'true' }}
+      run: |
+          ./tools/getbtfhub.sh
+          ./tools/getbpftool.sh
+          make btfgen BPFTOOL=/tmp/bpftool \
+              ARCH=${{ matrix.platform }} BTFHUB_ARCHIVE=$HOME/btfhub-archive/ -j$(nproc)
+
+  build-ig:
+    name: ig
+    # level: 1
+    needs: btfgen
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [amd64, arm64]
     steps:
     - uses: actions/checkout@v4
     - name: Setup go
@@ -236,33 +270,48 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
         cache: true
       id: go
-    - name: Build ${{ matrix.ig-target }}
+    - name: Get btfhub-archive last commmit
+      id: get-btfhub-head
       run: |
-        if [ "${{ matrix.ig-target}}" = 'ig-linux-arm64' ]; then
+        echo "head=$(git ls-remote https://github.com/aquasecurity/btfhub-archive/ HEAD | cut -f1)" >> $GITHUB_OUTPUT
+      shell: bash
+    - name: Cache BTFGen
+      id: cache-btfgen
+      uses: actions/cache@v3.3.2
+      with:
+        path: pkg/btfgen/btfs
+        # key is composed by
+        # - arch: amd64 or arm64
+        # - latest commit of btfhub
+        # - hash of all bpf objects
+        key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/**/*.o') }}
+    - name: Build ig-linux-${{ matrix.platform }}
+      run: |
+        if [ "${{ matrix.platform }}" = 'arm64' ]; then
           sudo apt-get update
           sudo apt-get install qemu-user-static
         fi
 
-        make ${{ matrix.ig-target }}
+        make ig-linux-${{ matrix.platform }}
 
         # Prepare assets for release and actions artifacts
-        platform=$(echo ${{ matrix.ig-target }} | cut -d- -f3-4)
-        mkdir $platform
-        cp ${{ matrix.ig-target }} $platform/ig
-        cp LICENSE $platform/
+        mkdir ${{ matrix.platform }}
+        cp ig-linux-${{ matrix.platform }} ${{ matrix.platform }}/ig
+        cp LICENSE ${{ matrix.platform }}/
         tar --sort=name --owner=root:0 --group=root:0 \
-          -czf ${{ matrix.ig-target }}.tar.gz -C $platform \
+          -czf ig-linux-${{ matrix.platform }}.tar.gz -C ${{ matrix.platform }} \
           ig LICENSE
-        rm -rf $platform
-    - name: Add ${{ matrix.ig-target }}.tar.gz as artifact.
+        rm -rf ${{ matrix.platform }}
+    - name: Add ig-linux-${{ matrix.platform }}.tar.gz as artifact.
       uses: actions/upload-artifact@master
       with:
-        name: ${{ matrix.ig-target }}-tar-gz
-        path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.ig-target }}.tar.gz
+        name: ig-linux-${{ matrix.platform }}-tar-gz
+        path: /home/runner/work/inspektor-gadget/inspektor-gadget/ig-linux-${{ matrix.platform }}.tar.gz
 
   build-gadget-container-images:
     name: gadget img
-    # level: 0
+    # level: 1
+    needs: btfgen
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -317,19 +366,12 @@ jobs:
       id: cache-btfgen
       uses: actions/cache@v3.3.2
       with:
-        path: hack/btfs
+        path: pkg/btfgen/btfs
         # key is composed by
         # - arch: amd64 or arm64
-        # - lastest commit of btfhub
+        # - latest commit of btfhub
         # - hash of all bpf objects
-        key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/gadgets/**/*.o') }}
-    - name: BTFGen
-      if: ${{ steps.cache-btfgen.outputs.cache-hit != 'true' }}
-      run: |
-          ./tools/getbtfhub.sh
-          ./tools/getbpftool.sh
-          make btfgen BPFTOOL=/tmp/bpftool \
-              BTFHUB_ARCHIVE=$HOME/btfhub-archive/ OUTPUT=$GITHUB_WORKSPACE/hack/btfs -j$(nproc)
+        key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/**/*.o') }}
     # we are using cache-to mode=min (default) implying that only final image layers are cached, using cache
     # mode=max results in builder image layer of ~7GB because of btfhub files in a layer, which is too
     # large (gloabal limit 10GB) to work with GH caches. (TODO: if we can work with mode=max in future?)
@@ -376,7 +418,8 @@ jobs:
 
   build-ig-container-images:
     name: ig img
-    # level: 0
+    # level: 1
+    needs: btfgen
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -419,6 +462,21 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ github.repository_owner }}/ig
         bcc: false
+    - name: Get btfhub-archive last commmit
+      id: get-btfhub-head
+      run: |
+        echo "head=$(git ls-remote https://github.com/aquasecurity/btfhub-archive/ HEAD | cut -f1)" >> $GITHUB_OUTPUT
+      shell: bash
+    - name: Cache BTFGen
+      id: cache-btfgen
+      uses: actions/cache@v3.3.2
+      with:
+        path: pkg/btfgen/btfs
+        # key is composed by
+        # - arch: amd64 or arm64
+        # - latest commit of btfhub
+        # - hash of all bpf objects
+        key: btfgen-${{ matrix.platform }}-${{ steps.get-btfhub-head.outputs.head }}-${{ hashFiles('pkg/**/*.o') }}
     - name: Build ig ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: docker/build-push-action@v5
       with:
@@ -462,7 +520,7 @@ jobs:
 
   scan-gadget-container-images:
     name: Scan gadget img
-    # level: 1
+    # level: 2
     needs: build-gadget-container-images
     runs-on: ubuntu-latest
     strategy:
@@ -490,7 +548,7 @@ jobs:
 
   publish-gadget-images-manifest:
     name: Publish gadget img manifest
-    # level: 1
+    # level: 2
     if: github.event_name != 'pull_request'
     needs: build-gadget-container-images
     runs-on: ubuntu-latest
@@ -557,7 +615,7 @@ jobs:
 
   publish-ig-images-manifest:
     name: Publish ig img manifest
-    # level: 1
+    # level: 2
     if: github.event_name != 'pull_request'
     needs: build-ig-container-images
     runs-on: ubuntu-latest
@@ -938,7 +996,7 @@ jobs:
 
   test-integration-k8s-ig:
     name: Test ig w/ k8s
-    # level: 2
+    # level: 3
     needs: [ test-unit, test-ig, build-ig, build-helper-images ]
     runs-on: ubuntu-latest
     strategy:
@@ -983,7 +1041,7 @@ jobs:
 
   test-integration-non-k8s-ig:
     name: Test ig w/o k8s
-    # level: 2
+    # level: 3
     needs: [ test-unit, test-ig, build-ig, build-helper-images ]
     runs-on: ubuntu-latest
     strategy:
@@ -1024,7 +1082,7 @@ jobs:
 
   test-integration-aks:
     name: Integration tests on AKS
-    # level: 2
+    # level: 4
     needs:
       - check-secrets
       - test-unit
@@ -1108,7 +1166,7 @@ jobs:
   # never try to use IG on that unique ARO cluster from different workflow runs.
   test-integration-aro:
     name: Integration tests on ARO
-    # level: 2
+    # level: 4
     needs:
       - check-secrets
       - test-unit
@@ -1157,7 +1215,7 @@ jobs:
 
   test-integration-minikube:
     name: Integr. tests
-    # level: 1
+    # level: 3
     needs:
       - test-unit
       - build-kubectl-gadget
@@ -1219,7 +1277,7 @@ jobs:
 
   release:
     name: Release
-    # level: 3
+    # level: 5
     needs:
       - documentation-checks
       - ebpf-objects-checks

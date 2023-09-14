@@ -52,6 +52,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
@@ -208,7 +209,11 @@ func (n *ContainerNotifier) installEbpf(fanotifyFd int) error {
 		return fmt.Errorf("RewriteConstants: %w", err)
 	}
 
-	opts := ebpf.CollectionOptions{}
+	opts := ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			KernelTypes: btfgen.GetBTFSpec(),
+		},
+	}
 
 	if err := spec.LoadAndAssign(&n.objs, &opts); err != nil {
 		return fmt.Errorf("loading maps and programs: %w", err)

@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/tcprtt/types"
@@ -252,7 +253,13 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("rewriting constants: %w", err)
 	}
 
-	if err := spec.LoadAndAssign(&t.objs, nil); err != nil {
+	opts := ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			KernelTypes: btfgen.GetBTFSpec(),
+		},
+	}
+
+	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 

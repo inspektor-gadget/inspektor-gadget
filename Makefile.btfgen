@@ -11,11 +11,18 @@ ifndef ARCH
 $(error ARCH is undefined)
 endif
 
-SOURCE_BTF_FILES = $(shell find $(BTFHUB_ARCHIVE)/ -iregex ".*$(subst x86,x86_64,$(ARCH)).*" -type f -name '*.btf.tar.xz')
-MIN_CORE_BTF_FILES = $(patsubst $(BTFHUB_ARCHIVE)/%.btf.tar.xz, $(OUTPUT)/%.btf, $(SOURCE_BTF_FILES))
-BPF_ALL_O_FILES = $(shell find pkg/gadgets -type f -regex ".*\($(ARCH)\|bpfel\).o")
+# architecture naming is a mess:
+# - Golang uses amd64 and arm64
+# - btfhub uses x86_64 and arm64
+# - bpf2go uses x86 and arm64
+ARCH_CLEANED = $(subst amd64,x86,$(ARCH))
+OUTPUT ?= pkg/btfgen/btfs
+
+SOURCE_BTF_FILES = $(shell find $(BTFHUB_ARCHIVE)/ -iregex ".*$(subst x86,x86_64,$(ARCH_CLEANED)).*" -type f -name '*.btf.tar.xz')
+MIN_CORE_BTF_FILES = $(patsubst $(BTFHUB_ARCHIVE)/%.btf.tar.xz, $(OUTPUT)/$(ARCH_CLEANED)/%.btf, $(SOURCE_BTF_FILES))
+BPF_ALL_O_FILES = $(shell find pkg/ -type f -regex ".*\($(ARCH_CLEANED)\|bpfel\).o")
 # Filter out BPF objects that only contain BPF maps without BPF programs
-BPF_PROGS_O_FILES = $(filter-out pkg/gadgets/trace/network/tracer/graphmap_bpfel%,$(BPF_ALL_O_FILES))
+BPF_PROGS_O_FILES = $(filter-out pkg/gadgettracermanager/containers-map/containersmap_bpfel%,$(BPF_ALL_O_FILES))
 
 .PHONY: all
 all: $(MIN_CORE_BTF_FILES)
@@ -31,8 +38,8 @@ endif
 
 $(MIN_CORE_BTF_FILES): $(BPF_PROGS_O_FILES)
 
-$(OUTPUT)/%.btf: BTF_FILE = $(<:.tar.xz=)
-$(OUTPUT)/%.btf: $(BTFHUB_ARCHIVE)/%.btf.tar.xz
+$(OUTPUT)/$(ARCH_CLEANED)/%.btf: BTF_FILE = $(<:.tar.xz=)
+$(OUTPUT)/$(ARCH_CLEANED)/%.btf: $(BTFHUB_ARCHIVE)/%.btf.tar.xz
 	$(call msg,UNTAR,$@)
 	$(Q)tar xvfJ $< -C "$(dir $<)" --touch > /dev/null
 	$(call msg,BTFGEN,$@)

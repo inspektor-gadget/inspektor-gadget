@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
@@ -127,7 +128,11 @@ func (t *Tracer) install() error {
 
 	gadgets.FixBpfKtimeGetBootNs(spec.Programs)
 
-	opts := ebpf.CollectionOptions{}
+	opts := ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			KernelTypes: btfgen.GetBTFSpec(),
+		},
+	}
 
 	mapReplacements := map[string]*ebpf.Map{}
 	mapReplacements[socketenricher.SocketsMapName] = t.socketEnricher.SocketsMap()

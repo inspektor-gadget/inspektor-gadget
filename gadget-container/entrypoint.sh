@@ -131,37 +131,6 @@ echo "Gadget Tracer Manager hook mode: ${GADGET_TRACER_MANAGER_HOOK_MODE}"
 
 ## Hooks Ends ##
 
-# Use BTFHub if needed
-ARCH=$(uname -m)
-if test -f /sys/kernel/btf/vmlinux; then
-  echo "Kernel provided BTF is available at /sys/kernel/btf/vmlinux"
-else
-  echo "Kernel provided BTF is not available: Trying shipped BTF files"
-  SOURCE_BTF=/btfs/$ID/$VERSION_ID/$ARCH/$KERNEL.btf
-  if [ -f $SOURCE_BTF ]; then
-    objcopy --input binary --output elf64-little --rename-section .data=.BTF $SOURCE_BTF /boot/vmlinux-$KERNEL
-    echo "shipped BTF available. Installed at /boot/vmlinux-$KERNEL"
-  else
-    echo "shipped BTF not available. Trying to download from BTFHub"
-
-    URL="https://github.com/aquasecurity/btfhub-archive/raw/main/$ID/$VERSION_ID/$ARCH/$KERNEL.btf.tar.xz"
-
-    echo "Trying to download vmlinux from $URL"
-
-    if [[ $(wget -S --spider "$URL" 2>&1 | grep 'HTTP/1.1 200 OK') ]]; then
-      wget -q -O /tmp/vmlinux.btf.tar.xz "$URL"
-      tar -xf /tmp/vmlinux.btf.tar.xz
-      # Use objcopy to put the btf info in an ELF file as libbpf and cilium/ebpf
-      # by default check if there is an ELF file with the .BTF section at
-      # /boot/vmlinux-$KERNEL.
-      objcopy --input binary --output elf64-little --rename-section .data=.BTF *.btf /boot/vmlinux-$KERNEL
-      echo "BTF downloaded at /boot/vmlinux-$KERNEL"
-    else
-      echo "BTF not found"
-    fi
-  fi
-fi
-
 echo "Starting the Gadget Tracer Manager..."
 # change directory before running gadgettracermanager
 cd /

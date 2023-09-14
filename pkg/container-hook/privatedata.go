@@ -22,8 +22,10 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"golang.org/x/sys/unix"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -cc clang -cflags ${CFLAGS} -no-global-types privatedata ./bpf/privatedata.bpf.c -- -I./bpf/
@@ -84,7 +86,11 @@ func readPrivateDataFromFd(fd int) (uint64, error) {
 		return 0, fmt.Errorf("RewriteConstants: %w", err)
 	}
 
-	opts := ebpf.CollectionOptions{}
+	opts := ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			KernelTypes: btfgen.GetBTFSpec(),
+		},
+	}
 	if err := spec.LoadAndAssign(&objs, &opts); err != nil {
 		return 0, fmt.Errorf("loading maps and programs: %w", err)
 	}
