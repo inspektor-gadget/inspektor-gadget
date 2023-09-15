@@ -434,7 +434,7 @@ jobs:
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
         file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/ig.Dockerfile
-        outputs: type=docker,dest=/tmp/ig-container-image--${{ matrix.os }}-${{ matrix.platform }}.tar
+        outputs: type=docker,dest=/tmp/ig-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
