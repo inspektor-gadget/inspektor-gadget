@@ -54,11 +54,11 @@ type Stats struct {
 func GetColumns() *columns.Columns[Stats] {
 	cols := columns.MustCreateColumns[Stats]()
 
-	col, _ := cols.GetColumn("namespace")
+	col, _ := cols.GetColumn("k8s.namespace")
 	col.Visible = false
-	col, _ = cols.GetColumn("pod")
+	col, _ = cols.GetColumn("k8s.pod")
 	col.Visible = false
-	col, _ = cols.GetColumn("container")
+	col, _ = cols.GetColumn("k8s.container")
 	col.Visible = false
 	col, _ = cols.GetColumn("runtime.containerName")
 	col.Visible = false

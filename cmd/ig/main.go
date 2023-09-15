@@ -26,7 +26,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/image"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/ig/containers"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
@@ -60,9 +59,8 @@ func main() {
 	)
 
 	runtime := local.New()
-	// columnFilters for ig
-	columnFilters := []columns.ColumnFilter{columns.WithoutExceptTag("kubernetes", "runtime")}
-	common.AddCommandsFromRegistry(rootCmd, runtime, columnFilters)
+	hiddenColumnTags := []string{"kubernetes"}
+	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
 	if experimental.Enabled() {
 		rootCmd.AddCommand(image.NewImageCmd())

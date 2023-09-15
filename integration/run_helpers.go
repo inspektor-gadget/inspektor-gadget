@@ -59,23 +59,38 @@ func SetEventRuntimeContainerName(jsonObj map[string]interface{}, s string) {
 }
 
 func SetEventK8sNode(jsonObj map[string]interface{}, s string) {
-	jsonObj["node"] = s
+	k8sMetadata := jsonObj["k8s"].(map[string]interface{})
+	if k8sMetadata != nil {
+		k8sMetadata["node"] = s
+	}
 }
 
 func SetEventK8sNamespace(jsonObj map[string]interface{}, s string) {
-	jsonObj["namespace"] = s
+	k8sMetadata := jsonObj["k8s"].(map[string]interface{})
+	if k8sMetadata != nil {
+		k8sMetadata["namespace"] = s
+	}
 }
 
 func SetEventK8sPod(jsonObj map[string]interface{}, s string) {
-	jsonObj["pod"] = s
+	k8sMetadata := jsonObj["k8s"].(map[string]interface{})
+	if k8sMetadata != nil {
+		k8sMetadata["pod"] = s
+	}
 }
 
 func SetEventK8sContainer(jsonObj map[string]interface{}, s string) {
-	jsonObj["container"] = s
+	k8sMetadata := jsonObj["k8s"].(map[string]interface{})
+	if k8sMetadata != nil {
+		k8sMetadata["container"] = s
+	}
 }
 
 func SetEventK8sHostNetwork(jsonObj map[string]interface{}, b bool) {
-	jsonObj["hostnetwork"] = b
+	k8sMetadata := jsonObj["k8s"].(map[string]interface{})
+	if k8sMetadata != nil {
+		k8sMetadata["hostNetwork"] = b
+	}
 }
 
 func RunEventToObj(t *testing.T, ev *runtypes.Event) map[string]interface{} {

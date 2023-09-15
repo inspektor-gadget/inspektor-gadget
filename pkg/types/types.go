@@ -158,7 +158,7 @@ type CommonData struct {
 
 	// K8s contains the Kubernetes metadata of the object that generated the
 	// event
-	K8s K8sMetadata `json:"k8s,omitempty" columnTags:"kubernetes"`
+	K8s K8sMetadata `json:"k8s,omitempty" column:"k8s" columnTags:"kubernetes"`
 }
 
 func (c *CommonData) SetNode(node string) {
