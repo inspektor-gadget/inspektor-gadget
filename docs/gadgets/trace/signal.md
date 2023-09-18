@@ -20,7 +20,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget trace signal
-NODE             NAMESPACE        POD              CONTAINER        PID    COMM             SIGNAL    TPID   RET
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID    COMM             SIGNAL    TPID   RET
 ```
 
 Indeed, it is waiting for signals to be sent.
@@ -33,7 +33,7 @@ $ kubectl exec -ti debian -- sh -c 'sleep 3 & kill -kill $!'
 Go back to *the first terminal* and see:
 
 ```
-NODE             NAMESPACE        POD              CONTAINER        PID    COMM             SIGNAL    TPID   RET
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID    COMM             SIGNAL    TPID   RET
 minikube         default          debian           debian           129484 sh               SIGKILL   129491 0
 minikube         default          debian           debian           129484 sh               SIGHUP    129491 0
 minikube         default          debian           debian           129484 sh               SIGHUP    129484 0
@@ -91,7 +91,7 @@ The gadget will show that sh killed a process.
 
 ```bash
 $ sudo ig trace signal -c test-trace-signal
-CONTAINER                  PID        COMM          SIGNAL      TPID       RET
+RUNTIME.CONTAINERNAME      PID        COMM          SIGNAL      TPID       RET
 test-trace-signal          11131      sh            SIGKILL     11162      0
 test-trace-signal          11131      sh            SIGHUP      11131      0
 ```

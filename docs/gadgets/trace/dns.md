@@ -23,7 +23,7 @@ Start the dns gadget:
 
 ```bash
 $ kubectl gadget trace dns -n demo
-NODE                          NAMESPACE                     POD                           QR NAMESERVER      TYPE      QTYPE      NAME
+K8S.NODE                      K8S.NAMESPACE                 K8S.POD                       QR NAMESERVER      TYPE      QTYPE      NAME
 ```
 
 Run a pod on a different terminal and perform some DNS requests:
@@ -38,7 +38,7 @@ $ kubectl -n demo run mypod -it --image=wbitt/network-multitool -- /bin/sh
 The requests will be logged by the DNS gadget:
 
 ```bash
-NODE                 NAMESPACE            POD                  PID         TID         COMM        QR NAMESERVER      TYPE      QTYPE      NAME                RCODE
+K8S.NODE             K8S.NAMESPACE        K8S.POD              PID         TID         COMM        QR NAMESERVER      TYPE      QTYPE      NAME                RCODE
 minikube             demo                 mypod                1285309     1285310     isc-net-00… Q  8.8.4.4         OUTGOING  A          inspektor-gadget.i…        
 minikube             demo                 mypod                1285309     1285310     isc-net-00… R  8.8.4.4         HOST      A          inspektor-gadget.i… NoError
 minikube             demo                 mypod                1285594     1285595     isc-net-00… Q  8.8.4.4         OUTGOING  AAAA       inspektor-gadget.i…        

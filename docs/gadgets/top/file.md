@@ -17,7 +17,7 @@ all the events from the beginning:
 
 ```bash
 $ kubectl gadget top file -p mypod
-NODE             NAMESPACE        POD              CONTAINER        PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
 ...
 ```
 
@@ -37,7 +37,7 @@ written by the pod. For instace, apt-get is reading a lot of files in
 when updating the packages list and installing packages.
 
 ```bash
-NODE             NAMESPACE        POD              CONTAINER        PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
 ubuntu-hirsute   default          mypod            mypod            642727  apt-get          425    0      27022   0       R archive.ubuntu.com_ubuntu_dists_focal-updates_main_binary-amd64_Packages.lz4
 ubuntu-hirsute   default          mypod            mypod            642727  apt-get          278    0      17775   0       R archive.ubuntu.com_ubuntu_dists_focal_main_binary-amd64_Packages.lz4
 ubuntu-hirsute   default          mypod            mypod            642727  apt-get          244    0      15594   0       R security.ubuntu.com_ubuntu_dists_focal-security_main_binary-amd64_Packages.lz4
@@ -53,7 +53,7 @@ After the initial installation is done, we can see how git uses a
 temporary file to store the repository being cloned.
 
 ```
-NODE             NAMESPACE        POD              CONTAINER        PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             READS  WRITES R_Kb    W_Kb    T FILE
 ubuntu-hirsute   default          mypod            mypod            647042  git              0      1070   0       4280    R tmp_pack_2rpZd
 ```
 
@@ -98,6 +98,6 @@ Start the gadget and it'll show those operations:
 
 ```bash
 $ sudo ig top file -c test-top-file
-CONTAINER                              PID        COMM             READS                WRITES               RBYTES               WBYTES               T FILE
+RUNTIME.CONTAINERNAME                  PID        COMM             READS                WRITES               RBYTES               WBYTES               T FILE
 test-top-file                          139255     sh               0                    1                    0B                   4B                   R bar
 ```

@@ -21,7 +21,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget trace oomkill -n oomkill-demo
-NODE             NAMESPACE        POD              CONTAINER        KPID   KCOMM            PAGES  TPID             TCOMM
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    KPID   KCOMM            PAGES  TPID             TCOMM
 ```
 
 The gadget is waiting for the OOM killer to get triggered and kill a process in `oomkill-demo` namespace (alternatively, we could use `-A` and get out-of-memory killer events in all namespaces).
@@ -39,7 +39,7 @@ command terminated with exit code 137
 Go back to *the first terminal* and see:
 
 ```bash
-NODE             NAMESPACE        POD              CONTAINER        KPID   KCOMM            PAGES  TPID             TCOMM
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    KPID   KCOMM            PAGES  TPID             TCOMM
 minikube         oomkill-demo     test-pod         test-container   11507  tail             32768  11507            tail
 ```
 

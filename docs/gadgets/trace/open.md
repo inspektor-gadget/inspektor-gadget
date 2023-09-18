@@ -21,7 +21,7 @@ thus tracing on all nodes for a pod called "mypod":
 
 ```bash
 $ kubectl gadget trace open --podname mypod
-NODE             NAMESPACE        POD              CONTAINER       PID    COMM               FD ERR PATH
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER   PID    COMM               FD ERR PATH
 ip-10-0-30-247   default          mypod            mypod           18455  whoami              3   0 /etc/passwd
 ip-10-0-30-247   default          mypod            mypod           18521  whoami              3   0 /etc/passwd
 ip-10-0-30-247   default          mypod            mypod           18525  whoami              3   0 /etc/passwd
@@ -46,7 +46,7 @@ Let's start the gadget in a terminal:
 
 ```bash
 $ sudo ig trace open -c test-trace-open
-CONTAINER                                                  PID        COMM             FD    ERR PATH
+RUNTIME.CONTAINERNAME                                      PID        COMM             FD    ERR PATH
 ```
 
 Run a container that opens some files:
@@ -59,7 +59,7 @@ The tool will show the different files opened by the container:
 
 ```bash
 $ sudo ig trace open -c test-trace-open
-CONTAINER                                                  PID        COMM             FD    ERR PATH
+RUNTIME.CONTAINERNAME                                      PID        COMM             FD    ERR PATH
 test-trace-open                                            630417     whoami           3     0   /etc/passwd
 test-trace-open                                            630954     whoami           3     0   /etc/passwd
 ```
@@ -69,7 +69,7 @@ will add the column `FULLPATH` that contains the absolute path of the file with 
 
 ```bash
 $ sudo ./ig trace open -c test-trace-open-fullpath --full-path
-CONTAINER                     PID        COMM             FD  ERR PATH                            FULLPATH
+RUNTIME.CONTAINERNAME         PID        COMM             FD  ERR PATH                            FULLPATH
 test-trace-open-fullpath      1330356    cat              3   0   /etc/passwd                     /etc/passwd
 test-trace-open-fullpath      1330401    cat              3   0   ../etc/mtab                     /proc/22/mounts
 ```

@@ -115,14 +115,14 @@ namespace during a window of 5 seconds, like this:
 
 ```bash
 $ kubectl gadget trace open -n gadget --timeout 5
-NODE             NAMESPACE        POD              CONTAINER        PID    COMM             FD  ERR PATH
-minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0 /etc/ld.so.cache
-minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0 /lib/x86_64-linux-gnu/libpthread.so.0
-minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0 /lib/x86_64-linux-gnu/libseccomp.so.2
-minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0 /lib/x86_64-linux-gnu/libc.so.6
-minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0 /sys/kernel/mm/transparent_hugepage/hpage_pmd_size
-minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  6     0 /usr/bin/gadgettracermanager
-minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  6     0 /etc/localtime
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             FD    ERR PATH
+minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0   /etc/ld.so.cache
+minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0   /lib/x86_64-linux-gnu/libpthread.so.0
+minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0   /lib/x86_64-linux-gnu/libseccomp.so.2
+minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0   /lib/x86_64-linux-gnu/libc.so.6
+minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  3     0   /sys/kernel/mm/transparent_hugepage/hpage_pmd_size
+minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  6     0   /usr/bin/gadgettracermanager
+minikube         gadget           gadget-vhcj7     gadget           1303299 gadgettracerman  6     0   /etc/localtime
 ```
 
 ## Kubernetes CLI Runtime options

@@ -19,7 +19,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget top tcp
-NODE             NAMESPACE        POD              CONTAINER        PID       COMM      IP SRC                   DST                   SENT     RECV
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID       COMM      IP SRC                   DST                   SENT     RECV
 ```
 
 Indeed, it is waiting for TCP connection to occur.
@@ -32,7 +32,7 @@ $ kubectl exec -ti test-pod -- wget 1.1.1.1
 On *the first terminal*, you should see:
 
 ```
-NODE               NAMESPACE     POD        CONTAINER   PID         COMM       IP SRC                        DST                  SENT       RECV      
+K8S.NODE           K8S.NAMESPACE K8S.POD    CONTAINER   PID         COMM       IP SRC                        DST                  SENT       RECV      
 minikube-docker    default       test-pod   test-pod    289548      wget       4  p/default/test-pod:47228   r/1.1.1.1:443        296B       15.49KiB  
 minikube-docker    default       test-pod   test-pod    289540      wget       4  p/default/test-pod:42604   r/1.1.1.1:80         70B        381B      
 ```
@@ -61,7 +61,7 @@ Start the gadget, it'll show the different connections created the localhost:
 
 ```bash
 $ sudo ig top tcp -c test-top-tcp
-CONTAINER                  PID         COMM           IP SRC                               DST                               SENT          RECV
+RUNTIME.CONTAINERNAME      PID         COMM           IP SRC                               DST                               SENT          RECV
 test-top-tcp               2177846     nginx          4  127.0.0.1:80                      127.0.0.1:53130                   238B          73B
 test-top-tcp               2178303     curl           4  127.0.0.1:53130                   127.0.0.1:80                      73B           853B
 ```

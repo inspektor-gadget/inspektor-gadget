@@ -8,7 +8,7 @@ filetop shows reads and writes by file, with container details.
 The following parameters are supported:
  - interval: Output interval, in seconds. (default 1)
  - max_rows: Maximum rows to print. (default 20)
- - sort_by: The field to sort the results by (runtime.runtimeName,runtime.containerId,runtime.containerName,runtime.containerImageName,node,namespace,pod,container,hostnetwork,mntns,pid,tid,comm,reads,writes,rbytes,wbytes,T,file). (default -reads,-writes,-rbytes,-wbytes)
+ - sort_by: The field to sort the results by (runtime.runtimeName,runtime.containerId,runtime.containerName,runtime.containerImageName,k8s.node,k8s.namespace,k8s.pod,k8s.container,k8s.hostnetwork,mntns,pid,tid,comm,reads,writes,rbytes,wbytes,T,file). (default -reads,-writes,-rbytes,-wbytes)
  - all-files: Show all files. (default false, i.e. show regular files only)
 
 ### Example CR

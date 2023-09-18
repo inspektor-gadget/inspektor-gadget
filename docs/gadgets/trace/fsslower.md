@@ -20,7 +20,7 @@ Let's start the gadget before running our workload:
 
 ```bash
 $ kubectl gadget trace fsslower -f ext4 -m 1 -p mypod
-NODE             NAMESPACE        POD              CONTAINER        PID     COMM             T BYTES  OFFSET  LAT      FILE
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             T BYTES  OFFSET  LAT      FILE
 ```
 
 With `-f` we're indicating the type of filesystem we want to trace,
@@ -43,7 +43,7 @@ We can see how fsslower shows the operations that are taking longer than 1ms:
 
 ```bash
 $ kubectl gadget trace fsslower -f ext4 -m 1 -p mypod
-NODE             NAMESPACE        POD              CONTAINER        PID     COMM             T BYTES  OFFSET  LAT      FILE
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             T BYTES  OFFSET  LAT      FILE
 ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       2.66     perl-modules-5.30.list-new
 ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       1.49     libperl5.30:amd64.list-new
 ubuntu-hirsute   default          mypod            mypod            579778  dpkg             F 0      0       1.45     control

@@ -8,7 +8,7 @@ ebpftop shows cpu time used by ebpf programs.
 The following parameters are supported:
  - interval: Output interval, in seconds. (default 1)
  - max_rows: Maximum rows to print. (default 20)
- - sort_by: The field to sort the results by (runtime.runtimeName,runtime.containerId,runtime.containerName,runtime.containerImageName,node,namespace,pod,container,hostnetwork,progid,type,name,runtime,runcount,cumulruntime,cumulruncount,totalruntime,totalRunCount,mapmemory,mapcount,totalcpu,percpu). (default -runtime,-runcount)
+ - sort_by: The field to sort the results by (runtime.runtimeName,runtime.containerId,runtime.containerName,runtime.containerImageName,k8s.node,k8s.namespace,k8s.pod,k8s.container,k8s.hostnetwork,progid,type,name,runtime,runcount,cumulruntime,cumulruncount,totalruntime,totalRunCount,mapmemory,mapcount,totalcpu,percpu). (default -runtime,-runcount)
 
 ### Example CR
 

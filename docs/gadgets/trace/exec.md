@@ -32,7 +32,7 @@ ip-10-0-30-247 where myapp1-pod-2gs5r and myapp2-pod-mqfxv are running:
 
 ```bash
 $ kubectl gadget trace exec --selector role=demo --node ip-10-0-30-247
-NODE                NAMESPACE        POD              CONTAINER       PID     PPID    COMM            RET ARGS
+K8S.NODE            K8S.NAMESPACE    K8S.POD          K8S.CONTAINER   PID     PPID    COMM            RET ARGS
 ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728770  728166  date              0 /bin/date
 ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728771  728166  cat               0 /bin/cat /proc/version
 ip-10-0-30-247      default          myapp1-pod-2gs5r myapp1-pod      728772  728166  sleep             0 /bin/sleep 1
@@ -71,7 +71,7 @@ Let's start the gadget in a terminal:
 
 ```bash
 $ sudo ig trace exec -c test-trace-exec
-CONTAINER                                         PID        PPID       COMM             RET ARGS
+RUNTIME.CONTAINERNAME                             PID        PPID       COMM             RET ARGS
 ```
 
 Run a container that executes some binaries:
@@ -84,7 +84,7 @@ The tool will show the different processes executed by the container:
 
 ```bash
 $ sudo ig trace exec -c test-trace-exec
-CONTAINER                                         PID        PPID       COMM             RET ARGS
+RUNTIME.CONTAINERNAME                             PID        PPID       COMM             RET ARGS
 test-trace-exec                                   99081      99062      sh               0   /bin/sh -c while /bin/true ; do whoami ; sleep 3 ; done
 test-trace-exec                                   99125      99081      true             0   /bin/true
 test-trace-exec                                   99126      99081      whoami           0   /bin/whoami
@@ -102,6 +102,6 @@ by default and can be enabled by passing the `--cwd` flag:
 ```bash
 $ sudo ig trace exec  --cwd
 
-CONTAINER                       PID        PPID       COMM              RET ARGS                                      CWD
+RUNTIME.CONTAINERNAME           PID        PPID       COMM              RET ARGS                                      CWD
 mycontainer2                    287752     287360     mkdir             0   /bin/mkdir -p /tmp/bar/foo/               /
 mycontainer2                    287897     287360     cat               0   /bin/cat /dev/null                        /tmp/bar/foo

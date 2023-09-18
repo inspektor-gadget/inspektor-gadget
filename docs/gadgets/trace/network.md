@@ -20,7 +20,7 @@ $ kubectl run -ti -n demo --image=busybox --restart=Never shell -- wget 1.1.1.1.
 
 * Observe the results:
 ```
-NODE             NAMESPACE        POD                            TYPE      PROTO  PORT    REMOTE
+K8S.NODE         K8S.NAMESPACE    K8S.POD                        TYPE      PROTO  PORT    REMOTE
 minikube         demo             shell                          OUTGOING  UDP    53      svc kube-system/kube-dns
 minikube         demo             shell                          OUTGOING  TCP    80      endpoint 1.1.1.1
 ```
@@ -31,7 +31,7 @@ Let's start the gadget in a terminal:
 
 ```bash
 $ sudo ig trace network -c test-container
-CONTAINER                       TYPE      PROTO PORT  REMOTE
+RUNTIME.CONTAINERNAME           TYPE      PROTO PORT  REMOTE
 ```
 
 Run a container that generates TCP and UDP network traffic:
@@ -44,7 +44,7 @@ The tools will show the network activity:
 
 ```bash
 $ sudo ig trace network -c test-container
-CONTAINER                       TYPE      PROTO PORT  REMOTE
+RUNTIME.CONTAINERNAME           TYPE      PROTO PORT  REMOTE
 demo                            OUTGOING  UDP   53    192.168.67.1
 demo                            OUTGOING  TCP   80    1.1.1.1
 ```

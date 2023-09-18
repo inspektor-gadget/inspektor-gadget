@@ -21,7 +21,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget trace mount
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNTNS      CALL
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    COMM             PID     TID     MNTNS      CALL
 ```
 
 Indeed, it is waiting for `mount` and `umount` to be called.
@@ -40,7 +40,7 @@ command terminated with exit code 255
 Go back to *the first terminal* and see:
 
 ```bash
-NODE             NAMESPACE        POD              CONTAINER        COMM             PID     TID     MNTNS      CALL
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    COMM             PID     TID     MNTNS      CALL
 minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext3", MS_SILENT, "") = -2
 minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext2", MS_SILENT, "") = -2
 minikube         default          busybox-0        busybox-0        mount            12841   12841   4026532682  mount("/mnt", "/mnt", "ext4", MS_SILENT, "") = -2
@@ -70,7 +70,7 @@ Let's start the gadget in a terminal:
 
 ```bash
 $ sudo ig trace mount -c test-trace-mount
-CONTAINER                         COMM             PID        TID        CALL
+RUNTIME.CONTAINERNAME             COMM             PID        TID        CALL
 ```
 
 Run a container that uses mount:
@@ -83,7 +83,7 @@ The tool will show the different mount() calls that the container performed:
 
 ```bash
 $ sudo ig trace mount -c test-trace-mount
-CONTAINER                         COMM             PID        TID        CALL
+RUNTIME.CONTAINERNAME             COMM             PID        TID        CALL
 test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "ext3", MS_SILENT, "") = -2
 test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "ext2", MS_SILENT, "") = -2
 test-trace-mount                  mount            235385     235385     mount("/bar", "/foo", "ext4", MS_SILENT, "") = -2

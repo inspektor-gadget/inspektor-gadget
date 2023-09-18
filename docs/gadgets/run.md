@@ -19,13 +19,13 @@ The [gadgets](../../gadgets) folder include some sample gadgets to be used with 
 ```bash
 $ kubectl gadget run --prog @./gadgets/trace_tcpconnect_x86.bpf.o --definition @./gadgets/trace_tcpconnect.yaml
 INFO[0000] Experimental features enabled
-NODE                   NAMESPACE             POD                   CONTAINER             PID     TASK        SRC                      DST
+K8S.NODE               K8S.NAMESPACE         K8S.POD               K8S.CONTAINER         PID     TASK        SRC                      DST
 ubuntu-hirsute         default               mypod2                mypod2                174085  wget        p/default/mypod2:37848   r/1.1.1.1:80
 ubuntu-hirsute         default               mypod2                mypod2                174085  wget        p/default/mypod2:33150   r/1.1.1.1:443
 
 $ kubectl gadget run --prog @./gadgets/trace_open_x86.bpf.o --definition @./gadgets/trace_open.yaml
 INFO[0000] Experimental features enabled
-NODE                   NAMESPACE              POD                    CONTAINER              PID     COMM        UID      GID      RET FNAME
+K8S.NODE               K8S.NAMESPACE          K8S.POD                K8S.CONTAINER          PID     COMM        UID      GID      RET FNAME
 ubuntu-hirsute         default                mypod2                 mypod2                 225071  sh          0        0        3   /
 ubuntu-hirsute         default                mypod2                 mypod2                 225071  sh          0        0        3   /root/.ash_history
 ubuntu-hirsute         default                mypod2                 mypod2                 242164  cat         0        0        -2  /etc/ld.so.cache
@@ -65,13 +65,13 @@ ubuntu-hirsute         default                mypod2                 mypod2     
 
 ``` bash
 $ sudo ig run --prog @./gadgets/trace_tcpconnect_x86.bpf.o --definition @./gadgets/trace_tcpconnect.yaml
-CONTAINER                                                        PID     TASK             SRC                                DST
+RUNTIME.CONTAINERNAME                                            PID     TASK             SRC                                DST
 mycontainer3                                                     1254254 wget             172.17.0.4:50072                   1.1.1.1:80
 mycontainer3                                                     1254254 wget             172.17.0.4:44408                   1.1.1.1:443
 
 $ sudo ig run --prog @./gadgets/trace_open_x86.bpf.o --definition @./gadgets/trace_open.yaml
 INFO[0000] Experimental features enabled
-CONTAINER                                           PID     COMM             UID      GID      RET       FNAME
+RUNTIME.CONTAINERNAME                               PID     COMM             UID      GID      RET       FNAME
 mycontainer3                                        62162   sh               0        0        3         /
 mycontainer3                                        62162   sh               0        0        3         /root/.ash_history
 mycontainer3                                        122110  cat              0        0        -2        /etc/ld.so.cache

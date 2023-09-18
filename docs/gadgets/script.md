@@ -16,7 +16,7 @@ bpftrace documentation.
 ```bash
 # Files opened by process
 $ kubectl gadget script -e 'tracepoint:syscalls:sys_enter_openat { printf("%s %s\n", comm, str(args->filename)); }'
-NODE                             OUTPUT
+K8S.NODE                         OUTPUT
 minikube-m02                     Attaching 1 probe...
 minikube-m02                     bpftrace /sys/devices/system/cpu/online
 minikube-m02                     bpftrace /sys/devices/system/cpu/online
@@ -39,7 +39,7 @@ minikube-m02                     runc
 
 # Run on a single node
 $ kubectl gadget script --node minikube -e 'tracepoint:syscalls:sys_enter_openat { printf("%s %s\n", comm, str(args->filename)); }'
-NODE                             OUTPUT
+K8S.NODE                         OUTPUT
 minikube                         Attaching 1 probe...
 minikube                         kubelet /sys/fs/cgroup/cpu,cpuacct/kubepods/besteffort/poddc2af8ce-f414
 minikube                         kubelet /proc/1645/fd
@@ -68,7 +68,7 @@ minikube                         kubelet /sys/fs/cgroup/memory/kubepods
 # Syscall count by program
 $ kubectl gadget script -e 'tracepoint:raw_syscalls:sys_enter { @[comm] = count(); }'
 
-NODE                             OUTPUT
+K8S.NODE                         OUTPUT
 minikube-m03                     Attaching 1 probe...
 minikube-m02                     Attaching 1 probe...
 minikube                         Attaching 1 probe...
@@ -102,7 +102,7 @@ $ wget https://raw.githubusercontent.com/iovisor/bpftrace/master/tools/loads.bt
 $ wc -l loads.bt
 41 loads.bt
 $ kubectl gadget script -e @./loads.bt
-NODE                                             OUTPUT
+K8S.NODE                                         OUTPUT
 minikube-docker                                  Attaching 2 probes...
 minikube-docker                                  Reading load averages... Hit Ctrl-C to end.
 minikube-docker                                  15:40:36 load averages: 2.960 2.451 2.166

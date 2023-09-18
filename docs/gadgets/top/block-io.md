@@ -20,7 +20,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget top block-io
-NODE             NAMESPACE        POD              CONTAINER        PID     COMM             R/W MAJOR  MINOR  BYTES   TIME(µs) IOs
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             R/W MAJOR  MINOR  BYTES   TIME(µs) IOs
 ```
 
 Indeed, it is waiting for I/O to occur.
@@ -33,7 +33,7 @@ $ kubectl exec -ti test-pod -- dd if=/dev/zero of=/tmp/foo count=16384
 On *the first terminal*, you should see:
 
 ```
-NODE             NAMESPACE        POD              CONTAINER        PID     COMM             R/W MAJOR  MINOR  BYTES   TIME(µs) IOs
+K8S.NODE         K8S.NAMESPACE    K8S.POD          K8S.CONTAINER    PID     COMM             R/W MAJOR  MINOR  BYTES   TIME(µs) IOs
 minikube         default          test-pod         test-pod         7767    dd               W   0      0      1564672 3046     4
 ```
 
@@ -61,7 +61,7 @@ Start the gadget on another terminal and you'll see the activity produced by the
 
 ```bash
 $ sudo ig top block-io -c test-top-block-io
-CONTAINER                               PID         COMM                  R/W MAJOR                MINOR                BYTES                TIME                 OPS
+RUNTIME.CONTAINERNAME                   PID         COMM                  R/W MAJOR                MINOR                BYTES                TIME                 OPS
 test-top-block-io                       63666       sync                  W   253                  0                    24576                428                  5
 test-top-block-io                       63715       dd                    W   253                  0                    2097152              4816                 5
 ...
