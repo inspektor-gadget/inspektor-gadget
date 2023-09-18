@@ -48,25 +48,25 @@ func NewContainerRuntimeClient(runtime *containerutilsTypes.RuntimeConfig) (runt
 	case types.RuntimeNameDocker:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_DOCKER_SOCKETPATH"); envsp != "" && socketPath == "" {
-			socketPath = envsp
+			socketPath = filepath.Join(host.HostRoot, envsp)
 		}
 		return docker.NewDockerClient(socketPath)
 	case types.RuntimeNameContainerd:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"); envsp != "" && socketPath == "" {
-			socketPath = envsp
+			socketPath = filepath.Join(host.HostRoot, envsp)
 		}
 		return containerd.NewContainerdClient(socketPath, runtime.Extra)
 	case types.RuntimeNameCrio:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_CRIO_SOCKETPATH"); envsp != "" && socketPath == "" {
-			socketPath = envsp
+			socketPath = filepath.Join(host.HostRoot, envsp)
 		}
 		return crio.NewCrioClient(socketPath)
 	case types.RuntimeNamePodman:
 		socketPath := runtime.SocketPath
 		if envsp := os.Getenv("INSPEKTOR_GADGET_PODMAN_SOCKETPATH"); envsp != "" && socketPath == "" {
-			socketPath = envsp
+			socketPath = filepath.Join(host.HostRoot, envsp)
 		}
 		return podman.NewPodmanClient(socketPath), nil
 	default:
