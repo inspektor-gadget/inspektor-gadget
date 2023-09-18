@@ -63,7 +63,7 @@ require (
 	golang.org/x/text v0.13.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/cri-api v0.28.2
-	oras.land/oras-go v1.2.3
+	oras.land/oras-go v1.2.4
 	oras.land/oras-go/v2 v2.3.0
 )
 
@@ -198,9 +198,6 @@ require (
 
 // Code available in https://github.com/inspektor-gadget/bumblebee/tree/gadget
 replace github.com/solo-io/bumblebee => github.com/inspektor-gadget/bumblebee v0.0.0-20230627162415-fa5fa890590d
-
-// ../../go/pkg/mod/oras.land/oras-go@v1.2.3/pkg/auth/docker/login.go:86:39: cannot use remote (variable of type *"github.com/docker/docker/registry".Service) as "github.com/docker/docker/registry".Service value in argument to c.loginWithTLS
-replace github.com/docker/docker => github.com/docker/docker v23.0.6+incompatible
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3
 
