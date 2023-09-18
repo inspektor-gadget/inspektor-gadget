@@ -62,7 +62,7 @@ func NewListContainersCmd() *cobra.Command {
 			}
 
 			if !optionWatch {
-				parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, containercollection.GetColumns())
+				parser, err := commonutils.NewGadgetParserWithK8sAndRuntimeInfo(&commonFlags.OutputConfig, setColumnVisibility(containercollection.GetColumns()))
 				if err != nil {
 					return commonutils.WrapInErrParserCreate(err)
 				}
@@ -75,17 +75,10 @@ func NewListContainersCmd() *cobra.Command {
 				return nil
 			}
 
-			cols := columns.MustCreateColumns[containercollection.PubSubEvent]()
+			cols := setColumnVisibility(columns.MustCreateColumns[containercollection.PubSubEvent]())
 			cols.SetExtractor("event", func(event *containercollection.PubSubEvent) any {
 				return event.Type.String()
 			})
-			// Display the runtime name, container ID and image name when watching containers
-			col, _ := cols.GetColumn("runtime.containerId")
-			col.Visible = true
-			col, _ = cols.GetColumn("runtime.runtimeName")
-			col.Visible = true
-			col, _ = cols.GetColumn("runtime.containerImageName")
-			col.Visible = true
 			cols.MustSetExtractor("runtime.containerImageName", func(event *containercollection.PubSubEvent) any {
 				if event == nil || event.Container == nil {
 					return ""
@@ -96,7 +89,7 @@ func NewListContainersCmd() *cobra.Command {
 				return event.Container.Runtime.ContainerImageName
 			})
 
-			parser, err := commonutils.NewGadgetParserWithRuntimeInfo(&commonFlags.OutputConfig, cols)
+			parser, err := commonutils.NewGadgetParserWithK8sAndRuntimeInfo(&commonFlags.OutputConfig, cols)
 			if err != nil {
 				return commonutils.WrapInErrParserCreate(err)
 			}
@@ -171,4 +164,14 @@ func printPubSubEvent(parser *commonutils.GadgetParser[containercollection.PubSu
 	}
 
 	return nil
+}
+
+func setColumnVisibility[T containercollection.Container | containercollection.PubSubEvent](cols *columns.Columns[T]) *columns.Columns[T] {
+	for _, c := range cols.GetColumnMap(columns.WithTag("kubernetes")) {
+		c.Visible = false
+	}
+	for _, c := range cols.GetColumnMap(columns.WithTag("runtime")) {
+		c.Visible = true
+	}
+	return cols
 }

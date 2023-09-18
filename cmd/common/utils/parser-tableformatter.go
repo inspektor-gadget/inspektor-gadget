@@ -30,14 +30,14 @@ const (
 
 type Option func(*GadgetParserOptions)
 
-func WithMetadataTag(metadataTag string) Option {
+func WithMetadataTags(metadataTags ...string) Option {
 	return func(opts *GadgetParserOptions) {
-		opts.metadataTag = metadataTag
+		opts.metadataTags = metadataTags
 	}
 }
 
 type GadgetParserOptions struct {
-	metadataTag string
+	metadataTags []string
 }
 
 // GadgetParser is a parser that helps printing the gadget output in columns
@@ -58,10 +58,10 @@ func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T]
 	// other words, the gadget-specific columns. Otherwise, we also include the
 	// columns with the requested tag.
 	var colsMap columns.ColumnMap[T]
-	if opts.metadataTag == "" {
+	if len(opts.metadataTags) == 0 {
 		colsMap = cols.GetColumnMap(columns.WithNoTags())
 	} else {
-		colsMap = cols.GetColumnMap(columns.Or(columns.WithTag(opts.metadataTag), columns.WithNoTags()))
+		colsMap = cols.GetColumnMap(columns.Or(columns.WithAnyTag(opts.metadataTags), columns.WithNoTags()))
 	}
 
 	var formatter *textcolumns.TextColumnsFormatter[T]
@@ -86,11 +86,15 @@ func NewGadgetParser[T any](outputConfig *OutputConfig, cols *columns.Columns[T]
 }
 
 func NewGadgetParserWithK8sInfo[T any](outputConfig *OutputConfig, columns *columns.Columns[T]) (*GadgetParser[T], error) {
-	return NewGadgetParser(outputConfig, columns, WithMetadataTag(KubernetesTag))
+	return NewGadgetParser(outputConfig, columns, WithMetadataTags(KubernetesTag))
 }
 
 func NewGadgetParserWithRuntimeInfo[T any](outputConfig *OutputConfig, columns *columns.Columns[T]) (*GadgetParser[T], error) {
-	return NewGadgetParser(outputConfig, columns, WithMetadataTag(ContainerRuntimeTag))
+	return NewGadgetParser(outputConfig, columns, WithMetadataTags(ContainerRuntimeTag))
+}
+
+func NewGadgetParserWithK8sAndRuntimeInfo[T any](outputConfig *OutputConfig, columns *columns.Columns[T]) (*GadgetParser[T], error) {
+	return NewGadgetParser(outputConfig, columns, WithMetadataTags(KubernetesTag, ContainerRuntimeTag))
 }
 
 func (p *GadgetParser[T]) BuildColumnsHeader() string {
