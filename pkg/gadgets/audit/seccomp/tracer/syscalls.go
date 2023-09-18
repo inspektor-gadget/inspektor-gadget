@@ -20,16 +20,24 @@ package tracer
 import (
 	"fmt"
 
-	libseccomp "github.com/seccomp/libseccomp-golang"
+	"github.com/amitschendel/syscalls/pkg/syscalls"
 )
 
-// #cgo pkg-config: libseccomp
-// #include <seccomp.h>
-import "C"
+const (
+	SECCOMP_RET_KILL_PROCESS = 0x80000000
+	SECCOMP_RET_KILL_THREAD  = 0x00000000
+	SECCOMP_RET_KILL         = SECCOMP_RET_KILL_THREAD
+	SECCOMP_RET_TRAP         = 0x00030000
+	SECCOMP_RET_ERRNO        = 0x00050000
+	SECCOMP_RET_USER_NOTIF   = 0x7fc00000
+	SECCOMP_RET_TRACE        = 0x7ff00000
+	SECCOMP_RET_LOG          = 0x7ffc0000
+	SECCOMP_RET_ALLOW        = 0x7fff0000
+	SECCOMP_RET_ACTION_FULL  = 0xffff0000
+)
 
 func syscallToName(syscall int) string {
-	call1 := libseccomp.ScmpSyscall(syscall)
-	name, err := call1.GetName()
+	name, err := syscalls.GetNameByNumber("", syscall)
 	if err != nil {
 		name = fmt.Sprintf("syscall%d", syscall)
 	}
@@ -37,27 +45,22 @@ func syscallToName(syscall int) string {
 }
 
 func codeToName(code uint) string {
-	// Unfortunately, libseccomp-golang does not export actionFromNative()
-	// So we can't use the following code:
-	//     action, _ := libseccomp.actionFromNative(code)
-	//     libseccomp.ScmpAction(action).String()
-
-	switch code & C.SECCOMP_RET_ACTION_FULL {
-	case C.SECCOMP_RET_KILL_PROCESS:
+	switch code & SECCOMP_RET_ACTION_FULL {
+	case SECCOMP_RET_KILL_PROCESS:
 		return "kill_process"
-	case C.SECCOMP_RET_KILL_THREAD:
+	case SECCOMP_RET_KILL_THREAD:
 		return "kill_thread"
-	case C.SECCOMP_RET_TRAP:
+	case SECCOMP_RET_TRAP:
 		return "trap"
-	case C.SECCOMP_RET_ERRNO:
+	case SECCOMP_RET_ERRNO:
 		return "errno"
-	case C.SECCOMP_RET_USER_NOTIF:
+	case SECCOMP_RET_USER_NOTIF:
 		return "user_notif"
-	case C.SECCOMP_RET_TRACE:
+	case SECCOMP_RET_TRACE:
 		return "trace"
-	case C.SECCOMP_RET_LOG:
+	case SECCOMP_RET_LOG:
 		return "log"
-	case C.SECCOMP_RET_ALLOW:
+	case SECCOMP_RET_ALLOW:
 		return "allow"
 	default:
 		return "unknown"

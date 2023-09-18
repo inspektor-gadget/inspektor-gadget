@@ -28,10 +28,10 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/amitschendel/syscalls/pkg/syscalls"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
-	libseccomp "github.com/seccomp/libseccomp-golang"
 	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
@@ -136,7 +136,7 @@ func (t *Tracer) install() error {
 	// Fill the syscall map with specific syscall signatures.
 	syscallsMapSpec := spec.Maps["syscalls"]
 	for name, def := range syscallDefs {
-		nr, err := libseccomp.GetSyscallFromName(name)
+		nr, err := syscalls.GetNumberByName("", name)
 		if err != nil {
 			return fmt.Errorf("getting syscall number of %q: %w", name, err)
 		}

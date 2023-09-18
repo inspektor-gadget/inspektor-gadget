@@ -22,10 +22,10 @@ import (
 	"os"
 	"unsafe"
 
+	"github.com/amitschendel/syscalls/pkg/syscalls"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
-	libseccomp "github.com/seccomp/libseccomp-golang"
 	"github.com/syndtr/gocapability/capability"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
@@ -235,8 +235,7 @@ func (t *Tracer) run() {
 		}
 
 		syscall := ""
-		call1 := libseccomp.ScmpSyscall(bpfEvent.Syscall)
-		if name, err := call1.GetName(); err == nil {
+		if name, err := syscalls.GetNameByNumber("", int(bpfEvent.Syscall)); err == nil {
 			syscall = name
 		}
 
