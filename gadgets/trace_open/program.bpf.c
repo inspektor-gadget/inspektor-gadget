@@ -34,7 +34,6 @@ struct event {
 	__u8 fname[NAME_MAX];
 };
 
-const volatile __u64 min_us = 0;
 const volatile pid_t targ_pid = 0;
 const volatile pid_t targ_tgid = 0;
 const volatile uid_t targ_uid = INVALID_UID;
