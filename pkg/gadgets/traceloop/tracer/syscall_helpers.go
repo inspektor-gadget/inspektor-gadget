@@ -24,7 +24,7 @@ import (
 	"regexp"
 	"strings"
 
-	libseccomp "github.com/seccomp/libseccomp-golang"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
 )
 
 const syscallsPath = `/sys/kernel/debug/tracing/events/syscalls/`
@@ -41,12 +41,10 @@ type syscallDeclaration struct {
 }
 
 func syscallGetName(nr uint16) string {
-	call := libseccomp.ScmpSyscall(nr)
-
-	name, err := call.GetName()
+	name, ok := syscalls.GetSyscallNameByNumber(int(nr))
 	// Just do like strace (https://man7.org/linux/man-pages/man1/strace.1.html):
 	// Syscalls unknown to strace are printed raw
-	if err != nil {
+	if !ok {
 		return fmt.Sprintf("syscall_%x", nr)
 	}
 

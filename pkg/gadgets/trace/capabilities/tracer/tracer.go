@@ -25,13 +25,13 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
-	libseccomp "github.com/seccomp/libseccomp-golang"
 	"github.com/syndtr/gocapability/capability"
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/capabilities/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang -cflags ${CFLAGS} -type cap_event capabilities ./bpf/capable.bpf.c -- -I./bpf/
@@ -234,10 +234,9 @@ func (t *Tracer) run() {
 			verdict = "Allow"
 		}
 
-		syscall := ""
-		call1 := libseccomp.ScmpSyscall(bpfEvent.Syscall)
-		if name, err := call1.GetName(); err == nil {
-			syscall = name
+		syscall, ok := syscalls.GetSyscallNameByNumber(int(bpfEvent.Syscall))
+		if !ok {
+			syscall = fmt.Sprintf("syscall%d", int(bpfEvent.Syscall))
 		}
 
 		var insetID *bool

@@ -23,11 +23,11 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	libseccomp "github.com/seccomp/libseccomp-golang"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target ${TARGET} -cc clang -cflags ${CFLAGS} seccomp ./bpf/seccomp.bpf.c -- -I./bpf/
@@ -93,9 +93,8 @@ func syscallArrToNameList(v []byte) []string {
 		if val == 0 {
 			continue
 		}
-		call1 := libseccomp.ScmpSyscall(i)
-		name, err := call1.GetName()
-		if err != nil {
+		name, ok := syscalls.GetSyscallNameByNumber(i)
+		if !ok {
 			name = fmt.Sprintf("syscall%d", i)
 		}
 		names = append(names, name)
