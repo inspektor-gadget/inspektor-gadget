@@ -352,6 +352,49 @@ func (p *Param) Set(val string) error {
 	return nil
 }
 
+// AsAny returns the value of the parameter according to its type hint. If there is not any type
+// hint, it returns the value as string.
+func (p *Param) AsAny() any {
+	switch p.TypeHint {
+	case TypeBool:
+		return p.AsBool()
+	case TypeString:
+		return p.AsString()
+	case TypeBytes:
+		return p.AsBytes()
+	case TypeInt:
+		return p.AsInt()
+	case TypeInt8:
+		return p.AsInt8()
+	case TypeInt16:
+		return p.AsInt16()
+	case TypeInt32:
+		return p.AsInt32()
+	case TypeInt64:
+		return p.AsInt64()
+	case TypeUint:
+		return p.AsUint()
+	case TypeUint8:
+		return p.AsUint8()
+	case TypeUint16:
+		return p.AsUint16()
+	case TypeUint32:
+		return p.AsUint32()
+	case TypeUint64:
+		return p.AsUint64()
+	case TypeFloat32:
+		return p.AsFloat32()
+	case TypeFloat64:
+		return p.AsFloat64()
+	case TypeDuration:
+		return p.AsDuration()
+	case TypeIP:
+		return p.AsIP()
+	default:
+		return p.value
+	}
+}
+
 func (p *Param) AsFloat32() float32 {
 	n, _ := strconv.ParseFloat(p.value, 32)
 	return float32(n)

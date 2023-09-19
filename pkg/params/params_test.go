@@ -27,6 +27,7 @@ func TestParamAs(t *testing.T) {
 	type test struct {
 		name     string
 		value    string
+		typeHint TypeHint
 		expected any
 		getter   func(*Param) any
 	}
@@ -35,78 +36,91 @@ func TestParamAs(t *testing.T) {
 		{
 			name:     "Float32()",
 			value:    "-20.123",
+			typeHint: TypeFloat32,
 			expected: float32(-20.123),
 			getter:   func(p *Param) any { return p.AsFloat32() },
 		},
 		{
 			name:     "Floa64()",
 			value:    "-20.123456",
+			typeHint: TypeFloat64,
 			expected: float64(-20.123456),
 			getter:   func(p *Param) any { return p.AsFloat64() },
 		},
 		{
 			name:     "Int()",
 			value:    "-20",
+			typeHint: TypeInt,
 			expected: int(-20),
 			getter:   func(p *Param) any { return p.AsInt() },
 		},
 		{
 			name:     "Int8()",
 			value:    "-111",
+			typeHint: TypeInt8,
 			expected: int8(-111),
 			getter:   func(p *Param) any { return p.AsInt8() },
 		},
 		{
 			name:     "Int16()",
 			value:    "-5555",
+			typeHint: TypeInt16,
 			expected: int16(-5555),
 			getter:   func(p *Param) any { return p.AsInt16() },
 		},
 		{
 			name:     "Int32()",
 			value:    "-33333",
+			typeHint: TypeInt32,
 			expected: int32(-33333),
 			getter:   func(p *Param) any { return p.AsInt32() },
 		},
 		{
 			name:     "Int64()",
 			value:    "-2222222222",
+			typeHint: TypeInt64,
 			expected: int64(-2222222222),
 			getter:   func(p *Param) any { return p.AsInt64() },
 		},
 		{
 			name:     "Uint()",
 			value:    "20",
+			typeHint: TypeUint,
 			expected: uint(20),
 			getter:   func(p *Param) any { return p.AsUint() },
 		},
 		{
 			name:     "Uint8()",
 			value:    "111",
+			typeHint: TypeUint8,
 			expected: uint8(111),
 			getter:   func(p *Param) any { return p.AsUint8() },
 		},
 		{
 			name:     "Uint16()",
 			value:    "5555",
+			typeHint: TypeUint16,
 			expected: uint16(5555),
 			getter:   func(p *Param) any { return p.AsUint16() },
 		},
 		{
 			name:     "Uint32()",
 			value:    "33333",
+			typeHint: TypeUint32,
 			expected: uint32(33333),
 			getter:   func(p *Param) any { return p.AsUint32() },
 		},
 		{
 			name:     "Uint64()",
 			value:    "2222222222",
+			typeHint: TypeUint64,
 			expected: uint64(2222222222),
 			getter:   func(p *Param) any { return p.AsUint64() },
 		},
 		{
 			name:     "String()",
 			value:    "eW91J3JlIGN1cmlvdXM=",
+			typeHint: TypeString,
 			expected: string("eW91J3JlIGN1cmlvdXM="),
 			getter:   func(p *Param) any { return p.AsString() },
 		},
@@ -125,12 +139,14 @@ func TestParamAs(t *testing.T) {
 		{
 			name:     "Bool()_true",
 			value:    "true",
+			typeHint: TypeBool,
 			expected: bool(true),
 			getter:   func(p *Param) any { return p.AsBool() },
 		},
 		{
 			name:     "Bool()_false",
 			value:    "false",
+			typeHint: TypeBool,
 			expected: bool(false),
 			getter:   func(p *Param) any { return p.AsBool() },
 		},
@@ -173,30 +189,35 @@ func TestParamAs(t *testing.T) {
 		{
 			name:     "Duration()_1s",
 			value:    "1s",
+			typeHint: TypeDuration,
 			expected: time.Duration(time.Second),
 			getter:   func(p *Param) any { return p.AsDuration() },
 		},
 		{
 			name:     "Duration()_5m",
 			value:    "5m",
+			typeHint: TypeDuration,
 			expected: time.Duration(5 * time.Minute),
 			getter:   func(p *Param) any { return p.AsDuration() },
 		},
 		{
 			name:     "Duration()_half_hour",
 			value:    "0.5h",
+			typeHint: TypeDuration,
 			expected: time.Duration(30 * time.Minute),
 			getter:   func(p *Param) any { return p.AsDuration() },
 		},
 		{
 			name:     "IPv4",
 			value:    "127.0.0.1",
+			typeHint: TypeIP,
 			expected: net.IPv4(127, 0, 0, 1),
 			getter:   func(p *Param) any { return p.AsIP() },
 		},
 		{
 			name:     "IPv6",
 			value:    "::1",
+			typeHint: TypeIP,
 			expected: net.IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
 			getter:   func(p *Param) any { return p.AsIP() },
 		},
@@ -206,11 +227,17 @@ func TestParamAs(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			p := &Param{
-				ParamDesc: &ParamDesc{},
-				value:     test.value,
+				ParamDesc: &ParamDesc{
+					TypeHint: test.typeHint,
+				},
+				value: test.value,
 			}
 
 			require.Equal(t, test.expected, test.getter(p))
+
+			if test.typeHint != TypeUnknown {
+				require.Equal(t, test.expected, p.AsAny())
+			}
 		})
 	}
 }
