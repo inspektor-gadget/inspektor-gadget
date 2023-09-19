@@ -19,16 +19,14 @@ The histogram shows the number of I/O operations (`count` column) that lie in
 the latency range `interval-start` -> `interval-end` (`usecs` column), which,
 as the columns name indicates, is given in microseconds.
 
-For this guide, we will use
-[the `stress` tool](https://linux.die.net/man/1/stress) that allows us to load
-and stress the system in many different ways. In particular, we will use
-the `--io` flag that will generate a given number of workers to spin on the
-[sync() syscall](https://man7.org/linux/man-pages/man2/sync.2.html). In this
-way, we will generate disk I/O that we will analyse using the biolatency
-gadget.
+For this guide, we will use [the `stress` tool](https://man.archlinux.org/man/stress.1) that allows
+us to load and stress the system in many different ways. In particular, we will use the `--io` flag
+that will generate a given number of workers to spin on the [sync()
+syscall](https://man7.org/linux/man-pages/man2/sync.2.html). In this way, we will generate disk I/O
+that we will analyse using the biolatency gadget.
 
-For further details, please refer to
-[the BCC documentation](https://github.com/iovisor/bcc/blob/master/tools/biolatency_example.txt).
+For further details, please refer to [the BCC
+documentation](https://github.com/iovisor/bcc/blob/master/tools/biolatency_example.txt).
 
 ### On Kubernetes
 

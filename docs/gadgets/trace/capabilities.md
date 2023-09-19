@@ -10,16 +10,15 @@ description: >
 The trace capabilities gadget allows us to see what capability security checks
 are triggered by applications running in Kubernetes Pods.
 
-Linux [capabilities](https://linux.die.net/man/7/capabilities) allow for a finer
-privilege control because they can give root-like capabilities to processes without
-giving them full root access. They can also be taken away from root processes.
-If a pod is directly executing programs as root, we can further lock it down
-by taking capabilities away. Sometimes we need to add capabilities which
-are not there by default. You can see the list of default and available
-capabilities [in Docker](https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities).
-Specially if our pod is directly run as user instead of root (runAsUser: ID),
-we can give some more capabilities (think as partly root) and still take all
-unused capabilities to really lock it down.
+Linux [capabilities](https://man7.org/linux/man-pages/man7/capabilities.7.html) allow for a finer
+privilege control because they can give root-like capabilities to processes without giving them full
+root access. They can also be taken away from root processes. If a pod is directly executing
+programs as root, we can further lock it down by taking capabilities away. Sometimes we need to add
+capabilities which are not there by default. You can see the list of default and available
+capabilities [in
+Docker](https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities).
+Specially if our pod is directly run as user instead of root (runAsUser: ID), we can give some more
+capabilities (think as partly root) and still take all unused capabilities to really lock it down.
 
 ### On Kubernetes
 
