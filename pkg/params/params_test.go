@@ -461,3 +461,15 @@ func TestBytesHandling(t *testing.T) {
 	params.CopyFromMap(testMap, "")
 	require.Equal(t, testString, string(params[0].AsBytes()), "decompression + B64 decoding failed")
 }
+
+func TestIsSet(t *testing.T) {
+	pd := ParamDesc{
+		DefaultValue: "foo",
+	}
+	p := pd.ToParam()
+	require.False(t, p.IsSet())
+	p.Set("foo")
+	require.False(t, p.IsSet())
+	p.Set("bar")
+	require.True(t, p.IsSet())
+}

@@ -352,6 +352,10 @@ func (p *Param) Set(val string) error {
 	return nil
 }
 
+func (p *Param) IsSet() bool {
+	return p.DefaultValue != p.value
+}
+
 // AsAny returns the value of the parameter according to its type hint. If there is not any type
 // hint, it returns the value as string.
 func (p *Param) AsAny() any {
