@@ -309,6 +309,22 @@ func TestParamsValidators(t *testing.T) {
 			expectedError: true,
 		},
 		{
+			name: "TypeHint_float_no_error",
+			desc: &ParamDesc{
+				TypeHint: TypeFloat32,
+			},
+			value:         "-256.55",
+			expectedError: false,
+		},
+		{
+			name: "TypeHint_float_error",
+			desc: &ParamDesc{
+				TypeHint: TypeFloat32,
+			},
+			value:         "zas",
+			expectedError: true,
+		},
+		{
 			name: "TypeHint_bool_no_error_false",
 			desc: &ParamDesc{
 				TypeHint: TypeBool,
