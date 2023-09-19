@@ -12,7 +12,7 @@
 #include <bpf/bpf_endian.h>
 
 #define GADGET_TYPE_NETWORKING
-#include <sockets-map.h>
+#include <gadget/sockets-map.h>
 
 #include "dns-common.h"
 
@@ -210,7 +210,7 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 
 	// Check network protocol.
 	// This only works with IPv4.
-	// For IPv6, gadget_socket_lookup() in pkg/gadgets/internal/socketenricher/bpf/sockets-map.h
+	// For IPv6, gadget_socket_lookup() in sockets-map.h
 	// provides an example how to parse ip/ports on IPv6.
 	event->proto =
 		load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol));

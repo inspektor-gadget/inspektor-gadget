@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0 WITH Linux-syscall-note) OR Apache-2.0
 /* Copyright (c) 2021 The Inspektor Gadget authors */
 
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 
 #include <bpf/bpf_helpers.h>
 

@@ -30,7 +30,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/histogram"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type hist -type hist_key -cc clang biolatency ./bpf/biolatency.bpf.c -- -I./bpf/ -I../../../../${TARGET} -I ../../../common/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type hist -type hist_key -cc clang -cflags ${CFLAGS} biolatency ./bpf/biolatency.bpf.c -- -I./bpf/
 
 type Tracer struct {
 	objs                biolatencyObjects

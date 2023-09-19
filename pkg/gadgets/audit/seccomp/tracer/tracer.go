@@ -32,7 +32,7 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type event -cc clang auditseccomp ./bpf/audit-seccomp.bpf.c -- -I./bpf/ -I../../../../ -I../../../../${TARGET} -D__KERNEL__ -I ../../../common/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target $TARGET -type event -cc clang -cflags ${CFLAGS} auditseccomp ./bpf/audit-seccomp.bpf.c -- -I./bpf/ -D__KERNEL__
 
 type Tracer struct {
 	config        *Config

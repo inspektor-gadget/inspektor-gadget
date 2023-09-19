@@ -7,7 +7,7 @@
 // 15-Jun-2022    Rong Tao        Add tracepoint:skb:kfree_skb
 // Copyright 2023 Microsoft Corporation
 
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
@@ -15,7 +15,7 @@
 #include <bpf/bpf_endian.h>
 
 #define GADGET_TYPE_TRACING
-#include <sockets-map.h>
+#include <gadget/sockets-map.h>
 
 #include "tcpdrop.h"
 

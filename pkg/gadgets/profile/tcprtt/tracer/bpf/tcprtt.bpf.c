@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2021 Wenbo Zhang
 // Copyright (c) 2023 The Inspektor Gadget authors
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 #include "tcprtt.h"
-#include "bits.bpf.h"
-#include "maps.bpf.h"
+#include <gadget/bits.bpf.h>
+#include <gadget/maps.bpf.h>
 
 /* Taken from kernel include/linux/socket.h. */
 #define AF_INET 2 /* IP version 4			*/

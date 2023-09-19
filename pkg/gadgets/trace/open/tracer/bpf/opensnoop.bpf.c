@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2019 Facebook
 // Copyright (c) 2020 Netflix
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
-#include "mntns_filter.h"
-#include "filesystem.h"
+#include <gadget/mntns_filter.h>
+#include <gadget/filesystem.h>
 #include "opensnoop.h"
 
 #define TASK_RUNNING 0

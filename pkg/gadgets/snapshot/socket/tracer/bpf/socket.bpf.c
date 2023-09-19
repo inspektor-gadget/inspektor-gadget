@@ -11,7 +11,7 @@
  * This BPF program uses the GPL-restricted function bpf_seq_printf().
  */
 
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>

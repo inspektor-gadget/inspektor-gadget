@@ -3,14 +3,14 @@
 //
 // Based on tcptracer(8) from BCC by Kinvolk GmbH and
 // tcpconnect(8) by Anton Protopopov
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 #include "tcptracer.h"
-#include "mntns_filter.h"
+#include <gadget/mntns_filter.h>
 
 const volatile uid_t filter_uid = -1;
 const volatile pid_t filter_pid = 0;

@@ -9,10 +9,10 @@
 /* This BPF program uses the GPL-restricted function bpf_seq_printf().
  */
 
-#include <vmlinux/vmlinux.h>
+#include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 
-#include "mntns_filter.h"
+#include <gadget/mntns_filter.h>
 
 const volatile bool show_threads = false;
 
