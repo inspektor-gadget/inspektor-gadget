@@ -95,6 +95,7 @@ type ParamDesc struct {
 type Param struct {
 	*ParamDesc
 	value string
+	isSet bool
 }
 
 // GetTitle returns a human friendly title of the field; if no Title has been specified,
@@ -349,7 +350,16 @@ func (p *Param) Set(val string) error {
 		return err
 	}
 	p.value = val
+	p.isSet = true
 	return nil
+}
+
+func (p *Param) IsSet() bool {
+	return p.isSet
+}
+
+func (p *Param) IsDefault() bool {
+	return p.DefaultValue == p.value
 }
 
 // AsAny returns the value of the parameter according to its type hint. If there is not any type
