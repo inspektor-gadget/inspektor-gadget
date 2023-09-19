@@ -11,4 +11,9 @@
 #define GADGET_TRACE_MAP(name) \
 	const void * gadget_trace_map_##name __attribute__((unused));
 
+// GADGET_PARAM is used to indicate that a given variable is used as a parameter.
+// Users of Inspektor Gadget can set these values from userspace
+#define GADGET_PARAM(name) \
+	const void * gadget_param_##name __attribute__((unused));
+
 #endif /* __MACROS_H */

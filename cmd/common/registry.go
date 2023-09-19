@@ -16,6 +16,7 @@ package common
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -186,6 +187,7 @@ func buildCommandFromGadget(
 	hiddenColumnTags []string,
 ) *cobra.Command {
 	runGadgetDesc, isRunGadget := gadgetDesc.(runTypes.RunGadgetDesc)
+	var runGadgetInfo *runTypes.GadgetInfo
 	var outputMode string
 	var filters []string
 	var timeout int
@@ -229,6 +231,64 @@ func buildCommandFromGadget(
 		DisableFlagParsing: true,
 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			err := runtime.Init(runtimeGlobalParams)
+			if err != nil {
+				return fmt.Errorf("initializing runtime: %w", err)
+			}
+			defer runtime.Close()
+
+			// TODO: This is a best effort approach to remove all the things that are
+			// related to args. Please notice that flags from the gadget haven't been
+			// added at this point, so it's not possible to use any logic to check more
+			// details about them.
+			onlyArgs := []string{}
+			for i := 0; i < len(args); i++ {
+				arg := args[i]
+				if arg[0] == '-' {
+					// --bar=foo: skip them
+					if strings.Contains(arg, "=") {
+						continue
+					}
+
+					// --bar with default value, skip it without skipping next arg
+					name := strings.TrimLeft(arg, "-")
+
+					f := cmd.Flags().Lookup(name)
+					// If NoOptDefVal was set we just continue to the next args value in the slice
+					// Example: `--help` would be such a value. No need to specify `true` after it
+					// See https://pkg.go.dev/github.com/spf13/pflag#readme-setting-no-option-default-values-for-flags
+					if f != nil && f.NoOptDefVal != "" {
+						continue
+					}
+
+					// In other cases skip next argument e.g: `--bar foo` would now skip `foo`
+					i++
+					continue
+				}
+
+				onlyArgs = append(onlyArgs, arg)
+			}
+
+			// Before running the gadget, we need to get the gadget info to perform
+			// different tasks like creating the parser and setting flags for the
+			// gadget's parameters.
+			if isRunGadget && len(onlyArgs) > 0 {
+				var err error
+				runGadgetInfo, err = runtime.GetGadgetInfo(context.TODO(), gadgetDesc, gadgetParams, onlyArgs)
+				if err != nil {
+					return fmt.Errorf("getting gadget info: %w", err)
+				}
+
+				ebpfParams := params.Params{}
+				for _, desc := range runGadgetInfo.GadgetMetadata.EBPFParams {
+					desc := desc
+					ebpfParams.Add(desc.ToParam())
+				}
+
+				AddFlags(cmd, &ebpfParams, nil, runtime)
+				gadgetParams.Add(ebpfParams...)
+			}
+
 			// we need to re-enable flag parsing, as cmd.ParseFlags() would not
 			// do anything otherwise
 			cmd.DisableFlagParsing = false
@@ -255,7 +315,6 @@ func buildCommandFromGadget(
 
 			ctx := fe.GetContext()
 
-			var gadgetInfo *runTypes.GadgetInfo
 			// Before running the gadget, we need to get the gadget info to create the
 			// parser based on it
 			if isRunGadget {
@@ -267,13 +326,7 @@ func buildCommandFromGadget(
 					return cmd.Help()
 				}
 
-				var err error
-				gadgetInfo, err = runtime.GetGadgetInfo(ctx, gadgetDesc, gadgetParams, args)
-				if err != nil {
-					return fmt.Errorf("getting gadget info: %w", err)
-				}
-
-				parser, err = runGadgetDesc.CustomParser(gadgetInfo)
+				parser, err = runGadgetDesc.CustomParser(runGadgetInfo)
 				if err != nil {
 					return fmt.Errorf("calling custom parser: %w", err)
 				}
@@ -572,19 +625,19 @@ func buildCommandFromGadget(
 			case OutputModeJSON:
 				jsonCallback := printEventAsJSONFn(fe)
 				if isRunGadget {
-					jsonCallback = runGadgetDesc.JSONConverter(gadgetInfo, fe)
+					jsonCallback = runGadgetDesc.JSONConverter(runGadgetInfo, fe)
 				}
 				parser.SetEventCallback(jsonCallback)
 			case OutputModeJSONPretty:
 				jsonPrettyCallback := printEventAsJSONPrettyFn(fe)
 				if isRunGadget {
-					jsonPrettyCallback = runGadgetDesc.JSONPrettyConverter(gadgetInfo, fe)
+					jsonPrettyCallback = runGadgetDesc.JSONPrettyConverter(runGadgetInfo, fe)
 				}
 				parser.SetEventCallback(jsonPrettyCallback)
 			case OutputModeYAML:
 				yamlCallback := printEventAsYAMLFn(fe)
 				if isRunGadget {
-					yamlCallback = runGadgetDesc.YAMLConverter(gadgetInfo, fe)
+					yamlCallback = runGadgetDesc.YAMLConverter(runGadgetInfo, fe)
 				}
 				parser.SetEventCallback(yamlCallback)
 			}
