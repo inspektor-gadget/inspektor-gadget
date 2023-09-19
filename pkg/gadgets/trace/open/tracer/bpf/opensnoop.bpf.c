@@ -10,7 +10,6 @@
 
 #define TASK_RUNNING 0
 
-const volatile __u64 min_us = 0;
 const volatile pid_t targ_pid = 0;
 const volatile pid_t targ_tgid = 0;
 const volatile uid_t targ_uid = INVALID_UID;
