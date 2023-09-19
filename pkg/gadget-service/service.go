@@ -160,6 +160,18 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 		if err != nil {
 			return fmt.Errorf("calling custom parser: %w", err)
 		}
+
+		// Update gadget parameters to take ebpf params into consideration
+		for _, p := range gadgetInfo.GadgetDefinition.EBPFParams {
+			p := p
+			gadgetParamDescs.Add(&p.ParamDesc)
+		}
+		gadgetParams = gadgetParamDescs.ToParams()
+		err = gadgetParams.CopyFromMap(request.Params, "")
+		if err != nil {
+			return fmt.Errorf("setting parameters: %w", err)
+		}
+
 	}
 
 	// Create payload buffer

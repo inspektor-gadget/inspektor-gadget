@@ -48,47 +48,47 @@ var ErrNotFound = errors.New("not found")
 type ParamDesc struct {
 	// Key is the name under which this param is registered; this will also be the key when
 	// getting a key/value map
-	Key string `json:"key"`
+	Key string `json:"key" yaml:"key"`
 
 	// Alias is a shortcut for this parameter, usually a single character used for command line
 	// interfaces
-	Alias string `json:"alias"`
+	Alias string `json:"alias" yaml:"alias"`
 
 	// Title is an optional (pretty) alternative to key and used in user interfaces
-	Title string `json:"title"`
+	Title string `json:"title" yaml:"title"`
 
 	// DefaultValue is the value that will be used if no other value has been assigned
-	DefaultValue string `json:"defaultValue"`
+	DefaultValue string `json:"defaultValue" yaml:"defaultValue"`
 
 	// Description holds an optional explanation for this parameter; shown in user interfaces
-	Description string `json:"description"`
+	Description string `json:"description" yaml:"description"`
 
 	// IsMandatory will be considered when validating; if the param has no value assigned and
 	// also no DefaultValue is set, validation will fail
-	IsMandatory bool `json:"isMandatory"`
+	IsMandatory bool `json:"isMandatory" yaml:"isMandatory"`
 
 	// Tags can be used to skip parameters not needed for a specific environment
-	Tags []string `json:"tags"`
+	Tags []string `json:"tags" yaml:"tags"`
 
 	// Validator is an optional function that will be called upon validation; may or may
 	// not be called in user interfaces. Setting TypeHint is preferred, but can also be used
 	// in combination with the Validator. Example: additionally to setting the TypeHint to
 	// TypeInt, the validator could be used to make sure the given int is in a specific range.
-	Validator ParamValidator `json:"-"`
+	Validator ParamValidator `json:"-" yaml:"-"`
 
 	// TypeHint is the preferred way to set the type of this parameter as it will invoke a
 	// matching validator automatically; if unset, a value of "string" is assumed
-	TypeHint TypeHint `json:"type"`
+	TypeHint TypeHint `json:"type" yaml:"type"`
 
 	// ValueHint can give a hint on what content is expected here - for example, it can be
 	// used to hint that the param expects a kubernetes namespace, a list of nodes and so on.
 	// This is helpful for frontends to provide autocompletion/selections or set defaults
 	// accordingly.
-	ValueHint ValueHint `json:"valueHint"`
+	ValueHint ValueHint `json:"valueHint" yaml:"valueHint"`
 
 	// PossibleValues holds all possible values for this parameter and will be considered
 	// when validating
-	PossibleValues []string `json:"possibleValues"`
+	PossibleValues []string `json:"possibleValues" yaml:"possibleValues"`
 }
 
 // Param holds a ParamDesc but can additionally store a value
@@ -290,7 +290,7 @@ func (p *Params) CopyFromMap(source map[string]string, prefix string) error {
 	for k, v := range source {
 		if strings.HasPrefix(k, prefix) {
 			param := p.Get(strings.TrimPrefix(k, prefix))
-			if param == nil {
+			if param == nil || param.value == v {
 				continue
 			}
 			if param.TypeHint == TypeBytes {

@@ -73,10 +73,17 @@ func Base(ev eventtypes.Event) *Event {
 	}
 }
 
+type EBPFParam struct {
+	params.ParamDesc `yaml:",inline"`
+	// Varname in the eBPF code
+	Var string `yaml:"var"`
+}
+
 type GadgetDefinition struct {
 	Name         string               `yaml:"name"`
 	Description  string               `yaml:"description"`
 	ColumnsAttrs []columns.Attributes `yaml:"columns"`
+	EBPFParams   []EBPFParam          `yaml:"ebpf_params"`
 }
 
 // Printer is implemented by objects that can print information, like frontends.

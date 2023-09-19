@@ -181,6 +181,7 @@ func buildCommandFromGadget(
 	operatorsParamsCollection params.Collection,
 ) *cobra.Command {
 	isRunGadget := gadgetDesc.Name() == "run"
+	var gadgetInfo *runTypes.GadgetInfo
 	var outputMode string
 	var filters []string
 	var timeout int
@@ -224,6 +225,73 @@ func buildCommandFromGadget(
 		DisableFlagParsing: true,
 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
+			err := runtime.Init(runtimeGlobalParams)
+			if err != nil {
+				return fmt.Errorf("initializing runtime: %w", err)
+			}
+			defer runtime.Close()
+
+			// TODO: This is a best effort approach to remove all the things that are
+			// related to args. Please notice that flags from the gadget haven't been
+			// added at this point, so it's not possible to use any logic to check more
+			// details about them.
+			onlyArgs := []string{}
+			for i := 0; i < len(args); i++ {
+				arg := args[i]
+				if arg[0] == '-' {
+					// --bar=foo: skip them
+					if strings.Contains(arg, "=") {
+						continue
+					}
+
+					// --bar with default value, skip it without skipping next arg
+					var name string
+					if arg[0] == '-' {
+						if len(arg) >= 2 && arg[1] == '-' {
+							name = arg[2:]
+						} else {
+							name = arg[1:]
+						}
+					}
+
+					f := cmd.Flags().Lookup(name)
+					if f != nil && f.NoOptDefVal != "" {
+						continue
+					}
+
+					// in other cases skip next argument
+					i++
+					continue
+				}
+
+				onlyArgs = append(onlyArgs, arg)
+			}
+
+			// Before running the gadget, we need to get the gadget info to perform
+			// different tasks like creating the parser and setting flags for the
+			// gadget's parameters.
+			if isRunGadget {
+				var err error
+				gadgetInfo, err = runtime.GetGadgetInfo(gadgetDesc, gadgetParams, onlyArgs)
+				if err != nil {
+					return fmt.Errorf("getting gadget info: %w", err)
+				}
+
+				ebpfParams := params.Params{}
+				for _, desc := range gadgetInfo.GadgetDefinition.EBPFParams {
+					desc := desc
+					ebpfParams.Add(desc.ToParam())
+				}
+
+				addFlags(cmd, &ebpfParams, nil, runtime)
+				gadgetParams.Add(ebpfParams...)
+
+				parser, err = gadgetDesc.(runTypes.RunGadgetDesc).CustomParser(gadgetInfo)
+				if err != nil {
+					return fmt.Errorf("calling custom parser: %w", err)
+				}
+			}
+
 			// we need to re-enable flag parsing, as cmd.ParseFlags() would not
 			// do anything otherwise
 			cmd.DisableFlagParsing = false
@@ -244,22 +312,6 @@ func buildCommandFromGadget(
 				return fmt.Errorf("initializing runtime: %w", err)
 			}
 			defer runtime.Close()
-
-			var gadgetInfo *runTypes.GadgetInfo
-			// Before running the gadget, we need to get the gadget info to create the
-			// parser based on it
-			if isRunGadget {
-				var err error
-				gadgetInfo, err = runtime.GetGadgetInfo(gadgetDesc, gadgetParams, args)
-				if err != nil {
-					return fmt.Errorf("getting gadget info: %w", err)
-				}
-
-				parser, err = gadgetDesc.(runTypes.RunGadgetDesc).CustomParser(gadgetInfo)
-				if err != nil {
-					return fmt.Errorf("calling custom parser: %w", err)
-				}
-			}
 
 			if parser != nil {
 				if columnFilters != nil {

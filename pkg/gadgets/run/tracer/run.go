@@ -151,6 +151,84 @@ func getProgAndDefinition(params *params.Params, args []string) ([]byte, []byte,
 	return prog, def, nil
 }
 
+func getTypeName(typ btf.Type) params.TypeHint {
+	switch typedMember := typ.(type) {
+	case *btf.Int:
+		switch typedMember.Encoding {
+		case btf.Signed:
+			switch typedMember.Size {
+			case 1:
+				return params.TypeInt8
+			case 2:
+				return params.TypeInt16
+			case 4:
+				return params.TypeInt32
+			case 8:
+				return params.TypeInt64
+			}
+		case btf.Unsigned:
+			switch typedMember.Size {
+			case 1:
+				return params.TypeUint8
+			case 2:
+				return params.TypeUint16
+			case 4:
+				return params.TypeUint32
+			case 8:
+				return params.TypeUint64
+			}
+		case btf.Bool:
+			return params.TypeBool
+		case btf.Char:
+			return params.TypeUint8
+		}
+	case *btf.Float:
+		switch typedMember.Size {
+		case 4:
+			return params.TypeFloat32
+		case 8:
+			return params.TypeFloat64
+		}
+	case *btf.Typedef:
+		typ, _ := getUnderlyingType(typedMember)
+		return getTypeName(typ)
+	case *btf.Volatile:
+		return getTypeName(typedMember.Type)
+	}
+
+	return params.TypeUnknown
+}
+
+// fillTypeHints fills the TypeHint field in the ebpf parameters according to the BTF information
+// about those constants.
+func fillTypeHints(progContent []byte, params []types.EBPFParam) error {
+	btfSpec, err := btf.LoadSpecFromReader(bytes.NewReader(progContent))
+	if err != nil {
+		return fmt.Errorf("load btf spec: %w", err)
+	}
+
+	for i, p := range params {
+		typ, err := btfSpec.AnyTypeByName(p.Var)
+		if err != nil {
+			return fmt.Errorf("no BTF type found for: %s: %w", p.Key, err)
+		}
+
+		v, ok := typ.(*btf.Var)
+		if !ok {
+			return fmt.Errorf("type for %s is not a variable", p.Key)
+		}
+
+		c, ok := v.Type.(*btf.Const)
+		if !ok {
+			return fmt.Errorf("type for %s is not a constant", p.Key)
+		}
+
+		params[i].TypeHint = getTypeName(c.Type)
+	}
+
+	return nil
+}
+
 func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types.GadgetInfo, error) {
 	progContent, definitionBytes, err := getProgAndDefinition(params, args)
 	if err != nil {
@@ -162,6 +240,10 @@ func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types
 	}
 	if err := yaml.Unmarshal(definitionBytes, &ret.GadgetDefinition); err != nil {
 		return nil, fmt.Errorf("unmarshaling definition: %w", err)
+	}
+
+	if err := fillTypeHints(progContent, ret.GadgetDefinition.EBPFParams); err != nil {
+		return nil, fmt.Errorf("fill parameters type hints: %w", err)
 	}
 
 	return ret, nil

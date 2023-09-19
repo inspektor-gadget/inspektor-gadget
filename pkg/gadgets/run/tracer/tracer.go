@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
+	"gopkg.in/yaml.v3"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
@@ -36,6 +37,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -57,6 +59,9 @@ type Config struct {
 	ProgLocation string
 	ProgContent  []byte
 	MountnsMap   *ebpf.Map
+
+	// constants to replace in the ebpf program
+	Consts map[string]interface{}
 }
 
 type Tracer struct {
@@ -166,7 +171,7 @@ func (t *Tracer) installTracer() error {
 	}
 
 	mapReplacements := map[string]*ebpf.Map{}
-	consts := map[string]interface{}{}
+	consts := t.config.Consts
 
 	printMap, err := t.handlePrintMap()
 	if err != nil {
@@ -444,14 +449,37 @@ func (t *Tracer) runPrint(gadgetCtx gadgets.GadgetContext) {
 	}
 }
 
+func (t *Tracer) setEBPFParameters(ebpfParams []types.EBPFParam, gadgetParams *params.Params) error {
+	t.config.Consts = make(map[string]interface{})
+	for _, paramDef := range ebpfParams {
+		p := gadgetParams.Get(paramDef.Key)
+		if !p.IsSet() {
+			continue
+		}
+		t.config.Consts[paramDef.Var] = p.AsAny()
+	}
+
+	return nil
+}
+
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	var err error
+	var definitionRaw []byte
 
-	params := gadgetCtx.GadgetParams()
+	gadgetParams := gadgetCtx.GadgetParams()
 	args := gadgetCtx.Args()
-	t.config.ProgContent, _, err = getProgAndDefinition(params, args)
+	t.config.ProgContent, definitionRaw, err = getProgAndDefinition(gadgetParams, args)
 	if err != nil {
 		return fmt.Errorf("get ebpf program: %w", err)
+	}
+
+	var definition types.GadgetDefinition
+	if err := yaml.Unmarshal(definitionRaw, &definition); err != nil {
+		return fmt.Errorf("unmarshal gadget definition: %w", err)
+	}
+
+	if err := t.setEBPFParameters(definition.EBPFParams, gadgetParams); err != nil {
+		return fmt.Errorf("setting ebpf parameters: %w", err)
 	}
 
 	if err := t.installTracer(); err != nil {
