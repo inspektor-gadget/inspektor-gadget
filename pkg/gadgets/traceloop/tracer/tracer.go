@@ -31,7 +31,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
-	libseccomp "github.com/seccomp/libseccomp-golang"
 	log "github.com/sirupsen/logrus"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
@@ -39,6 +38,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -type syscall_event_t -type syscall_event_cont_t -target ${TARGET} -cc clang -cflags ${CFLAGS} traceloop ./bpf/traceloop.bpf.c -- -I./bpf/
@@ -136,15 +136,15 @@ func (t *Tracer) install() error {
 	// Fill the syscall map with specific syscall signatures.
 	syscallsMapSpec := spec.Maps["syscalls"]
 	for name, def := range syscallDefs {
-		nr, err := libseccomp.GetSyscallFromName(name)
-		if err != nil {
+		number, ok := syscalls.GetSyscallNumberByName(name)
+		if !ok {
 			return fmt.Errorf("getting syscall number of %q: %w", name, err)
 		}
 
 		// We need to do so to avoid taking each time the same address.
 		def := def
 		syscallsMapSpec.Contents = append(syscallsMapSpec.Contents, ebpf.MapKV{
-			Key:   uint64(nr),
+			Key:   uint64(number),
 			Value: def,
 		})
 	}
