@@ -25,6 +25,7 @@ import (
 type TypeHint string
 
 const (
+	TypeUnknown  TypeHint = ""
 	TypeBool     TypeHint = "bool"
 	TypeString   TypeHint = "string"
 	TypeBytes    TypeHint = "bytes"
