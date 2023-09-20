@@ -30,7 +30,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
 type buildOptions struct {
@@ -70,7 +70,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("at least one of --prog-amd64 or --prog-arm64 must be specified")
 	}
 
-	ociStore, err := utils.GetLocalOciStore()
+	ociStore, err := oci.GetLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("get oci store: %w", err)
 	}
@@ -80,7 +80,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("create image index: %w", err)
 	}
 
-	targetImage, err := utils.NormalizeImage(o.image)
+	targetImage, err := oci.NormalizeImage(o.image)
 	if err != nil {
 		return fmt.Errorf("normalize image: %w", err)
 	}

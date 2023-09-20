@@ -21,8 +21,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
 const (
@@ -129,5 +131,24 @@ func AddRuntimesSocketPathFlags(command *cobra.Command, config *RuntimesSocketPa
 		"podman-socketpath", "",
 		runtimeclient.PodmanDefaultSocketPath,
 		"Podman Unix socket path",
+	)
+}
+
+func AddRegistryAuthVariablesAndFlags(cmd *cobra.Command, authOptions *oci.AuthOptions) {
+	// Flag inspired by https://github.com/containers/common/blob/cac40138f7e3c2b29ca32e64348535516bf6aa51/pkg/auth/cli.go#L48
+	cmd.Flags().StringVar(
+		&authOptions.AuthFile,
+		"authfile",
+		oci.DefaultAuthFile,
+		"path of the authentication file. This overrides the REGISTRY_AUTH_FILE environment variable",
+	)
+	viper.BindPFlag("registry.auth_file", cmd.Flags().Lookup("authfile"))
+	viper.BindEnv("registry.auth_file", "REGISTRY_AUTH_FILE")
+
+	cmd.Flags().BoolVar(
+		&authOptions.Insecure,
+		"insecure",
+		false,
+		"allow connections to HTTP only registries",
 	)
 }
