@@ -18,24 +18,6 @@ FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
 ARG TARGETARCH
 ARG BUILDARCH
 
-# We need a cross compiler and libraries for TARGETARCH due to CGO.
-RUN set -ex; \
-	export DEBIAN_FRONTEND=noninteractive; \
-	dpkg --add-architecture ${TARGETARCH} && \
-	apt-get update && \
-	apt-get install -y gcc make ca-certificates git libelf-dev:${TARGETARCH} \
-		pkg-config:${TARGETARCH} && \
-	if [ "${TARGETARCH}" != "${BUILDARCH}" ]; then \
-		if [ ${TARGETARCH} = 'arm64' ]; then \
-				apt-get install -y gcc-aarch64-linux-gnu; \
-			elif [ ${TARGETARCH} = 'amd64' ]; then \
-				apt-get install -y gcc-x86-64-linux-gnu; \
-			else \
-				>&2 echo "${TARGETARCH} is not supported"; \
-				exit 1; \
-			fi \
-	fi
-
 # Cache go modules so they won't be downloaded at each build
 COPY go.mod go.sum /gadget/
 RUN cd /gadget && go mod download
@@ -43,18 +25,6 @@ RUN cd /gadget && go mod download
 # This COPY is limited by .dockerignore
 COPY ./ /gadget
 RUN cd /gadget/gadget-container && \
-	if [ "${TARGETARCH}" != "${BUILDARCH}" ]; then \
-		if [ ${TARGETARCH} = 'arm64' ]; then \
-			export CC=aarch64-linux-gnu-gcc; \
-			export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig/; \
-		elif [ ${TARGETARCH} = 'amd64' ]; then \
-			export CC=x86_64-linux-gnu-gcc; \
-			export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig; \
-		else \
-			>&2 echo "${TARGETARCH} is not supported"; \
-			exit 1; \
-		fi \
-	fi; \
 	make -j$(nproc) TARGET_ARCH=${TARGETARCH} gadget-container-deps
 
 # Main gadget image
