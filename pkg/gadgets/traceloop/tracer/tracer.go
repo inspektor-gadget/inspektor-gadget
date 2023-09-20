@@ -138,7 +138,8 @@ func (t *Tracer) install() error {
 	for name, def := range syscallDefs {
 		number, ok := syscalls.GetSyscallNumberByName(name)
 		if !ok {
-			return fmt.Errorf("getting syscall number of %q: %w", name, err)
+			// It's possible that the syscall doesn't exist for this architecture, skip it
+			continue
 		}
 
 		// We need to do so to avoid taking each time the same address.
