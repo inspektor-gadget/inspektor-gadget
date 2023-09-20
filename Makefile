@@ -107,6 +107,11 @@ ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 
 ig-%: phony_explicit
 	echo Building $@
+	if $(ENABLE_BTFGEN) == "true" ; then \
+		./tools/getbtfhub.sh && \
+		$(MAKE) -f Makefile.btfgen \
+			ARCH=$(subst linux-,,$*) BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
+	fi
 	docker buildx build --load --platform=$(subst -,/,$*) -t $@ -f Dockerfiles/ig.Dockerfile \
 		--build-arg VERSION=$(VERSION) .
 	docker create --name ig-$*-container $@
@@ -156,7 +161,7 @@ gadget-%-container:
 	if $(ENABLE_BTFGEN) == "true" ; then \
 		./tools/getbtfhub.sh && \
 		$(MAKE) -f Makefile.btfgen \
-			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
+			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring bcc,$*),-bcc,) \
 		-f Dockerfiles/gadget-$*.Dockerfile .
@@ -165,7 +170,9 @@ cross-gadget-%-container:
 	if $(ENABLE_BTFGEN) == "true" ; then \
 		./tools/getbtfhub.sh && \
 		$(MAKE) -f Makefile.btfgen \
-			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ OUTPUT=hack/btfs/ -j$(nproc); \
+			ARCH=x86 BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc) && \
+		$(MAKE) -f Makefile.btfgen \
+			ARCH=arm64 BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring bcc,$*),-bcc,) \
 		--push \

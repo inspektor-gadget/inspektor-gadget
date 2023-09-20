@@ -71,7 +71,7 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	apt-get update && \
 	apt-get install -y --no-install-recommends \
-		ca-certificates jq wget xz-utils binutils socat && \
+		ca-certificates jq xz-utils binutils socat && \
 	rmdir /usr/src && ln -sf /host/usr/src /usr/src && \
 	rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
 
@@ -93,9 +93,6 @@ COPY --from=builder /gadget/gadget-container/bin/nrigadget /opt/hooks/nri/
 COPY gadget-container/hooks/nri/conf.json /opt/hooks/nri/
 
 ## Hooks Ends
-
-# BTF files
-COPY hack/btfs /btfs/
 
 COPY --from=bpftrace /usr/bin/bpftrace /usr/bin/bpftrace
 

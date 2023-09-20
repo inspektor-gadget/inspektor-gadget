@@ -25,8 +25,10 @@
 bin/
 
 # BTF files
-hack/btfs/*
-!hack/btfs/README.md
+pkg/btfgen/btfs/x86/*
+!pkg/btfgen/btfs/x86/README.md
+pkg/btfgen/btfs/arm64/*
+!pkg/btfgen/btfs/arm64/README.md
 
 # Build artifacts
 *.o

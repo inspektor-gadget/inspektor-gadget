@@ -23,6 +23,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/kallsyms"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
@@ -73,6 +74,12 @@ func (se *SocketEnricher) start() error {
 
 	kallsyms.SpecUpdateAddresses(specIter, []string{"socket_file_ops"})
 
+	opts := ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			KernelTypes: btfgen.GetBTFSpec(),
+		},
+	}
+
 	disableBPFIterators := false
 	if err := specIter.LoadAndAssign(&se.objsIter, nil); err != nil {
 		disableBPFIterators = true
@@ -84,7 +91,6 @@ func (se *SocketEnricher) start() error {
 		return fmt.Errorf("loading socket enricher asset: %w", err)
 	}
 
-	opts := ebpf.CollectionOptions{}
 	if disableBPFIterators {
 		spec.RewriteConstants(map[string]interface{}{
 			"disable_bpf_iterators": true,
