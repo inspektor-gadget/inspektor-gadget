@@ -13,23 +13,10 @@
 #define __NR_rt_sigreturn 139
 #define __NR_exit_group 94
 #define __NR_exit 93
-/*
- * The kernel does not provide a helper macro to get the sixth argument from
- * syscalls.
- * So, we craft it ourselves using man syscall:
- * Arch/ABI      arg1  arg2  arg3  arg4  arg5  arg6  arg7  Notes
- * ─────────────────────────────────────────────────────────────
- * ...
- * arm64         x0    x1    x2    x3    x4    x5    -
- * ...
- * x86-64        rdi   rsi   rdx   r10   r8    r9    -
- */
-#define PT_REGS_PARM6_CORE_SYSCALL(ctx) BPF_CORE_READ(ctx, regs[5])
 #elif defined(__TARGET_ARCH_x86)
 #define __NR_rt_sigreturn 15
 #define __NR_exit_group 231
 #define __NR_exit 60
-#define PT_REGS_PARM6_CORE_SYSCALL(ctx) BPF_CORE_READ(ctx, r9)
 #else
 #error "Traceloop is not supported on your architecture."
 #endif
