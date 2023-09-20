@@ -9,7 +9,7 @@ TARGET_ARCH ?= $(shell go env GOHOSTARCH)
 .PHONY: gadgettracermanager
 gadgettracermanager:
 	mkdir -p bin
-	GO111MODULE=on CGO_ENABLED=1 GOOS=linux GOARCH=$(TARGET_ARCH) go build \
+	GO111MODULE=on GOOS=linux GOARCH=$(TARGET_ARCH) go build \
 		-o bin/gadgettracermanager \
 		./gadgettracermanager/
 
@@ -18,13 +18,13 @@ gadgettracermanager:
 .PHONY: ocihookgadget
 ocihookgadget:
 	mkdir -p bin
-	GO111MODULE=on CGO_ENABLED=1 GOOS=linux GOARCH=$(TARGET_ARCH) go build \
+	GO111MODULE=on GOOS=linux GOARCH=$(TARGET_ARCH) go build \
 		-o bin/ocihookgadget \
 		./hooks/oci/main.go
 
 .PHONY: nrigadget
 nrigadget:
 	mkdir -p bin
-	GO111MODULE=on CGO_ENABLED=1 GOOS=linux GOARCH=$(TARGET_ARCH) go build \
+	GO111MODULE=on GOOS=linux GOARCH=$(TARGET_ARCH) go build \
 		-o bin/nrigadget \
 		./hooks/nri/main.go

@@ -24,7 +24,7 @@ RUN set -ex; \
 	dpkg --add-architecture ${TARGETARCH} && \
 	apt-get update && \
 	apt-get install -y gcc make ca-certificates git libelf-dev:${TARGETARCH} \
-		pkg-config:${TARGETARCH} libseccomp-dev:${TARGETARCH} && \
+		pkg-config:${TARGETARCH} && \
 	if [ "${TARGETARCH}" != "${BUILDARCH}" ]; then \
 		if [ ${TARGETARCH} = 'arm64' ]; then \
 				apt-get install -y gcc-aarch64-linux-gnu; \
