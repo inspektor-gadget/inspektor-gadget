@@ -10,7 +10,7 @@ RUN set -ex; \
 	export DEBIAN_FRONTEND=noninteractive; \
 	dpkg --add-architecture ${TARGETARCH} && \
 	apt-get update && \
-	apt-get install -y gcc build-essential libseccomp-dev:${TARGETARCH} && \
+	apt-get install -y gcc build-essential && \
 	if [ "${TARGETARCH}" != "${BUILDARCH}" ]; then \
 		if [ ${TARGETARCH} = 'arm64' ]; then \
 			apt-get install -y gcc-aarch64-linux-gnu crossbuild-essential-arm64; \

@@ -12,7 +12,7 @@ ENV VERSION=${VERSION}
 RUN \
 	dpkg --add-architecture ${TARGETARCH} && \
 	apt-get update && \
-	apt-get install -y build-essential libseccomp2:${TARGETARCH} libseccomp-dev:${TARGETARCH} && \
+	apt-get install -y build-essential && \
 	if [ "${TARGETARCH}" != "${BUILDARCH}" ]; then \
 		if [ ${TARGETARCH} = 'arm64' ]; then \
 			apt-get install -y gcc-aarch64-linux-gnu crossbuild-essential-arm64; \
@@ -31,7 +31,6 @@ ADD . /go/src/github.com/inspektor-gadget/inspektor-gadget
 WORKDIR /go/src/github.com/inspektor-gadget/inspektor-gadget
 
 RUN \
-	export CGO_ENABLED=1 ; \
 	if [ "${TARGETARCH}" != "${BUILDARCH}" ]; then \
 		if [ ${TARGETARCH} = 'arm64' ]; then \
 			export CC=aarch64-linux-gnu-gcc; \

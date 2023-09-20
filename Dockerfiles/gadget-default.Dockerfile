@@ -25,7 +25,7 @@ RUN set -ex; \
 	dpkg --add-architecture ${TARGETARCH} && \
 	apt-get update && \
 	apt-get install -y gcc make ca-certificates git libelf-dev:${TARGETARCH} \
-		pkg-config:${TARGETARCH} libseccomp-dev:${TARGETARCH} && \
+		pkg-config:${TARGETARCH} && \
 	if [ "${TARGETARCH}" != "${BUILDARCH}" ]; then \
 		if [ ${TARGETARCH} = 'arm64' ]; then \
 			apt-get install -y gcc-aarch64-linux-gnu; \
@@ -71,16 +71,16 @@ LABEL org.opencontainers.image.licenses=Apache-2.0
 # available on the base image
 RUN set -ex; \
 	if command -v tdnf; then \
-		tdnf install -y libseccomp wget util-linux socat; \
+		tdnf install -y wget util-linux socat; \
 	elif command -v yum; then \
-		yum install -y libseccomp wget util-linux socat; \
+		yum install -y wget util-linux socat; \
 	elif command -v apt-get; then \
 		apt-get update && \
-		apt-get install -y seccomp wget util-linux socat && \
+		apt-get install -y wget util-linux socat && \
 		apt-get clean && \
 		rm -rf /var/lib/apt/lists/*; \
 	elif command -v apk; then \
-		apk add gcompat libseccomp wget util-linux socat; \
+		apk add gcompat wget util-linux socat; \
 	fi && \
 	(rmdir /usr/src || true) && ln -sf /host/usr/src /usr/src && \
 	rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
