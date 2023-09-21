@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
 func loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
@@ -51,10 +51,10 @@ func loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("dialing gadget pod on node %q: %w", pod.node, err)
 	}
-	client := pb.NewGadgetManagerClient(conn)
+	client := api.NewGadgetManagerClient(conn)
 	defer conn.Close()
 
-	info, err := client.GetInfo(ctx, &pb.InfoRequest{Version: "1.0"})
+	info, err := client.GetInfo(ctx, &api.InfoRequest{Version: "1.0"})
 	if err != nil {
 		return nil, fmt.Errorf("get info from gadget pod: %w", err)
 	}
