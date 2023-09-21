@@ -137,7 +137,7 @@ kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
 	cp kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) kubectl-gadget
 
 kubectl-gadget-%: phony_explicit
-	export GO111MODULE=on && \
+	export GO111MODULE=on CGO_ENABLED=0 && \
 	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
 	go build -ldflags $(LDFLAGS) \
 		-tags withoutebpf \
