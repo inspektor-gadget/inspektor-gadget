@@ -24,7 +24,7 @@ import (
 
 const (
 	ParamFullPath = "full-path"
-	ParamPrefix   = "prefix"
+	ParamPrefixes = "prefixes"
 )
 
 type GadgetDesc struct{}
@@ -54,10 +54,9 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			TypeHint:     params.TypeBool,
 		},
 		{
-			Key:          ParamPrefix,
-			Title:        "Filter out by path prefix",
+			Key:          ParamPrefixes,
+			Description:  "Filter out by path prefixes. Join multiple prefixes with ','",
 			DefaultValue: "",
-			TypeHint:     params.TypeString,
 		},
 	}
 }

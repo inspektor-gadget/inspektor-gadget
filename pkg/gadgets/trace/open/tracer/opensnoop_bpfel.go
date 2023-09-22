@@ -28,6 +28,12 @@ type opensnoopEvent struct {
 	_         [7]byte
 }
 
+type opensnoopPrefixKey struct {
+	Prefixlen uint32
+	Filename  [255]uint8
+	_         [1]byte
+}
+
 // loadOpensnoop returns the embedded CollectionSpec for opensnoop.
 func loadOpensnoop() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_OpensnoopBytes)
@@ -82,6 +88,8 @@ type opensnoopMapSpecs struct {
 	Bufs                 *ebpf.MapSpec `ebpf:"bufs"`
 	Events               *ebpf.MapSpec `ebpf:"events"`
 	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
+	PrefixKeys           *ebpf.MapSpec `ebpf:"prefix_keys"`
+	Prefixes             *ebpf.MapSpec `ebpf:"prefixes"`
 	Start                *ebpf.MapSpec `ebpf:"start"`
 }
 
@@ -107,6 +115,8 @@ type opensnoopMaps struct {
 	Bufs                 *ebpf.Map `ebpf:"bufs"`
 	Events               *ebpf.Map `ebpf:"events"`
 	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
+	PrefixKeys           *ebpf.Map `ebpf:"prefix_keys"`
+	Prefixes             *ebpf.Map `ebpf:"prefixes"`
 	Start                *ebpf.Map `ebpf:"start"`
 }
 
@@ -115,6 +125,8 @@ func (m *opensnoopMaps) Close() error {
 		m.Bufs,
 		m.Events,
 		m.GadgetMntnsFilterMap,
+		m.PrefixKeys,
+		m.Prefixes,
 		m.Start,
 	)
 }
