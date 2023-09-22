@@ -24,12 +24,19 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/dns/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
 func main() {
 	// In some kernel versions it's needed to bump the rlimits to
 	// use run BPF programs.
 	if err := rlimit.RemoveMemlock(); err != nil {
+		return
+	}
+
+	err := host.Init(host.Config{})
+	if err != nil {
+		fmt.Printf("error calling host init: %s\n", err)
 		return
 	}
 
