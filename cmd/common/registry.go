@@ -28,7 +28,6 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/frontends/console"
-	cols "github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -47,7 +46,7 @@ const (
 )
 
 // AddCommandsFromRegistry adds all gadgets known by the registry as cobra commands as a subcommand to their categories
-func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, columnFilters []cols.ColumnFilter) {
+func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, hiddenColumnTags []string) {
 	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
 
 	// Build lookup
@@ -95,16 +94,16 @@ func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, co
 		}
 		categoryCmd.AddCommand(buildCommandFromGadget(
 			gadgetDesc,
-			columnFilters,
 			runtime,
 			runtimeGlobalParams,
 			operatorsGlobalParamsCollection,
 			gadgetInfo.OperatorParamsCollection.ToParams(),
+			hiddenColumnTags,
 		))
 	}
 }
 
-func buildColumnsOutputFormat(gadgetParams *params.Params, parser parser.Parser) gadgets.OutputFormats {
+func buildColumnsOutputFormat(gadgetParams *params.Params, parser parser.Parser, hiddenColumnTags []string) gadgets.OutputFormats {
 	paramTags := make(map[string]string)
 	if gadgetParams != nil {
 		for _, param := range *gadgetParams {
@@ -144,7 +143,7 @@ func buildColumnsOutputFormat(gadgetParams *params.Params, parser parser.Parser)
 		}
 		fmt.Fprintf(&out, "\n")
 	}
-	fmt.Fprintf(&out, "    Default columns: %s\n", strings.Join(parser.GetDefaultColumns(), ","))
+	fmt.Fprintf(&out, "    Default columns: %s\n", strings.Join(parser.GetDefaultColumns(hiddenColumnTags...), ","))
 
 	of.Description += out.String()
 
@@ -173,11 +172,11 @@ func buildOutputFormatsHelp(outputFormats gadgets.OutputFormats) []string {
 
 func buildCommandFromGadget(
 	gadgetDesc gadgets.GadgetDesc,
-	columnFilters []cols.ColumnFilter,
 	runtime runtime.Runtime,
 	runtimeGlobalParams *params.Params,
 	operatorsGlobalParamsCollection params.Collection,
 	operatorsParamsCollection params.Collection,
+	hiddenColumnTags []string,
 ) *cobra.Command {
 	var outputMode string
 	var filters []string
@@ -246,11 +245,7 @@ func buildCommandFromGadget(
 			}
 
 			if parser != nil {
-				if columnFilters != nil {
-					parser.SetColumnFilters(columnFilters...)
-				}
-
-				outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser))
+				outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser, hiddenColumnTags))
 				outputFormatsHelp := buildOutputFormatsHelp(outputFormats)
 				cmd.Flags().Lookup("output").Usage = strings.Join(outputFormatsHelp, "\n") + "\n\n"
 				cmd.Flags().Lookup("output").DefValue = "columns"
@@ -420,6 +415,10 @@ func buildCommandFromGadget(
 						}
 					}
 				}
+				// hide columns by tag (e.g. kubernetes, runtime) if requested by the caller
+				if len(hiddenColumnTags) > 0 {
+					hiddenTags = append(hiddenTags, hiddenColumnTags...)
+				}
 				requestedColumns = parser.GetDefaultColumns(hiddenTags...)
 			}
 
@@ -552,7 +551,7 @@ func buildCommandFromGadget(
 
 	// Add parser output flags
 	if parser != nil {
-		outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser))
+		outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser, hiddenColumnTags))
 	}
 	_, hasCustomParser := gadgetDesc.(gadgets.GadgetDescCustomParser)
 

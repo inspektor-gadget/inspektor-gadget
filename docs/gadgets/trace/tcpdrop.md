@@ -13,7 +13,7 @@ In terminal 1, start the trace tcpdrop gadget:
 
 ```bash
 $ kubectl gadget trace tcpdrop
-NODE             NAMESPACE  POD    CONTAINER  PID     COMM  IP SRC                    DST                        STATE        TCPFLAGS  REASON
+K8S.NODE         K8S.NAMESPACE  K8S.POD K8s.CONTAINER  PID     COMM  IP SRC                    DST                        STATE        TCPFLAGS  REASON
 ```
 
 In terminal 2, start a pod and configure the network emulator to drop 25% of the packets:
@@ -31,9 +31,9 @@ root@shell:/# curl nginx
 The results in terminal 1 will show that some packets are dropped by the network emulator qdisc:
 
 ```
-NODE             NAMESPACE  POD    CONTAINER  PID     COMM  IP SRC                    DST                        STATE        TCPFLAGS  REASON
-minikube-docker  default    shell  shell      0             4  p/default/shell:45979  s/kube-system/kube-dns:53  ESTABLISHED  FIN       QDISC_DROP
-minikube-docker  default    shell  shell      406293  curl  4  p/default/shell:34482  s/default/nginx:80         ESTABLISHED  ACK       QDISC_DROP
+K8S.NODE         K8S.NAMESPACE  K8S.POD K8s.CONTAINER  PID     COMM  IP SRC                    DST                        STATE        TCPFLAGS  REASON
+minikube-docker  default        shell   shell          0             4  p/default/shell:45979  s/kube-system/kube-dns:53  ESTABLISHED  FIN       QDISC_DROP
+minikube-docker  default        shell   shell          406293  curl  4  p/default/shell:34482  s/default/nginx:80         ESTABLISHED  ACK       QDISC_DROP
 ```
 
 The network emulator uses a random generator to drop 25% of the packets.
@@ -47,7 +47,7 @@ It is possible to see more detailed information by reading specific columns or u
 
 ```
 $ kubectl gadget trace tcpdrop \
-    -o columns=node,namespace,pod,container,pid,comm,ip,src.addr,src.port,src.kind,src.ns,src.name,dst.addr,dst.port,dst.kind,dst.ns,dst.name,state,tcpflags,reason
+    -o columns=k8s.node,k8s.namespace,k8s.pod,k8s.container,pid,comm,ip,src.addr,src.port,src.kind,src.ns,src.name,dst.addr,dst.port,dst.kind,dst.ns,dst.name,state,tcpflags,reason
 ```
 
 ```

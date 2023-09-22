@@ -121,10 +121,10 @@ func (p *BaseParser[E]) GetOutputConfig() *OutputConfig {
 
 func GetKubernetesColumns() []string {
 	return []string{
-		"node",
-		"namespace",
-		"pod",
-		"container",
+		"k8s.node",
+		"k8s.namespace",
+		"k8s.pod",
+		"k8s.container",
 	}
 }
 

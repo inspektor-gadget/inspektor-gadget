@@ -33,7 +33,7 @@ done it also using the podname or labels:
 
 ```bash
 $ kubectl gadget snapshot socket -n test-socketcollector
-NODE                NAMESPACE           POD                PROTOCOL SRC                      DST                      STATUS
+K8S.NODE            K8S.NAMESPACE       K8S.POD            PROTOCOL SRC                      DST                      STATUS
 minikube-docker     test-socketcollect… nginx-app          TCP      r/0.0.0.0:80             r/0.0.0.0:0              LISTEN
 ```
 
@@ -52,7 +52,7 @@ $ kubectl exec -n test-socketcollector nginx-app -- /bin/bash -c "sed -i 's/list
 Now, we can check again with the snapshot socket gadget what the active socket is:
 
 ```bash
-NODE                NAMESPACE           POD                PROTOCOL SRC                      DST                      STATUS
+K8S.NODE            K8S.NAMESPACE       K8S.POD            PROTOCOL SRC                      DST                      STATUS
 minikube-docker     test-socketcollect… nginx-app          TCP      r/0.0.0.0:8080           r/0.0.0.0:0              LISTEN
 ```
 

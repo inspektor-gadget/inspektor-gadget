@@ -74,7 +74,7 @@ func (g *GadgetDesc) EventPrototype() any {
 
 func (g *GadgetDesc) SortByDefault() []string {
 	return []string{
-		"node", "namespace", "pod", "protocol", "status", "src", "dst", "inode",
+		"k8s.node", "k8s.namespace", "k8s.pod", "protocol", "status", "src", "dst", "inode",
 	}
 }
 

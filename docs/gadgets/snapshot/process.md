@@ -22,7 +22,7 @@ There is not any running process in the `demo` namespace now:
 
 ```bash
 $ kubectl gadget snapshot process -n demo
-NODE                NAMESPACE           POD                 CONTAINER           COMM       PID       UID       GID
+K8S.NODE            K8S.NAMESPACE       K8S.POD             K8S.CONTAINER       COMM       PID       UID       GID
 ```
 
 Create a pod on the `demo` namespace using the `nginx` image:
@@ -38,7 +38,7 @@ After the pod is running, we can try to get the list of running processes again:
 
 ```bash
 $ kubectl gadget snapshot process -n demo
-NODE                NAMESPACE           POD                 CONTAINER           COMM       PID       UID       GID
+K8S.NODE            K8S.NAMESPACE       K8S.POD             K8S.CONTAINER       COMM       PID       UID       GID
 ubuntu-hirsute      demo                mypod               mypod               nginx      411928    0         0
 ubuntu-hirsute      demo                mypod               mypod               nginx      411964    101       101
 ubuntu-hirsute      demo                mypod               mypod               nginx      411965    101       101
@@ -62,7 +62,7 @@ Now there is an additional `sleep` processes running in `mypod`:
 
 ```bash
 $ kubectl gadget snapshot process -n demo
-NODE                NAMESPACE           POD                 CONTAINER           COMM       PID       UID       GID
+K8S.NODE            K8S.NAMESPACE       K8S.POD             K8S.CONTAINER       COMM       PID       UID       GID
 ubuntu-hirsute      demo                mypod               mypod               nginx      411928    0         0
 ubuntu-hirsute      demo                mypod               mypod               nginx      411964    101       101
 ubuntu-hirsute      demo                mypod               mypod               nginx      411965    101       101
@@ -94,6 +94,6 @@ Run the snapshot process gadget, it'll print all process in the container:
 
 ```bash
 $ sudo ig snapshot process -c test-snapshot-process
-CONTAINER                                                    COMM             PID                  UID        GID
+RUNTIME.CONTAINERNAME                                        COMM             PID                  UID        GID
 test-snapshot-process                                        sh               329491               0          0
 ```

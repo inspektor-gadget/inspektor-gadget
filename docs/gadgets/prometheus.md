@@ -56,7 +56,7 @@ Only metrics for default namespace
 
 ```yaml
 selector:
-  - namespace: default
+  - k8s.namespace: default
 ```
 
 Only events with retval != 0
@@ -93,9 +93,9 @@ metrics:
     category: trace
     gadget: exec
     labels:
-      - namespace
-      - pod
-      - container
+      - k8s.namespace
+      - k8s.pod
+      - k8s.container
 ```
 
 By default, a counter is increased by one each time there is an event, however it's possible to
@@ -111,10 +111,10 @@ metrics:
     category: trace
     gadget: exec
     labels:
-      - pod
-      - container
+      - k8s.pod
+      - k8s.container
     selector:
-      - "namespace:default"
+      - "k8s.namespace:default"
 ```
 
 Or only count events for a given command:
@@ -129,9 +129,9 @@ metrics:
     category: trace
     gadget: exec
     labels:
-      - namespace
-      - pod
-      - container
+      - k8s.namespace
+      - k8s.pod
+      - k8s.container
     selector:
       - "comm:cat"
 ```
@@ -146,8 +146,8 @@ metrics:
     category: trace
     gadget: dns
     labels:
-      - namespace
-      - pod
+      - k8s.namespace
+      - k8s.pod
     selector:
       - "qr:Q" # Only count query events
 ```
@@ -172,9 +172,9 @@ metrics:
     category: snapshot
     gadget: process
     labels:
-      - namespace
-      - pod
-      - container
+      - k8s.namespace
+      - k8s.pod
+      - k8s.container
 ```
 
 Number of sockets in `CLOSE_WAIT` state
@@ -187,9 +187,9 @@ metrics:
     category: snapshot
     gadget: socket
     labels:
-      - namespace
-      - pod
-      - container
+      - k8s.namespace
+      - k8s.pod
+      - k8s.container
     selector:
       - "status:CLOSE_WAIT"
 ```
@@ -295,9 +295,9 @@ metrics:
     category: trace
     gadget: exec
     labels:
-      - namespace
-      - pod
-      - container
+      - k8s.namespace
+      - k8s.pod
+      - k8s.container
 ```
 
 Start the gadget
@@ -336,9 +336,9 @@ metrics:
     category: trace
     gadget: exec
     labels:
-      - namespace
-      - pod
-      - container
+      - k8s.namespace
+      - k8s.pod
+      - k8s.container
     selector:
      - "comm:cat"
 ```

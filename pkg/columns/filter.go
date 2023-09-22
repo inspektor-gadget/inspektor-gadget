@@ -65,6 +65,19 @@ func WithTags(tags []string) ColumnFilter {
 	}
 }
 
+// WithAnyTag makes sure that all returned columns contain at least one of the given tags
+func WithAnyTag(tags []string) ColumnFilter {
+	tags = ToLowerStrings(tags)
+	return func(matcher ColumnMatcher) bool {
+		for _, tag := range tags {
+			if matcher.HasTag(tag) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 // WithoutTags makes sure that all returned columns contain none of the given tags
 func WithoutTags(tags []string) ColumnFilter {
 	tags = ToLowerStrings(tags)

@@ -60,12 +60,12 @@ Let's use Inspektor Gadget to watch the capability checks:
 
 ```bash
 $ kubectl gadget trace capabilities --selector name=set-priority
-NODE             NAMESPACE  POD                     CONTAINER     PID      COMM  SYSCALL      UID  CAP CAPNAME   AUDIT  VERDICT
-minikube-docker  default    set-priorit…495c8-t88x8 set-priority  2711127  nice  setpriority  0    23  SYS_NICE  1      Deny
-minikube-docker  default    set-priorit…495c8-t88x8 set-priority  2711260  nice  setpriority  0    23  SYS_NICE  1      Deny
-minikube-docker  default    set-priorit…495c8-t88x8 set-priority  2711457  nice  setpriority  0    23  SYS_NICE  1      Deny
-minikube-docker  default    set-priorit…495c8-t88x8 set-priority  2711619  nice  setpriority  0    23  SYS_NICE  1      Deny
-minikube-docker  default    set-priorit…495c8-t88x8 set-priority  2711815  nice  setpriority  0    23  SYS_NICE  1      Deny
+K8S.NODE         K8S.NAMESPACE  K8S.POD                 K8S.CONTAINER PID      COMM  SYSCALL      UID  CAP CAPNAME   AUDIT  VERDICT
+minikube-docker  default        set-priorit…495c8-t88x8 set-priority  2711127  nice  setpriority  0    23  SYS_NICE  1      Deny
+minikube-docker  default        set-priorit…495c8-t88x8 set-priority  2711260  nice  setpriority  0    23  SYS_NICE  1      Deny
+minikube-docker  default        set-priorit…495c8-t88x8 set-priority  2711457  nice  setpriority  0    23  SYS_NICE  1      Deny
+minikube-docker  default        set-priorit…495c8-t88x8 set-priority  2711619  nice  setpriority  0    23  SYS_NICE  1      Deny
+minikube-docker  default        set-priorit…495c8-t88x8 set-priority  2711815  nice  setpriority  0    23  SYS_NICE  1      Deny
 ^C
 Terminating...
 ```
@@ -129,9 +129,9 @@ We can see the same checks but this time with the `Allow` verdict:
 
 ```bash
 $ kubectl gadget trace capabilities --selector name=set-priority
-NODE             NAMESPACE  POD                     CONTAINER     PID      COMM  SYSCALL      UID  CAP CAPNAME   AUDIT  VERDICT
-minikube-docker  default    set-priorit…66dff-nm5pt set-priority  2718069  nice  setpriority  0    23  SYS_NICE  1      Allow
-minikube-docker  default    set-priorit…66dff-nm5pt set-priority  2718291  nice  setpriority  0    23  SYS_NICE  1      Allow
+K8S.NODE         K8S.NAMESPACE  K8S.POD                 K8S.CONTAINER PID      COMM  SYSCALL      UID  CAP CAPNAME   AUDIT  VERDICT
+minikube-docker  default        set-priorit…66dff-nm5pt set-priority  2718069  nice  setpriority  0    23  SYS_NICE  1      Allow
+minikube-docker  default        set-priorit…66dff-nm5pt set-priority  2718291  nice  setpriority  0    23  SYS_NICE  1      Allow
 ^C
 Terminating...
 ```
@@ -161,7 +161,7 @@ $ kubectl run -ti --rm --restart=Never \
 
 ```
 $ kubectl gadget trace capabilities \
-    -o custom-columns=comm,syscall,capName,verdict,targetuserns,currentuserns,caps,capsnames
+    -o columns=comm,syscall,capName,verdict,targetuserns,currentuserns,caps,capsnames
 COMM             SYSCALL                      CAPNAME            VERDICT TARGETUSERNS        CURRENTUSERNS       CAPS                 CAPSNAMES
 chroot           chroot                       SYS_CHROOT         Allow   4026531837          4026531837          3fffffffff           chown,dac_override,dac_…
 ```
@@ -279,7 +279,7 @@ Start `ig`:
 
 ```bash
 $ ig trace capabilities -r docker -c test
-CONTAINER  PID      COMM     SYSCALL  UID  CAP CAPNAME      AUDIT  VERDICT
+RUNTIME.CONTAINERNAME  PID      COMM     SYSCALL  UID  CAP CAPNAME      AUDIT  VERDICT
 ```
 
 Start the test container exercising the capabilities:
@@ -295,16 +295,16 @@ OK
 Observe the resulting trace:
 
 ```
-CONTAINER  PID      COMM     SYSCALL  UID  CAP CAPNAME      AUDIT  VERDICT
-test       2609137  chown    chown    0    0   CHOWN        1      Allow
-test       2609137  chown    chown    0    0   CHOWN        1      Allow
-test       2609138  chmod    chmod    0    3   FOWNER       1      Allow
-test       2609138  chmod    chmod    0    4   FSETID       1      Allow
-test       2609138  chmod    chmod    0    4   FSETID       1      Allow
-test       2609694  chroot   chroot   0    18  SYS_CHROOT   1      Allow
-test       2610364  mount    mount    0    21  SYS_ADMIN    1      Allow
-test       2610364  mount    mount    0    21  SYS_ADMIN    1      Allow
-test       2633270  unshare  unshare  0    21  SYS_ADMIN    1      Allow
-test       2633270  nsenter  setns    0    21  SYS_ADMIN    1      Allow
-test       2633270  nsenter  setns    0    21  SYS_ADMIN    1      Allow
+RUNTIME.CONTAINERNAME  PID      COMM     SYSCALL  UID  CAP CAPNAME      AUDIT  VERDICT
+test                   2609137  chown    chown    0    0   CHOWN        1      Allow
+test                   2609137  chown    chown    0    0   CHOWN        1      Allow
+test                   2609138  chmod    chmod    0    3   FOWNER       1      Allow
+test                   2609138  chmod    chmod    0    4   FSETID       1      Allow
+test                   2609138  chmod    chmod    0    4   FSETID       1      Allow
+test                   2609694  chroot   chroot   0    18  SYS_CHROOT   1      Allow
+test                   2610364  mount    mount    0    21  SYS_ADMIN    1      Allow
+test                   2610364  mount    mount    0    21  SYS_ADMIN    1      Allow
+test                   2633270  unshare  unshare  0    21  SYS_ADMIN    1      Allow
+test                   2633270  nsenter  setns    0    21  SYS_ADMIN    1      Allow
+test                   2633270  nsenter  setns    0    21  SYS_ADMIN    1      Allow
 ```

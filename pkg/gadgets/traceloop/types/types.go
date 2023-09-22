@@ -75,7 +75,7 @@ func GetColumns() *columns.Columns[Event] {
 	// They can be printed later nonetheless with the following code snippet:
 	// column, _ := columns.GetColumn("pod")
 	// column.Visible = true
-	columns := []string{"node", "namespace", "pod", "container"}
+	columns := []string{"k8s.node", "k8s.namespace", "k8s.pod", "k8s.container"}
 	for _, name := range columns {
 		column, ok := cols.GetColumn(name)
 		if !ok {

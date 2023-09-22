@@ -5,8 +5,8 @@ metrics:
     category: trace
     gadget: exec
     labels:
-      - namespace
-      - pod
-      - container
+      - k8s.namespace
+      - k8s.pod
+      - k8s.container
     selector:
       - "comm:cat"

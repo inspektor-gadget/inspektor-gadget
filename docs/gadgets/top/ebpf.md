@@ -16,7 +16,7 @@ So first, start `top ebpf` in a terminal. You should see something like:
 
 ```bash
 $ kubectl gadget top ebpf
-NODE             PROGID   TYPE             NAME             PID     COMM                      RUNTIME   RUNCOUNT      MAPMEMORY MAPCOUNT
+K8S.NODE         PROGID   TYPE             NAME             PID     COMM                      RUNTIME   RUNCOUNT      MAPMEMORY MAPCOUNT
 minikube         503      Tracing          ig_top_ebpf_it   573222  gadgettracerman           54.09µs       1069            12B        1
 minikube         187      CGroupDevice                                                        2.292µs          1             0B        0
 minikube         13       CGroupSKB                                                                0s          0             0B        0
@@ -29,7 +29,7 @@ Now, in a second terminal, start `top file` on the _gadget_ namespace to get som
 
 ```bash
 $ kubectl gadget top file -n gadget
-NODE             NAMESPACE        POD                            CONTAINER        PID     COMM             READS  WRITES R_KB    W_KB    T FILE
+K8S.NODE         K8S.NAMESPACE    K8S.POD                        K8S.CONTAINER    PID     COMM             READS  WRITES R_KB    W_KB    T FILE
 minikube         gadget           gadget-k2mvp                   gadget           575955  runc:[2:INIT]    1      0      0       0       R cap_last_cap
 minikube         gadget           gadget-k2mvp                   gadget           575955  runc:[2:INIT]    2      0      8       0       R group
 minikube         gadget           gadget-k2mvp                   gadget           575955  gadgettracerman  2      0      8       0       R UTC
@@ -42,7 +42,7 @@ Some eBPF programs of type `Kprobe` should pop up, including their runtime and r
 
 ```bash
 $ kubectl gadget top ebpf
-NODE             PROGID   TYPE             NAME             PID     COMM                      RUNTIME   RUNCOUNT      MAPMEMORY MAPCOUNT
+K8S.NODE         PROGID   TYPE             NAME             PID     COMM                      RUNTIME   RUNCOUNT      MAPMEMORY MAPCOUNT
 minikube         506      Kprobe           ig_topfile_rd_e  573222  gadgettracerman         824.589µs       2076       40.95MiB        4
 minikube         505      Tracing          ig_top_ebpf_it   573222  gadgettracerman          47.171µs       1103            12B        1
 minikube         507      Kprobe           ig_topfile_wr_e  573222  gadgettracerman         609.645µs        836       40.95MiB        4
@@ -61,8 +61,8 @@ Combined with the `--sort cumulruntime` and `--timeout 60` parameters, you can f
 over a minute:
 
 ```bash
-$ kubectl-gadget top ebpf -o custom-columns=node,progid,type,name,pid,comm,cumulruntime,cumulruncount --sort cumulruntime --timeout 60
-NODE             PROGID   TYPE             NAME             PID     COMM                 CUMULRUNTIME CUMULRUNCOUNT
+$ kubectl-gadget top ebpf -o columns=k8s.node,progid,type,name,pid,comm,cumulruntime,cumulruncount --sort cumulruntime --timeout 60
+K8S.NODE         PROGID   TYPE             NAME             PID     COMM                 CUMULRUNTIME CUMULRUNCOUNT
 minikube         509      Tracing          ig_top_ebpf_it   573222  gadgettracerman        1.265693ms         15879
 minikube         187      CGroupDevice                                                       40.795µs            48
 minikube         256      CGroupDevice                                                        5.834µs             2

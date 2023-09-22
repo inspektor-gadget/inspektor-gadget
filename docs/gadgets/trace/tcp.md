@@ -21,7 +21,7 @@ You can now use the gadget, but output will be empty:
 
 ```bash
 $ kubectl gadget trace tcp
-NODE                NAMESPACE           POD                 CONTAINER           T PID        COMM       IP SRC                DST               
+K8S.NODE            K8S.NAMESPACE       K8S.POD             K8S.CONTAINER       T PID        COMM       IP SRC                DST               
 ```
 
 Indeed, it is waiting for TCP connection to be established in the `default` namespace (you can use `-A` to monitor all namespaces and then be sure to not miss any event).
@@ -40,7 +40,7 @@ index.html           100% |*****************************************************
 Go back to *the first terminal* and see:
 
 ```bash
-NODE                NAMESPACE           POD                 CONTAINER           T PID        COMM       IP SRC                DST               
+K8S.NODE            K8S.NAMESPACE       K8S.POD             K8S.CONTAINER       T PID        COMM       IP SRC                DST               
 minikube-docker     default             bb                  bb                  C 253124     wget       4  p/default/bb:50192 o/188.114.96.3:443
 ```
 
@@ -98,6 +98,6 @@ The gadget will print that connection on the first terminal
 
 ```bash
 $ sudo ig trace tcp -c test-trace-tcp
-CONTAINER                 T PID        COMM          IP SRC                      DST                     
+RUNTIME.CONTAINERNAME     T PID        COMM          IP SRC                      DST                     
 test-trace-tcp            C 269349     wget          4  172.17.0.2:46502         93.184.216.34:443 
 ```

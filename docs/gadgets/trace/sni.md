@@ -14,7 +14,7 @@ we can run:
 
 ```bash
 $ kubectl gadget trace sni
-NODE               NAMESPACE          POD                PID        TID       COMM      NAME
+K8S.NODE           K8S.NAMESPACE      K8S.POD            PID        TID       COMM      NAME
 ```
 
 To generate some output for this example, let's create a demo pod in *another terminal*:
@@ -36,7 +36,7 @@ Location: https://github.com/ [following]
 Go back to *the first terminal* and see:
 
 ```
-NODE               NAMESPACE          POD                PID        TID       COMM      NAME
+K8S.NODE           K8S.NAMESPACE      K8S.POD            PID        TID       COMM      NAME
 minikube           default            ubuntu             3917791    3917791   wget      www.github.com
 minikube           default            ubuntu             3917791    3917791   wget      github.com
 minikube           default            ubuntu             3917812    3917812   wget      wikimedia.org
@@ -63,7 +63,7 @@ Run the gadget in a terminal
 
 ```bash
 $ sudo ig trace sni -r docker -c test-trace-sni
-CONTAINER                              PID        TID        COMM             NAME
+RUNTIME.CONTAINERNAME                  PID        TID        COMM             NAME
 ```
 
 Run a containers that establishs a TLS connection with a remote endpoint:
@@ -81,6 +81,6 @@ The gadget will show that Server Name Indication used by the request.
 
 ```bash
 $ sudo ig trace sni -r docker -c test-trace-sni
-CONTAINER                              PID        TID        COMM             NAME
+RUNTIME.CONTAINERNAME                  PID        TID        COMM             NAME
 test-trace-sni                         3944366    3944366    wget             example.com
 ```

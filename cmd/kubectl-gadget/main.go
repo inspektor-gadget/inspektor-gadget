@@ -27,7 +27,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/advise"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
@@ -76,9 +75,8 @@ func main() {
 	namespace, _ := utils.GetNamespace()
 	runtime.SetDefaultValue(gadgets.K8SNamespace, namespace)
 
-	// columnFilters for kubectl-gadget
-	columnFilters := []columns.ColumnFilter{columns.WithoutExceptTag("runtime", "kubernetes")}
-	common.AddCommandsFromRegistry(rootCmd, runtime, columnFilters)
+	hiddenColumnTags := []string{"runtime"}
+	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
 	// Advise category is still being handled by CRs for now
 	rootCmd.AddCommand(advise.NewAdviseCmd())

@@ -62,8 +62,8 @@ spec:
 * Start the audit-seccomp gadget.
 
 ```bash
-$ kubectl gadget audit seccomp -o custom-columns=namespace,pod,syscall,code
-NAMESPACE        POD              SYSCALL          CODE
+$ kubectl gadget audit seccomp -o columns=k8s.namespace,k8s.pod,syscall,code
+K8S.NAMESPACE    K8S.POD          SYSCALL          CODE
 ```
 
 * In another terminal, execute the aforementioned syscalls in the pod.
@@ -77,7 +77,7 @@ Bad system call (core dumped)
 * Observe the syscalls logged by seccomp in the first terminal.
 
 ```
-NAMESPACE        POD              SYSCALL          CODE
+K8S.NAMESPACE    K8S.POD          SYSCALL          CODE
 default          mypod            mkdir            log
 default          mypod            unshare          kill_thread
 ```
@@ -104,7 +104,7 @@ default          mypod            unshare          kill_thread
 
 ```bash
 $ sudo ig audit seccomp -r docker
-CONTAINER                                          PID        COMM             SYSCALL     CODE
+RUNTIME.CONTAINERNAME                              PID        COMM             SYSCALL     CODE
 ```
 
 * In another terminal, start a container and run unshare:
@@ -119,6 +119,6 @@ Bad system call (core dumped)
 
 ```bash
 $ sudo ig audit seccomp -r docker
-CONTAINER                                          PID        COMM             SYSCALL     CODE
+RUNTIME.CONTAINERNAME                              PID        COMM             SYSCALL     CODE
 eager_mclean                                       231712     unshare          unshare     kill_thread
 ```
