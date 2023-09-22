@@ -39,6 +39,7 @@ import (
 type Config struct {
 	MountnsMap *ebpf.Map
 	FullPath   bool
+	Prefix     string
 }
 
 type Tracer struct {
@@ -100,6 +101,9 @@ func (t *Tracer) install() error {
 
 	consts := make(map[string]interface{})
 	consts["get_full_path"] = t.config.FullPath
+	if len(t.config.Prefix) > 0 {
+		consts["prefix"] = t.config.Prefix
+	}
 
 	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)

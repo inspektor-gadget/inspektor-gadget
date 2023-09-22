@@ -23,4 +23,9 @@ struct event {
 	__u8 full_fname[PATH_MAX];
 };
 
+struct prefix_key {
+	__u32 prefixlen;
+	__u8 filename[NAME_MAX];
+};
+
 #endif /* __OPENSNOOP_H */
