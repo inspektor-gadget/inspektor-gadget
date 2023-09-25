@@ -41,16 +41,16 @@ LABEL org.opencontainers.image.licenses=Apache-2.0
 # available on the base image
 RUN set -ex; \
 	if command -v tdnf; then \
-		tdnf install -y util-linux socat; \
+		tdnf install -y ca-certificates util-linux socat; \
 	elif command -v yum; then \
-		yum install -y util-linux socat; \
+		yum install -y ca-certificates util-linux socat; \
 	elif command -v apt-get; then \
 		apt-get update && \
-		apt-get install -y util-linux socat && \
+		apt-get install -y ca-certificates util-linux socat && \
 		apt-get clean && \
 		rm -rf /var/lib/apt/lists/*; \
 	elif command -v apk; then \
-		apk add gcompat util-linux socat; \
+		apk add gcompat ca-certificates util-linux socat; \
 	fi && \
 	(rmdir /usr/src || true) && ln -sf /host/usr/src /usr/src && \
 	rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
