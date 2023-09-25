@@ -17,13 +17,13 @@ package gadgetservice
 import (
 	"fmt"
 
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 )
 
 // Logger sends log messages through grpc
 type Logger struct {
-	send           func(*pb.GadgetEvent) error
+	send           func(*api.GadgetEvent) error
 	level          logger.Level
 	fallbackLogger logger.Logger
 }
@@ -40,8 +40,8 @@ func (l *Logger) Logf(severity logger.Level, format string, params ...any) {
 	if l.level < severity {
 		return
 	}
-	ev := &pb.GadgetEvent{
-		Type:    uint32(severity) << pb.EventLogShift,
+	ev := &api.GadgetEvent{
+		Type:    uint32(severity) << api.EventLogShift,
 		Payload: []byte(fmt.Sprintf(format, params...)),
 	}
 	if err := l.send(ev); err != nil {
@@ -53,8 +53,8 @@ func (l *Logger) Log(severity logger.Level, params ...any) {
 	if l.level < severity {
 		return
 	}
-	ev := &pb.GadgetEvent{
-		Type:    uint32(severity) << pb.EventLogShift,
+	ev := &api.GadgetEvent{
+		Type:    uint32(severity) << api.EventLogShift,
 		Payload: []byte(fmt.Sprintf("%+v", params...)),
 	}
 	if err := l.send(ev); err != nil {

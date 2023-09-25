@@ -27,8 +27,8 @@ import (
 
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
-	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -47,7 +47,7 @@ type Config struct {
 }
 
 type Service struct {
-	pb.UnimplementedGadgetManagerServer
+	api.UnimplementedGadgetManagerServer
 	config   *Config
 	listener net.Listener
 	runtime  runtime.Runtime
@@ -62,7 +62,7 @@ func NewService(defaultLogger logger.Logger) *Service {
 	}
 }
 
-func (s *Service) GetInfo(ctx context.Context, request *pb.InfoRequest) (*pb.InfoResponse, error) {
+func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.InfoResponse, error) {
 	catalog, err := s.runtime.GetCatalog()
 	if err != nil {
 		return nil, fmt.Errorf("get catalog: %w", err)
@@ -72,14 +72,14 @@ func (s *Service) GetInfo(ctx context.Context, request *pb.InfoRequest) (*pb.Inf
 	if err != nil {
 		return nil, fmt.Errorf("marshal catalog: %w", err)
 	}
-	return &pb.InfoResponse{
+	return &api.InfoResponse{
 		Version:      "1.0", // TODO
 		Catalog:      catalogJSON,
 		Experimental: experimental.Enabled(),
 	}, nil
 }
 
-func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
+func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	ctrl, err := runGadget.Recv()
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 	}
 
 	// Create payload buffer
-	outputBuffer := make(chan *pb.GadgetEvent, 1024) // TODO: Discuss 1024
+	outputBuffer := make(chan *api.GadgetEvent, 1024) // TODO: Discuss 1024
 
 	seq := uint32(0)
 	var seqLock sync.Mutex
@@ -153,8 +153,8 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 			// would be dropped anyway. However, we're optimistic that this occurs rarely and instead prevent using
 			// ev in another thread.
 			data, _ := json.Marshal(ev)
-			event := &pb.GadgetEvent{
-				Type:    pb.EventTypeGadgetPayload,
+			event := &api.GadgetEvent{
+				Type:    api.EventTypeGadgetPayload,
 				Payload: data,
 			}
 
@@ -188,8 +188,8 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 	runID := uuid.New().String()
 
 	// Send Job ID to client
-	err = runGadget.Send(&pb.GadgetEvent{
-		Type:    pb.EventTypeGadgetJobID,
+	err = runGadget.Send(&api.GadgetEvent{
+		Type:    api.EventTypeGadgetJobID,
 		Payload: []byte(runID),
 	})
 	if err != nil {
@@ -225,7 +225,7 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 				return
 			}
 			switch msg.Event.(type) {
-			case *pb.GadgetControlRequest_StopRequest:
+			case *api.GadgetControlRequest_StopRequest:
 				gadgetCtx.Cancel()
 				return
 			default:
@@ -243,8 +243,8 @@ func (s *Service) RunGadget(runGadget pb.GadgetManager_RunGadgetServer) error {
 	// Send result, if any
 	for _, result := range results {
 		// TODO: when used with fan-out, we need to add the node in here
-		event := &pb.GadgetEvent{
-			Type:    pb.EventTypeGadgetResult,
+		event := &api.GadgetEvent{
+			Type:    api.EventTypeGadgetResult,
 			Payload: result.Payload,
 		}
 		runGadget.Send(event)
@@ -271,7 +271,7 @@ func (s *Service) Run(network, address string, serverOptions ...grpc.ServerOptio
 	s.listener = listener
 
 	server := grpc.NewServer(serverOptions...)
-	pb.RegisterGadgetManagerServer(server, s)
+	api.RegisterGadgetManagerServer(server, s)
 
 	s.servers[server] = struct{}{}
 
