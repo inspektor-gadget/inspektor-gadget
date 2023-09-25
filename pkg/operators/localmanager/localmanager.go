@@ -210,14 +210,17 @@ partsLoop:
 
 	igManager, err := igmanager.NewManager(l.rc)
 	if err != nil {
-		return commonutils.WrapInErrManagerInit(err)
+		log.Warnf("Failed to create container-collection")
+		log.Debugf("Failed to create container-collection: %s", err)
 	}
 	l.igManager = igManager
 	return nil
 }
 
 func (l *LocalManager) Close() error {
-	l.igManager.Close()
+	if l.igManager != nil {
+		l.igManager.Close()
+	}
 	return nil
 }
 
@@ -233,6 +236,10 @@ func (l *LocalManager) Instantiate(gadgetContext operators.GadgetContext, gadget
 		params:             params,
 		gadgetInstance:     gadgetInstance,
 		gadgetCtx:          gadgetContext,
+	}
+
+	if l.igManager == nil {
+		traceInstance.enrichEvents = false
 	}
 
 	return traceInstance, nil
@@ -258,9 +265,7 @@ func (l *localManagerTrace) Name() string {
 
 func (l *localManagerTrace) PreGadgetRun() error {
 	log := l.gadgetCtx.Logger()
-
 	id := uuid.New()
-	l.subscriptionKey = id.String()
 	host := l.params.Get(Host).AsBool()
 
 	// TODO: Improve filtering, see further details in
@@ -273,21 +278,38 @@ func (l *localManagerTrace) PreGadgetRun() error {
 
 	// If --host is set, we do not want to create the below map because we do not
 	// want any filtering.
-	if setter, ok := l.gadgetInstance.(MountNsMapSetter); ok && !host {
-		// Create mount namespace map to filter by containers
-		mountnsmap, err := l.manager.igManager.CreateMountNsMap(l.subscriptionKey, containerSelector)
-		if err != nil {
-			return commonutils.WrapInErrManagerCreateMountNsMap(err)
+	if setter, ok := l.gadgetInstance.(MountNsMapSetter); ok {
+		if !host {
+			if l.manager.igManager == nil {
+				return fmt.Errorf("container-collection isn't available")
+			}
+
+			// Create mount namespace map to filter by containers
+			mountnsmap, err := l.manager.igManager.CreateMountNsMap(id.String(), containerSelector)
+			if err != nil {
+				return commonutils.WrapInErrManagerCreateMountNsMap(err)
+			}
+
+			log.Debugf("set mountnsmap for gadget")
+			setter.SetMountNsMap(mountnsmap)
+
+			l.mountnsmap = mountnsmap
+		} else if l.manager.igManager == nil {
+			log.Warn("container-collection isn't available: container enrichment and filtering won't work")
 		}
-
-		log.Debugf("set mountnsmap for gadget")
-		setter.SetMountNsMap(mountnsmap)
-
-		l.mountnsmap = mountnsmap
 	}
 
 	if attacher, ok := l.gadgetInstance.(Attacher); ok {
+		if l.manager.igManager == nil {
+			if !host {
+				return fmt.Errorf("container-collection isn't available")
+			}
+
+			log.Warn("container-collection isn't available: no containers will be traced")
+		}
+
 		l.attacher = attacher
+		var containers []*containercollection.Container
 
 		attachContainerFunc := func(container *containercollection.Container) {
 			log.Debugf("calling gadget.AttachContainer()")
@@ -319,20 +341,23 @@ func (l *localManagerTrace) PreGadgetRun() error {
 				container.K8s.ContainerName, container.Pid, container.Mntns, container.Netns)
 		}
 
-		log.Debugf("add subscription")
-		containers := l.manager.igManager.Subscribe(
-			l.subscriptionKey,
-			containerSelector,
-			func(event containercollection.PubSubEvent) {
-				log.Debugf("%s: %s", event.Type.String(), event.Container.Runtime.ContainerID)
-				switch event.Type {
-				case containercollection.EventTypeAddContainer:
-					attachContainerFunc(event.Container)
-				case containercollection.EventTypeRemoveContainer:
-					detachContainerFunc(event.Container)
-				}
-			},
-		)
+		if l.manager.igManager != nil {
+			l.subscriptionKey = id.String()
+			log.Debugf("add subscription")
+			containers = l.manager.igManager.Subscribe(
+				l.subscriptionKey,
+				containerSelector,
+				func(event containercollection.PubSubEvent) {
+					log.Debugf("%s: %s", event.Type.String(), event.Container.Runtime.ContainerID)
+					switch event.Type {
+					case containercollection.EventTypeAddContainer:
+						attachContainerFunc(event.Container)
+					case containercollection.EventTypeRemoveContainer:
+						detachContainerFunc(event.Container)
+					}
+				},
+			)
+		}
 
 		if host {
 			// We need to attach this fake container for gadget which rely only on the
