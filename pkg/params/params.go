@@ -97,7 +97,7 @@ type Param struct {
 	value string
 }
 
-// GetTitle returns a human friendly title of the field; is no Title has been specified,
+// GetTitle returns a human friendly title of the field; if no Title has been specified,
 // the Key will be used with the first letter upper-cased
 func (p *ParamDesc) GetTitle() string {
 	if p.Title != "" {

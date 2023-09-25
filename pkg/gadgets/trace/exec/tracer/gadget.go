@@ -49,13 +49,15 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		{
 			Key:          ParamCwd,
-			Title:        "Show current working directory",
+			Title:        "Current working directory",
+			Description:  "Show current working directory",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
 		},
 		{
 			Key:          ParamIgnoreErrors,
-			Title:        "Show only successful exec calls",
+			Title:        "Successful exec calls",
+			Description:  "Show only successful exec calls",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
 		},

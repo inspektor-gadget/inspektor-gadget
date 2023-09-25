@@ -51,7 +51,8 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		{
 			Key:          ParamThreads,
-			Title:        "Show all threads",
+			Title:        "All threads",
+			Description:  "Show all threads (by default, only processes are shown)",
 			Alias:        "", // TODO: was t, clashes with timeout
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
