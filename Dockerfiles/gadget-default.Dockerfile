@@ -40,17 +40,18 @@ LABEL org.opencontainers.image.licenses=Apache-2.0
 # install runtime dependencies  according to the package manager
 # available on the base image
 RUN set -ex; \
+	PACKAGES='ca-certificates util-linux socat' && \
 	if command -v tdnf; then \
-		tdnf install -y util-linux socat; \
+		tdnf install -y $PACKAGES; \
 	elif command -v yum; then \
-		yum install -y util-linux socat; \
+		yum install -y $PACKAGES; \
 	elif command -v apt-get; then \
 		apt-get update && \
-		apt-get install -y util-linux socat && \
+		apt-get install -y $PACKAGES && \
 		apt-get clean && \
 		rm -rf /var/lib/apt/lists/*; \
 	elif command -v apk; then \
-		apk add gcompat util-linux socat; \
+		apk add gcompat $PACKAGES; \
 	fi && \
 	(rmdir /usr/src || true) && ln -sf /host/usr/src /usr/src && \
 	rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
