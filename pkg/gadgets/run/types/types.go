@@ -16,6 +16,7 @@ package types
 
 import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -40,6 +41,11 @@ type Event struct {
 	RawData []byte `json:"raw_data,omitempty"`
 	// How to flatten this?
 	Data interface{} `json:"data"`
+}
+
+type GadgetInfo struct {
+	GadgetDefinition *GadgetDefinition
+	ProgContent      []byte
 }
 
 func (ev *Event) GetEndpoints() []*eventtypes.L3Endpoint {
@@ -69,4 +75,9 @@ type GadgetDefinition struct {
 	Name         string               `yaml:"name"`
 	Description  string               `yaml:"description"`
 	ColumnsAttrs []columns.Attributes `yaml:"columns"`
+}
+
+// RunGadgetDesc represents the different methods implemented by the run gadget descriptor.
+type RunGadgetDesc interface {
+	GetGadgetInfo(params *params.Params, args []string) (*GadgetInfo, error)
 }

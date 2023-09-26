@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -86,6 +87,9 @@ type Runtime interface {
 	Close() error
 	GlobalParamDescs() params.ParamDescs
 	ParamDescs() params.ParamDescs
+	// GetGadgetInfo returns information about the gadget that is being run. It only makes sense
+	// for the run gadget.
+	GetGadgetInfo(context.Context, gadgets.GadgetDesc, *params.Params, []string) (*runTypes.GadgetInfo, error)
 	RunGadget(gadgetCtx GadgetContext) (CombinedGadgetResult, error)
 	GetCatalog() (*Catalog, error)
 	SetDefaultValue(params.ValueHint, string)

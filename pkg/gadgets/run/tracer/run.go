@@ -16,6 +16,7 @@ package tracer
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -82,6 +83,23 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 
 func (g *GadgetDesc) Parser() parser.Parser {
 	return nil
+}
+
+func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types.GadgetInfo, error) {
+	progContent := params.Get(ProgramContent).AsBytes()
+	definitionBytes := params.Get(ParamDefinition).AsBytes()
+	if len(definitionBytes) == 0 {
+		return nil, errors.New("no definition provided")
+	}
+
+	ret := &types.GadgetInfo{
+		ProgContent: progContent,
+	}
+	if err := yaml.Unmarshal(definitionBytes, &ret.GadgetDefinition); err != nil {
+		return nil, fmt.Errorf("unmarshaling definition: %w", err)
+	}
+
+	return ret, nil
 }
 
 func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {

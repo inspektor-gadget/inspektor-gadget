@@ -85,6 +85,30 @@ func (s *Service) GetInfo(ctx context.Context, request *api.InfoRequest) (*api.I
 	}, nil
 }
 
+func (s *Service) GetGadgetInfo(ctx context.Context, req *api.GetGadgetInfoRequest) (*api.GetGadgetInfoResponse, error) {
+	gadgetDesc := gadgetregistry.Get(gadgets.CategoryNone, "run")
+	if gadgetDesc == nil {
+		return nil, errors.New("run gadget not found")
+	}
+
+	params := gadgetDesc.ParamDescs().ToParams()
+	params.CopyFromMap(req.Params, "")
+
+	ret, err := s.runtime.GetGadgetInfo(ctx, gadgetDesc, params, req.Args)
+	if err != nil {
+		return nil, fmt.Errorf("getting gadget info: %w", err)
+	}
+
+	retJSON, err := json.Marshal(ret)
+	if err != nil {
+		return nil, fmt.Errorf("marshal gadget info response: %w", err)
+	}
+
+	return &api.GetGadgetInfoResponse{
+		Info: retJSON,
+	}, nil
+}
+
 func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	ctrl, err := runGadget.Recv()
 	if err != nil {
