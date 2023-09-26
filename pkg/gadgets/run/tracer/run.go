@@ -23,7 +23,9 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+	"oras.land/oras-go/v2"
 	k8syaml "sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -32,6 +34,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -77,11 +80,90 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			Description: "Gadget definition in yaml format",
 			TypeHint:    params.TypeBytes,
 		},
+		// Hardcoded for now
+		{
+			Key:          "authfile",
+			Title:        "Auth file",
+			DefaultValue: oci.DefaultAuthFile,
+			TypeHint:     params.TypeString,
+		},
 	}
 }
 
 func (g *GadgetDesc) Parser() parser.Parser {
 	return nil
+}
+
+func getProgAndDefinition(params *params.Params, args []string) ([]byte, []byte, error) {
+	// First check if things are passed as arguments
+	progContent := params.Get(ProgramContent).AsBytes()
+	definitionBytes := params.Get(ParamDefinition).AsBytes()
+
+	// sanity checks to be sure --prog and --definition aren't used with an image
+	if len(args) != 0 && (len(progContent) != 0 || len(definitionBytes) != 0) {
+		return nil, nil, fmt.Errorf("arguments are not allowed when program or definition are provided")
+	}
+
+	if len(progContent) != 0 && len(definitionBytes) != 0 {
+		return progContent, definitionBytes, nil
+	}
+
+	if len(progContent) != 0 || len(definitionBytes) != 0 {
+		return nil, nil, fmt.Errorf("both program and definition must be provided")
+	}
+
+	// Fallback to image
+	if len(args) != 1 {
+		return nil, nil, fmt.Errorf("one argument expected: received %d", len(args))
+	}
+	image, err := oci.NormalizeImage(args[0])
+	if err != nil {
+		return nil, nil, fmt.Errorf("normalize image: %w", err)
+	}
+
+	var imageStore oras.Target
+	imageStore, err = oci.GetLocalOciStore()
+	if err != nil {
+		logrus.Debugf("get oci store: %s", err)
+		imageStore = oci.GetMemoryStore()
+	}
+	authOpts := oci.AuthOptions{
+		AuthFile: params.Get("authfile").AsString(),
+	}
+
+	prog, err := oci.GetEbpfProgram(imageStore, &authOpts, image)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get ebpf program: %w", err)
+	}
+	if len(prog) == 0 {
+		return nil, nil, fmt.Errorf("no program found in image")
+	}
+
+	def, err := oci.GetDefinition(imageStore, &authOpts, image)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get definition: %w", err)
+	}
+	if len(def) == 0 {
+		return nil, nil, fmt.Errorf("no definition found in image")
+	}
+
+	return prog, def, nil
+}
+
+func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types.GadgetInfo, error) {
+	progContent, definitionBytes, err := getProgAndDefinition(params, args)
+	if err != nil {
+		return nil, fmt.Errorf("get ebpf program and definition: %w", err)
+	}
+
+	ret := &types.GadgetInfo{
+		ProgContent: progContent,
+	}
+	if err := yaml.Unmarshal(definitionBytes, &ret.GadgetDefinition); err != nil {
+		return nil, fmt.Errorf("unmarshaling definition: %w", err)
+	}
+
+	return ret, nil
 }
 
 func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {

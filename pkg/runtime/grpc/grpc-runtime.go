@@ -17,6 +17,7 @@ package grpcruntime
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -35,6 +36,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -184,6 +186,50 @@ nodesLoop:
 	return res, nil
 }
 
+func (r *Runtime) GetGadgetInfo(ctx context.Context, desc gadgets.GadgetDesc, gadgetParams *params.Params, args []string) (*runTypes.GadgetInfo, error) {
+	ctx, cancelDial := context.WithTimeout(ctx, time.Second*ConnectTimeout)
+	defer cancelDial()
+
+	pods, err := getGadgetPods(ctx, []string{})
+	if err != nil {
+		return nil, fmt.Errorf("get gadget pods: %w", err)
+	}
+	if len(pods) == 0 {
+		return nil, fmt.Errorf("get gadget pods: Inspektor Gadget is not running on the requested node(s)")
+	}
+
+	pod := pods[0]
+	dialOpt := grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+		return NewK8SExecConn(ctx, pod, time.Second*ConnectTimeout)
+	})
+
+	conn, err := grpc.DialContext(ctx, "", dialOpt, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	if err != nil {
+		return nil, fmt.Errorf("dialing gadget pod on node %q: %w", pod.node, err)
+	}
+	client := api.NewGadgetManagerClient(conn)
+	defer conn.Close()
+
+	allParams := make(map[string]string)
+	gadgetParams.CopyToMap(allParams, "")
+
+	in := &api.GetGadgetInfoRequest{
+		Params: allParams,
+		Args:   args,
+	}
+	out, err := client.GetGadgetInfo(ctx, in)
+	if err != nil {
+		return nil, fmt.Errorf("getting gadget info: %w", err)
+	}
+
+	ret := &runTypes.GadgetInfo{}
+	if err := json.Unmarshal(out.Info, ret); err != nil {
+		return nil, fmt.Errorf("unmarshaling gadget info: %w", err)
+	}
+
+	return ret, nil
+}
+
 func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
 	// Get nodes to run on
 	nodes := gadgetCtx.RuntimeParams().Get(ParamNode).AsStringSlice()
@@ -192,7 +238,7 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 		return nil, fmt.Errorf("get gadget pods: %w", err)
 	}
 	if len(pods) == 0 {
-		return nil, fmt.Errorf("get gadget pods: Inspektor Gadget is not running on the requested node(s): %v", nodes) //nolint:all
+		return nil, fmt.Errorf("get gadget pods: Inspektor Gadget is not running on the requested node(s): %v", nodes)
 	}
 
 	if gadgetCtx.GadgetDesc().Type() == gadgets.TypeTraceIntervals {
@@ -270,6 +316,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, pod gadgetPod, allP
 		GadgetName:     gadgetCtx.GadgetDesc().Name(),
 		GadgetCategory: gadgetCtx.GadgetDesc().Category(),
 		Params:         allParams,
+		Args:           gadgetCtx.Args(),
 		Nodes:          nil,
 		FanOut:         false,
 		LogLevel:       uint32(gadgetCtx.Logger().GetLevel()),
