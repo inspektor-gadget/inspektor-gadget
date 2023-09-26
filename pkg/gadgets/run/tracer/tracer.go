@@ -17,7 +17,6 @@
 package tracer
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -30,9 +29,6 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
-	beespec "github.com/solo-io/bumblebee/pkg/spec"
-	orascontent "oras.land/oras-go/pkg/content"
-	"oras.land/oras-go/pkg/oras"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
@@ -57,7 +53,6 @@ type l4EndpointT struct {
 }
 
 type Config struct {
-	RegistryAuth orascontent.RegistryOptions
 	ProgLocation string
 	ProgContent  []byte
 	MountnsMap   *ebpf.Map
@@ -111,28 +106,6 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 
 // Close is needed because of the StartStopGadget interface
 func (t *Tracer) Close() {
-}
-
-func (t *Tracer) getByobEbpfPackage() (*beespec.EbpfPackage, error) {
-	localRegistry := orascontent.NewMemory()
-
-	remoteRegistry, err := orascontent.NewRegistry(t.config.RegistryAuth)
-	if err != nil {
-		return nil, fmt.Errorf("create new oras registry: %w", err)
-	}
-
-	_, err = oras.Copy(
-		context.Background(),
-		remoteRegistry,
-		t.config.ProgLocation,
-		localRegistry,
-		t.config.ProgLocation,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("copy oras: %w", err)
-	}
-	byobClient := beespec.NewEbpfOCICLient()
-	return byobClient.Pull(context.Background(), t.config.ProgLocation, localRegistry)
 }
 
 func (t *Tracer) Stop() {
@@ -471,23 +444,13 @@ func (t *Tracer) runPrint(gadgetCtx gadgets.GadgetContext) {
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
-	params := gadgetCtx.GadgetParams()
-	if len(params.Get(ProgramContent).AsBytes()) != 0 {
-		t.config.ProgContent = params.Get(ProgramContent).AsBytes()
-	} else {
-		args := gadgetCtx.Args()
-		if len(args) != 1 {
-			return fmt.Errorf("expected exactly one argument, got %d", len(args))
-		}
+	var err error
 
-		param := args[0]
-		t.config.ProgLocation = param
-		// Download the BPF module
-		byobEbpfPackage, err := t.getByobEbpfPackage()
-		if err != nil {
-			return fmt.Errorf("download byob ebpf package: %w", err)
-		}
-		t.config.ProgContent = byobEbpfPackage.ProgramFileBytes
+	params := gadgetCtx.GadgetParams()
+	args := gadgetCtx.Args()
+	t.config.ProgContent, _, err = getProgAndDefinition(params, args)
+	if err != nil {
+		return fmt.Errorf("get ebpf program: %w", err)
 	}
 
 	if err := t.installTracer(); err != nil {
