@@ -9,41 +9,13 @@ ARG BUILDARCH
 ARG VERSION=undefined
 ENV VERSION=${VERSION}
 
-RUN \
-	dpkg --add-architecture ${TARGETARCH} && \
-	apt-get update && \
-	apt-get install -y build-essential && \
-	if [ "${TARGETARCH}" != "${BUILDARCH}" ]; then \
-		if [ ${TARGETARCH} = 'arm64' ]; then \
-			apt-get install -y gcc-aarch64-linux-gnu crossbuild-essential-arm64; \
-		elif [ ${TARGETARCH} = 'amd64' ]; then \
-			apt-get install -y gcc-x86-64-linux-gnu crossbuild-essential-amd64; \
-		else \
-			>&2 echo "${TARGETARCH} is not supported"; \
-			exit 1; \
-		fi \
-	fi
-
 COPY go.mod go.sum /cache/
 RUN cd /cache && go mod download
 ADD . /go/src/github.com/inspektor-gadget/inspektor-gadget
 
 WORKDIR /go/src/github.com/inspektor-gadget/inspektor-gadget
 
-RUN \
-	if [ "${TARGETARCH}" != "${BUILDARCH}" ]; then \
-		if [ ${TARGETARCH} = 'arm64' ]; then \
-			export CC=aarch64-linux-gnu-gcc; \
-			export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig/; \
-		elif [ ${TARGETARCH} = 'amd64' ]; then \
-			export CC=x86_64-linux-gnu-gcc; \
-			export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig; \
-		else \
-			>&2 echo "${TARGETARCH} is not supported"; \
-			exit 1; \
-		fi \
-	fi; \
-	GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 		-ldflags "-X main.version=${VERSION} -extldflags '-static'" \
 		-tags "netgo" \
 		-o ig-${TARGETOS}-${TARGETARCH} \
