@@ -33,6 +33,7 @@ import (
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
@@ -156,9 +157,12 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 		return fmt.Errorf("setting parameters: %w", err)
 	}
 
-	if c, ok := gadgetDesc.(gadgets.GadgetDescCustomParser); ok {
-		var err error
-		parser, err = c.CustomParser(gadgetParams, request.Args)
+	if c, ok := gadgetDesc.(runTypes.RunGadgetDesc); ok {
+		gadgetInfo, err := s.runtime.GetGadgetInfo(runGadget.Context(), gadgetDesc, gadgetParams, request.Args)
+		if err != nil {
+			return fmt.Errorf("getting gadget info: %w", err)
+		}
+		parser, err = c.CustomParser(gadgetInfo)
 		if err != nil {
 			return fmt.Errorf("calling custom parser: %w", err)
 		}

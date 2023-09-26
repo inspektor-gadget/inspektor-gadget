@@ -15,7 +15,6 @@
 package gadgets
 
 import (
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 )
@@ -103,30 +102,6 @@ func (of OutputFormats) Append(other OutputFormats) {
 // an entry in the supportedFormats map
 type GadgetOutputFormats interface {
 	OutputFormats() (supportedFormats OutputFormats, defaultFormatKey string)
-}
-
-// GadgetDescCustomParser can be implemented by gadgets that want to provide a custom parser
-// dependent on the parameters and arguments.
-type GadgetDescCustomParser interface {
-	CustomParser(*params.Params, []string) (parser.Parser, error)
-}
-
-// Printer is implemented by objects that can print information, like frontends.
-type Printer interface {
-	Output(payload string)
-	Logf(severity logger.Level, fmt string, params ...any)
-}
-
-type GadgetJSONConverter interface {
-	JSONConverter(params *params.Params, p Printer) func(ev any)
-}
-
-type GadgetJSONPrettyConverter interface {
-	JSONPrettyConverter(params *params.Params, p Printer) func(ev any)
-}
-
-type GadgetYAMLConverter interface {
-	YAMLConverter(params *params.Params, p Printer) func(ev any)
 }
 
 type EventHandlerSetter interface {
