@@ -48,7 +48,8 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		{
 			Key:          ParamFullPath,
-			Title:        "Show the absolute full path of the opened file",
+			Title:        "Absolute full path",
+			Description:  "Show the absolute full path of the opened file",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
 		},
