@@ -52,7 +52,7 @@ include crd.mk
 include tests.mk
 include minikube.mk
 
-LDFLAGS := "-X main.version=$(VERSION) \
+LDFLAGS := "-X github.com/inspektor-gadget/inspektor-gadget/cmd/common.version=$(VERSION) \
 -X main.gadgetimage=$(CONTAINER_REPO):$(IMAGE_TAG) \
 -extldflags '-static'"
 

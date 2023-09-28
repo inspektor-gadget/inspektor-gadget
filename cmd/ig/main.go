@@ -55,7 +55,7 @@ func main() {
 
 	rootCmd.AddCommand(
 		containers.NewListContainersCmd(),
-		newVersionCmd(),
+		common.NewVersionCmd(),
 	)
 
 	runtime := local.New()

@@ -1,4 +1,4 @@
-// Copyright 2022 The Inspektor Gadget authors
+// Copyright 2023 The Inspektor Gadget authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package common
 
 import (
 	"fmt"
@@ -20,10 +20,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// This variable is used by the "version" command and is set during build.
+// version is filled out by the Makefile at build
 var version = "undefined"
 
-func newVersionCmd() *cobra.Command {
+func Version() string {
+	return version
+}
+
+func NewVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Show version",

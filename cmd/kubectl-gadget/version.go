@@ -23,25 +23,23 @@ import (
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
-// This variable is used by the "version" command and is set during build.
-var version = "undefined"
-
 func init() {
 	rootCmd.AddCommand(versionCmd)
 
-	utils.KubectlGadgetVersion, _ = semver.New(version[1:])
+	utils.KubectlGadgetVersion, _ = semver.New(common.Version()[1:])
 }
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Client version:", version)
+		fmt.Println("Client version:", common.Version())
 
 		client, err := k8sutil.NewClientsetFromConfigFlags(utils.KubernetesConfigFlags)
 		if err != nil {
