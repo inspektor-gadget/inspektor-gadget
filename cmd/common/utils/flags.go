@@ -140,7 +140,7 @@ func AddRegistryAuthVariablesAndFlags(cmd *cobra.Command, authOptions *oci.AuthO
 		&authOptions.AuthFile,
 		"authfile",
 		oci.DefaultAuthFile,
-		"path of the authentication file. This overrides the REGISTRY_AUTH_FILE environment variable",
+		"Path of the authentication file. This overrides the REGISTRY_AUTH_FILE environment variable",
 	)
 	viper.BindPFlag("registry.auth_file", cmd.Flags().Lookup("authfile"))
 	viper.BindEnv("registry.auth_file", "REGISTRY_AUTH_FILE")
@@ -149,6 +149,6 @@ func AddRegistryAuthVariablesAndFlags(cmd *cobra.Command, authOptions *oci.AuthO
 		&authOptions.Insecure,
 		"insecure",
 		false,
-		"allow connections to HTTP only registries",
+		"Allow connections to HTTP only registries",
 	)
 }

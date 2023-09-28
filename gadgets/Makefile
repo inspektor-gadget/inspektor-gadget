@@ -1,24 +1,31 @@
+SHELL := /bin/bash
+
+GADGET_TAG ?= $(shell ../tools/image-tag branch)
+GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
+BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder:latest
+IG ?= ig
 GADGETS = \
-	trace_exec_x86.bpf.o trace_exec_arm64.bpf.o \
-	trace_open_x86.bpf.o trace_open_arm64.bpf.o \
-	trace_tcpconnect_x86.bpf.o trace_tcpconnect_arm64.bpf.o \
-	trace_tcpretrans_x86.bpf.o trace_tcpretrans_arm64.bpf.o \
-	trace_dns_x86.bpf.o trace_dns_arm64.bpf.o \
+	trace_dns \
+	trace_exec \
+	trace_open \
+	trace_tcpconnect \
+	trace_tcpretrans \
 	#
 
 .PHONY: all
-all: $(GADGETS)
+all: build
 
-%_x86.bpf.o : %.bpf.c
-	clang -target bpf -Wall -g -O2 -D __TARGET_ARCH_x86 -c $(filter %.c,$^) \
-		-I ../include/ \
-		-I ../include/gadget/amd64/ \
-		-o $@
-%_arm64.bpf.o : %.bpf.c
-	clang -target bpf -Wall -g -O2 -D __TARGET_ARCH_arm64 -c $(filter %.c,$^) \
-		-I ../include/ \
-		-I ../include/gadget/arm64/ \
-		-o $@
+build: $(GADGETS)
 
-clean:
-	rm *.o
+.PHONY: $(GADGETS)
+$(GADGETS):
+	@echo "Building $@"
+	@sudo -E IG_EXPERIMENTAL=true $(IG) image build --builder-image $(BUILDER_IMAGE) \
+		-t $(GADGET_REPOSITORY)/$@:$(GADGET_TAG) $@
+
+.PHONY:
+push: build
+	@echo "Pushing all gadgets"
+	for GADGET in $(GADGETS); do \
+		sudo -E IG_EXPERIMENTAL=true $(IG) image push $(GADGET_REPOSITORY)/$$GADGET:$(GADGET_TAG); \
+	done

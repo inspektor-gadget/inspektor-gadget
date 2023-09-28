@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -59,8 +60,6 @@ type buildFile struct {
 	EBPFSource string `yaml:"ebpfsource"`
 	Metadata   string `yaml:"metadata"`
 	CFlags     string `yaml:"cflags"`
-	// TODO: custom build script
-	// TODO: author, etc.
 }
 
 type cmdOpts struct {
@@ -208,7 +207,8 @@ func buildLocal(opts *cmdOpts, conf *buildFile, output string) error {
 	}
 
 	buildCmd := exec.Command(
-		"make", "-f", makefilePath, "-j", "2",
+		"make", "-f", makefilePath,
+		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
 		"EBPFSOURCE="+conf.EBPFSource,
 		"OUTPUTDIR="+output,
 		"CFLAGS="+conf.CFlags,
@@ -257,7 +257,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
 	}
 
 	if !found {
-		fmt.Printf("Pulling builder image %s\n", opts.builderImage)
+		fmt.Printf("Pulling builder image %s. It could take few minutes.\n", opts.builderImage)
 		reader, err := cli.ImagePull(ctx, opts.builderImage, types.ImagePullOptions{})
 		if err != nil {
 			return fmt.Errorf("pulling builder image: %w", err)
@@ -271,14 +271,14 @@ func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
 		&container.Config{
 			Image: opts.builderImage,
 			Cmd: []string{
-				"make", "-f", "/Makefile", "-j", "2",
+				"make", "-f", "/Makefile", "-j", fmt.Sprintf("%d", runtime.NumCPU()),
 				"EBPFSOURCE=" + filepath.Join("/work", conf.EBPFSource),
 				"OUTPUTDIR=/out",
 				"CFLAGS=" + conf.CFlags,
 			},
+			User: fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 		},
 		&container.HostConfig{
-			AutoRemove: true,
 			Mounts: []mount.Mount{
 				{
 					Type:     mount.TypeBind,
@@ -298,6 +298,11 @@ func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
 	if err != nil {
 		return fmt.Errorf("creating builder container: %w", err)
 	}
+	defer func() {
+		if err := cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{}); err != nil {
+			fmt.Printf("Failed to remove builder container: %s\n", err)
+		}
+	}()
 
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		return fmt.Errorf("starting builder container: %w", err)

@@ -36,7 +36,7 @@ func NewListCmd() *cobra.Command {
 	o := listOptions{}
 	cmd := &cobra.Command{
 		Use:          "list",
-		Short:        "List gadget images in the host",
+		Short:        "List gadget images on the host",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runList(o)
