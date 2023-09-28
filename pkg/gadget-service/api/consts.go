@@ -25,4 +25,5 @@ const (
 
 const (
 	GadgetServiceSocket = "/run/gadgetservice.socket"
+	DefaultDaemonPath   = "unix:///var/run/ig/ig.socket"
 )

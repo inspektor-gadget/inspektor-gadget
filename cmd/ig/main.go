@@ -62,6 +62,7 @@ func main() {
 	hiddenColumnTags := []string{"kubernetes"}
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
+	rootCmd.AddCommand(newDaemonCommand(runtime))
 	if experimental.Enabled() {
 		rootCmd.AddCommand(image.NewImageCmd())
 		rootCmd.AddCommand(common.NewLoginCmd())
