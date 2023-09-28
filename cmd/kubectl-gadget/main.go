@@ -70,7 +70,11 @@ func main() {
 		}
 	}
 
-	runtime := grpcruntime.New(skipInfo)
+	runtime := grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
+	runtime.Init(runtime.GlobalParamDescs().ToParams())
+	if !skipInfo {
+		runtime.InitDeployInfo()
+	}
 
 	namespace, _ := utils.GetNamespace()
 	runtime.SetDefaultValue(gadgets.K8SNamespace, namespace)

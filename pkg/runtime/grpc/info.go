@@ -18,41 +18,57 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 )
 
-func loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
+// InitDeployInfo loads the locally stored deploy info. If no deploy info is stored locally,
+// it will try to fetch it from one of the remotes and store it locally. It will issue warnings on
+// failures.
+func (r *Runtime) InitDeployInfo() {
+	// Initialize info
+	info, err := deployinfo.Load()
+	if err == nil {
+		r.info = info
+		return
+	}
+
+	info, err = r.loadRemoteDeployInfo()
+	if err != nil {
+		log.Warnf("could not load gadget info from remote: %v", err)
+		return
+	}
+	r.info = info
+
+	err = deployinfo.Store(info)
+	if err != nil {
+		log.Warnf("could not store gadget info: %v", err)
+	}
+}
+
+func (r *Runtime) UpdateDeployInfo() error {
+	info, err := r.loadRemoteDeployInfo()
+	if err != nil {
+		return fmt.Errorf("loading remote gadget info: %w", err)
+	}
+
+	return deployinfo.Store(info)
+}
+
+func (r *Runtime) loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
 	ctx, cancelDial := context.WithTimeout(context.Background(), time.Second*ConnectTimeout)
 	defer cancelDial()
 
-	// Get a random gadget pod and get the info from there
-	pods, err := getGadgetPods(ctx, []string{})
+	// use default params for now
+	params := r.ParamDescs().ToParams()
+	client, err := r.getClientFromRandomTarget(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("get gadget pods: %w", err)
+		return nil, fmt.Errorf("dialing random target: %w", err)
 	}
-	if len(pods) == 0 {
-		return nil, fmt.Errorf("no valid pods found to get info from")
-	}
-
-	pod := pods[0]
-	dialOpt := grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
-		return NewK8SExecConn(ctx, pod, time.Second*ConnectTimeout)
-		// return NewK8SPortForwardConn(ctx, s, time.Second*30)
-	})
-
-	conn, err := grpc.DialContext(ctx, "", dialOpt, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
-	if err != nil {
-		return nil, fmt.Errorf("dialing gadget pod on node %q: %w", pod.node, err)
-	}
-	client := api.NewGadgetManagerClient(conn)
-	defer conn.Close()
 
 	info, err := client.GetInfo(ctx, &api.InfoRequest{Version: "1.0"})
 	if err != nil {
