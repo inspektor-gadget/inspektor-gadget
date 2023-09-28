@@ -160,13 +160,14 @@ jobs:
       - name: Check if added dependencies do not contain CVE.
         uses: actions/dependency-review-action@v3
 
-  build-kubectl-gadget:
-    name: kubectl-gadget
+  build-clients:
+    name: clients
     # level: 0
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        client: [kubectl-gadget, gadgetctl]
         os: [linux, darwin, windows]
         arch: [amd64, arm64]
         exclude:
@@ -187,7 +188,7 @@ jobs:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
         bcc: false
-    - name: Build kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
+    - name: Build ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
       run: |
         git checkout
 
@@ -199,26 +200,26 @@ jobs:
           exit 1
         fi
 
-        kubectl_gadget=kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}
+        client=${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
 
         CONTAINER_REPO=${{ steps.set-repo-determine-image-tag.outputs.container-repo }} \
         IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
-        make $kubectl_gadget
+        make $client
 
         # Prepare assets for release and actions artifacts
-        platform=$(echo ${kubectl_gadget} | cut -d- -f3-4)
+        platform='${{ matrix.os }}-${{ matrix.arch }}'
         mkdir $platform
-        cp $kubectl_gadget $platform/kubectl-gadget
+        cp $client $platform/${{ matrix.client }}
         cp LICENSE $platform/
         tar --sort=name --owner=root:0 --group=root:0 \
-          -czf ${kubectl_gadget}.tar.gz -C $platform \
-          kubectl-gadget LICENSE
+          -czf ${client}.tar.gz -C $platform \
+          ${{ matrix.client }} LICENSE
         rm -rf $platform
-    - name: Add kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
+    - name: Add ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
       uses: actions/upload-artifact@master
       with:
-        name: kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}-tar-gz
-        path: /home/runner/work/inspektor-gadget/inspektor-gadget/kubectl-gadget-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+        name: ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}-tar-gz
+        path: /home/runner/work/inspektor-gadget/inspektor-gadget/${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
 
   btfgen:
     name: btfgen
@@ -1090,7 +1091,7 @@ jobs:
     needs:
       - check-secrets
       - test-unit
-      - build-kubectl-gadget
+      - build-clients
       - build-ig
       - build-gadget-container-images
       - publish-gadget-images-manifest
@@ -1189,7 +1190,7 @@ jobs:
     needs:
       - check-secrets
       - test-unit
-      - build-kubectl-gadget
+      - build-clients
       - build-ig
       - build-gadget-container-images
       - publish-gadget-images-manifest
@@ -1237,7 +1238,7 @@ jobs:
     # level: 3
     needs:
       - test-unit
-      - build-kubectl-gadget
+      - build-clients
       - build-ig
       - build-gadget-container-images
       - build-helper-images
@@ -1377,13 +1378,13 @@ jobs:
     - name: Rename all artifacts to *-${{ github.ref_name }}.tar.gz
       shell: bash
       run: |
-        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz; do
           mv $i $(dirname $i)/$(basename $i .tar.gz)-${{ github.ref_name }}.tar.gz
         done
     - name: Compute checksums for all artifacts
       shell: bash
       run: |
-        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz inspektor-gadget-${{ github.ref_name }}.yaml ig_packages/*; do
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz inspektor-gadget-${{ github.ref_name }}.yaml ig_packages/*; do
           hash=$(sha256sum $i | cut -d' ' -f1)
           echo "${hash}  $(basename $i)" >> SHA256SUMS
         done
@@ -1412,6 +1413,12 @@ jobs:
       uses: csexton/release-asset-action@v2
       with:
         pattern: "ig-*-*-tar-gz/ig-*-*.tar.gz"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
+    - name: Upload gadgetctl *.tar.gz binary
+      uses: csexton/release-asset-action@v2
+      with:
+        pattern: "gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
     - name: Upload YAML
