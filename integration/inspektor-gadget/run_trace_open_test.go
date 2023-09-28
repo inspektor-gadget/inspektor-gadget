@@ -28,22 +28,12 @@ func TestRunTraceOpen(t *testing.T) {
 
 	t.Parallel()
 
-	prog := "../../gadgets/trace_open_x86.bpf.o"
-
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
-	if *k8sArch == "arm64" {
-		prog = "../../gadgets/trace_open_arm64.bpf.o"
-	}
-
-	const (
-		def = "../../gadgets/trace_open.yaml"
-	)
-
 	traceOpenCmd := &Command{
 		Name:         "StartRunTraceOpenGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET run --prog @%s --definition @%s -n %s -o json", prog, def, ns),
+		Cmd:          fmt.Sprintf("$KUBECTL_GADGET run %s/trace_open:%s -n %s -o json", *gadgetRepository, *gadgetTag, ns),
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedBaseJsonObj := RunEventToObj(t, &types.Event{

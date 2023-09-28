@@ -63,6 +63,9 @@ var (
 
 	k8sDistro = flag.String("k8s-distro", "", "allows to skip tests that are not supported on a given Kubernetes distribution")
 	k8sArch   = flag.String("k8s-arch", "amd64", "allows to skip tests that are not supported on a given CPU architecture")
+
+	gadgetRepository = flag.String("gadget-repository", "ghcr.io/inspektor-gadget/gadget", "repository where gadget images are stored")
+	gadgetTag        = flag.String("gadget-tag", "latest", "tag used for gadgets's OCI images")
 )
 
 func cleanupFunc(cleanupCommands []*Command) {

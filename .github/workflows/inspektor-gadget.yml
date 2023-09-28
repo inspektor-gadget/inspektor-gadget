@@ -1044,10 +1044,56 @@ jobs:
           test-log-file: integration.log
           test-step-conclusion: ${{ steps.integration-tests.conclusion }}
 
+  build-and-push-gadgets:
+    name: Build and push gadgets
+    # level: 2
+    needs: [ build-ig ]
+    runs-on: ubuntu-latest
+    permissions:
+      # allow publishing container image
+      # in case of public fork repo/packages permissions will always be read
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set container repository and determine image tag
+        id: set-repo-determine-image-tag
+        uses: ./.github/actions/set-container-repo-and-determine-image-tag
+        with:
+          registry: ${{ env.REGISTRY }}
+          container-image: ${{ env.CONTAINER_REPO }}
+          bcc: false
+      - name: Get ig-linux-amd64.tar.gz from artifact.
+        uses: actions/download-artifact@v3
+        with:
+          name: ig-linux-amd64-tar-gz
+          path: /home/runner/work/inspektor-gadget/
+      - name: Unpack ig-linux-amd64.tar.gz
+        run: |
+          tar zxvf /home/runner/work/inspektor-gadget/ig-linux-amd64.tar.gz
+          sudo mv ig /usr/bin/ig
+      - name: Build gadgets
+        run: |
+          make \
+          GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
+          GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
+          push-gadgets -o install/ig
+
   test-integration-non-k8s-ig:
     name: Test ig w/o k8s
     # level: 3
-    needs: [ test-unit, test-ig, build-ig, build-helper-images ]
+    needs:
+      - test-unit
+      - test-ig
+      - build-ig
+      - build-helper-images
+      - build-and-push-gadgets
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -1095,6 +1141,7 @@ jobs:
       - build-ig
       - build-gadget-container-images
       - publish-gadget-images-manifest
+      - build-and-push-gadgets
     if: needs.check-secrets.outputs.aks == 'true'
     runs-on: ubuntu-latest
     strategy:
@@ -1167,6 +1214,9 @@ jobs:
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         image_flavour: "default"
+        gadget_repository: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+        gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
+    # This step ensures we get fresh credentials before removing the cluster
     - uses: azure/login@v1
       if: always()
       name: Login to Azure
@@ -1194,6 +1244,7 @@ jobs:
       - build-ig
       - build-gadget-container-images
       - publish-gadget-images-manifest
+      - build-and-push-gadgets
     # Run this job only if an ARO cluster is available on repo secrets. See
     # docs/ci.md for further details.
     if: needs.check-secrets.outputs.aro == 'true'
@@ -1232,6 +1283,8 @@ jobs:
         kubernetes_architecture: "amd64"
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+        gadget_repository: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+        gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
 
   test-integration-minikube:
     name: Integr. tests
@@ -1242,6 +1295,7 @@ jobs:
       - build-ig
       - build-gadget-container-images
       - build-helper-images
+      - build-and-push-gadgets
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -1286,6 +1340,8 @@ jobs:
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         image_flavour: ${{ matrix.type }}
         dnstester_image: ${{ needs.build-helper-images.outputs.dnstester_image }}
+        gadget_repository: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
+        gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
     - if: ${{ matrix.type == 'default' && matrix.runtime == 'docker' }}
       name: Check that README is up-to-date
       # We do this check here, as we need to run kubectl-gadget against a deployed installation to
