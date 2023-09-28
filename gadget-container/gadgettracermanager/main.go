@@ -315,7 +315,10 @@ func main() {
 
 		service := gadgetservice.NewService(log.StandardLogger())
 		go func() {
-			err := service.Run("unix", gadgetServiceSocketFile)
+			err := service.Run(gadgetservice.RunConfig{
+				SocketType: "unix",
+				SocketPath: gadgetServiceSocketFile,
+			})
 			if err != nil {
 				log.Fatalf("failed to start Gadget Service: %v", err)
 			}
