@@ -15,7 +15,7 @@ ADD . /go/src/github.com/inspektor-gadget/inspektor-gadget
 
 WORKDIR /go/src/github.com/inspektor-gadget/inspektor-gadget
 
-RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 		-ldflags "-X main.version=${VERSION} -extldflags '-static'" \
 		-tags "netgo" \
 		-o ig-${TARGETOS}-${TARGETARCH} \
