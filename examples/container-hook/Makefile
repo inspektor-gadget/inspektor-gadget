@@ -2,10 +2,10 @@ CONTAINER_REPO ?= ghcr.io/inspektor-gadget/inspektor-gadget
 IMAGE_TAG ?= $(shell ../../tools/image-tag branch)
 
 container-hook: main.go
-	go build -o container-hook main.go
+	CGO_ENABLED=0 go build -o container-hook main.go
 
 container-hook-static: main.go
-	go build -o container-hook-static -ldflags '-w -extldflags "-static"' main.go
+	CGO_ENABLED=0 go build -o container-hook-static -ldflags '-w -extldflags "-static"' main.go
 
 # Example how container-hook can be used to show a stream of events
 test-output:

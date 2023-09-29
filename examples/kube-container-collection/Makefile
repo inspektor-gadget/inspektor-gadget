@@ -2,10 +2,10 @@ CONTAINER_REPO ?= ghcr.io/inspektor-gadget/inspektor-gadget
 IMAGE_TAG ?= $(shell ../../tools/image-tag branch)
 
 kube-container-collection: main.go
-	go build -o kube-container-collection main.go
+	CGO_ENABLED=0 go build -o kube-container-collection main.go
 
 kube-container-collection-static: main.go
-	go build -o kube-container-collection-static -ldflags '-w -extldflags "-static"' main.go
+	CGO_ENABLED=0 go build -o kube-container-collection-static -ldflags '-w -extldflags "-static"' main.go
 
 build-container:
 	DOCKER_BUILDKIT=1 docker build -t $(CONTAINER_REPO)-kube-container-collection:$(IMAGE_TAG) -f Dockerfile ../..
