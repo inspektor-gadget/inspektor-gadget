@@ -20,7 +20,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -65,12 +65,12 @@ func runList(o listOptions) error {
 		for _, fullTag := range tags {
 			repository, err := oci.GetRepositoryFromImage(fullTag)
 			if err != nil {
-				logrus.Debugf("get repository from image %q: %s", fullTag, err)
+				log.Debugf("get repository from image %q: %s", fullTag, err)
 				continue
 			}
 			tag, err := oci.GetTagFromImage(fullTag)
 			if err != nil {
-				logrus.Debugf("get tag from image %q: %s", fullTag, err)
+				log.Debugf("get tag from image %q: %s", fullTag, err)
 				continue
 			}
 			imageColumn := imageColumn{
@@ -80,7 +80,7 @@ func runList(o listOptions) error {
 
 			desc, err := ociStore.Resolve(context.TODO(), fullTag)
 			if err != nil {
-				logrus.Debugf("Found tag %q but couldn't get a descriptor for it: %v", fullTag, err)
+				log.Debugf("Found tag %q but couldn't get a descriptor for it: %v", fullTag, err)
 				continue
 			}
 			imageColumn.Digest = desc.Digest.String()
