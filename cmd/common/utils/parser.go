@@ -129,9 +129,10 @@ func GetKubernetesColumns() []string {
 }
 
 func GetContainerRuntimeColumns() []string {
-	// TODO: Add ContainerID, ContainerRuntimeName, ContainerRuntimeNamespace.
-	// See https://github.com/inspektor-gadget/inspektor-gadget/issues/737.
 	return []string{
-		"container",
+		"runtime.runtimeName",
+		"runtime.containerId",
+		"runtime.containerName",
+		"runtime.containerImageName",
 	}
 }

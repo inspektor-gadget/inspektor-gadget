@@ -62,7 +62,7 @@ func NewListContainersCmd() *cobra.Command {
 			}
 
 			if !optionWatch {
-				parser, err := commonutils.NewGadgetParserWithK8sAndRuntimeInfo(&commonFlags.OutputConfig, setColumnVisibility(containercollection.GetColumns()))
+				parser, err := commonutils.NewGadgetParserWithK8sAndRuntimeInfo(&commonFlags.OutputConfig, columnsWithAdjustedVisibility(containercollection.GetColumns()))
 				if err != nil {
 					return commonutils.WrapInErrParserCreate(err)
 				}
@@ -75,7 +75,7 @@ func NewListContainersCmd() *cobra.Command {
 				return nil
 			}
 
-			cols := setColumnVisibility(columns.MustCreateColumns[containercollection.PubSubEvent]())
+			cols := columnsWithAdjustedVisibility(columns.MustCreateColumns[containercollection.PubSubEvent]())
 			cols.SetExtractor("event", func(event *containercollection.PubSubEvent) any {
 				return event.Type.String()
 			})
@@ -166,7 +166,7 @@ func printPubSubEvent(parser *commonutils.GadgetParser[containercollection.PubSu
 	return nil
 }
 
-func setColumnVisibility[T containercollection.Container | containercollection.PubSubEvent](cols *columns.Columns[T]) *columns.Columns[T] {
+func columnsWithAdjustedVisibility[T containercollection.Container | containercollection.PubSubEvent](cols *columns.Columns[T]) *columns.Columns[T] {
 	for _, c := range cols.GetColumnMap(columns.WithTag("kubernetes")) {
 		c.Visible = false
 	}

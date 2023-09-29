@@ -90,8 +90,21 @@ Each entry is preceded by the end of directives markers (`---`).
 ### Custom Columns
 
 Using `-o columns=column1,column2` we can choose which columns to
-print. We can use the JSON output to know the names of all the available
-columns for a given gadget.
+print. You can use gadget help to see which columns are available:
+
+```bash
+$ kubectl gadget trace open -h
+...
+  Available columns:
+    comm
+    err
+    fd
+    flags
+    fullPath (requires --full-path)
+    gid
+    k8s.container
+...
+```
 
 For example, when tracing which processes were killed because of the node
 running out of memory, we can choose to only print the PID and command of
@@ -101,6 +114,26 @@ the killed process:
 $ kubectl gadget trace oomkill -A -o columns=kpid,kcomm
 KPID   KCOMM
 15182  tail
+```
+
+Also, we can use the `+` and `-` prefixes to add or remove columns relative to the default columns.
+For example, in case we want to add `uid` and `gid` columns to the default columns for trace open gadget:
+
+```bash
+$ kubectl gadget trace open -A -o columns=+uid,+gid
+K8S.NODE      K8S.NAMESPACE K8S.POD       K8S.CONTAINER PID     COMM   FD ERR PATH                     UID        GID
+miniku…docker default       test-p…-v6rqg nginx         1149213 docke… 3  0   /etc/ld.so.cache         0          0
+
+```
+
+Columns `k8s` and `runtime` are expanded to all available columns for the respective environment.
+For example, in case we want `trace tcp` gadget to print events with only `runtime` columns:
+
+```bash
+$ kubectl gadget trace tcp -o columns=-k8s,+runtime
+RUNTIME.RUNTIMENAME RUNTIM… RUNTIME.CONTAIN… RUNTIME… T PID      COMM     IP SRC                    DST
+docker              8df2cb… k8s_nginx_test-… nginx    A 1163696  nginx    4  p/default/test-pod-67c r/10.244.0.1:58570
+docker              8df2cb… k8s_nginx_test-… nginx    X 1163696  nginx    4  p/default/test-pod-67c r/10.244.0.1:58570
 ```
 
 ## Run for a specific amount of time
