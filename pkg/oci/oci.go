@@ -30,7 +30,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
@@ -47,151 +46,269 @@ var (
 	DefaultAuthFile = "/var/lib/ig/config.json"
 )
 
-func GetLocalOciStore() (*oci.Store, error) {
+// GadgetImage is the representation of a gadget packaged in an OCI image.
+type GadgetImage struct {
+	EbpfObject []byte
+	Metadata   []byte
+}
+
+// GadgetImageDesc is the description of a gadget image.
+type GadgetImageDesc struct {
+	Repository string `column:"repository"`
+	Tag        string `column:"tag"`
+	Digest     string `column:"digest,width:12,fixed"`
+}
+
+func (d *GadgetImageDesc) String() string {
+	if d.Tag == "" && d.Repository == "" {
+		return fmt.Sprintf("@%s", d.Digest)
+	}
+	return fmt.Sprintf("%s:%s@%s", d.Repository, d.Tag, d.Digest)
+}
+
+func getLocalOciStore() (*oci.Store, error) {
 	if err := os.MkdirAll(filepath.Dir(defaultOciStore), 0o700); err != nil {
 		return nil, err
 	}
 	return oci.New(defaultOciStore)
 }
 
-func GetMemoryStore() *memory.Store {
-	return memory.New()
+// GetGadgetImage pulls the gadget image and returns the a structure representing it.
+func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImage, error) {
+	imageStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting local oci store: %w", err)
+	}
+
+	if err := pullIfNotExist(ctx, imageStore, authOpts, image); err != nil {
+		return nil, fmt.Errorf("pulling image %q: %w", image, err)
+	}
+
+	manifest, err := getImageManifestForArch(ctx, imageStore, image, authOpts)
+	if err != nil {
+		return nil, fmt.Errorf("getting arch manifest: %w", err)
+	}
+
+	prog, err := getEbpfProgramFromManifest(ctx, imageStore, manifest)
+	if err != nil {
+		return nil, fmt.Errorf("getting ebpf program: %w", err)
+	}
+
+	metadata, err := getMetadataFromManifest(ctx, imageStore, manifest)
+	if err != nil {
+		return nil, fmt.Errorf("getting metadata: %w", err)
+	}
+
+	return &GadgetImage{
+		EbpfObject: prog,
+		Metadata:   metadata,
+	}, nil
 }
 
-func PullIfNotExist(imageStore oras.Target, authOpts *AuthOptions, image string) error {
-	_, err := imageStore.Resolve(context.TODO(), image)
-	if err == nil {
-		return nil
+// GetEbpfObject pulls the gadget image and returns its eBPF object for the current architecture.
+func GetEbpfObject(ctx context.Context, image string, authOpts *AuthOptions) ([]byte, error) {
+	imageStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting local oci store: %w", err)
 	}
-	if !errors.Is(err, errdef.ErrNotFound) {
-		return fmt.Errorf("resolve image %q: %w", image, err)
+
+	if err := pullIfNotExist(ctx, imageStore, authOpts, image); err != nil {
+		return nil, fmt.Errorf("pulling image %q: %w", image, err)
+	}
+
+	manifest, err := getImageManifestForArch(ctx, imageStore, image, authOpts)
+	if err != nil {
+		return nil, fmt.Errorf("getting arch manifest: %w", err)
+	}
+
+	return getEbpfProgramFromManifest(ctx, imageStore, manifest)
+}
+
+// GetMetadata pulls the gadget image and returns its metadata file.
+func GetMetadata(ctx context.Context, image string, authOpts *AuthOptions) ([]byte, error) {
+	imageStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting local oci store: %w", err)
+	}
+
+	if err := pullIfNotExist(ctx, imageStore, authOpts, image); err != nil {
+		return nil, fmt.Errorf("pulling image %q: %w", image, err)
+	}
+
+	manifest, err := getImageManifestForArch(ctx, imageStore, image, authOpts)
+	if err != nil {
+		return nil, fmt.Errorf("getting arch manifest: %w", err)
+	}
+
+	return getMetadataFromManifest(ctx, imageStore, manifest)
+}
+
+// PullGadgetImage pulls the gadget image and returns its descriptor.
+func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
+	ociStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
 
 	repo, err := NewRepository(image, authOpts)
 	if err != nil {
-		return fmt.Errorf("create remote repository: %w", err)
+		return nil, fmt.Errorf("creating remote repository: %w", err)
 	}
-	_, err = oras.Copy(context.TODO(), repo, image, imageStore, image, oras.DefaultCopyOptions)
+	targetImage, err := normalizeImageName(image)
 	if err != nil {
-		return fmt.Errorf("download to local repository: %w", err)
+		return nil, fmt.Errorf("normalizing image: %w", err)
+	}
+	desc, err := oras.Copy(ctx, repo, targetImage.String(), ociStore,
+		targetImage.String(), oras.DefaultCopyOptions)
+	if err != nil {
+		return nil, fmt.Errorf("copying to remote repository: %w", err)
+	}
+
+	imageDesc := &GadgetImageDesc{
+		Repository: targetImage.Name(),
+		Digest:     desc.Digest.String(),
+	}
+	if ref, ok := targetImage.(reference.Tagged); ok {
+		imageDesc.Tag = ref.Tag()
+	}
+	return imageDesc, nil
+}
+
+func pullIfNotExist(ctx context.Context, imageStore oras.Target, authOpts *AuthOptions, image string) error {
+	targetImage, err := normalizeImageName(image)
+	if err != nil {
+		return fmt.Errorf("normalizing image: %w", err)
+	}
+
+	_, err = imageStore.Resolve(ctx, targetImage.String())
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, errdef.ErrNotFound) {
+		return fmt.Errorf("resolving image %q: %w", image, err)
+	}
+
+	repo, err := NewRepository(image, authOpts)
+	if err != nil {
+		return fmt.Errorf("creating remote repository: %w", err)
+	}
+	_, err = oras.Copy(ctx, repo, image, imageStore, image, oras.DefaultCopyOptions)
+	if err != nil {
+		return fmt.Errorf("downloading to local repository: %w", err)
 	}
 	return nil
 }
 
-func GetImageListDescriptor(imageStore oras.ReadOnlyTarget, image string) (ocispec.Index, error) {
-	imageListDescriptor, err := imageStore.Resolve(context.TODO(), image)
+// PushGadgetImage pushes the gadget image and returns its descriptor.
+func PushGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
+	ociStore, err := getLocalOciStore()
 	if err != nil {
-		return ocispec.Index{}, fmt.Errorf("resolve image %q: %w", image, err)
-	}
-	if imageListDescriptor.MediaType != ocispec.MediaTypeImageIndex {
-		return ocispec.Index{}, fmt.Errorf("image %q is not an image index", image)
+		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
 
-	reader, err := imageStore.Fetch(context.TODO(), imageListDescriptor)
+	repo, err := NewRepository(image, authOpts)
 	if err != nil {
-		return ocispec.Index{}, fmt.Errorf("fetch image index: %w", err)
+		return nil, fmt.Errorf("creating remote repository: %w", err)
 	}
-	defer reader.Close()
+	targetImage, err := normalizeImageName(image)
+	if err != nil {
+		return nil, fmt.Errorf("normalizing image: %w", err)
+	}
+	desc, err := oras.Copy(context.TODO(), ociStore, targetImage.String(), repo,
+		targetImage.String(), oras.DefaultCopyOptions)
+	if err != nil {
+		return nil, fmt.Errorf("copying to remote repository: %w", err)
+	}
 
-	var index ocispec.Index
-	if err = json.NewDecoder(reader).Decode(&index); err != nil {
-		return ocispec.Index{}, fmt.Errorf("unmarshal image index: %w", err)
+	imageDesc := &GadgetImageDesc{
+		Repository: targetImage.Name(),
+		Digest:     desc.Digest.String(),
 	}
-	return index, nil
+	if ref, ok := targetImage.(reference.Tagged); ok {
+		imageDesc.Tag = ref.Tag()
+	}
+	return imageDesc, nil
 }
 
-func GetHostArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index) (ocispec.Manifest, error) {
-	var manifestDesc ocispec.Descriptor
-	for _, indexManifest := range index.Manifests {
-		// TODO: Check docker code
-		if indexManifest.Platform.Architecture == runtime.GOARCH {
-			manifestDesc = indexManifest
-			break
+// TagGadgetImage tags the src image with the dst image.
+func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImageDesc, error) {
+	src, err := normalizeImageName(srcImage)
+	if err != nil {
+		return nil, fmt.Errorf("normalizing src image: %w", err)
+	}
+	dst, err := normalizeImageName(dstImage)
+	if err != nil {
+		return nil, fmt.Errorf("normalizing dst image: %w", err)
+	}
+
+	ociStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting oci store: %w", err)
+	}
+
+	targetDescriptor, err := ociStore.Resolve(context.TODO(), src.String())
+	if err != nil {
+		// Error message not that helpful
+		return nil, fmt.Errorf("resolving src: %w", err)
+	}
+	ociStore.Tag(context.TODO(), targetDescriptor, dst.String())
+
+	imageDesc := &GadgetImageDesc{
+		Repository: dst.Name(),
+		Digest:     targetDescriptor.Digest.String(),
+	}
+	if ref, ok := dst.(reference.Tagged); ok {
+		imageDesc.Tag = ref.Tag()
+	}
+	return imageDesc, nil
+}
+
+// ListGadgetImages lists all the gadget images.
+func ListGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
+	ociStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting oci store: %w", err)
+	}
+
+	imageColumns := []*GadgetImageDesc{}
+	err = ociStore.Tags(ctx, "", func(tags []string) error {
+		for _, fullTag := range tags {
+			repository, err := getRepositoryFromImage(fullTag)
+			if err != nil {
+				log.Debugf("getting repository from image %q: %s", fullTag, err)
+				continue
+			}
+			tag, err := getTagFromImage(fullTag)
+			if err != nil {
+				log.Debugf("getting tag from image %q: %s", fullTag, err)
+				continue
+			}
+			imageColumn := &GadgetImageDesc{
+				Repository: repository,
+				Tag:        tag,
+			}
+
+			desc, err := ociStore.Resolve(ctx, fullTag)
+			if err != nil {
+				log.Debugf("Found tag %q but couldn't get a descriptor for it: %v", fullTag, err)
+				continue
+			}
+			imageColumn.Digest = desc.Digest.String()
+			imageColumns = append(imageColumns, imageColumn)
 		}
-	}
-	if manifestDesc.Digest == "" {
-		return ocispec.Manifest{}, fmt.Errorf("no manifest found for architecture %q", runtime.GOARCH)
-	}
-
-	reader, err := imageStore.Fetch(context.TODO(), manifestDesc)
+		return nil
+	})
 	if err != nil {
-		return ocispec.Manifest{}, fmt.Errorf("fetch manifest: %w", err)
+		return nil, fmt.Errorf("listing all tags: %w", err)
 	}
-	defer reader.Close()
 
-	var manifest ocispec.Manifest
-	if err = json.NewDecoder(reader).Decode(&manifest); err != nil {
-		return ocispec.Manifest{}, fmt.Errorf("unmarshal manifest: %w", err)
-	}
-	return manifest, nil
+	return imageColumns, nil
 }
 
-func GetContentFromDescriptor(imageStore oras.ReadOnlyTarget, desc ocispec.Descriptor) ([]byte, error) {
-	reader, err := imageStore.Fetch(context.TODO(), desc)
-	if err != nil {
-		return nil, fmt.Errorf("fetch descriptor: %w", err)
-	}
-	defer reader.Close()
-	bytes, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("read descriptor: %w", err)
-	}
-	return bytes, nil
-}
-
-func GetDefinition(target oras.Target, authOpts *AuthOptions, image string) ([]byte, error) {
-	err := PullIfNotExist(target, authOpts, image)
-	if err != nil {
-		return nil, fmt.Errorf("pull image: %w", err)
-	}
-	index, err := GetImageListDescriptor(target, image)
-	if err != nil {
-		return nil, fmt.Errorf("get image list descriptor: %w", err)
-	}
-	manifest, err := GetHostArchManifest(target, index)
-	if err != nil {
-		return nil, fmt.Errorf("get arch manifest: %w", err)
-	}
-	definition, err := GetContentFromDescriptor(target, manifest.Config)
-	if err != nil {
-		return nil, fmt.Errorf("get definition from descriptor: %w", err)
-	}
-	if len(definition) == 0 {
-		return nil, errors.New("definition file is empty")
-	}
-	return definition, nil
-}
-
-func GetEbpfProgram(target oras.Target, authOpts *AuthOptions, image string) ([]byte, error) {
-	err := PullIfNotExist(target, authOpts, image)
-	if err != nil {
-		return nil, fmt.Errorf("pull image: %w", err)
-	}
-	index, err := GetImageListDescriptor(target, image)
-	if err != nil {
-		return nil, fmt.Errorf("get image list descriptor: %w", err)
-	}
-	manifest, err := GetHostArchManifest(target, index)
-	if err != nil {
-		return nil, fmt.Errorf("get arch manifest: %w", err)
-	}
-	if len(manifest.Layers) != 1 {
-		return nil, fmt.Errorf("expected exactly one layer, got %d", len(manifest.Layers))
-	}
-	prog, err := GetContentFromDescriptor(target, manifest.Layers[0])
-	if err != nil {
-		return nil, fmt.Errorf("get ebpf program from descriptor: %w", err)
-	}
-	if len(prog) == 0 {
-		return nil, errors.New("program is empty")
-	}
-	return prog, nil
-}
-
-func GetTagFromImage(image string) (string, error) {
+func getTagFromImage(image string) (string, error) {
 	repo, err := reference.Parse(image)
 	if err != nil {
-		return "", fmt.Errorf("parse image %q: %w", image, err)
+		return "", fmt.Errorf("parsing image %q: %w", image, err)
 	}
 	tagged, ok := repo.(reference.Tagged)
 	if !ok {
@@ -200,10 +317,10 @@ func GetTagFromImage(image string) (string, error) {
 	return tagged.Tag(), nil
 }
 
-func GetRepositoryFromImage(image string) (string, error) {
+func getRepositoryFromImage(image string) (string, error) {
 	repo, err := reference.Parse(image)
 	if err != nil {
-		return "", fmt.Errorf("parse image %q: %w", image, err)
+		return "", fmt.Errorf("parsing image %q: %w", image, err)
 	}
 	if named, ok := repo.(reference.Named); ok {
 		return named.Name(), nil
@@ -211,18 +328,18 @@ func GetRepositoryFromImage(image string) (string, error) {
 	return "", fmt.Errorf("image has to be a named reference")
 }
 
-func NormalizeImage(image string) (string, error) {
+func normalizeImageName(image string) (reference.Named, error) {
 	name, err := reference.ParseNormalizedNamed(image)
 	if err != nil {
-		return "", fmt.Errorf("parse normalized image %q: %w", image, err)
+		return nil, fmt.Errorf("parsing normalized image %q: %w", image, err)
 	}
-	return reference.TagNameOnly(name).String(), nil
+	return reference.TagNameOnly(name), nil
 }
 
-func GetHostString(repository string) (string, error) {
+func getHostString(repository string) (string, error) {
 	repo, err := reference.Parse(repository)
 	if err != nil {
-		return "", fmt.Errorf("parse repository %q: %w", repository, err)
+		return "", fmt.Errorf("parsing repository %q: %w", repository, err)
 	}
 	if named, ok := repo.(reference.Named); ok {
 		return reference.Domain(named), nil
@@ -230,7 +347,7 @@ func GetHostString(repository string) (string, error) {
 	return "", fmt.Errorf("image has to be a named reference")
 }
 
-func NewAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Client, error) {
+func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Client, error) {
 	log.Debugf("Using auth file %q", authOptions.AuthFile)
 
 	var cfg *configfile.ConfigFile
@@ -241,7 +358,7 @@ func NewAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 		// If the AuthFile was not set explicitly, we allow to fall back to the docker auth,
 		// otherwise we fail to avoid masking an error from the user
 		if !errors.Is(err, os.ErrNotExist) || authOptions.AuthFile != DefaultAuthFile {
-			return nil, fmt.Errorf("open auth file %q: %w", authOptions.AuthFile, err)
+			return nil, fmt.Errorf("opening auth file %q: %w", authOptions.AuthFile, err)
 		}
 
 		log.Debugf("Couldn't find default auth file %q...", authOptions.AuthFile)
@@ -250,23 +367,23 @@ func NewAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 
 		cfg, err = config.Load("")
 		if err != nil {
-			return nil, fmt.Errorf("load auth config: %w", err)
+			return nil, fmt.Errorf("loading auth config: %w", err)
 		}
 	} else {
 		defer authFileReader.Close()
 		cfg, err = config.LoadFromReader(authFileReader)
 		if err != nil {
-			return nil, fmt.Errorf("load auth config: %w", err)
+			return nil, fmt.Errorf("loading auth config: %w", err)
 		}
 	}
 
-	hostString, err := GetHostString(repository)
+	hostString, err := getHostString(repository)
 	if err != nil {
-		return nil, fmt.Errorf("get host string: %w", err)
+		return nil, fmt.Errorf("getting host string: %w", err)
 	}
 	authConfig, err := cfg.GetAuthConfig(hostString)
 	if err != nil {
-		return nil, fmt.Errorf("get auth config: %w", err)
+		return nil, fmt.Errorf("getting auth config: %w", err)
 	}
 
 	return &oras_auth.Client{
@@ -281,22 +398,126 @@ func NewAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 // NewRepository creates a client to the remote repository identified by
 // image using the given auth options.
 func NewRepository(image string, authOpts *AuthOptions) (*remote.Repository, error) {
-	repository, err := GetRepositoryFromImage(image)
+	repository, err := getRepositoryFromImage(image)
 	if err != nil {
-		return nil, fmt.Errorf("get repository from image %q: %w", image, err)
+		return nil, fmt.Errorf("getting repository from image %q: %w", image, err)
 	}
 	repo, err := remote.NewRepository(repository)
 	if err != nil {
-		return nil, fmt.Errorf("create remote repository: %w", err)
+		return nil, fmt.Errorf("creating remote repository: %w", err)
 	}
 	repo.PlainHTTP = authOpts.Insecure
 	if !authOpts.Insecure {
-		client, err := NewAuthClient(repository, authOpts)
+		client, err := newAuthClient(repository, authOpts)
 		if err != nil {
-			return nil, fmt.Errorf("create auth client: %w", err)
+			return nil, fmt.Errorf("creating auth client: %w", err)
 		}
 		repo.Client = client
 	}
 
 	return repo, nil
+}
+
+func getImageListDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget, reference string) (ocispec.Index, error) {
+	imageListDescriptor, err := imageStore.Resolve(ctx, reference)
+	if err != nil {
+		return ocispec.Index{}, fmt.Errorf("resolving image %q: %w", reference, err)
+	}
+	if imageListDescriptor.MediaType != ocispec.MediaTypeImageIndex {
+		return ocispec.Index{}, fmt.Errorf("image %q is not an image index", reference)
+	}
+
+	reader, err := imageStore.Fetch(ctx, imageListDescriptor)
+	if err != nil {
+		return ocispec.Index{}, fmt.Errorf("fetching image index: %w", err)
+	}
+	defer reader.Close()
+
+	var index ocispec.Index
+	if err = json.NewDecoder(reader).Decode(&index); err != nil {
+		return ocispec.Index{}, fmt.Errorf("unmarshalling image index: %w", err)
+	}
+	return index, nil
+}
+
+func getHostArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index) (*ocispec.Manifest, error) {
+	var manifestDesc ocispec.Descriptor
+	for _, indexManifest := range index.Manifests {
+		// TODO: Check docker code
+		if indexManifest.Platform.Architecture == runtime.GOARCH {
+			manifestDesc = indexManifest
+			break
+		}
+	}
+	if manifestDesc.Digest == "" {
+		return nil, fmt.Errorf("no manifest found for architecture %q", runtime.GOARCH)
+	}
+
+	reader, err := imageStore.Fetch(context.TODO(), manifestDesc)
+	if err != nil {
+		return nil, fmt.Errorf("fetching manifest: %w", err)
+	}
+	defer reader.Close()
+
+	var manifest ocispec.Manifest
+	if err = json.NewDecoder(reader).Decode(&manifest); err != nil {
+		return nil, fmt.Errorf("unmarshalling manifest: %w", err)
+	}
+	return &manifest, nil
+}
+
+func getMetadataFromManifest(ctx context.Context, target oras.Target, manifest *ocispec.Manifest) ([]byte, error) {
+	metadata, err := getContentFromDescriptor(ctx, target, manifest.Config)
+	if err != nil {
+		return nil, fmt.Errorf("getting metadata from descriptor: %w", err)
+	}
+	if len(metadata) == 0 {
+		return nil, errors.New("metadata file is empty")
+	}
+	return metadata, nil
+}
+
+func getEbpfProgramFromManifest(ctx context.Context, target oras.Target, manifest *ocispec.Manifest) ([]byte, error) {
+	if len(manifest.Layers) != 1 {
+		return nil, fmt.Errorf("expected exactly one layer, got %d", len(manifest.Layers))
+	}
+	prog, err := getContentFromDescriptor(ctx, target, manifest.Layers[0])
+	if err != nil {
+		return nil, fmt.Errorf("getting ebpf program from descriptor: %w", err)
+	}
+	if len(prog) == 0 {
+		return nil, errors.New("program is empty")
+	}
+	return prog, nil
+}
+
+func getContentFromDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget, desc ocispec.Descriptor) ([]byte, error) {
+	reader, err := imageStore.Fetch(ctx, desc)
+	if err != nil {
+		return nil, fmt.Errorf("fetching descriptor: %w", err)
+	}
+	defer reader.Close()
+	bytes, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("reading descriptor: %w", err)
+	}
+	return bytes, nil
+}
+
+func getImageManifestForArch(ctx context.Context, target oras.Target, image string, authOpts *AuthOptions) (*ocispec.Manifest, error) {
+	imageRef, err := normalizeImageName(image)
+	if err != nil {
+		return nil, fmt.Errorf("normalizing image: %w", err)
+	}
+
+	index, err := getImageListDescriptor(ctx, target, imageRef.String())
+	if err != nil {
+		return nil, fmt.Errorf("getting image list descriptor: %w", err)
+	}
+
+	manifest, err := getHostArchManifest(target, index)
+	if err != nil {
+		return nil, fmt.Errorf("getting arch manifest: %w", err)
+	}
+	return manifest, nil
 }

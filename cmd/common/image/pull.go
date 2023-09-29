@@ -19,55 +19,30 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/v2"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
-type pullOptions struct {
-	image    string
-	authOpts oci.AuthOptions
-}
-
 func NewPullCmd() *cobra.Command {
-	o := pullOptions{}
+	var authOpts oci.AuthOptions
 	cmd := &cobra.Command{
 		Use:          "pull IMAGE",
 		Short:        "Pull the specified image from a remote registry",
 		SilenceUsage: true,
+		Args:         cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return fmt.Errorf("expected exactly one argument")
+			image := args[0]
+
+			fmt.Printf("Pulling %s...\n", image)
+			desc, err := oci.PullGadgetImage(context.TODO(), image, &authOpts)
+			if err != nil {
+				return fmt.Errorf("pulling gadget: %w", err)
 			}
-			o.image = args[0]
-			return runPull(o)
+			fmt.Printf("Successfully pulled %s\n", desc.String())
+			return nil
 		},
 	}
-	utils.AddRegistryAuthVariablesAndFlags(cmd, &o.authOpts)
+	utils.AddRegistryAuthVariablesAndFlags(cmd, &authOpts)
 	return cmd
-}
-
-func runPull(o pullOptions) error {
-	ociStore, err := oci.GetLocalOciStore()
-	if err != nil {
-		return fmt.Errorf("get oci store: %w", err)
-	}
-
-	repo, err := oci.NewRepository(o.image, &o.authOpts)
-	if err != nil {
-		return fmt.Errorf("create remote repository: %w", err)
-	}
-	targetImage, err := oci.NormalizeImage(o.image)
-	if err != nil {
-		return fmt.Errorf("normalize image: %w", err)
-	}
-	fmt.Printf("Pulling %s...\n", targetImage)
-	desc, err := oras.Copy(context.TODO(), repo, targetImage, ociStore, targetImage, oras.DefaultCopyOptions)
-	if err != nil {
-		return fmt.Errorf("copy to remote repository: %w", err)
-	}
-
-	fmt.Printf("Successfully pulled %s@%s\n", targetImage, desc.Digest)
-	return nil
 }

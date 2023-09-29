@@ -36,6 +36,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -444,11 +445,15 @@ func (t *Tracer) runPrint(gadgetCtx gadgets.GadgetContext) {
 }
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
-	var err error
-
 	params := gadgetCtx.GadgetParams()
 	args := gadgetCtx.Args()
-	t.config.ProgContent, _, err = getProgAndDefinition(params, args)
+
+	authOpts := &oci.AuthOptions{
+		AuthFile: params.Get("authfile").AsString(),
+	}
+
+	var err error
+	t.config.ProgContent, err = oci.GetEbpfObject(gadgetCtx.Context(), args[0], authOpts)
 	if err != nil {
 		return fmt.Errorf("get ebpf program: %w", err)
 	}
