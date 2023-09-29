@@ -17,9 +17,13 @@ package gadgetservice
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,21 +38,23 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
-
-	// TODO: Move!
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubeipresolver"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubenameresolver"
-	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/operators/prometheus"
 )
 
-type Config struct {
-	SocketFile string
+type RunConfig struct {
+	// SocketType can be either unix or tcp
+	SocketType string
+
+	// SocketPath must be the path to a unix socket or ip:port, depending on
+	// SocketType
+	SocketPath string
+
+	// If SocketGID != 0 and a unix socket is used, the ownership of that socket
+	// will be changed to the given SocketGID
+	SocketGID int
 }
 
 type Service struct {
 	api.UnimplementedGadgetManagerServer
-	config   *Config
 	listener net.Listener
 	runtime  runtime.Runtime
 	logger   logger.Logger
@@ -253,7 +259,43 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	return nil
 }
 
-func (s *Service) Run(network, address string, serverOptions ...grpc.ServerOption) error {
+func newUnixListener(address string, gid int) (net.Listener, error) {
+	if err := os.Remove(address); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("removing existing unix socket at %q: %w", address, err)
+	}
+
+	// If the given path is the default, try to create it and change its permissions; if it's not the default, it is
+	// up to the user to manage it
+	if "unix://"+address == api.DefaultDaemonPath {
+		dir := filepath.Dir(address)
+		if err := os.MkdirAll(dir, 0o710); err != nil && !errors.Is(err, os.ErrExist) {
+			return nil, fmt.Errorf("creating directory %q: %w", dir, err)
+		}
+		if err := os.Chown(dir, 0, gid); err != nil {
+			return nil, fmt.Errorf("chown directory %q: %w", dir, err)
+		}
+	}
+
+	// Set umask to 0o777 to avoid a race condition between creating the listener and applying its permissionss
+	oldMask := syscall.Umask(0o777)
+	defer syscall.Umask(oldMask)
+
+	listener, err := net.Listen("unix", address)
+	if err != nil {
+		return nil, fmt.Errorf("creating unix listener at %q: %w", address, err)
+	}
+	if err := os.Chown(address, 0, gid); err != nil {
+		listener.Close()
+		return nil, fmt.Errorf("chown unix socket %q: %w", address, err)
+	}
+	if err := os.Chmod(address, 0o660); err != nil {
+		listener.Close()
+		return nil, fmt.Errorf("chmod unix socket %q: %w", address, err)
+	}
+	return listener, nil
+}
+
+func (s *Service) Run(runConfig RunConfig, serverOptions ...grpc.ServerOption) error {
 	s.runtime = local.New()
 	defer s.runtime.Close()
 
@@ -264,11 +306,22 @@ func (s *Service) Run(network, address string, serverOptions ...grpc.ServerOptio
 		return fmt.Errorf("initializing runtime: %w", err)
 	}
 
-	listener, err := net.Listen(network, address)
-	if err != nil {
-		return err
+	switch runConfig.SocketType {
+	case "unix":
+		listener, err := newUnixListener(runConfig.SocketPath, runConfig.SocketGID)
+		if err != nil {
+			return fmt.Errorf("creating unix listener: %w", err)
+		}
+		s.listener = listener
+	case "tcp":
+		listener, err := net.Listen(runConfig.SocketType, runConfig.SocketPath)
+		if err != nil {
+			return fmt.Errorf("creating listener: %w", err)
+		}
+		s.listener = listener
+	default:
+		return fmt.Errorf("invalid socket type: %s", runConfig.SocketType)
 	}
-	s.listener = listener
 
 	server := grpc.NewServer(serverOptions...)
 	api.RegisterGadgetManagerServer(server, s)

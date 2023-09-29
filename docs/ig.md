@@ -195,6 +195,110 @@ re-execute itself in a privileged systemd unit if necessary.
 This is possible because the "kubectl debug node" gives access to the systemd socket (`/run/systemd/private`) via the
 /host volume.
 
+### Using ig as a daemon
+
+`ig` can also be run as a daemon. You can then use `gadgetctl` to connect to it as an unprivileged user.
+We will be using a new group called `ig` to allow controlling `ig` in this example.
+
+#### Create new group "ig" and add yourself to it
+
+```bash
+$ sudo addgroup ig
+$ sudo adduser $USER ig
+```
+
+Logout and login to make sure the new group membership is applied to your session.
+
+#### Create systemd service
+
+This assumes you installed `ig` in `/usr/local/bin` and are using systemd.
+Create a new service file at `/etc/systemd/system/ig.service` with the following content:
+
+```ini
+[Unit]
+Description=Inspektor Gadget
+
+[Service]
+User=root
+Restart=on-failure
+RestartSec=30
+WorkingDirectory=/usr/local/bin
+ExecStart=/usr/local/bin/ig daemon --group ig
+
+[Install]
+WantedBy=multi-user.target
+```
+
+> If you want to use another group than `ig`, make sure to adjust the `--group` parameter on the "ExecStart" line.
+
+Enable and start the new service:
+
+```bash
+$ sudo systemctl enable ig.service
+$ sudo systemctl start ig.service
+```
+
+#### Run gadgetctl
+
+If all went well, you can now run `gadgetctl` with your favorite gadgets!
+
+```bash
+$ gadgetctl trace open
+RUNTIME.CONTAINERNAME                                          PID        COMM             FD     ERR PATH
+minikube-docker                                                3293       cri-dockerd      11     0   /etc/cni/net.d
+minikube-docker                                                3293       cri-dockerd      11     0   /etc/cni/net.d/1-k8s.conflist
+minikube-docker                                                2180730    bridge           3      0   /etc/ld.so.cache
+...
+```
+
+#### Using over the network
+
+> This is not yet a recommended way of working with ig, as the connection is __not secure__. Please only use it on otherwise
+> secured and/or trusted networks. We will be adding secure connections later on.
+
+Modify the `ig.service` file to something like this:
+
+```
+...
+ExecStart=/usr/local/bin/ig daemon -H tcp://127.0.0.1:9999
+...
+```
+
+Restart the service:
+
+```bash
+$ sudo systemctl restart ig.service
+```
+
+Use `gadgetctl` like this:
+
+```bash
+$ gadgetctl trace open --remote-address tcp://127.0.0.1:9999
+```
+
+#### Debugging
+
+In case anything is not working, you can look at the logs:
+
+```bash
+$ journalctl -u ig.service
+```
+
+To increase the verbosity of `ig`, you can edit the service file and add
+the verbose flag (-v) like so:
+
+```ini
+...
+ExecStart=/usr/local/bin/ig daemon -v --group ig
+...
+```
+
+The flag can also be used with `gadgetctl` like so:
+
+```bash
+$ gadgetctl trace open -v
+```
+
 ### Using ig in a container
 
 Example of command:

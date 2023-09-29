@@ -70,7 +70,11 @@ func main() {
 		}
 	}
 
-	runtime := grpcruntime.New(skipInfo)
+	runtime := grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
+	runtime.Init(runtime.GlobalParamDescs().ToParams())
+	if !skipInfo {
+		runtime.InitDeployInfo()
+	}
 
 	namespace, _ := utils.GetNamespace()
 	runtime.SetDefaultValue(gadgets.K8SNamespace, namespace)
@@ -81,13 +85,7 @@ func main() {
 	// Advise category is still being handled by CRs for now
 	rootCmd.AddCommand(advise.NewAdviseCmd())
 
-	rootCmd.AddCommand(&cobra.Command{
-		Use:   "sync",
-		Short: "Synchronize gadget information with your cluster",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runtime.UpdateDeployInfo()
-		},
-	})
+	rootCmd.AddCommand(common.NewSyncCommand(runtime))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

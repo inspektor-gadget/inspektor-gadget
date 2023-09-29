@@ -12,18 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package api
+package common
 
-const (
-	EventTypeGadgetPayload uint32 = 0
-	EventTypeGadgetResult  uint32 = 1
-	EventTypeGadgetDone    uint32 = 2
-	EventTypeGadgetJobID   uint32 = 3
+import (
+	"github.com/spf13/cobra"
 
-	EventLogShift = 16
+	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
 
-const (
-	GadgetServiceSocket = "/run/gadgetservice.socket"
-	DefaultDaemonPath   = "unix:///var/run/ig/ig.socket"
-)
+func NewSyncCommand(runtime *grpcruntime.Runtime) *cobra.Command {
+	return &cobra.Command{
+		Use:   "sync",
+		Short: "Synchronize gadget information with server",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runtime.UpdateDeployInfo()
+		},
+	}
+}

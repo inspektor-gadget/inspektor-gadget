@@ -55,13 +55,14 @@ func main() {
 
 	rootCmd.AddCommand(
 		containers.NewListContainersCmd(),
-		newVersionCmd(),
+		common.NewVersionCmd(),
 	)
 
 	runtime := local.New()
 	hiddenColumnTags := []string{"kubernetes"}
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
+	rootCmd.AddCommand(newDaemonCommand(runtime))
 	if experimental.Enabled() {
 		rootCmd.AddCommand(image.NewImageCmd())
 		rootCmd.AddCommand(common.NewLoginCmd())

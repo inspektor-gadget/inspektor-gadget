@@ -52,7 +52,7 @@ include crd.mk
 include tests.mk
 include minikube.mk
 
-LDFLAGS := "-X main.version=$(VERSION) \
+LDFLAGS := "-X github.com/inspektor-gadget/inspektor-gadget/cmd/common.version=$(VERSION) \
 -X main.gadgetimage=$(CONTAINER_REPO):$(IMAGE_TAG) \
 -extldflags '-static'"
 
@@ -148,6 +148,36 @@ kubectl-gadget-%: phony_explicit
 install/kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
 	mkdir -p ~/.local/bin/
 	cp kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) ~/.local/bin/kubectl-gadget
+
+GADGETCTL_TARGETS = \
+	gadgetctl-linux-amd64 \
+	gadgetctl-linux-arm64 \
+	gadgetctl-darwin-amd64 \
+	gadgetctl-darwin-arm64 \
+	gadgetctl-windows-amd64
+
+.PHONY: list-gadgetctl-targets
+list-gadgetctl-targets:
+	@echo $(GADGETCTL_TARGETS)
+
+.PHONY: gadgetctl-all
+gadgetctl-all: $(GADGETCTL_TARGETS) gadgetctl
+
+gadgetctl: gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH)
+	cp gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH) gadgetctl
+
+gadgetctl-%: phony_explicit
+	export GO111MODULE=on CGO_ENABLED=0 && \
+	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
+	go build -ldflags $(LDFLAGS) \
+		-tags withoutebpf \
+		-o gadgetctl-$${GOOS}-$${GOARCH} \
+		github.com/inspektor-gadget/inspektor-gadget/cmd/gadgetctl
+
+.PHONY: install/gadgetctl
+install/gadgetctl: gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH)
+	mkdir -p ~/.local/bin/
+	cp gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH) ~/.local/bin/gadgetctl
 
 GADGET_CONTAINERS = \
 	gadget-default-container \

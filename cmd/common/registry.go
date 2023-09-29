@@ -58,13 +58,10 @@ func AddCommandsFromRegistry(rootCmd *cobra.Command, runtime runtime.Runtime, hi
 	// Build lookup
 	lookup := make(map[string]*cobra.Command)
 
-	// Add global runtime flags
-	addFlags(rootCmd, runtimeGlobalParams, nil, runtime)
-
 	// Add operator global flags
 	operatorsGlobalParamsCollection := operators.GlobalParamsCollection()
 	for _, operatorParams := range operatorsGlobalParamsCollection {
-		addFlags(rootCmd, operatorParams, nil, runtime)
+		AddFlags(rootCmd, operatorParams, nil, runtime)
 	}
 
 	// Add all known gadgets to cobra in their respective categories
@@ -663,14 +660,14 @@ func buildCommandFromGadget(
 	gadgetParams.Add(*gadgets.GadgetParams(gadgetDesc, parser).ToParams()...)
 
 	// Add runtime flags
-	addFlags(cmd, runtimeParams, skipParams, runtime)
+	AddFlags(cmd, runtimeParams, skipParams, runtime)
 
 	// Add gadget flags
-	addFlags(cmd, gadgetParams, skipParams, runtime)
+	AddFlags(cmd, gadgetParams, skipParams, runtime)
 
 	// Add operator flags
 	for _, operatorParams := range operatorsParamsCollection {
-		addFlags(cmd, operatorParams, skipParams, runtime)
+		AddFlags(cmd, operatorParams, skipParams, runtime)
 	}
 	return cmd
 }
@@ -716,7 +713,7 @@ func mustSkip(skipParams []params.ValueHint, valueHint params.ValueHint) bool {
 	return false
 }
 
-func addFlags(cmd *cobra.Command, params *params.Params, skipParams []params.ValueHint, runtime runtime.Runtime) {
+func AddFlags(cmd *cobra.Command, params *params.Params, skipParams []params.ValueHint, runtime runtime.Runtime) {
 	defer func() {
 		if err := recover(); err != nil {
 			panic(fmt.Sprintf("registering params for command %q: %v", cmd.Use, err))
