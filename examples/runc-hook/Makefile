@@ -2,10 +2,10 @@ CONTAINER_REPO ?= ghcr.io/inspektor-gadget/inspektor-gadget
 IMAGE_TAG ?= $(shell ../../tools/image-tag branch)
 
 runc-hook: main.go
-	go build -o runc-hook main.go
+	CGO_ENABLED=0 go build -o runc-hook main.go
 
 runc-hook-static: main.go
-	go build -o runc-hook-static -ldflags '-w -extldflags "-static"' main.go
+	CGO_ENABLED=0 go build -o runc-hook-static -ldflags '-w -extldflags "-static"' main.go
 
 # Example how runc-hook can be used to show a stream of events
 test-output:
