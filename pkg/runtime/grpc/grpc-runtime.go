@@ -266,7 +266,7 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 	return r.runGadgetOnTargets(gadgetCtx, paramMap, targets)
 }
 
-func (r *Runtime) getClientFromRandomTarget(ctx context.Context, runtimeParams *params.Params) (api.GadgetManagerClient, error) {
+func (r *Runtime) getConnToRandomTarget(ctx context.Context, runtimeParams *params.Params) (*grpc.ClientConn, error) {
 	targets, err := r.getTargets(ctx, runtimeParams)
 	if err != nil {
 		return nil, err
@@ -280,7 +280,7 @@ func (r *Runtime) getClientFromRandomTarget(ctx context.Context, runtimeParams *
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
-	return api.NewGadgetManagerClient(conn), nil
+	return conn, nil
 }
 
 func (r *Runtime) runGadgetOnTargets(

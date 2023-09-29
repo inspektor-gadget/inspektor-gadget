@@ -65,10 +65,12 @@ func (r *Runtime) loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
 
 	// use default params for now
 	params := r.ParamDescs().ToParams()
-	client, err := r.getClientFromRandomTarget(ctx, params)
+	conn, err := r.getConnToRandomTarget(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("dialing random target: %w", err)
 	}
+	defer conn.Close()
+	client := api.NewGadgetManagerClient(conn)
 
 	info, err := client.GetInfo(ctx, &api.InfoRequest{Version: "1.0"})
 	if err != nil {
