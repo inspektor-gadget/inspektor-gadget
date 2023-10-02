@@ -196,20 +196,26 @@ var (
 // in the current kernel. False negatives are possible if BTF is not available.
 func DetectBpfKtimeGetBootNs() bool {
 	bpfKtimeGetBootNsOnce.Do(func() {
+		bpfKtimeGetBootNsExists = false
+
 		btfSpec, err := btf.LoadKernelSpec()
 		if err != nil {
-			bpfKtimeGetBootNsExists = false
 			return
 		}
 
 		enum := &btf.Enum{}
 		err = btfSpec.TypeByName("bpf_func_id", &enum)
 		if err != nil {
-			bpfKtimeGetBootNsExists = false
 			return
 		}
 
-		bpfKtimeGetBootNsExists = len(enum.Values) >= BpfKtimeGetBootNsFuncID
+		for _, value := range enum.Values {
+			if value.Name == "BPF_FUNC_ktime_get_boot_ns" && value.Value == BpfKtimeGetBootNsFuncID {
+				bpfKtimeGetBootNsExists = true
+
+				return
+			}
+		}
 	})
 
 	return bpfKtimeGetBootNsExists
