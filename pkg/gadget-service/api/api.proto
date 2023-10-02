@@ -77,7 +77,20 @@ message InfoResponse {
   bool experimental = 3;
 }
 
+message GetGadgetInfoRequest {
+  // params are the gadget's parameters
+  map<string, string> params = 1;
+
+  // args are all parameters which were not specified with a flag
+  repeated string args = 2;
+}
+
+message GetGadgetInfoResponse {
+  bytes info = 1; // encoded in json
+}
+
 service GadgetManager {
   rpc GetInfo(InfoRequest) returns (InfoResponse) {}
+  rpc GetGadgetInfo(GetGadgetInfoRequest) returns (GetGadgetInfoResponse) {}
   rpc RunGadget(stream GadgetControlRequest) returns (stream GadgetEvent) {}
 }

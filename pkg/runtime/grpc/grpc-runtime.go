@@ -17,6 +17,7 @@ package grpcruntime
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -36,6 +37,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -245,6 +247,39 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 	return nil, fmt.Errorf("unsupported connection mode")
 }
 
+func (r *Runtime) GetGadgetInfo(ctx context.Context, desc gadgets.GadgetDesc, gadgetParams *params.Params, args []string) (*runTypes.GadgetInfo, error) {
+	ctx, cancelDial := context.WithTimeout(ctx, time.Second*ConnectTimeout)
+	defer cancelDial()
+
+	// use default params for now
+	params := r.ParamDescs().ToParams()
+	conn, err := r.getConnToRandomTarget(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("dialing random target: %w", err)
+	}
+	defer conn.Close()
+	client := api.NewGadgetManagerClient(conn)
+
+	allParams := make(map[string]string)
+	gadgetParams.CopyToMap(allParams, "")
+
+	in := &api.GetGadgetInfoRequest{
+		Params: allParams,
+		Args:   args,
+	}
+	out, err := client.GetGadgetInfo(ctx, in)
+	if err != nil {
+		return nil, fmt.Errorf("getting gadget info: %w", err)
+	}
+
+	ret := &runTypes.GadgetInfo{}
+	if err := json.Unmarshal(out.Info, ret); err != nil {
+		return nil, fmt.Errorf("unmarshaling gadget info: %w", err)
+	}
+
+	return ret, nil
+}
+
 func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {
 	paramMap := make(map[string]string)
 	gadgets.ParamsToMap(
@@ -366,6 +401,7 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 		GadgetName:     gadgetCtx.GadgetDesc().Name(),
 		GadgetCategory: gadgetCtx.GadgetDesc().Category(),
 		Params:         allParams,
+		Args:           gadgetCtx.Args(),
 		Nodes:          nil,
 		FanOut:         false,
 		LogLevel:       uint32(gadgetCtx.Logger().GetLevel()),

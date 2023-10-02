@@ -6,6 +6,8 @@ IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
 MINIKUBE ?= minikube
 KUBERNETES_DISTRIBUTION ?= ""
+GADGET_TAG ?= $(shell ../tools/image-tag branch)
+GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
 
 GOHOSTOS ?= $(shell go env GOHOSTOS)
 GOHOSTARCH ?= $(shell go env GOHOSTARCH)
@@ -104,6 +106,10 @@ ig-all: $(IG_TARGETS) ig
 
 ig: ig-$(GOHOSTOS)-$(GOHOSTARCH)
 	cp ig-$(GOHOSTOS)-$(GOHOSTARCH) ig
+
+.PHONY: install/ig
+install/ig: ig
+	sudo cp ig /usr/local/bin/ig
 
 ig-%: phony_explicit
 	echo Building $@
@@ -267,6 +273,8 @@ integration-tests: kubectl-gadget
 			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
 			-dnstester-image $(DNSTESTER_IMAGE) \
 			-image-flavour $(IMAGE_FLAVOUR) \
+			-gadget-repository $(GADGET_REPOSITORY) \
+			-gadget-tag $(GADGET_TAG) \
 			$$INTEGRATION_TESTS_PARAMS
 
 .PHONY: generate-documentation
@@ -337,6 +345,14 @@ install-headers:
 remove-headers:
 	rm -rf /usr/include/gadget
 
+.PHOHY: build-gadgets
+build-gadgets: install/ig
+	$(MAKE) -C gadgets/ build
+
+.PHOHY: push-gadgets
+push-gadgets: install/ig
+	$(MAKE) -C gadgets/ push
+
 .PHONY: help
 help:
 	@echo  'Building targets:'
@@ -358,6 +374,8 @@ help:
 	@echo  '  btfgen			- Build BTF files'
 	@echo  '  list-ig-targets		- List ig available architectures'
 	@echo  '  list-kubectl-gadget-targets	- List kubectl plugin available architectures'
+	@echo  '  build-gadgets			- Build all gadgets'
+	@echo  '  push-gadgets			- Push all gadgets'
 	@echo  ''
 	@echo  'Testing targets:'
 	@echo  '  test				- Run unit tests'
@@ -368,6 +386,7 @@ help:
 	@echo  ''
 	@echo  'Installing targets:'
 	@echo  '  install/kubectl-gadget	- Build kubectl plugin and install it in ~/.local/bin'
+	@echo  '  install/ig	  		- Build and install ig cli tool in /usr/local/bin'
 	@echo  ''
 	@echo  'Development targets:'
 	@echo  '  clang-format			- Format ebpf source files'

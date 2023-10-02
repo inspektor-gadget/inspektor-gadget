@@ -20,12 +20,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
 type listOptions struct {
@@ -36,7 +36,7 @@ func NewListCmd() *cobra.Command {
 	o := listOptions{}
 	cmd := &cobra.Command{
 		Use:          "list",
-		Short:        "List gadget images in the host",
+		Short:        "List gadget images on the host",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runList(o)
@@ -49,7 +49,7 @@ func NewListCmd() *cobra.Command {
 }
 
 func runList(o listOptions) error {
-	ociStore, err := utils.GetLocalOciStore()
+	ociStore, err := oci.GetLocalOciStore()
 	if err != nil {
 		return fmt.Errorf("get oci store: %w", err)
 	}
@@ -63,14 +63,14 @@ func runList(o listOptions) error {
 	imageColumns := []*imageColumn{}
 	err = ociStore.Tags(context.TODO(), "", func(tags []string) error {
 		for _, fullTag := range tags {
-			repository, err := utils.GetRepositoryFromImage(fullTag)
+			repository, err := oci.GetRepositoryFromImage(fullTag)
 			if err != nil {
-				logrus.Debugf("get repository from image %q: %s", fullTag, err)
+				log.Debugf("get repository from image %q: %s", fullTag, err)
 				continue
 			}
-			tag, err := utils.GetTagFromImage(fullTag)
+			tag, err := oci.GetTagFromImage(fullTag)
 			if err != nil {
-				logrus.Debugf("get tag from image %q: %s", fullTag, err)
+				log.Debugf("get tag from image %q: %s", fullTag, err)
 				continue
 			}
 			imageColumn := imageColumn{
@@ -80,7 +80,7 @@ func runList(o listOptions) error {
 
 			desc, err := ociStore.Resolve(context.TODO(), fullTag)
 			if err != nil {
-				logrus.Debugf("Found tag %q but couldn't get a descriptor for it: %v", fullTag, err)
+				log.Debugf("Found tag %q but couldn't get a descriptor for it: %v", fullTag, err)
 				continue
 			}
 			imageColumn.Digest = desc.Digest.String()

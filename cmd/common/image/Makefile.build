@@ -1,0 +1,21 @@
+# This makefile is used by the build command, don't execute it manually
+
+CLANG ?= clang
+LLVM-STRIP ?= llvm-strip
+BASECFLAGS = -target bpf -Wall -g -O2
+CFLAGS ?=
+OUTPUTDIR ?= /tmp
+EBPFSOURCE ?= program.bpf.c
+
+TARGETS = \
+	$(OUTPUTDIR)/amd64.bpf.o \
+	$(OUTPUTDIR)/arm64.bpf.o \
+	#
+
+.PHONY: all
+all: $(TARGETS)
+
+$(OUTPUTDIR)/%.bpf.o: $(EBPFSOURCE)
+	$(CLANG) $(BASECFLAGS) $(CFLAGS) -D __TARGET_ARCH_$(subst amd64,x86,$*) \
+		-c $< -I /usr/include/gadget/$*/ -o $@
+	$(LLVM-STRIP) -g $@

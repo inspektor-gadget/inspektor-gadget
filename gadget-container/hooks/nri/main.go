@@ -21,15 +21,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/containerd/nri/skel"
+	types "github.com/containerd/nri/types/v1"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	pb "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager/api"
-
-	"github.com/containerd/nri/skel"
-	types "github.com/containerd/nri/types/v1"
-
-	"github.com/sirupsen/logrus"
 )
 
 // TODO: Understand why using github.com/containerd/pkg/cri/annonations
@@ -68,7 +66,7 @@ func (i *igHook) Invoke(ctx context.Context, r *types.Request) (*types.Result, e
 		}
 		err = processContainer(r, &conf)
 		if err != nil && conf.Debug {
-			logrus.Debugf("failed to process container %s: %s", r.ID, err)
+			log.Debugf("failed to process container %s: %s", r.ID, err)
 		}
 	}
 
