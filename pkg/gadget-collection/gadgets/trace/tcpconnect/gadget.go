@@ -25,7 +25,6 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpconnect/types"
-	standardtracer "github.com/inspektor-gadget/inspektor-gadget/pkg/standardgadgets/trace/tcpconnect"
 
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 )
@@ -116,17 +115,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 	}
 	t.tracer, err = tracer.NewTracer(config, t.helpers, eventCallback)
 	if err != nil {
-		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
-
-		// fallback to standard tracer
-		log.Infof("Gadget %s: falling back to standard tracer. CO-RE tracer failed: %s",
-			trace.Spec.Gadget, err)
-
-		t.tracer, err = standardtracer.NewTracer(config, eventCallback)
-		if err != nil {
-			trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
-			return
-		}
+		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
+		return
 	}
 
 	t.started = true

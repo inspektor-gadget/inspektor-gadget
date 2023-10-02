@@ -9,9 +9,6 @@ inputs:
   container-image:
     description: "The name of the container image"
     required: true
-  bcc:
-    description: "Is the image referencing bcc only?"
-    required: true
 
 outputs:
   container-repo:
@@ -57,10 +54,6 @@ runs:
         image_tag=${GITHUB_REF_NAME//\//-}
         if [ "$image_tag" = "main" ]; then
             image_tag="latest"
-        fi
-
-        if [ ${{ inputs.bcc }} = 'true' ]; then
-          image_tag="${image_tag}-bcc"
         fi
 
         echo "image-tag=${image_tag}" >> $GITHUB_OUTPUT

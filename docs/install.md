@@ -136,7 +136,7 @@ The different supported modes can be set by using the `hook-mode` option:
 - `fanotify+ebpf`:  Uses the Linux
   [fanotify](https://man7.org/linux/man-pages/man7/fanotify.7.html) API and an
   eBPF module. It works with both runc and crun. It works regardless of the
-  pid namespace configuration. 
+  pid namespace configuration.
 
 ### Specific Information for Different Platforms
 

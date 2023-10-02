@@ -1,10 +1,4 @@
-# Dockerfile for Inspektor Gadget CO-RE container image gadgets.
-# This is a reduced gadget container image that supports only the CO-RE
-# implementation of the gadgets, i.e, it doesn't depend on BCC. This
-# image is much smaller than the image built with gadget.bcc.Dockerfile
-# and is designed to be used on systems that support BTF
-# (CONFIG_DEBUG_INFO_BTF).
-# It's the default image that is deployed in Inspektor Gadget.
+# Dockerfile for Inspektor Gadget.
 
 ARG BUILDER_IMAGE=golang:1.19-bullseye
 ARG BASE_IMAGE=debian:bullseye-slim
@@ -32,8 +26,8 @@ RUN cd /gadget/gadget-container && \
 FROM ${BASE_IMAGE}
 
 LABEL org.opencontainers.image.source=https://github.com/inspektor-gadget/inspektor-gadget
-LABEL org.opencontainers.image.title="Inspektor Gadget k8s DaemonSet (default flavor)"
-LABEL org.opencontainers.image.description="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts. This is the default flavor (default flavor includes only CO-RE-based tools; bcc flavor includes both bcc-based tools and CO-RE-based tools)."
+LABEL org.opencontainers.image.title="Inspektor Gadget k8s DaemonSet"
+LABEL org.opencontainers.image.description="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts."
 LABEL org.opencontainers.image.documentation="https://inspektor-gadget.io/docs"
 LABEL org.opencontainers.image.licenses=Apache-2.0
 
@@ -79,5 +73,3 @@ COPY --from=bpftrace /usr/bin/bpftrace /usr/bin/bpftrace
 
 # Mitigate https://github.com/kubernetes/kubernetes/issues/106962.
 RUN rm -f /var/run
-
-ENV GADGET_IMAGE_FLAVOUR=default

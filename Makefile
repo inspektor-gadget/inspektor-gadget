@@ -26,8 +26,6 @@ EBPF_BUILDER ?= ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder
 
 DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
 
-IMAGE_FLAVOUR ?= "default"
-
 PLATFORMS ?= "linux/amd64,linux/arm64"
 
 CLANG_FORMAT ?= clang-format
@@ -60,7 +58,7 @@ LDFLAGS := "-X github.com/inspektor-gadget/inspektor-gadget/cmd/common.version=$
 
 .DEFAULT_GOAL := build
 .PHONY: build
-build: manifests generate kubectl-gadget gadget-default-container
+build: manifests generate kubectl-gadget gadget-container
 
 .PHONY: all
 all: build ig
@@ -185,24 +183,16 @@ install/gadgetctl: gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH)
 	mkdir -p ~/.local/bin/
 	cp gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH) ~/.local/bin/gadgetctl
 
-GADGET_CONTAINERS = \
-	gadget-default-container \
-	gadget-bcc-container
-
-gadget-container-all: $(GADGET_CONTAINERS)
-
-cross-gadget-container-all: $(foreach container,$(GADGET_CONTAINERS),$(addprefix cross-,$(container)))
-
-gadget-%-container:
+gadget-container:
 	if $(ENABLE_BTFGEN) == "true" ; then \
 		./tools/getbtfhub.sh && \
 		$(MAKE) -f Makefile.btfgen \
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
-	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring bcc,$*),-bcc,) \
+	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG) \
 		-f Dockerfiles/gadget-$*.Dockerfile .
 
-cross-gadget-%-container:
+cross-gadget-container:
 	if $(ENABLE_BTFGEN) == "true" ; then \
 		./tools/getbtfhub.sh && \
 		$(MAKE) -f Makefile.btfgen \
@@ -210,12 +200,12 @@ cross-gadget-%-container:
 		$(MAKE) -f Makefile.btfgen \
 			ARCH=arm64 BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
-	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring bcc,$*),-bcc,) \
+	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG) \
 		--push \
 		-f Dockerfiles/gadget-$*.Dockerfile .
 
-push-gadget-%-container:
-	docker push $(CONTAINER_REPO):$(IMAGE_TAG)$(if $(findstring bcc,$*),-bcc,)
+push-gadget-container:
+	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
 
 # kubectl-gadget container image
 .PHONY: kubectl-gadget-container
@@ -272,7 +262,6 @@ integration-tests: kubectl-gadget
 			-k8s-arch $(KUBERNETES_ARCHITECTURE) \
 			-image $(CONTAINER_REPO):$(IMAGE_TAG) \
 			-dnstester-image $(DNSTESTER_IMAGE) \
-			-image-flavour $(IMAGE_FLAVOUR) \
 			-gadget-repository $(GADGET_REPOSITORY) \
 			-gadget-tag $(GADGET_TAG) \
 			$$INTEGRATION_TESTS_PARAMS
@@ -298,7 +287,7 @@ clang-format:
 # minikube
 LIVENESS_PROBE ?= true
 .PHONY: minikube-deploy
-minikube-deploy: minikube-start gadget-default-container kubectl-gadget
+minikube-deploy: minikube-start gadget-container kubectl-gadget
 	@echo "Image on the host:"
 	docker image list --format "table {{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.Size}}" |grep $(CONTAINER_REPO):$(IMAGE_TAG)
 	@echo
@@ -365,10 +354,8 @@ help:
 	@echo  'o kubectl-gadget		- Build the kubectl plugin'
 	@echo  '  kubectl-gadget-all		- Build the kubectl plugin for all architectures'
 	@echo  '  kubectl-gadget-container	- Build container for kubectl-gadget'
-	@echo  'o gadget-default-container	- Build the gadget container default image for the current architecture'
-	@echo  '  gadget-bcc-container		- Build the gadget container bcc image for the current architecture'
-	@echo  '  gadget-container-all		- Build all flavors of the gadget container image'
-	@echo  '  cross-gadget-container-all	- Build all flavors of the gadget container image for all supported architectures'
+	@echo  'o gadget-container		- Build the gadget container image for the host architecture'
+	@echo  '  cross-gadget-container	- Build the gadget container image for all supported architectures'
 	@echo  '  ebpf-objects			- Build eBPF objects file inside docker'
 	@echo  '  ebpf-objects-outside-docker	- Build eBPF objects file on host'
 	@echo  '  btfgen			- Build BTF files'
