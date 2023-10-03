@@ -16,7 +16,7 @@ and quicker to find the relevant information.
 
 ## How does it work?
 
-Inspektor Gadget is deployed to each node as a privileged DaemonSet.
+Inspektor Gadget is deployed to each node as a DaemonSet.
 It uses in-kernel eBPF helper programs to monitor events mainly related to
 syscalls from userspace programs in a pod. The eBPF programs are run by
 the kernel and gather the log data. Inspektor Gadget's userspace
