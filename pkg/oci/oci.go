@@ -24,9 +24,9 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
-	"github.com/docker/distribution/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 	"oras.land/oras-go/v2"
