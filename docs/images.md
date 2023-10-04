@@ -118,7 +118,7 @@ Usage:
   ig image build PATH [flags]
 
 Flags:
-      --builder-image string   Builder image to use (default "ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder:latest")
+      --builder-image string   Builder image to use (default "ghcr.io/inspektor-gadget/ebpf-builder:latest")
   -f, --file string            Path to build.yaml (default "build.yaml")
   -h, --help                   help for build
   -l, --local                  Build using local tools

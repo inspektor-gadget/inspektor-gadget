@@ -22,7 +22,7 @@ ARCH ?= $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's
 # This version number must be kept in sync with CI workflow lint one.
 LINTER_VERSION ?= v1.49.0
 
-EBPF_BUILDER ?= ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder
+EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder
 
 DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
 

@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 GADGET_TAG ?= $(shell ../tools/image-tag branch)
 GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
-BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder:latest
+BUILDER_IMAGE ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
 IG ?= ig
 GADGETS = \
 	trace_dns \
