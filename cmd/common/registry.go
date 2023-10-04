@@ -259,6 +259,14 @@ func buildCommandFromGadget(
 			// Before running the gadget, we need to get the gadget info to create the
 			// parser based on it
 			if isRunGadget {
+				if len(args) == 0 {
+					if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
+						additionalMessage := "Specify the gadget image to get more information about it"
+						cmd.Long = fmt.Sprintf("%s\n\n%s", cmd.Short, additionalMessage)
+						return cmd.Help()
+					}
+				}
+
 				var err error
 				gadgetInfo, err = runtime.GetGadgetInfo(ctx, gadgetDesc, gadgetParams, args)
 				if err != nil {
