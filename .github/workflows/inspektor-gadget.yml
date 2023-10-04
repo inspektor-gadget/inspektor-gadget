@@ -577,8 +577,8 @@ jobs:
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
           IMAGE_DOCUMENTATION="https://inspektor-gadget.io/docs"
           IMAGE_LICENSES="Apache-2.0"
-          IMAGE_TITLE_FMT="Inspektor Gadget k8s DaemonSet"
-          IMAGE_DESCRIPTION_FMT="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts."
+          IMAGE_TITLE="Inspektor Gadget k8s DaemonSet"
+          IMAGE_DESCRIPTION="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts."
 
           docker buildx imagetools create \
               -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
@@ -587,8 +587,8 @@ jobs:
               --annotation index:org.opencontainers.image.licenses="$IMAGE_LICENSES" \
               --annotation index:org.opencontainers.image.source="$IMAGE_SOURCE" \
               --annotation index:org.opencontainers.image.title="$IMAGE_TITLE" \
-              $IMAGE_DIGEST_AMD64 \
-              $IMAGE_DIGEST_ARM64
+              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-amd64 }} \
+              ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-arm64 }}
 
   publish-ig-images-manifest:
     name: Publish ig img manifest
