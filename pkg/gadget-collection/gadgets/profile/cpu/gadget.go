@@ -17,14 +17,11 @@ package profile
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
-
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-collection/gadgets/profile"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/tracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/profile/cpu/types"
-	standardtracer "github.com/inspektor-gadget/inspektor-gadget/pkg/standardgadgets/profile/cpu"
 )
 
 type Trace struct {
@@ -108,17 +105,8 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	t.tracer, err = tracer.NewTracer(t.helpers, config)
 	if err != nil {
-		trace.Status.OperationWarning = fmt.Sprint("failed to create core tracer. Falling back to standard one")
-
-		// fallback to standard tracer
-		log.Infof("Gadget %s: falling back to standard tracer. CO-RE tracer failed: %s",
-			trace.Spec.Gadget, err)
-
-		t.tracer, err = standardtracer.NewTracer(config)
-		if err != nil {
-			trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
-			return
-		}
+		trace.Status.OperationError = fmt.Sprintf("failed to create tracer: %s", err)
+		return
 	}
 	t.started = true
 

@@ -187,7 +187,6 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        bcc: false
     - name: Build ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}
       run: |
         git checkout
@@ -320,14 +319,11 @@ jobs:
       contents: read
       packages: write
     outputs:
-      digest-default-amd64: ${{ steps.published-gadget-container-images.outputs.default-amd64 }}
-      digest-default-arm64: ${{ steps.published-gadget-container-images.outputs.default-arm64 }}
-      digest-bcc-amd64: ${{ steps.published-gadget-container-images.outputs.bcc-amd64 }}
-      digest-bcc-arm64: ${{ steps.published-gadget-container-images.outputs.bcc-arm64 }}
+      digest-amd64: ${{ steps.published-gadget-container-images.outputs.amd64 }}
+      digest-arm64: ${{ steps.published-gadget-container-images.outputs.arm64 }}
     strategy:
       fail-fast: false
       matrix:
-        type: [default, bcc]
         os: [ linux ]
         # For the moment, we only support these two platforms.
         platform: [ arm64, amd64 ]
@@ -342,9 +338,9 @@ jobs:
       uses: actions/cache@v3.3.2
       with:
         path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-docker-${{ matrix.type }}-${{ matrix.platform }}-${{ hashFiles(format('Dockerfiles/gadget-{0}.Dockerfile', matrix.type)) }}
+        key: ${{ runner.os }}-docker-${{ matrix.platform }}-${{ hashFiles('Dockerfiles/gadget.Dockerfile') }}
         restore-keys: |
-          ${{ runner.os }}-docker-${{ matrix.type }}-${{ matrix.platform }}-
+          ${{ runner.os }}-docker-${{ matrix.platform }}-
     - name: Login to Container Registry
       uses: docker/login-action@v3
       with:
@@ -357,7 +353,6 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        bcc: ${{ matrix.type == 'bcc' }}
     - name: Get btfhub-archive last commmit
       id: get-btfhub-head
       run: |
@@ -376,43 +371,43 @@ jobs:
     # we are using cache-to mode=min (default) implying that only final image layers are cached, using cache
     # mode=max results in builder image layer of ~7GB because of btfhub files in a layer, which is too
     # large (gloabal limit 10GB) to work with GH caches. (TODO: if we can work with mode=max in future?)
-    - name: Build gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
+    - name: Build gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: docker/build-push-action@v5
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
-        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
-        outputs: type=docker,dest=/tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget.Dockerfile
+        outputs: type=docker,dest=/tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
-    - name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
+    - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: actions/upload-artifact@master
       with:
-        name: gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
-        path: /tmp/gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+        name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
+        path: /tmp/gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
         retention-days: 1
     # build time will not be increased with this workflow because of internal cache
     # buildx is used here since it allows push-by-digest to avoid platform specific tags
-    - name: Publish gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image to registry
+    - name: Publish gadget ${{ matrix.os }} ${{ matrix.platform }} container image to registry
       id: publish-gadget-container-images
       if: github.event_name != 'pull_request'
       uses: docker/build-push-action@v5
       with:
         context: /home/runner/work/inspektor-gadget/inspektor-gadget/
-        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget-${{ matrix.type }}.Dockerfile
+        file: /home/runner/work/inspektor-gadget/inspektor-gadget/Dockerfiles/gadget.Dockerfile
         outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
         cache-from: type=local,src=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
-    - name: Save gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image digest output
+    - name: Save gadget ${{ matrix.os }} ${{ matrix.platform }} container image digest output
       id: published-gadget-container-images
       if: github.event_name != 'pull_request'
       run: |
-          echo "${{ matrix.type }}-${{ matrix.platform }}=${{ steps.publish-gadget-container-images.outputs.digest }}" >> $GITHUB_OUTPUT
+          echo "${{ matrix.platform }}=${{ steps.publish-gadget-container-images.outputs.digest }}" >> $GITHUB_OUTPUT
     # old cache entries aren’t deleted, so the cache size keeps growing
     # remove old cache and move new cache to cache path to workaround the issue
     # https://github.com/docker/build-push-action/issues/252
-    - name: Move gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image cache to correct location
+    - name: Move gadget ${{ matrix.os }} ${{ matrix.platform }} container image cache to correct location
       run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
@@ -462,7 +457,6 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ github.repository_owner }}/ig
-        bcc: false
     - name: Get btfhub-archive last commmit
       id: get-btfhub-head
       run: |
@@ -527,19 +521,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        type: [ default, bcc ]
         os: [ linux ]
         platform: [ amd64 ]
     steps:
-      - name: Download gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
+      - name: Download gadget ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
         uses: actions/download-artifact@v3
         with:
-          name: gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+          name: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
           path: ${{ github.workspace }}
-      - name: Scan gadget ${{ matrix.type }} ${{ matrix.os }} ${{ matrix.platform }} container image
+      - name: Scan gadget ${{ matrix.os }} ${{ matrix.platform }} container image
         uses: aquasecurity/trivy-action@fbd16365eb88e12433951383f5e99bd901fc618f # v0.12.0
         with:
-          input: gadget-container-image-${{ matrix.type }}-${{ matrix.os }}-${{ matrix.platform }}.tar
+          input: gadget-container-image-${{ matrix.os }}-${{ matrix.platform }}.tar
           format: 'table'
           exit-code: 1
           severity: CRITICAL,HIGH
@@ -560,8 +553,6 @@ jobs:
       packages: write
     strategy:
       fail-fast: false
-      matrix:
-        type: [ default, bcc ]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
@@ -581,28 +572,13 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
-          bcc: ${{ matrix.type == 'bcc' }}
       - name: Publish the manifest list
         run: |
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
           IMAGE_DOCUMENTATION="https://inspektor-gadget.io/docs"
           IMAGE_LICENSES="Apache-2.0"
-          IMAGE_TITLE_FMT="Inspektor Gadget k8s DaemonSet (%s flavor)"
-          IMAGE_DESCRIPTION_FMT="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts. This is the %s flavor (default flavor includes only CO-RE-based tools; bcc flavor includes both bcc-based tools and CO-RE-based tools)."
-
-          if [[ "${{ matrix.type }}" == "bcc" ]]; then
-            IMAGE_TITLE=$(printf "$IMAGE_TITLE_FMT" "bcc")
-            IMAGE_DESCRIPTION=$(printf "$IMAGE_DESCRIPTION_FMT" "bcc")
-            IMAGE_DIGEST_AMD64=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-bcc-amd64 }}
-            IMAGE_DIGEST_ARM64=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-bcc-arm64 }}
-          fi
-
-          if [[ "${{ matrix.type }}" == "default" ]]; then
-            IMAGE_TITLE=$(printf "$IMAGE_TITLE_FMT" "default")
-            IMAGE_DESCRIPTION=$(printf "$IMAGE_DESCRIPTION_FMT" "default")
-            IMAGE_DIGEST_AMD64=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-amd64 }}
-            IMAGE_DIGEST_ARM64=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-default-arm64 }}
-          fi
+          IMAGE_TITLE_FMT="Inspektor Gadget k8s DaemonSet"
+          IMAGE_DESCRIPTION_FMT="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts."
 
           docker buildx imagetools create \
               -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
@@ -644,7 +620,6 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ github.repository_owner }}/ig
-          bcc: false
       - name: Publish the manifest list
         run: |
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
@@ -706,7 +681,6 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ github.repository_owner }}/${{ matrix.image.name }}
-        bcc: false
     - name: Build ${{ matrix.image.name }} image
       id: build-image
       if: steps.filter.outputs.pattern == 'true'
@@ -753,7 +727,6 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        bcc: false
     - name: Build example container
       uses: docker/build-push-action@v5
       with:
@@ -870,7 +843,6 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        bcc: false
     - name: Install Helm
       uses: azure/setup-helm@v3
       with:
@@ -1068,7 +1040,6 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
-          bcc: false
       - name: Get ig-linux-amd64.tar.gz from artifact.
         uses: actions/download-artifact@v3
         with:
@@ -1170,7 +1141,6 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        bcc: false
     - uses: azure/login@v1
       name: Login to Azure
       with:
@@ -1213,7 +1183,6 @@ jobs:
         kubernetes_architecture: "${{ matrix.arch }}"
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-        image_flavour: "default"
         gadget_repository: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
         gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
     # This step ensures we get fresh credentials before removing the cluster
@@ -1275,7 +1244,6 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        bcc: false
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
       with:
@@ -1300,7 +1268,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        type: [default, bcc]
         runtime: [docker, containerd, cri-o]
     steps:
     - uses: actions/checkout@v4
@@ -1314,10 +1281,10 @@ jobs:
       with:
         runtime: ${{ matrix.runtime }}
         multi-node: true
-    - name: Get gadget-container-image-${{ matrix.type }}-linux-amd64.tar from artifact.
+    - name: Get gadget-container-image-linux-amd64.tar from artifact.
       uses: actions/download-artifact@v3
       with:
-        name: gadget-container-image-${{ matrix.type }}-linux-amd64.tar
+        name: gadget-container-image-linux-amd64.tar
         path: /home/runner/work/inspektor-gadget/
     - name: Set container repository and determine image tag
       id: set-repo-determine-image-tag
@@ -1325,11 +1292,10 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        bcc: ${{ matrix.type == 'bcc' }}
-    - name: Prepare minikube by loading gadget-container-image-${{ matrix.type }}-linux-amd64.tar
+    - name: Prepare minikube by loading gadget-container-image-linux-amd64.tar
       run: |
         # 'docker load' ensures the image is named correctly e.g podman has issues loading untagged images from archive
-        docker load -i /home/runner/work/inspektor-gadget/gadget-container-image-${{ matrix.type }}-linux-amd64.tar
+        docker load -i /home/runner/work/inspektor-gadget/gadget-container-image-linux-amd64.tar
         minikube image load ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
     - name: Run integration tests
       uses: ./.github/actions/run-integration-tests
@@ -1338,14 +1304,13 @@ jobs:
         kubernetes_architecture: "amd64"
         container_repo: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}
         image_tag: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
-        image_flavour: ${{ matrix.type }}
         dnstester_image: ${{ needs.build-helper-images.outputs.dnstester_image }}
         gadget_repository: ${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }}
         gadget_tag: ${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }}
-    - if: ${{ matrix.type == 'default' && matrix.runtime == 'docker' }}
+    - if: ${{ matrix.runtime == 'docker' }}
       name: Check that README is up-to-date
       # We do this check here, as we need to run kubectl-gadget against a deployed installation to
-      # be able to download a populated catalog. But we only do it for default/docker, as it's not
+      # be able to download a populated catalog. But we only do it for docker, as it's not
       # necessary to check it more than once.
       shell: bash
       run: |
@@ -1380,7 +1345,6 @@ jobs:
       with:
         registry: ${{ env.REGISTRY }}
         container-image: ${{ env.CONTAINER_REPO }}
-        bcc: false
     - name: Build release YAML
       run: |
         export IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}

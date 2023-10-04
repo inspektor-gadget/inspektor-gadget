@@ -36,15 +36,11 @@ kubectl-gadget-linux-amd64` or `make kubectl-gadget-darwin-amd64`.
 
 ### Building the gadget container image
 
-Inspektor Gadget provides two different container images:
-- gadget-default: Contains only CO-RE gadgets that are integrated with the gadget tracer manager
-- gadget-bcc: Contains CO-RE and BCC gadgets
-
 You can build and push the container gadget image by running the following commands:
 
 ```bash
-$ make gadget-default-container # or make gadget-core-container
-$ make push-gadget-default-container
+$ make gadget-container
+$ make push-gadget-container
 ```
 
 The eBPF code is built using a Docker container, so you don't have to worry
@@ -394,22 +390,3 @@ Golang.
 If you want to implement support for a BCC gadget, please read the [Rewriting the Control Plane of
 BCC Tools in Golang](https://www.inspektor-gadget.io/blog/2022/09/rewriting-the-control-plane-of-bcc-tools-in-golang/)
 blogpost that contains all the details about this process.
-
-### Updating BCC from upstream
-
-> **_NOTE:_**  These are some legacy instructions and it's very unlikely that you need to use them.
-
-As you can see in `gadget-default.Dockerfile`, the gadget container image
-uses the BCC container image as its parent image.
-Given that there is not an official container repository to get that BCC image,
-we keep a synchronised [BCC fork](https://github.com/inspektor-gadget/bcc)
-that is configured to publish the images on Kinvolk container registries
-[Quay](https://quay.io/repository/kinvolk/bcc) and
-[Docker Hub](https://hub.docker.com/r/kinvolk/bcc/), by using the
-[Github actions](https://github.com/iovisor/bcc/blob/master/.github/workflows/publish.yml)
-already available in [BCC upstream](https://github.com/iovisor/bcc).
-
-Given that, if you want to update the BCC version used by Inspektor Gadget,
-it is necessary to first update the
-[BCC fork](https://github.com/inspektor-gadget/bcc)
-so that the Github actions are triggered, and a new image is published.

@@ -84,7 +84,6 @@ var (
 	nodeSelector        string
 	experimentalVar     bool
 	skipSELinuxOpts     bool
-	bcc                 bool
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -163,11 +162,6 @@ func init() {
 		"skip-selinux-opts", "",
 		false,
 		"skip setting SELinux options on the gadget pod")
-	deployCmd.PersistentFlags().BoolVarP(
-		&bcc,
-		"bcc", "",
-		false,
-		"use BCC flavor of Inspektor Gadget")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -362,14 +356,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("it's not possible to use --quiet and --debug together")
 	}
 
-	if bcc {
-		if image != gadgetimage {
-			return fmt.Errorf("it is not possible to use --bcc and --image together")
-		}
-
-		image = gadgetimage + "-bcc"
-	}
-
 	objects, err := parseK8sYaml(resources.GadgetDeployment)
 	if err != nil {
 		return err
@@ -466,16 +452,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 					value := experimental.Enabled() || experimentalVar
 					gadgetContainer.Env[i].Value = strconv.FormatBool(value)
 				}
-			}
-
-			// When using bcc flavor, we may need extra capabilities.
-			// Particularly, we should add the SYS_MODULE one, as this is needed by
-			// bcc gadgets to load kheaders.ko in case it is not built-in.
-			// NOTE Talos forbids this capability:
-			// https://support.siderolabs.com/hc/en-us/articles/18362930553876-Process-Capabilities
-			// So, for Talos, only default image works.
-			if bcc {
-				gadgetContainer.SecurityContext.Capabilities.Add = append(gadgetContainer.SecurityContext.Capabilities.Add, "SYS_MODULE")
 			}
 
 			if nodeSelector != "" {

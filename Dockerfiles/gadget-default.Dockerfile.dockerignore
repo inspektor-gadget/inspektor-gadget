@@ -1,9 +1,0 @@
-*
-!go.mod
-!go.sum
-!gadget-container
-!pkg
-!internal/
-!tools
-!Makefile*
-!*.mk
