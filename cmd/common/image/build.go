@@ -49,7 +49,7 @@ import (
 var makefile []byte
 
 const (
-	DEFAULT_BUILDER_IMAGE = "ghcr.io/inspektor-gadget/inspektor-gadget-ebpf-builder:latest"
+	DEFAULT_BUILDER_IMAGE = "ghcr.io/inspektor-gadget/ebpf-builder:latest"
 	DEFAULT_EBPF_SOURCE   = "program.bpf.c"
 	DEFAULT_METADATA      = "gadget.yaml"
 	ARCH_AMD64            = "amd64"
