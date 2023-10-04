@@ -183,6 +183,7 @@ install/gadgetctl: gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH)
 	mkdir -p ~/.local/bin/
 	cp gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH) ~/.local/bin/gadgetctl
 
+.PHONY: gadget-container
 gadget-container:
 	if $(ENABLE_BTFGEN) == "true" ; then \
 		./tools/getbtfhub.sh && \
@@ -190,8 +191,9 @@ gadget-container:
 			BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --load -t $(CONTAINER_REPO):$(IMAGE_TAG) \
-		-f Dockerfiles/gadget-$*.Dockerfile .
+		-f Dockerfiles/gadget.Dockerfile .
 
+.PHONY: cross-gadget-container
 cross-gadget-container:
 	if $(ENABLE_BTFGEN) == "true" ; then \
 		./tools/getbtfhub.sh && \
@@ -202,7 +204,7 @@ cross-gadget-container:
 	fi
 	docker buildx build --platform=$(PLATFORMS) -t $(CONTAINER_REPO):$(IMAGE_TAG) \
 		--push \
-		-f Dockerfiles/gadget-$*.Dockerfile .
+		-f Dockerfiles/gadget.Dockerfile .
 
 push-gadget-container:
 	docker push $(CONTAINER_REPO):$(IMAGE_TAG)
