@@ -73,7 +73,7 @@ func TestGetRepositoryFromImage(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			repository, err := GetRepositoryFromImage(test.image)
+			repository, err := getRepositoryFromImage(test.image)
 			if test.err {
 				require.Error(t, err)
 				return
@@ -142,7 +142,7 @@ func TestGetTagFromImage(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			tag, err := GetTagFromImage(test.image)
+			tag, err := getTagFromImage(test.image)
 			if test.err {
 				require.Error(t, err)
 				return
@@ -207,14 +207,14 @@ func TestNormalizeImage(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			image, err := NormalizeImage(test.image)
+			imageRef, err := normalizeImageName(test.image)
 			if test.err {
 				require.Error(t, err)
 				return
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, test.imageExpected, image)
+			require.Equal(t, test.imageExpected, imageRef.String())
 		})
 	}
 }
@@ -268,7 +268,7 @@ func TestGetHostString(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			host, err := GetHostString(test.image)
+			host, err := getHostString(test.image)
 			if test.err {
 				require.Error(t, err)
 				return

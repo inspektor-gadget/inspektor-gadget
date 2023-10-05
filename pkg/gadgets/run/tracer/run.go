@@ -16,6 +16,7 @@ package tracer
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -23,9 +24,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-	"oras.land/oras-go/v2"
 	k8syaml "sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -80,49 +79,19 @@ func (g *GadgetDesc) Parser() parser.Parser {
 	return nil
 }
 
-// TODO: this could be part of pkg/oci
-func getProgAndDefinition(params *params.Params, args []string) ([]byte, []byte, error) {
-	if len(args) != 1 {
-		return nil, nil, fmt.Errorf("one argument expected: received %d", len(args))
-	}
-	image, err := oci.NormalizeImage(args[0])
-	if err != nil {
-		return nil, nil, fmt.Errorf("normalize image: %w", err)
-	}
-
-	var imageStore oras.Target
-	imageStore, err = oci.GetLocalOciStore()
-	if err != nil {
-		log.Debugf("get oci store: %s", err)
-		imageStore = oci.GetMemoryStore()
-	}
-	authOpts := oci.AuthOptions{
+func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types.GadgetInfo, error) {
+	authOpts := &oci.AuthOptions{
 		AuthFile: params.Get("authfile").AsString(),
 	}
-
-	prog, err := oci.GetEbpfProgram(imageStore, &authOpts, image)
+	gadget, err := oci.GetGadgetImage(context.TODO(), args[0], authOpts)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get ebpf program: %w", err)
-	}
-
-	def, err := oci.GetDefinition(imageStore, &authOpts, image)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get definition: %w", err)
-	}
-
-	return prog, def, nil
-}
-
-func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types.GadgetInfo, error) {
-	progContent, definitionBytes, err := getProgAndDefinition(params, args)
-	if err != nil {
-		return nil, fmt.Errorf("get ebpf program and definition: %w", err)
+		return nil, fmt.Errorf("getting gadget image: %w", err)
 	}
 
 	ret := &types.GadgetInfo{
-		ProgContent: progContent,
+		ProgContent: gadget.EbpfObject,
 	}
-	if err := yaml.Unmarshal(definitionBytes, &ret.GadgetDefinition); err != nil {
+	if err := yaml.Unmarshal(gadget.Metadata, &ret.GadgetDefinition); err != nil {
 		return nil, fmt.Errorf("unmarshaling definition: %w", err)
 	}
 

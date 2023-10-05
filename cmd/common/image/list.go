@@ -20,7 +20,6 @@ import (
 	"os"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
@@ -28,81 +27,36 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
-type listOptions struct {
-	noTrunc bool
-}
-
 func NewListCmd() *cobra.Command {
-	o := listOptions{}
+	var noTrunc bool
 	cmd := &cobra.Command{
 		Use:          "list",
 		Short:        "List gadget images on the host",
 		SilenceUsage: true,
+		Args:         cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runList(o)
+			images, err := oci.ListGadgetImages(context.TODO())
+			if err != nil {
+				return fmt.Errorf("list gadgets: %w", err)
+			}
+
+			cols := columns.MustCreateColumns[oci.GadgetImageDesc]()
+			if !noTrunc {
+				cols.MustSetExtractor("digest", func(i *oci.GadgetImageDesc) any {
+					if i.Digest == "" {
+						return ""
+					}
+					// Return the shortened digest and remove the sha256: prefix
+					return strings.TrimPrefix(i.Digest, "sha256:")[:12]
+				})
+			}
+			formatter := textcolumns.NewFormatter(cols.GetColumnMap())
+			formatter.WriteTable(os.Stdout, images)
+			return nil
 		},
 	}
 
-	cmd.Flags().BoolVar(&o.noTrunc, "no-trunc", false, "Don't truncate output")
+	cmd.Flags().BoolVar(&noTrunc, "no-trunc", false, "Don't truncate output")
 
 	return cmd
-}
-
-func runList(o listOptions) error {
-	ociStore, err := oci.GetLocalOciStore()
-	if err != nil {
-		return fmt.Errorf("get oci store: %w", err)
-	}
-
-	type imageColumn struct {
-		Repository string `column:"repository"`
-		Tag        string `column:"tag"`
-		Digest     string `column:"digest,width:12,fixed"`
-	}
-
-	imageColumns := []*imageColumn{}
-	err = ociStore.Tags(context.TODO(), "", func(tags []string) error {
-		for _, fullTag := range tags {
-			repository, err := oci.GetRepositoryFromImage(fullTag)
-			if err != nil {
-				log.Debugf("get repository from image %q: %s", fullTag, err)
-				continue
-			}
-			tag, err := oci.GetTagFromImage(fullTag)
-			if err != nil {
-				log.Debugf("get tag from image %q: %s", fullTag, err)
-				continue
-			}
-			imageColumn := imageColumn{
-				Repository: repository,
-				Tag:        tag,
-			}
-
-			desc, err := ociStore.Resolve(context.TODO(), fullTag)
-			if err != nil {
-				log.Debugf("Found tag %q but couldn't get a descriptor for it: %v", fullTag, err)
-				continue
-			}
-			imageColumn.Digest = desc.Digest.String()
-			imageColumns = append(imageColumns, &imageColumn)
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("listing all tags: %w", err)
-	}
-
-	cols := columns.MustCreateColumns[imageColumn]()
-	if !o.noTrunc {
-		cols.MustSetExtractor("digest", func(i *imageColumn) any {
-			if i.Digest == "" {
-				return ""
-			}
-			// Return the shortened digest and remove the sha256: prefix
-			return strings.TrimPrefix(i.Digest, "sha256:")[:12]
-		})
-	}
-	formatter := textcolumns.NewFormatter(cols.GetColumnMap())
-	formatter.WriteTable(os.Stdout, imageColumns)
-	return nil
 }

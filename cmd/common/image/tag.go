@@ -23,53 +23,24 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
-type tagOptions struct {
-	srcImage string
-	dstImage string
-}
-
 func NewTagCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "tag SRC_IMAGE DST_IMAGE",
 		Short:        "Tag the local SRC_IMAGE image with the DST_IMAGE",
 		SilenceUsage: true,
-		RunE:         runTag,
+		Args:         cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			srcImage := args[0]
+			dstImage := args[1]
+			desc, err := oci.TagGadgetImage(context.TODO(), srcImage, dstImage)
+			if err != nil {
+				return fmt.Errorf("tagging image: %w", err)
+			}
+
+			fmt.Printf("Successfully tagged with %s\n", desc.String())
+			return nil
+		},
 	}
 
 	return cmd
-}
-
-func runTag(cmd *cobra.Command, args []string) error {
-	if len(args) != 2 {
-		return fmt.Errorf("expected exactly two arguments")
-	}
-
-	o := &tagOptions{
-		srcImage: args[0],
-		dstImage: args[1],
-	}
-
-	src, err := oci.NormalizeImage(o.srcImage)
-	if err != nil {
-		return fmt.Errorf("normalize src image: %w", err)
-	}
-	dst, err := oci.NormalizeImage(o.dstImage)
-	if err != nil {
-		return fmt.Errorf("normalize dst image: %w", err)
-	}
-
-	ociStore, err := oci.GetLocalOciStore()
-	if err != nil {
-		return fmt.Errorf("get oci store: %w", err)
-	}
-
-	targetDescriptor, err := ociStore.Resolve(context.TODO(), src)
-	if err != nil {
-		// Error message not that helpful
-		return fmt.Errorf("resolve srcTag: %w", err)
-	}
-	ociStore.Tag(context.TODO(), targetDescriptor, dst)
-
-	fmt.Printf("Successfully tagged with %s@%s\n", dst, targetDescriptor.Digest)
-	return nil
 }
