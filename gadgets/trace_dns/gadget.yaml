@@ -1,64 +1,94 @@
 name: dns
 description: trace dns requests and responses
-columns:
-  - name: src
-    min_width: 24
-    max_width: 50
-    order: 1000
-    visible: true
-  - name: dst
-    min_width: 24
-    max_width: 50
-    order: 1001
-    visible: true
-  - name: pid
-    template: pid
-    order: 1000
-    visible: true
-  - name: comm
-    template: comm
-    width: 16
-    order: 1001
-    visible: true
-  - name: uid
-    template: uid
-    order: 1002
-    visible: true
-  - name: gid
-    template: uid
-    order: 1003
-    visible: true
-  - name: name
-    width: 30
-    order: 1004
-    visible: true
-  - name: qr
-    width: 2
-    order: 1005
-    visible: true
-  - name: pkt_type
-    width: 8
-    order: 1006
-    visible: true
-  - name: rcode
-    width: 8
-    order: 1007
-    visible: true
-  - name: latency_ns
-    width: 8
-    order: 1008
-    visible: false
-  - name: anaddr
-    width: 16
-    order: 1009
-    visible: true
-  - name: mntns_id
-    min_width: 24
-    width: 32
-    order: 1010
-    visible: false
-#  - name: timestamp
-#    min_width: 24
-#    width: 32
-#    order: 1006
-#    visible: true
+tracers:
+  dns:
+    mapName: events
+    structName: event_t
+structs:
+  event_t:
+    fields:
+    - name: src
+      description: Source endpoint
+      attributes:
+        minWidth: 24
+        maxWidth: 50
+    - name: dst
+      description: Destination endpoint
+      attributes:
+        minWidth: 24
+        maxWidth: 50
+    - name: pid
+      description: PID of the process that sent the request
+      attributes:
+        template: pid
+    - name: task
+      attributes:
+        template: comm
+    - name: uid
+      attributes:
+        hidden: true
+        template: uid
+    - name: gid
+      attributes:
+        hidden: true
+        template: uid
+    - name: name
+      attributes:
+        width: 30
+    - name: qr
+      attributes:
+        width: 2
+    - name: pkt_type
+      attributes:
+        width: 8
+    - name: rcode
+      attributes:
+        width: 8
+    - name: latency_ns
+      attributes:
+        width: 8
+        hidden: true
+    - name: anaddr
+      attributes:
+        width: 16
+    - name: netns
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: tid
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: id
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: qtype
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: ancount
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: anaddrcount
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end

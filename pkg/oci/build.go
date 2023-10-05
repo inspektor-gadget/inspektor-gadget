@@ -42,11 +42,17 @@ const (
 )
 
 type BuildGadgetImageOpts struct {
+	// Source path of the eBPF program. Currently it's not used for compilation purposes
+	EBPFSourcePath string
 	// List of eBPF objects to include in the image. The key is the architecture and the value
 	// is the path to the eBPF object.
 	EBPFObjectPaths map[string]string
 	// Path to the metadata file.
 	MetadataPath string
+	// If true, the metadata is updated to follow changes in the eBPF objects.
+	UpdateMetadata bool
+	// If true, the metadata is validated before creating the image.
+	ValidateMetadata bool
 }
 
 // BuildGadgetImage creates an OCI image with the objects provided in opts. The image parameter in
@@ -56,6 +62,18 @@ func BuildGadgetImage(ctx context.Context, opts *BuildGadgetImageOpts, image str
 	ociStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
+	}
+
+	if opts.UpdateMetadata {
+		if err := createOrUpdateMetadataFile(ctx, opts); err != nil {
+			return nil, fmt.Errorf("updating metadata file: %w", err)
+		}
+	}
+
+	if opts.ValidateMetadata {
+		if err := validateMetadataFile(ctx, opts); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("validating metadata file: %w", err)
+		}
 	}
 
 	indexDesc, err := createImageIndex(ctx, ociStore, opts)
@@ -136,10 +154,14 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 		return ocispec.Descriptor{}, fmt.Errorf("creating and pushing eBPF descriptor: %w", err)
 	}
 
-	// Read the metadata file into a byte array
-	defDesc, err := createMetadataDesc(ctx, target, metadataFilePath)
-	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("creating metadata descriptor: %w", err)
+	var defDesc ocispec.Descriptor
+
+	if _, err := os.Stat(metadataFilePath); err == nil {
+		// Read the metadata file into a byte array
+		defDesc, err = createMetadataDesc(ctx, target, metadataFilePath)
+		if err != nil {
+			return ocispec.Descriptor{}, fmt.Errorf("creating metadata descriptor: %w", err)
+		}
 	}
 
 	// Create the manifest which combines everything and push it to the memory store

@@ -1,33 +1,60 @@
 name: tcpretrans
 description: trace TCP retransmissions
-columns:
-  #- name: timestamp
-  #  template: timestamp
-  #  order: 900
-  - name: src
-    min_width: 24
-    max_width: 50
-    order: 1000
-    visible: true
-  - name: dst
-    min_width: 24
-    max_width: 50
-    order: 1001
-    visible: true
-  - name: task
-    template: comm
-    width: 16
-    order: 1002
-    visible: true
-  - name: pid
-    template: pid
-    order: 1003
-    visible: true
-  - name: uid
-    template: uid
-    order: 1004
-    visible: true
-  - name: gid
-    template: uid
-    order: 1005
-    visible: true
+tracers:
+  tcpretrans:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: src
+      attributes:
+        minWidth: 24
+        maxWidth: 50
+    - name: dst
+      attributes:
+        minWidth: 24
+        maxWidth: 50
+    - name: task
+      attributes:
+        template: comm
+    - name: pid
+      attributes:
+        template: pid
+    - name: tid
+      description: 'TODO: Fill field description'
+      attributes:
+        hidden: true
+        template: pid
+    - name: uid
+      attributes:
+        template: uid
+    - name: gid
+      description: 'TODO: Fill field description'
+      attributes:
+        template: uid
+    - name: tcpflags
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: reason
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: netns
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: state
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end

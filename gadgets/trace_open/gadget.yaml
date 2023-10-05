@@ -1,43 +1,39 @@
 name: open
 description: trace open files
-columns:
-  - name: pid
-    template: pid
-    order: 1000
-    visible: true
-  - name: comm
-    template: comm
-    width: 16
-    order: 1001
-    visible: true
-  - name: uid
-    template: uid
-    order: 1002
-    visible: true
-  - name: gid
-    template: uid
-    order: 1003
-    visible: true
-  - name: ret
-    width: 5
-    order: 1004
-    visible: true
-  - name: flags
-    width: 5
-    order: 1005
-    visible: false
-  - name: fname
-    min_width: 24
-    width: 32
-    order: 1006
-    visible: true
-  - name: mntns_id
-    min_width: 24
-    width: 32
-    order: 1007
-    visible: false
-#  - name: timestamp
-#    min_width: 24
-#    width: 32
-#    order: 1006
-#    visible: true
+tracers:
+  open:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: pid
+      attributes:
+        template: pid
+    - name: comm
+      attributes:
+        template: comm
+    - name: uid
+      attributes:
+        template: uid
+    - name: gid
+      attributes:
+        template: uid
+    - name: ret
+      attributes:
+        width: 5
+    - name: flags
+      attributes:
+        width: 5
+        hidden: true
+    - name: mode
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: fname
+      attributes:
+        width: 32
+        minWidth: 24
