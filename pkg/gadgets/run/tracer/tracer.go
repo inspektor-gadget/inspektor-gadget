@@ -36,7 +36,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -54,9 +53,9 @@ type l4EndpointT struct {
 }
 
 type Config struct {
-	ProgLocation string
-	ProgContent  []byte
-	MountnsMap   *ebpf.Map
+	ProgContent []byte
+	Metadata    *types.GadgetMetadata
+	MountnsMap  *ebpf.Map
 }
 
 type Tracer struct {
@@ -133,7 +132,7 @@ func (t *Tracer) Stop() {
 func (t *Tracer) handleTraceMap() (*ebpf.MapSpec, error) {
 	// If the gadget doesn't provide a map it's not an error becuase it could provide other ways
 	// to output data
-	traceMap := getTraceMap(t.spec)
+	traceMap := getTracerMap(t.spec, t.config.Metadata)
 	if traceMap == nil {
 		return nil, nil
 	}
@@ -160,10 +159,6 @@ func (t *Tracer) handleTraceMap() (*ebpf.MapSpec, error) {
 func (t *Tracer) installTracer() error {
 	// Load the spec
 	var err error
-	t.spec, err = loadSpec(t.config.ProgContent)
-	if err != nil {
-		return err
-	}
 
 	mapReplacements := map[string]*ebpf.Map{}
 	consts := map[string]interface{}{}
@@ -448,15 +443,18 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
 	args := gadgetCtx.Args()
 
-	authOpts := &oci.AuthOptions{
-		AuthFile: params.Get("authfile").AsString(),
+	info, err := getGadgetInfo(params, args, gadgetCtx.Logger())
+	if err != nil {
+		return fmt.Errorf("getting gadget info: %w", err)
 	}
 
-	var err error
-	t.config.ProgContent, err = oci.GetEbpfObject(gadgetCtx.Context(), args[0], authOpts)
+	t.config.ProgContent = info.ProgContent
+	t.spec, err = loadSpec(t.config.ProgContent)
 	if err != nil {
-		return fmt.Errorf("get ebpf program: %w", err)
+		return err
 	}
+
+	t.config.Metadata = info.GadgetMetadata
 
 	if err := t.installTracer(); err != nil {
 		t.Stop()
