@@ -9,6 +9,7 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 
+#include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -105,7 +106,9 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(u32));
 	__type(value, struct event);
-} print_events SEC(".maps");
+} events SEC(".maps");
+
+GADGET_TRACE_MAP(events);
 
 static __always_inline bool filter_port(__u16 port)
 {
@@ -215,7 +218,7 @@ static __always_inline void trace_v4(struct pt_regs *ctx, pid_t pid,
 	bpf_get_current_comm(event.task, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();
 
-	bpf_perf_event_output(ctx, &print_events, BPF_F_CURRENT_CPU, &event,
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
 			      sizeof(event));
 }
 
@@ -243,7 +246,7 @@ static __always_inline void trace_v6(struct pt_regs *ctx, pid_t pid,
 	bpf_get_current_comm(event.task, sizeof(event.task));
 	event.timestamp = bpf_ktime_get_boot_ns();
 
-	bpf_perf_event_output(ctx, &print_events, BPF_F_CURRENT_CPU, &event,
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
 			      sizeof(event));
 }
 
@@ -340,7 +343,7 @@ static __always_inline int handle_tcp_rcv_state_process(void *ctx,
 				   __sk_common.skc_v6_daddr.in6_u.u6_addr32);
 	}
 	event.timestamp = bpf_ktime_get_boot_ns();
-	bpf_perf_event_output(ctx, &print_events, BPF_F_CURRENT_CPU, &event,
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
 			      sizeof(event));
 
 cleanup:

@@ -44,4 +44,7 @@ const (
 
 	// Name of the type to store a mount namespace inode id
 	MntNsIdTypeName = "mnt_ns_id_t"
+
+	// Prefix used to mark trace maps
+	TraceMapPrefix = "gadget_trace_map_"
 )

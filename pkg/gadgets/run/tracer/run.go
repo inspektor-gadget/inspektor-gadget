@@ -40,10 +40,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 )
 
-const (
-	printMapPrefix = "print_"
-)
-
 type GadgetDesc struct{}
 
 func (g *GadgetDesc) Name() string {
@@ -116,14 +112,29 @@ func loadSpec(progContent []byte) (*ebpf.CollectionSpec, error) {
 	return spec, err
 }
 
-// getPrintMap returns the first map with a "print_" prefix. If not found returns nil.
-func getPrintMap(spec *ebpf.CollectionSpec) *ebpf.MapSpec {
-	for _, m := range spec.Maps {
-		if m.Type != ebpf.RingBuf && m.Type != ebpf.PerfEventArray {
+// getTraceMap returns the first map marked with GADGET_TRACE_MAP. If not found returns nil.
+func getTraceMap(spec *ebpf.CollectionSpec) *ebpf.MapSpec {
+	var mapName string
+
+	it := spec.Types.Iterate()
+	for it.Next() {
+		v, ok := it.Type.(*btf.Var)
+		if !ok {
 			continue
 		}
 
-		if !strings.HasPrefix(m.Name, printMapPrefix) {
+		if strings.HasPrefix(v.Name, gadgets.TraceMapPrefix) {
+			mapName = strings.TrimPrefix(v.Name, gadgets.TraceMapPrefix)
+			break
+		}
+	}
+
+	if mapName == "" {
+		return nil
+	}
+
+	for _, m := range spec.Maps {
+		if m.Name != mapName || m.Type != ebpf.RingBuf && m.Type != ebpf.PerfEventArray {
 			continue
 		}
 
@@ -139,12 +150,12 @@ func getEventTypeBTF(progContent []byte) (*btf.Struct, error) {
 		return nil, err
 	}
 
-	// Look for gadgets with a "print_" map
-	printMap := getPrintMap(spec)
-	if printMap != nil {
-		valueStruct, ok := printMap.Value.(*btf.Struct)
+	// Look for tracer maps
+	traceMap := getTraceMap(spec)
+	if traceMap != nil {
+		valueStruct, ok := traceMap.Value.(*btf.Struct)
 		if !ok {
-			return nil, fmt.Errorf("BPF map %q does not have BTF info for values", printMap.Name)
+			return nil, fmt.Errorf("BPF map %q does not have BTF info for values", traceMap.Name)
 		}
 
 		return valueStruct, nil

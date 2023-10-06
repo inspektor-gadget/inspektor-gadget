@@ -71,7 +71,7 @@ type Tracer struct {
 	socketEnricher *socketenricher.SocketEnricher
 	networkTracer  *networktracer.Tracer[types.Event]
 
-	// Printers related
+	// Tracers related
 	ringbufReader *ringbuf.Reader
 	perfReader    *perf.Reader
 
@@ -130,31 +130,31 @@ func (t *Tracer) Stop() {
 	}
 }
 
-func (t *Tracer) handlePrintMap() (*ebpf.MapSpec, error) {
+func (t *Tracer) handleTraceMap() (*ebpf.MapSpec, error) {
 	// If the gadget doesn't provide a map it's not an error becuase it could provide other ways
 	// to output data
-	printMap := getPrintMap(t.spec)
-	if printMap == nil {
+	traceMap := getTraceMap(t.spec)
+	if traceMap == nil {
 		return nil, nil
 	}
 
-	eventType, ok := printMap.Value.(*btf.Struct)
+	eventType, ok := traceMap.Value.(*btf.Struct)
 	if !ok {
-		return nil, fmt.Errorf("BPF map %q does not have BTF info for values", printMap.Name)
+		return nil, fmt.Errorf("BPF map %q does not have BTF info for values", traceMap.Name)
 	}
 	t.eventType = eventType
 
 	// Almost same hack as in https://github.com/solo-io/bumblebee/blob/c2422b5bab66754b286d062317e244f02a431dac/pkg/loader/loader.go#L114-L120
 	// TODO: Remove it?
-	switch printMap.Type {
+	switch traceMap.Type {
 	case ebpf.RingBuf:
-		printMap.ValueSize = 0
+		traceMap.ValueSize = 0
 	case ebpf.PerfEventArray:
-		printMap.KeySize = 4
-		printMap.ValueSize = 4
+		traceMap.KeySize = 4
+		traceMap.ValueSize = 4
 	}
 
-	return printMap, nil
+	return traceMap, nil
 }
 
 func (t *Tracer) installTracer() error {
@@ -168,9 +168,9 @@ func (t *Tracer) installTracer() error {
 	mapReplacements := map[string]*ebpf.Map{}
 	consts := map[string]interface{}{}
 
-	printMap, err := t.handlePrintMap()
+	traceMap, err := t.handleTraceMap()
 	if err != nil {
-		return fmt.Errorf("handling print_ programs: %w", err)
+		return fmt.Errorf("handling trace programs: %w", err)
 	}
 
 	if t.eventType == nil {
@@ -213,13 +213,13 @@ func (t *Tracer) installTracer() error {
 	}
 
 	// Some logic before loading the programs
-	if printMap != nil {
-		m := t.collection.Maps[printMap.Name]
+	if traceMap != nil {
+		m := t.collection.Maps[traceMap.Name]
 		switch m.Type() {
 		case ebpf.RingBuf:
-			t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[printMap.Name])
+			t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[traceMap.Name])
 		case ebpf.PerfEventArray:
-			t.perfReader, err = perf.NewReader(t.collection.Maps[printMap.Name], gadgets.PerfBufferPages*os.Getpagesize())
+			t.perfReader, err = perf.NewReader(t.collection.Maps[traceMap.Name], gadgets.PerfBufferPages*os.Getpagesize())
 		}
 		if err != nil {
 			return fmt.Errorf("create BPF map reader: %w", err)
@@ -405,7 +405,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 	}
 }
 
-func (t *Tracer) runPrint(gadgetCtx gadgets.GadgetContext) {
+func (t *Tracer) runTracers(gadgetCtx gadgets.GadgetContext) {
 	cb := t.processEventFunc(gadgetCtx)
 
 	for {
@@ -464,7 +464,7 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	}
 
 	if t.perfReader != nil || t.ringbufReader != nil {
-		go t.runPrint(gadgetCtx)
+		go t.runTracers(gadgetCtx)
 	}
 	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
 
