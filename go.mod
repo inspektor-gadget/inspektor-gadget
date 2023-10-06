@@ -20,8 +20,8 @@ require (
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.4
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
-	golang.org/x/sys v0.12.0
-	golang.org/x/term v0.12.0
+	golang.org/x/sys v0.13.0
+	golang.org/x/term v0.13.0
 	google.golang.org/grpc v1.58.2
 	google.golang.org/protobuf v1.31.0
 	k8s.io/api v0.28.2
@@ -43,6 +43,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/distribution/reference v0.5.0
 	github.com/docker/cli v24.0.6+incompatible
+	github.com/docker/distribution v2.8.2+incompatible
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/go-cmp v0.5.9
 	github.com/kr/pretty v0.3.1
@@ -84,7 +85,6 @@ require (
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/ocicrypt v1.1.8 // indirect
 	github.com/containers/storage v1.50.2 // indirect
-	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.0 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
