@@ -61,6 +61,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.19.0
 	golang.org/x/sync v0.4.0
 	golang.org/x/text v0.13.0
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/cri-api v0.28.2
 	oras.land/oras-go/v2 v2.3.0
@@ -179,7 +180,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/component-base v0.28.0 // indirect
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect
@@ -191,9 +191,6 @@ require (
 	sigs.k8s.io/release-utils v0.7.4 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.3.0 // indirect
 )
-
-// Code available in https://github.com/inspektor-gadget/bumblebee/tree/gadget
-replace github.com/solo-io/bumblebee => github.com/inspektor-gadget/bumblebee v0.0.0-20230627162415-fa5fa890590d
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3
 
