@@ -60,7 +60,8 @@ func (r *Runtime) UpdateDeployInfo() error {
 }
 
 func (r *Runtime) loadRemoteDeployInfo() (*deployinfo.DeployInfo, error) {
-	ctx, cancelDial := context.WithTimeout(context.Background(), time.Second*ConnectTimeout)
+	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint())
+	ctx, cancelDial := context.WithTimeout(context.Background(), timeout)
 	defer cancelDial()
 
 	// use default params for now

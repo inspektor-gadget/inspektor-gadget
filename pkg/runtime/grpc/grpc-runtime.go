@@ -52,24 +52,41 @@ const (
 	ConnectionModeDirect ConnectionMode = iota
 
 	// ConnectionModeKubernetesProxy will connect to a gRPC endpoint through a kubernetes API server by first looking
-	// up an appropriate target node using the kubernetes API, then using the exec endpoint of the kubernetes API to
-	// spawn a socat process that then will forward the gRPC connection to the unix socket that is listening inside
-	// the IG container (see gadgettracermgr).
+	// up an appropriate target node using the kubernetes API, then using either the exec (when used with
+	// KubernetesProxyConnectionMethodUnix) or the port forward (when used with KubernetesProxyConnectionMethodTCP)
+	// endpoint of the Kubernetes API to forward the gRPC connection to the service listener (see gadgettracermgr).
 	ConnectionModeKubernetesProxy
 )
 
 const (
-	ParamNode          = "node"
-	ParamRemoteAddress = "remote-address"
+	ParamNode              = "node"
+	ParamRemoteAddress     = "remote-address"
+	ParamConnectionMethod  = "connection-method"
+	ParamConnectionTimeout = "connection-timeout"
+
+	// ParamGadgetServiceTCPPort is only used in combination with KubernetesProxyConnectionMethodTCP
+	ParamGadgetServiceTCPPort = "tcp-port"
 
 	// ConnectTimeout is the time in seconds we wait for a connection to the remote to
 	// succeed
-	ConnectTimeout = 30
+	ConnectTimeout = 5
 
 	// ResultTimeout is the time in seconds we wait for a result to return from the gadget
 	// after sending a Stop command
 	ResultTimeout = 30
+
+	// KubernetesProxyConnectionMethodTCP uses the Kubernetes API Server using port-forwarding to connect to the
+	// gadget service
+	KubernetesProxyConnectionMethodTCP = "tcp"
+
+	// KubernetesProxyConnectionMethodUnix uses the Kubernetes API Server using exec to connect to the gadget
+	// service
+	// Deprecated: due to the complexity and security concerns regarding the required privilege to use this,
+	// KubernetesProxyConnectionMethodUnix is now the standard.
+	KubernetesProxyConnectionMethodUnix = "unix"
 )
+
+var kubernetesProxyConnectionMethods = []string{KubernetesProxyConnectionMethodTCP, KubernetesProxyConnectionMethodUnix}
 
 type Runtime struct {
 	info           *deployinfo.DeployInfo
@@ -141,7 +158,14 @@ func (r *Runtime) ParamDescs() params.ParamDescs {
 }
 
 func (r *Runtime) GlobalParamDescs() params.ParamDescs {
-	p := params.ParamDescs{}
+	p := params.ParamDescs{
+		{
+			Key:          ParamConnectionTimeout,
+			Description:  "Maximum time to establish a connection to remote target in seconds",
+			DefaultValue: fmt.Sprintf("%d", ConnectTimeout),
+			TypeHint:     params.TypeUint,
+		},
+	}
 	switch r.connectionMode {
 	case ConnectionModeDirect:
 		p.Add(params.ParamDescs{
@@ -154,6 +178,20 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 		}...)
 		return p
 	case ConnectionModeKubernetesProxy:
+		p.Add(params.ParamDescs{
+			{
+				Key:            ParamConnectionMethod,
+				Description:    "Method used to connect to the gadget service; either tcp or unix (deprecated)",
+				DefaultValue:   KubernetesProxyConnectionMethodTCP,
+				PossibleValues: kubernetesProxyConnectionMethods,
+			},
+			{
+				Key:          ParamGadgetServiceTCPPort,
+				Description:  "Port used to connect to the gadget service",
+				DefaultValue: fmt.Sprintf("%d", api.GadgetServicePort),
+				TypeHint:     params.TypeUint16,
+			},
+		}...)
 		return p
 	}
 	panic("invalid connection mode set for grpc-runtime")
@@ -248,7 +286,7 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 }
 
 func (r *Runtime) GetGadgetInfo(ctx context.Context, desc gadgets.GadgetDesc, gadgetParams *params.Params, args []string) (*runTypes.GadgetInfo, error) {
-	ctx, cancelDial := context.WithTimeout(ctx, time.Second*ConnectTimeout)
+	ctx, cancelDial := context.WithTimeout(ctx, time.Second*time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint()))
 	defer cancelDial()
 
 	// use default params for now
@@ -311,7 +349,9 @@ func (r *Runtime) getConnToRandomTarget(ctx context.Context, runtimeParams *para
 	}
 	target := targets[0]
 	log.Debugf("using target %q (%q)", target.addressOrPod, target.node)
-	conn, err := r.dialContext(ctx, target)
+
+	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint())
+	conn, err := r.dialContext(ctx, target, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("dialing %q (%q): %w", target.addressOrPod, target.node, err)
 	}
@@ -360,7 +400,7 @@ func (r *Runtime) runGadgetOnTargets(
 	return results, results.Err()
 }
 
-func (r *Runtime) dialContext(dialCtx context.Context, target target) (*grpc.ClientConn, error) {
+func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout time.Duration) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
@@ -368,8 +408,22 @@ func (r *Runtime) dialContext(dialCtx context.Context, target target) (*grpc.Cli
 
 	// If we're in Kubernetes connection mode, we need a custom dialer
 	if r.connectionMode == ConnectionModeKubernetesProxy {
+		mode := r.globalParams.Get(ParamConnectionMethod).String()
 		opts = append(opts, grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
-			return NewK8SExecConn(ctx, target, time.Second*ConnectTimeout)
+			switch mode {
+			case KubernetesProxyConnectionMethodTCP:
+				port := r.globalParams.Get(ParamGadgetServiceTCPPort).AsUint16()
+				return NewK8SPortFwdConn(ctx, target, port, timeout)
+			case KubernetesProxyConnectionMethodUnix: // deprecated
+				log.Warnf("using deprecated connection mode KubernetesProxyConnectionMethodUnix")
+				return NewK8SExecConn(ctx, target, timeout)
+			default:
+				return nil, fmt.Errorf(
+					"invalid connection method %q (valid modes: %+v)",
+					mode,
+					kubernetesProxyConnectionMethods,
+				)
+			}
 		}))
 	}
 
@@ -387,10 +441,11 @@ func (r *Runtime) runGadget(gadgetCtx runtime.GadgetContext, target target, allP
 	connCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dialCtx, cancelDial := context.WithTimeout(gadgetCtx.Context(), time.Second*ConnectTimeout)
+	timeout := time.Second * time.Duration(r.globalParams.Get(ParamConnectionTimeout).AsUint())
+	dialCtx, cancelDial := context.WithTimeout(gadgetCtx.Context(), timeout)
 	defer cancelDial()
 
-	conn, err := r.dialContext(dialCtx, target)
+	conn, err := r.dialContext(dialCtx, target, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("dialing target on node %q: %w", target.node, err)
 	}

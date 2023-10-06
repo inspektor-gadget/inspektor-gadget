@@ -71,8 +71,14 @@ func main() {
 	}
 
 	runtime := grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
-	runtime.Init(runtime.GlobalParamDescs().ToParams())
+	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
+	common.AddFlags(rootCmd, runtimeGlobalParams, nil, runtime)
+	runtime.Init(runtimeGlobalParams)
 	if !skipInfo {
+		// evaluate flags early for runtimeGlobalFlags; this will make
+		// sure that --connection-method has already been parsed when calling
+		// InitDeployInfo()
+		rootCmd.ParseFlags(os.Args[1:])
 		runtime.InitDeployInfo()
 	}
 
