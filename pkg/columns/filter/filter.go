@@ -78,7 +78,7 @@ func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T])
 			return value, fmt.Errorf("tried to compare %q to float column %q", fs.value, column.Name)
 		}
 		value = reflect.ValueOf(number).Convert(column.Type())
-	case reflect.String:
+	case reflect.String, reflect.Array:
 		value = reflect.ValueOf(fs.value)
 	default:
 		return reflect.Value{}, fmt.Errorf("tried to match %q on unsupported column %q", fs.value, column.Name)
@@ -211,6 +211,9 @@ func (fs *FilterSpec[T]) getComparisonFunc() func(*T) bool {
 		return getComparisonFuncForComparisonType[uint64, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.String:
 		return getComparisonFuncForComparisonType[string, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
+	case reflect.Array, reflect.Slice:
+		ff := columns.GetFieldAsString[T](fs.column)
+		return getComparisonFuncForComparisonTypeWithFieldFunc[string, T](fs.comparisonType, fs.negate, fs.column, fs.refValue, ff)
 	case reflect.Float32:
 		return getComparisonFuncForComparisonType[float32, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Float64:
@@ -230,8 +233,7 @@ func (fs *FilterSpec[T]) getComparisonFunc() func(*T) bool {
 	}
 }
 
-func getComparisonFuncForComparisonType[OT constraints.Ordered, T any](ct comparisonType, negate bool, column *columns.Column[T], refValue any) func(a *T) bool {
-	ff := columns.GetFieldFunc[OT, T](column)
+func getComparisonFuncForComparisonTypeWithFieldFunc[OT constraints.Ordered, T any](ct comparisonType, negate bool, column *columns.Column[T], refValue any, ff func(*T) OT) func(a *T) bool {
 	switch ct {
 	case comparisonTypeMatch:
 		return func(a *T) bool {
@@ -258,6 +260,11 @@ func getComparisonFuncForComparisonType[OT constraints.Ordered, T any](ct compar
 			return false
 		}
 	}
+}
+
+func getComparisonFuncForComparisonType[OT constraints.Ordered, T any](ct comparisonType, negate bool, column *columns.Column[T], refValue any) func(a *T) bool {
+	ff := columns.GetFieldFunc[OT, T](column)
+	return getComparisonFuncForComparisonTypeWithFieldFunc[OT, T](ct, negate, column, refValue, ff)
 }
 
 // MatchAll matches a single entry against the FilterSpecs and returns true if all filters match
