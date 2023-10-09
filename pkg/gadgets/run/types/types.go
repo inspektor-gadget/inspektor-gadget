@@ -40,6 +40,7 @@ type L4Endpoint struct {
 type Event struct {
 	eventtypes.Event
 	eventtypes.WithMountNsID
+	eventtypes.WithNetNsID
 
 	L3Endpoints []L3Endpoint `json:"l3endpoints,omitempty"`
 	L4Endpoints []L4Endpoint `json:"l4endpoints,omitempty"`

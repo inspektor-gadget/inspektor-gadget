@@ -19,9 +19,11 @@ package tracer
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -36,8 +38,10 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/netnsenter"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
+	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
 )
 
 // keep aligned with pkg/gadgets/common/types.h
@@ -62,9 +66,16 @@ type Config struct {
 	Consts map[string]interface{}
 }
 
+type linkSnapshotter struct {
+	link *link.Iter
+	typ  string
+}
+
 type Tracer struct {
-	config        *Config
-	eventCallback func(*types.Event)
+	config             *Config
+	eventCallback      func(*types.Event)
+	eventArrayCallback func([]*types.Event)
+	mu                 sync.Mutex
 
 	spec       *ebpf.CollectionSpec
 	collection *ebpf.Collection
@@ -78,7 +89,11 @@ type Tracer struct {
 	ringbufReader *ringbuf.Reader
 	perfReader    *perf.Reader
 
-	links []link.Link
+	// Snapshotters related
+	linksSnapshotters []*linkSnapshotter
+
+	containers map[string]*containercollection.Container
+	links      []link.Link
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
@@ -100,6 +115,7 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 	tracer := &Tracer{
 		config:        &Config{},
 		networkTracer: networkTracer,
+		containers:    make(map[string]*containercollection.Container),
 	}
 	return tracer, nil
 }
@@ -255,6 +271,20 @@ func (t *Tracer) installTracer(params *params.Params) error {
 			err := t.networkTracer.AttachProg(t.collection.Programs[progName])
 			if err != nil {
 				return fmt.Errorf("attaching ebpf program to dispatcher: %w", err)
+			}
+		} else if p.Type == ebpf.Tracing && strings.HasPrefix(p.SectionName, "iter/") {
+			switch p.AttachTo {
+			case "task", "tcp", "udp":
+				l, err := link.AttachIter(link.IterOptions{
+					Program: t.collection.Programs[progName],
+				})
+				if err != nil {
+					return fmt.Errorf("attach BPF program %q: %w", progName, err)
+				}
+				t.links = append(t.links, l)
+				t.linksSnapshotters = append(t.linksSnapshotters, &linkSnapshotter{link: l, typ: p.AttachTo})
+			default:
+				return fmt.Errorf("unsupported iter type %q", p.AttachTo)
 			}
 		}
 	}
@@ -454,6 +484,86 @@ func (t *Tracer) setEBPFParameters(ebpfParams map[string]types.EBPFParam, gadget
 	}
 }
 
+func (t *Tracer) runIterInAllNetNs(it *link.Iter, cb func([]byte) *types.Event) ([]*types.Event, error) {
+	events := []*types.Event{}
+	s := int(t.eventType.Size)
+
+	namespacesToVisit := map[uint64]*containercollection.Container{}
+	for _, c := range t.containers {
+		namespacesToVisit[c.Netns] = c
+	}
+
+	for _, container := range namespacesToVisit {
+		err := netnsenter.NetnsEnter(int(container.Pid), func() error {
+			reader, err := it.Open()
+			if err != nil {
+				return err
+			}
+			defer reader.Close()
+
+			buf, err := io.ReadAll(reader)
+			if err != nil {
+				return err
+			}
+
+			eventsLocal := splitAndConvert(buf, s, cb)
+			for _, ev := range eventsLocal {
+				// TODO: set all the values here to avoid depending on the enricher?
+				ev.NetNsID = container.Netns
+			}
+
+			events = append(events, eventsLocal...)
+
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return events, nil
+}
+
+func splitAndConvert(data []byte, size int, cb func([]byte) *types.Event) []*types.Event {
+	events := make([]*types.Event, len(data)/size)
+	for i := 0; i < len(data)/size; i++ {
+		ev := cb(data[i*size : (i+1)*size])
+		events[i] = ev
+	}
+	return events
+}
+
+func (t *Tracer) runSnapshotter(gadgetCtx gadgets.GadgetContext) error {
+	cb := t.processEventFunc(gadgetCtx)
+
+	events := []*types.Event{}
+
+	for _, l := range t.linksSnapshotters {
+		switch l.typ {
+		// Iterators that have to be run in the root pid namespace
+		case "task":
+			buf, err := bpfiterns.Read(l.link)
+			if err != nil {
+				return fmt.Errorf("reading iterator: %w", err)
+			}
+			eventsL := splitAndConvert(buf, int(t.eventType.Size), cb)
+			events = append(events, eventsL...)
+		// Iterators that have to be run on each network namespace
+		case "tcp", "udp":
+			var err error
+			eventsL, err := t.runIterInAllNetNs(l.link, cb)
+			if err != nil {
+				return fmt.Errorf("reading iterator: %w", err)
+			}
+			events = append(events, eventsL...)
+		}
+	}
+
+	t.eventArrayCallback(events)
+
+	return nil
+}
+
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
 	args := gadgetCtx.Args()
@@ -479,16 +589,25 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	if t.perfReader != nil || t.ringbufReader != nil {
 		go t.runTracers(gadgetCtx)
 	}
+	if len(t.linksSnapshotters) > 0 {
+		return t.runSnapshotter(gadgetCtx)
+	}
 	gadgetcontext.WaitForTimeoutOrDone(gadgetCtx)
 
 	return nil
 }
 
 func (t *Tracer) AttachContainer(container *containercollection.Container) error {
+	t.mu.Lock()
+	t.containers[container.Runtime.ContainerID] = container
+	t.mu.Unlock()
 	return t.networkTracer.Attach(container.Pid)
 }
 
 func (t *Tracer) DetachContainer(container *containercollection.Container) error {
+	t.mu.Lock()
+	delete(t.containers, container.Runtime.ContainerID)
+	t.mu.Unlock()
 	return t.networkTracer.Detach(container.Pid)
 }
 
@@ -502,4 +621,12 @@ func (t *Tracer) SetEventHandler(handler any) {
 		panic("event handler invalid")
 	}
 	t.eventCallback = nh
+}
+
+func (t *Tracer) SetEventHandlerArray(handler any) {
+	nh, ok := handler.(func(ev []*types.Event))
+	if !ok {
+		panic("event handler invalid")
+	}
+	t.eventArrayCallback = nh
 }

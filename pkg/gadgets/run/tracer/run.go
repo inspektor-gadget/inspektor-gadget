@@ -99,6 +99,8 @@ func getGadgetType(spec *ebpf.CollectionSpec,
 	switch {
 	case len(gadgetMetadata.Tracers) > 0:
 		return gadgets.TypeTrace, nil
+	case len(gadgetMetadata.Snapshotters) > 0:
+		return gadgets.TypeOneShot, nil
 	default:
 		return gadgets.TypeUnknown, fmt.Errorf("unknown gadget type")
 	}

@@ -54,6 +54,13 @@ func getEventTypeBTF(progContent []byte, metadata *types.GadgetMetadata) (*btf.S
 		}
 
 		return valueStruct, nil
+	case len(metadata.Snapshotters) > 0:
+		var btfStruct *btf.Struct
+		_, snapshotter := getAnyMapElem(metadata.Snapshotters)
+		if err := spec.Types.TypeByName(snapshotter.StructName, &btfStruct); err != nil {
+			return nil, err
+		}
+		return btfStruct, nil
 	default:
 		return nil, fmt.Errorf("the gadget doesn't provide any compatible way to show information")
 	}
