@@ -1563,6 +1563,23 @@ jobs:
           hash=$(sha256sum $i | cut -d' ' -f1)
           echo "${hash}  $(basename $i)" >> SHA256SUMS
         done
+    - name: Install cyclonedx-gomod
+      uses: CycloneDX/gh-gomod-generate-sbom@v2
+    - name: Compute SBOM for all binary artifacts
+      shell: bash
+      run: |
+        mkdir sbom
+
+        for i in kubectl-gadget-*-*-tar-gz/kubectl-gadget-*-*.tar.gz ig-*-*-tar-gz/ig-*-*.tar.gz gadgetctl-*-*-tar-gz/gadgetctl-*-*.tar.gz; do
+          temp_dir=$(mktemp -d)
+          tar zxvf $i -C $temp_dir
+
+          exe=$(find $temp_dir -type f -executable)
+
+          cyclonedx-gomod bin -json -output sbom/$(basename $i .tar.gz).bom.json -version ${{ github.ref_name }} $exe
+
+          rm -fr $temp_dir
+        done
     - name: Install Cosign
       uses: sigstore/cosign-installer@main
     - name: Sign checksums file
@@ -1642,5 +1659,11 @@ jobs:
       uses: csexton/release-asset-action@v2
       with:
         pattern: "*.sig"
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        release-url: ${{ steps.create_release.outputs.upload_url }}
+    - name: Upload SBOMs
+      uses: csexton/release-asset-action@v2
+      with:
+        pattern: "sbom/*.bom.json"
         github-token: ${{ secrets.GITHUB_TOKEN }}
         release-url: ${{ steps.create_release.outputs.upload_url }}
