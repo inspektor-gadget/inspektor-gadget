@@ -446,8 +446,6 @@ func TestPopulate(t *testing.T) {
 			expectedMetadata: &GadgetMetadata{
 				Name:        "TODO: Fill the gadget name",
 				Description: "TODO: Fill the gadget description",
-				Tracers:     map[string]Tracer{},
-				Structs:     map[string]Struct{},
 			},
 		},
 		"tracer_wrong_map_type": {
@@ -467,8 +465,6 @@ func TestPopulate(t *testing.T) {
 			expectedMetadata: &GadgetMetadata{
 				Name:        "TODO: Fill the gadget name",
 				Description: "TODO: Fill the gadget description",
-				Tracers:     map[string]Tracer{},
-				Structs:     map[string]Struct{},
 				EBPFParams: map[string]EBPFParam{
 					// This also makes sure that param2 won't get picked up
 					// since GADGET_PARAM(param2) is missing
@@ -486,8 +482,6 @@ func TestPopulate(t *testing.T) {
 			initialMetadata: &GadgetMetadata{
 				Name:        "foo",
 				Description: "bar",
-				Tracers:     map[string]Tracer{},
-				Structs:     map[string]Struct{},
 				EBPFParams: map[string]EBPFParam{
 					"param": {
 						// Set desc and some attributes to be sure they aren't overwritten
@@ -502,8 +496,6 @@ func TestPopulate(t *testing.T) {
 			expectedMetadata: &GadgetMetadata{
 				Name:        "foo",
 				Description: "bar",
-				Tracers:     map[string]Tracer{},
-				Structs:     map[string]Struct{},
 				EBPFParams: map[string]EBPFParam{
 					// This also makes sure that param2 won't get picked up
 					// since GADGET_PARAM(param2) is missing
@@ -513,6 +505,51 @@ func TestPopulate(t *testing.T) {
 							Key:          "my-param-key",
 							Description:  "This is my awesome parameter",
 							DefaultValue: "42",
+						},
+					},
+				},
+			},
+		},
+		"snapshotter_struct": {
+			objectPath: "../../../../testdata/populate_metadata_snapshotter_struct.o",
+			expectedMetadata: &GadgetMetadata{
+				Name:        "TODO: Fill the gadget name",
+				Description: "TODO: Fill the gadget description",
+				Snapshotters: map[string]Snapshotter{
+					"events": {
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {
+						Fields: []Field{
+							{
+								Name:        "pid",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     10,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+							{
+								Name:        "comm",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+							{
+								Name:        "filename",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
 						},
 					},
 				},

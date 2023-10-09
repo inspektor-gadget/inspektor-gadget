@@ -33,8 +33,12 @@ import (
 const (
 	// Prefix used to mark trace maps
 	traceMapPrefix = "gadget_trace_map_"
+
 	// Prefix used to mark eBPF params
 	paramPrefix = "gadget_param_"
+
+	// Prefix used to mark snapshotters structs
+	snapshottersPrefix = "gadget_snapshotter_"
 )
 
 type EBPFParam struct {
@@ -289,16 +293,12 @@ func (m *GadgetMetadata) Populate(spec *ebpf.CollectionSpec) error {
 		m.Description = "TODO: Fill the gadget description"
 	}
 
-	if m.Tracers == nil {
-		m.Tracers = make(map[string]Tracer)
-	}
-
-	if m.Structs == nil {
-		m.Structs = make(map[string]Struct)
-	}
-
 	if err := m.populateTracers(spec); err != nil {
 		return fmt.Errorf("handling trace maps: %w", err)
+	}
+
+	if err := m.populateSnapshotters(spec); err != nil {
+		return fmt.Errorf("handling snapshotters: %w", err)
 	}
 
 	if err := m.populateParams(spec); err != nil {
@@ -362,6 +362,10 @@ func (m *GadgetMetadata) populateTracers(spec *ebpf.CollectionSpec) error {
 	if traceMap == nil {
 		log.Debug("No trace map found")
 		return nil
+	}
+
+	if m.Tracers == nil {
+		m.Tracers = make(map[string]Tracer)
 	}
 
 	if err := validateTraceMap(traceMap); err != nil {
@@ -564,4 +568,52 @@ func checkParamVar(spec *ebpf.CollectionSpec, name string) error {
 	}
 
 	return result
+}
+
+func (m *GadgetMetadata) populateSnapshotters(spec *ebpf.CollectionSpec) error {
+	snapshottersNameAndType, _ := getGadgetIdentByPrefix(spec, snapshottersPrefix)
+	if len(snapshottersNameAndType) == 0 {
+		log.Debug("No snapshotters found")
+		return nil
+	}
+
+	if len(snapshottersNameAndType) > 1 {
+		log.Warnf("Multiple snapshotters found, using %q", snapshottersNameAndType[0])
+	}
+
+	snapshotterNameAndType := snapshottersNameAndType[0]
+
+	if m.Snapshotters == nil {
+		m.Snapshotters = make(map[string]Snapshotter)
+	}
+
+	parts := strings.Split(snapshotterNameAndType, "___")
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid snapshotter annotation: %q", snapshotterNameAndType)
+	}
+	sname := parts[0]
+	stype := parts[1]
+
+	var btfStruct *btf.Struct
+	spec.Types.TypeByName(stype, &btfStruct)
+
+	if btfStruct == nil {
+		return fmt.Errorf("struct %q not found", stype)
+	}
+
+	_, ok := m.Snapshotters[sname]
+	if !ok {
+		log.Debugf("Adding snapshotter %q", sname)
+		m.Snapshotters[sname] = Snapshotter{
+			StructName: btfStruct.Name,
+		}
+	} else {
+		log.Debugf("Snapshotter %q already defined, skipping", sname)
+	}
+
+	if err := m.populateStruct(btfStruct); err != nil {
+		return fmt.Errorf("populating struct: %w", err)
+	}
+
+	return nil
 }

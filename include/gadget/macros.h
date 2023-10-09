@@ -16,4 +16,9 @@
 #define GADGET_PARAM(name) \
 	const void * gadget_param_##name __attribute__((unused));
 
+// GADGET_SNAPSHOTTER is used to mark a struct as being produced by a snapshotter gadget.
+#define GADGET_SNAPSHOTTER(name, type) \
+	const void *gadget_snapshotter_##name##___##type __attribute__((unused)); \
+	const struct type *unusedevent_##name##___##type __attribute__((unused));
+
 #endif /* __MACROS_H */
