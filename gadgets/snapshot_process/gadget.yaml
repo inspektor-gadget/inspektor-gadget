@@ -1,0 +1,37 @@
+name: snapshot process
+description: Show running processes
+snapshotters:
+  processes:
+    structName: process_entry
+structs:
+  process_entry:
+    fields:
+    - name: comm
+      description: Process name
+      attributes:
+        template: comm
+    - name: pid
+      description: Process ID
+      attributes:
+        template: pid
+    - name: tid
+      description: Thread ID
+      attributes:
+        template: pid
+    - name: ppid
+      description: Parent process ID
+      attributes:
+        template: pid
+    - name: uid
+      description: User ID
+      attributes:
+        template: uid
+    - name: gid
+      description: Group ID
+      attributes:
+        template: uid
+ebpfParams:
+  show_threads:
+    key: threads
+    defaultValue: "false"
+    description: Show all threads (by default, only processes are shown)
