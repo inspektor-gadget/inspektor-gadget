@@ -35,6 +35,18 @@ func TestValidate(t *testing.T) {
 			metadata:          &GadgetMetadata{},
 			expectedErrString: "gadget name is required",
 		},
+		"multiple_types": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Tracers: map[string]Tracer{
+					"foo": {},
+				},
+				Snapshotters: map[string]Snapshotter{
+					"bar": {},
+				},
+			},
+			expectedErrString: "gadget cannot have tracers and snapshotters",
+		},
 		"tracers_more_than_one": {
 			metadata: &GadgetMetadata{
 				Name: "foo",
@@ -238,6 +250,38 @@ func TestValidate(t *testing.T) {
 				},
 			},
 			expectedErrString: "\"param3\" is not const",
+		},
+		"snapshotters_more_than_one": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Snapshotters: map[string]Snapshotter{
+					"foo": {},
+					"bar": {},
+				},
+			},
+			expectedErrString: "only one snapshotter is allowed",
+		},
+		"snapshotters_missing_struct_name": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Snapshotters: map[string]Snapshotter{
+					"foo": {},
+				},
+			},
+			expectedErrString: "is missing structName",
+		},
+		"snapshotters_good": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Snapshotters: map[string]Snapshotter{
+					"foo": {
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {},
+				},
+			},
 		},
 	}
 
