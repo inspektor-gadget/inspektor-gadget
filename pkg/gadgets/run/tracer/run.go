@@ -390,16 +390,26 @@ func (g *GadgetDesc) customJsonParser(info *types.GadgetInfo, options ...columns
 	return columns_json.NewFormatter(cols.ColumnMap, options...), nil
 }
 
+func jsonConverterFn(formatter *columns_json.Formatter[types.Event], printer types.Printer) func(ev any) {
+	return func(ev any) {
+		switch typ := ev.(type) {
+		case *types.Event:
+			printer.Output(formatter.FormatEntry(typ))
+		case []*types.Event:
+			printer.Output(formatter.FormatEntries(typ))
+		default:
+			printer.Logf(logger.WarnLevel, "unknown type: %T", typ)
+		}
+	}
+}
+
 func (g *GadgetDesc) JSONConverter(info *types.GadgetInfo, printer types.Printer) func(ev any) {
 	formatter, err := g.customJsonParser(info)
 	if err != nil {
 		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
 		return nil
 	}
-	return func(ev any) {
-		event := ev.(*types.Event)
-		printer.Output(formatter.FormatEntry(event))
-	}
+	return jsonConverterFn(formatter, printer)
 }
 
 func (g *GadgetDesc) JSONPrettyConverter(info *types.GadgetInfo, printer types.Printer) func(ev any) {
@@ -408,10 +418,7 @@ func (g *GadgetDesc) JSONPrettyConverter(info *types.GadgetInfo, printer types.P
 		printer.Logf(logger.WarnLevel, "creating json formatter: %s", err)
 		return nil
 	}
-	return func(ev any) {
-		event := ev.(*types.Event)
-		printer.Output(formatter.FormatEntry(event))
-	}
+	return jsonConverterFn(formatter, printer)
 }
 
 func (g *GadgetDesc) YAMLConverter(info *types.GadgetInfo, printer types.Printer) func(ev any) {
@@ -421,8 +428,17 @@ func (g *GadgetDesc) YAMLConverter(info *types.GadgetInfo, printer types.Printer
 		return nil
 	}
 	return func(ev any) {
-		event := ev.(*types.Event)
-		eventJson := formatter.FormatEntry(event)
+		var eventJson string
+		switch typ := ev.(type) {
+		case *types.Event:
+			eventJson = formatter.FormatEntry(typ)
+		case []*types.Event:
+			eventJson = formatter.FormatEntries(typ)
+		default:
+			printer.Logf(logger.WarnLevel, "unknown type: %T", typ)
+			return
+		}
+
 		eventYaml, err := k8syaml.JSONToYAML([]byte(eventJson))
 		if err != nil {
 			printer.Logf(logger.WarnLevel, "converting json to yaml: %s", err)
