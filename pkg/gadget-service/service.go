@@ -148,17 +148,21 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	parser := gadgetDesc.Parser()
 
 	runtimeParams := runtime.ParamDescs().ToParams()
+	gType := gadgetDesc.Type()
 
 	gadgetParamDescs := gadgetDesc.ParamDescs()
-	gadgetParamDescs.Add(gadgets.GadgetParams(gadgetDesc, parser)...)
+	// TODO: do we need to update gType before calling this?
+	gadgetParamDescs.Add(gadgets.GadgetParams(gadgetDesc, gType, parser)...)
 	gadgetParams := gadgetParamDescs.ToParams()
 	err = gadgets.ParamsFromMap(request.Params, gadgetParams, runtimeParams, operatorParams)
 	if err != nil {
 		return fmt.Errorf("setting parameters: %w", err)
 	}
 
+	var gadgetInfo *runTypes.GadgetInfo
+
 	if c, ok := gadgetDesc.(runTypes.RunGadgetDesc); ok {
-		gadgetInfo, err := s.runtime.GetGadgetInfo(runGadget.Context(), gadgetDesc, gadgetParams, request.Args)
+		gadgetInfo, err = s.runtime.GetGadgetInfo(runGadget.Context(), gadgetDesc, gadgetParams, request.Args)
 		if err != nil {
 			return fmt.Errorf("getting gadget info: %w", err)
 		}
@@ -256,6 +260,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 		parser,
 		logger,
 		time.Duration(request.Timeout),
+		gadgetInfo,
 	)
 	defer gadgetCtx.Cancel()
 

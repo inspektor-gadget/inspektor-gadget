@@ -989,5 +989,6 @@ func newGadgetCtx(gadgetParams *params.Params, timeout time.Duration) *gadgetcon
 		nil,
 		log.StandardLogger(),
 		timeout,
+		nil,
 	)
 }

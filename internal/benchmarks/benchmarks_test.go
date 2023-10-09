@@ -257,7 +257,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 						parser := gadgetDesc.Parser()
 						if parser != nil {
 							parser.SetEventCallback(func(any) {})
-							paramDescs = append(paramDescs, gadgets.GadgetParams(gadgetDesc, parser)...)
+							paramDescs = append(paramDescs, gadgets.GadgetParams(gadgetDesc, gadgetDesc.Type(), parser)...)
 						}
 
 						gadgetParams := paramDescs.ToParams()
@@ -274,6 +274,7 @@ func BenchmarkAllGadgetsWithContainers(b *testing.B) {
 							parser,
 							logger.DefaultLogger(),
 							0,
+							nil,
 						)
 
 						_, err := runtime.RunGadget(gadgetCtx)

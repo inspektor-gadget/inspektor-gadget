@@ -16,6 +16,7 @@ package types
 
 import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
@@ -50,6 +51,7 @@ type Event struct {
 type GadgetInfo struct {
 	GadgetMetadata *GadgetMetadata
 	ProgContent    []byte
+	GadgetType     gadgets.GadgetType
 }
 
 func (ev *Event) GetEndpoints() []*eventtypes.L3Endpoint {
