@@ -78,7 +78,7 @@ func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T])
 			return value, fmt.Errorf("tried to compare %q to float column %q", fs.value, column.Name)
 		}
 		value = reflect.ValueOf(number).Convert(column.Type())
-	case reflect.String:
+	case reflect.String, reflect.Array:
 		value = reflect.ValueOf(fs.value)
 	default:
 		return reflect.Value{}, fmt.Errorf("tried to match %q on unsupported column %q", fs.value, column.Name)
@@ -143,7 +143,7 @@ func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*Filt
 		fs.value = filterRule
 	}
 
-	if fs.comparisonType == comparisonTypeRegex && column.Kind() != reflect.String {
+	if fs.comparisonType == comparisonTypeRegex && (column.Kind() != reflect.String && column.Kind() != reflect.Array) {
 		return nil, fmt.Errorf("tried to apply regular expression on non-string column %q", fs.column.Name)
 	}
 
@@ -214,6 +214,8 @@ func (fs *FilterSpec[T]) getComparisonFunc() func(*T) bool {
 			}
 		}
 		return getComparisonFuncForComparisonType[string, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
+	case reflect.Array:
+		return getComparisonFuncAsStringField[T](fs.comparisonType, fs.negate, fs.column, fs.refValue, fs.regex)
 	case reflect.Float32:
 		return getComparisonFuncForComparisonType[float32, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
 	case reflect.Float64:
@@ -255,6 +257,40 @@ func getComparisonFuncForComparisonType[OT constraints.Ordered, T any](ct compar
 	case comparisonTypeLte:
 		return func(a *T) bool {
 			return ff(a) <= refValue.(OT) != negate
+		}
+	default:
+		return func(a *T) bool {
+			return false
+		}
+	}
+}
+
+func getComparisonFuncAsStringField[T any](ct comparisonType, negate bool, column *columns.Column[T], refValue any, re *regexp.Regexp) func(a *T) bool {
+	ff := columns.GetFieldAsString[T](column)
+	switch ct {
+	case comparisonTypeRegex:
+		return func(a *T) bool {
+			return re.MatchString(ff(a)) != negate
+		}
+	case comparisonTypeMatch:
+		return func(a *T) bool {
+			return ff(a) == refValue.(string) != negate
+		}
+	case comparisonTypeGt:
+		return func(a *T) bool {
+			return ff(a) > refValue.(string) != negate
+		}
+	case comparisonTypeGte:
+		return func(a *T) bool {
+			return ff(a) >= refValue.(string) != negate
+		}
+	case comparisonTypeLt:
+		return func(a *T) bool {
+			return ff(a) < refValue.(string) != negate
+		}
+	case comparisonTypeLte:
+		return func(a *T) bool {
+			return ff(a) <= refValue.(string) != negate
 		}
 	default:
 		return func(a *T) bool {
