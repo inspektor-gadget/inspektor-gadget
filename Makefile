@@ -138,14 +138,14 @@ list-kubectl-gadget-targets:
 kubectl-gadget-all: $(KUBECTL_GADGET_TARGETS) kubectl-gadget
 
 kubectl-gadget: kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)
-	cp kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH) kubectl-gadget
+	cp kubectl-gadget-$(GOHOSTOS)-$(GOHOSTARCH)$(if $(findstring windows,$*),.exe,) kubectl-gadget$(if $(findstring windows,$*),.exe,)
 
 kubectl-gadget-%: phony_explicit
 	export GO111MODULE=on CGO_ENABLED=0 && \
-	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
+	export GOOS=$(shell echo $* | cut -f1 -d-) GOARCH=$(shell echo $* | cut -f2 -d-) && \
 	go build -ldflags $(LDFLAGS) \
 		-tags withoutebpf \
-		-o kubectl-gadget-$${GOOS}-$${GOARCH} \
+		-o kubectl-gadget-$${GOOS}-$${GOARCH}$(if $(findstring windows,$*),.exe,) \
 		github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget
 
 .PHONY: install/kubectl-gadget
@@ -168,14 +168,14 @@ list-gadgetctl-targets:
 gadgetctl-all: $(GADGETCTL_TARGETS) gadgetctl
 
 gadgetctl: gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH)
-	cp gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH) gadgetctl
+	cp gadgetctl-$(GOHOSTOS)-$(GOHOSTARCH)$(if $(findstring windows,$*),.exe,) gadgetctl$(if $(findstring windows,$*),.exe,)
 
 gadgetctl-%: phony_explicit
 	export GO111MODULE=on CGO_ENABLED=0 && \
 	export GOOS=$(shell echo $* |cut -f1 -d-) GOARCH=$(shell echo $* |cut -f2 -d-) && \
 	go build -ldflags $(LDFLAGS) \
 		-tags withoutebpf \
-		-o gadgetctl-$${GOOS}-$${GOARCH} \
+		-o gadgetctl-$${GOOS}-$${GOARCH}$(if $(findstring windows,$*),.exe,) \
 		github.com/inspektor-gadget/inspektor-gadget/cmd/gadgetctl
 
 .PHONY: install/gadgetctl

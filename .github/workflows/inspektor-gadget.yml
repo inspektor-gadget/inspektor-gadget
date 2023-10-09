@@ -205,14 +205,17 @@ jobs:
         IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
         make $client
 
+        # We need to append .exe to windows binaries...
+        dot_exe=$(test ${{ matrix.os }} = 'windows' && echo '.exe' || echo '')
+
         # Prepare assets for release and actions artifacts
         platform='${{ matrix.os }}-${{ matrix.arch }}'
         mkdir $platform
-        cp $client $platform/${{ matrix.client }}
+        cp "${client}${dot_exe}" "${platform}/${{ matrix.client }}${dot_exe}"
         cp LICENSE $platform/
         tar --sort=name --owner=root:0 --group=root:0 \
           -czf ${client}.tar.gz -C $platform \
-          ${{ matrix.client }} LICENSE
+          ${{ matrix.client }}${dot_exe} LICENSE
         rm -rf $platform
     - name: Add ${{ matrix.client }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz as artifact.
       uses: actions/upload-artifact@master
