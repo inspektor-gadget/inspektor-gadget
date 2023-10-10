@@ -64,4 +64,4 @@ spec:
         os: windows
         arch: amd64
     {{addURIAndSha "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/{{ .TagName }}/kubectl-gadget-windows-amd64-{{ .TagName }}.tar.gz" .TagName }}
-    bin: kubectl-gadget
+    bin: kubectl-gadget.exe
