@@ -150,6 +150,7 @@ func getGadgetInfo(params *params.Params, args []string, secretBytes []byte, log
 
 	ret := &types.GadgetInfo{
 		ProgContent:    gadget.EbpfObject,
+		WasmContent:    gadget.WasmObject,
 		GadgetMetadata: &types.GadgetMetadata{},
 	}
 
