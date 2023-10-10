@@ -41,9 +41,7 @@ RUN set -ex; \
 		yum install -y $PACKAGES; \
 	elif command -v apt-get; then \
 		apt-get update && \
-		apt-get install -y $PACKAGES && \
-		apt-get clean && \
-		rm -rf /var/lib/apt/lists/*; \
+		apt-get install -y $PACKAGES; \
 	elif command -v apk; then \
 		apk add gcompat $PACKAGES; \
 	fi && \
@@ -73,3 +71,18 @@ COPY --from=bpftrace /usr/bin/bpftrace /usr/bin/bpftrace
 
 # Mitigate https://github.com/kubernetes/kubernetes/issues/106962.
 RUN rm -f /var/run
+
+# Update packages to avoid CVEs.
+# We need to run this at the end to ensure this step will not be cached, as the
+# previous ones (e.g. COPY gadgettracermanager) would not.
+RUN if command -v tdnf; then \
+		tdnf upgrade -y; \
+	elif command -v yum; then \
+		yum update -y; \
+	elif command -v apt-get; then \
+		apt-get upgrade -y && \
+		apt-get clean && \
+		rm -rf /var/lib/apt/lists/*; \
+	elif command -v apk; then \
+		apk -U upgrade; \
+	fi
