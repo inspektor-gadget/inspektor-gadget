@@ -140,6 +140,7 @@ type GadgetInfo struct {
 	GadgetMetadata *GadgetMetadata
 	Columns        []ColumnDesc
 	ProgContent    []byte
+	WasmContent    []byte
 	GadgetType     gadgets.GadgetType
 	EventFactory   *EventFactory
 }
