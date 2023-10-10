@@ -192,9 +192,11 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 				Payload: data,
 			}
 
+			// TODO: Use atomic type
 			seqLock.Lock()
 			seq++
 			event.Seq = seq
+			seqLock.Unlock()
 
 			// Try to send event; if outputBuffer is full, it will be dropped by taking
 			// the default path.
@@ -202,7 +204,6 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 			case outputBuffer <- event:
 			default:
 			}
-			seqLock.Unlock()
 		})
 
 		go func() {
