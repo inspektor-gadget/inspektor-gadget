@@ -263,8 +263,8 @@ func buildCommandFromGadget(
 					if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
 						additionalMessage := "Specify the gadget image to get more information about it"
 						cmd.Long = fmt.Sprintf("%s\n\n%s", cmd.Short, additionalMessage)
-						return cmd.Help()
 					}
+					return cmd.Help()
 				}
 
 				var err error
