@@ -17,6 +17,7 @@
 package tracer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -32,6 +33,8 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
+	"github.com/wapc/wapc-go"
+	"github.com/wapc/wapc-go/engines/wazero"
 	"golang.org/x/exp/constraints"
 
 	log "github.com/sirupsen/logrus"
@@ -64,6 +67,7 @@ type l4EndpointT struct {
 
 type Config struct {
 	ProgContent []byte
+	WasmContent []byte
 	Metadata    *types.GadgetMetadata
 	MountnsMap  *ebpf.Map
 
@@ -81,6 +85,7 @@ type Tracer struct {
 	eventCallback      func(*types.Event)
 	eventArrayCallback func([]*types.Event)
 	mu                 sync.Mutex
+	gadgetCtx          gadgets.GadgetContext
 
 	spec       *ebpf.CollectionSpec
 	collection *ebpf.Collection
@@ -97,8 +102,10 @@ type Tracer struct {
 	// Snapshotters related
 	linksSnapshotters []*linkSnapshotter
 
-	containers map[string]*containercollection.Container
-	links      []link.Link
+	containers   map[string]*containercollection.Container
+	links        []link.Link
+	wasmModule   wapc.Module
+	wasmInstance wapc.Instance
 
 	eventFactory *types.EventFactory
 }
@@ -115,6 +122,7 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	t.config = &Config{}
 	t.containers = make(map[string]*containercollection.Container)
 	t.networkTracers = make(map[string]*networktracer.Tracer[types.Event])
+	t.gadgetCtx = gadgetCtx
 
 	params := gadgetCtx.GadgetParams()
 	args := gadgetCtx.Args()
@@ -136,6 +144,7 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	}
 
 	t.eventFactory = info.EventFactory
+	t.config.WasmContent = info.WasmContent
 	t.config.ProgContent = info.ProgContent
 	t.spec, err = loadSpec(t.config.ProgContent)
 	if err != nil {
@@ -161,6 +170,12 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 }
 
 func (t *Tracer) Close() {
+	if t.wasmModule != nil {
+		t.wasmModule.Close(context.Background())
+	}
+	if t.wasmInstance != nil {
+		t.wasmInstance.Close(context.Background())
+	}
 	if t.collection != nil {
 		t.collection.Close()
 		t.collection = nil
@@ -304,7 +319,36 @@ func (t *Tracer) handleTracers() (string, error) {
 }
 
 func (t *Tracer) installTracer(params *params.Params) error {
+	// Load wasm module
+	ctx := context.Background()
+	engine := wazero.Engine()
+
 	var err error
+	if t.config.WasmContent != nil {
+		host := t.newWasmHost(t.gadgetCtx.Logger())
+		t.wasmModule, err = engine.New(ctx, host, t.config.WasmContent, &wapc.ModuleConfig{
+			Logger: func(msg string) {
+				t.gadgetCtx.Logger().Info(msg)
+			},
+			Stdout: os.Stdout,
+			Stderr: os.Stderr,
+		})
+		if err != nil {
+			return fmt.Errorf("creating wasm module: %w", err)
+		}
+		t.wasmInstance, err = t.wasmModule.Instantiate(ctx)
+		if err != nil {
+			return fmt.Errorf("instantiating wasm module: %w", err)
+		}
+
+		_, err = t.wasmInstance.Invoke(t.newHostCallContext(),
+			"Init", []byte{})
+		if err != nil {
+			return fmt.Errorf("invoking Init() in wasm module: %w", err)
+		}
+	}
+
+	// Load the spec
 	var tracerMapName string
 
 	mapReplacements := map[string]*ebpf.Map{}
