@@ -45,7 +45,7 @@ require (
 	github.com/docker/cli v24.0.6+incompatible
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/godbus/dbus/v5 v5.1.0
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/kr/pretty v0.3.1
 	github.com/moby/moby v24.0.6+incompatible
 	github.com/opencontainers/image-spec v1.1.0-rc5
