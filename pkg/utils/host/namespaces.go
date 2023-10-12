@@ -59,7 +59,7 @@ func IsHostNetNs() (bool, error) {
 func isHostNamespace(nsKind string) (bool, error) {
 	if !initDone {
 		// HostProcFs can be overwritten by workarounds, so Init() must be called first.
-		panic("host.Init() must be called before calling isHostNamespace()")
+		return false, fmt.Errorf("host.Init() must be called before calling isHostNamespace()")
 	}
 
 	selfFileInfo, err := os.Stat("/proc/self/ns/" + nsKind)
