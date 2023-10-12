@@ -5,6 +5,7 @@ env:
   GO_VERSION: 1.19.6
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
   DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:latest
+  DEFAULT_EBPF_BUILDER_IMAGE: ghcr.io/inspektor-gadget/ebpf-builder:latest
 concurrency:
   group: ${{ github.ref }}
   # We do not want to cancel job in progress on main to be sure to catch new
@@ -124,7 +125,8 @@ jobs:
 
   ebpf-objects-checks:
     name: eBPF Object checks
-    # level: 0
+    # level: 1
+    needs: build-helper-images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -140,7 +142,7 @@ jobs:
           fi
       - name: Detect changes for ebpf objects
         run: |
-          make ebpf-objects
+          make EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }} ebpf-objects
           changes="$(git status --porcelain)"
           if [ -n "$changes" ] ; then
             echo "$changes"
@@ -647,6 +649,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       dnstester_image: ${{ steps.image-tag.outputs.dnstester || env.DEFAULT_DNSTESTER_IMAGE }}
+      ebpf_builder_image: ${{ steps.image-tag.outputs.ebpf-builder || env.DEFAULT_EBPF_BUILDER_IMAGE }}
     permissions:
       # allow publishing container image
       # in case of public fork repo/packages permissions will always be read
@@ -657,28 +660,44 @@ jobs:
       matrix:
         image:
           - name: "dnstester"
-            dockerfile-dir: "tools/dnstester"
+            context: "tools/dnstester"
+            dockerfile: "tools/dnstester/Dockerfile"
             platform: "linux/amd64,linux/arm64"
-            filter-pattern: "tools/dnstester/*"
+            filter-patterns:
+              - "tools/dnstester/*"
+          - name: "ebpf-builder"
+            context: "/home/runner/work/inspektor-gadget/inspektor-gadget"
+            dockerfile: "Dockerfiles/ebpf-builder.Dockerfile"
+            platform: "linux/amd64"
+            filter-patterns:
+              - "include/**"
+              - "Dockerfiles/ebpf-builder.Dockerfile"
+              - "cmd/common/image/Makefile.build"
     steps:
     - uses: actions/checkout@v4
     - uses: dorny/paths-filter@v2
       id: filter
       with:
+        # https://github.com/rhysd/actionlint/blob/main/docs/checks.md#check-type-check-expression
         filters: |
-          pattern: ${{ matrix.image.filter-pattern }}
+          pattern: ${{ toJson(matrix.image.filter-patterns) }}
+    - name: Check if we should build helpers
+      id: check-build-helpers
+      if: steps.filter.outputs.pattern == 'true' || startsWith(github.ref_name, 'v')
+      run: |
+          echo "build=true" >> $GITHUB_OUTPUT
     - name: Set up Docker Buildx
-      if: steps.filter.outputs.pattern == 'true'
+      if: steps.check-build-helpers.outputs.build == 'true'
       uses: docker/setup-buildx-action@v3
     - name: Login to Container Registry
-      if: steps.filter.outputs.pattern == 'true'
+      if: steps.check-build-helpers.outputs.build == 'true'
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Set container repository and determine image tag
-      if: steps.filter.outputs.pattern == 'true'
+      if: steps.check-build-helpers.outputs.build == 'true'
       id: set-repo-determine-image-tag
       uses: ./.github/actions/set-container-repo-and-determine-image-tag
       with:
@@ -686,11 +705,11 @@ jobs:
         container-image: ${{ github.repository_owner }}/${{ matrix.image.name }}
     - name: Build ${{ matrix.image.name }} image
       id: build-image
-      if: steps.filter.outputs.pattern == 'true'
+      if: steps.check-build-helpers.outputs.build == 'true'
       uses: docker/build-push-action@v5
       with:
-        context: ${{ matrix.image.dockerfile-dir }}
-        file: ${{ matrix.image.dockerfile-dir }}/Dockerfile
+        context: ${{ matrix.image.context }}
+        file: ${{ matrix.image.dockerfile }}
         push: ${{ vars.PUSH_HELPERS == 'ENABLE_PUSH_HELPERS' }}
         tags: ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
         platforms: ${{ matrix.image.platform }}
@@ -1022,7 +1041,7 @@ jobs:
   build-and-push-gadgets:
     name: Build and push gadgets
     # level: 2
-    needs: [ build-ig ]
+    needs: [ build-ig, build-helper-images ]
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -1057,6 +1076,7 @@ jobs:
           make \
           GADGET_REPOSITORY=${{ steps.set-repo-determine-image-tag.outputs.gadget-repository }} \
           GADGET_TAG=${{ steps.set-repo-determine-image-tag.outputs.gadget-tag }} \
+          BUILDER_IMAGE=${{ needs.build-helper-images.outputs.ebpf_builder_image }} \
           push-gadgets -o install/ig
 
   test-integration-non-k8s-ig:
