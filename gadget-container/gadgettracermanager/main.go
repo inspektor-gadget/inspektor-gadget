@@ -51,29 +51,29 @@ import (
 )
 
 var (
-	controller              bool
-	serve                   bool
-	liveness                bool
-	fallbackPodInformer     bool
-	dump                    string
-	hookMode                string
-	socketfile              string
-	gadgetServiceSocketFile string
-	method                  string
-	label                   string
-	tracerid                string
-	containerID             string
-	namespace               string
-	podname                 string
-	containername           string
-	containerPid            uint
+	controller          bool
+	serve               bool
+	liveness            bool
+	fallbackPodInformer bool
+	dump                string
+	hookMode            string
+	socketfile          string
+	gadgetServiceHost   string
+	method              string
+	label               string
+	tracerid            string
+	containerID         string
+	namespace           string
+	podname             string
+	containername       string
+	containerPid        uint
 )
 
 var clientTimeout = 2 * time.Second
 
 func init() {
 	flag.StringVar(&socketfile, "socketfile", "/run/gadgettracermanager.socket", "Socket file")
-	flag.StringVar(&gadgetServiceSocketFile, "service-socketfile", api.GadgetServiceSocket, "Socket file for gadget service")
+	flag.StringVar(&gadgetServiceHost, "service-host", fmt.Sprintf("tcp://127.0.0.1:%d", api.GadgetServicePort), "Socket address for gadget service")
 	flag.StringVar(&hookMode, "hook-mode", "auto", "how to get containers start/stop notifications (podinformer, fanotify, auto, none)")
 
 	flag.BoolVar(&serve, "serve", false, "Start server")
@@ -314,13 +314,18 @@ func main() {
 		}
 
 		service := gadgetservice.NewService(log.StandardLogger())
+
+		socketType, socketPath, err := api.ParseSocketAddress(gadgetServiceHost)
+		if err != nil {
+			log.Fatalf("invalid service host: %v", err)
+		}
 		go func() {
 			err := service.Run(gadgetservice.RunConfig{
-				SocketType: "unix",
-				SocketPath: gadgetServiceSocketFile,
+				SocketType: socketType,
+				SocketPath: socketPath,
 			})
 			if err != nil {
-				log.Fatalf("failed to start Gadget Service: %v", err)
+				log.Fatalf("starting gadget service: %v", err)
 			}
 		}()
 

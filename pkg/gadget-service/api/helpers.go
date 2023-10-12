@@ -14,17 +14,25 @@
 
 package api
 
-const (
-	EventTypeGadgetPayload uint32 = 0
-	EventTypeGadgetResult  uint32 = 1
-	EventTypeGadgetDone    uint32 = 2
-	EventTypeGadgetJobID   uint32 = 3
-
-	EventLogShift = 16
+import (
+	"fmt"
+	"net/url"
 )
 
-const (
-	GadgetServiceSocket = "/run/gadgetservice.socket"
-	GadgetServicePort   = 8080
-	DefaultDaemonPath   = "unix:///var/run/ig/ig.socket"
-)
+func ParseSocketAddress(addr string) (string, string, error) {
+	socketURL, err := url.Parse(addr)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid socket address %q: %w", addr, err)
+	}
+	var socketPath string
+	socketType := socketURL.Scheme
+	switch socketType {
+	default:
+		return "", "", fmt.Errorf("invalid type %q for socket; please use 'unix' or 'tcp'", socketType)
+	case "unix":
+		socketPath = socketURL.Path
+	case "tcp":
+		socketPath = socketURL.Host
+	}
+	return socketType, socketPath, nil
+}

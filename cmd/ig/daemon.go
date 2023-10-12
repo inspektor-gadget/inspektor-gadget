@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -61,9 +60,9 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 			return fmt.Errorf("%s must be run as root to be able to run eBPF programs", filepath.Base(os.Args[0]))
 		}
 
-		socketURL, err := url.Parse(socket)
+		socketType, socketPath, err := api.ParseSocketAddress(socket)
 		if err != nil {
-			return fmt.Errorf("invalid daemon-socket address %q: %w", socketURL, err)
+			return fmt.Errorf("invalid daemon-socket address: %w", err)
 		}
 
 		gid := 0
@@ -76,17 +75,6 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 			gid = tmpGid
 		} else {
 			return fmt.Errorf("group %q not found", group)
-		}
-
-		var socketPath string
-		socketType := socketURL.Scheme
-		switch socketType {
-		default:
-			return fmt.Errorf("invalid type for daemon-socket %q; please use 'unix' or 'tcp'", socketType)
-		case "unix":
-			socketPath = socketURL.Path
-		case "tcp":
-			socketPath = socketURL.Host
 		}
 
 		log.Infof("starting Inspektor Gadget daemon at %q", socket)

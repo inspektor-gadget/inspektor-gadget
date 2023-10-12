@@ -119,14 +119,16 @@ func (k *k8sExecConn) RemoteAddr() net.Addr {
 	return &k8sAddress{podName: k.podName}
 }
 
-func (k *k8sExecConn) SetDeadline(t time.Time) error {
+// satisfying the net.Conn interface
+
+func (k *k8sExecConn) SetDeadline(_ time.Time) error {
 	return nil
 }
 
-func (k *k8sExecConn) SetReadDeadline(t time.Time) error {
+func (k *k8sExecConn) SetReadDeadline(_ time.Time) error {
 	return nil
 }
 
-func (k *k8sExecConn) SetWriteDeadline(t time.Time) error {
+func (k *k8sExecConn) SetWriteDeadline(_ time.Time) error {
 	return nil
 }
