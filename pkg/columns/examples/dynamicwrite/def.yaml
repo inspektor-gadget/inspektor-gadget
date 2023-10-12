@@ -1,0 +1,11 @@
+fields:
+  - name: Demo
+    offset: 0
+    size: 4
+    type: "uint32"
+    index: 0
+  - name: Foo
+    offset: 4
+    size: 4
+    type: "uint32"
+    index: 0
