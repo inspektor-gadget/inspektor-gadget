@@ -144,10 +144,11 @@ func (c *ContainerdClient) GetContainer(containerID string) (*runtimeclient.Cont
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:        container.ID(),
-				ContainerName:      getContainerName(container, labels),
-				RuntimeName:        types.RuntimeNameContainerd,
-				ContainerImageName: image.Name(),
+				ContainerID:          container.ID(),
+				ContainerName:        getContainerName(container, labels),
+				RuntimeName:          types.RuntimeNameContainerd,
+				ContainerImageName:   image.Name(),
+				ContainerImageDigest: image.Metadata().Target.Digest.String(),
 			},
 			State: runtimeclient.StateRunning,
 		},
@@ -279,8 +280,6 @@ func (c *ContainerdClient) taskAndContainerToContainerData(task *containerTask, 
 		return nil, fmt.Errorf("getting image of container %q: %w", container.ID(), err)
 	}
 
-	imageMetadata := image.Metadata()
-
 	containerData := &runtimeclient.ContainerData{
 		Runtime: runtimeclient.RuntimeContainerData{
 			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
@@ -288,7 +287,7 @@ func (c *ContainerdClient) taskAndContainerToContainerData(task *containerTask, 
 				ContainerName:        getContainerName(container, labels),
 				RuntimeName:          types.RuntimeNameContainerd,
 				ContainerImageName:   image.Name(),
-				ContainerImageDigest: imageMetadata.Target.Digest.String(),
+				ContainerImageDigest: image.Metadata().Target.Digest.String(),
 			},
 			State: task.status,
 		},

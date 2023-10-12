@@ -56,6 +56,7 @@ func TestFilterByContainerName(t *testing.T) {
 				c.Runtime.ContainerID = ""
 				// TODO: Handle once we support getting ContainerImageName from Docker
 				c.Runtime.ContainerImageName = ""
+				c.Runtime.ContainerImageDigest = ""
 			}
 
 			ExpectAllInArrayToMatch(t, output, normalize, expectedContainer)
@@ -122,6 +123,7 @@ func TestWatchContainers(t *testing.T) {
 				e.Container.Runtime.ContainerID = ""
 				// TODO: Handle once we support getting ContainerImageName from Docker
 				e.Container.Runtime.ContainerImageName = ""
+				e.Container.Runtime.ContainerImageDigest = ""
 			}
 
 			ExpectEntriesToMatch(t, output, normalize, expectedEvents...)

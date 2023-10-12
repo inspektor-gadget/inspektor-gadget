@@ -136,6 +136,7 @@ func TestTraceDns(t *testing.T) {
 				e.Runtime.ContainerID = ""
 				// TODO: Handle once we support getting ContainerImageName from Docker
 				e.Runtime.ContainerImageName = ""
+				e.Runtime.ContainerImageDigest = ""
 
 				e.SrcIP = ""
 				e.DstIP = ""

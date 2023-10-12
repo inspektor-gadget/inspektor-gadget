@@ -81,6 +81,7 @@ func TestTraceCapabilities(t *testing.T) {
 				}
 
 				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
 
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {

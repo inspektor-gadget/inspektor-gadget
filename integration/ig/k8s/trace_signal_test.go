@@ -59,6 +59,7 @@ func TestTraceSignal(t *testing.T) {
 				e.MountNsID = 0
 
 				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
 
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {
