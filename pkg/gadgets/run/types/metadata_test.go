@@ -210,3 +210,188 @@ func TestValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestPopulate(t *testing.T) {
+	type testCase struct {
+		initialMetadata   *GadgetMetadata
+		expectedMetadata  *GadgetMetadata
+		objectPath        string
+		expectedErrString string
+	}
+
+	tests := map[string]testCase{
+		"1_tracer_1_struct_from_scratch": {
+			objectPath: "../../../../testdata/populate_metadata1.o",
+			expectedMetadata: &GadgetMetadata{
+				Name:        "TODO: Fill the gadget name",
+				Description: "TODO: Fill the gadget description",
+				Tracers: map[string]Tracer{
+					"events": {
+						MapName:    "events",
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {
+						Fields: []Field{
+							{
+								Name:        "pid",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     10,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+							{
+								Name:        "comm",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+							{
+								Name:        "filename",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"tracer_add_missing_field": {
+			objectPath: "../../../../testdata/populate_metadata1.o",
+			initialMetadata: &GadgetMetadata{
+				Name:        "foo",
+				Description: "bar",
+				Tracers: map[string]Tracer{
+					"events": {
+						MapName:    "events",
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {
+						// Set desc and some  attributes to be sure they aren't overwritten
+						Fields: []Field{
+							{
+								Name:        "pid",
+								Description: "foo-pid",
+								Attributes: FieldAttributes{
+									Width:     4747,
+									Alignment: AlignmentRight,
+									Ellipsis:  EllipsisStart,
+								},
+							},
+							{
+								Name:        "comm",
+								Description: "bar-comm",
+								Attributes: FieldAttributes{
+									Width:     1313,
+									Alignment: AlignmentRight,
+									Ellipsis:  EllipsisStart,
+								},
+							},
+							// missing filename field on purpose to check if it's added
+						},
+					},
+				},
+			},
+			expectedMetadata: &GadgetMetadata{
+				Name:        "foo",
+				Description: "bar",
+				Tracers: map[string]Tracer{
+					"events": {
+						MapName:    "events",
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {
+						Fields: []Field{
+							{
+								Name:        "pid",
+								Description: "foo-pid",
+								Attributes: FieldAttributes{
+									Width:     4747,
+									Alignment: AlignmentRight,
+									Ellipsis:  EllipsisStart,
+								},
+							},
+							{
+								Name:        "comm",
+								Description: "bar-comm",
+								Attributes: FieldAttributes{
+									Width:     1313,
+									Alignment: AlignmentRight,
+									Ellipsis:  EllipsisStart,
+								},
+							},
+							{
+								Name:        "filename",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"no_tracers_from_scratch": {
+			objectPath: "../../../../testdata/populate_metadata2.o",
+			expectedMetadata: &GadgetMetadata{
+				Name:        "TODO: Fill the gadget name",
+				Description: "TODO: Fill the gadget description",
+				Tracers:     map[string]Tracer{},
+				Structs:     map[string]Struct{},
+			},
+		},
+		"tracer_wrong_map_type": {
+			objectPath:        "../../../../testdata/populate_metadata3.o",
+			expectedErrString: "map \"events\" has a wrong type, expected: ringbuf or perf event array",
+		},
+		"tracer_wrong_map_value_type": {
+			objectPath:        "../../../../testdata/populate_metadata4.o",
+			expectedErrString: "value of BPF map \"events\" is not a structure",
+		},
+		"tracer_map_without_btf": {
+			objectPath:        "../../../../testdata/populate_metadata5.o",
+			expectedErrString: "map \"events\" does not have BTF information its value",
+		},
+	}
+
+	for name, test := range tests {
+		test := test
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			spec, err := ebpf.LoadCollectionSpec(test.objectPath)
+			require.NoError(t, err)
+
+			metadata := test.initialMetadata
+			if metadata == nil {
+				metadata = &GadgetMetadata{}
+			}
+
+			err = metadata.Populate(spec)
+			if test.expectedErrString != "" {
+				require.ErrorContains(t, err, test.expectedErrString)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, test.expectedMetadata, metadata)
+		})
+	}
+}

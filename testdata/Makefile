@@ -6,6 +6,11 @@ EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder
 all: testdata_docker
 
 TESTDATA = \
+	populate_metadata1.o \
+	populate_metadata2.o \
+	populate_metadata3.o \
+	populate_metadata4.o \
+	populate_metadata5.o \
 	validate_metadata1.o \
 	#
 
