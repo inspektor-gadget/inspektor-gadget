@@ -41,8 +41,6 @@ type Event struct {
 
 	// Raw event sent by the ebpf program
 	RawData []byte `json:"raw_data,omitempty"`
-	// How to flatten this?
-	Data interface{} `json:"data"`
 }
 
 type GadgetInfo struct {
