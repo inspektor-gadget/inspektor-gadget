@@ -35,7 +35,7 @@ type column[T any] struct {
 type Formatter[T any] struct {
 	options *Options
 	columns []*column[T]
-	printer func(entry *T, buf *encodeState)
+	printer func(buf *encodeState, entry *T, indent string)
 }
 
 // NewFormatter returns a Formatter that will turn entries of type T into JSON representation
@@ -131,12 +131,12 @@ func NewFormatter[T any](cols columns.ColumnMap[T], options ...Option) *Formatte
 	return tf
 }
 
-func (f *Formatter[T]) getPrinter(level int, cols []*column[T]) func(entry *T, buf *encodeState) {
-	indent := strings.Repeat("  ", level+1)
+func (f *Formatter[T]) getPrinter(level int, cols []*column[T]) func(buf *encodeState, entry *T, indent string) {
+	levelIndent := []byte("  ")
 	colsWithParent := map[string][]*column[T]{}
 	colsWithoutParent := []*column[T]{}
 
-	funcs := make([]func(entry *T, buf *encodeState), 0)
+	funcs := make([]func(buf *encodeState, entry *T, indent string), 0)
 
 	for _, col := range cols {
 		// Save columns which have a parent in its name
@@ -157,18 +157,22 @@ func (f *Formatter[T]) getPrinter(level int, cols []*column[T]) func(entry *T, b
 	// Better name?
 	handlePrefix := func() {
 		if !first {
-			funcs = append(funcs, func(entry *T, buf *encodeState) {
+			funcs = append(funcs, func(buf *encodeState, entry *T, indent string) {
 				buf.WriteByte(',')
 				if f.options.prettyPrint {
-					buf.WriteString("\n" + indent)
+					buf.WriteByte('\n')
+					buf.WriteString(indent)
+					buf.Write(levelIndent)
 				} else {
 					buf.WriteByte(' ')
 				}
 			})
 		} else {
 			if f.options.prettyPrint {
-				funcs = append(funcs, func(entry *T, buf *encodeState) {
-					buf.WriteString("\n" + indent)
+				funcs = append(funcs, func(buf *encodeState, entry *T, indent string) {
+					buf.WriteByte('\n')
+					buf.WriteString(indent)
+					buf.Write(levelIndent)
 				})
 			}
 			first = false
@@ -182,15 +186,15 @@ func (f *Formatter[T]) getPrinter(level int, cols []*column[T]) func(entry *T, b
 		parentName, _ := json.Marshal(strings.Split(key, ".")[0])
 
 		childFuncs := f.getPrinter(level+1, val)
-		funcs = append(funcs, func(entry *T, buf *encodeState) {
+		funcs = append(funcs, func(buf *encodeState, entry *T, indent string) {
 			buf.Write(parentName)
 			buf.WriteString(": {")
 
-			childFuncs(entry, buf)
+			childFuncs(buf, entry, indent+"  ")
 
 			// End parent
 			if f.options.prettyPrint {
-				buf.WriteString("\n" + indent + "}")
+				buf.WriteString("\n" + indent + "  }")
 			} else {
 				buf.WriteByte('}')
 			}
@@ -208,34 +212,77 @@ func (f *Formatter[T]) getPrinter(level int, cols []*column[T]) func(entry *T, b
 		}
 		handlePrefix()
 
-		funcs = append(funcs, func(entry *T, buf *encodeState) {
+		funcs = append(funcs, func(buf *encodeState, entry *T, indent string) {
 			col.formatter(buf, entry)
 		})
 	}
 
-	return func(entry *T, buf *encodeState) {
+	return func(buf *encodeState, entry *T, indent string) {
 		for _, f := range funcs {
-			f(entry, buf)
+			f(buf, entry, indent)
 		}
 	}
 }
 
+func (f *Formatter[T]) formatEntry(buf *encodeState, entry *T, indent string) {
+	if entry == nil {
+		buf.WriteString(indent + "null")
+		return
+	}
+	buf.WriteString(indent + "{")
+	f.printer(buf, entry, indent)
+	if f.options.prettyPrint {
+		buf.WriteString("\n" + indent)
+	}
+	buf.WriteByte('}')
+}
+
 // FormatEntry returns an entry as a formatted string, respecting the given formatting settings
 func (f *Formatter[T]) FormatEntry(entry *T) string {
-	if entry == nil {
-		return ""
+	buf := bufpool.Get().(*encodeState)
+	buf.Reset()
+	defer bufpool.Put(buf)
+
+	f.formatEntry(buf, entry, "")
+
+	return buf.String()
+}
+
+// FormatEntries returns a slice of entries as a formatted string, respecting the given formatting settings
+func (f *Formatter[T]) FormatEntries(entries []*T) string {
+	if entries == nil {
+		return "null"
+	}
+
+	// TODO[Mauricio]: I can't remember why but the behavior of the default golang formatter was
+	// causing issues when the slice was empty. So let's marshall to [] instead of null on this case.
+	if len(entries) == 0 {
+		return "[]"
 	}
 
 	buf := bufpool.Get().(*encodeState)
 	buf.Reset()
 	defer bufpool.Put(buf)
 
-	buf.WriteByte('{')
-	f.printer(entry, buf)
-	if f.options.prettyPrint {
-		buf.WriteByte('\n')
+	if !f.options.prettyPrint {
+		buf.WriteByte('[')
+		for l, entry := range entries {
+			f.formatEntry(buf, entry, "")
+			if l < len(entries)-1 {
+				buf.WriteString(", ")
+			}
+		}
+		buf.WriteByte(']')
+	} else {
+		buf.WriteString("[\n")
+		for l, entry := range entries {
+			f.formatEntry(buf, entry, "  ")
+			if l < len(entries)-1 {
+				buf.WriteString(",\n")
+			}
+		}
+		buf.WriteString("\n]")
 	}
-	buf.WriteByte('}')
 
 	return buf.String()
 }
