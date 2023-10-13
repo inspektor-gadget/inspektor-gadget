@@ -139,6 +139,10 @@ func runBuild(opts *cmdOpts) error {
 		}
 	}
 
+	if _, err := os.Stat(conf.EBPFSource); errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("source file %q not found", conf.EBPFSource)
+	}
+
 	if opts.local {
 		if err := buildLocal(opts, conf, tmpDir); err != nil {
 			return err
