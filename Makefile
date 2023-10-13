@@ -6,7 +6,7 @@ IMAGE_TAG ?= $(shell ./tools/image-tag branch)
 
 MINIKUBE ?= minikube
 KUBERNETES_DISTRIBUTION ?= ""
-GADGET_TAG ?= $(shell ../tools/image-tag branch)
+GADGET_TAG ?= $(shell ./tools/image-tag branch)
 GADGET_REPOSITORY ?= ghcr.io/inspektor-gadget/gadget
 
 GOHOSTOS ?= $(shell go env GOHOSTOS)
