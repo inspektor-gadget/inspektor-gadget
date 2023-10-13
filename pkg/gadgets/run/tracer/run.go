@@ -180,6 +180,62 @@ func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (
 		return nil, err
 	}
 
+	// Add some extra columns here, like from wasm
+	// TODO: There is an architectural issue with this approach, the instance of NewBlobEvent()
+	// cannot be passed to the tracer instance, so there is some code duplication and the code
+	// in both places has to match in order to work.
+	blob := NewBlobEvent()
+
+	eventStructureName, eventStruct := getAnyMapElem(ret.GadgetMetadata.Structs)
+	if eventStruct == nil {
+		return nil, fmt.Errorf("struct not found in gadget metadata")
+	}
+
+	fields := []types.Field{}
+
+	// any column
+	uint64col, _ := AddField[uint64](blob, "uint64col")
+	ret.Columns = append(ret.Columns, uint64col)
+	fields = append(fields, types.Field{
+		Name: "uint64col",
+		Attributes: types.FieldAttributes{
+			Width: 10,
+		},
+	})
+
+	// int32 column
+	int32col, _ := AddField[uint32](blob, "myint32")
+	ret.Columns = append(ret.Columns, int32col)
+	fields = append(fields, types.Field{
+		Name: "myint32",
+		Attributes: types.FieldAttributes{
+			Width: 10,
+		},
+	})
+
+	// Add a first string virtual column
+	datecol, _ := blob.AddString("date")
+	ret.Columns = append(ret.Columns, datecol)
+	fields = append(fields, types.Field{
+		Name: "date",
+		Attributes: types.FieldAttributes{
+			Width: 24,
+		},
+	})
+
+	// Add another string virtual column
+	stringcol, _ := blob.AddString("string")
+	ret.Columns = append(ret.Columns, stringcol)
+	fields = append(fields, types.Field{
+		Name: "string",
+		Attributes: types.FieldAttributes{
+			Width: 10,
+		},
+	})
+
+	eventStruct.Fields = append(eventStruct.Fields, fields...)
+	ret.GadgetMetadata.Structs[*eventStructureName] = *eventStruct
+
 	return ret, nil
 }
 
