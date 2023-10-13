@@ -23,6 +23,12 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+const (
+	IndexVirtual = -1
+	IndexEBPF    = 0
+	IndexFixed   = 1
+)
+
 type L3Endpoint struct {
 	eventtypes.L3Endpoint
 	Name string
@@ -50,8 +56,11 @@ type Event struct {
 	MountNsID uint64 `json:"-"`
 	NetNsID   uint64 `json:"-"`
 
-	// Raw event sent by the ebpf program
-	RawData []byte `json:"raw_data,omitempty"`
+	// Blob is used to save data to be sent to the client.
+	// [0] is used for bpf event
+	// [1] is used for fixed-size members
+	// [1+] is used for variable size members
+	Blob [][]byte `json:"blob,omitempty"`
 }
 
 func (ev *Event) GetMountNSID() uint64 {
@@ -85,10 +94,54 @@ type Printer interface {
 	Logf(severity logger.Level, fmt string, params ...any)
 }
 
+type Kind uint8
+
+// TODO: use reflect.Kind? (once we resolve TODO below)
+const (
+	KindNone Kind = iota
+	KindUint8
+	KindUint16
+	KindUint32
+	KindUint64
+	KindInt8
+	KindInt16
+	KindInt32
+	KindInt64
+	KindBool
+	KindFloat32
+	KindFloat64
+	KindString
+	KindArray
+
+	// TODO: this should be made more generic to avoid coupling operators with this
+	KindL3Endpoint
+	KindL4Endpoint
+	KindTimestamp
+)
+
+type Type struct {
+	Kind Kind
+
+	// Fields only for KindArray
+	ArrayNElements int // number of elements in the array
+	ArrayType      *Type
+}
+
+// ColumnDesc describes how a column is built. It's basically a serializable version of
+// columns.DynamicField
+type ColumnDesc struct {
+	Name      string
+	BlobIndex int // -1: virtual, 0: ebpf, 1: fixed length, 1+ strings
+	Type      Type
+	Offset    uintptr
+}
+
 type GadgetInfo struct {
 	GadgetMetadata *GadgetMetadata
+	Columns        []ColumnDesc
 	ProgContent    []byte
 	GadgetType     gadgets.GadgetType
+	EventFactory   *EventFactory
 }
 
 // RunGadgetDesc represents the different methods implemented by the run gadget descriptor.

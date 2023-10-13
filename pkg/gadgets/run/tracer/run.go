@@ -188,6 +188,12 @@ func getGadgetInfo(params *params.Params, args []string, secretBytes []byte, log
 		return nil, err
 	}
 
+	ret.EventFactory = types.NewEventFactory()
+	ret.Columns, err = calculateColumnsForClient(ret.EventFactory, ret.GadgetMetadata, gadget.EbpfObject, logger)
+	if err != nil {
+		return nil, err
+	}
+
 	return ret, nil
 }
 
@@ -300,84 +306,47 @@ func loadSpec(progContent []byte) (*ebpf.CollectionSpec, error) {
 	return spec, err
 }
 
-func getType(typ btf.Type) reflect.Type {
-	switch typedMember := typ.(type) {
-	case *btf.Array:
-		arrType := getSimpleType(typedMember.Type)
+func reflectTypeFromType(typ types.Type) reflect.Type {
+	if typ.Kind == types.KindArray {
+		if typ.ArrayType == nil {
+			return nil
+		}
+		arrType := reflectTypeFromKind(typ.ArrayType.Kind)
 		if arrType == nil {
 			return nil
 		}
-		return reflect.ArrayOf(int(typedMember.Nelems), arrType)
-	default:
-		return getSimpleType(typ)
+		return reflect.ArrayOf(typ.ArrayNElements, arrType)
 	}
+
+	return reflectTypeFromKind(typ.Kind)
 }
 
-func getSimpleType(typ btf.Type) reflect.Type {
-	switch typedMember := typ.(type) {
-	case *btf.Int:
-		switch typedMember.Encoding {
-		case btf.Signed:
-			switch typedMember.Size {
-			case 1:
-				return reflect.TypeOf(int8(0))
-			case 2:
-				return reflect.TypeOf(int16(0))
-			case 4:
-				return reflect.TypeOf(int32(0))
-			case 8:
-				return reflect.TypeOf(int64(0))
-			}
-		case btf.Unsigned:
-			switch typedMember.Size {
-			case 1:
-				return reflect.TypeOf(uint8(0))
-			case 2:
-				return reflect.TypeOf(uint16(0))
-			case 4:
-				return reflect.TypeOf(uint32(0))
-			case 8:
-				return reflect.TypeOf(uint64(0))
-			}
-		case btf.Bool:
-			return reflect.TypeOf(bool(false))
-		case btf.Char:
-			return reflect.TypeOf(uint8(0))
-		}
-	case *btf.Float:
-		switch typedMember.Size {
-		case 4:
-			return reflect.TypeOf(float32(0))
-		case 8:
-			return reflect.TypeOf(float64(0))
-		}
-	case *btf.Typedef:
-		typ, _ := getUnderlyingType(typedMember)
-		return getSimpleType(typ)
-	case *btf.Enum:
-		if typedMember.Signed {
-			switch typedMember.Size {
-			case 1:
-				return reflect.TypeOf(int8(0))
-			case 2:
-				return reflect.TypeOf(int16(0))
-			case 4:
-				return reflect.TypeOf(int32(0))
-			case 8:
-				return reflect.TypeOf(int64(0))
-			}
-		}
-
-		switch typedMember.Size {
-		case 1:
-			return reflect.TypeOf(uint8(0))
-		case 2:
-			return reflect.TypeOf(uint16(0))
-		case 4:
-			return reflect.TypeOf(uint32(0))
-		case 8:
-			return reflect.TypeOf(uint64(0))
-		}
+func reflectTypeFromKind(kind types.Kind) reflect.Type {
+	switch kind {
+	case types.KindInt8:
+		return reflect.TypeOf(int8(0))
+	case types.KindInt16:
+		return reflect.TypeOf(int16(0))
+	case types.KindInt32:
+		return reflect.TypeOf(int32(0))
+	case types.KindInt64:
+		return reflect.TypeOf(int64(0))
+	case types.KindUint8:
+		return reflect.TypeOf(uint8(0))
+	case types.KindUint16:
+		return reflect.TypeOf(uint16(0))
+	case types.KindUint32:
+		return reflect.TypeOf(uint32(0))
+	case types.KindUint64:
+		return reflect.TypeOf(uint64(0))
+	case types.KindFloat32:
+		return reflect.TypeOf(float32(0))
+	case types.KindFloat64:
+		return reflect.TypeOf(float64(0))
+	case types.KindBool:
+		return reflect.TypeOf(false)
+	case types.KindString:
+		return reflect.TypeOf("")
 	}
 
 	return nil
@@ -492,181 +461,141 @@ func field2ColumnAttrs(field *types.Field) columns.Attributes {
 }
 
 func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.Event], error) {
-	gadgetMetadata := info.GadgetMetadata
-	eventType, err := getEventTypeBTF(info.ProgContent, gadgetMetadata)
-	if err != nil {
-		return nil, fmt.Errorf("getting value struct: %w", err)
-	}
-
-	eventStruct, ok := gadgetMetadata.Structs[eventType.Name]
-	if !ok {
-		return nil, fmt.Errorf("struct %s not found in gadget metadata", eventType.Name)
+	_, eventStruct := getAnyMapElem(info.GadgetMetadata.Structs)
+	if eventStruct == nil {
+		return nil, fmt.Errorf("struct not found in gadget metadata")
 	}
 
 	cols := types.GetColumns()
 
-	members := map[string]btf.Member{}
-	for _, member := range eventType.Members {
-		members[member.Name] = member
-	}
-
-	fields := []columns.DynamicField{}
+	ebpfFields := []columns.DynamicField{}
+	fixedFields := []columns.DynamicField{}
 
 	l3endpointCounter := 0
 	l4endpointCounter := 0
 	timestampsCounter := 0
 
-	type enumDef struct {
-		btfEnum *btf.Enum
-		attrs   columns.Attributes
+	fields := map[string]types.Field{}
+	for _, field := range eventStruct.Fields {
+		fields[field.Name] = field
 	}
 
-	enums := []enumDef{}
+	for i, col := range info.Columns {
+		var attrs columns.Attributes
 
-	for i, field := range eventStruct.Fields {
-		member := members[field.Name]
+		if field, ok := fields[col.Name]; ok {
+			attrs = field2ColumnAttrs(&field)
+		} else {
+			defaultOpts := columns.GetDefault()
+			attrs = columns.Attributes{
+				Name:         col.Name,
+				Alignment:    defaultOpts.DefaultAlignment,
+				EllipsisType: defaultOpts.DefaultEllipsis,
+				Width:        defaultOpts.DefaultWidth,
+			}
+		}
 
-		attrs := field2ColumnAttrs(&field)
 		attrs.Order = 1000 + i
 
-		switch member.Type.TypeName() {
-		case types.L3EndpointTypeName:
-			// Take the value here, otherwise it'll use the wrong value after
-			// it's increased
-			index := l3endpointCounter
-			// Add the column that is enriched
-			eventtypes.MustAddVirtualL3EndpointColumn(cols, attrs, func(e *types.Event) eventtypes.L3Endpoint {
-				if len(e.L3Endpoints) == 0 {
-					return eventtypes.L3Endpoint{}
+		switch col.BlobIndex {
+		case types.IndexVirtual:
+			switch col.Type.Kind {
+			case types.KindL3Endpoint:
+				// Take the value here, otherwise it'll use the wrong value after
+				// it's increased
+				index := l3endpointCounter
+				// Add the column that is enriched
+				eventtypes.MustAddVirtualL3EndpointColumn(cols, attrs, func(e *types.Event) eventtypes.L3Endpoint {
+					if len(e.L3Endpoints) == 0 {
+						return eventtypes.L3Endpoint{}
+					}
+					return e.L3Endpoints[index].L3Endpoint
+				})
+				// Add a single column for each field in the endpoint
+				addL3EndpointColumns(cols, col.Name, func(e *types.Event) eventtypes.L3Endpoint {
+					if len(e.L3Endpoints) == 0 {
+						return eventtypes.L3Endpoint{}
+					}
+					return e.L3Endpoints[index].L3Endpoint
+				})
+				l3endpointCounter++
+			case types.KindL4Endpoint:
+				// Take the value here, otherwise it'll use the wrong value after
+				// it's increased
+				index := l4endpointCounter
+				// Add the column that is enriched
+				eventtypes.MustAddVirtualL4EndpointColumn(cols, attrs, func(e *types.Event) eventtypes.L4Endpoint {
+					if len(e.L4Endpoints) == 0 {
+						return eventtypes.L4Endpoint{}
+					}
+					return e.L4Endpoints[index].L4Endpoint
+				})
+				// Add a single column for each field in the endpoint
+				addL4EndpointColumns(cols, col.Name, func(e *types.Event) eventtypes.L4Endpoint {
+					if len(e.L4Endpoints) == 0 {
+						return eventtypes.L4Endpoint{}
+					}
+					return e.L4Endpoints[index].L4Endpoint
+				})
+				l4endpointCounter++
+			case types.KindTimestamp:
+				// Take the value here, otherwise it'll use the wrong value after
+				// it's increased
+				index := timestampsCounter
+				err := cols.AddColumn(attrs, func(e *types.Event) any {
+					if len(e.Timestamps) == 0 {
+						return ""
+					}
+					return e.Timestamps[index].String()
+				})
+				if err != nil {
+					return nil, fmt.Errorf("adding timestamp column: %w", err)
 				}
-				return e.L3Endpoints[index].L3Endpoint
-			})
-			// Add a single column for each field in the endpoint
-			addL3EndpointColumns(cols, member.Name, func(e *types.Event) eventtypes.L3Endpoint {
-				if len(e.L3Endpoints) == 0 {
-					return eventtypes.L3Endpoint{}
-				}
-				return e.L3Endpoints[index].L3Endpoint
-			})
-			l3endpointCounter++
-			continue
-		case types.L4EndpointTypeName:
-			// Take the value here, otherwise it'll use the wrong value after
-			// it's increased
-			index := l4endpointCounter
-			// Add the column that is enriched
-			eventtypes.MustAddVirtualL4EndpointColumn(cols, attrs, func(e *types.Event) eventtypes.L4Endpoint {
-				if len(e.L4Endpoints) == 0 {
-					return eventtypes.L4Endpoint{}
-				}
-				return e.L4Endpoints[index].L4Endpoint
-			})
-			// Add a single column for each field in the endpoint
-			addL4EndpointColumns(cols, member.Name, func(e *types.Event) eventtypes.L4Endpoint {
-				if len(e.L4Endpoints) == 0 {
-					return eventtypes.L4Endpoint{}
-				}
-				return e.L4Endpoints[index].L4Endpoint
-			})
-			l4endpointCounter++
-			continue
-		case types.TimestampTypeName:
-			// Take the value here, otherwise it'll use the wrong value after
-			// it's increased
-			index := timestampsCounter
-			err := cols.AddColumn(attrs, func(e *types.Event) any {
-				if len(e.Timestamps) == 0 {
+				timestampsCounter++
+				continue
+
+			}
+		case types.IndexEBPF:
+			field := columns.DynamicField{
+				Attributes: &attrs,
+				Template:   attrs.Template,
+				Type:       reflectTypeFromType(col.Type),
+				Offset:     uintptr(col.Offset),
+			}
+
+			ebpfFields = append(ebpfFields, field)
+		case types.IndexFixed:
+			field := columns.DynamicField{
+				Attributes: &attrs,
+				Template:   attrs.Template,
+				Type:       reflectTypeFromType(col.Type),
+				Offset:     uintptr(col.Offset),
+			}
+			fixedFields = append(fixedFields, field)
+		default:
+			index := col.BlobIndex
+			cols.AddColumn(attrs, func(e *types.Event) any {
+				if e.Blob == nil {
 					return ""
 				}
-				return e.Timestamps[index].String()
+
+				return string(e.Blob[index])
 			})
-			if err != nil {
-				return nil, fmt.Errorf("adding timestamp column: %w", err)
-			}
-			timestampsCounter++
-			continue
 		}
-
-		rType := getType(member.Type)
-		if rType == nil {
-			continue
-		}
-
-		enum, ok := member.Type.(*btf.Enum)
-		if ok {
-			// Add raw columns for enum. Below a column that print the string
-			// representation is added as well.
-			enums = append(enums, enumDef{
-				btfEnum: enum,
-				attrs:   attrs,
-			})
-			attrs.Name = member.Name + "_raw"
-			attrs.Visible = false
-		}
-
-		field := columns.DynamicField{
-			Attributes: &attrs,
-			Template:   attrs.Template,
-			Type:       rType,
-			Offset:     uintptr(member.Offset.Bytes()),
-		}
-
-		fields = append(fields, field)
 	}
 
-	base := func(ev *types.Event) unsafe.Pointer {
-		return unsafe.Pointer(&ev.RawData[0])
+	ebpfBase := func(ev *types.Event) unsafe.Pointer {
+		return unsafe.Pointer(&ev.Blob[types.IndexEBPF][0])
 	}
-	if err := cols.AddFields(fields, base); err != nil {
-		return nil, fmt.Errorf("adding fields: %w", err)
-	}
-
-	btfSpec, err := btf.LoadKernelSpec()
-	if err != nil {
-		return nil, fmt.Errorf("getting kernel BTF: %w", err)
+	if err := cols.AddFields(ebpfFields, ebpfBase); err != nil {
+		return nil, fmt.Errorf("adding ebpf fields: %w", err)
 	}
 
-	// Converts enum values to their string representation
-	for _, e := range enums {
-		c, ok := cols.GetColumn(e.attrs.Name + "_raw")
-		if !ok {
-			continue
-		}
-		var getter func(*types.Event) uint64
-		if e.btfEnum.Signed {
-			getterT := columns.GetFieldAsNumberFunc[int64, types.Event](c)
-			getter = func(ev *types.Event) uint64 {
-				return uint64(getterT(ev))
-			}
-		} else {
-			getter = columns.GetFieldAsNumberFunc[uint64, types.Event](c)
-		}
-
-		enum := &btf.Enum{}
-		// First, we search the type in kernel BTF.
-		err = btfSpec.TypeByName(e.btfEnum.Name, &enum)
-		if err != nil {
-			// We default to program BTF if nothing was found in kernel.
-			enum = e.btfEnum
-		}
-
-		err := cols.AddColumn(e.attrs, func(ev *types.Event) any {
-			if ev == nil || len(ev.RawData) == 0 {
-				return ""
-			}
-			val := getter(ev)
-
-			for _, v := range enum.Values {
-				if val == v.Value {
-					return v.Name
-				}
-			}
-
-			return "UNKNOWN"
-		})
-		if err != nil {
-			return nil, fmt.Errorf("adding column %s: %w", e.attrs.Name, err)
-		}
+	blobBase := func(ev *types.Event) unsafe.Pointer {
+		return unsafe.Pointer(&ev.Blob[types.IndexFixed][0])
+	}
+	if err := cols.AddFields(fixedFields, blobBase); err != nil {
+		return nil, fmt.Errorf("adding fixed fields: %w", err)
 	}
 
 	return cols, nil
@@ -753,4 +682,188 @@ func (g *GadgetDesc) EventPrototype() any {
 
 func init() {
 	gadgetregistry.Register(&GadgetDesc{})
+}
+
+// functions to send columns from server to client
+func typeFromBTF(typ btf.Type) *types.Type {
+	switch typedMember := typ.(type) {
+	case *btf.Array:
+		arrType := simpleTypeFromBTF(typedMember.Type)
+		if arrType == nil {
+			return nil
+		}
+		return &types.Type{
+			Kind:           types.KindArray,
+			ArrayNElements: int(typedMember.Nelems),
+			ArrayType:      arrType,
+		}
+	default:
+		return simpleTypeFromBTF(typ)
+	}
+}
+
+func simpleTypeFromBTF(typ btf.Type) *types.Type {
+	switch typedMember := typ.(type) {
+	case *btf.Int:
+		switch typedMember.Encoding {
+		case btf.Signed:
+			switch typedMember.Size {
+			case 1:
+				return &types.Type{Kind: types.KindInt8}
+			case 2:
+				return &types.Type{Kind: types.KindInt16}
+			case 4:
+				return &types.Type{Kind: types.KindInt32}
+			case 8:
+				return &types.Type{Kind: types.KindInt64}
+			}
+		case btf.Unsigned:
+			switch typedMember.Size {
+			case 1:
+				return &types.Type{Kind: types.KindUint8}
+			case 2:
+				return &types.Type{Kind: types.KindUint16}
+			case 4:
+				return &types.Type{Kind: types.KindUint32}
+			case 8:
+				return &types.Type{Kind: types.KindUint64}
+			}
+		case btf.Bool:
+			return &types.Type{Kind: types.KindBool}
+		case btf.Char:
+			return &types.Type{Kind: types.KindUint8}
+		}
+	case *btf.Float:
+		switch typedMember.Size {
+		case 4:
+			return &types.Type{Kind: types.KindFloat32}
+		case 8:
+			return &types.Type{Kind: types.KindFloat64}
+		}
+	case *btf.Typedef:
+		typ, _ := getUnderlyingType(typedMember)
+		return simpleTypeFromBTF(typ)
+	case *btf.Enum:
+		if typedMember.Signed {
+			switch typedMember.Size {
+			case 1:
+				return &types.Type{Kind: types.KindInt8}
+			case 2:
+				return &types.Type{Kind: types.KindInt16}
+			case 4:
+				return &types.Type{Kind: types.KindInt32}
+			case 8:
+				return &types.Type{Kind: types.KindInt64}
+			}
+		}
+
+		switch typedMember.Size {
+		case 1:
+			return &types.Type{Kind: types.KindUint8}
+		case 2:
+			return &types.Type{Kind: types.KindUint16}
+		case 4:
+			return &types.Type{Kind: types.KindUint32}
+		case 8:
+			return &types.Type{Kind: types.KindUint64}
+		}
+	}
+
+	return nil
+}
+
+func calculateColumnsForClient(
+	eventFactory *types.EventFactory,
+	gadgetMetadata *types.GadgetMetadata,
+	progContent []byte,
+	logger logger.Logger,
+) ([]types.ColumnDesc, error) {
+	eventType, err := getEventTypeBTF(progContent, gadgetMetadata)
+	if err != nil {
+		return nil, fmt.Errorf("getting value struct: %w", err)
+	}
+
+	colNames := map[string]struct{}{}
+
+	eventStruct, ok := gadgetMetadata.Structs[eventType.Name]
+	if !ok {
+		return nil, fmt.Errorf("struct %s not found in gadget metadata", eventType.Name)
+	}
+
+	for _, field := range eventStruct.Fields {
+		colNames[field.Name] = struct{}{}
+	}
+
+	columns := []types.ColumnDesc{}
+
+	for _, member := range eventType.Members {
+		member := member
+
+		_, ok := colNames[member.Name]
+		if !ok {
+			logger.Debugf("field %q not present on metadata file, skipping", member.Name)
+			continue
+		}
+
+		switch member.Type.TypeName() {
+		case types.L3EndpointTypeName:
+			col := types.ColumnDesc{
+				Name:      member.Name,
+				BlobIndex: types.IndexVirtual,
+				Type:      types.Type{Kind: types.KindL3Endpoint},
+			}
+			columns = append(columns, col)
+			continue
+		case types.L4EndpointTypeName:
+			// Add the column that is enriched
+			col := types.ColumnDesc{
+				Name:      member.Name,
+				BlobIndex: types.IndexVirtual,
+				Type:      types.Type{Kind: types.KindL4Endpoint},
+			}
+			columns = append(columns, col)
+			continue
+		case types.TimestampTypeName:
+			col := types.ColumnDesc{
+				Name:      member.Name,
+				BlobIndex: types.IndexVirtual,
+				Type:      types.Type{Kind: types.KindTimestamp},
+			}
+			columns = append(columns, col)
+			continue
+		}
+
+		rType := typeFromBTF(member.Type)
+		if rType == nil {
+			continue
+		}
+
+		if _, ok := member.Type.(*btf.Enum); ok {
+			// Add two columns for enums
+
+			// String representation
+			col := types.FactoryAddString(eventFactory, member.Name)
+			columns = append(columns, col)
+
+			// Raw representation
+			colRaw := types.ColumnDesc{
+				Name:   member.Name + "_raw",
+				Type:   *rType,
+				Offset: uintptr(member.Offset.Bytes()),
+			}
+			columns = append(columns, colRaw)
+
+			continue
+		}
+
+		col := types.ColumnDesc{
+			Name:   member.Name,
+			Type:   *rType,
+			Offset: uintptr(member.Offset.Bytes()),
+		}
+
+		columns = append(columns, col)
+	}
+
+	return columns, nil
 }
