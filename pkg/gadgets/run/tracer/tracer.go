@@ -440,13 +440,20 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			timestamps = append(timestamps, t)
 		}
 
+		blob := NewBlobEvent()
+		blob.Allocate()
+
+		// set ebpf data
+		b := blob.Blob()
+		b[0] = data
+
 		return &types.Event{
 			Type:        eventtypes.NORMAL,
 			MountNsID:   mntNsId,
-			RawData:     data,
 			L3Endpoints: l3endpoints,
 			L4Endpoints: l4endpoints,
 			Timestamps:  timestamps,
+			Blob:        b,
 		}
 	}
 }
