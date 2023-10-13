@@ -4,14 +4,14 @@ ARG LIBBPF_VERSION=v1.2.2
 # Args need to be redefined on each stage
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
 
-FROM golang:1.19 as builder
+FROM golang:1.20 as builder
 ARG LIBBPF_VERSION
 
 # Let's install libbpf headers
 RUN git clone --branch ${LIBBPF_VERSION} --depth 1 https://github.com/libbpf/libbpf.git \
 	&& cd libbpf/src && make install_headers
 
-FROM golang:1.19
+FROM golang:1.20
 ARG CLANG_LLVM_VERSION
 # gcc-multilib is needed for <asm/types.h>.
 # lsb-release wget software-properties-common gnupg are needed by llvm.sh script

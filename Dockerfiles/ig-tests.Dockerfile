@@ -1,4 +1,4 @@
-ARG BUILDER_IMAGE=golang:1.19-bullseye
+ARG BUILDER_IMAGE=golang:1.20-bullseye
 ARG BASE_IMAGE=gcr.io/distroless/static-debian11
 
 FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder

@@ -30,12 +30,12 @@ linters:
 
 linters-settings:
   gofumpt:
-    lang-version: "1.19"
+    lang-version: "1.20"
   staticcheck:
-    go: "1.19"
+    go: "1.20"
     checks: ["all"]
   stylecheck:
-    go: "1.19"
+    go: "1.20"
     checks: ["all"]
   errorlint:
     # https://github.com/polyfloyd/go-errorlint
