@@ -22,7 +22,7 @@ ARCH ?= $(shell uname -m | sed 's/x86_64/x86/' | sed 's/aarch64/arm64/' | sed 's
 # This version number must be kept in sync with CI workflow lint one.
 LINTER_VERSION ?= v1.49.0
 
-EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder
+EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder:latest
 
 DNSTESTER_IMAGE ?= "ghcr.io/inspektor-gadget/dnstester:latest"
 
@@ -117,7 +117,7 @@ ig-%: phony_explicit
 			ARCH=$(subst linux-,,$*) BTFHUB_ARCHIVE=$(HOME)/btfhub-archive/ -j$(nproc); \
 	fi
 	docker buildx build --load --platform=$(subst -,/,$*) -t $@ -f Dockerfiles/ig.Dockerfile \
-		--build-arg VERSION=$(VERSION) .
+		--build-arg VERSION=$(VERSION) --build-arg EBPF_BUILDER=$(EBPF_BUILDER) .
 	docker create --name ig-$*-container $@
 	docker cp ig-$*-container:/usr/bin/ig $@
 	docker rm ig-$*-container
