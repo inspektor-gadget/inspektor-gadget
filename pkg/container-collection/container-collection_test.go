@@ -30,6 +30,8 @@ type fakeTracerMapsUpdater struct {
 	containers map[string]*Container
 }
 
+var r *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
 func (f *fakeTracerMapsUpdater) TracerMapsUpdater() FuncNotify {
 	return func(event PubSubEvent) {
 		switch event.Type {
@@ -75,12 +77,10 @@ func BenchmarkLookupContainerByMntns(b *testing.B) {
 		})
 	}
 
-	rand.Seed(time.Now().UnixNano())
-
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		mntnsID := uint64(rand.Intn(TestContainerCount))
+		mntnsID := uint64(r.Intn(TestContainerCount))
 		container := cc.LookupContainerByMntns(mntnsID)
 		if container == nil {
 			b.Fatalf("there should be a container for mount namespace ID %d", mntnsID)
@@ -102,12 +102,10 @@ func BenchmarkLookupContainerByNetns(b *testing.B) {
 		})
 	}
 
-	rand.Seed(time.Now().UnixNano())
-
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		netnsID := uint64(rand.Intn(TestContainerCount))
+		netnsID := uint64(r.Intn(TestContainerCount))
 		container := cc.LookupContainersByNetns(netnsID)
 		if len(container) == 0 {
 			b.Fatalf("there should be a container for net namespace ID %d", netnsID)
