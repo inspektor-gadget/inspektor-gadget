@@ -261,7 +261,9 @@ jobs:
   build-ig:
     name: ig
     # level: 1
-    needs: btfgen
+    needs:
+      - btfgen
+      - build-helper-images
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -297,7 +299,7 @@ jobs:
           sudo apt-get install qemu-user-static
         fi
 
-        make ig-linux-${{ matrix.platform }}
+        make EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }} ig-linux-${{ matrix.platform }}
 
         # Prepare assets for release and actions artifacts
         mkdir ${{ matrix.platform }}
@@ -420,7 +422,9 @@ jobs:
   build-ig-container-images:
     name: ig img
     # level: 1
-    needs: btfgen
+    needs:
+      - btfgen
+      - build-helper-images
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -487,6 +491,9 @@ jobs:
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
+        build-args: |
+          VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+          EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
     - name: Publish ig ${{ matrix.os }} ${{ matrix.platform }} container image as artifacts
       uses: actions/upload-artifact@master
       with:
@@ -505,6 +512,9 @@ jobs:
         outputs: type=registry,name=${{ steps.set-repo-determine-image-tag.outputs.container-repo }},push=true,push-by-digest=true
         cache-from: type=local,src=/tmp/.buildx-cache-new
         platforms: ${{ matrix.os }}/${{ matrix.platform }}
+        build-args: |
+          VERSION=${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
+          EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }}
     - name: Save ig ${{ matrix.os }} ${{ matrix.platform }} container image digest output
       id: published-ig-container-images
       if: github.event_name != 'pull_request'

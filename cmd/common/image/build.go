@@ -41,10 +41,12 @@ import (
 //go:embed Makefile.build
 var makefile []byte
 
+// It can be overridden at build time
+var builderImage = "ghcr.io/inspektor-gadget/ebpf-builder:latest"
+
 const (
-	DEFAULT_BUILDER_IMAGE = "ghcr.io/inspektor-gadget/ebpf-builder:latest"
-	DEFAULT_EBPF_SOURCE   = "program.bpf.c"
-	DEFAULT_METADATA      = "gadget.yaml"
+	DEFAULT_EBPF_SOURCE = "program.bpf.c"
+	DEFAULT_METADATA    = "gadget.yaml"
 )
 
 type buildFile struct {
@@ -71,7 +73,7 @@ func NewBuildCmd() *cobra.Command {
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opts.local && opts.builderImage != DEFAULT_BUILDER_IMAGE {
+			if opts.local && opts.builderImage != builderImage {
 				return fmt.Errorf("--local and --builder-image cannot be used at the same time")
 			}
 
@@ -87,7 +89,7 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.file, "file", "f", "build.yaml", "Path to build.yaml")
 	cmd.Flags().BoolVarP(&opts.local, "local", "l", false, "Build using local tools")
 	cmd.Flags().StringVarP(&opts.image, "tag", "t", "", "Name for the built image (format name:tag)")
-	cmd.Flags().StringVar(&opts.builderImage, "builder-image", DEFAULT_BUILDER_IMAGE, "Builder image to use")
+	cmd.Flags().StringVar(&opts.builderImage, "builder-image", builderImage, "Builder image to use")
 
 	return cmd
 }

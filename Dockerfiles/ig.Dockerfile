@@ -8,6 +8,8 @@ ARG TARGETARCH
 ARG BUILDARCH
 ARG VERSION=undefined
 ENV VERSION=${VERSION}
+ARG EBPF_BUILDER=ghcr.io/inspektor-gadget/ebpf-builder:latest
+ENV EBPF_BUILDER=${EBPF_BUILDER}
 
 COPY go.mod go.sum /cache/
 RUN cd /cache && go mod download
@@ -16,7 +18,9 @@ ADD . /go/src/github.com/inspektor-gadget/inspektor-gadget
 WORKDIR /go/src/github.com/inspektor-gadget/inspektor-gadget
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
-		-ldflags "-X github.com/inspektor-gadget/inspektor-gadget/cmd/common.version=${VERSION} -extldflags '-static'" \
+		-ldflags "-X github.com/inspektor-gadget/inspektor-gadget/cmd/common.version=${VERSION} \
+                  -X github.com/inspektor-gadget/inspektor-gadget/cmd/common/image.builderImage=${EBPF_BUILDER} \
+                  -extldflags '-static'" \
 		-tags "netgo" \
 		-o ig-${TARGETOS}-${TARGETARCH} \
 		github.com/inspektor-gadget/inspektor-gadget/cmd/ig
