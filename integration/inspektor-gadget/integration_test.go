@@ -17,14 +17,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/signal"
 	"strings"
 	"sync/atomic"
 	"syscall"
 	"testing"
-	"time"
 
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
@@ -118,9 +116,7 @@ func testMain(m *testing.M) int {
 		}
 	}
 
-	seed := time.Now().UTC().UnixNano()
-	rand.Seed(seed)
-	fmt.Printf("using random seed: %d\n", seed)
+	fmt.Printf("using random seed: %d\n", GetSeed())
 
 	initCommands := []*Command{}
 	cleanupCommands := []*Command{DeleteRemainingNamespacesCommand()}

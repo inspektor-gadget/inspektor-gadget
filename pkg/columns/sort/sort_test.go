@@ -77,12 +77,12 @@ func TestSorter(t *testing.T) {
 	}
 
 	// Using shuffle should cover all sorting paths
-	rand.Seed(0)
+	r := rand.New(rand.NewSource(0))
 
 	cmap := getTestCol(t).GetColumnMap()
 
 	shuffle := func() {
-		rand.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
+		r.Shuffle(len(testEntries), func(i, j int) { testEntries[i], testEntries[j] = testEntries[j], testEntries[i] })
 	}
 
 	if !CanSortBy(cmap, []string{"uint"}) {

@@ -2,7 +2,7 @@ name: Inspektor Gadget CI
 env:
   REGISTRY: ghcr.io
   CONTAINER_REPO: ${{ github.repository }}
-  GO_VERSION: 1.19.6
+  GO_VERSION: 1.20.10
   AZURE_AKS_CLUSTER_PREFIX: ig-ci-aks-
   DEFAULT_DNSTESTER_IMAGE: ghcr.io/inspektor-gadget/dnstester:latest
   DEFAULT_EBPF_BUILDER_IMAGE: ghcr.io/inspektor-gadget/ebpf-builder:latest
@@ -100,7 +100,7 @@ jobs:
       uses: golangci/golangci-lint-action@v3.7.0
       with:
         # This version number must be kept in sync with Makefile lint one.
-        version: v1.49.0
+        version: v1.54.2
         working-directory: /home/runner/work/inspektor-gadget/inspektor-gadget
         # Workaround to display the output:
         # https://github.com/golangci/golangci-lint-action/issues/119#issuecomment-981090648

@@ -24,6 +24,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/kr/pretty"
 	"github.com/stretchr/testify/require"
@@ -83,6 +84,15 @@ type Command struct {
 
 	// stderr contains command standard output when started using Startcommand().
 	stderr bytes.Buffer
+}
+
+var (
+	seed int64      = time.Now().UTC().UnixNano()
+	r    *rand.Rand = rand.New(rand.NewSource(seed))
+)
+
+func GetSeed() int64 {
+	return seed
 }
 
 func (c *Command) IsCleanup() bool {
@@ -566,7 +576,7 @@ func BusyboxPodCommand(namespace, cmd string) *Command {
 // namespace.
 // The returned value is: namespace_parameter-random_integer.
 func GenerateTestNamespaceName(namespace string) string {
-	return fmt.Sprintf("%s-%d", namespace, rand.Int())
+	return fmt.Sprintf("%s-%d", namespace, r.Int())
 }
 
 // CreateTestNamespaceCommand returns a Command which creates a namespace whom

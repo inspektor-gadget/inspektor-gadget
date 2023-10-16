@@ -585,8 +585,7 @@ func GetFieldAsStringExt[T any](column ColumnInternals, floatFormat byte, floatP
 		return func(entry *T) string {
 			return strconv.FormatUint(ff(entry), 10)
 		}
-	case reflect.Float32,
-		reflect.Float64:
+	case reflect.Float32, reflect.Float64:
 		ff := GetFieldAsNumberFunc[float64, T](column)
 		return func(entry *T) string {
 			return strconv.FormatFloat(ff(entry), floatFormat, floatPrecision, 64)

@@ -40,9 +40,7 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
+var r *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
@@ -109,7 +107,7 @@ func SetupTest(ctx context.Context, traceFactories map[string]gadgets.TraceFacto
 
 		*ns = core.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("test-gadget-%d", rand.Intn(1000000)),
+				Name: fmt.Sprintf("test-gadget-%d", r.Intn(1000000)),
 			},
 		}
 		err := k8sClient.Create(ctx, ns)

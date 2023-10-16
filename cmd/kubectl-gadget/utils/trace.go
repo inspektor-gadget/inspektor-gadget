@@ -101,19 +101,19 @@ type TraceConfig struct {
 	AdditionalLabels map[string]string
 }
 
+// useful for randomTraceID()
+var r *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
 func init() {
 	// The Trace REST client needs to know the Trace CRD
 	gadgetv1alpha1.AddToScheme(scheme.Scheme)
-
-	// useful for randomTraceID()
-	rand.Seed(time.Now().UnixNano())
 }
 
 func randomTraceID() string {
 	output := make([]byte, 16)
 	allowedCharacters := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	for i := range output {
-		output[i] = allowedCharacters[rand.Int31n(int32(len(allowedCharacters)))]
+		output[i] = allowedCharacters[r.Int31n(int32(len(allowedCharacters)))]
 	}
 	return string(output)
 }
@@ -471,7 +471,7 @@ func SetTraceOperation(traceID string, operation string) error {
 	for _, trace := range traces.Items {
 		localError := updateTraceOperation(&trace, operation)
 		if localError != nil {
-			err = fmt.Errorf("%w\nError updating trace operation for %q: %s", err, traceID, localError)
+			err = fmt.Errorf("%w\nError updating trace operation for %q: %w", err, traceID, localError)
 		}
 	}
 
@@ -714,7 +714,7 @@ var sigIntReceivedNumber = 0
 // This function fixes trace not being deleted when calling:
 // kubectl gadget process-collector -A | head -n0
 func SigHandler(traceID *string, printTerminationMessage bool) {
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGILL, syscall.SIGABRT, syscall.SIGFPE, syscall.SIGSEGV, syscall.SIGPIPE, syscall.SIGALRM, syscall.SIGTERM, syscall.SIGBUS, syscall.SIGTRAP)
 	go func() {
 		sig := <-c
