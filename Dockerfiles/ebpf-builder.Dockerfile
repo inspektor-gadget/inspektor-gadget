@@ -13,10 +13,14 @@ RUN git clone --branch ${LIBBPF_VERSION} --depth 1 https://github.com/libbpf/lib
 
 FROM golang:1.20
 ARG CLANG_LLVM_VERSION
-# gcc-multilib is needed for <asm/types.h>.
+# libc-dev is needed for various headers, among others
+# /usr/include/arch-linux-gnu/asm/types.h.
+# libc-dev-i386 is needed on amd64 to provide <gnu/stubs-32.h>.
+# We make clang aware of these files through CFLAGS in Makefile.
 # lsb-release wget software-properties-common gnupg are needed by llvm.sh script
 RUN apt-get update \
-	&& apt-get install -y gcc-multilib lsb-release wget software-properties-common gnupg
+	&& apt-get install -y libc-dev lsb-release wget software-properties-common gnupg \
+	&& if [ "$(dpkg --print-architecture)" = 'amd64' ]; then apt-get install -y libc6-dev-i386; fi
 # install clang 15
 RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh $CLANG_LLVM_VERSION \
 	&& update-alternatives --install /usr/local/bin/llvm-strip llvm-strip $(which llvm-strip-$CLANG_LLVM_VERSION) 100 \

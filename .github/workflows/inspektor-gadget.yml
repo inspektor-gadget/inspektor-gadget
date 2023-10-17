@@ -678,7 +678,7 @@ jobs:
           - name: "ebpf-builder"
             context: "/home/runner/work/inspektor-gadget/inspektor-gadget"
             dockerfile: "Dockerfiles/ebpf-builder.Dockerfile"
-            platform: "linux/amd64"
+            platform: "linux/amd64,linux/arm64"
             filter-patterns:
               - "include/**"
               - "Dockerfiles/ebpf-builder.Dockerfile"
