@@ -15,23 +15,34 @@
 package image
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
-func NewImageCmd() *cobra.Command {
+func NewRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "image",
-		Short: "Manage gadget images",
-	}
+		Use:          "remove IMAGE",
+		Short:        "Remove local gadget image",
+		SilenceUsage: true,
+		Args:         cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			image := args[0]
 
-	cmd.AddCommand(NewBuildCmd())
-	cmd.AddCommand(NewPushCmd())
-	cmd.AddCommand(NewPullCmd())
-	cmd.AddCommand(NewTagCmd())
-	cmd.AddCommand(NewListCmd())
-	cmd.AddCommand(NewRemoveCmd())
+			err := oci.DeleteGadgetImage(context.TODO(), image)
+			if err != nil {
+				return fmt.Errorf("removing gadget image: %w", err)
+			}
+
+			fmt.Printf("Successfully removed %s\n", image)
+
+			return nil
+		},
+	}
 
 	return utils.MarkExperimental(cmd)
 }
