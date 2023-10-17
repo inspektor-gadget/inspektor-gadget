@@ -140,6 +140,60 @@ func TestValidateIntUint(t *testing.T) {
 	}
 }
 
+func TestValidateFloat(t *testing.T) {
+	type test struct {
+		name          string
+		bitSize       int
+		value         string
+		expectedError bool
+	}
+
+	tests := []test{
+		{
+			name:          "no_float",
+			bitSize:       32,
+			value:         "no_a_float",
+			expectedError: true,
+		},
+		{
+			name:          "float32",
+			bitSize:       32,
+			value:         "1.23456789",
+			expectedError: false,
+		},
+		{
+			name:          "float64",
+			bitSize:       64,
+			value:         "1.234567890123456789",
+			expectedError: false,
+		},
+		{
+			name:          "float32_overflow",
+			bitSize:       32,
+			value:         "3.4E+39", // math.MaxFloat32 * 10
+			expectedError: true,
+		},
+		{
+			name:          "float64_overflow",
+			bitSize:       64,
+			value:         "1.8E+309", // math.MaxFloat64 * 10
+			expectedError: true,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateFloat(test.bitSize)(test.value)
+			if test.expectedError {
+				require.Error(t, err)
+			} else {
+				require.Nil(t, err)
+			}
+		})
+	}
+}
+
 func TestValidateBool(t *testing.T) {
 	type test struct {
 		name          string

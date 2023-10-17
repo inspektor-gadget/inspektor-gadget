@@ -25,6 +25,7 @@ import (
 type TypeHint string
 
 const (
+	TypeUnknown  TypeHint = ""
 	TypeBool     TypeHint = "bool"
 	TypeString   TypeHint = "string"
 	TypeBytes    TypeHint = "bytes"
@@ -38,6 +39,8 @@ const (
 	TypeUint16   TypeHint = "uint16"
 	TypeUint32   TypeHint = "uint32"
 	TypeUint64   TypeHint = "uint64"
+	TypeFloat32  TypeHint = "float32"
+	TypeFloat64  TypeHint = "float64"
 	TypeDuration TypeHint = "duration"
 	TypeIP       TypeHint = "ip"
 )
@@ -54,6 +57,8 @@ var typeHintValidators = map[TypeHint]ParamValidator{
 	TypeUint16:   ValidateUint(16),
 	TypeUint32:   ValidateUint(32),
 	TypeUint64:   ValidateUint(64),
+	TypeFloat32:  ValidateFloat(32),
+	TypeFloat64:  ValidateFloat(64),
 	TypeDuration: ValidateDuration,
 	TypeIP:       ValidateIP,
 }
@@ -75,6 +80,16 @@ func ValidateInt(bitsize int) func(string) error {
 func ValidateUint(bitsize int) func(string) error {
 	return func(value string) error {
 		_, err := strconv.ParseUint(value, 10, bitsize)
+		if err != nil {
+			return fmt.Errorf("expected numeric value: %w", err)
+		}
+		return nil
+	}
+}
+
+func ValidateFloat(bitsize int) func(string) error {
+	return func(value string) error {
+		_, err := strconv.ParseFloat(value, bitsize)
 		if err != nil {
 			return fmt.Errorf("expected numeric value: %w", err)
 		}

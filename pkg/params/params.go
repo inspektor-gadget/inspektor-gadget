@@ -95,6 +95,7 @@ type ParamDesc struct {
 type Param struct {
 	*ParamDesc
 	value string
+	isSet bool
 }
 
 // GetTitle returns a human friendly title of the field; if no Title has been specified,
@@ -349,7 +350,59 @@ func (p *Param) Set(val string) error {
 		return err
 	}
 	p.value = val
+	p.isSet = true
 	return nil
+}
+
+func (p *Param) IsSet() bool {
+	return p.isSet
+}
+
+func (p *Param) IsDefault() bool {
+	return p.DefaultValue == p.value
+}
+
+// AsAny returns the value of the parameter according to its type hint. If there is not any type
+// hint, it returns the value as string.
+func (p *Param) AsAny() any {
+	switch p.TypeHint {
+	case TypeBool:
+		return p.AsBool()
+	case TypeString:
+		return p.AsString()
+	case TypeBytes:
+		return p.AsBytes()
+	case TypeInt:
+		return p.AsInt()
+	case TypeInt8:
+		return p.AsInt8()
+	case TypeInt16:
+		return p.AsInt16()
+	case TypeInt32:
+		return p.AsInt32()
+	case TypeInt64:
+		return p.AsInt64()
+	case TypeUint:
+		return p.AsUint()
+	case TypeUint8:
+		return p.AsUint8()
+	case TypeUint16:
+		return p.AsUint16()
+	case TypeUint32:
+		return p.AsUint32()
+	case TypeUint64:
+		return p.AsUint64()
+	case TypeFloat32:
+		return p.AsFloat32()
+	case TypeFloat64:
+		return p.AsFloat64()
+	case TypeDuration:
+		return p.AsDuration()
+	case TypeIP:
+		return p.AsIP()
+	default:
+		return p.value
+	}
 }
 
 func (p *Param) AsFloat32() float32 {
