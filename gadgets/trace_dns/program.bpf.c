@@ -82,7 +82,7 @@ struct event_t {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(__u32));
-	__type(value, struct event_t);
+	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
 GADGET_TRACER(dns, events, event_t);

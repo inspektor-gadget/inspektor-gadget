@@ -102,7 +102,7 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(u32));
-	__type(value, struct event);
+	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 
 GADGET_TRACER(tcpconnect, events, event);

@@ -10,7 +10,7 @@ TESTDATA = \
 	populate_metadata_1_tracer_1_struct_from_scratch.o \
 	populate_metadata_no_tracers_from_scratch.o \
 	populate_metadata_tracer_wrong_map_type.o \
-	populate_metadata_tracer_wrong_map_value_type.o \
+	populate_metadata_tracer_non_existing_structure.o \
 	populate_metadata_tracer_map_without_btf.o \
 	populate_metadata_tracer_add_missing_field.o \
 	populate_metadata_tracer_non_existing_map.o \

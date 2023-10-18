@@ -121,21 +121,6 @@ func TestValidate(t *testing.T) {
 			},
 			expectedErrString: "map \"myhashmap\" has a wrong type, expected: ringbuf or perf event array",
 		},
-		"tracers_wrong_value_map": {
-			metadata: &GadgetMetadata{
-				Name: "foo",
-				Tracers: map[string]Tracer{
-					"foo": {
-						MapName:    "wrong_value_map",
-						StructName: "event",
-					},
-				},
-				Structs: map[string]Struct{
-					"event": {},
-				},
-			},
-			expectedErrString: "value of BPF map \"wrong_value_map\" is not a structure",
-		},
 		"tracers_map_without_btf": {
 			metadata: &GadgetMetadata{
 				Name: "foo",
@@ -149,7 +134,6 @@ func TestValidate(t *testing.T) {
 					"event": {},
 				},
 			},
-			expectedErrString: "map \"map_without_btf\" does not have BTF information its value",
 		},
 		"tracers_good": {
 			metadata: &GadgetMetadata{
@@ -452,13 +436,55 @@ func TestPopulate(t *testing.T) {
 			objectPath:        "../../../../testdata/populate_metadata_tracer_wrong_map_type.o",
 			expectedErrString: "map \"events\" has a wrong type, expected: ringbuf or perf event array",
 		},
-		"tracer_wrong_map_value_type": {
-			objectPath:        "../../../../testdata/populate_metadata_tracer_wrong_map_value_type.o",
-			expectedErrString: "value of BPF map \"events\" is not a structure",
+		"tracer_non_existing_structure": {
+			objectPath:        "../../../../testdata/populate_metadata_tracer_non_existing_structure.o",
+			expectedErrString: "finding struct \"non_existing_type\" in eBPF object",
 		},
 		"tracer_map_without_btf": {
-			objectPath:        "../../../../testdata/populate_metadata_tracer_map_without_btf.o",
-			expectedErrString: "map \"events\" does not have BTF information its value",
+			objectPath: "../../../../testdata/populate_metadata_tracer_map_without_btf.o",
+			expectedMetadata: &GadgetMetadata{
+				Name:        "TODO: Fill the gadget name",
+				Description: "TODO: Fill the gadget description",
+				Tracers: map[string]Tracer{
+					"events": {
+						MapName:    "events",
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {
+						Fields: []Field{
+							{
+								Name:        "pid",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     10,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+							{
+								Name:        "comm",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+							{
+								Name:        "filename",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		"param_populate_from_scratch": {
 			objectPath: "../../../../testdata/populate_metadata_1_param_from_scratch.o",

@@ -56,7 +56,7 @@ Then, create a perf event array eBPF map to send events to user space:
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(u32));
-	__type(value, struct event);
+	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 ```
 
@@ -121,7 +121,7 @@ struct event {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(u32));
-	__type(value, struct event);
+	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 
 // open is the name of the tracer

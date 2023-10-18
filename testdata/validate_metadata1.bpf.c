@@ -34,13 +34,6 @@ struct {
 	__type(value, __u8);
 } myhashmap SEC(".maps");
 
-// map used to test wrong value type
-struct {
-	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(u32));
-	__type(value, sizeof(u32));
-} wrong_value_map SEC(".maps");
-
 // map used to test map without BTF
 // TODO: It's probably that this support will be removed from ebpf library as it was done in libbpf
 // (https://github.com/libbpf/libbpf/issues/272) at that time we'll need to remove it.
@@ -54,7 +47,7 @@ struct {
 	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
 	.max_entries = 4,
 	.key_size = sizeof(int),
-	.value_size = sizeof(struct event),
+	.value_size = sizeof(int),
 };
 
 SEC("tracepoint/syscalls/sys_enter_openat")
