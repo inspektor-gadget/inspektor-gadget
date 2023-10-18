@@ -37,3 +37,4 @@ pkg/btfgen/btfs/arm64/*
 !pkg/gadgets/**/*.o
 !pkg/container-hook/**/*.o
 !gadgets/*.o
+!testdata/*.o

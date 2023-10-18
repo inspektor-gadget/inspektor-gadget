@@ -19,15 +19,16 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	k8syaml "sigs.k8s.io/yaml"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/ellipsis"
 	columns_json "github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/json"
 	gadgetregistry "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-registry"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -38,10 +39,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
-)
-
-const (
-	printMapPrefix = "print_"
 )
 
 type GadgetDesc struct{}
@@ -72,6 +69,13 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			DefaultValue: oci.DefaultAuthFile,
 			TypeHint:     params.TypeString,
 		},
+		{
+			Key:          types.ValidateMetadataParam,
+			Title:        "Validate metadata",
+			Description:  "Validate the gadget metadata before running the gadget",
+			DefaultValue: "true",
+			TypeHint:     params.TypeBool,
+		},
 	}
 }
 
@@ -79,7 +83,7 @@ func (g *GadgetDesc) Parser() parser.Parser {
 	return nil
 }
 
-func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types.GadgetInfo, error) {
+func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (*types.GadgetInfo, error) {
 	authOpts := &oci.AuthOptions{
 		AuthFile: params.Get("authfile").AsString(),
 	}
@@ -89,13 +93,41 @@ func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types
 	}
 
 	ret := &types.GadgetInfo{
-		ProgContent: gadget.EbpfObject,
+		ProgContent:    gadget.EbpfObject,
+		GadgetMetadata: &types.GadgetMetadata{},
 	}
-	if err := yaml.Unmarshal(gadget.Metadata, &ret.GadgetDefinition); err != nil {
-		return nil, fmt.Errorf("unmarshaling definition: %w", err)
+
+	spec, err := loadSpec(ret.ProgContent)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(gadget.Metadata) == 0 {
+		// metadata is not present. synthesize something on the fly from the spec
+		if err := ret.GadgetMetadata.Populate(spec); err != nil {
+			return nil, err
+		}
+	} else {
+		validate := params.Get(types.ValidateMetadataParam).AsBool()
+
+		if err := yaml.Unmarshal(gadget.Metadata, &ret.GadgetMetadata); err != nil {
+			return nil, fmt.Errorf("unmarshaling metadata: %w", err)
+		}
+
+		if err := ret.GadgetMetadata.Validate(spec); err != nil {
+			if !validate {
+				logger.Warnf("gadget metadata is not valid: %v", err)
+			} else {
+				return nil, fmt.Errorf("gadget metadata is not valid: %w", err)
+			}
+		}
 	}
 
 	return ret, nil
+}
+
+func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types.GadgetInfo, error) {
+	return getGadgetInfo(params, args, log.StandardLogger())
 }
 
 func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {
@@ -116,35 +148,34 @@ func loadSpec(progContent []byte) (*ebpf.CollectionSpec, error) {
 	return spec, err
 }
 
-// getPrintMap returns the first map with a "print_" prefix. If not found returns nil.
-func getPrintMap(spec *ebpf.CollectionSpec) *ebpf.MapSpec {
-	for _, m := range spec.Maps {
-		if m.Type != ebpf.RingBuf && m.Type != ebpf.PerfEventArray {
-			continue
-		}
-
-		if !strings.HasPrefix(m.Name, printMapPrefix) {
-			continue
-		}
-
-		return m
+// getTracerMap returns the tracer map as defined in gadgetMetadata. If not found returns nil.
+func getTracerMap(spec *ebpf.CollectionSpec, gadgetMetadata *types.GadgetMetadata) *ebpf.MapSpec {
+	// We only support a single tracer map now, so this code returns the single element on the
+	// map or nil.
+	var traceMap *ebpf.MapSpec
+	for _, tracer := range gadgetMetadata.Tracers {
+		traceMap = spec.Maps[tracer.MapName]
 	}
 
-	return nil
+	return traceMap
 }
 
-func getEventTypeBTF(progContent []byte) (*btf.Struct, error) {
-	spec, err := loadSpec(progContent)
+func getEventTypeBTF(info *types.GadgetInfo) (*btf.Struct, error) {
+	spec, err := loadSpec(info.ProgContent)
 	if err != nil {
 		return nil, err
 	}
 
-	// Look for gadgets with a "print_" map
-	printMap := getPrintMap(spec)
-	if printMap != nil {
-		valueStruct, ok := printMap.Value.(*btf.Struct)
+	// Look for tracer maps
+	traceMap := getTracerMap(spec, info.GadgetMetadata)
+	if traceMap != nil {
+		if traceMap.Value == nil {
+			return nil, fmt.Errorf("BPF map %q does not have BTF information for its values", traceMap.Name)
+		}
+
+		valueStruct, ok := traceMap.Value.(*btf.Struct)
 		if !ok {
-			return nil, fmt.Errorf("BPF map %q does not have BTF info for values", printMap.Name)
+			return nil, fmt.Errorf("value of BPF map %q is not a structure", traceMap.Name)
 		}
 
 		return valueStruct, nil
@@ -275,18 +306,68 @@ func addL4EndpointColumns(
 	})
 }
 
+func field2ColumnAttrs(field *types.Field) columns.Attributes {
+	fieldAttrs := field.Attributes
+
+	defaultOpts := columns.GetDefault()
+
+	attrs := columns.Attributes{
+		Name:         field.Name,
+		Alignment:    defaultOpts.DefaultAlignment,
+		EllipsisType: defaultOpts.DefaultEllipsis,
+		Width:        defaultOpts.DefaultWidth,
+		Visible:      !fieldAttrs.Hidden,
+	}
+
+	if fieldAttrs.Width != 0 {
+		attrs.Width = int(fieldAttrs.Width)
+	}
+	if fieldAttrs.MinWidth != 0 {
+		attrs.MinWidth = int(fieldAttrs.MinWidth)
+	}
+	if fieldAttrs.MaxWidth != 0 {
+		attrs.MaxWidth = int(fieldAttrs.MaxWidth)
+	}
+	if fieldAttrs.Template != "" {
+		attrs.Template = fieldAttrs.Template
+	}
+
+	switch fieldAttrs.Alignment {
+	case types.AlignmentLeft:
+		attrs.Alignment = columns.AlignLeft
+	case types.AlignmentRight:
+		attrs.Alignment = columns.AlignRight
+	}
+
+	switch fieldAttrs.Ellipsis {
+	case types.EllipsisStart:
+		attrs.EllipsisType = ellipsis.Start
+	case types.EllipsisMiddle:
+		attrs.EllipsisType = ellipsis.Middle
+	case types.EllipsisEnd:
+		attrs.EllipsisType = ellipsis.End
+	}
+
+	return attrs
+}
+
 func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.Event], error) {
-	gadgetDefinition := info.GadgetDefinition
-	eventType, err := getEventTypeBTF(info.ProgContent)
+	gadgetMetadata := info.GadgetMetadata
+	eventType, err := getEventTypeBTF(info)
 	if err != nil {
 		return nil, fmt.Errorf("getting value struct: %w", err)
 	}
 
+	eventStruct, ok := gadgetMetadata.Structs[eventType.Name]
+	if !ok {
+		return nil, fmt.Errorf("struct %s not found in gadget metadata", eventType.Name)
+	}
+
 	cols := types.GetColumns()
 
-	colAttrs := map[string]columns.Attributes{}
-	for _, col := range gadgetDefinition.ColumnsAttrs {
-		colAttrs[col.Name] = col
+	members := map[string]btf.Member{}
+	for _, member := range eventType.Members {
+		members[member.Name] = member
 	}
 
 	fields := []columns.DynamicField{}
@@ -294,13 +375,11 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 	l3endpointCounter := 0
 	l4endpointCounter := 0
 
-	for _, member := range eventType.Members {
-		member := member
+	for i, field := range eventStruct.Fields {
+		member := members[field.Name]
 
-		attrs, ok := colAttrs[member.Name]
-		if !ok {
-			continue
-		}
+		attrs := field2ColumnAttrs(&field)
+		attrs.Order = 1000 + i
 
 		switch typedMember := member.Type.(type) {
 		case *btf.Struct:
@@ -355,10 +434,9 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 
 		field := columns.DynamicField{
 			Attributes: &attrs,
-			// TODO: remove once this is part of attributes
-			Template: attrs.Template,
-			Type:     rType,
-			Offset:   uintptr(member.Offset.Bytes()),
+			Template:   attrs.Template,
+			Type:       rType,
+			Offset:     uintptr(member.Offset.Bytes()),
 		}
 
 		fields = append(fields, field)

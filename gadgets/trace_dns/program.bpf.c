@@ -11,6 +11,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
+#include <gadget/macros.h>
 #include <gadget/types.h>
 
 #define GADGET_TYPE_NETWORKING
@@ -85,7 +86,9 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(__u32));
 	__type(value, struct event_t);
-} print_events SEC(".maps");
+} events SEC(".maps");
+
+GADGET_TRACE_MAP(events);
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
 union dnsflags {
@@ -357,8 +360,7 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 	// size of full structure - addresses + only used addresses
 	unsigned long long size =
 		sizeof(*event); // - MAX_ADDR_ANSWERS * 16 + anaddrcount * 16;
-	bpf_perf_event_output(skb, &print_events, BPF_F_CURRENT_CPU, event,
-			      size);
+	bpf_perf_event_output(skb, &events, BPF_F_CURRENT_CPU, event, size);
 
 	return 0;
 }

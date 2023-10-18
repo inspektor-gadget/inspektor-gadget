@@ -34,6 +34,7 @@ const (
 	MaxCharsUint64 = 20 // 18446744073709551615
 	MaxCharsInt64  = 20 // −9223372036854775808
 	MaxCharsBool   = 5  // false
+	MaxCharsChar   = 1  // 1 character
 )
 
 type subField struct {

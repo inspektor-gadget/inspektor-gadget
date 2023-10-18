@@ -467,13 +467,16 @@ func getHostArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index) (*
 }
 
 func getMetadataFromManifest(ctx context.Context, target oras.Target, manifest *ocispec.Manifest) ([]byte, error) {
+	// metadata is optional
+	if manifest.Config.Size == 0 {
+		return nil, nil
+	}
+
 	metadata, err := getContentFromDescriptor(ctx, target, manifest.Config)
 	if err != nil {
 		return nil, fmt.Errorf("getting metadata from descriptor: %w", err)
 	}
-	if len(metadata) == 0 {
-		return nil, errors.New("metadata file is empty")
-	}
+
 	return metadata, nil
 }
 

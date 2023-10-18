@@ -1,30 +1,36 @@
 name: tcpconnect
 description: trace tcp connections
-columns:
-  - name: pid
-    template: pid
-    order: 1000
-    visible: true
-  - name: task
-    template: comm
-    width: 16
-    order: 1001
-    visible: true
-  - name: uid
-    template: uid
-    order: 1002
-    visible: false
-  - name: gid
-    template: gid
-    order: 1003
-    visible: false
-  - name: src
-    min_width: 24
-    max_width: 50
-    order: 1005
-    visible: true
-  - name: dst
-    min_width: 24
-    max_width: 50
-    order: 1006
-    visible: true
+tracers:
+  tcpconnect:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: pid
+      attributes:
+        template: pid
+    - name: task
+      attributes:
+        template: comm
+    - name: uid
+      attributes:
+        template: uid
+    - name: gid
+      attributes:
+        template: uid
+    - name: src
+      attributes:
+        minWidth: 24
+        maxWidth: 50
+    - name: dst
+      attributes:
+        minWidth: 24
+        maxWidth: 50
+    - name: latency
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+        hidden: true

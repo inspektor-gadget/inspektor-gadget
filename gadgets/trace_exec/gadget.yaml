@@ -1,23 +1,65 @@
 name: trace exec
 description: trace process executions
-columns:
-  - name: pid
-    template: pid
-    order: 1000
-    visible: true
-  - name: ppid
-    template: pid
-    order: 1001
-    visible: true
-  - name: comm
-    template: comm
-    order: 1002
-    visible: true
-  - name: uid
-    template: uid
-    order: 1003
-    visible: true
-  - name: gid
-    template: gid
-    order: 1004
-    visible: true
+tracers:
+  exec:
+    mapName: events
+    structName: event
+structs:
+  event:
+    fields:
+    - name: pid
+      attributes:
+        template: pid
+    - name: ppid
+      attributes:
+        template: pid
+    - name: comm
+      attributes:
+        template: comm
+    - name: uid
+      attributes:
+        template: uid
+    - name: gid
+      attributes:
+        template: uid
+    - name: loginuid
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: sessionid
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: retval
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        ellipsis: end
+    - name: args_count
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: args_size
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: args
+      description: 'TODO: Fill field description'
+      attributes:
+        width: 16
+        alignment: left
+        hidden: true
+        ellipsis: end

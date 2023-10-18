@@ -344,6 +344,10 @@ build-gadgets: install/ig
 push-gadgets: install/ig
 	$(MAKE) -C gadgets/ push
 
+.PHONY: testdata
+testdata:
+	$(MAKE) -C testdata/
+
 .PHONY: help
 help:
 	@echo  'Building targets:'
@@ -386,3 +390,4 @@ help:
 	@echo  '  minikube-deploy		- Build and deploy the gadget container on minikube with docker driver, the cluster is started if it does not exist'
 	@echo  '  install-headers		- Install headers used to build gadgets in /usr/include/gadget'
 	@echo  '  remove-headers		- Remove headers installed in /usr/include/gadget'
+	@echo  '  testdata			- Build testdata'

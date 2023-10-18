@@ -6,6 +6,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 
+#include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 
@@ -54,7 +55,9 @@ struct {
 	__uint(key_size, sizeof(u32));
 	__type(value, struct event);
 	//__uint(value_size, sizeof(u32));
-} print_events SEC(".maps");
+} events SEC(".maps");
+
+GADGET_TRACE_MAP(events);
 
 static __always_inline bool valid_uid(uid_t uid)
 {
@@ -149,7 +152,7 @@ static __always_inline int trace_exit(struct trace_event_raw_sys_exit *ctx)
 	event.timestamp = bpf_ktime_get_boot_ns();
 
 	/* emit event */
-	bpf_perf_event_output(ctx, &print_events, BPF_F_CURRENT_CPU, &event,
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
 			      sizeof(event));
 
 cleanup:

@@ -41,14 +41,14 @@ func TestRunTraceOpen(t *testing.T) {
 			})
 
 			expectedTraceOpenJsonObj := map[string]interface{}{
-				"comm":     "cat",
-				"fname":    "/dev/null",
-				"uid":      1000,
-				"gid":      1111,
-				"ret":      3,
-				"flags":    0,
-				"mntns_id": 0,
-				"pid":      0,
+				"comm":  "cat",
+				"fname": "/dev/null",
+				"uid":   1000,
+				"gid":   1111,
+				"ret":   3,
+				"flags": 0,
+				"pid":   0,
+				"mode":  0,
 			}
 
 			expectedJsonObj := MergeJsonObjs(t, expectedBaseJsonObj, expectedTraceOpenJsonObj)
@@ -65,7 +65,6 @@ func TestRunTraceOpen(t *testing.T) {
 				SetEventRuntimeContainerName(m, "")
 
 				m["pid"] = uint32(0)
-				m["mntns_id"] = uint64(0)
 			}
 
 			ExpectEntriesToMatchObj(t, output, normalize, expectedJsonObj)

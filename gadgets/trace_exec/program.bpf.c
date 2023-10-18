@@ -7,6 +7,7 @@
 #include <bpf/bpf_tracing.h>
 #endif /* __TARGET_ARCH_arm64 */
 
+#include <gadget/macros.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
 
@@ -53,7 +54,9 @@ struct {
 	__uint(key_size, sizeof(u32));
 	//__uint(value_size, sizeof(u32));
 	__type(value, struct event);
-} print_events SEC(".maps");
+} events SEC(".maps");
+
+GADGET_TRACE_MAP(events);
 
 static __always_inline bool valid_uid(uid_t uid)
 {
@@ -177,8 +180,8 @@ int ig_execve_x(struct trace_event_raw_sys_exit *ctx)
 	bpf_get_current_comm(&event->comm, sizeof(event->comm));
 	size_t len = EVENT_SIZE(event);
 	if (len <= sizeof(*event))
-		bpf_perf_event_output(ctx, &print_events, BPF_F_CURRENT_CPU,
-				      event, len);
+		bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,
+				      len);
 cleanup:
 	bpf_map_delete_elem(&execs, &pid);
 	return 0;

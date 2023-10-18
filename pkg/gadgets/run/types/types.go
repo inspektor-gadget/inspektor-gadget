@@ -22,6 +22,10 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
+const (
+	ValidateMetadataParam = "validate-metadata"
+)
+
 type L3Endpoint struct {
 	eventtypes.L3Endpoint
 	Name string
@@ -44,8 +48,8 @@ type Event struct {
 }
 
 type GadgetInfo struct {
-	GadgetDefinition *GadgetDefinition
-	ProgContent      []byte
+	GadgetMetadata *GadgetMetadata
+	ProgContent    []byte
 }
 
 func (ev *Event) GetEndpoints() []*eventtypes.L3Endpoint {
@@ -69,12 +73,6 @@ func Base(ev eventtypes.Event) *Event {
 	return &Event{
 		Event: ev,
 	}
-}
-
-type GadgetDefinition struct {
-	Name         string               `yaml:"name"`
-	Description  string               `yaml:"description"`
-	ColumnsAttrs []columns.Attributes `yaml:"columns"`
 }
 
 // Printer is implemented by objects that can print information, like frontends.

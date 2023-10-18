@@ -148,6 +148,14 @@ jobs:
             echo "$changes"
             exit 1
           fi
+      - name: Check that testdata is updated
+        run: |
+          make testdata
+          changes="$(git status --porcelain)"
+          if [ -n "$changes" ] ; then
+            echo "$changes"
+            exit 1
+          fi
 
   pr-dependencies-checks:
     name: PR dependencies checks

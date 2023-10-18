@@ -15,6 +15,7 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_endian.h>
 
+#include <gadget/macros.h>
 #include <gadget/maps.bpf.h>
 #include <gadget/mntns_filter.h>
 #include <gadget/types.h>
@@ -53,7 +54,9 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(__u32));
 	__type(value, struct event);
-} print_events SEC(".maps");
+} events SEC(".maps");
+
+GADGET_TRACE_MAP(events);
 
 static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 					       const struct sk_buff *skb)
@@ -153,7 +156,7 @@ static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 		event.gid = (__u32)(skb_val->uid_gid >> 32);
 	}
 
-	bpf_perf_event_output(ctx, &print_events, BPF_F_CURRENT_CPU, &event,
+	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event,
 			      sizeof(event));
 	return 0;
 }
