@@ -129,19 +129,13 @@ func (t *Tracer) Stop() {
 	}
 }
 
-func (t *Tracer) handleTraceMap() (*ebpf.MapSpec, error) {
-	// If the gadget doesn't provide a map it's not an error becuase it could provide other ways
-	// to output data
-	traceMap := getTracerMap(t.spec, t.config.Metadata)
-	if traceMap == nil {
-		return nil, nil
-	}
+func (t *Tracer) handleTracers() (string, error) {
+	_, tracer := getAnyMapElem(t.config.Metadata.Tracers)
 
-	eventType, ok := traceMap.Value.(*btf.Struct)
-	if !ok {
-		return nil, fmt.Errorf("BPF map %q does not have BTF info for values", traceMap.Name)
+	traceMap := t.spec.Maps[tracer.MapName]
+	if traceMap == nil {
+		return "", fmt.Errorf("map %q not found", tracer.MapName)
 	}
-	t.eventType = eventType
 
 	// Almost same hack as in https://github.com/solo-io/bumblebee/blob/c2422b5bab66754b286d062317e244f02a431dac/pkg/loader/loader.go#L114-L120
 	// TODO: Remove it?
@@ -153,23 +147,27 @@ func (t *Tracer) handleTraceMap() (*ebpf.MapSpec, error) {
 		traceMap.ValueSize = 4
 	}
 
-	return traceMap, nil
+	return tracer.MapName, nil
 }
 
 func (t *Tracer) installTracer() error {
-	// Load the spec
 	var err error
+	var tracerMapName string
 
 	mapReplacements := map[string]*ebpf.Map{}
 	consts := map[string]interface{}{}
 
-	traceMap, err := t.handleTraceMap()
+	t.eventType, err = getEventTypeBTF(t.config.ProgContent, t.config.Metadata)
 	if err != nil {
-		return fmt.Errorf("handling trace programs: %w", err)
+		return err
 	}
 
-	if t.eventType == nil {
-		return fmt.Errorf("the gadget doesn't provide event type information")
+	switch {
+	case len(t.config.Metadata.Tracers) > 0:
+		tracerMapName, err = t.handleTracers()
+		if err != nil {
+			return fmt.Errorf("handling trace programs: %w", err)
+		}
 	}
 
 	// Handle special maps like mount ns filter, socket enricher, etc.
@@ -208,13 +206,13 @@ func (t *Tracer) installTracer() error {
 	}
 
 	// Some logic before loading the programs
-	if traceMap != nil {
-		m := t.collection.Maps[traceMap.Name]
+	if tracerMapName != "" {
+		m := t.collection.Maps[tracerMapName]
 		switch m.Type() {
 		case ebpf.RingBuf:
-			t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[traceMap.Name])
+			t.ringbufReader, err = ringbuf.NewReader(t.collection.Maps[tracerMapName])
 		case ebpf.PerfEventArray:
-			t.perfReader, err = perf.NewReader(t.collection.Maps[traceMap.Name], gadgets.PerfBufferPages*os.Getpagesize())
+			t.perfReader, err = perf.NewReader(t.collection.Maps[tracerMapName], gadgets.PerfBufferPages*os.Getpagesize())
 		}
 		if err != nil {
 			return fmt.Errorf("create BPF map reader: %w", err)
