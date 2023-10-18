@@ -27,6 +27,6 @@ struct {
 	.value_size = sizeof(struct event),
 };
 
-GADGET_TRACE_MAP(events);
+GADGET_TRACER(test, events, event);
 
 char LICENSE[] SEC("license") = "GPL";

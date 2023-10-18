@@ -10,6 +10,6 @@ struct {
 	__type(value, sizeof(u32));
 } events SEC(".maps");
 
-GADGET_TRACE_MAP(events);
+GADGET_TRACER(test, events, event);
 
 char LICENSE[] SEC("license") = "GPL";

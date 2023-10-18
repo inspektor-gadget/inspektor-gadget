@@ -13,14 +13,12 @@ struct event {
 	__u8 filename[NAME_MAX];
 };
 
-// map used to test that a wrong map type can't be used
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 10240);
-	__type(key, struct event);
-	__type(value, __u8);
+	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+	__uint(key_size, sizeof(u32));
+	__type(value, struct event);
 } events SEC(".maps");
 
-GADGET_TRACER(test, events, event);
+GADGET_TRACER(test, non_existing_map, event);
 
 char LICENSE[] SEC("license") = "GPL";

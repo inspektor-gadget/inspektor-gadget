@@ -555,6 +555,14 @@ func TestPopulate(t *testing.T) {
 				},
 			},
 		},
+		"tracer_non_existing_map": {
+			objectPath:        "../../../../testdata/populate_metadata_tracer_non_existing_map.o",
+			expectedErrString: "map \"non_existing_map\" not found in eBPF object",
+		},
+		"tracer_bad_tracer_info": {
+			objectPath:        "../../../../testdata/populate_metadata_tracer_bad_tracer_info.o",
+			expectedErrString: "invalid tracer info",
+		},
 	}
 
 	for name, test := range tests {

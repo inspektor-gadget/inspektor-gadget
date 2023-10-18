@@ -43,9 +43,6 @@ GADGET_PARAM(targ_tgid);
 GADGET_PARAM(targ_uid);
 GADGET_PARAM(targ_failed);
 
-// we need this to make sure the compiler doesn't remove our struct
-const struct event *unusedevent __attribute__((unused));
-
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 10240);
@@ -60,7 +57,7 @@ struct {
 	//__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 
-GADGET_TRACE_MAP(events);
+GADGET_TRACER(open, events, event);
 
 static __always_inline bool valid_uid(uid_t uid)
 {

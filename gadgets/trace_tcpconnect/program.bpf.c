@@ -57,9 +57,6 @@ const volatile __u64 targ_min_latency_ns = 0;
 #define AF_INET 2
 #define AF_INET6 10
 
-// we need this to make sure the compiler doesn't remove our struct
-const struct event *unusedevent __attribute__((unused));
-
 // sockets_per_process keeps track of the sockets between:
 // - kprobe enter_tcp_connect
 // - kretprobe exit_tcp_connect
@@ -108,7 +105,7 @@ struct {
 	__type(value, struct event);
 } events SEC(".maps");
 
-GADGET_TRACE_MAP(events);
+GADGET_TRACER(tcpconnect, events, event);
 
 static __always_inline bool filter_port(__u16 port)
 {

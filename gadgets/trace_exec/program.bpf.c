@@ -59,7 +59,7 @@ struct {
 	__type(value, struct event);
 } events SEC(".maps");
 
-GADGET_TRACE_MAP(events);
+GADGET_TRACER(exec, events, event);
 
 static __always_inline bool valid_uid(uid_t uid)
 {

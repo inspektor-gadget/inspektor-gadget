@@ -79,16 +79,13 @@ struct event_t {
 #define DNS_QR_QUERY 0
 #define DNS_QR_RESP 1
 
-// we need this to make sure the compiler doesn't remove our struct
-const struct event_t *unusedevent __attribute__((unused));
-
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(__u32));
 	__type(value, struct event_t);
 } events SEC(".maps");
 
-GADGET_TRACE_MAP(events);
+GADGET_TRACER(dns, events, event_t);
 
 // https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.1
 union dnsflags {
