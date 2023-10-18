@@ -6,11 +6,12 @@ EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder
 all: testdata_docker
 
 TESTDATA = \
-	populate_metadata1.o \
-	populate_metadata2.o \
-	populate_metadata3.o \
-	populate_metadata4.o \
-	populate_metadata5.o \
+	populate_metadata_1_tracer_1_struct_from_scratch.o \
+	populate_metadata_no_tracers_from_scratch.o \
+	populate_metadata_tracer_wrong_map_type.o \
+	populate_metadata_tracer_wrong_map_value_type.o \
+	populate_metadata_tracer_map_without_btf.o \
+	populate_metadata_tracer_add_missing_field.o \
 	validate_metadata1.o \
 	#
 
@@ -28,3 +29,7 @@ testdata_docker:
 	docker run --rm --name testdata-builder --user $(shell id -u):$(shell id -g) \
 		-v $(shell pwd):/work $(EBPF_BUILDER) \
 		bash -c "cd /work && make testdata_host"
+
+.PHONY: clean
+clean:
+	rm -f $(TESTDATA)

@@ -221,7 +221,7 @@ func TestPopulate(t *testing.T) {
 
 	tests := map[string]testCase{
 		"1_tracer_1_struct_from_scratch": {
-			objectPath: "../../../../testdata/populate_metadata1.o",
+			objectPath: "../../../../testdata/populate_metadata_1_tracer_1_struct_from_scratch.o",
 			expectedMetadata: &GadgetMetadata{
 				Name:        "TODO: Fill the gadget name",
 				Description: "TODO: Fill the gadget description",
@@ -267,7 +267,7 @@ func TestPopulate(t *testing.T) {
 			},
 		},
 		"tracer_add_missing_field": {
-			objectPath: "../../../../testdata/populate_metadata1.o",
+			objectPath: "../../../../testdata/populate_metadata_tracer_add_missing_field.o",
 			initialMetadata: &GadgetMetadata{
 				Name:        "foo",
 				Description: "bar",
@@ -349,7 +349,7 @@ func TestPopulate(t *testing.T) {
 			},
 		},
 		"no_tracers_from_scratch": {
-			objectPath: "../../../../testdata/populate_metadata2.o",
+			objectPath: "../../../../testdata/populate_metadata_no_tracers_from_scratch.o",
 			expectedMetadata: &GadgetMetadata{
 				Name:        "TODO: Fill the gadget name",
 				Description: "TODO: Fill the gadget description",
@@ -358,15 +358,15 @@ func TestPopulate(t *testing.T) {
 			},
 		},
 		"tracer_wrong_map_type": {
-			objectPath:        "../../../../testdata/populate_metadata3.o",
+			objectPath:        "../../../../testdata/populate_metadata_tracer_wrong_map_type.o",
 			expectedErrString: "map \"events\" has a wrong type, expected: ringbuf or perf event array",
 		},
 		"tracer_wrong_map_value_type": {
-			objectPath:        "../../../../testdata/populate_metadata4.o",
+			objectPath:        "../../../../testdata/populate_metadata_tracer_wrong_map_value_type.o",
 			expectedErrString: "value of BPF map \"events\" is not a structure",
 		},
 		"tracer_map_without_btf": {
-			objectPath:        "../../../../testdata/populate_metadata5.o",
+			objectPath:        "../../../../testdata/populate_metadata_tracer_map_without_btf.o",
 			expectedErrString: "map \"events\" does not have BTF information its value",
 		},
 	}
