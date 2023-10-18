@@ -3,7 +3,7 @@
 #ifndef __MACROS_H
 #define __MACROS_H
 
-// Keep this aligned with pkg/gadgets/consts.go
+// Keep this aligned with pkg/gadgets/run/types/metadata.go
 
 // GADGET_TRACE_MAP is used to indicate that a given perf event array or ring buffer eBPF map is
 // used to send events. Inspektor Gadget automatically polls the events from the map, enriches them

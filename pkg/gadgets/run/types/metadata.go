@@ -28,6 +28,12 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 )
 
+// Keep this aligned with include/gadget/macros.h
+const (
+	// Prefix used to mark trace maps
+	traceMapPrefix = "gadget_trace_map_"
+)
+
 const (
 	DefaultColumnWidth = 16
 )
@@ -345,7 +351,7 @@ func getGadgetIdentByPrefix(spec *ebpf.CollectionSpec, prefix string) string {
 // getTracerMapFromeBPF returns the tracer map from the eBPF object.
 // It looks for maps marked with GADGET_TRACE_MAP() and returns the first one.
 func getTracerMapFromeBPF(spec *ebpf.CollectionSpec) *ebpf.MapSpec {
-	mapName := getGadgetIdentByPrefix(spec, gadgets.TraceMapPrefix)
+	mapName := getGadgetIdentByPrefix(spec, traceMapPrefix)
 	return spec.Maps[mapName]
 }
 
