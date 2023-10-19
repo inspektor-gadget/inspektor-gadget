@@ -610,8 +610,8 @@ k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 h1:aVUu9fTY98ivBPKR9Y5w/A
 k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00/go.mod h1:AsvuZPBlUDVuCdzJ87iajxtXuR9oktsTctW/R9wwouA=
 k8s.io/utils v0.0.0-20231127182322-b307cd553661 h1:FepOBzJ0GXm8t0su67ln2wAZjbQ6RxQGZDnzuLcrUTI=
 k8s.io/utils v0.0.0-20231127182322-b307cd553661/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
-oras.land/oras-go/v2 v2.3.1 h1:lUC6q8RkeRReANEERLfH86iwGn55lbSWP20egdFHVec=
-oras.land/oras-go/v2 v2.3.1/go.mod h1:5AQXVEu1X/FKp1F9DMOb5ZItZBOa0y5dha0yCm4NR9c=
+oras.land/oras-go/v2 v2.0.0-20231221070400-5073458982fd h1:lmACEalNHXAb8sdnM8938XMXPYK3dcs6ke7wOJLoO2w=
+oras.land/oras-go/v2 v2.0.0-20231221070400-5073458982fd/go.mod h1:W2rj9/rGtsTh9lmU3S0uq3iwvR6wNvUuD8nmOFmWBUY=
 sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3 h1:fic0YtUGSr79nv8vn3ziNZJrPZsm64KT/Fd/bc7Q6xY=
 sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3/go.mod h1:Qox07m8Gh7skSeOfppEWllPxNMhA7+b93D8Qjj6rBlQ=
 sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd h1:EDPBXCAspyGV4jQlpZSudPeMmr1bNJefnuqLsRAsHZo=
