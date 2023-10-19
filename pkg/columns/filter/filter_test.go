@@ -41,6 +41,7 @@ func TestFilters(t *testing.T) {
 		Uint64           uint64        `column:"uint64,align:right,width:6"`
 		String           string        `column:"string"`
 		Array            [10]byte      `column:"array"`
+		Slice            []byte        `column:"slice"`
 		Dummy            string        // This a dummy field that we can expose using a virtual field
 		Time             int64         `column:"time,align:right,width:24,group:sum"`
 		Float32          float32       `column:"float32"`
@@ -63,6 +64,7 @@ func TestFilters(t *testing.T) {
 			String:         "",
 			Dummy:          "",
 			Array:          [10]byte{},
+			Slice:          []byte{},
 			Int:            7,
 			Int8:           7,
 			Int16:          7,
@@ -82,6 +84,7 @@ func TestFilters(t *testing.T) {
 			String:         "Demo 123",
 			Dummy:          "Demo 123",
 			Array:          [10]byte{68, 101, 109, 111, 32, 49, 50, 51, 0, 0}, // "Demo 123"
+			Slice:          []byte{68, 101, 109, 111, 32, 49, 50, 51},         // "Demo 123"
 			Int:            1,
 			Int8:           1,
 			Int16:          1,
@@ -101,6 +104,7 @@ func TestFilters(t *testing.T) {
 			String:         "Demo 234",
 			Dummy:          "Demo 234",
 			Array:          [10]byte{68, 101, 109, 111, 32, 50, 51, 52, 0, 0}, // "Demo 234"
+			Slice:          []byte{68, 101, 109, 111, 32, 50, 51, 52},         // "Demo 234"
 			Int:            2,
 			Int8:           2,
 			Int16:          2,
@@ -120,6 +124,7 @@ func TestFilters(t *testing.T) {
 			String:         "Demo 234",
 			Dummy:          "Demo 234",
 			Array:          [10]byte{68, 101, 109, 111, 32, 50, 51, 52, 0, 0}, // "Demo 234"
+			Slice:          []byte{68, 101, 109, 111, 32, 50, 51, 52},         // "Demo 234"
 			Int:            3,
 			Int8:           3,
 			Int16:          3,
@@ -139,6 +144,7 @@ func TestFilters(t *testing.T) {
 			String:         "Foobar",
 			Dummy:          "Foobar",
 			Array:          [10]byte{70, 111, 111, 98, 97, 114, 0, 0, 0, 0}, // "Foobar"
+			Slice:          []byte{70, 111, 111, 98, 97, 114},               // "Foobar"
 			Int:            2,
 			Int8:           2,
 			Int16:          2,
@@ -158,6 +164,7 @@ func TestFilters(t *testing.T) {
 			String:         "straße",
 			Dummy:          "straße",
 			Array:          [10]byte{115, 116, 114, 97, 195, 159, 101, 0, 0, 0}, // "straße"
+			Slice:          []byte{115, 116, 114, 97, 195, 159, 101},            // "straße"
 			Int:            2,
 			Int8:           2,
 			Int16:          2,
@@ -177,6 +184,7 @@ func TestFilters(t *testing.T) {
 			String:         "\xff\xff\xff\xff\xff\xff\xff\xff",                         // invalid utf-8
 			Dummy:          "\xff\xff\xff\xff\xff\xff\xff\xff",                         // invalid utf-8
 			Array:          [10]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255}, // invalid utf-8
+			Slice:          []byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255},   // invalid utf-8
 			Int:            2,
 			Int8:           2,
 			Int16:          2,
@@ -200,6 +208,7 @@ func TestFilters(t *testing.T) {
 		{filterString: "string", expectedCount: 1, expectError: false, description: "empty value in column string"},
 		{filterString: "string:", expectedCount: 1, expectError: false, description: "same"},
 		{filterString: "string:Demo 123", expectedCount: 1, expectError: false, description: "exact match on string"},
+		{filterString: "string:straße", expectedCount: 1, expectError: false, description: "exact match on multi-byte string"},
 		{filterString: "string:>Demo", expectedCount: 6, expectError: false, description: "gt match on string"},
 		{filterString: "string:>=Demo", expectedCount: 6, expectError: false, description: "gte match on string"},
 		{filterString: "string:<Demo", expectedCount: 1, expectError: false, description: "lt match on string"},
@@ -225,6 +234,21 @@ func TestFilters(t *testing.T) {
 		{filterString: "array:~(?i)demo", expectedCount: 3, expectError: false, description: "case-insensitive regular expression search"},
 		{filterString: "array:!~(?i)demo", expectedCount: 4, expectError: false, description: "negated case-insensitive regular expression search"},
 		{filterString: "array:~(?i)??//{demo", expectedCount: 0, expectError: true, description: "garbage regular expression search"},
+
+		{filterString: "slice", expectedCount: 1, expectError: false, description: "empty value in column slice"},
+		{filterString: "slice:", expectedCount: 1, expectError: false, description: "same"},
+		{filterString: "slice:Demo 123", expectedCount: 1, expectError: false, description: "exact match on slice"},
+		{filterString: "slice:straße", expectedCount: 1, expectError: false, description: "exact match on multi-byte slice"},
+		{filterString: "slice:>Demo", expectedCount: 6, expectError: false, description: "gt match on slice"},
+		{filterString: "slice:>=Demo", expectedCount: 6, expectError: false, description: "gte match on slice"},
+		{filterString: "slice:<Demo", expectedCount: 1, expectError: false, description: "lt match on slice"},
+		{filterString: "slice:<=Demo", expectedCount: 1, expectError: false, description: "lte match on slice"},
+		{filterString: "slice:demo 123", expectedCount: 0, expectError: false, description: "lowercase, not found"},
+		{filterString: "slice:~Demo", expectedCount: 3, expectError: false, description: "regular expression search"},
+		{filterString: "slice:~demo", expectedCount: 0, expectError: false, description: "case-sensitive regular expression search"},
+		{filterString: "slice:~(?i)demo", expectedCount: 3, expectError: false, description: "case-insensitive regular expression search"},
+		{filterString: "slice:!~(?i)demo", expectedCount: 4, expectError: false, description: "negated case-insensitive regular expression search"},
+		{filterString: "slice:~(?i)??//{demo", expectedCount: 0, expectError: true, description: "garbage regular expression search"},
 
 		{filterString: "int:", expectedCount: 0, expectError: true, description: "match on int, empty string"},
 		{filterString: "int:1", expectedCount: 1, expectError: false, description: "match on int, exact match"},

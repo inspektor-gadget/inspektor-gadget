@@ -78,7 +78,7 @@ func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T])
 			return value, fmt.Errorf("tried to compare %q to float column %q", fs.value, column.Name)
 		}
 		value = reflect.ValueOf(number).Convert(column.Type())
-	case reflect.String, reflect.Array:
+	case reflect.String, reflect.Array, reflect.Slice:
 		value = reflect.ValueOf(fs.value)
 	default:
 		return reflect.Value{}, fmt.Errorf("tried to match %q on unsupported column %q", fs.value, column.Name)
