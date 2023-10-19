@@ -78,7 +78,7 @@ func getValueFromFilterSpec[T any](fs *FilterSpec[T], column *columns.Column[T])
 			return value, fmt.Errorf("tried to compare %q to float column %q", fs.value, column.Name)
 		}
 		value = reflect.ValueOf(number).Convert(column.Type())
-	case reflect.String, reflect.Array:
+	case reflect.String, reflect.Array, reflect.Slice:
 		value = reflect.ValueOf(fs.value)
 	default:
 		return reflect.Value{}, fmt.Errorf("tried to match %q on unsupported column %q", fs.value, column.Name)
@@ -143,7 +143,8 @@ func GetFilterFromString[T any](cols columns.ColumnMap[T], filter string) (*Filt
 		fs.value = filterRule
 	}
 
-	if fs.comparisonType == comparisonTypeRegex && (column.Kind() != reflect.String && column.Kind() != reflect.Array) {
+	if fs.comparisonType == comparisonTypeRegex &&
+		(column.Kind() != reflect.String && column.Kind() != reflect.Array && column.Kind() != reflect.Slice) {
 		return nil, fmt.Errorf("tried to apply regular expression on non-string column %q", fs.column.Name)
 	}
 
@@ -214,7 +215,7 @@ func (fs *FilterSpec[T]) getComparisonFunc() func(*T) bool {
 			}
 		}
 		return getComparisonFuncForComparisonType[string, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
-	case reflect.Array:
+	case reflect.Array, reflect.Slice:
 		return getComparisonFuncAsStringField[T](fs.comparisonType, fs.negate, fs.column, fs.refValue, fs.regex)
 	case reflect.Float32:
 		return getComparisonFuncForComparisonType[float32, T](fs.comparisonType, fs.negate, fs.column, fs.refValue)
