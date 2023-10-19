@@ -47,7 +47,7 @@ func TestValidate(t *testing.T) {
 					"bar": {},
 				},
 			},
-			expectedErrString: "gadget cannot have tracers and snapshotters",
+			expectedErrString: "gadget can implement only one tracer or snapshotter or topper",
 		},
 		"tracers_more_than_one": {
 			objectPath: "../../../../testdata/validate_metadata1.o",
@@ -151,6 +151,96 @@ func TestValidate(t *testing.T) {
 				Tracers: map[string]Tracer{
 					"foo": {
 						MapName:    "events",
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {},
+				},
+			},
+		},
+		"toppers_more_than_one": {
+			objectPath: "../../../../testdata/validate_metadata_topper.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Toppers: map[string]Topper{
+					"foo": {},
+					"bar": {},
+				},
+			},
+			expectedErrString: "only one topper is allowed",
+		},
+		"toppers_bad_map_type": {
+			objectPath: "../../../../testdata/validate_metadata_topper.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Toppers: map[string]Topper{
+					"foo": {
+						MapName:    "events",
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {},
+				},
+			},
+			expectedErrString: "map \"events\" has a wrong type, expected: hash",
+		},
+		"toppers_bad_structure_name": {
+			objectPath: "../../../../testdata/validate_metadata_topper.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Toppers: map[string]Topper{
+					"foo": {
+						MapName:    "myhashmap",
+						StructName: "event2",
+					},
+				},
+				Structs: map[string]Struct{
+					"event2": {},
+				},
+			},
+			expectedErrString: "map \"myhashmap\" value name is \"event\", expected \"event2\"",
+		},
+		"toppers_wrong_value_type": {
+			objectPath: "../../../../testdata/validate_metadata_topper.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Toppers: map[string]Topper{
+					"foo": {
+						MapName:    "hash_wrong_value_map",
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {},
+				},
+			},
+			expectedErrString: "map \"hash_wrong_value_map\" value is \"__u32\", expected \"struct\"",
+		},
+		"toppers_without_btf": {
+			objectPath: "../../../../testdata/validate_metadata_topper.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Toppers: map[string]Topper{
+					"foo": {
+						MapName:    "hash_without_btf",
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {},
+				},
+			},
+			expectedErrString: "map \"hash_without_btf\" does not have BTF information for its values",
+		},
+		"toppers_good": {
+			objectPath: "../../../../testdata/validate_metadata_topper.o",
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Toppers: map[string]Topper{
+					"foo": {
+						MapName:    "myhashmap",
 						StructName: "event",
 					},
 				},
