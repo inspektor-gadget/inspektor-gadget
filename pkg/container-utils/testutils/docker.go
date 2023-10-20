@@ -73,6 +73,10 @@ func (d *DockerContainer) Run(t *testing.T) {
 		hostConfig.SecurityOpt = []string{fmt.Sprintf("seccomp=%s", d.options.seccompProfile)}
 	}
 
+	if d.options.portBindings != nil {
+		hostConfig.PortBindings = d.options.portBindings
+	}
+
 	resp, err := d.client.ContainerCreate(d.options.ctx, &container.Config{
 		Image: d.options.image,
 		Cmd:   []string{"/bin/sh", "-c", d.cmd},
@@ -101,6 +105,7 @@ func (d *DockerContainer) Run(t *testing.T) {
 		t.Fatalf("Failed to inspect container: %s", err)
 	}
 	d.pid = containerJSON.State.Pid
+	d.portBindings = containerJSON.NetworkSettings.Ports
 
 	if d.options.logs {
 		out, err := d.client.ContainerLogs(d.options.ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})

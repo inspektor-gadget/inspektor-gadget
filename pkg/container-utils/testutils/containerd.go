@@ -107,6 +107,9 @@ func (c *ContainerdContainer) Run(t *testing.T) {
 	if c.options.seccompProfile != "" {
 		t.Fatalf("testutils/containerd: seccomp profiles are not supported yet")
 	}
+	if c.options.portBindings != nil {
+		t.Fatalf("testutils/containerd: Port bindings are not supported yet")
+	}
 
 	var spec specs.Spec
 	container, err := c.client.NewContainer(c.nsCtx, c.name,

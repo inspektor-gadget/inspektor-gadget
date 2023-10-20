@@ -14,7 +14,11 @@
 
 package testutils
 
-import "context"
+import (
+	"context"
+
+	"github.com/docker/go-connections/nat"
+)
 
 const (
 	DefaultContainerImage    = "docker.io/library/busybox"
@@ -32,6 +36,7 @@ type containerOptions struct {
 	wait           bool
 	logs           bool
 	removal        bool
+	portBindings   nat.PortMap
 
 	// forceDelete is mostly used for debugging purposes, when a container
 	// fails to be deleted and we want to force it.
@@ -98,6 +103,13 @@ func WithoutLogs() Option {
 func withoutRemoval() Option {
 	return func(opts *containerOptions) {
 		opts.removal = false
+	}
+}
+
+// WithPortBindings sets the exposed ports of the container
+func WithPortBindings(portBindings nat.PortMap) Option {
+	return func(opts *containerOptions) {
+		opts.portBindings = portBindings
 	}
 }
 
