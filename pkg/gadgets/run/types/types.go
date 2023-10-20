@@ -15,6 +15,8 @@
 package types
 
 import (
+	"fmt"
+
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
@@ -85,10 +87,41 @@ type Printer interface {
 	Logf(severity logger.Level, fmt string, params ...any)
 }
 
+// GadgetFeatures describes things a gadget is able to achieve.
+type GadgetFeatures struct {
+	// The gadget provides the mount namespace ID of the process generating the event. This
+	// enables the enrichment by container.
+	HasMountNs bool
+	// The gadget is able to filter events by mount namespace.
+	CanFilterByMountNs bool
+	// The gadget provides the network namespace ID of the process generating the event. This
+	// enables container enrichment in some cases.
+	HasNetNs bool
+	// The gadget provides some network endpoints. This enables the endpoint enrichment with
+	// Kubernetes data.
+	HasEndpoints bool
+	// The gadget needs to be attached to running containers. Used by networking and iterator
+	// gadgets that need to be executed in different network namespaces.
+	IsAttacher bool
+}
+
+func (g *GadgetFeatures) String() string {
+	var ret string
+
+	ret += fmt.Sprintf("HasMountNs: %t\n", g.HasMountNs)
+	ret += fmt.Sprintf("CanFilterByMountNs: %t\n", g.CanFilterByMountNs)
+	ret += fmt.Sprintf("HasNetNs: %t\n", g.HasNetNs)
+	ret += fmt.Sprintf("HasEndpoints: %t\n", g.HasEndpoints)
+	ret += fmt.Sprintf("IsAttacher: %t\n", g.IsAttacher)
+
+	return ret
+}
+
 type GadgetInfo struct {
 	GadgetMetadata *GadgetMetadata
 	ProgContent    []byte
 	GadgetType     gadgets.GadgetType
+	Features       GadgetFeatures
 }
 
 // RunGadgetDesc represents the different methods implemented by the run gadget descriptor.
