@@ -42,6 +42,12 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 )
 
+const (
+	validateMetadataParam = "validate-metadata"
+	authfileParam         = "authfile"
+	insecureParam         = "insecure"
+)
+
 type GadgetDesc struct{}
 
 func (g *GadgetDesc) Name() string {
@@ -65,21 +71,21 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		// Hardcoded for now
 		{
-			Key:          "authfile",
+			Key:          authfileParam,
 			Title:        "Auth file",
 			DefaultValue: oci.DefaultAuthFile,
 			TypeHint:     params.TypeString,
 		},
 		{
-			Key:          types.ValidateMetadataParam,
+			Key:          validateMetadataParam,
 			Title:        "Validate metadata",
 			Description:  "Validate the gadget metadata before running the gadget",
 			DefaultValue: "true",
 			TypeHint:     params.TypeBool,
 		},
 		{
-			Key:          "insecure",
-			Title:        "insecure",
+			Key:          insecureParam,
+			Title:        "Insecure connection",
 			Description:  "Allow connections to HTTP only registries",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
@@ -93,8 +99,8 @@ func (g *GadgetDesc) Parser() parser.Parser {
 
 func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (*types.GadgetInfo, error) {
 	authOpts := &oci.AuthOptions{
-		AuthFile: params.Get("authfile").AsString(),
-		Insecure: params.Get("insecure").AsBool(),
+		AuthFile: params.Get(authfileParam).AsString(),
+		Insecure: params.Get(insecureParam).AsBool(),
 	}
 	gadget, err := oci.GetGadgetImage(context.TODO(), args[0], authOpts)
 	if err != nil {
@@ -117,7 +123,7 @@ func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (
 			return nil, err
 		}
 	} else {
-		validate := params.Get(types.ValidateMetadataParam).AsBool()
+		validate := params.Get(validateMetadataParam).AsBool()
 
 		if err := yaml.Unmarshal(gadget.Metadata, &ret.GadgetMetadata); err != nil {
 			return nil, fmt.Errorf("unmarshaling metadata: %w", err)
