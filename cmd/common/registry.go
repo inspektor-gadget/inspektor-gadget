@@ -294,6 +294,9 @@ func buildCommandFromGadget(
 				}
 
 				gadgetParams.Add(ebpfParams...)
+
+				// The operator parameters are sent through the gadget info for the run gadget.
+				operatorsParamsCollection = runGadgetInfo.OperatorsParamsCollection.ToParams()
 			}
 			// add flags
 			if gType != gadgets.TypeOneShot {
@@ -374,6 +377,13 @@ func buildCommandFromGadget(
 				defaultOutputFormat,
 				strings.Join(outputFormatsHelp, "\n")+"\n\n",
 			)
+
+			// TODO: why moving this inside PreRunE breaks the namespace parameter?
+			// It's always "default".
+			// Add operator flags
+			for _, operatorParams := range operatorsParamsCollection {
+				AddFlags(cmd, operatorParams, skipParams, runtime)
+			}
 
 			// we need to re-enable flag parsing, as cmd.ParseFlags() would not
 			// do anything otherwise
@@ -725,12 +735,6 @@ func buildCommandFromGadget(
 		},
 	}
 
-	// TODO: why moving this inside PreRunE breaks the namespace parameter?
-	// It's always "default".
-	// Add operator flags
-	for _, operatorParams := range operatorsParamsCollection {
-		AddFlags(cmd, operatorParams, skipParams, runtime)
-	}
 	return cmd
 }
 

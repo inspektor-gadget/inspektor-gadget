@@ -30,6 +30,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
@@ -131,6 +132,9 @@ func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget features: %w", err)
 	}
+
+	// needs to be done after getGadgetFeatures
+	ret.OperatorsParamsCollection = operators.GetOperatorsForContainerizedGadget(ret).ParamDescCollection()
 
 	return ret, nil
 }

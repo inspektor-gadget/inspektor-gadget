@@ -118,10 +118,11 @@ func (g *GadgetFeatures) String() string {
 }
 
 type GadgetInfo struct {
-	GadgetMetadata *GadgetMetadata
-	ProgContent    []byte
-	GadgetType     gadgets.GadgetType
-	Features       GadgetFeatures
+	GadgetMetadata            *GadgetMetadata
+	ProgContent               []byte
+	GadgetType                gadgets.GadgetType
+	Features                  GadgetFeatures
+	OperatorsParamsCollection params.DescCollection
 }
 
 // RunGadgetDesc represents the different methods implemented by the run gadget descriptor.
