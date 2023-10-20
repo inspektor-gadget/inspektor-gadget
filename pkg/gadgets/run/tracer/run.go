@@ -76,6 +76,13 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			DefaultValue: "true",
 			TypeHint:     params.TypeBool,
 		},
+		{
+			Key:          "insecure",
+			Title:        "insecure",
+			Description:  "Allow connections to HTTP only registries",
+			DefaultValue: "false",
+			TypeHint:     params.TypeBool,
+		},
 	}
 }
 
@@ -86,6 +93,7 @@ func (g *GadgetDesc) Parser() parser.Parser {
 func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (*types.GadgetInfo, error) {
 	authOpts := &oci.AuthOptions{
 		AuthFile: params.Get("authfile").AsString(),
+		Insecure: params.Get("insecure").AsBool(),
 	}
 	gadget, err := oci.GetGadgetImage(context.TODO(), args[0], authOpts)
 	if err != nil {
