@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -61,6 +62,10 @@ func (k *KubeIPResolver) Dependencies() []string {
 func (k *KubeIPResolver) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	_, hasIPResolverInterface := gadget.EventPrototype().(KubeIPResolverInterface)
 	return hasIPResolverInterface
+}
+
+func (k *KubeIPResolver) CanOperateOnContainerizedGadget(info *runTypes.GadgetInfo) bool {
+	return info.Features.HasEndpoints
 }
 
 func (k *KubeIPResolver) Init(params *params.Params) error {

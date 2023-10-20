@@ -66,6 +66,13 @@ func New(
 ) *GadgetContext {
 	gCtx, cancel := context.WithCancel(ctx)
 
+	var ops operators.Operators
+	if gadgetInfo == nil {
+		ops = operators.GetOperatorsForGadget(gadget)
+	} else {
+		ops = operators.GetOperatorsForContainerizedGadget(gadgetInfo)
+	}
+
 	return &GadgetContext{
 		ctx:                      gCtx,
 		cancel:                   cancel,
@@ -77,7 +84,7 @@ func New(
 		args:                     args,
 		parser:                   parser,
 		logger:                   logger,
-		operators:                operators.GetOperatorsForGadget(gadget),
+		operators:                ops,
 		operatorsParamCollection: operatorsParamCollection,
 		timeout:                  timeout,
 		gadgetInfo:               gadgetInfo,

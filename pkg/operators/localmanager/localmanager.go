@@ -30,6 +30,7 @@ import (
 	runtimeclient "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/runtime-client"
 	containerutilsTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	igmanager "github.com/inspektor-gadget/inspektor-gadget/pkg/ig-manager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -160,6 +161,13 @@ func (l *LocalManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	return isMountNsMapSetter || canEnrichEvent || isAttacher
 }
 
+func (l *LocalManager) CanOperateOnContainerizedGadget(info *runTypes.GadgetInfo) bool {
+	features := info.Features
+	log.Debugf("gadget features:\n%s", features.String())
+	return features.HasMountNs || features.HasNetNs ||
+		features.CanFilterByMountNs || features.IsAttacher
+}
+
 func (l *LocalManager) Init(operatorParams *params.Params) error {
 	rc := make([]*containerutilsTypes.RuntimeConfig, 0)
 	parts := operatorParams.Get(Runtimes).AsStringSlice()
@@ -224,10 +232,29 @@ func (l *LocalManager) Close() error {
 	return nil
 }
 
+func getGadgetFeatures(gadgetContext operators.GadgetContext, gadgetInstance any) runTypes.GadgetFeatures {
+	// If the gadget is a run gadget, return the features from the context
+	if gadgetContext.GadgetInfo() != nil {
+		return gadgetContext.GadgetInfo().Features
+	}
+
+	// Otherwise use the gadget descriptor for built-in gadgets
+	_, hasMountNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromMountNSID)
+	_, hasNetNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromNetNSID)
+	_, canFilterByMountNs := gadgetInstance.(MountNsMapSetter)
+	_, isAttacher := gadgetInstance.(Attacher)
+
+	return runTypes.GadgetFeatures{
+		HasMountNs:         hasMountNs,
+		HasNetNs:           hasNetNs,
+		CanFilterByMountNs: canFilterByMountNs,
+		IsAttacher:         isAttacher,
+	}
+}
+
 func (l *LocalManager) Instantiate(gadgetContext operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
-	_, canEnrichEventFromMountNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromMountNSID)
-	_, canEnrichEventFromNetNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromNetNSID)
-	canEnrichEvent := canEnrichEventFromMountNs || canEnrichEventFromNetNs
+	features := getGadgetFeatures(gadgetContext, gadgetInstance)
+	canEnrichEvent := features.HasMountNs || features.HasNetNs
 
 	traceInstance := &localManagerTrace{
 		manager:            l,
@@ -236,6 +263,7 @@ func (l *LocalManager) Instantiate(gadgetContext operators.GadgetContext, gadget
 		params:             params,
 		gadgetInstance:     gadgetInstance,
 		gadgetCtx:          gadgetContext,
+		gadgetFeatures:     features,
 	}
 
 	if l.igManager == nil {
@@ -257,6 +285,7 @@ type localManagerTrace struct {
 	params             *params.Params
 	gadgetInstance     any
 	gadgetCtx          operators.GadgetContext
+	gadgetFeatures     runTypes.GadgetFeatures
 }
 
 func (l *localManagerTrace) Name() string {
@@ -278,7 +307,8 @@ func (l *localManagerTrace) PreGadgetRun() error {
 
 	// If --host is set, we do not want to create the below map because we do not
 	// want any filtering.
-	if setter, ok := l.gadgetInstance.(MountNsMapSetter); ok {
+	if l.gadgetFeatures.CanFilterByMountNs {
+		setter := l.gadgetInstance.(MountNsMapSetter)
 		if !host {
 			if l.manager.igManager == nil {
 				return fmt.Errorf("container-collection isn't available")
@@ -299,7 +329,8 @@ func (l *localManagerTrace) PreGadgetRun() error {
 		}
 	}
 
-	if attacher, ok := l.gadgetInstance.(Attacher); ok {
+	if l.gadgetFeatures.IsAttacher {
+		attacher := l.gadgetInstance.(Attacher)
 		if l.manager.igManager == nil {
 			if !host {
 				return fmt.Errorf("container-collection isn't available")

@@ -63,13 +63,14 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpdrop/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/trace/tcpretrans/tracer"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/tracer"
+
+	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
+	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
-
-	utilstest "github.com/inspektor-gadget/inspektor-gadget/internal/test"
-	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 )
 
 type Attacher interface {
@@ -108,6 +109,11 @@ func (t *TestOperator) Dependencies() []string {
 func (t *TestOperator) CanOperateOn(desc gadgets.GadgetDesc) bool {
 	// Accept all gadgets. Check for interfaces later in PreGadgetRun.
 	return true
+}
+
+func (t *TestOperator) CanOperateOnContainerizedGadget(*runTypes.GadgetInfo) bool {
+	// Don't accept any containerized gadget until we understand how to handle them
+	return false
 }
 
 func (t *TestOperator) Init(params *params.Params) error {

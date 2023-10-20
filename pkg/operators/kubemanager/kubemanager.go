@@ -25,6 +25,7 @@ import (
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgettracermanager"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
@@ -155,6 +156,14 @@ func (k *KubeManager) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	return isMountNsMapSetter || canEnrichEvent || isAttacher
 }
 
+func (k *KubeManager) CanOperateOnContainerizedGadget(info *runTypes.GadgetInfo) bool {
+	features := info.Features
+	log.Debugf("gadget features:\n%s", features.String())
+
+	return features.HasMountNs || features.HasNetNs ||
+		features.CanFilterByMountNs || features.IsAttacher
+}
+
 func (k *KubeManager) Init(params *params.Params) error {
 	return nil
 }
@@ -163,10 +172,29 @@ func (k *KubeManager) Close() error {
 	return nil
 }
 
+func getGadgetFeatures(gadgetContext operators.GadgetContext, gadgetInstance any) runTypes.GadgetFeatures {
+	// If the gadget is a run gadget, return the features from the context
+	if gadgetContext.GadgetInfo() != nil {
+		return gadgetContext.GadgetInfo().Features
+	}
+
+	// Otherwise use the gadget descriptor for built-in gadgets
+	_, hasMountNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromMountNSID)
+	_, hasNetNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromNetNSID)
+	_, canFilterByMountNs := gadgetInstance.(MountNsMapSetter)
+	_, isAttacher := gadgetInstance.(Attacher)
+
+	return runTypes.GadgetFeatures{
+		HasMountNs:         hasMountNs,
+		HasNetNs:           hasNetNs,
+		CanFilterByMountNs: canFilterByMountNs,
+		IsAttacher:         isAttacher,
+	}
+}
+
 func (k *KubeManager) Instantiate(gadgetContext operators.GadgetContext, gadgetInstance any, params *params.Params) (operators.OperatorInstance, error) {
-	_, canEnrichEventFromMountNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromMountNSID)
-	_, canEnrichEventFromNetNs := gadgetContext.GadgetDesc().EventPrototype().(operators.ContainerInfoFromNetNSID)
-	canEnrichEvent := canEnrichEventFromMountNs || canEnrichEventFromNetNs
+	features := getGadgetFeatures(gadgetContext, gadgetInstance)
+	canEnrichEvent := features.HasMountNs || features.HasNetNs
 
 	traceInstance := &KubeManagerInstance{
 		id:             uuid.New().String(),
@@ -175,6 +203,7 @@ func (k *KubeManager) Instantiate(gadgetContext operators.GadgetContext, gadgetI
 		params:         params,
 		gadgetInstance: gadgetInstance,
 		gadgetCtx:      gadgetContext,
+		gadgetFeatures: features,
 	}
 
 	return traceInstance, nil
@@ -192,6 +221,7 @@ type KubeManagerInstance struct {
 	params             *params.Params
 	gadgetInstance     any
 	gadgetCtx          operators.GadgetContext
+	gadgetFeatures     runTypes.GadgetFeatures
 }
 
 func (m *KubeManagerInstance) Name() string {
@@ -223,7 +253,8 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 		containerSelector.K8s.Namespace = ""
 	}
 
-	if setter, ok := m.gadgetInstance.(MountNsMapSetter); ok {
+	if m.gadgetFeatures.CanFilterByMountNs {
+		setter := m.gadgetInstance.(MountNsMapSetter)
 		err := m.manager.gadgetTracerManager.AddTracer(m.id, containerSelector)
 		if err != nil {
 			return fmt.Errorf("adding tracer: %w", err)
@@ -242,13 +273,13 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 		m.mountnsmap = mountnsmap
 	}
 
-	if attacher, ok := m.gadgetInstance.(Attacher); ok {
-		m.attacher = attacher
+	if m.gadgetFeatures.IsAttacher {
+		m.attacher = m.gadgetInstance.(Attacher)
 		m.attachedContainers = make(map[string]*containercollection.Container)
 
 		attachContainerFunc := func(container *containercollection.Container) {
 			log.Debugf("calling gadget.AttachContainer()")
-			err := attacher.AttachContainer(container)
+			err := m.attacher.AttachContainer(container)
 			if err != nil {
 				var ve *ebpf.VerifierError
 				if errors.As(err, &ve) {
@@ -269,7 +300,7 @@ func (m *KubeManagerInstance) PreGadgetRun() error {
 			log.Debugf("calling gadget.Detach()")
 			delete(m.attachedContainers, container.Runtime.ContainerID)
 
-			err := attacher.DetachContainer(container)
+			err := m.attacher.DetachContainer(container)
 			if err != nil {
 				log.Warnf("stop tracing container %q: %s", container.K8s.ContainerName, err)
 				return
