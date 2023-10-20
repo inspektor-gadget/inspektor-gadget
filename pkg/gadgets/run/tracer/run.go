@@ -231,6 +231,27 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 
 	cols := types.GetColumns()
 
+	// Remove columns according to the features that the gadget supports.
+	// TODO: what about attacher interface?
+	for name, col := range cols.ColumnMap {
+		if !info.Features.HasMountNs && name == "mntns" {
+			delete(cols.ColumnMap, name)
+		}
+
+		if !info.Features.HasNetNs && name == "netns" {
+			delete(cols.ColumnMap, name)
+		}
+
+		if !info.Features.HasMountNs && !info.Features.HasNetNs {
+			for _, tag := range col.Tags {
+				switch tag {
+				case "kubernetes", "runtime":
+					delete(cols.ColumnMap, name)
+				}
+			}
+		}
+	}
+
 	members := map[string]btf.Member{}
 	for _, member := range eventType.Members {
 		members[member.Name] = member
