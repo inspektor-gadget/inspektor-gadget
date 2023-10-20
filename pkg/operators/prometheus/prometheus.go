@@ -25,6 +25,7 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus/config"
@@ -136,6 +137,10 @@ func (p *Prometheus) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 		return false
 	}
 	return true
+}
+
+func (p *Prometheus) CanOperateOnContainerizedGadget(*runTypes.GadgetInfo) bool {
+	return false
 }
 
 func (p *Prometheus) Close() error {

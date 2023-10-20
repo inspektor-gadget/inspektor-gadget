@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
@@ -49,6 +50,10 @@ func (op testOp) Description() string {
 }
 
 func (op testOp) CanOperateOn(gadgets.GadgetDesc) bool {
+	return true
+}
+
+func (op testOp) CanOperateOnContainerizedGadget(*runTypes.GadgetInfo) bool {
 	return true
 }
 

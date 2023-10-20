@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/common"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators/kubemanager"
@@ -68,6 +69,11 @@ func (k *KubeNameResolver) CanOperateOn(gadget gadgets.GadgetDesc) bool {
 	}
 	_, hasNameResolverInterface := gadget.EventPrototype().(KubeNameResolverInterface)
 	return hasNameResolverInterface
+}
+
+func (k *KubeNameResolver) CanOperateOnContainerizedGadget(*runTypes.GadgetInfo) bool {
+	// TODO!
+	return false
 }
 
 func (k *KubeNameResolver) Init(params *params.Params) error {

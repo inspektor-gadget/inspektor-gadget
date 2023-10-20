@@ -142,7 +142,6 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	}
 
 	ops := operators.GetOperatorsForGadget(gadgetDesc)
-
 	operatorParams := ops.ParamCollection()
 
 	parser := gadgetDesc.Parser()
@@ -154,10 +153,6 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	// TODO: do we need to update gType before calling this?
 	gadgetParamDescs.Add(gadgets.GadgetParams(gadgetDesc, gType, parser)...)
 	gadgetParams := gadgetParamDescs.ToParams()
-	err = gadgets.ParamsFromMap(request.Params, gadgetParams, runtimeParams, operatorParams)
-	if err != nil {
-		return fmt.Errorf("setting parameters: %w", err)
-	}
 
 	var gadgetInfo *runTypes.GadgetInfo
 
@@ -182,6 +177,13 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 			return fmt.Errorf("setting parameters: %w", err)
 		}
 
+		ops = operators.GetOperatorsForContainerizedGadget(gadgetInfo)
+		operatorParams = ops.ParamCollection()
+	}
+
+	err = gadgets.ParamsFromMap(request.Params, gadgetParams, runtimeParams, operatorParams)
+	if err != nil {
+		return fmt.Errorf("setting parameters: %w", err)
 	}
 
 	// Create payload buffer

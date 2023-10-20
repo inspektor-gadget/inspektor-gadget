@@ -22,6 +22,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	runTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -31,6 +32,7 @@ type GadgetContext interface {
 	ID() string
 	Context() context.Context
 	GadgetDesc() gadgets.GadgetDesc
+	GadgetInfo() *runTypes.GadgetInfo
 	Logger() logger.Logger
 }
 
@@ -57,6 +59,9 @@ type Operator interface {
 	// CanOperateOn should test whether the operator supports the given gadget. Init has not
 	// necessarily been called at this point.
 	CanOperateOn(gadgets.GadgetDesc) bool
+
+	// CanOperateOnContainerizedGadget tests whether the operator supports the given containerized gadget.
+	CanOperateOnContainerizedGadget(*runTypes.GadgetInfo) bool
 
 	// Init allows the operator to initialize itself
 	Init(params *params.Params) error
@@ -172,6 +177,22 @@ func GetOperatorsForGadget(gadget gadgets.GadgetDesc) Operators {
 	out := make(Operators, 0)
 	for _, operator := range allOperators {
 		if operator.CanOperateOn(gadget) {
+			out = append(out, operator)
+		}
+	}
+	out, err := SortOperators(out)
+	if err != nil {
+		panic(fmt.Sprintf("sorting operators: %v", err))
+	}
+	return out
+}
+
+// GetOperatorsForContainerizedGadget checks which operators can work with the given containerized gadget and
+// returns a collection of them
+func GetOperatorsForContainerizedGadget(info *runTypes.GadgetInfo) Operators {
+	out := make(Operators, 0)
+	for _, operator := range allOperators {
+		if operator.CanOperateOnContainerizedGadget(info) {
 			out = append(out, operator)
 		}
 	}
