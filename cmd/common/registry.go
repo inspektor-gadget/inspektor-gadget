@@ -665,7 +665,7 @@ func buildCommandFromGadget(
 	}
 
 	outputFormats.Append(gadgets.OutputFormats{
-		"json": {
+		OutputModeJSON: {
 			Name:        "JSON",
 			Description: "The output of the gadget is returned as raw JSON",
 			Transform:   nil,
@@ -681,7 +681,7 @@ func buildCommandFromGadget(
 			Transform:   nil,
 		},
 	})
-	defaultOutputFormat = "json"
+	defaultOutputFormat = OutputModeJSON
 
 	// Add parser output flags
 	if parser != nil {
