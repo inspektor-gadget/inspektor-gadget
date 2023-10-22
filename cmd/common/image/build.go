@@ -88,7 +88,7 @@ func NewBuildCmd() *cobra.Command {
 
 			opts.path = args[0]
 
-			return runBuild(opts)
+			return runBuild(cmd, opts)
 		},
 	}
 
@@ -102,7 +102,7 @@ func NewBuildCmd() *cobra.Command {
 	return utils.MarkExperimental(cmd)
 }
 
-func runBuild(opts *cmdOpts) error {
+func runBuild(cmd *cobra.Command, opts *cmdOpts) error {
 	conf := &buildFile{
 		EBPFSource: DEFAULT_EBPF_SOURCE,
 		Wasm:       DEFAULT_WASM,
@@ -186,7 +186,7 @@ func runBuild(opts *cmdOpts) error {
 		return err
 	}
 
-	fmt.Printf("Successfully built %s\n", desc.String())
+	cmd.Printf("Successfully built %s\n", desc.String())
 
 	return nil
 }

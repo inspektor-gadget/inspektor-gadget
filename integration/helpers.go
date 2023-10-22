@@ -23,10 +23,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/container-utils/testutils"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -275,4 +277,18 @@ func GetIPVersion(t *testing.T, address string) uint8 {
 	}
 	t.Fatalf("Failed to determine IP version for address %s", address)
 	return 0
+}
+
+func StartRegistry(t *testing.T, name string) testutils.Container {
+	t.Helper()
+
+	c := testutils.NewDockerContainer(name, "registry serve /etc/docker/registry/config.yml",
+		testutils.WithImage("registry:2"),
+		testutils.WithoutWait(),
+		testutils.WithPortBindings(nat.PortMap{
+			"5000/tcp": []nat.PortBinding{{HostIP: "127.0.0.1"}},
+		}),
+	)
+	c.Start(t)
+	return c
 }

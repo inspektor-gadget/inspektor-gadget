@@ -34,12 +34,12 @@ func NewPushCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			image := args[0]
 
-			fmt.Printf("Pushing %s...\n", image)
+			cmd.Printf("Pushing %s...\n", image)
 			desc, err := oci.PushGadgetImage(context.TODO(), image, &authOpts)
 			if err != nil {
 				return fmt.Errorf("pushing gadget: %w", err)
 			}
-			fmt.Printf("Successfully pushed %s\n", desc.String())
+			cmd.Printf("Successfully pushed %s\n", desc.String())
 			return nil
 		},
 	}

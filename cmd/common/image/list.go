@@ -17,7 +17,6 @@ package image
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -52,7 +51,7 @@ func NewListCmd() *cobra.Command {
 				})
 			}
 			formatter := textcolumns.NewFormatter(cols.GetColumnMap())
-			formatter.WriteTable(os.Stdout, images)
+			formatter.WriteTable(cmd.OutOrStdout(), images)
 			return nil
 		},
 	}

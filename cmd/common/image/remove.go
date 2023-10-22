@@ -38,7 +38,7 @@ func NewRemoveCmd() *cobra.Command {
 				return fmt.Errorf("removing gadget image: %w", err)
 			}
 
-			fmt.Printf("Successfully removed %s\n", image)
+			cmd.Printf("Successfully removed %s\n", image)
 
 			return nil
 		},
