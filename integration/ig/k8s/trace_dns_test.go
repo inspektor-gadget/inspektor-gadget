@@ -307,6 +307,7 @@ func TestTraceDnsHost(t *testing.T) {
 				e.SrcIP = ""
 				e.SrcPort = 0
 				e.DstIP = ""
+				e.Runtime.ContainerImageDigest = ""
 			}
 
 			ExpectEntriesToMatch(t, output, normalize, expectedEntries...)

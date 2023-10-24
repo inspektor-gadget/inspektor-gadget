@@ -194,6 +194,7 @@ func TestWatchCreatedContainers(t *testing.T) {
 				e.Container.K8s.PodLabels = nil
 				e.Container.K8s.PodUID = ""
 				e.Container.Runtime.ContainerID = ""
+				e.Container.Runtime.ContainerImageDigest = ""
 
 				// Docker and CRI-O use a custom container name composed, among
 				// other things, by the pod UID. We don't know the pod UID in
@@ -374,6 +375,7 @@ func TestPodWithSecurityContext(t *testing.T) {
 				e.Timestamp = ""
 
 				e.Container.Runtime.ContainerID = ""
+				e.Container.Runtime.ContainerImageDigest = ""
 				e.Container.K8s.PodLabels = nil
 				e.Container.K8s.PodUID = ""
 

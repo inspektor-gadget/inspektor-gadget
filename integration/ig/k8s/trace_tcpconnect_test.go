@@ -72,6 +72,7 @@ func TestTraceTcpconnect(t *testing.T) {
 				e.MountNsID = 0
 
 				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
 
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {
@@ -148,6 +149,7 @@ func TestTraceTcpconnect_latency(t *testing.T) {
 				}
 
 				e.Runtime.ContainerID = ""
+				e.Runtime.ContainerImageDigest = ""
 
 				// Docker can provide different values for ContainerImageName. See `getContainerImageNamefromImage`
 				if isDockerRuntime {

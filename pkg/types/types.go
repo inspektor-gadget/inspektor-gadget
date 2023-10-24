@@ -129,7 +129,8 @@ type BasicRuntimeMetadata struct {
 	ContainerImageName string `json:"containerImageName,omitempty" column:"containerImageName,hide"`
 
 	// ContainerImageDigest is the (repo) digest of the container image where the event comes from
-	// Only events of initial containers (cri-o and containerd) are enriched with image digest
+	// containerd: events from both initial and new containers are enriched
+	// crio: events from initial containers are enriched
 	ContainerImageDigest string `json:"containerImageDigest,omitempty" column:"containerImageDigest,hide"`
 }
 
