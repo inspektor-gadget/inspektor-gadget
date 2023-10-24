@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -46,11 +47,13 @@ var builderImage = "ghcr.io/inspektor-gadget/ebpf-builder:latest"
 
 const (
 	DEFAULT_EBPF_SOURCE = "program.bpf.c"
+	DEFAULT_WASM        = "" // Wasm is optional; unset by default
 	DEFAULT_METADATA    = "gadget.yaml"
 )
 
 type buildFile struct {
 	EBPFSource string `yaml:"ebpfsource"`
+	Wasm       string `yaml:"wasm"`
 	Metadata   string `yaml:"metadata"`
 	CFlags     string `yaml:"cflags"`
 }
@@ -101,6 +104,7 @@ func NewBuildCmd() *cobra.Command {
 func runBuild(opts *cmdOpts) error {
 	conf := &buildFile{
 		EBPFSource: DEFAULT_EBPF_SOURCE,
+		Wasm:       DEFAULT_WASM,
 		Metadata:   DEFAULT_METADATA,
 	}
 
@@ -168,6 +172,14 @@ func runBuild(opts *cmdOpts) error {
 		ValidateMetadata: opts.validateMetadata,
 	}
 
+	if strings.HasSuffix(conf.Wasm, ".wasm") {
+		// User provided an already-built wasm file
+		buildOpts.WasmObjectPath = conf.Wasm
+	} else if conf.Wasm != "" {
+		// User provided a source file to build wasm from
+		buildOpts.WasmObjectPath = filepath.Join(tmpDir, "program.wasm")
+	}
+
 	desc, err := oci.BuildGadgetImage(context.TODO(), buildOpts, opts.image)
 	if err != nil {
 		return err
@@ -188,6 +200,7 @@ func buildLocal(opts *cmdOpts, conf *buildFile, output string) error {
 		"make", "-f", makefilePath,
 		"-j", fmt.Sprintf("%d", runtime.NumCPU()),
 		"EBPFSOURCE="+conf.EBPFSource,
+		"WASM="+conf.Wasm,
 		"OUTPUTDIR="+output,
 		"CFLAGS="+conf.CFlags,
 	)
@@ -244,6 +257,10 @@ func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
 		reader.Close()
 	}
 
+	wasmFullPath := ""
+	if conf.Wasm != "" {
+		wasmFullPath = filepath.Join("/work", conf.Wasm)
+	}
 	resp, err := cli.ContainerCreate(
 		ctx,
 		&container.Config{
@@ -251,6 +268,7 @@ func buildInContainer(opts *cmdOpts, conf *buildFile, output string) error {
 			Cmd: []string{
 				"make", "-f", "/Makefile", "-j", fmt.Sprintf("%d", runtime.NumCPU()),
 				"EBPFSOURCE=" + filepath.Join("/work", conf.EBPFSource),
+				"WASM=" + wasmFullPath,
 				"OUTPUTDIR=/out",
 				"CFLAGS=" + conf.CFlags,
 			},
