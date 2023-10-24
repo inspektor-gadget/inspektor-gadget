@@ -23,6 +23,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	k8syaml "sigs.k8s.io/yaml"
@@ -110,7 +111,7 @@ func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (
 		return nil, err
 	}
 
-	if len(gadget.Metadata) == 0 {
+	if bytes.Equal(gadget.Metadata, ocispec.DescriptorEmptyJSON.Data) {
 		// metadata is not present. synthesize something on the fly from the spec
 		if err := ret.GadgetMetadata.Populate(spec); err != nil {
 			return nil, err

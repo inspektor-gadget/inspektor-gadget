@@ -148,6 +148,16 @@ func createMetadataDesc(ctx context.Context, target oras.Target, metadataFilePat
 	return defDesc, nil
 }
 
+func createEmptyDesc(ctx context.Context, target oras.Target) (ocispec.Descriptor, error) {
+	emptyDesc := ocispec.DescriptorEmptyJSON
+	emptyDesc.ArtifactType = eBPFObjectMediaType
+	err := pushDescriptorIfNotExists(ctx, target, emptyDesc, bytes.NewReader(emptyDesc.Data))
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("pushing empty descriptor: %w", err)
+	}
+	return emptyDesc, nil
+}
+
 func createManifestForTarget(ctx context.Context, target oras.Target, metadataFilePath, progFilePath, arch string) (ocispec.Descriptor, error) {
 	progDesc, err := createEbpfProgramDesc(ctx, target, progFilePath)
 	if err != nil {
@@ -161,6 +171,12 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 		defDesc, err = createMetadataDesc(ctx, target, metadataFilePath)
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("creating metadata descriptor: %w", err)
+		}
+	} else {
+		// Create an empty descriptor
+		defDesc, err = createEmptyDesc(ctx, target)
+		if err != nil {
+			return ocispec.Descriptor{}, fmt.Errorf("creating empty descriptor: %w", err)
 		}
 	}
 
