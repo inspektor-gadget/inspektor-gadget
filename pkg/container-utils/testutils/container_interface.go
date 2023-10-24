@@ -41,6 +41,18 @@ type Container interface {
 	Running() bool
 }
 
+func (c *containerSpec) ID() string {
+	return c.id
+}
+
+func (c *containerSpec) Pid() int {
+	return c.pid
+}
+
+func (c *containerSpec) Running() bool {
+	return c.started
+}
+
 var SupportedContainerRuntimes = []types.RuntimeName{
 	types.RuntimeNameDocker,
 	types.RuntimeNameContainerd,

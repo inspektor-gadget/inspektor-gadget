@@ -46,18 +46,6 @@ type DockerContainer struct {
 	client *client.Client
 }
 
-func (d *DockerContainer) Running() bool {
-	return d.started
-}
-
-func (d *DockerContainer) ID() string {
-	return d.id
-}
-
-func (d *DockerContainer) Pid() int {
-	return d.pid
-}
-
 func (d *DockerContainer) initClient() error {
 	var err error
 	d.client, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())

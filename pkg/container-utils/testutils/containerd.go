@@ -57,18 +57,6 @@ type ContainerdContainer struct {
 	exitStatus <-chan containerd.ExitStatus
 }
 
-func (c *ContainerdContainer) Running() bool {
-	return c.started
-}
-
-func (c *ContainerdContainer) ID() string {
-	return c.id
-}
-
-func (c *ContainerdContainer) Pid() int {
-	return c.pid
-}
-
 func (c *ContainerdContainer) initClientAndCtx() error {
 	var err error
 	c.client, err = containerd.New("/run/containerd/containerd.sock",
