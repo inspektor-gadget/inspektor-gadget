@@ -29,6 +29,8 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
+	log "github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/metric"
 
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
@@ -36,6 +38,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus/config"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -75,6 +78,8 @@ type Tracer struct {
 	perfReader    *perf.Reader
 
 	links []link.Link
+
+	metricProvider metric.MeterProvider
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
@@ -461,6 +466,8 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 		return fmt.Errorf("install tracer: %w", err)
 	}
 
+	go info.Metrics.Run(gadgetCtx.Context(), t.collection, t.metricProvider)
+
 	if t.perfReader != nil || t.ringbufReader != nil {
 		go t.runTracers(gadgetCtx)
 	}
@@ -487,4 +494,13 @@ func (t *Tracer) SetEventHandler(handler any) {
 		panic("event handler invalid")
 	}
 	t.eventCallback = nh
+}
+
+func (t *Tracer) GetPrometheusConfig() *config.Config {
+	return nil
+}
+
+func (t *Tracer) SetMetricsProvider(provider metric.MeterProvider) {
+	log.Printf("got provider")
+	t.metricProvider = provider
 }

@@ -44,6 +44,9 @@ type BucketConfig struct {
 }
 
 func bucketConfigsFromConfig(c *config.Config) map[string]*BucketConfig {
+	if c == nil {
+		return nil
+	}
 	buckets := make(map[string]*BucketConfig)
 	for _, m := range c.Metrics {
 		if strings.ToLower(m.Type) == "histogram" {

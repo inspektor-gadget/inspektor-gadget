@@ -34,6 +34,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/metrics"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
@@ -101,6 +102,8 @@ func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (
 	if err != nil {
 		return nil, err
 	}
+
+	ret.Metrics, err = metrics.NewRuntimeMetrics(spec)
 
 	if len(gadget.Metadata) == 0 {
 		// metadata is not present. synthesize something on the fly from the spec

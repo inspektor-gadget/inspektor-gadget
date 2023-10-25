@@ -17,6 +17,7 @@ package types
 import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/metrics"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/parser"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -49,6 +50,7 @@ type Event struct {
 
 type GadgetInfo struct {
 	GadgetMetadata *GadgetMetadata
+	Metrics        *metrics.RuntimeMetrics
 	ProgContent    []byte
 }
 

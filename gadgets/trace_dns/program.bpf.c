@@ -28,6 +28,11 @@
 // answers won't be sent to userspace.
 #define MAX_ADDR_ANSWERS 1
 
+typedef __u8 task[TASK_COMM_LEN];
+
+#include "../../pkg/metrics/metrics.h"
+
+
 struct event_t {
 	__u64 timestamp;
 
@@ -40,7 +45,7 @@ struct event_t {
 	__u32 tid;
 	__u32 uid;
 	__u32 gid;
-	__u8 task[TASK_COMM_LEN];
+	task task;
 
 	__u16 id;
 	unsigned short qtype;
@@ -357,6 +362,20 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 		}
 	}
 
+	// write metrics
+	struct metrics_val_stats_t* stats = metrics_stats_get_entry(
+	    &event->mntns_id,
+	    &event->pid,
+	    &event->tid,
+	    &event->uid,
+	    &event->gid,
+		&event->task
+	);
+	if (stats) {
+		// __u32 count = 1;
+		metrics_stats_add_count(stats, 1);
+	}
+
 	// size of full structure - addresses + only used addresses
 	unsigned long long size =
 		sizeof(*event); // - MAX_ADDR_ANSWERS * 16 + anaddrcount * 16;
@@ -376,6 +395,21 @@ int ig_trace_dns(struct __sk_buff *skb)
 	if (load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol)) !=
 	    IPPROTO_UDP)
 		return 0;
+
+//	// write metrics
+//	__u32 tmpx = 0;
+//	__u32 tmpx2 = 1;
+//	__u8 foo = 2;
+//	struct metrics_val_stats_t* stats = metrics_stats_get_entry(
+//		&foo,
+//		&tmpx,
+//		&tmpx2
+//	);
+//	if (stats) {
+//		// __u32 count = 1;
+//		metrics_stats_add_count(stats, 1);
+//	}
+
 
 	union dnsflags flags;
 	flags.flags = load_half(skb, DNS_OFF + offsetof(struct dnshdr, flags));

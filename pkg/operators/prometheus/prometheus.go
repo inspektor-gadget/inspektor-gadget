@@ -69,13 +69,13 @@ func (p *Prometheus) Dependencies() []string {
 func (p *Prometheus) GlobalParamDescs() params.ParamDescs {
 	return params.ParamDescs{
 		// TODO: this should be a deploy time flag
-		//{
+		// {
 		//	Key:          ParamEnableMetrics,
 		//	Title:        "Enable Prometheus metrics",
 		//	DefaultValue: "false",
 		//	Description:  "Enables exporting prometheus metrics",
 		//	TypeHint:     params.TypeBool,
-		//},
+		// },
 		// TODO: find a way to expose this to ig-k8s users
 		{
 			Key:          ParamListenAddress,
@@ -97,9 +97,10 @@ func (p *Prometheus) ParamDescs() params.ParamDescs {
 }
 
 func (p *Prometheus) Init(globalParams *params.Params) error {
-	//if !globalParams.Get(ParamEnableMetrics).AsBool() {
+	// if !globalParams.Get(ParamEnableMetrics).AsBool() {
 	//	return nil
-	//}
+	// }
+	log.Printf("init prom")
 
 	exporter, err := prometheus.New()
 	if err != nil {
