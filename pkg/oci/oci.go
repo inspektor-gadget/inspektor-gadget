@@ -154,7 +154,7 @@ func pullIfNotExist(ctx context.Context, imageStore oras.Target, authOpts *AuthO
 	if err != nil {
 		return fmt.Errorf("creating remote repository: %w", err)
 	}
-	_, err = oras.Copy(ctx, repo, image, imageStore, image, oras.DefaultCopyOptions)
+	_, err = oras.Copy(ctx, repo, targetImage.String(), imageStore, targetImage.String(), oras.DefaultCopyOptions)
 	if err != nil {
 		return fmt.Errorf("downloading to local repository: %w", err)
 	}
