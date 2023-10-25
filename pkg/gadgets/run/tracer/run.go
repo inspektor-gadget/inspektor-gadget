@@ -46,6 +46,7 @@ const (
 	validateMetadataParam = "validate-metadata"
 	authfileParam         = "authfile"
 	insecureParam         = "insecure"
+	pullParam             = "pull"
 )
 
 type GadgetDesc struct{}
@@ -90,6 +91,18 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
 		},
+		{
+			Key:          pullParam,
+			Title:        "Pull policy",
+			Description:  "Specify when the gadget image should be pulled",
+			DefaultValue: oci.PullImageMissing,
+			PossibleValues: []string{
+				oci.PullImageAlways,
+				oci.PullImageMissing,
+				oci.PullImageNever,
+			},
+			TypeHint: params.TypeString,
+		},
 	}
 }
 
@@ -102,7 +115,7 @@ func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (
 		AuthFile: params.Get(authfileParam).AsString(),
 		Insecure: params.Get(insecureParam).AsBool(),
 	}
-	gadget, err := oci.GetGadgetImage(context.TODO(), args[0], authOpts)
+	gadget, err := oci.GetGadgetImage(context.TODO(), args[0], authOpts, params.Get(pullParam).AsString())
 	if err != nil {
 		return nil, fmt.Errorf("getting gadget image: %w", err)
 	}

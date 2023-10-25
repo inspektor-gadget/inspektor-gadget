@@ -41,9 +41,13 @@ type AuthOptions struct {
 	Insecure bool
 }
 
-var (
+const (
 	defaultOciStore = "/var/lib/ig/oci-store"
 	DefaultAuthFile = "/var/lib/ig/config.json"
+
+	PullImageAlways  = "always"
+	PullImageMissing = "missing"
+	PullImageNever   = "never"
 )
 
 // GadgetImage is the representation of a gadget packaged in an OCI image.
@@ -73,15 +77,33 @@ func getLocalOciStore() (*oci.Store, error) {
 	return oci.New(defaultOciStore)
 }
 
-// GetGadgetImage pulls the gadget image and returns the a structure representing it.
-func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImage, error) {
+// GetGadgetImage pulls the gadget image according to the pull policy and returns
+// a GadgetImage structure representing it.
+func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions, pullPolicy string) (*GadgetImage, error) {
 	imageStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting local oci store: %w", err)
 	}
 
-	if err := pullIfNotExist(ctx, imageStore, authOpts, image); err != nil {
-		return nil, fmt.Errorf("pulling image %q: %w", image, err)
+	switch pullPolicy {
+	case PullImageAlways:
+		_, err := pullGadgetImageToStore(ctx, imageStore, image, authOpts)
+		if err != nil {
+			return nil, fmt.Errorf("pulling image %q: %w", image, err)
+		}
+	case PullImageMissing:
+		if err := pullIfNotExist(ctx, imageStore, authOpts, image); err != nil {
+			return nil, fmt.Errorf("pulling image %q: %w", image, err)
+		}
+	case PullImageNever:
+		// Just check if the image exists to report a better error message
+		targetImage, err := normalizeImageName(image)
+		if err != nil {
+			return nil, fmt.Errorf("normalizing image: %w", err)
+		}
+		if _, err := imageStore.Resolve(ctx, targetImage.String()); err != nil {
+			return nil, fmt.Errorf("resolving image %q on local registry: %w", targetImage.String(), err)
+		}
 	}
 
 	manifest, err := getImageManifestForArch(ctx, imageStore, image, authOpts)
@@ -105,13 +127,18 @@ func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*
 	}, nil
 }
 
-// PullGadgetImage pulls the gadget image and returns its descriptor.
+// PullGadgetImage pulls the gadget image into the local oci store and returns its descriptor.
 func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
 	ociStore, err := getLocalOciStore()
 	if err != nil {
 		return nil, fmt.Errorf("getting oci store: %w", err)
 	}
 
+	return pullGadgetImageToStore(ctx, ociStore, image, authOpts)
+}
+
+// pullGadgetImageToStore pulls the gadget image into the given store and returns its descriptor.
+func pullGadgetImageToStore(ctx context.Context, imageStore oras.Target, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
 	repo, err := NewRepository(image, authOpts)
 	if err != nil {
 		return nil, fmt.Errorf("creating remote repository: %w", err)
@@ -120,7 +147,7 @@ func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (
 	if err != nil {
 		return nil, fmt.Errorf("normalizing image: %w", err)
 	}
-	desc, err := oras.Copy(ctx, repo, targetImage.String(), ociStore,
+	desc, err := oras.Copy(ctx, repo, targetImage.String(), imageStore,
 		targetImage.String(), oras.DefaultCopyOptions)
 	if err != nil {
 		return nil, fmt.Errorf("copying to remote repository: %w", err)
