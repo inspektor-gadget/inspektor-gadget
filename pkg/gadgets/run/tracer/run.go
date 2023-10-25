@@ -103,8 +103,6 @@ func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (
 		return nil, err
 	}
 
-	ret.Metrics, err = metrics.NewRuntimeMetrics(spec)
-
 	if len(gadget.Metadata) == 0 {
 		// metadata is not present. synthesize something on the fly from the spec
 		if err := ret.GadgetMetadata.Populate(spec); err != nil {
@@ -124,6 +122,11 @@ func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (
 				return nil, fmt.Errorf("gadget metadata is not valid: %w", err)
 			}
 		}
+	}
+
+	ret.Metrics, err = metrics.NewRuntimeMetrics(spec, ret.GadgetMetadata.Metrics)
+	if err != nil {
+		return nil, fmt.Errorf("intializing metrics: %w", err)
 	}
 
 	return ret, nil

@@ -9,10 +9,8 @@
 #define offsetof(TYPE, MEMBER) ((unsigned long)&((TYPE *)0)->MEMBER)
 #endif
 
-{{- range . }}
+{{- range $MetricName, $Metric := . }}
 
-{{- $Metric := . }}
-{{- $MetricName := .MetricName }}
 {{- $MetricsMap := (printf "metrics_map_%s" $MetricName) }}
 {{- $MetricsKeyStruct := (printf "metrics_key_%s_t" $MetricName) }}
 {{- $MetricsValStruct := (printf "metrics_val_%s_t" $MetricName) }}

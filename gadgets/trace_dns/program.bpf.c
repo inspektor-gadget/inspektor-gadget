@@ -32,6 +32,22 @@ typedef __u8 task[TASK_COMM_LEN];
 
 #include "../../pkg/metrics/metrics.h"
 
+// manual metrics demo
+struct __attribute__((__packed__)) labels_t {
+	__u64 mntns;
+	__u32 label1;
+};
+
+struct values_t {
+	__u32 count;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, METRICS_MAX_ENTRIES);
+	__type(key, struct labels_t);
+	__type(value, struct values_t);
+} manualStats SEC(".maps");
 
 struct event_t {
 	__u64 timestamp;
@@ -216,7 +232,7 @@ static __always_inline int load_addresses(struct __sk_buff *skb, int ancount,
 			skb, rroffset + offsetof(struct dnsrr, rdlength));
 
 		if (rrtype == DNS_TYPE_A && rrclass == DNS_CLASS_IN &&
-		    rdlength == 4) {
+			rdlength == 4) {
 			// A record contains an IPv4 address.
 			// Encode this as IPv4-mapped-IPv6 in the BPF event (::ffff:<ipv4>)
 			// https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
@@ -238,8 +254,8 @@ static __always_inline int load_addresses(struct __sk_buff *skb, int ancount,
 }
 
 static __always_inline int output_dns_event(struct __sk_buff *skb,
-					    union dnsflags flags,
-					    __u32 name_len, __u16 ancount)
+						union dnsflags flags,
+						__u32 name_len, __u16 ancount)
 {
 	__u32 zero = 0;
 	struct event_t *event = bpf_map_lookup_elem(&tmp_event, &zero);
@@ -271,17 +287,17 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 	if (event->src.proto == IPPROTO_TCP) {
 		event->src.port =
 			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
-					       offsetof(struct tcphdr, source));
+						   offsetof(struct tcphdr, source));
 		event->dst.port =
 			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
-					       offsetof(struct tcphdr, dest));
+						   offsetof(struct tcphdr, dest));
 	} else if (event->src.proto == IPPROTO_UDP) {
 		event->src.port =
 			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
-					       offsetof(struct udphdr, source));
+						   offsetof(struct udphdr, source));
 		event->dst.port =
 			load_half(skb, ETH_HLEN + sizeof(struct iphdr) +
-					       offsetof(struct udphdr, dest));
+						   offsetof(struct udphdr, dest));
 	}
 
 	event->qr = flags.qr;
@@ -344,9 +360,9 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 			.id = event->id,
 		};
 		if (event->qr == DNS_QR_QUERY &&
-		    event->pkt_type == PACKET_OUTGOING) {
+			event->pkt_type == PACKET_OUTGOING) {
 			bpf_map_update_elem(&query_map, &query_key,
-					    &event->timestamp, BPF_NOEXIST);
+						&event->timestamp, BPF_NOEXIST);
 		} else if (event->qr == DNS_QR_RESP &&
 			   event->pkt_type == PACKET_HOST) {
 			__u64 *query_ts =
@@ -363,17 +379,26 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 	}
 
 	// write metrics
-	struct metrics_val_stats_t* stats = metrics_stats_get_entry(
-	    &event->mntns_id,
-	    &event->pid,
-	    &event->tid,
-	    &event->uid,
-	    &event->gid,
+	struct metrics_val_stats_t* stats_values = metrics_stats_get_entry(
+		&event->mntns_id,
+		&event->pid,
+		&event->tid,
+		&event->uid,
+		&event->gid,
 		&event->task
 	);
-	if (stats) {
+	if (stats_values) {
 		// __u32 count = 1;
-		metrics_stats_add_count(stats, 1);
+		metrics_stats_add_count(stats_values, 1);
+	}
+
+	struct labels_t key = {};
+	key.mntns = 123;
+	key.label1 = 5;
+	struct values_t* values = bpf_map_lookup_elem(&manualStats, &key);
+
+	if (values) {
+		__sync_fetch_and_add(&values->count, 1);
 	}
 
 	// size of full structure - addresses + only used addresses
@@ -393,7 +418,7 @@ int ig_trace_dns(struct __sk_buff *skb)
 
 	// Skip non-UDP packets
 	if (load_byte(skb, ETH_HLEN + offsetof(struct iphdr, protocol)) !=
-	    IPPROTO_UDP)
+		IPPROTO_UDP)
 		return 0;
 
 //	// write metrics
