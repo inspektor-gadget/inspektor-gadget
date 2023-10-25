@@ -397,8 +397,13 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 	key.label1 = 5;
 	struct values_t* values = bpf_map_lookup_elem(&manualStats, &key);
 
+	if (!values) {
+        struct values_t emptyMetrics = {};
+        bpf_map_update_elem(&manualStats, &key, &emptyMetrics, BPF_NOEXIST);
+        values = bpf_map_lookup_elem(&manualStats, &key);
+	}
 	if (values) {
-		__sync_fetch_and_add(&values->count, 1);
+	    __sync_fetch_and_add(&values->count, 1);
 	}
 
 	// size of full structure - addresses + only used addresses

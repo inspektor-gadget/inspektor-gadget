@@ -56,7 +56,7 @@ type MetricField struct {
 
 type Metric struct {
 	MetricName string        `yaml:"metricName"`
-	Build      bool          `yaml:"build"`
+	Generate   bool          `yaml:"generate"`
 	Labels     []MetricField `yaml:"labels"`
 	Values     []MetricField `yaml:"values"`
 }
@@ -72,13 +72,13 @@ func RenderMetricsHeader(m Metrics, out io.Writer) error {
 	// Remove non-build maps
 	buildMaps := make(Metrics)
 	for k, v := range m {
-		if v == nil || !v.Build {
+		if v == nil || !v.Generate {
 			continue
 		}
 		buildMaps[k] = v
 	}
 
-	return tmpl.Execute(out, m)
+	return tmpl.Execute(out, buildMaps)
 }
 
 type RuntimeMetricField struct {

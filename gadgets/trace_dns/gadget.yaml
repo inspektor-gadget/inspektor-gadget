@@ -7,7 +7,7 @@ tracers:
 metrics:
   manualStats:
   stats:
-    build: true
+    generate: true
     labels:
       - name: mnt_ns_id
         cType: mnt_ns_id_t
