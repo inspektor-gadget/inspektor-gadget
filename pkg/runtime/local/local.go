@@ -36,6 +36,10 @@ type Runtime struct {
 	catalog *runtime.Catalog
 }
 
+type ForwardOperatorInstances interface {
+	SetOperatorInstances(instances operators.OperatorInstances)
+}
+
 func New() *Runtime {
 	return &Runtime{
 		catalog: prepareCatalog(),
@@ -158,6 +162,11 @@ func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGa
 		log.Debug("calling operator.PostGadgetRun()")
 		operatorInstances.PostGadgetRun()
 	}()
+
+	// Temporary workaround to expose operators to gadgets
+	if forwarder, ok := gadgetInstance.(ForwardOperatorInstances); ok {
+		forwarder.SetOperatorInstances(operatorInstances)
+	}
 
 	if run, ok := gadgetInstance.(gadgets.RunGadget); ok {
 		log.Debugf("calling gadget.Run()")

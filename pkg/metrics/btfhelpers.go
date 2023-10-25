@@ -22,12 +22,13 @@ import (
 
 // TODO: move to lib; these are improved copies of existing code in the run command
 // (improved in that it also returns an array of iterated type names and correctly handling typed arrays)
-func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {
+func getUnderlyingType(tf *btf.Typedef) (btf.Type, []string, error) {
 	switch typedMember := tf.Type.(type) {
 	case *btf.Typedef:
-		return getUnderlyingType(typedMember)
+		typ, typeNames, err := getUnderlyingType(typedMember)
+		return typ, append(typeNames, tf.TypeName()), err
 	default:
-		return typedMember, nil
+		return typedMember, []string{tf.TypeName()}, nil
 	}
 }
 
@@ -83,8 +84,9 @@ func getSimpleType(typ btf.Type) (reflect.Type, []string) {
 			return reflect.TypeOf(float64(0)), []string{typ.TypeName()}
 		}
 	case *btf.Typedef:
-		typ, _ := getUnderlyingType(typedMember)
-		return getSimpleType(typ)
+		typ, typeNames, _ := getUnderlyingType(typedMember)
+		refType, typeNames2 := getSimpleType(typ)
+		return refType, append(append(typeNames, typ.TypeName()), typeNames2...)
 	case *btf.Array: // TODO: this has to be supported here
 		arrType, typeNames := getSimpleType(typedMember.Type)
 		if arrType == nil {

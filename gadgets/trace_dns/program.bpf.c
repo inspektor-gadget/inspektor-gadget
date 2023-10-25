@@ -34,7 +34,7 @@ typedef __u8 task[TASK_COMM_LEN];
 
 // manual metrics demo
 struct __attribute__((__packed__)) labels_t {
-	__u64 mntns;
+	mnt_ns_id_t mntns;
 	__u32 label1;
 };
 

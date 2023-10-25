@@ -38,6 +38,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/prometheus/config"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
@@ -79,7 +80,8 @@ type Tracer struct {
 
 	links []link.Link
 
-	metricProvider metric.MeterProvider
+	metricProvider    metric.MeterProvider
+	operatorInstances operators.OperatorInstances
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
@@ -466,7 +468,7 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 		return fmt.Errorf("install tracer: %w", err)
 	}
 
-	go info.Metrics.Run(gadgetCtx.Context(), t.collection, t.metricProvider)
+	go info.Metrics.Run(gadgetCtx, t.collection, t.metricProvider, t.operatorInstances)
 
 	if t.perfReader != nil || t.ringbufReader != nil {
 		go t.runTracers(gadgetCtx)
@@ -503,4 +505,8 @@ func (t *Tracer) GetPrometheusConfig() *config.Config {
 func (t *Tracer) SetMetricsProvider(provider metric.MeterProvider) {
 	log.Printf("got provider")
 	t.metricProvider = provider
+}
+
+func (t *Tracer) SetOperatorInstances(operatorInstances operators.OperatorInstances) {
+	t.operatorInstances = operatorInstances
 }

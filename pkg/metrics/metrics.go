@@ -37,6 +37,9 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
 //go:embed templates/*.tpl
@@ -46,11 +49,21 @@ var (
 	metricsMapPrefix     = "metrics_map_"
 	metricsMapRegex      = regexp.MustCompile("^metrics_map_([^_]+)$")
 	metricsEnablerFormat = "metrics_key_%s_%s_enabled" // metricName, labelName
+	mntNsIdType          = "mnt_ns_id_t"
+	netNsIdType          = "net_ns_id_t"
+)
+
+type enrichType int
+
+const (
+	enrichTypeNone enrichType = iota
+	enrichTypeMntNs
+	enrichTypeNetNs
 )
 
 type MetricField struct {
 	Name   string `yaml:"name"`
-	CType  string `yaml:"ctype"`
+	CType  string `yaml:"cType"`
 	Offset int    `yaml:"offset"`
 }
 
@@ -85,10 +98,29 @@ type RuntimeMetricField struct {
 	MetricField
 
 	// get/set at runtime
-	disabled  bool
-	rType     reflect.Type
-	typeNames []string
-	column    *columns.Column[metricHolder]
+	disabled   bool
+	rType      reflect.Type
+	typeNames  []string
+	column     *columns.Column[metricHolder]
+	enrichType enrichType
+}
+
+func contains[T comparable](arr []T, val T) bool {
+	for _, t := range arr {
+		if t == val {
+			return true
+		}
+	}
+	return false
+}
+
+func (rmf *RuntimeMetricField) IsOfType(t string) bool {
+	for _, tn := range rmf.typeNames {
+		if tn == t {
+			return true
+		}
+	}
+	return false
 }
 
 type RuntimeMetricLabel struct {
@@ -115,9 +147,36 @@ type metricHolder struct {
 	buf []byte
 }
 
+type mntNsEnricher struct {
+	mntnsid          uint64
+	Node             string
+	BasicK8sMetadata *types.BasicK8sMetadata
+	BasicRuntimeData *types.BasicRuntimeMetadata
+}
+
+func (e *mntNsEnricher) GetMountNSID() uint64 {
+	return e.mntnsid
+}
+
+func (e *mntNsEnricher) SetNode(node string) {
+	e.Node = node
+}
+
+func (e *mntNsEnricher) SetPodMetadata(basicK8sMetadata *types.BasicK8sMetadata, basicRuntimeMetadata *types.BasicRuntimeMetadata) {
+	e.BasicK8sMetadata = basicK8sMetadata
+	e.BasicRuntimeData = basicRuntimeMetadata
+}
+
+func (e *mntNsEnricher) SetContainerMetadata(basicK8sMetadata *types.BasicK8sMetadata, basicRuntimeMetadata *types.BasicRuntimeMetadata) {
+	e.BasicK8sMetadata = basicK8sMetadata
+	e.BasicRuntimeData = basicRuntimeMetadata
+}
+
 type RuntimeMetrics struct {
-	Maps     map[string]*RuntimeMetricMap
-	provider metric.MeterProvider
+	Maps      map[string]*RuntimeMetricMap
+	provider  metric.MeterProvider
+	gadgetCtx gadgets.GadgetContext
+	operator  operators.OperatorInstance
 }
 
 // NewRuntimeMetrics creates a new runtime for metric collection; the spec is used to add maps automatically that
@@ -184,6 +243,13 @@ func NewRuntimeMetrics(spec *ebpf.CollectionSpec, configMetrics Metrics) (*Runti
 				},
 				rType:     t,
 				typeNames: typeNames,
+			}
+
+			// Temporary workaround for enrichments
+			if contains(typeNames, mntNsIdType) {
+				rmf.enrichType = enrichTypeMntNs
+			} else if contains(typeNames, netNsIdType) {
+				rmf.enrichType = enrichTypeNetNs
 			}
 
 			if rmf.rType == nil {
@@ -290,8 +356,14 @@ func NewRuntimeMetrics(spec *ebpf.CollectionSpec, configMetrics Metrics) (*Runti
 	return rm, nil
 }
 
-func (r *RuntimeMetrics) Run(ctx context.Context, coll *ebpf.Collection, provider metric.MeterProvider) {
+func (r *RuntimeMetrics) Run(
+	gadgetCtx gadgets.GadgetContext,
+	coll *ebpf.Collection,
+	provider metric.MeterProvider,
+	operatorInstances operators.OperatorInstances,
+) {
 	r.provider = provider
+	r.gadgetCtx = gadgetCtx
 
 	// Register metrics
 	for _, mi := range r.Maps {
@@ -306,9 +378,18 @@ func (r *RuntimeMetrics) Run(ctx context.Context, coll *ebpf.Collection, provide
 		}
 	}
 
+	// Find operator for enrichment; this is a temporary solution
+	// TODO
+	for _, op := range operatorInstances {
+		if op.Name() == "LocalManagerTrace" || op.Name() == "KubeManagerInstance" {
+			// TODO: make sure the gadget actually instantiates the required operator
+			r.operator = op
+		}
+	}
+
 	log.Printf("metrics running")
 	ticker := time.NewTicker(time.Second)
-	done := ctx.Done()
+	done := gadgetCtx.Context().Done()
 	for {
 		select {
 		case <-ticker.C:
@@ -370,7 +451,55 @@ func (r *RuntimeMetrics) gatherMetrics(coll *ebpf.Collection) {
 				attrs := make([]attribute.KeyValue, 0)
 				for _, c := range mi.labels {
 					vv := columns.GetFieldAsString[metricHolder](c.column)(&metricHolder{buf: ek}) // TODO: optimize
-					log.Printf("KEY> %s: %s", c.Name, vv)
+
+					if c.enrichType == enrichTypeMntNs {
+						// TODO: make sure type is correct!
+						enr := &mntNsEnricher{
+							mntnsid: columns.GetFieldAsNumberFunc[uint64, metricHolder](c.column)(&metricHolder{buf: ek}),
+						}
+
+						r.operator.EnrichEvent(enr)
+
+						// TODO: make sure these are actually requested
+						if enr.BasicK8sMetadata != nil {
+							attrs = append(attrs, attribute.KeyValue{
+								Key:   attribute.Key("k8s.namespace"),
+								Value: attribute.StringValue(enr.BasicK8sMetadata.Namespace),
+							})
+							attrs = append(attrs, attribute.KeyValue{
+								Key:   attribute.Key("k8s.podname"),
+								Value: attribute.StringValue(enr.BasicK8sMetadata.PodName),
+							})
+							attrs = append(attrs, attribute.KeyValue{
+								Key:   attribute.Key("k8s.containername"),
+								Value: attribute.StringValue(enr.BasicK8sMetadata.ContainerName),
+							})
+						}
+						if enr.BasicRuntimeData != nil {
+							attrs = append(attrs, attribute.KeyValue{
+								Key:   attribute.Key("runtime"),
+								Value: attribute.StringValue(enr.BasicRuntimeData.RuntimeName.String()),
+							})
+							attrs = append(attrs, attribute.KeyValue{
+								Key:   attribute.Key("containerid"),
+								Value: attribute.StringValue(enr.BasicRuntimeData.ContainerID),
+							})
+							attrs = append(attrs, attribute.KeyValue{
+								Key:   attribute.Key("containername"),
+								Value: attribute.StringValue(enr.BasicRuntimeData.ContainerName),
+							})
+							attrs = append(attrs, attribute.KeyValue{
+								Key:   attribute.Key("containerimagename"),
+								Value: attribute.StringValue(enr.BasicRuntimeData.ContainerImageName),
+							})
+							attrs = append(attrs, attribute.KeyValue{
+								Key:   attribute.Key("containerimagedigest"),
+								Value: attribute.StringValue(enr.BasicRuntimeData.ContainerImageDigest),
+							})
+						}
+						continue
+					}
+
 					attrs = append(attrs, attribute.KeyValue{
 						Key:   attribute.Key(c.Name),
 						Value: attribute.StringValue(vv),
@@ -384,7 +513,6 @@ func (r *RuntimeMetrics) gatherMetrics(coll *ebpf.Collection) {
 					vv := columns.GetFieldAsString[metricHolder](c.column)(&metricHolder{buf: ev}) // TODO: optimize
 					f, _ := strconv.ParseFloat(vv, 64)
 					c.ctr.Add(context.Background(), f, metric.WithAttributes(attrs...))
-					log.Printf("VAL> %s: %s", c.Name, vv)
 				}
 			}
 			if errors.Is(err, unix.ENOENT) { // ebpf.ErrKeyNotExist when doing this with cilium/ebpf later on
