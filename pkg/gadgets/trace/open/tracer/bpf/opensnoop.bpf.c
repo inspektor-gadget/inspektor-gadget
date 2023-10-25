@@ -8,7 +8,8 @@
 #include <gadget/filesystem.h>
 #include "opensnoop.h"
 
-#define TASK_RUNNING 0
+#define NR_MAX_PREFIX_FILTER 255
+#define CHAR_BIT 8
 
 const volatile __u64 min_us = 0;
 const volatile pid_t targ_pid = 0;
@@ -16,6 +17,7 @@ const volatile pid_t targ_tgid = 0;
 const volatile uid_t targ_uid = INVALID_UID;
 const volatile bool targ_failed = false;
 const volatile bool get_full_path = false;
+const volatile __u32 prefixes_nr = 0;
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));
@@ -33,14 +35,31 @@ struct {
 	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
+	__type(key, struct prefix_key);
+	__type(value, __u8);
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+	__uint(max_entries, NR_MAX_PREFIX_FILTER);
+} prefixes SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 1024);
+	__type(key, u32);
+	__type(value, struct prefix_key);
+} prefix_keys SEC(".maps");
+
 static const struct event empty_event = {};
+static const struct prefix_key empty_prefix_key = {};
 
 static __always_inline bool valid_uid(uid_t uid)
 {
 	return uid != INVALID_UID;
 }
 
-static __always_inline bool trace_allowed(u32 tgid, u32 pid)
+static __always_inline bool trace_allowed(u32 tgid, u32 pid,
+					  const char *filename)
 {
 	u64 mntns_id;
 	u32 uid;
@@ -55,6 +74,45 @@ static __always_inline bool trace_allowed(u32 tgid, u32 pid)
 		if (targ_uid != uid) {
 			return false;
 		}
+	}
+
+	if (prefixes_nr) {
+		struct prefix_key *key;
+		bool found;
+
+		found = false;
+
+		/*
+		 * Allocate prefix_key from map rather than stack to avoid
+		 * hitting the verifier limit.
+		 */
+		if (bpf_map_update_elem(&prefix_keys, &pid, &empty_prefix_key,
+					BPF_NOEXIST))
+			goto clean;
+
+		key = bpf_map_lookup_elem(&prefix_keys, &pid);
+		if (!key)
+			goto clean;
+
+		/*
+		 * It is fine to give the whole buffer size as prefixlen here.
+		 * Indeed, the in-kernel lookup stops when there is a difference
+		 * between the node (i.e. tested prefix) and the key (i.e.
+		 * filename).
+		 * There will always be a difference if the filename is longer
+		 * than the prefix, but what matters is the matched length.
+		 * If it equals the prefix length, then the filename matches the
+		 * prefix.
+		 */
+		key->prefixlen = sizeof(key->filename) * CHAR_BIT;
+		__builtin_memcpy(key->filename, filename,
+				 sizeof(key->filename));
+
+		found = bpf_map_lookup_elem(&prefixes, key) != NULL;
+clean:
+		bpf_map_delete_elem(&prefix_keys, &pid);
+		if (!found)
+			return false;
 	}
 
 	mntns_id = gadget_get_mntns_id();
@@ -72,24 +130,27 @@ static __always_inline int trace_enter(const char *filename, int flags,
 	/* use kernel terminology here for tgid/pid: */
 	u32 tgid = id >> 32;
 	u32 pid = id;
+	char fname[NAME_MAX];
+
+	bpf_probe_read_user_str(fname, sizeof(fname), filename);
 
 	/* store arg info for later lookup */
-	if (trace_allowed(tgid, pid)) {
-		struct event *event;
+	if (!trace_allowed(tgid, pid, (const char *)fname))
+		return 0;
 
-		if (bpf_map_update_elem(&start, &pid, &empty_event,
-					BPF_NOEXIST))
-			return 0;
+	struct event *event;
 
-		event = bpf_map_lookup_elem(&start, &pid);
-		if (!event)
-			return 0;
+	if (bpf_map_update_elem(&start, &pid, &empty_event, BPF_NOEXIST))
+		return 0;
 
-		bpf_probe_read_user_str(&event->fname, sizeof(event->fname),
-					filename);
-		event->flags = flags;
-		event->mode = mode;
-	}
+	event = bpf_map_lookup_elem(&start, &pid);
+	if (!event)
+		return 0;
+
+	__builtin_memcpy(event->fname, fname, sizeof(event->fname));
+	event->flags = flags;
+	event->mode = mode;
+
 	return 0;
 }
 

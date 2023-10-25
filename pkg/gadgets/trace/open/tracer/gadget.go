@@ -24,6 +24,7 @@ import (
 
 const (
 	ParamFullPath = "full-path"
+	ParamPrefixes = "prefixes"
 )
 
 type GadgetDesc struct{}
@@ -52,6 +53,11 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			Description:  "Show the absolute full path of the opened file",
 			DefaultValue: "false",
 			TypeHint:     params.TypeBool,
+		},
+		{
+			Key:          ParamPrefixes,
+			Description:  "Filter out by path prefixes. Join multiple prefixes with ','",
+			DefaultValue: "",
 		},
 	}
 }

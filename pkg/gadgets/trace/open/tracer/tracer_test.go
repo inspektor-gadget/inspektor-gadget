@@ -345,6 +345,94 @@ func TestOpenTracer(t *testing.T) {
 				}
 			}),
 		},
+		"test_prefix_on_directory": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					Prefixes:   []string{"/tmp/foo"},
+				}
+			},
+			generateEvent: func() (int, error) {
+				err := os.Mkdir("/tmp/foo", 0o750)
+				if err != nil {
+					return 0, fmt.Errorf("creating directory: %w", err)
+				}
+				defer os.RemoveAll("/tmp/foo")
+
+				fd, err := unix.Open("/tmp/foo/bar.test", unix.O_RDONLY|unix.O_CREAT, 0)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+				defer unix.Close(fd)
+
+				badfd, err := unix.Open("/tmp/quux.test", unix.O_RDONLY|unix.O_CREAT, 0)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+				defer unix.Close(badfd)
+
+				return fd, nil
+			},
+			validateEvent: utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, fd int) *types.Event {
+				return &types.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
+					Pid:           uint32(info.Pid),
+					Uid:           uint32(info.Uid),
+					Comm:          info.Comm,
+					Fd:            fd,
+					Ret:           fd,
+					Err:           0,
+					Path:          "/tmp/foo/bar.test",
+					Flags:         []string{"O_RDONLY", "O_CREAT"},
+					FlagsRaw:      unix.O_RDONLY | unix.O_CREAT,
+					Mode:          "----------",
+				}
+			}),
+		},
+		"test_prefix_on_file": {
+			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
+				return &tracer.Config{
+					MountnsMap: utilstest.CreateMntNsFilterMap(t, info.MountNsID),
+					Prefixes:   []string{"/tmp/foo.test"},
+				}
+			},
+			generateEvent: func() (int, error) {
+				fd, err := unix.Open("/tmp/foo.test", unix.O_RDONLY|unix.O_CREAT, 0)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+				defer unix.Close(fd)
+
+				badfd, err := unix.Open("/tmp/quux.test", unix.O_RDONLY|unix.O_CREAT, 0)
+				if err != nil {
+					return 0, fmt.Errorf("opening file: %w", err)
+				}
+				defer unix.Close(badfd)
+
+				return fd, nil
+			},
+			validateEvent: utilstest.ExpectOneEvent(func(info *utilstest.RunnerInfo, fd int) *types.Event {
+				return &types.Event{
+					Event: eventtypes.Event{
+						Type: eventtypes.NORMAL,
+					},
+					WithMountNsID: eventtypes.WithMountNsID{MountNsID: info.MountNsID},
+					Pid:           uint32(info.Pid),
+					Uid:           uint32(info.Uid),
+					Comm:          info.Comm,
+					Fd:            fd,
+					Ret:           fd,
+					Err:           0,
+					Path:          "/tmp/foo.test",
+					Flags:         []string{"O_RDONLY", "O_CREAT"},
+					FlagsRaw:      unix.O_RDONLY | unix.O_CREAT,
+					Mode:          "----------",
+				}
+			}),
+		},
 		"event_has_UID_and_GID_of_user_generating_event": {
 			getTracerConfig: func(info *utilstest.RunnerInfo) *tracer.Config {
 				return &tracer.Config{

@@ -73,3 +73,14 @@ RUNTIME.CONTAINERNAME         PID        COMM             FD  ERR PATH          
 test-trace-open-fullpath      1330356    cat              3   0   /etc/passwd                     /etc/passwd
 test-trace-open-fullpath      1330401    cat              3   0   ../etc/mtab                     /proc/22/mounts
 ```
+
+You can also filter by prefix paths using `--prefixes`.
+It will then only report events where opened files matched one of the given prefixes.
+
+```bash
+RUNTIME.CONTAINERNAME                            PID        COMM             FD    ERR PATH
+test-trace-open-fullpath                         64069      touch            3     0   /tmp/foo/quux.txt
+test-trace-open-fullpath                         64034      bash             3     0   /tmp/bar.txt
+```
+
+Note that this filtering occurs in eBPF.

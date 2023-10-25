@@ -34,11 +34,19 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang -cflags ${CFLAGS} -type event opensnoop ./bpf/opensnoop.bpf.c -- -I./bpf/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -no-global-types -target bpfel -cc clang -cflags ${CFLAGS} -type event -type prefix_key opensnoop ./bpf/opensnoop.bpf.c -- -I./bpf/
+
+const (
+	// Keep in sync with opensnoop.h.
+	NAME_MAX = 255
+	// Keep in sync with opensnoop.bpf.c.
+	CHAR_BIT = 8
+)
 
 type Config struct {
 	MountnsMap *ebpf.Map
 	FullPath   bool
+	Prefixes   []string
 }
 
 type Tracer struct {
@@ -98,8 +106,34 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
+	prefixesNumber := uint32(len(t.config.Prefixes))
+	prefixesMax := spec.Maps["prefixes"].MaxEntries
+	if prefixesNumber > prefixesMax {
+		return fmt.Errorf("%d maximum prefixes supported, got %d", prefixesMax, prefixesNumber)
+	}
+
 	consts := make(map[string]interface{})
 	consts["get_full_path"] = t.config.FullPath
+	consts["prefixes_nr"] = prefixesNumber
+
+	for _, prefix := range t.config.Prefixes {
+		var pfx [NAME_MAX]uint8
+
+		bytes := uint32(len(prefix))
+		if bytes > NAME_MAX {
+			bytes = NAME_MAX
+		}
+		copy(pfx[:], prefix)
+
+		spec.Maps["prefixes"].Contents = append(spec.Maps["prefixes"].Contents, ebpf.MapKV{
+			// We need to give the exact length of the prefix here.
+			// Otherwise, the kernel will compare until NAME_MAX * CHAR_BIT and there
+			// will never be a match (unless the filename is NAME_MAX long and equals
+			// to the prefix).
+			Key:   opensnoopPrefixKey{Prefixlen: bytes * CHAR_BIT, Filename: pfx},
+			Value: uint8(0),
+		})
+	}
 
 	if err := gadgets.LoadeBPFSpec(t.config.MountnsMap, spec, consts, &t.objs); err != nil {
 		return fmt.Errorf("loading ebpf spec: %w", err)
@@ -210,6 +244,7 @@ func (t *Tracer) run() {
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	t.config.FullPath = gadgetCtx.GadgetParams().Get(ParamFullPath).AsBool()
+	t.config.Prefixes = gadgetCtx.GadgetParams().Get(ParamPrefixes).AsStringSlice()
 
 	defer t.close()
 	if err := t.install(); err != nil {
