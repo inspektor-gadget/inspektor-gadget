@@ -7,6 +7,12 @@
 #define PATH_MAX 4096
 #define INVALID_UID ((uid_t)-1)
 
+struct start_t {
+	int flags;
+	__u16 mode;
+	__u8 fname[NAME_MAX];
+};
+
 struct event {
 	__u64 timestamp;
 	/* user terminology for pid: */
