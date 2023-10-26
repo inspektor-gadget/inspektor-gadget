@@ -26,6 +26,9 @@ config:
   # -- Enable experimental features
   experimental: false
 
+  # -- Events buffer length. A low value could impact horizontal scaling.
+  eventsBufferLength: "16384"
+
 image:
   # -- Container repository for the container image
   repository: ghcr.io/inspektor-gadget/inspektor-gadget

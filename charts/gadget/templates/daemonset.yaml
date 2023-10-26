@@ -103,6 +103,8 @@ spec:
               value: "/host"
             - name: IG_EXPERIMENTAL
               value: {{ .Values.config.experimental | quote }}
+            - name: EVENTS_BUFFER_LENGTH
+              value: {{ .Values.config.eventsBufferLength | quote }}
           securityContext:
             # With hostPID/hostNetwork/privileged [1] set to false, we need to set appropriate
             # SELinux context [2] to be able to mount host directories with correct permissions.

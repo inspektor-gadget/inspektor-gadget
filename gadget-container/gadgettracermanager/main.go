@@ -23,6 +23,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -313,7 +314,16 @@ func main() {
 			go startController(node, tracerManager)
 		}
 
-		service := gadgetservice.NewService(log.StandardLogger())
+		stringBufferLength := os.Getenv("EVENTS_BUFFER_LENGTH")
+		if stringBufferLength == "" {
+			log.Fatalf("Environment variable EVENTS_BUFFER_LENGTH not set")
+		}
+
+		bufferLength, err := strconv.ParseUint(stringBufferLength, 10, 64)
+		if err != nil {
+			log.Fatalf("Parsing EVENTS_BUFFER_LENGTH %q: %v", stringBufferLength, err)
+		}
+		service := gadgetservice.NewService(log.StandardLogger(), bufferLength)
 
 		socketType, socketPath, err := api.ParseSocketAddress(gadgetServiceHost)
 		if err != nil {

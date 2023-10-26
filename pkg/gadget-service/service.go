@@ -56,16 +56,18 @@ type RunConfig struct {
 
 type Service struct {
 	api.UnimplementedGadgetManagerServer
-	listener net.Listener
-	runtime  runtime.Runtime
-	logger   logger.Logger
-	servers  map[*grpc.Server]struct{}
+	listener          net.Listener
+	runtime           runtime.Runtime
+	logger            logger.Logger
+	servers           map[*grpc.Server]struct{}
+	eventBufferLength uint64
 }
 
-func NewService(defaultLogger logger.Logger) *Service {
+func NewService(defaultLogger logger.Logger, length uint64) *Service {
 	return &Service{
-		servers: map[*grpc.Server]struct{}{},
-		logger:  defaultLogger,
+		servers:           map[*grpc.Server]struct{}{},
+		logger:            defaultLogger,
+		eventBufferLength: length,
 	}
 }
 
@@ -169,7 +171,7 @@ func (s *Service) RunGadget(runGadget api.GadgetManager_RunGadgetServer) error {
 	}
 
 	// Create payload buffer
-	outputBuffer := make(chan *api.GadgetEvent, 1024) // TODO: Discuss 1024
+	outputBuffer := make(chan *api.GadgetEvent, s.eventBufferLength)
 
 	seq := uint32(0)
 	var seqLock sync.Mutex
