@@ -11,7 +11,7 @@ require (
 	github.com/giantswarm/crd-docs-generator v0.11.0
 	github.com/google/uuid v1.3.1
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.28.1
+	github.com/onsi/gomega v1.29.0
 	github.com/opencontainers/runtime-spec v1.1.0
 	github.com/s3rj1k/go-fanotify/fanotify v0.0.0-20210917134616-9c00a300bb7a
 	github.com/seccomp/libseccomp-golang v0.10.0 // indirect
