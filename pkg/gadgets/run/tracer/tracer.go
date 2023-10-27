@@ -36,6 +36,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/networktracer"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/internal/socketenricher"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -56,6 +57,9 @@ type Config struct {
 	ProgContent []byte
 	Metadata    *types.GadgetMetadata
 	MountnsMap  *ebpf.Map
+
+	// constants to replace in the ebpf program
+	Consts map[string]interface{}
 }
 
 type Tracer struct {
@@ -150,12 +154,11 @@ func (t *Tracer) handleTracers() (string, error) {
 	return tracer.MapName, nil
 }
 
-func (t *Tracer) installTracer() error {
+func (t *Tracer) installTracer(params *params.Params) error {
 	var err error
 	var tracerMapName string
 
 	mapReplacements := map[string]*ebpf.Map{}
-	consts := map[string]interface{}{}
 
 	t.eventType, err = getEventTypeBTF(t.config.ProgContent, t.config.Metadata)
 	if err != nil {
@@ -169,6 +172,9 @@ func (t *Tracer) installTracer() error {
 			return fmt.Errorf("handling trace programs: %w", err)
 		}
 	}
+
+	t.setEBPFParameters(t.config.Metadata.EBPFParams, params)
+	consts := t.config.Consts
 
 	// Handle special maps like mount ns filter, socket enricher, etc.
 	for _, m := range t.spec.Maps {
@@ -437,6 +443,17 @@ func (t *Tracer) runTracers(gadgetCtx gadgets.GadgetContext) {
 	}
 }
 
+func (t *Tracer) setEBPFParameters(ebpfParams map[string]types.EBPFParam, gadgetParams *params.Params) {
+	t.config.Consts = make(map[string]interface{})
+	for varName, paramDef := range ebpfParams {
+		p := gadgetParams.Get(paramDef.Key)
+		if !p.IsSet() {
+			continue
+		}
+		t.config.Consts[varName] = p.AsAny()
+	}
+}
+
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
 	args := gadgetCtx.Args()
@@ -454,7 +471,7 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 
 	t.config.Metadata = info.GadgetMetadata
 
-	if err := t.installTracer(); err != nil {
+	if err := t.installTracer(params); err != nil {
 		t.Stop()
 		return fmt.Errorf("install tracer: %w", err)
 	}

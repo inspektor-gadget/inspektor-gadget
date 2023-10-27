@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/cilium/ebpf"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/stretchr/testify/require"
 )
 
@@ -190,6 +191,54 @@ func TestValidate(t *testing.T) {
 				},
 			},
 		},
+		"param_nonexistent": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				EBPFParams: map[string]EBPFParam{
+					"bar": {},
+				},
+			},
+			expectedErrString: "variable \"bar\" not found in eBPF object: type name bar: not found",
+		},
+		"param_nokey": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				EBPFParams: map[string]EBPFParam{
+					"bar": {},
+				},
+			},
+			expectedErrString: "param \"bar\" has an empty key",
+		},
+		"param_good": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				EBPFParams: map[string]EBPFParam{
+					"param": {
+						ParamDesc: params.ParamDesc{
+							Key: "param",
+						},
+					},
+				},
+			},
+		},
+		"param2_not_volatile": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				EBPFParams: map[string]EBPFParam{
+					"param2": {},
+				},
+			},
+			expectedErrString: "\"param2\" is not volatile",
+		},
+		"param3_not_const": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				EBPFParams: map[string]EBPFParam{
+					"param3": {},
+				},
+			},
+			expectedErrString: "\"param3\" is not const",
+		},
 	}
 
 	// it's fine for now to use the same spec for all tests, hence do this once
@@ -279,7 +328,7 @@ func TestPopulate(t *testing.T) {
 				},
 				Structs: map[string]Struct{
 					"event": {
-						// Set desc and some  attributes to be sure they aren't overwritten
+						// Set desc and some attributes to be sure they aren't overwritten
 						Fields: []Field{
 							{
 								Name:        "pid",
@@ -368,6 +417,62 @@ func TestPopulate(t *testing.T) {
 		"tracer_map_without_btf": {
 			objectPath:        "../../../../testdata/populate_metadata_tracer_map_without_btf.o",
 			expectedErrString: "map \"events\" does not have BTF information its value",
+		},
+		"param_populate_from_scratch": {
+			objectPath: "../../../../testdata/populate_metadata_1_param_from_scratch.o",
+			expectedMetadata: &GadgetMetadata{
+				Name:        "TODO: Fill the gadget name",
+				Description: "TODO: Fill the gadget description",
+				Tracers:     map[string]Tracer{},
+				Structs:     map[string]Struct{},
+				EBPFParams: map[string]EBPFParam{
+					// This also makes sure that param2 won't get picked up
+					// since GADGET_PARAM(param2) is missing
+					"param": {
+						ParamDesc: params.ParamDesc{
+							Key:         "param",
+							Description: "TODO: Fill parameter description",
+						},
+					},
+				},
+			},
+		},
+		"param_dont_modify_values": {
+			objectPath: "../../../../testdata/populate_metadata_1_param_from_scratch.o",
+			initialMetadata: &GadgetMetadata{
+				Name:        "foo",
+				Description: "bar",
+				Tracers:     map[string]Tracer{},
+				Structs:     map[string]Struct{},
+				EBPFParams: map[string]EBPFParam{
+					"param": {
+						// Set desc and some attributes to be sure they aren't overwritten
+						ParamDesc: params.ParamDesc{
+							Key:          "my-param-key",
+							Description:  "This is my awesome parameter",
+							DefaultValue: "42",
+						},
+					},
+				},
+			},
+			expectedMetadata: &GadgetMetadata{
+				Name:        "foo",
+				Description: "bar",
+				Tracers:     map[string]Tracer{},
+				Structs:     map[string]Struct{},
+				EBPFParams: map[string]EBPFParam{
+					// This also makes sure that param2 won't get picked up
+					// since GADGET_PARAM(param2) is missing
+					"param": {
+						// Check if desc and the other attributes aren't overwritten
+						ParamDesc: params.ParamDesc{
+							Key:          "my-param-key",
+							Description:  "This is my awesome parameter",
+							DefaultValue: "42",
+						},
+					},
+				},
+			},
 		},
 	}
 

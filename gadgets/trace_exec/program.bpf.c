@@ -40,6 +40,9 @@ const volatile bool ignore_failed = true;
 const volatile uid_t targ_uid = INVALID_UID;
 const volatile int max_args = DEFAULT_MAXARGS;
 
+GADGET_PARAM(ignore_failed);
+GADGET_PARAM(targ_uid);
+
 static const struct event empty_event = {};
 
 struct {

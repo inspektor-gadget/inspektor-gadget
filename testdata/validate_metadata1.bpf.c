@@ -7,6 +7,10 @@
 
 #define NAME_MAX 255
 
+const volatile int param;
+const int param2;
+volatile int param3;
+
 struct event {
 	mnt_ns_id_t mntns_id;
 	__u32 pid;

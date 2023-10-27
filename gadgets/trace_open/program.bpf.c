@@ -34,11 +34,14 @@ struct event {
 	__u8 fname[NAME_MAX];
 };
 
-const volatile __u64 min_us = 0;
 const volatile pid_t targ_pid = 0;
 const volatile pid_t targ_tgid = 0;
 const volatile uid_t targ_uid = INVALID_UID;
 const volatile bool targ_failed = false;
+
+GADGET_PARAM(targ_tgid);
+GADGET_PARAM(targ_uid);
+GADGET_PARAM(targ_failed);
 
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));

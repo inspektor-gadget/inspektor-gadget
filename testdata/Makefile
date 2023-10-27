@@ -6,6 +6,7 @@ EBPF_BUILDER ?= ghcr.io/inspektor-gadget/ebpf-builder
 all: testdata_docker
 
 TESTDATA = \
+	populate_metadata_1_param_from_scratch.o \
 	populate_metadata_1_tracer_1_struct_from_scratch.o \
 	populate_metadata_no_tracers_from_scratch.o \
 	populate_metadata_tracer_wrong_map_type.o \
