@@ -139,7 +139,7 @@ func (t *Tracer) install() error {
 		return fmt.Errorf("loading ebpf spec: %w", err)
 	}
 
-	// arm64 does not defined an open() syscall, only openat().
+	// arm64 does not define the open() syscall, only openat().
 	if runtime.GOARCH != "arm64" {
 		openEnter, err := link.Tracepoint("syscalls", "sys_enter_open", t.objs.IgOpenE, nil)
 		if err != nil {
