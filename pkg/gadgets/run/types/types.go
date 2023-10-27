@@ -34,12 +34,21 @@ type L4Endpoint struct {
 }
 
 type Event struct {
-	eventtypes.Event
+	// Do not use eventtypes.Event because we don't want to have the timestamp column.
+	eventtypes.CommonData
+
+	// Type indicates the kind of this event
+	Type eventtypes.EventType `json:"type"`
+
+	// Message when Type is ERR, WARN, DEBUG or INFO
+	Message string `json:"message,omitempty"`
+
 	eventtypes.WithMountNsID
 	eventtypes.WithNetNsID
 
-	L3Endpoints []L3Endpoint `json:"l3endpoints,omitempty"`
-	L4Endpoints []L4Endpoint `json:"l4endpoints,omitempty"`
+	L3Endpoints []L3Endpoint      `json:"l3endpoints,omitempty"`
+	L4Endpoints []L4Endpoint      `json:"l4endpoints,omitempty"`
+	Timestamps  []eventtypes.Time `json:"timestamps,omitempty"`
 
 	// Raw event sent by the ebpf program
 	RawData []byte `json:"raw_data,omitempty"`
@@ -66,12 +75,6 @@ func (ev *Event) GetEndpoints() []*eventtypes.L3Endpoint {
 
 func GetColumns() *columns.Columns[Event] {
 	return columns.MustCreateColumns[Event]()
-}
-
-func Base(ev eventtypes.Event) *Event {
-	return &Event{
-		Event: ev,
-	}
 }
 
 // Printer is implemented by objects that can print information, like frontends.

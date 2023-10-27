@@ -339,6 +339,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 	}
 
 	endpointDefs := []endpointDef{}
+	timestampsOffsets := []uint32{}
 
 	// The same same data structure is always sent, so we can precalculate the offsets for
 	// different fields like mount ns id, endpoints, etc.
@@ -379,6 +380,12 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			}
 			e := endpointDef{name: member.Name, start: member.Offset.Bytes(), typ: L4}
 			endpointDefs = append(endpointDefs, e)
+		case types.TimestampTypeName:
+			if err := verifyGadgetUint64Typedef(member.Type); err != nil {
+				logger.Warn("%s is not a uint64: %s", member.Name, err)
+				continue
+			}
+			timestampsOffsets = append(timestampsOffsets, member.Offset.Bytes())
 		}
 	}
 
@@ -435,14 +442,21 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			}
 		}
 
+		// handle timestamps
+		timestamps := []eventtypes.Time{}
+		for _, offset := range timestampsOffsets {
+			timestamp := *(*uint64)(unsafe.Pointer(&data[offset]))
+			t := gadgets.WallTimeFromBootTime(timestamp)
+			timestamps = append(timestamps, t)
+		}
+
 		return &types.Event{
-			Event: eventtypes.Event{
-				Type: eventtypes.NORMAL,
-			},
+			Type:          eventtypes.NORMAL,
 			WithMountNsID: eventtypes.WithMountNsID{MountNsID: mtn_ns_id},
 			RawData:       data,
 			L3Endpoints:   l3endpoints,
 			L4Endpoints:   l4endpoints,
+			Timestamps:    timestamps,
 		}
 	}
 }

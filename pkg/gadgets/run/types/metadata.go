@@ -50,6 +50,9 @@ const (
 
 	// Name of the type to store a mount namespace inode id
 	MntNsIdTypeName = "gadget_mntns_id"
+
+	// Name of the type to store a timestamp
+	TimestampTypeName = "gadget_timestamp"
 )
 
 type EBPFParam struct {
@@ -477,11 +480,6 @@ func (m *GadgetMetadata) populateStruct(btfStruct *btf.Struct) error {
 	}
 
 	for _, member := range btfStruct.Members {
-		// skip some specific members
-		if member.Name == "timestamp" {
-			log.Debug("Ignoring timestamp field: see https://github.com/inspektor-gadget/inspektor-gadget/issues/2000")
-			continue
-		}
 		// TODO: temporary disable mount ns as it'll be duplicated otherwise
 		if member.Type.TypeName() == MntNsIdTypeName {
 			continue

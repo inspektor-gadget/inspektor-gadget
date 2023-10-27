@@ -7,6 +7,9 @@ tracers:
 structs:
   event:
     fields:
+    - name: timestamp
+      attributes:
+        template: timestamp
     - name: pid
       attributes:
         template: pid

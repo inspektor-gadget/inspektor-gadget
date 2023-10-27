@@ -463,6 +463,7 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 
 	l3endpointCounter := 0
 	l4endpointCounter := 0
+	timestampsCounter := 0
 
 	for i, field := range eventStruct.Fields {
 		member := members[field.Name]
@@ -510,6 +511,21 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 				return e.L4Endpoints[index].L4Endpoint
 			})
 			l4endpointCounter++
+			continue
+		case types.TimestampTypeName:
+			// Take the value here, otherwise it'll use the wrong value after
+			// it's increased
+			index := timestampsCounter
+			err := cols.AddColumn(attrs, func(e *types.Event) any {
+				if len(e.Timestamps) == 0 {
+					return ""
+				}
+				return e.Timestamps[index].String()
+			})
+			if err != nil {
+				return nil, fmt.Errorf("adding timestamp column: %w", err)
+			}
+			timestampsCounter++
 			continue
 		}
 

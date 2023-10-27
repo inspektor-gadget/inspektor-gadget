@@ -29,7 +29,7 @@ struct event {
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;
 
-	__u64 timestamp;
+	gadget_timestamp timestamp;
 	__u8 state;
 	__u8 tcpflags;
 	__u32 reason;

@@ -29,7 +29,7 @@
 #define MAX_ADDR_ANSWERS 1
 
 struct event_t {
-	__u64 timestamp;
+	gadget_timestamp timestamp;
 
 	struct gadget_l4endpoint_t src;
 	struct gadget_l4endpoint_t dst;

@@ -37,24 +37,24 @@ func TestRunTraceOpen(t *testing.T) {
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedBaseJsonObj := RunEventToObj(t, &types.Event{
-				Event: BuildBaseEvent(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
+				CommonData: BuildCommonData(ns, WithContainerImageName("docker.io/library/busybox:latest", isDockerRuntime)),
 			})
 
 			expectedTraceOpenJsonObj := map[string]interface{}{
-				"comm":  "cat",
-				"fname": "/dev/null",
-				"uid":   1000,
-				"gid":   1111,
-				"ret":   3,
-				"flags": 0,
-				"pid":   0,
-				"mode":  0,
+				"comm":      "cat",
+				"fname":     "/dev/null",
+				"uid":       1000,
+				"gid":       1111,
+				"ret":       3,
+				"flags":     0,
+				"pid":       0,
+				"mode":      0,
+				"timestamp": "",
 			}
 
 			expectedJsonObj := MergeJsonObjs(t, expectedBaseJsonObj, expectedTraceOpenJsonObj)
 
 			normalize := func(m map[string]interface{}) {
-				SetEventTimestamp(m, 0)
 				SetEventMountNsID(m, 0)
 
 				SetEventK8sNode(m, "")
@@ -64,6 +64,7 @@ func TestRunTraceOpen(t *testing.T) {
 				SetEventRuntimeContainerID(m, "")
 				SetEventRuntimeContainerName(m, "")
 
+				m["timestamp"] = ""
 				m["pid"] = uint32(0)
 			}
 
