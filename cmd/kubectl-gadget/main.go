@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -25,6 +26,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/advise"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -78,7 +80,13 @@ func main() {
 		// evaluate flags early for runtimeGlobalFlags; this will make
 		// sure that --connection-method has already been parsed when calling
 		// InitDeployInfo()
-		rootCmd.ParseFlags(os.Args[1:])
+
+		err := commonutils.ParseEarlyFlags(rootCmd)
+		if err != nil {
+			// Analogous to cobra error message
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 		runtime.InitDeployInfo()
 	}
 

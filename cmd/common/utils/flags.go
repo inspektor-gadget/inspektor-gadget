@@ -17,6 +17,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -151,4 +152,44 @@ func AddRegistryAuthVariablesAndFlags(cmd *cobra.Command, authOptions *oci.AuthO
 		false,
 		"Allow connections to HTTP only registries",
 	)
+}
+
+// removeSplitSortArgs removes the --sort flag with its arg, if it isn't in the
+// merged form of --sort=foo
+func removeSplitSortArgs(args []string) []string {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--sort" {
+			// Remove also the next element as it is the arg of --sort
+			return append(args[:i], args[i+2:]...)
+		}
+	}
+	return args
+}
+
+// removeHelpArg removes the --help flag
+func removeHelpArg(args []string) []string {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--help" || args[i] == "-h" {
+			return append(args[:i], args[i+1:]...)
+		}
+	}
+	return args
+}
+
+func ParseEarlyFlags(cmd *cobra.Command) error {
+	// Do not error out on unknown flags, but still validate currently
+	// known ones.
+	// Other flags will be validated in the `Execute()` call and unknown
+	// ones will be rejected
+
+	cmd.FParseErrWhitelist.UnknownFlags = true
+	defer func() {
+		cmd.FParseErrWhitelist.UnknownFlags = false
+	}()
+	// temporary workaround for https://github.com/inspektor-gadget/inspektor-gadget/pull/2174#issuecomment-1780923952
+	args := removeSplitSortArgs(os.Args[1:])
+	// --help should be handled after we registered all commands
+	args = removeHelpArg(args)
+	err := cmd.ParseFlags(args)
+	return err
 }
