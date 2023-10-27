@@ -26,6 +26,7 @@ import (
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/advise"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -80,18 +81,12 @@ func main() {
 		// sure that --connection-method has already been parsed when calling
 		// InitDeployInfo()
 
-		// Do not error out on unknown flags, but still validate currently
-		// known ones.
-		// Other flags will be validated in the `Execute()` call and unknown
-		// ones will be rejected
-		rootCmd.FParseErrWhitelist.UnknownFlags = true
-		err := rootCmd.ParseFlags(os.Args[1:])
+		err := commonutils.ParseEarlyFlags(rootCmd)
 		if err != nil {
 			// Analogous to cobra error message
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		rootCmd.FParseErrWhitelist.UnknownFlags = false
 		runtime.InitDeployInfo()
 	}
 

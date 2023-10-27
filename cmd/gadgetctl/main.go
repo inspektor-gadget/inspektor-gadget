@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/all-gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/environment"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
@@ -68,18 +69,12 @@ func main() {
 		// sure that --remote-address has already been parsed when calling
 		// InitDeployInfo(), so it can target the specified address
 
-		// Do not error out on unknown flags, but still validate currently
-		// known ones.
-		// Other flags will be validated in the `Execute()` call and unknown
-		// ones will be rejected
-		rootCmd.FParseErrWhitelist.UnknownFlags = true
-		err := rootCmd.ParseFlags(os.Args[1:])
+		err := commonutils.ParseEarlyFlags(rootCmd)
 		if err != nil {
 			// Analogous to cobra error message
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		rootCmd.FParseErrWhitelist.UnknownFlags = false
 		runtime.InitDeployInfo()
 	}
 
