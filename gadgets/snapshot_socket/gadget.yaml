@@ -1,0 +1,31 @@
+name: snapshot socket
+description: Show TCP and UDP sockets
+snapshotters:
+  sockets:
+    structName: socket_entry
+structs:
+  socket_entry:
+    fields:
+    - name: src
+      description: Source address
+      attributes:
+        minWidth: 24
+        maxWidth: 50
+    - name: dst
+      description: Destination address
+      attributes:
+        minWidth: 24
+        maxWidth: 50
+    - name: state
+      attributes:
+        width: 10
+        alignment: left
+        hidden: true
+        ellipsis: end
+    - name: ino
+      description: Inode number
+      attributes:
+        width: 10
+        alignment: left
+        hidden: true
+        ellipsis: end

@@ -188,6 +188,7 @@ func buildCommandFromGadget(
 ) *cobra.Command {
 	runGadgetDesc, isRunGadget := gadgetDesc.(runTypes.RunGadgetDesc)
 	var runGadgetInfo *runTypes.GadgetInfo
+	gType := gadgetDesc.Type()
 	var outputMode string
 	var filters []string
 	var timeout int
@@ -279,15 +280,100 @@ func buildCommandFromGadget(
 					return fmt.Errorf("getting gadget info: %w", err)
 				}
 
+				gType = runGadgetInfo.GadgetType
+
+				parser, err = runGadgetDesc.CustomParser(runGadgetInfo)
+				if err != nil {
+					return fmt.Errorf("calling custom parser: %w", err)
+				}
+
 				ebpfParams := params.Params{}
 				for _, desc := range runGadgetInfo.GadgetMetadata.EBPFParams {
 					desc := desc
 					ebpfParams.Add(desc.ToParam())
 				}
 
-				AddFlags(cmd, &ebpfParams, nil, runtime)
 				gadgetParams.Add(ebpfParams...)
 			}
+			// add flags
+			if gType != gadgets.TypeOneShot {
+				// Add timeout
+				cmd.PersistentFlags().IntVarP(
+					&timeout,
+					"timeout",
+					"t",
+					0,
+					"Number of seconds that the gadget will run for, 0 to disable",
+				)
+			}
+
+			// Add params matching the gadget type
+			gadgetParams.Add(*gadgets.GadgetParams(gadgetDesc, gType, parser).ToParams()...)
+
+			// Add runtime flags
+			AddFlags(cmd, runtimeParams, skipParams, runtime)
+
+			// Add gadget flags
+			AddFlags(cmd, gadgetParams, skipParams, runtime)
+
+			outputFormats.Append(gadgets.OutputFormats{
+				OutputModeJSON: {
+					Name:        "JSON",
+					Description: "The output of the gadget is returned as raw JSON",
+					Transform:   nil,
+				},
+				OutputModeJSONPretty: {
+					Name:        "JSON Prettified",
+					Description: "The output of the gadget is returned as prettified JSON",
+					Transform:   nil,
+				},
+				OutputModeYAML: {
+					Name:        "YAML",
+					Description: "The output of the gadget is returned as YAML",
+					Transform:   nil,
+				},
+			})
+			defaultOutputFormat = OutputModeJSON
+
+			// Add parser output flags
+			if parser != nil {
+				outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser, hiddenColumnTags))
+				defaultOutputFormat = "columns"
+
+				cmd.PersistentFlags().StringSliceVarP(
+					&filters,
+					"filter", "F",
+					[]string{},
+					`Filter rules
+		  A filter can match any column using the following syntax
+		    columnName:value       - matches, if the content of columnName equals exactly value
+		    columnName:!value      - matches, if the content of columnName does not equal exactly value
+		    columnName:>=value     - matches, if the content of columnName is greater than or equal to the value
+		    columnName:>value      - matches, if the content of columnName is greater than the value
+		    columnName:<=value     - matches, if the content of columnName is less than or equal to the value
+		    columnName:<value      - matches, if the content of columnName is less than the value
+		    columnName:~value      - matches, if the content of columnName matches the regular expression 'value'
+					     see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
+		`,
+				)
+			}
+
+			// Add alternative output formats available in the gadgets
+			if outputFormatInterface, ok := gadgetDesc.(gadgets.GadgetOutputFormats); ok {
+				formats, defaultFormat := outputFormatInterface.OutputFormats()
+				outputFormats.Append(formats)
+				defaultOutputFormat = defaultFormat
+			}
+
+			outputFormatsHelp := buildOutputFormatsHelp(outputFormats)
+
+			cmd.PersistentFlags().StringVarP(
+				&outputMode,
+				"output",
+				"o",
+				defaultOutputFormat,
+				strings.Join(outputFormatsHelp, "\n")+"\n\n",
+			)
 
 			// we need to re-enable flag parsing, as cmd.ParseFlags() would not
 			// do anything otherwise
@@ -298,6 +384,20 @@ func buildCommandFromGadget(
 			// args from RunE still contains all flags, since we manually parsed them,
 			// so we need to manually pull the remaining args here
 			args := cmd.Flags().Args()
+
+			if isRunGadget {
+				if len(args) == 0 {
+					if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
+						additionalMessage := "Specify the gadget image to get more information about it"
+						cmd.Long = fmt.Sprintf("%s\n\n%s", cmd.Short, additionalMessage)
+					}
+					return cmd.Help()
+				}
+			}
+
+			if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
+				return cmd.Help()
+			}
 
 			// we also manually need to check the verbose flag, as PersistentPreRunE in
 			// verbose.go will not have the correct information due to manually parsing
@@ -315,34 +415,6 @@ func buildCommandFromGadget(
 
 			ctx := fe.GetContext()
 
-			// Before running the gadget, we need to get the gadget info to create the
-			// parser based on it
-			if isRunGadget {
-				if len(args) == 0 {
-					if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
-						additionalMessage := "Specify the gadget image to get more information about it"
-						cmd.Long = fmt.Sprintf("%s\n\n%s", cmd.Short, additionalMessage)
-					}
-					return cmd.Help()
-				}
-
-				parser, err = runGadgetDesc.CustomParser(runGadgetInfo)
-				if err != nil {
-					return fmt.Errorf("calling custom parser: %w", err)
-				}
-			}
-
-			if parser != nil {
-				outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser, hiddenColumnTags))
-				outputFormatsHelp := buildOutputFormatsHelp(outputFormats)
-				cmd.Flags().Lookup("output").Usage = strings.Join(outputFormatsHelp, "\n") + "\n\n"
-				cmd.Flags().Lookup("output").DefValue = "columns"
-			}
-
-			if showHelp, _ := cmd.Flags().GetBool("help"); showHelp {
-				return cmd.Help()
-			}
-
 			err = validOperators.Init(operatorsGlobalParamsCollection)
 			if err != nil {
 				return fmt.Errorf("initializing operators: %w", err)
@@ -353,7 +425,7 @@ func buildCommandFromGadget(
 
 			// Handle timeout parameter by adding a timeout to the context
 			if timeout != 0 {
-				if gadgetDesc.Type().IsPeriodic() {
+				if gType.IsPeriodic() {
 					interval := gadgetParams.Get(gadgets.ParamInterval).AsInt()
 					if timeout < interval {
 						return fmt.Errorf("timeout must be greater than interval")
@@ -378,6 +450,7 @@ func buildCommandFromGadget(
 				parser,
 				logger.DefaultLogger(),
 				timeoutDuration,
+				runGadgetInfo,
 			)
 			defer gadgetCtx.Cancel()
 
@@ -414,7 +487,6 @@ func buildCommandFromGadget(
 					printEventAsYAMLFn(fe)
 				}
 
-				gType := gadgetDesc.Type()
 				if timeout == 0 && gType != gadgets.TypeTrace && gType != gadgets.TypeTraceIntervals {
 					gadgetCtx.Logger().Info("Running. Press Ctrl + C to finish")
 				}
@@ -466,7 +538,7 @@ func buildCommandFromGadget(
 				}
 			}
 
-			if gadgetDesc.Type().CanSort() {
+			if gType.CanSort() {
 				sortBy := gadgetParams.Get(gadgets.ParamSortBy).AsStringSlice()
 				err := parser.SetSorting(sortBy)
 				if err != nil {
@@ -603,7 +675,7 @@ func buildCommandFromGadget(
 				formatter.SetEnableExtraLines(true)
 
 				parser.SetEventCallback(formatter.EventHandlerFunc())
-				if gadgetDesc.Type().IsPeriodic() {
+				if gType.IsPeriodic() {
 					// In case of periodic outputting gadgets, this is done as full table output, and we need to
 					// clear the screen for every interval, that's why we add fe.Clear here
 					parser.SetEventCallback(formatter.EventHandlerFuncArray(
@@ -653,88 +725,8 @@ func buildCommandFromGadget(
 		},
 	}
 
-	if gadgetDesc.Type() != gadgets.TypeOneShot {
-		// Add timeout
-		cmd.PersistentFlags().IntVarP(
-			&timeout,
-			"timeout",
-			"t",
-			0,
-			"Number of seconds that the gadget will run for, 0 to disable",
-		)
-	}
-
-	outputFormats.Append(gadgets.OutputFormats{
-		"json": {
-			Name:        "JSON",
-			Description: "The output of the gadget is returned as raw JSON",
-			Transform:   nil,
-		},
-		OutputModeJSONPretty: {
-			Name:        "JSON Prettified",
-			Description: "The output of the gadget is returned as prettified JSON",
-			Transform:   nil,
-		},
-		OutputModeYAML: {
-			Name:        "YAML",
-			Description: "The output of the gadget is returned as YAML",
-			Transform:   nil,
-		},
-	})
-	defaultOutputFormat = "json"
-
-	// Add parser output flags
-	if parser != nil {
-		outputFormats.Append(buildColumnsOutputFormat(gadgetParams, parser, hiddenColumnTags))
-	}
-
-	if parser != nil || isRunGadget {
-		defaultOutputFormat = "columns"
-
-		cmd.PersistentFlags().StringSliceVarP(
-			&filters,
-			"filter", "F",
-			[]string{},
-			`Filter rules
-  A filter can match any column using the following syntax
-    columnName:value       - matches, if the content of columnName equals exactly value
-    columnName:!value      - matches, if the content of columnName does not equal exactly value
-    columnName:>=value     - matches, if the content of columnName is greater than or equal to the value
-    columnName:>value      - matches, if the content of columnName is greater than the value
-    columnName:<=value     - matches, if the content of columnName is less than or equal to the value
-    columnName:<value      - matches, if the content of columnName is less than the value
-    columnName:~value      - matches, if the content of columnName matches the regular expression 'value'
-                             see [https://github.com/google/re2/wiki/Syntax] for more information on the syntax
-`,
-		)
-	}
-
-	// Add alternative output formats available in the gadgets
-	if outputFormatInterface, ok := gadgetDesc.(gadgets.GadgetOutputFormats); ok {
-		formats, defaultFormat := outputFormatInterface.OutputFormats()
-		outputFormats.Append(formats)
-		defaultOutputFormat = defaultFormat
-	}
-
-	outputFormatsHelp := buildOutputFormatsHelp(outputFormats)
-
-	cmd.PersistentFlags().StringVarP(
-		&outputMode,
-		"output",
-		"o",
-		defaultOutputFormat,
-		strings.Join(outputFormatsHelp, "\n")+"\n\n",
-	)
-
-	// Add params matching the gadget type
-	gadgetParams.Add(*gadgets.GadgetParams(gadgetDesc, parser).ToParams()...)
-
-	// Add runtime flags
-	AddFlags(cmd, runtimeParams, skipParams, runtime)
-
-	// Add gadget flags
-	AddFlags(cmd, gadgetParams, skipParams, runtime)
-
+	// TODO: why moving this inside PreRunE breaks the namespace parameter?
+	// It's always "default".
 	// Add operator flags
 	for _, operatorParams := range operatorsParamsCollection {
 		AddFlags(cmd, operatorParams, skipParams, runtime)

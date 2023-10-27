@@ -10,6 +10,8 @@ GADGETS = \
 	trace_open \
 	trace_tcpconnect \
 	trace_tcpretrans \
+	snapshot_process \
+	snapshot_socket \
 	#
 
 .PHONY: all

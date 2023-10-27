@@ -170,6 +170,7 @@ func handleMetric(
 		parser,
 		logger.DefaultLogger(),
 		0,
+		nil,
 	)
 
 	// Handle remaining filtering logic in the parser

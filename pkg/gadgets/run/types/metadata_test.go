@@ -35,6 +35,18 @@ func TestValidate(t *testing.T) {
 			metadata:          &GadgetMetadata{},
 			expectedErrString: "gadget name is required",
 		},
+		"multiple_types": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Tracers: map[string]Tracer{
+					"foo": {},
+				},
+				Snapshotters: map[string]Snapshotter{
+					"bar": {},
+				},
+			},
+			expectedErrString: "gadget cannot have tracers and snapshotters",
+		},
 		"tracers_more_than_one": {
 			metadata: &GadgetMetadata{
 				Name: "foo",
@@ -239,6 +251,38 @@ func TestValidate(t *testing.T) {
 			},
 			expectedErrString: "\"param3\" is not const",
 		},
+		"snapshotters_more_than_one": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Snapshotters: map[string]Snapshotter{
+					"foo": {},
+					"bar": {},
+				},
+			},
+			expectedErrString: "only one snapshotter is allowed",
+		},
+		"snapshotters_missing_struct_name": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Snapshotters: map[string]Snapshotter{
+					"foo": {},
+				},
+			},
+			expectedErrString: "is missing structName",
+		},
+		"snapshotters_good": {
+			metadata: &GadgetMetadata{
+				Name: "foo",
+				Snapshotters: map[string]Snapshotter{
+					"foo": {
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {},
+				},
+			},
+		},
 	}
 
 	// it's fine for now to use the same spec for all tests, hence do this once
@@ -402,8 +446,6 @@ func TestPopulate(t *testing.T) {
 			expectedMetadata: &GadgetMetadata{
 				Name:        "TODO: Fill the gadget name",
 				Description: "TODO: Fill the gadget description",
-				Tracers:     map[string]Tracer{},
-				Structs:     map[string]Struct{},
 			},
 		},
 		"tracer_wrong_map_type": {
@@ -423,8 +465,6 @@ func TestPopulate(t *testing.T) {
 			expectedMetadata: &GadgetMetadata{
 				Name:        "TODO: Fill the gadget name",
 				Description: "TODO: Fill the gadget description",
-				Tracers:     map[string]Tracer{},
-				Structs:     map[string]Struct{},
 				EBPFParams: map[string]EBPFParam{
 					// This also makes sure that param2 won't get picked up
 					// since GADGET_PARAM(param2) is missing
@@ -442,8 +482,6 @@ func TestPopulate(t *testing.T) {
 			initialMetadata: &GadgetMetadata{
 				Name:        "foo",
 				Description: "bar",
-				Tracers:     map[string]Tracer{},
-				Structs:     map[string]Struct{},
 				EBPFParams: map[string]EBPFParam{
 					"param": {
 						// Set desc and some attributes to be sure they aren't overwritten
@@ -458,8 +496,6 @@ func TestPopulate(t *testing.T) {
 			expectedMetadata: &GadgetMetadata{
 				Name:        "foo",
 				Description: "bar",
-				Tracers:     map[string]Tracer{},
-				Structs:     map[string]Struct{},
 				EBPFParams: map[string]EBPFParam{
 					// This also makes sure that param2 won't get picked up
 					// since GADGET_PARAM(param2) is missing
@@ -469,6 +505,51 @@ func TestPopulate(t *testing.T) {
 							Key:          "my-param-key",
 							Description:  "This is my awesome parameter",
 							DefaultValue: "42",
+						},
+					},
+				},
+			},
+		},
+		"snapshotter_struct": {
+			objectPath: "../../../../testdata/populate_metadata_snapshotter_struct.o",
+			expectedMetadata: &GadgetMetadata{
+				Name:        "TODO: Fill the gadget name",
+				Description: "TODO: Fill the gadget description",
+				Snapshotters: map[string]Snapshotter{
+					"events": {
+						StructName: "event",
+					},
+				},
+				Structs: map[string]Struct{
+					"event": {
+						Fields: []Field{
+							{
+								Name:        "pid",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     10,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+							{
+								Name:        "comm",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
+							{
+								Name:        "filename",
+								Description: "TODO: Fill field description",
+								Attributes: FieldAttributes{
+									Width:     16,
+									Alignment: AlignmentLeft,
+									Ellipsis:  EllipsisEnd,
+								},
+							},
 						},
 					},
 				},

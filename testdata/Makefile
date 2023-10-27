@@ -13,6 +13,7 @@ TESTDATA = \
 	populate_metadata_tracer_wrong_map_value_type.o \
 	populate_metadata_tracer_map_without_btf.o \
 	populate_metadata_tracer_add_missing_field.o \
+	populate_metadata_snapshotter_struct.o \
 	validate_metadata1.o \
 	#
 

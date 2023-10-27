@@ -46,12 +46,12 @@ type DefaultSort interface {
 // GadgetParams returns params specific to the gadgets' type - for example, it returns
 // parameters for 'sort' and 'max-rows' for gadgets with sortable results, and 'interval'
 // for periodically called gadgets
-func GadgetParams(gadget GadgetDesc, parser parser.Parser) params.ParamDescs {
+func GadgetParams(gadget GadgetDesc, gType GadgetType, parser parser.Parser) params.ParamDescs {
 	p := params.ParamDescs{}
-	if gadget.Type().IsPeriodic() {
+	if gType.IsPeriodic() {
 		p.Add(IntervalParams()...)
 	}
-	if gadget.Type().CanSort() {
+	if gType.CanSort() {
 		p.Add(SortableParams(gadget, parser)...)
 	}
 	return p
