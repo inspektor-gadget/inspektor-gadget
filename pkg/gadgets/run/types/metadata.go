@@ -25,7 +25,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
@@ -39,6 +38,18 @@ const (
 
 	// Prefix used to mark snapshotters structs
 	snapshottersPrefix = "gadget_snapshotter_"
+)
+
+// Keep this aligned with include/gadget/types.h
+const (
+	// Name of the type that gadgets should use to store an L3 endpoint.
+	L3EndpointTypeName = "gadget_l3endpoint_t"
+
+	// Name of the type that gadgets should use to store an L4 endpoint.
+	L4EndpointTypeName = "gadget_l4endpoint_t"
+
+	// Name of the type to store a mount namespace inode id
+	MntNsIdTypeName = "mnt_ns_id_t"
 )
 
 type EBPFParam struct {
@@ -472,7 +483,7 @@ func (m *GadgetMetadata) populateStruct(btfStruct *btf.Struct) error {
 			continue
 		}
 		// TODO: temporary disable mount ns as it'll be duplicated otherwise
-		if member.Type.TypeName() == gadgets.MntNsIdTypeName {
+		if member.Type.TypeName() == MntNsIdTypeName {
 			continue
 		}
 

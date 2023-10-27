@@ -454,7 +454,7 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 		switch typedMember := member.Type.(type) {
 		case *btf.Struct:
 			switch typedMember.Name {
-			case gadgets.L3EndpointTypeName:
+			case types.L3EndpointTypeName:
 				// Take the value here, otherwise it'll use the wrong value after
 				// it's increased
 				index := l3endpointCounter
@@ -474,7 +474,7 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 				})
 				l3endpointCounter++
 				continue
-			case gadgets.L4EndpointTypeName:
+			case types.L4EndpointTypeName:
 				// Take the value here, otherwise it'll use the wrong value after
 				// it's increased
 				index := l4endpointCounter
