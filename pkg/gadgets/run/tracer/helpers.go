@@ -15,11 +15,21 @@
 package tracer
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"reflect"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"gopkg.in/yaml.v3"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/logger"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 )
 
 // getAnyMapElem returns any element of a map. If the map is empty, it returns nil, nil.
@@ -28,6 +38,15 @@ func getAnyMapElem[K comparable, V any](m map[K]V) (*K, *V) {
 		return &k, &v
 	}
 	return nil, nil
+}
+
+func loadSpec(progContent []byte) (*ebpf.CollectionSpec, error) {
+	progReader := bytes.NewReader(progContent)
+	spec, err := ebpf.LoadCollectionSpecFromReader(progReader)
+	if err != nil {
+		return nil, fmt.Errorf("loading spec: %w", err)
+	}
+	return spec, err
 }
 
 func getEventTypeBTF(progContent []byte, metadata *types.GadgetMetadata) (*btf.Struct, error) {
@@ -55,4 +74,210 @@ func getEventTypeBTF(progContent []byte, metadata *types.GadgetMetadata) (*btf.S
 	default:
 		return nil, fmt.Errorf("the gadget doesn't provide any compatible way to show information")
 	}
+}
+
+func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (*types.GadgetInfo, error) {
+	authOpts := &oci.AuthOptions{
+		AuthFile: params.Get(authfileParam).AsString(),
+		Insecure: params.Get(insecureParam).AsBool(),
+	}
+	gadget, err := oci.GetGadgetImage(context.TODO(), args[0], authOpts, params.Get(pullParam).AsString())
+	if err != nil {
+		return nil, fmt.Errorf("getting gadget image: %w", err)
+	}
+
+	ret := &types.GadgetInfo{
+		ProgContent:    gadget.EbpfObject,
+		GadgetMetadata: &types.GadgetMetadata{},
+	}
+
+	spec, err := loadSpec(ret.ProgContent)
+	if err != nil {
+		return nil, err
+	}
+
+	if bytes.Equal(gadget.Metadata, ocispec.DescriptorEmptyJSON.Data) {
+		// metadata is not present. synthesize something on the fly from the spec
+		if err := ret.GadgetMetadata.Populate(spec); err != nil {
+			return nil, err
+		}
+	} else {
+		validate := params.Get(validateMetadataParam).AsBool()
+
+		if err := yaml.Unmarshal(gadget.Metadata, &ret.GadgetMetadata); err != nil {
+			return nil, fmt.Errorf("unmarshaling metadata: %w", err)
+		}
+
+		if err := ret.GadgetMetadata.Validate(spec); err != nil {
+			if !validate {
+				logger.Warnf("gadget metadata is not valid: %v", err)
+			} else {
+				return nil, fmt.Errorf("gadget metadata is not valid: %w", err)
+			}
+		}
+	}
+
+	if err := fillTypeHints(spec, ret.GadgetMetadata.EBPFParams); err != nil {
+		return nil, fmt.Errorf("fill parameters type hints: %w", err)
+	}
+
+	ret.GadgetType, err = getGadgetType(ret.GadgetMetadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
+// getGadgetType returns the type of the gadget according to the gadget being run.
+func getGadgetType(gadgetMetadata *types.GadgetMetadata) (gadgets.GadgetType, error) {
+	switch {
+	case len(gadgetMetadata.Tracers) > 0:
+		return gadgets.TypeTrace, nil
+	case len(gadgetMetadata.Snapshotters) > 0:
+		return gadgets.TypeOneShot, nil
+	default:
+		return gadgets.TypeUnknown, fmt.Errorf("unknown gadget type")
+	}
+}
+
+// fillTypeHints fills the TypeHint field in the ebpf parameters according to the BTF information
+// about those constants.
+func fillTypeHints(spec *ebpf.CollectionSpec, params map[string]types.EBPFParam) error {
+	for varName, p := range params {
+		var btfVar *btf.Var
+		err := spec.Types.TypeByName(varName, &btfVar)
+		if err != nil {
+			return fmt.Errorf("no BTF type found for: %s: %w", p.Key, err)
+		}
+
+		btfConst, ok := btfVar.Type.(*btf.Const)
+		if !ok {
+			return fmt.Errorf("type for %s is not a constant, got %s", p.Key, btfVar.Type)
+		}
+
+		p.TypeHint = getTypeHint(btfConst.Type)
+		params[varName] = p
+	}
+
+	return nil
+}
+
+func getTypeHint(typ btf.Type) params.TypeHint {
+	switch typedMember := typ.(type) {
+	case *btf.Int:
+		switch typedMember.Encoding {
+		case btf.Signed:
+			switch typedMember.Size {
+			case 1:
+				return params.TypeInt8
+			case 2:
+				return params.TypeInt16
+			case 4:
+				return params.TypeInt32
+			case 8:
+				return params.TypeInt64
+			}
+		case btf.Unsigned:
+			switch typedMember.Size {
+			case 1:
+				return params.TypeUint8
+			case 2:
+				return params.TypeUint16
+			case 4:
+				return params.TypeUint32
+			case 8:
+				return params.TypeUint64
+			}
+		case btf.Bool:
+			return params.TypeBool
+		case btf.Char:
+			return params.TypeUint8
+		}
+	case *btf.Float:
+		switch typedMember.Size {
+		case 4:
+			return params.TypeFloat32
+		case 8:
+			return params.TypeFloat64
+		}
+	case *btf.Typedef:
+		typ, err := getUnderlyingType(typedMember)
+		if err != nil {
+			return params.TypeUnknown
+		}
+		return getTypeHint(typ)
+	case *btf.Volatile:
+		return getTypeHint(typedMember.Type)
+	}
+
+	return params.TypeUnknown
+}
+
+func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {
+	switch typedMember := tf.Type.(type) {
+	case *btf.Typedef:
+		return getUnderlyingType(typedMember)
+	default:
+		return typedMember, nil
+	}
+}
+
+func getType(typ btf.Type) reflect.Type {
+	switch typedMember := typ.(type) {
+	case *btf.Array:
+		arrType := getSimpleType(typedMember.Type)
+		if arrType == nil {
+			return nil
+		}
+		return reflect.ArrayOf(int(typedMember.Nelems), arrType)
+	default:
+		return getSimpleType(typ)
+	}
+}
+
+func getSimpleType(typ btf.Type) reflect.Type {
+	switch typedMember := typ.(type) {
+	case *btf.Int:
+		switch typedMember.Encoding {
+		case btf.Signed:
+			switch typedMember.Size {
+			case 1:
+				return reflect.TypeOf(int8(0))
+			case 2:
+				return reflect.TypeOf(int16(0))
+			case 4:
+				return reflect.TypeOf(int32(0))
+			case 8:
+				return reflect.TypeOf(int64(0))
+			}
+		case btf.Unsigned:
+			switch typedMember.Size {
+			case 1:
+				return reflect.TypeOf(uint8(0))
+			case 2:
+				return reflect.TypeOf(uint16(0))
+			case 4:
+				return reflect.TypeOf(uint32(0))
+			case 8:
+				return reflect.TypeOf(uint64(0))
+			}
+		case btf.Bool:
+			return reflect.TypeOf(bool(false))
+		case btf.Char:
+			return reflect.TypeOf(uint8(0))
+		}
+	case *btf.Float:
+		switch typedMember.Size {
+		case 4:
+			return reflect.TypeOf(float32(0))
+		case 8:
+			return reflect.TypeOf(float64(0))
+		}
+	case *btf.Typedef:
+		typ, _ := getUnderlyingType(typedMember)
+		return getSimpleType(typ)
+	}
+
+	return nil
 }
