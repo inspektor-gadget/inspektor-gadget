@@ -46,8 +46,6 @@ type GadgetContext struct {
 	operators                operators.Operators
 	operatorsParamCollection params.Collection
 	logger                   logger.Logger
-	result                   []byte
-	resultError              error
 	timeout                  time.Duration
 	gadgetInfo               *runTypes.GadgetInfo
 }
