@@ -159,20 +159,17 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 		return nil, errors.New("container host config is nil")
 	}
 
+	containerData := buildContainerData(
+		containerJSON.ID,
+		containerJSON.Name,
+		containerJSON.Config.Image,
+		containerJSON.State.Status,
+		containerJSON.Config.Labels)
+
 	containerDetailsData := runtimeclient.ContainerDetailsData{
-		ContainerData: runtimeclient.ContainerData{
-			Runtime: runtimeclient.RuntimeContainerData{
-				BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-					ContainerID:        containerJSON.ID,
-					ContainerName:      strings.TrimPrefix(containerJSON.Name, "/"),
-					RuntimeName:        types.RuntimeNameDocker,
-					ContainerImageName: getContainerImageNamefromImage(containerJSON.Config.Image, containerJSON.ID),
-				},
-				State: containerStatusStateToRuntimeClientState(containerJSON.State.Status),
-			},
-		},
-		Pid:         containerJSON.State.Pid,
-		CgroupsPath: string(containerJSON.HostConfig.Cgroup),
+		ContainerData: *containerData,
+		Pid:           containerJSON.State.Pid,
+		CgroupsPath:   string(containerJSON.HostConfig.Cgroup),
 	}
 	if len(containerJSON.Mounts) > 0 {
 		containerDetailsData.Mounts = make([]runtimeclient.ContainerMountData, len(containerJSON.Mounts))
@@ -183,9 +180,6 @@ func (c *DockerClient) GetContainerDetails(containerID string) (*runtimeclient.C
 			}
 		}
 	}
-
-	// Fill K8S information.
-	runtimeclient.EnrichWithK8sMetadata(&containerDetailsData.ContainerData, containerJSON.Config.Labels)
 
 	// Try to get cgroups information from /proc/<pid>/cgroup as a fallback.
 	// However, don't fail if such a file is not available, as it would prevent the
@@ -237,27 +231,17 @@ func containerStatusStateToRuntimeClientState(containerState string) (runtimeCli
 }
 
 func DockerContainerToContainerData(container *dockertypes.Container) *runtimeclient.ContainerData {
-	containerData := &runtimeclient.ContainerData{
-		Runtime: runtimeclient.RuntimeContainerData{
-			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
-				ContainerID:        container.ID,
-				ContainerName:      strings.TrimPrefix(container.Names[0], "/"),
-				RuntimeName:        types.RuntimeNameDocker,
-				ContainerImageName: getContainerImageNamefromImage(container.Image, container.ID),
-			},
-			State: containerStatusStateToRuntimeClientState(container.State),
-		},
-	}
-
-	// Fill K8S information.
-	runtimeclient.EnrichWithK8sMetadata(containerData, container.Labels)
-
-	return containerData
+	return buildContainerData(
+		container.ID,
+		container.Names[0],
+		container.Image,
+		container.State,
+		container.Labels)
 }
 
 // getContainerImageNamefromImage is a helper to parse the image string we get from Docker API
 // and retrieve the image name if provided.
-func getContainerImageNamefromImage(image string, containerID string) string {
+func getContainerImageNamefromImage(image string) string {
 	// Image filed provided by Docker API may looks like e.g.
 	// 1. gcr.io/k8s-minikube/kicbase:v0.0.37@sha256:8bf7a0e8a062bc5e2b71d28b35bfa9cc862d9220e234e86176b3785f685d8b15
 	// OR
@@ -277,4 +261,26 @@ func getContainerImageNamefromImage(image string, containerID string) string {
 
 	// Case 3 or 4
 	return image
+}
+
+// `buildContainerData` takes in basic metadata about a Docker container and
+// constructs a `runtimeclient.ContainerData` struct with this information. I also
+// enriches containers with the data and returns a pointer the created struct.
+func buildContainerData(containerID string, containerName string, containerImage string, state string, labels map[string]string) *runtimeclient.ContainerData {
+	containerData := runtimeclient.ContainerData{
+		Runtime: runtimeclient.RuntimeContainerData{
+			BasicRuntimeMetadata: types.BasicRuntimeMetadata{
+				ContainerID:        containerID,
+				ContainerName:      strings.TrimPrefix(containerName, "/"),
+				RuntimeName:        types.RuntimeNameDocker,
+				ContainerImageName: getContainerImageNamefromImage(containerImage),
+			},
+			State: containerStatusStateToRuntimeClientState(state),
+		},
+	}
+
+	// Fill K8S information.
+	runtimeclient.EnrichWithK8sMetadata(&containerData, labels)
+
+	return &containerData
 }
