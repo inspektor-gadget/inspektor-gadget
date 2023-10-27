@@ -26,7 +26,7 @@ struct event {
 	__u32 pid;
 	__u32 uid;
 	__u32 gid;
-	mnt_ns_id_t mntns_id;
+	gadget_mntns_id mntns_id;
 	int ret;
 	int flags;
 	__u16 mode;

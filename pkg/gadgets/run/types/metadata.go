@@ -49,7 +49,7 @@ const (
 	L4EndpointTypeName = "gadget_l4endpoint_t"
 
 	// Name of the type to store a mount namespace inode id
-	MntNsIdTypeName = "mnt_ns_id_t"
+	MntNsIdTypeName = "gadget_mntns_id"
 )
 
 type EBPFParam struct {

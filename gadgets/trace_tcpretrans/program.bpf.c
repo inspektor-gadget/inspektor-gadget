@@ -35,7 +35,7 @@ struct event {
 	__u32 reason;
 	__u32 netns;
 
-	mnt_ns_id_t mntns_id;
+	gadget_mntns_id mntns_id;
 	__u32 pid;
 	__u32 tid;
 	__u32 uid;

@@ -26,6 +26,6 @@ struct gadget_l4endpoint_t {
 };
 
 // Inode id of a mount namespace. It's used to enrich the event in user space
-typedef __u64 mnt_ns_id_t;
+typedef __u64 gadget_mntns_id;
 
 #endif /* __TYPES_H */

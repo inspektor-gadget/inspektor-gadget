@@ -366,7 +366,7 @@ The first step is to include these two addional header files:
 ```
 
 - `gadget/mntns_filter.h`: Defines an eBPF map and some helper functions used to filter events by containers
-- `gadget/types.h`: Inspektor Gadget specific types, like `mnt_ns_id_t`.
+- `gadget/types.h`: Inspektor Gadget specific types, like `gadget_mntns_id`.
 
 
 Add the following field to the event structure.
@@ -374,7 +374,7 @@ Add the following field to the event structure.
 ```c
 struct event {
 	...
-	mnt_ns_id_t mntns_id;
+	gadget_mntns_id mntns_id;
 	...
 }
 ```
