@@ -179,25 +179,24 @@ We're now all set to run our gadget for the first time.
 ```bash
 $ sudo -E ig run mygadget:latest
 INFO[0000] Experimental features enabled
-RUNTIME.CONTAINERNAME                                                          PID
-WARN[0000] The gadget doesn't provide metadata
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1113
-                                                                               1219
-                                                                               220121
+PID
+40342
+40342
+40342
+40342
+40342
+40342
+40342
+40342
+40342
+40342
+40342
+40342
+40342
+1485789
+1485789
+50077
+40342
 ```
 
 Great, our program already shows the PID! Can we improve it further?
@@ -232,16 +231,17 @@ $ sudo -E ig image build -t mygadget:latest .
 ....
 $ sudo -E ig run mygadget:latest
 INFO[0000] Experimental features enabled
-RUNTIME.CONTAINERNAME                         PID                      COMM                     FILENAME
-WARN[0000] The gadget doesn't provide metadata
-                                              11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
-                                              11305                    ThreadPoolForeg          /home/mvb/.config/Slack…
-                                              11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
-                                              11305                    ThreadPoolForeg          /home/mvb/.config/Slack…
-                                              11305                    Chrome_ChildIOT          /dev/shm/.org.chromium.…
-                                              1349                     containerd               /var/lib/containerd/io.…
-                                              1349                     containerd               /var/lib/containerd/io.…
-                                              1349                     containerd               /var/lib/containerd/io.…
+PID                           COMM                                          FILENAME
+45205                         cri-dockerd                                   /var/lib/cri-dockerd/sandbox
+45019                         dockerd                                       /var/lib/docker/image/overlay2/imagedb/cont…
+45019                         dockerd                                       /var/lib/docker/image/overlay2/imagedb/cont…
+45019                         dockerd                                       /var/lib/docker/image/overlay2/imagedb/meta…
+45019                         dockerd                                       /var/lib/docker/image/overlay2/imagedb/cont…
+45019                         dockerd                                       /var/lib/docker/image/overlay2/imagedb/cont…
+45019                         dockerd                                       /var/lib/docker/image/overlay2/imagedb/meta…
+45019                         dockerd                                       /var/lib/docker/image/overlay2/imagedb/cont…
+45019                         dockerd                                       /var/lib/docker/image/overlay2/imagedb/cont…
+45019                         dockerd                                       /var/lib/docker/image/overlay2/imagedb/meta…
 ```
 
 ## Creating a metadata file
@@ -325,27 +325,17 @@ $ sudo -E ig image build . -t mygadget
 
 $ sudo -E ig run mygadget:latest
 INFO[0000] Experimental features enabled
-RUNTIME.CONTAINERNAME        PID             COMM            FILENAME
-                             224707          git             .git/objects/cd/4968fd25e0b4d597f93993a29a9821c1a263d6
-                             224707          git             .git/objects/57/d7fb78a6f22dbfcf66d3175d06ce49d0e0dff5
-                             224707          git             .git/objects/03/5159622b915b7f55f64b6c0a30536531d08c5f
-                             19463           CompositorTileW /dev/shm/.org.chromium.Chromium.5pbSUV
-                             19463           CompositorTileW /dev/shm/.org.chromium.Chromium.96jgiV
-                             19463           CompositorTileW /dev/shm/.org.chromium.Chromium.3tqlBS
-                             224708          Sandbox Forked  /proc/self/uid_map
-                             224708          Sandbox Forked  /proc/self/setgroups
-                             224708          Sandbox Forked  /proc/self/gid_map
-                             3830            firefox-bin     /proc/224708/oom_score_adj
-                             224708          Sandbox Forked
-                             224710          Chroot Helper
-                             224708          firefox-bin     /usr/lib/firefox/tls/x86_64/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/tls/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/tls/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/tls/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/x86_64/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/x86_64/libmozsandbox.so
-                             224708          firefox-bin     /usr/lib/firefox/libmozsandbox.so
+PID                   COMM             FILENAME
+46614                 kubelet          /sys/fs/cgroup/rdma/kubepods/besteffort/podc2911a0a-7a13-4567-9f1d-4591610b6e87
+46614                 kubelet          /sys/fs/cgroup/unified/kubepods/besteffort/pod98e07b21-af7e-469d-ad7e-2191105f29…
+46614                 kubelet          /sys/fs/cgroup/unified/kubepods/burstable/podfe9f0773b92e204b518f2edde7abe987
+46614                 kubelet          /sys/fs/cgroup/rdma/kubepods/besteffort/pod3bfa187d-29cf-43a4-bb0a-8ca482da6fa4
+46614                 kubelet          /sys/fs/cgroup/rdma/kubepods/besteffort/pod3bfa187d-29cf-43a4-bb0a-8ca482da6fa4/…
+46614                 kubelet          /sys/fs/cgroup/rdma/kubepods/besteffort/pod34776137-2fd7-44e0-885c-5eebd7b0525a
+46614                 kubelet          /sys/fs/cgroup/rdma/kubepods/besteffort/pod34776137-2fd7-44e0-885c-5eebd7b0525a/…
+46614                 kubelet          /sys/fs/cgroup/rdma/kubepods/besteffort/pod653943e5-5eae-417f-8d41-d6771eb32424
+46614                 kubelet          /sys/fs/cgroup/rdma/kubepods/besteffort/pod653943e5-5eae-417f-8d41-d6771eb32424/…
+46614                 kubelet          /sys/fs/cgroup/unified/kubepods/besteffort/pod653943e5-5eae-417f-8d41-d6771eb324…
 ```
 
 Now the output is much better.
