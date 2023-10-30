@@ -390,10 +390,10 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 	}
 
 	return func(data []byte) *types.Event {
-		// get mnt_ns_id for enriching the event
-		mtn_ns_id := uint64(0)
+		// get mntNsId for enriching the event
+		mntNsId := uint64(0)
 		if mountNsIdFound {
-			mtn_ns_id = *(*uint64)(unsafe.Pointer(&data[mntNsIdstart]))
+			mntNsId = *(*uint64)(unsafe.Pointer(&data[mntNsIdstart]))
 		}
 
 		// enrich endpoints
@@ -409,7 +409,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			case 6:
 				size = 16
 			default:
-				gadgetCtx.Logger().Warnf("bad IP version received: %d", endpointC.version)
+				logger.Warnf("bad IP version received: %d", endpointC.version)
 				continue
 			}
 
@@ -451,12 +451,12 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		}
 
 		return &types.Event{
-			Type:          eventtypes.NORMAL,
-			WithMountNsID: eventtypes.WithMountNsID{MountNsID: mtn_ns_id},
-			RawData:       data,
-			L3Endpoints:   l3endpoints,
-			L4Endpoints:   l4endpoints,
-			Timestamps:    timestamps,
+			Type:        eventtypes.NORMAL,
+			MountNsID:   mntNsId,
+			RawData:     data,
+			L3Endpoints: l3endpoints,
+			L4Endpoints: l4endpoints,
+			Timestamps:  timestamps,
 		}
 	}
 }

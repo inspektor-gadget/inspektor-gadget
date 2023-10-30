@@ -56,19 +56,18 @@ func TestRunSnapshotProcess(t *testing.T) {
 				})
 
 				expectedSnapshotProcessJsonObj := map[string]interface{}{
-					"comm": "nc",
-					"uid":  0,
-					"gid":  0,
-					"pid":  0,
-					"tid":  0,
-					"ppid": 0,
+					"comm":     "nc",
+					"uid":      0,
+					"gid":      0,
+					"pid":      0,
+					"tid":      0,
+					"ppid":     0,
+					"mntns_id": 0,
 				}
 
 				expectedJsonObj := MergeJsonObjs(t, expectedBaseJsonObj, expectedSnapshotProcessJsonObj)
 
 				normalize := func(m map[string]interface{}) {
-					SetEventMountNsID(m, 0)
-
 					SetEventK8sNode(m, "")
 
 					// TODO: Verify container runtime and container name
@@ -76,6 +75,7 @@ func TestRunSnapshotProcess(t *testing.T) {
 					SetEventRuntimeContainerID(m, "")
 					SetEventRuntimeContainerName(m, "")
 
+					m["mntns_id"] = 0
 					m["pid"] = uint32(0)
 					m["tid"] = uint32(0)
 					m["ppid"] = uint32(0)

@@ -66,6 +66,10 @@ structs:
         alignment: left
         hidden: true
         ellipsis: end
+    - name: mntns_id
+      description: 'Mount namespace inode id'
+      attributes:
+        template: ns
 ebpfParams:
   ignore_failed:
     key: ignore-failed

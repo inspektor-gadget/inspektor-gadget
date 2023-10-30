@@ -43,21 +43,23 @@ type Event struct {
 	// Message when Type is ERR, WARN, DEBUG or INFO
 	Message string `json:"message,omitempty"`
 
-	eventtypes.WithMountNsID
-	eventtypes.WithNetNsID
-
 	L3Endpoints []L3Endpoint      `json:"l3endpoints,omitempty"`
 	L4Endpoints []L4Endpoint      `json:"l4endpoints,omitempty"`
 	Timestamps  []eventtypes.Time `json:"timestamps,omitempty"`
+
+	MountNsID uint64 `json:"-"`
+	NetNsID   uint64 `json:"-"`
 
 	// Raw event sent by the ebpf program
 	RawData []byte `json:"raw_data,omitempty"`
 }
 
-type GadgetInfo struct {
-	GadgetMetadata *GadgetMetadata
-	ProgContent    []byte
-	GadgetType     gadgets.GadgetType
+func (ev *Event) GetMountNSID() uint64 {
+	return ev.MountNsID
+}
+
+func (ev *Event) GetNetNSID() uint64 {
+	return ev.NetNsID
 }
 
 func (ev *Event) GetEndpoints() []*eventtypes.L3Endpoint {
@@ -81,6 +83,12 @@ func GetColumns() *columns.Columns[Event] {
 type Printer interface {
 	Output(payload string)
 	Logf(severity logger.Level, fmt string, params ...any)
+}
+
+type GadgetInfo struct {
+	GadgetMetadata *GadgetMetadata
+	ProgContent    []byte
+	GadgetType     gadgets.GadgetType
 }
 
 // RunGadgetDesc represents the different methods implemented by the run gadget descriptor.

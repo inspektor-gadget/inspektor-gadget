@@ -30,6 +30,10 @@ structs:
       description: Group ID
       attributes:
         template: uid
+    - name: mntns_id
+      description: 'Mount namespace inode id'
+      attributes:
+        template: ns
 ebpfParams:
   show_threads:
     key: threads

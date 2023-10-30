@@ -49,14 +49,13 @@ func TestRunTraceOpen(t *testing.T) {
 				"flags":     0,
 				"pid":       0,
 				"mode":      0,
+				"mntns_id":  0,
 				"timestamp": "",
 			}
 
 			expectedJsonObj := MergeJsonObjs(t, expectedBaseJsonObj, expectedTraceOpenJsonObj)
 
 			normalize := func(m map[string]interface{}) {
-				SetEventMountNsID(m, 0)
-
 				SetEventK8sNode(m, "")
 
 				// TODO: Verify container runtime and container name
@@ -65,6 +64,7 @@ func TestRunTraceOpen(t *testing.T) {
 				SetEventRuntimeContainerName(m, "")
 
 				m["timestamp"] = ""
+				m["mntns_id"] = 0
 				m["pid"] = uint32(0)
 			}
 

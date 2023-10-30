@@ -48,13 +48,14 @@ structs:
         width: 16
         alignment: left
         ellipsis: end
-#    - name: netns
-#      description: 'TODO: Fill field description'
-#      attributes:
-#        width: 16
-#        alignment: left
-#        hidden: true
-#        ellipsis: end
+    - name: netns
+      description: 'Network namespace inode id'
+      attributes:
+        template: ns
+    - name: mntns_id
+      description: 'Mount namespace inode id'
+      attributes:
+        template: ns
     - name: state
       description: 'TODO: Fill field description'
       attributes:

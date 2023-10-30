@@ -480,16 +480,6 @@ func (m *GadgetMetadata) populateStruct(btfStruct *btf.Struct) error {
 	}
 
 	for _, member := range btfStruct.Members {
-		// TODO: temporary disable mount ns as it'll be duplicated otherwise
-		if member.Type.TypeName() == MntNsIdTypeName {
-			continue
-		}
-
-		// TODO: temporary disable netns as it causes a duplicated column registration issue
-		if member.Name == "netns" {
-			continue
-		}
-
 		// check if field already exists
 		if _, ok := existingFields[member.Name]; ok {
 			log.Debugf("Field %q already exists, skipping", member.Name)
