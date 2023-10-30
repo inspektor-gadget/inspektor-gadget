@@ -476,6 +476,11 @@ func (m *GadgetMetadata) populateStruct(btfStruct *btf.Struct) error {
 			continue
 		}
 
+		// TODO: temporary disable netns as it causes a duplicated column registration issue
+		if member.Name == "netns" {
+			continue
+		}
+
 		// check if field already exists
 		if _, ok := existingFields[member.Name]; ok {
 			log.Debugf("Field %q already exists, skipping", member.Name)

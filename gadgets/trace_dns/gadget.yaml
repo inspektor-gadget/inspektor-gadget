@@ -51,13 +51,13 @@ structs:
     - name: anaddr
       attributes:
         width: 16
-    - name: netns
-      description: 'TODO: Fill field description'
-      attributes:
-        width: 16
-        alignment: left
-        hidden: true
-        ellipsis: end
+#    - name: netns
+#      description: 'TODO: Fill field description'
+#      attributes:
+#        width: 16
+#        alignment: left
+#        hidden: true
+#        ellipsis: end
     - name: tid
       description: 'TODO: Fill field description'
       attributes:
