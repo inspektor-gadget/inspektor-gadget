@@ -105,44 +105,6 @@ func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*
 	}, nil
 }
 
-// GetEbpfObject pulls the gadget image and returns its eBPF object for the current architecture.
-func GetEbpfObject(ctx context.Context, image string, authOpts *AuthOptions) ([]byte, error) {
-	imageStore, err := getLocalOciStore()
-	if err != nil {
-		return nil, fmt.Errorf("getting local oci store: %w", err)
-	}
-
-	if err := pullIfNotExist(ctx, imageStore, authOpts, image); err != nil {
-		return nil, fmt.Errorf("pulling image %q: %w", image, err)
-	}
-
-	manifest, err := getImageManifestForArch(ctx, imageStore, image, authOpts)
-	if err != nil {
-		return nil, fmt.Errorf("getting arch manifest: %w", err)
-	}
-
-	return getEbpfProgramFromManifest(ctx, imageStore, manifest)
-}
-
-// GetMetadata pulls the gadget image and returns its metadata file.
-func GetMetadata(ctx context.Context, image string, authOpts *AuthOptions) ([]byte, error) {
-	imageStore, err := getLocalOciStore()
-	if err != nil {
-		return nil, fmt.Errorf("getting local oci store: %w", err)
-	}
-
-	if err := pullIfNotExist(ctx, imageStore, authOpts, image); err != nil {
-		return nil, fmt.Errorf("pulling image %q: %w", image, err)
-	}
-
-	manifest, err := getImageManifestForArch(ctx, imageStore, image, authOpts)
-	if err != nil {
-		return nil, fmt.Errorf("getting arch manifest: %w", err)
-	}
-
-	return getMetadataFromManifest(ctx, imageStore, manifest)
-}
-
 // PullGadgetImage pulls the gadget image and returns its descriptor.
 func PullGadgetImage(ctx context.Context, image string, authOpts *AuthOptions) (*GadgetImageDesc, error) {
 	ociStore, err := getLocalOciStore()
