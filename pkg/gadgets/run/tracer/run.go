@@ -470,50 +470,47 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 		attrs := field2ColumnAttrs(&field)
 		attrs.Order = 1000 + i
 
-		switch typedMember := member.Type.(type) {
-		case *btf.Struct:
-			switch typedMember.Name {
-			case types.L3EndpointTypeName:
-				// Take the value here, otherwise it'll use the wrong value after
-				// it's increased
-				index := l3endpointCounter
-				// Add the column that is enriched
-				eventtypes.MustAddVirtualL3EndpointColumn(cols, attrs, func(e *types.Event) eventtypes.L3Endpoint {
-					if len(e.L3Endpoints) == 0 {
-						return eventtypes.L3Endpoint{}
-					}
-					return e.L3Endpoints[index].L3Endpoint
-				})
-				// Add a single column for each field in the endpoint
-				addL3EndpointColumns(cols, member.Name, func(e *types.Event) eventtypes.L3Endpoint {
-					if len(e.L3Endpoints) == 0 {
-						return eventtypes.L3Endpoint{}
-					}
-					return e.L3Endpoints[index].L3Endpoint
-				})
-				l3endpointCounter++
-				continue
-			case types.L4EndpointTypeName:
-				// Take the value here, otherwise it'll use the wrong value after
-				// it's increased
-				index := l4endpointCounter
-				// Add the column that is enriched
-				eventtypes.MustAddVirtualL4EndpointColumn(cols, attrs, func(e *types.Event) eventtypes.L4Endpoint {
-					if len(e.L4Endpoints) == 0 {
-						return eventtypes.L4Endpoint{}
-					}
-					return e.L4Endpoints[index].L4Endpoint
-				})
-				// Add a single column for each field in the endpoint
-				addL4EndpointColumns(cols, member.Name, func(e *types.Event) eventtypes.L4Endpoint {
-					if len(e.L4Endpoints) == 0 {
-						return eventtypes.L4Endpoint{}
-					}
-					return e.L4Endpoints[index].L4Endpoint
-				})
-				l4endpointCounter++
-				continue
-			}
+		switch member.Type.TypeName() {
+		case types.L3EndpointTypeName:
+			// Take the value here, otherwise it'll use the wrong value after
+			// it's increased
+			index := l3endpointCounter
+			// Add the column that is enriched
+			eventtypes.MustAddVirtualL3EndpointColumn(cols, attrs, func(e *types.Event) eventtypes.L3Endpoint {
+				if len(e.L3Endpoints) == 0 {
+					return eventtypes.L3Endpoint{}
+				}
+				return e.L3Endpoints[index].L3Endpoint
+			})
+			// Add a single column for each field in the endpoint
+			addL3EndpointColumns(cols, member.Name, func(e *types.Event) eventtypes.L3Endpoint {
+				if len(e.L3Endpoints) == 0 {
+					return eventtypes.L3Endpoint{}
+				}
+				return e.L3Endpoints[index].L3Endpoint
+			})
+			l3endpointCounter++
+			continue
+		case types.L4EndpointTypeName:
+			// Take the value here, otherwise it'll use the wrong value after
+			// it's increased
+			index := l4endpointCounter
+			// Add the column that is enriched
+			eventtypes.MustAddVirtualL4EndpointColumn(cols, attrs, func(e *types.Event) eventtypes.L4Endpoint {
+				if len(e.L4Endpoints) == 0 {
+					return eventtypes.L4Endpoint{}
+				}
+				return e.L4Endpoints[index].L4Endpoint
+			})
+			// Add a single column for each field in the endpoint
+			addL4EndpointColumns(cols, member.Name, func(e *types.Event) eventtypes.L4Endpoint {
+				if len(e.L4Endpoints) == 0 {
+					return eventtypes.L4Endpoint{}
+				}
+				return e.L4Endpoints[index].L4Endpoint
+			})
+			l4endpointCounter++
+			continue
 		}
 
 		rType := getType(member.Type)
