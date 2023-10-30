@@ -12,7 +12,7 @@ const int param2;
 volatile int param3;
 
 struct event {
-	mnt_ns_id_t mntns_id;
+	gadget_mntns_id mntns_id;
 	__u32 pid;
 	__u8 comm[TASK_COMM_LEN];
 	__u8 filename[NAME_MAX];
@@ -33,7 +33,7 @@ GADGET_TRACE_MAP(events);
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 10240);
-	__type(key, mnt_ns_id_t);
+	__type(key, gadget_mntns_id);
 	__type(value, __u8);
 } myhashmap SEC(".maps");
 

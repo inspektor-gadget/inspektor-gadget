@@ -320,7 +320,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 	// different fields like mount ns id, endpoints, etc.
 	for _, member := range typ.Members {
 		switch member.Type.TypeName() {
-		case gadgets.MntNsIdTypeName:
+		case types.MntNsIdTypeName:
 			typDef, ok := member.Type.(*btf.Typedef)
 			if !ok {
 				continue
@@ -342,7 +342,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 
 			mntNsIdstart = member.Offset.Bytes()
 			mountNsIdFound = true
-		case gadgets.L3EndpointTypeName:
+		case types.L3EndpointTypeName:
 			typ, ok := member.Type.(*btf.Struct)
 			if !ok {
 				gadgetCtx.Logger().Warn("%s is not a struct", member.Name)
@@ -354,7 +354,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			}
 			e := endpointDef{name: member.Name, start: member.Offset.Bytes(), typ: L3}
 			endpointDefs = append(endpointDefs, e)
-		case gadgets.L4EndpointTypeName:
+		case types.L4EndpointTypeName:
 			typ, ok := member.Type.(*btf.Struct)
 			if !ok {
 				gadgetCtx.Logger().Warn("%s is not a struct", member.Name)

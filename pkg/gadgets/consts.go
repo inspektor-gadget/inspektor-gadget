@@ -33,15 +33,4 @@ const (
 	// Name of the map that stores the mount namespace inode id to filter on.
 	// Keep in syn with name used in pkg/gadgets/common/mntns_filter.h.
 	MntNsFilterMapName = "gadget_mntns_filter_map"
-
-	// Name of the type that gadgets should use to store an L3 endpoint.
-	// Keep in sync with pkg/gadgets/common/types.h
-	L3EndpointTypeName = "gadget_l3endpoint_t"
-
-	// Name of the type that gadgets should use to store an L4 endpoint.
-	// Keep in sync with pkg/gadgets/common/types.h
-	L4EndpointTypeName = "gadget_l4endpoint_t"
-
-	// Name of the type to store a mount namespace inode id
-	MntNsIdTypeName = "mnt_ns_id_t"
 )

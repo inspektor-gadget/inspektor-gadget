@@ -209,7 +209,7 @@ struct event {
 	__u32 pid;
 	__u32 uid;
 	__u32 gid;
-	mnt_ns_id_t mntns_id;
+	gadget_mntns_id mntns_id;
 	int ret;
 	int flags;
 	__u16 mode;
@@ -523,7 +523,7 @@ Some of them are already supported and others are planned.
 Inspektor Gadget provides a set of helper functions in pkg/gadgets/common/mntns_filter.h for gadgets
 that want to filter and enrich events based on the mount namespace inode id information. Inspektor
 Gadget detects the presence of the `gadget_mntns_filter_map` map and populates it with the matching
-containers to filter. Enriching is done by looking for the presence of a field with `mnt_ns_id_t`
+containers to filter. Enriching is done by looking for the presence of a field with `gadget_mntns_id`
 type in the event.
 
 #### Endpoint enrichment

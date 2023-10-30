@@ -21,7 +21,7 @@
 #define LAST_ARG (FULL_MAX_ARGS_ARR - ARGSIZE)
 
 struct event {
-	mnt_ns_id_t mntns_id;
+	gadget_mntns_id mntns_id;
 	__u64 timestamp;
 	__u32 pid;
 	__u32 ppid;

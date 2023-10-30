@@ -20,7 +20,7 @@ const volatile bool show_threads = false;
 GADGET_PARAM(show_threads);
 
 struct process_entry {
-	mnt_ns_id_t mntns_id;
+	gadget_mntns_id mntns_id;
 	__u32 pid;
 	__u32 tid;
 	__u32 ppid;
