@@ -23,10 +23,6 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-const (
-	ValidateMetadataParam = "validate-metadata"
-)
-
 type L3Endpoint struct {
 	eventtypes.L3Endpoint
 	Name string
