@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/image"
+	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/ig/containers"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/local"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
@@ -57,6 +59,15 @@ func main() {
 		containers.NewListContainersCmd(),
 		common.NewVersionCmd(),
 	)
+
+	// evaluate flags early; this will make sure that flags for host are evaluated before
+	// calling host.Init()
+	err := commonutils.ParseEarlyFlags(rootCmd)
+	if err != nil {
+		// Analogous to cobra error message
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 
 	runtime := local.New()
 	hiddenColumnTags := []string{"kubernetes"}
