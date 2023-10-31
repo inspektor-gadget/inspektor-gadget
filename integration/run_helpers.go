@@ -29,14 +29,6 @@ import (
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
-func SetEventTimestamp(jsonObj map[string]interface{}, timestamp eventtypes.Time) {
-	jsonObj["timestamp"] = timestamp.String()
-}
-
-func SetEventMountNsID(jsonObj map[string]interface{}, mountNsID uint64) {
-	jsonObj["mntns"] = mountNsID
-}
-
 func SetEventRuntimeName(jsonObj map[string]interface{}, runtimeName eventtypes.RuntimeName) {
 	if runtimeMetadata := jsonObj["runtime"].(map[string]interface{}); runtimeMetadata != nil {
 		runtimeMetadata["runtimeName"] = runtimeName

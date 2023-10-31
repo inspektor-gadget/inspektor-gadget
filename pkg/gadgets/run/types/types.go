@@ -34,21 +34,32 @@ type L4Endpoint struct {
 }
 
 type Event struct {
-	eventtypes.Event
-	eventtypes.WithMountNsID
-	eventtypes.WithNetNsID
+	// Do not use eventtypes.Event because we don't want to have the timestamp column.
+	eventtypes.CommonData
 
-	L3Endpoints []L3Endpoint `json:"l3endpoints,omitempty"`
-	L4Endpoints []L4Endpoint `json:"l4endpoints,omitempty"`
+	// Type indicates the kind of this event
+	Type eventtypes.EventType `json:"type"`
+
+	// Message when Type is ERR, WARN, DEBUG or INFO
+	Message string `json:"message,omitempty"`
+
+	L3Endpoints []L3Endpoint      `json:"l3endpoints,omitempty"`
+	L4Endpoints []L4Endpoint      `json:"l4endpoints,omitempty"`
+	Timestamps  []eventtypes.Time `json:"timestamps,omitempty"`
+
+	MountNsID uint64 `json:"-"`
+	NetNsID   uint64 `json:"-"`
 
 	// Raw event sent by the ebpf program
 	RawData []byte `json:"raw_data,omitempty"`
 }
 
-type GadgetInfo struct {
-	GadgetMetadata *GadgetMetadata
-	ProgContent    []byte
-	GadgetType     gadgets.GadgetType
+func (ev *Event) GetMountNSID() uint64 {
+	return ev.MountNsID
+}
+
+func (ev *Event) GetNetNSID() uint64 {
+	return ev.NetNsID
 }
 
 func (ev *Event) GetEndpoints() []*eventtypes.L3Endpoint {
@@ -68,16 +79,16 @@ func GetColumns() *columns.Columns[Event] {
 	return columns.MustCreateColumns[Event]()
 }
 
-func Base(ev eventtypes.Event) *Event {
-	return &Event{
-		Event: ev,
-	}
-}
-
 // Printer is implemented by objects that can print information, like frontends.
 type Printer interface {
 	Output(payload string)
 	Logf(severity logger.Level, fmt string, params ...any)
+}
+
+type GadgetInfo struct {
+	GadgetMetadata *GadgetMetadata
+	ProgContent    []byte
+	GadgetType     gadgets.GadgetType
 }
 
 // RunGadgetDesc represents the different methods implemented by the run gadget descriptor.

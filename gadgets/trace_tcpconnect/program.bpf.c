@@ -37,7 +37,7 @@ struct event {
 	struct gadget_l4endpoint_t dst;
 
 	__u8 task[TASK_COMM_LEN];
-	__u64 timestamp;
+	gadget_timestamp timestamp;
 	__u32 pid;
 	__u32 uid;
 	__u32 gid;

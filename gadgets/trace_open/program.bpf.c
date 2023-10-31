@@ -21,7 +21,7 @@ struct args_t {
 };
 
 struct event {
-	__u64 timestamp;
+	gadget_timestamp timestamp;
 	/* user terminology for pid: */
 	__u32 pid;
 	__u32 uid;

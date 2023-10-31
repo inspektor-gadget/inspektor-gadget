@@ -7,6 +7,9 @@ tracers:
 structs:
   event:
     fields:
+    - name: timestamp
+      attributes:
+        template: timestamp
     - name: pid
       attributes:
         template: pid
@@ -37,6 +40,10 @@ structs:
       attributes:
         width: 32
         minWidth: 24
+    - name: mntns_id
+      description: 'Mount namespace inode id'
+      attributes:
+        template: ns
 ebpfParams:
   targ_failed:
     key: failed

@@ -292,10 +292,34 @@ func (t *Tracer) installTracer(params *params.Params) error {
 	return nil
 }
 
+func verifyGadgetUint64Typedef(t btf.Type) error {
+	typDef, ok := t.(*btf.Typedef)
+	if !ok {
+		return fmt.Errorf("not a typedef")
+	}
+
+	underlying, err := getUnderlyingType(typDef)
+	if err != nil {
+		return err
+	}
+
+	intM, ok := underlying.(*btf.Int)
+	if !ok {
+		return fmt.Errorf("not an integer")
+	}
+
+	if intM.Size != 8 {
+		return fmt.Errorf("bad sized. Expected 8, got %d", intM.Size)
+	}
+
+	return nil
+}
+
 // processEventFunc returns a callback that parses a binary encoded event in data, enriches and
 // returns it.
 func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []byte) *types.Event {
 	typ := t.eventType
+	logger := gadgetCtx.Logger()
 
 	var mntNsIdstart uint32
 	mountNsIdFound := false
@@ -315,41 +339,29 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 	}
 
 	endpointDefs := []endpointDef{}
+	timestampsOffsets := []uint32{}
 
 	// The same same data structure is always sent, so we can precalculate the offsets for
 	// different fields like mount ns id, endpoints, etc.
 	for _, member := range typ.Members {
 		switch member.Type.TypeName() {
 		case types.MntNsIdTypeName:
-			typDef, ok := member.Type.(*btf.Typedef)
-			if !ok {
+			if err := verifyGadgetUint64Typedef(member.Type); err != nil {
+				logger.Warn("%s is not a uint64: %s", member.Name, err)
 				continue
 			}
-
-			underlying, err := getUnderlyingType(typDef)
-			if err != nil {
-				continue
-			}
-
-			intM, ok := underlying.(*btf.Int)
-			if !ok {
-				continue
-			}
-
-			if intM.Size != 8 {
-				continue
-			}
-
 			mntNsIdstart = member.Offset.Bytes()
 			mountNsIdFound = true
 		case types.L3EndpointTypeName:
 			typ, ok := member.Type.(*btf.Struct)
 			if !ok {
-				gadgetCtx.Logger().Warn("%s is not a struct", member.Name)
+				logger.Warn("%s is not a struct", member.Name)
 				continue
 			}
-			if typ.Size != uint32(unsafe.Sizeof(l3EndpointT{})) {
-				gadgetCtx.Logger().Warn("%s is not the expected size", member.Name)
+			expectedSize := uint32(unsafe.Sizeof(l3EndpointT{}))
+			if typ.Size != expectedSize {
+				logger.Warn("%s has a wrong size, expected %d, got %d", member.Name,
+					expectedSize, typ.Size)
 				continue
 			}
 			e := endpointDef{name: member.Name, start: member.Offset.Bytes(), typ: L3}
@@ -357,23 +369,31 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		case types.L4EndpointTypeName:
 			typ, ok := member.Type.(*btf.Struct)
 			if !ok {
-				gadgetCtx.Logger().Warn("%s is not a struct", member.Name)
+				logger.Warn("%s is not a struct", member.Name)
 				continue
 			}
-			if typ.Size != uint32(unsafe.Sizeof(l4EndpointT{})) {
-				gadgetCtx.Logger().Warn("%s is not the expected size", member.Name)
+			expectedSize := uint32(unsafe.Sizeof(l4EndpointT{}))
+			if typ.Size != expectedSize {
+				logger.Warn("%s has a wrong size, expected %d, got %d", member.Name,
+					expectedSize, typ.Size)
 				continue
 			}
 			e := endpointDef{name: member.Name, start: member.Offset.Bytes(), typ: L4}
 			endpointDefs = append(endpointDefs, e)
+		case types.TimestampTypeName:
+			if err := verifyGadgetUint64Typedef(member.Type); err != nil {
+				logger.Warn("%s is not a uint64: %s", member.Name, err)
+				continue
+			}
+			timestampsOffsets = append(timestampsOffsets, member.Offset.Bytes())
 		}
 	}
 
 	return func(data []byte) *types.Event {
-		// get mnt_ns_id for enriching the event
-		mtn_ns_id := uint64(0)
+		// get mntNsId for enriching the event
+		mntNsId := uint64(0)
 		if mountNsIdFound {
-			mtn_ns_id = *(*uint64)(unsafe.Pointer(&data[mntNsIdstart]))
+			mntNsId = *(*uint64)(unsafe.Pointer(&data[mntNsIdstart]))
 		}
 
 		// enrich endpoints
@@ -389,7 +409,7 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			case 6:
 				size = 16
 			default:
-				gadgetCtx.Logger().Warnf("bad IP version received: %d", endpointC.version)
+				logger.Warnf("bad IP version received: %d", endpointC.version)
 				continue
 			}
 
@@ -422,14 +442,21 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			}
 		}
 
+		// handle timestamps
+		timestamps := []eventtypes.Time{}
+		for _, offset := range timestampsOffsets {
+			timestamp := *(*uint64)(unsafe.Pointer(&data[offset]))
+			t := gadgets.WallTimeFromBootTime(timestamp)
+			timestamps = append(timestamps, t)
+		}
+
 		return &types.Event{
-			Event: eventtypes.Event{
-				Type: eventtypes.NORMAL,
-			},
-			WithMountNsID: eventtypes.WithMountNsID{MountNsID: mtn_ns_id},
-			RawData:       data,
-			L3Endpoints:   l3endpoints,
-			L4Endpoints:   l4endpoints,
+			Type:        eventtypes.NORMAL,
+			MountNsID:   mntNsId,
+			RawData:     data,
+			L3Endpoints: l3endpoints,
+			L4Endpoints: l4endpoints,
+			Timestamps:  timestamps,
 		}
 	}
 }
