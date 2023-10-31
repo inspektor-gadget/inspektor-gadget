@@ -47,16 +47,13 @@ struct event {
 #define AF_INET 2
 #define AF_INET6 10
 
-// we need this to make sure the compiler doesn't remove our struct
-const struct event *unusedevent __attribute__((unused));
-
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(__u32));
-	__type(value, struct event);
+	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 
-GADGET_TRACE_MAP(events);
+GADGET_TRACER(tcpretrans, events, event);
 
 static __always_inline int __trace_tcp_retrans(void *ctx, const struct sock *sk,
 					       const struct sk_buff *skb)

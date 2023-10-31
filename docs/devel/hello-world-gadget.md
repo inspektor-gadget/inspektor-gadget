@@ -48,9 +48,6 @@ put the pid for the time being.
 struct event {
 	__u32 pid;
 };
-
-// we need to "use" this struct for the compiler not to remove it in an optimization pass
-const struct event *unusedevent __attribute__((unused));
 ```
 
 Then, create a perf event array eBPF map to send events to user space:
@@ -58,15 +55,18 @@ Then, create a perf event array eBPF map to send events to user space:
 ```c
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(u32));
-	__type(value, struct event);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 ```
 
 And mark this map as a tracer map, i.e. a map that is used to push events to user space:
 
 ```c
-GADGET_TRACE_MAP(events);
+// open is the name for the tracer
+// events is the name of the perf event array map
+// event is the structure type
+GADGET_TRACER(open, events, event);
 ```
 
 After that, we need to define a program that is attached to a hook that provides the information we
@@ -118,16 +118,16 @@ struct event {
 	__u32 pid;
 };
 
-// we need to "use" this struct for the compiler not to remove it in an optimization pass
-const struct event *unusedevent __attribute__((unused));
-
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
 	__uint(key_size, sizeof(u32));
-	__type(value, struct event);
+	__uint(value_size, sizeof(u32));
 } events SEC(".maps");
 
-GADGET_TRACE_MAP(events);
+// open is the name of the tracer
+// events is the name of the perf event array map
+// event is the structure type
+GADGET_TRACER(open, events, event);
 
 SEC("tracepoint/syscalls/sys_enter_openat")
 int enter_openat(struct trace_event_raw_sys_enter *ctx)

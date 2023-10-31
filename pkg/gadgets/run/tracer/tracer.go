@@ -157,16 +157,6 @@ func (t *Tracer) handleTracers() (string, error) {
 		return "", fmt.Errorf("map %q not found", tracer.MapName)
 	}
 
-	// Almost same hack as in https://github.com/solo-io/bumblebee/blob/c2422b5bab66754b286d062317e244f02a431dac/pkg/loader/loader.go#L114-L120
-	// TODO: Remove it?
-	switch traceMap.Type {
-	case ebpf.RingBuf:
-		traceMap.ValueSize = 0
-	case ebpf.PerfEventArray:
-		traceMap.KeySize = 4
-		traceMap.ValueSize = 4
-	}
-
 	return tracer.MapName, nil
 }
 

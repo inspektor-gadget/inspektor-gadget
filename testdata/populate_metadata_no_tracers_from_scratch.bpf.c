@@ -18,8 +18,8 @@ const struct event *unusedevent __attribute__((unused));
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(u32));
-	__type(value, struct event);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
 char LICENSE[] SEC("license") = "GPL";

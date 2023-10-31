@@ -13,15 +13,12 @@ struct event {
 	__u8 filename[NAME_MAX];
 };
 
-// we need this to make sure the compiler doesn't remove our struct
-const struct event *unusedevent __attribute__((unused));
-
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(u32));
-	__type(value, struct event);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-GADGET_TRACE_MAP(events);
+GADGET_TRACER(test, events, event);
 
 char LICENSE[] SEC("license") = "GPL";

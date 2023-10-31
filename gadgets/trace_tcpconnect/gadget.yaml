@@ -35,7 +35,6 @@ structs:
       attributes:
         width: 16
         alignment: left
-        ellipsis: end
         hidden: true
     - name: mntns_id
       description: 'Mount namespace inode id'
