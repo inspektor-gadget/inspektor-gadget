@@ -20,7 +20,7 @@ struct event {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-	__uint(key_size, sizeof(u32));
+	__uint(key_size, sizeof(__u32));
 	__type(value, struct event);
 } events SEC(".maps");
 
@@ -46,8 +46,8 @@ struct {
 } map_without_btf SEC("maps") = {
 	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
 	.max_entries = 4,
-	.key_size = sizeof(int),
-	.value_size = sizeof(int),
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
 };
 
 SEC("tracepoint/syscalls/sys_enter_openat")

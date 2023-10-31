@@ -23,8 +23,8 @@ struct {
 } events SEC("maps") = {
 	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
 	.max_entries = 4,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct event),
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
 };
 
 GADGET_TRACER(test, events, event);
