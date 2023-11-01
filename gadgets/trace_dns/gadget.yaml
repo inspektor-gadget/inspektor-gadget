@@ -37,9 +37,11 @@ structs:
         template: uid
     - name: name
       attributes:
+        wasmHandler: true
         width: 30
     - name: qr
       attributes:
+        wasmHandler: true
         width: 2
     - name: pkt_type
       attributes:
@@ -77,8 +79,9 @@ structs:
         hidden: true
         ellipsis: end
     - name: qtype
-      description: 'TODO: Fill field description'
+      description: 'DNS record type'
       attributes:
+        wasmHandler: true
         width: 16
         alignment: left
         ellipsis: end
