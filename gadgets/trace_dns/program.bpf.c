@@ -28,6 +28,19 @@
 // answers won't be sent to userspace.
 #define MAX_ADDR_ANSWERS 1
 
+// Packet types defined by the kernel:
+// https://github.com/torvalds/linux/blob/v6.6/include/uapi/linux/if_packet.h#L24
+enum pkt_type {
+	HOST = 0,
+	BROADCAST = 1,
+	MULTICAST = 2,
+	OTHERHOST = 3,
+	OUTGOING = 4,
+	LOOPBACK = 5,
+	USER = 6,
+	KERNEL = 7,
+};
+
 struct event_t {
 	gadget_timestamp timestamp;
 
@@ -47,7 +60,7 @@ struct event_t {
 
 	// qr says if the dns message is a query (0), or a response (1)
 	unsigned char qr;
-	unsigned char pkt_type;
+	enum pkt_type pkt_type;
 	unsigned char rcode;
 
 	__u64 latency_ns; // Set only if qr is 1 (response) and pkt_type is 0 (Host).
@@ -67,14 +80,6 @@ struct event_t {
 #define DNS_TYPE_A \
 	1 // https://datatracker.ietf.org/doc/html/rfc1035#section-3.2.2
 #define DNS_TYPE_AAAA 28 // https://www.rfc-editor.org/rfc/rfc3596#section-2.1
-
-#ifndef PACKET_HOST
-#define PACKET_HOST 0x0
-#endif
-
-#ifndef PACKET_OUTGOING
-#define PACKET_OUTGOING 0x4
-#endif
 
 #define DNS_QR_QUERY 0
 #define DNS_QR_RESP 1
@@ -336,11 +341,11 @@ static __always_inline int output_dns_event(struct __sk_buff *skb,
 			.id = event->id,
 		};
 		if (event->qr == DNS_QR_QUERY &&
-		    event->pkt_type == PACKET_OUTGOING) {
+		    event->pkt_type == OUTGOING) {
 			bpf_map_update_elem(&query_map, &query_key,
 					    &event->timestamp, BPF_NOEXIST);
 		} else if (event->qr == DNS_QR_RESP &&
-			   event->pkt_type == PACKET_HOST) {
+			   event->pkt_type == HOST) {
 			__u64 *query_ts =
 				bpf_map_lookup_elem(&query_map, &query_key);
 			if (query_ts != NULL) {
