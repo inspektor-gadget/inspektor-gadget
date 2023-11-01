@@ -784,27 +784,25 @@ func calculateColumnsForClient(
 		return nil, fmt.Errorf("getting value struct: %w", err)
 	}
 
-	colNames := map[string]struct{}{}
+	memberIndexFromBTF := map[string]int{}
+	for i, member := range eventType.Members {
+		memberIndexFromBTF[member.Name] = i
+	}
 
 	eventStruct, ok := gadgetMetadata.Structs[eventType.Name]
 	if !ok {
 		return nil, fmt.Errorf("struct %s not found in gadget metadata", eventType.Name)
 	}
 
-	for _, field := range eventStruct.Fields {
-		colNames[field.Name] = struct{}{}
-	}
-
 	columns := []types.ColumnDesc{}
 
-	for _, member := range eventType.Members {
-		member := member
-
-		_, ok := colNames[member.Name]
+	for _, field := range eventStruct.Fields {
+		memberIndex, ok := memberIndexFromBTF[field.Name]
 		if !ok {
-			logger.Debugf("field %q not present on metadata file, skipping", member.Name)
+			logger.Debugf("field %q not present on metadata file, skipping", field.Name)
 			continue
 		}
+		member := eventType.Members[memberIndex]
 
 		switch member.Type.TypeName() {
 		case types.L3EndpointTypeName:
@@ -834,6 +832,13 @@ func calculateColumnsForClient(
 			continue
 		}
 
+		if field.Attributes.WasmHandler {
+			col := types.FactoryAddString(eventFactory, member.Name)
+			col.WasmHandler = field.Attributes.WasmHandler
+			columns = append(columns, col)
+			continue
+		}
+
 		rType := typeFromBTF(member.Type)
 		if rType == nil {
 			continue
@@ -858,9 +863,10 @@ func calculateColumnsForClient(
 		}
 
 		col := types.ColumnDesc{
-			Name:   member.Name,
-			Type:   *rType,
-			Offset: uintptr(member.Offset.Bytes()),
+			Name:        member.Name,
+			Type:        *rType,
+			Offset:      uintptr(member.Offset.Bytes()),
+			WasmHandler: field.Attributes.WasmHandler,
 		}
 
 		columns = append(columns, col)
