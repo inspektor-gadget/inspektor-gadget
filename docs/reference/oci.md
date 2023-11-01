@@ -39,6 +39,16 @@ different media type among the following:
 - `application/vnd.gadget.ebpf.program.v1+binary`
 - `application/vnd.gadget.wasm.program.v1+binary`
 
+### The ebpf layer
+
+There must be exactly one layer with the ebpf media type. It must not be empty.
+Its content must be a valid ELF file.
+
+### The wasm layer
+
+There must be at most one layer with the wasm media type. If present, it must
+not be empty and it must be a valid wasm file.
+
 ## Image labels
 
 TODO
