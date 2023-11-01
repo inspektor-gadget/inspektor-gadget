@@ -100,6 +100,8 @@ type FieldAttributes struct {
 	// Template defines the template that will be used.
 	// TODO: add a link to existing templates
 	Template string `yaml:"template,omitempty"`
+	// WasmHandler defines whether this field is handled by the wasm program
+	WasmHandler bool `yaml:"wasmHandler,omitempty"`
 }
 
 type Field struct {
