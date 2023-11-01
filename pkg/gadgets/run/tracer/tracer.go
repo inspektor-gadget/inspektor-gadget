@@ -69,6 +69,7 @@ type Config struct {
 	ProgContent []byte
 	WasmContent []byte
 	Metadata    *types.GadgetMetadata
+	Columns     []types.ColumnDesc
 	MountnsMap  *ebpf.Map
 
 	// constants to replace in the ebpf program
@@ -144,6 +145,8 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	t.eventFactory = info.EventFactory
 	t.config.WasmContent = info.WasmContent
 	t.config.ProgContent = info.ProgContent
+	t.config.Columns = info.Columns
+
 	t.spec, err = loadSpec(t.config.ProgContent)
 	if err != nil {
 		return err
@@ -534,8 +537,27 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		typ   endpointType
 	}
 
+	type wasmColumnDef struct {
+		setter func(*types.Event, string)
+		name   string
+		start  uint32
+		size   uint32
+	}
+
 	endpointDefs := []endpointDef{}
 	timestampsOffsets := []uint32{}
+	wasmColumnsByName := map[string]*wasmColumnDef{}
+	wasmColumns := []*wasmColumnDef{}
+
+	for _, c := range t.config.Columns {
+		if c.WasmHandler {
+			d := &wasmColumnDef{
+				name: c.Name,
+			}
+			wasmColumnsByName[c.Name] = d
+			wasmColumns = append(wasmColumns, d)
+		}
+	}
 
 	enumSetters := []func(ev *types.Event, data []byte){}
 
@@ -658,6 +680,19 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 			}
 			enumSetters = append(enumSetters, enumSetter)
 		}
+
+		if w, ok := wasmColumnsByName[member.Name]; ok {
+			w.name = member.Name
+			w.start = member.Offset.Bytes()
+			typ, ok := member.Type.(*btf.Array)
+			if !ok {
+				w.size = 1 // FIXME
+			} else {
+				w.size = typ.Nelems * 1 // FIXME
+			}
+
+			w.setter = types.GetSetter[string](t.eventFactory, member.Name)
+		}
 	}
 
 	return func(data []byte) *types.Event {
@@ -732,6 +767,21 @@ func (t *Tracer) processEventFunc(gadgetCtx gadgets.GadgetContext) func(data []b
 		// handle enums
 		for _, setter := range enumSetters {
 			setter(ev, data)
+		}
+
+		// handle wasm columns
+		for _, wasmColumn := range wasmColumns {
+			methodName := "column_" + wasmColumn.name
+			inputBuffer := make([]byte, wasmColumn.size)
+			copy(inputBuffer, data[wasmColumn.start:wasmColumn.start+wasmColumn.size])
+
+			result, err := t.wasmInstance.Invoke(t.newHostCallContext(gadgetCtx.Context()),
+				methodName, inputBuffer)
+			if err != nil {
+				logger.Warnf("invoking %s in wasm: %w", methodName, err)
+				continue
+			}
+			wasmColumn.setter(ev, string(result))
 		}
 
 		// set ebpf data
