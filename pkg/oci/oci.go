@@ -55,6 +55,7 @@ const (
 // GadgetImage is the representation of a gadget packaged in an OCI image.
 type GadgetImage struct {
 	EbpfObject []byte
+	WasmObject []byte
 	Metadata   []byte
 }
 
@@ -108,23 +109,29 @@ func GetGadgetImage(ctx context.Context, image string, authOpts *AuthOptions, pu
 		}
 	}
 
-	manifest, err := getImageManifestForArch(ctx, imageStore, image, authOpts)
+	manifestHost, manifestWasm, err := getImageManifestForArch(ctx, imageStore, image, authOpts)
 	if err != nil {
 		return nil, fmt.Errorf("getting arch manifest: %w", err)
 	}
 
-	prog, err := getEbpfProgramFromManifest(ctx, imageStore, manifest)
+	prog, err := getEbpfProgramFromManifest(ctx, imageStore, manifestHost)
 	if err != nil {
 		return nil, fmt.Errorf("getting ebpf program: %w", err)
 	}
 
-	metadata, err := getMetadataFromManifest(ctx, imageStore, manifest)
+	wasm, err := getWasmProgramFromManifest(ctx, imageStore, manifestWasm)
+	if err != nil {
+		return nil, fmt.Errorf("getting ebpf program: %w", err)
+	}
+
+	metadata, err := getMetadataFromManifest(ctx, imageStore, manifestHost)
 	if err != nil {
 		return nil, fmt.Errorf("getting metadata: %w", err)
 	}
 
 	return &GadgetImage{
 		EbpfObject: prog,
+		WasmObject: wasm,
 		Metadata:   metadata,
 	}, nil
 }
@@ -437,11 +444,11 @@ func getImageListDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget,
 	return index, nil
 }
 
-func getHostArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index) (*ocispec.Manifest, error) {
+func getArchManifest(imageStore oras.ReadOnlyTarget, index ocispec.Index, arch string) (*ocispec.Manifest, error) {
 	var manifestDesc ocispec.Descriptor
 	for _, indexManifest := range index.Manifests {
 		// TODO: Check docker code
-		if indexManifest.Platform.Architecture == runtime.GOARCH {
+		if indexManifest.Platform.Architecture == arch {
 			manifestDesc = indexManifest
 			break
 		}
@@ -491,6 +498,20 @@ func getEbpfProgramFromManifest(ctx context.Context, target oras.Target, manifes
 	return prog, nil
 }
 
+func getWasmProgramFromManifest(ctx context.Context, target oras.Target, manifest *ocispec.Manifest) ([]byte, error) {
+	if len(manifest.Layers) != 1 {
+		return nil, fmt.Errorf("expected exactly one layer, got %d", len(manifest.Layers))
+	}
+	prog, err := getContentFromDescriptor(ctx, target, manifest.Layers[0])
+	if err != nil {
+		return nil, fmt.Errorf("getting wasm program from descriptor: %w", err)
+	}
+	if len(prog) == 0 {
+		return nil, errors.New("program is empty")
+	}
+	return prog, nil
+}
+
 func getContentFromDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarget, desc ocispec.Descriptor) ([]byte, error) {
 	reader, err := imageStore.Fetch(ctx, desc)
 	if err != nil {
@@ -504,20 +525,21 @@ func getContentFromDescriptor(ctx context.Context, imageStore oras.ReadOnlyTarge
 	return bytes, nil
 }
 
-func getImageManifestForArch(ctx context.Context, target oras.Target, image string, authOpts *AuthOptions) (*ocispec.Manifest, error) {
+func getImageManifestForArch(ctx context.Context, target oras.Target, image string, authOpts *AuthOptions) (*ocispec.Manifest, *ocispec.Manifest, error) {
 	imageRef, err := normalizeImageName(image)
 	if err != nil {
-		return nil, fmt.Errorf("normalizing image: %w", err)
+		return nil, nil, fmt.Errorf("normalizing image: %w", err)
 	}
 
 	index, err := getImageListDescriptor(ctx, target, imageRef.String())
 	if err != nil {
-		return nil, fmt.Errorf("getting image list descriptor: %w", err)
+		return nil, nil, fmt.Errorf("getting image list descriptor: %w", err)
 	}
 
-	manifest, err := getHostArchManifest(target, index)
+	manifestHost, err := getArchManifest(target, index, runtime.GOARCH)
 	if err != nil {
-		return nil, fmt.Errorf("getting arch manifest: %w", err)
+		return nil, nil, fmt.Errorf("getting arch manifest: %w", err)
 	}
-	return manifest, nil
+	manifestWasm, _ := getArchManifest(target, index, ArchWasm)
+	return manifestHost, manifestWasm, nil
 }
