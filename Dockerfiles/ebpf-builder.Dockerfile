@@ -5,14 +5,14 @@ ARG TINYGO_VERSION=0.30.0
 # Args need to be redefined on each stage
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
 
-FROM golang:1.20 as builder
+FROM golang:1.21 as builder
 ARG LIBBPF_VERSION
 
 # Let's install libbpf headers
 RUN git clone --branch ${LIBBPF_VERSION} --depth 1 https://github.com/libbpf/libbpf.git \
 	&& cd libbpf/src && make install_headers
 
-FROM golang:1.20
+FROM golang:1.21
 ARG CLANG_LLVM_VERSION
 ARG TINYGO_VERSION
 # libc-dev is needed for various headers, among others

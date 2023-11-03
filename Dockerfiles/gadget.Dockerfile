@@ -1,6 +1,6 @@
 # Dockerfile for Inspektor Gadget.
 
-ARG BUILDER_IMAGE=golang:1.20-bullseye
+ARG BUILDER_IMAGE=golang:1.21-bullseye
 ARG BASE_IMAGE=debian:bullseye-slim
 
 # bpftrace upstream image
