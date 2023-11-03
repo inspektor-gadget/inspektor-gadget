@@ -187,9 +187,19 @@ func ParseEarlyFlags(cmd *cobra.Command) error {
 		cmd.FParseErrWhitelist.UnknownFlags = false
 	}()
 	// temporary workaround for https://github.com/inspektor-gadget/inspektor-gadget/pull/2174#issuecomment-1780923952
-	args := removeSplitSortArgs(os.Args[1:])
+	args := cloneStringSlice(os.Args[1:]) // clone to avoid modifying the original os.Args
+	args = removeSplitSortArgs(args)
 	// --help should be handled after we registered all commands
 	args = removeHelpArg(args)
 	err := cmd.ParseFlags(args)
 	return err
+}
+
+// TODO: Use slices.Clone() when we upgrade to Go 1.21
+// See: https://cs.opensource.google/go/x/exp/+/7918f672:slices/slices.go;l=336
+func cloneStringSlice(s []string) []string {
+	if s == nil {
+		return nil
+	}
+	return append([]string{}, s...)
 }
