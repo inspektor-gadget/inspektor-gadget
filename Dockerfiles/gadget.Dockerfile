@@ -50,7 +50,8 @@ RUN set -ex; \
 	(rmdir /usr/src || true) && ln -sf /host/usr/src /usr/src && \
 	rm -f /etc/localtime && ln -sf /host/etc/localtime /etc/localtime
 
-COPY gadget-container/entrypoint.sh gadget-container/cleanup.sh /
+COPY --from=builder /gadget/gadget-container/bin/entrypoint /
+COPY --from=builder /gadget/gadget-container/bin/cleanup /
 
 COPY --from=builder /gadget/gadget-container/bin/gadgettracermanager /bin/
 

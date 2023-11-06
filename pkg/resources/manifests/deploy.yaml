@@ -97,12 +97,12 @@ spec:
           terminationMessagePolicy: FallbackToLogsOnError
           image: ghcr.io/inspektor-gadget/inspektor-gadget:latest
           imagePullPolicy: Always
-          command: [ "/entrypoint.sh" ]
+          command: [ "/entrypoint" ]
           lifecycle:
             preStop:
               exec:
                 command:
-                  - "/cleanup.sh"
+                  - "/cleanup"
           livenessProbe:
             exec:
               command:
