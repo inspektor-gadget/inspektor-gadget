@@ -1,8 +1,17 @@
 .PHONY: gadget-container-deps
-gadget-container-deps: ocihookgadget gadgettracermanager nrigadget
+gadget-container-deps: entrypoint ocihookgadget gadgettracermanager nrigadget
 
 
 TARGET_ARCH ?= $(shell go env GOHOSTARCH)
+
+# Entrypoint
+
+.PHONY: entrypoint
+entrypoint:
+	mkdir -p bin
+	GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) go build \
+		-o bin/entrypoint \
+		./entrypoint/entrypoint.go
 
 # Gadgets
 
