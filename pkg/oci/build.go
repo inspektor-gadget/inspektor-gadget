@@ -117,17 +117,10 @@ func pushDescriptorIfNotExists(ctx context.Context, target oras.Target, desc oci
 	return nil
 }
 
-func createEbpfProgramDesc(ctx context.Context, target oras.Target, progFilePath string, arch string) (ocispec.Descriptor, error) {
+func createLayerDesc(ctx context.Context, target oras.Target, progFilePath, mediaType string) (ocispec.Descriptor, error) {
 	progBytes, err := os.ReadFile(progFilePath)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("reading eBPF program file: %w", err)
-	}
-	mediaType := ""
-	switch arch {
-	case ArchWasm:
-		mediaType = wasmObjectMediaType
-	default:
-		mediaType = eBPFObjectMediaType
 	}
 	progDesc := content.NewDescriptorFromBytes(mediaType, progBytes)
 	progDesc.Annotations = map[string]string{
@@ -137,7 +130,7 @@ func createEbpfProgramDesc(ctx context.Context, target oras.Target, progFilePath
 	}
 	err = pushDescriptorIfNotExists(ctx, target, progDesc, bytes.NewReader(progBytes))
 	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("pushing eBPF program: %w", err)
+		return ocispec.Descriptor{}, fmt.Errorf("pushing %q layer: %w", mediaType, err)
 	}
 
 	return progDesc, nil
@@ -169,8 +162,8 @@ func createEmptyDesc(ctx context.Context, target oras.Target) (ocispec.Descripto
 	return emptyDesc, nil
 }
 
-func createManifestForTarget(ctx context.Context, target oras.Target, metadataFilePath, progFilePath, arch string) (ocispec.Descriptor, error) {
-	progDesc, err := createEbpfProgramDesc(ctx, target, progFilePath, arch)
+func createManifestForTarget(ctx context.Context, target oras.Target, metadataFilePath, progFilePath, wasmFilePath, arch string) (ocispec.Descriptor, error) {
+	progDesc, err := createLayerDesc(ctx, target, progFilePath, eBPFObjectMediaType)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("creating and pushing eBPF descriptor: %w", err)
 	}
@@ -199,6 +192,14 @@ func createManifestForTarget(ctx context.Context, target oras.Target, metadataFi
 		Config: defDesc,
 		Layers: []ocispec.Descriptor{progDesc},
 	}
+	if wasmFilePath != "" {
+		wasmDesc, err := createLayerDesc(ctx, target, wasmFilePath, wasmObjectMediaType)
+		if err != nil {
+			return ocispec.Descriptor{}, fmt.Errorf("creating and pushing wasm descriptor: %w", err)
+		}
+		manifest.Layers = append(manifest.Layers, wasmDesc)
+	}
+
 	manifestJson, err := json.Marshal(manifest)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("marshalling manifest: %w", err)
@@ -229,16 +230,9 @@ func createImageIndex(ctx context.Context, target oras.Target, o *BuildGadgetIma
 	layers := []ocispec.Descriptor{}
 
 	for arch, path := range o.EBPFObjectPaths {
-		manifestDesc, err := createManifestForTarget(ctx, target, o.MetadataPath, path, arch)
+		manifestDesc, err := createManifestForTarget(ctx, target, o.MetadataPath, path, o.WasmObjectPath, arch)
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("creating %s manifest: %w", arch, err)
-		}
-		layers = append(layers, manifestDesc)
-	}
-	if o.WasmObjectPath != "" {
-		manifestDesc, err := createManifestForTarget(ctx, target, o.MetadataPath, o.WasmObjectPath, ArchWasm)
-		if err != nil {
-			return ocispec.Descriptor{}, fmt.Errorf("creating %s manifest: %w", ArchWasm, err)
 		}
 		layers = append(layers, manifestDesc)
 	}
