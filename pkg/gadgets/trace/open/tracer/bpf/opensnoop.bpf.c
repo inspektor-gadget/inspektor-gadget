@@ -23,9 +23,9 @@ const struct event *unusedevent __attribute__((unused));
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 1024);
+	__uint(max_entries, 10240);
 	__type(key, u32);
-	__type(value, struct event);
+	__type(value, struct start_t);
 } start SEC(".maps");
 
 struct {
@@ -49,7 +49,13 @@ struct {
 	__type(value, struct prefix_key);
 } prefix_keys SEC(".maps");
 
-static const struct event empty_event = {};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, u32);
+	__type(value, struct event);
+} empty_event SEC(".maps");
+
 static const struct prefix_key empty_prefix_key = {};
 
 static __always_inline bool valid_uid(uid_t uid)
@@ -129,26 +135,20 @@ static __always_inline int trace_enter(const char *filename, int flags,
 	/* use kernel terminology here for tgid/pid: */
 	u32 tgid = id >> 32;
 	u32 pid = id;
-	char fname[NAME_MAX];
 
-	bpf_probe_read_user_str(fname, sizeof(fname), filename);
+	struct start_t s = {};
+
+	bpf_probe_read_user_str(s.fname, sizeof(s.fname), filename);
 
 	/* store arg info for later lookup */
-	if (!trace_allowed(tgid, pid, (const char *)fname))
+	if (!trace_allowed(tgid, pid, (const char *)s.fname))
 		return 0;
 
-	struct event *event;
+	s.flags = flags;
+	s.mode = mode;
 
-	if (bpf_map_update_elem(&start, &pid, &empty_event, BPF_NOEXIST))
-		return 0;
-
-	event = bpf_map_lookup_elem(&start, &pid);
-	if (!event)
-		return 0;
-
-	__builtin_memcpy(event->fname, fname, sizeof(event->fname));
-	event->flags = flags;
-	event->mode = mode;
+	// TODO: not related to this commit. Should't it be id? instead of pid?
+	bpf_map_update_elem(&start, &pid, &s, BPF_ANY);
 
 	return 0;
 }
@@ -175,10 +175,20 @@ static __always_inline int trace_exit(struct trace_event_raw_sys_exit *ctx)
 	u64 uid_gid = bpf_get_current_uid_gid();
 	u64 mntns_id;
 	size_t full_fname_len = 0;
+	struct start_t *s;
 
-	event = bpf_map_lookup_elem(&start, &pid);
-	if (!event)
+	s = bpf_map_lookup_elem(&start, &pid);
+	if (!s)
 		return 0; /* missed entry */
+
+	u32 zero = 0;
+	event = bpf_map_lookup_elem(&empty_event, &zero);
+	if (!event)
+		return 0; // should never happen
+
+	event->flags = s->flags;
+	event->mode = s->mode;
+	__builtin_memcpy(event->fname, s->fname, sizeof(s->fname));
 
 	ret = ctx->ret;
 	if (targ_failed && ret >= 0)
@@ -215,7 +225,6 @@ static __always_inline int trace_exit(struct trace_event_raw_sys_exit *ctx)
 	bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, event,
 			      sizeof(struct event) -
 				      (PATH_MAX - full_fname_len));
-
 cleanup:
 	bpf_map_delete_elem(&start, &pid);
 	return 0;
