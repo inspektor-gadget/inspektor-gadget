@@ -34,7 +34,7 @@ LABEL org.opencontainers.image.licenses=Apache-2.0
 # install runtime dependencies  according to the package manager
 # available on the base image
 RUN set -ex; \
-	PACKAGES='ca-certificates util-linux socat' && \
+	PACKAGES='ca-certificates util-linux' && \
 	if command -v tdnf; then \
 		tdnf install -y $PACKAGES; \
 	elif command -v yum; then \

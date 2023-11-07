@@ -52,8 +52,7 @@ const (
 	ConnectionModeDirect ConnectionMode = iota
 
 	// ConnectionModeKubernetesProxy will connect to a gRPC endpoint through a kubernetes API server by first looking
-	// up an appropriate target node using the kubernetes API, then using either the exec (when used with
-	// KubernetesProxyConnectionMethodUnix) or the port forward (when used with KubernetesProxyConnectionMethodTCP)
+	// up an appropriate target node using the kubernetes API, then using the port forward
 	// endpoint of the Kubernetes API to forward the gRPC connection to the service listener (see gadgettracermgr).
 	ConnectionModeKubernetesProxy
 )
@@ -74,19 +73,7 @@ const (
 	// ResultTimeout is the time in seconds we wait for a result to return from the gadget
 	// after sending a Stop command
 	ResultTimeout = 30
-
-	// KubernetesProxyConnectionMethodTCP uses the Kubernetes API Server using port-forwarding to connect to the
-	// gadget service
-	KubernetesProxyConnectionMethodTCP = "tcp"
-
-	// KubernetesProxyConnectionMethodUnix uses the Kubernetes API Server using exec to connect to the gadget
-	// service
-	// Deprecated: due to the complexity and security concerns regarding the required privilege to use this,
-	// KubernetesProxyConnectionMethodUnix is now the standard.
-	KubernetesProxyConnectionMethodUnix = "unix"
 )
-
-var kubernetesProxyConnectionMethods = []string{KubernetesProxyConnectionMethodTCP, KubernetesProxyConnectionMethodUnix}
 
 type Runtime struct {
 	info           *deployinfo.DeployInfo
@@ -179,12 +166,6 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 		return p
 	case ConnectionModeKubernetesProxy:
 		p.Add(params.ParamDescs{
-			{
-				Key:            ParamConnectionMethod,
-				Description:    "Method used to connect to the gadget service; either tcp or unix (deprecated)",
-				DefaultValue:   KubernetesProxyConnectionMethodTCP,
-				PossibleValues: kubernetesProxyConnectionMethods,
-			},
 			{
 				Key:          ParamGadgetServiceTCPPort,
 				Description:  "Port used to connect to the gadget service",
@@ -416,22 +397,9 @@ func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout ti
 
 	// If we're in Kubernetes connection mode, we need a custom dialer
 	if r.connectionMode == ConnectionModeKubernetesProxy {
-		mode := r.globalParams.Get(ParamConnectionMethod).String()
 		opts = append(opts, grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
-			switch mode {
-			case KubernetesProxyConnectionMethodTCP:
-				port := r.globalParams.Get(ParamGadgetServiceTCPPort).AsUint16()
-				return NewK8SPortFwdConn(ctx, target, port, timeout)
-			case KubernetesProxyConnectionMethodUnix: // deprecated
-				log.Warnf("using deprecated connection mode KubernetesProxyConnectionMethodUnix")
-				return NewK8SExecConn(ctx, target, timeout)
-			default:
-				return nil, fmt.Errorf(
-					"invalid connection method %q (valid modes: %+v)",
-					mode,
-					kubernetesProxyConnectionMethods,
-				)
-			}
+			port := r.globalParams.Get(ParamGadgetServiceTCPPort).AsUint16()
+			return NewK8SPortFwdConn(ctx, target, port, timeout)
 		}))
 	}
 
