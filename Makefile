@@ -290,6 +290,10 @@ clang-format:
 LIVENESS_PROBE ?= true
 .PHONY: minikube-deploy
 minikube-deploy: minikube-start gadget-container kubectl-gadget
+	# Remove all resources created by Inspektor Gadget
+	./kubectl-gadget undeploy || true
+	# Remove the image from Minikube
+	$(MINIKUBE) image rm $(CONTAINER_REPO):$(IMAGE_TAG) || true
 	@echo "Image on the host:"
 	docker image list --format "table {{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.Size}}" |grep $(CONTAINER_REPO):$(IMAGE_TAG)
 	@echo
@@ -306,8 +310,6 @@ minikube-deploy: minikube-start gadget-container kubectl-gadget
 	$(MINIKUBE) image ls --format=table | grep "$(CONTAINER_REPO)\s*|\s*$(IMAGE_TAG)" || \
 		(echo "Image $(CONTAINER_REPO)\s*|\s*$(IMAGE_TAG) was not correctly loaded into Minikube" && false)
 	@echo
-	# Remove all resources created by Inspektor Gadget.
-	./kubectl-gadget undeploy || true
 	./kubectl-gadget deploy --liveness-probe=$(LIVENESS_PROBE) \
 		--image-pull-policy=Never
 	kubectl rollout status daemonset -n gadget gadget --timeout 30s
