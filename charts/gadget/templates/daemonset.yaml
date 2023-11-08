@@ -72,18 +72,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.uid
-            - name: TRACELOOP_NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-            - name: TRACELOOP_POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: TRACELOOP_POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
             - name: GADGET_IMAGE
               value: "{{ .Values.image.repository }}"
             - name: INSPEKTOR_GADGET_VERSION
@@ -160,16 +148,11 @@ spec:
                 # which instead uses: __x64_sys_
                 - SYSLOG
 
-                # traceloop gadget uses strace which in turns use ptrace()
-                # syscall.
-                # Within kernel code, ptrace() calls ptrace_attach() which in
-                # turns calls __ptrace_may_access() which calls ptrace_has_cap()
-                # where CAP_SYS_PTRACE is finally checked:
-                # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/ptrace.c#L284
+                # Accessing some procfs files such as /proc/$pid/ns/mnt
+                # requires ptrace capability.
                 - SYS_PTRACE
 
-                # Needed by setrlimit in gadgettracermanager and by the traceloop
-                # gadget.
+                # Needed by setrlimit in gadgettracermanager.
                 - SYS_RESOURCE
 
                 # Needed for gadgets that don't dumb the memory rlimit.
