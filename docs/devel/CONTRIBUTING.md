@@ -399,3 +399,7 @@ Golang.
 If you want to implement support for a BCC gadget, please read the [Rewriting the Control Plane of
 BCC Tools in Golang](https://www.inspektor-gadget.io/blog/2022/09/rewriting-the-control-plane-of-bcc-tools-in-golang/)
 blogpost that contains all the details about this process.
+
+## Security
+
+For security, we invite you to take at look at the [dedicated document](../SECURITY.md).
