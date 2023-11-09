@@ -20,7 +20,7 @@ require (
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.4
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
-	golang.org/x/sys v0.13.0
+	golang.org/x/sys v0.14.1-0.20231108175955-e4099bfacb8c
 	golang.org/x/term v0.13.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
@@ -198,3 +198,7 @@ require (
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.13.1-0.20230315234915-a26de2d610c3
 
 replace github.com/vishvananda/netns => github.com/inspektor-gadget/netns v0.0.5-0.20230524185006-155d84c555d6
+
+// Use upstream commit to be able to bump golang.org/x/*:
+// https://github.com/cilium/ebpf/commit/36f6316fb169
+replace github.com/cilium/ebpf => github.com/cilium/ebpf v0.0.0-20231109090417-36f6316fb169
