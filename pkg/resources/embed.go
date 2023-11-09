@@ -21,8 +21,5 @@ import (
 //go:embed crd/bases/gadget.kinvolk.io_traces.yaml
 var TracesCustomResource string
 
-//go:embed rbac/role.yaml
-var RbacRole string
-
 //go:embed manifests/deploy.yaml
 var GadgetDeployment string

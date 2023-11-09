@@ -60,32 +60,6 @@ subjects:
     name: gadget
     namespace: gadget
 ---
-# Source: gadget/templates/role.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: gadget-role
-  namespace: gadget
-rules:
-  - apiGroups: [""]
-    resources: ["pods"]
-    # update is needed by traceloop gadget.
-    verbs: ["update"]
----
-# Source: gadget/templates/rolebinding.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: gadget-role-binding
-  namespace: gadget
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: gadget-role
-subjects:
-  - kind: ServiceAccount
-    name: gadget
----
 # Source: gadget/templates/daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
@@ -152,18 +126,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.uid
-            - name: TRACELOOP_NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-            - name: TRACELOOP_POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: TRACELOOP_POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
             - name: GADGET_IMAGE
               value: "ghcr.io/inspektor-gadget/inspektor-gadget"
             - name: INSPEKTOR_GADGET_VERSION
@@ -239,16 +201,11 @@ spec:
                 # which instead uses: __x64_sys_
                 - SYSLOG
 
-                # traceloop gadget uses strace which in turns use ptrace()
-                # syscall.
-                # Within kernel code, ptrace() calls ptrace_attach() which in
-                # turns calls __ptrace_may_access() which calls ptrace_has_cap()
-                # where CAP_SYS_PTRACE is finally checked:
-                # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/ptrace.c#L284
+                # Accessing some procfs files such as /proc/$pid/ns/mnt
+                # requires ptrace capability.
                 - SYS_PTRACE
 
-                # Needed by setrlimit in gadgettracermanager and by the traceloop
-                # gadget.
+                # Needed by setrlimit in gadgettracermanager.
                 - SYS_RESOURCE
 
                 # Needed for gadgets that don't dumb the memory rlimit.
