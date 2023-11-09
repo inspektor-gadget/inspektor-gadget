@@ -5,7 +5,6 @@ FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
 
 ARG TARGETOS
 ARG TARGETARCH
-ARG BUILDARCH
 ARG VERSION=undefined
 ENV VERSION=${VERSION}
 ARG EBPF_BUILDER=ghcr.io/inspektor-gadget/ebpf-builder:latest
