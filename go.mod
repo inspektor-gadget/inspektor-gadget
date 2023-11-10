@@ -1,6 +1,6 @@
 module github.com/inspektor-gadget/inspektor-gadget
 
-go 1.20
+go 1.21
 
 require (
 	github.com/cilium/ebpf v0.12.3

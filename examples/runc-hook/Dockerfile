@@ -1,4 +1,4 @@
-FROM golang:1.20 as builder
+FROM golang:1.21 as builder
 
 # Cache go modules so they won't be downloaded at each build
 COPY go.mod go.sum /gadget/

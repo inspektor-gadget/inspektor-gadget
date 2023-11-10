@@ -15,9 +15,8 @@
 package containercollection
 
 import (
+	"slices"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 // ContainerSelectorMatches tells if a container matches the criteria in a
