@@ -1375,6 +1375,7 @@ jobs:
       - build-gadgets-examples
       - package-helm-charts
       - check-secrets
+      - scan-gadget-container-images
     runs-on: ubuntu-latest
     permissions:
       contents: write
