@@ -21,7 +21,7 @@ require (
 	github.com/vishvananda/netns v0.0.4
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	golang.org/x/sys v0.14.1-0.20231108175955-e4099bfacb8c
-	golang.org/x/term v0.13.0
+	golang.org/x/term v0.14.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
 	k8s.io/api v0.28.3
