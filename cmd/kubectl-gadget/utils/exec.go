@@ -15,10 +15,9 @@
 package utils
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"io"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,21 +29,6 @@ import (
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/factory"
 )
-
-func ExecPodSimple(client *kubernetes.Clientset, node string, podCmd string) string {
-	stdout, stderr, err := ExecPodCapture(client, node, podCmd)
-	if err != nil {
-		return fmt.Sprintf("%s", err) + stdout + stderr
-	} else {
-		return stdout + stderr
-	}
-}
-
-func ExecPodCapture(client *kubernetes.Clientset, node string, podCmd string) (string, string, error) {
-	var stdout, stderr bytes.Buffer
-	err := ExecPod(client, node, podCmd, &stdout, &stderr)
-	return stdout.String(), stderr.String(), err
-}
 
 func ExecPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout io.Writer, cmdStderr io.Writer) error {
 	listOptions := metav1.ListOptions{
@@ -84,7 +68,7 @@ func ExecPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout
 		Param("container", "gadget").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: "gadget",
-			Command:   []string{"/bin/sh", "-c", podCmd},
+			Command:   strings.Split(podCmd, " "),
 			Stdin:     false,
 			Stdout:    true,
 			Stderr:    true,
