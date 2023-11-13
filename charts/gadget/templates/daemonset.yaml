@@ -102,64 +102,57 @@ spec:
               type: "spc_t"
             capabilities:
               {{- if not .Values.capabilities }}
+              drop:
+                - ALL
               add:
-                # We need CAP_NET_ADMIN to be able to create BPF link.
-                # Indeed, link_create is called with prog->type which equals
-                # BPF_PROG_TYPE_CGROUP_SKB.
-                # This value is then checked in
-                # bpf_prog_attach_check_attach_type() which also checks if we have
-                # CAP_NET_ADMIN:
-                # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/bpf/syscall.c#L4099
-                # https://elixir.bootlin.com/linux/v5.14.14/source/kernel/bpf/syscall.c#L2967
-                - NET_ADMIN
-
-                # We need CAP_SYS_ADMIN to use Python-BCC gadgets because bcc
-                # internally calls bpf_get_map_fd_by_id() which contains the
-                # following snippet:
-                # if (!capable(CAP_SYS_ADMIN))
-                # 	return -EPERM;
-                # (https://elixir.bootlin.com/linux/v5.10.73/source/kernel/bpf/syscall.c#L3254)
-                #
-                # Details about this are given in:
-                # > The important design decision is to allow ID->FD transition for
-                # CAP_SYS_ADMIN only. What it means that user processes can run
-                # with CAP_BPF and CAP_NET_ADMIN and they will not be able to affect each
-                # other unless they pass FDs via scm_rights or via pinning in bpffs.
-                # ID->FD is a mechanism for human override and introspection.
-                # An admin can do 'sudo bpftool prog ...'. It's possible to enforce via LSM that
-                # only bpftool binary does bpf syscall with CAP_SYS_ADMIN and the rest of user
-                # space processes do bpf syscall with CAP_BPF isolating bpf objects (progs, maps,
-                # links) that are owned by such processes from each other.
-                # (https://lwn.net/Articles/820560/)
-                #
-                # Note that even with a kernel providing CAP_BPF, the above
-                # statement is still true.
+                # We need CAP_SYS_ADMIN for both gadgettracermanager and
+                # bpftrace due to several syscalls:
+                # - bpf(): It often checks if SYS_ADMIN is set, among others
+                #   there:
+                #   https://github.com/torvalds/linux/blob/c42d9eeef8e5/kernel/bpf/syscall.c#L2602
+                # - perf_event_open(): The kernel checks if CAP_PERFMON or
+                #   CAP_SYS_ADMIN is set:
+                #   https://github.com/torvalds/linux/blob/c42d9eeef8e5/kernel/events/core.c#L12406-L12409
+                # - fanotify_init(): CAP_SYS_ADMIN is required to use all the
+                #   functionalities offered by fanotify:
+                #   https://github.com/torvalds/linux/blob/c42d9eeef8e5/fs/notify/fanotify/fanotify_user.c#L1404
+                # - fanotify_mark(): This capability is required to setup mount
+                #   or filesystem marks:
+                #   https://github.com/torvalds/linux/blob/c42d9eeef8e5/fs/notify/fanotify/fanotify_user.c#L1745-L1754
+                # - mount(): We need this capability to modify the caller
+                #   namespace:
+                #   https://github.com/torvalds/linux/blob/c42d9eeef8e5/fs/namespace.c#L1844-L1846
+                #   https://github.com/torvalds/linux/blob/c42d9eeef8e5/fs/namespace.c#L3609
+                # - setns(): SYS_ADMIN is needed to install various namespace:
+                #   https://github.com/torvalds/linux/blob/c42d9eeef8e5ba9292eda36fd8e3c11f35ee065c/kernel/nsproxy.c#L574
+                #   https://github.com/torvalds/linux/blob/c42d9eeef8e5/kernel/cgroup/namespace.c#L103-L105
                 - SYS_ADMIN
 
                 # We need this capability to get addresses from /proc/kallsyms.
                 # Without it, addresses displayed when reading this file will be
                 # 0.
-                # Thus, bcc_procutils_each_ksym will never call callback, so KSyms
-                # syms_ vector will be empty and it will return false.
-                # As a consequence, no prefix will be found in
-                # get_syscall_prefix(), so a default prefix (_sys) will be
-                # returned.
-                # Sadly, this default prefix is not used by the running kernel,
-                # which instead uses: __x64_sys_
+                # Indeed, the socket-enricher needs to get the socket_file_ops
+                # to work correctly:
+                # https://github.com/inspektor-gadget/inspektor-gadget/blob/69692d54d951/pkg/gadgets/internal/socketenricher/tracer.go#L75
                 - SYSLOG
 
                 # Accessing some procfs files such as /proc/$pid/ns/mnt
-                # requires ptrace capability.
+                # requires ptrace capability:
+                # https://github.com/inspektor-gadget/inspektor-gadget/blob/3c51ff5e9f5b/pkg/utils/host/namespaces.go#L65
+                # https://github.com/torvalds/linux/blob/c42d9eeef8e5/fs/proc/namespaces.c#L58
                 - SYS_PTRACE
 
-                # Needed by setrlimit in gadgettracermanager.
+                # Needed by setrlimit in bpftrace:
+                # https://github.com/iovisor/bpftrace/blob/ab863ef93ac1/src/main.cpp#L154
                 - SYS_RESOURCE
 
-                # Needed for gadgets that don't dumb the memory rlimit.
-                # (Currently only applies to BCC python-based gadgets)
+                # Needed by mmap() called by gadgettracermanager:
+                # https://github.com/torvalds/linux/blob/c42d9eeef8e5/mm/mmap.c#L1281
+                # https://github.com/torvalds/linux/blob/c42d9eeef8e5/mm/mmap.c#L1161-L1162
                 - IPC_LOCK
 
-                # Needed by gadgets that open a raw sock like dns and snisnoop
+                # Needed by gadgets that open a raw sock like dns and snisnoop:
+                # https://github.com/inspektor-gadget/inspektor-gadget/blob/3c51ff5e9f5b/gadgets/trace_dns/program.bpf.c#L365-L366
                 - NET_RAW
               {{- else }}
               {{- toYaml .Values.capabilities | nindent 14 }}
