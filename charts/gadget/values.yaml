@@ -2,13 +2,6 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# -- Skip Helm labels
-skipLabels: true
-
-# -- Labels to be added to all other resources.
-additionalLabels:
-  labels: {}
-
 config:
   # -- How to get containers start/stop notifications (auto, crio, podinformer, nri, fanotify, fanotify+ebpf")
   hookMode: auto
@@ -28,6 +21,9 @@ config:
 
   # -- Events buffer length. A low value could impact horizontal scaling.
   eventsBufferLength: "16384"
+
+  # -- Mount pull secret (gadget-pull-secret) to pull image-based gadgets from private registry
+  mountPullSecret: false
 
 image:
   # -- Container repository for the container image
@@ -53,3 +49,10 @@ tolerations:
     operator: Exists
   - effect: NoExecute
     operator: Exists
+
+# -- Skip Helm labels
+skipLabels: true
+
+# -- Labels to be added to all other resources.
+additionalLabels:
+  labels: {}
