@@ -33,7 +33,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var crioRegex = regexp.MustCompile(`^1:name=systemd:.*/crio-[0-9a-f]*\.scope$`)
+var crioRegex = regexp.MustCompile(`1:name=systemd:.*/crio-[0-9a-f]*\.scope`)
 
 func getPrettyName() (string, error) {
 	path := filepath.Join(host.HostRoot, "/etc/os-release")
