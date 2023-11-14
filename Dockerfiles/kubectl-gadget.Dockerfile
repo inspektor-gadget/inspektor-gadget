@@ -9,7 +9,10 @@
 ARG BUILDER_IMAGE=golang:1.21-bullseye
 ARG BASE_IMAGE=alpine:3.18
 
-FROM ${BUILDER_IMAGE} as builder
+FROM --platform=${BUILDPLATFORM} ${BUILDER_IMAGE} as builder
+
+ARG TARGETARCH
+ARG TARGETOS
 
 # Cache go modules so they won't be downloaded at each build
 COPY go.mod go.sum /gadget/
@@ -24,7 +27,7 @@ ENV IMAGE_TAG=${IMAGE_TAG}
 
 # This COPY is limited by .dockerignore
 COPY ./ /gadget
-RUN cd /gadget && make kubectl-gadget
+RUN cd /gadget && GOHOSTOS=$TARGETOS GOHOSTARCH=$TARGETARCH make kubectl-gadget
 
 FROM ${BASE_IMAGE}
 
