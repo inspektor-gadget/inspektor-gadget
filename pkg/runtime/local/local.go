@@ -82,12 +82,36 @@ func (r *Runtime) ParamDescs() params.ParamDescs {
 	return nil
 }
 
+type addFields interface {
+	AddFields(info *runTypes.GadgetInfo, blob *runTypes.BlobEvent) error
+}
+
 func (r *Runtime) GetGadgetInfo(_ context.Context, desc gadgets.GadgetDesc, pars *params.Params, args []string) (*runTypes.GadgetInfo, error) {
 	runDesc, ok := desc.(runTypes.RunGadgetDesc)
 	if !ok {
 		return nil, fmt.Errorf("GetGadgetInfo not supported for gadget %s", desc.Name())
 	}
-	return runDesc.GetGadgetInfo(pars, args)
+
+	fmt.Println("get gadget info runtime")
+
+	info, err := runDesc.GetGadgetInfo(pars, args)
+	if err != nil {
+		return nil, err
+	}
+
+	blob := runTypes.NewBlobEvent()
+
+	ops := operators.GetOperatorsForContainerizedGadget(info)
+	for _, op := range ops {
+		fmt.Printf("trying %s\n", op.Name())
+		rawOp := operators.GetRaw(op.Name())
+		if f, ok := rawOp.(addFields); ok {
+			fmt.Println("found one operator that can add fields")
+			f.AddFields(info, blob)
+		}
+	}
+
+	return info, nil
 }
 
 func (r *Runtime) RunGadget(gadgetCtx runtime.GadgetContext) (runtime.CombinedGadgetResult, error) {

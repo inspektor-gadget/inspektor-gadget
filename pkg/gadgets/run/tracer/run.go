@@ -180,61 +180,61 @@ func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (
 		return nil, err
 	}
 
-	// Add some extra columns here, like from wasm
-	// TODO: There is an architectural issue with this approach, the instance of NewBlobEvent()
-	// cannot be passed to the tracer instance, so there is some code duplication and the code
-	// in both places has to match in order to work.
-	blob := NewBlobEvent()
-
-	eventStructureName, eventStruct := getAnyMapElem(ret.GadgetMetadata.Structs)
-	if eventStruct == nil {
-		return nil, fmt.Errorf("struct not found in gadget metadata")
-	}
-
-	fields := []types.Field{}
-
-	// any column
-	uint64col, _ := AddField[uint64](blob, "uint64col")
-	ret.Columns = append(ret.Columns, uint64col)
-	fields = append(fields, types.Field{
-		Name: "uint64col",
-		Attributes: types.FieldAttributes{
-			Width: 10,
-		},
-	})
-
-	// int32 column
-	int32col, _ := AddField[uint32](blob, "myint32")
-	ret.Columns = append(ret.Columns, int32col)
-	fields = append(fields, types.Field{
-		Name: "myint32",
-		Attributes: types.FieldAttributes{
-			Width: 10,
-		},
-	})
-
-	// Add a first string virtual column
-	datecol, _ := blob.AddString("date")
-	ret.Columns = append(ret.Columns, datecol)
-	fields = append(fields, types.Field{
-		Name: "date",
-		Attributes: types.FieldAttributes{
-			Width: 24,
-		},
-	})
-
-	// Add another string virtual column
-	stringcol, _ := blob.AddString("string")
-	ret.Columns = append(ret.Columns, stringcol)
-	fields = append(fields, types.Field{
-		Name: "string",
-		Attributes: types.FieldAttributes{
-			Width: 10,
-		},
-	})
-
-	eventStruct.Fields = append(eventStruct.Fields, fields...)
-	ret.GadgetMetadata.Structs[*eventStructureName] = *eventStruct
+	//	// Add some extra columns here, like from wasm
+	//	// TODO: There is an architectural issue with this approach, the instance of NewBlobEvent()
+	//	// cannot be passed to the tracer instance, so there is some code duplication and the code
+	//	// in both places has to match in order to work.
+	//	blob := types.NewBlobEvent()
+	//
+	//	eventStructureName, eventStruct := getAnyMapElem(ret.GadgetMetadata.Structs)
+	//	if eventStruct == nil {
+	//		return nil, fmt.Errorf("struct not found in gadget metadata")
+	//	}
+	//
+	//	fields := []types.Field{}
+	//
+	//	// any column
+	//	uint64col, _ := types.AddField[uint64](blob, "uint64col")
+	//	ret.Columns = append(ret.Columns, uint64col)
+	//	fields = append(fields, types.Field{
+	//		Name: "uint64col",
+	//		Attributes: types.FieldAttributes{
+	//			Width: 10,
+	//		},
+	//	})
+	//
+	//	// int32 column
+	//	int32col, _ := types.AddField[uint32](blob, "myint32")
+	//	ret.Columns = append(ret.Columns, int32col)
+	//	fields = append(fields, types.Field{
+	//		Name: "myint32",
+	//		Attributes: types.FieldAttributes{
+	//			Width: 10,
+	//		},
+	//	})
+	//
+	//	// Add a first string virtual column
+	//	datecol, _ := blob.AddString("date")
+	//	ret.Columns = append(ret.Columns, datecol)
+	//	fields = append(fields, types.Field{
+	//		Name: "date",
+	//		Attributes: types.FieldAttributes{
+	//			Width: 24,
+	//		},
+	//	})
+	//
+	//	// Add another string virtual column
+	//	stringcol, _ := blob.AddString("string")
+	//	ret.Columns = append(ret.Columns, stringcol)
+	//	fields = append(fields, types.Field{
+	//		Name: "string",
+	//		Attributes: types.FieldAttributes{
+	//			Width: 10,
+	//		},
+	//	})
+	//
+	//	eventStruct.Fields = append(eventStruct.Fields, fields...)
+	//	ret.GadgetMetadata.Structs[*eventStructureName] = *eventStruct
 
 	return ret, nil
 }
@@ -313,6 +313,7 @@ func fillTypeHints(spec *ebpf.CollectionSpec, params map[string]types.EBPFParam)
 }
 
 func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types.GadgetInfo, error) {
+	fmt.Println("GetGadgetInfo")
 	return getGadgetInfo(params, args, log.StandardLogger())
 }
 
@@ -604,14 +605,14 @@ func (g *GadgetDesc) getColumns(info *types.GadgetInfo) (*columns.Columns[types.
 	}
 
 	ebpfBase := func(ev *types.Event) unsafe.Pointer {
-		return unsafe.Pointer(&ev.Blob[indexBPF][0])
+		return unsafe.Pointer(&ev.Blob[types.IndexBPF][0])
 	}
 	if err := cols.AddFields(ebpfFields, ebpfBase); err != nil {
 		return nil, fmt.Errorf("adding fields: %w", err)
 	}
 
 	blobBase := func(ev *types.Event) unsafe.Pointer {
-		return unsafe.Pointer(&ev.Blob[indexFixed][0])
+		return unsafe.Pointer(&ev.Blob[types.IndexFixed][0])
 	}
 	if err := cols.AddFields(blobFields, blobBase); err != nil {
 		return nil, fmt.Errorf("adding blob fields: %w", err)
@@ -800,7 +801,7 @@ func calculateColumnsForClient(gadgetMetadata *types.GadgetMetadata, progContent
 		case types.L3EndpointTypeName:
 			col := types.ColumnDesc{
 				Name:  member.Name,
-				Index: indexVirtual,
+				Index: types.IndexVirtual,
 				Type:  types.Type{Kind: types.KindL3Endpoint},
 			}
 			columns = append(columns, col)
@@ -809,7 +810,7 @@ func calculateColumnsForClient(gadgetMetadata *types.GadgetMetadata, progContent
 			// Add the column that is enriched
 			col := types.ColumnDesc{
 				Name:  member.Name,
-				Index: indexVirtual,
+				Index: types.IndexVirtual,
 				Type:  types.Type{Kind: types.KindL4Endpoint},
 			}
 			columns = append(columns, col)
@@ -817,7 +818,7 @@ func calculateColumnsForClient(gadgetMetadata *types.GadgetMetadata, progContent
 		case types.TimestampTypeName:
 			col := types.ColumnDesc{
 				Name:  member.Name,
-				Index: indexVirtual,
+				Index: types.IndexVirtual,
 				Type:  types.Type{Kind: types.KindTimestamp},
 			}
 			columns = append(columns, col)

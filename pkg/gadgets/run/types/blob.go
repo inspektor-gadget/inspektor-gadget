@@ -1,16 +1,15 @@
-package tracer
+package types
 
 import (
 	"reflect"
 	"unsafe"
-
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	//"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
 )
 
 const (
-	indexVirtual = -1
-	indexBPF     = 0
-	indexFixed   = 1
+	IndexVirtual = -1
+	IndexBPF     = 0
+	IndexFixed   = 1
 )
 
 type BlobEvent struct {
@@ -24,7 +23,7 @@ type BlobEvent struct {
 
 func NewBlobEvent() *BlobEvent {
 	return &BlobEvent{
-		lastIndex: indexFixed + 1,
+		lastIndex: IndexFixed + 1,
 	}
 }
 
@@ -33,34 +32,34 @@ func (e *BlobEvent) Allocate() {
 	e.blob[1] = make([]byte, e.lastOffset)
 }
 
-func reflectTypeToKind(typ reflect.Type) types.Kind {
+func reflectTypeToKind(typ reflect.Type) Kind {
 	switch typ.Kind() {
 	case reflect.Int8:
-		return types.KindInt8
+		return KindInt8
 	case reflect.Int16:
-		return types.KindInt16
+		return KindInt16
 	case reflect.Int32:
-		return types.KindInt32
+		return KindInt32
 	case reflect.Int64:
-		return types.KindInt64
+		return KindInt64
 	case reflect.Uint8:
-		return types.KindUint8
+		return KindUint8
 	case reflect.Uint16:
-		return types.KindUint16
+		return KindUint16
 	case reflect.Uint32:
-		return types.KindUint32
+		return KindUint32
 	case reflect.Uint64:
-		return types.KindUint64
+		return KindUint64
 	case reflect.Float32:
-		return types.KindFloat32
+		return KindFloat32
 	case reflect.Float64:
-		return types.KindFloat64
+		return KindFloat64
 	case reflect.Bool:
-		return types.KindBool
+		return KindBool
 	case reflect.String:
-		return types.KindString
+		return KindString
 	default:
-		return types.KindNone
+		return KindNone
 	}
 }
 
@@ -70,37 +69,37 @@ type FieldType interface {
 		float32 | float64 | bool
 }
 
-func AddField[T FieldType](e *BlobEvent, name string) (types.ColumnDesc, func(ev *BlobEvent, v T)) {
+func AddField[T FieldType](e *BlobEvent, name string) (ColumnDesc, func(ev *BlobEvent, v T)) {
 	offset := e.lastOffset
 
 	var zero T
 	typ := reflect.TypeOf(zero)
 
-	col := types.ColumnDesc{
+	col := ColumnDesc{
 		Name: name,
-		Type: types.Type{
+		Type: Type{
 			Kind: reflectTypeToKind(typ),
 		},
 		Offset: offset,
-		Index:  indexFixed,
+		Index:  IndexFixed,
 	}
 
 	e.lastOffset += typ.Size()
 
 	setter := func(ev *BlobEvent, v T) {
-		*(*T)(unsafe.Pointer(&ev.blob[indexFixed][offset])) = v
+		*(*T)(unsafe.Pointer(&ev.blob[IndexFixed][offset])) = v
 	}
 
 	return col, setter
 }
 
-func (e *BlobEvent) AddString(name string) (types.ColumnDesc, func(ev *BlobEvent, v string)) {
+func (e *BlobEvent) AddString(name string) (ColumnDesc, func(ev *BlobEvent, v string)) {
 	index := e.lastIndex
 
-	col := types.ColumnDesc{
+	col := ColumnDesc{
 		Name: name,
-		Type: types.Type{
-			Kind: types.KindString,
+		Type: Type{
+			Kind: KindString,
 		},
 		Index: index,
 	}
