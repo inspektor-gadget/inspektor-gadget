@@ -138,8 +138,22 @@ int BPF_KPROBE(ig_trace_cap_e, const struct cred *cred,
 	args.current_userns =
 		(u64)BPF_CORE_READ(task, real_cred, user_ns, ns.inum);
 	args.target_userns = (u64)BPF_CORE_READ(targ_ns, ns.inum);
-	BPF_CORE_READ_INTO(&args.cap_effective, task, real_cred,
-			   cap_effective.cap[0]);
+	/*
+	 * cap_effective has kernel_cap_t for type.
+	 * This type definition changed along the time:
+	 * 1. It was defined as a __u32 in:
+	 * https://github.com/torvalds/linux/commit/1da177e4c3f4
+	 * 2. It later was modified to be an array of __u32, so 64 bits kernel
+	 * can use 64 bits for capabilities while supporting legacy 32 bits
+	 * ones:
+	 * https://github.com/torvalds/linux/commit/e338d263a76a
+	 * 3. It was recently defined to be a simple u64:
+	 * https://github.com/torvalds/linux/commit/f122a08b197d
+	 * BPF_CORE_READ_INTO() will handle the different size for us and in any
+	 * case, we define args.cap_effective as u64 which is enough to contain
+	 * the information.
+	 */
+	BPF_CORE_READ_INTO(&args.cap_effective, task, real_cred, cap_effective);
 	args.cap = cap;
 	args.cap_opt = cap_opt;
 	bpf_map_update_elem(&start, &pid_tgid, &args, 0);
