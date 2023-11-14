@@ -57,6 +57,65 @@ ubuntu-hirsute         default                mypod2                 mypod2     
 ubuntu-hirsute         default                mypod2                 mypod2                 242164  cat         0        0        3   /dev/null
 ```
 
+### Private registries in Kubernetes
+
+In order to use private registries, you will need a [Kubernetes secret](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/) having credentials to access the registry.
+
+There are two different ways to use this support:
+
+#### Defining a default secret when deploying Inspektor Gadget
+
+This approach creates a secret that will be used by default when pulling the gadget images. It requires to have a `docker-registry` secret named `gadget-pull-secret` in the `gadget` namespace:
+
+Let's create the `gadget` namespace if it doesn't exist:
+
+```bash
+$ kubectl create namespace gadget
+```
+
+then create the secret:
+
+```bash
+$ kubectl create secret docker-registry gadget-pull-secret -n gadget --docker-server=MYSERVER --docker-username=MYUSERNAME --docker-password=MYPASSWORD
+```
+
+or you can create the secret from a file:
+
+```bash
+$ kubectl create secret docker-registry gadget-pull-secret -n gadget --from-file=.dockerconfigjson=$HOME/.docker/config.json
+```
+
+then, deploy Inspektor Gadget:
+
+```bash
+$ kubectl gadget deploy ...
+```
+
+this secret will be used by default when running a gadget:
+
+
+```bash
+$ kubectl gadget run myprivateregistry.io/trace_tcpconnect:latest
+```
+
+#### Specifying the secret when running a gadget
+
+It's possible to pass a secret each time a gadget is run, you'd need to follow a similar approach as above to create the secret:
+
+```bash
+# from credentials
+$ kubectl create secret docker-registry my-pull-secret -n gadget --docker-server=MYSERVER --docker-username=MYUSERNAME --docker-password=MYPASSWORD
+
+# from a file
+$ kubectl create secret docker-registry my-pull-secret -n gadget --from-file=.dockerconfigjson=$HOME/.docker/config.json
+```
+
+Then, it can be used each time a gadget is run:
+
+```bash
+$ kubectl gadget run myprivateregistry.io/trace_tcpconnect:latest --pull-secret my-pull-secret
+```
+
 ## With `ig`
 
 ``` bash
