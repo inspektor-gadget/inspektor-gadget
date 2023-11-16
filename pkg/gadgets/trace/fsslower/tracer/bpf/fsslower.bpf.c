@@ -15,17 +15,28 @@ const volatile __u64 min_lat_ns = 0;
 // we need this to make sure the compiler doesn't remove our struct
 const struct event *unusedevent __attribute__((unused));
 
+struct data_key {
+	__u32 tid;
+	/*
+	 * We need to take into account the operation to avoid losing some of
+	 * them.
+	 * Indeed, it is possible to enter statfs syscall while already being in
+	 * an open one.
+	 */
+	enum fs_file_op op;
+};
+
 struct data {
 	__u64 ts;
 	loff_t start;
 	loff_t end;
-	struct file *fp;
+	struct dentry *dentry;
 };
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_ENTRIES);
-	__type(key, __u32);
+	__type(key, struct data_key);
 	__type(value, struct data);
 } starts SEC(".maps");
 
@@ -35,15 +46,17 @@ struct {
 	__uint(value_size, sizeof(__u32));
 } events SEC(".maps");
 
-static int probe_entry(struct file *fp, loff_t start, loff_t end)
+static int probe_entry(struct dentry *dentry, enum fs_file_op op, loff_t start,
+		       loff_t end)
 {
 	__u64 pid_tgid = bpf_get_current_pid_tgid();
 	__u32 pid = pid_tgid >> 32;
 	__u32 tid = (__u32)pid_tgid;
 	struct data data;
+	struct data_key key = { .tid = tid, .op = op };
 	u64 mntns_id;
 
-	if (!fp)
+	if (!dentry)
 		return 0;
 
 	// TODO: Enabling this conditional causes an error while loading the program
@@ -59,8 +72,8 @@ static int probe_entry(struct file *fp, loff_t start, loff_t end)
 	data.ts = bpf_ktime_get_ns();
 	data.start = start;
 	data.end = end;
-	data.fp = fp;
-	bpf_map_update_elem(&starts, &tid, &data, BPF_ANY);
+	data.dentry = dentry;
+	bpf_map_update_elem(&starts, &key, &data, BPF_ANY);
 	return 0;
 }
 
@@ -73,18 +86,18 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	const __u8 *file_name;
 	struct data *datap;
 	struct event event = {};
+	struct data_key key = { .tid = tid, .op = op };
 	struct dentry *dentry;
-	struct file *fp;
 	u64 mntns_id;
 
 	//if (target_pid && target_pid != pid)
 	//	return 0;
 
-	datap = bpf_map_lookup_elem(&starts, &tid);
+	datap = bpf_map_lookup_elem(&starts, &key);
 	if (!datap)
 		return 0;
 
-	bpf_map_delete_elem(&starts, &tid);
+	bpf_map_delete_elem(&starts, &key);
 
 	end_ns = bpf_ktime_get_ns();
 	delta_ns = end_ns - datap->ts;
@@ -102,8 +115,7 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 	event.op = op;
 	event.mntns_id = gadget_get_mntns_id();
 	event.timestamp = bpf_ktime_get_boot_ns();
-	fp = datap->fp;
-	dentry = BPF_CORE_READ(fp, f_path.dentry);
+	dentry = datap->dentry;
 	file_name = BPF_CORE_READ(dentry, d_name.name);
 	bpf_probe_read_kernel_str(&event.file, sizeof(event.file), file_name);
 	bpf_get_current_comm(&event.task, sizeof(event.task));
@@ -115,10 +127,10 @@ static int probe_exit(void *ctx, enum fs_file_op op, ssize_t size)
 SEC("kprobe/dummy_file_read")
 int BPF_KPROBE(ig_fssl_read_e, struct kiocb *iocb)
 {
-	struct file *fp = BPF_CORE_READ(iocb, ki_filp);
+	struct dentry *dentry = BPF_CORE_READ(iocb, ki_filp, f_path.dentry);
 	loff_t start = BPF_CORE_READ(iocb, ki_pos);
 
-	return probe_entry(fp, start, 0);
+	return probe_entry(dentry, F_READ, start, 0);
 }
 
 SEC("kretprobe/dummy_file_read")
@@ -130,10 +142,10 @@ int BPF_KRETPROBE(ig_fssl_read_x, ssize_t ret)
 SEC("kprobe/dummy_file_write")
 int BPF_KPROBE(ig_fssl_wr_e, struct kiocb *iocb)
 {
-	struct file *fp = BPF_CORE_READ(iocb, ki_filp);
+	struct dentry *dentry = BPF_CORE_READ(iocb, ki_filp, f_path.dentry);
 	loff_t start = BPF_CORE_READ(iocb, ki_pos);
 
-	return probe_entry(fp, start, 0);
+	return probe_entry(dentry, F_WRITE, start, 0);
 }
 
 SEC("kretprobe/dummy_file_write")
@@ -145,7 +157,8 @@ int BPF_KRETPROBE(ig_fssl_wr_x, ssize_t ret)
 SEC("kprobe/dummy_file_open")
 int BPF_KPROBE(ig_fssl_open_e, struct inode *inode, struct file *file)
 {
-	return probe_entry(file, 0, 0);
+	struct dentry *dentry = BPF_CORE_READ(file, f_path.dentry);
+	return probe_entry(dentry, F_OPEN, 0, 0);
 }
 
 SEC("kretprobe/dummy_file_open")
@@ -157,13 +170,26 @@ int BPF_KRETPROBE(ig_fssl_open_x)
 SEC("kprobe/dummy_file_sync")
 int BPF_KPROBE(ig_fssl_sync_e, struct file *file, loff_t start, loff_t end)
 {
-	return probe_entry(file, start, end);
+	struct dentry *dentry = BPF_CORE_READ(file, f_path.dentry);
+	return probe_entry(dentry, F_FSYNC, start, end);
 }
 
 SEC("kretprobe/dummy_file_sync")
 int BPF_KRETPROBE(ig_fssl_sync_x)
 {
 	return probe_exit(ctx, F_FSYNC, 0);
+}
+
+SEC("kprobe/dummy_file_statfs")
+int BPF_KPROBE(ig_fssl_statfs_e, struct dentry *dentry, struct kstatfs *buf)
+{
+	return probe_entry(dentry, F_STATFS, 0, 0);
+}
+
+SEC("kretprobe/dummy_file_statfs")
+int BPF_KRETPROBE(ig_fssl_statfs_x)
+{
+	return probe_exit(ctx, F_STATFS, 0);
 }
 
 // Comment out the fentry/fexit functions as we don't support them yet.
