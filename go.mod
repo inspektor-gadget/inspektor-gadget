@@ -64,7 +64,7 @@ require (
 	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/cri-api v0.28.3
+	k8s.io/cri-api v0.28.4
 	oras.land/oras-go/v2 v2.3.1
 )
 
