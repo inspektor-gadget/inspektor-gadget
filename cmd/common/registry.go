@@ -238,41 +238,21 @@ func buildCommandFromGadget(
 			}
 			defer runtime.Close()
 
-			// TODO: This is a best effort approach to remove all the things that are
-			// related to args. Please notice that flags from the gadget haven't been
-			// added at this point, so it's not possible to use any logic to check more
-			// details about them.
-			onlyArgs := []string{}
-			for i := 0; i < len(args); i++ {
-				arg := args[i]
-				if arg[0] == '-' {
-					// --bar=foo: skip them
-					if strings.Contains(arg, "=") {
-						continue
-					}
-
-					// --bar with default value, skip it without skipping next arg
-					name := strings.TrimLeft(arg, "-")
-
-					f := cmd.Flags().Lookup(name)
-					// If NoOptDefVal was set we just continue to the next args value in the slice
-					// Example: `--help` would be such a value. No need to specify `true` after it
-					// See https://pkg.go.dev/github.com/spf13/pflag#readme-setting-no-option-default-values-for-flags
-					if f != nil && f.NoOptDefVal != "" {
-						continue
-					}
-
-					// In other cases skip next argument e.g: `--bar foo` would now skip `foo`
-					i++
-					continue
-				}
-
-				onlyArgs = append(onlyArgs, arg)
+			// we need to re-enable flag parsing, as utils.ParseEarlyFlags() would
+			// not do anything otherwise
+			cmd.DisableFlagParsing = false
+			// Parse flags that are known at this time, like the ones we get from the gadget descriptor
+			if err := utils.ParseEarlyFlags(cmd, args); err != nil {
+				return err
 			}
+
+			// gadget parameters that are only available after contacting the server
+			extraGadgetParams := make(params.Params, 0)
 
 			// Before running the gadget, we need to get the gadget info to perform
 			// different tasks like creating the parser and setting flags for the
 			// gadget's parameters.
+			onlyArgs := cmd.Flags().Args()
 			if isRunGadget && len(onlyArgs) > 0 {
 				var err error
 				runGadgetInfo, err = runtime.GetGadgetInfo(context.TODO(), gadgetDesc, gadgetParams, onlyArgs)
@@ -293,7 +273,7 @@ func buildCommandFromGadget(
 					ebpfParams.Add(desc.ToParam())
 				}
 
-				gadgetParams.Add(ebpfParams...)
+				extraGadgetParams.Add(ebpfParams...)
 			}
 			// add flags
 			if gType != gadgets.TypeOneShot {
@@ -308,13 +288,10 @@ func buildCommandFromGadget(
 			}
 
 			// Add params matching the gadget type
-			gadgetParams.Add(*gadgets.GadgetParams(gadgetDesc, gType, parser).ToParams()...)
+			extraGadgetParams.Add(*gadgets.GadgetParams(gadgetDesc, gType, parser).ToParams()...)
 
-			// Add runtime flags
-			AddFlags(cmd, runtimeParams, skipParams, runtime)
-
-			// Add gadget flags
-			AddFlags(cmd, gadgetParams, skipParams, runtime)
+			// Add extra gadget flags
+			AddFlags(cmd, &extraGadgetParams, skipParams, runtime)
 
 			outputFormats.Append(gadgets.OutputFormats{
 				OutputModeJSON: {
@@ -375,9 +352,8 @@ func buildCommandFromGadget(
 				strings.Join(outputFormatsHelp, "\n")+"\n\n",
 			)
 
-			// we need to re-enable flag parsing, as cmd.ParseFlags() would not
-			// do anything otherwise
-			cmd.DisableFlagParsing = false
+			gadgetParams.Add(extraGadgetParams...)
+
 			return cmd.ParseFlags(args)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -725,8 +701,14 @@ func buildCommandFromGadget(
 		},
 	}
 
-	// TODO: why moving this inside PreRunE breaks the namespace parameter?
-	// It's always "default".
+	// Add flags known at this time, others will be added in PreRunE
+
+	// Add runtime flags
+	AddFlags(cmd, runtimeParams, skipParams, runtime)
+
+	// Add gadget flags
+	AddFlags(cmd, gadgetParams, skipParams, runtime)
+
 	// Add operator flags
 	for _, operatorParams := range operatorsParamsCollection {
 		AddFlags(cmd, operatorParams, skipParams, runtime)

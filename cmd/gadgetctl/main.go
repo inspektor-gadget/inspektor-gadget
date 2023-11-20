@@ -69,7 +69,7 @@ func main() {
 		// sure that --remote-address has already been parsed when calling
 		// InitDeployInfo(), so it can target the specified address
 
-		err := commonutils.ParseEarlyFlags(rootCmd)
+		err := commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
 		if err != nil {
 			// Analogous to cobra error message
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
