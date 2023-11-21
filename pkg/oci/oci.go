@@ -254,15 +254,9 @@ func TagGadgetImage(ctx context.Context, srcImage, dstImage string) (*GadgetImag
 	return imageDesc, nil
 }
 
-// ListGadgetImages lists all the gadget images.
-func ListGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
-	ociStore, err := getLocalOciStore()
-	if err != nil {
-		return nil, fmt.Errorf("getting oci store: %w", err)
-	}
-
-	imageColumns := []*GadgetImageDesc{}
-	err = ociStore.Tags(ctx, "", func(tags []string) error {
+func listGadgetImages(ctx context.Context, store *oci.Store) ([]*GadgetImageDesc, error) {
+	images := []*GadgetImageDesc{}
+	err := store.Tags(ctx, "", func(tags []string) error {
 		for _, fullTag := range tags {
 			repository, err := getRepositoryFromImage(fullTag)
 			if err != nil {
@@ -274,26 +268,38 @@ func ListGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
 				log.Debugf("getting tag from image %q: %s", fullTag, err)
 				continue
 			}
-			imageColumn := &GadgetImageDesc{
+			image := &GadgetImageDesc{
 				Repository: repository,
 				Tag:        tag,
 			}
 
-			desc, err := ociStore.Resolve(ctx, fullTag)
+			desc, err := store.Resolve(ctx, fullTag)
 			if err != nil {
 				log.Debugf("Found tag %q but couldn't get a descriptor for it: %v", fullTag, err)
 				continue
 			}
-			imageColumn.Digest = desc.Digest.String()
-			imageColumns = append(imageColumns, imageColumn)
+			image.Digest = desc.Digest.String()
+			images = append(images, image)
 		}
 		return nil
 	})
+
+	return images, err
+}
+
+// ListGadgetImages lists all the gadget images.
+func ListGadgetImages(ctx context.Context) ([]*GadgetImageDesc, error) {
+	ociStore, err := getLocalOciStore()
+	if err != nil {
+		return nil, fmt.Errorf("getting oci store: %w", err)
+	}
+
+	images, err := listGadgetImages(ctx, ociStore)
 	if err != nil {
 		return nil, fmt.Errorf("listing all tags: %w", err)
 	}
 
-	return imageColumns, nil
+	return images, nil
 }
 
 func getTagFromImage(image string) (string, error) {
