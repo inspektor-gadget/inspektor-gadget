@@ -212,7 +212,14 @@ func installNRIHooks() error {
 			return fmt.Errorf("unmarshalling JSON %s: %w", hostConfigPath, err)
 		}
 
-		configList.Plugins = append(configList.Plugins, &nriv1.Plugin{Type: nriGadgetName})
+		nriGadgetPluginConf := fmt.Sprintf(`{"socketFile": "/run/%s-gadgettracermanager.socket"}`, namespace)
+
+		nriGadgetPlugin := &nriv1.Plugin{
+			Type: nriGadgetName,
+			Conf: json.RawMessage(nriGadgetPluginConf),
+		}
+
+		configList.Plugins = append(configList.Plugins, nriGadgetPlugin)
 
 		content, err = json.Marshal(configList)
 		if err != nil {
@@ -345,9 +352,10 @@ func main() {
 		log.Fatalf("changing directory: %v", err)
 	}
 
-	for _, socket := range []string{"/run/gadgettracermanager.socket", "/run/gadgetservice.socket"} {
-		os.Remove(socket)
-	}
+	gadgetNamespace := os.Getenv("GADGET_NAMESPACE")
+
+	instanceSocket := fmt.Sprintf("/run/%s-gadgettracermanager.socket", gadgetNamespace)
+	os.Remove(instanceSocket)
 
 	args := []string{
 		"gadgettracermanager",
@@ -355,6 +363,7 @@ func main() {
 		fmt.Sprintf("-hook-mode=%s", gadgetTracerManagerHookMode),
 		"-controller",
 		fmt.Sprintf("-fallback-podinformer=%s", os.Getenv("INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER")),
+		fmt.Sprintf("-socketfile=%s", instanceSocket),
 	}
 
 	err = syscall.Exec("/bin/gadgettracermanager", args, os.Environ())

@@ -4,7 +4,7 @@
         {
             "type": "{{.namespace}}-nrigadget",
             "conf": {
-                "socketFile": "/run/gadgettracermanager.socket"
+                "socketFile": "/run/{{.namespace}}-gadgettracermanager.socket"
             }
         }
     ]

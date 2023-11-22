@@ -134,6 +134,7 @@ spec:
               command:
                 - /bin/gadgettracermanager
                 - -liveness
+                - -socketfile=/run/gadget-gadgettracermanager.socket
             periodSeconds: 5
             timeoutSeconds: 2
           readinessProbe:
@@ -141,6 +142,7 @@ spec:
               command:
                 - /bin/gadgettracermanager
                 - -liveness
+                - -socketfile=/run/gadget-gadgettracermanager.socket
             periodSeconds: 5
             timeoutSeconds: 2
           env:

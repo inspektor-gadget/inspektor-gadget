@@ -89,8 +89,9 @@ func main() {
 	removeCRIOHooks()
 	removeNRIHooks()
 
+	gadgetNamespace := os.Getenv("GADGET_NAMESPACE")
 	os.RemoveAll("/sys/fs/bpf/gadget/")
-	os.Remove("/run/gadgettracermanager.socket")
+	os.Remove(fmt.Sprintf("/run/%s-gadgettracermanager.socket", gadgetNamespace))
 
 	log.Infof("Cleanup completed")
 }

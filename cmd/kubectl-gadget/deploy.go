@@ -456,9 +456,13 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 			gadgetContainer.ImagePullPolicy = policy
 
+			socketArg := fmt.Sprintf("-socketfile=/run/%s-gadgettracermanager.socket", gadgetNamespace)
 			if !livenessProbe {
 				gadgetContainer.LivenessProbe = nil
+			} else {
+				gadgetContainer.LivenessProbe.Exec.Command = append(gadgetContainer.LivenessProbe.Exec.Command, socketArg)
 			}
+			gadgetContainer.ReadinessProbe.Exec.Command = append(gadgetContainer.ReadinessProbe.Exec.Command, socketArg)
 
 			for i := range gadgetContainer.Env {
 				switch gadgetContainer.Env[i].Name {
