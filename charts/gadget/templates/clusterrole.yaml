@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "gadget.fullname" . }}-cluster-role
+  name: {{ include "gadget.namespace" . }}-gadget-cluster-role
   {{- if not .Values.skipLabels }}
   labels:
     {{- include "gadget.labels" . | nindent 4 }}

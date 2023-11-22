@@ -19,4 +19,7 @@ const (
 	GadgetEnvironmentCRIOSocketpath       string = "INSPEKTOR_GADGET_CRIO_SOCKETPATH"
 	GadgetEnvironmentDockerSocketpath     string = "INSPEKTOR_GADGET_DOCKER_SOCKETPATH"
 	GadgetEnvironmentPodmanSocketpath     string = "INSPEKTOR_GADGET_PODMAN_SOCKETPATH"
+
+	GadgetClusterRoleSuffix        string = "-gadget-cluster-role"
+	GadgetClusterRoleBindingSuffix string = "-gadget-cluster-role-binding"
 )
