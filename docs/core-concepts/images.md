@@ -216,6 +216,29 @@ ghcr.io/inspektor-gadget/trace_exec                   latest                    
 ghcr.io/inspektor-gadget/trace_open                   latest                                                3a23c1f08a8b
 ```
 
+#### `remove`
+
+Remove the given gadget image from the host.
+
+```bash
+$ sudo ig image remove -h
+INFO[0000] Experimental features enabled
+Remove local gadget image
+
+Usage:
+  ig image remove IMAGE [flags]
+
+Flags:
+  -h, --help   help for remove
+
+```
+
+```bash
+$ sudo ig image remove gadget
+INFO[0000] Experimental features enabled
+Successfully removed gadget
+```
+
 #### `pull`
 
 Pull the specified image from a remote registry.
