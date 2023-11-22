@@ -5,7 +5,7 @@
     "args": [
       "sh",
       "-c",
-      "test ! -x /opt/hooks/oci/poststop.sh || /opt/hooks/oci/poststop.sh"
+      "test ! -x /opt/hooks/oci/{{.namespace}}-gadget/poststop.sh || /opt/hooks/oci/{{.namespace}}-gadget/poststop.sh {{.namespace}}"
     ]
   },
   "when": {

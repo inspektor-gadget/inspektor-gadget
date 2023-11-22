@@ -129,35 +129,42 @@ func applyTemplate(filepath string, data map[string]string) error {
 func installCRIOHooks() error {
 	log.Info("Installing hooks scripts on host...")
 
-	path := filepath.Join(host.HostRoot, "opt/hooks/oci")
-	err := os.MkdirAll(path, 0o755)
+	namespace := os.Getenv("GADGET_NAMESPACE")
+	instanceDirname := namespace + "-gadget"
+	optHookPath := filepath.Join(host.HostRoot, "opt/hooks/oci", instanceDirname)
+	err := os.MkdirAll(optHookPath, 0o755)
 	if err != nil {
-		return fmt.Errorf("creating %s: %w", path, err)
+		return fmt.Errorf("creating %s: %w", optHookPath, err)
 	}
 
 	for _, file := range []string{"ocihookgadget", "prestart.sh", "poststop.sh"} {
 		log.Infof("Installing %s", file)
 
-		path := filepath.Join("/opt/hooks/oci", file)
-		destinationPath := filepath.Join(host.HostRoot, path)
-		err := copyFile(destinationPath, path, 0o750)
+		srcPath := filepath.Join("/opt/hooks/oci", file)
+		err := copyFile(optHookPath, srcPath, 0o750)
 		if err != nil {
 			return fmt.Errorf("copying: %w", err)
 		}
 	}
 
-	for _, file := range []string{"etc/containers/oci/hooks.d", "usr/share/containers/oci/hooks.d/"} {
-		hookPath := filepath.Join(host.HostRoot, file)
+	for _, folder := range []string{"etc/containers/oci/hooks.d", "usr/share/containers/oci/hooks.d"} {
+		hookPath := filepath.Join(host.HostRoot, folder)
 
 		log.Infof("Installing OCI hooks configuration in %s", hookPath)
 		os.MkdirAll(hookPath, 0o755)
 		if err != nil {
-			return fmt.Errorf("creating hook path %s: %w", path, err)
+			return fmt.Errorf("creating hook path %s: %w", hookPath, err)
 		}
 
 		errCount := 0
 		for _, config := range []string{"/opt/hooks/crio/gadget-prestart.json", "/opt/hooks/crio/gadget-poststop.json"} {
-			err := copyFile(hookPath, config, 0o640)
+			err = applyTemplate(config, map[string]string{"namespace": namespace})
+			if err != nil {
+				return fmt.Errorf("modifying %q: %w", config, err)
+			}
+
+			dstFilepath := filepath.Join(hookPath, fmt.Sprintf("%s-%s", instanceDirname, filepath.Base(config)))
+			err = copyFile(dstFilepath, config, 0o640)
 			if err != nil {
 				errCount++
 			}
