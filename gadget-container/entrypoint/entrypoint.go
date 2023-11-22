@@ -16,6 +16,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -109,6 +110,21 @@ func installCRIOHooks() error {
 		log.Infof("Installing %s", file)
 
 		path := filepath.Join("/opt/hooks/oci", file)
+
+		if strings.HasSuffix(file, ".sh") {
+			// PoC
+			confContent, err := os.ReadFile(path)
+			if err != nil {
+				return fmt.Errorf("reading %q: %w", file, err)
+			}
+			confContent = bytes.ReplaceAll(confContent, []byte(" gadgettracermanager "), []byte(fmt.Sprintf(" gadgettracermanager-%s ", os.Getenv("GADGET_NAMESPACE"))))
+			err = os.WriteFile(path, confContent, 0o750)
+			if err != nil {
+				return fmt.Errorf("writing %s: %w", path, err)
+			}
+			// -- end of PoC
+		}
+
 		destinationPath := filepath.Join(host.HostRoot, path)
 		err := copyFile(destinationPath, path, 0o750)
 		if err != nil {
@@ -276,15 +292,18 @@ func main() {
 		os.Remove(socket)
 	}
 
+	gadgetNamespace := os.Getenv("GADGET_NAMESPACE")
+	os.Rename("/bin/gadgettracermanager", "/bin/gadgettracermanager-"+gadgetNamespace)
+
 	args := []string{
-		"gadgettracermanager",
+		"gadgettracermanager-" + gadgetNamespace,
 		"-serve",
 		fmt.Sprintf("-hook-mode=%s", gadgetTracerManagerHookMode),
 		"-controller",
 		fmt.Sprintf("-fallback-podinformer=%s", os.Getenv("INSPEKTOR_GADGET_OPTION_FALLBACK_POD_INFORMER")),
 	}
 
-	err = syscall.Exec("/bin/gadgettracermanager", args, os.Environ())
+	err = syscall.Exec("/bin/gadgettracermanager-"+gadgetNamespace, args, os.Environ())
 	if err != nil {
 		log.Fatalf("exec'ing gadgettracermanager: %v", err)
 	}

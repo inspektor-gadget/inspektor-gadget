@@ -433,7 +433,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 			if !livenessProbe {
 				gadgetContainer.LivenessProbe = nil
+			} else {
+				// PoC
+				gadgetContainer.LivenessProbe.Exec.Command[0] = "/bin/gadgettracermanager-" + gadgetNamespace
 			}
+			gadgetContainer.ReadinessProbe.Exec.Command[0] = "/bin/gadgettracermanager-" + gadgetNamespace
 
 			for i := range gadgetContainer.Env {
 				switch gadgetContainer.Env[i].Name {
