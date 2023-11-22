@@ -16,15 +16,18 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
+	"text/template"
 
 	nriv1 "github.com/containerd/nri/types/v1"
 	log "github.com/sirupsen/logrus"
@@ -100,6 +103,29 @@ func copyFile(destination, source string, filemode fs.FileMode) error {
 	return nil
 }
 
+func applyTemplate(filepath string, data map[string]string) error {
+	hookContent, err := os.ReadFile(filepath)
+	if err != nil {
+		return fmt.Errorf("reading %q: %w", filepath, err)
+	}
+	tmpl, err := template.New("").Parse(string(hookContent))
+	if err != nil {
+		return fmt.Errorf("parsing template: %w", err)
+	}
+
+	var templateResult bytes.Buffer
+	err = tmpl.Execute(&templateResult, data)
+	if err != nil {
+		return fmt.Errorf("executing template: %w", err)
+	}
+
+	err = os.WriteFile(filepath, templateResult.Bytes(), 0o640)
+	if err != nil {
+		return fmt.Errorf("writing %q: %w", filepath, err)
+	}
+	return nil
+}
+
 func installCRIOHooks() error {
 	log.Info("Installing hooks scripts on host...")
 
@@ -156,9 +182,17 @@ func installNRIHooks() error {
 		return fmt.Errorf("creating %s: %w", destinationPath, err)
 	}
 
-	err = copyFile(destinationPath, "/opt/hooks/nri/nrigadget", 0o640)
+	namespace := os.Getenv("GADGET_NAMESPACE")
+	nriGadgetName := fmt.Sprintf("%s-nrigadget", namespace)
+
+	err = copyFile(path.Join(destinationPath, nriGadgetName), "/opt/hooks/nri/nrigadget", 0o640)
 	if err != nil {
 		return fmt.Errorf("copying: %w", err)
+	}
+
+	err = applyTemplate("/opt/hooks/nri/conf.json", map[string]string{"namespace": namespace})
+	if err != nil {
+		return fmt.Errorf("modifying \"/opt/hooks/nri/conf.json\": %w", err)
 	}
 
 	hostConfigPath := filepath.Join(host.HostRoot, "etc/nri/conf.json")
@@ -171,7 +205,7 @@ func installNRIHooks() error {
 			return fmt.Errorf("unmarshalling JSON %s: %w", hostConfigPath, err)
 		}
 
-		configList.Plugins = append(configList.Plugins, &nriv1.Plugin{Type: "nrigadget"})
+		configList.Plugins = append(configList.Plugins, &nriv1.Plugin{Type: nriGadgetName})
 
 		content, err = json.Marshal(configList)
 		if err != nil {

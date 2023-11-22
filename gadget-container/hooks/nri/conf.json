@@ -2,7 +2,7 @@
     "version": "0.1",
     "plugins": [
         {
-            "type": "nrigadget",
+            "type": "{{.namespace}}-nrigadget",
             "conf": {
                 "socketFile": "/run/gadgettracermanager.socket"
             }
