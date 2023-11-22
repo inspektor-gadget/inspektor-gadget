@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"runtime"
 	"sync"
 
@@ -258,7 +259,7 @@ func NewServer(conf *Conf) (*GadgetTracerManager, error) {
 		}
 
 		var err error
-		if g.containersMap, err = containersmap.NewContainersMap(gadgets.PinPath); err != nil {
+		if g.containersMap, err = containersmap.NewContainersMap(path.Join(gadgets.PinBasePath, fmt.Sprintf("%s-gadget", conf.GadgetNamespace))); err != nil {
 			return nil, fmt.Errorf("creating containers map: %w", err)
 		}
 
@@ -338,6 +339,7 @@ type Conf struct {
 	HookMode            string
 	FallbackPodInformer bool
 	TestOnly            bool
+	GadgetNamespace     string
 }
 
 // Close releases any resource that could be in use by the tracer manager, like

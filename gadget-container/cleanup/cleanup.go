@@ -18,11 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	nriv1 "github.com/containerd/nri/types/v1"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -90,7 +92,7 @@ func main() {
 	removeNRIHooks()
 
 	gadgetNamespace := os.Getenv("GADGET_NAMESPACE")
-	os.RemoveAll("/sys/fs/bpf/gadget/")
+	os.RemoveAll(path.Join(gadgets.PinBasePath, fmt.Sprintf("%s-gadget", gadgetNamespace)))
 	os.Remove(fmt.Sprintf("/run/%s-gadgettracermanager.socket", gadgetNamespace))
 
 	log.Infof("Cleanup completed")

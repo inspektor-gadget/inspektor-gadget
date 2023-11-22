@@ -15,7 +15,7 @@
 package gadgets
 
 const (
-	PinPath = "/sys/fs/bpf/gadget"
+	PinBasePath = "/sys/fs/bpf"
 
 	PerfBufferPages = 64
 
