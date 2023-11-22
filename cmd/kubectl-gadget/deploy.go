@@ -390,6 +390,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	gadgetNamespace := runtimeGlobalParams.Get(utils.ParamGadgetNamespace).AsString()
+	clusterRoleName := gadgetNamespace + "-gadget-cluster-role"
+	clusterRoleBindingName := gadgetNamespace + "-gadget-cluster-role-binding"
 
 	for _, object := range objects {
 		var currentGadgetDS *appsv1.DaemonSet
@@ -484,8 +486,13 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		if sa, isSa := object.(*v1.ServiceAccount); isSa {
 			sa.Namespace = gadgetNamespace
 		}
+		if cr, isCr := object.(*rbacv1.ClusterRole); isCr {
+			cr.Name = clusterRoleName
+		}
 		if crBinding, isCrBinding := object.(*rbacv1.ClusterRoleBinding); isCrBinding {
 			if len(crBinding.Subjects) == 1 {
+				crBinding.Name = clusterRoleBindingName
+				crBinding.RoleRef.Name = clusterRoleName
 				crBinding.Subjects[0].Namespace = gadgetNamespace
 			}
 		}

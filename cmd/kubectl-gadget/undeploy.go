@@ -98,6 +98,8 @@ func runUndeploy(cmd *cobra.Command, args []string) error {
 	n := 7
 
 	gadgetNamespace := runtimeGlobalParams.Get(utils.ParamGadgetNamespace).AsString()
+	clusterRoleName := gadgetNamespace + "-gadget-cluster-role"
+	clusterRoleBindingName := gadgetNamespace + "-gadget-cluster-role-binding"
 
 again:
 	fmt.Println("Removing traces...")
@@ -149,22 +151,22 @@ again:
 	// 3. gadget cluster role binding
 	fmt.Println("Removing cluster role binding...")
 	err = k8sClient.RbacV1().ClusterRoleBindings().Delete(
-		context.TODO(), "gadget-cluster-role-binding", metav1.DeleteOptions{},
+		context.TODO(), clusterRoleBindingName, metav1.DeleteOptions{},
 	)
 	if err != nil && !errors.IsNotFound(err) {
 		errs = append(
-			errs, fmt.Sprintf("failed to remove \"gadget\" cluster role bindings: %s", err),
+			errs, fmt.Sprintf("failed to remove %q cluster role bindings: %s", clusterRoleBindingName, err),
 		)
 	}
 
 	// 4. gadget cluster role
 	fmt.Println("Removing cluster role...")
 	err = k8sClient.RbacV1().ClusterRoles().Delete(
-		context.TODO(), "gadget-cluster-role", metav1.DeleteOptions{},
+		context.TODO(), clusterRoleName, metav1.DeleteOptions{},
 	)
 	if err != nil && !errors.IsNotFound(err) {
 		errs = append(
-			errs, fmt.Sprintf("failed to remove \"gadget\" cluster role: %s", err),
+			errs, fmt.Sprintf("failed to remove %q cluster role: %s", clusterRoleName, err),
 		)
 	}
 
