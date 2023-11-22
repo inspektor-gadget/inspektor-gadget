@@ -15,6 +15,7 @@
 package oci
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -29,16 +30,21 @@ import (
 	"github.com/docker/cli/cli/config/configfile"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	oras_auth "oras.land/oras-go/v2/registry/remote/auth"
+
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
 type AuthOptions struct {
-	AuthFile string
-	Insecure bool
+	AuthFile   string
+	PullSecret string
+	Insecure   bool
 }
 
 const (
@@ -342,8 +348,24 @@ func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 	var cfg *configfile.ConfigFile
 	var err error
 
-	authFileReader, err := os.Open(authOptions.AuthFile)
-	if err != nil {
+	if authOptions.PullSecret != "" {
+		k8sClient, err := k8sutil.NewClientset("")
+		if err != nil {
+			return nil, fmt.Errorf("creating new k8s clientset: %w", err)
+		}
+		gps, err := k8sClient.CoreV1().Secrets("gadget").Get(context.TODO(), authOptions.PullSecret, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("getting secret %q: %w", authOptions.PullSecret, err)
+		}
+		if gps.Type != corev1.SecretTypeDockerConfigJson {
+			return nil, fmt.Errorf("secret %q is not of type %q", authOptions.PullSecret, corev1.SecretTypeDockerConfigJson)
+		}
+
+		cfg, err = config.LoadFromReader(bytes.NewReader(gps.Data[corev1.DockerConfigJsonKey]))
+		if err != nil {
+			return nil, fmt.Errorf("loading auth config: %w", err)
+		}
+	} else if authFileReader, err := os.Open(authOptions.AuthFile); err != nil {
 		// If the AuthFile was not set explicitly, we allow to fall back to the docker auth,
 		// otherwise we fail to avoid masking an error from the user
 		if !errors.Is(err, os.ErrNotExist) || authOptions.AuthFile != DefaultAuthFile {
@@ -358,6 +380,7 @@ func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 		if err != nil {
 			return nil, fmt.Errorf("loading auth config: %w", err)
 		}
+
 	} else {
 		defer authFileReader.Close()
 		cfg, err = config.LoadFromReader(authFileReader)

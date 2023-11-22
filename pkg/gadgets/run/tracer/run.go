@@ -47,6 +47,7 @@ const (
 	authfileParam         = "authfile"
 	insecureParam         = "insecure"
 	pullParam             = "pull"
+	pullSecret            = "pull-secret"
 )
 
 type GadgetDesc struct{}
@@ -104,6 +105,12 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 			},
 			TypeHint: params.TypeString,
 		},
+		{
+			Key:         pullSecret,
+			Title:       "Pull secret",
+			Description: "Secret to use when pulling the gadget image",
+			TypeHint:    params.TypeString,
+		},
 	}
 }
 
@@ -127,8 +134,9 @@ func getGadgetType(spec *ebpf.CollectionSpec,
 
 func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (*types.GadgetInfo, error) {
 	authOpts := &oci.AuthOptions{
-		AuthFile: params.Get(authfileParam).AsString(),
-		Insecure: params.Get(insecureParam).AsBool(),
+		AuthFile:   params.Get(authfileParam).AsString(),
+		PullSecret: params.Get(pullSecret).AsString(),
+		Insecure:   params.Get(insecureParam).AsBool(),
 	}
 	gadget, err := oci.GetGadgetImage(context.TODO(), args[0], authOpts, params.Get(pullParam).AsString())
 	if err != nil {

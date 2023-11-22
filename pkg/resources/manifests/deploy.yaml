@@ -60,6 +60,32 @@ subjects:
     name: gadget
     namespace: gadget
 ---
+# Source: gadget/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gadget-role
+  namespace: gadget
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "secrets" ]
+    # get secrets is needed for retrieving pull secret.
+    verbs: [ "get" ]
+---
+# Source: gadget/templates/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gadget-role-binding
+  namespace: gadget
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gadget-role
+subjects:
+  - kind: ServiceAccount
+    name: gadget
+---
 # Source: gadget/templates/daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
