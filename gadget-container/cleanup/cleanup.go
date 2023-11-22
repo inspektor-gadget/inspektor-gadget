@@ -29,16 +29,14 @@ import (
 )
 
 func removeCRIOHooks() {
-	for _, file := range []string{"ocihookgadget", "prestart.sh", "poststop.sh"} {
-		path := filepath.Join("/opt/hooks/oci", file)
-		hostPath := filepath.Join(host.HostRoot, path)
-		os.Remove(hostPath)
-	}
+	instanceDirname := os.Getenv("GADGET_NAMESPACE") + "-gadget"
+
+	os.RemoveAll(filepath.Join(host.HostRoot, "/opt/hooks/oci/", instanceDirname))
 
 	for _, file := range []string{"etc/containers/oci/hooks.d", "usr/share/containers/oci/hooks.d/"} {
 		hookPath := filepath.Join(host.HostRoot, file)
 		for _, config := range []string{"gadget-prestart.json", "gadget-poststop.json"} {
-			path := filepath.Join(hookPath, config)
+			path := filepath.Join(hookPath, fmt.Sprintf("%s-%s.json", instanceDirname, filepath.Base(config)))
 			os.Remove(path)
 		}
 	}

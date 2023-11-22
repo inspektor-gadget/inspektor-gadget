@@ -101,16 +101,18 @@ func copyFile(destination, source string, filemode fs.FileMode) error {
 func installCRIOHooks() error {
 	log.Info("Installing hooks scripts on host...")
 
-	path := filepath.Join(host.HostRoot, "opt/hooks/oci")
-	err := os.MkdirAll(path, 0o755)
+	instanceDirname := os.Getenv("GADGET_NAMESPACE") + "-gadget"
+	optHookPath := filepath.Join(host.HostRoot, "opt/hooks/oci", instanceDirname)
+	err := os.MkdirAll(optHookPath, 0o755)
 	if err != nil {
-		return fmt.Errorf("creating %s: %w", path, err)
+		return fmt.Errorf("creating %s: %w", optHookPath, err)
 	}
 
 	for _, file := range []string{"ocihookgadget", "prestart.sh", "poststop.sh"} {
 		log.Infof("Installing %s", file)
 
 		srcPath := filepath.Join("/opt/hooks/oci", file)
+		dstDirOnHost := filepath.Join("/opt/hooks/oci", instanceDirname)
 
 		if strings.HasSuffix(file, ".sh") {
 			// PoC
@@ -118,8 +120,8 @@ func installCRIOHooks() error {
 			if err != nil {
 				return fmt.Errorf("reading %q: %w", file, err)
 			}
-			socketArg := fmt.Sprintf(" /opt/hooks/oci/ocihookgadget -socketfile %s -hook ", fmt.Sprintf("/run/%s.gadgettracermanager.socket", os.Getenv("GADGET_NAMESPACE")))
-			confContent = bytes.ReplaceAll(confContent, []byte(" /opt/hooks/oci/ocihookgadget -hook "), []byte(socketArg))
+			newPathWithSocketArg := fmt.Sprintf(" %s/ocihookgadget -socketfile %s ", dstDirOnHost, fmt.Sprintf("/run/%s.gadgettracermanager.socket", os.Getenv("GADGET_NAMESPACE")))
+			confContent = bytes.ReplaceAll(confContent, []byte(" /opt/hooks/oci/ocihookgadget "), []byte(newPathWithSocketArg))
 			confContent = bytes.ReplaceAll(confContent, []byte(" gadgettracermanager "), []byte(fmt.Sprintf(" gadgettracermanager-%s ", os.Getenv("GADGET_NAMESPACE"))))
 			err = os.WriteFile(srcPath, confContent, 0o750)
 			if err != nil {
@@ -128,25 +130,39 @@ func installCRIOHooks() error {
 			// -- end of PoC
 		}
 
-		destinationPath := filepath.Join(host.HostRoot, srcPath)
-		err := copyFile(destinationPath, srcPath, 0o750)
+		dstDirOnPod := filepath.Join(host.HostRoot, dstDirOnHost)
+		err := copyFile(dstDirOnPod, srcPath, 0o750)
 		if err != nil {
 			return fmt.Errorf("copying: %w", err)
 		}
 	}
 
-	for _, file := range []string{"etc/containers/oci/hooks.d", "usr/share/containers/oci/hooks.d/"} {
+	for _, file := range []string{"etc/containers/oci/hooks.d", "usr/share/containers/oci/hooks.d"} {
 		hookPath := filepath.Join(host.HostRoot, file)
 
 		log.Infof("Installing OCI hooks configuration in %s", hookPath)
 		os.MkdirAll(hookPath, 0o755)
 		if err != nil {
-			return fmt.Errorf("creating hook path %s: %w", path, err)
+			return fmt.Errorf("creating hook path %s: %w", hookPath, err)
 		}
 
 		errCount := 0
 		for _, config := range []string{"/opt/hooks/crio/gadget-prestart.json", "/opt/hooks/crio/gadget-poststop.json"} {
-			err := copyFile(hookPath, config, 0o640)
+			// PoC
+			confContent, err := os.ReadFile(config)
+			if err != nil {
+				return fmt.Errorf("reading %q: %w", config, err)
+			}
+			confContent = bytes.ReplaceAll(confContent, []byte("/opt/hooks/oci/prestart.sh"), []byte(filepath.Join("/opt/hooks/oci/", instanceDirname, "prestart.sh")))
+			confContent = bytes.ReplaceAll(confContent, []byte("/opt/hooks/oci/poststop.sh"), []byte(filepath.Join("/opt/hooks/oci/", instanceDirname, "poststop.sh")))
+			err = os.WriteFile(config, confContent, 0o640)
+			if err != nil {
+				return fmt.Errorf("writing %s: %w", config, err)
+			}
+			// -- end of PoC
+
+			dstFilepath := filepath.Join(hookPath, fmt.Sprintf("%s-%s.json", instanceDirname, filepath.Base(config)))
+			err = copyFile(dstFilepath, config, 0o640)
 			if err != nil {
 				errCount++
 			}
