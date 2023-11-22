@@ -437,6 +437,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				switch gadgetContainer.Env[i].Name {
 				case "GADGET_IMAGE":
 					gadgetContainer.Env[i].Value = image
+				case "GADGET_NAMESPACE":
+					gadgetContainer.Env[i].Value = gadgetNamespace
 				case "INSPEKTOR_GADGET_VERSION":
 					gadgetContainer.Env[i].Value = common.Version()
 				case "INSPEKTOR_GADGET_OPTION_HOOK_MODE":

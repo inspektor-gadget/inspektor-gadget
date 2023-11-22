@@ -74,6 +74,8 @@ spec:
                   fieldPath: metadata.uid
             - name: GADGET_IMAGE
               value: "{{ .Values.image.repository }}"
+            - name: GADGET_NAMESPACE
+              value: {{ .Values.config.gadgetNamespace | quote }}
             - name: INSPEKTOR_GADGET_VERSION
               value: {{ include "gadget.image.tag" . | quote }}
             - name: INSPEKTOR_GADGET_OPTION_HOOK_MODE

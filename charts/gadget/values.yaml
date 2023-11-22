@@ -22,6 +22,8 @@ config:
   crioSocketPath: "/run/crio/crio.sock"
   # -- Docker Engine API Unix socket path
   dockerSocketPath: "/run/docker.sock"
+  # -- The namespace of the gadget instance
+  gadgetNamespace: "gadget"
 
   # -- Enable experimental features
   experimental: false
