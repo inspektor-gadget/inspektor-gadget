@@ -15,7 +15,8 @@
 package utils
 
 const (
-	GadgetNamespace string = "gadget"
+	ParamGadgetNamespace   string = "gadget-namespace"
+	DefaultGadgetNamespace string = "gadget"
 
 	GadgetEnvironmentContainerdSocketpath string = "INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"
 	GadgetEnvironmentCRIOSocketpath       string = "INSPEKTOR_GADGET_CRIO_SOCKETPATH"

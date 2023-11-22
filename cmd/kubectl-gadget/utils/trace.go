@@ -1027,7 +1027,7 @@ func genericStreams(
 			cmd := fmt.Sprintf("/bin/gadgettracermanager -call receive-stream -tracerid trace_%s_%s",
 				namespace, name)
 			postProcess.OutStreams[index].Node = nodeName
-			err := ExecPod(client, nodeName, cmd,
+			err := ExecPod(client, nodeName, DefaultGadgetNamespace, cmd,
 				postProcess.OutStreams[index], postProcess.ErrStreams[index])
 			if err == nil {
 				completion <- fmt.Sprintf("Trace completed on node %q", nodeName)

@@ -30,12 +30,12 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/factory"
 )
 
-func ExecPod(client *kubernetes.Clientset, node string, podCmd string, cmdStdout io.Writer, cmdStderr io.Writer) error {
+func ExecPod(client *kubernetes.Clientset, node string, namespace string, podCmd string, cmdStdout io.Writer, cmdStderr io.Writer) error {
 	listOptions := metav1.ListOptions{
 		LabelSelector: "k8s-app=gadget",
 		FieldSelector: "spec.nodeName=" + node + ",status.phase=Running",
 	}
-	pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), listOptions)
+	pods, err := client.CoreV1().Pods(namespace).List(context.TODO(), listOptions)
 	if err != nil {
 		return commonutils.WrapInErrListPods(err)
 	}

@@ -172,6 +172,12 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 				DefaultValue: fmt.Sprintf("%d", api.GadgetServicePort),
 				TypeHint:     params.TypeUint16,
 			},
+			{
+				Key:          utils.ParamGadgetNamespace,
+				Description:  "Namespace where the gadget service is running",
+				DefaultValue: utils.DefaultGadgetNamespace,
+				TypeHint:     params.TypeString,
+			},
 		}...)
 		return p
 	}
@@ -183,7 +189,7 @@ type target struct {
 	node         string
 }
 
-func getGadgetPods(ctx context.Context, nodes []string) ([]target, error) {
+func getGadgetPods(ctx context.Context, nodes []string, gadgetNamespace string) ([]target, error) {
 	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
 	if err != nil {
 		return nil, fmt.Errorf("creating RESTConfig: %w", err)
@@ -195,7 +201,7 @@ func getGadgetPods(ctx context.Context, nodes []string) ([]target, error) {
 	}
 
 	opts := metav1.ListOptions{LabelSelector: "k8s-app=gadget"}
-	pods, err := client.CoreV1().Pods("gadget").List(ctx, opts)
+	pods, err := client.CoreV1().Pods(gadgetNamespace).List(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("getting pods: %w", err)
 	}
@@ -234,7 +240,8 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 	case ConnectionModeKubernetesProxy:
 		// Get nodes to run on
 		nodes := params.Get(ParamNode).AsStringSlice()
-		pods, err := getGadgetPods(ctx, nodes)
+		gadgetNamespace := r.globalParams.Get(utils.ParamGadgetNamespace).AsString()
+		pods, err := getGadgetPods(ctx, nodes, gadgetNamespace)
 		if err != nil {
 			return nil, fmt.Errorf("get gadget pods: %w", err)
 		}
@@ -399,7 +406,8 @@ func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout ti
 	if r.connectionMode == ConnectionModeKubernetesProxy {
 		opts = append(opts, grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			port := r.globalParams.Get(ParamGadgetServiceTCPPort).AsUint16()
-			return NewK8SPortFwdConn(ctx, target, port, timeout)
+			gadgetNamespace := r.globalParams.Get(utils.ParamGadgetNamespace).AsString()
+			return NewK8SPortFwdConn(ctx, gadgetNamespace, target, port, timeout)
 		}))
 	}
 

@@ -112,7 +112,8 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 				LabelSelector: "k8s-app=gadget",
 				FieldSelector: "spec.nodeName=" + params.Node,
 			}
-			pods, err := client.CoreV1().Pods(GadgetNamespace).List(context.TODO(), opts)
+			// This namespace is still hardcoded. It is only used for gadgets which are not run through the registry
+			pods, err := client.CoreV1().Pods(DefaultGadgetNamespace).List(context.TODO(), opts)
 			if err != nil {
 				return commonutils.WrapInErrListPods(err)
 			}

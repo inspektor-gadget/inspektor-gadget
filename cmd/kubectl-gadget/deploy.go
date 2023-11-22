@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,7 +55,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
-	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 )
 
@@ -389,12 +389,15 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
+	gadgetNamespace := runtimeGlobalParams.Get(utils.ParamGadgetNamespace).AsString()
+
 	for _, object := range objects {
 		var currentGadgetDS *appsv1.DaemonSet
 
 		daemonSet, handlingDaemonSet := object.(*appsv1.DaemonSet)
 		if handlingDaemonSet {
 			daemonSet.Spec.Template.Annotations["inspektor-gadget.kinvolk.io/option-hook-mode"] = hookMode
+			daemonSet.Namespace = gadgetNamespace
 
 			// Inspektor Gadget used to require hostPID=true. This is no longer
 			// required, so keep hostPID=false unless the user explicitly
@@ -468,9 +471,21 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 
 			// Get gadget daemon set (if any) to check if it was modified
-			currentGadgetDS, _ = k8sClient.AppsV1().DaemonSets(utils.GadgetNamespace).Get(
+			currentGadgetDS, _ = k8sClient.AppsV1().DaemonSets(gadgetNamespace).Get(
 				context.TODO(), "gadget", metav1.GetOptions{},
 			)
+		}
+
+		if ns, isNs := object.(*v1.Namespace); isNs {
+			ns.Name = gadgetNamespace
+		}
+		if sa, isSa := object.(*v1.ServiceAccount); isSa {
+			sa.Namespace = gadgetNamespace
+		}
+		if crBinding, isCrBinding := object.(*rbacv1.ClusterRoleBinding); isCrBinding {
+			if len(crBinding.Subjects) == 1 {
+				crBinding.Subjects[0].Namespace = gadgetNamespace
+			}
 		}
 
 		if printOnly {
@@ -515,7 +530,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	// The below code (particularly how to use UntilWithSync) is highly
 	// inspired from kubectl wait source code:
 	// https://github.com/kubernetes/kubectl/blob/b5fe0f6e9c65ea95a2118746b7e04822255d76c2/pkg/cmd/wait/wait.go#L364
-	daemonSetInterface := k8sClient.AppsV1().DaemonSets(utils.GadgetNamespace)
+	daemonSetInterface := k8sClient.AppsV1().DaemonSets(gadgetNamespace)
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			options.LabelSelector = "k8s-app=gadget"
@@ -535,7 +550,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	_, err = watchtools.UntilWithSync(ctx, lw, &appsv1.DaemonSet{}, nil, func(event watch.Event) (bool, error) {
 		switch event.Type {
 		case watch.Deleted:
-			return false, fmt.Errorf("DaemonSet from namespace %s should not be deleted", utils.GadgetNamespace)
+			return false, fmt.Errorf("DaemonSet from namespace %s should not be deleted", gadgetNamespace)
 		case watch.Modified:
 			daemonSet, _ := event.Object.(*appsv1.DaemonSet)
 			status := daemonSet.Status
@@ -561,17 +576,15 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		if utilwait.Interrupted(err) && debug {
 			fmt.Println("DUMP PODS:")
-			fmt.Println(getGadgetPodsDebug(k8sClient))
+			fmt.Println(getGadgetPodsDebug(k8sClient, gadgetNamespace))
 			fmt.Println("DUMP EVENTS:")
-			fmt.Println(getEvents(k8sClient))
+			fmt.Println(getEvents(k8sClient, gadgetNamespace))
 		}
 		return err
 	}
 
 	info("Retrieving Gadget Catalog...\n")
-	rt := grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
-	rt.Init(rt.GlobalParamDescs().ToParams())
-	err = rt.UpdateDeployInfo()
+	err = grpcRuntime.UpdateDeployInfo()
 	if err != nil {
 		fmt.Printf("> failed: %v\n", err)
 	}

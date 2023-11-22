@@ -25,18 +25,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/yaml"
-
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 )
 
-func getGadgetPodsDebug(client *kubernetes.Clientset) string {
+func getGadgetPodsDebug(client *kubernetes.Clientset, gadgetNamespace string) string {
 	var sb strings.Builder
 
 	listOpts := metav1.ListOptions{
-		LabelSelector: "k8s-app=" + utils.GadgetNamespace,
+		LabelSelector: "k8s-app=gadget",
 	}
 
-	pods, err := client.CoreV1().Pods(utils.GadgetNamespace).List(context.TODO(), listOpts)
+	pods, err := client.CoreV1().Pods(gadgetNamespace).List(context.TODO(), listOpts)
 	if err != nil {
 		return ""
 	}
@@ -52,16 +50,16 @@ func getGadgetPodsDebug(client *kubernetes.Clientset) string {
 		sb.WriteString("---------------------\n")
 
 		sb.WriteString(fmt.Sprintf("----------------- LOGS START (%s) -----------------\n", pod.Name))
-		sb.WriteString(getPodLog(client, pod.Name))
+		sb.WriteString(getPodLog(client, gadgetNamespace, pod.Name))
 		sb.WriteString("------------------ LOGS END ------------------\n")
 	}
 
 	return sb.String()
 }
 
-func getPodLog(client *kubernetes.Clientset, podname string) string {
+func getPodLog(client *kubernetes.Clientset, gadgetNamespace string, podname string) string {
 	podLogOpts := corev1.PodLogOptions{}
-	req := client.CoreV1().Pods(utils.GadgetNamespace).GetLogs(podname, &podLogOpts)
+	req := client.CoreV1().Pods(gadgetNamespace).GetLogs(podname, &podLogOpts)
 	if req == nil {
 		return ""
 	}
@@ -94,10 +92,10 @@ func eventTime(event corev1.Event) time.Time {
 	return event.EventTime.Time
 }
 
-func getEvents(client *kubernetes.Clientset) string {
+func getEvents(client *kubernetes.Clientset, gadgetNamespace string) string {
 	var sb strings.Builder
 
-	events, err := client.CoreV1().Events(utils.GadgetNamespace).List(context.TODO(), metav1.ListOptions{})
+	events, err := client.CoreV1().Events(gadgetNamespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return ""
 	}

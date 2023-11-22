@@ -24,6 +24,7 @@ import (
 
 	// Import this early to set the enrivonment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
+	paramsPkg "github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
@@ -40,6 +41,8 @@ import (
 
 // common params for all gadgets
 var params utils.CommonFlags
+var runtimeGlobalParams *paramsPkg.Params
+var grpcRuntime *grpcruntime.Runtime
 
 var rootCmd = &cobra.Command{
 	Use:   "kubectl-gadget",
@@ -72,34 +75,36 @@ func main() {
 		}
 	}
 
-	runtime := grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
-	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
-	common.AddFlags(rootCmd, runtimeGlobalParams, nil, runtime)
-	runtime.Init(runtimeGlobalParams)
-	if !skipInfo {
-		// evaluate flags early for runtimeGlobalFlags; this will make
-		// sure that --connection-method has already been parsed when calling
-		// InitDeployInfo()
+	grpcRuntime = grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
+	runtimeGlobalParams = grpcRuntime.GlobalParamDescs().ToParams()
+	common.AddFlags(rootCmd, runtimeGlobalParams, nil, grpcRuntime)
+	grpcRuntime.Init(runtimeGlobalParams)
 
-		err := commonutils.ParseEarlyFlags(rootCmd)
-		if err != nil {
-			// Analogous to cobra error message
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-		runtime.InitDeployInfo()
+	// evaluate flags early for runtimeGlobalFlags; this will make
+	// sure that --connection-method has already been parsed when calling
+	// InitDeployInfo()
+
+	err := commonutils.ParseEarlyFlags(rootCmd)
+	if err != nil {
+		// Analogous to cobra error message
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if !skipInfo {
+		grpcRuntime.InitDeployInfo()
 	}
 
 	namespace, _ := utils.GetNamespace()
-	runtime.SetDefaultValue(gadgets.K8SNamespace, namespace)
+	grpcRuntime.SetDefaultValue(gadgets.K8SNamespace, namespace)
 
 	hiddenColumnTags := []string{"runtime"}
-	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
+	common.AddCommandsFromRegistry(rootCmd, grpcRuntime, hiddenColumnTags)
 
 	// Advise category is still being handled by CRs for now
 	rootCmd.AddCommand(advise.NewAdviseCmd())
 
-	rootCmd.AddCommand(common.NewSyncCommand(runtime))
+	rootCmd.AddCommand(common.NewSyncCommand(grpcRuntime))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
