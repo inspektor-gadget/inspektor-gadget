@@ -16,12 +16,15 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	nriv1 "github.com/containerd/nri/types/v1"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/host"
 )
 
@@ -88,7 +91,7 @@ func main() {
 	removeCRIOHooks()
 	removeNRIHooks()
 
-	os.RemoveAll("/sys/fs/bpf/gadget/")
+	os.RemoveAll(path.Join(gadgets.PinBasePath, fmt.Sprintf("%s-gadget", os.Getenv("GADGET_NAMESPACE"))))
 
 	log.Infof("Cleanup completed")
 }

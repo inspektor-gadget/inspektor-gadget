@@ -295,6 +295,7 @@ func main() {
 			NodeName:            node,
 			HookMode:            hookMode,
 			FallbackPodInformer: fallbackPodInformer,
+			GadgetNamespace:     os.Getenv("GADGET_NAMESPACE"),
 		})
 
 		if err != nil {
