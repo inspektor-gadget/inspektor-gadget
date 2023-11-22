@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -170,7 +171,9 @@ func installNRIHooks() error {
 		return fmt.Errorf("creating %s: %w", destinationPath, err)
 	}
 
-	err = copyFile(destinationPath, "/opt/hooks/nri/nrigadget", 0o640)
+	nriGadgetName := fmt.Sprintf("%s-nrigadget", os.Getenv("GADGET_NAMESPACE"))
+
+	err = copyFile(path.Join(destinationPath, nriGadgetName), "/opt/hooks/nri/nrigadget", 0o640)
 	if err != nil {
 		return fmt.Errorf("copying: %w", err)
 	}
@@ -183,6 +186,7 @@ func installNRIHooks() error {
 		return fmt.Errorf("reading /opt/hooks/nri/conf.json: %w", err)
 	}
 	confContent = bytes.ReplaceAll(confContent, []byte("/run/gadgettracermanager.socket"), []byte(fmt.Sprintf("/run/%s.gadgettracermanager.socket", os.Getenv("GADGET_NAMESPACE"))))
+	confContent = bytes.ReplaceAll(confContent, []byte("\"nrigadget\""), []byte("\""+nriGadgetName+"\""))
 	err = os.WriteFile("/opt/hooks/nri/conf.json", confContent, 0o640)
 	if err != nil {
 		return fmt.Errorf("writing /opt/hooks/nri/conf.json: %w", err)
@@ -198,7 +202,7 @@ func installNRIHooks() error {
 			return fmt.Errorf("unmarshalling JSON %s: %w", hostConfigPath, err)
 		}
 
-		configList.Plugins = append(configList.Plugins, &nriv1.Plugin{Type: "nrigadget"})
+		configList.Plugins = append(configList.Plugins, &nriv1.Plugin{Type: nriGadgetName})
 
 		content, err = json.Marshal(configList)
 		if err != nil {

@@ -45,7 +45,9 @@ func removeCRIOHooks() {
 }
 
 func removeNRIHooks() {
-	path := filepath.Join(host.HostRoot, "opt/nri/bin/nrigadget")
+	nriGadgetName := fmt.Sprintf("%s-nrigadget", os.Getenv("GADGET_NAMESPACE"))
+
+	path := filepath.Join(host.HostRoot, "opt/nri/bin", nriGadgetName)
 	os.Remove(path)
 
 	configPath := filepath.Join(host.HostRoot, "etc/nri/conf.json")
@@ -61,11 +63,11 @@ func removeNRIHooks() {
 	}
 
 	length := len(configList.Plugins)
-	if length == 1 && configList.Plugins[0].Type == "nrigadget" {
+	if length == 1 && configList.Plugins[0].Type == nriGadgetName {
 		os.Remove(configPath)
 	} else {
 		for i, plugin := range configList.Plugins {
-			if plugin.Type != "nrigadget" {
+			if plugin.Type != nriGadgetName {
 				continue
 			}
 
