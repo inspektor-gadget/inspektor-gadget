@@ -17,9 +17,6 @@ package gadgets
 const (
 	PinPath = "/sys/fs/bpf/gadget"
 
-	// The Trace custom resource is preferably in the "gadget" namespace
-	TraceDefaultNamespace = "gadget"
-
 	PerfBufferPages = 64
 
 	// bpf_ktime_get_boot_ns()'s func id as defined in Linux API
