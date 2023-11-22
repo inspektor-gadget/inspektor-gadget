@@ -47,6 +47,7 @@ var undeployCmd = &cobra.Command{
 }
 
 var undeployWait bool
+var skipCRD bool
 
 const (
 	timeout int = 30
@@ -59,6 +60,12 @@ func init() {
 		"wait", "",
 		true,
 		"wait for all resources to be deleted before returning",
+	)
+	undeployCmd.PersistentFlags().BoolVarP(
+		&skipCRD,
+		"skip-crd", "",
+		false,
+		"Skips the deletion of the CRDs. Needed when runnig multiple deployments of Inspektor Gadget in parallel",
 	)
 }
 
@@ -138,14 +145,16 @@ again:
 	}
 
 	// 2. remove crd
-	fmt.Println("Removing CRD...")
-	err = crdClient.ApiextensionsV1().CustomResourceDefinitions().Delete(
-		context.TODO(), "traces.gadget.kinvolk.io", metav1.DeleteOptions{},
-	)
-	if err != nil && !errors.IsNotFound(err) {
-		errs = append(
-			errs, fmt.Sprintf("failed to remove \"traces.gadget.kinvolk.io\" CRD: %s", err),
+	if !skipCRD {
+		fmt.Println("Removing CRD...")
+		err = crdClient.ApiextensionsV1().CustomResourceDefinitions().Delete(
+			context.TODO(), "traces.gadget.kinvolk.io", metav1.DeleteOptions{},
 		)
+		if err != nil && !errors.IsNotFound(err) {
+			errs = append(
+				errs, fmt.Sprintf("failed to remove \"traces.gadget.kinvolk.io\" CRD: %s", err),
+			)
+		}
 	}
 
 	// 3. gadget cluster role binding
