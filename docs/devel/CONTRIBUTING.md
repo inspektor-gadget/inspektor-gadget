@@ -303,8 +303,8 @@ should be manually cleaned up.
 
 ### Code of Conduct
 
-Please refer to the Kinvolk
-[Code of Conduct](https://github.com/kinvolk/contribution/blob/master/CODE_OF_CONDUCT.md).
+Inspektor Gadget follows the CNCF
+[Code of Conduct](https://github.com/cncf/foundation/blob/main/code-of-conduct.md).
 
 ### Authoring PRs
 
