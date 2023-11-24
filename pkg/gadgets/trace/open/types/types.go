@@ -16,6 +16,7 @@ package types
 
 import (
 	"io/fs"
+	"strings"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
@@ -41,7 +42,13 @@ type Event struct {
 }
 
 func GetColumns() *columns.Columns[Event] {
-	return columns.MustCreateColumns[Event]()
+	openColumns := columns.MustCreateColumns[Event]()
+
+	openColumns.MustSetExtractor("flags", func(event *Event) any {
+		return strings.Join(event.Flags, "|")
+	})
+
+	return openColumns
 }
 
 func Base(ev eventtypes.Event) *Event {
