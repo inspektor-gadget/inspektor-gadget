@@ -713,6 +713,13 @@ func buildCommandFromGadget(
 	for _, operatorParams := range operatorsParamsCollection {
 		AddFlags(cmd, operatorParams, skipParams, runtime)
 	}
+
+	if exp, ok := gadgetDesc.(gadgets.GadgetExperimental); ok {
+		if exp.Experimental() {
+			utils.MarkExperimental(cmd)
+		}
+	}
+
 	return cmd
 }
 

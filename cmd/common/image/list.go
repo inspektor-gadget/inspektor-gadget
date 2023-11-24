@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/columns/formatter/textcolumns"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
@@ -58,5 +59,5 @@ func NewListCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&noTrunc, "no-trunc", false, "Don't truncate output")
 
-	return cmd
+	return utils.MarkExperimental(cmd)
 }

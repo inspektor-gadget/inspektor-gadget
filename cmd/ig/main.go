@@ -74,11 +74,9 @@ func main() {
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
 	rootCmd.AddCommand(newDaemonCommand(runtime))
-	if experimental.Enabled() {
-		rootCmd.AddCommand(image.NewImageCmd())
-		rootCmd.AddCommand(common.NewLoginCmd())
-		rootCmd.AddCommand(common.NewLogoutCmd())
-	}
+	rootCmd.AddCommand(image.NewImageCmd())
+	rootCmd.AddCommand(common.NewLoginCmd())
+	rootCmd.AddCommand(common.NewLogoutCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
