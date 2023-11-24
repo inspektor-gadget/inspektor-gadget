@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"crypto"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -49,6 +50,8 @@ import (
 	watchtools "k8s.io/client-go/tools/watch"
 	"sigs.k8s.io/yaml"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
@@ -56,6 +59,11 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/resources"
 	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/sign"
+	"github.com/sigstore/cosign/v2/pkg/cosign"
+	"github.com/sigstore/cosign/v2/pkg/cosign/pkcs11key"
+	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
+	"github.com/sigstore/cosign/v2/pkg/signature"
 )
 
 var deployCmd = &cobra.Command{
@@ -84,6 +92,7 @@ var (
 	nodeSelector        string
 	experimentalVar     bool
 	skipSELinuxOpts     bool
+	publicKey           string
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -162,6 +171,11 @@ func init() {
 		"skip-selinux-opts", "",
 		false,
 		"skip setting SELinux options on the gadget pod")
+	deployCmd.PersistentFlags().StringVarP(
+		&publicKey,
+		"public-key", "",
+		"",
+		"public key to verify image signature")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -339,6 +353,68 @@ func createAffinity(client *kubernetes.Clientset) (*v1.Affinity, error) {
 	return affinity, nil
 }
 
+func prepareCheckOpts(ctx context.Context, publicKey string) (*cosign.CheckOpts, error) {
+	pubKey, err := signature.PublicKeyFromKeyRefWithHashAlgo(ctx, publicKey, crypto.SHA256)
+	if err != nil {
+		return nil, fmt.Errorf("loading public key: %w", err)
+	}
+	pkcs11Key, ok := pubKey.(*pkcs11key.Key)
+	if ok {
+		defer pkcs11Key.Close()
+	}
+
+	rekorPubKeys, err := cosign.GetRekorPubs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting Rekor public keys: %w", err)
+	}
+
+	cTLogPubKeys, err := cosign.GetCTLogPubs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting ctlog public keys: %w", err)
+	}
+
+	return &cosign.CheckOpts{
+		SigVerifier:  pubKey,
+		RekorPubKeys: rekorPubKeys,
+		CTLogPubKeys: cTLogPubKeys,
+	}, nil
+}
+
+func prepareImageReference(ctx context.Context, image string) (name.Reference, error) {
+	ref, err := name.ParseReference(image)
+	if err != nil {
+		return nil, fmt.Errorf("parsing reference: %w", err)
+	}
+
+	ref, err = sign.GetAttachedImageRef(ref, "", ociremote.WithRemoteOptions(remote.WithContext(ctx)))
+	if err != nil {
+		return nil, fmt.Errorf("resolving attachment for image %s: %w", image, err)
+	}
+
+	return ref, nil
+}
+
+func verifyImage(publicKey, image string) error {
+	ctx := context.TODO()
+
+	co, err := prepareCheckOpts(ctx, publicKey)
+	if err != nil {
+		return fmt.Errorf("preparing check options: %w", err)
+	}
+
+	ref, err := prepareImageReference(ctx, image)
+	if err != nil {
+		return fmt.Errorf("preparing image reference: %w", err)
+	}
+
+	_, _, err = cosign.VerifyImageSignatures(ctx, ref, co)
+	if err != nil {
+		return fmt.Errorf("verifying image signature: %w", err)
+	}
+
+	return nil
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	found := false
 	for _, supportedHook := range supportedHooks {
@@ -354,6 +430,13 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 	if quiet && debug {
 		return fmt.Errorf("it's not possible to use --quiet and --debug together")
+	}
+
+	if publicKey != "" {
+		err := verifyImage(publicKey, image)
+		if err != nil {
+			return fmt.Errorf("image %q was not signed with public key %q: %w", image, publicKey, err)
+		}
 	}
 
 	objects, err := parseK8sYaml(resources.GadgetDeployment)
