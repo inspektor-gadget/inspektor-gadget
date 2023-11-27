@@ -576,6 +576,8 @@ jobs:
       packages: write
     strategy:
       fail-fast: false
+    outputs:
+      image-digest: ${{ steps.publish-manifest-list.outputs.image-digest }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
@@ -586,7 +588,7 @@ jobs:
       - name: Login to Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set container repository and determine image tag
@@ -596,7 +598,9 @@ jobs:
           registry: ${{ env.REGISTRY }}
           container-image: ${{ env.CONTAINER_REPO }}
       - name: Publish the manifest list
+        id: publish-manifest-list
         run: |
+          IMAGE_TAG=${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
           IMAGE_DOCUMENTATION="https://inspektor-gadget.io/docs"
           IMAGE_LICENSES="Apache-2.0"
@@ -604,7 +608,7 @@ jobs:
           IMAGE_DESCRIPTION="Inspektor Gadget is a collection of tools (or gadgets) to debug and inspect Kubernetes resources and applications. This image is used as a long-running DaemonSet in Kubernetes via the kubectl-gadget deploy command or via the Helm charts."
 
           docker buildx imagetools create \
-              -t ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}:${{ steps.set-repo-determine-image-tag.outputs.image-tag }} \
+              -t $IMAGE_TAG \
               --annotation index:org.opencontainers.image.documentation="$IMAGE_DOCUMENTATION" \
               --annotation index:org.opencontainers.image.description="$IMAGE_DESCRIPTION" \
               --annotation index:org.opencontainers.image.licenses="$IMAGE_LICENSES" \
@@ -612,6 +616,9 @@ jobs:
               --annotation index:org.opencontainers.image.title="$IMAGE_TITLE" \
               ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-amd64 }} \
               ${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.digest-arm64 }}
+
+          image_digest=$(docker buildx imagetools inspect $IMAGE_TAG | grep 'Digest' | awk '{ print $2 }')
+          echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
 
   publish-ig-images-manifest:
     name: Publish ig img manifest
@@ -634,7 +641,7 @@ jobs:
       - name: Login to Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set container repository and determine image tag
@@ -1376,9 +1383,12 @@ jobs:
       - package-helm-charts
       - check-secrets
       - scan-gadget-container-images
+      - publish-gadget-images-manifest
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Needed by cosign to sign the container image.
+      packages: write
     if: startsWith(github.ref, 'refs/tags/v') && needs.check-secrets.outputs.cosign == 'true'
     steps:
     - uses: actions/checkout@v4
@@ -1460,11 +1470,26 @@ jobs:
       run: |
         checksums_file=SHA256SUMS
 
-        cosign sign-blob --key <(echo "${COSIGN_PRIVATE_KEY}") --yes $checksums_file --output-signature="${checksums_file}.sig" --bundle="${checksums_file}.bundle"
+        cosign sign-blob --key env://COSIGN_PRIVATE_KEY --yes $checksums_file --output-signature="${checksums_file}.sig" --bundle="${checksums_file}.bundle"
 
         # Derivate public key from private key to publish it as release
         # artifact, so people can verify our signature.
-        cosign public-key --key <(echo "${COSIGN_PRIVATE_KEY}") > inspektor-gadget.pub
+        cosign public-key --key env://COSIGN_PRIVATE_KEY > inspektor-gadget.pub
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Sign container image
+      shell: bash
+      env:
+        COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
+        COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+      run: |
+        image_digest=${{ needs.publish-gadget-images-manifest.outputs.image-digest }}
+
+        cosign sign --key env://COSIGN_PRIVATE_KEY --yes --recursive "${{ env.REGISTRY }}/${{ env.CONTAINER_REPO }}@${image_digest}"
     - name: Upload kubectl-gadget binary
       uses: csexton/release-asset-action@v2
       with:
