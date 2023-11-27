@@ -43,6 +43,7 @@ var (
 	params              utils.CommonFlags
 	runtimeGlobalParams *paramsPkg.Params
 	grpcRuntime         *grpcruntime.Runtime
+	deployRunUndeploy   bool
 )
 
 var rootCmd = &cobra.Command{
@@ -54,6 +55,8 @@ var infoSkipCommands = []string{"deploy", "undeploy", "version"}
 
 func init() {
 	utils.FlagInit(rootCmd)
+	rootCmd.PersistentFlags().BoolVar(&deployRunUndeploy, "deploy", false, "Deploy Inspektor Gadget to the cluster before running the gadget and undeploy it afterwards")
+	addGeneralDeployFlags(rootCmd)
 }
 
 func main() {
@@ -83,6 +86,18 @@ func main() {
 		isHelp = isHelp || arg == "--help" || arg == "-h"
 	}
 
+	// Remove the deploy flag from the help for "deploy", "version" and "undeploy"
+	for _, c := range rootCmd.Commands() {
+		switch c.Name() {
+		case "deploy", "version", "undeploy":
+			origHelp := c.HelpFunc()
+			c.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+				c.InheritedFlags().MarkHidden("deploy")
+				origHelp(cmd, args)
+			})
+		}
+	}
+
 	grpcRuntime = grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
 	runtimeGlobalParams = grpcRuntime.GlobalParamDescs().ToParams()
 	common.AddFlags(rootCmd, runtimeGlobalParams, nil, grpcRuntime)
@@ -110,17 +125,23 @@ func main() {
 			log.Fatalf("Searching for running Inspektor Gadget instances: %s", err)
 		}
 
-		switch len(gadgetNamespaces) {
-		case 0:
-			if !isVersion {
-				log.Fatalf("No running Inspektor Gadget instances found")
+		if deployRunUndeploy {
+			if len(gadgetNamespaces) != 0 {
+				log.Fatalf("Inspektor Gadget is already deployed in namespace %s", gadgetNamespaces[0])
 			}
-		case 1:
-			// Exactly one running gadget instance found, use it
-			runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
-		default:
-			// Multiple running gadget instances found, error out
-			log.Fatalf("Multiple running Inspektor Gadget instances found in following namespaces: %v", gadgetNamespaces)
+		} else {
+			switch len(gadgetNamespaces) {
+			case 0:
+				if !isVersion {
+					log.Fatalf("No running Inspektor Gadget instances found")
+				}
+			case 1:
+				// Exactly one running gadget instance found, use it
+				runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
+			default:
+				// Multiple running gadget instances found, error out
+				log.Fatalf("Multiple running Inspektor Gadget instances found in following namespaces: %v", gadgetNamespaces)
+			}
 		}
 	}
 
@@ -132,15 +153,34 @@ func main() {
 	grpcRuntime.SetDefaultValue(gadgets.K8SNamespace, namespace)
 	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
 
-	hiddenColumnTags := []string{"runtime"}
-	common.AddCommandsFromRegistry(rootCmd, grpcRuntime, hiddenColumnTags)
-
 	// Advise and traceloop category is still being handled by CRs for now
 	rootCmd.AddCommand(advise.NewAdviseCmd(gadgetNamespace))
 	rootCmd.AddCommand(NewTraceloopCmd(gadgetNamespace))
 	rootCmd.AddCommand(common.NewSyncCommand(grpcRuntime))
 
-	if err := rootCmd.Execute(); err != nil {
+	// Deploy and update our local registry before we add commands from it
+	if deployRunUndeploy {
+		err = runDeploy(os.Stderr)
+		if err != nil {
+			log.Errorf("deploying Inspektor Gadget: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	hiddenColumnTags := []string{"runtime"}
+	common.AddCommandsFromRegistry(rootCmd, grpcRuntime, hiddenColumnTags)
+
+	err = rootCmd.Execute()
+
+	if deployRunUndeploy {
+		err := runUndeploy(os.Stderr)
+		if err != nil {
+			log.Errorf("undeploying Inspektor Gadget: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	if err != nil {
 		os.Exit(1)
 	}
 }
