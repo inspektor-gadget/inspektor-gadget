@@ -16,9 +16,9 @@ Verifying the container image is pretty straightforward:
 
 ```bash
 $ RELEASE='v0.23.0'
-$ URL="https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${RELEASE}"
+$ URL="https://github.com/inspektor-gadget/inspektor-gadget/blob/main/inspektor-gadget.pub"
 # We first need to get the public key.
-$ wget $URL/inspektor-gadget.pub
+$ wget $URL
 $ cosign verify --key inspektor-gadget.pub ghcr.io/inspektor-gadget/inspektor-gadget:${RELEASE}
 The following checks were performed on each of these signatures:
   - The cosign claims were validated
@@ -30,7 +30,7 @@ The following checks were performed on each of these signatures:
 ```
 
 Getting the above output followed by a JSON array of payloads, ensures you the
-container image was sign using our private key.
+container image was signed using our private key.
 
 ## Verify an asset
 
