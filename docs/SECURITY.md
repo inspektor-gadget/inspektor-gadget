@@ -5,8 +5,6 @@ description: >
   Instructions to report security issues found in Inspektor Gadget
 ---
 
-# Reporting security issues
-
 As Inspektor Gadget maintainers, we take security seriously.
 If you discover a security issue, please bring it to our attention right away.
 
