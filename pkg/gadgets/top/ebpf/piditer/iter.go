@@ -58,7 +58,7 @@ func NewTracer() (iter *PidIter, err error) {
 	}
 
 	if err := kallsyms.SpecUpdateAddresses(spec, []string{"bpf_prog_fops"}); err != nil {
-		return nil, fmt.Errorf("updating ksyms: %w", err)
+		return nil, fmt.Errorf("updating bpf_prog_fops address with ksyms: %w", err)
 	}
 
 	opts := ebpf.CollectionOptions{}
