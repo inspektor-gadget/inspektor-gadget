@@ -100,15 +100,13 @@ var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", 
 
 func init() {
 	commonutils.AddRuntimesSocketPathFlags(deployCmd, &runtimesConfig)
+	addGeneralDeployFlags(deployCmd)
+
 	strLevels = make([]string, len(log.AllLevels))
 	for i, level := range log.AllLevels {
 		strLevels[i] = level.String()
 	}
-	deployCmd.PersistentFlags().StringVarP(
-		&image,
-		"image", "",
-		gadgetimage,
-		"container image")
+	// These flags are only usefull for the deploy command itself
 	deployCmd.PersistentFlags().StringVarP(
 		&imagePullPolicy,
 		"image-pull-policy", "",
@@ -186,7 +184,16 @@ func init() {
 	deployCmd.PersistentFlags().StringVarP(
 		&appArmorprofile,
 		"apparmor-profile", "", "unconfined", "AppArmor profile to use")
+
 	rootCmd.AddCommand(deployCmd)
+}
+
+func addGeneralDeployFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVarP(
+		&image,
+		"image", "",
+		gadgetimage,
+		"container image")
 }
 
 func info(outFile *os.File, format string, args ...any) {
