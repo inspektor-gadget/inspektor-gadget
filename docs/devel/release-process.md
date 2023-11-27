@@ -1,6 +1,6 @@
 ---
 title: Releasing
-weight: 100
+weight: 220
 description: >
   How to release Inspektor Gadget
 ---
