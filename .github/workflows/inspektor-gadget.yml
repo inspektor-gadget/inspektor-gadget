@@ -145,7 +145,7 @@ jobs:
           make EBPF_BUILDER=${{ needs.build-helper-images.outputs.ebpf_builder_image }} ebpf-objects
           changes="$(git status --porcelain)"
           if [ -n "$changes" ] ; then
-            echo "$changes"
+            >&2 echo "$changes"
             exit 1
           fi
       - name: Check that testdata is updated
@@ -153,7 +153,7 @@ jobs:
           make testdata
           changes="$(git status --porcelain)"
           if [ -n "$changes" ] ; then
-            echo "$changes"
+            >&2 echo "$changes"
             exit 1
           fi
 
@@ -567,7 +567,9 @@ jobs:
     name: Publish gadget img manifest
     # level: 2
     if: github.event_name != 'pull_request'
-    needs: build-gadget-container-images
+    needs:
+      - build-gadget-container-images
+      - public-key-check
     runs-on: ubuntu-latest
     permissions:
       # allow publishing container image
@@ -1024,6 +1026,27 @@ jobs:
           else
             echo "Secrets to use cosign were not configured in the repo"
             echo "cosign=false" >> $GITHUB_OUTPUT
+          fi
+
+  public-key-check:
+    name: Public key check
+    # level: 1
+    needs: check-secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@main
+      - name: Check if public key is up-to-date.
+        env:
+          COSIGN_PASSWORD: '${{ secrets.COSIGN_PASSWORD }}'
+          COSIGN_PRIVATE_KEY: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+        run: |
+          cosign public-key --key env://COSIGN_PRIVATE_KEY > inspektor-gadget.pub
+          changes="$(git status --porcelain)"
+          if [ -n "$changes" ] ; then
+            >&2 echo "$changes"
+            exit 1
           fi
 
   test-integration-k8s-ig:
