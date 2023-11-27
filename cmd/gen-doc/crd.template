@@ -54,6 +54,10 @@ aliases:
   - /reference/cp-k8s-api/{{ .NamePlural }}.{{ .Group }}/
 technical_name: {{ .NamePlural }}.{{ .Group }}
 source_repository: {{ .SourceRepository }}
+_build:
+  list: never
+  publishResources: false
+  render: never
 ---
 
 # {{ .Title }}

@@ -25,6 +25,10 @@ aliases:
   - /reference/cp-k8s-api/traces.gadget.kinvolk.io/
 technical_name: traces.gadget.kinvolk.io
 source_repository: github.com/inspektor-gadget/inspektor-gadget
+_build:
+  list: never
+  publishResources: false
+  render: never
 ---
 
 # Trace
