@@ -23,17 +23,13 @@ import (
 	. "github.com/inspektor-gadget/inspektor-gadget/integration"
 )
 
-func TestRunTraceOpen(t *testing.T) {
-	ns := GenerateTestNamespaceName("test-run-trace-open")
-
-	t.Parallel()
-
+func runTraceOpen(t *testing.T, ns string, cmd string) {
 	// TODO: Handle it once we support getting container image name from docker
 	isDockerRuntime := IsDockerRuntime(t)
 
 	traceOpenCmd := &Command{
 		Name:         "StartRunTraceOpenGadget",
-		Cmd:          fmt.Sprintf("$KUBECTL_GADGET run %s/trace_open:%s -n %s -o json", *gadgetRepository, *gadgetTag, ns),
+		Cmd:          cmd,
 		StartAndStop: true,
 		ValidateOutput: func(t *testing.T, output string) {
 			expectedBaseJsonObj := RunEventToObj(t, &types.Event{
@@ -73,12 +69,33 @@ func TestRunTraceOpen(t *testing.T) {
 	}
 
 	commands := []*Command{
-		CreateTestNamespaceCommand(ns),
 		traceOpenCmd,
 		BusyboxPodRepeatCommand(ns, "setuidgid 1000:1111 cat /dev/null"),
 		WaitUntilTestPodReadyCommand(ns),
-		DeleteTestNamespaceCommand(ns),
 	}
 
 	RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+}
+
+func TestRunTraceOpen(t *testing.T) {
+	ns := GenerateTestNamespaceName("test-run-trace-open")
+
+	t.Parallel()
+
+	commandsPreTest := []*Command{
+		CreateTestNamespaceCommand(ns),
+	}
+
+	RunTestSteps(commandsPreTest, t)
+
+	t.Cleanup(func() {
+		commands := []*Command{
+			DeleteTestNamespaceCommand(ns),
+		}
+		RunTestSteps(commands, t, WithCbBeforeCleanup(PrintLogsFn(ns)))
+	})
+
+	cmd := fmt.Sprintf("$KUBECTL_GADGET run %s/trace_open:%s -n %s -o json", *gadgetRepository, *gadgetTag, ns)
+
+	runTraceOpen(t, ns, cmd)
 }

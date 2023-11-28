@@ -17,7 +17,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 
@@ -177,7 +176,7 @@ func removeHelpArg(args []string) []string {
 	return args
 }
 
-func ParseEarlyFlags(cmd *cobra.Command) error {
+func ParseEarlyFlags(cmd *cobra.Command, rawArgs []string) error {
 	// Do not error out on unknown flags, but still validate currently
 	// known ones.
 	// Other flags will be validated in the `Execute()` call and unknown
@@ -188,7 +187,7 @@ func ParseEarlyFlags(cmd *cobra.Command) error {
 		cmd.FParseErrWhitelist.UnknownFlags = false
 	}()
 	// temporary workaround for https://github.com/inspektor-gadget/inspektor-gadget/pull/2174#issuecomment-1780923952
-	args := slices.Clone(os.Args[1:]) // clone to avoid modifying the original os.Args
+	args := slices.Clone(rawArgs) // clone to avoid modifying the original os.Args
 	args = removeSplitSortArgs(args)
 	// --help should be handled after we registered all commands
 	args = removeHelpArg(args)

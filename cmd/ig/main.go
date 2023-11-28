@@ -62,7 +62,7 @@ func main() {
 
 	// evaluate flags early; this will make sure that flags for host are evaluated before
 	// calling host.Init()
-	err := commonutils.ParseEarlyFlags(rootCmd)
+	err := commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
 	if err != nil {
 		// Analogous to cobra error message
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
