@@ -299,6 +299,13 @@ notice that the container images will be pushed to
 https://github.com/inspektor-gadget/inspektor-gadget/pkgs/container/inspektor-gadget and those
 should be manually cleaned up.
 
+## Getting Help
+
+If you are having any issues with your contribution, or want to discuss anything about it, feel free
+to reach out to us on [Slack](https://kubernetes.slack.com/messages/inspektor-gadget/) or on our
+[community
+meeting](https://docs.google.com/document/d/1cbPYvYTsdRXd41PEDcwC89IZbcA8WneNt34oiu5s9VA/edit)
+
 ## Contribution Guidelines
 
 ### Code of Conduct

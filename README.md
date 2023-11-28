@@ -240,7 +240,16 @@ Inspektor Gadget directly. End-users do not need this and can use
 
 Contributions are welcome, see [CONTRIBUTING](docs/devel/CONTRIBUTING.md).
 
-## Discussions
+## Community Meeting
+
+We hold community meetings every other Thursday at 15:30 UTC, 7:30 PST, 16:30 CET in <!-- markdown-link-check-disable-next-line -->
+[this link](https://us05web.zoom.us/j/82710330171?pwd=fZleJvBRgMbyt5NI6DHsWScAM3bxAR.1), check the
+[calendar](https://calendar.google.com/calendar/u/0/embed?src=ac93fb85a1999d57dd97cce129479bb2741946e1d7f4db918fe14433c192152d@group.calendar.google.com)
+to have the full schedule of next meetings. Please add any topic you want to discuss to our [meeting
+notes](https://docs.google.com/document/d/1cbPYvYTsdRXd41PEDcwC89IZbcA8WneNt34oiu5s9VA/edit)
+document.
+
+## Slack
 
 Join the discussions on the [`#inspektor-gadget`](https://kubernetes.slack.com/messages/inspektor-gadget/) channel in the Kubernetes Slack.
 
