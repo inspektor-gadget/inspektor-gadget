@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build linux && !arm64 && !withoutebpf
+//go:build linux && !withoutebpf
 
 package tracer
 
