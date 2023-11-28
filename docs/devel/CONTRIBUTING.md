@@ -179,7 +179,7 @@ $ go test -exec sudo \
 ```
 
 Records of previous benchmarks are available [here](https://inspektor-gadget.github.io/ig-benchmarks/dev/bench/index.html).
-See details in the [CI documentation (benchmarks)](../ci.md#benchmarks).
+See details in the [CI documentation (benchmarks)](ci.md#benchmarks).
 
 #### Explaining performance improvements in a PR
 
@@ -291,7 +291,7 @@ $ go tool pprof -top mem.prof
 ### Continuous Integration
 
 Inspektor Gadget uses GitHub Actions as CI. Please check dedicated [CI
-documentation](../ci.md) for more details.
+documentation](ci.md) for more details.
 
 Some integration tests (like AKS and ARO) are only run when a commit is pushed to the main branch or
 a new tag is pushed. It's also possible to run those by pusing a branch named `citest/...`. Please

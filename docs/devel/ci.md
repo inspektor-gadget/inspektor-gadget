@@ -1,6 +1,6 @@
 ---
-title: About Continuous Integration
-weight: 20
+title: Continuous Integration
+weight: 210
 description: >
   Inspektor Gadget continuous integration workflow
 ---

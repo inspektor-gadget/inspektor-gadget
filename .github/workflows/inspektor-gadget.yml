@@ -1263,7 +1263,7 @@ jobs:
       - publish-gadget-images-manifest
       - build-and-push-gadgets
     # Run this job only if an ARO cluster is available on repo secrets. See
-    # docs/ci.md for further details.
+    # docs/devel/ci.md for further details.
     if: needs.check-secrets.outputs.aro == 'true'
     runs-on: ubuntu-latest
     concurrency:

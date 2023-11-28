@@ -1,6 +1,6 @@
 ---
 title: Hello world gadget
-weight: 100
+weight: 110
 description: >
   Hello world gadget
 ---
