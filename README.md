@@ -31,41 +31,39 @@ Inspektor Gadget tools are known as gadgets. You can deploy one, two or many gad
 Explore the following documentation to find out which tools can help you in your investigations.
 
 - `advise`:
-	- [`network-policy`](docs/gadgets/advise/network-policy.md)
-	- [`seccomp-profile`](docs/gadgets/advise/seccomp-profile.md)
+	- [`network-policy`](docs/builtin-gadgets/advise/network-policy.md)
+	- [`seccomp-profile`](docs/builtin-gadgets/advise/seccomp-profile.md)
 - `audit`:
-	- [`seccomp`](docs/gadgets/audit/seccomp.md)
+	- [`seccomp`](docs/builtin-gadgets/audit/seccomp.md)
 - `profile`:
-	- [`block-io`](docs/gadgets/profile/block-io.md)
-	- [`cpu`](docs/gadgets/profile/cpu.md)
-	- [`tcprtt`](docs/gadgets/profile/tcprtt.md)
+	- [`block-io`](docs/builtin-gadgets/profile/block-io.md)
+	- [`cpu`](docs/builtin-gadgets/profile/cpu.md)
+	- [`tcprtt`](docs/builtin-gadgets/profile/tcprtt.md)
 - `snapshot`:
-	- [`process`](docs/gadgets/snapshot/process.md)
-	- [`socket`](docs/gadgets/snapshot/socket.md)
+	- [`process`](docs/builtin-gadgets/snapshot/process.md)
+	- [`socket`](docs/builtin-gadgets/snapshot/socket.md)
 - `top`:
-	- [`block-io`](docs/gadgets/top/block-io.md)
-	- [`ebpf`](docs/gadgets/top/ebpf.md)
-	- [`file`](docs/gadgets/top/file.md)
-	- [`tcp`](docs/gadgets/top/tcp.md)
+	- [`block-io`](docs/builtin-gadgets/top/block-io.md)
+	- [`ebpf`](docs/builtin-gadgets/top/ebpf.md)
+	- [`file`](docs/builtin-gadgets/top/file.md)
+	- [`tcp`](docs/builtin-gadgets/top/tcp.md)
 - `trace`:
-	- [`bind`](docs/gadgets/trace/bind.md)
-	- [`capabilities`](docs/gadgets/trace/capabilities.md)
-	- [`dns`](docs/gadgets/trace/dns.md)
-	- [`exec`](docs/gadgets/trace/exec.md)
-	- [`fsslower`](docs/gadgets/trace/fsslower.md)
-	- [`mount`](docs/gadgets/trace/mount.md)
-	- [`oomkill`](docs/gadgets/trace/oomkill.md)
-	- [`open`](docs/gadgets/trace/open.md)
-	- [`signal`](docs/gadgets/trace/signal.md)
-	- [`sni`](docs/gadgets/trace/sni.md)
-	- [`tcp`](docs/gadgets/trace/tcp.md)
-	- [`tcpconnect`](docs/gadgets/trace/tcpconnect.md)
-	- [`tcpdrop`](docs/gadgets/trace/tcpdrop.md)
-	- [`tcpretrans`](docs/gadgets/trace/tcpretrans.md)
-- [`prometheus`](docs/gadgets/prometheus.md)
-- [`run`](docs/gadgets/run.md)
-- [`script`](docs/gadgets/script.md)
-- [`traceloop`](docs/gadgets/traceloop.md)
+	- [`bind`](docs/builtin-gadgets/trace/bind.md)
+	- [`capabilities`](docs/builtin-gadgets/trace/capabilities.md)
+	- [`dns`](docs/builtin-gadgets/trace/dns.md)
+	- [`exec`](docs/builtin-gadgets/trace/exec.md)
+	- [`fsslower`](docs/builtin-gadgets/trace/fsslower.md)
+	- [`mount`](docs/builtin-gadgets/trace/mount.md)
+	- [`oomkill`](docs/builtin-gadgets/trace/oomkill.md)
+	- [`open`](docs/builtin-gadgets/trace/open.md)
+	- [`signal`](docs/builtin-gadgets/trace/signal.md)
+	- [`sni`](docs/builtin-gadgets/trace/sni.md)
+	- [`tcp`](docs/builtin-gadgets/trace/tcp.md)
+	- [`tcpconnect`](docs/builtin-gadgets/trace/tcpconnect.md)
+	- [`tcpdrop`](docs/builtin-gadgets/trace/tcpdrop.md)
+	- [`tcpretrans`](docs/builtin-gadgets/trace/tcpretrans.md)
+- [`script`](docs/builtin-gadgets/script.md)
+- [`traceloop`](docs/builtin-gadgets/traceloop.md)
 
 ## Installation
 
@@ -83,7 +81,7 @@ Install Inspektor Gadget on Kubernetes:
 $ kubectl gadget deploy
 ```
 
-Read the detailed [install instructions](docs/install.md) to find more information.
+Read the detailed [install instructions](https://inspektor-gadget.io/docs/latest/getting-started/) to find more information.
 
 ## How to use
 

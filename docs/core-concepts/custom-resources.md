@@ -1,9 +1,13 @@
 ---
 title: Custom Trace Resource
-weight: 40
+weight: 200
 description: >
   Basic usage of the Trace resource
 ---
+
+> ⚠️ We are currently removing the Trace resource and using a [gRPC
+> API](../reference/grpc.md) instead. Once done, the Trace resource will be
+> deprecated.
 
 Inspektor Gadget uses a custom `Trace` resource to communicate between the
 endpoints and the `gadget` DaemonSet running on the cluster. These

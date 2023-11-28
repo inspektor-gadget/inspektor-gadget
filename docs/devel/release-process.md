@@ -65,7 +65,7 @@ $ git push origin v0.x.0
 - Check if the [milestone for the release](https://github.com/inspektor-gadget/inspektor-gadget/milestones) still
   contain open issues. If so, move them as appropriate. Close the milestone.
 
-- Update the [Inspektor Gadget website](https://inspektor-gadget.io/) ([example for v0.16.0](https://github.com/inspektor-gadget/website/pull/14)).
+- Check the automatic pull request updating the [Inspektor Gadget website](https://inspektor-gadget.io/) and merge as appropriate ([example for v0.22.0](https://github.com/inspektor-gadget/website/pull/27)).
 
 - Update other projects using Inspektor Gadget:
 

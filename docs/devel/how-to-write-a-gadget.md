@@ -5,7 +5,7 @@ description: >
   How to write a built-in Gadget?
 ---
 
-> ⚠️ This page is about creating built-in gadget. Once we move to image-based
+> ⚠️ This page is about creating built-in gadgets. Once we move to image-based
 > gadgets, built-in gadgets will be deprecated. We recommand reading [Hello
 > world gadget](hello-world-gadget.md) instead.
 

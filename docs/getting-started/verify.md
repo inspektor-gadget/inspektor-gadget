@@ -1,6 +1,6 @@
 ---
 title: Verifying
-weight: 100
+weight: 120
 description: >
   Verify Inspektor Gadget
 ---
