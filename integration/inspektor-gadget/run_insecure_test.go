@@ -45,17 +45,14 @@ func TestRunInsecure(t *testing.T) {
 
 	// copy gadget image to insecure registry
 	orasCpCmds := []*Command{
-		JobCommand("copier", "ghcr.io/oras-project/oras:v1.1.0", ns, "oras", []string{
+		JobCommand("copier", "ghcr.io/oras-project/oras:v1.1.0", ns,
+			"oras",
 			"copy",
 			"--to-plain-http",
 			fmt.Sprintf("%s/trace_open:%s", *gadgetRepository, *gadgetTag),
 			fmt.Sprintf("%s:5000/trace_open:%s", registryIP, *gadgetTag),
-		}...),
-		{
-			Name:           "WaitForCopierJob",
-			Cmd:            fmt.Sprintf("kubectl wait job --for condition=complete -n %s copier", ns),
-			ExpectedString: "job.batch/copier condition met\n",
-		},
+		),
+		WaitUntilJobCompleteCommand(ns, "copier"),
 	}
 	RunTestSteps(orasCpCmds, t)
 
