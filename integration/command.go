@@ -524,6 +524,39 @@ func (c *Command) Stop(t *testing.T) {
 	c.started = false
 }
 
+// JobCommand returns a Command which runs a job with a specified image, command and args
+func JobCommand(jobname, image, namespace, command string, commandArgs ...string) *Command {
+	cmdLine := ""
+	if command != "" {
+		cmdLine = fmt.Sprintf("\n        command:\n         - %s", command)
+	}
+
+	for _, arg := range commandArgs {
+		cmdLine = cmdLine + fmt.Sprintf("\n         - %s", arg)
+	}
+
+	cmd := fmt.Sprintf(`kubectl apply -f - <<EOF
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: %s
+        image: %s%s
+EOF`, jobname, namespace, jobname, image, cmdLine)
+
+	return &Command{
+		Name:           fmt.Sprintf("Run %s", jobname),
+		Cmd:            cmd,
+		ExpectedString: fmt.Sprintf("job.batch/%s created\n", jobname),
+	}
+}
+
 // PodCommand returns a Command that starts a pod with a specified image, command and args
 func PodCommand(podname, image, namespace, command, commandArgs string) *Command {
 	cmdLine := ""
@@ -554,7 +587,7 @@ EOF
 `, podname, namespace, podname, podname, image, cmdLine, commandArgsLine)
 
 	return &Command{
-		Name:           fmt.Sprintf("Run%s", podname),
+		Name:           fmt.Sprintf("Run %s", podname),
 		Cmd:            cmdStr,
 		ExpectedString: fmt.Sprintf("pod/%s created\n", podname),
 	}
