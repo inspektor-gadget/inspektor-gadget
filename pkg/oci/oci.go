@@ -377,9 +377,10 @@ func newAuthClient(repository string, authOptions *AuthOptions) (*oras_auth.Clie
 
 	return &oras_auth.Client{
 		Credential: oras_auth.StaticCredential(hostString, oras_auth.Credential{
-			Username:    authConfig.Username,
-			Password:    authConfig.Password,
-			AccessToken: authConfig.Auth,
+			Username:     authConfig.Username,
+			Password:     authConfig.Password,
+			AccessToken:  authConfig.Auth,
+			RefreshToken: authConfig.IdentityToken,
 		}),
 	}, nil
 }
