@@ -124,11 +124,7 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	return nil
 }
 
-// Close is needed because of the StartStopGadget interface
 func (t *Tracer) Close() {
-}
-
-func (t *Tracer) Stop() {
 	if t.collection != nil {
 		t.collection.Close()
 		t.collection = nil
@@ -146,6 +142,9 @@ func (t *Tracer) Stop() {
 	}
 	if t.socketEnricher != nil {
 		t.socketEnricher.Close()
+	}
+	if t.networkTracer != nil {
+		t.networkTracer.Close()
 	}
 }
 
@@ -599,7 +598,7 @@ func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	t.config.Metadata = info.GadgetMetadata
 
 	if err := t.installTracer(params); err != nil {
-		t.Stop()
+		t.Close()
 		return fmt.Errorf("install tracer: %w", err)
 	}
 
