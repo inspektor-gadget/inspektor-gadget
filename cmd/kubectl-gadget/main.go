@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -69,12 +68,19 @@ func main() {
 	// (as they just don't need it or imply that there are no nodes to
 	// contact, yet).
 	skipInfo := false
+	isHelp := false
+	isVersion := false
+	isDeployUndeploy := false
 	for _, arg := range os.Args[1:] {
 		for _, skipCmd := range infoSkipCommands {
-			if strings.ToLower(arg) == skipCmd {
+			if arg == skipCmd {
 				skipInfo = true
 			}
 		}
+
+		isVersion = isVersion || arg == "version"
+		isDeployUndeploy = isDeployUndeploy || arg == "deploy" || arg == "undeploy"
+		isHelp = isHelp || arg == "--help" || arg == "-h"
 	}
 
 	grpcRuntime = grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
@@ -96,6 +102,26 @@ func main() {
 		// Analogous to cobra error message
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+
+	if !isHelp && !isDeployUndeploy && !runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).IsSet() {
+		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
+		if err != nil {
+			log.Fatalf("Searching for running Inspektor Gadget instances: %s", err)
+		}
+
+		switch len(gadgetNamespaces) {
+		case 0:
+			if !isVersion {
+				log.Fatalf("No running Inspektor Gadget instances found")
+			}
+		case 1:
+			// Exactly one running gadget instance found, use it
+			runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
+		default:
+			// Multiple running gadget instances found, error out
+			log.Fatalf("Multiple running Inspektor Gadget instances found in following namespaces: %v", gadgetNamespaces)
+		}
 	}
 
 	if !skipInfo {

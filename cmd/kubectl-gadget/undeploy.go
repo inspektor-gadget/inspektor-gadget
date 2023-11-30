@@ -205,6 +205,7 @@ again:
 
 		// nothing to do, namespace doesn't exist
 		if list == nil || len(list.Items) == 0 {
+			fmt.Printf("Nothing to do, %q namespace doesn't exist\n", gadgetNamespace)
 			goto out
 		}
 	}
