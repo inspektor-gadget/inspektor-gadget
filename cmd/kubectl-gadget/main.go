@@ -101,8 +101,9 @@ func main() {
 	hiddenColumnTags := []string{"runtime"}
 	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
 
-	// Advise category is still being handled by CRs for now
+	// Advise and traceloop category is still being handled by CRs for now
 	rootCmd.AddCommand(advise.NewAdviseCmd())
+	rootCmd.AddCommand(NewTraceloopCmd())
 
 	rootCmd.AddCommand(common.NewSyncCommand(runtime))
 

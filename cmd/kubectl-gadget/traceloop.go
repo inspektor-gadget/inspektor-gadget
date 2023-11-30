@@ -70,8 +70,7 @@ var traceloopDeleteCmd = &cobra.Command{
 	RunE:  runTraceloopDelete,
 }
 
-func init() {
-	rootCmd.AddCommand(traceloopCmd)
+func NewTraceloopCmd() *cobra.Command {
 	utils.AddCommonFlags(traceloopCmd, &params)
 
 	traceloopCmd.AddCommand(traceloopStartCmd)
@@ -79,6 +78,8 @@ func init() {
 	traceloopCmd.AddCommand(traceloopListCmd)
 	traceloopCmd.AddCommand(traceloopShowCmd)
 	traceloopCmd.AddCommand(traceloopDeleteCmd)
+
+	return traceloopCmd
 }
 
 func runTraceloopStart(cmd *cobra.Command, args []string) error {
