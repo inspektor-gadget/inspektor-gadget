@@ -33,7 +33,6 @@ import (
 	"github.com/cilium/ebpf/perf"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/inspektor-gadget/inspektor-gadget/pkg/btfgen"
 	containercollection "github.com/inspektor-gadget/inspektor-gadget/pkg/container-collection"
 	gadgetcontext "github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-context"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -44,8 +43,8 @@ import (
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -type syscall_event_t -type syscall_event_cont_t -target ${TARGET} -cc clang -cflags ${CFLAGS} traceloop ./bpf/traceloop.bpf.c -- -I./bpf/
 
-// These variables must match content of traceloop.h.
-var (
+// These consts must match the content of traceloop.h.
+const (
 	useNullByteLength        uint64 = 0x0fffffffffffffff
 	useRetAsParamLength      uint64 = 0x0ffffffffffffffe
 	useArgIndexAsParamLength uint64 = 0x0ffffffffffffff0
@@ -53,10 +52,9 @@ var (
 
 	syscallEventTypeEnter uint8 = 0
 	syscallEventTypeExit  uint8 = 1
-)
 
-// This should match traceloop.h define SYSCALL_ARGS.
-var syscallArgs uint8 = 6
+	syscallArgs uint8 = 6
+)
 
 var (
 	syscallsOnce         sync.Once
@@ -86,6 +84,8 @@ type Tracer struct {
 	cancel        context.CancelFunc
 	eventCallback func(event *types.Event)
 	waitGroup     sync.WaitGroup
+
+	syscallFilters []string
 }
 
 type syscallEvent struct {
@@ -151,13 +151,28 @@ func (t *Tracer) install() error {
 		})
 	}
 
-	opts := ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			KernelTypes: btfgen.GetBTFSpec(),
-		},
+	// Fill the syscall filter map with the corresponding syscall numbers.
+	syscallFiltersMapSpec := spec.Maps["syscall_filters"]
+	for _, name := range t.syscallFilters {
+		if name == "" {
+			continue
+		}
+
+		number, ok := syscalls.GetSyscallNumberByName(name)
+		if !ok {
+			return fmt.Errorf("syscall %q does not exist", name)
+		}
+
+		syscallFiltersMapSpec.Contents = append(syscallFiltersMapSpec.Contents, ebpf.MapKV{
+			Key: uint64(number),
+			// We do not care about the value itself but we need to provide one.
+			Value: true,
+		})
 	}
 
-	if err := spec.LoadAndAssign(&t.objs, &opts); err != nil {
+	consts := make(map[string]interface{})
+	consts["filter_syscall"] = len(syscallFiltersMapSpec.Contents) > 0
+	if err := gadgets.LoadeBPFSpec(nil, spec, consts, &t.objs); err != nil {
 		return fmt.Errorf("loading ebpf program: %w", err)
 	}
 
@@ -658,6 +673,8 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	t.syscallFilters = gadgetCtx.GadgetParams().Get(ParamSyscallFilters).AsStringSlice()
+
 	if err := t.install(); err != nil {
 		t.close()
 		return fmt.Errorf("installing tracer: %w", err)

@@ -83,10 +83,12 @@ type traceloopProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type traceloopMapSpecs struct {
-	MapOfPerfBuffers *ebpf.MapSpec `ebpf:"map_of_perf_buffers"`
-	ProbeAtSysExit   *ebpf.MapSpec `ebpf:"probe_at_sys_exit"`
-	RegsMap          *ebpf.MapSpec `ebpf:"regs_map"`
-	Syscalls         *ebpf.MapSpec `ebpf:"syscalls"`
+	GadgetMntnsFilterMap *ebpf.MapSpec `ebpf:"gadget_mntns_filter_map"`
+	MapOfPerfBuffers     *ebpf.MapSpec `ebpf:"map_of_perf_buffers"`
+	ProbeAtSysExit       *ebpf.MapSpec `ebpf:"probe_at_sys_exit"`
+	RegsMap              *ebpf.MapSpec `ebpf:"regs_map"`
+	SyscallFilters       *ebpf.MapSpec `ebpf:"syscall_filters"`
+	Syscalls             *ebpf.MapSpec `ebpf:"syscalls"`
 }
 
 // traceloopObjects contains all objects after they have been loaded into the kernel.
@@ -108,17 +110,21 @@ func (o *traceloopObjects) Close() error {
 //
 // It can be passed to loadTraceloopObjects or ebpf.CollectionSpec.LoadAndAssign.
 type traceloopMaps struct {
-	MapOfPerfBuffers *ebpf.Map `ebpf:"map_of_perf_buffers"`
-	ProbeAtSysExit   *ebpf.Map `ebpf:"probe_at_sys_exit"`
-	RegsMap          *ebpf.Map `ebpf:"regs_map"`
-	Syscalls         *ebpf.Map `ebpf:"syscalls"`
+	GadgetMntnsFilterMap *ebpf.Map `ebpf:"gadget_mntns_filter_map"`
+	MapOfPerfBuffers     *ebpf.Map `ebpf:"map_of_perf_buffers"`
+	ProbeAtSysExit       *ebpf.Map `ebpf:"probe_at_sys_exit"`
+	RegsMap              *ebpf.Map `ebpf:"regs_map"`
+	SyscallFilters       *ebpf.Map `ebpf:"syscall_filters"`
+	Syscalls             *ebpf.Map `ebpf:"syscalls"`
 }
 
 func (m *traceloopMaps) Close() error {
 	return _TraceloopClose(
+		m.GadgetMntnsFilterMap,
 		m.MapOfPerfBuffers,
 		m.ProbeAtSysExit,
 		m.RegsMap,
+		m.SyscallFilters,
 		m.Syscalls,
 	)
 }

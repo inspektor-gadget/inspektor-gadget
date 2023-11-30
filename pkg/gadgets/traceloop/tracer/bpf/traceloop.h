@@ -11,6 +11,9 @@
 /* The syscall can have max 6 arguments. */
 #define SYSCALL_ARGS 6
 
+/* 16 syscalls should be enough to filter out. */
+#define SYSCALL_FILTERS 16
+
 const __u64 PARAM_PROBE_AT_EXIT_MASK = 0xf000000000000000ULL;
 const __u64 USE_RET_AS_PARAM_LENGTH = 0x0ffffffffffffffeULL;
 

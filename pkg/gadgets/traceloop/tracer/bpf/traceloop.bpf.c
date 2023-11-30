@@ -3,6 +3,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
+#include <gadget/mntns_filter.h>
 #include "traceloop.h"
 
 /*
@@ -34,6 +35,8 @@
 #else /* !defined(SHOW_ERROR) */
 #define bpf_error_printk(fmt, ...)
 #endif /* !defined(SHOW_ERROR) */
+
+const volatile bool filter_syscall = false;
 
 const struct syscall_event_t *unused_event __attribute__((unused));
 const struct syscall_event_cont_t *unused_event_cont __attribute__((unused));
@@ -72,6 +75,18 @@ struct {
 	 */
 	__uint(max_entries, 512);
 } syscalls SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(key_size, sizeof(u64));
+	/*
+	 * We do not care about the value here, so let's use a bool to consume one
+	 * byte per value.
+	 */
+	__uint(value_size, sizeof(bool));
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+	__uint(max_entries, SYSCALL_FILTERS);
+} syscall_filters SEC(".maps");
 
 /*
  * This key/value store maps thread PIDs to syscall arg arrays
@@ -125,6 +140,12 @@ static __always_inline u64 get_arg(struct pt_regs *regs, int i)
 	}
 }
 
+static __always_inline bool should_filter_out_syscall(u64 syscall_nr)
+{
+	return filter_syscall &&
+	       bpf_map_lookup_elem(&syscall_filters, &syscall_nr) == NULL;
+}
+
 /*
  * sys_enter is defined as:
  * TP_PROTO(struct pt_regs *regs, long id)
@@ -149,6 +170,9 @@ int ig_traceloop_e(struct bpf_raw_tracepoint_args *ctx)
 	u64 mntns_id;
 	int ret;
 	int i;
+
+	if (should_filter_out_syscall(nr))
+		return 0;
 
 	/* The boot time timestamp is used to give the timestamp to users. It
 	 * is converted to the wall-clock time in userspace. It only works
