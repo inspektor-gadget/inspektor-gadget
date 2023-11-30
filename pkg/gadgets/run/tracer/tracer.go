@@ -83,7 +83,7 @@ type Tracer struct {
 	eventType *btf.Struct
 
 	socketEnricher *socketenricher.SocketEnricher
-	networkTracer  *networktracer.Tracer[types.Event]
+	networkTracers map[string]*networktracer.Tracer[types.Event]
 
 	// Tracers related
 	ringbufReader *ringbuf.Reader
@@ -97,30 +97,43 @@ type Tracer struct {
 }
 
 func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
-	// FIXME: Ideally, we should have one networktracer.NewTracer per socket
-	//        filter program. But in NewInstance(), we don't have access to
-	//        the ebpf program yet, so we don't know how many socket filters
-	//        we have. For now, we don't support several socket filter.
-	//        Currently, we unfortunately impact performance with the
-	//        networkTracer even if there are no socket filters. This is
-	//        difficult to fix because AttachContainer() is called for all
-	//        initial containers before Run(), so we need to create the
-	//        networkTracer in NewInstance().
-	// https://github.com/inspektor-gadget/inspektor-gadget/pull/2003#discussion_r1320569238
-	networkTracer, err := networktracer.NewTracer[types.Event]()
-	if err != nil {
-		return nil, fmt.Errorf("creating network tracer: %w", err)
-	}
-
-	tracer := &Tracer{
-		config:        &Config{},
-		networkTracer: networkTracer,
-		containers:    make(map[string]*containercollection.Container),
-	}
-	return tracer, nil
+	return &Tracer{}, nil
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	t.config = &Config{}
+	t.containers = make(map[string]*containercollection.Container)
+	t.networkTracers = make(map[string]*networktracer.Tracer[types.Event])
+
+	params := gadgetCtx.GadgetParams()
+	args := gadgetCtx.Args()
+
+	info, err := getGadgetInfo(params, args, gadgetCtx.Logger())
+	if err != nil {
+		return fmt.Errorf("getting gadget info: %w", err)
+	}
+
+	t.config.ProgContent = info.ProgContent
+	t.spec, err = loadSpec(t.config.ProgContent)
+	if err != nil {
+		return err
+	}
+
+	t.config.Metadata = info.GadgetMetadata
+
+	// Create network tracers, one for each socket filter program.
+	// We need to make this in Init() because AttachContainer() is called before Run().
+	for _, p := range t.spec.Programs {
+		if p.Type == ebpf.SocketFilter && strings.HasPrefix(p.SectionName, "socket") {
+			networkTracer, err := networktracer.NewTracer[types.Event]()
+			if err != nil {
+				t.Close()
+				return fmt.Errorf("creating network tracer: %w", err)
+			}
+			t.networkTracers[p.Name] = networkTracer
+		}
+	}
+
 	return nil
 }
 
@@ -143,8 +156,8 @@ func (t *Tracer) Close() {
 	if t.socketEnricher != nil {
 		t.socketEnricher.Close()
 	}
-	if t.networkTracer != nil {
-		t.networkTracer.Close()
+	for _, networkTracer := range t.networkTracers {
+		networkTracer.Close()
 	}
 }
 
@@ -231,7 +244,6 @@ func (t *Tracer) installTracer(params *params.Params) error {
 	}
 
 	// Attach programs
-	socketFilterFound := false
 	for progName, p := range t.spec.Programs {
 		if p.Type == ebpf.Kprobe && strings.HasPrefix(p.SectionName, "kprobe/") {
 			l, err := link.Kprobe(p.AttachTo, t.collection.Programs[progName], nil)
@@ -253,11 +265,8 @@ func (t *Tracer) installTracer(params *params.Params) error {
 			}
 			t.links = append(t.links, l)
 		} else if p.Type == ebpf.SocketFilter && strings.HasPrefix(p.SectionName, "socket") {
-			if socketFilterFound {
-				return fmt.Errorf("several socket filters found, only one is supported")
-			}
-			socketFilterFound = true
-			err := t.networkTracer.AttachProg(t.collection.Programs[progName])
+			networkTracer := t.networkTracers[p.Name]
+			err := networkTracer.AttachProg(t.collection.Programs[progName])
 			if err != nil {
 				return fmt.Errorf("attaching ebpf program to dispatcher: %w", err)
 			}
@@ -582,20 +591,6 @@ func (t *Tracer) runSnapshotter(gadgetCtx gadgets.GadgetContext) error {
 
 func (t *Tracer) Run(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
-	args := gadgetCtx.Args()
-
-	info, err := getGadgetInfo(params, args, gadgetCtx.Logger())
-	if err != nil {
-		return fmt.Errorf("getting gadget info: %w", err)
-	}
-
-	t.config.ProgContent = info.ProgContent
-	t.spec, err = loadSpec(t.config.ProgContent)
-	if err != nil {
-		return err
-	}
-
-	t.config.Metadata = info.GadgetMetadata
 
 	if err := t.installTracer(params); err != nil {
 		t.Close()
@@ -617,14 +612,28 @@ func (t *Tracer) AttachContainer(container *containercollection.Container) error
 	t.mu.Lock()
 	t.containers[container.Runtime.ContainerID] = container
 	t.mu.Unlock()
-	return t.networkTracer.Attach(container.Pid)
+
+	for _, networkTracer := range t.networkTracers {
+		if err := networkTracer.Attach(container.Pid); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (t *Tracer) DetachContainer(container *containercollection.Container) error {
 	t.mu.Lock()
 	delete(t.containers, container.Runtime.ContainerID)
 	t.mu.Unlock()
-	return t.networkTracer.Detach(container.Pid)
+
+	for _, networkTracer := range t.networkTracers {
+		if err := networkTracer.Detach(container.Pid); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (t *Tracer) SetMountNsMap(mountnsMap *ebpf.Map) {
