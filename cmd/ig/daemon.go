@@ -39,6 +39,7 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 
 	var socket string
 	var group string
+	var eventBufferLength uint64
 
 	daemonCmd.PersistentFlags().StringVarP(
 		&group,
@@ -54,6 +55,13 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 		api.DefaultDaemonPath,
 		"The socket to listen on for new requests. Can be a unix socket"+
 			" (unix:///path/to.socket) or a tcp socket (tcp://127.0.0.1:1234)")
+
+	daemonCmd.PersistentFlags().Uint64VarP(
+		&eventBufferLength,
+		"events-buffer-length",
+		"",
+		16384,
+		"The events buffer length. A low value could impact horizontal scaling.")
 
 	daemonCmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if os.Geteuid() != 0 {
@@ -78,7 +86,7 @@ func newDaemonCommand(runtime runtime.Runtime) *cobra.Command {
 		}
 
 		log.Infof("starting Inspektor Gadget daemon at %q", socket)
-		service := gadgetservice.NewService(log.StandardLogger())
+		service := gadgetservice.NewService(log.StandardLogger(), eventBufferLength)
 		return service.Run(gadgetservice.RunConfig{
 			SocketType: socketType,
 			SocketPath: socketPath,

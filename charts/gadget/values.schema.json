@@ -10,7 +10,8 @@
         "containerdSocketPath",
         "crioSocketPath",
         "dockerSocketPath",
-        "experimental"
+        "experimental",
+        "eventsBufferLength"
       ],
       "properties": {
         "hookMode": {
@@ -38,6 +39,9 @@
         },
         "experimental": {
           "type": "boolean"
+        },
+        "eventsBufferLength": {
+          "type": "string"
         }
       }
     },

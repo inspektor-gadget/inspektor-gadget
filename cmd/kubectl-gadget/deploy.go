@@ -84,6 +84,7 @@ var (
 	nodeSelector        string
 	experimentalVar     bool
 	skipSELinuxOpts     bool
+	eventBufferLength   uint64
 )
 
 var supportedHooks = []string{"auto", "crio", "podinformer", "nri", "fanotify", "fanotify+ebpf"}
@@ -162,6 +163,11 @@ func init() {
 		"skip-selinux-opts", "",
 		false,
 		"skip setting SELinux options on the gadget pod")
+	deployCmd.PersistentFlags().Uint64VarP(
+		&eventBufferLength,
+		"events-buffer-length", "",
+		16384,
+		"The events buffer length. A low value could impact horizontal scaling.")
 	rootCmd.AddCommand(deployCmd)
 }
 
@@ -451,6 +457,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				case experimental.EnvName:
 					value := experimental.Enabled() || experimentalVar
 					gadgetContainer.Env[i].Value = strconv.FormatBool(value)
+				case "EVENTS_BUFFER_LENGTH":
+					gadgetContainer.Env[i].Value = strconv.FormatUint(eventBufferLength, 10)
 				}
 			}
 
