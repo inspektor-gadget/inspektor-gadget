@@ -58,6 +58,8 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 )
 
+const gadgetPullSecret = "gadget-pull-secret"
+
 var deployCmd = &cobra.Command{
 	Use:          "deploy",
 	Short:        "Deploy Inspektor Gadget on the cluster",
@@ -395,6 +397,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return commonutils.WrapInErrSetupK8sClient(err)
 	}
 
+	var isPullSecretPresent bool
+	if _, err = k8sClient.CoreV1().Secrets(utils.GadgetNamespace).Get(context.TODO(), gadgetPullSecret, metav1.GetOptions{}); err == nil {
+		isPullSecretPresent = true
+	}
+
 	for _, object := range objects {
 		var currentGadgetDS *appsv1.DaemonSet
 
@@ -479,6 +486,29 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			currentGadgetDS, _ = k8sClient.AppsV1().DaemonSets(utils.GadgetNamespace).Get(
 				context.TODO(), "gadget", metav1.GetOptions{},
 			)
+
+			// handle pull secret
+			if isPullSecretPresent {
+				daemonSet.Spec.Template.Spec.Volumes = append(daemonSet.Spec.Template.Spec.Volumes, v1.Volume{
+					Name: "pull-secret",
+					VolumeSource: v1.VolumeSource{
+						Secret: &v1.SecretVolumeSource{
+							SecretName: gadgetPullSecret,
+							Items: []v1.KeyToPath{
+								{
+									Key:  ".dockerconfigjson",
+									Path: "config.json",
+								},
+							},
+						},
+					},
+				})
+				gadgetContainer.VolumeMounts = append(gadgetContainer.VolumeMounts, v1.VolumeMount{
+					Name:      "pull-secret",
+					MountPath: "/var/run/secrets/gadget/pull-secret",
+					ReadOnly:  true,
+				})
+			}
 		}
 
 		if printOnly {

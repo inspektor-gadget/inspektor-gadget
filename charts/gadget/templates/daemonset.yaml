@@ -172,6 +172,11 @@ spec:
               name: cgroup
             - mountPath: /sys/fs/bpf
               name: bpffs
+            {{- if .Values.config.mountPullSecret }}
+            - mountPath: /var/run/secrets/gadget/pull-secret
+              name: pull-secret
+              readOnly: true
+            {{- end }}
       nodeSelector:
         {{- .Values.nodeSelector | toYaml | nindent 8 }}
       affinity:
@@ -197,3 +202,12 @@ spec:
         - name: debugfs
           hostPath:
             path: /sys/kernel/debug
+        {{- if .Values.config.mountPullSecret }}
+        - name: pull-secret
+          secret:
+            defaultMode: 420
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+            secretName: gadget-pull-secret
+        {{- end }}

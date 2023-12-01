@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  {{- if not .Values.skipLabels }}
+  labels:
+    {{- include "gadget.labels" . | nindent 4 }}
+  {{- end }}
+  name: {{ include "gadget.fullname" . }}-role
+  namespace: {{ include "gadget.namespace" . }}
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "secrets" ]
+    # get secrets is needed for retrieving pull secret.
+    verbs: [ "get" ]
