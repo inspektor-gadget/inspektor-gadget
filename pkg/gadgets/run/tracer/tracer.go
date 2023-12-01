@@ -42,6 +42,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 	bpfiterns "github.com/inspektor-gadget/inspektor-gadget/pkg/utils/bpf-iter-ns"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/experimental"
 )
 
 // keep aligned with pkg/gadgets/common/types.h
@@ -101,6 +102,10 @@ func (g *GadgetDesc) NewInstance() (gadgets.Gadget, error) {
 }
 
 func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
+	if !experimental.Enabled() {
+		return errors.New("run needs experimental features to be enabled")
+	}
+
 	t.config = &Config{}
 	t.containers = make(map[string]*containercollection.Container)
 	t.networkTracers = make(map[string]*networktracer.Tracer[types.Event])

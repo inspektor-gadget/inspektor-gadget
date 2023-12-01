@@ -17,6 +17,7 @@ package tracer
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"unsafe"
@@ -116,6 +117,10 @@ func (g *GadgetDesc) ParamDescs() params.ParamDescs {
 
 func (g *GadgetDesc) Parser() parser.Parser {
 	return nil
+}
+
+func (g *GadgetDesc) Experimental() bool {
+	return true
 }
 
 // getGadgetType returns the type of the gadget according to the gadget being run.
@@ -260,6 +265,9 @@ func fillTypeHints(spec *ebpf.CollectionSpec, params map[string]types.EBPFParam)
 }
 
 func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types.GadgetInfo, error) {
+	if !experimental.Enabled() {
+		return nil, errors.New("run needs experimental features to be enabled")
+	}
 	return getGadgetInfo(params, args, log.StandardLogger())
 }
 
@@ -641,7 +649,5 @@ func (g *GadgetDesc) EventPrototype() any {
 }
 
 func init() {
-	if experimental.Enabled() {
-		gadgetregistry.Register(&GadgetDesc{})
-	}
+	gadgetregistry.Register(&GadgetDesc{})
 }

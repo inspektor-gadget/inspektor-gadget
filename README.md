@@ -104,6 +104,7 @@ Available Commands:
   help        Help about any command
   profile     Profile different subsystems
   prometheus  Expose metrics using prometheus
+  run         Run a containerized gadget (experimental)
   script      Run a bpftrace-compatible scripts
   snapshot    Take a snapshot of a subsystem and print it
   sync        Synchronize gadget information with server
