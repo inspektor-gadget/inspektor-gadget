@@ -13,6 +13,8 @@ description: >
 - [Installing in the cluster](#installing-in-the-cluster)
   * [Quick installation](#quick-installation)
   * [Choosing the gadget image](#choosing-the-gadget-image)
+  * [Deploy to specific nodes](#deploy-to-specific-nodes)
+  * [Deploying into a custom namespace](#deploying-into-a-custom-namespace)
   * [Hook Mode](#hook-mode)
   * [Specific Information for Different Platforms](#specific-information-for-different-platforms)
     + [Minikube](#minikube)
@@ -23,7 +25,7 @@ description: >
   * [Compile from source](#compile-from-source-1)
 - [Experimental features](#experimental-features)
   * [ig](#ig)
-  * [kubectl-gadget and ig-k8s](#kubectl-gadget-and-ig-k8s)
+  * [kubectl-gadget](#kubectl-gadget)
 <!-- /toc -->
 
 Inspektor Gadget is composed of a `kubectl` plugin executed in the user's
@@ -108,6 +110,13 @@ $ kubectl gadget deploy --node-selector kubernetes.io/hostname!=minikube
 # Deploy to minikube and minikube-m03 nodes only
 $ kubectl gadget deploy --node-selector 'kubernetes.io/hostname in (minikube, minikube-m03)'
 ```
+
+### Deploying into a custom namespace
+
+By default Inspektor Gadget is deployed to the namespace `gadget`.
+This can be changed with the `--gadget-namespace` flag.
+When using gadgets (e.g. `kubectl gadget trace exec`) the deployed namespace is discovered automatically and no additional flags are needed during the usage.
+For `undeploy` the `--gadget-namespace` flag is mandatory.
 
 ### Hook Mode
 
