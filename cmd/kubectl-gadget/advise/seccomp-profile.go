@@ -58,9 +58,9 @@ var (
 	profilePrefix string
 )
 
-func newSeccompProfileCmd() *cobra.Command {
+func newSeccompProfileCmd(gadgetNamespace string) *cobra.Command {
 	seccompProfileCmd := commonadvise.NewSeccompProfileCmd(nil)
-	utils.AddCommonFlags(seccompProfileCmd, &params)
+	utils.AddCommonFlags(seccompProfileCmd, &params, gadgetNamespace)
 
 	seccompProfileCmd.AddCommand(seccompAdvisorStartCmd)
 	seccompAdvisorStartCmd.PersistentFlags().StringVarP(&outputMode,
@@ -106,6 +106,7 @@ func runSeccompAdvisorStart(cmd *cobra.Command, args []string) error {
 
 	config := &utils.TraceConfig{
 		GadgetName:        "seccomp",
+		GadgetNamespace:   gadgetNamespace,
 		Operation:         gadgetv1alpha1.OperationStart,
 		TraceOutputMode:   traceOutputMode,
 		TraceOutput:       profilePrefix,
@@ -206,21 +207,21 @@ func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 	// Maybe there is no trace with the given ID.
 	// But it is better to try to delete something which does not exist than
 	// leaking a resource.
-	defer utils.DeleteTrace(traceID)
+	defer utils.DeleteTrace(gadgetNamespace, traceID)
 
-	err := utils.SetTraceOperation(traceID, string(gadgetv1alpha1.OperationGenerate))
+	err := utils.SetTraceOperation(gadgetNamespace, traceID, string(gadgetv1alpha1.OperationGenerate))
 	if err != nil {
 		return commonutils.WrapInErrGenGadgetOutput(err)
 	}
 
 	// We stop the trace so its Status.State become Stopped.
 	// Indeed, generate operation does not change value of Status.State.
-	err = utils.SetTraceOperation(traceID, string(gadgetv1alpha1.OperationStop))
+	err = utils.SetTraceOperation(gadgetNamespace, traceID, string(gadgetv1alpha1.OperationStop))
 	if err != nil {
 		return commonutils.WrapInErrStopGadget(err)
 	}
 
-	err = utils.PrintTraceOutputFromStatus(traceID, string(gadgetv1alpha1.TraceStateStopped), callback)
+	err = utils.PrintTraceOutputFromStatus(gadgetNamespace, traceID, string(gadgetv1alpha1.TraceStateStopped), callback)
 	if err != nil {
 		return commonutils.WrapInErrGetGadgetOutput(err)
 	}
@@ -232,8 +233,9 @@ func runSeccompAdvisorStop(cmd *cobra.Command, args []string) error {
 // parameter.
 func runSeccompAdvisorList(cmd *cobra.Command, args []string) error {
 	config := &utils.TraceConfig{
-		GadgetName:  "seccomp",
-		CommonFlags: &params,
+		GadgetName:      "seccomp",
+		GadgetNamespace: gadgetNamespace,
+		CommonFlags:     &params,
 	}
 
 	err := utils.PrintAllTraces(config)

@@ -32,6 +32,7 @@ import (
 	gadgetv1alpha1 "github.com/inspektor-gadget/inspektor-gadget/pkg/apis/gadget/v1alpha1"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/labels"
 	traceloopTypes "github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/traceloop/types"
+	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 	eventtypes "github.com/inspektor-gadget/inspektor-gadget/pkg/types"
 )
 
@@ -70,8 +71,8 @@ var traceloopDeleteCmd = &cobra.Command{
 	RunE:  runTraceloopDelete,
 }
 
-func NewTraceloopCmd() *cobra.Command {
-	utils.AddCommonFlags(traceloopCmd, &params)
+func NewTraceloopCmd(gadgetNamespace string) *cobra.Command {
+	utils.AddCommonFlags(traceloopCmd, &params, gadgetNamespace)
 
 	traceloopCmd.AddCommand(traceloopStartCmd)
 	traceloopCmd.AddCommand(traceloopStopCmd)
@@ -83,7 +84,9 @@ func NewTraceloopCmd() *cobra.Command {
 }
 
 func runTraceloopStart(cmd *cobra.Command, args []string) error {
-	traces, err := utils.ListTracesByGadgetName("traceloop")
+	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
+
+	traces, err := utils.ListTracesByGadgetName(gadgetNamespace, "traceloop")
 	if err != nil {
 		return err
 	}
@@ -114,6 +117,7 @@ func runTraceloopStart(cmd *cobra.Command, args []string) error {
 	// Create traceloop trace
 	_, err = utils.CreateTrace(&utils.TraceConfig{
 		GadgetName:      "traceloop",
+		GadgetNamespace: gadgetNamespace,
 		Operation:       gadgetv1alpha1.OperationStart,
 		TraceOutputMode: gadgetv1alpha1.TraceOutputModeStatus,
 		CommonFlags:     &params,
@@ -131,7 +135,9 @@ func runTraceloopStart(cmd *cobra.Command, args []string) error {
 }
 
 func runTraceloopStop(cmd *cobra.Command, args []string) error {
-	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
+	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
+
+	traceList, err := utils.GetTraceListFromOptions(gadgetNamespace, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("gadgetName=traceloop,%s=%s", labels.LabelType, labels.LabelGlobal),
 	})
 	if err != nil {
@@ -148,9 +154,9 @@ func runTraceloopStop(cmd *cobra.Command, args []string) error {
 	// Maybe there is no trace with the given ID.
 	// But it is better to try to delete something which does not exist than
 	// leaking a resource.
-	defer utils.DeleteTrace(traceID)
+	defer utils.DeleteTrace(gadgetNamespace, traceID)
 
-	err = utils.SetTraceOperation(traceID, string(gadgetv1alpha1.OperationStop))
+	err = utils.SetTraceOperation(gadgetNamespace, traceID, string(gadgetv1alpha1.OperationStop))
 	if err != nil {
 		return commonutils.WrapInErrStopGadget(err)
 	}
@@ -159,7 +165,9 @@ func runTraceloopStop(cmd *cobra.Command, args []string) error {
 }
 
 func runTraceloopList(cmd *cobra.Command, args []string) error {
-	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
+	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
+
+	traceList, err := utils.GetTraceListFromOptions(gadgetNamespace, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("gadgetName=traceloop,%s=%s", labels.LabelType, labels.LabelGlobal),
 	})
 	if err != nil {
@@ -209,13 +217,15 @@ func runTraceloopList(cmd *cobra.Command, args []string) error {
 }
 
 func runTraceloopShow(cmd *cobra.Command, args []string) error {
+	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
+
 	if len(args) != 1 {
 		return commonutils.WrapInErrMissingArgs("<container-id>")
 	}
 
 	id := args[0]
 
-	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
+	traceList, err := utils.GetTraceListFromOptions(gadgetNamespace, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("gadgetName=traceloop,%s=%s", labels.LabelType, labels.LabelGlobal),
 	})
 	if err != nil {
@@ -262,7 +272,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) error {
 		}
 
 		// HACK Take a look at gadget.go.
-		utils.DeleteTrace(traceID)
+		utils.DeleteTrace(gadgetNamespace, traceID)
 
 		os.Exit(0)
 
@@ -303,6 +313,7 @@ func runTraceloopShow(cmd *cobra.Command, args []string) error {
 
 		traceID, err = utils.CreateTrace(&utils.TraceConfig{
 			GadgetName:       "traceloop",
+			GadgetNamespace:  gadgetNamespace,
 			Operation:        gadgetv1alpha1.OperationCollect,
 			TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
 			TraceOutputState: gadgetv1alpha1.TraceStateCompleted,
@@ -328,9 +339,9 @@ func runTraceloopShow(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("creating trace: %w", err)
 		}
 
-		utils.SigHandler(&traceID, params.OutputMode != commonutils.OutputModeJSON)
+		utils.SigHandler(gadgetNamespace, &traceID, params.OutputMode != commonutils.OutputModeJSON)
 
-		err = utils.PrintTraceOutputFromStream(traceID, string(gadgetv1alpha1.TraceStateCompleted), &params, transformEvent)
+		err = utils.PrintTraceOutputFromStream(gadgetNamespace, traceID, string(gadgetv1alpha1.TraceStateCompleted), &params, transformEvent)
 		if err != nil {
 			return err
 		}
@@ -344,13 +355,15 @@ func runTraceloopShow(cmd *cobra.Command, args []string) error {
 }
 
 func runTraceloopDelete(cmd *cobra.Command, args []string) error {
+	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
+
 	if len(args) != 1 {
 		return commonutils.WrapInErrMissingArgs("<container-id>")
 	}
 
 	id := args[0]
 
-	traceList, err := utils.GetTraceListFromOptions(metav1.ListOptions{
+	traceList, err := utils.GetTraceListFromOptions(gadgetNamespace, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("gadgetName=traceloop,%s=%s", labels.LabelType, labels.LabelGlobal),
 	})
 	if err != nil {
@@ -389,6 +402,7 @@ func runTraceloopDelete(cmd *cobra.Command, args []string) error {
 
 		traceID, err := utils.CreateTrace(&utils.TraceConfig{
 			GadgetName:       "traceloop",
+			GadgetNamespace:  runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString(),
 			Operation:        gadgetv1alpha1.OperationDelete,
 			TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStatus,
 			TraceOutputState: gadgetv1alpha1.TraceStateCompleted,
@@ -414,9 +428,9 @@ func runTraceloopDelete(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("creating trace: %w", err)
 		}
 
-		defer utils.DeleteTrace(traceID)
+		defer utils.DeleteTrace(gadgetNamespace, traceID)
 
-		err = utils.PrintTraceOutputFromStatus(traceID, string(gadgetv1alpha1.TraceStateCompleted), func(_ string, _ []string) error {
+		err = utils.PrintTraceOutputFromStatus(gadgetNamespace, traceID, string(gadgetv1alpha1.TraceStateCompleted), func(_ string, _ []string) error {
 			return nil
 		})
 		if err != nil {

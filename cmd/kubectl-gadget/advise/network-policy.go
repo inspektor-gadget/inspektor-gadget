@@ -46,12 +46,12 @@ var (
 	outputFileName string
 )
 
-func newNetworkPolicyCmd() *cobra.Command {
+func newNetworkPolicyCmd(gadgetNamespace string) *cobra.Command {
 	networkPolicyCmd := &cobra.Command{
 		Use:   "network-policy",
 		Short: "Generate network policies based on recorded network activity",
 	}
-	utils.AddCommonFlags(networkPolicyCmd, &params)
+	utils.AddCommonFlags(networkPolicyCmd, &params, gadgetNamespace)
 
 	networkPolicyCmd.AddCommand(networkPolicyMonitorCmd)
 	networkPolicyMonitorCmd.PersistentFlags().StringVarP(&outputFileName, "output", "", "-", "File name output")
@@ -90,6 +90,7 @@ func runNetworkPolicyMonitor(cmd *cobra.Command, args []string) error {
 
 	config := &utils.TraceConfig{
 		GadgetName:       "network-graph",
+		GadgetNamespace:  gadgetNamespace,
 		Operation:        gadgetv1alpha1.OperationStart,
 		TraceOutputMode:  gadgetv1alpha1.TraceOutputModeStream,
 		TraceOutputState: gadgetv1alpha1.TraceStateStarted,

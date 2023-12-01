@@ -27,6 +27,7 @@ import (
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
+	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
 
 func init() {
@@ -46,8 +47,10 @@ var versionCmd = &cobra.Command{
 			return commonutils.WrapInErrSetupK8sClient(err)
 		}
 
+		gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
+
 		opts := metav1.ListOptions{LabelSelector: "k8s-app=gadget"}
-		pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), opts)
+		pods, err := client.CoreV1().Pods(gadgetNamespace).List(context.TODO(), opts)
 		if err != nil {
 			return commonutils.WrapInErrListPods(err)
 		}

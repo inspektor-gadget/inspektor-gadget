@@ -43,7 +43,7 @@ type k8sPortFwdDialer struct {
 }
 
 // NewK8SPortFwdConn connects to a Pod using PortForwarding via the Kubernetes API Server
-func NewK8SPortFwdConn(ctx context.Context, config *rest.Config, pod target, targetPort uint16, timeout time.Duration) (net.Conn, error) {
+func NewK8SPortFwdConn(ctx context.Context, config *rest.Config, namespace string, pod target, targetPort uint16, timeout time.Duration) (net.Conn, error) {
 	conn := &k8sPortFwdDialer{}
 
 	// set GroupVersion and NegotiatedSerializer for RESTClient
@@ -63,7 +63,7 @@ func NewK8SPortFwdConn(ctx context.Context, config *rest.Config, pod target, tar
 		return nil, fmt.Errorf("parsing restConfig.Host: %w", err)
 	}
 
-	targetURL.Path = fmt.Sprintf("api/v1/namespaces/gadget/pods/%s/portforward", conn.podName)
+	targetURL.Path = fmt.Sprintf("api/v1/namespaces/%s/pods/%s/portforward", namespace, conn.podName)
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, targetURL)
 

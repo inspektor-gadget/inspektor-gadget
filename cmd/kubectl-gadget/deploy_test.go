@@ -17,10 +17,17 @@ package main
 import (
 	"bytes"
 	"testing"
+
+	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
+	grpcruntime "github.com/inspektor-gadget/inspektor-gadget/pkg/runtime/grpc"
 )
 
 func TestPrintOnly(t *testing.T) {
+	grpcRuntime = grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
+	runtimeGlobalParams = grpcRuntime.GlobalParamDescs().ToParams()
+
 	cmd := rootCmd
+	common.AddFlags(cmd, runtimeGlobalParams, nil, grpcRuntime)
 	cmd.SetArgs([]string{"deploy", "--print-only"})
 
 	var stdErr bytes.Buffer
