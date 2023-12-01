@@ -27,10 +27,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/factory"
 )
 
@@ -43,13 +43,8 @@ type k8sPortFwdDialer struct {
 }
 
 // NewK8SPortFwdConn connects to a Pod using PortForwarding via the Kubernetes API Server
-func NewK8SPortFwdConn(ctx context.Context, pod target, targetPort uint16, timeout time.Duration) (net.Conn, error) {
+func NewK8SPortFwdConn(ctx context.Context, config *rest.Config, pod target, targetPort uint16, timeout time.Duration) (net.Conn, error) {
 	conn := &k8sPortFwdDialer{}
-
-	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
-	if err != nil {
-		return nil, fmt.Errorf("creating RESTConfig: %w", err)
-	}
 
 	// set GroupVersion and NegotiatedSerializer for RESTClient
 	factory.SetKubernetesDefaults(config)

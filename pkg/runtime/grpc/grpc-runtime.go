@@ -32,8 +32,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -79,6 +79,7 @@ type Runtime struct {
 	info           *deployinfo.DeployInfo
 	defaultValues  map[string]string
 	globalParams   *params.Params
+	restConfig     *rest.Config
 	connectionMode ConnectionMode
 }
 
@@ -106,6 +107,10 @@ func (r *Runtime) Init(runtimeGlobalParams *params.Params) error {
 		r.globalParams = runtimeGlobalParams
 	}
 	return nil
+}
+
+func (r *Runtime) SetRestConfig(config *rest.Config) {
+	r.restConfig = config
 }
 
 func (r *Runtime) Close() error {
@@ -183,12 +188,7 @@ type target struct {
 	node         string
 }
 
-func getGadgetPods(ctx context.Context, nodes []string) ([]target, error) {
-	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
-	if err != nil {
-		return nil, fmt.Errorf("creating RESTConfig: %w", err)
-	}
-
+func getGadgetPods(ctx context.Context, config *rest.Config, nodes []string) ([]target, error) {
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("setting up trace client: %w", err)
@@ -234,7 +234,7 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 	case ConnectionModeKubernetesProxy:
 		// Get nodes to run on
 		nodes := params.Get(ParamNode).AsStringSlice()
-		pods, err := getGadgetPods(ctx, nodes)
+		pods, err := getGadgetPods(ctx, r.restConfig, nodes)
 		if err != nil {
 			return nil, fmt.Errorf("get gadget pods: %w", err)
 		}
@@ -399,7 +399,7 @@ func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout ti
 	if r.connectionMode == ConnectionModeKubernetesProxy {
 		opts = append(opts, grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			port := r.globalParams.Get(ParamGadgetServiceTCPPort).AsUint16()
-			return NewK8SPortFwdConn(ctx, target, port, timeout)
+			return NewK8SPortFwdConn(ctx, r.restConfig, target, port, timeout)
 		}))
 	}
 

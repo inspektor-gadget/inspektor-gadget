@@ -76,12 +76,17 @@ func main() {
 	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
 	common.AddFlags(rootCmd, runtimeGlobalParams, nil, runtime)
 	runtime.Init(runtimeGlobalParams)
+	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
+	if err != nil {
+		log.Fatalf("Creating RESTConfig: %s", err)
+	}
+	runtime.SetRestConfig(config)
 	if !skipInfo {
 		// evaluate flags early for runtimeGlobalFlags; this will make
 		// sure that --connection-method has already been parsed when calling
 		// InitDeployInfo()
 
-		err := commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
+		err = commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
 		if err != nil {
 			// Analogous to cobra error message
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
