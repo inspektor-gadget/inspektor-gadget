@@ -17,13 +17,13 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	// Import this early to set the enrivonment variable before any other package is imported
 	_ "github.com/inspektor-gadget/inspektor-gadget/pkg/environment/k8s"
+	paramsPkg "github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 
 	"github.com/inspektor-gadget/inspektor-gadget/cmd/common"
 	commonutils "github.com/inspektor-gadget/inspektor-gadget/cmd/common/utils"
@@ -39,7 +39,11 @@ import (
 )
 
 // common params for all gadgets
-var params utils.CommonFlags
+var (
+	params              utils.CommonFlags
+	runtimeGlobalParams *paramsPkg.Params
+	grpcRuntime         *grpcruntime.Runtime
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "kubectl-gadget",
@@ -64,42 +68,77 @@ func main() {
 	// (as they just don't need it or imply that there are no nodes to
 	// contact, yet).
 	skipInfo := false
+	isHelp := false
+	isVersion := false
+	isDeployUndeploy := false
 	for _, arg := range os.Args[1:] {
 		for _, skipCmd := range infoSkipCommands {
-			if strings.ToLower(arg) == skipCmd {
+			if arg == skipCmd {
 				skipInfo = true
 			}
 		}
+
+		isVersion = isVersion || arg == "version"
+		isDeployUndeploy = isDeployUndeploy || arg == "deploy" || arg == "undeploy"
+		isHelp = isHelp || arg == "--help" || arg == "-h"
 	}
 
-	runtime := grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
-	runtimeGlobalParams := runtime.GlobalParamDescs().ToParams()
-	common.AddFlags(rootCmd, runtimeGlobalParams, nil, runtime)
-	runtime.Init(runtimeGlobalParams)
-	if !skipInfo {
-		// evaluate flags early for runtimeGlobalFlags; this will make
-		// sure that --connection-method has already been parsed when calling
-		// InitDeployInfo()
+	grpcRuntime = grpcruntime.New(grpcruntime.WithConnectUsingK8SProxy)
+	runtimeGlobalParams = grpcRuntime.GlobalParamDescs().ToParams()
+	common.AddFlags(rootCmd, runtimeGlobalParams, nil, grpcRuntime)
+	grpcRuntime.Init(runtimeGlobalParams)
+	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
+	if err != nil {
+		log.Fatalf("Creating RESTConfig: %s", err)
+	}
+	grpcRuntime.SetRestConfig(config)
 
-		err := commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
+	// evaluate flags early for runtimeGlobalParams; this will make
+	// sure that all flags relevant for the grpc connection are ready
+	// to be used
+
+	err = commonutils.ParseEarlyFlags(rootCmd, os.Args[1:])
+	if err != nil {
+		// Analogous to cobra error message
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if !isHelp && !isDeployUndeploy && !runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).IsSet() {
+		gadgetNamespaces, err := utils.GetRunningGadgetNamespaces()
 		if err != nil {
-			// Analogous to cobra error message
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Searching for running Inspektor Gadget instances: %s", err)
 		}
-		runtime.InitDeployInfo()
+
+		switch len(gadgetNamespaces) {
+		case 0:
+			if !isVersion {
+				log.Fatalf("No running Inspektor Gadget instances found")
+			}
+		case 1:
+			// Exactly one running gadget instance found, use it
+			runtimeGlobalParams.Set(grpcruntime.ParamGadgetNamespace, gadgetNamespaces[0])
+		default:
+			// Multiple running gadget instances found, error out
+			log.Fatalf("Multiple running Inspektor Gadget instances found in following namespaces: %v", gadgetNamespaces)
+		}
+	}
+
+	if !skipInfo {
+		grpcRuntime.InitDeployInfo()
 	}
 
 	namespace, _ := utils.GetNamespace()
-	runtime.SetDefaultValue(gadgets.K8SNamespace, namespace)
+	grpcRuntime.SetDefaultValue(gadgets.K8SNamespace, namespace)
+	gadgetNamespace := runtimeGlobalParams.Get(grpcruntime.ParamGadgetNamespace).AsString()
 
 	hiddenColumnTags := []string{"runtime"}
-	common.AddCommandsFromRegistry(rootCmd, runtime, hiddenColumnTags)
+	common.AddCommandsFromRegistry(rootCmd, grpcRuntime, hiddenColumnTags)
 
-	// Advise category is still being handled by CRs for now
-	rootCmd.AddCommand(advise.NewAdviseCmd())
-
-	rootCmd.AddCommand(common.NewSyncCommand(runtime))
+	// Advise and traceloop category is still being handled by CRs for now
+	rootCmd.AddCommand(advise.NewAdviseCmd(gadgetNamespace))
+	rootCmd.AddCommand(NewTraceloopCmd(gadgetNamespace))
+	rootCmd.AddCommand(common.NewSyncCommand(grpcRuntime))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

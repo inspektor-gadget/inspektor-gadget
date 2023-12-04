@@ -24,11 +24,6 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/oci"
 )
 
-type pushOptions struct {
-	image    string
-	authOpts oci.AuthOptions
-}
-
 func NewPushCmd() *cobra.Command {
 	var authOpts oci.AuthOptions
 	cmd := &cobra.Command{

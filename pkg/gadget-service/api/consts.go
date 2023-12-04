@@ -24,7 +24,6 @@ const (
 )
 
 const (
-	GadgetServiceSocket = "/run/gadgetservice.socket"
-	GadgetServicePort   = 8080
-	DefaultDaemonPath   = "unix:///var/run/ig/ig.socket"
+	GadgetServicePort = 8080
+	DefaultDaemonPath = "unix:///var/run/ig/ig.socket"
 )

@@ -113,7 +113,18 @@ func (t *Tracer) Init(gadgetCtx gadgets.GadgetContext) error {
 	params := gadgetCtx.GadgetParams()
 	args := gadgetCtx.Args()
 
-	info, err := getGadgetInfo(params, args, gadgetCtx.Logger())
+	pullSecretString := params.Get(pullSecret).AsString()
+	var secretBytes []byte
+	if pullSecretString != "" {
+		var err error
+		// TODO: Namespace is still hardcoded
+		secretBytes, err = getPullSecret(pullSecretString, "gadget")
+		if err != nil {
+			return err
+		}
+	}
+
+	info, err := getGadgetInfo(params, args, secretBytes, gadgetCtx.Logger())
 	if err != nil {
 		return fmt.Errorf("getting gadget info: %w", err)
 	}

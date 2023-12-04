@@ -15,11 +15,15 @@
 package tracer
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cilium/ebpf/btf"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets/run/types"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/k8sutil"
 )
 
 // getAnyMapElem returns any element of a map. If the map is empty, it returns nil, nil.
@@ -55,4 +59,19 @@ func getEventTypeBTF(progContent []byte, metadata *types.GadgetMetadata) (*btf.S
 	default:
 		return nil, fmt.Errorf("the gadget doesn't provide any compatible way to show information")
 	}
+}
+
+func getPullSecret(pullSecretString string, gadgetNamespace string) ([]byte, error) {
+	k8sClient, err := k8sutil.NewClientset("")
+	if err != nil {
+		return nil, fmt.Errorf("creating new k8s clientset: %w", err)
+	}
+	gps, err := k8sClient.CoreV1().Secrets(gadgetNamespace).Get(context.TODO(), pullSecretString, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("getting secret %q: %w", pullSecretString, err)
+	}
+	if gps.Type != corev1.SecretTypeDockerConfigJson {
+		return nil, fmt.Errorf("secret %q is not of type %q", pullSecretString, corev1.SecretTypeDockerConfigJson)
+	}
+	return gps.Data[corev1.DockerConfigJsonKey], nil
 }

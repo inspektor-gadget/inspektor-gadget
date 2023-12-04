@@ -32,8 +32,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
-	"github.com/inspektor-gadget/inspektor-gadget/cmd/kubectl-gadget/utils"
 	"github.com/inspektor-gadget/inspektor-gadget/internal/deployinfo"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadget-service/api"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/gadgets"
@@ -73,12 +73,16 @@ const (
 	// ResultTimeout is the time in seconds we wait for a result to return from the gadget
 	// after sending a Stop command
 	ResultTimeout = 30
+
+	ParamGadgetNamespace   string = "gadget-namespace"
+	DefaultGadgetNamespace string = "gadget"
 )
 
 type Runtime struct {
 	info           *deployinfo.DeployInfo
 	defaultValues  map[string]string
 	globalParams   *params.Params
+	restConfig     *rest.Config
 	connectionMode ConnectionMode
 }
 
@@ -106,6 +110,10 @@ func (r *Runtime) Init(runtimeGlobalParams *params.Params) error {
 		r.globalParams = runtimeGlobalParams
 	}
 	return nil
+}
+
+func (r *Runtime) SetRestConfig(config *rest.Config) {
+	r.restConfig = config
 }
 
 func (r *Runtime) Close() error {
@@ -172,6 +180,12 @@ func (r *Runtime) GlobalParamDescs() params.ParamDescs {
 				DefaultValue: fmt.Sprintf("%d", api.GadgetServicePort),
 				TypeHint:     params.TypeUint16,
 			},
+			{
+				Key:          ParamGadgetNamespace,
+				Description:  "Namespace where the Inspektor Gadget is deployed",
+				DefaultValue: DefaultGadgetNamespace,
+				TypeHint:     params.TypeString,
+			},
 		}...)
 		return p
 	}
@@ -183,25 +197,20 @@ type target struct {
 	node         string
 }
 
-func getGadgetPods(ctx context.Context, nodes []string) ([]target, error) {
-	config, err := utils.KubernetesConfigFlags.ToRESTConfig()
-	if err != nil {
-		return nil, fmt.Errorf("creating RESTConfig: %w", err)
-	}
-
+func getGadgetPods(ctx context.Context, config *rest.Config, nodes []string, gadgetNamespace string) ([]target, error) {
 	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("setting up trace client: %w", err)
 	}
 
 	opts := metav1.ListOptions{LabelSelector: "k8s-app=gadget"}
-	pods, err := client.CoreV1().Pods("gadget").List(ctx, opts)
+	pods, err := client.CoreV1().Pods(gadgetNamespace).List(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("getting pods: %w", err)
 	}
 
 	if len(pods.Items) == 0 {
-		return nil, fmt.Errorf("no gadget pods found. Is Inspektor Gadget deployed?")
+		return nil, fmt.Errorf("no gadget pods found in namespace %q. Is Inspektor Gadget deployed?", gadgetNamespace)
 	}
 
 	if len(nodes) == 0 {
@@ -234,7 +243,8 @@ func (r *Runtime) getTargets(ctx context.Context, params *params.Params) ([]targ
 	case ConnectionModeKubernetesProxy:
 		// Get nodes to run on
 		nodes := params.Get(ParamNode).AsStringSlice()
-		pods, err := getGadgetPods(ctx, nodes)
+		gadgetNamespace := r.globalParams.Get(ParamGadgetNamespace).AsString()
+		pods, err := getGadgetPods(ctx, r.restConfig, nodes, gadgetNamespace)
 		if err != nil {
 			return nil, fmt.Errorf("get gadget pods: %w", err)
 		}
@@ -399,7 +409,8 @@ func (r *Runtime) dialContext(dialCtx context.Context, target target, timeout ti
 	if r.connectionMode == ConnectionModeKubernetesProxy {
 		opts = append(opts, grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			port := r.globalParams.Get(ParamGadgetServiceTCPPort).AsUint16()
-			return NewK8SPortFwdConn(ctx, target, port, timeout)
+			gadgetNamespace := r.globalParams.Get(ParamGadgetNamespace).AsString()
+			return NewK8SPortFwdConn(ctx, r.restConfig, gadgetNamespace, target, port, timeout)
 		}))
 	}
 

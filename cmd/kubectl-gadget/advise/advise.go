@@ -23,13 +23,17 @@ import (
 
 // All the gadgets within this package use this global variable, so let's
 // declare it here.
-var params utils.CommonFlags
+var (
+	params          utils.CommonFlags
+	gadgetNamespace string
+)
 
-func NewAdviseCmd() *cobra.Command {
+func NewAdviseCmd(gadgetNamespaceIn string) *cobra.Command {
+	gadgetNamespace = gadgetNamespaceIn
 	cmd := commonadvise.NewCommonAdviseCmd()
 
-	cmd.AddCommand(newNetworkPolicyCmd())
-	cmd.AddCommand(newSeccompProfileCmd())
+	cmd.AddCommand(newNetworkPolicyCmd(gadgetNamespace))
+	cmd.AddCommand(newSeccompProfileCmd(gadgetNamespace))
 
 	return cmd
 }

@@ -15,8 +15,6 @@
 package utils
 
 const (
-	GadgetNamespace string = "gadget"
-
 	GadgetEnvironmentContainerdSocketpath string = "INSPEKTOR_GADGET_CONTAINERD_SOCKETPATH"
 	GadgetEnvironmentCRIOSocketpath       string = "INSPEKTOR_GADGET_CRIO_SOCKETPATH"
 	GadgetEnvironmentDockerSocketpath     string = "INSPEKTOR_GADGET_DOCKER_SOCKETPATH"

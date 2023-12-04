@@ -63,6 +63,9 @@ type TraceConfig struct {
 	// GadgetName is gadget name, e.g. socket-collector.
 	GadgetName string
 
+	// GadgetNamespace is the namespace where Inspektor Gadget is deployed
+	GadgetNamespace string
+
 	// Operation is the gadget operation to apply to this trace, e.g. start to
 	// start the tracing.
 	Operation gadgetv1alpha1.Operation
@@ -151,12 +154,12 @@ func printTraceFeedback(prefix string, m map[string]string, totalNodes int) {
 	}
 }
 
-func deleteTraces(traceClient *clientset.Clientset, traceID string) {
+func deleteTraces(gadgetNamespace string, traceClient *clientset.Clientset, traceID string) {
 	listTracesOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", GlobalTraceID, traceID),
 	}
 
-	err := traceClient.GadgetV1alpha1().Traces("gadget").DeleteCollection(
+	err := traceClient.GadgetV1alpha1().Traces(gadgetNamespace).DeleteCollection(
 		context.TODO(), metav1.DeleteOptions{}, listTracesOptions,
 	)
 	if err != nil {
@@ -219,7 +222,7 @@ func printVersionSkewWarning(pods *corev1.PodList) {
 // createTraces creates a trace using Kubernetes REST API.
 // Note that, this function will create the trace on all existing node if
 // trace.Spec.Node is empty.
-func createTraces(trace *gadgetv1alpha1.Trace) error {
+func createTraces(gadgetNamespace string, trace *gadgetv1alpha1.Trace) error {
 	client, err := k8sutil.NewClientsetFromConfigFlags(KubernetesConfigFlags)
 	if err != nil {
 		return commonutils.WrapInErrSetupK8sClient(err)
@@ -231,7 +234,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 	}
 
 	opts := metav1.ListOptions{LabelSelector: "k8s-app=gadget"}
-	pods, err := client.CoreV1().Pods("gadget").List(context.TODO(), opts)
+	pods, err := client.CoreV1().Pods(gadgetNamespace).List(context.TODO(), opts)
 	if err != nil {
 		return commonutils.WrapInErrListPods(err)
 	}
@@ -272,14 +275,14 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 			trace.Spec.Node = pod.Spec.NodeName
 		}
 
-		_, err := traceClient.GadgetV1alpha1().Traces("gadget").Create(
+		_, err := traceClient.GadgetV1alpha1().Traces(gadgetNamespace).Create(
 			context.TODO(), trace, metav1.CreateOptions{},
 		)
 		if err != nil {
 			traceID, present := trace.ObjectMeta.Labels[GlobalTraceID]
 			if present {
 				// Clean before exiting!
-				deleteTraces(traceClient, traceID)
+				deleteTraces(gadgetNamespace, traceClient, traceID)
 			}
 
 			return fmt.Errorf("creating trace on node %q: %w", pod.Spec.NodeName, err)
@@ -291,7 +294,7 @@ func createTraces(trace *gadgetv1alpha1.Trace) error {
 
 // updateTraceOperation updates operation for an already existing trace using
 // Kubernetes REST API.
-func updateTraceOperation(trace *gadgetv1alpha1.Trace, operation string) error {
+func updateTraceOperation(gadgetNamespace string, trace *gadgetv1alpha1.Trace, operation string) error {
 	traceClient, err := getTraceClient()
 	if err != nil {
 		return err
@@ -321,7 +324,7 @@ func updateTraceOperation(trace *gadgetv1alpha1.Trace, operation string) error {
 		return fmt.Errorf("marshaling the operation annotations: %w", err)
 	}
 
-	_, err = traceClient.GadgetV1alpha1().Traces("gadget").Patch(
+	_, err = traceClient.GadgetV1alpha1().Traces(gadgetNamespace).Patch(
 		context.TODO(), trace.ObjectMeta.Name, types.MergePatchType, patchBytes, metav1.PatchOptions{},
 	)
 
@@ -356,7 +359,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 	trace := &gadgetv1alpha1.Trace{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: config.GadgetName + "-",
-			Namespace:    "gadget",
+			Namespace:    config.GadgetNamespace,
 			Annotations: map[string]string{
 				GadgetOperation: string(config.Operation),
 			},
@@ -396,7 +399,7 @@ func CreateTrace(config *TraceConfig) (string, error) {
 		trace.ObjectMeta.Labels[key] = value
 	}
 
-	err := createTraces(trace)
+	err := createTraces(config.GadgetNamespace, trace)
 	if err != nil {
 		return "", err
 	}
@@ -404,9 +407,9 @@ func CreateTrace(config *TraceConfig) (string, error) {
 	if config.TraceInitialState != "" {
 		// Once the traces are created, we wait for them to be in
 		// config.TraceInitialState state, so they are ready to be used by the user.
-		_, err = waitForTraceState(traceID, string(config.TraceInitialState))
+		_, err = waitForTraceState(config.GadgetNamespace, traceID, string(config.TraceInitialState))
 		if err != nil {
-			deleteError := DeleteTrace(traceID)
+			deleteError := DeleteTrace(config.GadgetNamespace, traceID)
 
 			if deleteError != nil {
 				fmt.Fprintf(os.Stderr, "Error: deleting trace: %s\n", err)
@@ -421,13 +424,13 @@ func CreateTrace(config *TraceConfig) (string, error) {
 
 // GetTraceListFromOptions returns a list of traces corresponding to the given
 // options.
-func GetTraceListFromOptions(listTracesOptions metav1.ListOptions) (*gadgetv1alpha1.TraceList, error) {
+func GetTraceListFromOptions(gadgetNamespace string, listTracesOptions metav1.ListOptions) (*gadgetv1alpha1.TraceList, error) {
 	traceClient, err := getTraceClient()
 	if err != nil {
 		return nil, err
 	}
 
-	return traceClient.GadgetV1alpha1().Traces("gadget").List(
+	return traceClient.GadgetV1alpha1().Traces(gadgetNamespace).List(
 		context.TODO(), listTracesOptions,
 	)
 }
@@ -435,12 +438,12 @@ func GetTraceListFromOptions(listTracesOptions metav1.ListOptions) (*gadgetv1alp
 // getTraceListFromID returns an array of pointers to gadgetv1alpha1.Trace
 // corresponding to the given traceID.
 // If no trace corresponds to this ID, error is set.
-func getTraceListFromID(traceID string) (*gadgetv1alpha1.TraceList, error) {
+func getTraceListFromID(gadgetNamespace string, traceID string) (*gadgetv1alpha1.TraceList, error) {
 	listTracesOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", GlobalTraceID, traceID),
 	}
 
-	traces, err := GetTraceListFromOptions(listTracesOptions)
+	traces, err := GetTraceListFromOptions(gadgetNamespace, listTracesOptions)
 	if err != nil {
 		return traces, fmt.Errorf("getting traces from traceID %q: %w", traceID, err)
 	}
@@ -454,7 +457,7 @@ func getTraceListFromID(traceID string) (*gadgetv1alpha1.TraceList, error) {
 
 // SetTraceOperation sets the operation of an existing trace.
 // If trace does not exist an error is returned.
-func SetTraceOperation(traceID string, operation string) error {
+func SetTraceOperation(gadgetNamespace string, traceID string, operation string) error {
 	// We have to wait for the previous operation to start before changing the
 	// trace operation.
 	// The trace controller deletes the GADGET_OPERATION field from Annotations
@@ -463,13 +466,13 @@ func SetTraceOperation(traceID string, operation string) error {
 	// be deleted before changing to the current operation.
 	// It is the same like when you are in the restaurant, you need to wait for
 	// the chef to cook the main dishes before ordering the dessert.
-	traces, err := waitForNoOperation(traceID)
+	traces, err := waitForNoOperation(gadgetNamespace, traceID)
 	if err != nil {
 		return err
 	}
 
 	for _, trace := range traces.Items {
-		localError := updateTraceOperation(&trace, operation)
+		localError := updateTraceOperation(gadgetNamespace, &trace, operation)
 		if localError != nil {
 			err = fmt.Errorf("%w\nError updating trace operation for %q: %w", err, traceID, localError)
 		}
@@ -483,13 +486,13 @@ func SetTraceOperation(traceID string, operation string) error {
 // If resourceVersion is set, the watcher will watch for traces which have at
 // least the received ResourceVersion, otherwise it will watch all traces.
 // This watcher can then be used to wait until the State.Output is modified.
-func getTraceListerWatcher(traceID, resourceVersion string) (*cache.ListWatch, error) {
+func getTraceListerWatcher(gadgetNamespace, traceID, resourceVersion string) (*cache.ListWatch, error) {
 	traceClient, err := getTraceClient()
 	if err != nil {
 		return nil, err
 	}
 
-	traceInterface := traceClient.GadgetV1alpha1().Traces("gadget")
+	traceInterface := traceClient.GadgetV1alpha1().Traces(gadgetNamespace)
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			options.LabelSelector = fmt.Sprintf("%s=%s", GlobalTraceID, traceID)
@@ -510,14 +513,14 @@ func getTraceListerWatcher(traceID, resourceVersion string) (*cache.ListWatch, e
 
 // waitForCondition waits for the traces with the ID received as parameter to
 // satisfy the conditionFunction received as parameter.
-func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Trace) bool) (*gadgetv1alpha1.TraceList, error) {
+func waitForCondition(gadgetNamespace string, traceID string, conditionFunction func(*gadgetv1alpha1.Trace) bool) (*gadgetv1alpha1.TraceList, error) {
 	satisfiedTraces := make(map[string]*gadgetv1alpha1.Trace)
 	erroredTraces := make(map[string]*gadgetv1alpha1.Trace)
 	var returnedTraces gadgetv1alpha1.TraceList
 	nodeWarnings := make(map[string]string)
 	nodeErrors := make(map[string]string)
 
-	traceList, err := getTraceListFromID(traceID)
+	traceList, err := getTraceListFromID(gadgetNamespace, traceID)
 	if err != nil {
 		return nil, err
 	}
@@ -557,7 +560,7 @@ func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Tra
 		// the same ID.
 		// We will also begin to monitor events since the above GET of the traces
 		// list thanks to resource version.
-		traceListerWatcher, err = getTraceListerWatcher(traceID, traceList.ResourceVersion)
+		traceListerWatcher, err = getTraceListerWatcher(gadgetNamespace, traceID, traceList.ResourceVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -687,16 +690,16 @@ func waitForCondition(traceID string, conditionFunction func(*gadgetv1alpha1.Tra
 
 // waitForTraceState waits for the traces with the ID received as parameter to
 // be in the expected state.
-func waitForTraceState(traceID string, expectedState string) (*gadgetv1alpha1.TraceList, error) {
-	return waitForCondition(traceID, func(trace *gadgetv1alpha1.Trace) bool {
+func waitForTraceState(gadgetNamespace string, traceID string, expectedState string) (*gadgetv1alpha1.TraceList, error) {
+	return waitForCondition(gadgetNamespace, traceID, func(trace *gadgetv1alpha1.Trace) bool {
 		return trace.Status.State == gadgetv1alpha1.TraceState(expectedState)
 	})
 }
 
 // waitForNoOperation waits for the traces with the ID received as parameter to
 // not have an operation.
-func waitForNoOperation(traceID string) (*gadgetv1alpha1.TraceList, error) {
-	return waitForCondition(traceID, func(trace *gadgetv1alpha1.Trace) bool {
+func waitForNoOperation(gadgetNamespace string, traceID string) (*gadgetv1alpha1.TraceList, error) {
+	return waitForCondition(gadgetNamespace, traceID, func(trace *gadgetv1alpha1.Trace) bool {
 		if trace.ObjectMeta.Annotations == nil {
 			return true
 		}
@@ -713,7 +716,7 @@ var sigIntReceivedNumber = 0
 // On reception of this signal, the given trace will be deleted.
 // This function fixes trace not being deleted when calling:
 // kubectl gadget process-collector -A | head -n0
-func SigHandler(traceID *string, printTerminationMessage bool) {
+func SigHandler(gadgetNamespace string, traceID *string, printTerminationMessage bool) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGILL, syscall.SIGABRT, syscall.SIGFPE, syscall.SIGSEGV, syscall.SIGPIPE, syscall.SIGALRM, syscall.SIGTERM, syscall.SIGBUS, syscall.SIGTRAP)
 	go func() {
@@ -730,11 +733,11 @@ func SigHandler(traceID *string, printTerminationMessage bool) {
 				os.Exit(1)
 			}
 
-			SigHandler(traceID, printTerminationMessage)
+			SigHandler(gadgetNamespace, traceID, printTerminationMessage)
 		}
 
 		if *traceID != "" {
-			DeleteTrace(*traceID)
+			DeleteTrace(gadgetNamespace, *traceID)
 		}
 		if sig == syscall.SIGINT {
 			if printTerminationMessage {
@@ -751,26 +754,27 @@ func SigHandler(traceID *string, printTerminationMessage bool) {
 // printing function.
 // This function is must be used by trace which has TraceOutputMode set to
 // Stream.
-func PrintTraceOutputFromStream(traceID string, expectedState string, params *CommonFlags,
+func PrintTraceOutputFromStream(gadgetNamespace string, traceID string, expectedState string, params *CommonFlags,
 	transformLine func(string) string,
 ) error {
-	traces, err := waitForTraceState(traceID, expectedState)
+	traces, err := waitForTraceState(gadgetNamespace, traceID, expectedState)
 	if err != nil {
 		return err
 	}
 
-	return genericStreams(params, traces, nil, transformLine)
+	return genericStreams(gadgetNamespace, params, traces, nil, transformLine)
 }
 
 // PrintTraceOutputFromStatus is used to print trace output using function
 // pointer provided by caller.
 // It will parse trace.Spec.Output and print it calling the function pointer.
 func PrintTraceOutputFromStatus(
+	gadgetNamespace string,
 	traceID string,
 	expectedState string,
 	customResultsDisplay func(traceOutputMode string, results []string) error,
 ) error {
-	traces, err := waitForTraceState(traceID, expectedState)
+	traces, err := waitForTraceState(gadgetNamespace, traceID, expectedState)
 	if err != nil {
 		return err
 	}
@@ -789,13 +793,13 @@ func PrintTraceOutputFromStatus(
 }
 
 // DeleteTrace deletes the traces for the given trace ID using RESTClient.
-func DeleteTrace(traceID string) error {
+func DeleteTrace(gadgetNamespace string, traceID string) error {
 	traceClient, err := getTraceClient()
 	if err != nil {
 		return err
 	}
 
-	deleteTraces(traceClient, traceID)
+	deleteTraces(gadgetNamespace, traceClient, traceID)
 
 	return nil
 }
@@ -836,7 +840,7 @@ func getTraceListFromParameters(config *TraceConfig) ([]gadgetv1alpha1.Trace, er
 		LabelSelector: labelsFromFilter(filter),
 	}
 
-	traces, err := GetTraceListFromOptions(listTracesOptions)
+	traces, err := GetTraceListFromOptions(config.GadgetNamespace, listTracesOptions)
 	if err != nil {
 		return []gadgetv1alpha1.Trace{}, err
 	}
@@ -917,7 +921,7 @@ func PrintAllTraces(config *TraceConfig) error {
 func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) string) error {
 	var traceID string
 
-	SigHandler(&traceID, config.CommonFlags.OutputMode != commonutils.OutputModeJSON)
+	SigHandler(config.GadgetNamespace, &traceID, config.CommonFlags.OutputMode != commonutils.OutputModeJSON)
 
 	if config.TraceOutputMode != gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must be Stream. Otherwise, call RunTraceAndPrintStatusOutput")
@@ -928,17 +932,17 @@ func RunTraceAndPrintStream(config *TraceConfig, transformLine func(string) stri
 		return fmt.Errorf("creating trace: %w", err)
 	}
 
-	defer DeleteTrace(traceID)
+	defer DeleteTrace(config.GadgetNamespace, traceID)
 
-	return PrintTraceOutputFromStream(traceID, string(config.TraceOutputState), config.CommonFlags, transformLine)
+	return PrintTraceOutputFromStream(config.GadgetNamespace, traceID, string(config.TraceOutputState), config.CommonFlags, transformLine)
 }
 
 // RunTraceStreamCallback creates a stream trace and calls callback each
 // time one of the tracers produces a new line on any of the nodes.
-func RunTraceStreamCallback(config *TraceConfig, callback func(line string, node string)) error {
+func RunTraceStreamCallback(gadgetNamespace string, config *TraceConfig, callback func(line string, node string)) error {
 	var traceID string
 
-	SigHandler(&traceID, false)
+	SigHandler(config.GadgetNamespace, &traceID, false)
 
 	if config.TraceOutputMode != gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must be Stream")
@@ -949,14 +953,14 @@ func RunTraceStreamCallback(config *TraceConfig, callback func(line string, node
 		return fmt.Errorf("creating trace: %w", err)
 	}
 
-	defer DeleteTrace(traceID)
+	defer DeleteTrace(config.GadgetNamespace, traceID)
 
-	traces, err := waitForTraceState(traceID, string(config.TraceOutputState))
+	traces, err := waitForTraceState(config.GadgetNamespace, traceID, string(config.TraceOutputState))
 	if err != nil {
 		return err
 	}
 
-	return genericStreams(config.CommonFlags, traces, callback, nil)
+	return genericStreams(config.GadgetNamespace, config.CommonFlags, traces, callback, nil)
 }
 
 // RunTraceAndPrintStatusOutput creates a trace, prints its output and deletes
@@ -971,7 +975,7 @@ func RunTraceAndPrintStatusOutput(
 ) error {
 	var traceID string
 
-	SigHandler(&traceID, false)
+	SigHandler(config.GadgetNamespace, &traceID, false)
 
 	if config.TraceOutputMode == gadgetv1alpha1.TraceOutputModeStream {
 		return errors.New("TraceOutputMode must not be Stream. Otherwise, call RunTraceAndPrintStream")
@@ -982,12 +986,13 @@ func RunTraceAndPrintStatusOutput(
 		return fmt.Errorf("creating trace: %w", err)
 	}
 
-	defer DeleteTrace(traceID)
+	defer DeleteTrace(config.GadgetNamespace, traceID)
 
-	return PrintTraceOutputFromStatus(traceID, string(config.TraceOutputState), customResultsDisplay)
+	return PrintTraceOutputFromStatus(config.GadgetNamespace, traceID, string(config.TraceOutputState), customResultsDisplay)
 }
 
 func genericStreams(
+	gadgetNamespace string,
 	params *CommonFlags,
 	results *gadgetv1alpha1.TraceList,
 	callback func(line string, node string),
@@ -1027,7 +1032,7 @@ func genericStreams(
 			cmd := fmt.Sprintf("/bin/gadgettracermanager -call receive-stream -tracerid trace_%s_%s",
 				namespace, name)
 			postProcess.OutStreams[index].Node = nodeName
-			err := ExecPod(client, nodeName, cmd,
+			err := ExecPod(client, nodeName, gadgetNamespace, cmd,
 				postProcess.OutStreams[index], postProcess.ErrStreams[index])
 			if err == nil {
 				completion <- fmt.Sprintf("Trace completed on node %q", nodeName)
@@ -1060,7 +1065,7 @@ func genericStreams(
 }
 
 // DeleteTracesByGadgetName removes all traces with this gadget name
-func DeleteTracesByGadgetName(gadget string) error {
+func DeleteTracesByGadgetName(gadgetNamespace string, gadget string) error {
 	traceClient, err := getTraceClient()
 	if err != nil {
 		return err
@@ -1070,17 +1075,17 @@ func DeleteTracesByGadgetName(gadget string) error {
 		LabelSelector: fmt.Sprintf("gadgetName=%s", gadget),
 	}
 
-	return traceClient.GadgetV1alpha1().Traces("gadget").DeleteCollection(
+	return traceClient.GadgetV1alpha1().Traces(gadgetNamespace).DeleteCollection(
 		context.TODO(), metav1.DeleteOptions{}, listTracesOptions,
 	)
 }
 
-func ListTracesByGadgetName(gadget string) ([]gadgetv1alpha1.Trace, error) {
+func ListTracesByGadgetName(gadgetNamespace string, gadget string) ([]gadgetv1alpha1.Trace, error) {
 	listTracesOptions := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("gadgetName=%s", gadget),
 	}
 
-	traces, err := GetTraceListFromOptions(listTracesOptions)
+	traces, err := GetTraceListFromOptions(gadgetNamespace, listTracesOptions)
 	if err != nil {
 		return nil, fmt.Errorf("getting traces by gadget name: %w", err)
 	}

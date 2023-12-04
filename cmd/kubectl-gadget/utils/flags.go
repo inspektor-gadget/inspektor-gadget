@@ -79,7 +79,7 @@ func GetNamespace() (string, bool) {
 	return namespace, overridden
 }
 
-func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
+func AddCommonFlags(command *cobra.Command, params *CommonFlags, gadgetNamespace string) {
 	command.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// Namespace
 		if !params.AllNamespaces {
@@ -112,7 +112,8 @@ func AddCommonFlags(command *cobra.Command, params *CommonFlags) {
 				LabelSelector: "k8s-app=gadget",
 				FieldSelector: "spec.nodeName=" + params.Node,
 			}
-			pods, err := client.CoreV1().Pods(GadgetNamespace).List(context.TODO(), opts)
+
+			pods, err := client.CoreV1().Pods(gadgetNamespace).List(context.TODO(), opts)
 			if err != nil {
 				return commonutils.WrapInErrListPods(err)
 			}

@@ -137,11 +137,11 @@ func getGadgetType(spec *ebpf.CollectionSpec,
 	}
 }
 
-func getGadgetInfo(params *params.Params, args []string, logger logger.Logger) (*types.GadgetInfo, error) {
+func getGadgetInfo(params *params.Params, args []string, secretBytes []byte, logger logger.Logger) (*types.GadgetInfo, error) {
 	authOpts := &oci.AuthOptions{
-		AuthFile:   params.Get(authfileParam).AsString(),
-		PullSecret: params.Get(pullSecret).AsString(),
-		Insecure:   params.Get(insecureParam).AsBool(),
+		AuthFile:    params.Get(authfileParam).AsString(),
+		SecretBytes: secretBytes,
+		Insecure:    params.Get(insecureParam).AsBool(),
 	}
 	gadget, err := oci.GetGadgetImage(context.TODO(), args[0], authOpts, params.Get(pullParam).AsString())
 	if err != nil {
@@ -268,7 +268,18 @@ func (g *GadgetDesc) GetGadgetInfo(params *params.Params, args []string) (*types
 	if !experimental.Enabled() {
 		return nil, errors.New("run needs experimental features to be enabled")
 	}
-	return getGadgetInfo(params, args, log.StandardLogger())
+
+	pullSecretString := params.Get(pullSecret).AsString()
+	var secretBytes []byte = nil
+	if pullSecretString != "" {
+		var err error
+		// TODO: Namespace is still hardcoded
+		secretBytes, err = getPullSecret(pullSecretString, "gadget")
+		if err != nil {
+			return nil, err
+		}
+	}
+	return getGadgetInfo(params, args, secretBytes, log.StandardLogger())
 }
 
 func getUnderlyingType(tf *btf.Typedef) (btf.Type, error) {
