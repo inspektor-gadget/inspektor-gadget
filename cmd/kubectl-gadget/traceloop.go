@@ -71,8 +71,15 @@ var traceloopDeleteCmd = &cobra.Command{
 	RunE:  runTraceloopDelete,
 }
 
+var syscallFilters []string
+
 func NewTraceloopCmd(gadgetNamespace string) *cobra.Command {
 	utils.AddCommonFlags(traceloopCmd, &params, gadgetNamespace)
+
+	traceloopStartCmd.PersistentFlags().StringSliceVarP(&syscallFilters,
+		"syscall-filters", "",
+		[]string{},
+		"Filter out by syscall names. Join multiple names with ','")
 
 	traceloopCmd.AddCommand(traceloopStartCmd)
 	traceloopCmd.AddCommand(traceloopStopCmd)
@@ -125,6 +132,9 @@ func runTraceloopStart(cmd *cobra.Command, args []string) error {
 		// tracer and the short lived ones used to collect information.
 		AdditionalLabels: map[string]string{
 			labels.LabelType: labels.LabelGlobal,
+		},
+		Parameters: map[string]string{
+			"syscall-filters": strings.Join(syscallFilters, ","),
 		},
 	})
 	if err != nil {

@@ -108,9 +108,10 @@ type syscallEventContinued struct {
 	param              string
 }
 
-func NewTracer(enricher gadgets.DataEnricherByMntNs) (*Tracer, error) {
+func NewTracer(enricher gadgets.DataEnricherByMntNs, filters []string) (*Tracer, error) {
 	t := &Tracer{
-		enricher: enricher,
+		enricher:       enricher,
+		syscallFilters: filters,
 	}
 	if err := t.install(); err != nil {
 		t.close()

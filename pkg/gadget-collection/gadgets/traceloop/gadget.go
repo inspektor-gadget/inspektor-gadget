@@ -288,9 +288,15 @@ func (t *Trace) Start(trace *gadgetv1alpha1.Trace) {
 
 	traceUnique.Lock()
 	if traceUnique.tracer == nil {
+		var syscallFilters string
 		var err error
 
-		traceUnique.tracer, err = tracelooptracer.NewTracer(t.helpers)
+		filters, ok := trace.Spec.Parameters["syscall-filters"]
+		if ok {
+			syscallFilters = filters
+		}
+
+		traceUnique.tracer, err = tracelooptracer.NewTracer(t.helpers, strings.Split(syscallFilters, ","))
 		if err != nil {
 			traceUnique.Unlock()
 
