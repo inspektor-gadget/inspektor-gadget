@@ -1,5 +1,5 @@
 ---
-title: 'Running a containerized gadget'
+title: 'Running a gadget'
 weight: 20
 description: >
   The run command allows to create an instance of a gadget.
