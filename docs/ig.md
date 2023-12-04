@@ -20,7 +20,7 @@ Some characteristics of `ig`:
 - Easy to install as it is a single binary (statically linked).
 
 The architecture of `ig` is described in the main
-[architecture](architecture.md#ig) document.
+[architecture](core-concepts/architecture.md#ig) document.
 
 ## Use cases
 

@@ -14,7 +14,7 @@ description: >
 
 ## Installing `ig`
 
-The [`ig`](ig.md) tool can be built and installed
+The [`ig`](../ig.md) tool can be built and installed
 independently. The result is a single binary (statically linked) that can be
 copied to a Kubernetes node or any host to trace its containers.
 

@@ -81,7 +81,7 @@ Install Inspektor Gadget on Kubernetes:
 $ kubectl gadget deploy
 ```
 
-Read the detailed [install instructions](https://inspektor-gadget.io/docs/latest/getting-started/) to find more information.
+Read the detailed [install instructions](docs/getting-started/_index.md) to find more information.
 
 ## How to use
 
@@ -209,7 +209,7 @@ syscalls from userspace programs in a pod. The eBPF programs are run by
 the kernel and gather the log data. Inspektor Gadget's userspace
 utilities fetch the log data from ring buffers and display it. What eBPF
 programs are and how Inspektor Gadget uses them is briefly explained in
-the [architecture](docs/architecture.md) document.
+the [architecture](docs/core-concepts/architecture.md) document.
 
 ## `ig`
 
@@ -224,7 +224,7 @@ configuration of the kernel running in the node. To be able to run all the
 gadgets, you'll need to have at least 5.10 with
 [BTF](https://www.kernel.org/doc/html/latest/bpf/btf.html) enabled.
 
-See [requirements](docs/requirements.md) for a detailed list of the
+See [requirements](docs/getting-started/requirements.md) for a detailed list of the
 requirements per gadget.
 
 ## Code examples

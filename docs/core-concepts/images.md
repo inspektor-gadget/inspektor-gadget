@@ -5,7 +5,7 @@ description: >
   Handling gadgets as OCI artifacts.
 ---
 
-> ⚠️ This command is experimental and could change without prior notification. Check the installation guide to enable [experimental features](install.md#experimental-features).
+> ⚠️ This command is experimental and could change without prior notification. Check the installation guide to enable [experimental features](../getting-started/install-linux.md#experimental-features).
 
 Gadgets in Inspektor Gadget are packaged as OCI artifacts. This document
 describes the different commands available to interact with those artifacts and
@@ -13,7 +13,7 @@ with OCI registries.
 
 See also [Gadgets as OCI artifacts reference documentation](../reference/oci.md)
 
-If you're looking to run a gadget, check the [run](./gadgets/run.md) command.
+If you're looking to run a gadget, check the [run](../guides/run.md) command.
 
 ## Authentication
 

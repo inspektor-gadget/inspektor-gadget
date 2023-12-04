@@ -79,7 +79,7 @@ $ kubectl gadget deploy
 
 This will deploy the gadget DaemonSet along with its RBAC rules.
 
-![Screencast of the deploy command](install.gif)
+![Screencast of the deploy command](../install.gif)
 
 ### Choosing the gadget image
 
@@ -187,7 +187,7 @@ approach to the v1.0 release.
 
 ## Installing `ig`
 
-The [`ig`](ig.md) tool can be built and installed
+The [`ig`](../ig.md) tool can be built and installed
 independently. The result is a single binary (statically linked) that can be
 copied to a Kubernetes node or any host to trace its containers.
 
